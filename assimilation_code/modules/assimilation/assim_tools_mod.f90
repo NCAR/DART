@@ -336,12 +336,14 @@ real(r8) :: orig_obs_prior(ens_size)
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
 real(r8) :: vertvalue_obs_in_localization_coord, whichvert_real
+real(r8) :: tmn, tvar, tsd
 real(r8), allocatable :: close_obs_dist(:)
 real(r8), allocatable :: close_state_dist(:)
 real(r8), allocatable :: last_close_obs_dist(:)
 real(r8), allocatable :: last_close_state_dist(:)
 real(r8), allocatable :: all_my_orig_obs_priors(:, :)
 real(r8), allocatable :: piece_const_like(:, :), prior_state_mass(:, :), prior_state_ens(:, :)
+real(r8), allocatable :: prior_sorted_quantiles(:, :)
 
 integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
@@ -389,6 +391,9 @@ integer  :: reg_post_ind_sort(ens_size)
 logical  :: is_bounded(2)
 real(r8) :: bound(2)
 real(r8) :: post(ens_size)
+
+logical, parameter :: do_state_rhf = .false.
+logical, parameter :: do_state_eakf = .true.
 
 ! Just to make sure multiple tasks are running for tests
 write(*, *) 'my_task_id ', my_task_id()
@@ -554,7 +559,8 @@ if(do_state_QCEF) then
    ! Needed to compute the likelihoods for multi-obs state space QCEFs. 
    allocate(all_my_orig_obs_priors(ens_size, my_num_obs), piece_const_like(ens_size + 1, my_num_state), &
       prior_state_mass(ens_size + 1, my_num_state), prior_state_ens(ens_size, my_num_state),            &
-      prior_state_index_sort(ens_size, my_num_state))
+      prior_state_index_sort(ens_size, my_num_state), prior_sorted_quantiles(ens_size, my_num_state))
+      ! Note that prior_sorted_quantiles isn't really needed for RHF, could save on storage
    do i = 1, my_num_obs
       all_my_orig_obs_priors(:, i) = obs_ens_handle%copies(1:ens_size, i)
    end do
@@ -575,9 +581,36 @@ if(do_state_QCEF) then
       call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size)
    end do
 
-   ! For MARHF the prior state mass is uniformly distributed
-   ! For other priors will need to compute quantiles at this point
-   prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
+   ! Compute the prior quantiles and mass distribution for state space application
+   ! There should be a lot of overlap with observation space quantile methods here; separate that out
+   if(do_state_rhf) then
+      ! For MARHF the prior state mass is uniformly distributed
+      ! For other priors will need to compute quantiles at this point
+      prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
+   else if(do_state_eakf) then
+      !Eventually need to do all of this only for state variables that are getting state updates
+      do i = 1, my_num_state
+         tmn = sum(prior_state_ens(:, i)) / ens_size
+         tvar = sum((prior_state_ens(:, i) - tmn)**2) / (ens_size - 1)
+         tsd = sqrt(tvar)
+         ! Compute sorted quantiles for each prior state
+         do j = 1, ens_size
+            prior_sorted_quantiles(j, i) = normcdf(prior_state_ens(prior_state_index_sort(j, i), i), tmn, tsd)
+         end do
+
+         ! Get the probability mass in each prior partition (USE A BETTER WORD???)
+         prior_state_mass(1, i) = prior_sorted_quantiles(1, i)
+         do j = 2, ens_size
+            prior_state_mass(j, i) = prior_sorted_quantiles(j, i) - prior_sorted_quantiles(j-1, i)
+         end do
+         prior_state_mass(ens_size+1, i) = 1.0_r8 - prior_sorted_quantiles(ens_size, i)
+      end do
+   else
+      ! Die gracefully needed
+      write(*, *) 'No supported method for state space '
+      stop
+   endif
+
 endif
 
 ! Initialize the method for getting state variables close to a given ob on my process
@@ -835,18 +868,24 @@ if(do_state_QCEF) then
    is_bounded = .false.
    bound = (/-15.0_r8, 15.0_r8/)
 
-   do j = 1, my_num_state
+   do i = 1, my_num_state
       ! First get the update posterior with the likelihood
-      call state_post_bounded_norm_rhf(prior_state_ens(:, j), prior_state_index_sort(:, j), &
-         piece_const_like(:, j), ens_size, post, is_bounded, bound)
+      if(do_state_rhf) then
+         call state_post_bounded_norm_rhf(prior_state_ens(:, i), prior_state_index_sort(:, i), &
+            piece_const_like(:, i), ens_size, post, is_bounded, bound)
+      elseif(do_state_eakf) then
+         call state_post_normal(prior_state_ens(:, i), prior_state_index_sort(:, i), &
+            prior_state_mass(:, i), piece_const_like(:, i), prior_sorted_quantiles(:, i), ens_size, post)
+      endif
+
       ! Now do the marginal adjustment steps for the state posterior
       ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
-      call index_insertion_sort(ens_handle%copies(1:ens_size, j), reg_post_ind_sort, ens_size)
+      call index_insertion_sort(ens_handle%copies(1:ens_size, i), reg_post_ind_sort, ens_size)
    
       ! Put in the state space update with the corresponding ranks
-      do i = 1, ens_size
+      do j = 1, ens_size
          ! Post is not already sorted, but maybe for the state space stuff should only work in sorted?
-         ens_handle%copies(reg_post_ind_sort(i), j) = post(prior_state_index_sort(i, j))
+         ens_handle%copies(reg_post_ind_sort(j), i) = post(prior_state_index_sort(j, i))
       end do
    end do
 endif
@@ -939,7 +978,7 @@ deallocate(n_close_state_items, &
 
 if(do_state_QCEF) &
    deallocate(all_my_orig_obs_priors, piece_const_like, prior_state_mass, prior_state_ens, &
-      prior_state_index_sort)
+      prior_state_index_sort, prior_sorted_quantiles)
 
 end subroutine filter_assim
 
@@ -1711,6 +1750,141 @@ do i = 1, ens_size
 end do
 
 end subroutine state_post_bounded_norm_rhf
+
+
+
+subroutine state_post_normal(prior_ens, prior_index_sort, &
+   prior_mass,  piece_const_like, prior_sorted_quantiles, ens_size, post)
+!-----------------------------------------------------------------------
+! Computes a posterior ensemble given prior quantiles and a piecewise contant likelihood
+! assuming a normal contiuous prior distribution.
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: prior_ens(ens_size)
+integer,  intent(in)  :: prior_index_sort(ens_size)
+real(r8), intent(in)  :: prior_mass(ens_size + 1)
+real(r8), intent(in)  :: piece_const_like(ens_size + 1)
+real(r8), intent(in)  :: prior_sorted_quantiles(ens_size)
+real(r8), intent(out) :: post(ens_size)
+
+real(r8) :: post_mass(ens_size + 1), post_weight(ens_size + 1), post_cdf(ens_size + 1)
+real(r8) :: sorted_post_ens(ens_size)
+real(r8) :: prior_mean, prior_var, prior_sd
+real(r8) :: total_post_mass, q, wt_q_deficit, q_deficit, target_q
+
+integer  :: post_bin, j, k
+
+! Needed for quantile conserving in posterior
+!real(r8) :: int_mean, int_var, int_sd, final_ens(ens_size)
+
+! For debugging
+real(r8) :: sorted_prior_ens(ens_size)
+
+! Only need the sorted prior for ease of doing some error checking
+sorted_prior_ens = prior_ens(prior_index_sort)
+
+! These have been computed before; could save these for each state variable to reduce cost
+prior_mean = sum(prior_ens) / ens_size
+prior_var = sum((prior_ens - prior_mean)**2) / (ens_size - 1)
+prior_sd = sqrt(prior_var)
+
+! Posterior probability in each bin by multiplying by likelihood
+post_mass = prior_mass * piece_const_like
+! Normalize the total posterior mass
+total_post_mass = sum(post_mass)
+post_mass = post_mass / total_post_mass
+
+! This is the weight term for each posterior bin
+post_weight = piece_const_like / total_post_mass
+
+! Get the posterior cdf
+post_cdf(1) = post_mass(1)
+do j = 2, ens_size+1
+   post_cdf(j) = post_cdf(j-1) + post_mass(j)
+   ! Numerical round-off can lead to cdf's greater than 1, just push them back to 1?
+   post_cdf(j) = min(post_cdf(j), 1.0_r8)
+end do
+! Adjust final value to be 1; could be less due to roundoff
+post_cdf(ens_size + 1) = 1.0_r8
+
+! Find the position of the original quantiles in the posterior piecewise weighted normals
+! Initially do expensive raw search, then speed it up; remember everything here is sorted
+! NOTE: Without quantile damping, can get quantiles of 1.0 or 0.0 that cannot be inverted
+do j = 1, ens_size
+   q = prior_sorted_quantiles(j)
+
+   post_bin = -1
+   do k = 1, ens_size + 1
+      if(q <= post_cdf(k)) then
+         post_bin = k
+         exit
+      end if
+   end do
+
+   ! Find difference between q and lower bound
+   if(post_bin > 1 .and. post_bin <= ens_size + 1) then
+      ! This is how much additional weighted CDF is needed
+      wt_q_deficit = q - post_cdf(post_bin-1)
+      ! This is how much unweighted extra CDF is needed
+      q_deficit = wt_q_deficit / post_weight(post_bin)
+      target_q = prior_sorted_quantiles(post_bin - 1) + q_deficit
+
+      ! Still need to understand more appropriate bounds for this: should be precision dependent
+      if(target_q >= 1.0_r8) target_q = 0.99999999_r8
+      if(target_q <= 0.0_r8) target_q = 0.00000001_r8
+      call weighted_norm_inv(1.0_r8, prior_mean, prior_sd, target_q, sorted_post_ens(j))
+
+   elseif(post_bin == 1) then
+      wt_q_deficit = q
+      q_deficit = wt_q_deficit / post_weight(1)
+      target_q = q_deficit
+      ! Still need to understand more appropriate bounds for this: should be precision dependent
+      if(target_q >= 1.0_r8) target_q = 0.99999999_r8
+      if(target_q <= 0.0_r8) target_q = 0.00000001_r8
+      call weighted_norm_inv(1.0_r8, prior_mean, prior_sd, target_q, sorted_post_ens(j))
+
+   else
+      write(*, *) 'Illegal post_bin in ma_normal', post_bin
+      stop
+   end if
+
+   ! Trying to find a problem; these can occur due to roundoff in large ensembles?
+   if(post_bin > 1 .and. post_bin < ens_size + 1) then
+      if(sorted_post_ens(j) < sorted_prior_ens(post_bin - 1) .or. &
+         sorted_post_ens(j) > sorted_prior_ens(post_bin)) then
+         write(*, *) 'Bad news in the middle '
+         write(*, *) j, q, sorted_post_ens(j), sorted_prior_ens(post_bin-1), sorted_prior_ens(post_bin)
+      endif
+   elseif(post_bin == 1) then
+      if(sorted_post_ens(j) > sorted_prior_ens(1)) then
+         write(*, *) 'Bad news post_bin ', post_bin
+         write(*, *) j, q, sorted_post_ens(1), sorted_prior_ens(1), sorted_prior_ens(2)
+      endif
+   elseif(post_bin == ens_size + 1) then
+      if(sorted_post_ens(j) < sorted_prior_ens(ens_size)) then
+         write(*, *) 'Bad news post_bin ens_size + 1', j, q, sorted_post_ens(j), sorted_prior_ens(ens_size)
+      endif
+   endif
+end do
+
+! QUANTILE CONSERVING OPTION: Fit a normal to the intermediate posterior. Then invert original quantiles. 
+!if(1 == 2) then
+   !int_mean = sum(sorted_post_ens) / ens_size
+   !int_var = sum((sorted_post_ens - int_mean)**2) / (ens_size - 1)
+   !int_sd = sqrt(int_var)
+   ! Invert the quantiles 
+   !do j = 1, ens_size
+      !call weighted_norm_inv(1.0_r8, int_mean, int_sd, prior_sorted_quantiles(j), final_ens(j))
+   !end do
+   !sorted_post_ens = final_ens
+!endif
+
+! Get the unsorted posterior ensemble
+! Are there cheaper ways to deal with what is sorted and what is not?
+post(prior_index_sort) = sorted_post_ens
+
+end subroutine state_post_normal
+
 
 
 
@@ -2639,6 +2813,20 @@ else
 endif
 
 end subroutine get_close_state_cached
+
+
+!--------------------------------------------------------
+
+function normcdf(x, mu, sigma)
+
+real(r8), intent(in) :: x, mu, sigma
+real(r8) :: normcdf
+
+! Computes the cdf of the normal distribution for value x with mean mu and standard deviation sigma
+normcdf = 0.5_r8 * (1.0_r8 + erf((x - mu) / (sqrt(2.0_r8) * sigma)))
+
+end function normcdf
+
 
 !--------------------------------------------------------------------
 !> log what the user has selected via the namelist choices
