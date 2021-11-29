@@ -320,7 +320,7 @@ References
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
-   observations/obs_converters/radar/radar
+   observations/obs_converters/radar/README
    observations/obs_converters/snow/snow_to_obs
    observations/obs_converters/text/text_to_obs
    observations/obs_converters/tpw/tpw
@@ -467,7 +467,6 @@ References
    assimilation_code/programs/advance_time/advance_time
    assimilation_code/programs/model_mod_check/model_mod_check
    assimilation_code/programs/closest_member_tool/closest_member_tool
-   assimilation_code/programs/restart_file_tool/restart_file_tool
    assimilation_code/programs/filter/filter
    assimilation_code/programs/obs_keep_a_few/obs_keep_a_few
    assimilation_code/programs/create_obs_sequence/create_obs_sequence
@@ -528,9 +527,6 @@ References
    :caption: non-compiling models
    :hidden:
          
-   models/cam-old/cam_to_dart
-   models/cam-old/readme
-   models/cam-old/dart_to_cam
    models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
    models/MITgcm_ocean/trans_sv_pv
