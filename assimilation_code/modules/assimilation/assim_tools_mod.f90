@@ -131,7 +131,7 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
-logical  :: do_state_QCEF                   = .false.
+integer  :: state_QCEF_kind                 = 0
 logical  :: sort_obs_inc                    = .false.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
@@ -189,7 +189,7 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-namelist / assim_tools_nml / filter_kind, cutoff, do_state_QCEF, sort_obs_inc, &
+namelist / assim_tools_nml / filter_kind, cutoff, state_QCEF_kind, sort_obs_inc, &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
@@ -392,9 +392,6 @@ logical  :: is_bounded(2)
 real(r8) :: bound(2)
 real(r8) :: post(ens_size)
 
-logical, parameter :: do_state_rhf = .false.
-logical, parameter :: do_state_eakf = .true.
-
 ! Just to make sure multiple tasks are running for tests
 write(*, *) 'my_task_id ', my_task_id()
 
@@ -554,7 +551,7 @@ if(local_ss_inflate) then
    end do
 endif
 
-if(do_state_QCEF) then
+if(state_QCEF_kind > 0) then
    ! Keep the original obsevation prior ensemble before any obs have been used
    ! Needed to compute the likelihoods for multi-obs state space QCEFs. 
    allocate(all_my_orig_obs_priors(ens_size, my_num_obs), piece_const_like(ens_size + 1, my_num_state), &
@@ -583,11 +580,11 @@ if(do_state_QCEF) then
 
    ! Compute the prior quantiles and mass distribution for state space application
    ! There should be a lot of overlap with observation space quantile methods here; separate that out
-   if(do_state_rhf) then
+   if(state_QCEF_kind == 2) then
       ! For MARHF the prior state mass is uniformly distributed
       ! For other priors will need to compute quantiles at this point
       prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
-   else if(do_state_eakf) then
+   else if(state_QCEF_kind == 1) then
       !Eventually need to do all of this only for state variables that are getting state updates
       do i = 1, my_num_state
          tmn = sum(prior_state_ens(:, i)) / ens_size
@@ -707,7 +704,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
         
-         if(do_state_QCEF) then 
+         if(state_QCEF_kind > 0) then 
             ! Also need the original obs prior ensemble for multi-obs state QCEF
             orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
          endif
@@ -752,7 +749,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          net_a(group))
    end do
 
-   if(do_state_QCEF) &
+   if(state_QCEF_kind > 0) &
       ! Need to compute the likelihoods for the original prior ensemble for multi-obs state QCEF
       ! No thought about groups yet. Note that obs_err_var is only param we have for now
       ! Watch for conflicts with likelihood computation for the obs increments in standard filter
@@ -819,7 +816,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! If doing full assimilation, update the state variable ensemble with weighted increments
       if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
 
-      if(do_state_QCEF) &
+      if(state_QCEF_kind > 0) &
          ! Update the likelihood for this state variable
          call update_piece_const_like(prior_state_index_sort(:, state_index), piece_const_like(:, state_index), &
             orig_obs_likelihood, prior_state_mass(:, state_index), ens_size, final_factor)
@@ -860,7 +857,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 end do SEQUENTIAL_OBS
 
-if(do_state_QCEF) then
+if(state_QCEF_kind > 0) then
    ! Hard to say where to put the info about bounds with current infrastrucutre.
    ! Hard code here for now
 
@@ -870,10 +867,10 @@ if(do_state_QCEF) then
 
    do i = 1, my_num_state
       ! First get the update posterior with the likelihood
-      if(do_state_rhf) then
+      if(state_QCEF_kind == 2) then
          call state_post_bounded_norm_rhf(prior_state_ens(:, i), prior_state_index_sort(:, i), &
             piece_const_like(:, i), ens_size, post, is_bounded, bound)
-      elseif(do_state_eakf) then
+      elseif(state_QCEF_kind == 1) then
          call state_post_normal(prior_state_ens(:, i), prior_state_index_sort(:, i), &
             prior_state_mass(:, i), piece_const_like(:, i), prior_sorted_quantiles(:, i), ens_size, post)
       endif
@@ -976,7 +973,7 @@ deallocate(close_state_dist,      &
 deallocate(n_close_state_items, &
            n_close_obs_items)
 
-if(do_state_QCEF) &
+if(state_QCEF_kind > 0) &
    deallocate(all_my_orig_obs_priors, piece_const_like, prior_state_mass, prior_state_ens, &
       prior_state_index_sort, prior_sorted_quantiles)
 
