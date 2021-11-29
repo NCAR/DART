@@ -30,8 +30,8 @@ character(len=*), parameter :: source = 'sampling_error_correction_mod.f90'
 ! Using hardcoded filename for ease of scripting.
 ! and for now, say where the default location in the dart distribution tree is
 ! since it's so obscure.
-character(len=*), parameter :: input_filename = 'sampling_error_correction_table.nc'
-character(len=*), parameter :: default_path = ' "assimilation_code/programs/gen_sampling_err_table/work"'
+character(len=128) :: input_filename = 'sampling_error_correction_table.nc'
+character(len=128) :: default_path = ' "assimilation_code/programs/gen_sampling_err_table/work"'
 
 ! module globals - nentries is the number of values per ensemble size,
 ! nens is how many different ensemble sizes this file contains.
