@@ -132,6 +132,7 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
 integer  :: state_QCEF_kind                 = 0
+integer  :: regression_kind                 = 1
 logical  :: sort_obs_inc                    = .false.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
@@ -189,7 +190,8 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-namelist / assim_tools_nml / filter_kind, cutoff, state_QCEF_kind, sort_obs_inc, &
+namelist / assim_tools_nml / filter_kind, cutoff, state_QCEF_kind,         &
+   regression_kind, sort_obs_inc,                                          &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
@@ -2269,7 +2271,8 @@ real(r8),            intent(out) :: correl(num_groups)
 
 real(r8) :: reg_coef(num_groups), increment(ens_size)
 real(r8) :: cov_factor, reg_factor
-integer  :: group, grp_bot, grp_top
+integer  :: group, grp_bot, grp_top, i
+integer  :: obs_index_sort(grp_size)
 
 ! Compute the covariance localization and adjust_obs_impact factors
 cov_factor = cov_and_impact_factors(obs_loc, obs_type, ens_loc, &
@@ -2285,10 +2288,26 @@ endif
 ! Loop through groups to update the state variable ensemble members
 do group = 1, num_groups
    grp_bot = grp_beg(group); grp_top = grp_end(group)
-   ! Do update of state, correl only needed for varying ss inflate but compute for all
-   call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-      obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
-      increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+   if(regression_kind == 1) then
+      ! Do update of state, correl only needed for varying ss inflate but compute for all
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+   elseif(regression_kind == 2) then
+      ! For efficiency, need to pass in sorted for obs from higher up
+      ! Need to sort for each group if allowing group filter implementation
+      do i = 1, grp_size
+         obs_index_sort(i) = i
+      end do
+      call index_insertion_sort(obs_prior(grp_bot:grp_top), obs_index_sort, grp_size)
+      call rank_reg_state_incs(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), obs_index_sort, correl(group))
+      else
+         ! Die gracefully, not just stop
+         write(*, *) 'Illegal value for regression_kind', regression_kind
+         stop
+      endif
 end do
 
 if(num_groups <= 1) then
@@ -2823,6 +2842,244 @@ real(r8) :: normcdf
 normcdf = 0.5_r8 * (1.0_r8 + erf((x - mu) / (sqrt(2.0_r8) * sigma)))
 
 end function normcdf
+
+
+
+subroutine rank_reg_state_incs(obs, obs_prior_mean, obs_prior_var, obs_inc, &
+               state, ens_size, state_inc, reg_coef, index_obs, correl_out)
+!--------------------------------------------------------------------------
+
+! Does rank regression of a state variable onto an observation and
+! computes state variable increments given observation increments
+
+integer,            intent(in)    :: ens_size
+real(r8),           intent(in)    :: obs(ens_size), obs_inc(ens_size)
+real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
+real(r8),           intent(in)    :: state(ens_size)
+real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
+integer,            intent(in)    :: index_obs(ens_size)
+real(r8), optional, intent(inout) :: correl_out
+
+integer  :: index_state(ens_size), obs_rank(ens_size), state_rank(ens_size), i
+
+real(r8) :: obs_post(ens_size), sorted_obs(ens_size), sorted_state(ens_size), rank_incs(ens_size)
+real(r8) :: state_mean, state_var, state_sd, obs_sd, cov, corr_coef
+real(r8) :: post_rank(ens_size), state_rank_incs(ens_size), state_post_rank(ens_size), state_post(ens_size)
+real(r8) :: state_rank_mean, state_rank_var, state_rank_sd, obs_rank_mean, obs_rank_sd
+real(r8) :: rank_cov, rank_corr_coef, rank_reg_coef
+real(r8) :: pred_rank(ens_size), pred(ens_size), sq_resid, abs_resid, base_sq_resid, base_abs_resid
+
+
+! Need obs_sd below
+obs_sd = sqrt(obs_prior_var)
+
+! Find the rank of each of the state values by sorting
+! This order should not change quickly so use insertion sort with nearly sorted array eventually
+call index_insertion_sort(state, index_state, ens_size)
+! Obs order is same for sequence of states, so sorting done outside once would reduce cost
+
+! Also need the sorted arrays and rank of each member
+do i = 1, ens_size
+   sorted_obs(i) = obs(index_obs(i))
+   sorted_state(i) = state(index_state(i))
+   obs_rank(index_obs(i)) = i
+   state_rank(index_state(i)) = i
+end do
+
+! Get the full observation posterior
+obs_post = obs + obs_inc
+
+! Get the observation space posterior in terms of original space ranks
+call vals_to_ranks(sorted_obs, ens_size, obs_post, obs_rank, post_rank)
+
+! Get the increments for obs in rank
+rank_incs = post_rank - obs_rank
+
+! Univariate rank statistics are just a function of the ensemble size
+state_rank_mean = (ens_size + 1.0) / 2.0
+state_rank_var = ens_size * (ens_size + 1.0_r8) / 12.0_r8
+state_rank_sd = sqrt(state_rank_var)
+! These are same as state, but define for clarity in following computations
+obs_rank_mean = state_rank_mean
+obs_rank_sd = state_rank_sd
+
+rank_cov = sum((state_rank - state_rank_mean) * (obs_rank - obs_rank_mean)) / (ens_size - 1)
+rank_corr_coef  = rank_cov / (obs_rank_sd * state_rank_sd)
+rank_reg_coef = rank_corr_coef
+
+! Not clear how to deal with things like adaptive inflation that use the correlation for other purposes
+if(present(correl_out)) then
+   correl_out = rank_corr_coef
+endif
+
+! Compute the rank increments for state
+state_rank_incs = rank_incs * rank_reg_coef
+state_post_rank = state_rank + state_rank_incs
+
+! Turn posterior state ranks into real space; extrapolate least squares fit for outliers
+call ranks_to_vals(sorted_state, ens_size, state_post_rank, state_post)
+
+! Remove input state to get increments
+state_inc = state_post - state
+
+end subroutine rank_reg_state_incs
+
+
+
+subroutine vals_to_ranks(x_sort, ens_size, vals, obs_rank, ranks)
+!------------------------------------------------------------------------
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: x_sort(ens_size)
+real(r8), intent(in)  :: vals(ens_size)
+integer,  intent(in)  :: obs_rank(ens_size)
+real(r8), intent(out) :: ranks(ens_size)
+
+real(r8) :: slope
+integer  :: i, j, first_guess
+logical  :: need_slope
+
+! Does a mapping from values to ranks that is one-to-one so it is invertible
+
+! Only want to compute the slope if it is needed, and only once
+need_slope = .true.
+
+! If val is outside of ensemble range, will extrapolate using the least squares fit to the
+! relation between the rank and the value
+
+! Loop through all the values
+ENS_LOOP: do i = 1, ens_size
+
+   ! Have a good first guess about what the rank is, obs don't move that much in many cases
+   first_guess = obs_rank(i)
+
+   if(vals(i) <= x_sort(first_guess)) then
+      ! Is value below the bottom
+      if(vals(i) <= x_sort(1)) then
+         if(need_slope) then
+            slope = rank_slope(x_sort, ens_size)
+            need_slope = .false.
+         endif
+         ranks(i) = 1 + (1.0_r8 / slope) * (vals(i) - x_sort(1))
+         cycle ENS_LOOP
+      else
+         ! Do a binary search to speed up
+         do j = first_guess - 1, 1, -1
+            if(vals(i) > x_sort(j) .and. vals(i) <= x_sort(j + 1)) then
+               ranks(i) = j + (vals(i) - x_sort(j)) / (x_sort(j + 1) - x_sort(j))
+               cycle ENS_LOOP
+            end if
+         end do
+      endif
+      write(*, *) 'Can only get here with NaNs 1', i, obs_rank(i), vals(i)
+      stop
+   else
+      ! Search up
+      if(vals(i) >= x_sort(ens_size)) then
+         if(need_slope) then
+            slope = rank_slope(x_sort, ens_size)
+            need_slope = .false.
+         endif
+         ranks(i) = ens_size + (1.0_r8 / slope) * (vals(i) - x_sort(ens_size))
+         cycle ENS_LOOP
+      else
+         do j = first_guess, ens_size-1
+            if(vals(i) >= x_sort(j) .and. vals(i) < x_sort(j + 1)) then
+               ranks(i) = j + (vals(i) - x_sort(j)) / (x_sort(j + 1) - x_sort(j))
+               CYCLE ENS_LOOP
+            end if
+         end do
+      endif
+   endif
+   ! Put in an appropriate termination
+   write(*, *) 'Can only get here with NaNs 1', i, obs_rank(i), vals(i)
+   stop
+
+end do ENS_LOOP
+
+end subroutine vals_to_ranks
+
+!------------------------------------------------------------------------
+
+subroutine ranks_to_vals(x_sort, ens_size, ranks, vals)
+
+real(r8), intent(in)  :: x_sort(ens_size)
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ranks(ens_size)
+real(r8), intent(out) :: vals(ens_size)
+
+real(r8) :: slope, frank
+integer  :: i, irank
+logical  :: need_slope
+
+need_slope = .true.
+
+! Given a set of ranks, convert to values
+do i = 1, ens_size
+   if(ranks(i) <= 1) then
+      if(need_slope) then
+         slope = rank_slope(x_sort, ens_size)
+         need_slope = .false.
+      endif
+      vals(i) = x_sort(1) + slope * (ranks(i) - 1.0_r8)
+   else if(ranks(i) >= ens_size) then
+      if(need_slope) then
+         slope = rank_slope(x_sort, ens_size)
+         need_slope = .false.
+      endif
+      vals(i) = x_sort(ens_size) + slope * (ranks(i) - ens_size)
+   else
+      ! Use linear interpolation inside distribution
+      irank = floor(ranks(i))
+      frank = ranks(i) - irank
+      vals(i) = x_sort(irank) + frank * (x_sort(irank + 1) - x_sort(irank))
+   end if
+end do
+
+end subroutine ranks_to_vals
+!------------------------------------------------------------------------
+
+
+function rank_slope(x_sort, ens_size)
+
+! Computes the slope of the relation between independent variable rank and dependent variable value
+
+! The solution to this problem is not analytically clear. In the long run further investigation
+! of how to compute this slope would be worthwhile.
+
+! This version computes the covariance of ranks and values in the sorted array and gets a 
+! 'regression' slope from that
+
+real(r8), intent(in) :: x_sort(ens_size)
+integer,  intent(in) :: ens_size
+real(r8)             :: rank_slope
+
+integer  :: i
+real(r8) :: rank_array(ens_size), rank_mean, rank_var, x_mean, cov
+
+! This algorithm was used for results in rank regression paper
+do i = 1, ens_size
+   rank_array(i) = i * 1.0_r8
+end do
+
+! Rank statistics can be computed directly
+rank_mean = (ens_size + 1.0_r8) / 2.0_r8
+rank_var = ens_size * (ens_size + 1.0_r8) / 12.0_r8
+
+! Variable statistics by summation; This could be passed down from above for efficiency
+x_mean = sum(x_sort) / ens_size
+
+! Covariance (the rank is the independent variable
+cov = sum((x_sort - x_mean) * (rank_array - rank_mean)) / (ens_size - 1)
+
+rank_slope = cov / rank_var
+
+end function rank_slope
+
+
+!------------------------------------------------------------------------
+
+
 
 
 !--------------------------------------------------------------------
