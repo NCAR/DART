@@ -548,16 +548,13 @@ if(state_QCEF_kind > 0) then
    allocate(all_my_orig_obs_priors(ens_size, my_num_obs), piece_const_like(ens_size + 1, my_num_state), &
       prior_state_mass(ens_size + 1, my_num_state), prior_state_ens(ens_size, my_num_state),            &
       prior_state_index_sort(ens_size, my_num_state), prior_sorted_quantiles(ens_size, my_num_state))
-      ! Note that prior_sorted_quantiles isn't really needed for RHF, could save on storage
-   do i = 1, my_num_obs
-      all_my_orig_obs_priors(:, i) = obs_ens_handle%copies(1:ens_size, i)
-   end do
+ 
+   ! Save the prior state and obs ensemble from the handles
+   prior_state_ens(:, :) = ens_handle%copies(1:ens_size, 1:my_num_state)
+   all_my_orig_obs_priors(:, :) = obs_ens_handle%copies(1:ens_size, 1:my_num_obs)
 
    ! State likelihoods start as all 1 (no information)
    piece_const_like = 1.0_r8
-   
-   ! Get the prior state ensemble from the ensemble handle
-   prior_state_ens(1:ens_size, 1:my_num_state) = ens_handle%copies(1:ens_size, 1:my_num_state)
 
    ! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
    do i = 1, my_num_state
@@ -589,9 +586,8 @@ if(state_QCEF_kind > 0) then
          prior_state_mass(ens_size+1, i) = 1.0_r8 - prior_sorted_quantiles(ens_size, i)
       end do
    else
-      ! Die gracefully needed
-      write(*, *) 'No supported method for state space '
-      stop
+      write(msgstring, *) 'Unsupported state_QCEF_kind from namelist ', state_QCEF_kind
+      call error_handler(E_ERR,'filter_assim', msgstring, source)
    endif
 
 endif
@@ -1814,8 +1810,8 @@ do j = 1, ens_size
       call weighted_norm_inv(1.0_r8, prior_mean, prior_sd, target_q, sorted_post_ens(j))
 
    else
-      write(*, *) 'Illegal post_bin in ma_normal', post_bin
-      stop
+      write(msgstring, *) 'Illegal posterior bin ', post_bin
+      call error_handler(E_ERR,'state_post_normal', msgstring, source)
    end if
 
    ! Trying to find a problem; these can occur due to roundoff in large ensembles?
@@ -2261,9 +2257,8 @@ do group = 1, num_groups
          obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
          increment(grp_bot:grp_top), reg_coef(group), obs_index_sort(grp_bot:grp_top), correl(group))
       else
-         ! Die gracefully, not just stop
-         write(*, *) 'Illegal value for regression_kind', regression_kind
-         stop
+         write(msgstring, *) 'Unsupported regression_kind from namelist ', regression_kind
+         call error_handler(E_ERR,'obs_update_ens', msgstring, source)
       endif
 end do
 
@@ -2921,8 +2916,8 @@ ENS_LOOP: do i = 1, ens_size
             end if
          end do
       endif
-      write(*, *) 'Can only get here with NaNs 1', i, obs_rank(i), vals(i)
-      stop
+      write(msgstring, *) 'Numerical error, apparent NaNs 1', i, obs_rank(i), vals(i)
+      call error_handler(E_ERR,'vals_to_ranks', msgstring, source)
    else
       ! Search up
       if(vals(i) >= x_sort(ens_size)) then
@@ -2942,8 +2937,8 @@ ENS_LOOP: do i = 1, ens_size
       endif
    endif
    ! Put in an appropriate termination
-   write(*, *) 'Can only get here with NaNs 1', i, obs_rank(i), vals(i)
-   stop
+   write(msgstring, *) 'Numerical error, apparent NaNs 2', i, obs_rank(i), vals(i)
+   call error_handler(E_ERR,'vals_to_ranks', msgstring, source)
 
 end do ENS_LOOP
 
