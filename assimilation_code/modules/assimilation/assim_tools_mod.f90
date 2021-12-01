@@ -320,7 +320,7 @@ integer,                       intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer,                       intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer,                       intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 logical,                       intent(in)    :: inflate_only
-type(ensemble_type), optional, intent(in)    :: stat_ens_handle, stat_obs_ens_handle
+type(ensemble_type), optional, intent(inout) :: stat_ens_handle, stat_obs_ens_handle
 
 ! changed the ensemble sized things here to allocatable
 
@@ -409,7 +409,10 @@ real(r8)              :: orig_hybrid_weight
 real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
 real(r8)              :: hyb_obs_var, corr_rho
 real(r8), allocatable :: stat_obs_prior(:) 
-
+real(r8), allocatable :: dtrd(:), tr_R(:), tr_B(:)
+real(r8)              :: sum_d, sum_R, sum_B, sum_d_all, sum_R_all, sum_B_all
+real(r8)              :: fs, ens_mean(1)
+integer               :: i_qc
 
 ! Are we hybridizing the increments?
 if (present(stat_ens_handle) .and. present(stat_obs_ens_handle)) then 
@@ -695,6 +698,67 @@ endif
 
 allow_missing_in_state = get_missing_ok_status()
 
+
+! Scale the climatology background perturbations:
+! Rescaling factor so that the total variance of the 
+! rescaled static covariance  more  appropriately  estimated  
+! the total forecast-error variance
+if (do_hybrid) then 
+   i_qc = 0
+   allocate(dtrd(obs_ens_handle%num_vars), tr_R(obs_ens_handle%num_vars), &
+            tr_B(obs_ens_handle%num_vars))
+   ! loop over all observations 
+   do i = 1, obs_ens_handle%num_vars
+
+      call get_obs_from_key(obs_seq, keys(i), observation)
+      call get_obs_def(observation, obs_def)
+   
+      ! value and variance of obs
+      obs_err_var = get_obs_def_error_variance(obs_def)
+      call get_obs_values(observation, obs, obs_val_index)
+  
+      print *, 'obs: ', obs(1), 'var: ', obs_err_var
+
+      call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
+
+      if(ens_handle%my_pe == owner) then
+        obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
+        print *, 'nint(obs_qc): ', nint(obs_qc)
+        if(nint(obs_qc)==0) then
+          i_qc = i_qc + 1
+
+          ens_mean   = obs_ens_handle%copies(OBS_PRIOR_MEAN_START:OBS_PRIOR_MEAN_END, owners_index)
+          
+          dtrd(i_qc) = (obs(1)-ens_mean(1))**2
+          tr_R(i_qc) = obs_err_var
+          tr_B(i_qc) = stat_obs_ens_handle%copies(stat_obs_var_copy, owners_index)
+          
+        endif
+      endif
+   enddo
+   sum_d = sum(dtrd(1:i_qc))
+   sum_R = sum(tr_R(1:i_qc))
+   sum_B = sum(tr_B(1:i_qc))
+
+   call sum_across_tasks(sum_d, sum_d_all)
+   call sum_across_tasks(sum_R, sum_R_all)
+   call sum_across_tasks(sum_B, sum_B_all)
+  
+   !fs = (sum(dtrd(1:i_qc)) - sum(tr_R(1:i_qc)) ) / sum(tr_B(1:i_qc))
+   fs = (sum_d_all - sum_R_all) / sum_B_all
+   fs = max(0.0_r8, fs)
+
+   print *, 'scale: ', fs
+  
+   stat_ens_handle%copies(1:hybrid_ens_size, :) = sqrt(fs) * & 
+                     stat_ens_handle%copies(1:hybrid_ens_size, :)
+   stat_obs_ens_handle%copies(1:hybrid_ens_size, :) = sqrt(fs) * &
+                     stat_obs_ens_handle%copies(1:hybrid_ens_size, :)
+   stat_obs_ens_handle%copies(stat_obs_var_copy, :) = fs * &
+                     stat_obs_ens_handle%copies(stat_obs_var_copy, :)
+   deallocate(dtrd, tr_R, tr_B)
+endif
+
 ! use MLOOP for the overall outer loop times; LG_GRN is for
 ! sections inside the overall loop, including the total time
 ! for the state_update and obs_update loops.  use SM_GRN for
@@ -704,7 +768,7 @@ allow_missing_in_state = get_missing_ok_status()
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
-   !print *, 'obs i: ', i
+   print *, 'obs i: ', i
 
    if (timing(MLOOP))  call start_timer(t_base(MLOOP))
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
@@ -744,8 +808,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
 
-   !print *, 'obs_val: ', obs(1)
-   !print *, ''
+   print *, 'obs_val: ', obs(1)
+   print *, ''
 
    ! Find out who has this observation and where it is
    call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index) 
@@ -811,20 +875,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! Spatially-constant (correlation is uniform = 1)
                corr_rho = 1.0_r8 
 
-               !print *, 'a = ', my_hybrid_weight
+               print *, 'a = ', my_hybrid_weight
  
                call update_hybrid(my_hybrid_weight, my_hybrid_weight_sd,     &
                         ens_obs_var, hyb_obs_var, obs_err_var, ens_obs_mean, &
                         obs(1), corr_rho)
 
-               !print *, 'se2 = ', ens_obs_var
-               !print *, 'ss2 = ', hyb_obs_var
-               !print *, 'so2 = ', obs_err_var
-               !print *, 'd2  = ', (ens_obs_mean - obs(1))**2
-               !print *, '' 
-               !print *, 'post my_hybrid_weight: ', my_hybrid_weight
-               !print *, 'post my_hybrid_weight_sd: ', my_hybrid_weight_sd
-               !print *, ''
+               print *, 'se2 = ', ens_obs_var
+               print *, 'ss2 = ', hyb_obs_var
+               print *, 'so2 = ', obs_err_var
+               print *, 'd2  = ', (ens_obs_mean - obs(1))**2
+               print *, '' 
+               print *, 'post my_hybrid_weight: ', my_hybrid_weight
+               print *, 'post my_hybrid_weight_sd: ', my_hybrid_weight_sd
+               print *, ''
             endif
          endif
          

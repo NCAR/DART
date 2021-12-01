@@ -255,7 +255,7 @@ real(r8), parameter :: small_diff = 1.0e-8
 integer  :: k, find_index(1)
 real(r8) :: m, v, d2, ss, Y, Z, Y2, Z2
 real(r8) :: a, b, c, a0, a1, a2, a3
-real(r8) :: Q, R, G, H, theta, fs 
+real(r8) :: Q, R, G, H, theta 
 real(r8) :: disc, sol(3), abssep(3)
 real(r8) :: mulfac, addfac, PIfac
 real(r8) :: new_weight, new_weight_sd
@@ -267,15 +267,8 @@ m  = weight
 v  = weight_sd**2
 d2 = (obs - x)**2
 
-! Rescaling factor so that the total variance of the 
-! rescaled static covariance  more  appropriately  estimated  
-! the total forecast-error variance
-fs = 1.0_r8
-!if (d2 > so2) fs = max( 0.01_r8, (d2 - so2) / ss2 )
+ss = se2 - ss2 
 
-ss = se2 - fs * ss2 
-
-!print *, 'fs: ', fs
 !print *, 'd2: ', d2
 !print *, 'ss: ', ss
 
@@ -291,7 +284,7 @@ if (ss == 0.0_r8 .or. abs(ss) <= small_diff) then
 endif
 
 ! Simplify coefficients
-Y  = so2+fs*ss2
+Y  = so2+ss2
 Z  = rho*ss
 Y2 = Y**2
 Z2 = Z**2
