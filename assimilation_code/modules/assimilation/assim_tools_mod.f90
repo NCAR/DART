@@ -48,7 +48,7 @@ use         location_mod, only : location_type, get_close_type, query_location, 
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             &
                                  compute_copy_mean_var, get_var_owner_index,              &
-                                 prepare_to_update_copies, map_pe_to_task
+                                 map_pe_to_task
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              &
                                  sum_across_tasks, task_count, start_mpi_timer,           &
@@ -95,7 +95,6 @@ integer                :: num_types = 0
 real(r8), allocatable  :: cutoff_list(:)
 logical                :: has_special_cutoffs
 logical                :: close_obs_caching = .true.
-real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaNs/Inf
 
 ! true if we have multiple vert choices and we're doing vertical localization
 ! (make it a local variable so we don't keep making subroutine calls)
@@ -387,19 +386,13 @@ logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
 
-integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
-
-integer  :: reg_post_ind_sort(ens_size)
+integer  :: reg_post_ind_sort(ens_size), obs_index_sort(ens_size)
 logical  :: is_bounded(2)
 real(r8) :: bound(2)
 real(r8) :: post(ens_size)
 
 ! Just to make sure multiple tasks are running for tests
 write(*, *) 'my_task_id ', my_task_id()
-
-! how about this?  look for imbalances in the tasks
-allocate(n_close_state_items(obs_ens_handle%num_vars), &
-         n_close_obs_items(  obs_ens_handle%num_vars))
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -420,10 +413,6 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
          my_state_kind(        ens_handle%my_num_vars), &
          my_state_loc(         ens_handle%my_num_vars))
 ! end alloc
-
-! we are going to read/write the copies array
-call prepare_to_update_copies(ens_handle)
-call prepare_to_update_copies(obs_ens_handle)
 
 ! Initialize assim_tools_module if needed
 if (.not. module_initialized) call assim_tools_init()
@@ -567,17 +556,12 @@ if(state_QCEF_kind > 0) then
    ! State likelihoods start as all 1 (no information)
    piece_const_like = 1.0_r8
    
-   ! Initialize the sorting index; Eventually this could be carried over for efficiency
-   do j = 1, ens_size
-      prior_state_index_sort(j, :) = j
-   end do
-
    ! Get the prior state ensemble from the ensemble handle
    prior_state_ens(1:ens_size, 1:my_num_state) = ens_handle%copies(1:ens_size, 1:my_num_state)
 
    ! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
    do i = 1, my_num_state
-      call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size)
+      call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size, .true.)
    end do
 
    ! Compute the prior quantiles and mass distribution for state space application
@@ -706,10 +690,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
         
-         if(state_QCEF_kind > 0) then 
-            ! Also need the original obs prior ensemble for multi-obs state QCEF
-            orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
-         endif
+         ! Also need the original obs prior ensemble for multi-obs state QCEF
+         if(state_QCEF_kind > 0) orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -746,16 +728,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Compute observation space increments for each group
    do group = 1, num_groups
       grp_bot = grp_beg(group); grp_top = grp_end(group)
+
+      ! Get sorted observation index if needed; could be required in obs_increment, too
+      if(regression_kind == 2) call  index_insertion_sort(obs_prior(grp_bot:grp_top), &
+         obs_index_sort(grp_bot:grp_top), grp_size, .true.)
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
          obs_err_var, base_obs_type, obs_inc(grp_bot:grp_top), obs_prior_mean(group), obs_prior_var(group), &
          net_a(group))
    end do
 
-   if(state_QCEF_kind > 0) &
-      ! Need to compute the likelihoods for the original prior ensemble for multi-obs state QCEF
-      ! No thought about groups yet. Note that obs_err_var is only param we have for now
-      ! Watch for conflicts with likelihood computation for the obs increments in standard filter
-      call get_obs_likelihood(orig_obs_prior, ens_size, obs(1), obs_err_var, &
+   ! Compute likelihoods for original prior for multi-obs state QCEF
+   ! No thought about groups yet. Note that obs_err_var is only param we have for now
+   if(state_QCEF_kind > 0) call get_obs_likelihood(orig_obs_prior, ens_size, obs(1), obs_err_var, &
          base_obs_type, orig_obs_likelihood)
 
    ! Compute updated values for single state space inflation
@@ -771,11 +755,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Adaptive localization needs number of other observations within localization radius.
    ! Do get_close_obs first, even though state space increments are computed before obs increments.
    ! JLA: ens_handle doesn't ever appear to be used. Get rid of it. Should be obs_ens_handle anyway?
-   call  get_close_obs_cached(close_obs_caching, gc_obs, base_obs_loc, base_obs_type,      &
+   call  get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type,      &
       my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
       ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
       last_close_obs_dist, num_close_obs_cached, num_close_obs_calls_made)
-   n_close_obs_items(i) = num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -793,11 +776,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       i, base_obs_loc, obs_def, localization_unit)
 
    ! Find state variables on my process that are close to observation being assimilated
-   call  get_close_state_cached(close_obs_caching, gc_state, base_obs_loc, base_obs_type,      &
+   call  get_close_state_cached(gc_state, base_obs_loc, base_obs_type,      &
       my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
       ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
       last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
-   n_close_state_items(i) = num_close_states
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
 
    ! Loop through to update each of my state variables that is potentially close
@@ -809,19 +791,22 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
       endif
 
-      call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-         updated_ens, my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
-         obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-         close_state_dist(j), cutoff_rev, net_a, adjust_obs_impact, obs_impact_table, &
-         grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl)
+      ! Compute the covariance localization and adjust_obs_impact factors (module storage)
+      final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_state_loc(state_index), &
+         my_state_kind(state_index), close_state_dist(j), cutoff_rev)
 
-      ! If doing full assimilation, update the state variable ensemble with weighted increments
-      if(.not. inflate_only) ens_handle%copies(1:ens_size, state_index) = updated_ens
+      if(final_factor > 0.0_r8) &
+         call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+            my_state_loc(state_index), my_state_kind(state_index), obs_prior, &
+            obs_index_sort, obs_inc, &
+            obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+            net_a, grp_size, grp_beg, grp_end, i, &
+            my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
 
-      if(state_QCEF_kind > 0) &
-         ! Update the likelihood for this state variable
-         call update_piece_const_like(prior_state_index_sort(:, state_index), piece_const_like(:, state_index), &
-            orig_obs_likelihood, prior_state_mass(:, state_index), ens_size, final_factor)
+      ! Update the likelihood for this state variable for state space multi-obs
+      if(state_QCEF_kind > 0) call update_piece_const_like(prior_state_index_sort(:, state_index), &
+         piece_const_like(:, state_index), orig_obs_likelihood, prior_state_mass(:, state_index),  &
+         ens_size, final_factor)
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate .and. final_factor > 0.0_r8) then
@@ -847,13 +832,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             ! If forward observation operator failed, no need to update unassimilated observations
             if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
-            call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
-               updated_ens, my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
-               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-               close_obs_dist(j), cutoff_rev, net_a, adjust_obs_impact, obs_impact_table, &
-               grp_size, grp_beg, grp_end, i, -1*my_obs_indx(obs_index), final_factor, correl)
+         ! Compute the covariance localization and adjust_obs_impact factors (module storage)
+         final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
+            my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev)
 
-            obs_ens_handle%copies(1:ens_size, obs_index) = updated_ens
+            if(final_factor > 0.0_r8) &
+               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, &
+                  obs_index_sort, obs_inc, &
+                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                  net_a, grp_size, grp_beg, grp_end, i, &
+                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
          endif
       end do OBS_UPDATE
    endif
@@ -879,7 +868,7 @@ if(state_QCEF_kind > 0) then
 
       ! Now do the marginal adjustment steps for the state posterior
       ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
-      call index_insertion_sort(ens_handle%copies(1:ens_size, i), reg_post_ind_sort, ens_size)
+      call index_insertion_sort(ens_handle%copies(1:ens_size, i), reg_post_ind_sort, ens_size, .true.)
    
       ! Put in the state space update with the corresponding ranks
       do j = 1, ens_size
@@ -904,21 +893,6 @@ call get_close_destroy(gc_obs)
 ! do some stats - being aware that unless we do a reduce() operation
 ! this is going to be per-task.  so only print if something interesting
 ! shows up in the stats?  maybe it would be worth a reduce() call here?
-
-!>@todo FIXME:  
-!  we have n_close_obs_items and n_close_state_items for each assimilated
-!  observation.  what we really want to know is across the tasks is there
-!  a big difference in counts?  so that means communication.  maybe just
-!  the largest value?  and the number of 0 values?  and if the largest val
-!  is way off compared to the other tasks, warn the user?
-!  we don't have space or time to do all the obs * tasks but could we
-!  send enough info to make a histogram?  compute N bin counts and then
-!  reduce that across all the tasks and have task 0 print out?
-! still thinking on this idea.
-!   write(msgstring, *) 'max state items per observation: ', maxval(n_close_state_items)
-!   call error_handler(E_MSG, 'filter_assim:', msgstring)
-! if i come up with something i like, can we use the same idea
-! for the threed_sphere locations boxes?
 
 ! Assure user we have done something
 if (print_trace_details >= 0) then
@@ -971,9 +945,6 @@ deallocate(close_state_dist,      &
            last_close_state_ind,  &
            my_state_kind,         &
            my_state_loc)
-
-deallocate(n_close_state_items, &
-           n_close_obs_items)
 
 if(state_QCEF_kind > 0) &
    deallocate(all_my_orig_obs_priors, piece_const_like, prior_state_mass, prior_state_ens, &
@@ -2237,72 +2208,58 @@ end subroutine update_piece_const_like
 
 !---------------------------------------------------------------
 
-subroutine obs_updates_ens(ens_size, num_groups, ens, updated_ens, ens_loc, ens_kind, &
-   obs_prior, obs_inc, obs_prior_mean, obs_prior_var, obs_loc, obs_type, obs_time, &
-   dist, cutoff_rev, net_a, adjust_obs_impact, obs_impact_table, &
-   grp_size, grp_beg, grp_end, reg_factor_obs_index, reg_factor_ens_index, &
-   final_factor, correl)
+subroutine obs_updates_ens(ens_size, num_groups, ens, ens_loc, ens_kind, &
+   obs_prior, obs_index_sort, obs_inc, obs_prior_mean, obs_prior_var, obs_loc, obs_type, obs_time, &
+   net_a, grp_size, grp_beg, grp_end, reg_factor_obs_index,         & 
+   reg_factor_ens_index, final_factor, correl, correl_needed, inflate_only)
 
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: num_groups
-real(r8),            intent(in)  :: ens(ens_size)
-real(r8),            intent(out) :: updated_ens(ens_size)
+real(r8),            intent(inout)  :: ens(ens_size)
 type(location_type), intent(in)  :: ens_loc
 integer,             intent(in)  :: ens_kind
 real(r8),            intent(in)  :: obs_prior(ens_size)
+integer,             intent(in)  :: obs_index_sort(ens_size)
 real(r8),            intent(in)  :: obs_inc(ens_size)
 real(r8),            intent(in)  :: obs_prior_mean(num_groups)
 real(r8),            intent(in)  :: obs_prior_var(num_groups)
 type(location_type), intent(in)  :: obs_loc
 integer,             intent(in)  :: obs_type
 type(time_type),     intent(in)  :: obs_time
-real(r8),            intent(in)  :: dist
-real(r8),            intent(in)  :: cutoff_rev
 real(r8),            intent(in)  :: net_a(num_groups)
-logical,             intent(in)  :: adjust_obs_impact
-real(r8),            intent(in)  :: obs_impact_table(:, :)
 integer,             intent(in)  :: grp_size
 integer,             intent(in)  :: grp_beg(num_groups)
 integer,             intent(in)  :: grp_end(num_groups)
 integer,             intent(in)  :: reg_factor_obs_index
 integer(i8),         intent(in)  :: reg_factor_ens_index
-real(r8),            intent(out) :: final_factor
+real(r8),            intent(inout) :: final_factor
 real(r8),            intent(out) :: correl(num_groups)
+logical,             intent(in)  :: correl_needed
+logical,             intent(in)  :: inflate_only
 
 real(r8) :: reg_coef(num_groups), increment(ens_size)
-real(r8) :: cov_factor, reg_factor
+real(r8) :: reg_factor
 integer  :: group, grp_bot, grp_top, i
-integer  :: obs_index_sort(grp_size)
-
-! Compute the covariance localization and adjust_obs_impact factors
-cov_factor = cov_and_impact_factors(obs_loc, obs_type, ens_loc, &
-   ens_kind, dist, cutoff_rev, adjust_obs_impact, obs_impact_table)
-
-! If no impact, don't do anything else
-if(cov_factor <= 0.0_r8) then
-   final_factor = cov_factor
-   updated_ens = ens
-   return
-endif
 
 ! Loop through groups to update the state variable ensemble members
 do group = 1, num_groups
    grp_bot = grp_beg(group); grp_top = grp_end(group)
    if(regression_kind == 1) then
-      ! Do update of state, correl only needed for varying ss inflate but compute for all
-      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
-         increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+      ! Do update of state, correl only needed for varying ss inflate
+      if(correl_needed) then
+         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+            obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+            increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+      else
+         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+            obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+            increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+      endif
    elseif(regression_kind == 2) then
-      ! For efficiency, need to pass in sorted for obs from higher up
-      ! Need to sort for each group if allowing group filter implementation
-      do i = 1, grp_size
-         obs_index_sort(i) = i
-      end do
-      call index_insertion_sort(obs_prior(grp_bot:grp_top), obs_index_sort, grp_size)
+      ! Correl computation is essentially free with rank so just always get it
       call rank_reg_state_incs(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
          obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
-         increment(grp_bot:grp_top), reg_coef(group), obs_index_sort, correl(group))
+         increment(grp_bot:grp_top), reg_coef(group), obs_index_sort(grp_bot:grp_top), correl(group))
       else
          ! Die gracefully, not just stop
          write(*, *) 'Illegal value for regression_kind', regression_kind
@@ -2310,23 +2267,21 @@ do group = 1, num_groups
       endif
 end do
 
-if(num_groups <= 1) then
-   final_factor = cov_factor
-else
+if(num_groups > 1) then
    reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, &
       reg_factor_obs_index, reg_factor_ens_index)
-   final_factor = min(cov_factor, reg_factor)
+   final_factor = min(final_factor, reg_factor)
 endif
 
 ! Get the updated ensemble
-updated_ens = ens + final_factor * increment
+if(.not. inflate_only) ens = ens + final_factor * increment
 
 end subroutine obs_updates_ens
 
 !-------------------------------------------------------------
 
 function cov_and_impact_factors(base_obs_loc, base_obs_type, state_loc, state_kind, &
-dist, cutoff_rev, adjust_obs_impact, obs_impact_table)
+dist, cutoff_rev)
 
 ! Computes the cov_factor and multiplies by obs_impact_factor if selected
 
@@ -2337,8 +2292,6 @@ type(location_type), intent(in) :: state_loc
 integer, intent(in) :: state_kind
 real(r8), intent(in) :: dist
 real(r8), intent(in) :: cutoff_rev
-logical, intent(in)  :: adjust_obs_impact
-real(r8), intent(in) :: obs_impact_table(:, 0:)
 
 real(r8) :: impact_factor, cov_factor
 
@@ -2737,12 +2690,11 @@ end subroutine get_my_obs_loc
 !> Get close obs from cache if appropriate. Cache new get_close_obs info
 !> if requested.
 
-subroutine get_close_obs_cached(close_obs_caching, gc_obs, base_obs_loc, base_obs_type, &
+subroutine get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type, &
    my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
    ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
    last_close_obs_dist, num_close_obs_cached, num_close_obs_calls_made)
 
-logical, intent(in) :: close_obs_caching
 type(get_close_type),          intent(in)  :: gc_obs
 type(location_type),           intent(inout) :: base_obs_loc, my_obs_loc(:)
 integer,                       intent(in)  :: base_obs_type, my_obs_kind(:), my_obs_type(:)
@@ -2785,12 +2737,11 @@ end subroutine get_close_obs_cached
 !> Get close state from cache if appropriate. Cache new get_close_state info
 !> if requested.
 
-subroutine get_close_state_cached(close_obs_caching, gc_state, base_obs_loc, base_obs_type, &
+subroutine get_close_state_cached(gc_state, base_obs_loc, base_obs_type, &
    my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
    ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
    last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
 
-logical, intent(in) :: close_obs_caching
 type(get_close_type),          intent(in)    :: gc_state
 type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
 integer,                       intent(in)    :: base_obs_type, my_state_kind(:)
@@ -2875,8 +2826,7 @@ obs_sd = sqrt(obs_prior_var)
 
 ! Find the rank of each of the state values by sorting
 ! This order should not change quickly so use insertion sort with nearly sorted array eventually
-call index_insertion_sort(state, index_state, ens_size)
-! Obs order is same for sequence of states, so sorting done outside once would reduce cost
+call index_insertion_sort(state, index_state, ens_size, .true.)
 
 ! Also need the sorted arrays and rank of each member
 do i = 1, ens_size
@@ -3075,11 +3025,6 @@ cov = sum((x_sort - x_mean) * (rank_array - rank_mean)) / (ens_size - 1)
 rank_slope = cov / rank_var
 
 end function rank_slope
-
-
-!------------------------------------------------------------------------
-
-
 
 
 !--------------------------------------------------------------------

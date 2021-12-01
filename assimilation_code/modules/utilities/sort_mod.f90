@@ -672,19 +672,26 @@ end subroutine insertion_sort_int
 
 !-------------------------------------------------------------------------
 ! index version for real(r8) data.
+! when called, indx must contain an estimated sorted order
 
-subroutine index_insertion_sort_real(x, indx, num)
+subroutine index_insertion_sort_real(x, indx, num, init_indx)
 
-integer,  intent(in) :: num
-integer, intent(out) :: indx(num)
-real(r8), intent(in) :: x(num)
+integer,  intent(in)    :: num
+integer,  intent(inout) :: indx(num)
+real(r8), intent(in)    :: x(num)
+logical, optional, intent(in) :: init_indx
 
 integer :: i, j, v_indx
 real(r8) :: v
 
-do i=1, num
-   indx(i) = i
-enddo
+! Initialize and index array if requested
+if(present(init_indx)) then
+   if(init_indx) then
+      do i = 1, num
+         indx(i) = i 
+      end do
+   endif
+endif
 
 i = 2
 do while (i <= num)
@@ -704,19 +711,26 @@ end subroutine index_insertion_sort_real
 
 !-------------------------------------------------------------------------
 ! index version for integer data.
+! when called, indx must contain an estimated sorted order
 
-subroutine index_insertion_sort_int(x, indx, num)
+subroutine index_insertion_sort_int(x, indx, num, init_indx)
 
-integer, intent(in)  :: num
-integer, intent(out) :: indx(num)
-integer, intent(in)  :: x(num)
+integer, intent(in)    :: num
+integer, intent(inout) :: indx(num)
+integer, intent(in)    :: x(num)
+logical, optional, intent(in) :: init_indx
 
 integer :: i, j, v_indx
 integer :: v
 
-do i=1, num
-   indx(i) = i
-enddo
+! Initialize and index array if requested
+if(present(init_indx)) then
+   if(init_indx) then
+      do i = 1, num
+         indx(i) = i 
+      end do
+   endif
+endif
 
 i = 2
 do while (i <= num)
