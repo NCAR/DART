@@ -327,7 +327,7 @@ logical,                     intent(in)    :: inflate_only
 
 ! changed the ensemble sized things here to allocatable
 
-real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
+real(r8) :: obs_prior(ens_size), obs_inc(ens_size)
 real(r8) :: orig_obs_likelihood(ens_size)
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
@@ -337,7 +337,6 @@ real(r8) :: orig_obs_prior(ens_size)
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
 real(r8) :: vertvalue_obs_in_localization_coord, whichvert_real
-real(r8) :: tmn, tvar, tsd
 real(r8), allocatable :: close_obs_dist(:)
 real(r8), allocatable :: close_state_dist(:)
 real(r8), allocatable :: last_close_obs_dist(:)
@@ -386,10 +385,7 @@ logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
 
-integer  :: reg_post_ind_sort(ens_size), obs_index_sort(ens_size)
-logical  :: is_bounded(2)
-real(r8) :: bound(2)
-real(r8) :: post(ens_size)
+integer  :: obs_index_sort(ens_size)
 
 ! Just to make sure multiple tasks are running for tests
 write(*, *) 'my_task_id ', my_task_id()
@@ -542,55 +538,12 @@ if(local_ss_inflate) then
    end do
 endif
 
-if(state_QCEF_kind > 0) then
-   ! Keep the original obsevation prior ensemble before any obs have been used
-   ! Needed to compute the likelihoods for multi-obs state space QCEFs. 
-   allocate(all_my_orig_obs_priors(ens_size, my_num_obs), piece_const_like(ens_size + 1, my_num_state), &
-      prior_state_mass(ens_size + 1, my_num_state), prior_state_ens(ens_size, my_num_state),            &
-      prior_state_index_sort(ens_size, my_num_state), prior_sorted_quantiles(ens_size, my_num_state))
- 
-   ! Save the prior state and obs ensemble from the handles
-   prior_state_ens(:, :) = ens_handle%copies(1:ens_size, 1:my_num_state)
-   all_my_orig_obs_priors(:, :) = obs_ens_handle%copies(1:ens_size, 1:my_num_obs)
-
-   ! State likelihoods start as all 1 (no information)
-   piece_const_like = 1.0_r8
-
-   ! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
-   do i = 1, my_num_state
-      call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size, .true.)
-   end do
-
-   ! Compute the prior quantiles and mass distribution for state space application
-   ! There should be a lot of overlap with observation space quantile methods here; separate that out
-   if(state_QCEF_kind == 2) then
-      ! For MARHF the prior state mass is uniformly distributed
-      ! For other priors will need to compute quantiles at this point
-      prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
-   else if(state_QCEF_kind == 1) then
-      !Eventually need to do all of this only for state variables that are getting state updates
-      do i = 1, my_num_state
-         tmn = sum(prior_state_ens(:, i)) / ens_size
-         tvar = sum((prior_state_ens(:, i) - tmn)**2) / (ens_size - 1)
-         tsd = sqrt(tvar)
-         ! Compute sorted quantiles for each prior state
-         do j = 1, ens_size
-            prior_sorted_quantiles(j, i) = normcdf(prior_state_ens(prior_state_index_sort(j, i), i), tmn, tsd)
-         end do
-
-         ! Get the probability mass in each prior partition (USE A BETTER WORD???)
-         prior_state_mass(1, i) = prior_sorted_quantiles(1, i)
-         do j = 2, ens_size
-            prior_state_mass(j, i) = prior_sorted_quantiles(j, i) - prior_sorted_quantiles(j-1, i)
-         end do
-         prior_state_mass(ens_size+1, i) = 1.0_r8 - prior_sorted_quantiles(ens_size, i)
-      end do
-   else
-      write(msgstring, *) 'Unsupported state_QCEF_kind from namelist ', state_QCEF_kind
-      call error_handler(E_ERR,'filter_assim', msgstring, source)
-   endif
-
-endif
+! Initialize arrays needed for doing MA QCEF filters
+if(state_QCEF_kind > 0) &
+   call init_state_QCEF(ens_size, my_num_obs, my_num_state, &
+      obs_ens_handle%copies(1:ens_size, 1:my_num_obs), ens_handle%copies(1:ens_size, 1:my_num_state), &
+      all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
+      prior_state_index_sort, piece_const_like)
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -691,6 +644,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
+      ! orig_obs_prior is only used for state QCEF filters. Will be extra comms for now.
       ! orig_obs_prior_mean and orig_obs_prior_var only used with adaptive inflation
       ! my_inflate and my_inflate_sd only used with single state space inflation
       ! vertvalue_obs_in_localization_coord and whichvert_real only used for vertical
@@ -844,36 +798,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 end do SEQUENTIAL_OBS
 
-if(state_QCEF_kind > 0) then
-   ! Hard to say where to put the info about bounds with current infrastrucutre.
-   ! Hard code here for now
-
-   ! Bounded normal RHF with hard-coded bounds specified here
-   is_bounded = .false.
-   bound = (/-15.0_r8, 15.0_r8/)
-
-   do i = 1, my_num_state
-      ! First get the update posterior with the likelihood
-      if(state_QCEF_kind == 2) then
-         call state_post_bounded_norm_rhf(prior_state_ens(:, i), prior_state_index_sort(:, i), &
-            piece_const_like(:, i), ens_size, post, is_bounded, bound)
-      elseif(state_QCEF_kind == 1) then
-         call state_post_normal(prior_state_ens(:, i), prior_state_index_sort(:, i), &
-            prior_state_mass(:, i), piece_const_like(:, i), prior_sorted_quantiles(:, i), ens_size, post)
-      endif
-
-      ! Now do the marginal adjustment steps for the state posterior
-      ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
-      call index_insertion_sort(ens_handle%copies(1:ens_size, i), reg_post_ind_sort, ens_size, .true.)
-   
-      ! Put in the state space update with the corresponding ranks
-      do j = 1, ens_size
-         ! Post is not already sorted, but maybe for the state space stuff should only work in sorted?
-         ens_handle%copies(reg_post_ind_sort(j), i) = post(prior_state_index_sort(j, i))
-      end do
-   end do
-endif
-
+! Finalize state QCEF estimates and do marginal adjustment to get final posterior
+if(state_QCEF_kind > 0) &
+   call finalize_ma_state(ens_size, my_num_state, prior_state_ens, prior_state_index_sort, &
+      prior_state_mass, piece_const_like, prior_sorted_quantiles, &
+      ens_handle%copies(1:ens_size, 1:my_num_state), ens_handle%copies(1:ens_size, 1:my_num_state))
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then
@@ -943,8 +872,8 @@ deallocate(close_state_dist,      &
            my_state_loc)
 
 if(state_QCEF_kind > 0) &
-   deallocate(all_my_orig_obs_priors, piece_const_like, prior_state_mass, prior_state_ens, &
-      prior_state_index_sort, prior_sorted_quantiles)
+   deallocate(all_my_orig_obs_priors, prior_state_ens, prior_state_mass, &
+      prior_sorted_quantiles, prior_state_index_sort, piece_const_like)
 
 end subroutine filter_assim
 
@@ -2201,6 +2130,128 @@ piece_const_like = piece_const_like / (sum(piece_const_like) / ens_size)
 end subroutine update_piece_const_like
 
 
+subroutine init_state_QCEF(ens_size, num_obs, num_state, obs_ens_in, state_ens_in, &
+   all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
+   prior_state_index_sort, piece_const_like)
+!-----------------------------------------------------------------------------
+! Allocates storage for and initializes arrays needed for state space QCEFs
+
+integer,  intent(in)                 :: ens_size, num_obs, num_state
+real(r8), intent(in)                 :: obs_ens_in(ens_size, num_obs)
+real(r8), intent(in)                 :: state_ens_in(ens_size, num_state)
+real(r8), allocatable, intent(inout) :: all_my_orig_obs_priors(:, :)
+real(r8), allocatable, intent(inout) :: prior_state_ens(:, :)
+real(r8), allocatable, intent(inout) :: prior_state_mass(:, :)
+real(r8), allocatable, intent(inout) :: prior_sorted_quantiles(:, :)
+integer,  allocatable, intent(inout) :: prior_state_index_sort(:, :)
+real(r8), allocatable, intent(inout) :: piece_const_like(:, :)
+
+real(r8) :: tmn, tvar, tsd
+integer :: i, j
+
+! Needed to compute the likelihoods for multi-obs state space QCEFs.
+allocate(all_my_orig_obs_priors(ens_size, num_obs), prior_state_ens(ens_size, num_state),  &
+   prior_state_mass(ens_size + 1, num_state), prior_sorted_quantiles(ens_size, num_state), &
+   prior_state_index_sort(ens_size, num_state), piece_const_like(ens_size + 1, num_state))
+
+! Save the prior state and obs ensemble from the handles
+all_my_orig_obs_priors(:, :) = obs_ens_in
+prior_state_ens(:, :) = state_ens_in
+
+! State likelihoods start as all 1 (no information)
+piece_const_like = 1.0_r8
+
+! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
+! Might want to pass in from previous time for large ensemble/model applications
+do i = 1, num_state
+   call index_insertion_sort(prior_state_ens(:, i), prior_state_index_sort(:, i), ens_size, .true.)
+end do
+
+! Compute the prior quantiles and mass distribution for state space application
+! There should be a lot of overlap with observation space quantile methods here; separate that out
+if(state_QCEF_kind == 1) then
+   ! Normal prior
+   !Eventually need to do all of this only for state variables that are getting state updates
+   do i = 1, num_state
+      tmn = sum(prior_state_ens(:, i)) / ens_size
+      tvar = sum((prior_state_ens(:, i) - tmn)**2) / (ens_size - 1)
+      tsd = sqrt(tvar)
+      ! Compute sorted quantiles for each prior state
+      do j = 1, ens_size
+         prior_sorted_quantiles(j, i) = normcdf(prior_state_ens(prior_state_index_sort(j, i), i), tmn, tsd)
+      end do
+
+      ! Get the probability mass in each prior partition (USE A BETTER WORD???)
+      prior_state_mass(1, i) = prior_sorted_quantiles(1, i)
+      do j = 2, ens_size
+         prior_state_mass(j, i) = prior_sorted_quantiles(j, i) - prior_sorted_quantiles(j-1, i)
+      end do
+      prior_state_mass(ens_size+1, i) = 1.0_r8 - prior_sorted_quantiles(ens_size, i)
+   end do
+elseif(state_QCEF_kind == 2) then
+   ! For MARHF the prior state mass is uniformly distributed
+   prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
+   ! Quantiles are i / (ens_size + 1) but are not used since they are fixed
+else
+   write(msgstring, *) 'Unsupported state_QCEF_kind from namelist ', state_QCEF_kind
+   call error_handler(E_ERR, 'init_state_QCEF', msgstring, source)
+endif
+
+end subroutine init_state_QCEF
+
+
+subroutine finalize_ma_state(ens_size, num_state, prior_state_ens, prior_state_index_sort, &
+   prior_state_mass, piece_const_like, prior_sorted_quantiles, regression_post, post)
+!------------------------------------------------------------------------------------------
+
+! Computes the state posterior for QCEF filters, then does marginal adjustment with the regression
+! posterior to get a final posterior.
+
+integer,  intent(in)  :: ens_size, num_state
+real(r8), intent(in)  :: prior_state_ens(ens_size, num_state)
+integer,  intent(in)  :: prior_state_index_sort(ens_size, num_state)
+real(r8), intent(in)  :: prior_state_mass(ens_size + 1, num_state)
+real(r8), intent(in)  :: piece_const_like(ens_size + 1, num_state)
+real(r8), intent(in)  :: prior_sorted_quantiles(ens_size, num_state)
+real(r8), intent(in)  :: regression_post(ens_size, num_state)
+real(r8), intent(out) :: post(ens_size, num_state)
+
+integer  :: i, j
+integer  :: regression_post_ind_sort(ens_size)
+real(r8) :: temp_post(ens_size)
+logical  :: is_bounded(2)
+real(r8) :: bound(2)
+
+
+do i = 1, num_state
+   ! First get the update posterior with the likelihood
+   if(state_QCEF_kind == 1) then
+      call state_post_normal(prior_state_ens(:, i), prior_state_index_sort(:, i), &
+         prior_state_mass(:, i), piece_const_like(:, i), prior_sorted_quantiles(:, i), ens_size, temp_post)
+   elseif(state_QCEF_kind == 2) then
+      ! Hard to say where to put the info about bounds with current infrastrucutre.
+      ! Hard code here for now
+      ! Bounded normal RHF with hard-coded bounds specified here
+      is_bounded = .false.
+      bound = (/-15.0_r8, 15.0_r8/)
+
+      call state_post_bounded_norm_rhf(prior_state_ens(:, i), prior_state_index_sort(:, i), &
+         piece_const_like(:, i), ens_size, temp_post, is_bounded, bound)
+   endif
+
+   ! Do the marginal adjustment steps for the state posterior
+   ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
+   call index_insertion_sort(regression_post(:, i),  regression_post_ind_sort, ens_size, .true.)
+
+   ! Put in the state space update with the corresponding ranks
+   do j = 1, ens_size
+      ! Post is not already sorted, but maybe for the state space stuff should only work in sorted?
+      post(regression_post_ind_sort(j), i) = temp_post(prior_state_index_sort(j, i))
+   end do 
+end do 
+
+end subroutine finalize_ma_state
+ 
 
 !---------------------------------------------------------------
 
@@ -2235,7 +2286,7 @@ logical,             intent(in)  :: inflate_only
 
 real(r8) :: reg_coef(num_groups), increment(ens_size)
 real(r8) :: reg_factor
-integer  :: group, grp_bot, grp_top, i
+integer  :: group, grp_bot, grp_top
 
 ! Loop through groups to update the state variable ensemble members
 do group = 1, num_groups
@@ -2809,12 +2860,10 @@ real(r8), optional, intent(inout) :: correl_out
 integer  :: index_state(ens_size), obs_rank(ens_size), state_rank(ens_size), i
 
 real(r8) :: obs_post(ens_size), sorted_obs(ens_size), sorted_state(ens_size), rank_incs(ens_size)
-real(r8) :: state_mean, state_var, state_sd, obs_sd, cov, corr_coef
+real(r8) :: obs_sd
 real(r8) :: post_rank(ens_size), state_rank_incs(ens_size), state_post_rank(ens_size), state_post(ens_size)
 real(r8) :: state_rank_mean, state_rank_var, state_rank_sd, obs_rank_mean, obs_rank_sd
 real(r8) :: rank_cov, rank_corr_coef, rank_reg_coef
-real(r8) :: pred_rank(ens_size), pred(ens_size), sq_resid, abs_resid, base_sq_resid, base_abs_resid
-
 
 ! Need obs_sd below
 obs_sd = sqrt(obs_prior_var)
