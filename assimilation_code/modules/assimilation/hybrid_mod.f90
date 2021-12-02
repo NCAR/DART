@@ -26,7 +26,7 @@ public :: NO_HYBRID, CONSTANT_HYBRID, SINGLE_SS_HYBRID, VARYING_SS_HYBRID,  &
           set_hybrid_sd_copy, do_single_ss_hybrid, get_hybrid_mean_copy,    &
           get_hybrid_sd_copy, do_ss_hybrid, get_hybrid_mean, get_hybrid_sd, &
           do_varying_ss_hybrid, hyb_minmax_task_zero, log_hybrid_info,      & 
-          update_hybrid, get_hybrid_sample_size
+          update_hybrid, get_hybrid_sample_size, scale_static_background
 
 character(len=*), parameter :: source = 'hybrid_mod.f90'
 
@@ -41,6 +41,7 @@ type hybrid_type
    integer               :: flavor
    integer               :: sample_size
    logical               :: output_restart = .false.
+   logical               :: scaling = .true.
    real(r8)              :: weight, sd
    real(r8)              :: minmax_mean(2), minmax_sd(2)
    logical               :: mean_from_restart
@@ -129,7 +130,7 @@ end subroutine validate_hybrid_options
 !> Initializes a hybrid_type 
 
 subroutine adaptive_hybrid_init(hybrid_handle, hyb_flavor, ens_size, mean_from_restart, sd_from_restart, & 
-                                output_hybrid, hyb_weight_initial, hyb_weight_sd_initial)
+                                output_hybrid, hyb_scale, hyb_weight_initial, hyb_weight_sd_initial)
 
 type(hybrid_type), intent(inout) :: hybrid_handle
 integer,           intent(in)    :: hyb_flavor
@@ -137,6 +138,7 @@ integer,           intent(in)    :: ens_size
 logical,           intent(in)    :: mean_from_restart
 logical,           intent(in)    :: sd_from_restart
 logical,           intent(in)    :: output_hybrid
+logical,           intent(in)    :: hyb_scale
 real(r8),          intent(in)    :: hyb_weight_initial, hyb_weight_sd_initial
 
 ! Record the module version if this is first initialize call
@@ -148,6 +150,7 @@ endif
 hybrid_handle%flavor            = hyb_flavor
 hybrid_handle%sample_size       = ens_size
 hybrid_handle%output_restart    = output_hybrid
+hybrid_handle%scaling           = hyb_scale
 hybrid_handle%weight            = hyb_weight_initial
 hybrid_handle%sd                = hyb_weight_sd_initial
 hybrid_handle%mean_from_restart = mean_from_restart
@@ -182,6 +185,18 @@ logical           :: hyb_sd_from_restart
 hyb_sd_from_restart = hybrid_handle%sd_from_restart
 
 end function hyb_sd_from_restart
+
+!-------------------------------------------------------------------------------
+!>
+
+function scale_static_background(hybrid_handle)
+
+type(hybrid_type) :: hybrid_handle
+logical           :: scale_static_background
+
+scale_static_background = hybrid_handle%scaling
+
+end function scale_static_background
 
 !-------------------------------------------------------------------------------
 !>

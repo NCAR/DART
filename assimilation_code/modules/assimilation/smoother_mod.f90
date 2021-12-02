@@ -124,7 +124,7 @@ if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., &
    1.0_r8, 1.0_r8, 0.0_r8, 1.0_r8, ens_handle, allow_missing, "Lag")
 
 ! Define a dummy hybrid handle not supported for smoothers 
-call adaptive_hybrid_init(lag_hybrid, 0, 1, .false., .false., .false., 1.0_r8, 0.0_r8)
+call adaptive_hybrid_init(lag_hybrid, 0, 1, .false., .false., .false., .false., 1.0_r8, 0.0_r8)
 
 end subroutine init_smoother
 

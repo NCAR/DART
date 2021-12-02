@@ -61,7 +61,7 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_in
                                  deterministic_inflate, solve_quadratic
 
 use hybrid_mod,           only : hybrid_type, do_single_ss_hybrid, get_hybrid_sample_size, &
-                                 update_hybrid
+                                 scale_static_background, update_hybrid
 
 use time_manager_mod,     only : time_type, get_time
 
@@ -400,7 +400,7 @@ real(digits12), allocatable :: elapse_array(:)
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
 ! Hybrid configuration variables
-logical               :: do_hybrid, local_single_ss_hybrid
+logical               :: do_hybrid, hybrid_scaling, local_single_ss_hybrid
 integer               :: stat_mean_copy, stat_sd_copy
 integer               :: stat_obs_mean_copy, stat_obs_var_copy
 integer               :: hybrid_ens_size
@@ -539,7 +539,10 @@ local_ss_inflate         = do_ss_inflate(inflate)
 local_obs_inflate        = do_obs_inflate(inflate)
 
 ! Hybrid configuration
-if (do_hybrid) local_single_ss_hybrid = do_single_ss_hybrid(hybrid) 
+if (do_hybrid) then 
+   hybrid_scaling         = scale_static_background(hybrid)
+   local_single_ss_hybrid = do_single_ss_hybrid(hybrid) 
+endif
 
 ! Default to printing nothing
 nth_obs = -1
@@ -703,10 +706,12 @@ allow_missing_in_state = get_missing_ok_status()
 ! Rescaling factor so that the total variance of the 
 ! rescaled static covariance  more  appropriately  estimated  
 ! the total forecast-error variance
-if (do_hybrid) then 
+if (do_hybrid .and. hybrid_scaling) then 
    i_qc = 0
+
    allocate(dtrd(obs_ens_handle%num_vars), tr_R(obs_ens_handle%num_vars), &
             tr_B(obs_ens_handle%num_vars))
+
    ! loop over all observations 
    do i = 1, obs_ens_handle%num_vars
 
@@ -723,7 +728,7 @@ if (do_hybrid) then
 
       if(ens_handle%my_pe == owner) then
         obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
-        print *, 'nint(obs_qc): ', nint(obs_qc)
+        
         if(nint(obs_qc)==0) then
           i_qc = i_qc + 1
 
@@ -756,6 +761,7 @@ if (do_hybrid) then
                      stat_obs_ens_handle%copies(1:hybrid_ens_size, :)
    stat_obs_ens_handle%copies(stat_obs_var_copy, :) = fs * &
                      stat_obs_ens_handle%copies(stat_obs_var_copy, :)
+
    deallocate(dtrd, tr_R, tr_B)
 endif
 

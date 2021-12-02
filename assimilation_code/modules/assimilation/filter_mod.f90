@@ -275,6 +275,7 @@ integer            :: hyb_flavor                        = 1
 integer            :: hyb_ens_size                      = 100
 character(len=256) :: hyb_state_file_list(MAX_NUM_DOMS) = ''  ! Name of files containing a list of static (climatology) state files 
 character(len=256) :: hyb_state_files(MAX_FILES)        = ''
+logical            :: hyb_scaling                       = .true.
 logical            :: hyb_initial_from_restart          = .false.
 logical            :: hyb_sd_initial_from_restart       = .false.
 real(r8)           :: hyb_weight_initial                = 0.5_r8
@@ -341,6 +342,7 @@ namelist /filter_nml/ async,     &
    hyb_ens_size,                 & 
    hyb_state_file_list,          &
    hyb_state_files,              &
+   hyb_scaling,                  &
    hyb_initial_from_restart,     &
    hyb_sd_initial_from_restart,  &
    hyb_weight_initial,           &
@@ -489,7 +491,7 @@ call adaptive_inflate_init(post_inflate, &
 ! Initialize the hybrid module
 call adaptive_hybrid_init(hybridization, hyb_flavor, hyb_ens_size,               & 
                           hyb_initial_from_restart, hyb_sd_initial_from_restart, &
-                          output_hybrid, hyb_weight_initial, hyb_weight_sd_initial)
+                          output_hybrid, hyb_scaling, hyb_weight_initial, hyb_weight_sd_initial)
 
 if (do_output()) then
    if (inflation_flavor(PRIOR_INF) > NO_INFLATION .and. &
