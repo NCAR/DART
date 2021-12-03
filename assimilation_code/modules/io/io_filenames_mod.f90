@@ -48,12 +48,12 @@ use state_structure_mod,  only : get_num_domains, &
                                  get_long_name, &
                                  get_short_name, &
                                  get_missing_value, &
-                                 get_has_FillValue, &
                                  get_FillValue, &
                                  get_xtype, &
                                  get_add_offset, &
                                  get_scale_factor, &
                                  get_has_missing_value, &
+                                 get_has_FillValue, &
                                  do_io_update
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
@@ -188,7 +188,7 @@ type file_info_type
 
 end type
 
-character(len=512) :: string1, string2, string3
+character(len=512) :: msgstring
 
 contains
 
@@ -370,9 +370,9 @@ if (file_info%stage_metadata%filenames(1,1) == 'null' .or. &
     file_info%stage_metadata%filenames(1,1) == '') then
 
    if (file_info%root_name == 'null') then
-      write(string1,*) 'Unable to construct file names.', &
+      write(msgstring,*) 'Unable to construct file names.', &
                          ' No stage name or file list given'
-      call error_handler(E_ERR,'set_member_file_metadata', string1, source)
+      call error_handler(E_ERR,'set_member_file_metadata', msgstring, source)
    endif
 
    ! Construct file names
@@ -383,8 +383,8 @@ if (file_info%stage_metadata%filenames(1,1) == 'null' .or. &
    stage_name = file_info%root_name
    if (file_info%single_file) then
       if (get_num_domains() > 1) then
-         write(string1,*) 'single file input is currently only supported for 1 domain models'
-         call error_handler(E_ERR,'set_member_file_metadata', string1, source)
+         write(msgstring,*) 'single file input is currently only supported for 1 domain models'
+         call error_handler(E_ERR,'set_member_file_metadata', msgstring, source)
       endif
       write(fname,'(2A)') trim(stage_name),'.nc'
       write(desc, '(A)') 'ensemble member single file'
@@ -427,6 +427,7 @@ character(len=*),     intent(in)    :: fnames(:)
 character(len=*),     intent(in)    :: basename
 character(len=*),     intent(in)    :: desc
 
+character(len=256) :: string1
 integer :: idom
 
 if (cnum <= 0) return
@@ -437,9 +438,9 @@ file_info%stage_metadata%copy_name(     cnum) = trim(basename)
 
 ! check that the number of domains matches the size of file names provided
 if (get_num_domains() /= size(fnames(:),1)) then
-   write(string1,'(A,I2,A,I2)') 'The number of domains, ', get_num_domains(), &
+   write(msgstring,'(A,I2,A,I2)') 'The number of domains, ', get_num_domains(), &
                                   ', does not match the number of filenames, ', size(fnames(:),1)
-   call error_handler(E_ERR, 'set_explicit_file_metadata', string1, source)
+   call error_handler(E_ERR, 'set_explicit_file_metadata', msgstring, source)
 endif
 
 do idom = 1, get_num_domains()
@@ -475,6 +476,7 @@ character(len=*),     intent(in)    :: basename
 character(len=*),     intent(in)    :: desc
 integer,              intent(in), optional :: offset
 
+character(len=256) :: string1
 character(len=32)  :: stage_name
 character(len=32)  :: dom_str
 integer :: idom, my_copy
@@ -554,10 +556,11 @@ do i = 1, get_num_variables(dom)
 
    if ( .not. do_io_update(dom,i) ) cycle
 
+   ! get variable id from necfile
    ret = nf90_inq_varid(ncfile, get_variable_name(dom,i), var_id)
-   write(string1,*) 'no match for variable ',  trim(get_variable_name(dom,i)), &
-                      ' in "'//trim(netcdf_filename)//'"'
-   call nc_check(ret, 'check_correct_variables', string1)
+   write(msgstring,*) 'no match for variable ',  trim(get_variable_name(dom,i)), &
+                      ' in ', trim(netcdf_filename)
+   call nc_check(ret, 'check_correct_variables', msgstring)
 
    ! get dimension information from ncfile
    ret = nf90_inquire_variable(ncfile, var_id, ndims=ndims, dimids=dimids)
@@ -566,12 +569,9 @@ do i = 1, get_num_variables(dom)
    ! check number of dimensions are the same.  we are comparing
    ! the full number of dimensions including time and member if present.
    if (ndims /= get_io_num_dims(dom,i)) then
-      write(string1,*)'domain ',dom, ' variable ',trim(get_variable_name(dom,i))
-      write(string2,*)'ndims ', get_io_num_dims(dom,i), ' in state does not', &
-                      ' match ndims ', ndims
-      write(string3,*) ' in "'//trim(netcdf_filename)//'"'
-      call error_handler(E_ERR, 'check_correct_variables', string1, &
-                         source, text2=string2, text3=string3)
+      write(msgstring,*) 'ndims ', get_io_num_dims(dom,i), ' in state does not', &
+                         ' match ndims ', ndims, ' in ', trim(netcdf_filename)
+      call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
    endif
 
    ! check that the attributes are the same as the state structure
@@ -581,28 +581,23 @@ do i = 1, get_num_variables(dom)
    ! in this case check only the dims for the variables, excluding time and member.
    do j = 1, get_num_dims(dom,i)
 
-      write(string1,*)'domain ',dom, ' variable ',trim(get_variable_name(dom,i))
-
       ! get dimension names and lengths from ncfile
       ret = nf90_inquire_dimension(ncfile, dimids(j), name=name(j), len=length(j))
       call nc_check(ret, 'check_correct_variables', 'nf90_inquire_dimension')
 
       ! check that the dimension names are the same
       if (get_dim_name(dom,i,j) /= name(j)) then
-         write(string2,*) 'dim name "'//trim(get_dim_name(dom,i,j))//'" in state does', &
-                          ' not match dim name "'//trim(name(j))// '"'
-         write(string3,*)' in "'//trim(netcdf_filename)//'"'
-         call error_handler(E_ERR, 'check_correct_variables', string1, &
-                            source, text2=string2, text3=string3)
+         write(msgstring,*) 'dim name', trim(get_dim_name(dom,i,j)), ' in state does', &
+                            ' not match dim name', name(j), ' in ', trim(netcdf_filename)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
       endif
 
       ! check that the dimension lengths are the same
       if (get_dim_length(dom,i,j) /= length(j)) then
-         write(string2,*) 'dimension "'//trim(name(j))//" length ", get_dim_length(dom,i,j), &
-                          ' in state does not match dimension length ', length(j)
-         write(string3,*) ' in "'//trim(netcdf_filename)//'"'
-         call error_handler(E_ERR, 'check_correct_variables', string1, &
-                            source, text2=string2, text3=string3)
+         write(msgstring,*) 'dimension ', trim(name(j)), "'s length ", &
+                            get_dim_length(dom,i,j), ' in state does not match', &
+                            ' dimension length ', length(j), ' in ', trim(netcdf_filename)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
       endif
 
    enddo
@@ -616,9 +611,7 @@ end subroutine check_correct_variables
 
 
 !--------------------------------------------------------------------
-!> check that variable attributes are consistent across restarts
-!> the 'state_structure_mod:load_common_cf_conventions() routine populates
-!> the state structure with the attributes from the input files.
+!> check that cf-convention attributes are consistent across restarts
 
 
 subroutine check_attributes(ncFile, filename, ncVarId, domid, varid)
@@ -661,15 +654,15 @@ if ( get_has_FillValue(   domid, varid) ) then
    select case (get_xtype(domid, varid))
       case (NF90_INT)
          call get_FillValue(domid, varid, spvalINT)
-         call check_attribute_value_int(ncFile, filename, ncVarID, 'FillValue', spvalINT)
+         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
 
       case (NF90_FLOAT)
          call get_FillValue(domid, varid, spvalR4)
-         call check_attribute_value_r4(ncFile, filename, ncVarID, 'FillValue', spvalR4)
+         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
 
       case (NF90_DOUBLE)
          call get_FillValue(domid, varid, spvalR8)
-         call check_attribute_value_r8(ncFile, filename, ncVarID, 'FillValue', spvalR8)
+         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
 
       case default
          !>@todo FIXME report the variable with the unsupported xtype
@@ -688,25 +681,21 @@ end subroutine check_attributes
 !> check integer values are the same
 
 
-subroutine check_attribute_value_int(ncFile, filename, ncVarID, att_string, att_valINT)
+subroutine check_attribute_value_int(ncFile, filename, ncVarID, att_string, spvalINT)
 
 integer,          intent(in) :: ncFile
 character(len=*), intent(in) :: filename
 integer,          intent(in) :: ncVarID
 character(len=*), intent(in) :: att_string
-integer,          intent(in) :: att_valINT
+integer,          intent(in) :: spvalINT
 
-integer :: ret_att_valINT
+integer :: ret_spvalINT
 
-!>@todo FIXME : put the variable name in the error message
-
-if ( nf90_get_att(ncFile, ncVarID, att_string, ret_att_valINT) == NF90_NOERR ) then
-   if (att_valINT /= ret_att_valINT) then
-      write(string1,*) ' variable attribute "'//trim(att_string)//'" in state is ', att_valINT
-      write(string2,*) ' does not match "'//trim(att_string)//'"', ret_att_valINT
-      write(string3,*) ' in "'//trim(filename)//'"'
-      call error_handler(E_ERR, 'check_attributes', string1, &
-                         source, text2=string2, text3=string3)
+if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalINT) == NF90_NOERR ) then
+   if (spvalINT /= ret_spvalINT) then
+      write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalINT, &
+                         ' does not match ', trim(att_string), ' ', ret_spvalINT, ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attributes', msgstring, source)
    endif
 endif
 
@@ -717,23 +706,21 @@ end subroutine check_attribute_value_int
 !> check r4 values are the same
 
 
-subroutine check_attribute_value_r4(ncFile, filename, ncVarID, att_string, att_valR4)
+subroutine check_attribute_value_r4(ncFile, filename, ncVarID, att_string, spvalR4)
 
 integer,          intent(in) :: ncFile
 character(len=*), intent(in) :: filename
 integer,          intent(in) :: ncVarID
 character(len=*), intent(in) :: att_string
-real(r4),         intent(in) :: att_valR4
+real(r4),         intent(in) :: spvalR4
 
-real(r4) :: ret_att_valR4
+real(r4) :: ret_spvalR4
 
-if ( nf90_get_att(ncFile, ncVarID, att_string, ret_att_valR4) == NF90_NOERR ) then
-   if (att_valR4 /= ret_att_valR4) then
-      write(string1,*) ' variable attribute "'//trim(att_string)//'" in state is ', att_valR4
-      write(string2,*) ' does not match "'//trim(att_string)//'" ', ret_att_valR4
-      write(string3,*) ' in "'//trim(filename)//'"'
-      call error_handler(E_ERR, 'check_attribute_value_r4', string1, &
-                         source, text2=string2, text3=string3)
+if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
+   if (spvalR4 /= ret_spvalR4) then
+      write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
+                         ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attribute_value_r4', msgstring, source)
    endif
 endif
 
@@ -744,23 +731,21 @@ end subroutine check_attribute_value_r4
 !> check r8 values are the same
 
 
-subroutine check_attribute_value_r8(ncFile, filename, ncVarID, att_string, att_valR8)
+subroutine check_attribute_value_r8(ncFile, filename, ncVarID, att_string, spvalR8)
 
 integer,          intent(in) :: ncFile
 character(len=*), intent(in) :: filename
 integer,          intent(in) :: ncVarID
 character(len=*), intent(in) :: att_string
-real(r8),         intent(in) :: att_valR8
+real(r8),         intent(in) :: spvalR8
 
-real(r8) :: ret_att_valR8
+real(r8) :: ret_spvalR8
 
-if ( nf90_get_att(ncFile, ncVarID, att_string, ret_att_valR8) == NF90_NOERR ) then
-   if (att_valR8 /= ret_att_valR8) then
-      write(string1,*) ' variable attribute "'//trim(att_string)//'" in state is ', att_valr8
-      write(string2,*) ' does not match "'//trim(att_string)//'" ', ret_att_valr8
-      write(string3,*) ' in "'//trim(filename)//'"'
-      call error_handler(E_ERR, 'check_attribute_value_r8', string1, &
-                         source, text2=string2, text3=string3)
+if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
+   if (spvalR8 /= ret_spvalR8) then
+      write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
+                         ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attribute_value_r8', msgstring, source)
    endif
 endif
 
@@ -785,12 +770,10 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, att_name) == NF90_NOERR ) then
    ! inflation files will all have unitless attributes while restarts may
    ! have some measurement real units
    if (comp_string /= att_name .and. trim(att_name) /= 'unitless') then
-      write(string1,*) ' variable attribute "'//trim(att_string)//'" in state is "'//trim(comp_string)//'"'
-      write(string2,*) ' does not match "'//trim(att_name)//'"'
-      write(string3,*) 'in "'//trim(filename)//'"'
-      call error_handler(E_ERR, 'check_attributes_name', string1, &
-                         source, text2=string2, text3=string3)
-   endif
+      write(msgstring,*) ' variable attribute ,', trim(att_string), ' in state : ', trim(comp_string), &
+                         ', does not match ', trim(att_name), ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attributes_name', msgstring, source)
+   end if
 endif
 
 end subroutine check_attributes_name
@@ -926,20 +909,7 @@ do i = 1,size(file_info%stage_metadata%filenames,1)
          write(*,'(A, I4,A,I4)') 'file_info%stage_metadata%io_flag(         ',i,'     ) ', &
                                 file_info%stage_metadata%io_flag(             i)
          write(*,'(A, I4,2A)')   'file_info%stage_metadata%copy_name(       ',i,'     ) ', &
-                                  trim(file_info%stage_metadata%copy_name(    i))
-         write(*,'(A, I4,2A)')   'file_info%stage_metadata%long_name(       ',i,'   ) ', &
-                                  trim(file_info%stage_metadata%long_name(    i))
-
-         write(*,'(A, I4,A,L)')   'file_info%stage_metadata%clamp_vars(       ',i,'  ) ', &
-                                  file_info%stage_metadata%clamp_vars(         i)
-         write(*,'(A, I4,A,L)')   'file_info%stage_metadata%inherit_units(    ',i,'  ) ', &
-                                  file_info%stage_metadata%inherit_units(      i)
-         write(*,'(A, I4,A,L)')   'file_info%stage_metadata%force_copy_back(  ',i,'  ) ', &
-                                  file_info%stage_metadata%force_copy_back(    i)
-         write(*,'(A, I4,A,i4)')   'file_info%stage_metadata%my_copy_number(   ',i,'  ) ', &
-                                  file_info%stage_metadata%my_copy_number(     i)
-
-
+                                  file_info%stage_metadata%copy_name(i)
       endif
    enddo
 enddo
@@ -1187,11 +1157,110 @@ get_copy_name = file_handle%stage_metadata%copy_name(cnum)
 end function get_copy_name
 
 
+!#! !------------------------------------------------------------------
+!#! !> set netcdf file type
+!#!
+!#!
+!#! subroutine nc_set_netcdf_info(file_handle, ncFileInfo)
+!#!
+!#! type(file_info_type),   intent(inout) :: file_handle
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#!
+!#! file_handle%stage_metadata%ncFileID = ncFileInfo
+!#!
+!#! end subroutine nc_set_netcdf_info
+!#!
+!#!
+!#!
+!#!
+!#! !------------------------------------------------------------------
+!#! !> get diagnostic id
+!#!
+!#!
+!#! subroutine nc_set_diag_id(ncFileInfo, diagnostic_id)
+!#!
+!#! type(netcdf_file_type), intent(inout) :: ncFileInfo
+!#! integer,                intent(in)    :: diagnostic_id
+!#!
+!#! ncFileInfo%diag_id = diagnostic_id
+!#!
+!#! end subroutine nc_set_diag_id
+!#!
+!#!
+!#! !------------------------------------------------------------------
+!#! !> get diagnostic id
+!#!
+!#!
+!#! function nc_get_diag_id(ncFileInfo)
+!#!
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! integer :: nc_get_diag_id
+!#!
+!#! nc_get_diag_id = ncFileInfo%diag_id
+!#!
+!#! end function nc_get_diag_id
+!#!
+!#!
+!#! !------------------------------------------------------------------
+!#! !> set netcdf file name
+!#!
+!#!
+!#! subroutine nc_set_fname(ncFileInfo, filename)
+!#!
+!#! type(netcdf_file_type), intent(inout) :: ncFileInfo
+!#! character(len=*) :: filename
+!#!
+!#! ncFileInfo%fname = filename
+!#!
+!#! end subroutine nc_set_fname
+!#!
+!#!
+!#! !------------------------------------------------------------------
+!#! !> get netcdf file name
+!#!
+!#!
+!#! function nc_get_fname(ncFileInfo)
+!#!
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! character(len=80) :: nc_get_fname
+!#!
+!#! nc_get_fname = ncFileInfo%fname
+!#!
+!#! end function nc_get_fname
+!#!
+!#!
+!#! !------------------------------------------------------------------
+!#! !> get netcdf file id
+!#!
+!#!
+!#! subroutine nc_set_ncid(ncFileInfo, my_ncid)
+!#!
+!#! type(netcdf_file_type), intent(inout) :: ncFileInfo
+!#! integer,                intent(in)    :: my_ncid
+!#!
+!#! ncFileInfo%ncid = my_ncid
+!#!
+!#! end subroutine nc_set_ncid
+!#!
+!#!
+!#! !------------------------------------------------------------------
+!#! !> get netcdf file id
+!#!
+!#!
+!#! function nc_get_ncid(ncFileInfo)
+!#!
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! integer :: nc_get_ncid
+!#!
+!#! nc_get_ncid = ncFileInfo%ncid
+!#!
+!#! end function nc_get_ncid
+
+
 !------------------------------------------------------------------
 !> return whether the init routines have been called?
 !> or whether it's been marked as using a single file?
 !>@todo fixme: document what this routine does.
-
 
 function single_file_initialized(file_handle) result(is_initialized)
 
@@ -1207,10 +1276,7 @@ end function single_file_initialized
 !> Number of output ensemble members
 !>@todo need to change the name to represent that this relates to the number of
 !>      copies to write.
-
-
 function noutput_state_variables(file_handle)
-
 type(file_info_type), intent(in) :: file_handle !< file information handle
 integer :: noutput_state_variables
 
@@ -1223,7 +1289,6 @@ end function noutput_state_variables
 !> Assert if a copy is in a valid range
 
 function assert_valid_copy(name_handle, copy) result(valid_copy)
-
 type(stage_metadata_type), intent(in) :: name_handle !< stage name handle
 integer,                   intent(in) :: copy        !< ensemble copy number
 logical :: valid_copy

@@ -357,47 +357,46 @@ observations into the format required by DART.
 The current list of converters (some directories contain multiple
 converters) include:
 
--  `AIRS <AIRS/README.html>`__ `atmospheric variables <AIRS/convert_airs_L2.html>`__
-   and `AMSUA radiances <AIRS/convert_amsu_L1.html>`__
--  AURA (uses a combination of IDL and Fortran)
--  `Aviso+/CMEMS <AVISO/AVISO.html>`__
--  `Ameriflux <Ameriflux/level4_to_obs.html>`__
--  `CHAMP <CHAMP/work/README.html>`__
--  `cice <cice/cice_to_obs.html>`__
--  CNOFS
--  `CONAGUA <CONAGUA/README.html>`__
--  `COSMOS <COSMOS/COSMOS_to_obs.html>`__
--  `DWL <DWL/dwl_to_obs.html>`__
--  `GMI <GMI/README.html>`__
--  `GOES <GOES/README.html>`__
--  `GPSPW <GPSPW/README.html>`__
--  GRACE
--  `GSI2DART <GSI2DART/readme.html>`__
--  `GTSPP <GTSPP/GTSPP.html>`__
--  `MADIS <MADIS/MADIS.html>`__
--  `MIDAS <MIDAS/MIDAS_to_obs.html>`__
--  `MODIS <MODIS/MOD15A2_to_obs.html>`__
--  `MPD <MPD/README.html>`__
--  `NCEP (prepbufr->ascii) <NCEP/prep_bufr/prep_bufr.html>`__
--  `NCEP (ascii->obs_seq) <NCEP/ascii_to_obs/create_real_obs.html>`__
--  `ROMS <ROMS/ROMS.html>`__
--  `SIF <SIF/SIF_to_obs_netcdf.html>`__
--  `SSEC <SSEC/SSEC.html>`__
--  `SST <SST/SST.html>`__
--  `SSUSI <SSUSI/convert_f16_edr_dsk.html>`__
--  `WOD <WOD/WOD.html>`__
--  `gnd_gps_vtec <gnd_gps_vtec/README.html>`__
--  `GPS <gps/gps.html>`__
--  `ok_mesonet <ok_mesonet/ok_mesonet.html>`__
--  `QuikSCAT <quikscat/QuikSCAT.html>`__
--  `Radar <radar/radar.html>`__
--  `snow <snow/snow_to_obs.html>`__
--  `Text <text/text_to_obs.html>`__
--  text_GITM
--  `tpw <tpw/tpw.html>`__
--  `Tropical Cyclones <tropical_cyclone/tc_to_obs.html>`__
--  `Var (little-r) <var/littler_tf_dart.html>`__
--  `Var (radar) <var/rad_3dvar_to_dart.html>`__
+-  ``AIRS``: :doc:`./AIRS/README`
+-  ``AURA``: See ``./AURA``
+-  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
+-  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
+-  ``CHAMP``: :doc:`./CHAMP/work/README`
+-  ``cice``: :doc:`./cice/cice_to_obs`
+-  ``CNOFS``: See ``./CNOFS``
+-  ``CONAGUA``: :doc:`./CONAGUA/README`
+-  ``COSMOS``: :doc:`./COSMOS/COSMOS_to_obs`
+-  ``DWL``: :doc:`./DWL/dwl_to_obs`
+-  ``GMI``: :doc:`./GMI/README`
+-  ``GOES``: :doc:`./GOES/README`
+-  ``GPSPW``: :doc:`./GPSPW/README`
+-  ``GRACE``: See ``./GRACE``
+-  ``GSI2DART``: :doc:`./GSI2DART/readme`
+-  ``GTSPP``: :doc:`./GTSPP/GTSPP`
+-  ``MADIS``: :doc:`./MADIS/MADIS`
+-  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
+-  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
+-  ``MPD``: See ``./MPD``
+-  ``NCEP``: (prepbufr-> ascii) :doc:`./NCEP/prep_bufr/prep_bufr`
+-  ``NCEP``: (ascii-> obs_seq) :doc:`./NCEP/ascii_to_obs/create_real_obs`
+-  ``ROMS``: :doc:`./ROMS/ROMS`
+-  ``SIF``: :doc:`./SIF/SIF_to_obs_netcdf`
+-  ``SSEC``: :doc:`./SSEC/SSEC`
+-  ``SST``: :doc:`./SST/SST`
+-  ``SSUSI``: :doc:`./SSUSI/convert_f16_edr_dsk`
+-  ``WOD``: :doc:`./WOD/WOD`
+-  ``gnd_gps_vtec``: :doc:`./gnd_gps_vtec/README`
+-  ``GPS``: :doc:`./gps/gps`
+-  ``ok_mesonet``: :doc:`./ok_mesonet/ok_mesonet`
+-  ``QuikSCAT``: :doc:`./quikscat/QuikSCAT`
+-  ``Radar``: :doc:`./radar/README`
+-  ``snow``: :doc:`./snow/snow_to_obs`
+-  ``Text``: :doc:`./text/text_to_obs`
+-  ``text_GITM``: See ``./text_GITM``
+-  ``tpw``: :doc:`./tpw/tpw`
+-  ``Tropical Cyclones``: :doc:`./tropical_cyclone/tc_to_obs`
+-  ``Var (little-r)``: :doc:`./var/littler_tf_dart`
+-  ``Var (radar)``: :doc:`./var/rad_3dvar_to_dart`
 
 In addition the following external program produces DART observation
 sequence files:

@@ -74,207 +74,215 @@ namelist.
 
 .. container::
 
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | Item                 | Type                                | Description                                           |
-   +======================+=====================================+=======================================================+
-   | filename_seq         | character(len=256), dimension(1000) | The array of names of the observation sequence files  |
-   |                      |                                     | to process. (With the F90 namelist mechanism it is    |
-   |                      |                                     | only necessary to specify as many names as you have   |
-   |                      |                                     | input files; unspecified list values are cleanly      |
-   |                      |                                     | ignored.)                                             |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | filename_seq_list    | character(len=256)                  | The name of a text file which contains, one per line, |
-   |                      |                                     | the names of the observation sequence files to        |
-   |                      |                                     | process. The names on each line in the file should    |
-   |                      |                                     | not have any delimiters, e.g. no single or double     |
-   |                      |                                     | quotes at the start or end of the filename. This file |
-   |                      |                                     | can be made with a text editor or with the output of  |
-   |                      |                                     | the 'ls' command, e.g. ``ls obs_seq.* > flist``. You  |
-   |                      |                                     | can only specify one of ``filename_seq`` OR           |
-   |                      |                                     | ``filename_seq_list``, not both.                      |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | filename_out         | character(len=256)                  | The name of the resulting output observation sequence |
-   |                      |                                     | file.                                                 |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | first_obs_days       | integer                             | If non-negative, restrict the timestamps of the       |
-   |                      |                                     | observations copied to the output file to be equal to |
-   |                      |                                     | or after this day number (specified in the Gregorian  |
-   |                      |                                     | calendar; day number since 1601).                     |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | first_obs_seconds    | integer                             | If non-negative, restrict the timestamps of the       |
-   |                      |                                     | observations copied to the output file to be equal to |
-   |                      |                                     | or after this time.                                   |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | last_obs_days        | integer                             | If non-negative, restrict the timestamps of the       |
-   |                      |                                     | observations copied to the output file to be equal to |
-   |                      |                                     | or before this date (specified in the Gregorian       |
-   |                      |                                     | calendar; day number since 1601).                     |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | last_obs_seconds     | integer                             | If non-negative, restrict the timestamps of the       |
-   |                      |                                     | observations copied to the output file to be equal to |
-   |                      |                                     | or before this time.                                  |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | obs_types            | character(len=32), dimension(500)   | The array of observation type names to process. If    |
-   |                      |                                     | any names specified, then based on the setting of     |
-   |                      |                                     | ``keep_types``, these observation types will either   |
-   |                      |                                     | be the only types kept in the output file, or they    |
-   |                      |                                     | will be removed and all other types will be copied to |
-   |                      |                                     | the output file.                                      |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | keep_types           | logical                             | Ignored unless one or more observation types are      |
-   |                      |                                     | specified in the ``obs_types`` namelist. If .TRUE.,   |
-   |                      |                                     | only the specified observation types will be copied   |
-   |                      |                                     | to the output file; if .FALSE., all types except the  |
-   |                      |                                     | listed ones will be copied to the output file.        |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | min_box              | real(r8)(:)                         | If the locations are 1D, set a min value here instead |
-   |                      |                                     | of using the lat/lon box values.                      |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | max_box              | real(r8)(:)                         | If the locations are 1D, set a max value here instead |
-   |                      |                                     | of using the lat/lon box values.                      |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | min_lat              | real(r8)                            | If specified, the minimum latitude, in degrees, of    |
-   |                      |                                     | observations to be copied to the output file. This    |
-   |                      |                                     | assumes compiling with the 3d-sphere locations        |
-   |                      |                                     | module.                                               |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | max_lat              | real(r8)                            | If specified, the maximum latitude, in degrees, of    |
-   |                      |                                     | observations to be copied to the output file. This    |
-   |                      |                                     | assumes compiling with the 3d-sphere locations        |
-   |                      |                                     | module.                                               |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | min_lon              | real(r8)                            | If specified, the minimum longitude, in degrees, of   |
-   |                      |                                     | observations to be copied to the output file. This    |
-   |                      |                                     | assumes compiling with the 3d-sphere locations        |
-   |                      |                                     | module. If min_lon is larger than max_lon, wrap       |
-   |                      |                                     | across 360 to 0 is assumed.                           |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | max_lon              | real(r8)                            | If specified, the maximum longitude, in degrees, of   |
-   |                      |                                     | observations to be copied to the output file. This    |
-   |                      |                                     | assumes compiling with the 3d-sphere locations        |
-   |                      |                                     | module. If min_lon is larger than max_lon, wrap       |
-   |                      |                                     | across 360 to 0 is assumed.                           |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | copy_metadata        | character                           | If specified, the metadata string describing one of   |
-   |                      |                                     | the data copy fields in the input observation         |
-   |                      |                                     | sequence files.                                       |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | min_copy             | real                                | If specified, the minimum value in the data copy      |
-   |                      |                                     | field matching the copy_metadata name that will be    |
-   |                      |                                     | copied to the output file.                            |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | max_copy             | real                                | If specified, the maximum value in the data copy      |
-   |                      |                                     | field matching the copy_metadata name that will be    |
-   |                      |                                     | copied to the output file.                            |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | copy_type            | character(len=32)                   | If specified, the string name of an observation type  |
-   |                      |                                     | to be copied to the output file only if the min and   |
-   |                      |                                     | max values specified are in range. All other          |
-   |                      |                                     | observation types are discarded if this option is     |
-   |                      |                                     | specified.                                            |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | edit_copy_metadata   | logical                             | If true, replace the output file metadata strings     |
-   |                      |                                     | with the list specified in the new_copy_metadata      |
-   |                      |                                     | list.                                                 |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | new_copy_metadata    | character(len=*)(:)                 | List of new metadata strings. Use with care, there is |
-   |                      |                                     | no error checking to ensure you are doing a valid     |
-   |                      |                                     | replacement.                                          |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | edit_copies          | logical                             | If true, subset or rearrange the actual data copies   |
-   |                      |                                     | in the output. The new_copy_index list controls the   |
-   |                      |                                     | output order of copies from the input files.          |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | new_copy_index       | integer(:)                          | An array of integers, which control how copies in the |
-   |                      |                                     | input are moved to the output sequence. The values    |
-   |                      |                                     | must be between 0 and the number of copies in the     |
-   |                      |                                     | input sequence. They can be repeated to replicate an  |
-   |                      |                                     | existing copy; they can be specified in any order to  |
-   |                      |                                     | reorder the entries; they can include the value 0 to  |
-   |                      |                                     | insert a new copy. -1 ends the list. If -1 is         |
-   |                      |                                     | specified as the first value all copies will be       |
-   |                      |                                     | deleted.                                              |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | new_copy_data        | real(:)                             | An array of reals. The length should correspond to    |
-   |                      |                                     | the number of 0s in the new_copy_index list, and will |
-   |                      |                                     | be the data value for the new copies. This value will |
-   |                      |                                     | be constant for all observations.                     |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | qc_metadata          | character                           | If specified, the metadata string describing one of   |
-   |                      |                                     | the quality control (QC) fields in the input          |
-   |                      |                                     | observation sequence files.                           |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | min_qc               | real                                | If specified, the minimum qc value in the QC field    |
-   |                      |                                     | matching the qc_metadata name that will be copied to  |
-   |                      |                                     | the output file.                                      |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | max_qc               | real                                | If specified, the maximum qc value in the QC field    |
-   |                      |                                     | matching the qc_metadata name that will be copied to  |
-   |                      |                                     | the output file.                                      |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | edit_qc_metadata     | logical                             | If true, replace the output file metadata strings     |
-   |                      |                                     | with the list specified in the new_qc_metadata list.  |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | new_qc_metadata      | character(len=*)(:)                 | List of new metadata strings. Use with care, there is |
-   |                      |                                     | no error checking to ensure you are doing a valid     |
-   |                      |                                     | replacement.                                          |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | edit_qcs             | logical                             | If true, subset or rearrange the actual data QCs in   |
-   |                      |                                     | the output. The new_qc_index list controls the output |
-   |                      |                                     | order of QCs from the input files.                    |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | new_qc_index         | integer(:)                          | An array of integers, which control how QCs in the    |
-   |                      |                                     | input are moved to the output sequence. The values    |
-   |                      |                                     | must be between 0 and the number of QCs in the input  |
-   |                      |                                     | sequence. They can be repeated to replicate an        |
-   |                      |                                     | existing QCs; they can be specified in any order to   |
-   |                      |                                     | reorder the entries; they can include the value 0 to  |
-   |                      |                                     | insert a new qc. -1 ends the list. If -1 is specified |
-   |                      |                                     | as the first value, all QCs will be deleted.          |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | new_qc_data          | real(:)                             | An array of reals. The length should correspond to    |
-   |                      |                                     | the number of 0s in the new_qc_index list, and will   |
-   |                      |                                     | be the data value for the new QCs. This value will be |
-   |                      |                                     | constant for all observations.                        |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | synonymous_copy_list | character(len=*)(:)                 | An array of strings which are to be considered        |
-   |                      |                                     | synonyms in the copy metadata strings for all the     |
-   |                      |                                     | input obs seq files. Any string in this list will     |
-   |                      |                                     | match any other string. The first obs sequence file   |
-   |                      |                                     | to copy observations to the output file will set the  |
-   |                      |                                     | actual values used, unless they are explicitly        |
-   |                      |                                     | overridden by edit_copy_metadata.                     |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | synonymous_qc_list   | character(len=*)(:)                 | An array of strings which are to be considered        |
-   |                      |                                     | synonyms in the qc metadata strings for all the input |
-   |                      |                                     | obs seq files. Any string in this list will match any |
-   |                      |                                     | other string. The first obs sequence file to qc       |
-   |                      |                                     | observations to the output file will set the actual   |
-   |                      |                                     | values used, unless they are explicitly overridden by |
-   |                      |                                     | edit_qc_metadata.                                     |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | print_only           | logical                             | If .TRUE., do not create an output file, but print a  |
-   |                      |                                     | summary of the number and types of each observation   |
-   |                      |                                     | in each input file, and then the number of            |
-   |                      |                                     | observations and types which would have been created  |
-   |                      |                                     | in an output file. If other namelist selections are   |
-   |                      |                                     | specified (e.g. start and end times, select by        |
-   |                      |                                     | observation type, qc value, etc) the summary message  |
-   |                      |                                     | will include the results of that processing.          |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | gregorian_cal        | logical                             | If .true. the dates of the first and last             |
-   |                      |                                     | observations in each file will be printed in both     |
-   |                      |                                     | (day/seconds) format and in gregorian calendar        |
-   |                      |                                     | year/month/day hour:min:sec format. Set this to       |
-   |                      |                                     | .false. if the observations were not created with     |
-   |                      |                                     | gregorian calendar times.                             |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
-   | num_input_files      | integer                             | DEPRECATED. The number of observation sequence files  |
-   |                      |                                     | to process is now set by counting up the number of    |
-   |                      |                                     | input filenames specified. This namelist item is      |
-   |                      |                                     | ignored and will be removed in future versions of the |
-   |                      |                                     | code.                                                 |
-   +----------------------+-------------------------------------+-------------------------------------------------------+
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | Item                         | Type                                | Description                                                            |
+   +==============================+=====================================+========================================================================+
+   | filename_seq                 | character(len=256), dimension(1000) | The array of names of the observation sequence files                   |
+   |                              |                                     | to process. (With the F90 namelist mechanism it is                     |
+   |                              |                                     | only necessary to specify as many names as you have                    |
+   |                              |                                     | input files; unspecified list values are cleanly                       |
+   |                              |                                     | ignored.)                                                              |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | filename_seq_list            | character(len=256)                  | The name of a text file which contains, one per line,                  |
+   |                              |                                     | the names of the observation sequence files to                         |
+   |                              |                                     | process. The names on each line in the file should                     |
+   |                              |                                     | not have any delimiters, e.g. no single or double                      |
+   |                              |                                     | quotes at the start or end of the filename. This file                  |
+   |                              |                                     | can be made with a text editor or with the output of                   |
+   |                              |                                     | the 'ls' command, e.g. ``ls obs_seq.* > flist``. You                   |
+   |                              |                                     | can only specify one of ``filename_seq`` OR                            |
+   |                              |                                     | ``filename_seq_list``, not both.                                       |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | filename_out                 | character(len=256)                  | The name of the resulting output observation sequence                  |
+   |                              |                                     | file.                                                                  |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | first_obs_days               | integer                             | If non-negative, restrict the timestamps of the                        |
+   |                              |                                     | observations copied to the output file to be equal to                  |
+   |                              |                                     | or after this day number (specified in the Gregorian                   |
+   |                              |                                     | calendar; day number since 1601).                                      |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | first_obs_seconds            | integer                             | If non-negative, restrict the timestamps of the                        |
+   |                              |                                     | observations copied to the output file to be equal to                  |
+   |                              |                                     | or after this time.                                                    |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | last_obs_days                | integer                             | If non-negative, restrict the timestamps of the                        |
+   |                              |                                     | observations copied to the output file to be equal to                  |
+   |                              |                                     | or before this date (specified in the Gregorian                        |
+   |                              |                                     | calendar; day number since 1601).                                      |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | last_obs_seconds             | integer                             | If non-negative, restrict the timestamps of the                        |
+   |                              |                                     | observations copied to the output file to be equal to                  |
+   |                              |                                     | or before this time.                                                   |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | obs_types                    | character(len=32), dimension(500)   | The array of observation type names to process. If                     |
+   |                              |                                     | any names specified, then based on the setting of                      |
+   |                              |                                     | ``keep_types``, these observation types will either                    |
+   |                              |                                     | be the only types kept in the output file, or they                     |
+   |                              |                                     | will be removed and all other types will be copied to                  |
+   |                              |                                     | the output file.                                                       |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | keep_types                   | logical                             | Ignored unless one or more observation types are                       |
+   |                              |                                     | specified in the ``obs_types`` namelist. If .TRUE.,                    |
+   |                              |                                     | only the specified observation types will be copied                    |
+   |                              |                                     | to the output file; if .FALSE., all types except the                   |
+   |                              |                                     | listed ones will be copied to the output file.                         |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | min_box                      | real(r8)(:)                         | If the locations are 1D, set a min value here instead                  |
+   |                              |                                     | of using the lat/lon box values.                                       |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | max_box                      | real(r8)(:)                         | If the locations are 1D, set a max value here instead                  |
+   |                              |                                     | of using the lat/lon box values.                                       |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | min_lat                      | real(r8)                            | If specified, the minimum latitude, in degrees, of                     |
+   |                              |                                     | observations to be copied to the output file. This                     |
+   |                              |                                     | assumes compiling with the 3d-sphere locations                         |
+   |                              |                                     | module.                                                                |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | max_lat                      | real(r8)                            | If specified, the maximum latitude, in degrees, of                     |
+   |                              |                                     | observations to be copied to the output file. This                     |
+   |                              |                                     | assumes compiling with the 3d-sphere locations                         |
+   |                              |                                     | module.                                                                |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | min_lon                      | real(r8)                            | If specified, the minimum longitude, in degrees, of                    |
+   |                              |                                     | observations to be copied to the output file. This                     |
+   |                              |                                     | assumes compiling with the 3d-sphere locations                         |
+   |                              |                                     | module. If min_lon is larger than max_lon, wrap                        |
+   |                              |                                     | across 360 to 0 is assumed.                                            |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | max_lon                      | real(r8)                            | If specified, the maximum longitude, in degrees, of                    |
+   |                              |                                     | observations to be copied to the output file. This                     |
+   |                              |                                     | assumes compiling with the 3d-sphere locations                         |
+   |                              |                                     | module. If min_lon is larger than max_lon, wrap                        |
+   |                              |                                     | across 360 to 0 is assumed.                                            |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | copy_metadata                | character                           | If specified, the metadata string describing one of                    |
+   |                              |                                     | the data copy fields in the input observation                          |
+   |                              |                                     | sequence files.                                                        |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | min_copy                     | real                                | If specified, the minimum value in the data copy                       |
+   |                              |                                     | field matching the copy_metadata name that will be                     |
+   |                              |                                     | copied to the output file.                                             |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | max_copy                     | real                                | If specified, the maximum value in the data copy                       |
+   |                              |                                     | field matching the copy_metadata name that will be                     |
+   |                              |                                     | copied to the output file.                                             |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | copy_type                    | character(len=32)                   | If specified, the string name of an observation type                   |
+   |                              |                                     | to be copied to the output file only if the min and                    |
+   |                              |                                     | max values specified are in range. All other                           |
+   |                              |                                     | observation types are discarded if this option is                      |
+   |                              |                                     | specified.                                                             |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | edit_copy_metadata           | logical                             | If true, replace the output file metadata strings                      |
+   |                              |                                     | with the list specified in the new_copy_metadata                       |
+   |                              |                                     | list.                                                                  |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | new_copy_metadata            | character(len=*)(:)                 | List of new metadata strings. Use with care, there is                  |
+   |                              |                                     | no error checking to ensure you are doing a valid                      |
+   |                              |                                     | replacement.                                                           |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | edit_copies                  | logical                             | If true, subset or rearrange the actual data copies                    |
+   |                              |                                     | in the output. The new_copy_index list controls the                    |
+   |                              |                                     | output order of copies from the input files.                           |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | new_copy_index               | integer(:)                          | An array of integers, which control how copies in the                  |
+   |                              |                                     | input are moved to the output sequence. The values                     |
+   |                              |                                     | must be between 0 and the number of copies in the                      |
+   |                              |                                     | input sequence. They can be repeated to replicate an                   |
+   |                              |                                     | existing copy; they can be specified in any order to                   |
+   |                              |                                     | reorder the entries; they can include the value 0 to                   |
+   |                              |                                     | insert a new copy. -1 ends the list. If -1 is                          |
+   |                              |                                     | specified as the first value all copies will be                        |
+   |                              |                                     | deleted.                                                               |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | new_copy_data                | real(:)                             | An array of reals. The length should correspond to                     |
+   |                              |                                     | the number of 0s in the new_copy_index list, and will                  |
+   |                              |                                     | be the data value for the new copies. This value will                  |
+   |                              |                                     | be constant for all observations.                                      |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | qc_metadata                  | character                           | If specified, the metadata string describing one of                    |
+   |                              |                                     | the quality control (QC) fields in the input                           |
+   |                              |                                     | observation sequence files.                                            |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | min_qc                       | real                                | If specified, the minimum qc value in the QC field                     |
+   |                              |                                     | matching the qc_metadata name that will be copied to                   |
+   |                              |                                     | the output file.                                                       |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | max_qc                       | real                                | If specified, the maximum qc value in the QC field                     |
+   |                              |                                     | matching the qc_metadata name that will be copied to                   |
+   |                              |                                     | the output file.                                                       |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | edit_qc_metadata             | logical                             | If true, replace the output file metadata strings                      |
+   |                              |                                     | with the list specified in the new_qc_metadata list.                   |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | new_qc_metadata              | character(len=*)(:)                 | List of new metadata strings. Use with care, there is                  |
+   |                              |                                     | no error checking to ensure you are doing a valid                      |
+   |                              |                                     | replacement.                                                           |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | edit_qcs                     | logical                             | If true, subset or rearrange the actual data QCs in                    |
+   |                              |                                     | the output. The new_qc_index list controls the output                  |
+   |                              |                                     | order of QCs from the input files.                                     |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | new_qc_index                 | integer(:)                          | An array of integers, which control how QCs in the                     |
+   |                              |                                     | input are moved to the output sequence. The values                     |
+   |                              |                                     | must be between 0 and the number of QCs in the input                   |
+   |                              |                                     | sequence. They can be repeated to replicate an                         |
+   |                              |                                     | existing QCs; they can be specified in any order to                    |
+   |                              |                                     | reorder the entries; they can include the value 0 to                   |
+   |                              |                                     | insert a new qc. -1 ends the list. If -1 is specified                  |
+   |                              |                                     | as the first value, all QCs will be deleted.                           |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | new_qc_data                  | real(:)                             | An array of reals. The length should correspond to                     |
+   |                              |                                     | the number of 0s in the new_qc_index list, and will                    |
+   |                              |                                     | be the data value for the new QCs. This value will be                  |
+   |                              |                                     | constant for all observations.                                         |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | synonymous_copy_list         | character(len=*)(:)                 | An array of strings which are to be considered                         |
+   |                              |                                     | synonyms in the copy metadata strings for all the                      |
+   |                              |                                     | input obs seq files. Any string in this list will                      |
+   |                              |                                     | match any other string. The first obs sequence file                    |
+   |                              |                                     | to copy observations to the output file will set the                   |
+   |                              |                                     | actual values used, unless they are explicitly                         |
+   |                              |                                     | overridden by edit_copy_metadata.                                      |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | synonymous_qc_list           | character(len=*)(:)                 | An array of strings which are to be considered                         |
+   |                              |                                     | synonyms in the qc metadata strings for all the input                  |
+   |                              |                                     | obs seq files. Any string in this list will match any                  |
+   |                              |                                     | other string. The first obs sequence file to qc                        |
+   |                              |                                     | observations to the output file will set the actual                    |
+   |                              |                                     | values used, unless they are explicitly overridden by                  |
+   |                              |                                     | edit_qc_metadata.                                                      |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | print_only                   | logical                             | If .TRUE., do not create an output file, but print a                   |
+   |                              |                                     | summary of the number and types of each observation                    |
+   |                              |                                     | in each input file, and then the number of                             |
+   |                              |                                     | observations and types which would have been created                   |
+   |                              |                                     | in an output file. If other namelist selections are                    |
+   |                              |                                     | specified (e.g. start and end times, select by                         |
+   |                              |                                     | observation type, qc value, etc) the summary message                   |
+   |                              |                                     | will include the results of that processing.                           |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | gregorian_cal                | logical                             | If .true. the dates of the first and last                              |
+   |                              |                                     | observations in each file will be printed in both                      |
+   |                              |                                     | (day/seconds) format and in gregorian calendar                         |
+   |                              |                                     | year/month/day hour:min:sec format. Set this to                        |
+   |                              |                                     | .false. if the observations were not created with                      |
+   |                              |                                     | gregorian calendar times.                                              |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | num_input_files              | integer                             | DEPRECATED. The number of observation sequence files                   |
+   |                              |                                     | to process is now set by counting up the number of                     |
+   |                              |                                     | input filenames specified. This namelist item is                       |
+   |                              |                                     | ignored and will be removed in future versions of the                  |
+   |                              |                                     | code.                                                                  |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
+   | remove_precomputed_FO_values | character(len=32), dimension(500)   | The (case-insensitive) array of observation type names whose           |
+   |                              |                                     | precomputed forward operator (FO) values are not wanted.  If any type  |
+   |                              |                                     | names are specified, observations matching these types will have their |
+   |                              |                                     | precomputed FO values values removed. The remainder of the observation |
+   |                              |                                     | persists, subject to the constraints of ``keep_types``                 |
+   |                              |                                     | and/or any other subsetting options. The default is to keep all        |
+   |                              |                                     | precomputed_FO_values.                                                 |
+   +------------------------------+-------------------------------------+------------------------------------------------------------------------+
 
 | 
 
@@ -292,6 +300,7 @@ Here are details on how to set up common cases using this tool:
 -  Altering the number of Copies or QC values
 -  Printing only
 -  Subset by Observation or QC Value
+-  Precomputed Forward Operator Values
 
 Merge multiple files
 ~~~~~~~~~~~~~~~~~~~~
@@ -587,6 +596,39 @@ units and valid ranges. For example:
       copy_type          = 'RADIOSONDE_TEMPERATURE',
       min_copy           = 250.0,
       max_copy           = 300.0,
+
+Precomputed Forward Operator Values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Precomputed Forward Operator Values are the result of an external program
+that computes the expected observation values from an ensemble of model states
+and includes these values as part of the observation metadata (see, for example,
+the ``GSI2DART`` observation converter).
+By default, any observation with precomputed forward operator (FO) values 
+will have those values simply pass through ``obs_sequence_tool``
+just like any other piece of metadata.  If the precomputed forward operator
+values for any or all observation types are not wanted, it is possible to 
+remove the precomputed values and retain the rest of the observation. 
+
+.. note ::
+
+  observations resulting from
+  ``perfect_model_obs`` are **not** 
+  precomputed forward observation values!
+
+.. code-block:: none
+
+  # keep all precomputed values from all observations with precomputed values (the default):
+     remove_precomputed_FO_values = ''
+  
+  # remove all precomputed values from all observations with precomputed values:
+     remove_precomputed_FO_values = 'ALL'
+  
+  # remove all precomputed values for specific observation types (case does not matter):
+  # The observations themselves will still be present in the output, given no other
+  # subsetting processing.
+     remove_precomputed_FO_values = 'RADIOSONDE_TEMPERATURE', 'AMDAR_U_WIND_COMPONENT' 
+
 
 Discussion
 ----------

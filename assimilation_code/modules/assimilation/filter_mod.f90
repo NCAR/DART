@@ -7,7 +7,7 @@ module filter_mod
 !------------------------------------------------------------------------------
 use types_mod,             only : r8, i8, missing_r8, metadatalength, MAX_NUM_DOMS, MAX_FILES
 
-use options_mod,           only : get_missing_ok_status
+use options_mod,           only : get_missing_ok_status, set_missing_ok_status
 
 use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                   get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
@@ -104,7 +104,7 @@ public :: filter_sync_keys_time, &
 character(len=*), parameter :: source = 'filter_mod.f90'
 
 ! Some convenient global storage items
-character(len=512) :: msgstring, string2, string3
+character(len=512)      :: msgstring
 
 integer :: trace_level, timestamp_level
 
@@ -255,7 +255,10 @@ real(r8) :: inf_sd_lower_bound(2)          = 0.0_r8
 
 ! Some models are allowed to have MISSING_R8 values in the DART state vector.
 ! If they are encountered, it is not necessarily a FATAL error.
-! The model is responsible for calling options_mod:set_missing_ok_status()
+! Most of the time, if a MISSING_R8 is encountered, DART should die.
+! CLM should have allow_missing_clm = .true.
+logical  :: allow_missing_clm = .false.
+
 
 namelist /filter_nml/ async,     &
    adv_ens_command,              &
@@ -305,7 +308,8 @@ namelist /filter_nml/ async,     &
    output_mean,                  &
    output_sd,                    &
    write_all_stages_at_end,      &
-   write_obs_every_cycle
+   write_obs_every_cycle,        & 
+   allow_missing_clm
 
 
 integer :: inflation_flavor(2)
@@ -392,6 +396,7 @@ call error_handler(E_MSG,'filter_main:', msgstring, source)
 ! See if smoothing is turned on
 ds = do_smoothing()
 
+call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')

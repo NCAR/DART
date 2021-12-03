@@ -72,9 +72,6 @@ use utilities_mod,        only : error_handler, file_to_text, &
                                  find_textfile_dims, file_exist, &
                                  E_MSG, E_ALLMSG, E_ERR, E_DBG, E_WARN
 
-!>@todo FIXME Fully implement the rest of the routines in netcdf_utilities_mod.
-! This will change all the error messages.
-
 use netcdf_utilities_mod, only : nc_check
 
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, &
@@ -170,7 +167,7 @@ subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, rea
 type(ensemble_type),       intent(inout) :: state_ens_handle !< Ensemble handle
 type(stage_metadata_type), intent(in)    :: name_handle      !< Name handle
 integer,                   intent(in)    :: domain           !< Which domain to read
-integer,                   intent(inout) :: dart_index       !< This is for multiple domains
+integer(i8),               intent(inout) :: dart_index       !< This is for multiple domains
 logical,                   intent(in)    :: read_single_vars !< Read one variable at a time
 
 if (task_count() == 1) then
@@ -192,7 +189,7 @@ subroutine transpose_write(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_single_vars !< write one variable at a time
 logical,                   intent(in)    :: write_single_precision
 
@@ -488,10 +485,11 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_start_point
 
 integer :: icopy, ivar, domain  
-integer :: ens_size, extra_size, time_size, var_size, elm_count, ndims
+integer :: ens_size, extra_size, time_size, ndims
 integer :: my_pe, recv_pe, recv_start, recv_end, start_rank
-integer :: start_pos, end_pos, send_start, send_end, start_point
+integer :: send_start, send_end
 logical :: do_perturb, is_sender, is_receiver, is_extra_copy
+integer(i8) :: var_size, elm_count, start_pos, end_pos, start_point
 
 real(r8), allocatable :: var_block(:)
 
@@ -824,21 +822,10 @@ end subroutine write_augmented_state
 
 
 !-------------------------------------------------------------------------------
-!> Read in variables from start_var to end_var.
-!>
-!> If the model supports missing values (set in the model_mod), and 
-!> if the variable has a _FillValue or missing_value attribute, those values
-!> are read and matching data values are replaced with the DART 'missing' flag.
-!> If the variable specifies BOTH a _FillValue and missing_value attribute,
-!> they must be the same. DART only has one missing value and it we are unable
-!> to guarantee that we replace the DART missing value with the correct _FillValue
-!> or missing_value if the original values are different.
-!>
-!>@todo FIXME: the scale_factor and offset are unsupported.
-!>
+!> Read in variables from start_var to end_var
 !>@todo FIXME: At the moment, this code is assuming that the variables in the state start
 !> at (1,1,1) and that the whole variable is read. This is not the case for
-!> TIEGCM and CLM (history files). 
+!> TIEGCM and CLM. 
 
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
 
@@ -848,27 +835,20 @@ integer,  intent(in)    :: start_var
 integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain
 
-character(len=*), parameter :: routine = 'read_variables'
-
 integer :: i
-integer :: istart, iend
-integer :: var_size
+integer(i8) :: istart, iend
+integer(i8) :: var_size
 integer, allocatable :: dims(:)
 integer :: ret, var_id
-character(len=NF90_MAX_NAME) :: varname
 
-logical :: allow_missing
-logical :: failure
+logical :: missing_possible
 
-failure = .false.
-
-allow_missing = get_missing_ok_status()
+missing_possible = get_missing_ok_status()
 
 istart = 1
 
 do i = start_var, end_var
 
-   varname  = get_variable_name(domain, i)
    var_size = get_variable_size(domain, i)
    iend = istart + var_size - 1
 
@@ -878,28 +858,12 @@ do i = start_var, end_var
    dims = get_io_dim_lengths(domain, i)
 
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
-   call nc_check(ret, 'read_variables: nf90_inq_varid', varname)
-
-   ! check for unsupported features
-   ! In order to support them, we'd have to apply them when we write as well,
-   ! and we do not ... yet. Error out if we find them.
-   ret = nf90_inquire_attribute(ncfile_in, var_id, 'scale_factor')
-   if (ret == NF90_NOERR) failure = .true.
-
-   ret = nf90_inquire_attribute(ncfile_in, var_id, 'offset')
-   if (ret == NF90_NOERR) failure = .true.
-
-   if (failure) then
-      write(msgstring2,*)'the use of scale_factor and/or offset is not supported.'
-      call error_handler(E_ERR,routine,varname, source, text2=msgstring2)
-   endif
-
-   ! Finally read the variable.
+   call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
    ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
-   call nc_check(ret, 'read_variables: nf90_get_var', varname)
+   call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
 
-   if (allow_missing) call set_dart_missing_value(domain, i, var_block(istart:iend))
+   if (missing_possible) call set_dart_missing_value(var_block(istart:iend), domain, i)
 
    istart = istart + var_size
 
@@ -923,19 +887,20 @@ subroutine read_transpose_single_task(state_ens_handle, name_handle, domain, dar
 type(ensemble_type),      intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)   :: name_handle
 integer,                   intent(in)   :: domain
-integer,                  intent(inout) :: dart_index !< This is for multiple domains
+integer(i8),              intent(inout) :: dart_index !< This is for multiple domains
 
 real(r8), allocatable :: vector(:)
 
 integer :: ncfile !< netcdf input file identifier
 character(len=256) :: netcdf_filename
 
-integer :: block_size , istart, iend , copy , start_var
+integer(i8) :: block_size, istart, iend
+integer :: copy , start_var
 
 istart     = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
-! need to read into a temporary array, then fill up copies
+! need to read into a tempory array, then fill up copies
 allocate(vector(get_domain_size(domain)))
 
 COPIES: do copy = 1, state_ens_handle%my_num_copies
@@ -954,7 +919,8 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
    iend = istart + block_size -1
 
    if (query_read_copy(name_handle, copy)) then
-      call read_variables(ncfile, vector, start_var, get_num_variables(domain), domain)
+      call read_variables(ncfile, vector, 1, get_num_variables(domain), domain)
+      ! close netcdf file
       ret = nf90_close(ncfile)
       call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
       state_ens_handle%copies(copy, istart:iend) = vector
@@ -983,7 +949,7 @@ subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_single_precision
 
 ! netcdf variables
@@ -992,18 +958,19 @@ character(len=256) :: netcdf_filename_out
 
 real(r8), allocatable :: vector(:)
 
-integer :: block_size , istart, iend , copy , start_var, end_var
+integer(i8) :: block_size , istart, iend
+integer :: copy , start_var, end_var
 integer :: time_owner, time_owner_index
 logical :: clamp_vars, force_copy
 type(time_type) :: dart_time
 
-! need a temporary array to fill with one copy
+! need to read into a tempory array to fill with one copies
 allocate(vector(get_domain_size(domain)))
 
 istart = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
-! read into a temporary array, then fill up copies
+! need to read into a temporary array, then fill up copies
 
 COPIES: do copy = 1, state_ens_handle%my_num_copies
 
@@ -1089,7 +1056,7 @@ subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index !< This is for multiple domains
+integer(i8),               intent(inout) :: dart_index !< This is for multiple domains
 logical,                   intent(in)    :: read_var_by_var !< Read one variable at a time 
 
 integer :: start_var, end_var   !< start/end variables in a read block
@@ -1097,15 +1064,15 @@ integer :: start_rank           !< starting rank containg variable of interest
 integer :: recv_start, recv_end !< start/end variables for receives
 integer :: send_start, send_end !< start/end variables for sends
 integer :: recv_pe, sending_pe  !< PEs sending and receiving data
-integer :: elm_count            !< number of elements to send
-integer :: block_size           !< number of state elements in a block
-integer :: istart, iend         !< position in state vector copies array
+integer(i8) :: elm_count        !< number of elements to send
+integer(i8) :: block_size       !< number of state elements in a block
+integer(i8) :: istart, iend     !< position in state vector copies array
 integer :: ens_size             !< ensemble size
 integer :: my_pe                !< task or pe?
 integer :: ensemble_member      !< the ensmeble_member you are receiving.
 integer :: my_copy              !< which copy a pe is reading, from 1 to ens_handle%num_copies
 integer :: c                    !< copies_read loop index
-integer :: start_point
+integer(i8) :: start_point
 integer :: copies_read
 integer :: num_state_variables
 integer :: dummy_loop
@@ -1271,19 +1238,19 @@ subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_var_by_var !< Write a single variable, one at a time
 logical,                   intent(in)    :: write_single_precision
 
-integer :: i
+integer(i8) :: i
 integer :: start_var, end_var !< start/end variables in a read block
 integer :: my_pe !< task or pe?
 integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
-integer :: block_size !< number of variables in a block
-integer :: elm_count !< number of elements to send
-integer :: istart!< position in state_ens_handle%copies
-integer :: iend
+integer(i8) :: block_size !< number of variables in a block
+integer(i8) :: elm_count !< number of elements to send
+integer(i8) :: istart!< position in state_ens_handle%copies
+integer(i8) :: iend
 integer :: ens_size !< ensemble size
 integer :: start_rank
 integer :: recv_start, recv_end
@@ -1469,7 +1436,7 @@ real(r8), intent(inout) :: variable(:) ! variable
 
 real(r8) :: minclamp, maxclamp, my_minmax(2)
 character(len=NF90_MAX_NAME) :: varname ! for informational log messages
-logical  :: allow_missing
+logical  :: allow_missing ! used in CLM for state variables
 
 ! if neither bound is set, return early
 minclamp = get_io_clamping_minval(dom_id, var_index)
@@ -1479,6 +1446,16 @@ if (minclamp == missing_r8 .and. maxclamp == missing_r8) return
 
 ! if we get here, either the min, max or both have a clamping value.
   
+!>@todo this is what the code needs to be for CLM and any other
+! model that allows missing values in the state.  right now that
+! is defined in assim_tools_mod but i don't think we can use it
+! because of circular module dependencies.  it should be defined
+! maybe in filter?  and set into some low level module (like types
+! or constants or options_mod so anyone can query it).
+!
+! if we allow missing values in the state (which jeff has never
+! liked because it makes the statistics funny), then these next
+! two lines need to be:
 allow_missing = get_missing_ok_status()
 
 if (allow_missing) then
@@ -1495,23 +1472,34 @@ varname = get_variable_name(dom_id, var_index)
 ! is lower bound set?
 if ( minclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(1) < minclamp ) then
+      !>@todo again, if we're allowing missing in state, this has to be masked:
        if (allow_missing) then
           where(variable /= missing_r8) variable = max(minclamp, variable)
        else
           variable = max(minclamp, variable)
        endif
+   
+! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
+! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+! TJH TOO VERBOSE                         source)
    endif
 endif ! min range set
 
 ! is upper bound set?
 if ( maxclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(2) > maxclamp ) then
+      !>@todo again, if we're allowing missing in state, this has to be masked:
       if (allow_missing) then
          where(variable /= missing_r8) variable = min(maxclamp, variable)
       else
          variable = min(maxclamp, variable)
       endif
+
+! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
+! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+! TJH TOO VERBOSE                         source)
    endif
+
 endif ! max range set
 
 end subroutine clamp_variable
@@ -1523,23 +1511,23 @@ end subroutine clamp_variable
 !-------------------------------------------------------------------------------
 
 subroutine write_variables(ncid, var_block, start_var, end_var, domain, &
-                           do_variable_clamping, force_copy)
+                           do_file_clamping, force_copy)
 
 integer,  intent(in)    :: ncid
 real(r8), intent(inout) :: var_block(:)
 integer,  intent(in)    :: start_var
 integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain
-logical,  intent(in)    :: do_variable_clamping
+logical,  intent(in)    :: do_file_clamping
 logical,  intent(in)    :: force_copy
 
-integer :: istart, iend
-integer :: i, ret, var_id, var_size
+integer(i8) :: istart, iend, var_size
+integer :: i, ret, var_id
 integer, allocatable :: dims(:)
 
-logical :: allow_missing
+logical :: missing_possible
 
-allow_missing = get_missing_ok_status()
+missing_possible = get_missing_ok_status()
 
 !>@todo reduce output in log file?
 ! clamp_variable() currently prints out a line per variable per ensemble member.
@@ -1562,7 +1550,7 @@ do i = start_var, end_var
    ! set by the model.
    if ( do_io_update(domain, i) .or. force_copy ) then
       ! diagnostic files do not get clamped but restart may be clamped
-      if ( do_io_clamping(domain, i) .and. do_variable_clamping) then
+      if ( do_io_clamping(domain, i) .and. do_file_clamping) then
          call clamp_variable(domain, i, var_block(istart:iend))
       endif
      
@@ -1572,14 +1560,12 @@ do i = start_var, end_var
       dims = get_io_dim_lengths(domain, i)
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
-      write(msgstring,*) 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"'
-      call nc_check(ret, 'write_variables:', msgstring)
+      call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
-      if (allow_missing) call set_model_missing_value(domain, i, var_block(istart:iend))
+      if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
-      write(msgstring,*) 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"'
-      call nc_check(ret, 'write_variables:', msgstring)
+      call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
 
       deallocate(dims)
    endif
@@ -1637,7 +1623,7 @@ ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, routine, 'end define mode before writing grid info')
+call nc_check(ret, routine, 'end define mode')
 
 ! write grid information
 call nc_write_model_atts(ncfile_out, dom_id)
@@ -1930,6 +1916,7 @@ end subroutine nc_write_revision_info
 !-------------------------------------------------
 !> Write model integer missing_value/_FillValue attributes if they exist
 
+
 subroutine nc_write_missing_value_int(ncFileID, filename, ncVarID, domid, varid)
 
 integer,          intent(in) :: ncFileID
@@ -1938,17 +1925,16 @@ integer,          intent(in) :: ncVarID
 integer,          intent(in) :: domid
 integer,          intent(in) :: varid
 
-integer :: missing_valueINT, FillValueINT
+integer :: missingValINT, spvalINT
 
-if ( get_has_missing_value(domid, varid) ) then
-   call  get_missing_value(domid, varid, missing_valueINT)
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missing_valueINT), &
+call get_missing_value(domid, varid, missingValINT)
+if (missingValINT /= MISSING_I) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missingValINT), &
                  'nc_write_missing_value_int','missing_value '//trim(filename))
 endif
-
-if ( get_has_FillValue(domid, varid) ) then
-   call  get_FillValue(domid, varid, FillValueINT)
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',FillValueINT), &
+call get_fillValue(domid, varid, spvalINT)
+if (spvalINT /= MISSING_I) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',spvalINT), &
                  'nc_write_missing_value_int','_FillValue'//trim(filename))
 endif
 
@@ -1967,17 +1953,16 @@ integer,          intent(in) :: ncVarID
 integer,          intent(in) :: domid
 integer,          intent(in) :: varid
 
-real(r4) :: missing_valueR4, FillValueR4
+real(r4) :: missingValR4, spvalR4
 
-if ( get_has_missing_value(domid, varid) ) then
-   call  get_missing_value(domid, varid, missing_valueR4)
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missing_valueR4), &
+call get_missing_value(domid, varid, missingValR4)
+if (missingValR4 /= MISSING_R4) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missingValR4), &
                  'nc_write_missing_value_r4','missing_value '//trim(filename))
 endif
-
-if ( get_has_FillValue(domid, varid) ) then
-   call  get_FillValue(domid, varid, FillValueR4)
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',FillValueR4), &
+call get_fillValue(domid, varid, spvalR4)
+if (spValR4 /= MISSING_R4) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',spvalR4), &
                  'nc_write_missing_value_r4','_FillValue'//trim(filename))
 endif
 
@@ -1996,17 +1981,16 @@ integer,          intent(in) :: ncVarID
 integer,          intent(in) :: domid
 integer,          intent(in) :: varid
 
-real(r8) :: missing_valueR8, FillValueR8
+real(digits12) :: missingValR8, spvalR8
 
-if ( get_has_missing_value(domid, varid) ) then
-   call  get_missing_value(domid, varid, missing_valueR8)
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missing_valueR8), &
+call get_missing_value(domid, varid, missingValR8)
+if (missingValR8 /= MISSING_R8) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missingValR8), &
                  'nc_write_missing_value_r8','missing_value '//trim(filename))
 endif
-
-if ( get_has_FillValue(domid, varid) ) then
-   call  get_FillValue(domid, varid, FillValueR8)
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',FillValueR8), &
+call get_fillValue(domid, varid, spvalR8)
+if (spvalR8 /= MISSING_R8) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',spvalR8), &
                  'nc_write_missing_value_r8','_FillValue'//trim(filename))
 endif
 
@@ -2059,9 +2043,9 @@ subroutine send_to_waiting_task(state_ens_handle, recv_pe, start, elm_count, blo
 
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
-integer,             intent(in) :: start ! start in variable block on sender.
-integer,             intent(in) :: elm_count ! how many elements
-integer,             intent(in) :: block_size ! size of info on sender - the receiver only
+integer(i8),         intent(in) :: start ! start in variable block on sender.
+integer(i8),         intent(in) :: elm_count ! how many elements
+integer(i8),         intent(in) :: block_size ! size of info on sender - the receiver only
                                               ! gets part of this.
 real(r8),            intent(in) :: variable_block(block_size) ! variable info
 
@@ -2103,8 +2087,8 @@ subroutine send_variables_to_write(state_ens_handle, recv_pe, &
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
 integer,             intent(in) :: ensemble_member
-integer,             intent(in) :: start  ! start in copies array on sender.
-integer,             intent(in) :: finish ! end in copies array on sender
+integer(i8),         intent(in) :: start  ! start in copies array on sender.
+integer(i8),         intent(in) :: finish ! end in copies array on sender
 
 real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
@@ -2141,8 +2125,8 @@ subroutine wait_to_receive(state_ens_handle, recv_pe, &
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,             intent(in)    :: recv_pe ! receiving pe
 integer,             intent(in)    :: ensemble_member
-integer,             intent(in)    :: start  ! start in copies array on sender.
-integer,             intent(in)    :: finish ! end in copies array on sender
+integer(i8),         intent(in)    :: start  ! start in copies array on sender.
+integer(i8),         intent(in)    :: finish ! end in copies array on sender
 
 real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
@@ -2178,9 +2162,9 @@ subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, &
 
 type(ensemble_type), intent(in)    :: state_ens_handle
 integer,             intent(in)    :: sending_pe !! sending_pe
-integer,             intent(in)    :: start      !! start in vars array on receiver.
-integer,             intent(in)    :: elm_count  !! how many elements
-integer,             intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
+integer(i8),         intent(in)    :: start      !! start in vars array on receiver.
+integer(i8),         intent(in)    :: elm_count  !! how many elements
+integer(i8),         intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
 real(r8),            intent(inout) :: variable_block(block_size) !! variable info
 
 real(r8), allocatable :: buffer(:) !! for making send array contiguous
@@ -2216,7 +2200,7 @@ integer,                intent(in) :: timeindex
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
-integer :: istart, iend
+integer(i8) :: istart, iend
 integer :: ivar, jdim
 integer :: ndims
 integer :: ret ! netcdf return code
@@ -2967,9 +2951,9 @@ function num_elements_on_pe(pe, start_rank, block_size) result(elm_count)
 
 integer, intent(in) :: pe
 integer, intent(in) :: start_rank
-integer, intent(in) :: block_size
+integer(i8), intent(in) :: block_size
 
-integer :: elm_count, remainder
+integer(i8) :: elm_count, remainder
 
 elm_count = block_size/task_count()
 remainder = mod(block_size, task_count())
@@ -3024,16 +3008,17 @@ end function find_start_point
 !> replace the netCDF missing_value or _FillValue with
 !> the DART missing value.
 
-subroutine set_dart_missing_value(domain, variable, array)
+subroutine set_dart_missing_value(array, domain, variable)
 
+real(r8), intent(inout) :: array(:)
 integer,  intent(in)    :: domain
 integer,  intent(in)    :: variable
-real(r8), intent(inout) :: array(:)
 
 integer        :: model_missing_valueINT
 real(r4)       :: model_missing_valueR4
 real(digits12) :: model_missing_valueR8
 
+! check to see if variable has missing value attributes
 if ( get_has_missing_value(domain, variable) ) then
 
    select case ( get_xtype(domain, variable) )
@@ -3050,7 +3035,7 @@ if ( get_has_missing_value(domain, variable) ) then
 
 endif
 
-if ( get_has_FillValue(domain, variable) ) then 
+if ( get_has_FillValue(domain, variable) ) then
 
    select case ( get_xtype(domain, variable) )
       case ( NF90_INT )
@@ -3072,11 +3057,11 @@ end subroutine set_dart_missing_value
 !> replace the DART missing value code with the 
 !> original netCDF missing_value (or _FillValue) value.
 
-subroutine set_model_missing_value(domain, variable, array)
+subroutine set_model_missing_value(array, domain, variable)
 
+real(r8), intent(inout) :: array(:)
 integer,  intent(in)    :: domain
 integer,  intent(in)    :: variable
-real(r8), intent(inout) :: array(:)
 
 integer        :: model_missing_valueINT
 real(r4)       :: model_missing_valueR4
@@ -3088,13 +3073,13 @@ if ( get_has_missing_value(domain, variable) ) then
    select case ( get_xtype(domain, variable) )
       case ( NF90_INT )
          call get_missing_value(domain, variable, model_missing_valueINT)
-         where(array == MISSING_R8)       array = model_missing_valueINT
+         where(array == MISSING_R8) array = model_missing_valueINT
       case ( NF90_FLOAT )
          call get_missing_value(domain, variable, model_missing_valueR4)
-         where(array == MISSING_R8)       array = model_missing_valueR4
+         where(array == MISSING_R8) array = model_missing_valueR4
       case ( NF90_DOUBLE )
          call get_missing_value(domain, variable, model_missing_valueR8)
-         where(array == MISSING_R8)       array = model_missing_valueR8
+         where(array == MISSING_R8) array = model_missing_valueR8
    end select
 
 endif

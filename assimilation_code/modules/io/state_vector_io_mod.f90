@@ -37,7 +37,8 @@ use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_f
                                  read_single_file, write_augmented_state, &
                                  initialize_single_file_io, finalize_single_file_io
 
-use types_mod,            only : r8, i4, i8
+
+use types_mod,            only : r8, i4, i8, MISSING_R8
 
 use mpi_utilities_mod,    only : my_task_id, &
                                  broadcast_send, broadcast_recv
@@ -274,7 +275,7 @@ type(file_info_type), intent(in)    :: file_info
 logical,              intent(in)    :: use_time_from_file
 type(time_type),      intent(inout) :: model_time
 
-integer :: dart_index ! where to start in state_ens_handle%copies
+integer(i8) :: dart_index ! where to start in state_ens_handle%copies
 integer :: domain
 type(stage_metadata_type) :: restart_files
 
@@ -312,7 +313,7 @@ subroutine write_restart_direct(state_ens_handle, file_name_handle)
 type(ensemble_type),    intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in) :: file_name_handle
 
-integer :: dart_index !< where to start in state_ens_handle%copies
+integer(i8) :: dart_index !< where to start in state_ens_handle%copies
 integer :: domain !< loop index
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
