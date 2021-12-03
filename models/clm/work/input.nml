@@ -382,7 +382,7 @@
    interp_test_dlat      = 1.0
    interp_test_vertrange = 1.0, 2.0
    interp_test_dvert     = 1.0
-   verbose               = .true.
+   verbose               = .false.
   /
 
 &state_vector_io_nml
