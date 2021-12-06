@@ -71,6 +71,7 @@ integer,  allocatable :: SNLSNO(:)     ! "negative number of snow layers"
 
 real(r8), allocatable :: variable(:,:)
 real(r8)              :: FillValue
+real(r8)              :: missingValue
 
 character(len=512) :: string1, string2
 
@@ -133,6 +134,7 @@ VARIABLES : do ivar = 1,nvariables
          allocate( variable( dimlen(1),dimlen(2) ) )
          call nc_get_variable(ncid, varname, variable)
          call nc_get_attribute_from_variable(ncid,varname,'_FillValue',FillValue)
+         call nc_get_attribute_from_variable(ncid,varname,'missing_value',missingValue)
 
          ! Replace the bogus values for layers we KNOW to be unused.
          ! The SNLSNO has the negative number of snow layers, so ...
@@ -162,7 +164,7 @@ VARIABLES : do ivar = 1,nvariables
                      ! frac_sno(j) seems to be a reliable indicator of a trace of snow
                      if (frac_sno(j) > 0.0_r8 .and. i == nlevsno) cycle
                        
-                     variable(i,j) = FillValue
+                     variable(i,j) = missingValue
             
                 enddo
 
