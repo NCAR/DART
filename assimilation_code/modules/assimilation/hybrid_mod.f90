@@ -265,7 +265,8 @@ real(r8),          intent(in)    :: x, se2, ss2
 real(r8),          intent(in)    :: obs, so2 
 real(r8),          intent(in)    :: rho 
 
-real(r8), parameter :: small_diff = 1.0e-8
+!real(r8), parameter :: small_diff = 1.0e-8
+real(r8), parameter :: small_diff = epsilon(1.0_r8) 
 
 integer  :: k, find_index(1)
 real(r8) :: m, v, d2, ss, Y, Z, Y2, Z2

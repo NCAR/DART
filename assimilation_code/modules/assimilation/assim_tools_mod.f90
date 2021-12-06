@@ -722,7 +722,7 @@ if (do_hybrid .and. hybrid_scaling) then
       obs_err_var = get_obs_def_error_variance(obs_def)
       call get_obs_values(observation, obs, obs_val_index)
   
-      print *, 'obs: ', obs(1), 'var: ', obs_err_var
+      !print *, 'obs: ', obs(1), 'var: ', obs_err_var
 
       call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
 
@@ -753,7 +753,7 @@ if (do_hybrid .and. hybrid_scaling) then
    fs = (sum_d_all - sum_R_all) / sum_B_all
    fs = max(0.0_r8, fs)
 
-   print *, 'scale: ', fs
+   !print *, 'scale: ', fs
   
    stat_ens_handle%copies(1:hybrid_ens_size, :) = sqrt(fs) * & 
                      stat_ens_handle%copies(1:hybrid_ens_size, :)
@@ -774,7 +774,7 @@ endif
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
-   print *, 'obs i: ', i
+   !print *, 'obs i: ', i
 
    if (timing(MLOOP))  call start_timer(t_base(MLOOP))
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
@@ -814,8 +814,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
 
-   print *, 'obs_val: ', obs(1)
-   print *, ''
+   !print *, 'obs_val: ', obs(1)
+   !print *, ''
 
    ! Find out who has this observation and where it is
    call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index) 
@@ -881,20 +881,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! Spatially-constant (correlation is uniform = 1)
                corr_rho = 1.0_r8 
 
-               print *, 'a = ', my_hybrid_weight
+               !print *, 'a = ', my_hybrid_weight
  
                call update_hybrid(my_hybrid_weight, my_hybrid_weight_sd,     &
                         ens_obs_var, hyb_obs_var, obs_err_var, ens_obs_mean, &
                         obs(1), corr_rho)
 
-               print *, 'se2 = ', ens_obs_var
-               print *, 'ss2 = ', hyb_obs_var
-               print *, 'so2 = ', obs_err_var
-               print *, 'd2  = ', (ens_obs_mean - obs(1))**2
-               print *, '' 
-               print *, 'post my_hybrid_weight: ', my_hybrid_weight
-               print *, 'post my_hybrid_weight_sd: ', my_hybrid_weight_sd
-               print *, ''
+               !print *, 'se2 = ', ens_obs_var
+               !print *, 'ss2 = ', hyb_obs_var
+               !print *, 'so2 = ', obs_err_var
+               !print *, 'd2  = ', (ens_obs_mean - obs(1))**2
+               !print *, '' 
+               !print *, 'post my_hybrid_weight: ', my_hybrid_weight
+               !print *, 'post my_hybrid_weight_sd: ', my_hybrid_weight_sd
+               !print *, ''
             endif
          endif
          

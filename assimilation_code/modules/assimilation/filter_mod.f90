@@ -537,8 +537,8 @@ call parse_stages_to_write(stages_to_write)
 num_state_ens_copies = count_state_ens_copies(ens_size, prior_inflate, post_inflate, hybridization)
 num_extras           = num_state_ens_copies - ens_size
 
-print *, 'num_state_ens_copies: ', num_state_ens_copies
-print *, 'num_extras: ', num_extras
+!print *, 'num_state_ens_copies: ', num_state_ens_copies
+!print *, 'num_extras: ', num_extras
 
 ! Observation
 OBS_ERR_VAR_COPY     = ens_size + 1
