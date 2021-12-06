@@ -541,11 +541,10 @@ if(local_ss_inflate) then
 endif
 
 ! Initialize arrays needed for doing MA QCEF filters
-if(state_QCEF_kind > 0) &
-   call init_state_QCEF(ens_size, my_num_obs, my_num_state, &
-      obs_ens_handle%copies(1:ens_size, 1:my_num_obs), ens_handle%copies(1:ens_size, 1:my_num_state), &
-      all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
-      prior_state_index_sort, piece_const_like, my_state_QCEF_kind, num_QCEF_state_vars)
+call init_state_QCEF(ens_size, my_num_obs, my_num_state, &
+   obs_ens_handle%copies(1:ens_size, 1:my_num_obs), ens_handle%copies(1:ens_size, 1:my_num_state), &
+   my_state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
+   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, num_QCEF_state_vars)
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -759,7 +758,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
 
       ! Update the likelihood for this state variable for state space multi-obs
-      if(my_state_QCEF_kind(i) > 0) then
+      if(my_state_QCEF_kind(j) > 0) then
          QCEF_ind = QCEF_ind + 1
          call update_piece_const_like(prior_state_index_sort(:, QCEF_ind), piece_const_like(:, QCEF_ind), &
             orig_obs_likelihood, prior_state_mass(:, QCEF_ind), ens_size, final_factor)
@@ -879,8 +878,9 @@ deallocate(close_state_dist,      &
            my_state_kind,         &
            my_state_loc)
 
-if(state_QCEF_kind > 0) &
-   deallocate(my_state_QCEF_kind)
+! The storage for QCEF in state space
+deallocate(my_state_QCEF_kind)
+if(num_QCEF_state_vars > 0) &
    deallocate(all_my_orig_obs_priors, prior_state_ens, prior_state_mass, &
       prior_sorted_quantiles, prior_state_index_sort, piece_const_like)
 
@@ -2140,7 +2140,7 @@ end subroutine update_piece_const_like
 
 
 subroutine init_state_QCEF(ens_size, num_obs, num_state, obs_ens_in, state_ens_in, &
-   all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
+   state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
    prior_state_index_sort, piece_const_like, my_state_QCEF_kind, num_QCEF_state_vars)
 !-----------------------------------------------------------------------------
 ! Allocates storage for and initializes arrays needed for state space QCEFs
@@ -2148,6 +2148,8 @@ subroutine init_state_QCEF(ens_size, num_obs, num_state, obs_ens_in, state_ens_i
 integer,  intent(in)                 :: ens_size, num_obs, num_state
 real(r8), intent(in)                 :: obs_ens_in(ens_size, num_obs)
 real(r8), intent(in)                 :: state_ens_in(ens_size, num_state)
+! Note that state_kind is not used yet but will be needed for many implementations
+integer,  intent(in)                 :: state_kind(num_state)
 real(r8), allocatable, intent(inout) :: all_my_orig_obs_priors(:, :)
 real(r8), allocatable, intent(inout) :: prior_state_ens(:, :)
 real(r8), allocatable, intent(inout) :: prior_state_mass(:, :)
@@ -2163,9 +2165,24 @@ integer :: i, j, QCEF_ind
 ! my_state_QCEF_kind always has size num_state. Allocate first to keep list of size
 allocate(my_state_QCEF_kind(num_state))
 
-! Default behavior is to have all state variables use namelist selected QCEF_kind
-num_QCEF_state_vars = num_state
-my_state_QCEF_kind = state_QCEF_kind
+! For now, if state_QCEF_kind is 0, don't do any QCEF
+if(state_QCEF_kind == 0) then
+   num_QCEF_state_vars = 0
+   my_state_QCEF_kind = 0
+   return
+endif
+
+! Examples of different selections for QCEF variables
+if(1 == 1) then
+   ! Default behavior is to have all state variables use namelist selected QCEF_kind
+   num_QCEF_state_vars = num_state
+   my_state_QCEF_kind = state_QCEF_kind
+else
+   ! Every other variable gets QCEF from namelist
+   my_state_QCEF_kind = 0
+   my_state_QCEF_kind(1:num_state:2) = state_QCEF_kind
+   num_QCEF_state_vars = num_state / 2
+endif
 
 ! Needed to compute the likelihoods for multi-obs state space QCEFs.
 if(num_QCEF_state_vars > 0) &
