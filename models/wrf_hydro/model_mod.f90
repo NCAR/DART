@@ -534,7 +534,7 @@ character(len=STRINGLENGTH), allocatable, dimension(:) :: datestring
 character(len=STRINGLENGTH)                            :: datestring_scalar
 integer :: year, month, day, hour, minute, second
 integer :: DimID, VarID, strlen, ntimes
-logical :: isLsmFile
+logical :: isLsmFile, isClimFile
 integer :: ncid, io
 
 io = nf90_open(filename, NF90_NOWRITE, ncid)
@@ -542,6 +542,9 @@ call nc_check(io,routine,'open',filename)
 
 ! Test if "Time" is a dimension in the file.
 isLsmFile = nf90_inq_dimid(ncid, 'Time', DimID) == NF90_NOERR
+
+! Test if "time" is a dimension 
+isClimFile = nf90_inq_dimid(ncid, 'time', DimID) /= NF90_NOERR
 
 if(isLsmFile) then ! Get the time from the LSM restart file
 
@@ -576,6 +579,13 @@ if(isLsmFile) then ! Get the time from the LSM restart file
    io = nf90_get_var(ncid, VarID, datestring)
    call nc_check(io, routine, 'get_var','Times',filename)
 
+elseif (isClimFile) then 
+
+   ! Dummy time for static files
+   ntimes = 1
+   allocate(datestring(ntimes))
+   datestring(1) = '1980-01-01_00:00:00'
+
 else ! Get the time from the hydro or parameter file
 
    io = nf90_inquire_attribute(ncid, NF90_GLOBAL, 'Restart_Time', len=strlen)
@@ -587,7 +597,6 @@ else ! Get the time from the hydro or parameter file
    ntimes = 1
    allocate(datestring(ntimes))
    datestring(1) = datestring_scalar
-
 endif
 
 io = nf90_close(ncid)

@@ -90,6 +90,15 @@
    ens_size                     = 8
    num_groups                   = 1
 
+   hyb_flavor                   = 2
+   hyb_ens_size                 = 1000
+   hyb_state_file_list          = 'static_file_list.txt'
+   hyb_scaling                  = .true.
+   hyb_initial_from_restart     = .false.
+   hyb_sd_initial_from_restart  = .false.
+   hyb_weight_initial           = 0.5
+   hyb_weight_sd_initial        = 0.05
+
    inf_flavor                   = 5,           0
    inf_initial_from_restart     = .false.,     .false.
    inf_sd_initial_from_restart  = .false.,     .false.
