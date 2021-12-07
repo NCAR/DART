@@ -747,7 +747,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
          ! Compute the covariance localization and adjust_obs_impact factors (module storage)
-         final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
+            final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
             my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev)
 
             if(final_factor > 0.0_r8) &
@@ -2178,7 +2178,7 @@ real(r8), intent(in) :: cutoff_rev
 
 real(r8) :: impact_factor, cov_factor
 
-! Get external impact factors, cycle if impact of this ob on this state is zerio
+! Get external impact factors, cycle if impact of this ob on this state is zero
 if (adjust_obs_impact) then
    ! Get the impact factor from the table if requested
    impact_factor = obs_impact_table(base_obs_type, state_kind)

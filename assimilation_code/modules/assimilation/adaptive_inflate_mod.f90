@@ -651,7 +651,7 @@ if(inflate_sd < inflate_handle%sd_lower_bound) inflate_sd = inflate_handle%sd_lo
 end subroutine update_inflation
 
 !-------------------------------------------------------------------------------
-!> Computes updatea inflation mean and inflation sd for single state space inflation
+!> Computes updated inflation mean and inflation sd for single state space inflation
 
 subroutine update_single_state_space_inflation(inflate, inflate_mean, inflate_sd, &
    ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
@@ -703,7 +703,7 @@ endif
 end subroutine update_single_state_space_inflation
 
 !-------------------------------------------------------------------------------
-!> Computes updatea inflation mean and inflation sd for varying state space inflation
+!> Computes updated inflation mean and inflation sd for varying state space inflation
 
 subroutine update_varying_state_space_inflation(inflate, inflate_mean, inflate_sd, &
    ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
