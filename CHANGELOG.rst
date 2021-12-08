@@ -22,12 +22,65 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**August 10 2021 :: Documentation and GitHub template update**
+**December 7 2021 :: Refactored filter_assim. Tag: v9.12.0**
+
+- Filter_assim refactored so each process calcuates increments
+- Code readability changes 
+
+**November 22 2021 :: Bug fix for groups with posterior spatially-varying adaptive inflation. Tag: v9.11.13**
+
+- Removed the additional outlier threshold test for each group when using posterior 
+  spatially-varying adaptive inflation. The outlier test is done for the entire ensemble
+  when the posterior forward operators are computed.
+
+**October 27 2021 :: Observation converter documentation update. Tag: v9.11.12**
+
+- Improved documentation for radar observation converters
+
+**September 30 2021 :: Bug fix for very large models. Tag v9.11.11**
+
+- mpi_utilties_mod using correct check for message length > SNDRCV_MAXSIZE
+- new developers test for large message sizes
+- State vector IO updated to use i8 for state indexing
+- WRF model_mod now using i8  
+
+**September 21 2021 :: Bug fix for perfect_model_obs. Tag v9.11.10**
+
+- perfect_model_obs now exits cleanly when no filenames are given
+  for the input_state_files or output_state_files namelist options. 
+
+**August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
+
+*removed obsolete code:*
+
+- cam-old
+- restart_file_tool
+- html boilerplate from pre-readthedocs documentation
+- null versions of clamp_mod and vert_convert_mod
+- io test harnesses
+- jekyll website
+
+*removed experimental code:*
+
+- pnetcdf (for restart files)
+- filter.separate_seq (split obs_seq across cores)
+
+**August 26 2021 :: NAG compiler fixes and updates to developer tests Tag: v9.11.8**
+
+- bug fix for fixsytem for the NAG compiler
+- new developer test for mpi one-sided communication
+- removed obsolete async 4 developer tests 
+
+**August 19 2021 :: WRF-Hydro diagnostics Tag: v9.11.7**
+
+- Improved DART diagnostic routines for WRF-Hydro
+
+**August 10 2021 :: Documentation and GitHub template update Tag: v9.11.6**
 
 - External forward operator documentation
 - Typo fixes for GitHub templates 
 
-**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x**
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x Tag: v9.11.5**
 
 - obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
 - grabbufr.x STAT function returns correctly for long filenames when using PGI

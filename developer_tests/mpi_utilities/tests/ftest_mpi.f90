@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program ftest_mpi
 
@@ -12,37 +10,48 @@ program ftest_mpi
 ! returns 0 as the error code, there is a good chance the compile and
 ! link phase did not succeed.
 
-! The following 2 build tips are the 2 places where different installations
-! of MPI seem to vary the most.  Some systems have an include file, some
-! have a F90 module.  Some require an interface block to use the system()
-! function, some give an error if it is here.   You can use this program
-! to figure out which combinations work on your system.  Then go into the
-! $DART/mpi_utilities and make the same two changes in mpi_utilities_mod.f90,
-! and just the system() change (if needed) in null_mpi_utilities_mod.f90.
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! BUILD TIP 1:
 ! Most fortran MPI implementations provide either a fortran 90 module
 ! which defines the interfaces to the MPI library routines, or an include
 ! file which defines constants.  Try to use the module if it is available.
 
 use mpi
 
+! the NAG compiler needs these special definitions enabled
+! the 'fixsystem' script in the assimilation_code/modules/utilities dir
+! should fix this for you.  please leave the BLOCK comment lines unchanged.
+
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+! !#ifdef __NAG__
+! use F90_unix_proc, only : sleep, system, exit
+! !! these are the calling sequences for NAG compiler
+! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
+! !    INTEGER,INTENT(IN) :: SECONDS
+! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
+! !
+! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
+! !    CHARACTER*(*),INTENT(IN) :: STRING
+! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
+! !
+! !!also used in exit_all outside this module
+! !  SUBROUTINE EXIT(STATUS)
+! !    INTEGER,OPTIONAL :: STATUS
+! !! end block
+!  !#endif
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+
 implicit none
 
 !include "mpif.h"
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! BUILD TIP 2:
-! Some systems require this interface block in order to use the system()
-! function.  However, some other systems complain if this is here... 
-! If this is a problem your program will not link and most likely give 
-! you an error about an undefined symbol (something like '_system_').  
-! Comment this block in or out as needed.
+! interface block for getting return code back from system() routine
+! the 'fixsystem' script in the assimilation_code/modules/utilities dir
+! should fix this for you.  please leave the BLOCK comment lines unchanged.
 
+
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
 ! ! interface block for getting return code back from system() routine
 ! interface
 !  function system(string)
@@ -51,8 +60,9 @@ implicit none
 !  end function system
 ! end interface
 ! ! end block
+! !#endif
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 ! integer variables
@@ -89,8 +99,10 @@ integer :: ierror, myrank, totalprocs, rc
 
    ! This is not really an MPI test, but we do use the system() function to
    ! start model advances in async=2 and async=4 modes, and to get this
-   ! program to compile may involve editing the mpi_utilities module in dart.
-   rc = system("echo hello world " // char(0))
+   ! program to compile may involve updating the fixsystem script and/or
+   ! the mpi_utilities_mod.f90 for new compilers.
+   call do_system("echo hello world", rc)
+   if (rc /= 0) print *, 'call to system() returned error'
 
    ierror = -999
    call MPI_Finalize(ierror)
@@ -102,10 +114,31 @@ integer :: ierror, myrank, totalprocs, rc
    print *, "All MPI calls succeeded, test passed."
    print *, "program end"
 
+contains
+
+!> wrapper so you only have to make this work in a single place
+!> 'shell_name' is a namelist item and normally is the null string.
+!> on at least on cray system, the compute nodes only had one type
+!> of shell and you had to specify it.
+
+subroutine do_system(execute, rc)
+
+character(len=*), intent(in)  :: execute
+integer,          intent(out) :: rc
+
+! fill this in if an explicit shell name is required by your system
+character(len=32) :: shell_name = ''
+
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+! !!OTHER_BLOCK_EDIT START COMMENTED_IN
+    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
+! !!OTHER_BLOCK_EDIT END COMMENTED_IN
+
+end subroutine do_system
+
+
+
 end program ftest_mpi
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -48,7 +48,7 @@ use         location_mod, only : location_type, get_close_type, query_location, 
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             &
                                  compute_copy_mean_var, get_var_owner_index,              &
-                                 prepare_to_update_copies, map_pe_to_task
+                                 map_pe_to_task
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              &
                                  sum_across_tasks, task_count, start_mpi_timer,           &
@@ -56,7 +56,8 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
-                                 update_inflation,                                        &
+                                 update_inflation, update_single_state_space_inflation,   &
+                                 update_varying_state_space_inflation,                    &
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
@@ -76,7 +77,7 @@ private
 public :: filter_assim, &
           set_assim_tools_trace, &
           test_state_copies, &
-          update_ens_from_weights  ! Jeff thinks this routine is in the wild.
+          update_ens_from_weights
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
@@ -92,7 +93,6 @@ integer                :: num_types = 0
 real(r8), allocatable  :: cutoff_list(:)
 logical                :: has_special_cutoffs
 logical                :: close_obs_caching = .true.
-real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaNs/Inf
 
 ! true if we have multiple vert choices and we're doing vertical localization
 ! (make it a local variable so we don't keep making subroutine calls)
@@ -308,6 +308,10 @@ type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
 integer,                     intent(in)    :: ens_size, num_groups, obs_val_index
+! JLA: At present, this only needs to be inout because of the possible use of
+! non-determinstic obs_space adaptive inflation that is not currently supported.
+! Implementing that would require communication of the info about the inflation
+! values as each observation updated them.
 type(adaptive_inflate_type), intent(inout) :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
 integer,                     intent(in)    :: ENS_INF_SD_COPY
@@ -318,17 +322,13 @@ logical,                     intent(in)    :: inflate_only
 
 ! changed the ensemble sized things here to allocatable
 
-real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
-real(r8) :: reg_factor, impact_factor
-real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
-real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
-real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
-real(r8) :: ss_inflate_base, obs_qc, cutoff_rev, cutoff_orig
-real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
-real(r8) :: r_mean, r_var
+real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
+real(r8) :: final_factor
+real(r8) :: net_a(num_groups), correl(num_groups)
+real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
+real(r8) :: obs_qc, cutoff_rev, cutoff_orig
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
-real(r8) :: diff_sd, outlier_ratio
 real(r8) :: vertvalue_obs_in_localization_coord, whichvert_real
 real(r8), allocatable :: close_obs_dist(:)
 real(r8), allocatable :: close_state_dist(:)
@@ -343,13 +343,12 @@ integer :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer :: obs_mean_index, obs_var_index
 integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer :: num_close_obs, obs_index, num_close_states
-integer :: total_num_close_obs, last_num_close_obs, last_num_close_states
+integer :: last_num_close_obs, last_num_close_states
 integer :: base_obs_kind, base_obs_type, nth_obs
 integer :: num_close_obs_cached, num_close_states_cached
 integer :: num_close_obs_calls_made, num_close_states_calls_made
-integer :: localization_unit, secs, days, rev_num_close_obs
 integer :: whichvert_obs_in_localization_coord
-integer :: istatus
+integer :: istatus, localization_unit
 integer, allocatable :: close_obs_ind(:)
 integer, allocatable :: close_state_ind(:)
 integer, allocatable :: last_close_obs_ind(:)
@@ -359,8 +358,6 @@ integer, allocatable :: my_obs_type(:)
 integer, allocatable :: my_state_kind(:)
 integer, allocatable :: vstatus(:)
 
-character(len = 200) :: base_loc_text   ! longer than longest location formatting possible
-
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
 type(location_type)  :: dummyloc
 type(location_type), allocatable :: my_obs_loc(:)
@@ -369,57 +366,13 @@ type(location_type), allocatable :: my_state_loc(:)
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
-type(time_type)      :: obs_time, this_obs_time
+type(time_type)      :: obs_time
 
-logical :: do_adapt_inf_update
 logical :: allow_missing_in_state
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
-
-! timing related vars:
-! set timing(N) true to collect and print timing info
-integer, parameter :: Ntimers = 5
-integer, parameter :: MLOOP  = 1  ! main assimilation loop
-integer, parameter :: LG_GRN = 2  ! large section timings
-integer, parameter :: SM_GRN = 3  ! inner loops - use carefully!
-integer, parameter :: GC     = 4  ! get_close() related loops
-logical        :: timing(Ntimers)   ! enable or disable w/ this
-real(digits12) :: t_base(Ntimers)   ! storage for time info
-integer(i8)    :: t_items(Ntimers)  ! count of number of calls
-integer(i8)    :: t_limit(Ntimers)  ! limit on number printed
-real(digits12), allocatable :: elapse_array(:)
-
-integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
-
-! timing disabled by default
-timing(:)  = .false.
-t_base(:)  = 0.0_r8
-t_items(:) = 0_i8
-t_limit(:) = 0_i8
-
-! how about this?  look for imbalances in the tasks
-allocate(n_close_state_items(obs_ens_handle%num_vars), &
-         n_close_obs_items(  obs_ens_handle%num_vars))
-
-! turn these on carefully - they can generate a lot of output!
-! also, to be readable - at least with ifort:
-!  setenv FORT_FMT_RECL 1024
-! so output lines don't wrap.
-
-!timing(MLOOP)  = .true.
-!timing(LG_GRN) = .true.
-
-if (timing(MLOOP)) allocate(elapse_array(obs_ens_handle%num_vars))
-
-! use maxitems limit here or drown in output.
-!timing(SM_GRN) = .false.
-!t_limit(SM_GRN) = 4_i8
-
-!timing(GC) = .true.
-!t_limit(GC) = 4_i8
-
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -440,10 +393,6 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
          my_state_kind(        ens_handle%my_num_vars), &
          my_state_loc(         ens_handle%my_num_vars))
 ! end alloc
-
-! we are going to read/write the copies array
-call prepare_to_update_copies(ens_handle)
-call prepare_to_update_copies(obs_ens_handle)
 
 ! Initialize assim_tools_module if needed
 if (.not. module_initialized) call assim_tools_init()
@@ -469,10 +418,9 @@ if (sort_obs_inc) then
    endif
 endif
 
-!GSR open the dignostics file
-if(output_localization_diagnostics .and. my_task_id() == 0) then
+! Open the localization diagnostics file
+if(output_localization_diagnostics .and. my_task_id() == 0) &
   localization_unit = open_file(localization_diagnostics_file, action = 'append')
-endif
 
 ! For performance, make local copies of these settings which
 ! are really in the inflate derived type.
@@ -534,7 +482,6 @@ call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_o
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    if (obs_ens_handle%my_num_vars > 0) then
       call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
                                 my_obs_kind, my_obs_type, get_vertical_localization_coord(), vstatus)
@@ -545,7 +492,6 @@ if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
          endif
       enddo
    endif 
-   if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_obs')
 endif
 
 ! Get info on my number and indices for state
@@ -553,27 +499,17 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state_indx)
 
 ! Get the location and kind of all my state variables
-if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
-if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'get_state_meta_data')
-
-!call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    if (ens_handle%my_num_vars > 0) then
       call convert_vertical_state(ens_handle, ens_handle%my_num_vars, my_state_loc, my_state_kind,  &
                                   my_state_indx, get_vertical_localization_coord(), istatus)
    endif
-   if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_state')
 endif
-
-! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING
-! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
-! BEFORE EACH INCREMENT.
 
 ! Get mean and variance of each group's observation priors for adaptive inflation
 ! Important that these be from before any observations have been used
@@ -585,8 +521,6 @@ if(local_ss_inflate) then
            obs_mean_index, obs_var_index)
    end do
 endif
-
-! The computations in the two get_close_maxdist_init are redundant
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -622,18 +556,8 @@ endif
 
 allow_missing_in_state = get_missing_ok_status()
 
-! use MLOOP for the overall outer loop times; LG_GRN is for
-! sections inside the overall loop, including the total time
-! for the state_update and obs_update loops.  use SM_GRN for
-! sections inside those last 2 loops and be careful - they will
-! be called nobs * nstate * ntasks.
-
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
-
-   if (timing(MLOOP))  call start_timer(t_base(MLOOP))
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
-
    ! Some compilers do not like mod by 0, so test first.
    if (print_every_nth_obs > 0) nth_obs = mod(i, print_every_nth_obs)
 
@@ -682,192 +606,78 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
       obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
+
       ! Only value of 0 for DART QC field should be assimilated
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
-
-         ! Compute the prior mean and variance for this observation
+         ! Note that these are before DA starts, so can be different from current obs_prior
          orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
-
-         ! Compute observation space increments for each group
-         do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-               obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
-               my_inflate_sd, net_a(group))
-         end do
-
-         ! Compute updated values for single state space inflation
-         SINGLE_SS_INFLATE: if(local_single_ss_inflate) then
-            ss_inflate_base = ens_handle%copies(ENS_SD_COPY, 1)
-            ! Update for each group separately
-            do group = 1, num_groups
-               ! If either inflation or sd is not positive, not really doing inflation
-               if(my_inflate > 0.0_r8 .and. my_inflate_sd > 0.0_r8) then
-                  ! For case with single spatial inflation, use gamma = 1.0_r8
-                  ! See adaptive inflation module for details
-                  gamma = 1.0_r8
-                  ! Deflate the inflated variance; required for efficient single pass
-                  ! This is one of many places that assumes linear state/obs relation
-                  ! over range of ensemble; Essentially, we are removing the inflation
-                  ! which has already been applied in filter to see what inflation should
-                  ! have been needed.
-                  ens_obs_mean = orig_obs_prior_mean(group)
-                  ens_obs_var = orig_obs_prior_var(group)
-                  ! gamma is hardcoded as 1.0, so no test is needed here.
-                  ens_var_deflate = ens_obs_var / &
-                     (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
-
-                  ! If this is inflate_only (i.e. posterior) remove impact of this obs.
-                  ! This is simulating independent observation by removing its impact.
-                  if(inflate_only .and. &
-                        ens_var_deflate               > small .and. &
-                        obs_err_var                   > small .and. &
-                        obs_err_var - ens_var_deflate > small ) then
-                     r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                     r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
-                  else
-                     r_var = ens_var_deflate
-                     r_mean = ens_obs_mean
-                  endif
-
-                  if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-                  ! Update the inflation value
-                  call update_inflation(inflate, my_inflate, my_inflate_sd, &
-                     r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
-                  if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_inflation_C', &
-                                                      t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-               endif
-            end do
-         endif SINGLE_SS_INFLATE
-
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
-      ! What gets broadcast depends on what kind of inflation is being done
-      !>@todo it should also depend on if vertical is being converted.  the last
-      !>two values aren't needed unless vertical conversion is happening.
-      !>@todo FIXME: this is messy, but should we have 6 different broadcasts,
-      !>the three below and three more which omit the 2 localization values?
-      !>how much does this cost in time? time this and see.
+      ! orig_obs_prior_mean and orig_obs_prior_var only used with adaptive inflation
+      ! my_inflate and my_inflate_sd only used with single state space inflation
+      ! vertvalue_obs_in_localization_coord and whichvert_real only used for vertical
+      ! coordinate transformation
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
-      if(local_varying_ss_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
-            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-
-      else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
-           scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
-      else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, scalar1=obs_qc, &
-           scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      endif
+      call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
+         orig_obs_prior_mean, orig_obs_prior_var,                          &
+         scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
+         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
    else
-      ! I don't store this obs; receive the obs prior and increment from broadcast
-      ! Also get qc and inflation information if needed
-      ! also a converted vertical coordinate if needed
-      !>@todo FIXME see the comment in the broadcast_send() section about
-      !>the cost of sending unneeded values
-      if(local_varying_ss_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
-            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
-            scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
-      else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, scalar1=obs_qc, &
-           scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
-      endif
+      call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
+         orig_obs_prior_mean, orig_obs_prior_var,                          & 
+         scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
+         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
 
    endif
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
-   if(nint(obs_qc) /= 0) then
-      if (timing(MLOOP)) then
-         write(msgstring, '(A32,I7)') 'sequential obs cycl: obs', keys(i)
-         call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
-      endif
-      cycle SEQUENTIAL_OBS
-   endif
+   if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
 
    !> all tasks must set the converted vertical values into the 'base' version of this loc
    !> because that's what we pass into the get_close_xxx() routines below.
    if (is_doing_vertical_conversion) &
       call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
-   
-   ! Can compute prior mean and variance of obs for each group just once here
+
+   ! Compute observation space increments for each group
    do group = 1, num_groups
-      grp_bot = grp_beg(group)
-      grp_top = grp_end(group)
+      grp_bot = grp_beg(group); grp_top = grp_end(group)
+      call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
+         obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
+         my_inflate_sd, net_a(group))
+
+      ! Also compute prior mean and variance of obs for efficiency here
       obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
       obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
          (grp_size - 1)
       if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
    end do
 
-   ! If we are doing adaptive localization then we need to know the number of
-   ! other observations that are within the localization radius.  We may need
-   ! to shrink it, and so we need to know this before doing get_close() for the
-   ! state space (even though the state space increments will be computed and
-   ! applied first).
-
-   !******************************************
-
-
-   if (.not. close_obs_caching) then
-      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
-      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
-                         my_obs_loc, my_obs_kind, my_obs_type, &
-                         num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-      if (timing(GC)) then
-         write(msgstring, '(A32,3I7)') 'gc_ob_NC:nobs,tot,obs# ', num_close_obs, obs_ens_handle%my_num_vars, keys(i)
-         call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-      endif
-
-   else
-
-      if (base_obs_loc == last_base_obs_loc) then
-         num_close_obs     = last_num_close_obs
-         close_obs_ind(:)  = last_close_obs_ind(:)
-         close_obs_dist(:) = last_close_obs_dist(:)
-         num_close_obs_cached = num_close_obs_cached + 1
-      else
-         if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
-         call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
-                            my_obs_loc, my_obs_kind, my_obs_type, &
-                            num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-         if (timing(GC)) then
-            write(msgstring, '(A32,3I7)') 'gc_ob_C: nobs,tot,obs# ', num_close_obs, obs_ens_handle%my_num_vars, keys(i)
-            call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-         endif
-
-         last_base_obs_loc      = base_obs_loc
-         last_num_close_obs     = num_close_obs
-         last_close_obs_ind(:)  = close_obs_ind(:)
-         last_close_obs_dist(:) = close_obs_dist(:)
-         num_close_obs_calls_made = num_close_obs_calls_made +1
-      endif
+   ! Compute updated values for single state space inflation
+   if(local_single_ss_inflate) then
+      ! Update for each group separately
+      do group = 1, num_groups
+         call update_single_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
+            ens_handle%copies(ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
+            orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
+      end do
    endif
-
-   n_close_obs_items(i) = num_close_obs
-    !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
-    !call test_close_obs_dist(close_obs_dist, num_close_obs, i)
-    !print*, 'num close ', num_close_obs
+  
+   ! Adaptive localization needs number of other observations within localization radius.
+   ! Do get_close_obs first, even though state space increments are computed before obs increments.
+   call  get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type,      &
+      my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
+      ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
+      last_close_obs_dist, num_close_obs_cached, num_close_obs_calls_made)
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -879,352 +689,76 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       cutoff_orig = cutoff
    endif
 
-   cutoff_rev = cutoff_orig
+   ! JLA, could also cache for adaptive_localization which may be expensive?
+   call adaptive_localization_and_diags(cutoff_orig, cutoff_rev, adaptive_localization_threshold, &
+      adaptive_cutoff_floor, num_close_obs, close_obs_ind, close_obs_dist, my_obs_type, &
+      i, base_obs_loc, obs_def, localization_unit)
 
-   ! For adaptive localization, need number of other obs close to the chosen observation
-   if(adaptive_localization_threshold > 0) then
-
-      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
-
-      ! this does a cross-task sum, so all tasks must make this call.
-      total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
-                                        close_obs_dist, cutoff_rev*2.0_r8)
-      if (timing(GC)) call read_timer(t_base(GC), 'count_close', t_items(GC), t_limit(GC), do_sync=.false.)
-
-
-      ! Want expected number of close observations to be reduced to some threshold;
-      ! accomplish this by cutting the size of the cutoff distance.
-      if(total_num_close_obs > adaptive_localization_threshold) then
-
-         cutoff_rev = revised_distance(cutoff_rev*2.0_r8, adaptive_localization_threshold, &
-                                       total_num_close_obs, base_obs_loc, &
-                                       adaptive_cutoff_floor*2.0_r8) / 2.0_r8
-
-         if ( output_localization_diagnostics ) then
-
-            ! to really know how many obs are left now, you have to
-            ! loop over all the obs, again, count how many kinds are
-            ! going to be assim, and explicitly check the distance and
-            ! see if it's closer than the new cutoff ( times 2 ), and
-            ! then do a global sum to get the total.  since this costs,
-            ! do it only when diagnostics are requested.
-
-            ! this does a cross-task sum, so all tasks must make this call.
-            rev_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
-                                              close_obs_dist, cutoff_rev*2.0_r8)
-
-
-            ! GSR output the new cutoff
-            ! Here is what we might want:
-            ! time, ob index #, ob location, new cutoff, the assimilate obs count, owner (which process has this ob)
-            ! obs_time, obs_val_index, base_obs_loc, cutoff_rev, total_num_close_obs, owner
-            ! break up the time into secs and days, and break up the location into lat, lon and height
-            ! nsc - the min info here that can't be extracted from the obs key is:
-            !  key (obs#), total_num_close_obs (close w/ original cutoff), revised cutoff & new count
-            if (my_task_id() == 0) then
-               call get_obs_def(observation, obs_def)
-               this_obs_time = get_obs_def_time(obs_def)
-               call get_time(this_obs_time,secs,days)
-               call write_location(-1, base_obs_loc, charstring=base_loc_text)
-
-               write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,2(f14.5,1x,i12))') i, secs, days, &
-                     trim(base_loc_text), cutoff_orig, total_num_close_obs, cutoff_rev, rev_num_close_obs
-            endif
-         endif
-
-      endif
-
-   else if (output_localization_diagnostics) then
-
-      ! if you aren't adapting but you still want to know how many obs are within the
-      ! localization radius, set the diag output.  this could be large, use carefully.
-
-      ! this does a cross-task sum, so all tasks must make this call.
-      total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
-                                        close_obs_dist, cutoff_rev*2.0_r8)
-
-      if (my_task_id() == 0) then
-         call get_obs_def(observation, obs_def)
-         this_obs_time = get_obs_def_time(obs_def)
-         call get_time(this_obs_time,secs,days)
-         call write_location(-1, base_obs_loc, charstring=base_loc_text)
-
-         write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,f14.5,1x,i12)') i, secs, days, &
-               trim(base_loc_text), cutoff_rev, total_num_close_obs
-      endif
-   endif
-
-   ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
-   if (.not. close_obs_caching) then
-      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
-      call get_close_state(gc_state, base_obs_loc, base_obs_type, &
-                           my_state_loc, my_state_kind, my_state_indx, &
-                           num_close_states, close_state_ind, close_state_dist, ens_handle)
-      if (timing(GC)) then
-         write(msgstring, '(A32,3I7)') 'gc_st_NC:nsts,tot,obs# ', num_close_states, ens_handle%my_num_vars, keys(i)
-         call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-      endif
-   else
-      if (base_obs_loc == last_base_states_loc) then
-         num_close_states    = last_num_close_states
-         close_state_ind(:)  = last_close_state_ind(:)
-         close_state_dist(:) = last_close_state_dist(:)
-         num_close_states_cached = num_close_states_cached + 1
-      else
-         if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
-         call get_close_state(gc_state, base_obs_loc, base_obs_type, &
-                              my_state_loc, my_state_kind, my_state_indx, &
-                              num_close_states, close_state_ind, close_state_dist, ens_handle)
-         if (timing(GC)) then
-            write(msgstring, '(A32,3I7)') 'gc_st_C: nsts,tot,obs# ', num_close_states, ens_handle%my_num_vars, keys(i)
-            call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
-         endif
-
-         last_base_states_loc     = base_obs_loc
-         last_num_close_states    = num_close_states
-         last_close_state_ind(:)  = close_state_ind(:)
-         last_close_state_dist(:) = close_state_dist(:)
-         num_close_states_calls_made = num_close_states_calls_made + 1
-      endif
-   endif
-
-   n_close_state_items(i) = num_close_states
-   !print*, 'num close state', num_close_states
+   call  get_close_state_cached(gc_state, base_obs_loc, base_obs_type,      &
+      my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
+      ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
+      last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
-   !call test_state_copies(ens_handle, 'beforeupdates')
-
-   if (timing(LG_GRN)) then
-      write(msgstring, '(A32,I7)') 'before_state_update: obs', keys(i)
-      call read_timer(t_base(LG_GRN), msgstring)
-   endif
 
    ! Loop through to update each of my state variables that is potentially close
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      ! the "any" is an expensive test when you do it for every ob.  don't test
-      ! if we know there aren't going to be missing values in the state.
       if ( allow_missing_in_state ) then
-         ! Some models can take evasive action if one or more of the ensembles have
-         ! a missing value. Generally means 'do nothing' (as opposed to DIE)
+         ! Don't allow update of state ensemble with any missing values
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
       endif
 
-      ! Get the initial values of inflation for this variable if state varying inflation
-      if(local_varying_ss_inflate) then
-         varying_ss_inflate    = ens_handle%copies(ENS_INF_COPY,    state_index)
-         varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
-      else
-         varying_ss_inflate    = 0.0_r8
-         varying_ss_inflate_sd = 0.0_r8
-      endif
+      ! Compute the covariance localization and adjust_obs_impact factors (module storage)
+      final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_state_loc(state_index), &
+         my_state_kind(state_index), close_state_dist(j), cutoff_rev)
 
-      ! Compute the distance and covariance factor
-      cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
-         base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
-
-      ! if external impact factors supplied, factor them in here
-      ! FIXME: this would execute faster for 0.0 impact factors if
-      ! we check for that before calling comp_cov_factor.  but it makes
-      ! the logic more complicated - this is simpler if we do it after.
-      if (adjust_obs_impact) then
-         impact_factor = obs_impact_table(base_obs_type, my_state_kind(state_index))
-         cov_factor = cov_factor * impact_factor
-      endif
-
-      ! If no weight is indicated, no more to do with this state variable
-      if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
-
-      if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-      ! Loop through groups to update the state variable ensemble members
-      do group = 1, num_groups
-         grp_bot = grp_beg(group)
-         grp_top = grp_end(group)
-         ! Do update of state, correl only needed for varying ss inflate
-         if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. &
-            varying_ss_inflate_sd > 0.0_r8) then
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-               increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
-         else
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-               increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-         endif
-      end do
-      if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_S', &
-                                          t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-
-      ! Compute an information factor for impact of this observation on this state
-      if(num_groups == 1) then
-          reg_factor = 1.0_r8
-      else
-         ! Pass the time along with the index for possible diagnostic output
-         ! Compute regression factor for this obs-state pair
-         reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state_indx(state_index))
-      endif
-
-      ! The final factor is the minimum of group regression factor and localization cov_factor
-      reg_factor = min(reg_factor, cov_factor)
-
-!PAR NEED TO TURN STUFF OFF MORE EFFICEINTLY
-      ! If doing full assimilation, update the state variable ensemble with weighted increments
-      if(.not. inflate_only) then
-         ens_handle%copies(1:ens_size, state_index) = &
-            ens_handle%copies(1:ens_size, state_index) + reg_factor * increment
-      endif
+      if(final_factor <= 0.0_r8) cycle STATE_UPDATE
+      
+      call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+         my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+         obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+         net_a, grp_size, grp_beg, grp_end, i, &
+         my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate) then
-         ! base is the initial inflate value for this state variable
-         ss_inflate_base = ens_handle%copies(ENS_SD_COPY, state_index)
-         ! Loop through each group to update inflation estimate
-         GroupInflate: do group = 1, num_groups
-            if(varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
-               ! Gamma is less than 1 for varying ss, see adaptive inflate module
-               gamma = reg_factor * abs(correl(group))
-               ! Deflate the inflated variance using the INITIAL state inflate
-               ! value (before these obs started gumming it up).
-               ens_obs_mean = orig_obs_prior_mean(group)
-               ens_obs_var =  orig_obs_prior_var(group)
-
-               ! Remove the impact of inflation to allow efficient single pass with assim.
-               if ( abs(gamma) > small ) then
-                  ens_var_deflate = ens_obs_var / &
-                     (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
-               else
-                  ens_var_deflate = ens_obs_var
-               endif
-
-               ! If this is inflate only (i.e. posterior) remove impact of this obs.
-               if(inflate_only .and. &
-                     ens_var_deflate               > small .and. &
-                     obs_err_var                   > small .and. &
-                     obs_err_var - ens_var_deflate > small ) then
-                  r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                  r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
-               else
-                  r_var = ens_var_deflate
-                  r_mean = ens_obs_mean
-               endif
-
-               ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
-               ! Update the inflation values
-               if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-               call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
-                  r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
-               if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_inflation_V', &
-                                                   t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-            else
-               ! if we don't go into the previous if block, make sure these
-               ! have good values going out for the block below
-               r_mean = orig_obs_prior_mean(group)
-               r_var =  orig_obs_prior_var(group)
-            endif
-
-            ! Update adaptive values if posterior outlier_ratio test doesn't fail.
-            ! Match code in obs_space_diags() in filter.f90
-            do_adapt_inf_update = .true.
-            if (inflate_only) then
-               diff_sd = sqrt(obs_err_var + r_var)
-               if (diff_sd > 0.0_r8) then
-                  outlier_ratio = abs(obs(1) - r_mean) / diff_sd
-                  do_adapt_inf_update = (outlier_ratio <= 3.0_r8)
-               endif
-            endif
-            if (do_adapt_inf_update) then
-               ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
-               ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
-            endif
-         end do GroupInflate
-      endif
-
-   end do STATE_UPDATE
-   if (timing(LG_GRN)) then
-      write(msgstring, '(A32,I7)') 'state_update: obs', keys(i)
-      call read_timer(t_base(LG_GRN), msgstring)
-   endif
-
-   !call test_state_copies(ens_handle, 'after_state_updates')
-
-   !------------------------------------------------------
-
-   ! Now everybody updates their obs priors (only ones after this one)
-   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
-   OBS_UPDATE: do j = 1, num_close_obs
-      obs_index = close_obs_ind(j)
-
-      ! Only have to update obs that have not yet been used
-      if(my_obs_indx(obs_index) > i) then
-
-         ! If the forward observation operator failed, no need to
-         ! update the unassimilated observations
-         if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
-
-         ! Compute the distance and the covar_factor
-         cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev, &
-            base_obs_loc, base_obs_type, my_obs_loc(obs_index), my_obs_kind(obs_index))
-
-         ! if external impact factors supplied, factor them in here
-         ! FIXME: this would execute faster for 0.0 impact factors if
-         ! we check for that before calling comp_cov_factor.  but it makes
-         ! the logic more complicated - this is simpler if we do it after.
-         if (adjust_obs_impact) then
-            impact_factor = obs_impact_table(base_obs_type, my_obs_kind(obs_index))
-            cov_factor = cov_factor * impact_factor
-         endif
-
-         if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
-
-         if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-         ! Loop through and update ensemble members in each group
          do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-                obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
-                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+            call update_varying_state_space_inflation(inflate,                     &
+               ens_handle%copies(ENS_INF_COPY, state_index),                       &
+               ens_handle%copies(ENS_INF_SD_COPY, state_index),                    &
+               ens_handle%copies(ENS_SD_COPY, state_index),                        &
+               orig_obs_prior_mean(group), orig_obs_prior_var(group), obs(1),      &
+               obs_err_var, grp_size, final_factor, correl(group), inflate_only)
          end do
-         if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_O', &
-                                             t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-
-         ! FIXME: could we move the if test for inflate only to here?
-
-         ! Compute an information factor for impact of this observation on this state
-         if(num_groups == 1) then
-             reg_factor = 1.0_r8
-         else
-            ! Pass the time along with the index for possible diagnostic output
-            ! Compute regression factor for this obs-state pair
-            ! Negative indicates that this is an observation index
-            reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, -1*my_obs_indx(obs_index))
-         endif
-
-         ! Final weight is min of group and localization factors
-         reg_factor = min(reg_factor, cov_factor)
-
-         ! Only update state if indicated (otherwise just getting inflation)
-         if(.not. inflate_only) then
-            obs_ens_handle%copies(1:ens_size, obs_index) = &
-              obs_ens_handle%copies(1:ens_size, obs_index) + reg_factor * increment
-         endif
       endif
-   end do OBS_UPDATE
-   if (timing(LG_GRN)) then
-      write(msgstring, '(A32,I7)') 'obs_update: obs', keys(i)
-      call read_timer(t_base(LG_GRN), msgstring)
-   endif
+   end do STATE_UPDATE
 
-   !call test_state_copies(ens_handle, 'after_obs_updates')
+   if(.not. inflate_only) then
+      ! Now everybody updates their obs priors (only ones after this one)
+      OBS_UPDATE: do j = 1, num_close_obs
+         obs_index = close_obs_ind(j)
 
-   if (timing(MLOOP)) then
-      write(msgstring, '(A32,I7)') 'sequential obs loop: obs', keys(i)
-      call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
+         ! Only have to update obs that have not yet been used
+         if(my_obs_indx(obs_index) > i) then
+
+            ! If forward observation operator failed, no need to update unassimilated observations
+            if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
+
+         ! Compute the covariance localization and adjust_obs_impact factors (module storage)
+            final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
+            my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev)
+
+            if(final_factor <= 0.0_r8) cycle OBS_UPDATE
+
+            call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+               my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+               net_a, grp_size, grp_beg, grp_end, i, &
+               -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+         endif
+      end do OBS_UPDATE
    endif
 end do SEQUENTIAL_OBS
 
@@ -1239,44 +773,13 @@ call destroy_obs(observation)
 call get_close_destroy(gc_state)
 call get_close_destroy(gc_obs)
 
-! print some stats about the assimilation
-! (if interesting, could print exactly which obs # was fastest and slowest)
-if (my_task_id() == 0 .and. timing(MLOOP)) then
-   write(msgstring, *) 'average assim time: ', sum(elapse_array) / size(elapse_array)
-   call error_handler(E_MSG,'filter_assim:',msgstring)
-
-   write(msgstring, *) 'minimum assim time: ', minval(elapse_array)
-   call error_handler(E_MSG,'filter_assim:',msgstring)
-
-   write(msgstring, *) 'maximum assim time: ', maxval(elapse_array)
-   call error_handler(E_MSG,'filter_assim:',msgstring)
-endif
-
-if (timing(MLOOP)) deallocate(elapse_array)
-
 ! do some stats - being aware that unless we do a reduce() operation
 ! this is going to be per-task.  so only print if something interesting
 ! shows up in the stats?  maybe it would be worth a reduce() call here?
 
-!>@todo FIXME:  
-!  we have n_close_obs_items and n_close_state_items for each assimilated
-!  observation.  what we really want to know is across the tasks is there
-!  a big difference in counts?  so that means communication.  maybe just
-!  the largest value?  and the number of 0 values?  and if the largest val
-!  is way off compared to the other tasks, warn the user?
-!  we don't have space or time to do all the obs * tasks but could we
-!  send enough info to make a histogram?  compute N bin counts and then
-!  reduce that across all the tasks and have task 0 print out?
-! still thinking on this idea.
-!   write(msgstring, *) 'max state items per observation: ', maxval(n_close_state_items)
-!   call error_handler(E_MSG, 'filter_assim:', msgstring)
-! if i come up with something i like, can we use the same idea
-! for the threed_sphere locations boxes?
-
 ! Assure user we have done something
 if (print_trace_details >= 0) then
-write(msgstring, '(A,I8,A)') &
-   'Processed', obs_ens_handle%num_vars, ' total observations'
+   write(msgstring, '(A,I8,A)') 'Processed', obs_ens_handle%num_vars, ' total observations'
    call error_handler(E_MSG,'filter_assim:',msgstring)
 endif
 
@@ -1300,10 +803,8 @@ endif
 
 !call test_state_copies(ens_handle, 'end')
 
-!GSR close the localization diagnostics file
-if(output_localization_diagnostics .and. my_task_id() == 0) then
-  call close_file(localization_unit)
-end if
+! Close the localization diagnostics file
+if(output_localization_diagnostics .and. my_task_id() == 0) call close_file(localization_unit)
 
 ! get rid of mpi window
 call free_mean_window()
@@ -1327,8 +828,6 @@ deallocate(close_state_dist,      &
            my_state_kind,         &
            my_state_loc)
 
-deallocate(n_close_state_items, &
-           n_close_obs_items)
 ! end dealloc
 
 end subroutine filter_assim
@@ -1847,7 +1346,7 @@ end subroutine obs_increment_kernel
 
 
 subroutine update_from_obs_inc(obs, obs_prior_mean, obs_prior_var, obs_inc, &
-               state, ens_size, state_inc, reg_coef, net_a, correl_out)
+               state, ens_size, state_inc, reg_coef, net_a_in, correl_out)
 !========================================================================
 
 ! Does linear regression of a state variable onto an observation and
@@ -1858,12 +1357,12 @@ real(r8),           intent(in)    :: obs(ens_size), obs_inc(ens_size)
 real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
 real(r8),           intent(in)    :: state(ens_size)
 real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
-real(r8),           intent(inout) :: net_a
+real(r8),           intent(in) :: net_a_in
 real(r8), optional, intent(inout) :: correl_out
 
 real(r8) :: obs_state_cov, intermed
 real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
-real(r8) :: factor, exp_true_correl, mean_factor
+real(r8) :: factor, exp_true_correl, mean_factor, net_a
 
 
 ! For efficiency, just compute regression coefficient here unless correl is needed
@@ -1938,7 +1437,7 @@ state_inc = reg_coef * obs_inc
 ! Spread restoration algorithm option.
 if(spread_restoration) then
    ! Don't use this to reduce spread at present (should revisit this line)
-   if(net_a > 1.0_r8) net_a = 1.0_r8
+   net_a = min(net_a_in, 1.0_r8)
 
    ! Default restoration increment is 0.0
    restoration_inc = 0.0_r8
@@ -2602,6 +2101,104 @@ do i = 1, ens_size
 end do
 
 end subroutine update_ens_from_weights
+!---------------------------------------------------------------
+
+subroutine obs_updates_ens(ens_size, num_groups, ens, ens_loc, ens_kind, &
+   obs_prior, obs_inc, obs_prior_mean, obs_prior_var, obs_loc, obs_type, obs_time,    &
+   net_a, grp_size, grp_beg, grp_end, reg_factor_obs_index,         &
+   reg_factor_ens_index, final_factor, correl, correl_needed, inflate_only)
+
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: num_groups
+real(r8),            intent(inout)  :: ens(ens_size)
+type(location_type), intent(in)  :: ens_loc
+integer,             intent(in)  :: ens_kind
+real(r8),            intent(in)  :: obs_prior(ens_size)
+real(r8),            intent(in)  :: obs_inc(ens_size)
+real(r8),            intent(in)  :: obs_prior_mean(num_groups)
+real(r8),            intent(in)  :: obs_prior_var(num_groups)
+type(location_type), intent(in)  :: obs_loc
+integer,             intent(in)  :: obs_type
+type(time_type),     intent(in)  :: obs_time
+real(r8),            intent(in)  :: net_a(num_groups)
+integer,             intent(in)  :: grp_size
+integer,             intent(in)  :: grp_beg(num_groups)
+integer,             intent(in)  :: grp_end(num_groups)
+integer,             intent(in)  :: reg_factor_obs_index
+integer(i8),         intent(in)  :: reg_factor_ens_index
+real(r8),            intent(inout) :: final_factor
+real(r8),            intent(out) :: correl(num_groups)
+logical,             intent(in)  :: correl_needed
+logical,             intent(in)  :: inflate_only
+
+real(r8) :: reg_coef(num_groups), increment(ens_size)
+real(r8) :: reg_factor
+integer  :: group, grp_bot, grp_top
+
+! Loop through groups to update the state variable ensemble members
+do group = 1, num_groups
+   grp_bot = grp_beg(group); grp_top = grp_end(group)
+   ! Do update of state, correl only needed for varying ss inflate
+   if(correl_needed) then
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+   else
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+   endif
+end do
+
+if(num_groups > 1) then
+   reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, &
+      reg_factor_obs_index, reg_factor_ens_index)
+   final_factor = min(final_factor, reg_factor)
+endif
+
+! Get the updated ensemble
+if(.not. inflate_only) ens = ens + final_factor * increment
+
+end subroutine obs_updates_ens
+
+!-------------------------------------------------------------
+
+function cov_and_impact_factors(base_obs_loc, base_obs_type, state_loc, state_kind, &
+dist, cutoff_rev)
+
+! Computes the cov_factor and multiplies by obs_impact_factor if selected
+
+real(r8) :: cov_and_impact_factors
+type(location_type), intent(in) :: base_obs_loc
+integer, intent(in) :: base_obs_type
+type(location_type), intent(in) :: state_loc
+integer, intent(in) :: state_kind
+real(r8), intent(in) :: dist
+real(r8), intent(in) :: cutoff_rev
+
+real(r8) :: impact_factor, cov_factor
+
+! Get external impact factors, cycle if impact of this ob on this state is zero
+if (adjust_obs_impact) then
+   ! Get the impact factor from the table if requested
+   impact_factor = obs_impact_table(base_obs_type, state_kind)
+   if(impact_factor <= 0.0_r8) then
+      ! Avoid the cost of computing cov_factor if impact is 0
+      cov_and_impact_factors = 0.0_r8
+      return
+   endif
+else
+   impact_factor = 1.0_r8
+endif
+
+! Compute the covariance factor
+cov_factor = comp_cov_factor(dist, cutoff_rev, &
+   base_obs_loc, base_obs_type, state_loc, state_kind)
+
+! Combine the impact_factor and the cov_factor
+cov_and_impact_factors = cov_factor * impact_factor
+
+end function cov_and_impact_factors
 
 
 !------------------------------------------------------------------------
@@ -2866,6 +2463,77 @@ call sum_across_tasks(local_count, count_close)
 end function count_close
 
 !----------------------------------------------------------------------
+! Revise the cutoff for this observation if adaptive localization is required
+! Output diagnostics for localization if requested
+
+subroutine adaptive_localization_and_diags(cutoff_orig, cutoff_rev, adaptive_localization_threshold, &
+   adaptive_cutoff_floor, num_close_obs, close_obs_ind, close_obs_dist, my_obs_type, &
+   base_obs_index, base_obs_loc, obs_def, out_unit)
+
+real(r8),            intent(in)  :: cutoff_orig
+real(r8),            intent(out) :: cutoff_rev
+integer,             intent(in)  :: adaptive_localization_threshold
+real(r8),            intent(in)  :: adaptive_cutoff_floor
+integer,             intent(in)  :: num_close_obs
+integer,             intent(in)  :: close_obs_ind(:)
+real(r8),            intent(in)  :: close_obs_dist(:)
+integer,             intent(in)  :: my_obs_type(:)
+integer,             intent(in)  :: base_obs_index
+type(location_type), intent(in)  :: base_obs_loc
+type(obs_def_type),  intent(in)  :: obs_def
+integer,             intent(in)  :: out_unit
+
+integer :: total_num_close_obs, rev_num_close_obs, secs, days
+type(time_type) :: this_obs_time
+character(len = 200) :: base_loc_text   ! longer than longest location formatting possible
+
+! Default is that cutoff is not revised
+cutoff_rev = cutoff_orig
+
+! For adaptive localization, need number of other obs close to the chosen observation
+if(adaptive_localization_threshold > 0) then
+   ! this does a cross-task sum, so all tasks must make this call.
+   total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
+                                     close_obs_dist, cutoff_rev*2.0_r8)
+
+   ! Want expected number of close observations to be reduced to some threshold;
+   ! accomplish this by cutting the size of the cutoff distance.
+   if(total_num_close_obs > adaptive_localization_threshold) then
+      cutoff_rev = revised_distance(cutoff_rev*2.0_r8, adaptive_localization_threshold, &
+                                    total_num_close_obs, base_obs_loc, &
+                                    adaptive_cutoff_floor*2.0_r8) / 2.0_r8
+   endif
+endif
+
+if ( output_localization_diagnostics ) then
+   ! Warning, this can be costly and generate large output
+   ! This is referred to as revised in case adaptive localization was done
+   rev_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
+                                     close_obs_dist, cutoff_rev*2.0_r8)
+
+   ! Output diagnostic information about the number of close obs
+   if (my_task_id() == 0) then
+      this_obs_time = get_obs_def_time(obs_def)
+      call get_time(this_obs_time,secs,days)
+      call write_location(-1, base_obs_loc, charstring=base_loc_text)
+
+      ! If adaptive localization did something, output info about what it did
+      ! Probably would be more consistent to just output for all observations
+      if(adaptive_localization_threshold > 0 .and. &
+         total_num_close_obs > adaptive_localization_threshold) then
+         write(out_unit,'(i12,1x,i5,1x,i8,1x,A,2(f14.5,1x,i12))') base_obs_index, &
+            secs, days, trim(base_loc_text), cutoff_orig, total_num_close_obs, cutoff_rev, &
+            rev_num_close_obs
+      else
+         write(out_unit,'(i12,1x,i5,1x,i8,1x,A,f14.5,1x,i12)') base_obs_index, &
+            secs, days, trim(base_loc_text), cutoff_rev, rev_num_close_obs
+      endif
+   endif
+endif
+
+end subroutine adaptive_localization_and_diags
+
+!----------------------------------------------------------------------
 !> gets the location of of all my observations
 subroutine get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, my_obs_time)
 
@@ -2902,109 +2570,99 @@ my_obs_time = get_obs_def_time(obs_def)
 end subroutine get_my_obs_loc
 
 !--------------------------------------------------------------------
-!> wrappers for timers
-!>
-!> t_space is where we store the time information 
-!> itemcount is the running count of how many times we've been called
-!> maxitems is a limit on the number of times we want this timer to print.
-!> do_sync overrides the default for whether we want to do a task sync
-!> or not.  right now this code defaults to yes, sync before getting
-!> the time.  for very large processor counts this increases overhead.
+!> Get close obs from cache if appropriate. Cache new get_close_obs info
+!> if requested.
 
-subroutine start_timer(t_space, itemcount, maxitems, do_sync)
- real(digits12), intent(out) :: t_space
- integer(i8),    intent(inout), optional :: itemcount
- integer(i8),    intent(in),    optional :: maxitems
- logical,        intent(in),    optional :: do_sync
+subroutine get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type, &
+   my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
+   ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
+   last_close_obs_dist, num_close_obs_cached, num_close_obs_calls_made)
 
-logical :: sync_me
+type(get_close_type),          intent(in)  :: gc_obs
+type(location_type),           intent(inout) :: base_obs_loc, my_obs_loc(:)
+integer,                       intent(in)  :: base_obs_type, my_obs_kind(:), my_obs_type(:)
+integer,                       intent(out) :: num_close_obs, close_obs_ind(:)
+real(r8),                      intent(out) :: close_obs_dist(:)
+type(ensemble_type),           intent(in)  :: ens_handle
+type(location_type), intent(inout) :: last_base_obs_loc
+integer, intent(inout) :: last_num_close_obs
+integer, intent(inout) :: last_close_obs_ind(:)
+real(r8), intent(inout) :: last_close_obs_dist(:)
+integer, intent(inout) :: num_close_obs_cached, num_close_obs_calls_made
 
-if (present(itemcount) .and. present(maxitems)) then
-  itemcount = itemcount + 1
-  if (itemcount > maxitems) then
-     ! if called enough, this can roll over the integer limit.  
-     ! set itemcount to maxitems+1 here to avoid this.
-     ! also, go ahead and set the time because there is
-     ! an option to print large time values even if over the
-     ! number of calls limit in read_timer()
+! This logic could be arranged to make code less redundant
+if (.not. close_obs_caching) then
+   call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                      my_obs_loc, my_obs_kind, my_obs_type, &
+                      num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+else
+   if (base_obs_loc == last_base_obs_loc) then
+      num_close_obs     = last_num_close_obs
+      close_obs_ind(:)  = last_close_obs_ind(:)
+      close_obs_dist(:) = last_close_obs_dist(:)
+      num_close_obs_cached = num_close_obs_cached + 1
+   else
+      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                         my_obs_loc, my_obs_kind, my_obs_type, &
+                         num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 
-     itemcount = maxitems + 1
-     call start_mpi_timer(t_space)
-     return
-  endif
+      last_base_obs_loc      = base_obs_loc
+      last_num_close_obs     = num_close_obs
+      last_close_obs_ind(:)  = close_obs_ind(:)
+      last_close_obs_dist(:) = close_obs_dist(:)
+      num_close_obs_calls_made = num_close_obs_calls_made +1
+   endif
 endif
 
-sync_me = .true.
-if (present(do_sync)) sync_me = do_sync
-
-if (sync_me) call task_sync()
-call start_mpi_timer(t_space)
-
-end subroutine start_timer
+end subroutine get_close_obs_cached
 
 !--------------------------------------------------------------------
-!>
-!> t_space is where we store the time information 
-!> label is the string to print out with the time.  limited to ~60 chars.
-!> itemcount is the running count of how many times we've been called
-!> maxitems is a limit on the number of times we want this timer to print.
-!> do_sync overrides the default for whether we want to do a task sync
-!> or not.  right now this code defaults to yes, sync before getting
-!> the time.  for very large processor counts this increases overhead.
-!> elapsed is an optional return of the value instead of only printing here
+!> Get close state from cache if appropriate. Cache new get_close_state info
+!> if requested.
 
-subroutine read_timer(t_space, label, itemcount, maxitems, do_sync, elapsed)
- real(digits12),   intent(in) :: t_space
- character(len=*), intent(in) :: label
- integer(i8),      intent(inout), optional :: itemcount
- integer(i8),      intent(in),    optional :: maxitems
- logical,          intent(in),    optional :: do_sync
- real(digits12),   intent(out),   optional :: elapsed
+subroutine get_close_state_cached(gc_state, base_obs_loc, base_obs_type, &
+   my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
+   ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
+   last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
 
-real(digits12) :: interval
-logical :: sync_me
-character(len=132) :: buffer
+type(get_close_type),          intent(in)    :: gc_state
+type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
+integer,                       intent(in)    :: base_obs_type, my_state_kind(:)
+integer(i8),                   intent(in)    :: my_state_indx(:)
+integer,                       intent(out)   :: num_close_states, close_state_ind(:)
+real(r8),                      intent(out)   :: close_state_dist(:)
+type(ensemble_type),           intent(in)    :: ens_handle
+type(location_type), intent(inout) :: last_base_states_loc
+integer, intent(inout) :: last_num_close_states
+integer, intent(inout) :: last_close_state_ind(:)
+real(r8), intent(inout) :: last_close_state_dist(:)
+integer, intent(inout) :: num_close_states_cached, num_close_states_calls_made
 
-! if interval time (in seconds) is > this, go ahead and
-! print even if item count is over limit.
-integer(i8), parameter :: T_ALWAYS_PRINT = 1.0_r8
-
-! get the time first and then figure out what we're doing
-
-interval = read_mpi_timer(t_space)
-
-sync_me = .true.
-if (present(do_sync)) sync_me = do_sync
-
-! if there's a limit on number of prints don't allow sync 
-! because if we return early we could hang everyone else.
-if (present(maxitems)) sync_me = .false.
-
-! print out large values no matter what
-! (large is defined above locally in this routine)
-if (present(itemcount) .and. present(maxitems)) then
-  if (interval < T_ALWAYS_PRINT .and. itemcount > maxitems) return
-endif
-
-! if syncing, wait and read the timer again
-if (sync_me) then
-   call task_sync()
-   interval = read_mpi_timer(t_space)
-endif
-
-if (sync_me) then
-   if (my_task_id() == 0) then
-      write(buffer,'(A75,F15.8)') "timer: "//trim(label)//" time ", interval
-      write(*,*) buffer
-   endif
+! This logic could be arranged to make code less redundant
+if (.not. close_obs_caching) then
+   call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+                      my_state_loc, my_state_kind, my_state_indx, &
+                      num_close_states, close_state_ind, close_state_dist, ens_handle)
 else
-   write(buffer,'(A75,F15.8,A6,I7)') "timer: "//trim(label)//" time ", interval, " rank ", my_task_id()
-   write(*,*) buffer
+   if (base_obs_loc == last_base_states_loc) then
+      num_close_states     = last_num_close_states
+      close_state_ind(:)  = last_close_state_ind(:)
+      close_state_dist(:) = last_close_state_dist(:)
+      num_close_states_cached = num_close_states_cached + 1
+   else
+      call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+                         my_state_loc, my_state_kind, my_state_indx, &
+                         num_close_states, close_state_ind, close_state_dist, ens_handle)
+
+      last_base_states_loc      = base_obs_loc
+      last_num_close_states     = num_close_states
+      last_close_state_ind(:)  = close_state_ind(:)
+      last_close_state_dist(:) = close_state_dist(:)
+      num_close_states_calls_made = num_close_states_calls_made +1
+   endif
 endif
 
-if (present(elapsed)) elapsed = interval
-
-end subroutine read_timer
+end subroutine get_close_state_cached
 
 !--------------------------------------------------------------------
 !> log what the user has selected via the namelist choices
