@@ -22,7 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**November 22 2021 :: Bug fix for groups with posterior spatially-varying adaptive inflation. Tag: v9.12.13**
+**December 7 2021 :: Refactored filter_assim. Tag: v9.12.0**
+
+- Filter_assim refactored so each process calcuates increments
+- Code readability changes 
+
+**November 22 2021 :: Bug fix for groups with posterior spatially-varying adaptive inflation. Tag: v9.11.13**
 
 - Removed the additional outlier threshold test for each group when using posterior 
   spatially-varying adaptive inflation. The outlier test is done for the entire ensemble
