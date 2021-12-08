@@ -705,7 +705,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
   
    ! Adaptive localization needs number of other observations within localization radius.
    ! Do get_close_obs first, even though state space increments are computed before obs increments.
-   ! JLA: ens_handle doesn't ever appear to be used. Get rid of it. Should be obs_ens_handle anyway?
    call  get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type,      &
       my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
       ens_handle, last_base_obs_loc, last_num_close_obs, last_close_obs_ind,               &
@@ -749,13 +748,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_state_loc(state_index), &
          my_state_kind(state_index), close_state_dist(j), cutoff_rev)
 
-      if(final_factor > 0.0_r8) &
-         call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-            my_state_loc(state_index), my_state_kind(state_index), obs_prior, &
-            obs_index_sort, obs_inc, &
-            obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-            net_a, grp_size, grp_beg, grp_end, i, &
-            my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
+      if(final_factor <= 0.0_r8) cycle STATE_UPDATE
+
+      call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+         my_state_loc(state_index), my_state_kind(state_index), obs_prior, &
+         obs_index_sort, obs_inc, &
+         obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+         net_a, grp_size, grp_beg, grp_end, i, &
+         my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
 
       ! Update the likelihood for this state variable for state space multi-obs
       if(my_state_QCEF_kind(j) > 0) then
@@ -765,7 +765,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
       ! Compute spatially-varying state space inflation
-      if(local_varying_ss_inflate .and. final_factor > 0.0_r8) then
+      if(local_varying_ss_inflate) then
          do group = 1, num_groups
             call update_varying_state_space_inflation(inflate,                     &
                ens_handle%copies(ENS_INF_COPY, state_index),                       &
@@ -788,17 +788,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             ! If forward observation operator failed, no need to update unassimilated observations
             if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
 
-         ! Compute the covariance localization and adjust_obs_impact factors (module storage)
-         final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
-            my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev)
+            ! Compute the covariance localization and adjust_obs_impact factors (module storage)
+            final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
+               my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev)
 
-            if(final_factor > 0.0_r8) &
-               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
-                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, &
-                  obs_index_sort, obs_inc, &
-                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-                  net_a, grp_size, grp_beg, grp_end, i, &
-                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+            if(final_factor <= 0.0_r8) cycle OBS_UPDATE
+
+            call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+               my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, &
+               obs_index_sort, obs_inc, &
+               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+               net_a, grp_size, grp_beg, grp_end, i, &
+               -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
          endif
       end do OBS_UPDATE
    endif
@@ -828,8 +829,7 @@ call get_close_destroy(gc_obs)
 
 ! Assure user we have done something
 if (print_trace_details >= 0) then
-write(msgstring, '(A,I8,A)') &
-   'Processed', obs_ens_handle%num_vars, ' total observations'
+   write(msgstring, '(A,I8,A)') 'Processed', obs_ens_handle%num_vars, ' total observations'
    call error_handler(E_MSG,'filter_assim:',msgstring)
 endif
 
@@ -2398,7 +2398,7 @@ real(r8), intent(in) :: cutoff_rev
 
 real(r8) :: impact_factor, cov_factor
 
-! Get external impact factors, cycle if impact of this ob on this state is zerio
+! Get external impact factors, cycle if impact of this ob on this state is zero
 if (adjust_obs_impact) then
    ! Get the impact factor from the table if requested
    impact_factor = obs_impact_table(base_obs_type, state_kind)
