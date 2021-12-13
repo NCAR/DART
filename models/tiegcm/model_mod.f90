@@ -1253,8 +1253,8 @@ call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lev')
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlev), 'read_TIEGCM_definition', &
                   'inquire_dimension lev')
-call error_handler(E_MSG,'read_TIEGCM_definition using nlev', 'How many levels do you want?')
-!nlev = nlev - 1 ! top level is not viable !HK what does this mean?
+! top level is not viable. The lower boundary condition is stored in the top level
+nlev = nlev - 1
 
 allocate(levs(nlev), plevs(nlev))
 
