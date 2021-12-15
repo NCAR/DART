@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This script compiles all executables in this directory.
 
 #----------------------------------------------------------------------
@@ -15,9 +13,8 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
+set nonomatch
+\rm -f preprocess *.o *.mod Makefile
 
 set MODEL = "SMAP converter"
 
@@ -56,14 +53,10 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-\rm -f *.o *.mod input.nml.*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
-echo "Success: All DART programs compiled." 
+echo "Success: All ${MODEL} programs compiled."
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

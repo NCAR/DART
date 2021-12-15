@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # split the monthly file into "daily" files which start at 12:01Z 
 # the previous day and end at 12:00Z on the day that matches the 
 # day in the filename.
@@ -144,8 +142,4 @@ done
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

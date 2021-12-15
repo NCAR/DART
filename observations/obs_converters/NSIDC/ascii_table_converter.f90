@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program ascii_table_converter
 
@@ -42,12 +40,7 @@ use      obs_kind_mod, only : SOIL_MOISTURE
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source   = 'ascii_table_converter.f90'
 character(len=*), parameter :: routine='ascii_table_converter'
 
 !-----------------------------------------------------------------------
@@ -102,9 +95,6 @@ real(r8) :: oerr
 !-----------------------------------------------------------------------
 
 call initialize_utilities(routine)
-
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "ascii_table_converter_nml", iunit)
@@ -172,7 +162,7 @@ FileLoop: do ifile = 1,num_input_files
       if (iocode > 0) then
          write (string1,'(''Cannot read (error '',i3,'') line '',i8,'' in '',A)') &
                        iocode, iline, trim(filename)
-         call error_handler(E_ERR,routine, string1, source, revision, revdate)
+         call error_handler(E_ERR,routine, string1, source)
       endif
       num_obs_read = num_obs_read + 1
 
@@ -271,7 +261,7 @@ if (nlines >= MAX_NUM_INPUT_FILES ) then
    write(string1,*)'Too many files to process. Increase MAX_NUM_INPUT_FILES, recompile, and try again.'
    write(string2,*)'MAX_NUM_INPUT_FILES currently set to ',MAX_NUM_INPUT_FILES
    write(string3,*)'There were ',nlines,' files specified in ',trim(input_list)
-   call error_handler(E_ERR,routine,string1,source,revision,revdate, text2=string2, text3=string3)
+   call error_handler(E_ERR,routine,string1,source, text2=string2, text3=string3)
 endif
 
 Check_Input_Files = 0
@@ -283,7 +273,7 @@ FileNameLoop: do iline = 1,nlines ! a lot of lines
       write(string1,*) 'While reading ', trim(input_list)
       write(string2,*) 'got read code (iostat) = ', iocode,' around line ',iline
       call error_handler(E_ERR, routine, string1, &
-                    source, revision, revdate, text2=string2)
+                    source, text2=string2)
    elseif (iocode < 0) then
       ! Normal end of file
       exit FileNameLoop
@@ -296,7 +286,7 @@ FileNameLoop: do iline = 1,nlines ! a lot of lines
       else
          write(string1,*)'following file does not exist:'
          call error_handler(E_ERR, routine, string1, &
-             source, revision, revdate, text2='"'//trim(ladjusted)//'"')
+             source, text2='"'//trim(ladjusted)//'"')
       endif
    endif
 
@@ -306,8 +296,3 @@ end function Check_Input_Files
 
 end program ascii_table_converter
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

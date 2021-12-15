@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program AMSR_E_L2_to_obs
 
@@ -45,11 +43,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   '$URL$'
-character(len=*), parameter :: revision = '$Revision$'
-character(len=*), parameter :: revdate  = '$Date$'
+character(len=*), parameter :: source   = 'AMSR_E_L2_to_obs.f90'
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -119,7 +113,7 @@ if (do_nml_term()) write(     *     , nml=AMSR_E_L2_to_obs_nml)
 if (input_file /= '' .and. input_file_list /= '') then
   call error_handler(E_ERR, 'AMSR_E_L2_to_obs',                     &
                      'One of input_file or filelist must be NULL', &
-                     source, revision, revdate)
+                     source)
 endif
 if (input_file_list /= '') from_list = .true.
 
@@ -250,7 +244,7 @@ fileloop: do      ! until out of files
             write(string1,*)'reached maximum number of observations while'
             write(string2,*)'reading file # ',filenum,' "'//trim(next_infile)//'"'
             call error_handler(E_ERR, 'AMSR_E_L2_to_obs', string1, &
-                       source, revision, revdate, text2=string2)
+                       source, text2=string2)
          endif
 
       endif
@@ -285,7 +279,7 @@ fileloop: do      ! until out of files
             write(string1,*)'reached maximum number of observations while'
             write(string2,*)'reading file # ',filenum,' "'//trim(next_infile)//'"'
             call error_handler(E_ERR, 'AMSR_E_L2_to_obs', string1, &
-                      source, revision, revdate, text2=string2)
+                      source, text2=string2)
          endif
 
       endif
@@ -317,7 +311,7 @@ if (obs_num > 0) then
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 else
    call error_handler(E_ERR,'AMSR_E_L2_to_obs','no obs converted', &
-              source, revision,revdate)
+              source)
 endif
 
 call error_handler(E_MSG,'AMSR_E_L2_to_obs','Finished successfully.')
@@ -346,7 +340,7 @@ elseif (index(fname,'L2_D_') > 0 ) then
    mystring = 'AMSRE_D_SOIL_MOISTURE_'//trim(band)
 else
    call error_handler(E_ERR,'asc_desc','cannot find asc/desc character', &
-              source, revision, revdate, text2=fname)
+              source, text2=fname)
 endif
 
 SELECT CASE (mystring)
@@ -360,7 +354,7 @@ SELECT CASE (mystring)
       asc_desc = AMSRE_D_SOIL_MOISTURE_X
    CASE DEFAULT
       call error_handler(E_ERR,'asc_desc','bad string "'//trim(mystring)//'', &
-                 source, revision, revdate)
+                 source)
 END SELECT
 
 end function asc_desc
@@ -384,7 +378,7 @@ indx = index(fname,'_V002_')
 
 if (indx < 1) then
    call error_handler(E_ERR,'get_time_from_name','cannot determine where to start', &
-              source, revision, revdate, text2=fname)
+              source, text2=fname)
 endif
 
 indx1 = indx + 6 ! need to know where '_V002_' ends
@@ -400,8 +394,3 @@ end function get_time_from_name
 
 end program AMSR_E_L2_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

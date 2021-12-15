@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program SMAP_L2_to_obs
 
@@ -71,12 +69,7 @@ use H5LT
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source   = 'SMAP_L2_to_obs.f90'
 character(len=*), parameter :: routine = 'SMAP_L2_to_obs'
 
 !-----------------------------------------------------------------------
@@ -225,7 +218,7 @@ FileLoop: do ifile = 1,num_input_files
    ndims = h5_get_rank(dspace_id, string1)
 
    if (ndims /= 1) then
-      call error_handler(E_ERR,routine,'wrong shape', source, revision, revdate)
+      call error_handler(E_ERR,routine,'wrong shape', source)
    endif
 
    allocate(dimlens(ndims))
@@ -512,7 +505,7 @@ if (nlines >= MAX_NUM_INPUT_FILES ) then
    write(string1,*)'Too many files to process. Increase MAX_NUM_INPUT_FILES, recompile, and try again.'
    write(string2,*)'MAX_NUM_INPUT_FILES currently set to ',MAX_NUM_INPUT_FILES
    write(string3,*)'There were ',nlines,' files specified in ',trim(input_list)
-   call error_handler(E_ERR,routine,string1,source,revision,revdate, text2=string2, text3=string3)
+   call error_handler(E_ERR,routine,string1,source, text2=string2, text3=string3)
 endif
 
 Check_Input_Files = 0
@@ -524,7 +517,7 @@ FileNameLoop: do iline = 1,nlines ! a lot of lines
       write(string1,*) 'While reading ', trim(input_list)
       write(string2,*) 'got read code (iostat) = ', iocode,' around line ',iline
       call error_handler(E_ERR, routine, string1, &
-                    source, revision, revdate, text2=string2)
+                    source, text2=string2)
    elseif (iocode < 0) then
       ! Normal end of file
       exit FileNameLoop
@@ -537,7 +530,7 @@ FileNameLoop: do iline = 1,nlines ! a lot of lines
       else
          write(string1,*)'following file does not exist:'
          call error_handler(E_ERR, routine, string1, &
-             source, revision, revdate, text2='"'//trim(ladjusted)//'"')
+             source, text2='"'//trim(ladjusted)//'"')
       endif
    endif
 
@@ -603,8 +596,3 @@ end subroutine read_observation_times
 
 end program SMAP_L2_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

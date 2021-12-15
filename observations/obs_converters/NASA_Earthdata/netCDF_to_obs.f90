@@ -90,7 +90,6 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'netCDF_to_obs.f90'
 
 integer, parameter :: NUM_COPIES = 1

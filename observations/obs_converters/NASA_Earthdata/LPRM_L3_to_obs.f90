@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! DART $Id$
 
 program LPRM_L3_to_obs
 
@@ -44,10 +42,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = '$URL$'
-character(len=*), parameter :: revision = '$Revision$'
-character(len=*), parameter :: revdate  = '$Date$'
+character(len=*), parameter :: source   = 'LPRM_L3_to_obs.f90'
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -113,7 +108,7 @@ if (do_nml_term()) write(     *     , nml=LPRM_L3_to_obs_nml)
 if (input_file /= '' .and. input_file_list /= '') then
   call error_handler(E_ERR, 'LPRM_L3_to_obs',                     &
                      'One of input_file or filelist must be NULL', &
-                     source, revision, revdate)
+                     source)
 endif
 if (input_file_list /= '') from_list = .true.
 
@@ -245,7 +240,7 @@ fileloop: do      ! until out of files
          write(string1,*)'reached maximum number of observations while'
          write(string2,*)'reading file # ',filenum,' "'//trim(next_infile)//'"'
          call error_handler(E_ERR, 'LPRM_L3_to_obs', string1, &
-                   source, revision, revdate, text2=string2)
+                   source, text2=string2)
       endif
 
    enddo LATLOOP
@@ -270,7 +265,7 @@ if (obs_num > 0) then
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 else
    call error_handler(E_ERR,'LPRM_L3_to_obs','no obs converted', &
-              source, revision,revdate)
+              source)
 endif
 
 call error_handler(E_MSG,'LPRM_L3_to_obs','Finished successfully.')
@@ -296,7 +291,7 @@ indx = index(fname,'.nc.nc') ! may not be universally applicable
 
 if (indx < 1) then
    call error_handler(E_ERR,'get_time_from_name','cannot determine where to start', &
-              source, revision, revdate, text2=fname)
+              source, text2=fname)
 endif
 
 indx1 = indx - 8
