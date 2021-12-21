@@ -386,6 +386,7 @@ logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
+logical :: an_ob_was_assimilated
 
 integer  :: obs_index_sort(ens_size)
 
@@ -449,6 +450,9 @@ local_obs_inflate        = do_obs_inflate(inflate)
 
 ! Default to printing nothing
 nth_obs = -1
+
+! Logical will be set to true if any ob is actually assimilated; needed for state qcef finalize
+an_ob_was_assimilated = .false.
 
 ! Divide ensemble into num_groups groups.
 ! make sure the number of groups and ensemble size result in
@@ -671,6 +675,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Everybody is doing this section, cycle if qc is bad
    if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
 
+   ! Only do the QCEF finalize computation if at least one observation was actually assimilated
+   an_ob_was_assimilated = .true.
+
    !> all tasks must set the converted vertical values into the 'base' version of this loc
    !> because that's what we pass into the get_close_xxx() routines below.
    if (is_doing_vertical_conversion) &
@@ -806,7 +813,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 end do SEQUENTIAL_OBS
 
 ! Finalize state QCEF estimates and do marginal adjustment to get final posterior
-if(num_QCEF_state_vars > 0) &
+if(num_QCEF_state_vars > 0 .and. an_ob_was_assimilated) &
    call finalize_ma_state(ens_size, my_num_state, prior_state_ens, prior_state_index_sort, &
       prior_state_mass, piece_const_like, prior_sorted_quantiles, &
       ens_handle%copies(1:ens_size, 1:my_num_state), ens_handle%copies(1:ens_size, 1:my_num_state), &
@@ -1638,8 +1645,11 @@ prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
 ! If all ensemble members are identical, this algorithm becomes undefined, so fail
 if(prior_var <= 0.0_r8) then
-      msgstring = 'Ensemble variance <= 0 '
-      call error_handler(E_ERR, 'state_post_bounded_norm_rhf', msgstring, source)
+   ! Temporary push through?
+   post = ens
+   return
+   msgstring = 'Ensemble variance <= 0 '
+   call error_handler(E_ERR, 'state_post_bounded_norm_rhf', msgstring, source)
 endif
 
 ! Get the sorted ensemble
@@ -1844,6 +1854,13 @@ endif
 ! Posterior weights are then just the likelihood in each region normalized
 post_weight = piece_const_like/ sum(piece_const_like)
 
+! Look at avoiding ridiculously small stuff that won't matter
+! Needs to be done much more robustly
+post_weight = max(post_weight, 1.0e-10_r8)
+post_weight = post_weight / sum(post_weight)
+
+if(maxval(post_weight) > 0.5) write(*, *) 'max post_weight ', maxval(post_weight)
+
 ! Standard deviation of prior tails is prior ensemble standard deviation
 prior_sd = sqrt(prior_var)
 tail_sd(1:2) = prior_sd
@@ -1874,6 +1891,8 @@ prior_inv_tail_amp(2) = (base_prior_prob - (1.0_r8 - bound_quantile(2))) / base_
 ! The change in amplitude is the posterior weight / prior weight (which is 1 / ens_size + 1)
 ! The post weights can technically get arbitrarily small
 ! Should incorporate some bound to avoid division by 0 here
+
+! NOTE: FOR SMALL LIKELIHOODS post_weight (or other weights) could be 0/ small need error handlin
 inv_tail_amp(1) = prior_inv_tail_amp(1) / (post_weight(0) * (ens_size + 1.0_r8))
 inv_tail_amp(2) = prior_inv_tail_amp(2) / (post_weight(ens_size) * (ens_size + 1.0_r8))
 
@@ -1921,7 +1940,7 @@ end do
 ! This reduces the impact of possible round-off errors on the cumulative mass
 cumul_mass = cumul_mass / cumul_mass(ens_size + 1)
 
-! Begin intenal box search at bottom of lowest box, update for efficiency
+! Begin internal box search at bottom of lowest box, update for efficiency
 lowest_box = 1
 
 ! Find each new ensemble member's location
