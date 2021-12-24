@@ -351,6 +351,7 @@ integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
 integer,     allocatable :: prior_state_index_sort(:, :)
 integer,     allocatable :: my_state_QCEF_kind(:)
+integer,     allocatable :: my_state_QCEF_ptr(:)
 
 integer :: my_num_obs, i, j, owner, owners_index, my_num_state, QCEF_ind
 integer :: obs_mean_index, obs_var_index
@@ -548,7 +549,7 @@ endif
 call init_state_QCEF(ens_size, my_num_obs, my_num_state, &
    obs_ens_handle%copies(1:ens_size, 1:my_num_obs), ens_handle%copies(1:ens_size, 1:my_num_state), &
    my_state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
-   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, num_QCEF_state_vars)
+   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -739,9 +740,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
 
-   ! Need to keep track of index of state variables using QCEF
-   QCEF_ind = 0
-
    ! Loop through to update each of my state variables that is potentially close
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
@@ -765,8 +763,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
 
       ! Update the likelihood for this state variable for state space multi-obs
-      if(my_state_QCEF_kind(j) > 0) then
-         QCEF_ind = QCEF_ind + 1
+      if(my_state_QCEF_kind(state_index) > 0) then
+         QCEF_ind = my_state_QCEF_ptr(state_index)
          call update_piece_const_like(prior_state_index_sort(:, QCEF_ind), piece_const_like(:, QCEF_ind), &
             orig_obs_likelihood, prior_state_mass(:, QCEF_ind), ens_size, final_factor)
       endif
@@ -886,7 +884,7 @@ deallocate(close_state_dist,      &
            my_state_loc)
 
 ! The storage for QCEF in state space
-deallocate(my_state_QCEF_kind)
+deallocate(my_state_QCEF_kind, my_state_QCEF_ptr)
 if(num_QCEF_state_vars > 0) &
    deallocate(all_my_orig_obs_priors, prior_state_ens, prior_state_mass, &
       prior_sorted_quantiles, prior_state_index_sort, piece_const_like)
@@ -2160,7 +2158,7 @@ end subroutine update_piece_const_like
 
 subroutine init_state_QCEF(ens_size, num_obs, num_state, obs_ens_in, state_ens_in, &
    state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
-   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, num_QCEF_state_vars)
+   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
 !-----------------------------------------------------------------------------
 ! Allocates storage for and initializes arrays needed for state space QCEFs
 
@@ -2176,13 +2174,14 @@ real(r8), allocatable, intent(inout) :: prior_sorted_quantiles(:, :)
 integer,  allocatable, intent(inout) :: prior_state_index_sort(:, :)
 real(r8), allocatable, intent(inout) :: piece_const_like(:, :)
 integer,  allocatable, intent(inout) :: my_state_QCEF_kind(:)
+integer,  allocatable, intent(inout) :: my_state_QCEF_ptr(:)
 integer,               intent(out)   :: num_QCEF_state_vars
 
 real(r8) :: tmn, tvar, tsd
 integer :: i, j, QCEF_ind
 
 ! my_state_QCEF_kind always has size num_state. Allocate first to keep list of size
-allocate(my_state_QCEF_kind(num_state))
+allocate(my_state_QCEF_kind(num_state), my_state_QCEF_ptr(num_state))
 
 ! For now, if state_QCEF_kind is 0, don't do any QCEF
 if(state_QCEF_kind == 0) then
@@ -2217,11 +2216,14 @@ all_my_orig_obs_priors(:, :) = obs_ens_in
 
 ! Extract prior ensembles for only variables that will use a state space QCEF
 QCEF_ind = 0
+my_state_QCEF_ptr = -1
 do i = 1, num_state
    if(my_state_QCEF_kind(i) > 0) then
       QCEF_ind = QCEF_ind + 1
       ! Save the prior state for variables using a state QCEF
       prior_state_ens(:, QCEF_ind) = state_ens_in(:, i)
+      ! Load up the pointer to the corresponding state variable
+      my_state_QCEF_ptr(i) = QCEF_ind
    endif
 enddo
 
