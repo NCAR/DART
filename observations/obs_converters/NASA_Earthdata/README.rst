@@ -31,12 +31,6 @@ The dataset (LPRM_AMSRE_SOILM2: AMSR-E/Aqua surface soil moisture (LPRM) L2B V00
 found `here. <https://disc.gsfc.nasa.gov/datasets/LPRM_AMSRE_SOILM2_002/summary>`__
 
 
-Program ``SMAP_L2_to_obs.f90``
-
-Description
------------
-Complete documentation for this converter can be found at :doc:`../NSIDC/SMAP_L2_to_obs`
-
 
 Leaf Area Index Observation Converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
