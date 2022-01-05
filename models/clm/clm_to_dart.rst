@@ -5,8 +5,8 @@ Overview
 --------
 
 ``clm_to_dart`` is used to replace indeterminate values in the CLM restart file
-with the *_FillValue* value specified by the variable attribute. This is necessary
-to ensure that all ensemble members have the proper *_FillValue* applied to any
+with the *missingValue* value specified by the variable attribute. This is necessary
+to ensure that all ensemble members have the proper *missingValue* applied to any
 variable that may be part of the DART state. Only CLM restart files have variables
 that require this treatment.
 
@@ -31,14 +31,14 @@ active snow layers in the **SNLSNO** variable and the indeterminate values in th
 unused snow layers are of no consequence. To prevent these indeterminate values
 from being operated on by ``filter``, DART requires these
 indeterminate values to be replaced by the DART **MISSING_R8** code, which is done
-automatically if the variable has a *_FillValue*.
+automatically if the variable has a *missingValue*.
 
 ``clm_to_dart`` **overwrites** the input file.
 Consequently, the intended use is to **copy** the CLM restart file and feed the copy 
 into ``clm_to_dart``. This strategy allows the copies to be read into DART and updated 
-with the posterior values. The companion :doc:`dart_to_clm` uses the *_FillValue* 
+with the posterior values. The companion :doc:`dart_to_clm` uses the *missingValue* 
 values as a mask to only update the original CLM restart file with valid posterior 
-values. Where the DART posterior file has *_FillValue* values, the original CLM 
+values. Where the DART posterior file has *missingValue* values, the original CLM 
 values are left unchanged.
 
 The *SNLSNO* variable is required. Any file that does not have *SNLSNO* will be 
@@ -47,7 +47,7 @@ CLM restart files need the treatment. CLM history files do not have *SNLSNO*.
 
 It is a useful exercise to dump the CLM restart file and the output of ``clm_to_dart``
 and compare the results (for select variables). You have to use your own 
-(low-resolution!) restart file, naturally.
+(low-resolution!) restart file.
 
 .. container:: unix
 
@@ -77,17 +77,17 @@ them from prematurely terminating the namelist. These are the defaults:
 
 .. container::
 
-   ================== ==================== ================================================================= 
+   ================== ==================== ========================================================================== 
    Item               Type                 Description                                                     
-   ================== ==================== ================================================================= 
+   ================== ==================== ========================================================================== 
    clm_restart_file   character(len=256)   Path name of the CLM restart file to be overwritten.
    verbose            integer              | Flag to control how much run-time output is created.
                                            | 0   is very little output.
                                            | 1   reports which variables are being updated.
                                            | 2   reports all 2d variables with columns as one dimension.
-                                           | 3   reports the variables and columns that have traces of snow.
+                                           | 3   reports all variables and columns which contain indeterminate values
                                            | *Warning*, 3 can generate a lot of output.
-   ================== ==================== =================================================================
+   ================== ==================== ==========================================================================
 
 
 Modules used
@@ -113,7 +113,7 @@ Discussion of Indeterminate Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To explore the most robust way to replace the indeterminate values with the 
-DART-required *_FillValue*, a low-resolution run (10 deg x 15 deg) was performed 
+DART-required *missingValue*, a low-resolution run (10 deg x 15 deg) was performed 
 using the **f10_f10_musgs** tag on the **release-clm5.0.34** branch.
 The ``clm_to_dart_nml`` verbosity was set to 3 and the ``clm_to_dart``  run-time output was captured 
 and is summarized below. The output has been pruned to improve clarity and the 
@@ -123,7 +123,25 @@ shown as it clearly illustrates the situation.
 The **frac_sno** variable (snow cover fraction) is used to determine when
 there is a reliable trace amount of snow and the original values in the snow layer
 closest to the ground are left alone. This was determined to be a more useful
-indicator than **H2OSNO**.  
+indicator than **H2OSNO**, as demonstrated in the example below.  Please note that
+if the **frac_sno** > 0 this indicates a trace of snow exists for that column/layer,
+and the indeterminate value for *T_SOISNO* is left alone.  On the other hand, 
+if **frac_sno** < 0 this indicates that particular column/layer is truly empty,
+and the indeterminate value will be overwritten with the *missingValue* attribute value,
+such that DART will not adjust it.
+
+.. note::
+
+ The program clm_to_dart identifies indeterminate values for any variable that
+ contains snow layers. These variables are identified if they have dimensions such as
+ *column*, *levtot* or *levsno*. These include variables related to water mass (e.g. 
+ **H2OSOI_ICE**, **H2OSOI_LIQ**), thickness (e.g. **DZSNO**, **ZSNO**, **ZISNO**) 
+ and other snow layer characteristics that influence albedo (e.g. **Snw_rds**, 
+ **Mss_bcpho**, **Mss_dst1**).
+
+In the example below, the execution of ``clm_to_dart`` will overwrite the indeterminate
+values within the clm restart file with the *missingValue* attribute value to prevent DART
+from performing an update to that value.  
 
 :: 
 
