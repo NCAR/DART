@@ -5,16 +5,16 @@ Overview
 --------
 
 ``dart_to_clm`` replaces the contents of a CLM restart file with the posterior values 
-from DART. Only variables with posterior values are updated. The *_FillValue* in the 
+from DART. Only variables with posterior values are updated. The *missingValue* in the 
 DART posterior is used as a mask when replacing the value. The original CLM restart file values 
-are maintained when the DART posterior value is *_FillValue*.
+are maintained when the DART posterior value is *missingValue*.
 
 Usage
 -----
 ``dart_to_clm`` overwrites the output file. See the companion :doc:`clm_to_dart` for a 
 discussion on replacing indeterminate values in the CLM restart snow variables with 
-*_FillValue* so that the DART netCDF read routines handle the special values correctly. 
-Where the DART posterior file has *_FillValue* values, the original CLM restart file 
+*missingValue* so that the DART netCDF read routines handle the special values correctly. 
+Where the DART posterior file has *missingValue* values, the original CLM restart file 
 is left unchanged, preserving the original values.
 
 ``dart_to_clm`` also **includes an option that repartitions the snow water equivalent (SWE)**
@@ -53,12 +53,13 @@ mass distribution of ice and liquid which could be important for certain water-l
 regimes with influence upon the carbon cycle.  On the other hand, repartitioning to all snow
 layers indirectly influences the albedo characteristics of the snowcover as snow variables
 such as black carbon and dust are concentrated/diluted depending upon the snow layer mass
-adjustment.  Repartitioning to the bottom snow layer avoids indirect changes to the snow
-albedo characteristics when there are multiple snow layers. This could be important
-for applications where snow albedo, suface energy balance, and surface temperature are
-critical. However, applying the mass adjustment to the bottom snow layer only, does not
-maintain the same relative mass distribution and given the proximity to the soil, may provide 
-a more immediate impact on soil moisture conditions.    
+adjustment. Repartitioning the snow/ice to only the bottom snow layer avoids 
+indirect changes to the snow albedo characteristics because the black carbon and dust of
+the topmost snow layer (exposed to sun) is conserved. This could be important for applications
+where snow albedo, suface energy balance, and surface temperature are critical. However, 
+applying the mass adjustment to the bottom snow layer only, does not maintain the same 
+relative mass distribution and given the proximity to the soil, may provide a more immediate
+impact on soil moisture conditions.    
 
 
 Namelist
