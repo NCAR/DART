@@ -10,8 +10,8 @@ to DART Observation Sequence Converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This routine is designed to convert the SMAP L2 Radiometer Half-Orbit
-36 km EASE-Grid Soil Moisture, `Version 4 soil moisture product
-<https://nsidc.org/data/SPL2SMP/versions/4>`__ 
+36 km EASE-Grid Soil Moisture, `Soil moisture product (Versions 4-8)
+<https://nsidc.org/data/SPL2SMP>`__ 
 to a DART observation sequence file.  
 
 Quoting the `NSIDC: <https://nsidc.org>`__
@@ -24,7 +24,7 @@ derive soil moisture data, which are then resampled to an Earth-fixed, global,
 cylindrical 36 km Equal-Area Scalable Earth Grid, Version 2.0 (EASE-Grid 2.0).`
 
 `Data Set ID: SPL2SMP
-SMAP L2 Radiometer Half-Orbit 36 km EASE-Grid Soil Moisture, Version 4`
+SMAP L2 Radiometer Half-Orbit 36 km EASE-Grid Soil Moisture`
 
 `Surface soil moisture (0-5 cm) in m3/m3 derived from brightness temperatures
 (TBs) is output on a fixed global 36 km EASE-Grid 2.0. Also included are 
@@ -47,6 +47,11 @@ EASE-Grid 2.0 cell.`
   SMAP_L2_to_obs has only
   been thoroughly tested with the half-orbit files - these files have names like
   'SMAP_L2_SM_P_02526_D_20150723T070211_R12170_001.h5'. 
+
+.. Important::
+
+  SMAP_L2_to_obs is not compatible with SMAP L3 files as they are formatted 
+  differently
 
 
 
