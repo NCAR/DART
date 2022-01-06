@@ -359,8 +359,8 @@ lctn = model_size/3 * lctn
 
 lower_index = int(lctn) + 1
 upper_index = lower_index + 1
-if(lower_index > model_size) lower_index = lower_index - model_size/3
-if(upper_index > model_size) upper_index = upper_index - model_size/3
+if(lower_index > model_size/3) lower_index = lower_index - model_size/3
+if(upper_index > model_size/3) upper_index = upper_index - model_size/3
 
 lctnfrac = lctn - int(lctn)
 
