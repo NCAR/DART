@@ -28,7 +28,7 @@
    /
 
 &LPRM_L3_to_obs_nml
-   input_file      = '../data/TRMM_GLB_1999_2000/LPRM-TMI_L3_NT_SOILM3_V001-20120407T104019Z_19990701.nc.nc'
+   input_file      = '../data/TRMM_GLB_1999_2000/LPRM-TMI_L3_NT_SOILM3_V001-20120407T104019Z_19990701.nc'
    output_file     = 'obs_seq.out'
    debug           = .TRUE.
    lon_bounds      = 73.0, 135.0

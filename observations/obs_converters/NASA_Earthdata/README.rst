@@ -24,6 +24,12 @@ The data set covers the period from June 2002 to October 2011 (when the AMSR-E o
 Aqua satellite stopped producing data due to a problem with the rotation of its antenna), at the 
 spatial resolution (nominally 56 and 38 km, respectively) of AMSR-E's C and X bands (6.9 and 10.7 GHz, respectively).
 
+The LPRM is based on a forward radiative transfer model to retrieve surface soil moisture and
+vegetation optical depth. The land surface temperature is derived separately from the
+AMSR-E's Ka-band (36.5 GHz). A unique feature of this method is that it can be applied at any
+microwave frequency, making it very suitable to exploit all the available passive microwave data
+from various satellites.
+
 Data Source
 -----------
 
