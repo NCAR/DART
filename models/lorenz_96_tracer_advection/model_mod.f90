@@ -268,10 +268,7 @@ delta_loc = 1.0_r8/real(grid_size, r8)
 
 do i = 1, model_size
   state_loc(i) =  set_location(delta_loc*mod(i-1,grid_size))
-  print*, 'state_loc', i, state_loc(i)
 enddo
-
-call error_handler(E_ERR, 'helen', 'helen')
 
 ! The time_step in terms of a time type must also be initialized.
 ! (Need to determine appropriate non-dimensionalization conversion
@@ -409,7 +406,7 @@ if (present(var_type)) then
       location = state_loc(index_in)
    end if
 
-   if (grid_size < index_in .and. index_in <= (2*grid_size) then
+   if (grid_size < index_in .and. index_in <= (2*grid_size)) then
       var_type = QTY_TRACER_CONCENTRATION
       location = state_loc(index_in)
    end if
