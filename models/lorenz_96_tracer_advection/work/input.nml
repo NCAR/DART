@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .false.,
    single_file_in             = .true.
-   input_state_files          = "./filter_input/filter_input_one.nc"
+   input_state_files          = "perfect_input.nc"
 
    write_output_state_to_file = .true.,
    single_file_out            = .true.
@@ -29,14 +29,15 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = './filter_input/filter_input_one.nc'
+   input_state_files            = 'filter_input.nc'
    input_state_file_list        = ''
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
    single_file_out              = .true.,
-   output_state_files           = ''
-   output_state_file_list       = 'filter_output_list.txt'
+   output_state_files           = 'filter_output.nc'
+   output_state_file_list       = ''
+
    output_interval              = 1,
    output_members               = .true.
    num_output_state_members     = 20,
@@ -45,7 +46,7 @@
 
    ens_size                     = 40,
    num_groups                   = 1,
-   perturb_from_single_instance = .true.,
+   perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 

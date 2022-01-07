@@ -4,7 +4,9 @@ Lorenz 96 Tracer Advection
 Overview
 --------
 
-The Lorenz 96 Tracer Advection model combines the Lorenz 96 model with an upstream semi-Lagrangian method. This simulates the advection of tracer particles from any source(s) by the Lorenz 96 variables (here serving as wind).
+The Lorenz 96 Tracer Advection model combines the Lorenz 96 model with an 
+upstream semi-Lagrangian method. This simulates the advection of tracer 
+particles from any source(s) by the Lorenz 96 variables (here serving as wind).
 
 The Lorenz 96 model was first described by Edward Lorenz during a seminar at
 the European Centre for Medium-Range Weather Forecasts in the Autumn of 1995,
@@ -51,29 +53,28 @@ Lorenz and Emmanuel (1998) [2]_ describe the model as:
   temperature, at *J* equally spaced sites extending around a latitude circle.
   Nothing will simulate the atmosphere's latitudinal or vertical extent.
 
-In this model we are using the Semi-Lagrangian Scheme to model how tracer particles get distributed upstream across the grids by the Lorenz 96 winds
+In this model we are using the Semi-Lagrangian Scheme to model how tracer particles 
+get distributed upstream across the grids by the Lorenz 96 winds
 
 |Plot of 1D Semi-Lagrangian Method|
 
-The figure above describes the implementation of the Semi-Lagrangian scheme in a one dimensional array. The tracer particle in the figure lands on a predefined grid point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated backwards by one time step to time t\ :sup:`n`, often landing between grid points. Then, due to advection without diffusion, the concentration of tracer at time t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which can be determined by interpolating concentrations of the surrounding grids [3]_.
+The figure above describes the implementation of the Semi-Lagrangian scheme in a 
+one dimensional array. The tracer particle in the figure lands on a predefined grid 
+point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated 
+backwards by one time step to time t\ :sup:`n`, often landing between grid points. 
+Then, due to advection without diffusion, the concentration of tracer at time
+ t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which 
+can be determined by interpolating concentrations of the surrounding grids [3]_.
 
-Once the coupled Lorenz 96 and semi-Lagrangian is run with a source of strength 100 units/s and location at grid point one (with exponential sinks present in all grid points), the time evolution is as depicted below:
+Once the coupled Lorenz 96 and semi-Lagrangian is run with a source of strength
+ 100 units/s and location at grid point one (with exponential sinks present in
+ all grid points), the time evolution is as depicted below:
 
 |Plot of Lorenz 96 Tracer Advection|
 
-For Lorenz 96 Tracer Advection, DART advances the model, gets the model state and metadata describing this state, finds state variables that are close to a given location, and does spatial interpolation for model state variables.
-
-The Lorenz 96 Tracer Advection model has a ``work/workshop_setup.csh`` script that compiles and
-runs an example.  This example is referenced at various points in the
-:doc:`DART tutorial <../../theory/readme>`
-and is intended to provide insight into model/assimilation behavior.
-The example **may or may not** result in good (*or even decent!*) results!
-Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh``
-script.
-
-There are also some excellent Matlab tools to explore the behavior of the
-base Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of
-which are part of the :doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
+For Lorenz 96 Tracer Advection, DART advances the model, gets the model state and 
+metadata describing this state, finds state variables that are close to a given 
+location, and does spatial interpolation for model state variables.
 
 Namelist
 --------
@@ -145,8 +146,9 @@ References
        `doi:10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2
        <https://doi.org/10.1175/1520-0469(1998)055\<0399:OSFSWO\>2.0.CO;2>`__
 
-.. [3] Cushman-Roisin, Benoit, and Jean-Marie Beckers. 2011.         Introduction to Geophysical Fluid Dynamics: Volume 101: Physical and Numerical Aspects. 2nd ed. San Diego, CA: Academic Press.
-
+.. [3] Cushman-Roisin, Benoit, and Jean-Marie Beckers. 2011. 
+       Introduction to Geophysical Fluid Dynamics: Volume 101: Physical
+       and Numerical Aspects. 2nd ed. San Diego, CA: Academic Press.
 
 .. |Plot of 1D Semi-Lagrangian Method| image:: images/Semi_lag.png
 .. |Plot of Lorenz 96 Tracer Advection| image:: images/lorenz_96_tracer_advection.gif
