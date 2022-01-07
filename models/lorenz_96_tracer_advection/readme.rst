@@ -90,9 +90,6 @@ prematurely terminating the namelist.
      model_size        = 120,
      forcing           = 8.00,
      delta_t           = 0.05,
-     var_offset        = 0,
-     conc_offset       = 40,
-     source_offset     = 80,
      time_step_days    = 0,
      time_step_seconds = 3600
   /
@@ -117,15 +114,6 @@ Description of each namelist entry
 |                   |          | mapped to the dimensional timestep  |
 |                   |          | specified by time_step_days and     |
 |                   |          | time_step_seconds.                  |
-+-------------------+----------+-------------------------------------+
-| var_offset        |          | Offset for wind variables in the    |
-|                   |          | state vector (components 1-40).     |
-+-------------------+----------+-------------------------------------+
-| conc_offset       |          | Offset for tracer conc. in the      |
-|                   |          | state vector (components 41-80).    |
-+-------------------+----------+-------------------------------------+
-| source_offset     |          |  Offset for source info in the      |
-|                   |          |  state vector (components 81-120).  |
 +-------------------+----------+-------------------------------------+
 | time_step_days    | integer  | Number of days for dimensional      |
 |                   |          | timestep, mapped to delta_t.        |

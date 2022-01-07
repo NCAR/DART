@@ -80,13 +80,10 @@ character(len=128), parameter :: revdate  = ""
 integer(i8) :: model_size = 120
 real(r8)    :: forcing    = 8.00_r8
 real(r8)    :: delta_t    = 0.05_r8
-integer     :: var_offset = 0
-integer     :: conc_offset = 40
-integer     :: source_offset = 80
 integer    :: time_step_days = 0
 integer    :: time_step_seconds = 3600
 
-namelist /model_nml/ model_size, forcing, delta_t, var_offset, conc_offset, source_offset, time_step_days, time_step_seconds
+namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_seconds
 
 ! Tracer parameters
 ! mean velocity
@@ -104,6 +101,9 @@ integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION,
 
 ! module global variables
 integer :: grid_size  
+integer :: var_offset  
+integer :: conc_offset 
+integer :: source_offset
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
@@ -220,19 +220,18 @@ end subroutine adv_1step
 
 subroutine comp_dt(x, dt)
 
-real(r8), intent(in) :: x(:)
-real(r8), intent(out) :: dt(:)
+real(r8), intent(in) :: x(grid_size)
+real(r8), intent(out) :: dt(grid_size)
 
 integer :: j, jp1, jm1, jm2, ms
 
-ms = model_size
-do j = 1, ms/3
+do j = 1, grid_size
       jp1 = j + 1
-      if (jp1 > ms/3) jp1 = 1
+      if (jp1 > grid_size) jp1 = 1
       jm2 = j - 2
-      if (jm2 < 1) jm2 = ms/3 + jm2
+      if (jm2 < 1) jm2 = grid_size + jm2
       jm1 = j - 1
-      if (jm1 < 1) jm1 = ms/3
+      if (jm1 < 1) jm1 = grid_size
 
       dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
 end do
@@ -253,12 +252,15 @@ character(20) :: string1
 call initialize()
 
 ! check that model size is divisible by the number of variables
-if ( mod(model_size,3) /= 0 ) then 
+if ( mod(model_size,NVARS) /= 0 ) then 
    write(string1,'(I5)') NVARS 
    call error_handler(E_ERR, 'static_init_model', 'model_size must be a multiple of '// trim(string1))
 endif
      
 grid_size = model_size/NVARS
+var_offset = 0 
+conc_offset = grid_size
+source_offset = grid_size*2
 
 ! Create storage for locations
 allocate(state_loc(model_size))
@@ -295,9 +297,9 @@ subroutine init_conditions(x)
 real(r8), intent(out) :: x(:)
 
 x = 0
-x(1:model_size/3) = 0.0_r8
+x(1:grid_size) = 0.0_r8
 x(1) = 0.1_r8
-x((2*model_size)/3 + 1) = 100
+x(grid_size*2 + 1) = 100
 
 end subroutine init_conditions
 
@@ -350,13 +352,13 @@ istatus(:) = 0
 
 ! Convert location to real
 lctn = get_location(location)
-! Multiply by model size assuming domain is [0, 1] cyclic
-lctn = model_size/3 * lctn
+! Multiply by grid size assuming domain is [0, 1] cyclic
+lctn = grid_size * lctn
 
 lower_index = int(lctn) + 1
 upper_index = lower_index + 1
-if(lower_index > model_size/3) lower_index = lower_index - model_size/3
-if(upper_index > model_size/3) upper_index = upper_index - model_size/3
+if(lower_index > grid_size) lower_index = lower_index - grid_size
+if(upper_index > grid_size) upper_index = upper_index - grid_size
 
 lctnfrac = lctn - int(lctn)
 
