@@ -99,10 +99,11 @@ real(r8) :: diffusion_coef = 0.00_r8
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
 real(r8) :: e_folding = 1.00_r8
-! number state variable types_mod
-integer  :: NVARS = 3
+! number state variable quantities
+integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE
 
 ! module global variables
+integer :: grid_size  
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
@@ -124,21 +125,19 @@ contains
 
 subroutine adv_1step(x, time)
 
-real(r8), intent(inout) :: x(:) ! positions (1-40) tracer (41-80) and source (81-120)
+real(r8), intent(inout) :: x(:) ! for a grid_size = 40, model_size = 120: 
+                            ! positions (1-40) tracer (41-80) and source (81-120)
                             ! this is generalizable to any model size that is a
                             ! multiple of 3
 type(time_type), intent(inout) :: time
 
 real(r8) :: velocity, target_loc, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
-real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
-integer(i8) :: model_size_third !Used enough to use as a variable
+real(i8), dimension(grid_size) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
 
-model_size_third = model_size/3
-
-q = x(model_size_third + 1 :2*model_size_third)
+q = x(grid_size + 1 :2*grid_size)  ! QTY_TRACER_CONCENTRATION
 ! Doing an upstream semi-lagrangian advection for q for each grid point
-do i = 1, model_size_third
+do i = 1, grid_size
     ! Get the target point
     velocity = mean_velocity + x(i)*pert_velocity_multiplier
     target_loc = i - velocity*delta_t
@@ -150,29 +149,29 @@ do i = 1, model_size_third
     ! Assume for now that we are not looking upstream for multiple revolutions
 
     if (low < 1) then
-      low = low + model_size_third
-    else if (low > model_size_third) then
-      low = low - model_size_third
+      low = low + grid_size
+    else if (low > grid_size) then
+      low = low - grid_size
     end if
 
     if (hi < 1) then
-      hi = hi + model_size_third
-    else if (hi > model_size_third) then
-      hi = hi - model_size_third
+      hi = hi + grid_size
+    else if (hi > grid_size) then
+      hi = hi - grid_size
     end if
 
     q_new(i) = (1 - frac)*q(low) + frac*q(hi)
 end do
 
 ! Diffusion for smoothing and avoiding shocky behavior
-do i = 1, model_size_third
+do i = 1, grid_size
     down = i - 1;
     if (down < 1) then
-      down = down + model_size_third
+      down = down + grid_size
     end if
     up = i + 1;
-    if (up > model_size_third) then
-      up = up - model_size_third
+    if (up > grid_size) then
+      up = up - grid_size
     end if
     q_diff(i) = diffusion_coef * (q_new(down) + q_new(up) - 2*q_new(i))
 end do
@@ -180,38 +179,38 @@ end do
 q_new = q_new + q_diff*delta_t
 
 ! Add source following the source input
-q_new = x((2*model_size_third)+1 : model_size)*delta_t + q_new
+q_new = x((2*grid_size)+1 : model_size)*delta_t + q_new
 ! Add exponential sinks at every grid point
 ratio = exp((-1)*e_folding*delta_t)
 q_new = ratio*q_new
 
-x(model_size_third+1:2*(model_size_third)) = q_new
+x(grid_size+1:2*(grid_size)) = q_new
 
 ! RK4 solver for the lorenz-96 equations
 
 ! Compute first intermediate step
-call comp_dt(x(1: model_size_third), dx)
+call comp_dt(x(1: grid_size), dx)
 x1 = delta_t * dx
-inter = x(1: model_size_third)+ x1/2
+inter = x(1: grid_size)+ x1/2
 
 ! Compute second intermediate step
 call comp_dt(inter, dx)
 x2 = delta_t * dx
-inter = x(1: model_size_third) + x2/2
+inter = x(1: grid_size) + x2/2
 
 ! Compute third intermediate step
 call comp_dt(inter, dx)
 x3 = delta_t * dx
-inter = x(1: model_size_third) + x3
+inter = x(1: grid_size) + x3
 
 ! Compute fourth intermediate step
 call comp_dt(inter, dx)
 x4 = delta_t * dx
 
 ! Compute new value for x
-x_new = x(1: model_size_third) + x1/6 + x2/3 + x3/3 + x4/6
+x_new = x(1: grid_size) + x1/6 + x2/3 + x3/3 + x4/6
 
-x(1: model_size_third) = x_new
+x(1: grid_size) = x_new
 
 
 end subroutine adv_1step
@@ -246,30 +245,33 @@ end subroutine comp_dt
 
 subroutine static_init_model()
 
-real(r8) :: x_loc
+real(r8) :: x_loc, delta_loc
 integer  :: i, dom_id, var_id
+character(20) :: string1
 
 ! Do any initial setup needed, including reading the namelist values
 call initialize()
+
+! check that model size is divisible by the number of variables
+if ( mod(model_size,3) /= 0 ) then 
+   write(string1,'(I5)') NVARS 
+   call error_handler(E_ERR, 'static_init_model', 'model_size must be a multiple of '// trim(string1))
+endif
+     
+grid_size = model_size/NVARS
 
 ! Create storage for locations
 allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
-do i = 1, model_size/3
-   x_loc = (i - 1.0_r8) / (model_size/3)
-   state_loc(i) =  set_location(x_loc)
-end do
+delta_loc = 1.0_r8/real(grid_size, r8)
 
-do i = (model_size/3 + 1), ((2*model_size)/3)
-   x_loc = (i - (model_size/3 + 1)) / (model_size/3)
-   state_loc(i) =  set_location(x_loc)
-end do
+do i = 1, model_size
+  state_loc(i) =  set_location(delta_loc*mod(i-1,grid_size))
+  print*, 'state_loc', i, state_loc(i)
+enddo
 
-do i = ((2*model_size)/3 + 1), model_size
-   x_loc = (i - ((2*model_size)/3 + 1)) / (model_size/3)
-   state_loc(i) =  set_location(x_loc)
-end do
+call error_handler(E_ERR, 'helen', 'helen')
 
 ! The time_step in terms of a time type must also be initialized.
 ! (Need to determine appropriate non-dimensionalization conversion
@@ -278,7 +280,6 @@ time_step = set_time(time_step_seconds, time_step_days)
 
 ! Tell the DART I/O routines how large the model data is so they
 ! can read/write it.
-
 dom_id = add_domain('template.nc', NVARS, &
                               (/ 'state_variable      ', &
                                  'tracer_concentration', &
@@ -403,17 +404,17 @@ type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 if (present(var_type)) then
-   if (index_in <= model_size/3) then
+   if (index_in <= grid_size) then
       var_type = QTY_STATE_VARIABLE
       location = state_loc(index_in)
    end if
 
-   if (model_size/3 < index_in .and. index_in <= (2*model_size)/3) then
+   if (grid_size < index_in .and. index_in <= (2*grid_size) then
       var_type = QTY_TRACER_CONCENTRATION
       location = state_loc(index_in)
    end if
 
-   if ((2*model_size)/3 < index_in .and. index_in <= model_size) then
+   if ( (2*grid_size) < index_in .and. index_in <= model_size) then
       var_type = QTY_TRACER_SOURCE
       location = state_loc(index_in)
    end if
