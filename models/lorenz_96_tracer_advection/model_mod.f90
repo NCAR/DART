@@ -70,10 +70,9 @@ public :: pert_model_copies, &
           write_model_time
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = "model_mod.f90"
+character(len=32 ), parameter :: revision = ""
+character(len=128), parameter :: revdate  = ""
 
 
 ! Namelist with default values
@@ -130,7 +129,7 @@ real(r8), intent(inout) :: x(:) ! positions (1-40) tracer (41-80) and source (81
                             ! multiple of 3
 type(time_type), intent(inout) :: time
 
-real(r8) :: velocity, target, frac, ratio
+real(r8) :: velocity, target_loc, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
 real(i8), dimension(size(x)/3) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
 integer(i8) :: model_size_third !Used enough to use as a variable
@@ -142,11 +141,11 @@ q = x(model_size_third + 1 :2*model_size_third)
 do i = 1, model_size_third
     ! Get the target point
     velocity = mean_velocity + x(i)*pert_velocity_multiplier
-    target = i - velocity*delta_t
+    target_loc = i - velocity*delta_t
     ! Get the bounding grid point
-    low = floor(target)
+    low = floor(target_loc)
     hi = low + 1
-    frac = target - low
+    frac = target_loc - low
 
     ! Assume for now that we are not looking upstream for multiple revolutions
 
