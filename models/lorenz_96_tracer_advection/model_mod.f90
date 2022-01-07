@@ -278,7 +278,6 @@ time_step = set_time(time_step_seconds, time_step_days)
 
 ! Tell the DART I/O routines how large the model data is so they
 ! can read/write it.
-!dom_id = add_domain(model_size)
 
 dom_id = add_domain('template.nc', NVARS, &
                               (/ 'state_variable      ', &
