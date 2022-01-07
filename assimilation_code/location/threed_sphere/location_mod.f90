@@ -26,15 +26,9 @@ use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
-
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
-
-use   obs_kind_mod, only : get_num_types_of_obs, &
-                           get_name_for_type_of_obs, &
-                           get_index_for_type_of_obs
-
+use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
 use mpi_utilities_mod, only : my_task_id, task_count
-
 use ensemble_manager_mod, only : ensemble_type
 
 implicit none
@@ -788,7 +782,7 @@ endif
 ! hectopascals instead of pascals for pressure, etc.
 
 ! this must be the sum of the longest of the formats below.
-charlength = 80
+charlength = 72
 
 if (len(charstring) < charlength) then
    write(msgstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
@@ -803,23 +797,19 @@ write(string1, '(A,F12.8,1X,F12.8,1X,A)') 'Lon/Lat(deg): ',  loc%lon*RAD2DEG, &
 ! case the caller is listing out locations with different vert units.
 ! concatinate the vertical on the end of the horizontal and put it all
 ! into the return string. 
-
-!> some land models has vertical levels specified in cm ... 
-!> they need many digits when printing (in km) 
-
 select case  (loc%which_vert)
    case (VERTISUNDEF)
       write(charstring, '(A,A)')       trim(string1), '              Undefined'
    case (VERTISSURFACE)
-      write(charstring, '(A,F18.10,A)') trim(string1), loc%vloc, ' surface (m)'
+      write(charstring, '(A,F13.5,A)') trim(string1), loc%vloc, ' surface (m)'
    case (VERTISLEVEL)
-      write(charstring, '(A,F18.10,A)') trim(string1), loc%vloc, '  level'
+      write(charstring, '(A,F13.6,A)') trim(string1), loc%vloc, '  level'
    case (VERTISPRESSURE)
-      write(charstring, '(A,F18.10,A)') trim(string1), loc%vloc / 100.0_r8, ' hPa'
+      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 100.0_r8, ' hPa'
    case (VERTISHEIGHT)
-      write(charstring, '(A,F18.10,A)') trim(string1), loc%vloc / 1000.0_r8, ' km'
+      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 1000.0_r8, ' km'
    case (VERTISSCALEHEIGHT)
-      write(charstring, '(A,F18.10,A)') trim(string1), loc%vloc, ' scale ht'
+      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc, ' scale ht'
    case default
       write(msgstring, *) 'unrecognized key for vertical type: ', loc%which_vert
       call error_handler(E_ERR, 'write_location', msgstring, source)
