@@ -287,7 +287,7 @@ type(time_type) :: get_time_from_name
 integer :: indx, indx1, indx2
 integer :: year, month, day, hours, minutes, seconds
 
-indx = index(fname,'.nc.nc') ! may not be universally applicable
+indx = index(fname,'.nc') ! may not be universally applicable
 
 if (indx < 1) then
    call error_handler(E_ERR,'get_time_from_name','cannot determine where to start', &
