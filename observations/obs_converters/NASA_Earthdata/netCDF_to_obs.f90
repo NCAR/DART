@@ -286,7 +286,7 @@ fileloop: do      ! until out of files
             ! Create observation
             
 
-            vertvalue  = 0.0_r8  ! does not matter for LAI
+            vertvalue  = -888888.0_r8  ! does not matter for LAI
             qc         = 0       ! they are all good
 
             call create_3d_obs(lat, lon, vertvalue, VERTISUNDEF, &
