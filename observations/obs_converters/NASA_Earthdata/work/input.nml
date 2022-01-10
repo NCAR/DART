@@ -22,26 +22,26 @@
 &AMSR_E_L2_to_obs_nml
    input_file      = '../data/LPRM-AMSR_E_L2/LPRM-AMSR_E_L2_D_SOILM2_V002_20030630025503.nc'
    output_file     = 'obs_seq.out'
-   debug           = .TRUE.
+   debug           = .FALSE.
    max_rfi_code    = 2
    amsre_rep_error = 2
    /
 
 &LPRM_L3_to_obs_nml
-   input_file      = '../data/TRMM_GLB_1999_2000/LPRM-TMI_L3_NT_SOILM3_V001-20120407T104019Z_19990701.nc'
+   input_file      = '../data/LPRM_TMI_NT_SOILM3/LPRM-TMI_L3_NT_SOILM3_V001-20120411T144345Z_20120407.nc'
    output_file     = 'obs_seq.out'
-   debug           = .TRUE.
-   lon_bounds      = 73.0, 135.0
-   lat_bounds      =  3.0,  53.0
+   debug           = .FALSE.
+   lon_bounds      = 0.0, 360.0
+   lat_bounds      = -90.0, 90.0
    /
 
 
 &netCDF_to_obs_nml
-   input_file          = '/glade/scratch/thoar/GIMMS3g_LAI_Bimonthly_2000_2010_60min.nc'
+   input_file          = '../data/GIMMS3g/LAI_mean_monthly_1981-2015.nc4'
    output_file_base    = 'obs_seq.out'
    lon_bounds          =   0.0, 360.0
    lat_bounds          = -90.0,  90.0
-   debug               = .TRUE.
+   debug               = .FALSE.
    observation_varname          = 'LAI'
    observation_type             = 'GIMMS_LEAF_AREA_INDEX'
    obs_error_standard_deviation = 0.2
