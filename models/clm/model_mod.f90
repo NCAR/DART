@@ -105,8 +105,6 @@ use obs_def_utilities_mod, only : track_status
 
 use     mpi_utilities_mod, only : my_task_id
 
-use           options_mod, only : set_missing_ok_status
-
 use     default_model_mod, only : adv_1step, init_time, init_conditions, &
                                   nc_write_model_vars
 
@@ -479,9 +477,6 @@ call check_namelist_read(iunit, io, 'model_nml')
 ! Record the namelist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
-
-! It is OK for this model to have MISSING_R8 in the DART state.
-call set_missing_ok_status(.true.)
 
 !---------------------------------------------------------------
 ! Set the time step ... causes clm namelists to be read.
