@@ -187,7 +187,7 @@ enddo UPDATE
 
  ! Manually repartition snow layer variables with H2OSNO variable
 
-  if (repartition_swe > 0.0_r8) then
+  if (repartition_swe > 0) then
  
  ! Pass in the soil/snow and column dimensions to update_snow subroutine
      if (nc_variable_exists(ncid_clm, 'H2OSOI_ICE')) then
