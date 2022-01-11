@@ -154,7 +154,7 @@ UPDATE : do ivar=1, get_num_variables(dom_restart)
   ! If repartitioning SWE is enabled, then skip applying snow variable updates
   ! within UPDATE loop which applies un-repartitioned DART posterior
   ! The repartitioned snow variable updates will be performed in 'update_snow'
-  if (repartition_swe > 0.0_r8) then
+  if (repartition_swe > 0) then
 
 
    varname = get_variable_name(dom_restart,ivar)
