@@ -343,13 +343,12 @@ TYPE wrf_static_data_for_dart
    character(len=10), dimension(:),pointer :: clamp_or_fail
    character(len=129),dimension(:),pointer :: description, units, stagger, coordinates
 
-   integer, dimension(:,:,:,:), pointer :: dart_ind
 
 end type wrf_static_data_for_dart
 
 type wrf_dom
    type(wrf_static_data_for_dart), pointer :: dom(:)
-   integer :: model_size
+   integer(i8) :: model_size
 end type wrf_dom
 
 type(wrf_dom) :: wrf
@@ -374,7 +373,8 @@ integer :: io, iunit
 
 character (len=1)     :: idom
 logical, parameter    :: debug = .false.
-integer               :: ind, i, j, k, id, dart_index
+integer               :: ind, i, j, k, id
+integer(i8)           :: dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 logical               :: var_update_list(max_state_variables)
@@ -3710,52 +3710,6 @@ if(zout /= missing_r8) istatus = 0
 end subroutine vert_convert
 
 !#######################################################################
-
-
-function get_wrf_index( i,j,k,var_type,id )
-
-integer, intent(in) :: i,j,k,var_type,id
-
-integer :: get_wrf_index
-integer :: in
-
-write(errstring,*)'function get_wrf_index should not be called -- still needs updating!'
-call error_handler(E_ERR,'get_wrf_index', errstring, &
-     source, revision, revdate)
-
-do in = 1, wrf%dom(id)%number_of_wrf_variables
-   if(var_type == wrf%dom(id)%var_type(in) ) then
-      exit
-   endif
-enddo
-
-! If one decides to use get_wrf_index, then the following test should be updated
-!   to take periodicity into account at the boundaries -- or should it?
-if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,in) .and. &
-   j >= 1 .and. j <= wrf%dom(id)%var_size(2,in) .and. &
-   k >= 1 .and. k <= wrf%dom(id)%var_size(3,in)) then
-
-   get_wrf_index = wrf%dom(id)%dart_ind(i,j,k,var_type)
-
-!!$   get_wrf_index = wrf%dom(id)%var_index(1,in)-1 +   &
-!!$        i + wrf%dom(id)%var_size(1,in)*((j-1) + &
-!!$        wrf%dom(id)%var_size(2,in)*(k-1))
-
-else
-
-  write(errstring,*)'Indices ',i,j,k,' exceed grid dimensions: ', &
-       wrf%dom(id)%var_size(1,in), &
-       wrf%dom(id)%var_size(2,in),wrf%dom(id)%var_size(3,in)
-  call error_handler(E_ERR,'get_wrf_index', errstring, &
-       source, revision, revdate)
-
-endif
-
-end function get_wrf_index
-
-
-!***********************************************************************
-
 
 subroutine get_wrf_horizontal_location( i, j, var_type, id, long, lat )
 
@@ -8473,7 +8427,6 @@ print*, 'description, units, stagger, coordinates ', size(wrf%dom(domain)%descri
                                                      size(wrf%dom(domain)%stagger), &
                                                      size(wrf%dom(domain)%coordinates)
 
-print*, 'dart_ind ', size(wrf%dom(domain)%dart_ind)
 print*
 
 end subroutine static_data_sizes

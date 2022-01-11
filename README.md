@@ -23,6 +23,8 @@ DART is available through GitHub. To download the latest version of DART:
 git clone https://github.com/NCAR/DART.git
 ```
 
+To register for DART and view the terms of use, click on [register for DART](https://www2.cisl.ucar.edu/software/dart/download).
+
 #### Citing DART
 
 To cite DART, please use the following text:
