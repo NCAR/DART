@@ -5,16 +5,16 @@ Overview
 --------
 
 ``dart_to_clm`` replaces the contents of a CLM restart file with the posterior values 
-from DART. Only variables with posterior values are updated. The *missingValue* in the 
+from DART. Only variables with posterior values are updated. The *_FillValue* in the 
 DART posterior is used as a mask when replacing the value. The original CLM restart file values 
-are maintained when the DART posterior value is *missingValue*.
+are maintained when the DART posterior value is *_FillValue*.
 
 Usage
 -----
 ``dart_to_clm`` overwrites the output file. See the companion :doc:`clm_to_dart` for a 
 discussion on replacing indeterminate values in the CLM restart snow variables with 
-*missingValue* so that the DART netCDF read routines handle the special values correctly. 
-Where the DART posterior file has *missingValue* values, the original CLM restart file 
+*_FillValue* so that the DART netCDF read routines handle the special values correctly. 
+Where the DART posterior file has *_FillValue* values, the original CLM restart file 
 is left unchanged, preserving the original values.
 
 ``dart_to_clm`` also **includes an option that repartitions the snow water equivalent (SWE)**

@@ -164,7 +164,7 @@ VARIABLES : do ivar = 1,nvariables
                      ! frac_sno(j) seems to be a reliable indicator of a trace of snow
                      if (frac_sno(j) > 0.0_r8 .and. i == nlevsno) cycle
                        
-                     variable(i,j) = missingValue
+                     variable(i,j) = FillValue
             
                 enddo
 
