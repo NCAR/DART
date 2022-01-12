@@ -227,7 +227,8 @@ Description of namelist variables:
 +------------------------------+--------------------+---------------------------------------------------------------------------+
 | observation_type             | character(len=256) | Name of the DART observation type                                         |
 +------------------------------+--------------------+---------------------------------------------------------------------------+
-| obs_error_standard_deviation | character(len=256) | The observation error standard deviation (not provided within data file)  |                        +------------------------------+--------------------+---------------------------------------------------------------------------+
+| obs_error_standard_deviation | character(len=256) | The observation error standard deviation (not provided within data file)  |                                                   
++------------------------------+--------------------+---------------------------------------------------------------------------+
 
 
 Data Source
@@ -235,8 +236,6 @@ Data Source
 
 The Global Monthly Mean Leaf Area Index Climatology, (1981-2015) data can be found
 `here. <https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1653>`__
-
-
 
 
 

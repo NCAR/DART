@@ -665,7 +665,7 @@ if(seq%num_obs >= seq%max_num_obs) then
    ! Later do an increase of space and copy
    write(string1,*) 'ran out of room, num_obs (',seq%num_obs, &
                                ') > max_num_obs (',seq%max_num_obs,')'
-   call error_handler(E_ERR,'insert_obs_in_seq',string1, source)
+    call error_handler(E_ERR,'insert_obs_in_seq',string1, source)
 endif
 
 ! Set the key for the observation
