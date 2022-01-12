@@ -71,7 +71,7 @@ Description of namelist variables:
 +--------------------+--------------------+---------------------------------------------------------------------------+
 | Contents           | Type               | Description                                                               |
 +====================+====================+===========================================================================+
-| input_file         | character(len=256) | Name of the netcdf soil moisture data file.                                |
+| input_file         | character(len=256) | Name of the netcdf soil moisture data file.                               |
 +--------------------+--------------------+---------------------------------------------------------------------------+
 | obs_out_file       | character(len=256) | Name of the output observation sequence file.                             |
 +--------------------+--------------------+---------------------------------------------------------------------------+
@@ -82,6 +82,13 @@ Description of namelist variables:
 |                    |                    | to the instrument error provided from the input file to calculate the     |
 |                    |                    | total observation error variance                                          |
 +--------------------+--------------------+---------------------------------------------------------------------------+
+
+.. Important::
+
+  The total error (instrument error + representativeness error) is used to calculate the observation error
+  variance in the ``obs_out_file``. The instrument error is taken from the data file variable (sm_c_error
+  or sm_x_error), whereas the represenativeness error (amsre_rep_error) is a namelist variable input by the
+  user at runtime.
 
 
 
@@ -141,7 +148,7 @@ Description of namelist variables:
 +--------------------+--------------------+---------------------------------------------------------------------------+
 | Contents           | Type               | Description                                                               |
 +====================+====================+===========================================================================+
-| input_file         | character(len=256) | Name of the netcdf soil moisture data file.                                |
+| input_file         | character(len=256) | Name of the netcdf soil moisture data file.                               |
 +--------------------+--------------------+---------------------------------------------------------------------------+
 | output_file        | character(len=256) | Name of the output observation sequence file.                             |
 +--------------------+--------------------+---------------------------------------------------------------------------+
@@ -151,6 +158,12 @@ Description of namelist variables:
 | lat_bounds         | real(r8)           | Latitude bounds. Observations outside these bounds are excluded from      |
 |                    |                    | the output_file                                                           |
 +--------------------+--------------------+---------------------------------------------------------------------------+
+
+.. Important::
+
+  The total error (instrument error + representativeness error) is used to calculate the observation error
+  variance in the ``output_file``. The instrument error is taken from the data file variable 
+  (sm_x_error), whereas the representativeness error is set to 0.1 within the ``LPRM_L3_to_obs``.
 
 
 Data Source
@@ -227,8 +240,7 @@ Description of namelist variables:
 +------------------------------+--------------------+---------------------------------------------------------------------------+
 | observation_type             | character(len=256) | Name of the DART observation type                                         |
 +------------------------------+--------------------+---------------------------------------------------------------------------+
-| obs_error_standard_deviation | character(len=256) | The observation error standard deviation (not provided within data file)  |                                                   
-+------------------------------+--------------------+---------------------------------------------------------------------------+
+| obs_error_standard_deviation | character(len=256) | The observation error standard deviation (not provided within data file)  |         +------------------------------+--------------------+---------------------------------------------------------------------------+                              
 
 
 Data Source
