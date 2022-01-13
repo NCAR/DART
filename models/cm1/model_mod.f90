@@ -854,7 +854,7 @@ subroutine height_interpolate_s_grid(obs_loc_array, varid, nlevs, nlevs_shrink, 
 
 real(r8), intent(in)  :: obs_loc_array(3)
 integer,  intent(in)  :: varid
-integer,  intent(in)  :: nlevs, nlevs_shrink ! JDL nlevs_shrink is an addition to show number of gridpoiints to collapse upon
+integer,  intent(in)  :: nlevs, nlevs_shrink ! JDL nlevs_shrink is an addition to show number of gridpoints to collapse upon
 
 integer,  intent(out) :: z_ind(2)
 real(r8), intent(out) :: z_val(2)
