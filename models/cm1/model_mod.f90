@@ -1131,7 +1131,7 @@ if ( periodic_x .and. periodic_y ) then
    endif
 elseif ( periodic_x) then
     ! require that the point is contained within the staggered grid for the 
-    ! y - direction since you cannot wrap-arround
+    ! y - direction since you cannot wrap-around
     if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
         (obs_location(2) < yh(1)) .or. (obs_location(2) > yh(nj)) ) then
 
