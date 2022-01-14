@@ -123,9 +123,10 @@ public :: add_domain,                 &
           add_dimension_to_variable,  &
           finished_adding_domain,     &
           state_structure_info,       &
-          is_parameter_estimate,      &
+          is_init_parameter_estimate, &
           set_parameter_value,        &
-          get_parameter_value
+          get_parameter_value,        &
+          hyperslice_domain
   
 
 ! diagnostic files
@@ -162,6 +163,8 @@ type io_information
    ! dimension information, including unlimited dimensions
    integer :: io_numdims  = 0
    integer, dimension(NF90_MAX_VAR_DIMS) :: io_dimIds
+   character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
+   integer,                      dimension(NF90_MAX_VAR_DIMS) :: dimlens
    
    ! update information
    logical :: update = .true. ! default to update variables
@@ -241,8 +244,9 @@ type domain_type
    ! string identifying the manner in which the domain was created
    ! 'blank', 'file', or 'spec'
    character(len=6) :: method = 'none'
-   logical :: parameter_estimate = .false.  ! variable values set not read
-   
+   ! if init_parameter_estimate = .true. the variable values set rather than read
+   logical :: init_parameter_estimate = .false.
+
 end type domain_type
 
 !-------------------------------------------------------------------------------
@@ -373,14 +377,14 @@ end function add_domain_from_file
 
 
 function add_domain_from_spec(num_vars, var_names, kind_list, clamp_vals, &
-           update_list, parameter_estimate) result(dom_id)
+           update_list, init_parameter_estimate) result(dom_id)
 
 integer,          intent(in) :: num_vars
 character(len=*), intent(in) :: var_names(num_vars)
 integer,          intent(in), optional :: kind_list(num_vars)
 real(r8),         intent(in), optional :: clamp_vals(num_vars, 2)
 logical,          intent(in), optional :: update_list(num_vars)
-logical,          intent(in), optional :: parameter_estimate
+logical,          intent(in), optional :: init_parameter_estimate
 
 integer :: dom_id
 
@@ -408,8 +412,8 @@ enddo
 if ( present(kind_list)   ) call set_dart_kinds (dom_id, num_vars, kind_list)
 if ( present(clamp_vals)  ) call set_clamping   (dom_id, num_vars, clamp_vals)
 if ( present(update_list) ) call set_update_list(dom_id, num_vars, update_list)
-if ( present(parameter_estimate)) state%domain(dom_id)%parameter_estimate = .true.
-
+if ( present(init_parameter_estimate)) &
+  state%domain(dom_id)%init_parameter_estimate = init_parameter_estimate
 end function add_domain_from_spec
 
 
@@ -886,7 +890,33 @@ call nc_check(ret, 'load_common_cf_conventions nf90_close', trim(ncFilename))
 
 end subroutine load_common_cf_conventions
 
+!-------------------------------------------------------------------------------
+!> TIEGCM, the top level of each variable is the boundary condition.
+!> So the top level should not be part of the state.
+!> How general does this need to be?  At the moment it is just a hack to
+!> be able to proceed with TIEGCM.
+!>
+!> This slicing needs to be on the the DART state structure, not the io netcdf
+!> structure.
 
+subroutine hyperslice_domain(dom_id, dim_name, new_length)
+
+integer,          intent(in) :: dom_id
+character(len=*), intent(in) :: dim_name
+integer,          intent(in) :: new_length
+
+integer :: ivar, jdim
+
+! Reduce the dimension size
+do ivar = 1, get_num_variables(dom_id)
+   do jdim = 1, get_num_dims(dom_id, ivar)
+       if (get_dim_name(dom_id, ivar, jdim) == dim_name) then
+          state%domain(dom_id)%variable(ivar)%dimlens(jdim) = new_length
+       endif
+   enddo
+enddo
+
+end subroutine hyperslice_domain
 !-------------------------------------------------------------------------------
 !> Returns the number of domains being used in the state structure
 
@@ -1556,8 +1586,8 @@ integer,  intent(in)  :: dom_id
 integer,  intent(in)  :: var_id ! this is the order you gave in add_domain
 real(r8), intent(in)  :: value  ! what to set the variable to
 
-if ( .not. state%domain(dom_id)%parameter_estimate) then
-  call error_handler(E_ERR, 'set_variable_value', 'not a parameter_estimate domain')
+if ( .not. state%domain(dom_id)%init_parameter_estimate) then
+  call error_handler(E_ERR, 'set_variable_value', 'not using initialization for parameter_estimate domain')
 endif
 
 state%domain(dom_id)%variable(var_id)%parameter_value = value
@@ -1572,8 +1602,8 @@ integer, intent(in)  :: var_id ! order from add_domain_from_spec
 real(r8) :: get_parameter_value
 
 
-if ( .not. state%domain(dom_id)%parameter_estimate) then
-  call error_handler(E_ERR, 'set_variable_value', 'not a parameter_estimate domain')
+if ( .not. state%domain(dom_id)%init_parameter_estimate) then
+  call error_handler(E_ERR, 'get_variable_value', 'variables not initialized for parameter_estimate domain')
 endif
 
 get_parameter_value = state%domain(dom_id)%variable(var_id)%parameter_value
@@ -1582,14 +1612,14 @@ end function get_parameter_value
 
 !-------------------------------------------------------------------------------
 ! return whether the domain is parameter estimation
-function is_parameter_estimate(dom_id)
+function is_init_parameter_estimate(dom_id)
 
 integer, intent(in) :: dom_id ! domain identifier
-logical :: is_parameter_estimate
+logical :: is_init_parameter_estimate
 
-is_parameter_estimate = state%domain(dom_id)%parameter_estimate
+is_init_parameter_estimate = state%domain(dom_id)%init_parameter_estimate
 
-end function is_parameter_estimate
+end function is_init_parameter_estimate
 
 
 !-------------------------------------------------------------------------------

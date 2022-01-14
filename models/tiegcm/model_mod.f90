@@ -61,7 +61,8 @@ use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension
                                 get_domain_size, set_parameter_value, get_model_variable_indices, &
                                 get_num_dims, get_dim_name, get_variable_name, &
                                 get_varid_from_varname, get_num_varids_from_kind, &
-                                get_varid_from_kind, get_varids_from_kind
+                                get_varid_from_kind, get_varids_from_kind, &
+                                hyperslice_domain, get_num_domains
 
 use distributed_state_mod, only : get_state, get_state_array
 
@@ -117,6 +118,7 @@ character(len=256) :: tiegcm_secondary_file_name = 'tiegcm_s.nc'
 character(len=256) :: tiegcm_namelist_file_name  = 'tiegcm.nml'
 integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
+logical            :: initialize_f10_7 = .false.
 integer            :: assimilation_period_seconds = 3600
 
 integer, parameter :: MAX_NUM_VARIABLES = 30
@@ -125,7 +127,9 @@ character(len=NF90_MAX_NAME) :: variables(MAX_NUM_VARIABLES * MAX_NUM_COLUMNS) =
 
 namelist /model_nml/ tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, tiegcm_namelist_file_name, &
-                     variables, debug, estimate_f10_7, assimilation_period_seconds
+                     variables, debug, estimate_f10_7, initialize_f10_7, &
+                     assimilation_period_seconds
+                     
 
 !-------------------------------------------------------------------------------
 ! define model parameters
@@ -228,6 +232,15 @@ endif
 
 call read_TIEGCM_namelist(tiegcm_namelist_file_name)
 call read_TIEGCM_definition(tiegcm_restart_file_name)
+
+if ( estimate_f10_7 ) then
+  if (initialize_f10_7) then
+   write(string1, '(f10.5)') f10_7
+   call error_handler(E_MSG, 'initalizing f10_7 as', string1 )
+  else
+   call error_handler(E_MSG, 'reading f10_7 estimate', 'from netcdf file')
+  endif
+endif
 
 ! error-check, convert namelist input to variable_table, and build the
 ! state structure
@@ -1438,10 +1451,13 @@ endif
 
 call load_up_state_structure_from_file('tiegcm_restart_p.nc', nfields_restart, 'RESTART', RESTART_DOM)
 call load_up_state_structure_from_file('tiegcm_s.nc', nfields_secondary, 'SECONDARY', SECONDARY_DOM)
-call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
-
-model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
+if (estimate_f10_7) then
+   call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
+   model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
                           + get_domain_size(CONSTRUCT_DOM)
+else
+   model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM)
+endif
 
 ! set ivar. ZG is in the secondary domain
 ivarZG = get_varid_from_varname(domain_id(SECONDARY_DOM), 'ZG')
@@ -1493,6 +1509,10 @@ enddo
 domain_id(domain_num) = add_domain(filename, nvar, &
                           var_names, kind_list, clamp_vals, update_list)
 
+! remove top level from all variables
+call hyperslice_domain(domain_id(domain_num), 'lev', nlev)
+call hyperslice_domain(domain_id(domain_num), 'ilev', nlev)
+
 deallocate(var_names, kind_list, clamp_vals, update_list)
 
 end subroutine load_up_state_structure_from_file
@@ -1537,13 +1557,15 @@ do i = 1, nfields
    endif
 enddo
 
-domain_id(domain_num) = add_domain(nvar, var_names, kind_list, clamp_vals, update_list, .true.)
+domain_id(domain_num) = add_domain(nvar, var_names, &
+       kind_list, clamp_vals, update_list, init_parameter_estimate=initialize_f10_7)
 
 do i = 1, nvar ! HK f10_7 and VTEC and anything else?
   if (var_names(i) == 'f10_7') then
     ! dimensions to match what? Lanai has single value f10_7
     call add_dimension_to_variable(domain_id(domain_num), i, 'parameter', 1)
-    call set_parameter_value(domain_id(domain_num), i, f10_7)
+    ! initialize to namelist value, or read from file
+    if (initialize_f10_7) call set_parameter_value(domain_id(domain_num), i, f10_7)
   endif
 
   !HK I don't understand why VTEC is a state variable vs. calculating it on the fly.
@@ -1717,7 +1739,7 @@ var_id = -1
 
 !HK can you ever have the same variable in restart and secondary?
 !   I don't think so
-do id = 1, 3 ! RESTART_DOM, SECONDARY_DOM, CONSTRUCT_DOM
+do id = 1, get_num_domains() ! RESTART_DOM, SECONDARY_DOM, CONSTRUCT_DOM
 
    num_same_kind = get_num_varids_from_kind(domain_id(id), iqty)
    if (num_same_kind == 0 ) cycle
