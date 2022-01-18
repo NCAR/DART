@@ -29,6 +29,7 @@ density remains the same.
 
 This repartitioning approach has two main advantages over the traditional *filter* update
 applied by DART:
+
   1. It is not required that a given snow layer exists amongst all CLM ensemble members
   in order for the snow layer to be adjusted. Because the CLM snow algorithm splits and
   aggregates snow layers based upon the vertical thickness in each layer, the uncertainty
