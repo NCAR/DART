@@ -25,6 +25,7 @@
 
 
 &filter_nml
+   allow_missing_clm = .true.
    perturb_from_single_instance = .FALSE.
    perturbation_amplitude       = 0.2
    async                    = 0
