@@ -377,8 +377,10 @@ converters) include:
 -  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
 -  ``MPD``: See ``./MPD``
+-  ``NASA_Earthdata``:doc:`./NASA_Earthdata/README`
 -  ``NCEP``: (prepbufr-> ascii) :doc:`./NCEP/prep_bufr/prep_bufr`
 -  ``NCEP``: (ascii-> obs_seq) :doc:`./NCEP/ascii_to_obs/create_real_obs`
+-  ``NSIDC``:doc:`./NSIDC/SMAP_L2_to_obs`
 -  ``ROMS``: :doc:`./ROMS/ROMS`
 -  ``SIF``: :doc:`./SIF/SIF_to_obs_netcdf`
 -  ``SSEC``: :doc:`./SSEC/SSEC`

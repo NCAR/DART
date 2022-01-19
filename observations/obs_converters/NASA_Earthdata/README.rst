@@ -1,4 +1,4 @@
-PROGRAMS ``LPRM_L3_to_obs.f90`` ``AMSR_E_L2_to_obs.f90`` ``SMAP_L2_to_obs``
+PROGRAMS ``LPRM_L3_to_obs.f90`` ``AMSR_E_L2_to_obs.f90``
 ===========================================================================
 This is a brief description of the converters and utilities in this directory
 retrieved from the `NASA Earthdata portal <https://earthdata.nasa.gov/>`__
@@ -240,7 +240,8 @@ Description of namelist variables:
 +------------------------------+--------------------+---------------------------------------------------------------------------+
 | observation_type             | character(len=256) | Name of the DART observation type                                         |
 +------------------------------+--------------------+---------------------------------------------------------------------------+
-| obs_error_standard_deviation | character(len=256) | The observation error standard deviation (not provided within data file)  |         +------------------------------+--------------------+---------------------------------------------------------------------------+                              
+| obs_error_standard_deviation | character(len=256) | The observation error standard deviation (not provided within data file)  |
++------------------------------+--------------------+---------------------------------------------------------------------------+  
 
 
 Data Source
