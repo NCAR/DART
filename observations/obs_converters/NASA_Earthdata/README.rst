@@ -1,4 +1,4 @@
-PROGRAMS ``LPRM_L3_to_obs.f90`` ``AMSR_E_L2_to_obs.f90`` ``SMAP_L2_to_obs``
+PROGRAMS ``LPRM_L3_to_obs.f90`` ``AMSR_E_L2_to_obs.f90``
 ===========================================================================
 This is a brief description of the converters and utilities in this directory
 retrieved from the `NASA Earthdata portal <https://earthdata.nasa.gov/>`__
