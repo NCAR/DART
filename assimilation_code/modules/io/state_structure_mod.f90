@@ -93,7 +93,8 @@ public :: add_domain,                 &
           get_io_dim_lengths,         &
           get_io_num_unique_dims,     &
           get_io_unique_dim_name,     &
-          get_io_unique_dim_length,   &
+          get_io_unique_dim_length,   & ! HK what is the point of this?
+          get_io_dim_length,          &
           add_time_unlimited,         &
           get_unlimited_dimid,        &
           set_var_id,                 &
@@ -126,7 +127,8 @@ public :: add_domain,                 &
           is_init_parameter_estimate, &
           set_parameter_value,        &
           get_parameter_value,        &
-          hyperslice_domain
+          hyperslice_domain,          &
+          has_unlimited_dim
   
 
 ! diagnostic files
@@ -163,8 +165,9 @@ type io_information
    ! dimension information, including unlimited dimensions
    integer :: io_numdims  = 0
    integer, dimension(NF90_MAX_VAR_DIMS) :: io_dimIds
-   character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
+   !character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname !HK would you have different name IO vs DART?
    integer,                      dimension(NF90_MAX_VAR_DIMS) :: dimlens
+    !HK start and count?
    
    ! update information
    logical :: update = .true. ! default to update variables
@@ -419,7 +422,8 @@ end function add_domain_from_spec
 
 !-------------------------------------------------------------------------------
 !> Add a blank domain - one variable called state, length = domain_size
-
+! HK the above comment is not true, there are three dimensions created in this function.
+! HK this should set has_unlimited = .true.
 function add_domain_blank(domain_size) result(dom_id)
 
 integer(i8), intent(in) :: domain_size
@@ -484,6 +488,10 @@ state%domain(dom_id)%variable(1)%dimname(3) = 'time'
 state%domain(dom_id)%variable(1)%dimlens(1) =  domain_size
 state%domain(dom_id)%variable(1)%dimlens(2) =  1
 state%domain(dom_id)%variable(1)%dimlens(3) =  1
+
+state%domain(dom_id)%variable(1)%io_info%dimlens(1) =  domain_size
+state%domain(dom_id)%variable(1)%io_info%dimlens(2) =  1
+state%domain(dom_id)%variable(1)%io_info%dimlens(3) =  1
 
 state%domain(dom_id)%variable(1)%io_info%xtype        = NF90_DOUBLE
 state%domain(dom_id)%variable(1)%io_info%units        = 'none'
@@ -596,7 +604,9 @@ do ivar = 1, num_vars
       ! load dimension names and lengths
       ret = nf90_inquire_dimension(ncfile, domain%variable(ivar)%io_info%io_dimIds(jdim),  &
                                     name = domain%variable(ivar)%dimname(jdim), &
-                                     len = domain%variable(ivar)%dimlens(jdim))
+                                     len = domain%variable(ivar)%io_info%dimlens(jdim))
+
+      domain%variable(ivar)%dimlens(jdim) = domain%variable(ivar)%io_info%dimlens(jdim)
 
       call nc_check(ret, 'load_variable_sizes, inq_dimension', &
                     trim(domain%variable(ivar)%dimname(jdim)))
@@ -631,6 +641,7 @@ do ivar = 1, num_vars
    else
       domain%variable(ivar)%numdims = num_dims
    endif
+
 
    ! member is not a spatial domain but could be included in a single file
    do jdim = 1, num_dims
@@ -906,6 +917,13 @@ character(len=*), intent(in) :: dim_name
 integer,          intent(in) :: new_length
 
 integer :: ivar, jdim
+integer(i8) :: orig_domain_size, orig_model_size, index_start
+integer(i8) :: domain_size, variable_size
+
+orig_domain_size = get_domain_size(dom_id)
+orig_model_size = state%model_size
+! Start of the domain remains the same
+index_start = state%domain(dom_id)%variable(1)%index_start
 
 ! Reduce the dimension size
 do ivar = 1, get_num_variables(dom_id)
@@ -915,6 +933,42 @@ do ivar = 1, get_num_variables(dom_id)
        endif
    enddo
 enddo
+
+! need to modify state index accessing for each variable:
+!   variable_size
+!   index_start, index_end
+!   model size
+!   domain size
+
+domain_size = 0
+! variable size
+do ivar = 1, get_num_variables(dom_id)
+
+   variable_size = 1
+
+   do jdim = 1, get_num_dims(dom_id, ivar)
+      !HK there is a todo about this, what is going on with time and member?
+      if ((state%domain(dom_id)%variable(ivar)%dimname(jdim) == 'time') .or. &
+          (state%domain(dom_id)%variable(ivar)%dimname(jdim) == 'member')) cycle
+
+      variable_size = variable_size *state%domain(dom_id)%variable(ivar)%dimlens(jdim)
+   enddo
+
+  state%domain(dom_id)%variable(ivar)%var_size = variable_size
+
+  ! first and last location of variable in the state index
+  state%domain(dom_id)%variable(ivar)%index_start = index_start
+  state%domain(dom_id)%variable(ivar)%index_end   = index_start + variable_size - 1
+
+  ! update counters
+  domain_size = domain_size + variable_size
+  index_start = state%domain(dom_id)%variable(ivar)%index_end + 1
+
+enddo
+
+! update state structure with new domain size and new model size
+state%domain(dom_id)%dom_size  = domain_size
+state%model_size = orig_model_size - orig_domain_size + domain_size
 
 end subroutine hyperslice_domain
 !-------------------------------------------------------------------------------
@@ -929,6 +983,17 @@ get_num_domains = state%num_domains
 
 end function get_num_domains
 
+!-------------------------------------------------------------------------------
+!> Return whether the domain has an unlimited dimension
+
+function has_unlimited_dim(dom_id)
+
+integer, intent(in) :: dom_id
+logical :: has_unlimited_dim
+
+has_unlimited_dim = state%domain(dom_id)%has_unlimited
+
+end function has_unlimited_dim
 
 !-------------------------------------------------------------------------------
 !> Returns the number of elements in the domain
@@ -1003,8 +1068,8 @@ end function get_num_dims
 
 
 !-------------------------------------------------------------------------------
-!> Return and array containing the dimension lengths, excluding the UNLIMITED dim
-
+!> Return and array containing the dimension lengths, for the DART state
+!> excluding the UNLIMITED dim
 
 function get_dim_lengths(dom_id, ivar)
 
@@ -1082,6 +1147,20 @@ integer :: get_dim_length
 get_dim_length = state%domain(dom_id)%variable(ivar)%dimlens(jdim)
 
 end function get_dim_length
+
+!-------------------------------------------------------------------------------
+!> Return io dimension length
+
+function get_io_dim_length(dom_id, ivar, jdim)
+integer, intent(in) :: jdim ! dimension
+integer :: get_io_dim_length
+
+integer, intent(in) :: dom_id ! domain
+integer, intent(in) :: ivar ! variable
+
+get_io_dim_length = state%domain(dom_id)%variable(ivar)%io_info%dimlens(jdim)
+
+end function get_io_dim_length
 
 
 !-------------------------------------------------------------------------------
@@ -1570,6 +1649,7 @@ d_new = state%domain(dom_id)%variable(var_id)%numdims
 
 state%domain(dom_id)%variable(var_id)%dimname(d_new) = dim_name
 state%domain(dom_id)%variable(var_id)%dimlens(d_new) = dim_size
+state%domain(dom_id)%variable(var_id)%io_info%dimlens(d_new) = dim_size
 state%domain(dom_id)%variable(var_id)%io_info%io_dimids(d_new) = d_new
 
 state%domain(dom_id)%num_unique_dims = d_new
@@ -2024,7 +2104,7 @@ integer :: get_io_dim_lengths(state%domain(dom_id)%variable(ivar)%io_info%io_num
 integer :: num_dims
 
 num_dims = get_io_num_dims(dom_id,ivar)
-get_io_dim_lengths = state%domain(dom_id)%variable(ivar)%dimlens(1:num_dims)
+get_io_dim_lengths = state%domain(dom_id)%variable(ivar)%io_info%dimlens(1:num_dims)
 
 end function get_io_dim_lengths
 

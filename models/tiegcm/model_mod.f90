@@ -525,6 +525,8 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id, kind_index=local_qty)
 
+!print*, 'HK index_in, lon_index, lat_index, lev_index', index_in, lon_index, lat_index, lev_index, var_id
+
 if(present(var_qty)) var_qty = local_qty
 
 !HK check for f10.7 by varname?
@@ -1266,8 +1268,8 @@ call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lev')
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlev), 'read_TIEGCM_definition', &
                   'inquire_dimension lev')
-call error_handler(E_MSG,'read_TIEGCM_definition using nlev', 'How many levels do you want?')
-!nlev = nlev - 1 ! top level is not viable !HK what does this mean?
+! top level is not viable. The lower boundary condition is stored in the top level
+nlev = nlev - 1
 
 allocate(levs(nlev), plevs(nlev))
 
@@ -1282,7 +1284,8 @@ call nc_check(nf90_inq_dimid(ncid, 'ilev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid ilev')
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=nilev), 'read_TIEGCM_definition', &
                   'inquire_dimension ilev')
-
+! top level is not viable. The lower boundary condition is stored in the top level
+nilev = nilev - 1
 allocate(ilevs(nilev), pilevs(nilev))
 
 call nc_check(nf90_inq_varid(ncid, 'ilev', VarID), 'read_TIEGCM_definition', &

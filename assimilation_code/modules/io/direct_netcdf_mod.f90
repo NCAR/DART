@@ -81,7 +81,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_sum_variables_below, get_dim_length, &
                                  get_variable_name, get_io_clamping_maxval,   &
                                  get_io_clamping_minval, do_io_clamping,         &
-                                 get_io_num_dims, get_io_dim_lengths,            &
+                                 get_io_num_dims, get_dim_lengths,            &
                                  get_variable_size, get_io_num_unique_dims,   &
                                  get_io_unique_dim_name, get_dim_name,        &
                                  get_io_unique_dim_length, get_scale_factor, &
@@ -92,7 +92,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
                                  end_diagnostic_structure, get_parameter_value, &
-                                 is_init_parameter_estimate
+                                 is_init_parameter_estimate, has_unlimited_dim
 
 use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  stage_metadata_type, get_file_description, &
@@ -869,18 +869,28 @@ do i = start_var, end_var
    iend = istart + var_size - 1
 
    ! number of dimensions and length of each
-   num_dims = get_io_num_dims(domain, i)
-   allocate(dims(num_dims))
-   allocate(slice_start(num_dims))
-   slice_start(:) = 1 ! default to read all dimensions start at 1
 
-   dims = get_io_dim_lengths(domain, i)
-
+   if (has_unlimited_dim(domain)) then
    ! read latest time slice - hack to get started with tiegcm
    ! not sure if it will always be the last time slice
-   slice_start(num_dims) = dims(num_dims)
-   dims(num_dims) = 1
- 
+
+      num_dims = get_io_num_dims(domain, i)
+      allocate(dims(num_dims))
+      allocate(slice_start(num_dims))
+      slice_start(:) = 1 ! default to read all dimensions start at 1
+      dims(num_dims) = 1 ! one slice of unlimited dimesion
+      dims(1:num_dims-1) = get_dim_lengths(domain, i) !HK you only want to read the state right?
+      slice_start(num_dims) = dims(num_dims)
+
+   else
+
+      num_dims = get_io_num_dims(domain, i)
+      allocate(dims(num_dims))
+      allocate(slice_start(num_dims))
+      slice_start(:) = 1 ! default to read all dimensions start at 1
+      dims(:) = get_dim_lengths(domain, i) !HK you only want to read the state right?
+   endif
+
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
@@ -1589,18 +1599,28 @@ do i = start_var, end_var
          call clamp_variable(domain, i, var_block(istart:iend))
       endif
      
-      ! number of dimensions and length of each
-      num_dims = get_io_num_dims(domain, i)
-      allocate(dims(num_dims))
-      allocate(slice_start(num_dims))
-      slice_start(:) = 1 ! default to read all dimensions start at 1
+      ! number of dimensions and length of each variable
 
-      dims = get_io_dim_lengths(domain, i)
-      ! write to latest time slice - hack to get started with tiegcm
-      ! not sure if it will always be the last time slice
-      ! What about if you are creating a new file? dimensions for input vs output
-      slice_start(num_dims) = dims(num_dims)
-      dims(num_dims) = 1
+      if (has_unlimited_dim(domain)) then
+         ! read latest time slice - hack to get started with tiegcm
+         ! not sure if it will always be the last time slice
+
+         num_dims = get_io_num_dims(domain, i)
+         allocate(dims(num_dims))
+         allocate(slice_start(num_dims))
+         slice_start(:) = 1 ! default to read all dimensions start at 1
+         dims(num_dims) = 1 ! one slice of unlimited dimesion
+         dims(1:num_dims-1) = get_dim_lengths(domain, i)
+         slice_start(num_dims) = dims(num_dims)
+
+      else
+
+         num_dims = get_io_num_dims(domain, i)
+         allocate(dims(num_dims))
+         allocate(slice_start(num_dims))
+         slice_start(:) = 1 ! default to read all dimensions start at 1
+         dims(:) = get_dim_lengths(domain, i)
+      endif
 
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
