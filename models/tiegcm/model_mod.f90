@@ -136,6 +136,9 @@ namelist /model_nml/ tiegcm_restart_file_name, &
 
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
+! HK levels + top level boundary condition
+integer                               :: all_nlev, all_nilev
+real(r8),dimension(:),    allocatable :: all_levs, all_ilevs ! HK levels + top level boundary condition
 ! HK are plevs, pilves per ensemble member?
 real(r8)                              :: TIEGCM_reference_pressure
 integer                               :: time_step_seconds
@@ -601,8 +604,8 @@ call nc_add_global_attribute(ncid, "model", "TIEGCM", routine)
 ! define grid dimensions
 call nc_define_dimension(ncid, 'lon',  nlon,  routine)
 call nc_define_dimension(ncid, 'lat',  nlat,  routine)
-call nc_define_dimension(ncid, 'lev',  nlev,  routine)
-call nc_define_dimension(ncid, 'ilev', nilev, routine)
+call nc_define_dimension(ncid, 'lev',  all_nlev,  routine)
+call nc_define_dimension(ncid, 'ilev', all_nilev, routine)
 
 ! define grid variables
 ! longitude
@@ -665,8 +668,8 @@ call nc_end_define_mode(ncid, routine)
 where (lons >= 180.0_r8) lons = lons - 360.0_r8
 call nc_put_variable(ncid, 'lon',  lons,  routine)
 call nc_put_variable(ncid, 'lat',  lats,  routine)
-call nc_put_variable(ncid, 'lev',  levs,   routine)
-call nc_put_variable(ncid, 'ilev', ilevs,  routine)
+call nc_put_variable(ncid, 'lev',  all_levs,   routine)
+call nc_put_variable(ncid, 'ilev', all_ilevs,  routine)
 
 ! Fill tiegcm in namelist variable
 if (has_tiegcm_namelist) then
@@ -1266,37 +1269,39 @@ TIEGCM_reference_pressure = p0
 
 call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlev), 'read_TIEGCM_definition', &
+call nc_check(nf90_inquire_dimension(ncid, DimID, len=all_nlev), 'read_TIEGCM_definition', &
                   'inquire_dimension lev')
 ! top level is not viable. The lower boundary condition is stored in the top level
-nlev = nlev - 1
+nlev = all_nlev - 1
 
-allocate(levs(nlev), plevs(nlev))
+allocate(all_levs(all_nlev),levs(nlev), plevs(nlev))
 
 call nc_check(nf90_inq_varid(ncid, 'lev', VarID), 'read_TIEGCM_definition', &
                   'inq_varid lev')
-call nc_check(nf90_get_var(ncid, VarID, values=levs), 'read_TIEGCM_definition', &
+call nc_check(nf90_get_var(ncid, VarID, values=all_levs), 'read_TIEGCM_definition', &
                   'get_var lev')
 
+levs=all_levs(1:nlev)
 plevs = p0 * exp(-levs) * 100.0_r8 ![Pa] = 100* [millibars] = 100* [hPa]
 
 call nc_check(nf90_inq_dimid(ncid, 'ilev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid ilev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nilev), 'read_TIEGCM_definition', &
+call nc_check(nf90_inquire_dimension(ncid, DimID, len=all_nilev), 'read_TIEGCM_definition', &
                   'inquire_dimension ilev')
 ! top level is not viable. The lower boundary condition is stored in the top level
-nilev = nilev - 1
-allocate(ilevs(nilev), pilevs(nilev))
+nilev = all_nilev - 1
+allocate(all_ilevs(all_nilev), ilevs(nilev), pilevs(nilev))
 
 call nc_check(nf90_inq_varid(ncid, 'ilev', VarID), 'read_TIEGCM_definition', &
                   'inq_varid ilev')
-call nc_check(nf90_get_var(ncid, VarID, values=ilevs), 'read_TIEGCM_definition', &
+call nc_check(nf90_get_var(ncid, VarID, values=all_ilevs), 'read_TIEGCM_definition', &
                   'get_var ilev')
 
+ilevs = all_ilevs(1:nilev)
 pilevs = p0 * exp(-ilevs) * 100.0_r8 ! [Pa] = 100* [millibars] = 100* [hPa]
 
 if ((nlev+1) .ne. nilev) then
-   write(string1,*) 'number of midpoints should be 1 less than number of interfaces.'
+   write(string1,*) 'number of midpoints should be 1 less than number of interfaces.' !HK is the top level for nilev not a boundary condition?
    write(string2,*) 'number of midpoints  is nlev  = ',nlev
    write(string3,*) 'number of interfaces is nilev = ',nilev
    call error_handler(E_MSG,'read_TIEGCM_definition', string1, &

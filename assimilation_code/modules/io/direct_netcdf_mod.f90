@@ -1713,6 +1713,7 @@ do i = 1, get_io_num_unique_dims(dom_id)
                        get_io_unique_dim_length(dom_id, i), new_dimid)
    endif
    !>@todo if we already have a unique names we can take this test out
+   !HK no you can not, because nc_write_model_atts can create dimemsions.
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
       call nc_check(ret, routine, &
               'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))
