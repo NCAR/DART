@@ -10,6 +10,8 @@
 #PBS -m EMAIL_WHEN_TEMPLATE
 #PBS -M EMAIL_WHO_TEMPLATE
 
-python run_filter_experiment.py >& JOB_NAME_TEMPLATE.py.stdeo
+cd /glade/work/gharamti/python_envs/ahu/bin; source activate; cd -
+
+python3 run_filter_experiment.py >& JOB_NAME_TEMPLATE.py.stdeo
 
 exit 0

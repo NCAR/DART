@@ -10,7 +10,9 @@
 #PBS -m EMAIL_WHEN_TEMPLATE
 #PBS -M EMAIL_WHO_TEMPLATE
 
-python create_usgs_daily_obs_seq.py >& JOB_NAME_TEMPLATE.py.stdeo
+cd /glade/work/gharamti/python_envs/ahu/bin; source activate; cd -
+
+python3 create_usgs_daily_obs_seq.py >& JOB_NAME_TEMPLATE.py.stdeo
 rm -rf WAIT_FILE_TEMPLATE
 
 exit 0
