@@ -544,7 +544,8 @@ call nc_check(io,routine,'open',filename)
 isLsmFile = nf90_inq_dimid(ncid, 'Time', DimID) == NF90_NOERR
 
 ! Test if "time" is a dimension 
-isClimFile = nf90_inq_dimid(ncid, 'time', DimID) /= NF90_NOERR
+! Only read model time from the restart, use a dummy one here!
+isClimFile = nf90_inq_varid(ncid, 'static_time', VarID) == NF90_NOERR
 
 if(isLsmFile) then ! Get the time from the LSM restart file
 
