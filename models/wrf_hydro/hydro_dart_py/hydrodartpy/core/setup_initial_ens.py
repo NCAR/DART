@@ -166,6 +166,11 @@ def setup_initial_ens(config, wrf_hydro_ens_sim):
             output_file_lists.append('param_file_list.out.txt')
         init_ens_filter_nml['filter_nml']['output_state_file_list'] = output_file_lists
 
+        # Copy the static file list from the head directory
+        static_file = model_work_path / 'static_file_list.txt'
+        if static_file.exists():
+            shutil.copy(static_file, init_ens_filter_dir / 'static_file_list.txt')
+
         # Create the output_state_file_list
         # In the process copy the deterministic restart file to the ensemble
         # restart files so that all variables are present after "from_filter"

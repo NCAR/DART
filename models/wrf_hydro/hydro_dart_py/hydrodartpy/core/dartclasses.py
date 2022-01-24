@@ -36,6 +36,11 @@ class DartWork(object):
             (build_dir / self.path_rel).mkdir(exist_ok=True, parents=True)
             self.input_nml.write(self.input_nml_file)
 
+        static_file = path_dart / self.path_rel / 'static_file_list.txt'
+        if static_file.exists():
+            shutil.copy(static_file, build_dir / self.path_rel / 'static_file_list.txt')
+        
+
         self.compile(path_dart, path_rel, mpi)
 
         # list the mkmfs and get the binaries.

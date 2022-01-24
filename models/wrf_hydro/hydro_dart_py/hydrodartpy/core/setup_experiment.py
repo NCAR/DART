@@ -267,6 +267,10 @@ allobsdir={3}
                     nlst[k0][k1] = nlst[k0][k1].replace('./','./member_000/')
         f90nml.namelist.Namelist(nlst).write(config['experiment']['run_dir'] / oo)
 
+    # Move climatology file list also to the rundir
+    static_file = model_work_path / 'static_file_list.txt'
+    if static_file.exists():
+        shutil.copy(static_file, config['experiment']['run_dir'] / 'static_file_list.txt')
 
     # input.nml patches and checks
     print('Apply namelist patches and checks.')
