@@ -700,7 +700,9 @@ real(r4),         intent(in) :: spvalR4
 
 real(r4) :: ret_spvalR4
 
+
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
+   if (isnan(spvalR4) .and. isnan(ret_spvalR4))  return
    if (spvalR4 /= ret_spvalR4) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
