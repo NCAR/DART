@@ -766,7 +766,7 @@ call nc_add_attribute_to_variable(ncid,'area','units','km^2',routine)
 ! grid cell land fractions
 
 if (unstructured) then
-   call nc_define_real_variable(ncid,'landfrac','nlon',routine) 
+   call nc_define_real_variable(ncid,'landfrac','lon',routine) 
 else
    call nc_define_real_variable(ncid,'landfrac',(/ 'lon', 'lat' /),routine) 
 endif
