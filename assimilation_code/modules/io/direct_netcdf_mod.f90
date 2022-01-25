@@ -1620,6 +1620,7 @@ do i = start_var, end_var
          call nc_check(ret, 'write_variables: nf90_inquire', 'unlimitedDimID')
          ret = nf90_inquire_dimension(ncid, unlim_dimID, len=slice_start(num_dims))
          call nc_check(ret, 'write_variables: nf90_inquiredimension', 'unlimitedDim length')
+         if (slice_start(num_dims) == 0) slice_start(num_dims) = 1 ! newly created file
 
       else
 

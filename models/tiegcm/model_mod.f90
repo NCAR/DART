@@ -136,9 +136,9 @@ namelist /model_nml/ tiegcm_restart_file_name, &
 
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
-! HK levels + top level boundary condition
-integer                               :: all_nlev, all_nilev
-real(r8),dimension(:),    allocatable :: all_levs, all_ilevs ! HK levels + top level boundary condition
+! HK levels + top level boundary condition for nlev.
+integer                               :: all_nlev
+real(r8),dimension(:),    allocatable :: all_levs
 ! HK are plevs, pilves per ensemble member?
 real(r8)                              :: TIEGCM_reference_pressure
 integer                               :: time_step_seconds
@@ -605,7 +605,7 @@ call nc_add_global_attribute(ncid, "model", "TIEGCM", routine)
 call nc_define_dimension(ncid, 'lon',  nlon,  routine)
 call nc_define_dimension(ncid, 'lat',  nlat,  routine)
 call nc_define_dimension(ncid, 'lev',  all_nlev,  routine)
-call nc_define_dimension(ncid, 'ilev', all_nilev, routine)
+call nc_define_dimension(ncid, 'ilev', nilev, routine)
 
 ! define grid variables
 ! longitude
@@ -669,7 +669,7 @@ where (lons >= 180.0_r8) lons = lons - 360.0_r8
 call nc_put_variable(ncid, 'lon',  lons,  routine)
 call nc_put_variable(ncid, 'lat',  lats,  routine)
 call nc_put_variable(ncid, 'lev',  all_levs,   routine)
-call nc_put_variable(ncid, 'ilev', all_ilevs,  routine)
+call nc_put_variable(ncid, 'ilev', ilevs,  routine)
 
 ! Fill tiegcm in namelist variable
 if (has_tiegcm_namelist) then
@@ -1286,18 +1286,15 @@ plevs = p0 * exp(-levs) * 100.0_r8 ![Pa] = 100* [millibars] = 100* [hPa]
 
 call nc_check(nf90_inq_dimid(ncid, 'ilev', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid ilev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=all_nilev), 'read_TIEGCM_definition', &
+call nc_check(nf90_inquire_dimension(ncid, DimID, len=nilev), 'read_TIEGCM_definition', &
                   'inquire_dimension ilev')
-! top level is not viable. The lower boundary condition is stored in the top level
-nilev = all_nilev - 1
-allocate(all_ilevs(all_nilev), ilevs(nilev), pilevs(nilev))
+allocate(ilevs(nilev), pilevs(nilev))
 
 call nc_check(nf90_inq_varid(ncid, 'ilev', VarID), 'read_TIEGCM_definition', &
                   'inq_varid ilev')
-call nc_check(nf90_get_var(ncid, VarID, values=all_ilevs), 'read_TIEGCM_definition', &
+call nc_check(nf90_get_var(ncid, VarID, values=ilevs), 'read_TIEGCM_definition', &
                   'get_var ilev')
 
-ilevs = all_ilevs(1:nilev)
 pilevs = p0 * exp(-ilevs) * 100.0_r8 ! [Pa] = 100* [millibars] = 100* [hPa]
 
 if ((nlev+1) .ne. nilev) then
@@ -1517,9 +1514,8 @@ enddo
 domain_id(domain_num) = add_domain(filename, nvar, &
                           var_names, kind_list, clamp_vals, update_list)
 
-! remove top level from all variables
+! remove top level from all lev variables
 call hyperslice_domain(domain_id(domain_num), 'lev', nlev)
-call hyperslice_domain(domain_id(domain_num), 'ilev', nlev)
 
 deallocate(var_names, kind_list, clamp_vals, update_list)
 
