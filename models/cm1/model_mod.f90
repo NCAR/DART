@@ -854,7 +854,7 @@ subroutine height_interpolate_s_grid(obs_loc_array, varid, nlevs, nlevs_shrink, 
 
 real(r8), intent(in)  :: obs_loc_array(3)
 integer,  intent(in)  :: varid
-integer,  intent(in)  :: nlevs, nlevs_shrink ! JDL nlevs_shrink is an addition to show number of gridpoiints to collapse upon
+integer,  intent(in)  :: nlevs, nlevs_shrink ! JDL nlevs_shrink is an addition to show number of gridpoints to collapse upon
 
 integer,  intent(out) :: z_ind(2)
 real(r8), intent(out) :: z_val(2)
@@ -1131,7 +1131,7 @@ if ( periodic_x .and. periodic_y ) then
    endif
 elseif ( periodic_x) then
     ! require that the point is contained within the staggered grid for the 
-    ! y - direction since you cannot wrap-arround
+    ! y - direction since you cannot wrap-around
     if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
         (obs_location(2) < yh(1)) .or. (obs_location(2) > yh(nj)) ) then
 
@@ -1180,8 +1180,8 @@ elseif ( (.not. periodic_x) .and. (.not. periodic_y) ) then
 
    endif
 else
-   write(string1,*) 'This option is not supoorted '
-   write(string2,*) 'boundary conditions supported'
+   write(string1,*) ' Unsupported combination of periodic boundary conditions.'
+   write(string2,*) 'Contact DART support for more help.'
    call error_handler(E_ERR, 'observation_on_grid', string1, &
                   source, revision, revdate, text2=string2)
 endif
