@@ -172,8 +172,8 @@ if (return_now) return
 call interpolate(state_handle, ens_size,location, QTY_VAPOR_MIXING_RATIO, qv, qv_istatus)
 call track_status(ens_size, qv_istatus, td, istatus, return_now)
 if (return_now) return
-
-
+print*,'JDL P = ',p_Pa
+print*,'JDL qv = ',qv
 where (qv < 0.0_r8 .or. qv >= 1.0_r8)
    istatus = 1
    td = missing_r8
@@ -204,14 +204,26 @@ where (istatus == 0 ) ! To avoid possible FPE with missing_r8
    ! The following expression can fail numerically for dewpoints very close to 0 C
    !td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
 
+
+
+
    ! A numerically robust formula that avoids the failure near dewpoints of 0 C
    log_term = log(e_mb / 6.112_r8)
    td = t_kelvin + 243.5_r8 * log_term / (17.67_r8 - log_term)
 
+   !print *,'********************************'
+   !print *,'e_mb = ',e_mb(1)
+   !print *,'p_mb = ',p_mb(1)
+   !print *,'qv =',qv(1)
+   !print *,'td = ',td(1)
+   !print *,'t_kelvin = ',t_kelvin
+   !print *,'***********' 
+
+
 elsewhere
    td = missing_r8
 end where
-
+print*,'JDL TD = ',td
 end subroutine get_expected_dew_point
 
 !----------------------------------------------------------------------------

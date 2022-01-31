@@ -15,7 +15,7 @@
   first_obs_seconds           = -1
   last_obs_days               = -1
   last_obs_seconds            = -1
-  distributed_state           = .false.
+  distributed_state           = .true.
   ens_size                    = 40 
   num_output_obs_members      = 40
   num_output_state_members    = 40
@@ -23,9 +23,7 @@
   output_members              = .true. 
   output_mean                 = .true.
   output_sd                   = .true.
-  !stages_to_write             = 'preassim', 'analysis', 'output'
-  !stages_to_write             = 'forecast', 'preassim', 'postassim', 'analysis', 'output'
-  stages_to_write             = 'output'
+  stages_to_write             = 'preassim','analysis','output'
   write_all_stages_at_end     = .true.
   distributed_state           = .true.
   compute_posterior           = .true.
@@ -34,12 +32,13 @@
   num_groups                  = 1
   output_forward_op_errors    = .false.
 
-  inf_flavor                  = 0,                 4
-  inf_initial_from_restart    = .false.,           .false.
-  inf_sd_initial_from_restart = .false.,           .false.
-  inf_initial                 = 1.0,               0.98
+  inf_flavor                  =  2,                 0,
+  inf_initial_from_restart    = .true.,           .false.,
+  inf_sd_initial_from_restart = .true.,           .false.,
+  inf_deterministic           = .true.,            .true.,
+  inf_initial                 = 1.0,               0.90,
   inf_lower_bound             = 1.0,               1.0
-  inf_upper_bound             = 1000000.0,         1000000.0
+  inf_upper_bound             = 100.0,            100.0
   inf_damping                 = 0.9,               0.9
   inf_sd_initial              = 0.6,               0.6
   inf_sd_lower_bound          = 0.6,               0.6
@@ -59,30 +58,31 @@
                     'va'   , 'QTY_V_WIND_COMPONENT'        , 'NULL', 'NULL', 'UPDATE',
                     'wa'   , 'QTY_VERTICAL_VELOCITY'       , 'NULL', 'NULL', 'UPDATE',
                     'theta', 'QTY_POTENTIAL_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
-                    'ppi'  , 'QTY_PRESSURE'                , 'NULL', 'NULL', 'UPDATE',
+                    'prs'  , 'QTY_PRESSURE'                , 0.0000, 'NULL', 'UPDATE',
                'air_temp'  , 'QTY_TEMPERATURE'             , 'NULL', 'NULL', 'UPDATE',
-               'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'       , 0.0000, 'NULL', 'UPDATE',
+               'dewpoint'  , 'QTY_DEWPOINT'                , 'NULL', 'NULL', 'UPDATE',
                     'qv'   , 'QTY_VAPOR_MIXING_RATIO'      , 0.0000, 'NULL', 'UPDATE',
                     'qc'   , 'QTY_CLOUD_LIQUID_WATER'      , 0.0000, 'NULL', 'UPDATE',
                     'qr'   , 'QTY_RAINWATER_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
                     'qi'   , 'QTY_CLOUD_ICE'               , 0.0000, 'NULL', 'UPDATE',
                     'qs'   , 'QTY_SNOW_MIXING_RATIO'       , 0.0000, 'NULL', 'UPDATE',
                     'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
-                   'ncr'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
-                   'nci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
-                   'ncs'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
-                   'ncg'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
+                    'qhl'  , 'QTY_HAIL_MIXING_RATIO'       , 0.0000, 'NULL', 'UPDATE',
+                   'ccw'   , 'QTY_DROPLET_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE', 
+                   'crw'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                   'cci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
+                   'csw'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                   'chw'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
+                   'chl'   , 'QTY_HAIL_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                   'vhw'   , 'QTY_GRAUPEL_VOLUME'          , 0.0000, 'NULL', 'UPDATE',
+                   'vhl'   , 'QTY_HAIL_VOLUME'             , 0.0000, 'NULL', 'UPDATE',
                    'dbz'   , 'QTY_RADAR_REFLECTIVITY'      , 0.0000, 'NULL', 'UPDATE',
                'fall_spd'  , 'QTY_POWER_WEIGHTED_FALL_SPEED', 0.0000, 'NULL', 'UPDATE',
 /
 
 
 &obs_kind_nml
-  assimilate_these_obs_types = 'TEMPERATURE_2M',
-                               'U_WIND_10M',
-                               'V_WIND_10M',
-                               'SURFACE_PRESSURE',
-                               'SPECIFIC_HUMIDITY_2M'
+  assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT', 'RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_DEWPOINT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
   evaluate_these_obs_types   = ''
 /
 
@@ -104,8 +104,8 @@
    ny                  = 10
    nz                  = 10
    vert_normalization_height = 1
-   special_vert_normalization_obs_types = 'DROPSONDE_U_WIND_COMPONENT','DROPSONDE_V_WIND_COMPONENT', 'DROPSONDE_TEMPERATURE', 'DROPSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_SPECIFIC_HUMIDITY', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
-   special_vert_normalization_heights= 0.0075, 0.0075, 0.0075, 0.0075, 0.0800, 0.0800, 0.0833, 0.1250, 0.5000, 0.5000,
+   special_vert_normalization_obs_types = 'DROPSONDE_U_WIND_COMPONENT','DROPSONDE_V_WIND_COMPONENT', 'DROPSONDE_TEMPERATURE', 'DROPSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_DEWPOINT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+   special_vert_normalization_heights   = 0.0075, 0.0075, 0.0075, 0.0075, 0.04, 0.04, 0.04, 0.04, 0.33, 0.33
 /
 
 
@@ -138,8 +138,10 @@
   output_obs_def_mod_file  = '../../../observations/forward_operators/obs_def_mod.f90'
   obs_type_files           = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                              '../../../observations/forward_operators/obs_def_surface_mod.f90',
-                            '../../../observations/forward_operators/obs_def_radar_mod.f90'
-  quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+                            '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                            '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                            '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90', 
+ quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
 /
 
 
@@ -166,8 +168,11 @@
   distribute_mean                 = .true.
   output_localization_diagnostics = .false.
   localization_diagnostics_file   = 'localization_diagnostics'
-  special_localization_obs_types  = 'DROPSONDE_U_WIND_COMPONENT','DROPSONDE_V_WIND_COMPONENT', 'DROPSONDE_TEMPERATURE', 'DROPSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_SPECIFIC_HUMIDITY', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
-  special_localization_cutoffs    = 400000.00, 400000.00, 400000.00, 400000.00, 25000.0000, 25000.0000, 15000.0000, 10000.0000, 6000.0000, 6000.0000,
+  adjust_obs_impact                 = .false.
+  obs_impact_filename               = "NONE"
+  special_localization_obs_types  = 'DROPSONDE_U_WIND_COMPONENT','DROPSONDE_V_WIND_COMPONENT', 'DROPSONDE_TEMPERATURE', 'DROPSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_DEWPOINT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+  special_localization_cutoffs    = 400000., 400000., 400000., 400000., 50000.,50000.,50000.,50000.,6000.,6000.
+
 /
 
 
@@ -301,6 +306,11 @@
   verbose               = .true.
 /
 
+&obs_impact_tool_nml
+  input_filename          = 'cross_correlations.txt'
+  output_filename         = 'control_impact_runtime.txt'
+  debug                   = .false.
+  /
 
 &obs_def_radar_mod_nml
    apply_ref_limit_to_obs      =   .false.,
