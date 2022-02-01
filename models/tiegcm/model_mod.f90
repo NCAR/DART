@@ -413,6 +413,9 @@ if ( iqty == QTY_PRESSURE) then
       ! At present, vert_interp will simply fail because height is a negative number.
       ! HK what are you supposed to do for pressure with VERTISUNDEF? level 1?
 
+      ! HK pressure is not in the state so do not call get_state.
+      call error_handler(E_ERR, 'model_interpolate', 'vert is hieght for pressure interpolate')
+
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
       if (any(istatus /= 0)) return  !HK bail at the first failure
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_above, height, iqty, val12, istatus)
@@ -1585,96 +1588,77 @@ end subroutine load_up_calculated_variables
 !-------------------------------------------------------------------------------
 
 
-!HK subroutine create_vtec( ncid, last_time, vTEC)
-!HK !
-!HK ! Create the vTEC from constituents in the netCDF file.
-!HK !
-!HK 
-!HK integer,                  intent(in)  :: ncid
-!HK integer,                  intent(in)  :: last_time
-!HK real(r8), dimension(:,:), intent(out) :: vTEC
-!HK 
-!HK real(r8), allocatable, dimension(:,:,:) :: NE, TI, TE
-!HK real(r8), allocatable, dimension(:,:,:) :: NEm_extended, ZG_extended
-!HK real(r8), allocatable, dimension(:,:)   :: GRAVITYtop, Tplasma, Hplasma
-!HK real(r8), allocatable, dimension(:)     :: delta_ZG, NE_middle
-!HK 
-!HK real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
-!HK real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
-!HK 
-!HK real(r8) :: earth_radiusm
-!HK integer  :: VarID, nlev10, j, k
-!HK 
-!HK allocate( NE(nlon,nlat,nilev), NEm_extended(nlon,nlat,nilev+10), &
-!HK           ZG_extended(nlon,nlat,nilev+10))
-!HK allocate( TI(nlon,nlat,nlev), TE(nlon,nlat,nlev) )
-!HK allocate( GRAVITYtop(nlon,nlat), Tplasma(nlon,nlat), Hplasma(nlon,nlat) )
-!HK allocate( delta_ZG(nlev+9), NE_middle(nlev+9) )
-!HK 
-!HK !... NE (interfaces)
-!HK call nc_check(nf90_inq_varid(ncid, 'NE', VarID), 'create_vtec', 'inq_varid NE')
-!HK call nc_check(nf90_get_var(ncid, VarID, values=NE,     &
-!HK                    start = (/    1,    1,     1, last_time /),   &
-!HK                    count = (/ nlon, nlat, nilev,         1 /)),&
-!HK                    'create_vtec', 'get_var NE')
-!HK 
-!HK !... ZG (interfaces) already read into the module and converted to metres
-!HK 
-!HK !... TI (midpoints)
-!HK call nc_check(nf90_inq_varid(ncid, 'TI', VarID), 'create_vtec', 'inq_varid TI')
-!HK call nc_check(nf90_get_var(ncid, VarID, values=TI,     &
-!HK                    start = (/    1,    1,    1, last_time /),   &
-!HK                    count = (/ nlon, nlat, nlev,         1 /)), &
-!HK                    'create_vtec', 'get_var TI')
-!HK 
-!HK !... TE (midpoints)
-!HK call nc_check(nf90_inq_varid(ncid, 'TE', VarID), 'create_vtec', 'inq_varid TE')
-!HK call nc_check(nf90_get_var(ncid, VarID, values=TE,     &
-!HK                    start = (/    1,    1,    1, last_time /),   &
-!HK                    count = (/ nlon, nlat, nlev,         1 /)), &
-!HK                    'create_vtec', 'get_var TE')
-!HK 
-!HK ! Construct vTEC given the parts
-!HK 
-!HK earth_radiusm = earth_radius * 1000.0_r8 ! Convert earth_radius in km to m
-!HK NE            = NE * 1.0e+6_r8           ! Convert NE in #/cm^3 to #/m^3
-!HK 
-!HK ! Gravity at the top layer
-!HK GRAVITYtop(:,:) = gravity * (earth_radiusm / (earth_radiusm + ZG(:,:,nilev))) ** 2
-!HK 
-!HK ! Plasma Temperature
-!HK Tplasma(:,:) = (TI(:,:,nlev-1) + TE(:,:,nlev-1)) / 2.0_r8
-!HK 
-!HK ! Compute plasma scale height
-!HK Hplasma = (2.0_r8 * k_constant / omass ) * Tplasma / GRAVITYtop
-!HK 
-!HK ! NE is extrapolated to 10 more layers
-!HK nlev10  = nlev + 10
-!HK 
-!HK  ZG_extended(:,:,1:nilev) = ZG
-!HK NEm_extended(:,:,1:nilev) = NE
-!HK 
-!HK do j = nlev, nlev10
-!HK    NEm_extended(:,:,j) = NEm_extended(:,:,j-1) * exp(-0.5_r8)
-!HK     ZG_extended(:,:,j) =  ZG_extended(:,:,j-1) + Hplasma(:,:) / 2.0_r8
-!HK enddo
-!HK 
-!HK ! finally calculate vTEC - one gridcell at a time.
-!HK 
-!HK do j = 1, nlat
-!HK do k = 1, nlon
-!HK     delta_ZG(1:(nlev10-1)) =  ZG_extended(k,j,2:nlev10) -  ZG_extended(k,j,1:(nlev10-1))
-!HK    NE_middle(1:(nlev10-1)) = (NEm_extended(k,j,2:nlev10) + NEm_extended(k,j,1:(nlev10-1))) / 2.0_r8
-!HK    vTEC(k,j) = sum(NE_middle * delta_ZG) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
-!HK enddo
-!HK enddo
-!HK 
-!HK deallocate( NE, NEm_extended, ZG_extended)
-!HK deallocate( TI, TE )
-!HK deallocate( GRAVITYtop, Tplasma, Hplasma )
-!HK deallocate( delta_ZG, NE_middle )
-!HK 
-!HK end subroutine create_vtec
+subroutine calculate_vtec(lon_index, lat_index, vTEC)
+!
+! Create the vTEC from constituents in state.
+!
+
+integer,  intent(in)  :: lon_index, lat_index
+real(r8), intent(out) :: vTEC
+
+real(r8), allocatable, dimension(:) :: NE, TI, TE, ZE
+real(r8), allocatable, dimension(:) :: NEm_extended, ZG_extended
+real(r8), allocatable, dimension(:)     :: delta_ZG, NE_middle
+real(r8)   :: GRAVITYtop, Tplasma, Hplasma
+
+real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
+real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
+
+real(r8) :: earth_radiusm
+integer  :: nlev10, j, k, i
+
+allocate( NE(nilev), NEm_extended(nilev+10), &
+          ZG_extended(nilev+10))
+allocate( TI(nlev), TE(nlev) )
+allocate( delta_ZG(nlev+9), NE_middle(nlev+9) )
+
+do i = 1, nlev
+!... NE (interfaces)
+  !call get_state(NE(i), l )
+!... ZG (interfaces)
+
+enddo
+
+do i = 1, nilev
+!... TI (midpoints)
+
+!... TE (midpoints)
+enddo
+
+! Construct vTEC given the parts
+
+earth_radiusm = earth_radius * 1000.0_r8 ! Convert earth_radius in km to m
+NE            = NE * 1.0e+6_r8           ! Convert NE in #/cm^3 to #/m^3
+
+! Gravity at the top layer
+!GRAVITYtop = gravity * (earth_radiusm / (earth_radiusm + ZG(:,:,nilev))) ** 2
+
+! Plasma Temperature
+Tplasma = (TI(nlev-1) + TE(nlev-1)) / 2.0_r8
+
+! Compute plasma scale height
+Hplasma = (2.0_r8 * k_constant / omass ) * Tplasma / GRAVITYtop
+
+! NE is extrapolated to 10 more layers
+nlev10  = nlev + 10
+
+! ZG_extended(1:nilev) = ZG
+!NEm_extended(1:nilev) = NE
+
+do j = nlev, nlev10
+!   NEm_extended(j) = NEm_extended(j-1) * exp(-0.5_r8)
+!    ZG_extended(j) =  ZG_extended(j-1) + Hplasma(:,:) / 2.0_r8
+enddo
+
+!delta_ZG(1:(nlev10-1)) =  ZG_extended(2:nlev10) -  ZG_extended(1:(nlev10-1))
+!NE_middle(1:(nlev10-1)) = (NEm_extended(2:nlev10) + NEm_extended(1:(nlev10-1))) / 2.0_r8
+!vTEC(k,j) = sum(NE_middle * delta_ZG) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
+
+deallocate( NE, NEm_extended, ZG_extended)
+deallocate( TI, TE )
+deallocate( delta_ZG, NE_middle )
+
+end subroutine calculate_vtec
 
 
 !-------------------------------------------------------------------------------
@@ -1885,7 +1869,7 @@ found = .false.
    else  ! get from state vector
 
       do i = 1, n
-        indx_top(:) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
+        indx_top(i) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
         indx_bottom(i) = get_dart_vector_index(lon_index,lat_index,lev_bottom(i), dom_id, var_id)
       enddo
 
@@ -2009,7 +1993,7 @@ if (is_pressure) then ! get fom plevs (pilevs?) array TODO Lanai is always plves
 else ! get from state vector
 
    do i = 1, n
-     indx_top(:) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
+     indx_top(i) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
      indx_bottom(i) = get_dart_vector_index(lon_index,lat_index,lev_bottom(i), dom_id, var_id)
    enddo
 
