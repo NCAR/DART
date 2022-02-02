@@ -684,7 +684,7 @@ logical, optional, intent(in) :: init_indx
 integer :: i, j, v_indx
 real(r8) :: v
 
-! Initialize and index array if requested
+! Initialize an index array if requested
 if(present(init_indx)) then
    if(init_indx) then
       do i = 1, num

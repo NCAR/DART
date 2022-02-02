@@ -5,6 +5,8 @@
 
 ! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! RAW_STATE_VARIABLE,    QTY_STATE_VARIABLE,     COMMON_CODE
+! RAW_TRACER_CONCENTRATION,       QTY_TRACER_CONCENTRATION,     COMMON_CODE
+! RAW_TRACER_SOURCE,     QTY_TRACER_SOURCE, COMMON_CODE
 ! RAW_STATE_1D_INTEGRAL, QTY_1D_INTEGRAL
 ! RAW_STATE_VAR_POWER,   QTY_STATE_VAR_POWER
 ! LARGE_SCALE_STATE,     QTY_LARGE_SCALE_STATE,  COMMON_CODE
@@ -81,7 +83,7 @@ integer,  allocatable :: localization_type(:)          ! ditto
 
 ! Storage for the power forward operator
 integer               :: num_power_obs = 0           ! current count of obs
-integer               :: max_power_obs = 100000      ! allocation size limit
+integer               :: max_power_obs = 220000      ! allocation size limit
 real(r8), allocatable :: power(:)                    ! metadata storage
 
 
@@ -463,6 +465,9 @@ integer,             intent(in)  :: powkey
 real(r8),            intent(out) :: val(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
+integer :: i
+real(r8) :: pval(ens_size)
+
 ! The forward operator interface for this type of observation.  It is
 ! called with a state vector, a location, and a key to identify which
 ! observation is being processed.  The return 'val' is the expected
@@ -477,10 +482,21 @@ if ( .not. module_initialized ) call initialize_module
 call check_valid_key_power(powkey, 'GIVEN', 'get_expected_power')
 
 ! Interpolate the raw state to the location for each ensemble member
-call interpolate(state_handle, ens_size, location, QTY_STATE_VARIABLE, val, istatus)
+call interpolate(state_handle, ens_size, location, QTY_STATE_VARIABLE, pval, istatus)
 
-! Raise the interpolated state values to the power for this observation
-val = val ** power(powkey)
+if(power(powkey) == int(power(powkey))) then
+   ! Integer power, just use standard definition
+   val = pval ** power(powkey)
+else
+   ! For non-integer powers, fix up values for negative bases
+   do i = 1, ens_size
+      if(pval(i) >= 0.0_r8) then
+         val(i) = pval(i) ** power(powkey)
+      else
+         val(i) = -1.0_r8 * (-1.0_r8 * pval(i)) ** power(powkey)
+      endif
+   end do
+endif
 
 if(debug) print*, 'get_expected_power key is ', powkey
 if(debug) print*, 'metadata value is: ', power(powkey)

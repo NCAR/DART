@@ -1821,8 +1821,8 @@ logical,  intent(in)  :: is_bounded(2)
 real(r8), intent(in)  :: bound(2)
 
 real(r8) :: post_weight(0:ens_size)
-real(r8) :: tail_mean(2), tail_sd(2), bound_quantile, prior_tail_amp(2)
-real(r8) :: prior_sd, base_prior_prob, like_sum
+real(r8) :: tail_mean(2), tail_sd(2), prior_bound_mass(2), prior_tail_amp(2)
+real(r8) :: prior_sd, base_prior_prob, like_sum, bound_quantile
 integer  :: i
 
 ! Save to avoid a modestly expensive computation redundancy
@@ -1875,7 +1875,12 @@ tail_mean(2) = sort_ens(ens_size) - dist_for_unit_sd * prior_sd
 
 ! If the distribution is bounded, still want 1 / (ens_size + 1) in outer regions
 ! Put an amplitude term (greater than 1) in front of the tail normals 
+! Amplitude is 1 if there are no bounds, so start with that
 prior_tail_amp = 1.0_r8
+
+! How much mass is outside the bounds? None if there are no bounds
+prior_bound_mass(1) = 0.0_r8
+prior_bound_mass(2) = 0.0_r8
 
 ! WARNING: NEED TO DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE ARE VERY CLOSE/SAME
 base_prior_prob = 1.0_r8 / (ens_size + 1.0_r8)
@@ -1884,6 +1889,7 @@ if(is_bounded(1)) then
       bound_quantile = norm_cdf(bound(1), tail_mean(1), tail_sd(1))
       ! Prior tail amplitude is  ratio of original probability to that retained in tail after bounding
       prior_tail_amp(1) = base_prior_prob / (base_prior_prob - bound_quantile)
+      prior_bound_mass(1) = prior_tail_amp(1) * bound_quantile
 endif
 
 if(is_bounded(2)) then
@@ -1891,18 +1897,20 @@ if(is_bounded(2)) then
    bound_quantile = norm_cdf(bound(2), tail_mean(2), tail_sd(2))
    ! Numerical concern, if ensemble is close to bound amplitude can become unbounded? Use inverse.
    prior_tail_amp(2) = base_prior_prob / (base_prior_prob - (1.0_r8 - bound_quantile))
+   ! Compute amount of mass in prior tail normal that is beyond the bound
+   prior_bound_mass(2) = prior_tail_amp(2) * (1.0_r8 - bound_quantile)
 endif
 
 ! To reduce code complexity, use a subroutine to find the update ensembles with this info
 call find_bounded_norm_rhf_post(sort_ens, ens_size, post_weight, tail_mean, tail_sd, &
-   prior_tail_amp, bound, is_bounded, sort_post)
+   prior_tail_amp, bound, is_bounded, prior_bound_mass, sort_post)
 
 end subroutine ens_increment_bounded_norm_rhf
 
 
 
 subroutine find_bounded_norm_rhf_post(ens, ens_size, post_weight, tail_mean, &
-   tail_sd, prior_tail_amp, bound, is_bounded, sort_post)
+   tail_sd, prior_tail_amp, bound, is_bounded, prior_bound_mass, sort_post)
 !------------------------------------------------------------------------
 ! Modifying code to make a more general capability top support bounded rhf
 integer,  intent(in)  :: ens_size
@@ -1913,6 +1921,7 @@ real(r8), intent(in)  :: tail_sd(2)
 real(r8), intent(in)  :: prior_tail_amp(2)
 real(r8), intent(in)  :: bound(2)
 logical,  intent(in)  :: is_bounded(2)
+real(r8), intent(in)  :: prior_bound_mass(2)
 real(r8), intent(out) :: sort_post(ens_size)
 
 ! Given a sorted set of points that bound rhf intervals and a 
@@ -1924,7 +1933,7 @@ real(r8), intent(out) :: sort_post(ens_size)
 ! for the outermost regions is passed to minimize the possibility of overflow.
 
 real(r8) :: cumul_mass(0:ens_size + 1), umass, target_mass
-real(r8) :: smallest_ens_mass, largest_ens_mass, post_tail_amp(2)
+real(r8) :: smallest_ens_mass, largest_ens_mass, post_tail_amp(2), post_bound_mass(2)
 integer  :: i, j, lowest_box
 
 ! MUCH MORE NUMERICAL ANALYSIS IS  NEEDED FOR THE QCEF ALGORITHMS
@@ -1936,6 +1945,10 @@ integer  :: i, j, lowest_box
 ! Ratio is ratio of posterior weight to prior weight (which is 1 / (N + 1)); multiply by N + 1
 post_tail_amp(1) = prior_tail_amp(1) * post_weight(1) * (ens_size + 1)
 post_tail_amp(2) = prior_tail_amp(2) * post_weight(ens_size + 1) * (ens_size + 1)
+
+! Compute the amount of mass outside the tail normals
+post_bound_mass(1) = prior_bound_mass(1) * post_weight(1) * (ens_size + 1)
+post_bound_mass(2) = prior_bound_mass(2) * post_weight(ens_size + 1) * (ens_size + 1)
 
 ! Find cumulative posterior probability mass at each box boundary
 cumul_mass(0) = 0.0_r8
@@ -1965,27 +1978,9 @@ do i = 1, ens_size
          sort_post(i) = ens(1)
       else
 
-         !--------------------------------------------------------------------
-         ! The obvious way to do this is in this commented block. However, there is a 
-         ! risk of numerical problems if an ensemble member gets very close to the
-         ! bound and generates very large tail amplitudes. The next block is identical
-         ! with infinite precision arithmetic but will tolerate large amplitudes.
-         ! Just divide everything by the amplitude and do same computations.
-         ! Come in from the right (from the smallest ensemble member)
-         ! smallest_ens_mass = post_tail_amp(1) * norm_cdf(ens(1), tail_mean(1), tail_sd(1))
-         ! Compute the target mass in the tail normal 
-         ! target_mass = smallest_ens_mass - (cumul_mass(1) - umass)
-         ! call weighted_norm_inv(post_tail_amp(1), tail_mean(1), tail_sd(1), target_mass, sort_post(i))
-         !--------------------------------------------------------------------
-
-         ! Scale out the amplitude factor to safeguard against large amplitudes
-         !smallest_ens_mass = norm_cdf(ens(1), tail_mean(1), tail_sd(1))
-         ! Compute the target mass in the tail normal 
-         !target_mass = smallest_ens_mass + (umass - cumul_mass(1)) * inv_tail_amp(1)
-         !call weighted_norm_inv(1.0_r8, tail_mean(1), tail_sd(1), target_mass, sort_post(i))
-
-         ! Temporary Unbounded check for now
-         call weighted_norm_inv(post_tail_amp(1), tail_mean(1), tail_sd(1), umass, sort_post(i))
+         ! Target quantile is lower bound quantile plus umass
+         target_mass = post_bound_mass(1) + umass
+         call weighted_norm_inv(post_tail_amp(1), tail_mean(1), tail_sd(1), target_mass, sort_post(i))
 
          ! If posterior is less than bound, set it to bound. (Only possible thru roundoff).
          if(is_bounded(1) .and. sort_post(i) < bound(1)) then
@@ -2005,26 +2000,12 @@ do i = 1, ens_size
       if(is_bounded(2) .and. ens(ens_size) == bound(2)) then
          sort_post(i) = ens(ens_size)
       else
-         !--------------------------------------------------------------------
-         ! See detailed comment on block for lower tail above
-         ! Find the cdf of the (bounded) tail normal at the largest ensemble member
-         ! largest_ens_mass = post_tail_amp(2) * norm_cdf(ens(ens_size), tail_mean(2), tail_sd(2))
-         ! Compute the target mass in the tail normal 
-         ! target_mass = largest_ens_mass + (umass - cumul_mass(ens_size))
-         ! call weighted_norm_inv(post_tail_amp(2), tail_mean(2), tail_sd(2), target_mass, sort_post(i))
-         ! write(*, *) 'top target_mass, sort_post 1 ', target_mass, sort_post(i)
-         !--------------------------------------------------------------------
-
+         ! Target quantile distance from the upper bound; will come in from below
+         target_mass = post_bound_mass(2) + (1.0_r8 - umass)
          ! Unbouded temporary for now
-         call weighted_norm_inv(post_tail_amp(2), tail_mean(2), tail_sd(2), 1.0_r8 - umass, sort_post(i))
+         call weighted_norm_inv(post_tail_amp(2), tail_mean(2), tail_sd(2), target_mass, sort_post(i))
          ! Coming in from the right, use symmetry after pretending its on left
          sort_post(i) = tail_mean(2) + (tail_mean(2) - sort_post(i))
-
-         ! Find the cdf of the (bounded) tail normal at the largest ensemble member
-         !!!largest_ens_mass = norm_cdf(ens(ens_size), tail_mean(2), tail_sd(2))
-         ! Compute the target mass in the tail normal 
-         !!!target_mass = largest_ens_mass + (umass - cumul_mass(ens_size)) * inv_tail_amp(2)
-         !!!call weighted_norm_inv(1.0_r8, tail_mean(2), tail_sd(2), target_mass, sort_post(i))
 
         ! If post is larger than bound, set it to bound. (Only possible thru roundoff).
          if(is_bounded(2) .and. sort_post(i) > bound(2)) then
