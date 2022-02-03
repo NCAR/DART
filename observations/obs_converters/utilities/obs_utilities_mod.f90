@@ -43,6 +43,7 @@ public :: create_3d_obs,    &
           getvar_real,      &
           getvar_int,       &
           getvar_char,      &
+          get_2Dshort_as_r8,  &
           get_short_as_r8,  &
           get_int_as_r8,    &
           get_or_fill_real, &
@@ -70,9 +71,9 @@ public :: create_3d_obs,    &
 character(len=NF90_MAX_NAME) :: missing_name = 'missing_value'
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_utilities_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! create an interface for both 3d sphere obs (most earth obs are this)
 ! and 3d cartesian obs (subsurface obs, idealized experiments)
@@ -81,6 +82,7 @@ interface create_3d_obs
    module procedure create_3d_cartesian_obs
 end interface
 
+character(len=512) :: string1, string2
 contains
 
 !--------------------------------------------------------------------
@@ -434,12 +436,10 @@ subroutine set_missing_name(name)
  character(len = *), intent(in)   :: name
 
    if (len(name) > NF90_MAX_NAME) then
-      print *, 'set_missing_name: name must be less than ', NF90_MAX_NAME, ' chars long'
-      print *, 'set_missing_name: name is ', len(name), ' long'
-      stop
+   write(string1,*) 'name must be less than ', NF90_MAX_NAME, ' chars long'
+   write(string2,*) 'name is ', len(name), ' long'
+   call error_handler(E_ERR,'set_missing_name:',string1,source,text2=string2)
    endif
-
-!>@todo fixme ... remove 'stop' use error_handler
 
    missing_name = name
 
@@ -612,6 +612,95 @@ else
 endif
 
 end subroutine get_short_as_r8
+
+
+!--------------------------------------------------------------------
+!>   get_2Dshort_as_r8 - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>
+!> FIXME: this code handles scale and offset ok, but like most of the other
+!> routines here it doesn't check for 'missing_value' which many obs files
+!> have either in addition to the _FillValue or instead of it.
+!> e.g. a dump from a MADIS mesonet file:
+!>
+!> double observationTime ( recNum )
+!>  long_name : time of observation
+!>  units : seconds since 1970-1-1 00:00:00.0
+!>  _FillValue : 3.40282346e+38
+!>  missing_value : -9999
+!>  standard_name : time 
+!> 
+!> i've most commonly encountered the "missing_value" in the actual data 
+!> for obs files, not the fill value.  we need a routine that looks for missing, 
+!> then fill, and decides what to do if there are both.  or use the routine
+!> that was already here 'set_missing_value' and the calling code tells us
+!> which attribute name this particular netcdf file is using.
+!>
+!>  ncid    - open netcdf file handle
+!>  varname - string name of netcdf variable
+!>  darray  - output array.  real(r8)
+!>  dmiss   - value that signals a missing value   real(r8), optional
+
+subroutine get_2Dshort_as_r8(ncid, varname, darray, dmiss)
+
+integer,            intent(in)  :: ncid
+character(len=*),   intent(in)  :: varname
+real(r8),           intent(out) :: darray(:,:)
+real(r8), optional, intent(out) :: dmiss
+
+integer     :: varid
+integer(i2), allocatable :: shortarray(:,:)
+integer(i2) :: FillValue
+real(r8)    :: scale_factor, add_offset
+integer     :: offset_exists, scaling_exists, fill_exists
+!>@todo FIXME need missing_exists or something
+
+allocate(shortarray(size(darray,1),size(darray,2)))
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'get_2Dshort_as_r8', 'inquire var "'// trim(varname)//'"')
+
+ offset_exists = nf90_get_att(ncid, varid, 'add_offset',   add_offset)
+scaling_exists = nf90_get_att(ncid, varid, 'scale_factor', scale_factor)
+   fill_exists = nf90_get_att(ncid, varid, '_FillValue',   FillValue)
+!  miss_exists = nf90_get_att(ncid, varid, 'missing_value', miss_value)
+
+call nc_check( nf90_get_var(ncid, varid, shortarray), &
+               'get_2Dshort_as_r8', 'getting var '// trim(varname))
+
+darray = real(shortarray,r8)
+
+if (fill_exists == NF90_NOERR) then ! FillValue exists
+
+   if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
+      where (shortarray /= FillValue) darray = darray * scale_factor + add_offset
+   elseif (offset_exists == NF90_NOERR) then
+      where (darray /= FillValue) darray = darray * scale_factor
+   elseif (scaling_exists == NF90_NOERR) then
+      where (darray /= FillValue) darray = darray + add_offset
+   endif
+
+   if (present(dmiss)) dmiss = real(FillValue,r8)
+
+else
+
+   if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
+      darray = darray * scale_factor + add_offset
+   elseif (offset_exists == NF90_NOERR) then
+      darray = darray * scale_factor
+   elseif (scaling_exists == NF90_NOERR) then
+      darray = darray + add_offset
+   endif
+
+   if (present(dmiss)) dmiss = MISSING_R8
+
+endif
+
+deallocate(shortarray)
+
+end subroutine get_2Dshort_as_r8
 
 
 !--------------------------------------------------------------------
@@ -947,72 +1036,96 @@ end subroutine get_or_fill_QC
 !>      dmiss - value that signals a missing value   real(r8), optional
 !>
 !>     created 11 Mar 2010,  nancy collins,  ncar/image
+!>     extended 1 May 2020 to support scale/offset
 
-subroutine getvar_real_2d(ncid, varname, darray, dmiss)
+!> Repeated from the Unidata netCDF convention document:
+!> scale_factor
+!>
+!> If present for a variable, the data are to be multiplied by this factor after the data
+!> are read by the application that accesses the data.
+!>
+!> If valid values are specified using the valid_min, valid_max, valid_range, 
+!> or _FillValue attributes, those values should be specified in the domain of the 
+!> data in the file (the packed data), so that they can be interpreted before the 
+!> scale_factor and add_offset are applied.
+!>
+!> add_offset
+!>
+!> If present for a variable, this number is to be added to the data after it is read 
+!> by the application that accesses the data. If both scale_factor and add_offset 
+!> attributes are present, the data are first scaled before the offset is added. 
+!> The attributes scale_factor and add_offset can be used together to provide simple 
+!> data compression to store low-resolution floating-point data as small integers in 
+!> a netCDF dataset. When scaled data are written, the application should first subtract 
+!> the offset and then divide by the scale factor, rounding the result to the nearest 
+!> integer to avoid a bias caused by truncation towards zero.
+!>
+!> When scale_factor and add_offset are used for packing, the associated variable 
+!> (containing the packed data) is typically of type byte or short, whereas the unpacked 
+!> values are intended to be of type float or double. The attributes scale_factor and 
+!> add_offset should both be of the type intended for the unpacked data, e.g. float or double.
+
+subroutine getvar_real_2d(ncid, varname, darray, dmiss, &
+   nc_start, nc_count, nc_stride, nc_map)
 
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  real(r8),           intent(out)  :: darray(:,:)
- real(r8), optional, intent(out)  :: dmiss
+real(r8),         intent(out), optional :: dmiss
+integer,          intent(in),  optional :: nc_start(:)
+integer,          intent(in),  optional :: nc_count(:)
+integer,          intent(in),  optional :: nc_stride(:)
+integer,          intent(in),  optional :: nc_map(:)
 
-integer  :: varid, nfrc
-real(r8) :: fill, miss
-logical  :: found_miss
+integer  :: io, varid
+integer  :: offset_exists, scaling_exists
+integer  :: user_missing_exists, missing_exists, fill_exists
+real(r8) :: user_missing_value, missing_value, FillValue
+real(r8) :: scale_factor, add_offset
 
-! read the data for the requested array, and optionally get the fill value
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               'getvar_real_2d', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, darray), &
-               'getvar_real_2d', 'getting var '// trim(varname))
+! read the data for the requested array
+
+io = nf90_inq_varid(ncid, varname, varid)
+call nc_check( io, 'getvar_real_2d', 'inquire var "'//trim(varname)//'"')
+
+io = nf90_get_var(ncid, varid, darray, nc_start, nc_count, nc_stride, nc_map)
+call nc_check( io, 'getvar_real_2d', 'getting var "'//trim(varname)//'"')
+
+! apply the variable attributes
+
+ offset_exists = nf90_get_att(ncid, varid, 'add_offset',    add_offset)
+scaling_exists = nf90_get_att(ncid, varid, 'scale_factor',  scale_factor)
+missing_exists = nf90_get_att(ncid, varid, 'missing_value', missing_value)
+   fill_exists = nf90_get_att(ncid, varid, '_FillValue',    FillValue)
 
 ! the logic here is: 
-!  if the user hasn't asked about the fill value, don't look for any of
-!  these attributes and just return.
-
-!  if the user has told us another attribute name to look for, try that first.
-!  it's currently NOT an error if it's not there.   then second, look for the
-!  official '_FillValue' attr.  if it's found, return it as the missing value.
-! 
-!  if there are both, overwrite the missing value with the fill value and return
-!  the fill value as the 'dmiss' argument.
-!
-!  if neither are there, set dmiss to the DART missing value.  this could also
-!  be an error, but default to being permissive for now.
+!  if the user provides a missing value attribute name (via set_missing_name) , use it.
+!  if the user does not provide  value, 'normal' stragegy is applied
+!  This presents a problem when we go to write these variables, but since
+!  this module does not write netCDF variables, ignore for now.
 
 if (present(dmiss)) then
-   dmiss = MISSING_R8
-   found_miss = .false.
-
-   ! if user defined another attribute name for missing vals
-   ! look for it first, and make it an error if it's not there?
    if (missing_name /= '') then
-      nfrc = nf90_get_att(ncid, varid, missing_name, miss)
-      if (nfrc == NF90_NOERR) then 
-         found_miss = .true.
-         dmiss = miss
+      user_missing_exists = nf90_get_att(ncid, varid, missing_name, user_missing_value)
       endif
-   endif
-
-      ! this would make it a fatal error if not found
-      !call nc_check( nf90_get_att(ncid, varid, missing_name', miss), &
-      !   'getvar_real_2d', 'getting attr "//trim(missing_name)//" for '//trim(varname))
-
-   ! the predefined netcdf fill value.
-   nfrc = nf90_get_att(ncid, varid, '_FillValue', fill)
-   if (nfrc == NF90_NOERR) then
-      if (.not. found_miss) then  
-         found_miss = .true.
-         dmiss = fill
+   dmiss = MISSING_R8
       else
-         ! found both, set all to fill value
-         where(darray .eq. miss) darray = fill 
-         dmiss = fill
-      endif
+   user_missing_exists = NF90_NOERR + 20 ! something so we know it does not exist
    endif
 
-   ! if you wanted an error if you specified dmiss and neither attr are
-   ! there, you'd test found_miss here.  if it's still false, none were there.
+! We are going to replace FillValue, miss_value, user_missing_value with one value
+! since they are all interpreted the same after being read.
 
+if (user_missing_exists == NF90_NOERR) where(darray == user_missing_value) darray = MISSING_R8
+if (     missing_exists == NF90_NOERR) where(darray ==      missing_value) darray = MISSING_R8
+if (        fill_exists == NF90_NOERR) where(darray ==          FillValue) darray = MISSING_R8
+
+if (scaling_exists == NF90_NOERR) then
+   where (darray /= MISSING_R8) darray = darray * scale_factor
+endif
+
+if (offset_exists == NF90_NOERR) then
+   where (darray /= MISSING_R8) darray = darray + add_offset
 endif
   
 end subroutine getvar_real_2d
