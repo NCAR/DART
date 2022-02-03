@@ -134,6 +134,8 @@ namelist /model_nml/ tiegcm_restart_file_name, &
 !-------------------------------------------------------------------------------
 ! define model parameters
 
+! nilev is number of interaface levels
+! nlev is number of midpoint levels
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
 ! HK levels + top level boundary condition for nlev.
@@ -1524,7 +1526,7 @@ deallocate(var_names, kind_list, clamp_vals, update_list)
 
 end subroutine load_up_state_structure_from_file
 !-------------------------------------------------------------------------------
-! calcualted variables do not have a netcdf file
+! calculated variables do not have a netcdf file
 ! HK or do they? What happens for multiple assimilation cycles?
 subroutine load_up_calculated_variables(nvar, domain_name, domain_num)
 
@@ -1588,41 +1590,64 @@ end subroutine load_up_calculated_variables
 !-------------------------------------------------------------------------------
 
 
-subroutine calculate_vtec(lon_index, lat_index, vTEC)
+subroutine calculate_vtec(state_handle, ens_size, lon_index, lat_index, vTEC)
 !
 ! Create the vTEC from constituents in state.
 !
 
-integer,  intent(in)  :: lon_index, lat_index
-real(r8), intent(out) :: vTEC
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: lon_index, lat_index
+real(r8),            intent(out) :: vTEC(ens_size)
 
-real(r8), allocatable, dimension(:) :: NE, TI, TE, ZE
-real(r8), allocatable, dimension(:) :: NEm_extended, ZG_extended
-real(r8), allocatable, dimension(:)     :: delta_ZG, NE_middle
-real(r8)   :: GRAVITYtop, Tplasma, Hplasma
+! n(i)levs x ensmeble size
+real(r8), allocatable, dimension(:,:) :: NE, ZG
+real(r8), allocatable, dimension(:,:) :: TI, TE
+real(r8), allocatable, dimension(:,:) :: NEm_extended, ZG_extended
+real(r8), allocatable, dimension(:,:)     :: delta_ZG, NE_middle
+real(r8), dimension(ens_size)   :: GRAVITYtop, Tplasma, Hplasma
 
 real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
 real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
 
 real(r8) :: earth_radiusm
-integer  :: nlev10, j, k, i
+integer  :: nlev10, j, k, i, var_id
+integer(i8) :: idx
 
-allocate( NE(nilev), NEm_extended(nilev+10), &
-          ZG_extended(nilev+10))
-allocate( TI(nlev), TE(nlev) )
-allocate( delta_ZG(nlev+9), NE_middle(nlev+9) )
+allocate( NE(nilev, ens_size), NEm_extended(nilev+10, ens_size), &
+          ZG_extended(nilev+10, ens_size))
+allocate( TI(nlev, ens_size), TE(nlev, ens_size) )
+allocate( delta_ZG(nlev+9, ens_size), NE_middle(nlev+9, ens_size) )
 
-do i = 1, nlev
-!... NE (interfaces)
-  !call get_state(NE(i), l )
-!... ZG (interfaces)
-
+! NE (interfaces)
+var_id = get_varid_from_varname(domain_id(RESTART_DOM), 'NE')
+do i = 1, nilev
+   idx = get_dart_vector_index(lon_index,lat_index, i, &
+                            domain_id(RESTART_DOM), var_id)
+   NE(i, :) = get_state(idx, state_handle)
 enddo
 
+! ZG (interfaces)
 do i = 1, nilev
-!... TI (midpoints)
+  idx = get_dart_vector_index(lon_index,lat_index, i, &
+                         domain_id(RESTART_DOM), var_id)
+  ZG(i, :) = get_state(idx, state_handle)
+enddo
 
-!... TE (midpoints)
+! TI (midpoints)
+var_id = get_varid_from_varname(domain_id(RESTART_DOM), 'TI')
+do i = 1, nlev
+   idx = get_dart_vector_index(lon_index,lat_index, i, &
+                          domain_id(RESTART_DOM), var_id)
+   TI(i, :) = get_state(idx, state_handle)
+enddo
+
+! TE (midpoints)
+var_id = get_varid_from_varname(domain_id(RESTART_DOM), 'TE')
+do i = 1, nlev
+   idx = get_dart_vector_index(lon_index,lat_index, i, &
+                          domain_id(RESTART_DOM), var_id)
+   TE(i, :) = get_state(idx, state_handle)
 enddo
 
 ! Construct vTEC given the parts
@@ -1631,28 +1656,31 @@ earth_radiusm = earth_radius * 1000.0_r8 ! Convert earth_radius in km to m
 NE            = NE * 1.0e+6_r8           ! Convert NE in #/cm^3 to #/m^3
 
 ! Gravity at the top layer
-!GRAVITYtop = gravity * (earth_radiusm / (earth_radiusm + ZG(:,:,nilev))) ** 2
+GRAVITYtop(:) = gravity * (earth_radiusm / (earth_radiusm + ZG(nilev,:))) ** 2
 
 ! Plasma Temperature
-Tplasma = (TI(nlev-1) + TE(nlev-1)) / 2.0_r8
+Tplasma(:) = (TI(nlev-1,:) + TE(nlev-1,:)) / 2.0_r8
 
 ! Compute plasma scale height
-Hplasma = (2.0_r8 * k_constant / omass ) * Tplasma / GRAVITYtop
+Hplasma(:) = (2.0_r8 * k_constant / omass ) * Tplasma(:) / GRAVITYtop(:)
 
 ! NE is extrapolated to 10 more layers
 nlev10  = nlev + 10
 
-! ZG_extended(1:nilev) = ZG
-!NEm_extended(1:nilev) = NE
+ZG_extended(1:nilev,:) = ZG
+NEm_extended(1:nilev,:) = NE
 
 do j = nlev, nlev10
-!   NEm_extended(j) = NEm_extended(j-1) * exp(-0.5_r8)
-!    ZG_extended(j) =  ZG_extended(j-1) + Hplasma(:,:) / 2.0_r8
+   NEm_extended(j,:) = NEm_extended(j-1,:) * exp(-0.5_r8)
+    ZG_extended(j,:) =  ZG_extended(j-1,:) + Hplasma(:) / 2.0_r8
 enddo
 
-!delta_ZG(1:(nlev10-1)) =  ZG_extended(2:nlev10) -  ZG_extended(1:(nlev10-1))
-!NE_middle(1:(nlev10-1)) = (NEm_extended(2:nlev10) + NEm_extended(1:(nlev10-1))) / 2.0_r8
-!vTEC(k,j) = sum(NE_middle * delta_ZG) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
+delta_ZG(1:(nlev10-1),:) =  ZG_extended(2:nlev10,:) -  ZG_extended(1:(nlev10-1),:)
+NE_middle(1:(nlev10-1),:) = (NEm_extended(2:nlev10,:) + NEm_extended(1:(nlev10-1),:)) / 2.0_r8
+
+do i = 1, ens_size
+   vTEC(i) = sum(NE_middle(:,i) * delta_ZG(:,i)) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
+enddo
 
 deallocate( NE, NEm_extended, ZG_extended)
 deallocate( TI, TE )
