@@ -51,11 +51,13 @@ use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_i
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
-                                  get_varid_from_kind, &
-                                  state_structure_info, &
+                                  get_varid_from_kind, get_variable_name, &
+                                  state_structure_info, get_varid_from_varname, &
                                   get_index_start, get_index_end, &
                                   get_dart_vector_index, get_num_variables, &
-                                  get_num_dims, get_domain_size
+                                  get_num_dims, get_domain_size, &
+                                  get_io_clamping_minval, get_num_domains, &
+                                  get_io_clamping_maxval
 
 !!!!! TODO: check if needed
 use netcdf
@@ -1409,7 +1411,9 @@ integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: pert_amp
 logical,             intent(out)   :: interf_provided
 
-integer     :: i, j
+integer  :: i, idom, ivar, dom_count
+integer  :: copy, start_ind, end_ind
+real(r8) :: pertval, clamp_min_val 
 
 type(random_seq_type) :: random_seq
 
@@ -1417,29 +1421,48 @@ if ( .not. module_initialized ) call static_init_model
 
 interf_provided = .true.
 
-call error_handler(E_MSG,'WARNING - MITgcm_ocean:pert_model_copies is untested.', source) 
+! Number of domains
+! Only 1 domain, so far: both physical and biological variables 
+! are concatenated in a single domain
+dom_count = get_num_domains()
 
 call init_random_seq(random_seq, my_task_id())
 
-! only perturb the actual ocean cells;
-! leave the land and ocean floor values alone.
-! Only perturb the non-zero values. 0.0 is a flag for 'missing'
-! ocean cells (e.g. land or under the sea floor)
-do i=1,state_ens_handle%my_num_vars
-   MEMBERS : do j=1, ens_size
+DOMAINS : do idom = 1, dom_count
 
-      if( state_ens_handle%copies(j,i) == 0.0_r8 ) cycle MEMBERS
+   print *, 'idom: ', idom
 
-      state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
-                                     state_ens_handle%copies(j,i), &
-                                     model_perturbation_amplitude)
-   enddo MEMBERS
-enddo
+   VARIABLES : do ivar = 1, get_num_variables(idom)
 
-! NOTE: This routine is not complete. We should find the global min/max
-! for the variable - of the values that are not 'missing'
+      start_ind = get_index_start(idom, ivar)
+      end_ind   = get_index_end(  idom, ivar)
 
-!>@todo keep variable from exceeding the original range
+      clamp_min_val = get_io_clamping_minval(idom, ivar)
+
+      print *, 'ivar: ', ivar, ', start: ', start_ind, ', end: ', end_ind
+      print *, 'minval: ', clamp_min_val
+
+      INDICES : do i = start_ind, end_ind
+         MEMBERS : do copy = 1, ens_size
+
+            ! Only perturb the actual ocean cells;
+            ! Leave the land and ocean floor values alone.
+            if( state_ens_handle%copies(copy, i) == FVAL ) cycle MEMBERS
+
+            pertval = random_gaussian(random_seq, state_ens_handle%copies(copy, i), &
+                                            model_perturbation_amplitude)
+
+            ! Clamping: Samples obtained from truncated Gaussian dist. 
+            if (.not. log_transform) pertval = max(clamp_min_val, pertval)
+
+            state_ens_handle%copies(copy, i) = pertval
+
+         enddo MEMBERS
+      enddo INDICES
+ 
+   enddo VARIABLES
+enddo DOMAINS
+
 
 end subroutine pert_model_copies
 
@@ -2102,6 +2125,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    if (quantity_list(i) == QTY_DISSOLVED_ORGANIC_P       ) call adjust_clamp(clamp_vals(i, 1))
    if (quantity_list(i) == QTY_DISSOLVED_ORGANIC_NITROGEN) call adjust_clamp(clamp_vals(i, 1))
    if (quantity_list(i) == QTY_DISSOLVED_INORGANIC_IRON  ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_SURFACE_CHLOROPHYLL       ) call adjust_clamp(clamp_vals(i, 1))
 
    ngood = ngood + 1
 

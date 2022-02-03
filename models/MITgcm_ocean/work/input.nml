@@ -27,19 +27,19 @@
    input_state_file_list        = 'input_list.txt'
    init_time_days               = -1
    init_time_seconds            = -1
-   perturb_from_single_instance = .false.
+   perturb_from_single_instance = .true.
    perturbation_amplitude       = 0.2
    stages_to_write              = 'output'
    single_file_out              = .false.
    output_state_file_list       = 'output_list.txt'
    output_interval              = 1
    output_members               = .true.
-   num_output_state_members     = 4
+   num_output_state_members     = 80
    output_mean                  = .true.
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
    compute_posterior            = .true.
-   ens_size                     = 4
+   ens_size                     = 80
    num_groups                   = 1
    distributed_state            = .true.
    async                        = 0
@@ -64,7 +64,7 @@
 
 &quality_control_nml
    input_qc_threshold          = 3
-   outlier_threshold           = -1
+   outlier_threshold           = 3
    enable_special_outlier_code = .false.
   /
 
@@ -181,7 +181,7 @@
    assimilation_period_seconds  = 259200
    model_perturbation_amplitude = 0.2
    model_shape_file             = 'OUTPUT.nc'
-   mitgcm_variables = 'PSAL', 'QTY_SALINITY',                   '0.0', 'NA', 'update',
+   mitgcm_variables = 'PSAL', 'QTY_SALINITY',                   'NA',  'NA', 'update',
                       'PTMP', 'QTY_TEMPERATURE',                'NA',  'NA', 'update',
                       'UVEL', 'QTY_U_CURRENT_COMPONENT',        'NA',  'NA', 'update',
                       'VVEL', 'QTY_V_CURRENT_COMPONENT',        'NA',  'NA', 'update',
@@ -195,7 +195,7 @@
                       'DOP',  'QTY_DISSOLVED_ORGANIC_P',        '0.0', 'NA', 'update',
                       'DON',  'QTY_DISSOLVED_ORGANIC_NITROGEN', '0.0', 'NA', 'update',
                       'FET',  'QTY_DISSOLVED_INORGANIC_IRON',   '0.0', 'NA', 'update',
-                      'CHL',  'QTY_SURFACE_CHLOROPHYLL',        'NA',  'NA', 'no_copyback'
+                      'CHL',  'QTY_SURFACE_CHLOROPHYLL',        '0.0', 'NA', 'no_copyback'
   /
 
 &trans_mitdart_nml
@@ -463,7 +463,7 @@
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1
+   run_tests             = 1, 2, 3, 4, 5, 6, 7
    x_ind                 = 37500001
    loc_of_interest       = 38.6, 20.0, 12.01
    quantity_of_interest  = 'QTY_TEMPERATURE'
