@@ -518,9 +518,9 @@ call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 call nc_add_global_attribute(ncid, "source_rate", source_rate)
 call nc_add_global_attribute(ncid, "exponential_sink_folding", e_folding)
 
-call nc_write_location_atts(ncid, msize/3)
+call nc_write_location_atts(ncid, grid_size)
 call nc_end_define_mode(ncid)
-call nc_write_location(ncid, state_loc(1:40), msize/3)
+call nc_write_location(ncid, state_loc(1:grid_size), grid_size)
 
 call nc_synchronize_file(ncid)
 
