@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 11 2022 :: Bug fix for inflation namelist options. Tag: v9.12.1**
+
+- reverted inf_flavor namelist option to be integer only to conform to Fortran
+  standards. 
+
 **December 7 2021 :: Refactored filter_assim. Tag: v9.12.0**
 
 - Filter_assim refactored so each process calcuates increments
