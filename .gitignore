@@ -69,6 +69,8 @@ restart_file_tool
 system_simulation
 rttov_test
 rttov_unit_tests
+dart_to_clm
+clm_to_dart
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

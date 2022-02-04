@@ -1,0 +1,79 @@
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../../observations/forward_operators/obs_def_land_mod.f90'
+   quantity_files          = '../../../../assimilation_code/modules/observations/land_quantities_mod.f90'
+  /
+&SMAP_L2_to_obs_nml
+   input_file_list = 'file_list.txt'
+   obs_out_file    = 'obs_seq.out'
+   verbose         = .FALSE.
+  /
+
+&obs_sequence_tool_nml
+   filename_seq      = 'obs_seq.out'
+   filename_seq_list = ''
+   filename_out      = 'obs_seq.0Z'
+   print_only        = .false.
+   gregorian_cal     = .true.
+   first_obs_days    = DART1D
+   first_obs_seconds = DART1S
+   last_obs_days     = DARTND
+   last_obs_seconds  = DARTNS
+   edit_qc_metadata  = .true.
+   new_qc_metadata   = 'Original QC'
+  /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'SOIL_MOISTURE'
+   evaluate_these_obs_types   = 'null'
+  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .FALSE.
+  /
+
+
+&ascii_table_converter_nml
+   input_file_list = 'file_list.txt'
+   obs_out_file    = 'obs_seq.out'
+   maxgoodqc       = 2
+   verbose         = .TRUE.
+  /
+
+&location_nml
+  /
+
+
+&utilities_nml
+   module_details = .FALSE.
+   termlevel      = 2
+  /
+
+&mpi_utilities_nml
+  /
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+  /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.out'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+  /
