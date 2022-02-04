@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # usage: mkmf_perfect_model_obs [ -mpi | -nompi ]
 #
 # without any args, builds perfect_model_obs without mpi libraries, and it will run
@@ -62,13 +60,9 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_perfect_model_obs.back
 
-../../../build_templates/mkmf -p perfect_model_obs -t ../../../build_templates/mkmf.template   \
-        -a "../../.." ${wrapper_arg} path_names_perfect_model_obs
+     ../../../build_templates/mkmf -p perfect_model_obs \
+ -t  ../../../build_templates/mkmf.template \
+ -a "../../.." ${wrapper_arg} path_names_perfect_model_obs
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

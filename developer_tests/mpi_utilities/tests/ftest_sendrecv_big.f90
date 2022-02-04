@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program ftest_sendrecv
+program ftest_sendrecv_big
 
 ! MPI fortran program that uses parts of the DART library to test
 ! the send and receive functions in the mpi_utilities_mod.f90 file.
@@ -56,5 +56,5 @@ integer :: myrank, totalprocs
 
    call finalize_mpi_utilities()
 
-end program ftest_sendrecv
+end program ftest_sendrecv_big
 

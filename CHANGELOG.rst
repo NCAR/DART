@@ -22,6 +22,49 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 3 2022 :: CLM with SWE repartitioning. Tag: v9.13.0** 
+
+- Updated Community Land Model (CLM) model_mod, scripting, and diagnostics.
+- New capability to repartition snow layer mass and dimension variables.
+  The repartitioning ensures that the adjustments applied to the snow layers
+  are consistent (mass and dimensions are conserved) with the adjustment of
+  the total snow water equivalent.
+- New observation converters for NASA_Earthdata and NSIDC
+- Support for netcdf _FillValue
+- Bug-fix for clm nc_write_model_atts lon vs nlon
+
+**January 11 2022 :: Bug fix for inflation namelist options. Tag: v9.12.1**
+
+- reverted inf_flavor namelist option to be integer only to conform to Fortran
+  standards. 
+
+**December 7 2021 :: Refactored filter_assim. Tag: v9.12.0**
+
+- Filter_assim refactored so each process calcuates increments
+- Code readability changes 
+
+**November 22 2021 :: Bug fix for groups with posterior spatially-varying adaptive inflation. Tag: v9.11.13**
+
+- Removed the additional outlier threshold test for each group when using posterior 
+  spatially-varying adaptive inflation. The outlier test is done for the entire ensemble
+  when the posterior forward operators are computed.
+
+**October 27 2021 :: Observation converter documentation update. Tag: v9.11.12**
+
+- Improved documentation for radar observation converters
+
+**September 30 2021 :: Bug fix for very large models. Tag v9.11.11**
+
+- mpi_utilties_mod using correct check for message length > SNDRCV_MAXSIZE
+- new developers test for large message sizes
+- State vector IO updated to use i8 for state indexing
+- WRF model_mod now using i8  
+
+**September 21 2021 :: Bug fix for perfect_model_obs. Tag v9.11.10**
+
+- perfect_model_obs now exits cleanly when no filenames are given
+  for the input_state_files or output_state_files namelist options. 
+
 **August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
 
 *removed obsolete code:*
