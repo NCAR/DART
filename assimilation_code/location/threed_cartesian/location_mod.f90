@@ -68,18 +68,6 @@ end type periodic_info_type
 ! This version supports only regularly spaced boxes (the non-working octree code
 ! was removed.) 
 
-!type box_type
-!   private
-!   integer, pointer  :: loc_box(:)           ! (nloc); List of loc indices in boxes
-!   integer, pointer  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
-!   integer, pointer  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
-!   real(r8)          :: bot_x, top_x         ! extents in x, y, z
-!   real(r8)          :: bot_y, top_y
-!   real(r8)          :: bot_z, top_z
-!   real(r8)          :: x_width, y_width, z_width    ! widths of boxes in x,y,z
-!   real(r8)          :: nboxes_x, nboxes_y, nboxes_z ! based on maxdist how far to search
-!end type box_type
-
 type box_type
    private
    integer           :: num                      
@@ -104,13 +92,6 @@ type get_close_type
    type(box_type),allocatable  :: box(:)                  ! Array of box types 
 end type get_close_type
 
-
-!type get_close_type
-!   private
-!   integer           :: num
-!   real(r8)          :: maxdist
-!   type(box_type)    :: box
-!end type get_close_type
 
 type(random_seq_type) :: ran_seq
 logical               :: ran_seq_init = .false.
@@ -150,11 +131,6 @@ real(r8) :: min_z_for_periodic = MISSING_R8
 real(r8) :: max_z_for_periodic = MISSING_R8
 
 type(periodic_info_type) :: loopy
-
-!> @todo: this code doesn't do the by-type variable maxdist computations.
-!> need to lift it from the threed_sphere version.  makes 'box' inside
-!> get_close_type an array.  (good thing i didn't remove it yet.)
-!> also makes 'maxdist' an array.
 
 !-----------------------------------------------------------------
 ! Namelist with default values
@@ -277,16 +253,17 @@ diff(IX) = loc1%x - loc2%x
 diff(IY) = loc1%y - loc2%y
 diff(IZ) = loc1%z - loc2%z
 
-! hope for the simple case first
+! the simple non-periodic case
 if (.not. any_periodic) then
    if (debug > 0) write(0,*)  'non-periodic distance: '
    get_dist = dist_3d(diff)
    return
-else
-  if (debug > 0) write(0,*)  'periodic distance: '
-  square_dist = dist_3d_sq(diff)
-  if (debug > 0) write(0,*)  'non-periodic 0 sq_dist, dist: ', square_dist, sqrt(square_dist)
 endif
+
+! everything below deals with the periodic options
+if (debug > 0) write(0,*)  'periodic distance: '
+square_dist = dist_3d_sq(diff)
+if (debug > 0) write(0,*)  'non-periodic 0 sq_dist, dist: ', square_dist, sqrt(square_dist)
 
 ! ok, not simple.
 !> @todo: can we separate this?
@@ -1422,8 +1399,10 @@ end subroutine find_box_ranges
 
 !----------------------------------------------------------------------------
 
-subroutine find_nearest(box, base_loc, loc_list, nearest, rc)
- type(box_type), intent(in), target  :: box
+!subroutine find_nearest(box, base_loc, loc_list, nearest, rc)
+ !type(box_type), intent(in), target  :: box
+subroutine find_nearest(gc,base_loc,loc_list,nearest, rc)
+ type(get_close_type), intent(in), target :: gc
  type(location_type),  intent(in)  :: base_loc
  type(location_type),  intent(in)  :: loc_list(:)
  integer,              intent(out) :: nearest
@@ -1433,32 +1412,33 @@ subroutine find_nearest(box, base_loc, loc_list, nearest, rc)
 
 integer :: x_box, y_box, z_box, i, j, k, l
 integer :: start_x, end_x, start_y, end_y, start_z, end_z
-integer ::  n_in_box, st, t_ind
+integer :: n_in_box, st, t_ind
+integer :: box_num
 real(r8) :: this_dist, dist
 
 ! First, set the intent out arguments to a missing value
 nearest = -99
 rc = -1
 dist = 1e38_r8                ! something big and positive.
-
+box_num = 1                   ! JDL - HARD CODE TO JUST GET THE FIRST BOX OBJECT
 ! the list of locations in the loc() argument must be the same
 ! as the list of locations passed into get_close_init(), so
 ! gc%num and size(loc) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
-if (size(loc_list) /= box%num) then
+if (size(loc_list) /= gc%box(box_num)%num) then
    write(errstring,*)'loc() array must match one passed to get_close_init()'
    call error_handler(E_ERR, 'find_nearest_boxes', errstring, source)
 endif
 
 ! If num == 0, no point in going any further.
-if (box%num == 0) return
+if (gc%box(box_num)%num == 0) return
 
 !--------------------------------------------------------------
 
 ! Begin by figuring out which box the base loc is in
-x_box = floor((base_loc%x - box%bot_x) / box%x_width) + 1
-y_box = floor((base_loc%y - box%bot_y) / box%y_width) + 1
-z_box = floor((base_loc%z - box%bot_z) / box%z_width) + 1
+x_box = floor((base_loc%x - gc%box(box_num)%bot_x) / gc%box(box_num)%x_width) + 1
+y_box = floor((base_loc%y - gc%box(box_num)%bot_y) / gc%box(box_num)%y_width) + 1
+z_box = floor((base_loc%z - gc%box(box_num)%bot_z) / gc%box(box_num)%z_width) + 1
 
 ! FIXME: this should figure out if it's > n or < 0 and
 ! set to n or 0 and always return something.
@@ -1473,19 +1453,19 @@ if(z_box > nz .or. z_box < 1 .or. z_box < 0) return
 !write(0,*)  'nboxes x, y, z = ', gc%box%nboxes_x, gc%box%nboxes_y, gc%box%nboxes_z
 !write(0,*)  'base_loc in box ', x_box, y_box, z_box
 
-start_x = x_box - box%nboxes_x
+start_x = x_box - gc%box(box_num)%nboxes_x
 if (start_x < 1) start_x = 1
-end_x = x_box + box%nboxes_x
+end_x = x_box + gc%box(box_num)%nboxes_x
 if (end_x > nx) end_x = nx
 
-start_y = y_box - box%nboxes_y
+start_y = y_box - gc%box(box_num)%nboxes_y
 if (start_y < 1) start_y = 1
-end_y = y_box + box%nboxes_y
+end_y = y_box + gc%box(box_num)%nboxes_y
 if (end_y > ny) end_y = ny
 
-start_z = z_box - box%nboxes_z
+start_z = z_box - gc%box(box_num)%nboxes_z
 if (start_z < 1) start_z = 1
-end_z = z_box + box%nboxes_z
+end_z = z_box + gc%box(box_num)%nboxes_z
 if (end_z > nz) end_z = nz
 
 !write(0,*)  'looping from '
@@ -1499,14 +1479,14 @@ do i = start_x, end_x
       do k = start_z, end_z
 
          ! Box to search is i,j,k
-         n_in_box = box%count(i, j, k)
-         st = box%start(i,j,k)
+         n_in_box = gc%box(box_num)%count(i, j, k)
+         st = gc%box(box_num)%start(i,j,k)
 
 
          ! Loop to check how close all loc in the box are; add those that are close
          do l = 1, n_in_box
 
-            t_ind = box%loc_box(st - 1 + l)
+            t_ind = gc%box(box_num)%loc_box(st - 1 + l)
 !write(0,*)  'l, t_ind = ', l, t_ind
 
             this_dist = get_dist(base_loc, loc_list(t_ind))

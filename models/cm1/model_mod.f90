@@ -729,7 +729,6 @@ if (varid < 0) then
    istatus(:) = 11
    return ! this kind isn't found in the state vector
 endif
-
 nlevs = get_z_axis_length(varid)
 ndims = get_num_dims(domid, varid)
 if (debug > 99) then
@@ -755,7 +754,6 @@ else
    call say(string1)
 endif
 
-
 if( .not. observation_on_grid(obs_loc_array, ndims) ) then
    ! no need to interpolate
    istatus(:) = 12
@@ -764,10 +762,10 @@ endif
 
 if (debug > 99) then
    write(string1, *) 'nlevs', nlevs
-   write(string1, *) 'nlevs_shrink', nlevs_shrink
    call say(string1)
+   !write(string1, *) 'nlevs_shrink', nlevs_shrink
+   !call say(string1)
 endif
-
 ! Interpolate the height field (z) to get the height at each level at
 ! the observation location. This allows us to find which level an observation
 ! is in.
@@ -776,14 +774,11 @@ endif
 ! Need grid from kind
 call get_x_axis(varid, axis, axis_length)
 call get_enclosing_coord(obs_loc_array(1), axis(1:axis_length), x_ind, x_val)
-
 call get_y_axis(varid, axis, axis_length)
 call get_enclosing_coord(obs_loc_array(2), axis(1:axis_length), y_ind, y_val)
-
 ! wrap the indicies if the observation is near the boundary
 if (periodic_x) call wrap_x( obs_loc_array(1), x_ind, x_val )
 if (periodic_y) call wrap_y( obs_loc_array(2), y_ind, y_val )
-
 if (nlevs_shrink == 2) then ! you need to find which 2 levels you are between
    ! If variable is on ni, nj grid:
    if (is_on_s_grid(varid)) then
@@ -792,11 +787,8 @@ if (nlevs_shrink == 2) then ! you need to find which 2 levels you are between
       call height_interpolate(obs_loc_array, varid, nlevs, nlevs_shrink, x_ind, y_ind, z_ind, x_val, y_val, z_val, hstatus)
       if (hstatus /= 0) return
    endif
-
 if (debug > 99) print*, 'x y enclosing', x_ind, y_ind, x_val, y_val
-
 if (debug > 99) print*, 'nlevs: ', nlevs, ', num_dims:', get_num_dims(domid, varid)
-
 if (debug > 99) print*, 'z_ind', z_ind, 'varid', varid
 
 endif

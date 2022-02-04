@@ -31,18 +31,41 @@
   num_groups                  = 1
   output_forward_op_errors    = .false.
 
-  inf_flavor                  = 0,                 4
-  inf_initial_from_restart    = .false.,           .false.
-  inf_sd_initial_from_restart = .false.,           .false.
-  inf_initial                 = 1.0,               0.98
+
+  inf_flavor                  =  2,                 0,
+  inf_initial_from_restart    = .true.,           .false.,
+  inf_sd_initial_from_restart = .true.,           .false.,
+  inf_deterministic           = .true.,            .true.,
+  inf_initial                 = 1.0,               0.90,
   inf_lower_bound             = 1.0,               1.0
-  inf_upper_bound             = 1000000.0,         1000000.0
+  inf_upper_bound             = 100.0,            100.0
   inf_damping                 = 0.9,               0.9
   inf_sd_initial              = 0.6,               0.6
   inf_sd_lower_bound          = 0.6,               0.6
   inf_sd_max_change           = 1.05,              1.05
+
 /
 
+
+! The model_nml namelist is currently made for a simulation run with the Morrison Microphysics scheme.   
+! The hydrometeor fields will need to be updated if a different microphysics option is used
+!
+! Several surface observations can only be assimilated if you run the CM1 
+! with a surace parameterization and set "output_sfcdiags = 1".  
+! The following output variables include:
+! 
+! Model Output Variables -> Assimilated Observations
+! 1.) t2    -> TEMPERATURE_2M
+! 2.) u10   -> U_WIND_10
+! 3.) v10   -> V_WIND_10
+! 4.) q2    -> SPECIFIC_HUMIDITY_2M
+! 5.) psfc  -> SURFACE_PRESSURE
+! 
+! RADIOSONDE_TEMPERATURE and RADIOSONDE_SPECIFIC_HUMIDITY observations require 
+! air temperature and specific humidity as inputs. To do this you will have to 
+! go into CM1 code and tell the model to output three-dimensional air temperature and
+! specific humidity variables in "./src/writeout_nc.F" and "./src/restart.F"
+!
 
 &model_nml
   assimilation_period_days    = 0
@@ -50,7 +73,7 @@
   calendar                    = 'Gregorian'
   cm1_template_file           = 'cm1out_rst_000001.nc'
   periodic_x                  = .false.
-  periodic_y                  = .true.
+  periodic_y                  = .false. 
   debug                       = 0
   model_variables = 'ua'   , 'QTY_U_WIND_COMPONENT'        , 'NULL', 'NULL', 'UPDATE',
                     'va'   , 'QTY_V_WIND_COMPONENT'        , 'NULL', 'NULL', 'UPDATE',
@@ -67,35 +90,62 @@
                    'nci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
                    'ncs'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
                    'ncg'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
+                   'rho'   , 'QTY_DENSITY'                 , 0.0000, 'NULL', 'UPDATE',
                    'dbz'   , 'QTY_RADAR_REFLECTIVITY'      , 0.0000, 'NULL', 'UPDATE',
-               !  Specialized Output Created from CM1 to Feed Into DART
-               !  JDL Problem 1: Like the previous version, some of the outputted state variables 
-               !  are highly specialized and not found in the exact code. Should I... (a) keep them and urge users to create the variables in 
-               !  the output, (b) Not include these variables and just assimilate wind speed?, or (c) Push my updated output also to CM1 to fully integrate updates
-               'air_temp'  , 'QTY_TEMPERATURE'             , 'NULL', 'NULL', 'UPDATE',
-               'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'       , 0.0000, 'NULL', 'UPDATE',
-               'fall_spd'  , 'QTY_POWER_WEIGHTED_FALL_SPEED', 0.0000, 'NULL', 'UPDATE',
+  
+                   ! Model variables that are output when you run with a simulation with 
+                   ! a surface model and set "output_sfcdiags = 1"
+                   !
+                   !'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                   !'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                   !'t2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
+                   !'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
+                   !'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
+                   !'tsk'  , 'QTY_SKIN_TEMPERATURE'      , 0.0000, 'NULL', 'UPDATE',
+                   !'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
+               
+                   ! Model variables that must be output by CM1 to assimilate RADIOSONDE TEMPERATURE
+                   ! and RADIOSONDE_SPECIFIC_HUMIDITY observations
+                   !
+                   !'air_temp'  , 'QTY_TEMPERATURE'             , 'NULL', 'NULL', 'UPDATE',
+                   !'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'       , 0.0000, 'NULL', 'UPDATE',
 /
 
+!
+! This is a non-exhaustive list of variables that could be assimilated into CM1 forecasts
+!
+! Remember: TEMPERATURE_2M, U_WIND_10M, V_WIND_10M, SURFACE_PRESSURE, and SPECIFIC_HUMIDITY_2M 
+!           require that CM1 is run with a surface model and outputs surface diagnostic variables
+!
+! If you are running CM1 simulations without a surface model you could theoretically assimilate a single
+! RADIOSONDE observation that is near the surface to act as a "surface observation". DART will then ingest a 
+! 3D model field rather than referring to the 2D surface model output.
+!
+! Also remember RADIOSONDE_TEMPERATURE and RADIOSONDE_SPECIFIC_HUMIDITY observations 
+! requires CM1 to output three-dimensional arrays of air tempeature (i.e., air_temp) 
+! and specific humidity (spec_hum)   
+!
 
-!--- JDL Problem 2: The assimilated observation types here are actually based on a very specific experiment configuration I never run
-!--- You have to have a PBL scheme running in CM1 to get the desired observation types.  This is not possible when running a fully idealized experiment.
-!--- My work around is to define everything as a radiosonde or radar observation. This allows you to interpolate observations by height, rather than providing a
-!--- 2D surface 
 &obs_kind_nml
-  !assimilate_these_obs_types = 'TEMPERATURE_2M',
+
+  assimilate_these_obs_types  = 'RADIOSONDE_U_WIND_COMPONENT', 
+                                'RADIOSONDE_V_WIND_COMPONENT', 
+                                'RADAR_REFLECTIVITY', 
+                                'DOPPLER_RADIAL_VELOCITY',
+  
+  !  Observations that require CM1 to output 3D fields of air temperature and specific humidity
+  !  This will require you to make minor modifications to the code
+  !                             'RADIOSONDE_TEMPERATURE', 
+  !                             'RADIOSONDE_SPECIFIC_HUMIDITY' 
+
+  !  Observations that require CM1 simulations to be run with a surface model                          
+  !  Then set "output_sfcdiags = 1"
+  !                             'TEMPERATURE_2M',
   !                             'U_WIND_10M',
   !                             'V_WIND_10M',
   !                             'SURFACE_PRESSURE',
   !                             'SPECIFIC_HUMIDITY_2M'
-
-  assimilate_these_obs_types  = 'RADIOSONDE_U_WIND_COMPONENT', 
-                                'RADIOSONDE_V_WIND_COMPONENT', 
-                                'RADIOSONDE_SPECIFIC_HUMIDITY', 
-                                        'RADIOSONDE_DEWPOINT', 
-                                         'RADAR_REFLECTIVITY', 
-                                    'DOPPLER_RADIAL_VELOCITY',
-
+                   
 
 
   evaluate_these_obs_types   = ''
@@ -178,8 +228,8 @@
   distribute_mean                 = .true.
   output_localization_diagnostics = .false.
   localization_diagnostics_file   = 'localization_diagnostics'
-  special_localization_obs_types    = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_SPECIFIC_HUMIDITY', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
-  special_localization_cutoffs      = 30000.,30000.,30000.,30000.,6000.,6000.
+  special_localization_obs_types    = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+  special_localization_cutoffs      = 50000., 50000., 6000., 6000.
 /
 
 
@@ -313,6 +363,14 @@
   verbose               = .true.
 /
 
+! This block of code is for assimilating radar observations
+! Rather than diagnosing radar reflectivity directly from model output
+! I feed the DART system the 3D radar reflectivity variable output by cm1.
+! If you decide to follow this same technique set microphysics_type = 5.
+!
+! To calculate radar radial velocity you need to set allow_dbztowt_conv=.true.
+! this will allow the DART to diagnose particle fall speed via reflecvtivity 
+! which is used for the radial velocity calculation
 
 &obs_def_radar_mod_nml
    apply_ref_limit_to_obs      =   .false.,
@@ -324,7 +382,7 @@
    max_radial_vel_obs          =   1000000,
    allow_wet_graupel           =   .false.,
    microphysics_type           =         5,
-   allow_dbztowt_conv          =   .false.,
+   allow_dbztowt_conv          =    .true.,
    dielectric_factor           =     0.224,
    n0_rain                     =     8.0e6,
    n0_graupel                  =     4.0e6,
