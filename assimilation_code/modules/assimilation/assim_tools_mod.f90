@@ -1,4 +1,4 @@
-! DART software - Copyright UCAR. This open source software is provided
+!e DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
@@ -342,16 +342,16 @@ real(r8), allocatable :: close_state_dist(:)
 real(r8), allocatable :: last_close_obs_dist(:)
 real(r8), allocatable :: last_close_state_dist(:)
 real(r8), allocatable :: all_my_orig_obs_priors(:, :)
-real(r8), allocatable :: piece_const_like(:, :), prior_state_mass(:, :), prior_state_ens(:, :)
-real(r8), allocatable :: prior_sorted_quantiles(:, :)
+real(r8), allocatable :: piece_const_state_like(:, :), prior_state_mass(:, :), prior_state_ens(:, :)
+real(r8), allocatable :: piece_const_obs_like(:, :), prior_obs_mass(:, :), prior_obs_ens(:, :)
+real(r8), allocatable :: prior_state_sorted_quantiles(:, :), prior_obs_sorted_quantiles(:, :)
 
 integer(i8) :: state_index
-integer     :: num_QCEF_state_vars
-integer(i8), allocatable :: my_state_indx(:)
-integer(i8), allocatable :: my_obs_indx(:)
-integer,     allocatable :: prior_state_index_sort(:, :)
-integer,     allocatable :: my_state_QCEF_kind(:)
-integer,     allocatable :: my_state_QCEF_ptr(:)
+integer     :: num_QCEF_state_vars, num_QCEF_obs_vars
+integer(i8), allocatable :: my_state_indx(:), my_obs_indx(:)
+integer,     allocatable :: prior_state_index_sort(:, :), prior_obs_index_sort(:, :)
+integer,     allocatable :: my_state_QCEF_kind(:), my_obs_QCEF_kind(:)
+integer,     allocatable :: my_state_QCEF_ptr(:), my_obs_QCEF_ptr(:)
 
 integer :: my_num_obs, i, j, owner, owners_index, my_num_state, QCEF_ind
 integer :: obs_mean_index, obs_var_index
@@ -545,11 +545,15 @@ if(local_ss_inflate) then
    end do
 endif
 
-! Initialize arrays needed for doing MA QCEF filters
+! Initialize arrays needed for doing MA QCEF filters for state space and extended state space
 call init_state_QCEF(ens_size, my_num_obs, my_num_state, &
    obs_ens_handle%copies(1:ens_size, 1:my_num_obs), ens_handle%copies(1:ens_size, 1:my_num_state), &
-   my_state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
-   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
+   my_state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_state_sorted_quantiles, &
+   prior_state_index_sort, piece_const_state_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
+call init_state_QCEF(ens_size, my_num_obs, my_num_obs, &
+   obs_ens_handle%copies(1:ens_size, 1:my_num_obs), obs_ens_handle%copies(1:ens_size, 1:my_num_state), &
+   my_obs_kind, all_my_orig_obs_priors, prior_obs_ens, prior_obs_mass, prior_obs_sorted_quantiles, &
+   prior_obs_index_sort, piece_const_obs_like, my_obs_QCEF_kind, my_obs_QCEF_ptr, num_QCEF_obs_vars)
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -638,6 +642,25 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! Only value of 0 for DART QC field should be assimilated
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
+
+! LJI: Do a QCEF update of this observation prior
+! Finalize state QCEF estimate and do marginal adjustment to get final posterior
+! Need to determine exactly what conditions need to be satisfied to require this
+! Only doing the finalize for a single observation variable, the one now being assimilated
+!!!if(num_QCEF_state_vars > 0 .and. an_ob_was_assimilated) &
+!!! BEGIN BY ASSUMING THAT ALL OBS VARIABLES ARE QCEF TO AVOID INDEXING ISSUES
+!!! For now, do this if QCEF has been selected in namelist
+   if(state_QCEF_kind > 9999 .and. owners_index > 1) &
+   call finalize_ma_state(ens_size, 1, prior_obs_ens(:, owners_index:owners_index), &
+      prior_obs_index_sort(:, owners_index:owners_index), &
+      prior_obs_mass(:, owners_index:owners_index), piece_const_obs_like(:, owners_index:owners_index), &
+      prior_obs_sorted_quantiles(:, owners_index:owners_index), &
+      obs_ens_handle%copies(1:ens_size, owners_index:owners_index), &
+      obs_ens_handle%copies(1:ens_size, owners_index:owners_index), &
+      my_obs_kind(owners_index), 1, my_obs_QCEF_kind(owners_index:owners_index))
+
+
+
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
          ! Note that these are before DA starts, so can be different from current obs_prior
          orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
@@ -698,8 +721,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! Compute likelihoods for original prior for multi-obs state QCEF
    ! No thought about groups yet. Note that obs_err_var is only param we have for now
-   if(num_QCEF_state_vars > 0) call get_obs_likelihood(orig_obs_prior, ens_size, obs(1), obs_err_var, &
-         base_obs_type, orig_obs_likelihood)
+   if(num_QCEF_state_vars > 0 .or. num_QCEF_obs_vars > 0) &
+      call get_obs_likelihood(orig_obs_prior, ens_size, obs(1), obs_err_var, base_obs_type, orig_obs_likelihood)
 
    ! Compute updated values for single state space inflation
    if(local_single_ss_inflate) then
@@ -765,7 +788,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Update the likelihood for this state variable for state space multi-obs
       if(my_state_QCEF_kind(state_index) > 0) then
          QCEF_ind = my_state_QCEF_ptr(state_index)
-         call update_piece_const_like(prior_state_index_sort(:, QCEF_ind), piece_const_like(:, QCEF_ind), &
+         call update_piece_const_like(prior_state_index_sort(:, QCEF_ind), piece_const_state_like(:, QCEF_ind), &
             orig_obs_likelihood, prior_state_mass(:, QCEF_ind), ens_size, final_factor)
       endif
 
@@ -805,6 +828,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
                net_a, grp_size, grp_beg, grp_end, i, &
                -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+
+            ! Update the likelihood for this obs variable for state space multi-obs
+            if(my_obs_QCEF_kind(obs_index) > 0) then
+               QCEF_ind = my_obs_QCEF_ptr(obs_index)
+               call update_piece_const_like(prior_obs_index_sort(:, QCEF_ind), piece_const_obs_like(:, QCEF_ind), &
+                  orig_obs_likelihood, prior_obs_mass(:, QCEF_ind), ens_size, final_factor)
+            endif
+
          endif
       end do OBS_UPDATE
    endif
@@ -813,7 +844,7 @@ end do SEQUENTIAL_OBS
 ! Finalize state QCEF estimates and do marginal adjustment to get final posterior
 if(num_QCEF_state_vars > 0 .and. an_ob_was_assimilated) &
    call finalize_ma_state(ens_size, my_num_state, prior_state_ens, prior_state_index_sort, &
-      prior_state_mass, piece_const_like, prior_sorted_quantiles, &
+      prior_state_mass, piece_const_state_like, prior_state_sorted_quantiles, &
       ens_handle%copies(1:ens_size, 1:my_num_state), ens_handle%copies(1:ens_size, 1:my_num_state), &
       my_state_kind, num_QCEF_state_vars, my_state_QCEF_kind)
 
@@ -885,9 +916,15 @@ deallocate(close_state_dist,      &
 
 ! The storage for QCEF in state space
 deallocate(my_state_QCEF_kind, my_state_QCEF_ptr)
+deallocate(my_obs_QCEF_kind, my_obs_QCEF_ptr)
+
+if(allocated(all_my_orig_obs_priors)) deallocate(all_my_orig_obs_priors)
 if(num_QCEF_state_vars > 0) &
-   deallocate(all_my_orig_obs_priors, prior_state_ens, prior_state_mass, &
-      prior_sorted_quantiles, prior_state_index_sort, piece_const_like)
+   deallocate(prior_state_ens, prior_state_mass, &
+      prior_state_sorted_quantiles, prior_state_index_sort, piece_const_state_like)
+if(num_QCEF_obs_vars > 0) &
+   deallocate(prior_obs_ens, prior_obs_mass, &
+      prior_obs_sorted_quantiles, prior_obs_index_sort, piece_const_obs_like)
 
 end subroutine filter_assim
 
@@ -2180,10 +2217,11 @@ end subroutine update_piece_const_like
 
 
 subroutine init_state_QCEF(ens_size, num_obs, num_state, obs_ens_in, state_ens_in, &
-   state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_sorted_quantiles, &
-   prior_state_index_sort, piece_const_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
+   state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_state_sorted_quantiles, &
+   prior_state_index_sort, piece_const_state_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
 !-----------------------------------------------------------------------------
-! Allocates storage for and initializes arrays needed for state space QCEFs
+! Allocates storage for and initializes arrays needed for 'state' space QCEFs
+! For extended state (Anderson/Collins) needs to be applied to both state and obs variables
 
 integer,  intent(in)                 :: ens_size, num_obs, num_state
 real(r8), intent(in)                 :: obs_ens_in(ens_size, num_obs)
@@ -2193,9 +2231,9 @@ integer,  intent(in)                 :: state_kind(num_state)
 real(r8), allocatable, intent(inout) :: all_my_orig_obs_priors(:, :)
 real(r8), allocatable, intent(inout) :: prior_state_ens(:, :)
 real(r8), allocatable, intent(inout) :: prior_state_mass(:, :)
-real(r8), allocatable, intent(inout) :: prior_sorted_quantiles(:, :)
+real(r8), allocatable, intent(inout) :: prior_state_sorted_quantiles(:, :)
 integer,  allocatable, intent(inout) :: prior_state_index_sort(:, :)
-real(r8), allocatable, intent(inout) :: piece_const_like(:, :)
+real(r8), allocatable, intent(inout) :: piece_const_state_like(:, :)
 integer,  allocatable, intent(inout) :: my_state_QCEF_kind(:)
 integer,  allocatable, intent(inout) :: my_state_QCEF_ptr(:)
 integer,               intent(out)   :: num_QCEF_state_vars
@@ -2231,17 +2269,20 @@ else
    end do
 endif
 
+! This routine can be called twice, once for state, once for extended state,
+! but only need to make a single copy of the orig_obs_priors
+if(.not. allocated(all_my_orig_obs_priors)) then
+   allocate(all_my_orig_obs_priors(ens_size, num_obs))
+   all_my_orig_obs_priors(:, :) = obs_ens_in
+endif
+
 ! Needed to compute the likelihoods for multi-obs state space QCEFs.
 if(num_QCEF_state_vars > 0) &
-   allocate(all_my_orig_obs_priors(ens_size, num_obs),       & 
-      prior_state_ens(ens_size, num_QCEF_state_vars),        &
+   allocate(prior_state_ens(ens_size, num_QCEF_state_vars),        &
       prior_state_mass(ens_size + 1, num_QCEF_state_vars),   &
-      prior_sorted_quantiles(ens_size, num_QCEF_state_vars), &
+      prior_state_sorted_quantiles(ens_size, num_QCEF_state_vars), &
       prior_state_index_sort(ens_size, num_QCEF_state_vars), & 
-      piece_const_like(ens_size + 1, num_QCEF_state_vars))
-
-! Save the prior obs ensemble
-all_my_orig_obs_priors(:, :) = obs_ens_in
+      piece_const_state_like(ens_size + 1, num_QCEF_state_vars))
 
 ! Extract prior ensembles for only variables that will use a state space QCEF
 QCEF_ind = 0
@@ -2258,7 +2299,7 @@ enddo
 
 ! Set up required arrays for all variables that will use a state space QCEF
 ! State likelihoods start as all 1 (no information)
-piece_const_like = 1.0_r8
+piece_const_state_like = 1.0_r8
 
 do i = 1, num_QCEF_state_vars
    ! Just a naive prior_state_index_sort for now; will be highly inefficient (but maybe not for small ensembles)
@@ -2275,15 +2316,15 @@ do i = 1, num_QCEF_state_vars
       tsd = sqrt(tvar)
       ! Compute sorted quantiles for each prior state
       do j = 1, ens_size
-         prior_sorted_quantiles(j, i) = normcdf(prior_state_ens(prior_state_index_sort(j, i), i), tmn, tsd)
+         prior_state_sorted_quantiles(j, i) = normcdf(prior_state_ens(prior_state_index_sort(j, i), i), tmn, tsd)
       end do
 
       ! Get the probability mass in each prior partition (USE A BETTER WORD???)
-      prior_state_mass(1, i) = prior_sorted_quantiles(1, i)
+      prior_state_mass(1, i) = prior_state_sorted_quantiles(1, i)
       do j = 2, ens_size
-         prior_state_mass(j, i) = prior_sorted_quantiles(j, i) - prior_sorted_quantiles(j-1, i)
+         prior_state_mass(j, i) = prior_state_sorted_quantiles(j, i) - prior_state_sorted_quantiles(j-1, i)
       end do
-      prior_state_mass(ens_size+1, i) = 1.0_r8 - prior_sorted_quantiles(ens_size, i)
+      prior_state_mass(ens_size+1, i) = 1.0_r8 - prior_state_sorted_quantiles(ens_size, i)
    elseif(state_QCEF_kind == 2) then
       ! For MARHF the prior state mass is uniformly distributed
       prior_state_mass = 1.0_r8 / (ens_size + 1.0_r8)
@@ -2299,7 +2340,7 @@ end subroutine init_state_QCEF
 
 
 subroutine finalize_ma_state(ens_size, num_state, prior_state_ens, prior_state_index_sort, &
-   prior_state_mass, piece_const_like, prior_sorted_quantiles, regression_post, post, &
+   prior_state_mass, piece_const_state_like, prior_state_sorted_quantiles, regression_post, post, &
    state_kind, num_QCEF_state_vars, my_state_QCEF_kind)
 !------------------------------------------------------------------------------------------
 
@@ -2311,8 +2352,8 @@ integer,  intent(in)  :: num_QCEF_state_vars
 real(r8), intent(in)  :: prior_state_ens(ens_size, num_QCEF_state_vars)
 integer,  intent(in)  :: prior_state_index_sort(ens_size, num_QCEF_state_vars)
 real(r8), intent(in)  :: prior_state_mass(ens_size + 1, num_QCEF_state_vars)
-real(r8), intent(in)  :: piece_const_like(ens_size + 1, num_QCEF_state_vars)
-real(r8), intent(in)  :: prior_sorted_quantiles(ens_size, num_QCEF_state_vars)
+real(r8), intent(in)  :: piece_const_state_like(ens_size + 1, num_QCEF_state_vars)
+real(r8), intent(in)  :: prior_state_sorted_quantiles(ens_size, num_QCEF_state_vars)
 real(r8), intent(in)  :: regression_post(ens_size, num_state)
 real(r8), intent(out) :: post(ens_size, num_state)
 integer,  intent(in)  :: state_kind(num_state)
@@ -2333,8 +2374,8 @@ do i = 1, num_state
       ! First get the update posterior with the likelihood
       if(state_QCEF_kind == 1) then
          call state_post_normal(prior_state_ens(:, QCEF_ind), prior_state_index_sort(:, QCEF_ind), &
-            prior_state_mass(:, QCEF_ind), piece_const_like(:, QCEF_ind), &
-            prior_sorted_quantiles(:, QCEF_ind), ens_size, temp_post)
+            prior_state_mass(:, QCEF_ind), piece_const_state_like(:, QCEF_ind), &
+            prior_state_sorted_quantiles(:, QCEF_ind), ens_size, temp_post)
       elseif(state_QCEF_kind == 2) then
          ! Hard to say where to put the info about bounds with current infrastrucutre.
          ! Hard code here for now
@@ -2348,7 +2389,7 @@ do i = 1, num_state
             !!!bound(1) = 0.0_r8 
          !!!endif
          call state_post_bounded_norm_rhf(prior_state_ens(:, QCEF_ind), prior_state_index_sort(:, QCEF_ind), &
-            piece_const_like(:, QCEF_ind), ens_size, temp_post, is_bounded, bound)
+            piece_const_state_like(:, QCEF_ind), ens_size, temp_post, is_bounded, bound)
       endif
 
       ! Do the marginal adjustment steps for the state posterior
