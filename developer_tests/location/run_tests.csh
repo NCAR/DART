@@ -45,9 +45,7 @@ foreach i ( $LOCLIST )
 
    cd $i/test
 
-   # The threed_sphere location_mod actually needs an obs_kind_mod.f90
-   # Consequently, we need to run preprocess to generate the file.
-   # It is the only location module that needs it, AFAIK
+   # Need to run preprocess for location mods that use obs_kind_mod
    switch ( $i )
      case threed_sphere
         \rm -rf Makefile
