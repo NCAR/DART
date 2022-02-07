@@ -43,7 +43,7 @@ only contain output at the analysis time (which requires setting
 Here is an example configuration of the ``&param9`` namelist in
 ``namelist.input``:
 
-.. code-block:: fortran
+.. code-block:: text
 
    &param9 
      restart_format     = 2         restart needs to be netCDF
@@ -61,7 +61,7 @@ Here is an example configuration of the ``&param9`` namelist in
 
 Additional state variables that have been tested within DART include:
 
-``ua, va, wa, ppi, u0, v0, u10, v10, t2, th2, tsk, q2, psfc, qv, qc, qr, qi qs, & qg``.
+``ua, va, wa, prs, u0, v0, u10, v10, t2, th2, tsk, q2, psfc, qv, qc, qr, qi qs, qg, nc, nr, ns, ni, nh, ng``.
   
 At present, observation times are evaluated relative to the date and time
 specified in the ``&param11`` namelist.
@@ -284,7 +284,7 @@ namelists start with an ampersand ``&`` and terminate with a slash ``/``.
 Character strings that contain a ``/`` must be enclosed in quotes to prevent
 them from prematurely terminating the namelist.
 
-.. code-block:: fortran
+.. code-block:: text
 
    &model_nml 
       assimilation_period_days     = 0
@@ -373,9 +373,11 @@ Description of each namelist entry
 .. note::
 
    The values above are the default values. A more realistic example is shown
-   below and closely matches the values in the default ``input.nml``.
+   below and closely matches the values in the default ``input.nml``. The example input block is
+   for a case run using the Morrison Microphysics scheme.  Any changes in microphysics will require the
+   user to update the hydrometeor state variables.
 
-.. code-block:: fortran
+.. code-block:: text
 
    &model_nml 
       assimilation_period_days     = 0
@@ -390,7 +392,33 @@ Description of each namelist entry
                         'va'   , 'QTY_V_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
                         'wa'   , 'QTY_VERTICAL_VELOCITY'     , 'NULL', 'NULL', 'UPDATE',
                         'theta', 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
-                        'ppi'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
+                        'prs'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
+                        'qv'   , 'QTY_VAPOR_MIXING_RATIO'      , 0.0000, 'NULL', 'UPDATE',
+                        'qc'   , 'QTY_CLOUD_LIQUID_WATER'      , 0.0000, 'NULL', 'UPDATE',
+                        'qr'   , 'QTY_RAINWATER_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
+                        'qi'   , 'QTY_CLOUD_ICE'               , 0.0000, 'NULL', 'UPDATE',
+                        'qs'   , 'QTY_SNOW_MIXING_RATIO'       , 0.0000, 'NULL', 'UPDATE',
+                        'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
+                       'ncr'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                       'nci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
+                       'ncs'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                       'ncg'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
+                       'rho'   , 'QTY_DENSITY'                 , 0.0000, 'NULL', 'UPDATE',
+                       'dbz'   , 'QTY_RADAR_REFLECTIVITY'      , 0.0000, 'NULL', 'UPDATE',
+
+
+   /
+                      
+.. note:: **From Jon Labriola on additional model variables that could be considered:**
+
+   There are other model variables that can be included if you use a very specific forecast configuration.
+   The following model variables output by CM1 when you run with a simulation with
+   a surface model and set "output_sfcdiags = 1".  These variables can be used to 
+   simulated surface observations including TEMPERATURE_2M, U_WIND_10, V_WIND_10, SPECIFIC_HUMIDITY_2M,
+   and SURFACE_PRESSURE.
+
+   .. code-block:: text 
+       
                         'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
                         'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
                         't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
@@ -398,10 +426,20 @@ Description of each namelist entry
                         'tsk'  , 'QTY_SURFACE_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
                         'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
                         'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
-                        'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
-                        'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
-                        'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
-                        'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
-                        'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
-                        'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE'
-   /
+
+   If you want to assimilate pseudo "near-surface" observations but are not using a surface model 
+   in your forecast, I recommend defining a single radionsonde or dropsonde observation that is located
+   near the surface (but at or above the lowest model level.  The DART forward operator will perform 
+   3D interpolation to obtain the near-surface observation.
+
+   Also be warned - from what I can tell DART forward operators are unable to calculate air temperature and 
+   specific humidity from CM1 model fields. To simulate these fields (e.g., DROPSONDE_TEMPERATURE, RADIOSONDE_SPECIFIC_HUMIDITY,...)
+   you will have to manually go into the CM1 code (./src/writeout_nc.F and ./src/restart.F) and update
+   the model to output 3D air temperature (air_temp) and specific humidity (spec_hum) fields. Then you
+   can add the following fields to model_variables.
+ 
+   .. code-block:: text
+ 
+                        'air_temp'  , 'QTY_TEMPERATURE'             , 'NULL', 'NULL', 'UPDATE',
+                        'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'       , 0.0000, 'NULL', 'UPDATE',  
+
