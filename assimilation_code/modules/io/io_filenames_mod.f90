@@ -53,6 +53,7 @@ use state_structure_mod,  only : get_num_domains, &
                                  get_add_offset, &
                                  get_scale_factor, &
                                  get_has_missing_value, &
+                                 get_has_FillValue, &
                                  do_io_update
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
@@ -632,24 +633,39 @@ call check_attributes_name(ncFile, filename, ncVarId, 'short_name', get_short_na
 if ( get_has_missing_value(domid, varid) ) then
    select case (get_xtype(domid,varid))
       case (NF90_INT)
-         call get_FillValue(domid, varid, spvalINT)
-         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
          call get_missing_value(domid, varid, spvalINT)
          call check_attribute_value_int(ncFile, filename, ncVarID, 'missing_value', spvalINT)
 
       case (NF90_FLOAT)
-         call get_FillValue(domid, varid, spvalR4)
-         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
          call get_missing_value(domid, varid, spvalR4)
          call check_attribute_value_r4(ncFile, filename, ncVarID, 'missing_value', spvalR4)
 
       case (NF90_DOUBLE)
-         call get_FillValue(domid, varid, spvalR8)
-         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
          call get_missing_value(domid, varid, spvalR8)
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
 
       case default
+         !>@todo FIXME report the variable with the unsupported xtype
+         call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
+   end select
+endif
+
+if ( get_has_FillValue(   domid, varid) ) then
+   select case (get_xtype(domid, varid))
+      case (NF90_INT)
+         call get_FillValue(domid, varid, spvalINT)
+         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
+
+      case (NF90_FLOAT)
+         call get_FillValue(domid, varid, spvalR4)
+         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
+
+      case (NF90_DOUBLE)
+         call get_FillValue(domid, varid, spvalR8)
+         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
+
+      case default
+         !>@todo FIXME report the variable with the unsupported xtype
          call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
    end select
 endif

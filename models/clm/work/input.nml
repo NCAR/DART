@@ -11,8 +11,8 @@
    output_interval            = 1
    single_file_in             = .false.
    single_file_out            = .false.
-   input_state_files          = 'clm_restart.nc', 'clm_history.nc'
-   output_state_files         = 'restart_out.nc', 'history_out.nc'
+   input_state_files          = 'clm_restart.nc', 'clm_history.nc','clm_vector_history.nc'
+   output_state_files         = 'restart_out.nc', 'history_out.nc', 'vector_out.nc'
    obs_seq_in_file_name       = 'obs_seq.in'
    obs_seq_out_file_name      = 'obs_seq.out'
    adv_ens_command            = 'cannot_advance_clm'
@@ -23,24 +23,30 @@
    silence                    = .false.
    /
 
+
 &filter_nml
+   allow_missing_clm = .true.
+   perturb_from_single_instance = .FALSE.
+   perturbation_amplitude       = 0.2
    async                    = 0
    adv_ens_command          = 'cannot_advance_clm'
-   ens_size                 = 3
-   obs_sequence_in_name     = 'obs_seq.1000obs'
+   ens_size                 = 5
+   obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
    input_state_file_list    = 'restart_files.txt',
-                              'history_files.txt' 
-   output_state_file_list   = 'restart_files_out.txt',
-                              'history_files_out.txt'
+                              'history_files.txt',
+                              'vector_files.txt' 
+   output_state_file_list   = 'restart_files.txt',
+                              'history_files.txt',
+                              'vector_files.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   num_output_state_members = 3
-   num_output_obs_members   = 3
+   num_output_state_members = 5
+   num_output_obs_members   = 5
    output_interval          = 1
    num_groups               = 1
    compute_posterior        = .true.
@@ -55,30 +61,53 @@
    output_sd                = .true.
    write_all_stages_at_end  = .false.
 
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .true.,                 .false.
+   inf_sd_initial_from_restart = .true.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1000.0,               1000.0
+   inf_lower_bound             = 0.0,                     1.0
+   inf_upper_bound             = 20.0,                   20.0
    inf_damping                 = 0.9,                     0.9
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
    inf_sd_max_change           = 1.05,                    1.05
    /
 
-&quality_control_nml
-   input_qc_threshold       = 1.0
-   outlier_threshold        = 3.0
-/
 
-&clm_to_dart_nml
-   clm_to_dart_output_file = 'clm_missing_r8.nc'
+&quality_control_nml
+   input_qc_threshold = 1.0
+   outlier_threshold  = 3.0
    /
 
+
+&clm_to_dart_nml
+   clm_restart_file =  'clm.nc'
+   verbose          = 0
+   /
+
+
 &dart_to_clm_nml
-   dart_to_clm_input_file  = 'model_restart.nc'
+   dart_to_clm_input_file  = 'dart_posterior.nc'
+   dart_to_clm_output_file = 'clm_restart.nc'
+   repartition_swe         = 0
+   repartition_vhist_file = 'clm_vector_history.nc'
+   repartition_analysis_file = 'dart_posterior_vector.nc'
+   verbose                 = 0
+   /
+
+&fill_inflation_restart_nml
+   write_prior_inf   = .true.
+   prior_inf_mean    = 1.00
+   prior_inf_sd      = 0.6
+
+   write_post_inf    = .true.
+   post_inf_mean     = 1.00
+   post_inf_sd       = 0.6
+
+   input_state_files = 'clm_restart.nc','clm_history.nc','clm_vector_history.nc'
+   single_file       = .false.
+   verbose           = .false.
    /
 
 &smoother_nml
@@ -94,7 +123,6 @@
 &assim_tools_nml
    filter_kind                     = 1
    cutoff                          = 0.05
-   allow_missing_in_clm            = .true.
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
@@ -152,14 +180,17 @@
    /
 
 
+#                                 'COSMOS_NEUTRON_INTENSITY',   causing H2OSOI interpolation failure
 &obs_kind_nml
    assimilate_these_obs_types = 'SOIL_TEMPERATURE',
                                 'TOWER_NETC_ECO_EXCHANGE',
                                 'TOWER_LATENT_HEAT_FLUX',
                                 'TOWER_SENSIBLE_HEAT_FLUX',
                                 'MODIS_SNOWCOVER_FRAC',
-                                'COSMOS_NEUTRON_INTENSITY',
-                                'MODIS_FPAR'
+                                'MODIS_LEAF_AREA_INDEX',
+                                'MODIS_FPAR',
+                                'BIOMASS',
+                                'OCO2_SIF'
    evaluate_these_obs_types   = 'null'
    /
 
@@ -184,27 +215,59 @@
    clm_vector_history_filename  = 'clm_vector_history.nc'
    assimilation_period_days     = 2
    assimilation_period_seconds  = 3600
-   model_perturbation_amplitude = 0.2
    calendar                     = 'Gregorian'
    debug                        = 0
-   clm_variables  = 'frac_sno',    'QTY_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
-                    'H2OSNO',      'QTY_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
-                    'H2OSOI_LIQ',  'QTY_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
-                    'H2OSOI_ICE',  'QTY_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
-                    'T_SOISNO',    'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
-                    'SNOWDP',      'QTY_SNOW_THICKNESS',         'NA' , 'NA', 'restart' , 'UPDATE',
-                    'LAIP_VALUE',  'QTY_LEAF_AREA_INDEX',        'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
-                    'cpool',       'QTY_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
-                    'frootc',      'QTY_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                    'frootn',      'QTY_ROOT_NITROGEN',          'NA' , 'NA', 'restart' , 'UPDATE',
-                    'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                    'leafn',       'QTY_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
+   clm_variables  = 'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frac_sno',    'QTY_SNOWCOVER_FRAC',         '0.0', '1.', 'restart' , 'NO_COPY_BACK',
+                    'SNOW_DEPTH',  'QTY_SNOW_THICKNESS',         '0.0', 'NA', 'restart' , 'NO_COPY_BACK',
+                    'H2OSOI_LIQ',  'QTY_SOIL_LIQUID_WATER',      '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_ICE',  'QTY_SOIL_ICE',               '0.0', 'NA', 'restart' , 'UPDATE',
+                    'T_SOISNO',    'QTY_TEMPERATURE',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'livestemc',   'QTY_LIVE_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
+                    'deadstemc',   'QTY_DEAD_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
                     'NEP',         'QTY_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
-                    'TV',          'QTY_VEGETATION_TEMPERATURE', 'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'RH2M_R',      'QTY_SPECIFIC_HUMIDITY',      'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'PBOT',        'QTY_SURFACE_PRESSURE',       'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'TBOT',        'QTY_TEMPERATURE',            'NA' , 'NA', 'vector'  , 'NO_COPY_BACK'
+                    'H2OSOI',      'QTY_SOIL_MOISTURE',          '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'SMINN_vr',    'QTY_SOIL_MINERAL_NITROGEN',  '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'LITR1N_vr',   'QTY_NITROGEN',               '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'TSOI',        'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'history' , 'NO_COPY_BACK',
+                    'FSDSVDLN',    'QTY_PAR_DIRECT',             '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'FSDSVILN',    'QTY_PAR_DIFFUSE',            '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'PARVEGLN',    'QTY_ABSORBED_PAR',           '0.0', 'NA', 'history' , 'NO_COPY_BACK',
+                    'NEE',         'QTY_NET_CARBON_FLUX',        'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'H2OSNO',      'QTY_SNOW_WATER',             '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'TLAI',        'QTY_LEAF_AREA_INDEX',        '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'TWS',         'QTY_TOTAL_WATER_STORAGE',    'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'SOILC_vr',    'QTY_SOIL_CARBON',            '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'SOIL1N_vr',   'QTY_SOIL_NITROGEN',          '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'SMP',         'QTY_SOIL_MATRIC_POTENTIAL',  '0.0', 'NA', 'vector'  , 'NO_COPY_BACK'
    /
+
+# The list of variables and the files they come from are designed to exercise all likely 'shapes' of
+# variables encountered and the fact we are interested in snow and soil moisure DA 
+# RESTART
+#       double leafc(    pft) ;
+#       double frac_sno( column) ;
+#       double SNOW_DEPTH(column) ;
+#       double H2OSOI_LIQ(column, levtot) ;
+#       double H2OSOI_ICE(column, levtot) ;
+#       double T_SOISNO(  column, levtot) ;
+# HISTORY XY FORMAT
+#       float NEP(      time,          lat, lon) ; net ecosystem production
+#       float H2OSOI(   time, levsoi,  lat, lon) ; volumetric soil water (vegetated landunits only)
+#       float LITR1N_vr(time, levdcmp, lat, lon) ; vertically resolved leaf litter nitrogen (type 1)
+#       float TSOI(     time, levgrnd, lat, lon) ; soil temperature (vegetated landunits only)
+# HISTORY VECTOR FORMAT
+#       float NEE(      time, gridcell) ;
+#       float H2OSNO(   time, column) ;
+#       float TLAI(     time, pft) ;
+#       float TWS(      time, lat, lon) ;
+#       float SOILC_vr( time, levsoi,  column) ;
+#       float SOIL1N_vr(time, levdcmp, column) ;
+#       float SMP(      time, levgrnd, column) ;
+#
+# The obs_seq.in has a 'BIOMASS' ob, which needs leafc,livestemc,deadstemc
+# 'MODIS_FPAR' observations require FSDSVDLN,FSDSVILN,PARVEGLN for the FO
+
 
 &location_nml
    horiz_dist_only             = .true.
@@ -306,13 +369,13 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   input_state_files     = 'clm_restart.nc', 'clm_history.nc', 'clm_vector_history.nc'
+   input_state_files     = 'clm5_tag34.clm2_0001.r.nc', 'clm5_tag34.clm2_0001.h0.nc', 'clm5_tag34.clm2_0001.h2.nc'
    output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc', 'mmc_output3.nc'
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 7
-   x_ind                 = 720
-   loc_of_interest       = 254.727854, 39.9768545, 0.35
-   quantity_of_interest  = 'QTY_LEAF_CARBON'
+   run_tests             = 1, 2, 3, 4
+   x_ind                 = 482189
+   loc_of_interest       = 255.0, 50.0, 0.001
+   quantity_of_interest  = 'QTY_SOIL_TEMPERATURE'
    interp_test_vertcoord = 'VERTISHEIGHT'
    interp_test_lonrange  = 320.0, 90.0
    interp_test_dlon      = 1.0
