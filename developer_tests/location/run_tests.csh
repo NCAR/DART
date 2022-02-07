@@ -55,6 +55,12 @@ foreach i ( $LOCLIST )
         make              >> $LOGDIR/buildlog.$i.preprocess.out
         ./preprocess      >  $LOGDIR/runlog.$i.preprocess.out
      breaksw
+     case threed_cartesian
+        \rm -rf Makefile
+        ./mkmf_preprocess >  $LOGDIR/buildlog.$i.preprocess.out
+        make              >> $LOGDIR/buildlog.$i.preprocess.out
+        ./preprocess      >  $LOGDIR/runlog.$i.preprocess.out
+     breaksw
      default
      breaksw
    endsw
