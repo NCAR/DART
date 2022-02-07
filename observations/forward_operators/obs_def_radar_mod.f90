@@ -955,6 +955,7 @@ logical               :: return_now
 
 istatus(:) = 0
 precip_fall_speed(:) = 0.0_r8
+
 call interpolate(state_handle, ens_size, location, QTY_POWER_WEIGHTED_FALL_SPEED, &
                  precip_fall_speed, istatus)
 
