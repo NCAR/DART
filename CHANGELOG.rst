@@ -22,6 +22,17 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 7 2022 :: CM1 and 3D Cartesian location_mod updates. Tag v9.13.1**
+
+*Contributed by Jon Labriola*
+
+- Updated CM1 model_mod to use mixed-case boundary conditions, for example
+  periodic in the x-direction but non-periodic in the y-direction.
+- Added capability to CM1 model_mod to interpolate 3D fields such as reflectivity.  
+- Added capability to use multiple localization radii to threed_cartisian
+  location_mod.
+- Bug-fix for threed_cartesian location_mod for periodic boundaries.
+
 **February 3 2022 :: CLM with SWE repartitioning. Tag: v9.13.0** 
 
 - Updated Community Land Model (CLM) model_mod, scripting, and diagnostics.
