@@ -40,21 +40,26 @@ use time_manager_mod, only : time_type, set_time
 
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
 ! !#ifdef __NAG__
+!
 ! use F90_unix_proc, only : sleep, system, exit
-! ! block for NAG compiler
+!
+! !! NAG only needs the use statement above, but
+! !! these are the calling sequences if you need
+! !! to use these routines additional places in code.
 ! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
 ! !    INTEGER,INTENT(IN) :: SECONDS
 ! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
-! ! 
+! !
 ! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
 ! !    CHARACTER*(*),INTENT(IN) :: STRING
 ! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
 ! !
-! ! ! also used in exit_all outside this module
+! !!also used in exit_all outside this module
 ! !  SUBROUTINE EXIT(STATUS)
 ! !    INTEGER,OPTIONAL :: STATUS
-! ! end block
-! ! #endif
+! !! end block
+!
+!  !#endif
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 
 

@@ -55,7 +55,7 @@ use mpi
 
 ! We build on case-insensitive systems so we cannot reliably
 ! count on having the build system run the fortran preprocessor
-! since the usual distinction is between bob.F90 and bob.f90 
+! since the usual distinction is between bob.F90 and bob.f90
 ! to decide what needs preprocessing.  instead we utilize a
 ! script we provide called 'fixsystem' which looks for the
 ! special XXX_BLOCK_EDIT comment lines and comments the blocks
