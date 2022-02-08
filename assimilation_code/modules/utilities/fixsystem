@@ -58,7 +58,7 @@ elif [ $# = 1 ]; then
     shift
 else
     # first arg: the name of your fortran compiler command
-    # aqdditional args: list of filenames to process
+    # additional args: list of filenames to process
     # not a fatal error if files don't contain marker strings
     export COMPILER=$1
     shift
@@ -102,7 +102,7 @@ do
     else
       echo ${f} not found, or does not have the right comment string to
       echo automatically change the system interface block via script.
-      echo Please restore original file from the subversion repository
+      echo Please restore original file from the repository
       echo and try again.
       exit 1
     fi
@@ -120,7 +120,7 @@ do
     else
       echo ${f} not found, or does not have the right comment string to
       echo automatically change the NAG interface block via script.
-      echo Please restore original file from the subversion repository
+      echo Please restore original file from the repository
       echo and try again.
       exit 1
     fi
@@ -156,7 +156,7 @@ do
    mv ${f} tempfile
   fi
 
-  # changing comment chars, enabling NAG specific block code
+  # removing comment chars, enabling NAG specific block code
   # non-nag section headers cannot match nag headers.
   if [ $todo2 = in ]; then
    sed -e '/NAG_BLOCK_EDIT START COMMENTED_OUT/,/NAG_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
@@ -165,7 +165,7 @@ do
        -e '/\(OTHER_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
   fi
   
-  # changing comment chars, disabling NAG specific block code
+  # adding comment chars, disabling NAG specific block code
   if [ $todo2 = out ]; then
    sed -e '/NAG_BLOCK_EDIT START COMMENTED_IN/,/NAG_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
        -e '/\(NAG_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' \

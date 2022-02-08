@@ -48,7 +48,7 @@ call setup_mpi()
 
 
 
-! each task makes a window and fills it with
+! each task makes an MPI window and fills it with
 ! unique numbers. 
 
 call create_window()
@@ -60,25 +60,36 @@ call fill_window()
 ! data into.  make sure the buffer has the original
 ! contents before the transfer.
 
-call prefill_target()
+allocate(target_array(target_count))
 
-call check_data_before()
+call prefill_target(target_count)
+
+call check_data_before(target_count)
 
 
 ! first test - have each task get 10 items from 
-! task 0 at offset 100 into the task 0 window 
+! task 0 at offset 100 and put them into the local
+! buffer. the transferred data always goes into 
+! offset 0 in the local buffer.
+! do the transfer and check results
 
 owner_task = 0
 window_offset = 100
 
 call get_data(owner_task, window_offset, target_count, target_array)
 
-call check_data_after()
+call check_data_after(owner_task, window_offset, target_count)
 
 
-! now have each task get data from the previous task.
+
+! second test - have each task get data from task N-1,
 ! wrap around for task 0.  also set different offsets
-! in the window for each atsk
+! in the source window for each task.  reset local buffer
+! data first.  do the transfer and check results
+
+call prefill_target(target_count)
+
+call check_data_before(target_count)
 
 owner_task = myrank - 1
 if (owner_task < 0) owner_task = total_tasks - 1
@@ -86,17 +97,19 @@ window_offset = myrank + 1
 
 call get_data(owner_task, window_offset, target_count, target_array)
 
-call check_data_after()
+call check_data_after(owner_task, window_offset, target_count)
 
 
 ! release resources
 
-call free_window()
+deallocate(target_array)
 
+call free_window()
 
 call takedown_mpi()
 
 ! end of main program
+
 
 contains
 
@@ -130,7 +143,7 @@ subroutine create_window()
 end subroutine create_window
 
 !-------------------------------------------------------------
-! release the window, and deallocate arrays
+! release the window, and deallocate window array
 
 subroutine free_window()
 
@@ -141,7 +154,6 @@ subroutine free_window()
    endif
 
    deallocate(contiguous_array)
-   deallocate(target_array)
 
 end subroutine free_window
 
@@ -200,16 +212,17 @@ subroutine get_data(owner, windex, wcount, x)
 end subroutine get_data
 
 !-------------------------------------------------------------
-! allocate and fill the target array on each task so when
+! fill the target array on each task.  when
 ! data is transferred it should overwrite these values.
+! target_array is a global.
 
-subroutine prefill_target()
+subroutine prefill_target(item_count)
+
+   integer, intent(in) :: item_count
 
    integer :: i
 
-   allocate(target_array(target_count))
-
-   do i=1, target_count
+   do i=1, item_count
       target_array(i) = -i
    enddo
 
@@ -218,12 +231,15 @@ end subroutine prefill_target
 !-------------------------------------------------------------
 ! make sure the local array has the initial values before
 ! starting the data transfer
+! target_array is a global.
 
-subroutine check_data_before()
+subroutine check_data_before(item_count)
+
+   integer, intent(in) :: item_count
 
    integer :: i
 
-   do i=1, target_count
+   do i=1, item_count
       if (target_array(i) /= -i) then
          print *, "target array not initialized consistently on task ", myrank
          print *, "index ", i, " is ", target_array(i), ", expected ", -i
@@ -236,18 +252,21 @@ end subroutine check_data_before
 !-------------------------------------------------------------
 ! after the one-sided communication, verify that the data
 ! in the local array has changed.  a more exhaustive test
-! would only transfer part of the window into this buffer
-! and ensure only the right data changed and the rest 
-! remained fixed.
+! would ensure only the right data changed and the rest 
+! remained fixed.  target_array is a global.
 
-subroutine check_data_after()
+subroutine check_data_after(source_task, offset_into_window, transfer_count)
+
+   integer, intent(in) :: source_task
+   integer(MPI_OFFSET_KIND), intent(in) :: offset_into_window
+   integer, intent(in) :: transfer_count
 
    integer :: i, base, expected_val
 
-   base = 1000000 + (owner_task * 1000)
+   base = 1000000 + (source_task * 1000)
 
-   do i=1, target_count
-      expected_val = base + window_offset + i - 1
+   do i=1, transfer_count
+      expected_val = base + offset_into_window + i - 1
       if (target_array(i) /= expected_val) then
          print *, "one sided transfer results not as expected on task ", myrank
          print *, "index ", i, " is ", target_array(i), ", expected ", expected_val
@@ -318,7 +337,7 @@ end subroutine takedown_mpi
 
 !-------------------------------------------------------------
 ! 
-! the terminology here is a bit confusing.  
+! the MPI_Get() terminology can be confusing.  
 ! "origin" is the local buffer and offset where the data will be put, so it
 ! is the destination.
 !

@@ -246,9 +246,6 @@ foreach MODEL ( $DO_THESE_MODELS )
             echo "is not supported. Please check to make sure this is the reason"
             echo "this test is failing."
          breaksw
-         case clm
-            echo "CLM is expected to fail on this branch."
-         breaksw
          default
             echo "unexpected error"
          breaksw
