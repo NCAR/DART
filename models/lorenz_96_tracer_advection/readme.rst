@@ -67,8 +67,8 @@ Then, due to advection without diffusion, the concentration of tracer at time
 can be determined by interpolating concentrations of the surrounding grids [3]_.
 
 Once the coupled Lorenz 96 and semi-Lagrangian is run with a source of strength
- 100 units/s and location at grid point one (with exponential sinks present in
- all grid points), the time evolution is as depicted below:
+100 units/s and location at grid point one (with exponential sinks present in
+all grid points), the time evolution is as depicted below:
 
 |Plot of Lorenz 96 Tracer Advection|
 
@@ -100,8 +100,9 @@ Description of each namelist entry
 +-------------------+----------+-------------------------------------+
 | Item              | Type     | Description                         |
 +===================+==========+=====================================+
-| model_size        | integer  | Number of variables in model. The   |
-|                   |          | first third of the state vector     |
+| model_size        | integer  | Total number of items in the state  |
+|                   |          | vector.                             |
+|                   |          | The first third of the state vector |
 |                   |          | describes winds, the second third   |
 |                   |          | describes tracer concentration, and |
 |                   |          | the final third of the state vector |
