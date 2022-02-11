@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 11 2022 :: Bug-fix for nag compiler. Tag v9.13.2**
+
+- Bug-fix for fixsystem preprocessing for NAG compiler
+
 **February 7 2022 :: CM1 and 3D Cartesian location_mod updates. Tag v9.13.1**
 
 *Contributed by Jon Labriola*
