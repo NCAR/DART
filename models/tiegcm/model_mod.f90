@@ -1000,158 +1000,157 @@ integer  :: iunit, io
 integer  :: daysec = 86400
 
 !-------------------------------------------------------------------------------
-! 1/3/2011, the namelist definition taken from $TGCMROOT/tiegcm1.93/src/input.F
+! Feb 2022, the namelist definition taken from tiegcm2.0/src/input.F 
 !           the following parameter values are from params.F
 !           modify the namelist definition for future tiegcm updates
 
 integer,parameter :: mxind_time = 500 ! max number of time-dependent solar index points
-integer,parameter :: mxhvols = 100    ! max number of output history file
+integer,parameter :: mxhvols = 500    ! max number of output history file
 integer,parameter :: mxseries = 10    ! max number of time series for primary histories
-integer,parameter :: mxfsech = 100    ! max number of fields on secondary histories
+integer,parameter :: mxfsech = 500    ! max number of fields on secondary histories
 
 ! Namelist user input variables:
-
-character(len=80):: &
-     &  label,           &! optional generic text label for this run
-     &  tempdir,         &! temporary directory
-     &  magvol,          &! file name or mss path to magnetic data file
-     &  amievol           ! file or mss path of amie data file (optional)
-
-! date and calday are no longer supported, and are replaced by start_day,
-! start_year, and calendar_advance. Date and calday are retained here so
-! error usage statements can be issued if user sets one of them.
-
-integer :: &
-     &  start_day,       &! starting day of year (integer 0->365)
-     &  start_year,      &! starting year (4-digit integer yyyy)
-     &  calendar_advance,&! if > 0, advance calendar day from start_day
-     &  date(3),         &! old: model starting year, day ( 2 ints yyyy,dd)
-     &  calday,          &! old: starting calendar day (0-mxday)
-     &  mxday,           &! calendar day (0-mxday)
-     &  step,            &! model time step (integer seconds)
-     &  dispose,         &! dispose output files to mss if dispose==1 or 2
-     &  eddy_dif,        &! 0/1 flag for DOY dependent eddy diffusion (difk, dift, xmue)
-     &  dynamo,          &! 0/1 flag for dynamo
-     &  tideann,         &! 0/1 flag for annual tide (deprecated as of May 2008)
-     &  aurora,          &! 0/1 flag for aurora
-     &  ntask_lat,       &! number of tasks in latitude  dimension
-     &  ntask_lon         ! number of tasks in longitude dimension
-real :: &
-     &  tide(10),        &! semidiurnal tide amplitudes and phases
-     &  tide2(2),        &! diurnal tide amplitude and phase
-     &  tide3m3(2),      &! 2-day wave amplitude and phase
-     &  f107 = MISSING_R4,            &! 10.7 cm daily solar flux
-     &  f107a = MISSING_R4,           &! 10.7 cm average (81-day) solar flux
-     &  colfac,          &! collision factor
-     &  amie_ibkg         ! AMIE_IBKG (not sure...)
+!
+      character(len=1024) :: &
+       label,          &! optional generic text label for this run
+       amievol,        &! absolute or relative path to amie data file (optional)
+       amiesh,         &! file or mss path of amie SH data file (optional)
+       amienh,         &! file or mss path of amie NH data file (optional)
+       hpss_path        ! hpss directory for dispose of output history files
+!
+      integer :: &
+       start_day,        &! starting day of year (integer 0->365)
+       start_year,       &! starting year (4-digit integer yyyy)
+       calendar_advance, &! if > 0, advance calendar day from start_day
+       mxday,            &! calendar day (0-mxday)
+       step,             &! model time step (integer seconds)
+       eddy_dif,         &! 0/1 flag for DOY dependent eddy diffusion (difk, dift, xmue)
+       dynamo,           &! 0/1 flag for dynamo
+       current_pg,       &! 0/1 flag to add current due to plasma pressure and gravity to rhs (default 1)
+       current_kq,       &! 0/1 flag to calculate height-integrated current density (default 0)
+       aurora,           &! 0/1 flag for aurora
+       iamie,            &! 0/1 flag for AMIE data (not in namelist read)
+       amie_ibkg,        &! 0/1/2 flag for read real, 1st, or 24-hr averaged data
+       ntask_lat,        &! number of tasks in latitude  dimension
+       ntask_lon,        &! number of tasks in longitude dimension
+       ntask_maglat,     &! number of tasks in mag latitude  dimension (not namelist)
+       ntask_maglon,     &! number of tasks in mag longitude dimension (not namelist)
+       calc_helium,      &! calculate helium if calc_helium=1, otherwise set he=0.
+       enforce_opfloor    ! if > 0, enforce O+ floor (see oplus.F)
+      real :: &
+       tide(10),       &! semidiurnal tide amplitudes and phases
+       tide2(2),       &! diurnal tide amplitude and phase
+       tide3m3(2),     &! 2-day wave amplitude and phase
+       f107,           &! 10.7 cm daily solar flux
+       f107a,          &! 10.7 cm average (81-day) solar flux
+       colfac,         &! collision factor
+       joulefac,       &! joule heating factor (see sub qjoule_tn (qjoule.F))
+       opdiffcap        ! Maximum O+ diffusion (see sub rrk in oplus.F)
 !
 ! Input parameters that can be either constant or time-dependent:
-real :: &
-     &  power,           &! hemispheric power (gw) (hpower on histories)
-     &  ctpoten,         &! cross-cap potential (volts)
-     &  bximf,           &! BX component of IMF
-     &  byimf,           &! BY component of IMF
-     &  bzimf,           &! BZ component of IMF in nT
-     &  swvel,           &! Solar wind velocity in km/s
-     &  swden,           &! Solar wind density in #/cm3
-     &  al,              &! AL lower magnetic auroral activity index in nT
-     &  kp                ! Kp index
-real,dimension(4,mxind_time) :: power_time,ctpoten_time,           &
-     &  bximf_time,byimf_time,bzimf_time,swvel_time,swden_time,al_time,  &
-     &  kp_time
-integer :: &
-     &  ntimes_ctpoten,ntimes_power,ntimes_bximf,ntimes_byimf,           &
-     &  ntimes_bzimf,ntimes_swden,ntimes_swvel,ntimes_al,ntimes_kp
-logical :: aluse    ! logical to use AL in Weimer 2001 model or not
-
+      real :: &
+       power,          &! hemispheric power (gw) (hpower on histories)
+       ctpoten,        &! cross-cap potential (volts)
+       bximf,          &! BX component of IMF
+       byimf,          &! BY component of IMF
+       bzimf,          &! BZ component of IMF in nT
+       swvel,          &! Solar wind velocity in km/s
+       swden,          &! Solar wind density in #/cm3
+       al,             &! AL lower magnetic auroral activity index in nT
+       kp               ! Kp index
+      real,dimension(4,mxind_time) :: power_time,ctpoten_time, &
+       bximf_time,byimf_time,bzimf_time,swvel_time,swden_time,al_time, &
+       kp_time,f107_time,f107a_time
+      integer :: &
+       ntimes_ctpoten,ntimes_power,ntimes_bximf,ntimes_byimf, &
+       ntimes_bzimf,ntimes_swden,ntimes_swvel,ntimes_al,ntimes_kp, &
+       ntimes_f107,ntimes_f107a
+      logical :: aluse   ! logical to use AL in Weimer 2001 model or not
+!
 ! Parameters as read from namelist:
-real :: rd_power,rd_ctpoten,rd_f107,rd_f107a,rd_bximf,rd_byimf,    &
-     &  rd_bzimf,rd_swvel,rd_swden,rd_kp
+      real :: rd_power,rd_ctpoten,rd_f107,rd_f107a,rd_bximf,rd_byimf, &
+       rd_bzimf,rd_swvel,rd_swden,rd_kp
 !
 ! If indices_interp==1, time-dependent indices (power_time, ctpoten_time, etc)
 ! will be interpolated to model time, otherwise they will change only
 ! when the given values change. This has no effect on indices given as constants.
-
-integer :: indices_interp=1
-
+!
+      integer :: indices_interp=1
+!
 ! Import data file names:
-
-integer,parameter :: mxlen_filename=80
-character(len=mxlen_filename) ::                                   &
+      integer,parameter :: mxlen_filename=1024
+      character(len=mxlen_filename) :: &
 !
 ! 4/2/08 btf: Introducing Weimer 2005 model (wei05sc.F).
 !             Retain ability to call either the 2001 or 2005 weimer models
 !             for now, to facilitate comparison runs, so potential_model
 !             can be either WEIMER01 or WEIMER05.
 !
-     &  potential_model,   &! electric potential model used
-                            ! Values can be 'HEELIS', 'WEIMER', or 'NONE'
-                            ! If absent, the default value is set to 'HEELIS'
-     &  weimer_ncfile,     &! path to netcdf weimer01 coefficients file
-     &  wei05sc_ncfile,    &! path to netcdf data files for weimer05 model
-     &  gpi_ncfile,        &! mss path or file path to netcdf gpi data file
-     &  ncep_ncfile,       &! ncep data file (time-gcm only)
-     &  see_ncfile,        &! mss path or file path to netcdf SEE flux data file
-     &  imf_ncfile,        &! mss path or disk file path to netcdf IMF data file
-     &  gswm_mi_di_ncfile, &! gswm migrating diurnal data file
-     &  gswm_mi_sdi_ncfile,&! gswm migrating semi-diurnal data file
-     &  gswm_nm_di_ncfile, &! gswm non-migrating diurnal data file
-     &  gswm_nm_sdi_ncfile,&! gswm non-migrating semi-diurnal data file
-     &  saber_ncfile,      &! SABER data (T,Z)
-     &  tidi_ncfile,       &! TIDI data (U,V)
-     &  seeflux,           &! SEE measured solar flux spectrum
-     &  amienh,            &! Northern hemisphere AMIE input
-     &  amiesh              ! Southern hemisphere AMIE input
-!
+       potential_model, &! electric potential model used
+                          !  Values can be 'HEELIS', 'WEIMER', or 'NONE'
+                          !  If absent, the default value is set to 'HEELIS'
+       weimer_ncfile,   &! path to netcdf weimer01 coefficients file
+       wei05sc_ncfile,  &! path to netcdf data files for weimer05 model
+       gpi_ncfile,         &! absolute or relative path to netcdf gpi data file
+       ncep_ncfile,        &! ncep data file (time-gcm only)
+       see_ncfile,         &! absolute or relative path to netcdf SEE flux data file
+       imf_ncfile,         &! absolute or relative path to netcdf IMF data file
+       gswm_mi_di_ncfile,  &! gswm migrating diurnal data file
+       gswm_mi_sdi_ncfile, &! gswm migrating semi-diurnal data file
+       gswm_nm_di_ncfile,  &! gswm non-migrating diurnal data file
+       gswm_nm_sdi_ncfile, &! gswm non-migrating semi-diurnal data file
+       saber_ncfile,       &! SABER data (T,Z)
+       tidi_ncfile,        &! TIDI data (U,V)
+       ctmt_ncfile,        &! CTMT tidal data (T,U,V,Z)
+       bgrddata_ncfile      ! background data (T,U,V,Z; V=0)
+
 !     integer,parameter :: ngpivars = 4
 !     real :: gpi_vars(ngpivars) ! f107,f107a,power,ctpoten
 !     character(len=16) ::
-!    |  gpi_names(ngpivars)      ! names of gpi_vars
-
-! Primary history user input (dimension parameters are in params.h):
-character(len=80) :: &
-     &  source,            &! file containing source history (optional)
-        output(mxhvols)     ! output file(s) (required)
-integer ::           &
-     &  source_start(3),   &! source history model time
-     &  start(3,mxseries), &! primary history model start time(s)
-     &  stop(3,mxseries),  &! primary history model stop time(s)
-     &  hist(3,mxseries),  &! primary history disk write frequency
-     &  save(3,mxseries),  &! primary history file save frequency
-     &  mxhist_prim,       &! max number of histories per primary file
-     &  msreten,           &! retention period for history files
-     &  noutput             ! number of output files given
+!    &  gpi_names(ngpivars)      ! names of gpi_vars
 !
-! Secondary history user input (dimension parameters are in params.h):
-character(len=80) ::   &
-     &  secsource,           &! file containing source sec_history (for mhd)
-     &  secout(mxhvols)       ! secondary history output file(s)
-character(len=16) ::   &
-     &  secflds(mxfsech)      ! secondary history output fields
-integer ::             &
-     &  secstart(3,mxseries),&! secondary history model start time(s)
-     &  secstop(3,mxseries), &! secondary history model stop time(s)
-     &  sechist(3,mxseries), &! secondary history disk write frequency
-     &  secsave(3,mxseries), &! secondary history file save frequency
-     &  mxhist_sech,         &! max number of histories per secondary file
-     &  sech_nbyte            ! 4 or 8: write real or double values to secondary file
+! Primary history user input (dimension parameters are in params.F):
+      character(len=1024) :: &
+       source,            &! file containing source history (optional)
+       output(mxhvols)     ! output file(s) (required)
+      integer :: &
+       source_start(3),   &! source history model time
+       start(3,mxseries), &! primary history model start time(s)
+       stop(3,mxseries),  &! primary history model stop time(s)
+       hist(3,mxseries),  &! primary history disk write frequency
+       mxhist_prim,       &! max number of histories per primary file
+       noutput             ! number of output files given
+!
+! Secondary history user input (dimension parameters are in params.F):
+      character(len=1024) :: &
+       secsource,            &! file containing source sec_history (for mhd)
+       secout(mxhvols)        ! secondary history output file(s)
+      character(len=16) ::   &
+       secflds(mxfsech)       ! secondary history output fields
+      integer :: &
+       secstart(3,mxseries), &! secondary history model start time(s)
+       secstop(3,mxseries),  &! secondary history model stop time(s)
+       sechist(3,mxseries),  &! secondary history disk write frequency
+       mxhist_sech,          &! max number of histories per secondary file
+       sech_nbyte             ! 4 or 8: write real or double values to secondary file
 !
 ! Namelist for read:
-namelist/tgcm_input/                                        &
-     &  label,tempdir,magvol,amievol,date,calday,step,dispose,    &
-     &  source,source_start,output,start,stop,hist,save,          &
-     &  secout,secstart,secstop,sechist,secsave,secflds,          &
-     &  potential_model,eddy_dif,dynamo,tide,tide2,tide3m3,       &
-     &  f107,f107a,power,ctpoten,bximf,byimf,bzimf,swvel,swden,al,&
-     &  kp,colfac,tideann,aurora,gpi_ncfile,gswm_mi_di_ncfile,    &
-     &  gswm_mi_sdi_ncfile,gswm_nm_di_ncfile,gswm_nm_sdi_ncfile,  &
-     &  mxhist_prim,mxhist_sech,msreten,ntask_lat,ntask_lon,      &
-     &  start_day,start_year,calendar_advance,see_ncfile,         &
-     &  ctpoten_time,power_time,bximf_time,byimf_time,bzimf_time, &
-     &  kp_time,al_time,swden_time,swvel_time,indices_interp,     &
-     &  imf_ncfile,saber_ncfile,tidi_ncfile,sech_nbyte, amie_ibkg, &
-     &  seeflux, amienh, amiesh 
-
+      namelist/tgcm_input/ &
+       label,step, &
+       source,source_start,output,start,stop,hist, &
+       secout,secstart,secstop,sechist,secflds, &
+       potential_model,eddy_dif,dynamo,tide,tide2,tide3m3, &
+       f107,f107a,power,ctpoten,bximf,byimf,bzimf,swvel,swden,al, &
+       kp,colfac,joulefac,aurora,gpi_ncfile,gswm_mi_di_ncfile, &
+       gswm_mi_sdi_ncfile,gswm_nm_di_ncfile,gswm_nm_sdi_ncfile, &
+       mxhist_prim,mxhist_sech,ntask_lat,ntask_lon, &
+       start_day,start_year,calendar_advance,see_ncfile, &
+       ctpoten_time,power_time,bximf_time,byimf_time,bzimf_time, &
+       kp_time,al_time,swden_time,swvel_time,indices_interp, &
+       imf_ncfile,saber_ncfile,tidi_ncfile,sech_nbyte,f107_time, &
+       f107a_time,hpss_path,current_pg,current_kq,calc_helium, &
+       enforce_opfloor,bgrddata_ncfile,ctmt_ncfile,opdiffcap, &
+       amienh,amiesh,amie_ibkg
 
 !-------------------------------------------------------------------------------
 
