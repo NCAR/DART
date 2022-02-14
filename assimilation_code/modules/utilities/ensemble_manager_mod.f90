@@ -718,7 +718,7 @@ integer(i8) :: per_pe, suggest_pes
 per_pe = ens_handle%num_vars / num_pes
 if (per_pe >= (huge(i)-100) ) then
    suggest_pes = ( ens_handle%num_vars / (huge(i)) ) * 2
-   write(msgstring, '(A,I5,X,A)') &
+   write(msgstring, '(A,I5,1X,A)') &
    'not enough MPI tasks for the model size, suggest at least ' , &
    suggest_pes, 'tasks'
    call error_handler(E_ERR, 'set_up_ens_distribution', msgstring, source)

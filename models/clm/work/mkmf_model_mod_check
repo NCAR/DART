@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # usage: mkmf_model_mod_check [ -mpi | -nompi ]
 #
 # without any args, builds model_mod_check without mpi libraries, and it will run
@@ -62,13 +60,9 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_model_mod_check.back
 
-../../../build_templates/mkmf -p model_mod_check -t ../../../build_templates/mkmf.template   \
-        -a "../../.." ${wrapper_arg} path_names_model_mod_check
+     ../../../build_templates/mkmf -p model_mod_check \
+ -t  ../../../build_templates/mkmf.template   \
+ -a "../../.." ${wrapper_arg} path_names_model_mod_check
 
 exit $status
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

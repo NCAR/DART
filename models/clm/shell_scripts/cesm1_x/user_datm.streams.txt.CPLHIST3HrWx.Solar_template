@@ -1,6 +1,5 @@
 <comment>
          TJH 1/28/13: Stream description template file for CAMASSIM CPL history daily Solar data at 0.9x1.25 resolution for DART/CLM testing
-      $Id$
       </comment>
       <dataSource>
          CPL
@@ -22,16 +21,10 @@
       </domainInfo>
       <fieldInfo>
          <variableNames>
-            a2x6h_Sa_z           z
-            a2x6h_Sa_u           u
-            a2x6h_Sa_v           v
-            a2x6h_Sa_tbot        tbot
-            a2x6h_Sa_ptem        ptem
-            a2x6h_Sa_shum        shum
-            a2x6h_Sa_pbot        pbot
-            a2x6h_Faxa_lwdn      lwdn
-            a2x6h_Sa_dens        dens
-            a2x6h_Sa_pslv        pslv
+            a2x6h_Faxa_swndr     swndr
+            a2x6h_Faxa_swvdr     swvdr
+            a2x6h_Faxa_swndf     swndf
+            a2x6h_Faxa_swvdf     swvdf
          </variableNames>
          <filePath>
              /glade/p/image/thoar/CAM_DATM/annual
@@ -40,6 +33,6 @@
             CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
          </fileNames>
          <offset>
-            -10800
+            -21600
          </offset>
       </fieldInfo>
