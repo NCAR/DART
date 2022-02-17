@@ -1885,10 +1885,12 @@ end subroutine nc_write_global_att_clamping
 !-------------------------------------------------
 !> Write revision information
 !>@todo this should only be done for _new_ files that DART creates - performance issue
+!>@todo this will change when we move to GIT
+
 
 subroutine nc_write_revision_info(ncFileID)
 
-integer, intent(in) :: ncFileID
+integer,          intent(in) :: ncFileID
 
 ! we are going to need these to record the creation date in the netCDF file.
 ! This is entirely optional, but nice.
