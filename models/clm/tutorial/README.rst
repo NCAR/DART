@@ -1,957 +1,1218 @@
 
-WRF/DART Tutorial Materials for the Manhattan Release.
-======================================================
+CLM5-DART Tutorial 
+==================
 
 
 Introduction
 ------------
 
-This document will describe how to get started with your own Weather
-Research and Forecasting (WRF) data assimilation experiments using DART
-and only covers only the WRF-specific aspects of integrating with DART.
-It is not wise to try to run WRF/DART if you have no experience with WRF
-and/or no experience with DART.
+This document will describe how to get started with your own Community
+Land Model (CLM) data assimilation experiments using DART. This tutorial
+covers how to set up a simple assimilation using CLM5-DART. The
+expectation is that the user is very familiar with running CLM off-line
+and thus the tutorial focues upon the CLM-specific aspects of integrating
+with DART.
 
-This tutorial was assembled to be compatible with ~WRF V3.9.1 and the
-DART Manhattan release. Other releases of WRF may or may not be
-backwards or forwards compatible with this tutorial.
+This tutorial was assembled to be compatible with CLM5.0.34 as part
+of CESM (release-cesm2.2.01) and the latest release on the 
+`DART repository <https://github.com/NCAR/DART.git>`__
+Other combinations of CLM and DART (prior to DART version 9.13.0) may not be compatible
+with this tutorial.
 
-You must already be comfortable running the
-`WRF <http://www2.mmm.ucar.edu/wrf/users/download/get_source.html>`__
-system (WPS, real_em build of WRF). If not, work through the `WRF model
-tutorial <https://www.mmm.ucar.edu/wrf-tutorial-0>`__
-first before trying to link WRF and DART together. Check the WRF user
-guide or the
-`WRFHELP <https://www.mmm.ucar.edu/wrf-user-support-contributor-information>`__
-forum for WRF-specific assistance.
 
-If you are new to DART, we recommend that you become familiar with DART
-by working through the :doc:`../../../theory/readme` and then
+It is not recommended to use this tutorial without prior experience
+with running and understanding CLM. If new to CLM we recommend you
+attend a CLM tutorial(******) or review the CLM documentation as described below.
+
+Review the CLM `Technical Description, <https://escomp.github.io/ctsm-docs/versions/master/html/tech_note/index.html>`__
+`User Guide, <https://escomp.github.io/ctsm-docs/versions/master/html/users_guide/index.html>`__ 
+and the  `CESM User Forum <https://bb.cgd.ucar.edu/cesm/>`__
+for CLM-specific assistance.
+
+If you are new to DART, we recommend that you become familiar
+by first working through the :doc:`../../../theory/readme` and then
 understanding the :doc:`DART getting started <../../../README>` documentation.
 
-before attempting the WRF/DART tutorial as you will find many helpful
-resources for learning the base DART configuration.
+This CLM5-DART tutorial is based on a simple example in which we 
+describe how to:
+ 1) set up the software
+ 2) review concepts of assimilation 
+ 3) provide a specific example of how CLM and DART interact
+    in an assimilation framework 
 
-*We do not claim that this is a “turnkey” or “black box” system.* Be
-mentally prepared to invest a reasonable amount of time on the learning
-curve. There are many outstanding research issues which have no easy
-answers. This is not a one week/grad student/naive user system. Even
-after you get the code up and running, you have to be able to interpret
-the results, which requires developing specific skills. There are a lot
-of ways to alter how the system works – localization, inflation, which
-variables and observations are assimilated, the assimilation window
-time, the model resolution, etc, etc. This is both good and bad - you
-have many ways of improving your results, but you have to take care on
-how you leave all the settings of these inputs. Getting a set of scripts
-that runs doesn’t mean the system is running well, or producing useful
-results. So - if you’re still reading: Let the adventure begin!
+If you wish to move beyond this tutorial and address a unique/new
+research question be prepared to invest a significant amount of time to
+modify the CLM-DART setup.  In general, a CLM-DART simulation that is running
+without errors, does not mean it has been optimized for performance.
+Optimal performance requires the evaluation of assimilation diagnostics
+(e.g. observation acceptance rate, RMSE and bias between modeled and observed
+properties) and making additional modifications to the setup scripts. 
+Examples of setup modifications include changes to localization, inflation,
+observations that are assimilated, updated model state variables, assimilation time window,
+assimilation frequency, and the model and observation grid resolution.
 
-This tutorial introduces a “canned” WRF/DART experiment involving an
-ensemble of 50 members that will be initialized from GFS initial
-conditions at 2017/04/27 00:00 UTC using a domain of the continental
-United States. The data included in the tutorial lasts until 2017/04/30
-18:00 UTC. During this period, there was a strong rain and wind event
-that affected a large portion of the United States, causing record
-rains, localized flooding, and numerous tornadoes. For more information
-on the physical account of this case, see
-`weather.gov <https://www.weather.gov/lot/2017Apr2930_rainfall>`__.
+We encourage users complete the tutorial and then modify CLM-DART to pursue their own
+research questions.  We have comprehensive and searchable documentation
+(****), with trained and experienced staff that can help troubleshoot issues
+(dart@ucar.edu).
 
-By default, the tutorial case will only cover 12 hours of this event
-starting at 2017/04/27 00:00 UTC. The WRF model will be “spun-up” for
-six hours to generate a prior distribution. An assimilation of PREPBUFR
-observations will then be performed at 06:00 UTC, at which time analysis
-files will be generated to begin a new ensemble forecast. The WRF model
-will be advanced for 6 hours and a final assimilation cycle will be
-performed at 12:00 UTC. This process could then continue in order to
-investigate the strong rain and wind event. For what it’s worth, on
-NCAR’s *Cheyenne* under the default test configuration for this case, it
-can take an hour to complete a forecast/assimilation cycle. Since the
-tutorial runs for two cycles, it can take twice as long.
 
-The goals of this tutorial are to demonstrate how WRF/DART works. After
-running this tutorial, you will be able to understand the major steps
+
+Tutorial Overview
+-----------------
+
+The tutorial is a simplified global simulation that 
+assimilates daily observations for up to a maximum of 10 days.
+A total of 5 observations are distributed across the globe that 
+includes observations of leaf area, biomass, snow cover, and
+soil temperature. The observations are 'synthetic' meaning
+they have been generated from the output of a separate CLM
+simulation with random error added. Synthetic observations are
+generally easier to assimilate than real-world 
+observations because they remove systemic differences between
+the model and observations.  This assimilation uses a 5-member
+ensemble (i.e. 5 CLM simulations run simultaneously). An ensemble
+is required within Ensemble Kalman Filter (EnKF) DA to calculate
+the modeled covariance amongst the state variables in CLM.
+The covariance amongst the CLM state variables dictates how
+the CLM model state is updated during the assimilation step given
+a set of observations.  The beginning of the assimilation starts
+from near present day (****) and is initalized in 'hybrid' mode from 
+a set of CLM restart files generated from a previous CLM 5-member
+ensemble simulation. The atmospheric forcing used for the assimilation 
+comes from the Community Atmospheric Model (CAM6) reanalysis  (****link).
+This reanalysis atmospheric data includes 80 total ensemble members in
+which the across-member variation represents atmospheric uncertainty.
+We use 5 different ensemble members from the CAM6 reanalysis to generate
+spread within this CLM-DART tutorial simulation.
+
+.. NOTE::
+
+  This CLM5-DART tutorial has been simplified to reduce run-time and
+  computational expense. For research applications the assimilations are
+  typically run for many model months/years.  In addition a 5-member ensemble is
+  generally too small to properly sample model uncertainty and we recommend
+  80, but no less than 40 ensemble members for research applications.     
+    
+
+The goal of this tutorial is to demonstrate how CLM5 and DART
+interact to perform data assimilation (DA) to provide an
+observation-constrained simulation of CLM. This requires
+setting numerous namelist/input values that control the 
+configuration of CLM and DART setup. 
+
+After running this tutorial, you should be able to understand the major steps
 involved in setting up your own data assimilation (DA) experiments.
-However, you will need to do additional work before you can expect to
-have a fully functional WRF/DART system, as some of the steps involved
-in this tutorial (in particular, the perturbation bank and the
-observation sequence files) are provided for you in order to simplify
-the process. Furthermore, if you are not running on the UCAR/NCAR
-Cheyenne supercomputing system, you will likely need to customize the
-assimilation scripts to match the details of your particular system.
+However, you will need to do additional work to customize the CLM5-DART
+system for your particular research needs. For example, this tutorial 
+provides both the restart and observation sequence files to simplify
+the process, yet these will not be sufficient for you own work.
 
 
-.. important ::
+.. Important ::
 
-  We have provided instructions for the NCAR supercomputer
-  Cheyenne, so you may need to tailor these instructions to your system if
-  you are not using Cheyenne. These system-specific setup steps may take a
+  We have provided tutorial instructions for the NCAR
+  supercomputer, however, if using your own machine you will need to 
+  customize the setup scripts. These system-specific setup steps may take a
   good deal of effort, especially if you are unfamiliar with details such
-  as MPI, NetCDF, etc. Furthermore, even after you get the code up and
-  running, you will need to properly interpret your results.
+  as compilers, MPI, NetCDF libraries, batch submission systems etc.  To
+  perform this tutorial we assume the user is comfortable with LINUX
+  operating systems as well as using text editors (e.g. vi, nedit, emacs) to
+  edit the CLM5-DART setup scripts, namelist files etc.
+
+Step 1: Download CLM5
+---------------------
+
+CLM is continually being updated by the model developer and user community
+consisting of both NCAR and University scientists and researchers.
+In contrast, DART is maintained by a relatively small group that supports
+numerous earth system models (20+) including CLM. Therefore the DART team
+focuses on only supporting official released versions of CLM.  This documentation
+and scripting was tested using the CESM tag ``release-cesm2.2.0`` following
+the download instructions `here <https://github.com/ESCOMP/CESM>`__.
+
+Although the DART code may work with more recent versions of CESM (CLM) we recommend
+checking out ``release-cesm2.2.0``.
+
+  ::
+
+    > cd <your Cheyenne work directory>
+    > git clone https://github.com/escomp/cesm.git cesm_dart
+    > cd cesm_dart
+    #Explore the available tags
+    > git tag
+    > git checkout release-cesm2.2.0
+    #Confirm release-cesm2.2.0 is checked out
+    > git status
+    > ./manage_externals/checkout_external
+
+.. Note::
+   
+ If you want to use git to keep track of your personal changes
+ to CLM you should check out a branch to add/commit/track
+ changes:
+  > git checkout -b <my_cesm_dart_branch>
 
 
-Step 1: Setup
--------------
+Adding CLM5 SourceMods
+----------------------
 
-There are several dependencies for the executables and scripting
-components. On Cheyennne, users have reported success building WRF, WPS,
-WRFDA, and DART with the default module environment including Intel
-compilers, MPT, and netCDF4. In addition, you'll need to load the
-`nco <http://nco.sourceforge.net/>`__ and
-`ncl <https://www.ncl.ucar.edu/>`__ modules to run the set of scripts
-that accompany the tutorial.
+Some minor modifications have to be made to the CLM5 source code in order
+to be run with DART. Most importantly, these include skipping several
+balance checks in CLM5 for the time step These sourcecode modifications are brought in 
+through the SourceMod mechanism in CLM where modifications overwrite
+the template sourcecode during the compilation step. The SourceMods
+are located as tar files `here <http://www.image.ucar.edu/pub/DART/CESM>__`
+For this tutorial use the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
+and untar it on your local machine.  For more information on the 
+SourceMods see the main `CLM documentation <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>__`
 
-There are multiple phases for the setup: building the DART executables,
-getting the initial WRF boundary conditions etc., building (or using
-existing) WRF executables, and configuring and staging the scripting
-needed to perform an experiment.
 
-Build the DART executables.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you have not already, see :doc:`Getting Started <../../../README>` to
-download the DART software package. Set an environment variable
-*DART_DIR* to point to your base DART directory. How to do this will
-depend on which shell you are using.
+Step 2: Download DART
+--------------------- 
 
-===== ====================================================
-shell command
-===== ====================================================
-tcsh  ``setenv DART_DIR <path_to_your_dart_installation>``
-bash  ``export DART_DIR=<path_to_your_dart_installation>``
-===== ====================================================
+The tutorial material is available within the most recent release of
+DART repository on the `main branch <https://github.com/NCAR/DART>`__.
 
-In either case, you will replace <path_to_your_dart_installation> with
-the actual path to your DART installation. If you are using another
-shell, refer to your shell-specific documentation on how to set an
-environment variable.
+  ::
+ 
+   #Quickstart approach to download DART:
+   > cd <your Cheyenne work directory>
+   > git clone https://github.com/NCAR/DART.git
+   > cd DART
+   > git checkout main
 
-Building the DART executables for the tutorial follows the same process
-as building any of the DART executables. Configure the ``mkmf.template``
-file for your system, configure the ``input.nml`` for the model you want
-to compile, and run ``quickbuild.csh`` (which is not necessarily quick,
-but it is quicker than doing it by hand) to compile all the programs you
-might need for an experiment with that model.
+If you wish to track new features within your local copy of DART
+we recommend you check out a new feature branch:
 
-1. It is assumed you have successfully configured the
-   ``$DART_DIR/build_templates/mkmf.template`` file for your system. If
-   not, you will need to do so now. See the :doc:`Getting Started <../../../README>`
-   for more detail, if necessary.
+  ::
 
-2. [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
-   users run both the WRF model and the DART assimilation code using
-   32bit reals. This is not the default for the DART code. Make this
-   single code change before building the DART executables to compile
-   all reals as 32bit reals.
+   > git checkout -b <my_dart_feature_branch>
 
-   Edit ``$DART_DIR/assimilation_code/modules/utilities/types_mod.f90``
-   with your favorite editor. Change
+.. Note::
 
-   ::
+  For more experienced users that intend to use DART for their own
+  research we recommend the following steps which facilitates sharing of
+  your code. Consider 'forking' the DART repository ~/NCAR/DART.git and
+  setting up remote 'origin' and 'upstream' repositories for your local branch.
+  For more information please go `here <https://github.com/NCAR/DART/wiki>`__.
+  Setting your remote repositories such that the 'upstream' points to
+  ~/NCAR/DART.git and 'origin' points to ~/<your git account name>/DART.git
+  helps to obtain new DART features, and also allows the DART team
+  to view any local changes that your 'push' to your 'origin'.  This helps
+  in troubleshooting and also contributing new features to the DART code.
+    
 
-     ! real precision:
-     ! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
-     ! comment OUT the r8 definition below and use the second one:
-     integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
-     integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! 8 byte reals
-     !integer, parameter :: r8 = r4                      ! alias r8 to r4
+
+
+
+Step 3: Navigating DART Scripts
+-------------------------------
+
+
+Below is a table of the key CLM5-DART setup scripts that include the 
+settings required to perform an  assimilation run. All scripts are 
+located at path ``~/DART/models/clm/shell_scripts/cesm2_2/`` with the 
+exception of ``input.nml`` which is located at ``~/DART/models/clm/work/``.
+
+You will be asked to locate, edit, and execute these scripts during the tutorial
+and are critical to customizing the assimilation run.  Given their importance, we
+introduce them right away.
+
+For additional description of the CLM5-DART scripts and concepts please
+visit
+`here <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__. 
+Feel free to supplement this tutorial with that CLM5-DART documentation page. 
+In some cases it will provide more detailed information than in this tutorial.
+If a concept is unclear we recommend using the search bar provided with
+the main `DART documentation <https://docs.dart.ucar.edu/en/latest/README.html>__`.
+
+
+
++-------------------------+--------------------------------------------------------------+
+|  Key CLM5-DART scripts  |    Description                                               |
++=========================+==============================================================+
+| CLM5_setup_assimilation | Main setup script that creates a CLM5-DART assimilation      |
+|                         | case. This script sets up ``case``, ``run`` and              |
+|                         | ``archive`` directories and stages the necessary files       |
+|                         | to the ``run`` directory to create a ``hybrid`` run.         |
+|                         | It uses traditional commands ``create_newcase``,             |
+|                         | ``case.setup``, ``preview_namelists`` and ``case.build``     |
+|                         | included as part of CESM package.                            |
++-------------------------+--------------------------------------------------------------+
+| DART_params.csh         | The companion script to ``CLM5_setup_assimilation``          |
+|                         | that defines important case settings for CLM and DART.       |
+|                         | The majority of case setting edits occur within this script. |
++-------------------------+--------------------------------------------------------------+
+| CESM_DART_config        | Once the case is created, this script turns 'on'             |
+|                         | assimilation by providing links between CLM and DART         |
+|                         | code. Converts a 'free' run into an assimilation run.        |
++-------------------------+--------------------------------------------------------------+
+| assimilate.csh          | This script is executed during the assimilation case         |
+|                         | run-time. It orchestrates communication between CLM and DART.|
+|                         | After the CLM forecast step is complete, it calls upon the   |
+|                         | DART executables to relay the CLM files (restart, history)   |
+|                         | to DART and executes the ``filter`` step to update the CLM   |
+|                         | state variable. These updated files are then reinserted      |
+|                         | into the restart file for the next CLM forecast step.        |
+|                         | forecast step.                                               |
++-------------------------+--------------------------------------------------------------+
+| input.nml               | Contains DART specific namelist settings that control        |
+|                         | DA type, inflation, localization, outlier threshold etc.     |
++-------------------------+--------------------------------------------------------------+
+
+
+
+Step 4: Compiling DART
+----------------------
+
+Similar to CLM, it is necessary to compile the DART code before an assimilation
+can be performed.  The DART code includes a variety of build template scripts that provide
+the appropriate compiler and library settings depending upon your system environment.
+This is an example of how to set up the system environment for Cheyenne:
+
+::
+
+ # Navigate to compiling templates
+ > cd ~/DART/build_template
+ # Use example template for intel compiler, linux environment
+ > cp mkmf.template.intel.linux mkmf_template
+ 
+Confirm the ``mkmf_template`` has the following settings:
+
+::
+ 
+ MPIFC = mpif90
+ MPILD = mpif90
+ FC = ifort
+ LD = ifort
+ ...
+ ...
+ INCS = -I$(NETCDF)/include
+ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+ FFLAGS  = -O -assume buffered_io $(INCS)
+ LDFLAGS = $(FFLAGS) $(LIBS)
+
+
+Next we will test to make sure the DART scripts can be run correctly,
+by compiling and executing the ``preprocess`` script.  The ``preprocess``
+script must be run **before** the core DART code is compiled because
+it writes the source code the supports the observations that will be 
+assimilated.  This provides the necessary support for the specific
+observations that we wish to assimilate into CLM.  For more information
+see the `preprocess documentation  <https://docs.dart.ucar.edu/en/latest/guide/preprocess-program.html>__`
+
+First make sure the list of ``obs_def`` and ``obs_quantity`` module source codes 
+are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
+
+::
+
+ > cd ~/DART/models/clm/work
+ # View and edit the input.nml
+ > vi input.nml
+
+This example uses namelist setting that specifically loads ``obs_def`` and 
+``obs_quantity`` commonly used for land DA, including models like CLM.
+Confirm the settings are as follows:
+
+::
+ &preprocess_nml
+    input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+    output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+    input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+    obs_type_files          = '../../../observations/forward_operators/obs_def_land_mod.f90',
+                              '../../../observations/forward_operators/obs_def_tower_mod.f90',
+                              '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
+    quantity_files          = '../../../assimilation_code/modules/observations/land_quantities_mod.f90',
+                              '../../../assimilation_code/modules/observations/space_quantities_mod.f90'
+                              '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+    /
+
+Next compile and execute the preprocess script:
+
+::
+
+ # Build the executable
+ > csh mkmf_preprocess
+ > make
+ # Execute preprocess
+ > ./preprocess
+
+Confirm the new source code has been generated for 
+``~/DART/observations/forward_operators/obs_def_mod.f90`` 
+and ``~/DART/assimilation_code/modules/observations/obs_kind_mod.f90`` 
+
+
+
+
+
+Step 5: Setting up the atmospheric forcing
+------------------------------------------
+
+A requirement for Ensemble Kalman Filter (EnKF) type DA approaches is to generate 
+multiple model simulations (i.e. a model ensemble) that quantifies 1) state variable uncertainty
+and 2) correlation between state variables.  Given the sensitivity of CLM to 
+atmospheric conditions an established method to generate multi-instance CLM
+simulations is through weather reanalysis data generated from a CAM-DART assimilation. These
+CAM-DART reanalyses are available from 1997-2010 `ds199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__,
+and 2011-2020 `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__.
+
+For this tutorial we will use the January 2011 CAM6 reanalysis only.  
+To make sure the scripts can locate the weather data first make sure
+the ``DART_params.csh``  variable ``dartroot`` is set to the path of your
+DART installation. For example, if you have a Cheyenne account and you
+followed the DART cloning instructions in Step 2 above your ``dartroot``
+variable will be: `/<your Cheyenne work directory>/DART`
+
+ ::
+
+  setenv dartroot          /glade/work/${USER}/git/DART_public
+
+
+Next confirm within the ``CLM5_setup_assimilation`` script that the path (`${SOURCEDIR}/${STREAMFILE_***}`) 
+to all four of your atmospheric stream file templates (e.g. datm.streams.txt.CPLHISTForcing.Solar*)
+is correct.  
+
+ ::
+
+   set STREAMFILE_SOLAR        = datm.streams.txt.CPLHISTForcing.Solar_single_year
+   set STREAMFILE_STATE1HR     = datm.streams.txt.CPLHISTForcing.State1hr_single_year
+   set STREAMFILE_STATE3HR     = datm.streams.txt.CPLHISTForcing.State3hr_single_year
+   set STREAMFILE_NONSOLARFLUX = datm.streams.txt.CPLHISTForcing.nonSolarFlux_single_year
+   ...
+   ...
+   # Create stream files for each ensemble member
+   set SOURCEDIR = ${dartroot}/models/clm/shell_scripts/cesm2_2
+   ${COPY} ${SOURCEDIR}/${STREAMFILE_SOLAR}         user_${FILE1} || exit 5
+   ${COPY} ${SOURCEDIR}/${STREAMFILE_STATE1HR}      user_${FILE2} || exit 5
+   ${COPY} ${SOURCEDIR}/${STREAMFILE_STATE3HR}      user_${FILE3} || exit 5
+   ${COPY} ${SOURCEDIR}/${STREAMFILE_NONSOLARFLUX}  user_${FILE4} || exit 5
+
+
+Next, edit each of your atmospheric stream file templates to make sure the
+``filePath`` within ``domainInfo`` and ``fieldInfo`` below is set correctly to
+reference the CAM6 reanalysis file.  The example below is for 
+ ``datm.streams.txt.CPLHISTForcing.nonSolarFlux_complete``.  Repeat this for
+all four of the template stream files.
+
+ ::
+   
+    <domainInfo>
+         <variableNames>
+            time          time
+            doma_lon      lon
+            doma_lat      lat
+            doma_area     area
+            doma_mask     mask
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+         </filePath>
+         <fileNames>
+            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc
+         </fileNames>
+      </domainInfo>
+      ...
+      ...
+      ...
+      <fieldInfo>
+         <variableNames>
+            a2x3h_Faxa_rainc     rainc
+            a2x3h_Faxa_rainl     rainl
+            a2x3h_Faxa_snowc     snowc
+            a2x3h_Faxa_snowl     snowl
+            a2x3h_Faxa_lwdn      lwdn
+         </variableNames>
+         <filePath>
+              /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+         </filePath>
+         <offset>
+            1800
+         </offset>
+         <fileNames>
+            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc
+         </fileNames>
+      </fieldInfo>
+
+ +--------------------------+--------------------------------------------------------------+
+ | Selected variables within|  Description                                                 |
+ | atmospheric stream file  |                                                              |
+ +==========================+==============================================================+
+ | filePath                 | Directory of CAM6 reanalysis file.  For tutorial, this only  |
+ |                          | includes year 2011, with ensemble members 1-5. During        |
+ |                          | execution of ``CLM5_setup_assimilation`` the text ``NINST``  |
+ |                          | is replaced with ensemble member number 01-05.               |
+ +--------------------------+--------------------------------------------------------------+
+ | fileNames                | The CAM6 reanalysis file name. For tutorial, this only       |
+ |                          | includes year 2011, with ensemble member 1-5. During         |
+ |                          | execution of ``CLM5_setup_assimilation`` the text ``NINST``  |
+ |                          | is replaced with ensemble member number 01-05.               |
+ +--------------------------+--------------------------------------------------------------+
+ | variableNames            | Meteorology variables within CAM6 reanalysis. First column   |
+ |                          | is variable name within netCDF reanalysis file, whereas the  |
+ |                          | the second column is the meteorology variable name recognized|
+ |                          | by CLM.                                                      |
+ +--------------------------+--------------------------------------------------------------+
+
+
+
+
+Step 6: Setting up the initial conditions for land earth system properties 
+--------------------------------------------------------------------------
+
+The initial conditions for the assimilation run are prescribed (all state variables
+from the top of vegetation canopy to subsurface bedrock) by a previous 5-member ensemble
+run (Case: ``clm5.0.06_f09_80``) that used the same CAM6 reanalysis to generate initial spread
+between ensemble members. This is sometimes referred to as an ensemble 'spinup'.  This 
+ensemble spinup was run for 10 years to generate sufficient spread amongst ensemble members
+for this tutorial.
+
+.. Note::
+
+   The proper ensemble spinup time depends upon the specific research application. In 
+   general, the goal is to allow the differences in meterological forcing to induce
+   changes within the CLM variables that you plan to adjust during the DART update step. 
+   CLM variables that have relatively quick response to atmospheric forcing (e.g. leaf area,
+   shallow-depth soil variables) require less spinup time.  However, other CLM variables
+   take longer to equilibrate to atmospheric forcing (e.g. biomass, soil carbon).     
+
+
+This initial ensemble spinup was run with resolution ``f09_09_mg17`` (0.9x1.25 grid resolution)
+with compset ``2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV`` (CESM run with 
+only land and river components active).  The starting point of the assimilation is run in
+CLM 'hybrid' mode which allows the starting date of the assimilaton to be different than
+reference case, and loosens the requirements of the system state.  The tradeoff is that
+restarting in hybrid mode does not provide bit-by-bit reproducible simulations.
+
+For the tutorial, set the ``DART_parms.csh`` variables such that the ensemble spinup
+restart files at date 1-1-2011 are set as the initial conditions for the assimilation:
+
+::
+
+ setenv refcase      clm5.0.06_f09_80
+ setenv refyear      2011
+ setenv refmon       01
+ setenv refday       01
+ setenv reftod       00000
+ ...
+ ...
+ setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
+ ...
+ ...
+ setenv start_year    2011
+ setenv start_month   01
+ setenv start_day     01
+ setenv start_tod     00000
+
+
++---------------------------+-------------------------------------------------------------+
+| Important variables       |  Description                                                |
+| to set initial conditions |                                                             |
++===========================+=============================================================+
+| refcase                   | The (reference) casename for the spinup ensemble that the   |
+|                           | assimilation will start from                                |
++---------------------------+-------------------------------------------------------------+
+| refyear, refmon, refday   | The year, month, day and time of day of the reference case  |
+| reftod                    | that the assimilation will start from                       |
++---------------------------+-------------------------------------------------------------+
+| stagedir                  | The directory location of the reference case files          |
++---------------------------+-------------------------------------------------------------+
+
+
+
+Step 7: Setting up the observations to be assimilated 
+-----------------------------------------------------
+
+In 'Step 4: Compiling DART' we have already completed an important
+step by executing ``preprocess`` which generates source code 
+(``obs_def_mod.f90``, ``obs_kind_mod.f90``) that supports the assimilation of observations
+used for this tutorial.  In this step, we link the observations to the DART
+code so they can be read during the assimilation. 
+
+The observations are read into the assimilation  
+through an observation sequence file whose format is described 
+`here <https://docs.dart.ucar.edu/en/latest/guide/detailed-structure-obs-seq.html>`__,
+
+First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
+is pointed to the directory where the observation sequence files are 
+located.
+
+::
+ 
+ setenv baseobsdir             /glade/p/cisl/dares/Observations/land
+
+In this tutorial we have several observation types that are to be
+assimilated, including ``SOIL_TEMPERATURE``, ``MODIS_SNOWCOVER_FRAC``,
+``MODIS_LEAF_AREA_INDEX`` and ``BIOMASS``. To enable the assimilation
+of these observations types they must be included within the 
+``input.nml`` file:
+
+
+
+::
+
+ &obs_kind_nml
+   assimilate_these_obs_types = 'SOIL_TEMPERATURE',
+                                'MODIS_SNOWCOVER_FRAC',
+                                'MODIS_LEAF_AREA_INDEX',
+                                'BIOMASS',
+   evaluate_these_obs_types   = 'null'
+   /
+
+Below is an example of the format of an observation sequence file
+used within this tutorial (obs_seq.2011-01-02-00000),
+followed by definitions and descriptions:
+
+
+Example of single observation (leaf area index) within observation sequence file
+``obs_seq.2011-01-02-00000``
+
+::
+
+   OBS            3
+   6.00864688253571
+   5.44649167346675
+   0.000000000000000E+000
+    
+   obdef
+   loc3d
+      5.235987755982989         0.000000000000000        -888888.0000000000     -2
+   kind
+           23
+      0     149750
+   0.200000000000000
+
+
+
+::
+
+   <Observation sequence number>
+   <Observation Value>
+   <True Observation Value>
+   <Observation Quality Control>
+      
+   obdef
+   loc3d
+      <longitude>    <latitude>     <vertical level>     <vertical code>
+   kind
+     <observation quantity number>
+        <seconds>    <days>
+   <Observation error variance>
+
+
++-----------------------------+-------------------------------------------------------------+
+| Observation Sequence File   | Description                                                 |
+| Variable                    |                                                             |
++=============================+=============================================================+
+| Observation sequence        | The chronological order of the observation within the       |
+| number                      | observation sequence file.  This determines the order in    |
+|                             | which the observation is assimilated by DART for this time  |
+|                             | step.                                                       |
++-----------------------------+-------------------------------------------------------------+
+| Observation Value           | The actual observation value that the DART ``filter`` step  |
+|                             | uses to update the CLM model.  This is derived from the     |
+|                             | true observation value generated from CLM model output with |
+|                             | uncertainty added.                                          |
++-----------------------------+-------------------------------------------------------------+
+| True Observation Value      | The observation generated from CLM output.  In this case    |
+|                             | the observation was generated as part of a perfect model    |
+|                             | experiment (OSSE; Observing System Simulation Experiment),  |
+|                             | thus the 'true' value is known.                             |
++-----------------------------+-------------------------------------------------------------+
+| Observation Quality         | The quality control value provided from the data            |
+| Control                     | provider.  This can be used as a filter in which to exclude |
+|                             | low quality observations from the assimilation.             |
+|                             |                                                             |
++-----------------------------+-------------------------------------------------------------+
+| longitude, latitude         | Horizontal observation location in radians                  |
++-----------------------------+-------------------------------------------------------------+
+| Level, Vertical Level Type  | Vertical observation location in units defined by           |
+| Code                        | vertical level type                                         |
++-----------------------------+-------------------------------------------------------------+
+| Observation type number     | The DART observation type assigned to the obervation type   | 
+|                             | (e.g. MODIS_LEAF_AREA_INDEX (23) --> QTY_LEAF_AREA_INDEX)   |
++-----------------------------+-------------------------------------------------------------+
+| second, days                | Time of the observations in reference to Jan 1, 1601        |
++-----------------------------+-------------------------------------------------------------+
+| observation error variance  | Uncertainty of Observation Value                            |
++-----------------------------+-------------------------------------------------------------+
+
+
+Now that we have set both the path to the observation sequence files, and the types of observations
+to be assimilated, confirm the quality control settings  within the ``&quality_control_nml`` of
+the ``input.nml`` file are as follows:
+
+::
+
+ &quality_control_nml
+    input_qc_threshold = 1.0
+    outlier_threshold  = 3.0
+    /
+
+
++-----------------------------+-------------------------------------------------------------+
+| Quality Control Namelist    | Description                                                 |
+|                             |                                                             |
++=============================+=============================================================+
+| input_qc_threshold          | The quality control value that is provided from the         |
+|                             | observation product. Any value above this threshold will    |
+|                             | cause the observation to be rejected and ignored during the |
+|                             | assimilation step.                                          |   
++-----------------------------+-------------------------------------------------------------+
+| outlier threshold           | The observation is rejected if:                             |
+|                             | (prior mean - observation) >  (expected                     |
+|                             | difference x outlier threshold).  The prior mean is         |
+|                             | is calculated from the CLM model ensemble mean, and the     |
+|                             | expected difference is the square root of the sum of        |
+|                             | the square uncertainty of the prior mean and observation    | 
+|                             | uncertainty.                                                |
++-----------------------------+-------------------------------------------------------------+
+
+
+These quality control settings do not play a role in this tutorial because we 
+are using synthetic observations which are, by design, very close to the model output.
+Thus, in this tutorial example, systematic biases between the model and observations are
+removed.  However, in the case of real observations, it is common for large systemic differences 
+to occur between the model and observations either because 1) structural/parametric error
+exists within the model or 2) model or observation uncertainty is underestimated. In these
+cases it is beneficial to reject observations to promote a stable simulation and prevent
+the model from entering into unrealistic state space.    
+
+
+
+.. Note::
+
+   This tutorial already provides properly formatted observations for the user, however, when using 'real' observations
+   for research applications DART provides 
+   `observation converters <https://docs.dart.ucar.edu/en/latest/guide/available-observation-converters.html>__`
+   Observation converters are scripts that convert the various data product formats into the 
+   observation sequence file format required by the DART code.  Observations converters most relevant for 
+   land DA and the CLM model include those for `leaf area <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/MODIS/MOD15A2_to_obs.html>__`, 
+  `flux data <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/Ameriflux/level4_to_obs.html>__`,
+  `snow <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/snow/snow_to_obs.html>__` and 
+  soil moisture `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NASA_Earthdata/README.html>__` 
+  and `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NSIDC/SMAP_L2_to_obs.html>__`.
+  Even if an observation converter is not available for a particular data product, it is generally straightforward
+  to modify them for your specific application.
+ 
+
+Step 8: Setting up the DART and CLM states 
+------------------------------------------
+
+Defining the DART state space is a critical part of the assimilation setup process.  This serves
+two purposes, first, it defines which model variables are used in the forward operator.  The forward operator
+is defined as any operation that converts from model space to observation space to create the
+'expected observation'. The mismatch between the true and expected observation forms the foundation
+of the model update in the DART ``filter`` step.  
+
+In this tutorial, observations of ``SOIL_TEMPERATURE``, ``MODIS_SNOWCOVER_FRAC``, 
+``MODIS_LEAF_AREA_INDEX``, and ``BIOMASS`` are supported by specific clm variables. See the table
+below which defines the dependency of each DART observation type upon specific DART Quantities 
+required for the forward operator. We also includ the CLM variables that serve as the DART
+Quantities for this tutorial:
+
+
++--------------------------+-----------------------------+-----------------+
+| DART Observation Type    | DART Observation Quantities | CLM variables   |
++==========================+=============================+=================+
+| ``SOIL_TEMPERATURE``     | ``QTY_SOIL_TEMPERATURE``    | ``T_SOISNO``    |
++--------------------------+-----------------------------------------------+
+| ``MODIS_SNOWCOVER_FRAC`` | ``QTY_SNOWCOVER_FRAC``      | ``frac_sno``    |
++--------------------------+-----------------------------------------------+
+| ``MODIS_LEAF_AREA_INDEX``| ``QTY_LEAF_AREA_INDEX``     | ``TLAI``        |
++--------------------------+-----------------------------------------------+
+| ``BIOMASS``              | ``QTY_LEAF_CARBON``         | ``leafc``       |                   
+|                          | ``QTY_LIVE_STEM_CARBON``    | ``livestemc``   |
+|                          | ``QTY_DEAD_STEM_CARBON``    | ``deadstemc``   |
++--------------------------+-----------------------------------------------+
+
+.. Note::
+
+  For this tutorial example most of the Observation types rely on a single Quantity
+  (and CLM variable) to calculate the expected observation.  For these the CLM
+  variable is spatially interpolated to best match the location of the observation.
+  The ``BIOMASS`` observation type is the exception in which 3 Quantities are required
+  to calculate the expected observation.  In that case the sum of the CLM
+  variables of leaf, live stem and structural (dead) carbon represents the biomass observation. 
+ 
+
+Second, the DART state space also defines which portion of the CLM model state is updated by DART. 
+In DA terminology, limiting the influence of the observations to a subset of the CLM model
+state is know as 'localization' which is discussed more fully in Step ####.
+In theory the complete CLM model state may be updated based on the relationship with the observations.
+In practice, a smaller subset of model state variables, that have a close physical relationship with
+the observations, are included in the DART state space.  In this tutorial, for example, we limit
+the update to CLM variables most closely related to biomass, leaf area, soil temperature and
+snow.  See the ``&model_nml`` within ``input.nml`` below.  
+
+
+::
+
+ &model_nml
+   ...
+   ...
+   clm_variables  = 'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frac_sno',    'QTY_SNOWCOVER_FRAC',         '0.0', '1.', 'restart' , 'NO_COPY_BACK',
+                    'SNOW_DEPTH',  'QTY_SNOW_THICKNESS',         '0.0', 'NA', 'restart' , 'NO_COPY_BACK',
+                    'H2OSOI_LIQ',  'QTY_SOIL_LIQUID_WATER',      '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_ICE',  'QTY_SOIL_ICE',               '0.0', 'NA', 'restart' , 'UPDATE',
+                    'T_SOISNO',    'QTY_TEMPERATURE',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'livestemc',   'QTY_LIVE_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
+                    'deadstemc',   'QTY_DEAD_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
+                    'TLAI',        'QTY_LEAF_AREA_INDEX',        '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+   /
+
+
+The table below provides a description for each of the columns for ``clm_variables``.
+
+.. container::
+
+   ======== ============================================================== 
+    Column  Description
+   ======== ============================================================== 
+    **1**   The CLM variable name as it appears in the CLM netCDF file.
+    **2**   The corresponding DART QUANTITY.
+    **3**   | Minimum value of the posterior.
+            | If set to 'NA' there is no minimum value.
+            | The DART diagnostic files will not reflect this value, but
+            | the file used to restart CLM will.
+    **4**   | Maximum value of the posterior.
+            | If set to 'NA' there is no maximum value.
+            | The DART diagnostic files will not reflect this value, but
+            | the file used to restart CLM will.
+    **5**   | Specifies which file should be used to obtain the variable.
+            | ``'restart'`` => clm_restart_filename
+            | ``'history'`` => clm_history_filename
+            | ``'vector'``  => clm_vector_history_filename
+    **6**   | Should ``filter`` update the variable in the specified file.
+            | ``'UPDATE'`` => the variable is updated.
+            | ``'NO_COPY_BACK'`` => the variable remains unchanged.
+   ======== ============================================================== 
+
+
+
+
+There are **important** distinctions about the ``clm_variables`` as described above. 
+**First**, any clm variable whether it is a ``restart``, ``history`` or ``vector`` file can be used
+as a forward operator to calculate the expected observation.  Also if the 6th column
+is defined as ``UPDATE``, then that variable is updated during the ``filter`` step 
+regardless of the CLM variable type. **However**, in order for the update step to have a
+permanent effect upon the evolution of the CLM model state, the update must be applied to a
+prognostic variable in CLM -- which is always the ``restart`` file.  Updates to ``restart``
+file variables alters the file thus changing the initial conditions for the next time
+step.  The CLM ``history`` and ``vector`` files, on the other hand, are diagnostic variables
+with no impact on the evolution of the model state.
+
+A **second** important distinction amongst ``clm_variables`` is that the ``restart`` file
+state variables are automatically generated after each simulation time step, thus are readily
+available to include within the DART state.  The ``history`` or ``vector`` file variables,
+must be manually generated through the ``user_nl_clm`` file within CLM.  This is generated
+within the portion of the ``CLM5_setup_assimilation`` script as follows:
+
+
+..
+   echo "hist_empty_htapes = .true."                                      >> ${fname}
+   echo "hist_fincl1 = 'NEP','H2OSOI','TSOI','EFLX_LH_TOT','TLAI'"        >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                 >> ${fname}
+   echo "hist_fincl3 = 'NEE','H2OSNO','TLAI','TWS','SOILC_vr','LEAFN'"    >> ${fname}
+   echo "hist_nhtfrq = -$stop_n,1,-$stop_n"                               >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps,1"                                     >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A','I'"                              >> ${fname}
+   echo "hist_dov2xy = .true.,.true.,.false."                             >> ${fname}
+   echo "hist_type1d_pertape = ' ',' ',' '"                               >> ${fname}
+
+The ``hist_fincl`` setting generates history files for each of the clm variables as defined
+above. The ``hist_dov2xy`` setting determines whether the history file is output
+in structured gridded format (``.true.``) or in unstructured, vector history format (``.false.``).
+Most of the history files variables in this example are provided just for illustration, however,
+the tutorial requires that the ``TLAI`` variable is output in vector history format.
   
-   to
 
-   ::
 
-       ! real precision:
-       ! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
-       ! comment OUT the r8 definition below and use the second one:
-       integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
-       ! integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! 8 byte reals
-       integer, parameter :: r8 = r4                      ! alias r8 to r4
-
-3. Copy the tutorial DART namelist from
-   ``$DART_DIR/models/wrf/tutorial/template/input.nml.template`` to
-   ``$DART_DIR/models/wrf/work/input.nml``.
-
-   ::
-
-      cd $DART_DIR/models/wrf
-      cp tutorial/template/input.nml.template work/input.nml
-
-4. Build the WRF/DART executables:
-
-   ::
-
-      cd $DART_DIR/models/wrf/work
-      ./quickbuild.csh
-
-   Many executables are built, the following executables are needed for the
-   tutorial and will be copied to the right place by the *setup.csh* script
-   in a subsequent step:
- 
-   ::
-
-      advance_time
-      fill_inflation_restart
-      filter
-      obs_diag
-      obs_seq_to_netcdf
-      obs_sequence_tool
-      pert_wrf_bc
-      wrf_dart_obs_preprocess
-
-Preparing the experiment directory.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Approximately 100Gb of space is needed to run the tutorial. Create a
-"work" directory someplace with a lot of free space. The rest of the
-instructions assume you have an environment variable called *BASE_DIR*
-that points to this directory.
-
-===== ====================================================
-shell command
-===== ====================================================
-tcsh  ``setenv BASE_DIR <path_to_your_working_directory>``
-bash  ``export BASE_DIR=<path_to_your_working_directory>``
-===== ====================================================
-
-1. The WRF boundary conditions and perturbations required to make a
-   viable ensemble are available in a 15 GB tar file. Put this file in
-   your ``$BASE_DIR``. Since this is a large file, we suggest using
-   'wget' to download the file directly to your local system:
-
-   ::
-
-       cd $BASE_DIR
-       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz
-       tar -xzvf wrf_dart_tutorial_23May2018_v3.tar.gz
-
-   After untarring the file you should see the following directories:
-   *icbc, output, perts,* and *template.* The directory names (case
-   sensitive) are important, as the scripts rely on these local paths
-   and file names.
-
-2. You will need template WRF namelists from the
-   ``$DART_DIR/models/wrf/tutorial/template`` directory:
-
-   ::
-
-       cp $DART_DIR/models/wrf/tutorial/template/namelist.input.meso   $BASE_DIR/template/.
-       cp $DART_DIR/models/wrf/tutorial/template/namelist.wps.template $BASE_DIR/template/.
-
-3. You will also need the scripting to run a WRF/DART experiment. Copy
-   the contents of ``$DART_DIR/models/wrf/shell_scripts`` to the
-   ``$BASE_DIR/scripts`` directory.
-
-   ::
-
-       mkdir $BASE_DIR/scripts
-       cp -R $DART_DIR/models/wrf/shell_scripts/* $BASE_DIR/scripts
-
-Build or locate WRF executables.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The
-`WRFDA <http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html>`__
-package is needed to generate a set of perturbed initial ensemble member
-files and also to generate perturbed boundary condition files. Since the
-tutorial provides a perturbation bank for a specific case, it is not
-required to actually *run da_wrfvar.exe* but it needs to be in the
-``WRF_RUN`` directory for the tutorial.
-
-Build (or locate an appropriate build of) WRF, WPS and WRFDA.
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-WRF and WRFDA should be built with the "dmpar" option, while WPS can be
-built "serial"ly. See the WRF/WRFDA documentation for more information
-about building these packages. 
-
-.. note::
-	
- For consistency and to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
- same compiler you use for NetCDF. Likewise MPI should use the same compiler.
- You will need the location of the WRF and WRFDA builds to customize the
- *params.csh* script in the next step.
-
-Configure ``$BASE_DIR/scripts/param.csh`` with proper paths, info, etc.
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-This is a script that sets variables which will be read by other
-WRF/DART scripts. There are some specific parameters for either the
-Cheyenne supercomputing system using the
-`PBS <https://www.pbsworks.com/>`__ queueing system or the
-(decommissioned) Yellowstone system which used the *LSF* queueing
-system. If you are not using Cheyenne, you may still want to use this
-script to set your queueing-system specific parameters.
-
-.. important::
-
-   All variables that are marked
-   ``'set this appropriately #%%%#'`` need to be set. This list is intended
-   to provide some guidance on what needs to be set, but it is not an
-   exhaustive list.
-
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- |     Script variable     |                                                                     Description                                                                     |
- +=========================+=====================================================================================================================================================+
- | module load mpt         | The Environment Modules MPI compiler to use (here the HPE MPI) compiler). Note that on Cheyenne the default compiler is Intel.                      |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | module load nco         | The nco package.                                                                                                                                    |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | module load ncl/6.6.2   | The ncl package.                                                                                                                                    |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | BASE_DIR                | The directory containing icbc, output, perts, etc.                                                                                                  |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | DART_DIR                | The DART directory.                                                                                                                                 |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | WRF_DM_SRC_DIR          | The directory of the WRF dmpar installation.                                                                                                        |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | WPS_SRC_DIR             | The directory of the WPS installation.                                                                                                              |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | VAR_SRC_DIR             | The directory of the WRFDA installation.                                                                                                            |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | GEO_FILES_DIR           | The root directory of the WPS_GEOG files. NOTE: on Cheyenne these are available in the /glade/u/home/wrfhelp/WPS_GEOG directory                     |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | GRIB_DATA_DIR           | The root directory of the GRIB data input into ungrib.exe. For this tutorial the grib files are included, so use ${ICBC_DIR}/grib_data              |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | GRIB_SRC                | The type of GRIB data (e.g. <Vtable.TYPE>) to use with ungrib.exe to copy the appropriate Vtable file. For the tutorial, the value should be 'GFS'. |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | COMPUTER_CHARGE_ACCOUNT | The project account for supercomputing charges. See your supercomputing project administrator for more information.                                 |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | EMAIL                   | The e-mail address used by the queueing system to send job summary information.                                                                     |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
-
-
-Run the *setup.csh* script to create the proper directory structure and
-move executables to proper locations.
-
-::
-
-   cd $BASE_DIR/scripts
-   ./setup.csh param.csh
-
-So far, your ``$BASE_DIR`` should contain the following directories:
-
-::
-
-   icbc
-   obs_diag
-   obsproc
-   output
-   perts
-   post
-   rundir
-   scripts
-   template
-
-Your ``$BASE_DIR/rundir`` directory should contain the following:
-
-**executables:**
-
- 
-- `advance_time <../../../assimilation_code/programs/advance_time/advance_time.html>`__,
-- `fill_inflation_restart <../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html>`__,
-- `filter <../../../assimilation_code/programs/filter/filter.html>`__,
-- `obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__,
-- `obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__,
-- `obs_sequence_tool <../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__,
-- ``pert_wrf_bc`` (no helper page),
-- `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
-
-**directories:** 
-
-- ``WRFIN`` (empty)
-- ``WRFOUT`` (empty)
-- ``WRF_RUN`` (wrf executables and support files)
-
-
-**scripts:** 
-
-- *add_bank_perts.ncl*
-- *new_advance_model.csh*
-
-**support data:** 
-
-- *sampling_error_correction_table.nc*
-
-Check to make sure your ``$BASE_DIR/rundir/WRF_RUN`` directory contains:
-
-::
-
-   da_wrfvar.exe
-   wrf.exe
-   real.exe
-   be.dat
-   contents of your WRF build run/ directory (support data files for WRF)
-
-.. note::
-
-	
-   Be aware that the *setup.csh* script is designed to remove
-   ``$BASE_DIR/rundir/WRF_RUN/namelist.input``. Subsequent scripting will
-   modify ``$BASE_DIR/template/namlist.input.meso`` to create the
-   ``namelist.input`` for the experiment.
-
-For this tutorial, we are providing you with a specified WRF domain. To
-make your own, you would need to define your own wps namelist and use
-WPS to make your own geogrid files. See the WRF site for help with
-building and running those tools as needed. You would also need to get
-the appropriate grib files to generate initial and boundary condition
-files for the full period you plan to cycle. In this tutorial we have
-provided you with geogrid files, a small set of grib files, and a
-namelist to generate series of analyses for several days covering a
-North American region.
-
-Let's now look inside the ``$BASE_DIR/scripts`` directory. You should
-find the following scripts:
-
-+-----------------------+-------------------------------------------------------------------------------------------+
-|      Script name      |                                        Description                                        |
-+=======================+===========================================================================================+
-| add_bank_perts.ncl    | Adds perturbations to each member.                                                        |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| assim_advance.csh     | Advances 1 WRF ensemble member to the next analysis time.                                 |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| assimilate.csh        | Runs filter ... i.e. the assimilation.                                                    |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| diagnostics_obs.csh   | Computes observation-space diagnostics and the model-space mean analysis increment.       |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| driver.csh            | Primary script for running the cycled analysis system.                                    |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| first_advance.csh     | Advances 1 WRF ensemble member (on the first time).                                       |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| gen_pert_bank.csh     | Saves the perturbations generated by WRFDA CV3.                                           |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh    | Generates the wrfinput and wrfbdy files.                                                  |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| init_ensemble_var.csh | Creates the perturbed initial conditions from the WRF-VAR system.                         |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| mean_increment.ncl    | Computes the mean state-space increment, which can be used for plotting.                  |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| new_advance_model.csh | advances the WRF model after running DART in a cycling context.                           |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| param.csh             | Contains most of the key settings to run the WRF/DART system.                             |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| prep_ic.csh           | Prepares the initial conditions for a single ensemble member.                             |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| real.csh              | Runs the WRF real.exe program.                                                            |
-+-----------------------+-------------------------------------------------------------------------------------------+
-| setup.csh             | Creates the proper directory structure and place executables/scripts in proper locations. |
-+-----------------------+-------------------------------------------------------------------------------------------+
-
-
-
-You will need to edit the following scripts to provide the paths to
-where you are running the experiment, to connect up files, and to set
-desired dates. Search for the string ``'set this appropriately #%%%#'``
-for locations that you need to edit.
-
-::
-
-   cd $BASE_DIR/scripts
-   grep -r 'set this appropriately #%%%#' .
-
-Other than *param.csh*, which was covered above, make the following
-changes:
-
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|      File name     |           Variable / value           |                                                                                                                    Change description                                                                                                                   |
-+====================+======================================+=========================================================================================================================================================================================================================================================+
-| driver.csh         | datefnl = 2017042712                 | Change to the final target date; here the final date is already set correctly for this tutorial.                                                                                                                                                        |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh | datefnl = 2017043000                 | This is the final date to create WRF initial/boundary conditions for. This is set to the last date that files are included in the tutorial.                                                                                                             |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh | paramfile = <full path to param.csh> | The full path to param.csh. Change this on the line after the comment. While these two files are in the same directory here, in general it is helpful to have one param.csh for each experiment.                                                        |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_pert_bank.csh  | All changes                          | As the tutorial includes a perturbation bank, you will not need to run this script for the tutorial, so you will not need to change these values. However, you should set appropriate values when you are ready to generate your own perturbation bank. |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-
-Next, move to the ``$BASE_DIR/perts`` directory. Here you will find 100
-perturbation files, called a "perturbation bank." For your own case, you
-would need to create a perturbation bank of your own. A brief
-description for running the script is available inside the comments of
-that file. However, again, for this tutorial, this step has already been
-run for you. The ``$BASE_DIR/icbc`` directory contains a *geo_em_d01.nc*
-file (geo information for our test domain), and grib files that will be
-used to generate the initial and boundary condition files. The
-``$BASE_DIR/template`` directory should contain namelists for WRF, WPS,
-and filter, along with a wrfinput file that matches what will be the
-analysis domain. Finally, the ``$BASE_DIR/output`` directory contains
-observations within each directory name. Template files will be placed
-here once created (done below), and as we get into the cycling the
-output will go in these directories.
-
-
-
-
-Step 2: Initial conditions
---------------------------
-
-To get an initial set of ensemble files, depending on the size of your
-ensemble and data available to you, you might have options to initialize
-the ensemble from, say, a global ensemble set of states. Here, we
-develop a set of flow dependent errors by starting with random
-perturbations and conducting a short forecast. We will use the WRFDA
-random CV option 3 to provide an initial set of random errors, and since
-this is already available in the perturbation bank developed in the
-setup, we can simply add these to a deterministic GFS state. Further,
-lateral boundary uncertainty will come from adding a random perturbation
-to the forecast (target) lateral boundary state, such that after the
-integration the lateral boundaries have random errors.
-
-First, we need to generate a set of GFS states and boundary conditions
-that will be used in the cycling. Use
-``$BASE_DIR/scripts/gen_retro_icbc.csh`` to create this set of files,
-which will be added to a subdirectory corresponding to the date of the
-run in the ``$BASE_DIR/output`` directory. Make sure
-*gen_retro_icbc.csh* has the appropriate path to your *param.csh*
-script. If the *param.csh* script also has the correct edits for paths
-and you have the executables placed in the rundir, etc., then running
-*gen_retro_icbc.csh* should execute a series of operations to extract
-the grib data, run metgrid, and then twice execute *real.exe* to
-generate a pair of WRF files and a boundary file for each analysis time.
-
-::
-
-   cd $BASE_DIR/scripts
-   ./gen_retro_icbc.csh
-
-
-.. note::
-
-  Ignore any ``rm: No match`` errors, as the script attempts to
-  delete output files if they already exist, and they will not for the
-  first run.
-
-Once the script completes, inside your ``$BASE_DIR/output/2017042700``
-directory you should see these files:
-
-::
-
-   wrfbdy_d01_152057_21600_mean
-   wrfinput_d01_152057_0_mean
-   wrfinput_d01_152057_21600_mean
-
-These filenames include the Gregorian dates for these files, which is
-used by the dart software for time schedules. Similar files (with
-different dates) should appear in all of the date directories between
-the *datea* and *datef* dates set in the *gen_retro_icbc.csh* script.
-All directories with later dates will also have an observation sequence
-file *obs_seq.out* that contains observations to be assimilated at that
-time.
-
-Next, we will execute the script to generate an initial ensemble of
-states for the first analysis. For this we run the script
-*init_ensemble_var.csh*, which takes two arguments: a date string and
-the location of the *param.csh* script.
-
-::
-
-   cd $BASE_DIR/scripts
-   ./init_ensemble_var.csh 2017042700 param.csh
-
-This script generates 50 small scripts and submits them to the batch
-system. It assumes a PBS batch system and the 'qsub' command for
-submitting jobs. If you have a different batch system, edit this script
-and look near the end. You will need to modify the lines staring with
-#PBS and change 'qsub' to the right command for your system. You might
-also want to modify this script to test running a single member first —
-just in case you have some debugging to do.
-
-When complete for the full ensemble, you should find 50 new files in the
-directory ``output/2017042700/PRIORS`` with names like *prior_d01.0001*,
-*prior_d01.0002*, etc... You may receive an e-mail to helpfully inform
-you when each ensemble member has finished.
-
-
-Step 3: Prepare observations [OPTIONAL]
----------------------------------------
-
-For the tutorial exercise, observation sequence files are provided to
-enable you to quickly get started running a test WRF/DART system. If you
-want to run with the example observations, you can skip to Step
-4.
-
-However, observation processing is critical to the success of running
-DART and was covered in :doc:`getting started <../../../README>`. In
-brief, to add your own observations to WRF/DART you will need to
-understand the relationship between observation definitions and
-observation sequences, observation types and observation quantities, and
-understand how observation converters extract observations from their
-native formats into the DART specific format.
-
-The observation sequence files that are provided in this tutorial come
-from NCEP BUFR observations from the GDAS system. These observations
-contain a wide array of observation types from many platforms within a
-single file.
-
-If you wanted to generate your own observation sequence files from
-PREPBUFR for an experiment with WRF/DART, you should follow the guidance
-on the
-`prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
-page to build the bufr conversion programs, get observation files for
-the dates you plan to build an analysis for, and run the codes to
-generate an observation sequence file.
-
-For completeness, we list here how you could generate these observation
-sequence files yourself. 
-
-.. important::
-
-   the following steps are **not
-   necessary** for the tutorial as the processed PREPBUFR observation
-   sequence files have already been provided for you. However, these steps
-   are provided in order to help users get started with these observations
-   quickly for their own experiments.
-
-To (again, *optionally*) reproduce the observation sequence files in the
-*output* directories, you would do the following:
-
--  Go into your DART prep_bufr observation converter directory and
-   install the PREPBUFR utilities as follows:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr
-      ./install.sh
-
-   You may need to edit the *install.sh* script to match your compiler
-   and system settings.
-
--  Go to the
-   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/``
-   directory and run *quickbuild.csh* to build the DART
-   PREPBUFR-to-intermediate-file observation processor:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
-      ./quickbuild.csh
-
--  Download the PREPBUFR observations for your desired time. Go to the
-   `NCAR/UCAR Research Data
-   Archive <https://rda.ucar.edu/datasets/ds090.0/>`__ page for the
-   NCEP/NCAR Global Reanalysis Products. Register on the site, click on
-   the "Data Access" tab, and follow either the instructions for
-   external users or NCAR internal users.
-
--  The downloaded *.tar* file will often be COS-blocked. If so, the file
-   will appear corrupted if you attempt to untar it without converting
-   the data. See the `NCAR COS-block <https://rda.ucar.edu/#!cosb>`__
-   page for more information on how to strip the COS-blocking off of
-   your downloaded file.
-
--  Untar the data in your desired directory.
-
--  In the ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the *input.nml* file. This file will control what
-   observations will be used for your experiment, so the namelist
-   options are worth investigating a bit here. For example, you could
-   use the following:
-
-   ::
-
-      &prep_bufr_nml
-         obs_window    = 1.0
-         obs_window_cw = 1.5
-         otype_use     = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0
-                         181.0, 182.0, 220.0, 221.0, 230.0, 231.0
-                         232.0, 233.0, 242.0, 243.0, 245.0, 246.0
-                         252.0, 253.0, 255.0, 280.0, 281.0, 282.0
-         qctype_use    = 0,1,2,3,15
-         /
-
-   This defines an observation time window of +/- 1.0 hours, while cloud
-   motion vectors will be used over a window of +/- 1.5 hours. This will
-   use observation types sounding temps (120), aircraft temps (130,131),
-   dropsonde temps (132), mdcars aircraft temps, marine temp (180), land
-   humidity (181), ship humidity (182), rawinsonde U,V (220), pibal U,V
-   (221), Aircraft U,V (230,231,232), cloudsat winds (242,243,245), GOES
-   water vapor (246), sat winds (252,253,255), and ship obs (280, 281,
-   282). Additionally, it will include observations with specified qc
-   types only. See the
-   `prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
-   page for more available namelist controls.
-
--  Within the
-   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the *prepbufr.csh* file and change *BUFR_dir*,
-   *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
-   format of the data you downloaded. A little trial and error might be
-   necessary to get these set correctly.
-
--  Copy over the executables from ``../exe``, and run the *prepbufr.csh*
-   script for a single day at a time:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
-      cp ../exe/\*.x .
-      ./prepbufr.csh \<year\> \<month\> \<day\>
-
--  Your PREPBUFR files have now been converted to an intermediate ASCII
-   format. There is another observation converter to take the
-   observations from this format and write them into the native DART
-   format. Edit the *input.nml* namelist file in the
-   *DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work*
-   directory. Here is a basic example:
-
-   ::
-
-      &ncepobs_nml
-         year       = 2017,
-         month      = 4,
-         day        = 27,
-         tot_days   = 3,
-         max_num    = 800000,
-         select_obs = 0,
-         ObsBase = '<path to observations>/temp_obs.',
-         daily_file = .false.,
-         lat1       = 15.0,
-         lat2       = 60.0,
-         lon1       = 270.0,
-         lon2       = 330.0
-         /
-
-   Choosing "select_obs = 0" will select all the observations in the
-   ASCII file. Set "ObsBase" to the directory you output the files from
-   during the last step. If you wish to choose specific observations
-   from the ASCII intermediate file or control other program behavior,
-   there are many namelist options documented on the
-   `create_real_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
-   page.
-
--  It is now time to build *ascii_to_obs* programs. Run the following:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
-      ./quickbuild.csh
-
--  Run the *create_real_obs* program to create the DART observation
-   sequence files:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
-      ./create_real_obs
-
--  The program *create_real_obs* will create observation sequence files
-   with one file for each six hour window. For a cycled experiment, the
-   typical approach is to put a single set of observations, associated
-   with a single analysis step, into a separate directory. For example,
-   within the ``output`` directory, we would create directories like
-   ``2017042700``, ``2017042706``, ``2017042712``, etc. for 6-hourly
-   cycling. Place the observation files in the appropriate directory to
-   match the contents in the files (e.g. *obs_seq2017042706*) and rename
-   as simply *obs_seq.out* (e.g. ``output/2017042706/obs_seq.out``).
-
--  It is helpful to also run the
-   `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
-   program, which can strip away observations not in the model domain,
-   perform superobservations of dense observations, increase observation
-   errors near the lateral boundaries, check for surface observations
-   far from the model terrain height, and other helpful pre-processing
-   steps. These collectively improve system performance and simplify
-   interpreting the observation space diagnostics. There are a number of
-   namelist options to consider, and you must provide a *wrfinput* file
-   for the program to access the analysis domain information.
-
-
-Step 4: Creating the first set of adaptive inflation files
-----------------------------------------------------------
-
-In this section we describe how to create initial adaptive inflation
-files. These will be used by DART to control how the ensemble is
-inflated during the first assimilation cycle.
-
-It is convenient to create initial inflation files before you start an
-experiment. The initial inflation files may be created with
-*fill_inflation_restart*, which was built by the *quickbuild.csh* step.
-A pair of inflation files is needed for each WRF domain.
-
-Within the ``$BASE_DIR/rundir`` directory, the *input.nml* file has some
-settings that control the behavior of *fill_inflation_restart*. Within
-this file there is the section:
-
-::
-
-   &fill_inflation_restart_nml
-      write_prior_inf = .true.
-      prior_inf_mean  = 1.00
-      prior_inf_sd    = 0.6
-
-      write_post_inf  = .false.
-      post_inf_mean   = 1.00
-      post_inf_sd     = 0.6
-
-      input_state_files = 'wrfinput_d01'
-      single_file       = .false.
-      verbose           = .false.
-      /
-
-These settings write a prior inflation file with a inflation mean of 1.0
-and a prior inflation standard deviation of 0.6. These are reasonable
-defaults to use. The *input_state_files* variable controls which file to
-use as a template. You can either modify this namelist value to point to
-one of the *wrfinput_d01_XXX* files under ``$BASE_DIR/output/<DATE>``,
-for any given date, or you can copy one of the files to this directory.
-The actual contents of the file referenced by *input_state_files* do not
-matter, as this is only used as a template for the
-*fill_inflation_restart* program to write the default inflation values.
-Note that the number of files specified by *input_state_files* must
-match the number of domains specified in *model_nml:num_domains*, i.e.
-the program needs one template for each domain. This is a
-comma-separated list of strings in single 'quotes'.
-
-After running the program, the inflation files must then be moved to the
-directory expected by the *driver.csh* script.
-
-Run the following commands with the dates for this particular tutorial:
-
-::
-
-   cd $BASE_DIR/rundir
-   cp ../output/2017042700/wrfinput_d01_152057_0_mean ./wrfinput_d01
-   ./fill_inflation_restart
-   mkdir ../output/2017042700/Inflation_input
-   mv input_priorinf_*.nc ../output/2017042700/Inflation_input/
-
-Once these files are in the right place, the scripting should take care
-of renaming the output from the previous cycle as the input for the next
-cycle.
-
-
-
-
-Step 5: Cycled analysis system
-------------------------------
-
-While the DART system provides executables to perform individual tasks
-necessary for ensemble data assimilation, for large models such as WRF
-that are run on a supercomputer queueing system, an additional layer of
-scripts is necessary to glue all of the pieces together. A set of
-scripts is provided with the tutorial tarball to provide you a starting
-point for your own WRF/DART system. You will need to edit these scripts,
-perhaps extensively, to run them within your particular computing
-environment. If you will run on NCAR's Cheyenne environment, fewer edits
-may be needed, but you should familiarize yourself with `running jobs on
-Cheyenne <https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/quick-start-cheyenne>`__
-if necessary. A single forecast/assimilation cycle of this tutorial can
-take an hour on Cheyenne - longer if debug options are enabled or the
-shared nodes are busy - shorter if more cores or a higher optimization
-level is acceptable.
-
-In this tutorial, we have previously edited the *param.csh* and other
-scripts. Throughout the WRF/DART scripts, there are many options to
-adjust cycling frequency, domains, ensemble size, etc., which are
-available when adapting this set of scripts for your own research. To
-become more famililar with this set of scripts and to eventually make
-these scripts your own, we advise commenting out all the places the
-script submits jobs while debugging, placing an 'exit' in the script at
-each job submission step. This way you will be able to understand how
-all of the pieces work together.
-
-However, for this tutorial, we will only show you how the major
-components work. The next step in our process is the main *driver.csh*
-script, which expects a starting date (YYYYMMDDHH) and the full path of
-the resource file as command line arguments. In this example (which uses
-csh/tcsh syntax), we are also capturing the run-time output into a file
-named *run.out* and the entire command will be running in the
-background:
-
-::
-
-   cd $BASE_DIR/scripts
-   ./driver.csh 2017042706 param.csh >& run.out &
-
-*driver.csh* will - check that the input files are present (wrfinput
-files, wrfbdy, observation sequence, and DART restart files), - create a
-job script to run *filter* in ``$BASE_DIR/rundir``, - monitor that
-expected output from *filter* is created, - submit jobs to advance the
-ensemble to the next analysis time, - (simultaneously with the ensemble
-advance) compute assimilation diagnostics - archive and clean up - and
-continue to cycle until the final analysis time has been reached.
-
-
-
-Step 6: Check your results
---------------------------
-
-Once you have run the analysis system, it is time to check if things ran
-well or if there are problems that need to be addressed. DART provides
-analysis system diagnostics in both state and observation space.
-
-Check to see if the analysis system actually changed the state. You
-should find a file in the *$BASE_DIR/output/* directory called
-*analysis_increment.nc* which is the change in the ensemble mean state
-from the background to the analysis after running *filter*. Use a tool,
-such as *ncview*, to look at this file. You should see spatial patterns
-that look something like the meteorology of the day. These should be
-places where the background (short ensemble forecast) was adjusted based
-on the set of observations provided. Please become familiar with the
-:doc:`Diagnostics Section <../../../guide/checking-your-assimilation>`
-of the DART Documentation.  
-
-The *driver.csh* script also ran the *diagnostics_obs.csh* which runs
-the
-`obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__
-program to investigate the observation space analysis statistics. You'll
-find the results of this in
-``$BASE_DIR/output/<DATE>/obs_diag_output.nc``. There are many Matlab
-scripts in the ``$DART_DIR/diagnostics/matlab`` directory that help
-explore the effectiveness of the assimilation. Look for their examples
-in the :doc:`Observation-Space
-Diagnostics <../../../guide/matlab-observation-space>`
-section.
-
-The additional files enable plotting the time series of recently
-assimilated observations once multiple cycles have been run. Be sure to
-check that a high percentage (> 90%) of available observations were
-assimilated. Low assimilation rates typically point to a problem with
-the background analysis, observation quality, and/or observation error
-specification which are important to address before using system results
-for science.
-
-Additional statistics can be evaluated using the converted final
-observation sequence file in netcdf format from the
-`obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__
-tool. This file has a name like *obs_epoch_029.nc*, where the number in
-the file is largest in the most recent set of observations processed.
-There are Matlab tools to explore where and why the observations were
-rejected. *plot_obs_netcdf.m* and *link_obs.m* are particularly useful.
-
-If you encounter difficulties setting up, running, or evaluating the
-system performance, please consider using the `GitHub
-Issue <https://github.com/NCAR/DART/issues>`__ facility or feel free to
-contact us at dart(at)ucar(dot)edu.
-
-Agenda from the 22 Jan 2014 tutorial
+Step 9: Set the spatial localization 
 ------------------------------------
 
--  Introduction (Anderson) - `DART Lab
-   materials <../../../guide/DART_LAB/DART_LAB.html>`__
--  WRF/DART basic building blocks (Romine)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
-   (some material is outdated)
--  Computing environment support (Collins)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_computing_environment.pdf>`__
--  WRF/DART application examples (Romine)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_application_examples.pdf>`__
-   (some material is outdated)
--  Observation processing (Collins)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_observation_processing.pdf>`__
--  DART diagnostics (Hoar) - :doc:`observation diagnostics <../../../guide/matlab-observation-space>`
+Localization is the term used to restrict the portion of the state to regions 
+related to the observation.  Step 8 is a type of localization in that it restricts
+the state update to a subset of CLM variables.  Here, we further restrict the influence
+of the observation to the state space most nearly collocated with the observation.
+The spatial localization is set through the the ``assim_tools_nml``, ``cov_cutoff_nml``
+and ``location_nml`` settings witin ``input.nml`` as: 
+
+::
+
+ # cutoff of 0.03 (radians) is about 200km
+ &assim_tools_nml
+    filter_kind                     = 1
+    cutoff                          = 0.05
+
+::
+
+ &cov_cutoff_nml
+   select_localization = 1
+   /
+
+::
+ 
+ &location_nml
+    horiz_dist_only             = .true.
 
 
-More Resources
---------------
++-----------------------------+-------------------------------------------------------------+
+| Localization namelist       | Description                                                 |
+| variable                    |                                                             |
++=============================+=============================================================+
+| ``cutoff``                  | Value (radians) of the half-width of the localization radius|
+|                             | At 2*``cutoff`` distance between observation and model state|
+|                             | the observation has no impact on state.                     |
++-----------------------------+-------------------------------------------------------------+
+| ``select_localization``     | Defines a function that determines the decreasing impact    |
+|                             | an observation has on model state.  Value of 1 is           |
+|                             | the Gaspari-Cohn function.                                  |
++-----------------------------+-------------------------------------------------------------+
+| ``horiz_dist_only``         | If ``.true.`` localization applied only horizontally.  If   |
+|                             | ``.false.`` localization also applied in vertical.          |
++-----------------------------+-------------------------------------------------------------+
 
--  `Check or Submit DART Issues <https://github.com/NCAR/DART/issues>`__
--  `DAReS website <ttp://dart.ucar.edu>`__
--  `Register for
-   DART <https://www2.cisl.ucar.edu/software/dart/download>`__
--  `Preparing
-   MATLAB <https://dart.ucar.edu/pages/Getting_Started.html#matlab>`__
-   to use with DART.
--  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
--  Need help? e-mail dart (at) ucar (dot) edu
+
+In some research applications (not this tutorial) it may also be important to
+localize in the vertical direction.  For land modeling this could be important
+for soil carbon or soil moisture variables which typically only have observations
+near the land surface, whereas the model state is distributed in layers well
+below the surface.  For vertical localization the ``horiz_dist_only`` must be set
+to ``.false.`` For more information on localization  see 
+`assim_tools_mod <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/assim_tools_mod.html>__`` 
+
+
+Step 10: Set the Inflation 
+--------------------------
+
+Generating and maintaining ensemble spread during the assimilation
+allows for the covariance to be calculated between model state variables (that we want
+to adjust) and the expected observation. The strength of the covariance determines
+the model update. For CLM-DART assimilations the ensemble spread is generated through
+a boundary condition: the atmospheric forcing as described in Step 5. However, because
+the number of ensemble members is limited and boundary condition uncertainty is only
+one source model uncertainty, the true ensemble spread is undersampled. To help
+compensate for this we employ **inflation** during the assimilation which changes
+the spread of the ensemble without changing the ensemble mean. The **inflation** 
+algorithm computes the ensemble mean and standard deviation for each variable in
+the state vector in turn, and then moves the member’s values away from the mean 
+in such a way that the mean remains unchanged.  
+
+Although **inflation** was originally designed to account for ensemble sampling errors,
+it has also been demonstrated to help address systemic errors between models and
+observations as well. More information on inflation can be found 
+`here <https://docs.dart.ucar.edu/en/latest/guide/inflation.html>__`.    
+
+In this tutorial we implement a time and space varying inflation (inflation flavor
+5: enhanced spatial-varying; inverse gamma) such that the inflation becomes an 
+added state property which is updated during each assimilation
+step similar to CLM state variables.  The inflation state properties include 
+both a mean and standard deviation. The mean value determines how much added spread
+is added across the ensemble (spread is generated when mean > 1).  The standard deviation
+defines the certainty of the mean inflation value, thus a small value 
+indicates high certainty and slow evolution of the mean with time. Conversely a high
+standard deviation indicates low certainty and faster evolution of the inflation mean with time.   
+
+Modify the inflation settings within ``input.nml`` for the ``&filter_nml`` and
+the ``&fill_inflation_restart_nml`` as follows:
+
+
+.. Note::
+   The ``&filter_nml`` has two columns, where column 1 is for prior inflation
+   and column 2 is for posterior inflation. We only use prior inflation for
+   this tutorial, thus inf_flavor=0 (no inflation) for column 2. 
+
+
+::
+
+ &filter_nml
+  
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .true.,                 .false.
+   inf_sd_initial_from_restart = .true.,                 .false.
+   inf_deterministic           = .true.,                  .true.
+   inf_initial                 = 1.0,                     1.0
+   inf_lower_bound             = 0.0,                     1.0
+   inf_upper_bound             = 20.0,                   20.0
+   inf_damping                 = 0.9,                     0.9
+   inf_sd_initial              = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
+
+
+::
+
+ &fill_inflation_restart_nml
+    write_prior_inf   = .true.
+    prior_inf_mean    = 1.00
+    prior_inf_sd      = 0.6
+
+ 
++--------------------------------+---------------------------------------------------------------+
+| Inflation namelist             | Description                                                   |
+| variable                       |                                                               |
++================================+===============================================================+
+| ``inf_flavor``                 | Inflation flavor [prior, posterior]                           |
+|                                | 0: No inflation (Prior and/or Posterior) and all other        |
+|                                |    inflation variables are ignored                            |
+|                                | 2: Spatially-varying state space inflation (gaussian)         |
+|                                | 3: Spatially-uniform state space inflation (gaussian)         |
+|                                | 4: Relaxation To Prior Spread (Posterior inflation only)      |     
+|                                | 5: Enhanced Spatially-varying state space inflation           | 
+|                                |    (inverse gamma)                                            |             
++--------------------------------+---------------------------------------------------------------+
+| ``inf_initial_from_restart``   | If ``.true.`` will read inflation settings from file named    |
+|                                | ``input_{prior,post}inf_mean.nc``. If ``.false.`` will take   |
+|                                | inflation settings from ``&filter_nml``.                      |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_sd_initial_from_restart``| If ``.true.`` will read inflation settings from file named    |
+|                                | ``input_{prior,post}inf_sd.nc``. If ``.false.`` will take     |
+|                                | inflation settings from ``&filter_nml``.                      | 
++--------------------------------+---------------------------------------------------------------+
+| ``inf_deterministic``          | If ``.true.`` inflation is determinstic, if ``.false.``       |
+|                                | inflation is stochastic                                       |
++--------------------------------+---------------------------------------------------------------+                           
+| ``inf_initial``                | Initial value of inflation if not read from restart file      |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_lower_bound``            | Lower bound of inflation mean value                           |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_upper_bound``            | Upper bound of inflation mean value                           |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_damping``                | Damping factor for inflation mean values. The difference      |  
+|                                | between the current inflation value and 1.0 is multiplied by  |
+|                                | this factor and added to 1.0 to provide the next inflation    |
+|                                | mean. An ``inf_damping = 0`` turns inflation off, and         |
+|                                | ``inf_damping =1`` turns damping off.                         |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_sd_initial``             | Initial value of inflation standard deviation if not read     |
+|                                | from restart file. If ≤ 0, do not update the inflation        |
+|                                | values, so they are time-constant. If positive, the           |
+|                                | inflation values will adapt through time.                     |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_sd_lower_bound``         | Lower bound for inflation standard deviation. If using a      |  
+|                                | negative value for inf_sd_initial this should also be         |
+|                                | negative to preserve the setting.                             |
++--------------------------------+---------------------------------------------------------------+
+| ``inf_sd_max_change``          | For ``inf_flavor 5`` (enhanced inflation), controls the       |
+|                                | maximum change of the inflation standard deviation when       | 
+|                                | adapting for the next assimilation cycle. The value should    | 
+|                                | be between 1.0 and 2.0. 1.0 prevents any changes, while 2.0   |
+|                                | allows 100% change. For the enhanced inflation option, if     | 
+|                                | the standard deviation initial value is equal to the          |
+|                                | standard deviation lower bound, the standard deviation will   |
+|                                | not adapt in time.                                            |
+|                                |                                                               |
++--------------------------------+---------------------------------------------------------------+
+| ``write_prior_inf``            | Setting this to ``.TRUE.`` enables ``fill_inflation_restart`` |
+|                                | and writes a spatially uniform  prior inflation mean and      | 
+|                                | standard deviation files:``input_priorinf_mean.nc``           |
+|                                | ``input_priorinf_sd.nc`` for the first time-step only.        |
++--------------------------------+---------------------------------------------------------------+
+| ``prior_inf_mean``             | Initial value of prior inflation mean when                    |
+|                                | ``write_prior_inf = .TRUE.``                                  |
++--------------------------------+---------------------------------------------------------------+
+| ``prior_inf_sd``               | Initial value of prior inflation standard deviation when      |
+|                                | ``write_prior_inf = .TRUE.``                                  |
++--------------------------------+---------------------------------------------------------------+               
+
+
+
+
+
+Step 11: Complete the Assimilation Setup
+---------------------------------------- 
+
+A few setup steps remain before the assimilation case can be executed.  First, the complete
+list of DART executables must be generated.  At this point you should have already customized
+your ``mkmf_template`` and tested your local build environment in Step 4.  Here compile
+the rest of the required DART scripts to perform the assimilation as follows:
+
+ > cd ~/DART/models/clm/work/
+ > ./quickbuild.csh -mpi
+
+After completion the following DART executables should be available within your ``work``
+folder.
+
+..
+  preprocess
+  advance_time
+  clm_to_dart
+  create_fixed_network_seq
+  create_obs_sequence
+  dart_to_clm
+  fill_inflation_restart
+  obs_diag
+  obs_seq_to_netcdf
+  obs_sequence_tool
+  filter
+  perfect_model_obs
+  model_mod_check
+
+Next modify the ``DART_params.csh`` settings such that the directories match
+your personal environment.  
+
+Modify the ``cesmtag`` and ``CASE`` variable:
+
+::
+ 
+ setenv cesmtag        <``cesm_DART`` or your cesm installationfolder>
+ setenv resolution     f09_f09_mg17
+ setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
+ setenv num_instances  5
+
+  ..
+  ..
+
+ if (${num_instances} == 1) then
+   setenv CASE clm5_f09_pmo_SIF
+ else
+   setenv CASE <your tutorial case name>
+ endif
+
+
+Modify the ``SourceModDir`` to match the directory that you set
+in Step 1:
+
+::
+
+ setenv use_SourceMods TRUE
+ setenv SourceModDir   <your SourceMods directory>
+
+
+Confirm the variables are set to match your personal
+environment, especially ``cesmroot``, ``caseroot``, ``cime_output_root``,
+``dartroot`` and ``project``. 
+
+::
+
+ setenv cesmdata         /glade/p/cesmdata/cseg/inputdata
+ setenv cesmroot         /glade/work/${USER}/CESM/${cesmtag}
+ setenv caseroot         /glade/work/${USER}/cases/${cesmtag}/${CASE}
+ setenv cime_output_root /glade/scratch/${USER}/${cesmtag}/${CASE}
+ setenv rundir           ${cime_output_root}/run
+ setenv exeroot          ${cime_output_root}/bld
+ setenv archdir          ${cime_output_root}/archive
+ ..
+ ..
+ setenv dartroot         /glade/work/${USER}/git/DART_public
+ setenv baseobsdir       /glade/p/cisl/dares/Observations/land
+ ..
+ ..
+ setenv project      <insert project number>
+ setenv machine      cheyenne
+
+
+
+
+Step 12: Execute the Assimilation Run
+-------------------------------------
+
+Set up the assimilation case by executing ``CLM5_setup_assimilation``
+
+::
+
+ > cd ~/DART/models/clm/shell_scripts/cesm2_2/
+ > ./CLM5_setup_assimilation
+
+.. Caution::
+
+ Once the setup is complete the script will provide steps
+ (1-8) displaying 'Check the case'. These steps are good for general reference,
+ however, **for the tutorial ignore these steps and continue to follow the instructions
+ below.**  
+
+After the case is created, by default, it is set up as a 'free' or 'open-loop'
+run.  This means if the case is submitted as is, it will perform a normal CLM 
+simulation without using any DART assimilation.  In order to enable DART
+do the following:
+
+::
+
+ > cd <caseroot>
+ > ./CESM_DART_config
+
+.. Caution::
+
+ After the script is executed and DART is enabled 'Check the DART configuration:'
+ will be displayed followed by suggested steps (1-5). As before these steps are good for
+ general reference, however, **for the tutorial ignore these steps and continue to follow
+ the instructions below.** 
+
+Now that DART is enabled, confirm, and if necessary, modify the run-time
+settings to perform daily assimilations for 5 total days. Use the
+scripts ``xmlquery`` to view the current settings (e.g. ``./xmlquery STOP_OPTION``)
+and ``xmlchange`` to change the current settings (e.g. ``./xmlchange STOP_OPTION=nhours``).
+Make sure the run-time settings are as follows:
+
+::
+ 
+ DATA_ASSIMILATION_LND=TRUE
+ DATA_ASSIMILATION_SCRIPT= ~/assimilate.csh
+ STOP_OPTION=nhours
+ STOP_N=24
+ DATA_ASSIMILATION_CYCLES=5
+ RESUBMIT=0
+ CONTINUE_RUN=FALSE
+
++-----------------------------+-------------------------------------------------------------+
+| Run Time Assimilation Case  | Description                                                 |
+| Settings                    |                                                             |
++=============================+=============================================================+
+| ``DATA_ASSIMILATION_LND``   | If ``.TRUE.`` data assimilation is enabled.  If ``.FALSE.`` |
+|                             | no data assimilation is performed, and simulation is        |
+|                             | performed as normal CLM run.                                |
++-----------------------------+-------------------------------------------------------------+
+| ``DATA_ASSIMILATION_SCRIPT``| Location of script (assimilate.csh) that performs the       |
+|                             | assimilation.  Controls execution of DART scripts and passes|
+|                             | files between DART and CLM code.                            |
++-----------------------------+-------------------------------------------------------------+
+| ``STOP_OPTION``             | Unit of time that controls duration of each assimilation    |
+|                             | cycle (see ``STOP_N``)                                      |
++-----------------------------+-------------------------------------------------------------+
+| ``STOP_N``                  | Duration of each assimilation cycle in units of time        |
+|                             | defined by ``STOP_OPTION``                                  |
++-----------------------------+-------------------------------------------------------------+
+| ``DATA_ASSIMILATION_CYCLES``| The number of assimilation cycles performed for a single    |
+|                             | job submission                                              |
++-----------------------------+-------------------------------------------------------------+
+| ``RESUBMIT``                | The number of times each job submission is repeated as      |
+|                             | defined by ``STOP_OPTION``, ``STOP_N``, and                 |
+|                             | ``DATA_ASSIMILATION_CYCLES``                                |
++-----------------------------+-------------------------------------------------------------+
+| ``CONTINUE_RUN``            | If ``.FALSE.`` this is the startup of the assimilation run  |
+|                             | beginning from the ``refcase``.  If ``.TRUE.`` this is a    |
+|                             | continuation of a previous assimilation run.                |
++-----------------------------+-------------------------------------------------------------+ 
+
+ 
+Before submission review your ``input.nml`` within your case folder to confirm
+the settings reflect those from previous steps of the tutorial.  Next submit
+the assimilation run:
+
+::
+
+ > cd <caseroot directory>
+ > ./case.submit
+
+Check the status of the job on Cheyenne using PBS command to determine if job
+is queued (Q), running (R) or completed.
+
+::
+
+ > qstat -u <your username>
+
+
+
+
+Step 13: Diagnose the Assimilation Run
+--------------------------------------
+
+
+
+
+
+
