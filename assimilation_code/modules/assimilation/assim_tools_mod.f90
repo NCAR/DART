@@ -551,7 +551,7 @@ call init_state_QCEF(ens_size, my_num_obs, my_num_state, &
    my_state_kind, all_my_orig_obs_priors, prior_state_ens, prior_state_mass, prior_state_sorted_quantiles, &
    prior_state_index_sort, piece_const_state_like, my_state_QCEF_kind, my_state_QCEF_ptr, num_QCEF_state_vars)
 call init_state_QCEF(ens_size, my_num_obs, my_num_obs, &
-   obs_ens_handle%copies(1:ens_size, 1:my_num_obs), obs_ens_handle%copies(1:ens_size, 1:my_num_state), &
+   obs_ens_handle%copies(1:ens_size, 1:my_num_obs), obs_ens_handle%copies(1:ens_size, 1:my_num_obs), &
    my_obs_kind, all_my_orig_obs_priors, prior_obs_ens, prior_obs_mass, prior_obs_sorted_quantiles, &
    prior_obs_index_sort, piece_const_obs_like, my_obs_QCEF_kind, my_obs_QCEF_ptr, num_QCEF_obs_vars)
 
@@ -643,21 +643,23 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Only value of 0 for DART QC field should be assimilated
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
 
-! LJI: Do a QCEF update of this observation prior
+! Do a QCEF update of this observation prior
 ! Finalize state QCEF estimate and do marginal adjustment to get final posterior
 ! Need to determine exactly what conditions need to be satisfied to require this
 ! Only doing the finalize for a single observation variable, the one now being assimilated
 !!!if(num_QCEF_state_vars > 0 .and. an_ob_was_assimilated) &
 !!! BEGIN BY ASSUMING THAT ALL OBS VARIABLES ARE QCEF TO AVOID INDEXING ISSUES
 !!! For now, do this if QCEF has been selected in namelist
-   if(state_QCEF_kind > 9999 .and. owners_index > 1) &
-   call finalize_ma_state(ens_size, 1, prior_obs_ens(:, owners_index:owners_index), &
-      prior_obs_index_sort(:, owners_index:owners_index), &
-      prior_obs_mass(:, owners_index:owners_index), piece_const_obs_like(:, owners_index:owners_index), &
-      prior_obs_sorted_quantiles(:, owners_index:owners_index), &
-      obs_ens_handle%copies(1:ens_size, owners_index:owners_index), &
-      obs_ens_handle%copies(1:ens_size, owners_index:owners_index), &
-      my_obs_kind(owners_index), 1, my_obs_QCEF_kind(owners_index:owners_index))
+! Could also avoid doing this if another observation has not been close to this one (piece_const_like = 1.0)
+         if(state_QCEF_kind > 0 .and. owners_index > 1) then
+            call finalize_ma_state(ens_size, 1, prior_obs_ens(:, owners_index:owners_index), &
+               prior_obs_index_sort(:, owners_index:owners_index), &
+               prior_obs_mass(:, owners_index:owners_index), piece_const_obs_like(:, owners_index:owners_index), &
+               prior_obs_sorted_quantiles(:, owners_index:owners_index), &
+               obs_ens_handle%copies(1:ens_size, owners_index:owners_index), &
+               obs_ens_handle%copies(1:ens_size, owners_index:owners_index), &
+               my_obs_kind(owners_index), 1, my_obs_QCEF_kind(owners_index:owners_index))
+         endif
 
 
 
@@ -669,7 +671,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_VAR_END, owners_index)
         
          ! Also need the original obs prior ensemble for multi-obs state QCEF
-         if(num_QCEF_state_vars > 0) orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
+         if(num_QCEF_state_vars > 0 .or. num_QCEF_obs_vars > 0) orig_obs_prior = all_my_orig_obs_priors(:, owners_index)
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -1738,6 +1740,9 @@ integer  :: post_bin, j, k
 ! For debugging
 real(r8) :: sorted_prior_ens(ens_size)
 
+! For quantile damping test
+real(r8) :: dq, quantile_damping
+
 ! Only need the sorted prior for ease of doing some error checking
 sorted_prior_ens = prior_ens(prior_index_sort)
 
@@ -1750,6 +1755,11 @@ prior_sd = sqrt(prior_var)
 post_mass = prior_mass * piece_const_like
 ! Normalize the total posterior mass
 total_post_mass = sum(post_mass)
+! Need an error check for this being too small
+if(total_post_mass <= 0.0_r8) then
+   msgstring = 'post_mass is <= 0'
+   call error_handler(E_ERR, 'state_post_normal', msgstring, source)
+endif
 post_mass = post_mass / total_post_mass
 
 ! This is the weight term for each posterior bin
@@ -1771,6 +1781,11 @@ post_cdf(ens_size + 1) = 1.0_r8
 do j = 1, ens_size
    q = prior_sorted_quantiles(j)
 
+   ! Damp the quantile right here
+   quantile_damping = 0.1_r8
+   dq = j / (ens_size + 1.0_r8)
+   q = q + quantile_damping * (dq - q)
+
    post_bin = -1
    do k = 1, ens_size + 1
       if(q <= post_cdf(k)) then
@@ -1783,13 +1798,19 @@ do j = 1, ens_size
    if(post_bin > 1 .and. post_bin <= ens_size + 1) then
       ! This is how much additional weighted CDF is needed
       wt_q_deficit = q - post_cdf(post_bin-1)
-      ! This is how much unweighted extra CDF is needed
+      !This is how much unweighted extra CDF is needed
       q_deficit = wt_q_deficit / post_weight(post_bin)
       target_q = prior_sorted_quantiles(post_bin - 1) + q_deficit
-
+   
       ! Still need to understand more appropriate bounds for this: should be precision dependent
-      if(target_q >= 1.0_r8) target_q = 0.99999999_r8
-      if(target_q <= 0.0_r8) target_q = 0.00000001_r8
+      if(target_q >= 1.0_r8) then 
+         write(*, *) 'target_q greater than 1 ', target_q
+         target_q = 0.99999999_r8
+      endif
+      if(target_q <= 0.0_r8) then
+         write(*, *) 'target_q less than 0 ', target_q
+         target_q = 0.00000001_r8
+      endif
       call weighted_norm_inv(1.0_r8, prior_mean, prior_sd, target_q, sorted_post_ens(j))
 
    elseif(post_bin == 1) then
@@ -2369,38 +2390,43 @@ real(r8) :: bound(2)
 ! Could be done more efficiently with an inverse pointer structure rather than looping through all
 QCEF_ind = 0
 do i = 1, num_state
+   ! Also don't need to do it if the piecewise constant likelihood has not changed (no obs impact)
    if(my_state_QCEF_kind(i) > 0) then
       QCEF_ind = QCEF_ind + 1
-      ! First get the update posterior with the likelihood
-      if(state_QCEF_kind == 1) then
-         call state_post_normal(prior_state_ens(:, QCEF_ind), prior_state_index_sort(:, QCEF_ind), &
-            prior_state_mass(:, QCEF_ind), piece_const_state_like(:, QCEF_ind), &
-            prior_state_sorted_quantiles(:, QCEF_ind), ens_size, temp_post)
-      elseif(state_QCEF_kind == 2) then
-         ! Hard to say where to put the info about bounds with current infrastrucutre.
-         ! Hard code here for now
-         ! Bounded normal RHF with hard-coded bounds specified here
-         is_bounded = .false.
-         bound = (/-99.0_r8, -99.0_r8/)
-         ! Hard-coded horrible code for testing tracer model; 
-         ! Tracer source and concentration, 
-         !!!if(state_kind(i) > 0) then
-            !!!is_bounded(1) = .true.
-            !!!bound(1) = 0.0_r8 
-         !!!endif
-         call state_post_bounded_norm_rhf(prior_state_ens(:, QCEF_ind), prior_state_index_sort(:, QCEF_ind), &
-            piece_const_state_like(:, QCEF_ind), ens_size, temp_post, is_bounded, bound)
-      endif
 
-      ! Do the marginal adjustment steps for the state posterior
-      ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
-      call index_insertion_sort(regression_post(:, i),  regression_post_ind_sort, ens_size, .true.)
+      ! Nothing to do if the likelihood has not changed from its initialized value of all 1's
+      if(piece_const_state_like(1, QCEF_ind) /= 1.0_r8) then
+         ! First get the update posterior with the likelihood
+         if(state_QCEF_kind == 1) then
+            call state_post_normal(prior_state_ens(:, QCEF_ind), prior_state_index_sort(:, QCEF_ind), &
+               prior_state_mass(:, QCEF_ind), piece_const_state_like(:, QCEF_ind), &
+               prior_state_sorted_quantiles(:, QCEF_ind), ens_size, temp_post)
+         elseif(state_QCEF_kind == 2) then
+            ! Hard to say where to put the info about bounds with current infrastrucutre.
+            ! Hard code here for now
+            ! Bounded normal RHF with hard-coded bounds specified here
+            is_bounded = .false.
+            bound = (/-99.0_r8, -99.0_r8/)
+            ! Hard-coded horrible code for testing tracer model; 
+            ! Tracer source and concentration, 
+            !!!if(state_kind(i) > 0) then
+               !!!is_bounded(1) = .true.
+               !!!bound(1) = 0.0_r8 
+            !!!endif
+            call state_post_bounded_norm_rhf(prior_state_ens(:, QCEF_ind), prior_state_index_sort(:, QCEF_ind), &
+               piece_const_state_like(:, QCEF_ind), ens_size, temp_post, is_bounded, bound)
+         endif
    
-      ! Put in the state space update with the corresponding ranks
-      do j = 1, ens_size
-         ! Post is not already sorted, but maybe for the state space stuff should only work in sorted?
-         post(regression_post_ind_sort(j), i) = temp_post(prior_state_index_sort(j, QCEF_ind))
-      end do 
+         ! Do the marginal adjustment steps for the state posterior
+         ! Get sorting indices for the standard posterior ensemble; Look to do efficient sorting
+         call index_insertion_sort(regression_post(:, i),  regression_post_ind_sort, ens_size, .true.)
+      
+         ! Put in the state space update with the corresponding ranks
+         do j = 1, ens_size
+            ! Post is not already sorted, but maybe for the state space stuff should only work in sorted?
+            post(regression_post_ind_sort(j), i) = temp_post(prior_state_index_sort(j, QCEF_ind))
+         end do 
+      endif
    endif
 end do 
 
