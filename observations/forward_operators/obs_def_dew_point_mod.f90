@@ -209,15 +209,6 @@ where (istatus == 0 ) ! To avoid possible FPE with missing_r8
    log_term = log(e_mb / 6.112_r8)
    td = t_kelvin + 243.5_r8 * log_term / (17.67_r8 - log_term)
 
-   !print *,'********************************'
-   !print *,'e_mb = ',e_mb(1)
-   !print *,'p_mb = ',p_mb(1)
-   !print *,'qv =',qv(1)
-   !print *,'td = ',td(1)
-   !print *,'t_kelvin = ',t_kelvin
-   !print *,'***********' 
-
-
 elsewhere
    td = missing_r8
 end where

@@ -193,7 +193,9 @@ integer :: nz               = 10
 !--- JDL: Additional Items for Vertical Localization
 !------------------------------------------------------------------------
 ! Namelist with default values
-!--- horiz_dist_only is currently ignored (JDL)
+!
+! horiz_dist_only is currently ignored (JDL)
+!
 ! horiz_dist_only == .true.            -> Only the great circle horizontal distance is
 !                                         computed in get_dist.
 ! horiz_dist_only == .false.           -> Square root of sum of squared horizontal and
@@ -694,10 +696,8 @@ if (allocated(per_type_vert_norm)) then
       call error_handler(E_MSG, 'get_dist', msgstring, source)
    endif 
    vert_normal = separation(IZ)/per_type_vert_norm(VERTISHEIGHT, type1)
-   !print*,'JDL per_type non-periodic = ',per_type_vert_norm(VERTISHEIGHT, type1)
 else
    vert_normal = separation(IZ)/vert_normalization(VERTISHEIGHT)
-   !print*,'JDL standard norm non-periodic = ',vert_normalization(VERTISHEIGHT)
 
 endif
 !--- JDL End Addition for Vertical Normalization
@@ -733,10 +733,8 @@ if (allocated(per_type_vert_norm)) then
       call error_handler(E_MSG, 'get_dist', msgstring, source)
    endif 
    vert_normal = separation(IZ) / per_type_vert_norm(VERTISHEIGHT, type1)
-   !print*,'JDL per_type = ',per_type_vert_norm(VERTISHEIGHT, type1)
 else
    vert_normal = separation(IZ) / vert_normalization(VERTISHEIGHT)
-   !print*,'JDL standard norm = ',vert_normalization(VERTISHEIGHT)
 endif
 !--- JDL End Addition for Vertical Normalization
 
@@ -1691,7 +1689,7 @@ if (end_z > nz) end_z = nz
 !write(0,*)  'z: ', start_z, end_z
 ! JDL WARNING STATEMENT IN CASE YOU HAPPEN TO CALL GET_DIST() FROM THIS SUBROUTINE
 ! YOU SHOULDN'T BE USING THIS SUBROUTINE
-print*,'JDL IF YOUR HERE MAKE SURE TO WORK ON FIND_NEAREST SUBROUTINE'
+print*,'WARNING - IF YOUR HERE MAKE SURE TO WORK ON FIND_NEAREST SUBROUTINE'
 
 ! Next, loop through each box that is close to this box
 do i = start_x, end_x
