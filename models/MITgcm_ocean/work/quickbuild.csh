@@ -29,11 +29,7 @@ set MPI_TARGETS = "filter perfect_model_obs model_mod_check"
 set with_mpi = 1
 
 #----------------------------------------------------------------------
-# shouldn't have to modify this script below here unless you have
-# different compilation/runtime environments for serial vs parallel codes.
-# For example, serial programs may be run on login (or head) nodes,
-# while parallel codes are run on compute nodes. Look for the 'module swap'
-# commands below.
+# shouldn't have to modify this script below here.
 
 if ( $#argv >= 1 ) then
    if ( "$1" == "-mpi" ) then
@@ -62,9 +58,6 @@ endif
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
-
-# module swap PrgEnv-cray PrgEnv-intel
-# module load cray-netcdf
 
 @ n = 0
 
