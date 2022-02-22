@@ -877,7 +877,6 @@ if (nlevs == nk) then
       Q12(level) = zhalf(x_ind(1), y_ind(2), level)
       Q21(level) = zhalf(x_ind(2), y_ind(1), level)
       Q22(level) = zhalf(x_ind(2), y_ind(2), level)
-
    enddo
 
 else ! on z half levels
@@ -895,6 +894,20 @@ endif
 Z(:) = bilinear_interpolation(nlevs, obs_loc_array(1), obs_loc_array(2), &
                               x_val(1), x_val(2), y_val(1), y_val(2), Q11, Q12, Q21, Q22)
 
+do level = 1, nlevs
+  if (isnan(Z(level))) then
+    print*,'JDL x_val(1)',x_val(1)
+    print*,'JDL x_val(2)',x_val(2)
+    print*,'JDL y_val(1)',y_val(1)
+    print*,'JDL y_val(2)',y_val(2)
+    print*,'JDL OBS ARRAY(1)',obs_loc_array(1)
+    print*,'JDL OBS ARRAY(2)',obs_loc_array(2)
+    print*,'JDL Q11',Q11(level)
+    print*,'JDL Q12',Q12(level)
+    print*,'JDL Q21',Q21(level)
+    print*,'JDL Q22',Q22(level)
+  endif
+enddo
 ! Find out which level the point is in:
 call get_enclosing_coord(obs_loc_array(3), Z, z_ind, z_val)
 
@@ -1074,6 +1087,24 @@ enddo
 Z(:) = bilinear_interpolation(nlevs, obs_loc_array(1), obs_loc_array(2), &
                               x_val(1), x_val(2), y_val(1), y_val(2), Q11, Q12, Q21, Q22)
 
+
+!do level = 1, nlevs
+xloop: do level = 1, nlevs
+  if (isnan(Z(level))) then
+    print*,'JDL x_val(1)',x_val(1)
+    print*,'JDL x_val(2)',x_val(2)
+    print*,'JDL y_val(1)',y_val(1)
+    print*,'JDL y_val(2)',y_val(2)
+    print*,'JDL OBS ARRAY(1)',obs_loc_array(1)
+    print*,'JDL OBS ARRAY(2)',obs_loc_array(2)
+    print*,'JDL Q11',Q11(level)
+    print*,'JDL Q12',Q12(level)
+    print*,'JDL Q21',Q21(level)
+    print*,'JDL Q22',Q22(level)
+    print*,'**********'
+    exit
+  endif
+enddo xloop
 
 ! Find out which level the point is in:
 call get_enclosing_coord(obs_loc_array(3), Z, z_ind, z_val)
@@ -1542,6 +1573,18 @@ xloop: do i = 2, size(xcoords)
 enddo xloop
 
 if (ind(1) == -999) then
+
+  print*,'JDL X = ',x
+  print*,'JDL COORD SIZE =',size(xcoords)
+  print*,'JDL LOC(4) = ',xcoords(4)
+  !do i = 2, size(xcoords)
+  !   if(isnan(xcoords(i))) THEN 
+  !      print*,'JDL THIS IS A NAN'
+  !   endif
+
+  !   print*,'JDL coord = ',xcoords(i)
+  !enddo
+ 
   call error_handler(E_ERR, 'get_enclosing_coord', 'off the grid, unexpected 3', &
                      source, revision, revdate)
 endif

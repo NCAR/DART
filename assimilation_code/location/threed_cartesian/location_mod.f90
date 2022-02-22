@@ -8,7 +8,7 @@ module location_mod
 ! Has interfaces to convert spherical lat/lon coords in degrees,
 ! plus a radius, into cartesian coords.
 
-use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
+use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD, OBSTYPELENGTH
 use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            E_MSG, open_file, close_file, set_output,       &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
@@ -44,6 +44,11 @@ character(len = 129), parameter :: LocationLName = &
                                    "threed cartesian locations: x, y, z"
 character(len = 129), parameter :: LocationStorageOrder = "X Y Z"
 character(len = 129), parameter :: LocationUnits = "none none none"
+
+! The possible numeric values for the location_type%which_vert component.
+! The numeric values are PRIVATE to this module. The parameter names are PUBLIC.
+integer, parameter :: VERTISHEIGHT      =  1  ! by height (in meters)
+!--- Can eventually add other heights if necesary (JDL) 
 
 type location_type
    private
@@ -84,21 +89,56 @@ end type box_type
 
 
 
+
+! Support more than a single cutoff distance.  nt is the count of
+! distinct cutoffs, which are selected per specific observation type.
+! The map associates the incoming location type with the
+! corresponding gtt index.  There are only as many close_types
+! as there are distinct cutoff distances; if more than one specific
+! type has the same cutoff distances they share the type.
 type get_close_type
    private
    integer                     :: nt                      ! The number of distinct cutoffs
-   !real(r8),allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
    integer, allocatable        :: type_to_cutoff_map(:)   ! mapping of types to index
    type(box_type),allocatable  :: box(:)                  ! Array of box types 
 end type get_close_type
 
 
+! Some calls include information about the type or kind of the location.
+! If the location refers to an observation it is possible to have both
+! a specific type and a generic kind.  If the location refers to a
+! state vector item, it only has a generic kind.  Some routines have
+! a specific type and a generic kind as arguments; look carefully at
+! the argument names before using. - Message stollen from 3d_Sphere
+ 
 type(random_seq_type) :: ran_seq
 logical               :: ran_seq_init = .false.
 logical, save         :: module_initialized = .false.
 
 character(len = 512) :: errstring
 character(len = 512) :: msgstring, msgstring1, msgstring2
+
+! JDL NEW
+! Horizontal localization/cutoff values are passed in by the caller.
+! The Vertical normalization values are globals; are specified by namelist
+! here, and apply to all specific types unless a 'special list' is also specified
+! that overrides the default values.
+
+logical :: has_special_vertical_norms = .false.
+integer :: num_special_vert_norms = 0
+integer :: location_vertical_localization_coord = 0
+
+! JDL NEW
+! Global storage for vertical distance normalization factors
+! The 4 below is for the 4 vertical units (pressure, level, height,
+! scale height).  undefined and surface don't need vert distances.
+! NOTE: Code that uses VERT_TYPE_COUNT depends on pressure, level,
+! height, and scale height having actual values between 1 and 4, or
+! this code will break.
+integer, parameter    :: VERT_TYPE_COUNT = 1 ! JDL JUST WORKING ON HEIGHT
+real(r8)              :: vert_normalization(VERT_TYPE_COUNT)
+real(r8), allocatable :: per_type_vert_norm(:,:)  ! if doing per-type
+
 
 ! for sanity when i'm using arrays of length(3):
 integer, parameter :: IX = 1
@@ -149,12 +189,36 @@ integer :: nx               = 10   ! box counts in each dimension
 integer :: ny               = 10
 integer :: nz               = 10
 
+
+!--- JDL: Additional Items for Vertical Localization
+!------------------------------------------------------------------------
+! Namelist with default values
+!--- horiz_dist_only is currently ignored (JDL)
+! horiz_dist_only == .true.            -> Only the great circle horizontal distance is
+!                                         computed in get_dist.
+! horiz_dist_only == .false.           -> Square root of sum of squared horizontal and
+!                                         normalized vertical dist computed in get_dist
+! vert_normalization_height            -> Number meters that give a distance equivalent
+!                                         to one radian in horizontal
+! special_vert_normalization_obs_types -> Which obs types to modify the default vert
+!                                         normalization values
+! special_vert_normalization_pressure  -> must give all 4 values for each type listed
+
+!logical  :: horiz_dist_only                 = .true. ! JDL While DEFAULT - You'll want false
+real(r8) :: vert_normalization_height       = 10000.0_r8
+integer, parameter :: MAX_ITEMS = 500
+character(len=OBSTYPELENGTH) :: special_vert_normalization_obs_types(MAX_ITEMS)
+real(r8) :: special_vert_normalization_heights(MAX_ITEMS)
+
 namelist /location_nml/ &
-   compare_to_correct, output_box_info, print_box_level, &
+   compare_to_correct, output_box_info, print_box_level,    &
    x_is_periodic, min_x_for_periodic, max_x_for_periodic,   &
    y_is_periodic, min_y_for_periodic, max_y_for_periodic,   &
    z_is_periodic, min_z_for_periodic, max_z_for_periodic,   &
-   nx, ny, nz, debug
+   !nx, ny, nz, horiz_dist_only, vert_normalization_height,  &
+   nx, ny, nz, vert_normalization_height,                   &
+   special_vert_normalization_obs_types,                    &
+   special_vert_normalization_heights, debug
 
 
 !> @todo:
@@ -206,11 +270,15 @@ subroutine initialize_module
 
 ! things which need doing exactly once.
 
-integer :: iunit, io
+integer :: iunit, io, i, k, typecount, type_index
 
 if (module_initialized) return
 
 module_initialized = .true.
+
+! give these initial values before reading them from the namelist.
+special_vert_normalization_obs_types(:) = 'null'
+special_vert_normalization_heights(:)       = missing_r8
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "location_nml", iunit)
@@ -222,11 +290,120 @@ call check_namelist_read(iunit, io, "location_nml")
 if(do_nml_file()) write(nmlfileunit, nml=location_nml)
 if(do_nml_term()) write(     *     , nml=location_nml)
 
+! Copy the normalization factors in the vertical into an array
+vert_normalization(VERTISHEIGHT)      = vert_normalization_height
+
+! If the user has set a namelist to make different vertical normalization factors
+! when computing the localization distances, allocate and set that up here.
+! It overrides the defaults above.
+
+if (special_vert_normalization_obs_types(1) /= 'null' .or. &
+    special_vert_normalization_heights(1)   /= missing_r8) then
+
+   ! FIXME: add code to check for mismatched length lists.  are we going to force
+   ! users to specify all 4 values for any obs type that is not using the defaults?
+
+   typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
+   allocate(per_type_vert_norm(VERT_TYPE_COUNT, typecount))
+
+   ! Set the defaults for all specific types not listed in the special list
+   per_type_vert_norm(VERTISHEIGHT, :)      = vert_normalization_height
+
+   ! Go through special-treatment observation kinds, if any.
+   num_special_vert_norms = 0
+   k = 0
+   do i = 1, MAX_ITEMS
+      if(special_vert_normalization_obs_types(i) == 'null') exit
+      k = k + 1
+   enddo
+   num_special_vert_norms = k
+
+   if (num_special_vert_norms > 0) has_special_vertical_norms = .true.
+
+   do i = 1, num_special_vert_norms
+      type_index = get_index_for_type_of_obs(special_vert_normalization_obs_types(i))
+      if (type_index < 0) then
+         write(msgstring, *) 'unrecognized TYPE_ in the special vertical normalization namelist:'
+         call error_handler(E_ERR,'location_mod:', msgstring, source, &
+                            text2=trim(special_vert_normalization_obs_types(i)))
+      endif
+
+      per_type_vert_norm(VERTISHEIGHT,      type_index) = special_vert_normalization_heights(i)
+
+   enddo
+
+   if (any(per_type_vert_norm == missing_r8)) then
+      write(msgstring, *) 'one or more special vertical normalization values is uninitialized.'
+      call error_handler(E_ERR,'location_mod:', &
+                        'special vert normalization value namelist requires all 4 values per type', &
+                        source, text2=trim(msgstring))
+   endif
+
+endif
+!if (horiz_dist_only) then
+!      call error_handler(E_MSG,'location_mod:', &
+!      'Ignoring vertical separation when computing distances; horizontal distances only', &
+!      source)
+!else
+call error_handler(E_MSG,'location_mod:', &
+   'Including vertical separation when computing distances:', source)
+write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', vert_normalization_height
+call error_handler(E_MSG,'location_mod:',msgstring,source)
+
+if (allocated(per_type_vert_norm)) then
+   typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
+   do i = 1, typecount
+         !if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
+         !    (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
+         !    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
+         !    (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
+
+         !   write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
+         !   call error_handler(E_MSG,'location_mod:',msgstring,source)
+         !   if (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) then
+         !      write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
+         !            per_type_vert_norm(VERTISPRESSURE, i)
+         !      call error_handler(E_MSG,'location_mod:',msgstring,source)
+         !   endif
+         !   if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+         !      write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
+         !            per_type_vert_norm(VERTISHEIGHT, i)
+         !      call error_handler(E_MSG,'location_mod:',msgstring,source)
+         !   endif
+          !  if (per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) then
+          !     write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
+          !           per_type_vert_norm(VERTISLEVEL, i)
+          !     call error_handler(E_MSG,'location_mod:',msgstring,source)
+          !  endif
+          !  if (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height) then
+          !     write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
+          !           per_type_vert_norm(VERTISSCALEHEIGHT, i)
+          !     call error_handler(E_MSG,'location_mod:',msgstring,source)
+          !  endif
+         ! JDL - Strip Down to Just VERTISHEIGHT Right Now (CM1 is in meter coordinates only right now)
+      if    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+         write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
+         call error_handler(E_MSG,'location_mod:',msgstring,source)
+         if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+            write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz meter: ', &
+                  per_type_vert_norm(VERTISHEIGHT, i)
+            call error_handler(E_MSG,'location_mod:',msgstring,source)
+         endif
+      endif
+   enddo
+endif
+!endif
+
+
 end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
 function get_dist(loc1, loc2, type1, kind2)
+
+! JDL I don't think I need to include the no_vert variable, but keep this 
+! in mind in case problems arise later on.  Probbably also don't need kind2 since 
+! we are just looking at heights
 
 ! returns the distance between 2 locations
 
@@ -244,6 +421,8 @@ real(r8)                        :: get_dist
 real(r8) :: diff(3), next_diff(3)
 logical  :: below_L1(3), below_L2(3)
 real(r8) :: square_dist, this_dist
+!logical  :: comp_h_only ! Only comput the horizontal component
+
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -256,7 +435,7 @@ diff(IZ) = loc1%z - loc2%z
 ! the simple non-periodic case
 if (.not. any_periodic) then
    if (debug > 0) write(0,*)  'non-periodic distance: '
-   get_dist = dist_3d(diff)
+   get_dist = dist_3d(diff,type1=type1)
    return
 endif
 
@@ -308,7 +487,7 @@ if (xyz_periodic) then
             next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
          endif
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic XYZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -341,7 +520,7 @@ if (xy_periodic) then
          endif
       endif
 
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic XY dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -374,7 +553,7 @@ if (xz_periodic) then
             next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
          endif
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic XZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -406,7 +585,7 @@ if (yz_periodic) then
             next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
          endif
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic YZ dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -428,7 +607,8 @@ if (x_periodic) then
       else
          next_diff(IX) = loopy%offset(IX) + next_diff(IX)
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
+
   if (debug > 0) write(0,*)  'periodic X dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -450,7 +630,7 @@ if (y_periodic) then
          next_diff(IY) = loopy%offset(IY) + next_diff(IY)    
       endif
 
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
 
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
@@ -473,7 +653,7 @@ if (z_periodic) then
       else
          next_diff(IZ) = loopy%offset(IZ) + next_diff(IZ)
       endif
-      this_dist = dist_3d_sq(next_diff)
+      this_dist = dist_3d_sq(next_diff,type1=type1)
   if (debug > 0) write(0,*)  'periodic Y dist: ', square_dist, this_dist
       if(this_dist < square_dist) then
          square_dist = this_dist
@@ -500,14 +680,33 @@ end function get_dist
 ! return the 3d distance given the separation along each axis
 
 !pure function dist_3d(separation)
-function dist_3d(separation) result(val)
+!function dist_3d(separation) result(val)
+function dist_3d(separation,type1) result(val)
 
 real(r8), intent(in) :: separation(3)
-real(r8) :: val
+real(r8) :: val, vert_normal
+integer, optional,   intent(in) :: type1 ! JDL Addition
+!--- JDL Update Function to account for Normalization in Vertical
+!--- JDL Addition to Account for Vertical Normalization
+if (allocated(per_type_vert_norm)) then
+   if (.not. present(type1)) then
+      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
+      call error_handler(E_MSG, 'get_dist', msgstring, source)
+   endif 
+   vert_normal = separation(IZ)/per_type_vert_norm(VERTISHEIGHT, type1)
+   !print*,'JDL per_type non-periodic = ',per_type_vert_norm(VERTISHEIGHT, type1)
+else
+   vert_normal = separation(IZ)/vert_normalization(VERTISHEIGHT)
+   !print*,'JDL standard norm non-periodic = ',vert_normalization(VERTISHEIGHT)
+
+endif
+!--- JDL End Addition for Vertical Normalization
+
 
 val = sqrt(separation(IX)*separation(IX) + &
            separation(IY)*separation(IY) + &
-           separation(IZ)*separation(IZ) )
+           vert_normal*vert_normal )
+           !separation(IZ)*separation(IZ) )
 
 if (debug > 0) write(0,*)  'dist_3d called, distance computed: ', val
 if (debug > 0) write(0,*)  'XYZ separations: ', separation
@@ -519,14 +718,32 @@ end function dist_3d
 ! (saves doing a square root)
 
 !pure function dist_3d_sq(separation)
-function dist_3d_sq(separation) result(val)
+!function dist_3d_sq(separation) result(val)
+function dist_3d_sq(separation,type1) result(val)
 
 real(r8), intent(in) :: separation(3)
-real(r8) :: val
+real(r8) :: val, vert_normal
+integer, optional,   intent(in) :: type1 ! JDL Addition
+
+!--- JDL Update Function to account for Normalization in Vertical
+!--- JDL Addition to Account for Vertical Normalization
+if (allocated(per_type_vert_norm)) then
+   if (.not. present(type1)) then
+      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
+      call error_handler(E_MSG, 'get_dist', msgstring, source)
+   endif 
+   vert_normal = separation(IZ) / per_type_vert_norm(VERTISHEIGHT, type1)
+   !print*,'JDL per_type = ',per_type_vert_norm(VERTISHEIGHT, type1)
+else
+   vert_normal = separation(IZ) / vert_normalization(VERTISHEIGHT)
+   !print*,'JDL standard norm = ',vert_normalization(VERTISHEIGHT)
+endif
+!--- JDL End Addition for Vertical Normalization
 
 val = separation(IX)*separation(IX) + &
       separation(IY)*separation(IY) + &
-      separation(IZ)*separation(IZ)
+      vert_normal * vert_normal
+      !separation(IZ)*separation(IZ)
 
 if (debug > 0) write(0,*)  'dist_3d_sq called, distance computed: ', val
 if (debug > 0) write(0,*)  'XYZ separations: ', separation
@@ -1216,11 +1433,11 @@ this_maxdist = gc%box(bt)%maxdist
 !> but should give the right answer.
 if(.true.) then
    if (present(dist)) then
-      call exhaustive_collect(gc%box(bt), base_loc, locs, &
+      call exhaustive_collect(gc%box(bt), base_loc, base_type, locs, &
                               num_close, close_ind, dist)
    else
       allocate(cdist(size(locs)))
-      call exhaustive_collect(gc%box(bt), base_loc, locs, &
+      call exhaustive_collect(gc%box(bt), base_loc, base_type, locs, &
                               num_close, close_ind, cdist)
       deallocate(cdist)
    endif
@@ -1231,7 +1448,7 @@ endif
 ! exhaustive search
 if(compare_to_correct) then
    allocate(cclose_ind(size(locs)), cdist(size(locs)))
-   call exhaustive_collect(gc%box(bt), base_loc, locs, &
+   call exhaustive_collect(gc%box(bt), base_loc, base_type, locs, &
                            cnum_close, cclose_ind, cdist)
 endif
 
@@ -1290,7 +1507,7 @@ do i = start_x, end_x
 
             ! Only compute distance if dist is present
             if(present(dist)) then
-               this_dist = get_dist(base_loc, locs(t_ind))
+               this_dist = get_dist(base_loc, locs(t_ind), type1=base_type)
 !write(0,*)  'this_dist = ', this_dist
                ! If this loc's distance is less than cutoff, add it in list
                if(this_dist <= this_maxdist) then
@@ -1472,6 +1689,9 @@ if (end_z > nz) end_z = nz
 !write(0,*)  'x: ', start_x, end_x
 !write(0,*)  'y: ', start_y, end_y
 !write(0,*)  'z: ', start_z, end_z
+! JDL WARNING STATEMENT IN CASE YOU HAPPEN TO CALL GET_DIST() FROM THIS SUBROUTINE
+! YOU SHOULDN'T BE USING THIS SUBROUTINE
+print*,'JDL IF YOUR HERE MAKE SURE TO WORK ON FIND_NEAREST SUBROUTINE'
 
 ! Next, loop through each box that is close to this box
 do i = start_x, end_x
@@ -1489,7 +1709,7 @@ do i = start_x, end_x
             t_ind = gc%box(box_num)%loc_box(st - 1 + l)
 !write(0,*)  'l, t_ind = ', l, t_ind
 
-            this_dist = get_dist(base_loc, loc_list(t_ind))
+            this_dist = get_dist(base_loc, loc_list(t_ind)) !JDL Probably do not need to include base type here because this is never called during DA (OR IT SHOULDNT BE) 
 !write(0,*)  'this_dist = ', this_dist
             ! If this loc's distance is less than current nearest, it's new nearest
             if(this_dist <= dist) then
@@ -2031,13 +2251,14 @@ end function is_location_in_region
 
 !---------------------------------------------------------------------------
 
-subroutine exhaustive_collect(box, base_loc, loc_list, num_close, close_ind, close_dist)
+subroutine exhaustive_collect(box, base_loc, base_type, loc_list, num_close, close_ind, close_dist)
 
 ! For validation, it is useful to be able to compare against exact
 ! exhaustive search
 
 type(box_type),        intent(in)  :: box
 type(location_type),   intent(in)  :: base_loc, loc_list(:)
+integer,               intent(in)  :: base_type ! JDL Addition
 integer,               intent(out) :: num_close
 integer,               intent(out) :: close_ind(:)
 real(r8),              intent(out) :: close_dist(:)
@@ -2047,7 +2268,7 @@ integer :: i
 
 num_close = 0
 do i = 1, box%num
-   this_dist = get_dist(base_loc, loc_list(i))
+   this_dist = get_dist(base_loc, loc_list(i), type1=base_type)
    if(this_dist <= box%maxdist) then
       ! Add this loc to correct list
       num_close = num_close + 1
