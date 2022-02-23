@@ -877,6 +877,7 @@ if (nlevs == nk) then
       Q12(level) = zhalf(x_ind(1), y_ind(2), level)
       Q21(level) = zhalf(x_ind(2), y_ind(1), level)
       Q22(level) = zhalf(x_ind(2), y_ind(2), level)
+
    enddo
 
 else ! on z half levels
@@ -1072,6 +1073,7 @@ enddo
 ! interpolate to the observation location
 Z(:) = bilinear_interpolation(nlevs, obs_loc_array(1), obs_loc_array(2), &
                               x_val(1), x_val(2), y_val(1), y_val(2), Q11, Q12, Q21, Q22)
+
 
 ! Find out which level the point is in:
 call get_enclosing_coord(obs_loc_array(3), Z, z_ind, z_val)
