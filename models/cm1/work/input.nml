@@ -169,7 +169,7 @@
 
 &location_nml
    x_is_periodic       = .false.
-   y_is_periodic       = .true.
+   y_is_periodic       = .false.
    z_is_periodic       = .false.
    min_x_for_periodic  = 0.0
    max_x_for_periodic  = 200000.0
@@ -234,6 +234,12 @@
 
 ! If performing vertical conversion, try
 ! 'distribute_mean = .false.'
+
+! 'cutoff' initially defines the localization radius (horizontal and vertical 
+! for all observations.  If you want to specify the localization 
+! radius for each observation type you can list the observation types in 'special_localization_obs_types'
+! 'special_localization_cutoffs' defines the localization half-radius for each 
+! observation type 
 
 &assim_tools_nml
   adaptive_localization_threshold = -1
