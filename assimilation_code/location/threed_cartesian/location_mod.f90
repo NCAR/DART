@@ -443,7 +443,7 @@ endif
 
 ! everything below deals with the periodic options
 if (debug > 0) write(0,*)  'periodic distance: '
-square_dist = dist_3d_sq(diff)
+square_dist = dist_3d_sq(diff,type1=type1)
 if (debug > 0) write(0,*)  'non-periodic 0 sq_dist, dist: ', square_dist, sqrt(square_dist)
 
 ! ok, not simple.
@@ -692,7 +692,7 @@ integer, optional,   intent(in) :: type1 ! JDL Addition
 !--- JDL Addition to Account for Vertical Normalization
 if (allocated(per_type_vert_norm)) then
    if (.not. present(type1)) then
-      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
+      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization 3d'
       call error_handler(E_MSG, 'get_dist', msgstring, source)
    endif 
    vert_normal = separation(IZ)/per_type_vert_norm(VERTISHEIGHT, type1)
@@ -729,7 +729,7 @@ integer, optional,   intent(in) :: type1 ! JDL Addition
 !--- JDL Addition to Account for Vertical Normalization
 if (allocated(per_type_vert_norm)) then
    if (.not. present(type1)) then
-      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization'
+      write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization 3d sq'
       call error_handler(E_MSG, 'get_dist', msgstring, source)
    endif 
    vert_normal = separation(IZ) / per_type_vert_norm(VERTISHEIGHT, type1)
