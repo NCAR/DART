@@ -480,9 +480,13 @@ An example of the code block is provided below.
 You can also define the vertical localization radius for each observation 
 type in this code block.  ``special_vert_normalization_obs_types`` is 
 where you define the observation type and ``special_vert_normalization_heights`` is
-where you define the normalization factor in the vertical.  
+where you define the normalization factor in the vertical. If you just one set one normalization for all
+observation types use ``vert_normalization_height`` (not typically recommended since horizontal localization
+radii often switch between obs types).
 
 vertical localization radius = 2 * special_localization_cutoffs[ob_type]* special_vert_normalization_heights[ob_type]
+or if no obs types are defined...
+vertical localization radius = 2 * cutoff * vert_normalization_height
 
 You can also define periodic boundary conditions in the &location_nml code block.  Do not change ``nx``, ``ny``, and ``nz``
 they are defined search radii used by DART (not the domain size itself).

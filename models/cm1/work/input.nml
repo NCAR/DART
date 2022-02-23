@@ -160,12 +160,18 @@
 ! Define the observation type in 'special_vert_normalization_obs_types' and define the vertical 
 ! radius in 'special_vert_normalization_heights'.
 !
-! The vertical localization radius is defined as '2*special_vert_normalization_heights x special_localization_cutoffs'
+! The vertical localization radius is defined as '2 x special_vert_normalization_heights x special_localization_cutoffs'
 ! For example if... special_vert_normalization_heights = 50000 m (for RADIOSONDE)
 !                   special_localization_cutoffs = 0.04 (for RADIOSONDE)
 !        
 !                   the horizontal localization radius will be 100000 m
 !                   the vertical locaalization radius will be 4000 m
+!
+! If the observation type you are assimilating is not defined then CM1 will use vert_normalization_height to 
+! define the vertical localization radius. i.e., vertical localization = 2 x cutoff x vert_normalization_height
+!
+! You should also define boundary condition information in this code block.  Do not change nx, ny, nor nz. 
+! These are specific search radii used by DART, not the forecast domain size.
 
 &location_nml
    x_is_periodic       = .false.
