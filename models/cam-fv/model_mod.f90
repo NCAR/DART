@@ -725,6 +725,7 @@ select case (obs_quantity)
 
    case default
       write(string1,*)'contact dart support. unexpected error for quantity ', obs_quantity
+!SENote How can this possibly be just a message instead of fatal? This isn't returning anything but it's used.
       call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
 end select
@@ -891,9 +892,19 @@ if (istatus(1) /= 0) then
    return
 endif
 
+! SENote
+write(*, *) 'back form quad_lon_lat_locate ', four_lons, lon_fract
+
 call get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
                    lon_lat_vert, which_vert, quad_vals, istatus)
+!SENote
+write(*, *) 'back from get_quad_vals prelim ', istatus
+
 if (any(istatus /= 0)) return
+
+!SENote
+write(*, *) 'Back from get_quad_vals in interpolate_values and stopping'
+write(*, *) 'quad_vals ', ens_size, quad_vals
 
 call quad_lon_lat_evaluate(interp_handle, lon_fract, lat_fract, ens_size, &
                            quad_vals, interp_vals, istatus)

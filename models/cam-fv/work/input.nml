@@ -34,20 +34,20 @@
 !                             if needed.
 
 &filter_nml
-   input_state_files            = ''
-   input_state_file_list        = 'cam_init_files'
+   input_state_files            = 'caminput.nc'
+   input_state_file_list        = ''
    single_file_in               = .false.
    perturb_from_single_instance = .true.
    init_time_days               = -1
    init_time_seconds            = -1
 
-   stages_to_write              = 'forecast','output'
+   stages_to_write              = 'output'
 
    output_state_files           = ''
-   output_state_file_list       = 'cam_init_files'
-   output_mean                  = .true.
-   output_sd                    = .true.
-   output_members               = .true.
+   output_state_file_list       = 'cam_out_files'
+   output_mean                  = .false.
+   output_sd                    = .false.
+   output_members               = .false.
    num_output_state_members     = 3
    single_file_out              = .false.
    write_all_stages_at_end      = .false.
@@ -71,8 +71,12 @@
 
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
-   num_output_obs_members   = 3
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
    compute_posterior        = .false.
+   num_output_obs_members   = 3
 
    trace_execution          = .true.
    output_timestamps        = .true.
@@ -104,8 +108,8 @@
    init_time_days             = -1
    init_time_seconds          = -1
 
-   write_output_state_to_file = .true.
-   output_state_files         = "perfect_restart.nc"
+   write_output_state_to_file = .false.
+   output_state_files         = "unused"
 
    obs_seq_in_file_name       = "obs_seq.in"
    obs_seq_out_file_name      = "obs_seq.out"

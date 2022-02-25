@@ -1,0 +1,682 @@
+#!/bin/csh -f
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+#--------------------------------------------
+# This script can be run interactively, but on some systems (e.g. cheyenne)
+# it takes longer than is allowed for an interactive job.
+# In that case, it can be run as a batch job using the directives below,
+# or using "qcmd -q share -l select=1 -- <thisfilename>".
+
+# The job name should be the name of this script(file), 
+# or this file may not be archived in $caseroot causing DART_config to fail.
+#PBS  -N spinup_single
+#PBS  -A your_account_there
+#PBS  -q shared_node_queue_for_this_setup_script
+# Resources I want:
+#    select=#nodes
+#    ncpus=#CPUs/node
+#    mpiprocs=#MPI_tasks/node
+#PBS  -l select=1:ncpus=4:mpiprocs=4
+#PBS  -l walltime=00:30:00
+# Send email after a(bort) or e(nd)
+#PBS  -m ae
+#PBS  -M you@email.org
+# It's helpful to make the output file of this build job contain the case name.
+#PBS  -o single_test1.bld1
+# Send standard output and error to this file.
+#PBS  -j oe 
+
+#--------------------------------------------
+# Purpose
+#
+# This script is designed to set up, stage, and build a single-instance run
+# of CESM using an Fxxx compset where CAM, CLM and CICE are active. 
+# ==============================================================================
+# case options:
+#
+# case          The value of "case" will be used many ways; directory and file
+#               names both locally and on HPSS, and script names; so consider
+#               its length and information content.
+# compset       Defines the vertical resolution and physics packages to be used.
+#               Must be a standard CESM compset; see the CESM documentation.
+# compset_args  A variable to accumulate compset arguments for passing to create_newcase.
+# user_grid     A variable to accumulate grid arguments for create_newcase,
+#               especially high res SSTs.
+# resolution    Defines the horizontal resolution and dynamics; see CESM docs.
+#                  T85           ... eulerian at ~ 1 degree
+#                  ne30np4_gx1v6 ... SE core at ~ 1 degree
+#                  f09_f09       ... FV core at ~ 1 degree
+#               BUG 1384 may apply, check if ocean and atm/land must be at same resolution.
+#               Notes about the creation of the 0.25x0.25 ocean + 1deg FV  resolution are in
+#               /glade/work/raeder/Models/CAM_init/SST/README"
+# cesmtag       The version of the CESM source code to use when building the code.
+#               A directory with this name must exist in your home directory,
+#               and have SourceMods in it. See the SourceMods section.
+#               http://www.image.ucar.edu/pub/DART/CESM/README
+# ==============================================================================
+# AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
+
+setenv case            single_test1
+
+setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
+# setenv compset         F2000_DEV
+# F2000_DEV = 2000_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM1%NOEVOLVE_SWAV
+
+setenv compset_args    "--run-unsupported  --compset $compset"
+# setenv compset_args    "-user_compset $compset -user_pes_setby cam"
+
+# CESM2; set user_grid to '' for standard SST files
+#        or     '--gridfile' for hi-res (user-defined)
+set user_grid = '--gridfile'
+if ($user_grid == '--gridfile') then
+   # --gridfile must have the name of a config_grids.xml file
+   #            which has the user's grid installed in it.
+   set user_grid = "${user_grid} /glade/work/raeder/Models/CAM_init/SST"
+   set user_grid = "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
+   # A grid long name may be needed in the --res argument, 
+   # even if an alias is defined for the user's grid.
+   # set resolution = a%0.9x1.25_l%0.9x1.25_oi%d.25x.25_r%r05_m%d.25x.25_g%null_%null
+   # f09_d025  = the 1 degree CAM + 1/4 degree SST resolution
+   set resolution = f09_d025
+else
+   # Use a CESM supported grid
+   set resolution = f19_g17
+#    set resolution = f09_f09_g17
+
+endif
+echo "user_grid is $user_grid"
+
+setenv cesmtag              cesm2_1_maint-5.6
+# setenv cesmtag              cesm2_0
+setenv num_instances        1
+
+# Set the number of MPI tasks/node and threads/task.
+@ use_tasks_per_node = 36
+@ nthreads = 1
+
+# ==============================================================================
+# machines and directories:
+#
+# mach          Computer name
+# cesmdata      Location of some supporting CESM data files.
+# cesmroot      Location of the CESM code base.  This version of the script
+#               only supports version cesm1_2_1.
+# caseroot      Will create the CESM case directory here, where the CESM+DART
+#               configuration files will be stored.  This should probably not
+#               be in scratch (on yellowstone, your 'work' partition is suggested).
+#               This script will delete any existing caseroot, so this script,
+#               and other useful things should be kept elsewhere.
+#      NOTE: this cime_output is different from setup_{hybrid,advanced}
+#            This should be fixed.
+# cime_output   The directory where CESM's bld and run directories will be created.
+#               $CASEROOT is appended to this first.
+#               Large amount of space needed, generally on a scratch partition.  
+#               DART's preference is to put the archive directory there too, 
+#               but that's not the CESM default.
+# archdir       Will create the CESM short-term archive directories here.
+#               Large, generally on a scratch partition.  Files will remain
+#               here until the long-term archiver moves it to permanent storage.
+# dartroot      Location of the root of _your_ DART installation
+# ==============================================================================
+
+setenv mach         cheyenne
+setenv cesmdata     /gpfs/fs1/p/cesmdata/cseg/inputdata
+setenv cesmroot     /glade/work/${USER}/Models/${cesmtag}
+setenv caseroot     /glade/work/${USER}/Exp/${case}
+setenv cime_output  /glade/scratch/${USER}/${case}
+setenv archdir      ${cime_output}/${case}/archive
+
+# configure (called by cesm_setup?) has a new argument, cimeroot, which either needs to be provided 
+# on the command line or env var CIMEROOT needs to be defined.
+setenv CIMEROOT     $cesmroot/cime
+
+# ==============================================================================
+# runtime settings: This script will find usable files for years 19mumble-2010.
+#    Years after that (or before) may require searching $cesmdata for more 
+#    up-to-date files and adding them to the user_nl_cam_#### in the code below.
+#
+# start_year    generally this is the same as the reference case date, but it can
+# start_month   be different if you want to start this run as if it was a different time.
+# start_day
+# start_tod
+#
+# sst_dataset     Data ocean file
+# sst_grid        Supporting (consistent) grid file
+# sst_year_start  Years included in the sst files.
+# sst_year_end
+#                 The default SST (as of 2015-3) goes through 2012.
+#                 Don't use the last few months, since they are incomplete.
+#
+# short_term_archiver  Copies the files from each job step to a 'rest' directory.
+# long_term_archiver   Puts the files from all completed steps on tape storage.
+#
+# resubmit      How many job steps to run on continue runs (should be 0 initially)
+# stop_option   Units for determining the forecast length between assimilations
+# stop_n        Number of time units in each forecast
+#
+# If the long-term archiver is off, you get a chance to examine the files before
+# they get moved to long-term storage. You can always submit $CASE.l_archive
+# whenever you want to free up space in the short-term archive directory.
+# ==============================================================================
+
+setenv start_year    2016
+setenv stop_year     2016
+setenv start_month   01
+setenv start_day     01
+setenv start_tod     00000
+
+# The default CAM sea surface temperature file is climatological,
+# which is less than ideal for atmospheric assimilations.
+# The supported alternative is time interpolation of a monthly SST+CICE data set.
+# Examples are provided here.
+# "2 degree":
+# setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2016_c170525.nc
+# setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v7.170518.nc
+# "1 degree":
+# setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2016_c170525.nc
+# setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc
+# Specify the beginning and ending years of the data set.
+# setenv sst_year_start 1850
+# setenv sst_year_end   2016
+
+# "1/4 degree":
+# A better alternative is daily, 1/4-degree SSTs from Reynolds,...,Tomas
+
+set user_grid = "${user_grid} --gridfile /glade/work/raeder/Models/CAM_init/SST"
+set user_grid = "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
+setenv sst_dataset \
+   "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20160101_cat_20161231_gregorian_c181119.nc"
+   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
+   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
+
+# These files must have the 'calendar=gregorian' attribute added to the variable 'time',
+# which can be done with $p/Models/CAM_init/SST/add_calendar_attr.csh.
+set list = `ncdump -h $sst_dataset | grep calendar`
+if ($list[3] !~ '"gregorian"') then
+   echo "ERROR: $sst_dataset"
+   echo "       must have the calendar attribute attached to the time variable."
+   echo "       Use: ncatted -a calendar,time,c,c,gregorian $sst_dataset"
+   exit 5
+endif
+setenv sst_grid    /glade/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
+setenv sst_year_start $start_year
+setenv sst_year_end   $start_year
+
+===============================================
+setenv short_term_archiver off
+setenv long_term_archiver  off
+
+setenv resubmit            6
+setenv stop_option         nmonths
+setenv stop_n              1
+
+# ==============================================================================
+# job settings:
+#
+# queue      can be changed during a series by changing the ${case}.run
+# timewall   can be changed during a series by changing the ${case}.run
+#
+# TJH: Advancing 30 instances for 6 hours and assimilating took
+#      less than 10 minutes on yellowstone using 1800 pes (120 nodes)
+# ==============================================================================
+
+setenv ACCOUNT      P86850054
+setenv queue        premium
+setenv timewall     6:00
+
+# ==============================================================================
+# standard commands:
+#
+# If you are running on a machine where the standard commands are not in the
+# expected location, add a case for them below.
+# ==============================================================================
+
+set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+
+# if ($?LS_SUBCWD) then
+#    cd $LS_SUBCWD
+# else if ($?PBS_O_WORKDIR) then
+#    echo "changing directory to $PBS_O_WORKDIR"
+#    cd $PBS_O_WORKDIR
+# endif
+
+set   MOVE = '/usr/bin/mv'
+set   COPY = '/usr/bin/cp --preserve=timestamps'
+set   LINK = '/usr/bin/ln -s'
+set   LIST = '/usr/bin/ls'
+set REMOVE = '/usr/bin/rm'
+
+
+# ==============================================================================
+# ==============================================================================
+# Make sure the CESM directories exist.
+# VAR is the shell variable name, DIR is the value
+# ==============================================================================
+
+foreach VAR ( cesmroot )
+   set DIR = `eval echo \${$VAR}`
+   if ( ! -d $DIR ) then
+      echo "ERROR: directory '$DIR' not found"
+      echo " In the setup script check the setting of: $VAR "
+      exit -1
+   endif
+end
+
+# ==============================================================================
+# Create the case - this creates the CASEROOT directory.
+#
+# For list of the pre-defined component sets: ./create_newcase -list
+# To create a variant compset, see the CESM documentation and carefully
+# incorporate any needed changes into this script.
+# ==============================================================================
+
+# fatal idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  try to prevent shooting yourself in the foot.
+
+if ( $caseroot == `dirname $0` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit -1
+endif
+
+echo "removing old files from ${caseroot}"
+echo "removing old directory ${cime_output}/bld"
+echo "removing old directory ${cime_output}/run"
+${REMOVE} -fr ${caseroot}
+${REMOVE} -fr ${cime_output}/bld
+${REMOVE} -fr ${cime_output}/run
+
+${CIMEROOT}/scripts/create_newcase \
+   --case ${caseroot}    \
+   --machine ${mach}     \
+   --res ${resolution}   \
+   --project  $PROJECT   \
+   --queue    $queue     \
+   --walltime $timewall  \
+   --pecount  ${use_tasks_per_node}x${nthreads}  \
+   ${compset_args}       \
+   ${user_grid} 
+
+set cr_stat = $status
+if ( $cr_stat != 0 ) then
+   echo "ERROR: Case could not be created. Code $cr_stat"
+   exit -1
+endif
+
+# Preserve a copy of this script as it was run.
+if ($?LSB_JOBNAME) then
+   # This only works if the job name in the BSUB or PBS directives 
+   # is the name of this script.
+   setenv setup_file_name $LSB_JOBNAME
+else if ($?PBS_JOBNAME) then
+   setenv setup_file_name $PBS_JOBNAME
+else
+   setenv setup_file_name = $0:t
+endif
+${COPY} -n $setup_file_name ${caseroot}/${setup_file_name}.original
+
+
+# ==============================================================================
+# Configure the case.
+# ==============================================================================
+
+cd ${caseroot}
+
+# source ./Tools/ccsm_getenv || exit -2
+setenv TEST_MPI           `./xmlquery MPI_RUN_COMMAND    --value`
+setenv CLM_CONFIG_OPTS    `./xmlquery CLM_CONFIG_OPTS    --value`
+# setenv BATCHSUBMIT        `./xmlquery BATCHSUBMIT        --value`
+# setenv BATCH_SYSTEM        `./xmlquery BATCHSUBMIT        --value`
+setenv BATCH_SYSTEM        'manually'
+setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE --value`
+setenv COMP_OCN           `./xmlquery COMP_OCN           --value`
+setenv CASEROOT           `./xmlquery CASEROOT           --value`
+
+# Make sure the case is configured with a data ocean.
+
+if ( ${COMP_OCN} != docn ) then
+   echo " "
+   echo "ERROR: This setup script is not appropriate for active ocean compsets."
+   echo "ERROR: Please use the models/CESM/shell_scripts examples for that case."
+   echo " "
+   exit -3
+endif
+
+# Save a copy for debug purposes
+foreach FILE ( *xml )
+   if ( ! -e        ${FILE}.original ) then
+      ${COPY} -n $FILE ${FILE}.original
+   endif
+end
+
+# NOTE: If you require bit-for-bit agreement between different runs,
+#  in particular, between pmo (single instance) and assimilations (NINST > 1),
+#  or if you need to change the number of nodes/member due to changing memory needs,
+#  then env_run.xml:BFBFLAG must be set to TRUE, so that the coupler will
+#  generate bit-for-bit identical results, regardless of the number of tasks
+#  given to it.  The time penalty appears to be ~ 0.5% in the forecast.
+#  Alternatively, you can set cpl_tasks = same_number in both experiments
+
+# Task layout:
+# Set the nodes_per_instance below to match your case.  If you get 'out of memory'
+# errors OR failures without any messages, try increasing the nodes_per_instance.
+# By computing task counts like we do below, we guarantee each instance uses
+# a whole number of nodes which is the recommended configuration.
+
+# @ nodes_per_instance = 10
+@ nodes_per_instance = 3
+@ ntasks_active = -1 * $nodes_per_instance
+@ ntasks_data   = -1
+
+./xmlchange ROOTPE_ATM=0,NTHRDS_ATM=$nthreads,NTASKS_ATM=$ntasks_active
+./xmlchange ROOTPE_LND=0,NTHRDS_LND=$nthreads,NTASKS_LND=$ntasks_active
+./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ntasks_active
+./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$ntasks_active
+./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ntasks_active
+./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$ntasks_active
+./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$ntasks_active
+./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$ntasks_active
+./xmlchange ROOTPE_ESP=0,NTHRDS_ESP=$nthreads,NTASKS_ESP=$ntasks_data
+
+
+
+./xmlchange RUN_TYPE=startup
+./xmlchange RUN_STARTDATE=${start_year}-${start_month}-${start_day}
+./xmlchange START_TOD=$start_tod
+# ./xmlchange RUN_REFCASE=$refcase
+# ./xmlchange RUN_REFDATE=$refdate
+# ./xmlchange RUN_REFTOD=$reftod
+# ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
+./xmlchange GET_REFCASE=FALSE
+./xmlchange EXEROOT=${cime_output}/bld
+./xmlchange RUNDIR=${cime_output}/run
+
+./xmlchange SSTICE_DATA_FILENAME=$sst_dataset
+./xmlchange SSTICE_GRID_FILENAME=$sst_grid
+./xmlchange SSTICE_YEAR_ALIGN=$sst_year_start
+./xmlchange SSTICE_YEAR_START=$sst_year_start
+./xmlchange SSTICE_YEAR_END=$sst_year_end
+
+
+./xmlchange CALENDAR=GREGORIAN
+./xmlchange CONTINUE_RUN=FALSE
+
+./xmlchange STOP_OPTION=$stop_option
+./xmlchange STOP_N=$stop_n
+./xmlchange RESUBMIT=$resubmit
+
+./xmlchange PIO_TYPENAME=pnetcdf
+
+setenv COMP_OCN           `./xmlquery COMP_OCN           --value`
+setenv COMP_GLC           `./xmlquery COMP_GLC           --value`
+setenv COMP_ROF           `./xmlquery COMP_ROF           --value`
+
+# The river transport model ON is useful only when using an active ocean or
+# land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
+#
+# The river transport model ON is useful only when using an active ocean or
+# land surface diagnostics. If you turn it ON, you will have to stage initial files etc.
+# There are 3 choices:
+# > a stub version (best for CAM+DART),
+# > the older River Transport Model (RTM),
+# > the new Model for Scale Adaptive River Transport (MOSART).
+# They are separate CESM components, and are/need to be specified in the compset.
+# It may be that RTM or MOSART can be turned off via namelists.
+# Specify the river runoff model: 'RTM', 'MOSART', or anything else.
+
+if (${COMP_ROF} == 'rtm') then
+   ./xmlchange ROF_GRID='r05'
+else if (${COMP_ROF} == 'mosart') then
+   # There seems to be no MOSART_MODE, but there are some MOSART_ xml variables.
+   # Use defaults for now
+   ./xmlchange ROF_GRID='r05'
+else if (${COMP_ROF} == 'drof') then
+   ./xmlchange ROF_GRID='null'
+else if (${COMP_ROF} == 'srof') then
+   ./xmlchange ROF_GRID='null'
+else
+   echo "river_runoff is ${COMP_ROF}, which is not supported"
+   exit 50
+endif
+
+# COUPLING discussion. F compsets are 'tight' coupling.
+# Only change the ATM_NCPL ... everything is based on this one value,
+# including CAM physics and dynamics timesteps.
+# Default values for coupling are preserved in env_run.xml.original
+
+./xmlchange NCPL_BASE_PERIOD=day
+./xmlchange ATM_NCPL=48
+
+# CAM physics (etc.) selection for non-default choices.  
+# ./xmlchange CAM_CONFIG_OPTS="-phys cam5.4 -club_sgs"
+# ./xmlchange CAM_CONFIG_OPTS="-phys cam4"
+# setenv CAM_CONFIG_OPTS `./xmlquery CAM_CONFIG_OPTS --value`
+# echo  $CAM_CONFIG_OPTS | grep 'cam4'
+
+# CLMBuildNamelist::setup_logic_initial_conditions() : 
+#    using ignore_ic_date is incompatable with crop! 
+#    If you choose to ignore this error, the counters since planting for crops will be messed up.
+#  -- Add -ignore_warnings option to CLM_BLDNML_OPTS to ignore this warning
+echo  $compset | grep 'CROP'
+if ($status == 0) then
+   setenv CLM_BLDNML_OPTS `./xmlquery CLM_BLDNML_OPTS --value`
+   set clm_opts = "$CLM_BLDNML_OPTS -ignore_warnings "
+   ./xmlchange CLM_BLDNML_OPTS="$clm_opts"
+   # DEBUG/confirm
+   setenv CLM_BLDNML_OPTS    `./xmlquery CLM_BLDNML_OPTS    --value`
+   echo "CLM_BLDNML_OPTS has been changed to $CLM_BLDNML_OPTS"
+endif
+
+# These are archiving options that may be used.
+# You can turn the short/long term archivers on or off,
+# but these settings should be made in either event.
+
+./xmlchange DOUT_S_ROOT=${archdir}
+./xmlchange DOUT_S_SAVE_INTERIM_RESTART_FILES=TRUE
+
+if ($short_term_archiver == 'off') then
+   ./xmlchange DOUT_S=FALSE
+else
+   ./xmlchange DOUT_S=TRUE
+endif
+
+# DEBUG = TRUE implies turning on run and compile time debugging.
+# INFO_DBUG level of debug output, 0=minimum, 1=normal, 2=more, 3=too much.
+# WARNING: CAM-SE fails if DEBUG=TRUE
+./xmlchange DEBUG=FALSE
+./xmlchange INFO_DBUG=0
+# Reduce the MPI activity messages.  2 = default (too much).
+# ATM_forcXX: not in the config_definition file: ./xmlchange MP_INFOLEVEL=0
+
+
+# ==============================================================================
+# Update source files.
+#    Ideally, using DART would not require any modifications to the model source.
+#    Until then, this script accesses sourcemods from a hardwired location.
+#    If you have additional sourcemods, they will need to be merged into any DART
+#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
+# ==============================================================================
+
+if ( ! -d ~/${cesmtag}/SourceMods ) then
+   echo "NOTE - No SourceMods for this case."
+   echo "NOTE - No SourceMods for this case."
+   echo "CONFIRM that DART does not require modifications to several src files."
+endif
+
+# Copy all of the 'generic' SourceMods
+${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/   || exit 2
+
+# ==============================================================================
+# Set up the case.
+# This creates the EXEROOT and RUNDIR directories.
+# ==============================================================================
+
+echo 'Setting up the case ...'
+
+./case.setup
+
+if ( $status != 0 ) then
+   echo "ERROR: Case could not be set up."
+   exit -2
+endif
+
+# ==============================================================================
+# Edit the run script to reflect queue and wallclock
+# ==============================================================================
+
+echo ''
+echo 'Updating the run script to set wallclock and queue.'
+echo ''
+
+
+# ===========================================================================
+set fname = "user_nl_cam"
+
+echo " inithist      = 'MONTHLY'"                     >> ${fname}
+echo " empty_htapes  = .true. "                        >> ${fname}
+
+# ATM_forc change: new topography file from Lauritzen
+# echo "bnd_topo = " >> ${fname}
+# Trouble with masks: can't use the gx1v6 CLM restart file as finidat.
+# It needs to be interpolated to make the gridcell value consistent.
+if ($start_year > 2014) then
+
+   set cesm_data_dir = "/glade/p/cesmdata/cseg/inputdata/atm"
+   set cesm_chem_dir = "/gpfs/fs1/p/acom/acom-climate/cmip6inputs/emissions_ssp119"
+   set chem_root     = "${cesm_chem_dir}/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp119-1-1"
+   set chem_dates    = "175001-210012_0.9x1.25_c20181024"
+
+# Default: H2OemissionCH4oxidationx2_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc',"                     >> ${fname}
+# Try a file with enough years (but questionable content from
+# /glade/scratch/mmills/CH4/CCMI_1955_2099_RCP6_ave_CH4_CHML.nc):
+   echo " ext_frc_specifier = "                     >> ${fname}
+   echo "  'H2O -> ${cesm_data_dir}/cam/chem/emis/elev/H2O_emission_CH4_oxidationx2_elev_1850-2100_CCMI_RCP8_5_c160219.nc'"  >> ${fname}
+         
+   echo "  'num_a1 -> ${chem_root}_num_so4_a1_anthro-ene_vertical_mol_${chem_dates}.nc'"        >> ${fname}
+   echo "  'so4_a1 -> ${chem_root}_so4_a1_anthro-ene_vertical_mol_${chem_dates}.nc'"            >> ${fname}
+
+   echo " srf_emis_specifier ="                                                                 >> ${fname}
+   echo "  'bc_a4 ->  ${chem_root}_bc_a4_anthro_surface_mol_${chem_dates}.nc'"                  >> ${fname}
+   echo "  'bc_a4 ->  ${chem_root}_bc_a4_bb_surface_mol_${chem_dates}.nc'"                      >> ${fname}
+   echo "  'DMS ->    ${chem_root}_DMS_bb_surface_mol_${chem_dates}.nc'"                        >> ${fname}
+   echo "  'DMS ->    ${cesm_chem_dir}/emissions-cmip6-SSP_DMS_other_surface_mol_${chem_dates}.nc'" >> ${fname}
+   echo "  'num_a1 -> ${chem_root}_num_so4_a1_bb_surface_mol_${chem_dates}.nc'"                 >> ${fname}
+   echo "  'num_a1 -> ${chem_root}_num_so4_a1_anthro-ag-ship_surface_mol_${chem_dates}.nc'"     >> ${fname}
+   echo "  'num_a2 -> ${chem_root}_num_so4_a2_anthro-res_surface_mol_${chem_dates}.nc'"         >> ${fname}
+   echo "  'num_a4 -> ${chem_root}_num_bc_a4_bb_surface_mol_${chem_dates}.nc'"                  >> ${fname}
+   echo "  'num_a4 -> ${chem_root}_num_bc_a4_anthro_surface_mol_${chem_dates}.nc'"              >> ${fname}
+   echo "  'num_a4 -> ${chem_root}_num_pom_a4_anthro_surface_mol_${chem_dates}.nc'"             >> ${fname}
+   echo "  'num_a4 -> ${chem_root}_num_pom_a4_bb_surface_mol_${chem_dates}.nc'"                 >> ${fname}
+   echo "  'pom_a4 -> ${chem_root}_pom_a4_anthro_surface_mol_${chem_dates}.nc'"                 >> ${fname}
+   echo "  'pom_a4 -> ${chem_root}_pom_a4_bb_surface_mol_${chem_dates}.nc'"                     >> ${fname}
+   echo "  'SO2 ->    ${chem_root}_SO2_anthro-ag-ship-res_surface_mol_${chem_dates}.nc'"        >> ${fname}
+   echo "  'SO2 ->    ${chem_root}_SO2_anthro-ene_surface_mol_${chem_dates}.nc'"                >> ${fname}
+   echo "  'SO2 ->    ${chem_root}_SO2_bb_surface_mol_${chem_dates}.nc'"                        >> ${fname}
+   echo "  'so4_a1 -> ${chem_root}_so4_a1_anthro-ag-ship_surface_mol_${chem_dates}.nc'"         >> ${fname}
+   echo "  'so4_a2 -> ${chem_root}_so4_a2_anthro-res_surface_mol_${chem_dates}.nc'"             >> ${fname}
+   echo "  'SOAG ->   ${chem_root}_SOAGx1.5_anthro_surface_mol_${chem_dates}.nc'"               >> ${fname}
+   echo "  'SOAG ->   ${chem_root}_SOAGx1.5_bb_surface_mol_${chem_dates}.nc'"                   >> ${fname}
+   echo "  'SOAG ->   ${chem_root}_SOAGx1.5_biogenic_surface_mol_${chem_dates}.nc'"             >> ${fname}
+#    echo "  'SOAG ->   ${chem_root}_SOAGx1.5_biogenic_surface_mol_201501-210012_0.9x1.25_c20181024.nc'" >> ${fname}
+   echo "  'so4_a1 -> ${chem_root}_so4_a1_bb_surface_mol_${chem_dates}.nc'"                     >> ${fname}
+
+# Queried Mike Mills 2018-12-3
+# He says; not available, and won't be
+# Try using the default file, but with cyclical trace gases, year 2014 (the last full).
+   echo " prescribed_ozone_type         = 'CYCLICAL'"  >> ${fname}
+   echo " prescribed_ozone_cycle_yr     = 2014"        >> ${fname}
+   echo " prescribed_strataero_type     = 'CYCLICAL'"  >> ${fname}
+   echo " prescribed_strataero_cycle_yr = 2014"        >> ${fname}
+#       tracer_cnst_datapath	= '${cesm_data_dir}/cam/tracer_cnst'"                   
+#       tracer_cnst_file	= 'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' 
+   echo " tracer_cnst_type          = 'CYCLICAL'"      >> ${fname}
+   echo " tracer_cnst_cycle_yr      = 2015"            >> ${fname}
+#       &chem_surfvals_nl
+#        flbc_file              = "${cesm_data_dir}/waccm/lb/LBC_1750-2015_CMIP6_GlobAnnAvg_c180926.nc"
+   echo " flbc_type                 = 'CYCLICAL'"      >> ${fname}
+   echo " flbc_cycle_yr             = 2014"            >> ${fname}
+   echo " flbc_file  = '${cesm_data_dir}/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc' " >> ${fname}
+
+else
+      echo 'WARNING; using default ozone and tracer_cnst forcing files'
+      echo 'WARNING; using default srf_emis_* and ext_frc_*'
+      echo "WARNING; using default bndtvghg"
+      echo "WARNING; using default volcaero"
+endif
+
+# ===========================================================================
+set fname = "user_nl_clm"
+
+echo "use_init_interp = .true. "                       >> ${fname}
+echo "init_interp_fill_missing_with_natveg = .true. "  >> ${fname}
+
+# For cesm2_1 and later, finidat does not need to be specified.
+# set lnd_init = $cesmdata/lnd/clm2/initdata_map
+# 1 degree
+# echo "finidat = '$lnd_init/clmi.I2000CLM45CRUBGC.2000-01-01.0.9x1.25_gx1v6_simyr2000_c141226.nc'" >> ${fname}
+# Guessing that the latest (2 degree) is the greatest:
+# echo "finidat = '$lnd_init/clmi.ICRUCLM45BGCCROP.78pfts.levis_reinterp.1.9x2.5_g1v6_simyr2000_c160127.nc '" >> ${fname}
+# In CAM6_spinup_sst.25 I ended up using(?)
+# /glade/p/cgd/tss/people/oleson/CLM5_restarts/
+#   clm5n04r193phs_2deg_calibrateparams_v3_crop_fert10perc_medshrb_1850ADspin_cism2_1_23.clm2.r.0003-01-01-00000.nc
+
+# If interpolation is necessary, the file name of the interpolated fields is automatic, even for multi-instance.
+
+echo "hist_empty_htapes = .true."   >> ${fname}
+echo "hist_fincl1 = 'TSA'"          >> ${fname}
+# echo "hist_nhtfrq = -$stop_n"       >> ${fname}
+# Every month
+echo "hist_mfilt  = 1"              >> ${fname}
+echo "hist_nhtfrq = 0"              >> ${fname}
+
+# ATM_forcXX Test coupler forcing file output
+# ===========================================================================
+set fname = "user_nl_cpl"
+
+# J1850G(lofverstrom) + river (Lindsay)
+echo " histaux_a2x3hr = .true."      >> ${fname}
+echo " histaux_a2x24hr = .true."     >> ${fname}
+echo " histaux_a2x1hri = .true."     >> ${fname}
+echo " histaux_a2x1hr = .true."      >> ${fname}
+echo " histaux_r2x = .true."         >> ${fname}
+# AVGHIST* controls the writing of *cpl.ha.*, which is not needed for forcing other components.
+# ./xmlchange AVGHIST_OPTION=ndays
+# ./xmlchange AVGHIST_N=1
+# No histaux_a2x3hrp (precip)?
+# No histaux_l2x ?
+
+./preview_namelists || exit 150
+
+# ==============================================================================
+# build
+# ==============================================================================
+
+echo ''
+echo 'Building the case'
+echo ''
+
+# --skip-provenance-check because of svn or git timing out during build
+# of CLM.  It wanted authentication(?) to access a private repository.
+# A better solution would be to find out why(whether) it thinks CLM is 
+# a private repository.
+./case.build --skip-provenance-check
+
+if ( $status != 0 ) then
+   echo "ERROR: Case could not be built."
+   exit 200
+endif
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

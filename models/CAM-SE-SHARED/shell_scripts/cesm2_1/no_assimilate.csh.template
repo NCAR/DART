@@ -1,0 +1,75 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# This block is an attempt to localize all the machine-specific
+# changes to this script such that the same script can be used
+# on multiple platforms. This will help us maintain the script.
+
+echo "`date` -- BEGIN CAM_NO_ASSIMILATE"
+
+# The FORCE options are required.
+# The VERBOSE options are useful for debugging though
+# some systems don't like the -v option to any of the following
+set   LINK = 'ln -fs'
+
+# If your shell commands don't like the -v option and you want copies to be echoed,
+# set this to be TRUE.  Otherwise, it should be FALSE.
+set LINKV = TRUE
+
+# This script is executed in in $CASEROOT, so xmlquery is available
+setenv RUNDIR     `./xmlquery RUNDIR   --value`
+setenv CASEROOT   `./xmlquery CASEROOT --value`
+setenv CASE       $CASEROOT:t
+
+setenv num_instances  BOGUSNUMINST
+cd $RUNDIR
+
+#-------------------------------------------------------------------------
+# Determine time of model state ... from file name of first member
+# of the form "./${CASE}.cam_${ensemble_member}.i.YYYY-MM-DD-SSSSS.nc"
+#-------------------------------------------------------------------------
+
+if ( $num_instances == 1 ) then
+   set FILE = `head -n 1 rpointer.atm`
+else
+   set FILE = `head -n 1 rpointer.atm_0001`
+endif
+
+set FILE = $FILE:r
+set ATM_DATE_EXT = `echo $FILE:e`
+
+#=========================================================================
+# As implemented, the input filenames are static in the CESM namelists.
+# We must link the new uniquely-named files to static names.
+#=========================================================================
+
+if ( $num_instances == 1 ) then
+      set ATM_INITIAL_FILENAME = ${CASE}.cam.i.${ATM_DATE_EXT}.nc
+      if ($LINKV == FALSE) echo "Linking $ATM_INITIAL_FILENAME    cam_initial.nc"
+      $LINK $ATM_INITIAL_FILENAME  cam_initial.nc || exit  9
+else
+   set member = 1
+   while ( $member <= $num_instances )
+      set inst_string = `printf _%04d $member`
+      set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
+      if ($LINKV == FALSE) \
+         echo "Linking $ATM_INITIAL_FILENAME    cam_initial${inst_string}.nc"
+      $LINK            $ATM_INITIAL_FILENAME    cam_initial${inst_string}.nc || exit 10
+      @ member++
+   end
+endif
+
+echo "`date` -- END CAM_NO_ASSIMILATE"
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

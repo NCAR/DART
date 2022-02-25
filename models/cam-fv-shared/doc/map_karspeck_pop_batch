@@ -1,0 +1,46 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Alicia developed these scripts to avoid having to reenter the queue after every assimilation,
+and to remove the st_archive.sh from the batch runs, run it single threaded instead, and 
+eliminate/reduce the copies that slow it down so much.
+The originals are in /glade/p/work/aliciak/cases/cesm_6hr_1970b/
+
+Copy these scripts into $CASE.
+
+Copy $CASE.run  into $CASE.run_batch       
+   modify wall clock to accomodate N forecasts+assims
+   change
+      #   $BATCHSUBMIT ./$CASE.run
+          ./$CASE.run_batch
+
+future; make a DART script update pre_run.csh and post_run.csh to have the correct 
+   'cd $CASE' 
+   account #
+   job name
+   RESUBMIT #
+
+-> submit_dependent_jobs.csh
+      has a loop over the number of batch jobs (each has N advances+assims), 
+      which can be run before the scratch space is filled, and [sl]t_archive must be run.
+   -> pre_run.csh
+      -> set RESUBMIT = N (she uses 10) in env_run.xml   
+         choose number based on how many can fit in a single wall clock limit,
+         or some other useful criterion.
+      -> call $CASE.run_batch
+         -> calls the next $CASE.run_batch, NOT as a batch job.
+            ...-> Repeat until N is exhausted
+         Unwind all of the .run_batches, each of which is waiting for its child to finish.
+
+   -> post_run.csh
+      -> archive_select_restarts.csh
+      -> archive_history_files.csh
+      -> lt_archive.sh -m copy_dirs_hsi
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
