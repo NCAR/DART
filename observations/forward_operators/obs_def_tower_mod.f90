@@ -1,32 +1,21 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
-!WATER_TABLE_DEPTH,              QTY_WATER_TABLE_DEPTH,        COMMON_CODE
-!SOIL_TEMPERATURE,               QTY_SOIL_TEMPERATURE,         COMMON_CODE
-!SOIL_MOISTURE,                  QTY_SOIL_MOISTURE,            COMMON_CODE
-!LAYER_LIQUID_WATER,             QTY_LIQUID_WATER,             COMMON_CODE
-!LAYER_ICE,                      QTY_ICE,                      COMMON_CODE
-!SNOW_THICKNESS,                 QTY_SNOW_THICKNESS,           COMMON_CODE
-!SNOW_WATER,                     QTY_SNOW_WATER,               COMMON_CODE
-!MODIS_SNOWCOVER_FRAC,           QTY_SNOWCOVER_FRAC,           COMMON_CODE
-!MODIS_LEAF_AREA_INDEX,          QTY_LEAF_AREA_INDEX,          COMMON_CODE
-!LEAF_CARBON,                    QTY_LEAF_CARBON,              COMMON_CODE
-!LEAF_AREA_INDEX,                QTY_LEAF_AREA_INDEX,          COMMON_CODE
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 !TOWER_AIR_TEMPERATURE,          QTY_TEMPERATURE,              COMMON_CODE
+!TOWER_GLOBAL_RADIATION,         QTY_RADIATION,                COMMON_CODE
+!TOWER_NET_CARBON_FLUX,          QTY_NET_CARBON_FLUX,          COMMON_CODE
 !TOWER_SOIL_TEMPERATURE,         QTY_TEMPERATURE,              COMMON_CODE
 !TOWER_U_WIND_COMPONENT,         QTY_U_WIND_COMPONENT,         COMMON_CODE
 !TOWER_V_WIND_COMPONENT,         QTY_V_WIND_COMPONENT,         COMMON_CODE
-!TOWER_GLOBAL_RADIATION,         QTY_RADIATION,                COMMON_CODE
-!TOWER_NET_CARBON_FLUX,          QTY_NET_CARBON_FLUX,          COMMON_CODE
+!SOIL_RESPIRATION_FLUX,          QTY_SOIL_RESPIRATION_FLUX
+!TOWER_ER_FLUX,                  QTY_ER_FLUX
+!TOWER_GPP_FLUX,                 QTY_GROSS_PRIMARY_PROD_FLUX
 !TOWER_LATENT_HEAT_FLUX,         QTY_LATENT_HEAT_FLUX
-!TOWER_SENSIBLE_HEAT_FLUX,       QTY_SENSIBLE_HEAT_FLUX
 !TOWER_NETC_ECO_EXCHANGE,        QTY_NET_CARBON_PRODUCTION
-!MODIS_FPAR,                     QTY_FPAR,                     COMMON_CODE
-! END DART PREPROCESS KIND LIST
+!TOWER_SENSIBLE_HEAT_FLUX,       QTY_SENSIBLE_HEAT_FLUX
+! END DART PREPROCESS TYPE DEFINITIONS
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -37,31 +26,58 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(TOWER_LATENT_HEAT_FLUX)
-!     call get_scalar_from_history('EFLX_LH_TOT_R', state_handle, ens_size, copy_indices, location, obs_time, expected_obs, istatus)
+!     call get_scalar_from_history('EFLX_LH_TOT_R', state_handle, ens_size, &
+!                    copy_indices, location, obs_time, expected_obs, istatus)
 !  case(TOWER_SENSIBLE_HEAT_FLUX)
-!     call get_scalar_from_history('FSH', state_handle, ens_size, copy_indices, location, obs_time, expected_obs, istatus)
+!     call get_scalar_from_history('FSH', state_handle, ens_size, &
+!                    copy_indices, location, obs_time, expected_obs, istatus)
 !  case(TOWER_NETC_ECO_EXCHANGE)
-!     call get_scalar_from_history('NEP', state_handle, ens_size, copy_indices, location, obs_time, expected_obs, istatus)
+!     call get_scalar_from_history('NEP', state_handle, ens_size, &
+!                    copy_indices, location, obs_time, expected_obs, istatus)
+!  case(TOWER_GPP_FLUX)
+!     call get_scalar_from_history('GPP', state_handle, ens_size, &
+!                    copy_indices, location, obs_time, expected_obs, istatus)
+!  case(TOWER_ER_FLUX)
+!     call get_scalar_from_history('ER', state_handle, ens_size, &
+!                    copy_indices, location, obs_time, expected_obs, istatus)
+!  case(SOIL_RESPIRATION_FLUX)
+!     call get_scalar_from_history('SR', state_handle, ens_size, &
+!                    copy_indices, location, obs_time, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
-!    case(TOWER_LATENT_HEAT_FLUX,TOWER_SENSIBLE_HEAT_FLUX,TOWER_NETC_ECO_EXCHANGE)
+!    case(TOWER_LATENT_HEAT_FLUX, &
+!         TOWER_SENSIBLE_HEAT_FLUX, &
+!         TOWER_NETC_ECO_EXCHANGE, &
+!         TOWER_GPP_FLUX, &
+!         TOWER_ER_FLUX, &
+!         SOIL_RESPIRATION_FLUX)
 !       continue
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
-!    case(TOWER_LATENT_HEAT_FLUX,TOWER_SENSIBLE_HEAT_FLUX,TOWER_NETC_ECO_EXCHANGE)
+!    case(TOWER_LATENT_HEAT_FLUX, &
+!         TOWER_SENSIBLE_HEAT_FLUX, &
+!         TOWER_NETC_ECO_EXCHANGE, &
+!         TOWER_GPP_FLUX, &
+!         TOWER_ER_FLUX, &
+!         SOIL_RESPIRATION_FLUX)
 !       continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
-!    case(TOWER_LATENT_HEAT_FLUX,TOWER_SENSIBLE_HEAT_FLUX,TOWER_NETC_ECO_EXCHANGE)
+!    case(TOWER_LATENT_HEAT_FLUX, &
+!         TOWER_SENSIBLE_HEAT_FLUX, &
+!         TOWER_NETC_ECO_EXCHANGE, &
+!         TOWER_GPP_FLUX, &
+!         TOWER_ER_FLUX, &
+!         SOIL_RESPIRATION_FLUX)
 !       continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
@@ -79,19 +95,24 @@ module obs_def_tower_mod
 ! interest are shaped NEP(time, lat, lon), sometimes NEP(time, lndgrid).
 ! 'single column' runs may appear as either lat=lon=1 or lndgrid=1
 !
-use        types_mod, only : r4, r8, digits12, MISSING_R8, PI, deg2rad
+use        types_mod, only : r4, r8, digits12, MISSING_R8, PI
+
 use     location_mod, only : location_type, get_location, get_dist, &
-                             set_location, VERTISUNDEF
+                             set_location, write_location, VERTISUNDEF
+
 use time_manager_mod, only : time_type, get_date, set_date, print_date, print_time, &
                              get_time, set_time, operator(-), operator(/=)
+
 use    utilities_mod, only : register_module, E_ERR, E_MSG, error_handler, &
                              check_namelist_read, find_namelist_in_file,   &
                              nmlfileunit, do_output, do_nml_file, do_nml_term, &
                              file_exist, is_longitude_between
 
-use  netcdf_utilities_mod, only : nc_check
+use netcdf_utilities_mod, only : nc_check
 
-use ensemble_manager_mod,  only : ensemble_type
+use      assim_model_mod, only : interpolate
+
+use ensemble_manager_mod, only : ensemble_type
 
 use typesizes
 use netcdf
@@ -102,18 +123,17 @@ private
 public :: get_scalar_from_history
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'obs_def_tower_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical            :: module_initialized = .false.
 logical            :: unstructured = .false.
-character(len=129) :: string1, string2, string3
+character(len=512) :: string1, string2, string3
 integer            :: nlon, nlat, ntime, ens_size
 type(time_type)    :: initialization_time
 
-character(len=129), allocatable, dimension(:) :: fname
+character(len=256), allocatable, dimension(:) :: fname
 integer,            allocatable, dimension(:) :: ncid
 real(r8),           allocatable, dimension(:) :: lon, lat, area
 real(digits12),     allocatable, dimension(:) :: rtime
@@ -123,7 +143,7 @@ real(r8), parameter :: RAD2KM = 40030.0_r8/(2.0_r8 * PI) ! (mean radius of earth
 ! namelist items
 character(len=256) :: casename = 'clm_dart'
 logical            :: debug = .false.
-integer            :: hist_nhtfrq = -24 
+integer            :: hist_nhtfrq = -24
 ! CLM variable hist_nhtfrq ... controls how often to write out the history files.
 ! Negative value means the output frequency is the absolute value (in hours).
 
@@ -240,12 +260,11 @@ enddo ENSEMBLESIZE
 
 if (ens_size < 2) then
 
-   write(string1,100) trim(casename),1,year,month,day,second
-   write(string2,*)'cannot find files to use for observation operator.'
-   write(string3,*)'trying files with names like "',trim(string1),'" -or-'
    write(string1,110) trim(casename),year,month,day,second
+   write(string2,*)'cannot find files to use for observation operator.'
+   write(string3,*)'trying files with names like "',trim(string1),'"'
    call error_handler(E_ERR, 'obs_def_tower.initialize_routine', string2, &
-                  source, revision, revdate, text2=string3,text3='"'//trim(string1)//'"')
+                  source, revision, revdate, text2=string3)
 
 elseif (ens_size >= 200) then
 
@@ -349,8 +368,7 @@ enddo
 if (debug .and. do_output()) write(*,*)'obs_def_tower      lon',lon
 if (debug .and. do_output()) write(*,*)'obs_def_tower      lat',lat
 
-! FIXME
-! check all other ensemble member history files to make sure metadata is the same.
+!>@todo FIXME check all other ensemble member history files to make sure metadata is the same.
 
 deallocate(yyyymmdd, sssss)
 
@@ -933,8 +951,3 @@ end module obs_def_tower_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

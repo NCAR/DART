@@ -94,7 +94,7 @@
    output_forward_op_errors     = .false.
    write_obs_every_cycle        = .false.
    silence                      = .false.
-   /
+  /
 
 
 &dart_to_noah_nml
@@ -155,23 +155,27 @@
 
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../observations/forward_operators/obs_def_tower_mod.f90',
-                              '../../../observations/forward_operators/obs_def_COSMOS_mod.f90',
-                              '../../../observations/forward_operators/obs_def_GRACE_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_land_mod.f90',
+                             '../../../observations/forward_operators/obs_def_COSMOS_mod.f90',
+                             '../../../observations/forward_operators/obs_def_GRACE_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/land_quantities_mod.f90'
   /
+
 
 &obs_def_grace_nml
    max_grace_obs = 10000
    debug         = .false.
   /
 
+
 &state_vector_io_nml
    single_precision_output    = .true.
   /
+
 
 &location_nml
    horiz_dist_only             = .false.
@@ -180,10 +184,12 @@
    output_box_info             = .false.
   /
 
+
 &utilities_nml
    TERMLEVEL = 1
    module_details = .true.
   /
+
 
 &obs_sequence_tool_nml
    filename_seq         = 'obs_seq.out_cosmos','obs_seq.out_weasd_single'
@@ -202,6 +208,7 @@
    edit_copy_metadata   = .true.
    new_copy_metadata    = 'observation'
   /
+
 
 &obs_diag_nml
    obs_sequence_name = ''
@@ -271,7 +278,7 @@
    num_to_compare_at_once = 2
    filename_seq           = ''
    filename_seq_list      = 'OLlist','Simlist'
-   filename_out_suffix    = '.common' 
+   filename_out_suffix    = '.common'
    print_every            = -1
    dart_qc_threshold      = 3
    calendar               = 'Gregorian'
@@ -294,9 +301,9 @@
 
 &schedule_nml
    calendar        = 'Gregorian'
-   first_bin_start =  2003, 11, 24, 0, 0, 0 
-   first_bin_end   =  2003, 11, 25, 0, 0, 0 
-   last_bin_end    =  2003, 11, 25, 0, 0, 0 
+   first_bin_start =  2003, 11, 24, 0, 0, 0
+   first_bin_end   =  2003, 11, 25, 0, 0, 0
+   last_bin_end    =  2003, 11, 25, 0, 0, 0
    bin_interval_days    = 1
    bin_interval_seconds = 0
    max_num_bins         = 1

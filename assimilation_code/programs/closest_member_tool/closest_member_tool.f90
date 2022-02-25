@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Select the member closest to the ensemble mean.
 !>
@@ -17,7 +15,7 @@ use types_mod,            only : r8, i8, obstypelength, MAX_NUM_DOMS, MAX_FILES
 use time_manager_mod,     only : time_type, set_time_missing, operator(/=), &
                                  print_time
  
-use utilities_mod,        only : register_module, find_namelist_in_file,        &
+use utilities_mod,        only : find_namelist_in_file,        &
                                  error_handler, nmlfileunit, E_MSG, E_ERR,      &
                                  check_namelist_read, do_nml_file, do_nml_term, &
                                  open_file, close_file, set_multiple_filename_lists, &
@@ -52,11 +50,7 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_c
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'closest_member_tool.f90'
 
 integer               :: iunit, io, ens, i, j, total_j, qtyindex
 integer               :: num_qtys, stype
@@ -124,7 +118,6 @@ real(r8), allocatable           :: total_diff(:)
 
 call initialize_mpi_utilities('closest_member_tool')
 
-call register_module(source,revision,revdate)
 
 ! Read the namelist entry and print it
 call find_namelist_in_file("input.nml", "closest_member_tool_nml", iunit)
@@ -221,8 +214,7 @@ if (use_only_qtys(1) /= '') then
       qtyindex = get_index_for_quantity(use_only_qtys(i))   
       if (qtyindex < 0) then
          write(msgstring, *) 'unrecognized QTY string: '//trim(use_only_qtys(i))
-         call error_handler(E_ERR,'closest_member_tool', msgstring, &
-                            source,revision,revdate)
+         call error_handler(E_ERR,'closest_member_tool', msgstring, source)
       endif
       useqty(qtyindex) = .true.
 
@@ -230,8 +222,7 @@ if (use_only_qtys(1) /= '') then
 
    if (.not. done) then
       write(msgstring, *) 'cannot have more than ', max_list_len, ' qtys'
-      call error_handler(E_ERR,'closest_member_tool', msgstring, &
-                         source,revision,revdate)
+      call error_handler(E_ERR,'closest_member_tool', msgstring, source)
    endif
 
    write(msgstring, *) 'Computing difference based only on items in state vector items of quantity:'
@@ -270,7 +261,7 @@ if (.not. allqtys) then
          write(msgstring, *) 'bad QTY from get_state_meta_data, ', stype, ' for index ', owners_index
          write(msgstring1, *) 'must be between 0 and ', num_qtys
          call error_handler(E_ERR,'closest_member_tool', msgstring, &
-                            source,revision,revdate, text2=msgstring1)
+                            source, text2=msgstring1)
 
       endif
       
@@ -401,7 +392,7 @@ do copies = 1, ens_size
       case default
          write(msgstring, *) 'Valid values for difference_method are 1-4, value is', difference_method
          call error_handler(E_ERR,'closest_member_tool','Bad value for difference_method', &
-                            source,revision,revdate, text2=msgstring)
+                            source, text2=msgstring)
    end select
 enddo
 

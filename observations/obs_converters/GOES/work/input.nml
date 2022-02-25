@@ -1,0 +1,156 @@
+
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../../observations/forward_operators/obs_def_rttov_mod.f90'
+   quantity_files          = '../../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/chemistry_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/land_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
+ /
+
+&convert_goes_ABI_L1b_nml
+   l1_files           = ''
+   l1_file_list       = 'l1_files_to_process'
+   outputfile         = 'obs_seq.test'
+   x_thin             = 5
+   y_thin             = 5
+   lon1               = 235.0
+   lon2               = 293.0
+   lat1               =  25.0
+   lat2               =  50.0
+   goes_num           = 16
+   obs_err            = 1.0
+   verbose            = .true.
+   vloc_pres_hPa      = 340.
+ /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+ /
+
+&obs_kind_nml
+ /
+
+&location_nml
+ /
+
+&utilities_nml
+ module_details = .false.
+ /
+
+&obs_sequence_tool_nml
+   filename_seq         = ''
+   filename_seq_list    = ''
+   filename_out         = 'obs_seq.processed'
+   first_obs_days       = -1
+   first_obs_seconds    = -1
+   last_obs_days        = -1
+   last_obs_seconds     = -1
+   obs_types            = ''
+   keep_types           = .true.
+   min_box              = -888888.0
+   max_box              = -888888.0
+   min_lat              =  -90.0
+   max_lat              =   90.0
+   min_lon              =    0.0
+   max_lon              =  360.0
+   copy_metadata        = ''
+   min_copy             = -888888.0
+   max_copy             = -888888.0
+   copy_type            = ''
+   edit_copy_metadata   = .false.
+   new_copy_metadata    = ''
+   edit_copies          = .false.
+   new_copy_index       = -1
+   new_copy_data        = -888888.0
+   qc_metadata          = ''
+   min_qc               = -888888.0
+   max_qc               = -888888.0
+   edit_qc_metadata     = .false.
+   new_qc_metadata      = ''
+   edit_qcs             = .false.
+   new_qc_index         = -1
+   new_qc_data          = -888888.0
+   synonymous_copy_list = ''
+   synonymous_qc_list   = ''
+   print_only           = .false.
+   gregorian_cal        = .true.
+   /
+
+&obs_def_rttov_nml
+   rttov_sensor_db_file   = '../../../forward_operators/rttov_sensor_db.csv'
+   first_lvl_is_sfc       = .true.
+   mw_clear_sky_only      = .false.
+   interp_mode            = 1
+   do_checkinput          = .true.
+   apply_reg_limits       = .true.
+   verbose                = .true.
+   fix_hgpl               = .false.
+   do_lambertian          = .false.
+   lambertian_fixed_angle = .true.
+   rad_down_lin_tau       = .true.
+   use_q2m                = .true.
+   use_uv10m              = .true.
+   use_wfetch             = .false.
+   use_water_type         = .false.
+   addrefrac              = .false.
+   plane_parallel         = .false.
+   use_salinity           = .false.
+   apply_band_correction  = .true.
+   cfrac_data             = .true.
+   clw_data               = .true.
+   rain_data              = .true.
+   ciw_data               = .true.
+   snow_data              = .true.
+   graupel_data           = .true.
+   hail_data              = .false.
+   w_data                 = .true.
+   clw_scheme             = 1
+   clw_cloud_top          = 322.
+   fastem_version         = 6
+   supply_foam_fraction   = .false.
+   use_totalice           = .true.
+   use_zeeman             = .false.
+   cc_threshold           = 0.05
+   ozone_data             = .false.
+   co2_data               = .false.
+   n2o_data               = .false.
+   co_data                = .false.
+   ch4_data               = .false.
+   so2_data               = .false.
+   addsolar               = .false.
+   rayleigh_single_scatt  = .true.
+   do_nlte_correction     = .false.
+   solar_sea_brdf_model   = 2
+   ir_sea_emis_model      = 2
+   use_sfc_snow_frac      = .false.
+   add_aerosl             = .false.
+   aerosl_type            = 1
+   add_clouds             = .true.
+   ice_scheme             = 1
+   use_icede              = .false.
+   idg_scheme             = 2
+   user_aer_opt_param     = .false.
+   user_cld_opt_param     = .false.
+   grid_box_avg_cloud     = .true.
+   cldstr_threshold       = -1.0
+   cldstr_simple          = .false.
+   cldstr_low_cloud_top   = 750.0
+   ir_scatt_model         = 2
+   vis_scatt_model        = 1
+   dom_nstreams           = 8
+   dom_accuracy           = 0.0
+   dom_opdep_threshold    = 0.0
+   addpc                  = .false.
+   npcscores              = -1
+   addradrec              = .false.
+   ipcreg                 = 1
+   use_htfrtc             = .false.
+   htfrtc_n_pc            = -1
+   htfrtc_simple_cloud    = .false.
+   htfrtc_overcast        = .false.
+ /

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> @{ 
 !> @brief Manage lists of observations 
@@ -24,18 +22,27 @@ module obs_sequence_mod
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
 use        types_mod, only : r8, i8, MISSING_R8, metadatalength
+
 use     location_mod, only : location_type, is_location_in_region
+
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
                              get_obs_def_type_of_obs, get_obs_def_key,  &
                              operator(==), operator(/=), print_obs_def
-use     obs_kind_mod, only : write_type_of_obs_table, read_type_of_obs_table, &
-                             max_defined_types_of_obs, get_index_for_type_of_obs
-use time_manager_mod, only : time_type, operator(>), operator(<), &
-                             operator(>=), operator(/=), set_time, &
-                             operator(-), operator(+), operator(==)
-use    utilities_mod, only : get_unit, register_module, error_handler, &
+
+use     obs_kind_mod, only : write_type_of_obs_table, &
+                             read_type_of_obs_table, &
+                             max_defined_types_of_obs, &
+                             get_index_for_type_of_obs, &
+                             get_name_for_type_of_obs
+
+use time_manager_mod, only : time_type, set_time, print_time, print_date, &
+                             operator(-), operator(+), &
+                             operator(>), operator(<), &
+                             operator(>=), operator(/=), operator(==)
+
+use    utilities_mod, only : get_unit, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term, &
                              open_file, close_file
@@ -67,7 +74,8 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
    delete_seq_head, delete_seq_tail, &
    get_next_obs_from_key, get_prev_obs_from_key, delete_obs_by_typelist, &
-   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy
+   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy, &
+   print_obs_seq_summary, validate_obs_seq_time
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -78,11 +86,7 @@ public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'obs_sequence_mod.f90'
 
 type obs_sequence_type
    private
@@ -150,7 +154,6 @@ subroutine static_init_obs_sequence
 
 integer :: iunit, io
 
-call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "obs_sequence_nml", iunit)
@@ -662,7 +665,7 @@ if(seq%num_obs >= seq%max_num_obs) then
    ! Later do an increase of space and copy
    write(string1,*) 'ran out of room, num_obs (',seq%num_obs, &
                                ') > max_num_obs (',seq%max_num_obs,')'
-   call error_handler(E_ERR,'insert_obs_in_seq',string1,source,revision,revdate)
+   call error_handler(E_ERR,'insert_obs_in_seq',string1, source)
 endif
 
 ! Set the key for the observation
@@ -694,7 +697,7 @@ if(present(prev_obs)) then
           !next = seq%first_time
           ! error out 
           write(string1,*) 'time of prev_obs cannot be > time of new obs'
-          call error_handler(E_ERR,'insert_obs_in_seq',string1,source,revision,revdate)
+          call error_handler(E_ERR,'insert_obs_in_seq',string1, source)
        endif
     endif
    
@@ -786,7 +789,7 @@ else
    last_time = get_obs_def_time(last_obs%def)
    if(obs_time < last_time) then
       write(string1, *) 'time of appended obs cannot be < time of last obs in sequence'
-      call error_handler(E_ERR,'append_obs_to_seq',string1,source,revision,revdate)
+      call error_handler(E_ERR,'append_obs_to_seq',string1, source)
    endif
 
 !!!   call insert_obs_in_seq(seq, obs)
@@ -796,7 +799,7 @@ else
    if(seq%num_obs >= seq%max_num_obs) then
 ! Later do an increase of space and copy
       write(string1,*) 'ran out of room, max_num_obs = ',seq%max_num_obs
-      call error_handler(E_ERR,'append_obs_to_seq',string1,source,revision,revdate)
+      call error_handler(E_ERR,'append_obs_to_seq',string1, source)
    endif
 
 ! Set the key for the observation
@@ -897,14 +900,13 @@ lj_meta_data = adjustl(meta_data)
 if (len_trim(lj_meta_data) > metadatalength) then
    write(string1,*) 'metadata string [', trim(lj_meta_data),']'
    write(string2,*) 'must be shorter than ',metadatalength
-   call error_handler(E_ERR, 'set_copy_meta_data', string1, &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'set_copy_meta_data', string1, source, text2=string2)
 endif
 
 if (copy_num > seq%num_copies) then
    write(string1,*) 'trying to set copy (', copy_num, &
                       ') which is larger than num_copies (', seq%num_copies, ')'
-   call error_handler(E_ERR,'set_copy_meta_data',string1,source,revision,revdate)
+   call error_handler(E_ERR,'set_copy_meta_data',string1, source)
 endif
 
 seq%copy_meta_data(copy_num) = trim(lj_meta_data)
@@ -927,14 +929,13 @@ lj_meta_data = adjustl(meta_data)
 if (len_trim(lj_meta_data) > metadatalength) then
    write(string1,*) 'metadata string [', trim(lj_meta_data),']'
    write(string2,*) 'must be shorter than ',metadatalength
-   call error_handler(E_ERR, 'set_qc_meta_data', string1, &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_ERR, 'set_qc_meta_data', string1, source, text2=string2)
 endif
 
 if (qc_num > seq%num_qc) then
    write(string1,*) 'trying to set qc (', qc_num, &
                       ') which is larger than num_qc (', seq%num_qc, ')'
-   call error_handler(E_ERR,'set_qc_meta_data',string1,source,revision,revdate)
+   call error_handler(E_ERR,'set_qc_meta_data',string1, source)
 endif
 
 seq%qc_meta_data(qc_num) = trim(lj_meta_data)
@@ -1094,7 +1095,7 @@ endif
 if (rc /= 0) then
    write(string1, *) 'unable to create observation sequence file "'//trim(file_name)//'"'
    write(string2, *) 'open file return code = ', rc
-   call error_handler(E_ERR,'write_obs_seq',string1,source,revision,revdate, text2=string2)
+   call error_handler(E_ERR,'write_obs_seq',string1, source, text2=string2)
 else
    write(string1, *) 'opening '// trim(useform) // ' observation sequence file "'//trim(file_name)//'"'
    call error_handler(E_MSG,'write_obs_seq',string1)
@@ -1194,8 +1195,7 @@ do i = 1, num_copies
    if (io /= 0) then
       ! Read error of some type
       write(string1, *) 'Read error in copy metadata ', i, ' rc= ', io
-      call error_handler(E_ERR, 'read_obs_seq', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs_seq', string1, source)
    endif
 end do
 
@@ -1209,8 +1209,7 @@ do i = 1, num_qc
    if (io /= 0) then
       ! Read error of some type
       write(string1, *) 'Read error in qc metadata ', i, ' rc= ', io
-      call error_handler(E_ERR, 'read_obs_seq', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs_seq', string1, source)
    endif
 end do
 
@@ -1223,17 +1222,16 @@ endif
 if (io /= 0) then
    ! Read error of some type
    write(string1, *) 'Read error in first/last times, rc= ', io
-   call error_handler(E_ERR, 'read_obs_seq', string1, &
-      source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs_seq', string1, source)
 endif
 
 if (seq%first_time < -1 .or. seq%first_time > max_num_obs) then
    write(string1, *) 'Bad value for first', seq%first_time, ', min is -1, max is ', max_num_obs 
-   call error_handler(E_ERR, 'read_obs_seq', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs_seq', string1, source)
 endif
 if (seq%last_time < -1 .or. seq%last_time > max_num_obs) then
    write(string1, *) 'Bad value for last', seq%last_time, ', min is -1, max is ', max_num_obs 
-   call error_handler(E_ERR, 'read_obs_seq', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs_seq', string1, source)
 endif
 
 ! Now read in all the previously defined observations
@@ -1242,8 +1240,7 @@ do i = 1, num_obs
    if (io /= 0) then
       ! Read error of some type
       write(string1, *) 'Read error in obs label', i, ' rc= ', io
-      call error_handler(E_ERR, 'read_obs_seq', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs_seq', string1, source)
    endif
    call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i), &
       read_format, num_obs)
@@ -1315,7 +1312,7 @@ if(ios /= 0) then  ! try reading binary formats
       write(string2, *) 'Attempted to read both as a formatted (ascii) and unformatted (binary) file.'
       write(string3, *) 'For binary files, endian selection was "'//trim(read_binary_file_format)//'"' 
       call error_handler(E_ERR, 'read_obs_seq_header', string1, &
-                         source, revision, revdate, text2=string2, text3=string3)
+                         source, text2=string2, text3=string3)
    endif
 endif
 
@@ -1359,7 +1356,7 @@ integer :: check_obs_seq_header
 
 integer :: ios
 character(len=12) :: file_header   ! 'obs_sequence'
-character(len=20) :: toc_header    ! 'obs_kind_definitions'
+character(len=20) :: toc_header    ! 'obs_kind_definitions' (old) OR 'obs_type_definitions' (new, and correct)
 
 if (read_format == 'formatted') then
    read(file_id, *, iostat = ios) file_header
@@ -1378,7 +1375,7 @@ else
    read(file_id, iostat = ios) toc_header
 endif
    
-if(ios /= 0 .or. toc_header /= 'obs_kind_definitions') then
+if(ios /= 0 .or. (toc_header /= 'obs_kind_definitions' .and. toc_header /= 'obs_type_definitions')) then
    check_obs_seq_header = -1
    return
 endif
@@ -1589,15 +1586,13 @@ integer              :: obs_type_index(num_obs_input_types), this_obs_type
 ! Some sanity checking on the input args.
 if (num_obs_input_types <= 0) then
    write(string1,*) 'num_obs_input_types must be > 0'
-   call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_typelist', string1, source)
 endif
 ! Ok for list to be longer; only first N items will be used.  But list
 ! cannot be shorter.
 if (size(obs_input_types) < num_obs_input_types) then
    write(string1,*) 'num_obs_input_types must be >= length of list'
-   call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_typelist', string1, source)
 endif
 
 
@@ -1606,8 +1601,7 @@ do i=1, num_obs_input_types
    obs_type_index(i) = get_index_for_type_of_obs(obs_input_types(i))
    if (obs_type_index(i) < 0) then
       write(string1,*) 'obs_type ', trim(obs_input_types(i)), ' not found'
-      call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'delete_obs_by_typelist', string1, source)
    endif
 enddo
 
@@ -1711,14 +1705,12 @@ real(r8)             :: qcval(1)
 ! Some sanity checking on the input args.
 if (qc_index > seq%num_qc) then
    write(string1,*) 'qc_index must be <', seq%num_qc
-   call error_handler(E_ERR,'delete_obs_by_qc', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_qc', string1, source)
 endif
 ! Ok for min/max to be missing_r8; if both specified, min must be <= max.
 if (qc_min /= missing_r8 .and. qc_max /= missing_r8 .and. qc_min > qc_max) then
    write(string1,*) 'qc_min must be less than or equal qc_max'
-   call error_handler(E_ERR,'delete_obs_by_qc', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_qc', string1, source)
 endif
 
 ! Initialize an observation type with appropriate size
@@ -1804,15 +1796,13 @@ real(r8)             :: copyval(1)
 ! Some sanity checking on the input args.
 if (copy_index > seq%num_copies) then
    write(string1,*) 'copy_index must be <', seq%num_copies
-   call error_handler(E_ERR,'delete_obs_by_copy', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_copy', string1, source)
 endif
 ! Ok for min/max to be missing_r8; if both specified, min must be <= max.
 if (copy_min /= missing_r8 .and. copy_max /= missing_r8 .and. &
     copy_min > copy_max) then
    write(string1,*) 'copy_min must be less than or equal copy_max'
-   call error_handler(E_ERR,'delete_obs_by_copy', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR,'delete_obs_by_copy', string1, source)
 endif
 
 ! Get index number for the type
@@ -1820,8 +1810,7 @@ if (len(trim(obs_type_name)) > 0) then
    obs_type_index = get_index_for_type_of_obs(obs_type_name)
    if (obs_type_index < 0) then
       write(string1,*) 'obs_type ', trim(obs_type_name), ' not found'
-      call error_handler(E_ERR,'delete_obs_by_copy', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'delete_obs_by_copy', string1, source)
    endif
 else
    obs_type_index = -1
@@ -2023,7 +2012,7 @@ end subroutine set_used_kinds
 ! Follow the linked list entries to copy only the linked observations
 ! from one sequence to the other.
 
-!>@ todo ... test this routine and make public
+!>@ todo ... test this routine and make public or get rid of it
 
 subroutine copy_obs_seq(oldseq, newseq, time1, time2)
 
@@ -2066,8 +2055,7 @@ call get_obs_time_range(oldseq, first_time, last_time, &
                         key_bounds, num_keys, out_of_range)
 if (out_of_range) then
    write(string1, *) 'All keys out of range'
-   call error_handler(E_ERR, 'copy_obs_seq', string1, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'copy_obs_seq', string1, source)
 endif
 
 
@@ -2299,22 +2287,19 @@ integer :: i, ival
 ival = min(minval(copylist(1:numcopies)), minval(qclist(1:numqc)))
 if (ival < 0) then
    write(string1, '(A,I8,A)') 'index list value, ', ival, ' must be >= 0'
-   call error_handler(E_ERR, 'copy_partial_obs:', string1, &
-               source, revision, revdate)
+   call error_handler(E_ERR, 'copy_partial_obs:', string1, source)
 endif
 ival = maxval(copylist(1:numcopies))
 if (ival > size(obs2%values)) then
    write(string1, '(A,I8,A,I8)') 'index list value, ', ival, &
       ' is larger than copies length, ', size(obs2%values)
-   call error_handler(E_ERR, 'copy_partial_obs:', string1, &
-               source, revision, revdate)
+   call error_handler(E_ERR, 'copy_partial_obs:', string1, source)
 endif
 ival = maxval(qclist(1:numqc))
 if (ival > size(obs2%qc)) then
    write(string1, '(A,I8,A,I8)') 'index list value, ', ival, &
       ' is larger than qc length, ', size(obs2%qc)
-   call error_handler(E_ERR, 'copy_partial_obs:', string1, &
-               source, revision, revdate)
+   call error_handler(E_ERR, 'copy_partial_obs:', string1, source)
 endif
 
 obs1%key = obs2%key
@@ -2555,8 +2540,7 @@ if(num_copies > 0) then
          if (io /= 0) then
             ! Read error of some type
             write(string1, *) 'Read error in obs values, obs ', i, ' rc= ', io
-            call error_handler(E_ERR, 'read_obs', string1, &
-               source, revision, revdate)
+            call error_handler(E_ERR, 'read_obs', string1, source)
          endif
       end do
    else
@@ -2564,8 +2548,7 @@ if(num_copies > 0) then
       if (io /= 0) then
          ! Read error of some type
          write(string1, *) 'Read error in obs values, rc= ', io
-         call error_handler(E_ERR, 'read_obs', string1, &
-            source, revision, revdate)
+         call error_handler(E_ERR, 'read_obs', string1, source)
       endif
    endif
 endif
@@ -2577,8 +2560,7 @@ if(num_qc > 0) then
          if (io /= 0) then
             ! Read error of some type
             write(string1, *) 'Read error in qc values, obs ', i, ' rc= ', io
-            call error_handler(E_ERR, 'read_obs', string1, &
-               source, revision, revdate)
+            call error_handler(E_ERR, 'read_obs', string1, source)
          endif
       end do
    else
@@ -2586,8 +2568,7 @@ if(num_qc > 0) then
       if (io /= 0) then
          ! Read error of some type
          write(string1, *) 'Read error in qc values, rc= ', io
-         call error_handler(E_ERR, 'read_obs', string1, &
-            source, revision, revdate)
+         call error_handler(E_ERR, 'read_obs', string1, source)
       endif
    endif
 endif
@@ -2608,8 +2589,7 @@ endif
 if (io /= 0) then
    ! Read error of some type
    write(string1, *) 'Read error in linked list or cov grp, rc= ', io
-   call error_handler(E_ERR, 'read_obs', string1, &
-      source, revision, revdate)
+   call error_handler(E_ERR, 'read_obs', string1, source)
 endif
 
 ! if max_obs specified, do additional error checking
@@ -2617,13 +2597,11 @@ if (present(max_obs)) then
    ! -1 is ok; used for first and last entries.
    if (obs%prev_time < -1 .or. obs%prev_time > max_obs) then
       write(string1, *) 'Bad value for previous obs, ', obs%prev_time, ', in obs ', key 
-      call error_handler(E_ERR, 'read_obs', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs', string1, source)
    endif
    if (obs%next_time < -1 .or. obs%next_time > max_obs) then
       write(string1, *) 'Bad value for next obs, ', obs%next_time, ', in obs ', key
-      call error_handler(E_ERR, 'read_obs', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'read_obs', string1, source)
    endif
 endif
 
@@ -2715,8 +2693,7 @@ if (present(key1)) then
    if (key1 < seq%first_time .or. key1 > seq%last_time) then
       write(string1, *) 'Bad value for key1, must be between ', &
                             seq%first_time, ' and ', seq%last_time
-      call error_handler(E_ERR, 'get_num_key_range', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'get_num_key_range', string1, source)
    endif
    next = key1
 else
@@ -2726,8 +2703,7 @@ if (present(key2)) then
    if (key2 < seq%first_time .or. key2 > seq%last_time) then
       write(string1, *) 'Bad value for key2, must be between ', &
                             seq%first_time, ' and ', seq%last_time
-      call error_handler(E_ERR, 'get_num_key_range', string1, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'get_num_key_range', string1, source)
    endif
    last = key2
 else
@@ -2745,6 +2721,293 @@ end do
 end function get_num_key_range
 
 
+!---------------------------------------------------------
+! you can get more info by running the obs_diag program, but this
+! prints out a quick table of obs types and counts, overall start and
+! stop times, and metadata strings and counts.
+
+subroutine print_obs_seq_summary(seq_in, filename)
+
+type(obs_sequence_type),    intent(in) :: seq_in
+character(len=*), optional, intent(in) :: filename
+
+type(obs_type)     :: obs
+type(obs_type)     :: next_obs
+type(obs_def_type) :: this_obs_def
+logical            :: is_there_one
+logical            :: is_this_last
+integer            :: size_seq_in
+integer            :: i
+integer            :: this_obs_kind
+integer            :: identity_count
+
+! max_defined_types_of_obs is a public from obs_kind_mod.f90 and really is
+! counting the max number of types, not kinds
+integer            :: type_count(max_defined_types_of_obs)
+
+! Initialize input obs_types
+do i = 1, max_defined_types_of_obs
+   type_count(i) = 0
+enddo
+identity_count = 0
+
+! make sure there are obs left to process before going on.
+! num_obs should be ok since we just constructed this seq so it should
+! have no unlinked obs.  if it might for some reason, use this instead:
+! size_seq_in = get_num_key_range(seq_in)     !current size of seq_in
+
+size_seq_in = get_num_obs(seq_in)
+if (size_seq_in == 0) then
+   if (present(filename)) then
+      string1 = 'observation sequence file "'//trim(filename)//'" is empty'
+   else
+      string1 = 'observation sequence is empty'
+   endif
+   call error_handler(E_MSG,'print_obs_seq_summary',string1)
+   return
+endif
+
+! Initialize individual observation variables 
+call init_obs(     obs, get_num_copies(seq_in), get_num_qc(seq_in))
+call init_obs(next_obs, get_num_copies(seq_in), get_num_qc(seq_in))
+
+! blank line
+call error_handler(E_MSG,'',' ')
+
+if (present(filename)) then
+   write(string1,*) 'Processing observation sequence file "'//trim(filename)//'"'
+   call error_handler(E_MSG,'',string1)
+endif
+
+call print_sequence_metadata(seq_in, filename)
+
+!-------------------------------------------------------------
+! Start to process obs from seq_in
+!--------------------------------------------------------------
+is_there_one = get_first_obs(seq_in, obs)
+
+if ( .not. is_there_one )  then
+   write(string1,*)'no first observation'
+   call error_handler(E_MSG,'obs_loop', string1)
+endif
+
+! process it here
+is_this_last = .false.
+
+call get_obs_def(obs, this_obs_def)
+call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
+call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
+
+ObsLoop : do while ( .not. is_this_last)
+
+   call get_obs_def(obs, this_obs_def)
+   this_obs_kind = get_obs_def_type_of_obs(this_obs_def)
+   if (this_obs_kind < 0) then
+      identity_count = identity_count + 1
+   else
+      type_count(this_obs_kind) = type_count(this_obs_kind) + 1
+   endif
+
+!   print *, 'obs kind index = ', this_obs_kind
+!   if(this_obs_kind > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_kind)
+
+   call get_next_obs(seq_in, obs, next_obs, is_this_last)
+   if (.not. is_this_last) then 
+      obs = next_obs
+   else
+      call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
+      call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
+   endif
+
+enddo ObsLoop
+
+
+write(string1, *) 'Number of obs processed  :          ', size_seq_in
+write(string2, *) '---------------------------------------------------------'
+call error_handler(E_MSG, '', string1)
+call error_handler(E_MSG, '', string2)
+
+do i = 1, max_defined_types_of_obs
+   if (type_count(i) > 0) then 
+      write(string1, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
+                                     type_count(i), ' obs'
+      call error_handler(E_MSG, '', string1)
+   endif
+enddo
+if (identity_count > 0) then 
+   write(string1, '(a32,i8,a)') 'Identity observations', &
+                                  identity_count, ' obs'
+   call error_handler(E_MSG, '', string1)
+endif
+
+! another blank line
+call error_handler(E_MSG, '', ' ')
+
+! Time to clean up
+
+call destroy_obs(     obs)
+call destroy_obs(next_obs)
+
+end subroutine print_obs_seq_summary
+
+
+!---------------------------------------------------------------------
+! print out the (trimmed) metadata strings
+
+subroutine print_sequence_metadata(seq, fname)
+
+type(obs_sequence_type),    intent(in) :: seq
+character(len=*), optional, intent(in) :: fname
+
+integer :: num_copies , num_qc, i
+character(len=metadatalength) :: str
+
+num_copies = get_num_copies(seq)
+num_qc     = get_num_qc(    seq)
+
+if ( num_copies < 0 .or. num_qc < 0 ) then
+   write(string1,*)' Illegal number of copies ', num_copies, '-OR-'
+   write(string2,*)' illegal number of qc values ', num_qc, 'in observation sequence.'
+   if (present(fname)) then 
+      write(string3,*) 'Sequence came from file "'//trim(fname)//'"'
+   else
+      write(string3,*) 'Sequence came from unspecified file.'
+   endif
+   call error_handler(E_ERR, 'print_sequence_metadata', string1, source, &
+                             text2=string2, text3=string3)
+endif
+
+MetaDataLoop : do i=1, num_copies
+   str = get_copy_meta_data(seq,i)
+
+   write(string1,*)'Data Metadata: ',trim(str)
+   call error_handler(E_MSG, '', string1)
+
+enddo MetaDataLoop
+
+QCMetaData : do i=1, num_qc
+   str = get_qc_meta_data(seq,i)
+
+   write(string1,*)'  QC Metadata: ', trim(str)
+   call error_handler(E_MSG, '', string1)
+
+enddo QCMetaData
+
+end subroutine print_sequence_metadata
+
+
+!---------------------------------------------------------------------
+! we fixed a hole in the interactive create observation sequence
+! routine which would silently let you create out-of-time-order
+! linked lists, which gave no errors but didn't assimilate the
+! right obs at the right time when running filter.   this runs
+! through the times in the entire sequence, ensuring they are
+! monotonically increasing in time.  this should help catch any
+! bad files which were created with older versions of code.
+
+subroutine validate_obs_seq_time(seq, filename)
+
+type(obs_sequence_type), intent(in) :: seq
+character(len=*),        intent(in) :: filename
+
+type(obs_type)          :: obs
+type(obs_type)          :: next_obs
+type(obs_def_type)      :: this_obs_def
+logical                 :: is_there_one
+logical                 :: is_this_last
+integer                 :: size_seq
+integer                 :: obs_count
+integer                 :: key
+type(time_type)         :: last_time
+type(time_type)         :: this_time
+character(len=*), parameter :: routine = 'validate_obs_seq_time'
+
+! make sure there are obs left to process before going on.
+size_seq = get_num_obs(seq) 
+if (size_seq == 0) then
+   string1 = 'Obs_seq file "'//trim(filename)//'" is empty.'
+   call error_handler(E_MSG,routine,string1)
+   return
+endif
+
+! Initialize individual observation variables 
+call init_obs(     obs, get_num_copies(seq), get_num_qc(seq))
+call init_obs(next_obs, get_num_copies(seq), get_num_qc(seq))
+
+obs_count = 0
+
+!-------------------------------------------------------------
+! Start to process obs from seq
+!--------------------------------------------------------------
+is_there_one = get_first_obs(seq, obs)
+
+! we already tested for 0 obs above, so there should be a first obs here.
+if ( .not. is_there_one )  then
+   write(string1,*)'no first obs in sequence "'//trim(filename)//'"'
+   call error_handler(E_ERR, routine, string1, source)
+endif
+
+is_this_last = .false.
+last_time = set_time(0, 0)
+ObsLoop : do while ( .not. is_this_last)
+
+   call get_obs_def(obs, this_obs_def)
+   this_time = get_obs_def_time(this_obs_def)
+
+   if (last_time > this_time) then
+      ! bad time order of observations in linked list
+      call print_time(last_time, ' previous timestamp: ')
+      call print_date(last_time, '      calendar date: ')
+      call print_time(this_time, '     next timestamp: ')
+      call print_date(this_time, '      calendar date: ')
+
+      key = get_obs_key(obs)
+      write(string1,*)'obs number ', key, ' has earlier time than previous obs'
+      write(string2,*)'observations must be in increasing time order'
+      write(string3,*)' file "'//trim(filename)//'"'
+      call error_handler(E_ERR, routine, string1, source, &
+                         text2=string2, text3=string3)
+   endif
+
+   last_time = this_time
+   obs_count = obs_count + 1
+
+   call get_next_obs(seq, obs, next_obs, is_this_last)
+   if (.not. is_this_last) obs = next_obs
+
+enddo ObsLoop
+
+! clean up
+call destroy_obs(     obs)
+call destroy_obs(next_obs)
+
+! technically not a time validation, but easy to check.  obs_count should never
+! be larger than size_seq - that's a fatal error.  obs_count < size_seq would 
+! suggest there are obs in the file that aren't part of the linked list.  
+! this does not necessarily indicate a fatal error but it's not a common 
+! situation and might indicate someone should check on the file.
+
+if (obs_count /= size_seq) then
+   write(string1,*) 'input sequence from file "'//trim(filename)//'"'
+   call error_handler(E_MSG, routine, string1)
+
+   write(string1,*) 'total obs in file: ', size_seq, '  obs in linked list: ', obs_count
+
+   if (obs_count > size_seq) then
+      ! this is a fatal error
+      write(string2,*) 'linked list obs_count > total size_seq, should not happen'
+      call error_handler(E_ERR, routine, string1, source, text2=string2)
+   else
+      ! just warning msg
+      write(string2,*) 'only observations in linked list will be processed'
+      call error_handler(E_MSG, routine, string1, source, text2=string2)
+   endif
+endif
+
+end subroutine validate_obs_seq_time
+
+
+
 !-------------------------------------------------
 !subroutine get_cov_group
 !-------------------------------------------------
@@ -2755,8 +3018,3 @@ end function get_num_key_range
 
 end module obs_sequence_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

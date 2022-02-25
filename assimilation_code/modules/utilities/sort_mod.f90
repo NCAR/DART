@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> A selection of sorting routines. The simplest version sorts a given array
 !> of values and returns a copy of the array with the items in ascending sorted
@@ -26,7 +24,6 @@
 module sort_mod
 
 use     types_mod, only : r8, i8
-use utilities_mod, only : register_module
 
 implicit none
 private
@@ -37,11 +34,6 @@ private
 ! for now, let code indicate what sort they want. 
 public :: sort, index_sort, insertion_sort, index_insertion_sort
 !public :: simple_sort, simple_index_sort  
-
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL:$"
-character(len=*), parameter :: revision = "$Revision:$"
-character(len=*), parameter :: revdate  = "$Date:$"
 
 logical, save :: module_initialized = .false.
 
@@ -94,7 +86,6 @@ subroutine initialize_module()
 
 if (module_initialized) return
 
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module

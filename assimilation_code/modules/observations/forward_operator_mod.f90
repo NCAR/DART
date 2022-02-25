@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !------------------------------------------------------------------------------
 !> forward_operator_mod.f90
@@ -57,17 +55,10 @@ private
 
 public :: get_obs_ens_distrib_state, get_expected_obs_distrib_state
 
-!------------------------------------------------------------------------------
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-!------------------------------------------------------------------------------
-
+character(len=*), parameter :: source = 'forward_operator_mod.f90'
 
 ! Module storage for writing error messages
-character(len = 256) :: msgstring, msgstring2
+character(len=512) :: string1, string2
 
 contains
 
@@ -132,6 +123,9 @@ num_copies_to_calc = copies_in_window(ens_handle)
 allocate(istatus(num_copies_to_calc))
 allocate(expected_obs(num_copies_to_calc))
 allocate(my_copy_indices(num_copies_to_calc))
+
+istatus = 999123
+expected_obs = MISSING_R8
 
 ! FIXME: these no longer do anything?
 ! call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
@@ -213,6 +207,8 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distributed
             obs_fwd_op_ens_handle%vars(j, 1:num_copies_to_calc) = expected_obs
       else ! need to know whether it was assimilate or evaluate this ob.
 
+         ! TJH istatus is not set in here, yet it is in the other half of the if statement.
+         ! TJH Consequently, initializing it after it gets allocated.
          call assim_or_eval(seq, thiskey(1), ens_handle%num_vars, assimilate_this_ob, evaluate_this_ob)
 
       endif
@@ -233,6 +229,7 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distributed
          endif
       enddo
 
+      ! TJH if qc_ens_handle%my_num_copies <= 0) istatus was not defined
       qc_ens_handle%vars(j, 1:num_copies_to_calc) = istatus(:)
 
       call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, &
@@ -435,10 +432,10 @@ do i = 1, num_obs
          write(state_size_string, *) state_ens_handle%num_vars
          write(obs_key_string, *) keys(i)
          write(identity_obs_string, *) -obs_kind_ind
-         write(msgstring,  *) 'unable to compute forward operator for obs number '//trim(adjustl(obs_key_string))
-         write(msgstring2, *) 'identity index '//trim(adjustl(identity_obs_string))//&
-                              ' must be between 1 and the state size of '//trim(adjustl(state_size_string))
-         call error_handler(E_ERR, 'get_expected_obs', msgstring, source, revision, revdate, text2=msgstring2)
+         write(string1,  *) 'unable to compute forward operator for obs number '//trim(adjustl(obs_key_string))
+         write(string2, *) 'identity index '//trim(adjustl(identity_obs_string))//&
+             ' must be between 1 and the state size of '//trim(adjustl(state_size_string))
+         call error_handler(E_ERR, 'get_expected_obs', string1, source, text2=string2)
       endif
 
       expected_obs =  get_state(-1*int(obs_kind_ind,i8), state_ens_handle)
@@ -486,10 +483,8 @@ obs_kind_ind = get_obs_def_type_of_obs(obs_def)
 
 if (obs_kind_ind < 0) then
    if ( -obs_kind_ind > numvars ) then
-      call error_handler(E_ERR,  &
-      'get_expected_obs', &
-      'identity obs is outside of state vector ', &
-      source, revision, revdate)
+      call error_handler(E_ERR,  'get_expected_obs', &
+              'identity obs is outside of state vector ', source)
    endif
 
    ! FIXME : we currently have no option to eval only identity obs,
@@ -528,17 +523,17 @@ do copy = 1, num_fwd_ops
    ! Successful istatus but missing_r8 for forward operator
    if(istatus(copy) == 0) then
       if ((assimilate_ob .or. evaluate_ob) .and. (expected_obs(copy) == missing_r8)) then
-         write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-         write(msgstring2, *) 'observation number ', thiskey
-         call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, &
-                    source, revision, revdate, text2=msgstring2)
+         write(string1, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+         write(string2, *) 'observation number ', thiskey
+         call error_handler(E_ERR,'check_forward_operator_istatus', string1, &
+                    source, text2=string2)
       endif
    ! Negative istatus
    else if (istatus(copy) < 0) then
-      write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-      write(msgstring2, *) 'observation number ', thiskey
-      call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, &
-                    source, revision, revdate, text2=msgstring2)
+      write(string1, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+      write(string2, *) 'observation number ', thiskey
+      call error_handler(E_ERR,'check_forward_operator_istatus', string1, &
+                    source, text2=string2)
    endif
 
 enddo
@@ -548,8 +543,3 @@ end subroutine check_forward_operator_istatus
 !------------------------------------------------------------------------------
 end module forward_operator_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

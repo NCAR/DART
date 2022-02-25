@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # This script builds only perfect_model_obs and filter.  To build the rest
 # of the executables, run './quickbuild.csh'.
 #
@@ -67,8 +65,6 @@ cp -f input.workshop.nml input.nml
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "lorenz_96"
 
@@ -109,8 +105,4 @@ echo 'running filter'
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

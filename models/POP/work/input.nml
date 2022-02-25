@@ -5,9 +5,9 @@
    init_time_days             = -1
    init_time_seconds          = -1
 
-   write_output_state_to_file = .false.
+   write_output_state_to_file = .true.
    single_file_out            = .false.
-   output_state_files         = 'perfect_restart'
+   output_state_files         = 'perfect_restart.nc'
    output_interval            = 1
 
    async                      = 0
@@ -59,12 +59,12 @@
    output_sd                = .true.
    write_all_stages_at_end  = .true.
 
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .true.,                  .true.
+   inf_sd_initial_from_restart = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1.3,                    10.0
+   inf_lower_bound             = 0.0,                     0.0
+   inf_upper_bound             = 10.0,                    10.0
    inf_damping                 = 0.9,                     0.9
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
@@ -164,11 +164,12 @@
   /
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
   /
 
 &model_nml
@@ -176,7 +177,7 @@
    assimilation_period_seconds  = -1
    model_perturbation_amplitude = 0.2
    binary_grid_file_format      = 'big_endian'
-   mdt_reference_file_name      = 'mdt_f09_g16.nc'
+   mdt_reference_file_name      = 'none'
    debug                        = 0
    model_state_variables        = 'SALT_CUR ', 'QTY_SALINITY             ', 'UPDATE',
                                   'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
@@ -194,6 +195,20 @@
    nlon                        = 71
    nlat                        = 36
    output_box_info             = .true.
+  /
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.01
+   prior_inf_sd    = 0.6
+ 
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'pop.r.nc'
+   single_file       = .false.
+   verbose           = .false.
   /
 
 &utilities_nml

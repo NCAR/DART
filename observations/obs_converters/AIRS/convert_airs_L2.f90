@@ -1,25 +1,25 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program convert_airs_L2
 
-! Program to read the AIRS retrievals for temperature
-! and humidity. 
+! Program to read the AIRS retrievals for temperature and humidity. 
 
-use types_mod,        only : r8, deg2rad, PI
+use        types_mod, only : r8, deg2rad, PI
+
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence
-use     airs_JPL_mod, only : airs_ret_rdr, airs_granule_type
+
 use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, set_filename_list, &
-                             logfileunit, nmlfileunit, get_next_filename
+                             nmlfileunit, get_next_filename
 
-use airs_obs_mod,     only : make_obs_sequence, initialize_obs_sequence, &
+use     airs_JPL_mod, only : airs_granule_type, airs_ret_rdr
+
+use     airs_obs_mod, only : make_obs_sequence, initialize_obs_sequence, &
                              compute_thin_factor
 
 implicit none
@@ -29,17 +29,15 @@ implicit none
 ! ----------------------------------------------------------------------
 
 integer                 :: thin_factor, filecount
-character(len=256)      :: datafile(1), output_name, dartfile, msgstring
 type(airs_granule_type) :: granule
 type(obs_sequence_type) :: seq
 
 integer :: io, iunit, index
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'convert_airs_L2.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -102,7 +100,7 @@ filecount = set_filename_list(l2_files, l2_file_list, "convert_airs_l2")
 thin_factor = compute_thin_factor(along_track_thin, cross_track_thin)
 
 ! initialize an empty obs_seq to start
-seq = initialize_obs_sequence(outputfile, filecount, thin_factor)
+seq = initialize_obs_sequence(filecount, thin_factor)
 
 ! for each input file
 do index=1, filecount
@@ -124,14 +122,9 @@ call write_obs_seq(seq, outputfile)
 ! release the sequence memory
 call destroy_obs_sequence(seq)
 
-call error_handler(E_MSG, 'convert_airs_L2', 'Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG, source, 'Finished successfully.',source,revision,revdate)
 call finalize_utilities()
 
 
 end program convert_airs_L2
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

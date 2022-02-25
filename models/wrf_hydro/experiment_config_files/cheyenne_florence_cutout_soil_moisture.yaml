@@ -1,0 +1,303 @@
+# Example HydroDart Experiment Config file.
+#
+# Purpose: collect ALL relevant information to a HydroDart experiment.
+#
+# There are top-level keys for differen phases of the experiment setup
+# and run.
+# Build Phase: dart and wrf_hydro.
+# Experiment setup phase: experiment.
+# Ensemble construction phase: ensemble.
+# Run Phase: run.
+
+modules: ## !!!  NOT currently in use: make sure your modules match
+         ##      your mkmf_template and your compiler choices below.
+  # TODO (JLM): The compiler specs for wrf-hydro and dart could be solved from the
+  # modules at some later date. 
+
+  
+dart:
+  use_existing_build: True
+  # Absolute path required
+  dart_src: /glade/u/home/${USER}/dart/DART/
+  fork: ## !!! NOT currently in use
+  commit: ## !!! NOT currently in use
+  # TODO(JLM): Standard dart practice is to ONLY use mkmf.template
+  mkmf_template: mkmf.template.intel.linux #_5.4.0_docker
+  mpi: True
+  # Currently the build directory is in side the experiment directory, specified below
+  build_dir: dart_build
+  work_dirs: ['models/noah/work', 'observations/obs_converters/USGS/work/']
+
+
+wrf_hydro:
+  use_existing_build: True
+  # Absolute path required:
+  wrf_hydro_src: /glade/u/home/${USER}/WRF_Hydro/wrf_hydro_nwm_public
+  fork:   ## !!! NOT currently in use
+  commit: ## !!! NOT currently in use
+  model_config: dart_nwm_channel-only
+  compiler: ifort
+  compile_options:  
+  # Currently the build directory is in side the experiment directory, specified below
+  build_dir: wrf_hydro_build
+  # Absolute path required: 
+  domain_src: /glade/work/jamesmcc/domains/private/florence_933020089
+  domain_version: v1.2.1
+  domain_symlink: True
+  hydro_namelist_config_file: /glade/work/jamesmcc/domains/private/florence_933020089/hydro_namelists.json
+  hrldas_namelist_config_file: /glade/work/jamesmcc/domains/private/florence_933020089/hrldas_namelists.json
+  compile_options_config_file: /glade/work/jamesmcc/domains/private/florence_933020089/compile_options.json
+
+  
+experiment:
+  tag: flo_cut_test
+  # Location where the experiment is established (small storage, not scratched)
+  # Absolute path required
+  experiment_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/experiments/bucket1_sm
+  experiment_dir_mode: 'w'   ## !!! May NOT be in use
+  # Location of where filter and the ensemble are run. (large storage, potentially scratched)
+  # Absolute path required
+  run_dir: /glade/scratch/${USER}/wrfhydro_dart/flo_cut/runs/bucket1_sm
+  run_dir_mode: 'w'  ## !!! May NOT be in use
+  # TODO(JLM): The initial ensemble size controls the number of members?? or not?
+  # TODO(JLM): what are the format requirements here?
+  # Absolute path required
+
+
+# ensemble_construction
+ensemble:
+  # Number of cores to use when constructing the ensemble (small numbers < 5on a login node,
+  # bigger numbers if an interactive node is requested).
+  ncores_setup: 2
+  # Should the size be taken from the initial_ens or is this allowed
+  # as a double check?
+  size: 12
+  # A python script which constructs the ensemble from a single member
+  # specified in the wrf_hydro options.
+  # TODL(JLM): Why is this relative to where setup_experiment is invoked?
+  constructor: ../../ensemble_config_files/ens_setup_flo_cut_NWM_channel-bucket-only.py
+
+
+# How is the initial ensemble created?  
+initial_ens:
+  path: /glade/work/${USER}/wrfhydro_dart/flo_cut/initial_ens/bucket1_sm
+  param_restart_file:
+    # TODO(JLM): change this to use_existing for consistency
+    create: False
+    # If mode 'r' will create if does not exist. If mode 'w' will overwrite.
+    mode: 'r'   # 'w' to clobber/overwrite, 'r' to not clobber
+    # The following default to the restart files provided in the domain.
+    # hydro_rst: /glade/work/jamesmcc/domains/private/flo_933020089/NWM/RESTART_open-loop/HYDRO_RST.2018-08-01_00:00_DOMAIN1
+    restart: /glade/work/jamesmcc/domains/private/flo_933020089/NWM/RESTART_open-loop/RESTART.2018080100_DOMAIN1
+    existing_variables: [qlink1,  qlink1]
+    new_variables: [qBucketMult,  qSfcLatRunoffMult]
+    values: [1, 1]
+  from_filter:
+    # Optionally create the inital ensemble from filter perturbation + advance.
+    # This will use the same ensemble constructed by set
+    # If there is an from_filter/ dir in inital_ens:path: then inflation files are added to
+    # the run_dir.
+    # TODO(JLM): change this to use_existing for consistency
+    create: True
+    # Note that this command is part of the setup.
+    # OpenMPI
+    cmd: 'mpirun -np 4 ./filter'
+    # MPY
+    # cmd: 'mpiexec_mpt ./filter'
+    # If use is True, then consistency checks between the initial
+    # ensemble and the experiment are performed.
+    # TODO(JLM): rename use to "use_domain_order_shp" or something ?
+    use: True
+    mode: 'r'   ## !!! May NOT be in use
+    input_nml:
+      filter_nml:
+        perturb_from_single_instance: [true]
+        inf_flavor: [5, 0]
+        inf_initial: [1.0, 1.0]
+        inf_sd_initial: [0.6, 0.6]
+        inf_sd_lower_bound: [0.6, 0.6]
+        inf_damping: [0.9, 0.9]
+        inf_initial_from_restart: [false, false]
+        inf_sd_initial_from_restart: [false, false]
+        # In input_state_file_list, the fields are NOT simply patched:
+        input_state_file_list:
+          # The fields here are the files to be spcified in a this list (for each domain,
+          # in domain order). The values to each specifies the CONTENTS of the text files,
+          # which are the full paths to the appropriate domains' restart files, the files
+          # are created during the setup process.
+          # If blank: the restarts in the wrfhydro config/domain are used (unless channel-only).
+          restart_file_list.txt:
+          # If blank: the restarts in the wrfhydro config/domain are used.
+          hydro_file_list.txt:
+          # If param_restart_file:create is True, then the created parameter file is used here.
+          # If you specify one here, do not also create one above.
+          param_file_list.txt: 
+          # The resulting output files are in intial_ens:path/member_iii/.
+          # The following input.nml namelist fields should not be edited...
+          # Depending on domain order and incluusion, something like the following:
+          # output_state_file_list:'restarf_file_list.txt', 'hydro_file_list.txt', 'param_file_list.txt'
+          # perturb_from_single_instance: <forcibly true>
+          # num_output_state_members: <should be the ensemble size>
+      model_nml:
+        model_perturbation_amplitude: 0.1
+        perturb_distribution: 'lognormal'
+        # Do not specify input_state_file_list, domain_order, or domain_shapefiles.
+        # These are handled by the values passed to input_nml:filter_nml:input_state_file_list
+        debug: 0
+        domain_order: 'lsm'
+        # domain_shapefiles: 'restart.lsm.nc'
+        # hydro_variables: ['qlink1',            'QTY_STREAM_FLOW',        '0.0',   'NA', 'UPDATE',
+        #                   'z_gwsubbas',        'QTY_UNDER_RUNOFF',       '0.0',   'NA', 'UPDATE']
+        lsm_variables: ['SMC',            'QTY_SOIL_MOISTURE',        '0.0',   '1.0', 'UPDATE']
+
+  # The advance section is not being used...       
+  advance:
+    end_time:
+      
+
+# The fields under the top level must be listed in dart:observations: above.
+observation_preparation:
+  all_obs_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/obs_seqs/bucket1_sm
+  USGS_daily:
+    prepare: False
+    identity_obs: True
+    input_dir: /glade/work/jamesmcc/domains/private/florence/NWM/nudgingTimeSliceObs/
+    output_dir: /glade/work/${USER}/wrfhydro_dart/flo_cut/obs_seqs/bucket1_sm/USGS
+    # Date range in YYYY-mm-dd format
+    start_date: 2018-08-01
+    end_date:   2018-09-26
+    # A list of gages can be given in the following which will be written to the file.
+    # If a string is given, that indicates a file to use which will be symlinked into
+    # place for reference.
+    wanted_gages: [
+        "0208524090", "0208675010", "02086849", "0208521324", "02085000",
+          "02086624", "0208524975", "02085500",   "02086500", "02085070"
+    ]
+    input_nml_patches:
+      create_identity_streamflow_obs_nml:
+        # input_files: handled internally using input_dir and start and end dates above.
+        # location_file: handled internally.
+        # gages_list_file: handled by wanted gages above.
+        # The following patches are applied directly.
+        obs_fraction_for_error: 0.17
+        debug: 1
+    exe_cmd: '{cmd} >& converter.stdeo'
+    scheduler:
+      # ppn is the number of processors per node. This is required to be correct.
+      ncpus: 36
+      mpiprocs: 36
+      account: 'P48500028'
+      walltime: '00:40'
+      job_name: 'flo_cut_obs_prep' #_{model_start_time_str}'
+      queue: 'regular'
+      email_when: "abe"
+      email_who: ${USER}@ucar.edu    
+
+          
+##################################
+    
+run_experiment: 
+  
+  time:
+    end_time: 2018-08-16_06:00 ## Format: %Y-%m%d_%H:%M
+    advance_model_hours: 1  ## TODO (JLM): check for next ob when actually setting this.
+    assim_window:
+      # TODO(JLM): WHAT IS THIS???
+      use_input_nml: False
+      assim_window_size_hours: 1
+    # If both of these skips are False, then missing obs trigger a fatal error.  
+    skip_missing_obs_hours: False
+    skip_missing_obs_days: False
+    
+  perturb_forcing:
+    perturb: True
+    # Absolute path required. These are Can include a source directory of files (e.g.
+    # the deterministic forcing files).
+    src_dir:
+    src_copy:
+    noise_function_files: [
+    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/perturb_channel_bucket_only_forcing.py',
+    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/noise_qBtmVertRunoff_additive_fraction.py',
+    '/glade/u/home/${USER}/dart/DART/models/wrf_hydro/python/perturb/noise_qSfcLatRunoff_additive_fraction.py'
+    ]
+    noise_cmd: 'python perturb_channel_bucket_only_forcing.py --source_forcing_dir FORCING_AnA_channel-only --perturb_forcing_dir FORCING_perturbed --qsfclat_perturb_func noise_qSfcLatRunoff_additive_fraction.py --qbtmvert_perturb_func noise_qBtmVertRunoff_additive_fraction.py'
+
+  dart:
+    # incliuding obs_sequence_tool in exes will subset the obs_seq files.
+    exes: ['filter','obs_sequence_tool']
+    input_nml_patches:
+      filter_nml:
+        inf_flavor: [5, 0]
+        inf_initial: [1.0, 1.0]
+        inf_lower_bound: [0.0, 0.0]
+        inf_sd_initial: [0.6, 0.6]
+        inf_sd_lower_bound: [0.6, 0.6]
+        inf_damping: [0.9, 0.9]
+        inf_sd_max_change: [1.05, 1.05]
+        inf_initial_from_restart: [true, false]
+        inf_sd_initial_from_restart: [true, false]
+        #input_state_file_list: 'hydro_file_list.txt'
+        #output_state_file_list: 'hydro_file_list.txt' 
+      model_nml:
+        hydro_variables: ['qlink1',            'QTY_STREAM_FLOW',        '0.0',   'NA', 'UPDATE',
+                          'z_gwsubbas',        'QTY_UNDER_RUNOFF',       '0.0',   'NA', 'UPDATE']
+        max_link_distance: 4000.0
+        # domain_order and domain_shapefiles are made consistent with the initial ensemble
+        # when initial_ens: from_filter: use is True.
+        # domain_order: 'hydro'
+        # domain_shapefiles: 'restart.hydro.nc'
+        # input_state_file_list and output_state_file_list conventions in
+        # are used in run_filter_experiment:
+        #Note the name and order convention for the state file lists:
+        # 1) hydro_file_list.txt  2) lsm_file_list.txt  3) param_file_list.txt
+
+      assim_tools_nml:
+        cutoff: 0.0003139  # 0.5*the max. reach length specified in model_nml 
+
+
+  # Notes on choosing job_execution resources.
+  # 1) Determine wrfhydro:nproc
+  # 2) Then determine scheduler:ppn
+  # 3) n_teams_per_node = floor( scheduler:ppn / wrfhydro:nproc )
+  # 4) Then select scheduler:nnodes to determine how many teams (max concurrent members
+  #    running.
+  job_execution:
+    machine:
+      ppn_max: 27
+    scheduler:
+      nnodes: 1
+      ppn_use: 36
+      account: P48500028
+      walltime: '00:04'
+      job_name: ens_adv
+      queue: regular
+      email_when: abe
+      email_who: ${USER}@ucar.edu
+    wrf_hydro:
+      # The number of mpi processes for each model advance
+      nproc: 1
+      # The exe_cmd depends on your mpi implememtation. Currently only supporting openmpi.
+      # The exe_cmd applied to both the entry and exit commands applying the exe_cmd form to each
+      # semicolon-separated command and running these serially with nproc=1 and using only the
+      # first available hostname.
+      # The exe_cmd is solved for the model run by substituting ./wrf_hydro.exe for {cmd} and using
+      # nproc above and the appropriate, full set of hostnames available.
+      # Certain MPI distributions may need env variable, passed as a dictionary of key:value pairs.
+      ## impi
+      # exe_cmd: '"mpiexec -hosts {hostname} -n {nproc} {cmd}"'
+      exe_cmd: 'mpiexec -n {nproc} {cmd}'
+      env: None
+      # OpenMPI:
+      # exe_cmd: 'mpirun --host {hostname} -np {nproc} {cmd}'
+      # env: None
+      # MPT: UNSATISFACTORY PERFORMANCE.
+      # exe_cmd: 'mpirun --host {hostname} -np {nproc} ./wrf_hydro.exe'
+      # env = {**os.environ, **{'MPI_SHEPHERD':'true'}}
+    dart:
+      # This must not exceed scheduler:ppn_use
+      nproc: 27
+      # OpenMPI
+      exe_cmd: 'mpirun -np 10 ./filter'
+      #exe_cmd: 'mpirun --host {hostname} -np {nproc} {cmd}'
+      # MPT
+      #cmd: 'mpirun {hostname} -np {nproc} {cmd}'

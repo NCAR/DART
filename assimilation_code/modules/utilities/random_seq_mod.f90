@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Random number and random sequence routines.  Can generate random draws 
 !> from a uniform distribution or random draws from differently shaped
@@ -14,7 +12,7 @@ module random_seq_mod
 ! which used to be in a separate random_nr module.
 
 use     types_mod, only : digits12, i8, r8
-use utilities_mod, only : register_module, error_handler, E_ERR
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 private
@@ -29,11 +27,7 @@ public :: random_seq_type, &
           random_inverse_gamma, & 
           random_exponential
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'random_seq_mod.f90'
 
 ! Gives ability to generate unique repeatable sequences of random numbers
 ! using random congruential package. Needed to allow different assim algorithms
@@ -53,12 +47,12 @@ integer, parameter :: N = 624   ! period parameters
 integer, parameter :: M = 397
 
 ! hexadecimal constants
-integer(i8), parameter :: UPPER_MASK  = z'0000000080000000'
-integer(i8), parameter :: LOWER_MASK  = z'000000007FFFFFFF'
-integer(i8), parameter :: FULL32_MASK = z'00000000FFFFFFFF'
-integer(i8), parameter :: magic       = z'000000009908B0DF'
-integer(i8), parameter :: C1          = z'000000009D2C5680'
-integer(i8), parameter :: C2          = z'00000000EFC60000'
+integer(i8), parameter :: UPPER_MASK  = int(z'0000000080000000', i8)
+integer(i8), parameter :: LOWER_MASK  = int(z'000000007FFFFFFF', i8)
+integer(i8), parameter :: FULL32_MASK = int(z'00000000FFFFFFFF', i8)
+integer(i8), parameter :: magic       = int(z'000000009908B0DF', i8)
+integer(i8), parameter :: C1          = int(z'000000009D2C5680', i8)
+integer(i8), parameter :: C2          = int(z'00000000EFC60000', i8)
 
 type random_seq_type
    private
@@ -215,12 +209,12 @@ if ( .not. module_initialized ) call initialize_module
 
 if (rshape <= 0.0_r8) then
    write(errstring, *) 'Shape parameter must be positive, was ', rshape
-   call error_handler(E_ERR, 'random_gamma', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'random_gamma', errstring, source)
 endif
 
 if (rscale <= 0.0_r8) then
    write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', rscale
-   call error_handler(E_ERR, 'random_gamma', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'random_gamma', errstring, source)
 endif
 
 ! internal routine uses rshape, rscale
@@ -249,12 +243,12 @@ if ( .not. module_initialized ) call initialize_module
 
 if (rshape <= 0.0_r8) then
    write(errstring, *) 'Shape parameter must be positive, was ', rshape
-   call error_handler(E_ERR, 'random_inverse_gamma', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'random_inverse_gamma', errstring, source)
 endif
 
 if (rscale <= 0.0_r8) then
    write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', rscale
-   call error_handler(E_ERR, 'random_inverse_gamma', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'random_inverse_gamma', errstring, source)
 endif
 
 g = ran_gamma(r, rshape, rscale)
@@ -281,7 +275,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if (rate <= 0.0_r8) then
    write(errstring, *) 'Rate parameter (rate=1/scale) must be positive, was ', rate
-   call error_handler(E_ERR, 'random_exponential', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'random_exponential', errstring, source)
 endif
 
 ! internal routine uses shape, scale
@@ -300,7 +294,6 @@ end function random_exponential
 subroutine initialize_module
 
 if ( .not. module_initialized ) then
-   call register_module(source, revision, revdate)
    module_initialized = .true.
 endif
 
@@ -430,7 +423,7 @@ end function ran_unif
 !------------------------------------------------------------------------
 
 !> Polar (Box-Mueller) method; See Knuth v2, 3rd ed, p122 
-!> Returns a N(-1, 1) random number draw from a gaussian distribution
+!> Returns a N(0, 1) random number draw from a gaussian distribution
 
 function ran_gauss(s)
 
@@ -464,8 +457,7 @@ else
          write(errstring, *) 'x, y = ', x, y
          call error_handler(E_ERR, 'ran_gauss', &
                             'if both x and y are -1, random number generator probably not initialized', &
-                            source, revision, revdate, &
-                            text2 = errstring);
+                            source, text2 = errstring);
       endif
       goto 10
    endif
@@ -546,8 +538,3 @@ end function ran_gamma
 
 end module random_seq_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

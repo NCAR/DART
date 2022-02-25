@@ -25,7 +25,7 @@
 #     -check <keywords>    enables/disables more specific runtime checks.
 #           keywords:  [arg_temp_created,bounds,overflow,format,pointers,uninit]
 #     -warn <keywords>  the level of warning messages issued.
-#           keywords:  [alignments, argument_checking, declarations,
+#           keywords:  [alignments, declarations,
 #                      errors, fileopt, general, ignore_loc,
 #                      stderrors, truncated_source, uncalled,
 #                      uninitialized, unused, usage, all]
@@ -33,9 +33,6 @@
 #           Typically this is when a real function is called as if it were a
 #           subroutine, OR a subroutine is called as if it were a function (return
 #           values left of FP stack OR too much data is taken off the FP stack)
-#     -vec-reportN  controls how much diagnostic output is printed about
-#                   loops vectorized by the compiler. N = 0 is silent,
-#                   N can have values up to 5.
 #     -traceback    tells the compiler to generate extra information in the
 #                   object file to provide source file traceback information
 #                   when a severe error occurs at run time
@@ -141,13 +138,13 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 #LDFLAGS = $(INCS) -Wl,-stack_size,10000000 $(LIBS)
 
 # for Intel 10.x and beyond:
-FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -vec-report0  -assume buffered_io
+FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -assume buffered_io
 LDFLAGS = $(INCS) $(LIBS)
 
 # for development or debugging, use this instead:
-# FFLAGS = -g -C -check noarg_temp_created -fpe0 -vec-report0 \
+# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
 #          -fp-model precise  -ftrapuv -traceback \
-#          -warn argument_checking,declarations,uncalled,unused $(INCS)
+#          -warn declarations,uncalled,unused $(INCS)
 #
 # If you get this error: libimf.so: warning: warning: feupdateenv is not implemented
 # try adding: -limf -lm to your LIBS line.

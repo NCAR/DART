@@ -1,0 +1,36 @@
+# How to create a global initial ensemble from a single GFS analysis.
+# Soyoung Ha (MMM/NCAR) Feb-2020
+
+1. Run WPS/ungrib.exe over the GFS analysis (ds084.1)
+   => GFS:YYYY-MM-DD_HH
+
+2. Run MPAS/init_atmosphere (three times)
+   => grid.nc, graph.info
+   => static.nc
+   => init.nc
+
+3. Run DART/models/mpas_atm/work/filter with 
+   input_state_file_list    = 'filter_in.txt'
+   output_state_file_list   = 'filter_out.txt'
+
+   (Check README and README.pert_ics on how to run it.)
+
+   filter_in.txt has a single line as
+   member1/init.nc 
+   (which is copied from init.nc in step 2).
+
+   filter_out.txt looks like
+   member1/analysis.nc
+   member2/analysis.nc
+   ... (as many members as ens_size; one per line for each member)
+
+4. Run DART/models/mpas_atm/work/update_mpas_states with an updated filter_in.txt.
+   First, copy init.nc from step 2 to each member directory.
+   Then edit filter_in.txt with all the members listed as below.
+   member1/init.nc
+   member2/init.nc
+   ...
+   => These init.nc files are now updated with perturbed states in analysis.nc for each member.
+
+5. Run MPAS/atmosphere_model up to the initial cycle time in each member directory.
+   You might want to recenter the ensemble mean at the initial cycle before you get the cycling started.

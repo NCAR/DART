@@ -10,6 +10,10 @@
 #
 #----------------------------------------------------------------------
 
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
 set usingmpi=no
 set MPICMD=""
 
@@ -62,19 +66,27 @@ endif
 # to remove files using wildcards.
 set nonomatch
 
-set LOGDIR=`pwd`/testing_logs
-
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
-
-#----------------------------------------------------------------------
 
 if ( ! $?host) then
    setenv host `uname -n`
 endif
 
-echo "Running DART developer tests on $host"
+echo
+echo
+echo "=================================================================="
+echo "Start of DART developer_tests at "`date`
+echo "=================================================================="
+echo
+echo
+echo "Running developer_tests on $host"
+
+set LOGDIR=`pwd`/testing_logs
+${REMOVE} -r $LOGDIR
+mkdir -p $LOGDIR
+echo "build and run logs are in: $LOGDIR"
 
 #----------------------------------------------------------------------
 
@@ -88,11 +100,6 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 # Compile and run all executables 
 #----------------------------------------------------------------------
 
-${REMOVE} -r $LOGDIR
-mkdir -p $LOGDIR
-echo "build and run logs are in: $LOGDIR"
-
-
 @ testnum = 0
 
 foreach TESTFILE ( $HAS_TESTS ) 
@@ -102,9 +109,9 @@ foreach TESTFILE ( $HAS_TESTS )
 
     echo
     echo
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo "Compiling tests in $TESTDIR starting at "`date`
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo
     echo
 
@@ -118,15 +125,15 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     echo
     if ( $FAILURE ) then
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       echo "ERROR - unsuccessful build in $TESTDIR at "`date`
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
       cd $TOPDIR
       continue
     else
-      echo "=================================================================="
-      echo "Running tests in $TESTDIR starting at "`date`
-      echo "=================================================================="
+      echo "------------------------------------------------------------------"
+      echo "Running tests in $TESTDIR"
+      echo "------------------------------------------------------------------"
       echo
       echo
   
@@ -135,16 +142,21 @@ foreach TESTFILE ( $HAS_TESTS )
 
            set FAILURE = 0
            set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+           set THISLOG = ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out 
            echo Starting $PROG
 
-           if ( -f using_mpi_for_$PROG ) then
-              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+           if ( -f using_mpi_for_$PROG && -f ${PROG}.in ) then
+              ( ${MPICMD} ./$PROG < ${PROG}.in >> $THISLOG ) || set FAILURE = 1
+           else if ( -f using_mpi_for_$PROG ) then
+              ( ${MPICMD} ./$PROG              >> $THISLOG ) || set FAILURE = 1
+           else if ( -f ${PROG}.in ) then
+              (           ./$PROG < ${PROG}.in >> $THISLOG ) || set FAILURE = 1
            else
-              (           ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+              (           ./$PROG              >> $THISLOG ) || set FAILURE = 1
            endif
          
            if ( $FAILURE ) then
-              echo "ERROR - unsuccessful run of $PROG"
+              echo "ERROR - unsuccessful run of $PROG at "`date`
 
               switch ( $PROG )
                  case stacktest
@@ -179,9 +191,9 @@ foreach TESTFILE ( $HAS_TESTS )
 
     echo
     echo
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo "Done running tests in $TESTDIR at "`date`
-    echo "=================================================================="
+    echo "------------------------------------------------------------------"
     echo
     echo
 
@@ -212,10 +224,11 @@ echo
 
 cd $TOPDIR
 
-
 echo
-echo "$testnum developer tests run."
+echo "$testnum developer_tests run."
 echo
+echo "=================================================================="
+echo "End of DART developer_tests at "`date`
+echo "=================================================================="
 
 exit 0
-

@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module io_filenames_mod
 
@@ -55,6 +53,7 @@ use state_structure_mod,  only : get_num_domains, &
                                  get_add_offset, &
                                  get_scale_factor, &
                                  get_has_missing_value, &
+                                 get_has_FillValue, &
                                  do_io_update
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
@@ -115,11 +114,7 @@ public :: READ_COPY, &
           NO_IO, &
           COPY_NOT_PRESENT
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'io_filenames_mod.f90'
 
 ! IO Parameters
 integer, parameter :: NO_IO            = -1
@@ -212,8 +207,8 @@ type(file_info_type), intent(in) :: file_info
 character(len=*),     intent(in) :: routine_name
 
 if ( .not. file_info%initialized ) then
-   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type', &
-                      source, revision, revdate)
+   call error_handler(E_ERR, routine_name, &
+           ':: io_filenames_init must be used to initialize file_info_type', source)
 endif
 
 end subroutine assert_file_info_initialized
@@ -230,9 +225,8 @@ type(stage_metadata_type), intent(in) :: restart_names
 character(len=*),         intent(in) :: routine_name
 
 if ( .not. restart_names%initialized ) then
-   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type', &
-                      source, revision, revdate)
-
+   call error_handler(E_ERR, routine_name, &
+           ':: io_filenames_init must be used to initialize file_info_type', source)
 endif
 
 end subroutine assert_restart_names_initialized
@@ -378,21 +372,19 @@ if (file_info%stage_metadata%filenames(1,1) == 'null' .or. &
    if (file_info%root_name == 'null') then
       write(msgstring,*) 'Unable to construct file names.', &
                          ' No stage name or file list given'
-      call error_handler(E_ERR,'set_member_file_metadata', &
-                  msgstring, source, revision, revdate)
+      call error_handler(E_ERR,'set_member_file_metadata', msgstring, source)
    endif
 
    ! Construct file names
    call error_handler(E_MSG,'set_member_file_metadata', &
-             'no file list given for stage "'//trim(file_info%root_name)//'" so using default names', &
-              source, revision, revdate)
+             'no file list given for stage "'//trim(file_info%root_name)// &
+             '" so using default names', source)
 
    stage_name = file_info%root_name
    if (file_info%single_file) then
       if (get_num_domains() > 1) then
          write(msgstring,*) 'single file input is currently only supported for 1 domain models'
-         call error_handler(E_ERR,'set_member_file_metadata', &
-                            msgstring, source, revision, revdate)
+         call error_handler(E_ERR,'set_member_file_metadata', msgstring, source)
       endif
       write(fname,'(2A)') trim(stage_name),'.nc'
       write(desc, '(A)') 'ensemble member single file'
@@ -448,8 +440,7 @@ file_info%stage_metadata%copy_name(     cnum) = trim(basename)
 if (get_num_domains() /= size(fnames(:),1)) then
    write(msgstring,'(A,I2,A,I2)') 'The number of domains, ', get_num_domains(), &
                                   ', does not match the number of filenames, ', size(fnames(:),1)
-   call error_handler(E_ERR, 'set_explicit_file_metadata', msgstring, &
-                      source, revision, revdate)
+   call error_handler(E_ERR, 'set_explicit_file_metadata', msgstring, source)
 endif
 
 do idom = 1, get_num_domains()
@@ -580,8 +571,7 @@ do i = 1, get_num_variables(dom)
    if (ndims /= get_io_num_dims(dom,i)) then
       write(msgstring,*) 'ndims ', get_io_num_dims(dom,i), ' in state does not', &
                          ' match ndims ', ndims, ' in ', trim(netcdf_filename)
-      call error_handler(E_ERR, 'check_correct_variables', msgstring, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
    endif
 
    ! check that the attributes are the same as the state structure
@@ -599,8 +589,7 @@ do i = 1, get_num_variables(dom)
       if (get_dim_name(dom,i,j) /= name(j)) then
          write(msgstring,*) 'dim name', trim(get_dim_name(dom,i,j)), ' in state does', &
                             ' not match dim name', name(j), ' in ', trim(netcdf_filename)
-         call error_handler(E_ERR, 'check_correct_variables', msgstring, &
-                            source, revision, revdate)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
       endif
 
       ! check that the dimension lengths are the same
@@ -608,8 +597,7 @@ do i = 1, get_num_variables(dom)
          write(msgstring,*) 'dimension ', trim(name(j)), "'s length ", &
                             get_dim_length(dom,i,j), ' in state does not match', &
                             ' dimension length ', length(j), ' in ', trim(netcdf_filename)
-         call error_handler(E_ERR, 'check_correct_variables', msgstring, &
-                            source, revision, revdate)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
       endif
 
    enddo
@@ -645,26 +633,40 @@ call check_attributes_name(ncFile, filename, ncVarId, 'short_name', get_short_na
 if ( get_has_missing_value(domid, varid) ) then
    select case (get_xtype(domid,varid))
       case (NF90_INT)
-         call get_FillValue(domid, varid, spvalINT)
-         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
          call get_missing_value(domid, varid, spvalINT)
          call check_attribute_value_int(ncFile, filename, ncVarID, 'missing_value', spvalINT)
 
       case (NF90_FLOAT)
-         call get_FillValue(domid, varid, spvalR4)
-         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
          call get_missing_value(domid, varid, spvalR4)
          call check_attribute_value_r4(ncFile, filename, ncVarID, 'missing_value', spvalR4)
 
       case (NF90_DOUBLE)
-         call get_FillValue(domid, varid, spvalR8)
-         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
          call get_missing_value(domid, varid, spvalR8)
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
 
       case default
-         call error_handler(E_ERR, 'check_attributes', 'unknown xtype', &
-                            source, revision, revdate)
+         !>@todo FIXME report the variable with the unsupported xtype
+         call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
+   end select
+endif
+
+if ( get_has_FillValue(   domid, varid) ) then
+   select case (get_xtype(domid, varid))
+      case (NF90_INT)
+         call get_FillValue(domid, varid, spvalINT)
+         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
+
+      case (NF90_FLOAT)
+         call get_FillValue(domid, varid, spvalR4)
+         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
+
+      case (NF90_DOUBLE)
+         call get_FillValue(domid, varid, spvalR8)
+         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
+
+      case default
+         !>@todo FIXME report the variable with the unsupported xtype
+         call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
    end select
 endif
 
@@ -693,8 +695,7 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalINT) == NF90_NOERR ) the
    if (spvalINT /= ret_spvalINT) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalINT, &
                          ' does not match ', trim(att_string), ' ', ret_spvalINT, ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attributes', msgstring, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'check_attributes', msgstring, source)
    endif
 endif
 
@@ -719,8 +720,7 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
    if (spvalR4 /= ret_spvalR4) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attribute_value_r4', msgstring, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'check_attribute_value_r4', msgstring, source)
    endif
 endif
 
@@ -745,8 +745,7 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
    if (spvalR8 /= ret_spvalR8) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attribute_value_r8', msgstring, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'check_attribute_value_r8', msgstring, source)
    endif
 endif
 
@@ -773,8 +772,7 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, att_name) == NF90_NOERR ) then
    if (comp_string /= att_name .and. trim(att_name) /= 'unitless') then
       write(msgstring,*) ' variable attribute ,', trim(att_string), ' in state : ', trim(comp_string), &
                          ', does not match ', trim(att_name), ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attributes_name', msgstring, &
-                         source, revision, revdate)
+      call error_handler(E_ERR, 'check_attributes_name', msgstring, source)
    end if
 endif
 
@@ -1308,8 +1306,3 @@ end function assert_valid_copy
 end module io_filenames_mod
 !> @}
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -19,6 +19,7 @@ module readsatobs
 !
 ! program history log:
 !   2009-02-23  Initial version.
+!   2020-08-26  A little more error handling. Using open_file()
 !
 ! attributes:
 !   language: f95
@@ -30,6 +31,7 @@ use read_diag, only: diag_data_fix_list,diag_header_fix_list,diag_header_chan_li
     diag_data_chan_list,diag_data_extra_list,read_radiag_data,read_radiag_header, &
     diag_data_name_list
 use params, only: nsats_rad, nsatmax_rad, dsis, sattypes_rad
+use utilities_mod, only : open_file
 
 implicit none
 
@@ -44,22 +46,25 @@ contains
 
 subroutine get_num_satobs(obspath,datestring,num_obs_tot,id)
     use radinfo, only: iuse_rad,nusis,jpch_rad,nuchan,npred
-    character (len=500), intent(in) :: obspath
+    character(len=500), intent(in)  :: obspath
+    character(len=10),  intent(in)  :: datestring
+    integer(i_kind),    intent(out) :: num_obs_tot
+    character(len=10),  intent(in)  :: id
+
     character(len=500) obsfile
-    character(len=10), intent(in) :: id, datestring
+
     character(len=20) ::  sat_type
-    integer(i_kind), intent(out) :: num_obs_tot
     integer(i_kind) iunit, iflag, nsat, ios,n,nkeep, i, jpchstart,indxsat
     integer(i_kind) npred_radiag
     logical fexist,lretrieval,lverbose
     real(r_kind) :: errorlimit,errorlimit2
 
-    type(diag_header_fix_list )         :: header_fix0
+    type(diag_header_fix_list )             :: header_fix0
     type(diag_header_chan_list),allocatable :: header_chan0(:)
-    type(diag_data_fix_list   )         :: data_fix0
+    type(diag_data_fix_list   )             :: data_fix0
     type(diag_data_chan_list  ),allocatable :: data_chan0(:)
     type(diag_data_extra_list) ,allocatable :: data_extra0(:,:)
-    type(diag_data_name_list)           :: data_name0
+    type(diag_data_name_list)               :: data_name0
 
 !  make consistent with screenobs
     errorlimit=1._r_kind/sqrt(1.e9_r_kind)
@@ -80,7 +85,6 @@ subroutine get_num_satobs(obspath,datestring,num_obs_tot,id)
           end if
         end do
         if(jpchstart == 0) cycle
-        nkeep = 0
         obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_rad(nsat))//"_ges."//datestring//'_'//trim(adjustl(id))
         inquire(file=obsfile,exist=fexist)
         if (.not. fexist .or. datestring .eq. '0000000000') then
@@ -88,24 +92,30 @@ subroutine get_num_satobs(obspath,datestring,num_obs_tot,id)
         endif
 
         inquire(file=obsfile,exist=fexist)
-        if (.not.fexist) goto 900
-
-        open(iunit,form="unformatted",file=obsfile,iostat=ios)
+        if (.not.fexist) then
+           write(*,*)'File "'//trim(obsfile)//'" does not exist.'
+           goto 900
+        endif
+        !print *,'readsatobs: opening "'//trim(obsfile)//'"'
+        iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
         rewind(iunit)
         call read_radiag_header(iunit,npred_radiag,lretrieval,header_fix0,header_chan0,data_name0,iflag,lverbose)
 
+        nkeep = 0
         do
            call read_radiag_data(iunit,header_fix0,lretrieval,data_fix0,data_chan0,data_extra0,iflag )
            if( iflag /= 0 )exit
            chan: do n=1,header_fix0%nchan
-             if(header_chan0(n)%iuse<1) cycle chan
-             indxsat=header_chan0(n)%iochan
-             if(data_chan0(n)%qcmark < 0. .or. data_chan0(n)%errinv < errorlimit &
-                      .or. data_chan0(n)%errinv > errorlimit2 &
-                      .or. indxsat == 0) cycle chan
-             if(data_extra0(1,n)%extra <= 0.001_r_kind .or.  &
-                data_extra0(1,n)%extra > 1200._r_kind  .or. &
-                abs(data_chan0(n)%tbobs) > 1.e9_r_kind) cycle chan
+
+             if(header_chan0(n)%iuse    <              1) cycle chan
+             if(data_chan0(n)%qcmark    <  0.           ) cycle chan
+             if(data_chan0(n)%errinv    <  errorlimit   ) cycle chan
+             if(data_chan0(n)%errinv    >  errorlimit2  ) cycle chan
+             if(header_chan0(n)%iochan  == 0            ) cycle chan
+             if(data_extra0(1,n)%extra  <= 0.001_r_kind ) cycle chan
+             if(data_extra0(1,n)%extra   > 1200._r_kind ) cycle chan
+             if(abs(data_chan0(n)%tbobs) >  1.e9_r_kind ) cycle chan
+
              nkeep = nkeep + 1
            end do chan
         enddo
@@ -173,9 +183,12 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
      obsfile = trim(adjustl(obspath))//"diag_"//trim(sattypes_rad(nsat))//"_ges."//trim(adjustl(id))
      endif
      inquire(file=obsfile,exist=fexist1)
-     if(.not.fexist1) goto 900
-
-     open(iunit,form="unformatted",file=obsfile)
+     if(.not.fexist1) then
+        write(*,*)'File "'//trim(obsfile)//'" does not exist.'
+        goto 900
+     endif 
+     !print *,'readsatobs: opening "'//trim(obsfile)//'"'
+     iunit = open_file(obsfile,form='unformatted',action='read',convert='BIG_ENDIAN')
      rewind(iunit)
      call read_radiag_header(iunit,npred_radiag,lretrieval,header_fix1,header_chan1,data_name1,iflag,lverbose)
 
@@ -186,9 +199,12 @@ subroutine get_satobs_data(obspath, datestring, nobs_max, h_x, h_xnobc, x_obs, x
        obsfile2 = trim(adjustl(obspath))//"diag_"//trim(sattypes_rad(nsat))//"_ges."//trim(adjustl(id2))
        endif
        inquire(file=obsfile2,exist=fexist2)
-       if(.not.fexist2) goto 900
-
-       open(iunit2,form="unformatted",file=obsfile2)
+       if(.not.fexist2) then
+           write(*,*)'File "'//trim(obsfile2)//'" does not exist.'
+           goto 900
+       endif
+       !print *,'readsatobs: opening "'//trim(obsfile2)//'"'
+       iunit2 = open_file(obsfile2,form='unformatted',action='read',convert='BIG_ENDIAN')
        rewind(iunit2)
        call read_radiag_header(iunit2,npred_radiag,lretrieval,header_fix2,header_chan2,data_name2,iflag2,lverbose)
      end if

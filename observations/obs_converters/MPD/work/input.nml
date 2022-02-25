@@ -1,0 +1,26 @@
+
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files          = '../../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+   obs_type_files          = '../../../../observations/forward_operators/obs_def_abs_humidity_mod.f90' 
+   /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'MPD_ABSOLUTE_HUMIDITY'
+   /
+
+&location_nml
+   /
+
+&utilities_nml
+   module_details = .false.
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+

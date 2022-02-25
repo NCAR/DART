@@ -1,13 +1,11 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
-!> Should only have fortran "kinds".  the constants should
-!> go into their own module, or this should be renamed 'constants'
-!> or something more descriptive than 'types' (which overlaps
-!> into our obs kinds and types).
+!> Should only have fortran "kinds" - number of bytes/precision - for
+!> integer, real, etc.  the constants should go into their own module, 
+!> or this should be renamed 'constants' or something more descriptive 
+!> than 'types' (which overlaps with dart's use of kinds and types).
 
 module types_mod
 
@@ -23,12 +21,6 @@ public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength, obstypelength, varnamelength, vtablenamelength
 public :: MAX_NUM_DOMS, MAX_FILES
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
 !----------------------------------------------------------------------------
 ! constants that need to be shared - really has nothing to do with types ...
 !----------------------------------------------------------------------------
@@ -37,7 +29,7 @@ integer, parameter :: metadatalength   = 64   ! 75 is max w/out wrapping in ncdu
 integer, parameter :: varnamelength    = 31   ! max name of any fortran variable
                                               ! in F90/95. increased to 63 in F2003
 integer, parameter :: obstypelength    = 31   ! because of variable name limits.
-                                              ! use this for obs types/kinds
+                                              ! use this for obs types/state quantities
 integer, parameter :: vtablenamelength = 64   ! use this for the model_mod variable table items
                                            
 integer, parameter :: MAX_NUM_DOMS     = 10   ! max num domains. this is arbitrarily 
@@ -50,6 +42,13 @@ integer, parameter :: MAX_FILES        = 1000 ! maximum number of files
 ! exactly what precision we are using and are not relying on compiler flags
 ! to set the defaults for real and int.
 !
+! the call is: selected_int_kind(p, r)
+!  where p = decimal_precision,  and r = decimal_exponent_range
+!
+! below, "external32_size" = number of bytes 
+! 
+!
+! from the MPI documentation, they say:
 ! (this block of text is originally from the MPI documentation but it seems to apply
 ! to the compiler intrinsic functions SELECTED_REAL_KIND and SELECTED_INT_KIND)
 !
@@ -128,8 +127,3 @@ real(r8), parameter :: gravity        = 9.81_r8        ! wikipedia has 9.80665
 
 end module types_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

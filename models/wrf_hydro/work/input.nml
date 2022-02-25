@@ -1,0 +1,301 @@
+# WRF_Hydro model namelist
+
+# LSM choices: 'noah' | 'noahMP' | 'noahMP_36'
+#
+# Please ensure that the domain_order and the order of shapefiles is compatible
+# across the model_nml, filter_nml, perfect_model_obs_nml, model_mod_check_nml
+#    domain_order                 = 'hydro', 'parameters'
+#    domain_shapefiles            = 'restart.hydro.nc', 'parameters.nc'
+
+&model_nml
+     assimilation_period_days       = 0
+     assimilation_period_seconds    = 3600
+     lsm_model_choice               = 'noahMP'
+     model_perturbation_amplitude   = 0.5
+     perturb_distribution           = 'lognormal'
+     max_link_distance              = 2000.0
+     streamflow_4_local_multipliers = 0.0001 
+     debug                          = 0
+     domain_order                   = 'hydro'
+     domain_shapefiles              = 'restart.hydro.nc'
+     lsm_variables    = 'SH2O',              'QTY_SOIL_LIQUID_WATER', '0.0',   'NA', 'NOUPDATE',
+                        'SUBSURFACE_FLUX',   'QTY_SUBSURFACE',        '0.0',   'NA', 'NOUPDATE',
+                        'OVERLAND_FLUX',     'QTY_OVERLAND_FLOW',     '0.0',   'NA', 'NOUPDATE'
+     hydro_variables  = 'qlink1',            'QTY_STREAM_FLOW',       '0.0',   'NA', 'UPDATE',
+                        'z_gwsubbas',        'QTY_AQUIFER_WATER',     'NA',    'NA', 'UPDATE'
+     parameters       = 'qBucketMult',       'QTY_BUCKET_MULTIPLIER', '0.001', '50', 'UPDATE',
+                        'qSfcLatRunoffMult', 'QTY_RUNOFF_MULTIPLIER', '0.001', '50', 'UPDATE'
+  /
+
+
+&create_identity_streamflow_obs_nml
+   input_files            = 'list_of_obs_files.txt'
+   location_file          = 'RouteLink.nc'
+   gages_list_file        = 'wanted_gages_list.txt'
+   obs_fraction_for_error = 0.01
+   debug                  = 1
+  /
+
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.
+   single_file_in             = .false.
+   input_state_files          = 'restart.hydro.nc'
+   init_time_days             = -1
+   init_time_seconds          = -1
+
+   write_output_state_to_file = .false.
+   single_file_out            = .false.
+   output_state_files         = 'perfect_d01.nc'
+   output_interval            = 1
+
+   obs_seq_in_file_name       = 'obs_seq.in'
+   obs_seq_out_file_name      = 'obs_seq.out'
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   async                      = 0
+   trace_execution            = .false.
+   output_timestamps          = .false.
+   print_every_nth_obs        = -1
+   output_forward_op_errors   = .false.
+   silence                    = .false.
+  /
+
+# If the input_state_file_list = output_state_file_list, the input files
+# are OVERWRITTEN by the assimilation. The input states are preserved in
+# the preassim (or input) stages.
+#  input_state_file_list        = 'hydro_file_list.txt'
+#  output_state_file_list       = 'hydro_file_list.txt'
+
+&filter_nml
+   input_state_file_list        = 'hydro_file_list.txt'
+   single_file_in               = .false.
+   init_time_days               = -1,
+   init_time_seconds            = -1,
+   perturb_from_single_instance = .false.
+
+   stages_to_write              = 'preassim', 'analysis', 'output'
+
+   output_state_file_list       = 'hydro_file_list.txt'
+   output_mean                  = .true.
+   output_sd                    = .true.
+   output_members               = .true.
+   num_output_state_members     = 8,
+   single_file_out              = .false.
+   write_all_stages_at_end      = .false.
+
+   ens_size                     = 8
+   num_groups                   = 1
+
+   inf_flavor                   = 5,           0
+   inf_initial_from_restart     = .false.,     .false.
+   inf_sd_initial_from_restart  = .false.,     .false.
+   inf_initial                  = 1.0,         1.0
+   inf_lower_bound              = 1.0,         1.0
+   inf_upper_bound              = 50.0,        50.0
+   inf_sd_initial               = 0.61,        0.6
+   inf_sd_lower_bound           = 0.6,         0.6
+   inf_sd_max_change            = 1.05,        1.05
+   inf_damping                  = 0.9,         0.9
+   inf_deterministic            = .true.,      .true.
+
+   obs_sequence_in_name     = 'obs_seq.out'
+   obs_sequence_out_name    = 'obs_seq.final'
+   num_output_obs_members   = 8
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+
+   output_timestamps        = .true.
+   trace_execution          = .true.
+   silence                  = .false.
+  /
+
+&quality_control_nml
+  input_qc_threshold          = 10.0
+  outlier_threshold           =  3.0
+  enable_special_outlier_code = .false.
+  /
+
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart'
+  /
+
+# filter_kind=9 => JPoterjoy particle filter
+# cutoff is in radians; for the earth, 0.05 is about 300 km.
+# cutoff is defined to be the half-width of the localization radius
+# so 0.05 radians for cutoff is about an 600 km effective
+# localization radius, where the influence of an obs decreases
+# to ~half at 300 km, and ~0 at the edges of the area.
+# For streamflow observations, there is an interplay between
+# cutoff (radians) and  max_link_distance (meters). To achieve
+# consistent weighting, cutoff = 0.5 * (max_link_distance/1000.0)/6371
+# max_link_distance = 2000m = cutoff = 0.000157 radians
+
+&assim_tools_nml
+   filter_kind                     = 1
+   cutoff                          = 0.000157
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .true.
+   localization_diagnostics_file   = 'localization_diagnostics'
+   print_every_nth_obs             = 0
+   rectangular_quadrature          = .true.
+   gaussian_likelihood_tails       = .false.
+  /
+
+# layout = 2 spreads the IO tasks across the nodes.
+# This can greatly improve the performance in IO if
+# tasks_per_node is set to match your hardware
+# We usually run on cheyenne with 36 tasks per node.
+
+&ensemble_manager_nml
+   layout = 2
+   tasks_per_node = 36
+  /
+
+&cov_cutoff_nml
+   select_localization = 1
+  /
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = 'time_mean_reg'
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = 'reg_diagnostics'
+  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+  /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'STREAM_FLOW'
+   evaluate_these_obs_types   = ''
+  /
+
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_streamflow_mod.f90',
+                             '../../../observations/forward_operators/obs_def_land_mod.f90',
+                             '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/land_quantities_mod.f90',
+                             '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+
+  /
+
+&location_nml
+   horiz_dist_only             = .true.
+   approximate_distance        = .false.
+   nlon                        = 71
+   nlat                        = 36
+   output_box_info             = .false.
+  /
+
+&utilities_nml
+   TERMLEVEL = 1
+   module_details = .false.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+   write_nml   = 'file'
+  /
+
+&state_vector_io_nml
+   single_precision_output = .true.
+  /
+
+&obs_sequence_tool_nml
+   num_input_files    = 1
+   filename_seq       = 'obs_seq.daily'
+   filename_out       = 'obs_seq.windowed'
+   print_only         =  .false.
+   first_obs_days     = 150301
+   first_obs_seconds  = 84601
+   last_obs_days      = 150302
+   last_obs_seconds   = 1800
+   min_lat            =  -90.0
+   max_lat            =   90.0
+   min_lon            =    0.0
+   max_lon            =  360.0
+   gregorian_cal      = .false.
+  /
+
+
+&obs_diag_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'file_list.txt'
+   first_bin_center =  2018,  8, 15, 0, 0, 0
+   last_bin_center  =  2018, 10, 15, 0, 0, 0
+   bin_separation   =     0,  0,  0, 1, 0, 0
+   bin_width        =     0,  0,  0, 1, 0, 0
+   time_to_skip     =     0,  0,  0, 0, 0, 0
+   max_num_bins     = 2000000
+   trusted_obs      = 'null'
+   Nregions   = 1
+   lonlim1    = 0.0
+   lonlim2    = 360.0
+   latlim1    = -90.0
+   latlim2    = 90.0
+   reg_names  = 'Florence'
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .false.
+   hlevel_edges = -100.0, 40000.0
+  /
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+  /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'list_of_files.txt'
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+  /
+
+&model_mod_check_nml
+   input_state_files     = 'restart.hydro.nc'
+   output_state_files    = 'mmc_output1.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,6,7
+   x_ind                 = 1594
+   loc_of_interest       = 281.1950,  35.4041,  288.2900
+   quantity_of_interest  = 'QTY_STREAM_FLOW'
+   interp_test_dlon      = 0.001
+   interp_test_dlat      = 0.001
+   interp_test_dvert     = 50.0
+   interp_test_lonrange  = 283.50,  283.73
+   interp_test_latrange  =  42.30,   42.51
+   interp_test_vertrange = 200.0, 300.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .true.
+  /
+

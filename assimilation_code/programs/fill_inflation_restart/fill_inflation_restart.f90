@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Generate initial inflation files from namelist values.
 !> This way an experiment can always start from a restart file 
@@ -18,7 +16,7 @@ program fill_inflation_restart
 
 use             types_mod, only : r8, i8, missing_r8
 
-use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
+use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
                                   find_namelist_in_file, check_namelist_read,   &
                                   nmlfileunit, do_nml_file, do_nml_term
 
@@ -31,7 +29,7 @@ use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
-use   state_structure_mod, only : get_num_domains
+use   state_structure_mod, only : get_num_domains, set_update_list, get_num_variables
 
 use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   stage_metadata_type, get_stage_metadata, &
@@ -44,11 +42,7 @@ use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utiliti
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'fill_inflation_restart.f90'
 
 ! MAX_FILES is max number of domains
 integer, parameter :: MAX_FILES = 10
@@ -91,7 +85,7 @@ integer               :: ncopies = 2    ! {prior,posterior}_inf_{mean,sd}
 logical               :: read_time_from_file = .true.
 
 ! counter variables
-integer :: idom, imem, ndomains
+integer :: idom, imem, ndomains, ivars
 
 ! message strings
 character(len=512) :: my_base, my_desc, my_stage
@@ -147,8 +141,7 @@ file_array_input  = RESHAPE(input_state_files,  (/1,  ndomains/))
 
 if(single_file) then
   call error_handler(E_ERR, 'fill_inflation_restart: ', &
-                     'single_file not yet supported, please contact DART', &
-                     source, revision, revdate)
+                     'single_file not yet supported, please contact DART', source)
 endif
 
 call io_filenames_init(file_info_input,             &
@@ -180,11 +173,31 @@ do idom = 1, ndomains
                      trim(get_restart_filename(input_restart_files, &
                                                copy   = imem,       &
                                                domain = idom))
-   call error_handler(E_MSG, 'fill_inflation_restart: ', string1,   &
-                      source, revision, revdate)
+   call error_handler(E_MSG, 'fill_inflation_restart: ', string1, source)
 enddo
 
 call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
+
+! if users have variables in the dart state which are set to 'no update'
+! for assimilation purposes, they still have to have corresponding fields 
+! in the inflation files. (science question is what those values should be.)
+!
+! the normal write routine skips 'no update' fields, so the output of
+! this program would be missing those fields and cause an error when
+! filter tries to read the inflation files.  the following code 
+! overwrites the update flag values so all variables are always written.
+!
+! also tell users to script their workflows to copy the input inflation
+! file to the output name before running filter, so there is an existing
+! output inflation file for filter to update. it will already include the
+! 'no update' fields, whose inflation values will remain unchanged. 
+! this prevents confusing errors at the next execution of filter.
+! [ed note: tim is brilliant.]
+
+do idom = 1, ndomains
+   ivars = get_num_variables(idom)   
+   call set_update_list(idom, ivars, (/ ( .TRUE., imem=1,ivars ) /) )
+enddo
 
 ! Initialize file output to default inflation file names
 call io_filenames_init(file_info_output,           &
@@ -220,7 +233,7 @@ if (inf_mean == MISSING_R8 .or. inf_sd == MISSING_R8) then
    write(string2,*) 'you have "',trim(stage),'_inf_mean = ', inf_mean,'" and '
    write(string3,*) '         "',trim(stage),'_inf_sd   = ', inf_sd,  '"     '
    call error_handler(E_MSG, 'fill_inflation_restart: ', string1,  &
-                      source, revision, revdate, text2=string2, text3=string3)
+                      source, text2=string2, text3=string3)
    return
 endif
 ens_handle%copies(ss_inflate_index   , :) = inf_mean
@@ -260,8 +273,7 @@ do idom = 1, ndomains
                                                copy   = ss_inflate_index,    &
                                                domain = idom)), '"'
    write(string2, *) ' with value = ', inf_mean
-   call error_handler(E_MSG, 'fill_inflation_restart: ', string1,            &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_MSG, 'fill_inflation_restart: ', string1, source, text2=string2)
 
    ! write inflation stadard deviation
    write(string1, *) '- Writing ',trim(stage), ' SD   Inflation File : "',   &
@@ -269,8 +281,7 @@ do idom = 1, ndomains
                                                copy   = ss_inflate_sd_index, &
                                                domain = idom)), '"'
    write(string2, *) ' with value = ', inf_sd
-   call error_handler(E_MSG, 'fill_inflation_restart: ', string1,            &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_MSG, 'fill_inflation_restart: ', string1, source, text2=string2)
 enddo
 
 
@@ -285,7 +296,6 @@ subroutine initialize_modules_used()
 
 call initialize_mpi_utilities('fill_inflation_restart')
 
-call register_module(source,revision,revdate)
 
 call state_vector_io_init()
 

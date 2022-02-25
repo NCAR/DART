@@ -3,9 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
-
 
 # utility to save a set of perturbations generated from WRFDA CV3 option
 #
@@ -112,12 +109,13 @@ EOF
 #=================================================================
 #PBS -N gen_pert_bank_mem${n}
 #PBS -j oe
-#PBS -A YOUR_ACCOUNT
+#PBS -A COMPUTER_CHARGE_ACCOUNT
 #PBS -l walltime=0:05:00
 #PBS -q regular
 #PBS -m a
 #PBS -M USERNAME@X.X             # set this appropriately #%%%#
 #PBS -l select=4:ncpus=32:mpiprocs=16
+#PBS -k eod
 #=================================================================
 
 cd ${work_dir}/mem_${n}
@@ -138,9 +136,5 @@ EOF
 end
 
 # currently the script exits, but it could sleep and do cleanup once all the forecasts are complete.
-exit(0)
+exit 0 
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = 'mpas_init.nc'
+   input_state_files          = 'init.nc'
    init_time_days             = -1
    init_time_seconds          = -1
 
@@ -29,13 +29,13 @@
 
 &filter_nml
    async                    = 0
-   adv_ens_command          = '../shell_scripts/advance_model.csh'
+   adv_ens_command          = './advance_model.csh'
    ens_size                 = 3
    output_members           = .true.
-   obs_sequence_in_name     = 'obs_seq.1800obs'
+   obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
-   input_state_file_list    = 'restarts_in.txt'
-   output_state_file_list   = 'restarts_out.txt'
+   input_state_file_list    = 'filter_in.txt'
+   output_state_file_list   = 'filter_out.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -43,7 +43,7 @@
    last_obs_days            = -1
    last_obs_seconds         = -1
    num_output_state_members = 0
-   num_output_obs_members   = 96
+   num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
    distributed_state        = .true.
@@ -53,22 +53,22 @@
    trace_execution          = .false.
    silence                  = .false.
 
-   stages_to_write          = 'preassim', 'postassim', 'output'
+   stages_to_write          = 'preassim', 'output'
    output_members           = .true.
    output_mean              = .true.
    output_sd                = .true.
    write_all_stages_at_end  = .false.
 
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                .false.,
-   inf_sd_initial_from_restart = .false.,                .false.,
+   inf_flavor                  = 2,                       0,
+   inf_initial_from_restart    = .false.,                .true.,
+   inf_sd_initial_from_restart = .false.,                .true.,
    inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_initial                 = 1.0,                     1.0
+   inf_sd_initial              = 0.6,                     0.0
+   inf_damping                 = 0.9,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 1000.0,               1000000.0
+   inf_sd_lower_bound          = 0.6,                     0.0
    inf_sd_max_change           = 1.05,                    1.05,
   /
 
@@ -79,7 +79,7 @@
   /
 
 &state_vector_io_nml
-   single_precision_output    = .false.,
+   single_precision_output    = .true.,
   /
 
 &mpi_utilities_nml
@@ -87,7 +87,7 @@
 
 &smoother_nml
    num_lags              = 0
-   start_from_restart    = .false.
+   start_from_restart    = .true.
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart'
@@ -95,13 +95,15 @@
 
 &ensemble_manager_nml
    layout = 1
-   tasks_per_node = 16
+   tasks_per_node = 36
   /
-
 
 &assim_tools_nml
    filter_kind                     = 1
    cutoff                          = 0.10
+   distribute_mean                 = .false.
+   convert_all_obs_verticals_first   = .true.
+   convert_all_state_verticals_first = .false.
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
@@ -112,9 +114,9 @@
   /
 
 &location_nml
-   horiz_dist_only             = .true.
+   horiz_dist_only             = .false.
    vert_normalization_pressure = 100000.0
-   vert_normalization_height   = 10000.0
+   vert_normalization_height   = 30000.0
    vert_normalization_level    = 20.0
    vert_normalization_scale_height = 2.0
    approximate_distance        = .false.
@@ -168,18 +170,20 @@
 
 
 &model_nml
-   model_analysis_filename      = 'mpas_init.nc'
-   grid_definition_filename     = 'mpas_init.nc'
-   vert_localization_coord      = 3
+   init_template_filename       = 'init.nc'
    assimilation_period_days     = 0
-   assimilation_period_seconds  = 43200
+   assimilation_period_seconds  = 21600
    model_perturbation_amplitude = 0.0001
+   vert_localization_coord      = 3
    calendar                     = 'Gregorian'
+   highest_obs_pressure_mb      = 1.0
+   sfc_elev_max_diff            = 100.
+   log_p_vert_interp            = .false.
    debug                        = 0
    use_u_for_wind               = .false.
    use_rbf_option               = 2
    update_u_from_reconstruct    = .true.
-   highest_obs_pressure_mb      = -1.0
+   use_increments_for_u_update  = .true.
   /
 
 !                          'theta',                 'QTY_POTENTIAL_TEMPERATURE',
@@ -195,34 +199,35 @@
 !                          'qs',                    'QTY_SNOW_MIXING_RATIO',
 !                          'qg',                    'QTY_GRAUPEL_MIXING_RATIO',
 !                          'rho',                   'QTY_DENSITY',
-!                          'salinity',              'QTY_SALINITY',
-!                          'temperature',           'QTY_TEMPERATURE'
+!                          'u10',                   'QTY_10M_U_WIND_COMPONENT',
+!                          'v10',                   'QTY_10M_V_WIND_COMPONENT',
+!                          't2m',                   'QTY_2M_TEMPERATURE',
+!                          'q2',                    'QTY_2M_SPECIFIC_HUMIDITY',
 
 &mpas_vars_nml
-   mpas_state_variables =
+   mpas_state_variables = 'theta',                 'QTY_POTENTIAL_TEMPERATURE',
+                          'rho',                   'QTY_DENSITY',
                           'uReconstructZonal',     'QTY_U_WIND_COMPONENT',
                           'uReconstructMeridional','QTY_V_WIND_COMPONENT',
-                          'theta',                 'QTY_POTENTIAL_TEMPERATURE',
-                          'surface_pressure',      'QTY_SURFACE_PRESSURE',
                           'w',                     'QTY_VERTICAL_VELOCITY',
-                          'rho',                   'QTY_DENSITY',
-                          'qv',                    'QTY_VAPOR_MIXING_RATIO'
-
+                          'qv',                    'QTY_VAPOR_MIXING_RATIO',
+                          'surface_pressure',      'QTY_SURFACE_PRESSURE',
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
-                          'qc','0.0','NULL','CLAMP',
-                          'qr','0.0','NULL','CLAMP'
   /
 
-&model_to_dart_nml
-   model_to_dart_output_file  = 'dart_ics'
-   print_data_ranges          = .true.
+&update_mpas_states_nml
+  update_input_file_list  = 'filter_out.txt'
+  update_output_file_list = 'filter_in.txt'
+  print_data_ranges      = .true.
   /
 
-&dart_to_model_nml
-   dart_to_model_input_file = 'dart_restart'
-   advance_time_present     = .false.
-   print_data_ranges        = .true.
-  /
+&update_bc_nml
+  update_analysis_file_list = 'filter_in.txt'
+  update_boundary_file_list = 'boundary_inout.txt'
+  lbc_update_from_reconstructed_winds = .false.
+  lbc_update_winds_from_increments    = .false.
+  debug = 0
+/
 
 &utilities_nml
    TERMLEVEL = 1
@@ -233,12 +238,12 @@
   /
 
 &preprocess_nml
-          overwrite_output = .true.
-    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   overwrite_output        = .true.
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-   input_files             = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
                              '../../../observations/forward_operators/obs_def_gts_mod.f90',
                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
@@ -246,6 +251,7 @@
                              '../../../observations/forward_operators/obs_def_vortex_mod.f90', 
                              '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90', 
                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
   /
 
 &obs_sequence_tool_nml
@@ -361,7 +367,7 @@
    quantity_of_interest = 'QTY_VAPOR_MIXING_RATIO'
 
 &model_mod_check_nml
-   input_state_files     = 'mpas_init.nc'
+   input_state_files     = 'init.nc'
    output_state_files    = 'check_me.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,5,7
@@ -445,8 +451,7 @@
    debug             = .false.
   /
 
-&mpas_obs_preproc_nml
-   static_mpas_filename     = 'mpas_init.nc'
+&mpas_dart_obs_preprocess_nml
    file_name_input          = 'obs_seq.old'
    file_name_output         = 'obs_seq.new'
    include_sig_data         = .true.
@@ -458,7 +463,7 @@
    aircraft_pres_int        = 2500.0
    sat_wind_pres_int        = 2500.0
    sfc_elevation_tol        = 300.0
-   obs_pressure_top         = 0.0
+   obs_pressure_top         = 1.0
    obs_height_top           = 2.0e10
    max_num_obs              = 1000000
    sonde_extra              = 'obs_seq.rawin'
@@ -472,5 +477,7 @@
    gpsro_extra              = 'obs_seq.gpsro'
    tc_sonde_radii           = -1.0
    overwrite_obs_time       = .false.
+   windowing_obs_time       = .true.
+   windowing_int_hour       = 0.5
 /
 

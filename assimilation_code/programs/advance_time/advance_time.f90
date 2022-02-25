@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Compute with time quantities
 !>
@@ -79,11 +77,7 @@ use   parse_args_mod, only : get_args_from_string
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'advance_time.f90'
 
 integer :: ccyy, mm, dd, hh, nn, ss, dday, dh, dn, ds, gday, gsec
 integer :: nargum, i
@@ -140,7 +134,7 @@ if ( nargum < 2 ) then
       '         echo 2007073006    0 -c       | advance_time    # print CESM format time (ccyy-mm-dd-fffff where fffff is sec of day)'
    write(unit=stdout, fmt='(a)') ''
 
-   call error_handler(E_ERR,'advance_time','Invalid Usage', source, revision, revdate)
+   call error_handler(E_ERR,'advance_time','Invalid Usage', source)
 end if
 
 ccyymmddhhnnss = parsedate(argum(1))
@@ -165,7 +159,7 @@ elseif (datelen == 13) then
    if (ss >= 86400) then
       write(string1,*)'seconds-of-day is ',ss,' as parsed from ',trim(ccyymmddhhnnss)
       write(string2,*)'seconds-of-day  must be less than 86400'
-      call error_handler(E_ERR,'advance_time',string1, source, revision, revdate, text2=string2)
+      call error_handler(E_ERR,'advance_time',string1, source, text2=string2)
    endif
    hh = ss / 3600
    ss = ss - hh * 3600
@@ -173,7 +167,7 @@ elseif (datelen == 13) then
    ss = ss - nn * 60
 else
    write(string1,*)'unsupported format for ',trim(argum(1))
-   call error_handler(E_ERR,'advance_time',string1, source, revision, revdate)
+   call error_handler(E_ERR,'advance_time',string1, source)
 endif
 
 base_time = set_date(ccyy, mm, dd, hh, nn, ss)

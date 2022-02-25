@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> This module supports both the obs_impact_tool and reading in the
 !> table at runtime for use during the assimilation phase, to
@@ -15,7 +13,7 @@
 module obs_impact_mod
 
 use      types_mod, only : r8, obstypelength, missing_r8
-use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
+use  utilities_mod, only : error_handler, E_ERR, E_MSG,       &
                            open_file, close_file, get_next_filename, to_upper
 use  obs_kind_mod        ! all qtys/types, so impossible to enumerate them here
 use parse_args_mod, only : get_args_from_string
@@ -28,12 +26,7 @@ public :: create_impact_table,   &
           read_impact_table,     &
           free_impact_table
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-character(len=128), parameter :: id  = "$Id$"
+character(len=*), parameter :: source = 'obs_impact_mod.f90'
 
 integer :: ios, i
 
@@ -290,8 +283,8 @@ readloop: do
    read(readbuf, *, iostat=ios) typename, qtyname, rvalue
    if (ios /= 0) then
       call error_handler(E_ERR, 'read_impact_table', &
-                        'lines must contain a specific type, a generic qty, and a real value', &
-                        source, revision, revdate, text2=errline, text3=readbuf)
+              'lines must contain a specific type, a generic qty, and a real value', &
+              source, text2=errline, text3=readbuf)
    endif
 !print *, trim(typename)//' '//trim(qtyname)//' ', rvalue
 
@@ -343,12 +336,12 @@ index2 = get_index_for_quantity(qtyname)
 if (index1 < 0) then
    call error_handler(E_ERR, 'obs_impact', &
                      'first word on line is unrecognized specific obs TYPE', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 if (index2 < 0) then
    call error_handler(E_ERR, 'obs_impact', &
                      'second word on line is unrecognized generic QTY', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 
 ! options for the actual impact value:  
@@ -362,7 +355,7 @@ if (.not. allow_any_values) then
       if (rvalue /= 0.0_r8 .and. rvalue /= 1.0_r8) then 
          call error_handler(E_ERR, 'obs_impact', &
                            'impact values must be 0 or 1', &
-                            source, revision, revdate, text2=readbuf)
+                            source, text2=readbuf)
       endif
    else 
       if (present(anyvals_string)) then
@@ -373,7 +366,7 @@ if (.not. allow_any_values) then
       if (rvalue < 0.0_r8 .or. rvalue > 1.0_r8) then 
          call error_handler(E_ERR, 'obs_impact', &
                            'impact values must be between 0 and 1, inclusive', &
-                           source, revision, revdate, text2=readbuf, text3=msgstring3)
+                           source, text2=readbuf, text3=msgstring3)
       endif
    endif
 endif
@@ -386,7 +379,7 @@ if ((table(index1, index2) /= missing_r8) .and. &
    write(msgstring2, *) 'previous value was', table(index1, index2), ' new value is ', rvalue
    write(msgstring3, *) trim(typename), ' and ', trim(qtyname)
    call error_handler(E_ERR, 'obs_impact', msgstring, &
-                     source, revision, revdate, text2=msgstring2, text3=msgstring3)
+                     source, text2=msgstring2, text3=msgstring3)
    
 endif
 
@@ -414,7 +407,6 @@ logical, intent(in), optional :: debug_flag
 if (module_initialized) return
 
 module_initialized = .true.
-call register_module(source, revision, revdate)
 
 if (present(debug_flag)) debug = debug_flag
 
@@ -621,7 +613,7 @@ integer :: i
 do i=1, toc%toc_count
    if (toc%toc_entries(i)%ename == nextword) then
       call error_handler(E_ERR, 'add_toc:', 'word already in toc: '//trim(nextword), &
-                       source, revision, revdate, text2='cannot have duplicate entries')
+                       source, text2='cannot have duplicate entries')
    endif
 enddo
 
@@ -766,8 +758,8 @@ if (wordcount < 1) return
 
 if (itemlist(1) < 0) then
    call error_handler(E_ERR, 'state_change',  &
-                     'first word on line is unrecognized keyword, QTY, TYPE, or group name', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+             'first word on line is unrecognized keyword, QTY, TYPE, or group name', &
+             source, text2=errline, text3=readbuf)
 endif
 
 
@@ -778,13 +770,13 @@ select case (this_state)
          !GROUP - start definition
          if (wordcount < 2) then
             call error_handler(E_ERR, 'state_change', &
-                               'GROUP keyword must be followed by a group name', &
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'GROUP keyword must be followed by a group name', &
+                      source, text2=errline, text3=readbuf)
          endif
          if (itemlist(2) > 0) then
             call error_handler(E_ERR, 'state_change', &
-                               'group name '//trim(wordarray(2))//' already in use', &
-                                source, revision, revdate, text2=errline, text3=readbuf)
+                      'group name '//trim(wordarray(2))//' already in use', &
+                      source, text2=errline, text3=readbuf)
          endif
 
          this_state = STATE_DEFGROUP
@@ -798,8 +790,8 @@ select case (this_state)
          !IMPACT - start definition
          if (wordcount > 1) then
             call error_handler(E_ERR, 'state_change', &
-                               'IMPACT keyword should not be followed by additional text', & 
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'IMPACT keyword should not be followed by additional text', & 
+                      source, text2=errline, text3=readbuf)
          endif
 
          this_state = STATE_DEFIMPACT
@@ -807,36 +799,36 @@ select case (this_state)
       else if (is_keyword(itemlist(1), 'END', toc)) then
          !END - error if not inside another block
          call error_handler(E_ERR, 'state_change', &
-                            'END keyword found while not inside a GROUP or IMPACT block', & 
-                            source, revision, revdate, text2=errline, text3=readbuf)
+                   'END keyword found while not inside a GROUP or IMPACT block', & 
+                   source, text2=errline, text3=readbuf)
 
       else
          ! if we are already outside a block, there should not be any other text
          call error_handler(E_ERR, 'state_change', &
-                            'text found while not inside a GROUP or IMPACT block', & 
-                             source, revision, revdate, text2=errline, text3=readbuf)
+                   'text found while not inside a GROUP or IMPACT block', & 
+                   source, text2=errline, text3=readbuf)
       endif
 
    case (STATE_DEFGROUP, STATE_DEFNOTGROUP)
       if (is_keyword(itemlist(1), 'GROUP', toc)) then
          !GROUP while already in a group defn - error
          call error_handler(E_ERR, 'state_change', 'GROUP keyword found inside a GROUP block', &
-                            source, revision, revdate, text2=errline, text3=readbuf)
+                            source, text2=errline, text3=readbuf)
       else if (is_keyword(itemlist(1), 'IMPACT', toc)) then
          !IMPACT while already in a group defn - error
          call error_handler(E_ERR, 'state_change', 'IMPACT keyword found inside a GROUP block', &
-                            source, revision, revdate, text2=errline, text3=readbuf)
+                            source, text2=errline, text3=readbuf)
       else if (is_keyword(itemlist(1), 'END', toc)) then
          !END - change state if word 2 matches, else error
          if (wordcount < 2) then
             call error_handler(E_ERR, 'state_change', &
-                               'END keyword found but missing second word GROUP', & 
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'END keyword found but missing second word GROUP', & 
+                      source, text2=errline, text3=readbuf)
          endif
          if (.not. is_keyword(itemlist(2), 'GROUP', toc)) then
             call error_handler(E_ERR, 'state_change', &
-                               'END keyword found but second word not GROUP', & 
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'END keyword found but second word not GROUP', & 
+                      source, text2=errline, text3=readbuf)
          endif
 
          this_state = STATE_UNDEFINED
@@ -848,8 +840,8 @@ select case (this_state)
          !ALL and friends - add all, and then if word 2 is EXCEPT, take away
          if (this_state == STATE_DEFNOTGROUP) then
             call error_handler(E_ERR, 'state_change', &
-                               'ALL keyword found but already excluding items', &
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'ALL keyword found but already excluding items', &
+                      source, text2=errline, text3=readbuf)
          endif
        
          this_category = itemlist(1)
@@ -857,8 +849,8 @@ select case (this_state)
          ! require group be empty to start.
          if (get_group_count(current_group_id, group_toc) /= 0) then
             call error_handler(E_ERR, 'state_change', &
-                               'ALL EXCEPT must be first lines inside a group', & 
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'ALL EXCEPT must be first lines inside a group', & 
+                      source, text2=errline, text3=readbuf)
          endif
    
          ! add all qtys, types, or types+qtys to group.
@@ -867,8 +859,8 @@ select case (this_state)
          if (wordcount >= 2) then
             if (.not. is_keyword(itemlist(2), 'EXCEPT', toc)) then
                call error_handler(E_ERR, 'state_change', &
-                                  'ALL keyword found but second word not EXCEPT', & 
-                                  source, revision, revdate, text2=errline, text3=readbuf)
+                         'ALL keyword found but second word not EXCEPT', & 
+                         source, text2=errline, text3=readbuf)
             endif
    
 !print *, 'changing state to defnotgroup'
@@ -891,22 +883,22 @@ select case (this_state)
       if (is_keyword(itemlist(1), 'GROUP', toc)) then
             !GROUP while already in a impact defn - error
             call error_handler(E_ERR, 'state_change', 'GROUP keyword found inside an IMPACT block', &
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                               source, text2=errline, text3=readbuf)
       else if (is_keyword(itemlist(1), 'IMPACT', toc)) then
             !IMPACT while already in a impact defn - error
             call error_handler(E_ERR, 'state_change', 'IMPACT keyword found inside an IMPACT block', &
-                                source, revision, revdate, text2=errline, text3=readbuf)
+                                source, text2=errline, text3=readbuf)
       else if (is_keyword(itemlist(1), 'END', toc)) then
             !END - change state if word 2 matches, else error
             if (wordcount < 2) then
                call error_handler(E_ERR, 'state_change', &
-                                  'END keyword found but missing second word IMPACT', & 
-                                  source, revision, revdate, text2=errline, text3=readbuf)
+                         'END keyword found but missing second word IMPACT', & 
+                         source, text2=errline, text3=readbuf)
             endif
             if (.not. is_keyword(itemlist(2), 'IMPACT', toc)) then
                call error_handler(E_ERR, 'state_change', &
-                                  'END keyword found but second word not IMPACT', & 
-                                  source, revision, revdate, text2=errline, text3=readbuf)
+                         'END keyword found but second word not IMPACT', & 
+                         source, text2=errline, text3=readbuf)
             endif
 
             this_state = STATE_UNDEFINED
@@ -918,8 +910,7 @@ select case (this_state)
       endif
 
   case default
-    call error_handler(E_ERR, 'state_change:', 'internal error: bad state value', &
-                       source, revision, revdate)
+    call error_handler(E_ERR,'state_change:','internal error: bad state value',source)
 end select
 
 end subroutine state_change
@@ -977,7 +968,7 @@ do i = 1, wordcount
    if (itemlist(i) < 0) then
       call error_handler(E_ERR, 'add_to_group', &
                          'unrecognized item cannot be added to group', &
-                         source, revision, revdate, text2=errline, text3=readbuf)
+                         source, text2=errline, text3=readbuf)
    endif
 
    ! check for dups
@@ -985,7 +976,7 @@ do i = 1, wordcount
       if (group_toc%groups(groupid)%group_members(j) == itemlist(i)) then
          call error_handler(E_ERR, 'add_to_group', &
                             'duplicate member found; '//trim(get_toc_name(itemlist(i),toc))//' already a member of group', &
-                            source, revision, revdate, text2=errline, text3=readbuf)
+                            source, text2=errline, text3=readbuf)
       endif
    enddo
 
@@ -993,7 +984,7 @@ do i = 1, wordcount
    if (get_toc_type(itemlist(i), toc) == ENTRY_GROUP) then
       call error_handler(E_ERR, 'add_to_group', &
                          'group members must be DART QTYS or TYPES (nested groups not allowed)', &
-                         source, revision, revdate, text2=errline, text3=readbuf)
+                         source, text2=errline, text3=readbuf)
    endif
 
 
@@ -1031,8 +1022,7 @@ else if (is_keyword(category, 'ALLTYPES', toc)) then
    dotypes = .true.
 else
    call error_handler(E_ERR, 'add_all_to_group', &
-                      'internal error: ALLxxx keyword unrecognized', &
-                      source, revision, revdate)
+                      'internal error: ALLxxx keyword unrecognized', source)
 endif
 
 call check_groupindex(groupid, 'add_all_to_group', group_toc)
@@ -1083,8 +1073,7 @@ else if (is_keyword(category, 'ALLTYPES', toc)) then
    dotypes = .true.
 else
    call error_handler(E_ERR, 'sub_from_group', &
-                      'internal error: ALLxxx keyword unrecognized', &
-                      source, revision, revdate)
+             'internal error: ALLxxx keyword unrecognized', source)
 endif
 
 call check_groupindex(groupid, 'sub_from_group', group_toc)
@@ -1092,8 +1081,8 @@ call check_groupindex(groupid, 'sub_from_group', group_toc)
 do i = 1, wordcount
    if (itemlist(i) < 0) then
       call error_handler(E_ERR, 'sub_from_group', &
-                         'EXCEPT items must be known QTYS, TYPES, or groups', &
-                         source, revision, revdate, text2=errline, text3=readbuf)
+                'EXCEPT items must be known QTYS, TYPES, or groups', &
+                source, text2=errline, text3=readbuf)
 
    endif
 
@@ -1118,16 +1107,16 @@ do i = 1, wordcount
          if (.not. (itemtype == ENTRY_DARTQTY  .and. doqtys) .and. &
              .not. (itemtype == ENTRY_DARTTYPE .and. dotypes)) then
             call error_handler(E_ERR, 'sub_from_group', &
-                               'error using EXCEPT; item '//trim(get_toc_name(itemval, toc))//' not a group member', &
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'error using EXCEPT; item '//trim(get_toc_name(itemval, toc))//' not a group member', &
+                      source, text2=errline, text3=readbuf)
          endif
 
       else
          itemval = itemlist(i)
          if (.not. is_group_member(groupid, itemval, group_toc)) then
             call error_handler(E_ERR, 'sub_from_group', &
-                               'error using EXCEPT; item '//trim(get_toc_name(itemval, toc))//' not a member of group', &
-                               source, revision, revdate, text2=errline, text3=readbuf)
+                      'error using EXCEPT; item '//trim(get_toc_name(itemval, toc))//' not a member of group', &
+                      source, text2=errline, text3=readbuf)
          endif
       endif
    
@@ -1154,8 +1143,7 @@ call check_groupindex(groupid, 'is_group_member', group_toc)
 
 if (group_toc%groups(groupid)%member_count < 0) then
    call error_handler(E_ERR, 'is_group_member', &
-                     'no members in requested group', &
-                     source, revision, revdate)
+                     'no members in requested group', source)
 endif
 
 do i=1, group_toc%groups(groupid)%member_count
@@ -1180,14 +1168,12 @@ call check_groupindex(groupid, 'get_group_member_by_index', group_toc)
 
 if (group_toc%groups(groupid)%member_count <= 0) then
    call error_handler(E_ERR, 'get_group_member_by_index', &
-                     'no members in requested group', &
-                     source, revision, revdate)
+             'no members in requested group', source)
 endif
 
 if (membernum > group_toc%groups(groupid)%member_count) then
    call error_handler(E_ERR, 'get_group_member_by_index', &
-                     'membernum larger than number of members in this group', &
-                     source, revision, revdate)
+             'membernum larger than number of members in this group', source)
 endif
 
 get_group_member_by_index = group_toc%groups(groupid)%group_members(membernum)
@@ -1217,8 +1203,7 @@ enddo FINDME
 
 if (membernum < 0 .or. membernum > group_toc%groups(groupid)%member_count) then
    call error_handler(E_ERR, 'del_group_member', &
-                      'membernum not a valid member number', &
-                      source, revision, revdate)
+             'membernum not a valid member number', source)
 endif
 
 num_mem = group_toc%groups(groupid)%member_count - 1
@@ -1243,8 +1228,7 @@ call check_groupindex(groupid, 'get_group_count', group_toc)
 
 if (group_toc%groups(groupid)%member_count < 0) then
    call error_handler(E_ERR, 'get_group_count', &
-                     'no members in requested group', &
-                     source, revision, revdate)
+             'no members in requested group', source)
 endif
 
 get_group_count = group_toc%groups(groupid)%member_count
@@ -1283,14 +1267,12 @@ type(type_group), intent(in) :: group_toc
 
 if (groupid <= 0) then
    call error_handler(E_ERR, caller, &
-                     'internal error: group index must be 1 or larger', &
-                     source, revision, revdate)
+             'internal error: group index must be 1 or larger', source)
 endif
 
 if (groupid > group_toc%group_count) then
    call error_handler(E_ERR, caller, &
-                     'internal error: group index larger than number of groups', &
-                     source, revision, revdate)
+             'internal error: group index larger than number of groups', source)
 endif
 
 end subroutine check_groupindex
@@ -1398,8 +1380,8 @@ else if (isgroup1 .and. isgroup2) then
 
 else
    call error_handler(E_ERR, 'update_impact', &
-                     'first and second entries on line must be either a QTY or a group name', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+             'first and second entries on line must be either a QTY or a group name', &
+             source, text2=errline, text3=readbuf)
 endif
 
 end subroutine update_impact
@@ -1416,17 +1398,17 @@ real(r8),         intent(out) :: rvalue
 if (wordcount /= 3) then
    call error_handler(E_ERR, 'check_impact_line', &
                      'impact lines require exactly 3 words per line', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 if (itemlist(1) < 0) then
    call error_handler(E_ERR, 'check_impact_line', &
                      'first word on line is unrecognized QTY, TYPE, or group name', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 if (itemlist(2) < 0) then
    call error_handler(E_ERR, 'check_impact_line', &
                      'second word on line is unrecognized QTY or group name', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 
 call extract_value(wordarray(3), rvalue)
@@ -1493,7 +1475,7 @@ if ((table(tableindex1, tableindex2) /= missing_r8) .and. &
    write(msgstring3, *) trim(get_name_by_value(tableindex1, ENTRY_DARTTYPE, toc)), ' and ',  &
                         trim(get_name_by_value(tableindex2, ENTRY_DARTQTY,  toc))
    call error_handler(E_ERR, 'update_impact', msgstring, &
-                     source, revision, revdate, text2=msgstring2, text3=msgstring3)
+                     source, text2=msgstring2, text3=msgstring3)
    
 endif
 
@@ -1527,15 +1509,16 @@ if(entryinfo == ENTRY_GROUP) then
 
 else if (qtyonly .and. entryinfo == ENTRY_DARTTYPE) then
    call error_handler(E_ERR, 'iteminfo', &
-                     'entry on right, '//trim(get_toc_name(item,toc))//' can only be a DART QTY', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+             'entry on right, '//trim(get_toc_name(item,toc))//' can only be a DART QTY', &
+             source, text2=errline, text3=readbuf)
 
 else if (qtyonly .and. entryinfo == ENTRY_DARTQTY) then
    itemid = get_toc_value(item, toc)
    isgroup = .false.
    itemcount = 1
 
-else if (.not. qtyonly .and. (entryinfo == ENTRY_DARTQTY .or. entryinfo == ENTRY_DARTTYPE)) then
+else if (.not. qtyonly .and. &
+        (entryinfo == ENTRY_DARTQTY .or. entryinfo == ENTRY_DARTTYPE)) then
    itemid = get_toc_value(item, toc)
    isgroup = .false.
    itemcount = 1
@@ -1543,8 +1526,8 @@ else if (.not. qtyonly .and. (entryinfo == ENTRY_DARTQTY .or. entryinfo == ENTRY
 else
 
    call error_handler(E_ERR, 'iteminfo', &
-                     'unrecognized input; expecting a DART QTY, TYPE, or GROUP name', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+             'unrecognized input; expecting a DART QTY, TYPE, or GROUP name', &
+             source, text2=errline, text3=readbuf)
 endif
 
 
@@ -1564,8 +1547,8 @@ if (get_toc_type(item, toc) /= ENTRY_DARTQTY) then
 
    gname = get_name_by_value(groupid, ENTRY_GROUP, toc)
    call error_handler(E_ERR, 'require_only_qtys_in_group', &
-                     'if in righthand column, group '//trim(gname)//' must include only DART QTYS', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+             'if in righthand column, group '//trim(gname)//' must include only DART QTYS', &
+             source, text2=errline, text3=readbuf)
 endif
 
 end subroutine require_only_qtys_in_group
@@ -1584,7 +1567,7 @@ if (get_toc_type(item, toc) /= ENTRY_DARTTYPE) then
    ename = get_toc_name(item, toc)
    call error_handler(E_ERR, 'must_be_specific_type', &
                      'lefthand column must be a DART TYPE, not '//trim(ename), &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 
 end subroutine must_be_specific_type
@@ -1603,7 +1586,7 @@ if (get_toc_type(item, toc) /= ENTRY_DARTQTY) then
    ename = get_toc_name(item, toc)
    call error_handler(E_ERR, 'must_be_generic_qty', &
                      'righthand column must be a DART QTY, not '//trim(ename), &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+                     source, text2=errline, text3=readbuf)
 endif
 
 end subroutine must_be_generic_qty
@@ -1618,8 +1601,7 @@ integer                    :: get_toc_type
 
 if (item > toc%toc_count) then
    call error_handler(E_ERR, 'get_toc_type', &
-                     'called with an index larger than the number of items in toc', &
-                     source, revision, revdate)
+             'called with an index larger than the number of items in toc', source)
 endif
 
 get_toc_type = toc%toc_entries(item)%etype
@@ -1636,8 +1618,7 @@ integer                    :: get_toc_value
 
 if (item > toc%toc_count) then
    call error_handler(E_ERR, 'get_toc_value', &
-                     'called with an index larger than the number of items in toc', &
-                     source, revision, revdate)
+             'called with an index larger than the number of items in toc', source)
 endif
 
 get_toc_value = toc%toc_entries(item)%evalue
@@ -1654,8 +1635,7 @@ character(len=string_length) :: get_toc_name
 
 if (item > toc%toc_count) then
    call error_handler(E_ERR, 'get_toc_name', &
-                     'called with an index larger than the number of items in toc', &
-                     source, revision, revdate)
+             'called with an index larger than the number of items in toc', source)
 endif
 
 get_toc_name = toc%toc_entries(item)%ename
@@ -1674,8 +1654,8 @@ real(r8),         intent(out) :: rvalue
 read(wordarray, *, iostat=ios) rvalue
 if (ios /= 0) then
    call error_handler(E_ERR, 'extract_value', &
-                     'bad numeric value, expecting third item on line to be a number', &
-                     source, revision, revdate, text2=errline, text3=readbuf)
+             'bad numeric value, expecting third item on line to be a number', &
+             source, text2=errline, text3=readbuf)
 endif
 
 end subroutine extract_value
@@ -1715,8 +1695,3 @@ end subroutine output_impact_table
 
 end module obs_impact_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

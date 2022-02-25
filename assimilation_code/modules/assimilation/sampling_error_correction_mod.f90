@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
 !> Ref: Anderson, J., 2012: 
@@ -27,12 +25,7 @@ private
 public :: get_sampling_error_table_size, &
           read_sampling_error_correction
 
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source = 'sampling_error_correction_mod.f90'
 
 ! Using hardcoded filename for ease of scripting.
 ! and for now, say where the default location in the dart distribution tree is
@@ -104,7 +97,7 @@ if (indx < 0) then
                         requested_ens_size
    write(msgstring1, *) 'You can add one to the existing file with the "gen_sampling_err_table" program'
    call error_handler(E_ERR, 'read_sampling_error_correction:', 'unsupported ensemble size requested', &
-                      source, revision, revdate, text2=msgstring, text3=msgstring1)
+                      source, text2=msgstring, text3=msgstring1)
 endif
 
 if (size(true_correl_mean(:)) /= nentries .or. &
@@ -112,7 +105,7 @@ if (size(true_correl_mean(:)) /= nentries .or. &
    write(msgstring, *) 'one or both arrays "true_correl_mean" and "alpha" are not allocated correctly'
    write(msgstring1, *) 'they must be size ', nentries, ' but are ', size(true_correl_mean), ' and ', size(alpha)
    call error_handler(E_ERR, 'read_sampling_error_correction:', 'error in output array size', &
-                      source, revision, revdate, text2=msgstring, text3=msgstring1)
+                      source, text2=msgstring, text3=msgstring1)
 endif
 
 call read_input_file(ncid, indx, true_correl_mean, alpha)
@@ -137,7 +130,7 @@ if (rc /= nf90_noerr) then
    msgstring  = 'File "'//trim(input_filename)//'" not found in the current directory.'
    msgstring1 = 'This file can be copied from this location in the DART distribution: '
    call error_handler(E_ERR, 'read_sampling_error_correction:', msgstring, &
-                      source, revision, revdate, text2=msgstring1, text3=default_path)
+                      source, text2=msgstring1, text3=default_path)
 endif
 
 open_input_file = ncid
@@ -304,9 +297,3 @@ end subroutine read_sec_data_real
 
 end module sampling_error_correction_mod
 
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
