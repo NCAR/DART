@@ -1,0 +1,12 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+
+     ../../../../build_templates/mkmf -p netCDF_to_obs \
+ -t  ../../../../build_templates/mkmf.template \
+ -a "../../../.." path_names_netCDF_to_obs
+
+exit $status
+

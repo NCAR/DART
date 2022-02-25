@@ -306,8 +306,10 @@ References
    observations/obs_converters/MODIS/readme
    observations/obs_converters/MODIS/MOD15A2_to_obs
    observations/obs_converters/MPD/README
+   observations/obs_converters/NASA_Earthdata/README
    observations/obs_converters/NCEP/prep_bufr/prep_bufr
    observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
+   observations/obs_converters/NSIDC/SMAP_L2_to_obs
    observations/obs_converters/ROMS/ROMS
    observations/obs_converters/SIF/SIF_to_obs_netcdf
    observations/obs_converters/SSEC/SSEC
@@ -320,7 +322,7 @@ References
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
-   observations/obs_converters/radar/radar
+   observations/obs_converters/radar/README
    observations/obs_converters/snow/snow_to_obs
    observations/obs_converters/text/text_to_obs
    observations/obs_converters/tpw/tpw
@@ -371,6 +373,8 @@ References
    models/CESM/readme
    models/cice/readme
    models/clm/readme
+   models/clm/clm_to_dart
+   models/clm/dart_to_clm
    models/cm1/readme
    models/coamps_nest/readme
    models/coamps/readme

@@ -89,6 +89,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_units, get_long_name, get_short_name, &
                                  get_has_missing_value, get_FillValue, &
                                  get_missing_value, get_add_offset, get_xtype, &
+                                 get_has_FillValue, &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
                                  end_diagnostic_structure
@@ -1725,7 +1726,8 @@ if ( get_short_name(domid, varid) /= ' ' ) then
 endif
 
 ! check to see if template file has missing value attributes
-if ( get_has_missing_value(domid, varid) ) then
+if ( get_has_missing_value(domid, varid) .or. &
+     get_has_FillValue(    domid, varid) ) then
    select case ( get_xtype(domid, varid) )
       case ( NF90_INT )
          call nc_write_missing_value_int(ncFileID, filename, ncVarID, domid, varid)
@@ -3033,6 +3035,22 @@ if ( get_has_missing_value(domain, variable) ) then
 
 endif
 
+if ( get_has_FillValue(domain, variable) ) then
+
+   select case ( get_xtype(domain, variable) )
+      case ( NF90_INT )
+         call get_FillValue(domain, variable, model_missing_valueINT)
+         where(array == model_missing_valueINT) array = MISSING_R8
+      case ( NF90_FLOAT )
+         call get_FillValue(domain, variable, model_missing_valueR4)
+         where(array == model_missing_valueR4) array = MISSING_R8
+      case ( NF90_DOUBLE )
+         call get_FillValue(domain, variable, model_missing_valueR8)
+         where(array == model_missing_valueR8) array = MISSING_R8
+   end select
+
+endif
+
 end subroutine set_dart_missing_value
 
 !--------------------------------------------------------
@@ -3062,6 +3080,22 @@ if ( get_has_missing_value(domain, variable) ) then
       case ( NF90_DOUBLE )
          call get_missing_value(domain, variable, model_missing_valueR8)
          where(array == MISSING_R8) array = model_missing_valueR8
+   end select
+
+endif
+
+if ( get_has_FillValue(domain, variable) ) then
+
+   select case ( get_xtype(domain, variable) )
+      case ( NF90_INT )
+         call get_FillValue(domain, variable, model_missing_valueINT)
+         where(array == MISSING_R8)   array = model_missing_valueINT
+      case ( NF90_FLOAT )
+         call get_FillValue(domain, variable, model_missing_valueR4)
+         where(array == MISSING_R8)   array = model_missing_valueR4
+      case ( NF90_DOUBLE )
+         call get_FillValue(domain, variable, model_missing_valueR8)
+         where(array == MISSING_R8)   array = model_missing_valueR8
    end select
 
 endif
