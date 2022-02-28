@@ -31,7 +31,7 @@ fi
 INSTANCE=$(sed -n ${line}p $1)
 
 # The following command showed that 563 tasks are launched within .3 seconds.
-echo "launching $INSTANCE at "; date --rfc-3339=ns
+# echo "launching $INSTANCE at "; date --rfc-3339=ns
 
 eval "$INSTANCE"
 

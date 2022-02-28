@@ -297,11 +297,12 @@
   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-  input_files              = '../../../observations/forward_operators/obs_def_gps_mod.f90',
-                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+  input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
-                             '../../../observations/forward_operators/obs_def_upper_atm_mod.f90'
+                             '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_AIRS_mod.f90',
    /
+                             '../../../observations/forward_operators/obs_def_upper_atm_mod.f90'
 
 ! Not usually assimilated.  No fundamental reason not to.
 !                               'RADIOSONDE_SPECIFIC_HUMIDITY',
@@ -323,9 +324,16 @@
                                 'ACARS_TEMPERATURE',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY'
+                                'GPSRO_REFRACTIVITY',
+                                'AIRS_TEMPERATURE'
+
 
    evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+                              'AIRS_SPECIFIC_HUMIDITY'
+                              'RADIOSONDE_SURFACE_ALTIMETER'
+                              'MARINE_SFC_ALTIMETER'
+                              'LAND_SFC_ALTIMETER'
+
    /
 
 

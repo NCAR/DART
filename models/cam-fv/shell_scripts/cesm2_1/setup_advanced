@@ -214,7 +214,7 @@ setenv dartroot     /glade/u/home/${USER}/DART/reanalysis_git
 
 setenv cime_output  /glade/scratch/${USER}
 setenv archdir      ${cime_output}/${case}/archive
-setenv projdir      /glade/p/nsc/ncis0006/Reanalyses
+setenv projdir      ${archdir}
 setenv campdir      /gpfs/csfs1/cisl/dares/Reanalyses
 
 setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10
@@ -320,10 +320,9 @@ set nthreads = 1
 set user_grid = "${user_grid} --gridfile /glade/work/raeder/Models/CAM_init/SST"
 set user_grid = "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
 setenv sst_dataset \
-   "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20110101_cat_20111231_gregorian_c190703.nc"
-   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
-   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20160101_cat_20161231_gregorian_c181119.nc"
-   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
+   "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.2011-202001_0Z_filled_c200810.nc"
+   # New SST valid and labeled at 12Z
+   # "/glade/work/raeder/Models/CAM_init/SST/avhrr_v2.1-only-v2.201912-202109_12Z_filled_c211112.nc"
 
 set list = `ncdump -h $sst_dataset | grep calendar`
 if ($list[3] !~ '"gregorian"') then
@@ -334,7 +333,7 @@ if ($list[3] !~ '"gregorian"') then
 endif
 setenv sst_grid    /glade/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
 setenv sst_year_start 2011
-setenv sst_year_end   2011
+setenv sst_year_end   2020
 
 # ==============================================================================
 # job settings:
@@ -661,6 +660,22 @@ endif
 # For more description of hybrid mode, see:
 # http://esmci.github.io/cime/users_guide/running-a-case.html?highlight=hybrid
 
+# If it is necessary to start a new case in a bit-for-bit identical way 
+# to how an existing case would have continued, then 
+#   + RUN_TYPE needs to be 'branch',
+#   + the same filter used in the existing case must be put into $dartroot/models/cam-fv/work/filter,
+#     The sizes of filter may not be enough; check dates and use cmp.
+#   + additional files must be staged in RUNDIR (see stage_cesm_files, below);
+#       cam_####.r. 
+#       cam_####.rs. (these need to have the new CASE in their names, instead of the REFCASE.
+#       cpl_####.r. files 
+#       any requested restart history files (rh#)  (but hopefully not history files)
+#   + the rpointer files must exist and have the right file names.
+# 
+# This will fix the CLM start, but may cause CAM to start differently than during an assimilation,
+# since it's using(?) the restart file instead of the initial file.
+# So far (2022-01) this appears to not be the case; the branch restarted bfb.
+
 echo "After xmlchanges for ROOTPEs ..."
 
 ./xmlquery --partial TASK
@@ -669,7 +684,7 @@ echo "After xmlchanges for ROOTPEs ..."
 ./xmlquery --partial EXEROOT
 ./xmlquery --partial DOUT
 
-./xmlchange RUN_TYPE=hybrid
+./xmlchange RUN_TYPE=branch
 ./xmlchange RUN_STARTDATE=${start_year}-${start_month}-${start_day}
 ./xmlchange START_TOD=$start_tod
 ./xmlchange RUN_REFCASE=$refcase
@@ -842,7 +857,7 @@ setenv  data_DOUT_S_ROOT      $archdir
 
 setenv CONTINUE_RUN \`./xmlquery CONTINUE_RUN --value\`
 
-if (-f ${data_scratch}/run/rpointer.atm_0001) then
+if (-f \${data_scratch}/run/rpointer.atm_0001) then
    # Get date from an rpointer file
    set FILE = \`head -n 1 \${data_scratch}/run/rpointer.atm_0001\`
    set ATM_DATE_EXT = \$FILE:r:e
@@ -869,8 +884,8 @@ if (-f ${data_scratch}/run/rpointer.atm_0001) then
    #    @ data_month = \$data_month - 1
    # endif
 else if (\$CONTINUE_RUN == FALSE) then
-   set START_DATE = \`./xmlquery RUN_START_DATE --value\`
-   set parts = \`echo \$START_DATE | sed -e "s#-# #"\`
+   set START_DATE = \`./xmlquery RUN_STARTDATE --value\`
+   set parts = \`echo \$START_DATE | sed -e "s#-# #g"\`
    @ data_year  = \$parts[1]
    @ data_month = \$parts[2]
    @ data_day   = \$parts[3]
@@ -878,7 +893,7 @@ else if (\$CONTINUE_RUN == FALSE) then
 
 else
    echo "CONTINUE_RUN = TRUE but "
-   echo "${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
+   echo "\${data_scratch}/run/rpointer.atm_0001 is missing.  Exiting"
    exit 30
 
 endif
@@ -975,7 +990,7 @@ while ($inst <= $num_instances)
    # echo " mfilt         = 1 "                             >> ${fname}
 
    echo $CAM_CONFIG_OPTS | grep 'cam4'
-   if ($status == 0) echo " fv_div24del2_flag = 4 "       >> ${fname}
+   if ($status == 0) echo " fv_div24del2flag = 4 "       >> ${fname}
 
    # Settings that differ between regular CAM and the WACCM version:
 
@@ -988,61 +1003,18 @@ while ($inst <= $num_instances)
 
    if ($start_year > 2014) then
 
+# These are what we ended up using in the Reanalysis, after significant investigation.
       set cesm_data_dir = "/glade/p/cesmdata/cseg/inputdata/atm"
-      set cesm_chem_dir = "/gpfs/fs1/p/acom/acom-climate/cmip6inputs/emissions_ssp119"
-      set chem_root     = "${cesm_chem_dir}/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp119-1-1"
-      set chem_dates    = "175001-210012_0.9x1.25_c20181024"
+      set cesm_chem_dir = "/glade/p/cesmdata/cseg/inputdata/atm/cam/chem/emis/emissions_ssp370"
+      set chem_root     = "${cesm_chem_dir}/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1"
+      set chem_dates    = "175001-210101_0.9x1.25_c20190222"
 
-# Default: H2OemissionCH4oxidationx2_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc',"                     >> ${fname}
-# Try a file with enough years (but questionable content from
-# /glade/scratch/mmills/CH4/CCMI_1955_2099_RCP6_ave_CH4_CHML.nc):
-      echo " ext_frc_specifier = "                     >> ${fname}
-      echo "  'H2O -> ${cesm_data_dir}/cam/chem/emis/elev/H2O_emission_CH4_oxidationx2_elev_1850-2100_CCMI_RCP8_5_c160219.nc'"  >> ${fname}
-      echo "  'num_a1 -> ${chem_root}_num_so4_a1_anthro-ene_vertical_mol_${chem_dates}.nc'"        >> ${fname}
-      echo "  'so4_a1 -> ${chem_root}_so4_a1_anthro-ene_vertical_mol_${chem_dates}.nc'"            >> ${fname}
-
-      echo " srf_emis_specifier ="                                                                 >> ${fname}
-      echo "  'bc_a4 ->  ${chem_root}_bc_a4_anthro_surface_mol_${chem_dates}.nc'"                  >> ${fname}
-      echo "  'bc_a4 ->  ${chem_root}_bc_a4_bb_surface_mol_${chem_dates}.nc'"                      >> ${fname}
-      echo "  'DMS ->    ${chem_root}_DMS_bb_surface_mol_${chem_dates}.nc'"                        >> ${fname}
-      echo "  'DMS ->    ${cesm_chem_dir}/emissions-cmip6-SSP_DMS_other_surface_mol_${chem_dates}.nc'" >> ${fname}
-      echo "  'num_a1 -> ${chem_root}_num_so4_a1_bb_surface_mol_${chem_dates}.nc'"                 >> ${fname}
-      echo "  'num_a1 -> ${chem_root}_num_so4_a1_anthro-ag-ship_surface_mol_${chem_dates}.nc'"     >> ${fname}
-      echo "  'num_a2 -> ${chem_root}_num_so4_a2_anthro-res_surface_mol_${chem_dates}.nc'"         >> ${fname}
-      echo "  'num_a4 -> ${chem_root}_num_bc_a4_bb_surface_mol_${chem_dates}.nc'"                  >> ${fname}
-      echo "  'num_a4 -> ${chem_root}_num_bc_a4_anthro_surface_mol_${chem_dates}.nc'"              >> ${fname}
-      echo "  'num_a4 -> ${chem_root}_num_pom_a4_anthro_surface_mol_${chem_dates}.nc'"             >> ${fname}
-      echo "  'num_a4 -> ${chem_root}_num_pom_a4_bb_surface_mol_${chem_dates}.nc'"                 >> ${fname}
-      echo "  'pom_a4 -> ${chem_root}_pom_a4_anthro_surface_mol_${chem_dates}.nc'"                 >> ${fname}
-      echo "  'pom_a4 -> ${chem_root}_pom_a4_bb_surface_mol_${chem_dates}.nc'"                     >> ${fname}
-      echo "  'SO2 ->    ${chem_root}_SO2_anthro-ag-ship-res_surface_mol_${chem_dates}.nc'"        >> ${fname}
-      echo "  'SO2 ->    ${chem_root}_SO2_anthro-ene_surface_mol_${chem_dates}.nc'"                >> ${fname}
-      echo "  'SO2 ->    ${chem_root}_SO2_bb_surface_mol_${chem_dates}.nc'"                        >> ${fname}
-      echo "  'so4_a1 -> ${chem_root}_so4_a1_anthro-ag-ship_surface_mol_${chem_dates}.nc'"         >> ${fname}
-      echo "  'so4_a2 -> ${chem_root}_so4_a2_anthro-res_surface_mol_${chem_dates}.nc'"             >> ${fname}
-      echo "  'SOAG ->   ${chem_root}_SOAGx1.5_anthro_surface_mol_${chem_dates}.nc'"               >> ${fname}
-      echo "  'SOAG ->   ${chem_root}_SOAGx1.5_bb_surface_mol_${chem_dates}.nc'"                   >> ${fname}
-      echo "  'SOAG ->   ${chem_root}_SOAGx1.5_biogenic_surface_mol_${chem_dates}.nc'"             >> ${fname}
-#      echo "  'SOAG ->   ${chem_root}_SOAGx1.5_biogenic_surface_mol_201501-210012_0.9x1.25_c20181024.nc'" >> ${fname}
-      echo "  'so4_a1 -> ${chem_root}_so4_a1_bb_surface_mol_${chem_dates}.nc'"                     >> ${fname}
-
-# Queried Mike Mills 2018-12-3
-# He says; not available, and won't be
-# Try using the default file, but with cyclical trace gases, year 2014 (the last full).
-      echo " prescribed_ozone_type         = 'CYCLICAL'"  >> ${fname}
-      echo " prescribed_ozone_cycle_yr     = 2014"        >> ${fname}
-      echo " prescribed_strataero_type     = 'CYCLICAL'"  >> ${fname}
-      echo " prescribed_strataero_cycle_yr = 2014"        >> ${fname}
-
-#     Defaults:
-#       tracer_cnst_datapath	= '${cesm_data_dir}/cam/tracer_cnst'"
-#       tracer_cnst_file	= 'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'
-#     2014 is not available in this default halons file.
-#     And the 2015 is an average of 2012-2014 output.
-#     This file that has yearly through 2014, not averaged.
-      echo " tracer_cnst_file = 'tracer_cnst_halons_WACCM6_3Dmonthly_L70_1975-2014_c180216.nc'"  >> ${fname}
-      echo " tracer_cnst_type          = 'CYCLICAL'"      >> ${fname}
-      echo " tracer_cnst_cycle_yr      = 2014"            >> ${fname}
+      echo " srf_emis_type                 = 'CYCLICAL'"   >> ${fname}
+      echo " srf_emis_cycle_yr             = 2014"         >> ${fname}
+      echo " prescribed_ozone_type         = 'CYCLICAL'"   >> ${fname}
+      echo " prescribed_ozone_cycle_yr     = 2014"         >> ${fname}
+      echo " prescribed_strataero_type     = 'CYCLICAL'"   >> ${fname}
+      echo " prescribed_strataero_cycle_yr = 2014"         >> ${fname}
 
 # Mike Mills:
 #  the way that CAM deals with these greenhouse gases:
@@ -1056,13 +1028,25 @@ while ($inst <= $num_instances)
 #     The default file has yearly data, which CAM can't handle with CYCLICAL.
 #     (see DiscussCESM "Cycling dates in chem_surfvals_nl fails when data is yearly")
 #  This fails because a year can't be specified with 'FIXED' (!)
-#  I've asked Mike about this.
-#       echo " flbc_file  = '${cesm_data_dir}/waccm/lb/LBC_1750-2015_CMIP6_GlobAnnAvg_c180926.nc' " >> ${fname}
-#       echo " flbc_type      = 'FIXED'"      >> ${fname}
-#     This file is monthly, but see Mills' comments, above.
-      echo " flbc_file  = '${cesm_data_dir}/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc' " >> ${fname}
-      echo " flbc_type      = 'CYCLICAL'"   >> ${fname}
-      echo " flbc_cycle_yr  = 2014"         >> ${fname}
+      echo " flbc_type  = 'SERIAL'"   >> ${fname}
+      echo " flbc_file  = '${cesm_data_dir}/waccm/lb/LBC_2014-2500_CMIP6_SSP370_0p5degLat_GlobAnnAvg_c190301.nc' "        >> ${fname}
+
+#     Defaults:
+#       tracer_cnst_datapath	= '${cesm_data_dir}/cam/tracer_cnst'"
+#       tracer_cnst_file	= 'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'
+#     2014 is not available in this default halons file.
+#     And the 2015 is an average of 2012-2014 output.
+#     This file that has yearly through 2014, not averaged.
+      echo " tracer_cnst_type     = 'INTERP_MISSING_MONTHS' "        >> ${fname}
+      echo " tracer_cnst_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/tracer_cnst' "        >> ${fname}
+      echo " tracer_cnst_file     = 'tracer_cnst_halons_3D_L70_2014-2101_CMIP6-SSP5-8.5_c190307.nc' "        >> ${fname}
+
+
+      echo " ext_frc_type      = 'INTERP_MISSING_MONTHS' " >> ${fname}
+      echo " ext_frc_specifier = "                         >> ${fname}
+      echo "  'H2O    -> ${cesm_data_dir}/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_1849-2101_CMIP6ensAvg_SSP3-7.0_c190403.nc' "        >> ${fname}
+      echo "  'num_a1 -> ${chem_root}_num_so4_a1_anthro-ene_vertical_mol_${chem_dates}.nc' "        >> ${fname}
+      echo "  'so4_a1 -> ${chem_root}_so4_a1_anthro-ene_vertical_mol_${chem_dates}.nc' "        >> ${fname}
 
    else
       if ($inst == 1) then
@@ -1106,12 +1090,26 @@ while ($inst <= $num_instances)
    # echo "hist_mfilt  = 1"                            >> ${fname}
    # echo "hist_avgflag_pertape = 'I'"                 >> ${fname}
    # For Lombardozzi
-   echo "hist_fincl1 = 'TSA','CPHASE'"               >> ${fname}
-   echo "hist_fincl2 = 'ER','EFLX_LH_TOT','GPP','GRAINC_TO_FOOD','GSSHALN','GSSUNLN','HR','NPP','NPP_NUPTAKE','PLANT_NDEMAND','QVEGT','TLAI' "                               >> ${fname}
-   echo "hist_nhtfrq = -$stop_n,-$stop_n"                   >> ${fname}
-   echo "hist_mfilt  = 1,1"                          >> ${fname}
-   echo "hist_avgflag_pertape = 'I','A'"             >> ${fname}
-   echo "hist_dov2xy = .true.,.false."               >> ${fname}
+   echo " hist_fincl1 = 'TSA','ER','EFLX_LH_TOT','HR'"                  >> ${fname}
+   echo " hist_fincl2 = 'CPHASE','GPP','GRAINC_TO_FOOD','GSSHALN',"     >> ${fname}
+   echo "               'GSSUNLN','NPP','NPP_NUPTAKE','PLANT_NDEMAND'," >> ${fname}
+   echo "               'QVEGT','TLAI'"                                 >> ${fname}
+   echo " hist_nhtfrq = -6,-6"                                          >> ${fname}
+   echo " hist_mfilt  = 1,1"                                            >> ${fname}
+   echo " hist_avgflag_pertape = 'I','A'"                               >> ${fname}
+   echo " hist_dov2xy = .true.,.false."                                 >> ${fname}
+   echo " use_lch4 = .false."                                           >> ${fname}
+   echo " model_year_align_popdens  = 1850"                             >> ${fname}
+   echo " stream_year_first_popdens = 1850"                             >> ${fname}
+   echo " stream_year_last_popdens  = 2100"                             >> ${fname}
+   set clm_data = /glade/p/cesmdata/cseg/inputdata/lnd/clm2
+   echo " stream_fldfilename_popdens = '${clm_data}/firedata/clmforc.Li_2018_SSP3_CMIP6_hdm_0.5x0.5_AVHRR_simyr1850-2100_c181205.nc'"                 >> ${fname}
+   echo " ndep_taxmode           = 'cycle'"                             >> ${fname}
+   echo " model_year_align_ndep  = 2015"                                >> ${fname}
+   echo " stream_year_first_ndep = 2015"                                >> ${fname}
+   echo " stream_year_last_ndep  = 2015"                                >> ${fname}
+
+   echo " flanduse_timeseries = '${clm_data}/surfdata_map/landuse.timeseries_0.9x1.25_SSP5-8.5_78pfts_CMIP6_simyr1850-2100_c181209.nc'"                 >> ${fname}
 
    # This was needed to allow the interpolation of the default CLM restart file.
    # It is needed in runs that start from a somewhat spun up ensemble.
@@ -1122,7 +1120,7 @@ while ($inst <= $num_instances)
    endif
 
    # but we don't particularly want or need methane
-   echo "use_lch4 = .false."                         >> ${fname}
+#    echo "use_lch4 = .false."                         >> ${fname}
 
 #  echo "check_finidat_year_consistency = .false."   >> ${fname}
 #  echo "urban_hac = 'OFF'"                          >> ${fname}
@@ -1160,7 +1158,6 @@ set fname = "user_nl_cpl"
 
 # compset J1850G (all active except atm, from lofverstrom) + river (Lindsay)
 # needed this set of forcing.
-# Zagar cases; maybe only save from the TUV OSSE.
 # echo " histaux_a2x3hr  = .true."   >> ${fname}
 # echo " histaux_a2x24hr = .true."   >> ${fname}
 # echo " histaux_a2x1hri = .true."   >> ${fname}
@@ -1175,57 +1172,51 @@ set fname = "user_nl_cpl"
 # No histaux_a2x3hrp (precip)?
 # No histaux_l2x ?
 
+# preview_namelists needs to come before the modification of stream files.
+./preview_namelists || exit 75
+
+# The "old" avhrr v2 (file names avhrr-only-v2.YYYYMMDD.nc)
 # The 1/4 degree avhrr SSTICE files' metadata says that the times are
 # relative to 1978-01-01 00:00:00, but that the data are valid at the
 # "center of the day".  The times in the file are whole days, not day.5,
 # so that's inconsistent.  Fix that by setting an offset in the docn stream text files.
-# That can't be changed by xml variables or variabls in user_docn_in files.
-# The data component website (http://esmci.github.io/cime/data_models/input-streams.html)
-# says 
-# "if a data set contains daily average data with timestamps for the data 
-# at the end of the day, it might be appropriate to shift the time axis 
-# by 12 hours so the data is taken to be at the middle of the day 
-# instead of the end of the day. 
-# Note that a positive offset advances the input data time axis forward 
-# by that number of seconds."
-# It seems that the avhrr data is defined at the beginnings of the days,
-# so we want a negative offset to move the axis "left" and make 12 Z
-# line up with the data.  A test will tell . . .
-#
-# Also note the warnings in esmci... about changing related values 
-# in the env_xxx.xml files when there are user_docn.streams... files.
+# BUT, that's not what we did in the f.e21.FHIST_BGC.f09_025.CAM6assim.011 case.
+# The offset there is 0.
+   
+   # The "new" avhrr v2.1 (file names oisst-avhrr-v02r01.YYYYMMDD.nc)
+   # Have consistent metadata; times counted as whole days from 1978-01-01 12Z, 
+   # which is day 0.
+
 # Summary:
 # 1) Make sure that preview_namelist has been run to propagate
 #    the SSTICE pathname from env_run.xml to 
 #    $CASEROOT/Casedocs/docn.streams.txt.prescribed_####
 # 2) cp those files into $CASEROOT/user_{same_file_names}
-# 3) modify them as needed (change offset from 0 to 43200).
+# 3) They should not need modification for the new SST files.
 # 4) If the SSTICE pathname needs to be changed, 
 #    it must be changed in the user_docn.stream files
 #    env_run.xml will be ignored for that variable.
 #    (Or change env_run.xml and repeat 1) - 4)).
 
-./preview_namelists || exit 75
-
-echo ' '
-echo $sst_dataset | grep avhrr 
-if ($status == 0) then
-   pwd
-   ls -l CaseDocs/docn*
-   if ($status != 0) then
-      date
-      echo "ERROR: No CaseDocs/docn.stream files to modify"
-      exit 85
-   endif
-   @ inst = 1
-   while ($inst <= $num_instances)
-      set inst_string = `printf _%04d $inst`
-      sed -e "s#      0#      43200#"                        \
-          CaseDocs/docn.streams.txt.prescribed${inst_string} \
-          >   user_docn.streams.txt.prescribed${inst_string}
-      @ inst++
-   end
-endif
+# echo ' '
+# echo $sst_dataset | grep avhrr 
+# if ($status == 0) then
+#    pwd
+#    ls -l CaseDocs/docn*
+#    if ($status != 0) then
+#       date
+#       echo "ERROR: No CaseDocs/docn.stream files to modify"
+#       exit 85
+#    endif
+#    @ inst = 1
+#    while ($inst <= $num_instances)
+#       set inst_string = `printf _%04d $inst`
+#       sed -e "s#      0#      43200#"                        \
+#           CaseDocs/docn.streams.txt.prescribed${inst_string} \
+#           >   user_docn.streams.txt.prescribed${inst_string}
+#       @ inst++
+#    end
+# endif
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists.
@@ -1257,6 +1248,7 @@ set restart_time = $init_time
 cd ${caseroot}
 setenv RUNDIR       \`./xmlquery RUNDIR       --value\`
 setenv CONTINUE_RUN \`./xmlquery CONTINUE_RUN --value\`
+setenv RUN_TYPE     \`./xmlquery RUN_TYPE     --value\`
 
 ls \$RUNDIR/*.i.\${restart_time}.nc
 if (\$status == 0) then
@@ -1393,6 +1385,54 @@ else     # CONTINUE_RUN == FALSE
       @ inst ++
    end
 
+   if (\$RUN_TYPE == 'branch') then
+      # branch runs are like restart runs; they need the full set of restarts
+      # and the usual rpointer files, so link the rest here.
+      echo "RUN_TYPE = branch, so linking more files into RUNDIR"
+      @ inst=1
+      while (\$inst <= $num_instances)
+
+         set inst_string = \`printf _%04d \$inst\`
+
+         ${LINK} -f ${stagedir}/${refcase}.cam\${inst_string}.r.${init_time}.nc  .
+
+         # The rs file needs to have the current CASE in the name, not the ref case.
+         # Data are not added to these files, so LINK is correct.
+         ${LINK} -f ${stagedir}/${refcase}.cam\${inst_string}.rs.${init_time}.nc \
+                               ${case}.cam\${inst_string}.rs.${init_time}.nc 
+
+         ${LINK} -f ${stagedir}/${refcase}.cpl\${inst_string}.r.${init_time}.nc  .
+
+         echo "${refcase}.clm2\${inst_string}.r.${init_time}.nc" >! rpointer.lnd\${inst_string}
+         echo "${refcase}.cice\${inst_string}.r.${init_time}.nc" >! rpointer.ice\${inst_string}
+         echo "${refcase}.cam\${inst_string}.r.${init_time}.nc"  >! rpointer.atm\${inst_string}
+         if (mosart == 'rtm') then
+            echo "${refcase}.rtm\${inst_string}.r.${init_time}.nc"  >! rpointer.rof\${inst_string}
+         else if (mosart == 'mosart') then
+            echo "${refcase}.mosart\${inst_string}.r.${init_time}.nc"  >! rpointer.rof\${inst_string}
+         endif
+         if ($num_instances > 1) then
+            echo "${refcase}.cpl\${inst_string}.r.${init_time}.nc"     >! rpointer.drv\${inst_string}
+            echo "${refcase}.docn\${inst_string}.r.${init_time}.nc"    >! rpointer.ocn\${inst_string}
+            echo "${refcase}.docn\${inst_string}.rs1.${init_time}.bin" >> rpointer.ocn\${inst_string}
+         endif
+
+         @ inst ++
+      end
+
+      # At the moment I don't care about carefully limiting the number of links to \$NINST links,
+      # So just link all the existing .rh files
+      ${LINK} -f ${stagedir}/${refcase}.*.rh*.${init_time}.nc  .
+
+      # There are no instance numbers in these filenames.
+      if ($num_instances == 1) then
+         echo "${refcase}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+         echo "${refcase}.docn.r.\${restart_time}.nc"    >! rpointer.ocn
+         echo "${refcase}.docn.rs1.\${restart_time}.bin" >> rpointer.ocn
+      endif
+   else
+      echo "RUN_TYPE = \$RUN_TYPE, so not linking more files"
+   endif
    echo "All files set to run the FIRST experiment step using (ref)time" $init_time
 
 endif

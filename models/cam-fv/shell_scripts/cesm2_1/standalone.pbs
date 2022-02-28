@@ -6,17 +6,45 @@
 #
 # DART $Id$
 #
-#PBS -N bob
+#PBS -N Rean_SST0Z_2020
 #PBS -A P86850054
 #PBS -j oe
-#PBS -q premium
+#PBS -q economy
 #PBS -m ae
 #PBS -l walltime=00:20:00
-#PBS -l select=3:mpiprocs=36:ncpus=36
+# select=#  allocate # separate nodes
+# ncpus=#  on each node allocate # cpus (cores)
+# mpiprocs=# on each node allocate # cpus (of the ncpus allocated) to MPI
+#### -l select=9:mpiprocs=36:ncpus=36
 #### -l select=240:mpiprocs=36:ncpus=36:mem=109GB
-#### -l select=240:mpiprocs=36:ncpus=36:mem=45GB
+#PBS -l select=240:mpiprocs=36:ncpus=36:mem=45GB
 
+#------------------------------------------------------
+# When using the third option (running test_assimilate.csh)
+# This script expects there to be:
+#    an existing CASEROOT built by CESM.
+#    an ensemble of CAM initial files for the date to be tested
+#
+
+# Make consistent with how I ran old filters to get bfb reproducibility.  (Added 2020-2-3)
+   # I seem(?) to need to specify mpt2.21 in the PATH variable, 
+   # or it won't show up in the ldd output as the one being used.
+   # Is it safe to put my path in front of the exiting path?
+# Try new system defaults; comment out these
+#    setenv PATH /glade/u/apps/ch/opt/mpt/2.21/lib:$PATH
+#    set path = (/glade/u/apps/ch/opt/mpt/2.21/bin $path)
+#    module swap mpt/2.21
+   echo "Modules used for this assimilation:"
 module list
+which mpiexec_mpt
+mpif90 -show
+
+# Run filter using environment MPI values
+set env_mpi       = 'false'
+# Run filter with cesm args
+set some_cesm_mpi = 'false'
+# Run test_assimilate.csh
+set all_cesm_mpi  = 'true'
 
 setenv OMP_STACKSIZE      256M
 setenv OMP_NUM_THREADS    1
@@ -26,71 +54,97 @@ setenv MPI_IB_CONGESTED   1
 setenv MPIEXEC_MPT_DEBUG  0
 setenv MP_DEBUG_NOTIMEOUT yes
 
-set CASEDIR = /glade/work/${USER}/cases/cesm2.1.0/start_6Z
-set RUNDIR = /glade/scratch/${USER}/cesm2.1.0/start_6Z/standalone
+set CASEDIR = /glade/work/${USER}/Exp/Rean_SST0Z_2020
+set RUNDIR  = /glade/scratch/${USER}/Rean_SST0Z_2020/run
 
+cp ./test_assimilate.csh $RUNDIR
 cd $RUNDIR
+
+echo "loaded libraries for the executable "
+ls -l ../bld/filter
+ldd ../bld/filter
+echo "end of loaded libraries"
+echo '==================================================='
 
 #----------------------------------------------------------------------------
 # Harvest some information from the environment to construct output file name
+# KDR; In which environment is this envisioned to run?
 
 set jobname = $PBS_JOBNAME
+if ($jobname !~ $RUNDIR:h:t) exit 17
 set numcpus = $NCPUS
 set numtasks = `cat  $PBS_NODEFILE | wc -l`
 set numnodes = `uniq $PBS_NODEFILE | wc -l`
 
-echo "jobname  is $jobname"
-echo "numcpus  is $numcpus"
-echo "numtasks is $numtasks"
-echo "numnodes is $numnodes"
+if ($numcpus == 8640) then
+   @ comm_max = 16383
+   @ group_max = 1024
+else
+   # accomodate small test case
+   @ comm_max = $NCPUS * 2
+   @ group_max = 32
+endif
+setenv MPI_COMM_MAX $comm_max
+setenv MPI_GROUP_MAX $group_max
+
+echo "standalone.pbs:"
+echo "  jobname  is $jobname"
+echo "  numcpus  is $numcpus"
+echo "  numtasks is $numtasks"
+echo "  numnodes is $numnodes"
 
 #----------------------------------------------------------------------------
 # Running filter inheriting all mpi options from environment
 
-set my_output_file = ${jobname}_${numnodes}_simple.out
-
-echo "Running test 1 at `date`, saving output to ${my_output_file}"
-
-cat input.nml                           >!  ${my_output_file}
-env | sort                              >>  ${my_output_file}
-echo " "                                >>  ${my_output_file}
-echo "Starting filter at "`date`
-mpiexec_mpt ./filter                    >>& ${my_output_file}
-echo "Finished filter at "`date`
-
-echo "TJH skipping all other tests ..."
-exit
+if ($env_mpi =~ 'true') then
+   set my_output_file = ${jobname}_${numnodes}_simple.out
+   
+   echo "Running test 1 at `date`, saving output to ${my_output_file}"
+   
+   cat input.nml                           >!  ${my_output_file}
+   env | sort                              >>  ${my_output_file}
+   echo " "                                >>  ${my_output_file}
+   echo "Starting filter at "`date`
+   mpiexec_mpt ./filter                    >>& ${my_output_file}
+   echo "Finished filter at "`date`
+endif
 
 #----------------------------------------------------------------------------
 # Running filter with some options used by CESM
 
-set my_output_file = ${jobname}_${numnodes}_omplace.out
-
-echo "Running test 2 at `date`, saving output to ${my_output_file}"
-
-cat input.nml                           >!  ${my_output_file}
-env | sort                              >>  ${my_output_file}
-echo " "                                >>  ${my_output_file}
-echo "Starting filter_omplace at "`date`
-mpiexec_mpt omplace -tm open64 ./filter >>& ${my_output_file}
-echo "Finished filter_omplace at "`date`
+if ($some_cesm_mpi =~ 'true') then
+   set my_output_file = ${jobname}_${numnodes}_omplace.out
+   
+   echo "Running test 2 at `date`, saving output to ${my_output_file}"
+   
+   cat input.nml                           >!  ${my_output_file}
+   env | sort                              >>  ${my_output_file}
+   echo " "                                >>  ${my_output_file}
+   echo "Starting filter_omplace at "`date`
+   mpiexec_mpt omplace -tm open64 ./filter >>& ${my_output_file}
+   echo "Finished filter_omplace at "`date`
+endif
 
 #----------------------------------------------------------------------------
 # Running the whole assimilate.csh script in a manner consistent with CESM
 
-cd $CASEDIR
-
-set my_output_file = ${jobname}_${numnodes}_standalone_assim.out
-
-echo "Running test 3 at `date`, saving output to ${my_output_file}"
-
-cat input.nml                           >!  ${my_output_file}
-env | sort                              >>  ${my_output_file}
-echo " "                                >>  ${my_output_file}
-echo "Starting assimilate.csh at "`date`
-./test_assimilate.csh $CASEDIR 0        >>& ${my_output_file}
-echo "Finished assimilate.csh at "`date`
-
+if ($all_cesm_mpi =~ 'true') then
+#    cd $CASEDIR
+   
+   set my_output_file = ${jobname}_${numnodes}_standalone_assim.out
+   
+   echo "Running test 3 at `date`, saving output to ${my_output_file}"
+   
+   env | sort                                  >!  ${my_output_file}
+   echo "=================================== " >>  ${my_output_file}
+   echo "Starting assimilate.csh at "`date`
+   ./test_assimilate.csh $CASEDIR 0        >>& ${my_output_file}
+   echo "Finished assimilate.csh at "`date`
+   echo "=================================== " >>  ${my_output_file}
+   # input.nml is created by test_assimilate.csh, so archive it after that runs.
+   cat input.nml                           >>  ${my_output_file}
+endif
+   
 exit 0
 
 # <next few lines under version control, do not edit>

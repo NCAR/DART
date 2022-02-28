@@ -304,12 +304,11 @@ for ivar = 1:plotdat.nvars
                                         guess(:,:,plotdat.meanindex);
                     plotdat.xlabel    = sprintf('%s, normalized by layer mean',xlabel_basic);
                     psfile            = sprintf('%s_norm_profile',psbase);
-                    if (plotdat.has_analysis)
-                        plotdat.anl_rmse  = analy(:,:,plotdat.rmseindex) ./ ...
-                                            analy(:,:,plotdat.meanindex);
-                        plotdat.anl_copy  = analy(:,:,plotdat.copyindex) ./ ...
-                                            analy(:,:,plotdat.meanindex);
-                    end
+                    % This is needed even if plotdat.has_analysis = .false., for x-axis scaling.
+                    plotdat.anl_rmse  = analy(:,:,plotdat.rmseindex) ./ ...
+                                        analy(:,:,plotdat.meanindex);
+                    plotdat.anl_copy  = analy(:,:,plotdat.copyindex) ./ ...
+                                        analy(:,:,plotdat.meanindex);
                 otherwise
             end
             

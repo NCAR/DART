@@ -45,6 +45,12 @@ if ( $#argv >= 1 ) then
    endif
 endif
 
+echo "Build date:"
+date
+module list
+echo "PATH = "
+echo $PATH | sed -e "s#:#\n#g"
+
 set preprocess_done = 0
 set tdebug = 0
 set cdebug = 0
@@ -175,6 +181,9 @@ else
    \rm -f *.o *.mod Makefile .cppdefs
 endif
 \rm -f input.nml*_default
+
+echo "md5sum filter:"
+md5sum filter
 
 echo "Success: All MPI parallel DART programs compiled."  
 

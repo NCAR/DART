@@ -1892,7 +1892,7 @@ call nc_add_attribute_to_variable(ncid, 'slat', 'units',     'degrees_north',   
 ! Vertical Grid Latitudes
 call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /),                                                     routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'long_name',      'hybrid level at midpoints (1000*(A+B))',      routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'level',                                       routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'hPa',                                       routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'positive',       'down',                                        routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hybm p0: P0 ps: PS',               routine)
@@ -1900,7 +1900,7 @@ call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hyb
 
 call nc_define_real_variable(     ncid, 'ilev', (/ 'ilev' /),                                                    routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'long_name',      'hybrid level at interfaces (1000*(A+B))',     routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'level',                                       routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'hPa',                                       routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'positive',       'down',                                        routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'formula_terms',  'a: hyai b: hybi p0: P0 ps: PS',               routine)
@@ -3259,8 +3259,14 @@ integer :: current_vert_type, i
 do i=1,num
    current_vert_type = nint(query_location(locs(i)))
 
-   if ( current_vert_type == which_vert ) cycle
-   if ( current_vert_type == VERTISUNDEF) cycle
+! my_status should be defined in these cases.
+! But the 'if' test around the call to this routine
+! prevented this from being a problem (current never= which_vert).
+   if (( current_vert_type == which_vert ) .or. &
+       ( current_vert_type == VERTISUNDEF)) then
+      my_status(i) = 0
+      cycle
+   endif
 
    select case (which_vert)
       case (VERTISPRESSURE)
@@ -3904,6 +3910,7 @@ if (.not. present(ens_handle)) then
 endif
 
 ! does the base obs need conversion first?
+! FIXME; if we have base_type already, why re-acquire it?
 vert_type = query_location(base_loc)
 
 if (vert_type /= vertical_localization_type) then

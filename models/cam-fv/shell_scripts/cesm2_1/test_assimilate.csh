@@ -19,6 +19,8 @@
 #    These should all be named with $scomp = "cam" to distinguish
 #    them from the same output from other components in multi-component assims.
 
+echo "test_assimilate.csh"
+
 # machine-specific dereferencing
 if ($?SLURM_JOB_ID) then
 
@@ -46,12 +48,16 @@ else if ($?PBS_NODEFILE) then
    setenv    NUMNODES `uniq $PBS_NODEFILE | wc -l`
    setenv MPIEXEC_MPT_DEBUG 0
    setenv MP_DEBUG_NOTIMEOUT yes
+      
    setenv   LAUNCHCMD mpiexec_mpt
 
-   echo "jobname  is $JOBNAME"
-   echo "numcpus  is $NUMCPUS"
-   echo "numtasks is $NUMTASKS"
-   echo "numnodes is $NUMNODES"
+   echo "test_assimilate.csh:"
+   echo "  jobname  is $JOBNAME"
+   echo "  numcpus  is $NUMCPUS"
+   echo "  numtasks is $NUMTASKS"
+   echo "  numnodes is $NUMNODES"
+   echo "  MPI_COMM_MAX is $MPI_COMM_MAX"
+   echo "  MPI_GROUP_MAX is $MPI_GROUP_MAX"
 
 else if ($?LSB_HOSTS) then
 
@@ -89,7 +95,6 @@ cd ${CASEROOT}
 
 setenv scomp                     `./xmlquery COMP_ATM      --value`
 setenv CASE                      `./xmlquery CASE          --value`
-setenv ensemble_size             `./xmlquery NINST_ATM     --value`
 setenv CAM_DYCORE                `./xmlquery CAM_DYCORE    --value`
 setenv EXEROOT                   `./xmlquery EXEROOT       --value`
 setenv RUNDIR                    `./xmlquery RUNDIR        --value`
@@ -97,7 +102,14 @@ setenv archive                   `./xmlquery DOUT_S_ROOT   --value`
 setenv TOTALPES                  `./xmlquery TOTALPES      --value`
 setenv CONT_RUN                  `./xmlquery CONTINUE_RUN  --value`
 setenv TASKS_PER_NODE            `./xmlquery NTASKS_ESP   --value`
-setenv DATA_ASSIMILATION_CYCLES  `./xmlquery DATA_ASSIMILATION_CYCLES --value`
+# setenv DATA_ASSIMILATION_CYCLES  `./xmlquery DATA_ASSIMILATION_CYCLES --value`
+# We only want 1 cycle in a test.  Actually, this isn't used.
+
+# accommodate small tests in a full sized case
+# setenv ensemble_size             `./xmlquery NINST_ATM     --value`
+@ members = $NUMTASKS / ( 3 * $TASKS_PER_NODE ) 
+setenv ensemble_size   $members
+echo "ensemble_size = $ensemble_size"
 
 cd $RUNDIR
 
@@ -107,9 +119,9 @@ if (! -d $archive/esp/hist) mkdir -p $archive/esp/hist
 
 # A switch to signal how often to save the stages' ensemble members: NONE, RESTART_TIMES, ALL
 # Mean and sd will always be saved.
-setenv save_stages_freq RESTART_TIMES
+# Unused; setenv save_stages_freq RESTART_TIMES
 
-set BASEOBSDIR = /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
+set BASEOBSDIR = /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10
 
 # ==============================================================================
 # standard commands:
@@ -364,7 +376,7 @@ if ($USING_PRIOR_INFLATION == false ) then
       echo "WARNING ! ! Redundant output is requested at multiple stages before assimilation."
       echo "            Stages 'input' and 'forecast' are always redundant."
       echo "            Prior inflation is OFF, so stage 'preassim' is also redundant. "
-      echo "            We recommend requesting just 'preassim'."
+      echo "            We recommend requesting just 'forecast' (uninflated ensemble)."
       echo " "
    endif
 endif
@@ -393,9 +405,14 @@ if ($USING_PRIOR_INFLATION == true) then
 
    else
       # Look for the output from the previous assimilation (or fill_inflation_restart)
+      # CHANGE for test_assimilate.csh; always use the *oldest* inflation files,
+      # since those are the ones imported for use in (repeated) testing.
+      #    -rt1 => -t1
       # If inflation files exists, use them as input for this assimilation
-      (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
-      (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
+      # (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      # (${LIST} -rt1 *.dart.rh.${scomp}_output_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
+      (${LIST} -t1 *.dart.rh.${scomp}_output_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (${LIST} -t1 *.dart.rh.${scomp}_output_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
@@ -542,6 +559,14 @@ set line = `grep input_state_file_list input.nml | sed -e "s#[=,'\.]# #g"`
 echo "$line"
 set input_file_list = $line[2]
 
+set m = 1
+while ($m <= $ensemble_size) 
+   set mm = `printf %04d $m`
+   cp f.e21.FHIST_BGC.f09_025.CAM6assim.011.cam_${mm}.e.forecast.${ATM_DATE_EXT}.nc \
+      ${CASE}.cam_${mm}.i.${ATM_DATE_EXT}.nc
+   @ m++
+end
+
 ${LIST} -1 ${CASE}.cam_[0-9][0-9][0-9][0-9].i.${ATM_DATE_EXT}.nc >! $input_file_list
 
 # If the file names in $output_state_file_list = names in $input_state_file_list,
@@ -560,6 +585,7 @@ if ($input_file_list != $output_file_list) then
 endif
 
 echo "`date` -- BEGIN FILTER"
+ls -l ${EXEROOT}/filter
 ${LAUNCHCMD} ${EXEROOT}/filter || exit 110
 echo "`date` -- END FILTER"
 
@@ -576,7 +602,9 @@ echo "`date` -- END FILTER"
 # so loop over all possibilities.
 
 # Handle files with instance numbers first.
-foreach FILE (`$LIST ${stages_all}_member_*.nc`)
+# No 'output' stage with this name format.
+# foreach FILE (`$LIST ${stages_all}_member_*.nc`)
+foreach FILE (`$LIST ${stages_except_output}_member_*.nc`)
    # split off the .nc
    set parts = `echo $FILE | sed -e "s#\.# #g"`
    # separate the pieces of the remainder
@@ -590,7 +618,7 @@ foreach FILE (`$LIST ${stages_all}_member_*.nc`)
    echo $FILE | grep "put"
    if ($status == 0) set type = "i"
 
-   if ($MOVEV == FALSE) \
+#    if ($MOVEV == FALSE) \
       echo "moving $FILE ${CASE}.${scomp}_$list[$#list].${type}.${dart_file}.${ATM_DATE_EXT}.nc"
    $MOVE           $FILE ${CASE}.${scomp}_$list[$#list].${type}.${dart_file}.${ATM_DATE_EXT}.nc
 end
@@ -627,7 +655,7 @@ ${MOVE} dart_log.out                 ${scomp}_dart_log.${ATM_DATE_EXT}.out
 
 foreach FILE ( `$LIST ${stages_all}_{prior,post}inf_*`)
    set parts = `echo $FILE | sed -e "s#\.# #g"`
-   if ($MOVEV == FALSE ) \
+#    if ($MOVEV == FALSE ) \
       echo "Moved $FILE  $CASE.dart.rh.${scomp}_$parts[1].${ATM_DATE_EXT}.nc"
    ${MOVE}        $FILE  $CASE.dart.rh.${scomp}_$parts[1].${ATM_DATE_EXT}.nc
 end

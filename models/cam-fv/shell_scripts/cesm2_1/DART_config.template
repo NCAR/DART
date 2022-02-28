@@ -253,6 +253,8 @@ else
    exit 50
 fi
 
+# Copy the filter to the CASEROOT directory for archiving and reproducibility.
+${COPY} -f ${DARTROOT}/models/cam-fv/work/filter                 ${CASEROOT} || exit 54
 ${COPY} -f ${DARTROOT}/models/cam-fv/work/filter                 ${EXEROOT} || exit 55
 ${COPY} -f ${DARTROOT}/models/cam-fv/work/perfect_model_obs      ${EXEROOT} || exit 56
 ${COPY} -f ${DARTROOT}/models/cam-fv/work/fill_inflation_restart ${EXEROOT} || exit 57
@@ -373,7 +375,7 @@ cat << EndOfText >! DART_instructions.txt
 
 Check the DART configuration:
 
-1) The default behavior setup_hybrid is too not run DART_config, which sets up assimilation.
+1) The default behavior setup_hybrid is to not run DART_config, which sets up assimilation.
    The default behavior of setup_advanced is to invoke DART_config. 
 
 2) If you want to turn DART on or off, edit the 

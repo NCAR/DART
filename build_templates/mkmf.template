@@ -83,6 +83,9 @@
 #                runtime is to set FORT_BUFFERED to 'true' in your environment.
 #                (e.g. csh family: setenv FORT_BUFFERED true    or
 #                ksh family: export FORT_BUFFERED=true).  
+#     -xHost     xHost uses any optimizations that match the processor type 
+#                you're compiling the code on (the login node, usually) 
+#                but might not match where you're executing the code (batch node).
 #
 # FFLAGS   possibly useful, not normally used by DART
 #     -fpp     run Fortran preprocessor on source files prior to compilation
@@ -145,7 +148,7 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 
 # for speed on cheyenne (verify against a run with with -O and -fp-model precise
 #        that the numerical differences aren't too large to be acceptable):
-FFLAGS = -O2 -xHost -ipo -vec-report0 -assume buffered_io $(INCS)
+FFLAGS = -O2 -xHost -ipo -assume buffered_io $(INCS)
 # FFLAGS = -O3 -axavx -ipo -vec-report0 -assume buffered_io $(INCS)
 
 # Some optimized (BLAS, LAPACK) libraries may be available with:

@@ -861,7 +861,7 @@ while ($inst <= $num_instances)
    # echo " mfilt         = 1 "                             >> ${fname}
 
    echo $CAM_CONFIG_OPTS | grep 'cam4'
-   if ($status == 0) echo " fv_div24del2_flag = 4 "       >> ${fname}
+   if ($status == 0) echo " fv_div24del2flag = 4 "       >> ${fname}
 
    # Settings that differ between regular CAM and the WACCM version:
 
