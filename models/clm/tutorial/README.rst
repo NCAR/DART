@@ -52,9 +52,9 @@ observations that are assimilated, updated model state variables, assimilation t
 assimilation frequency, and the model and observation grid resolution.
 
 We encourage users complete the tutorial and then modify CLM-DART to pursue their own
-research questions.  We have comprehensive and searchable documentation
-(****), with trained and experienced staff that can help troubleshoot issues
-(dart@ucar.edu).
+research questions.  We have comprehensive and searchable `documentation
+<https://docs.dart.ucar.edu/en/latest/README.html>`__, with trained and experienced
+staff that can help troubleshoot issues (dart@ucar.edu).
 
 
 
@@ -77,7 +77,7 @@ the modeled covariance amongst the state variables in CLM.
 The covariance amongst the CLM state variables dictates how
 the CLM model state is updated during the assimilation step given
 a set of observations.  The beginning of the assimilation starts
-from near present day (****) and is initalized in 'hybrid' mode from 
+from near present day (January-2011) and is initalized in 'hybrid' mode from 
 a set of CLM restart files generated from a previous CLM 5-member
 ensemble simulation. The atmospheric forcing used for the assimilation 
 comes from the Community Atmospheric Model (CAM6) reanalysis  (****link).
@@ -151,6 +151,8 @@ checking out ``release-cesm2.2.0``.
  If you want to use git to keep track of your personal changes
  to CLM you should check out a branch to add/commit/track
  changes:
+ ::
+
   > git checkout -b <my_cesm_dart_branch>
 
 
@@ -162,10 +164,10 @@ to be run with DART. Most importantly, these include skipping several
 balance checks in CLM5 for the time step These sourcecode modifications are brought in 
 through the SourceMod mechanism in CLM where modifications overwrite
 the template sourcecode during the compilation step. The SourceMods
-are located as tar files `here <http://www.image.ucar.edu/pub/DART/CESM>__`
+are located as tar files `here <http://www.image.ucar.edu/pub/DART/CESM>`__
 For this tutorial use the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
 and untar it on your local machine.  For more information on the 
-SourceMods see the main `CLM documentation <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>__`
+SourceMods see the main `CLM documentation <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__
 
 
 
@@ -222,11 +224,11 @@ introduce them right away.
 
 For additional description of the CLM5-DART scripts and concepts please
 visit
-`here <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__. 
+`here <https:/docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__. 
 Feel free to supplement this tutorial with that CLM5-DART documentation page. 
 In some cases it will provide more detailed information than in this tutorial.
 If a concept is unclear we recommend using the search bar provided with
-the main `DART documentation <https://docs.dart.ucar.edu/en/latest/README.html>__`.
+the main `DART documentation <https:/docs.dart.ucar.edu/en/latest/README.html>`__.
 
 
 
@@ -301,7 +303,7 @@ script must be run **before** the core DART code is compiled because
 it writes the source code the supports the observations that will be 
 assimilated.  This provides the necessary support for the specific
 observations that we wish to assimilate into CLM.  For more information
-see the `preprocess documentation  <https://docs.dart.ucar.edu/en/latest/guide/preprocess-program.html>__`
+see the `preprocess documentation  <https:/docs.dart.ucar.edu/en/latest/guide/preprocess-program.html>`__
 
 First make sure the list of ``obs_def`` and ``obs_quantity`` module source codes 
 are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
@@ -317,6 +319,7 @@ This example uses namelist setting that specifically loads ``obs_def`` and
 Confirm the settings are as follows:
 
 ::
+
  &preprocess_nml
     input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
     output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
@@ -529,11 +532,9 @@ In 'Step 4: Compiling DART' we have already completed an important
 step by executing ``preprocess`` which generates source code 
 (``obs_def_mod.f90``, ``obs_kind_mod.f90``) that supports the assimilation of observations
 used for this tutorial.  In this step, we link the observations to the DART
-code so they can be read during the assimilation. 
-
-The observations are read into the assimilation  
-through an observation sequence file whose format is described 
-`here <https://docs.dart.ucar.edu/en/latest/guide/detailed-structure-obs-seq.html>`__,
+code so they can be read during the assimilation. The observations are read into the
+assimilation through an observation sequence file whose format is described 
+`here <https://docs.dart.ucar.edu/en/latest/guide/detailed-structure-obs-seq.html>`__.
 
 First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
 is pointed to the directory where the observation sequence files are 
@@ -561,13 +562,11 @@ of these observations types they must be included within the
    evaluate_these_obs_types   = 'null'
    /
 
-Below is an example of the format of an observation sequence file
-used within this tutorial (obs_seq.2011-01-02-00000),
-followed by definitions and descriptions:
+
+Below is an example of a single observation (leaf area index)
+within an observation sequence file used within this tutorial (``obs_seq.2011-01-02-00000``):
 
 
-Example of single observation (leaf area index) within observation sequence file
-``obs_seq.2011-01-02-00000``
 
 ::
 
@@ -611,32 +610,32 @@ Example of single observation (leaf area index) within observation sequence file
 |                             | which the observation is assimilated by DART for this time  |
 |                             | step.                                                       |
 +-----------------------------+-------------------------------------------------------------+
-| Observation Value           | The actual observation value that the DART ``filter`` step  |
+| Observation value           | The actual observation value that the DART ``filter`` step  |
 |                             | uses to update the CLM model.  This is derived from the     |
 |                             | true observation value generated from CLM model output with |
 |                             | uncertainty added.                                          |
 +-----------------------------+-------------------------------------------------------------+
-| True Observation Value      | The observation generated from CLM output.  In this case    |
+| True observation value      | The observation generated from CLM output.  In this case    |
 |                             | the observation was generated as part of a perfect model    |
 |                             | experiment (OSSE; Observing System Simulation Experiment),  |
 |                             | thus the 'true' value is known.                             |
 +-----------------------------+-------------------------------------------------------------+
-| Observation Quality         | The quality control value provided from the data            |
-| Control                     | provider.  This can be used as a filter in which to exclude |
+| Observation quality         | The quality control value provided from the data            |
+| control                     | provider.  This can be used as a filter in which to exclude |
 |                             | low quality observations from the assimilation.             |
 |                             |                                                             |
 +-----------------------------+-------------------------------------------------------------+
 | longitude, latitude         | Horizontal observation location in radians                  |
 +-----------------------------+-------------------------------------------------------------+
-| Level, Vertical Level Type  | Vertical observation location in units defined by           |
-| Code                        | vertical level type                                         |
+| Level, Vertical level type  | Vertical observation location in units defined by           |
+| code                        | vertical level type                                         |
 +-----------------------------+-------------------------------------------------------------+
 | Observation type number     | The DART observation type assigned to the obervation type   | 
 |                             | (e.g. MODIS_LEAF_AREA_INDEX (23) --> QTY_LEAF_AREA_INDEX)   |
 +-----------------------------+-------------------------------------------------------------+
 | second, days                | Time of the observations in reference to Jan 1, 1601        |
 +-----------------------------+-------------------------------------------------------------+
-| observation error variance  | Uncertainty of Observation Value                            |
+| Observation error variance  | Uncertainty of Observation Value                            |
 +-----------------------------+-------------------------------------------------------------+
 
 
@@ -686,14 +685,12 @@ the model from entering into unrealistic state space.
 
    This tutorial already provides properly formatted observations for the user, however, when using 'real' observations
    for research applications DART provides 
-   `observation converters <https://docs.dart.ucar.edu/en/latest/guide/available-observation-converters.html>__`
+   `observation converters <https://docs.dart.ucar.edu/en/latest/guide/available-observation-converters.html>`__.
    Observation converters are scripts that convert the various data product formats into the 
    observation sequence file format required by the DART code.  Observations converters most relevant for 
-   land DA and the CLM model include those for `leaf area <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/MODIS/MOD15A2_to_obs.html>__`, 
-  `flux data <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/Ameriflux/level4_to_obs.html>__`,
-  `snow <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/snow/snow_to_obs.html>__` and 
-  soil moisture `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NASA_Earthdata/README.html>__` 
-  and `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NSIDC/SMAP_L2_to_obs.html>__`.
+   land DA and the CLM model include those for `leaf area <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/MODIS/MOD15A2_to_obs.html>`__, `flux data <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/Ameriflux/level4_to_obs.html>`__,
+  `snow <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/snow/snow_to_obs.html>`__ and 
+  soil moisture `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NASA_Earthdata/README.html>`__  and `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NSIDC/SMAP_L2_to_obs.html>`__.
   Even if an observation converter is not available for a particular data product, it is generally straightforward
   to modify them for your specific application.
  
@@ -718,15 +715,15 @@ Quantities for this tutorial:
 | DART Observation Type    | DART Observation Quantities | CLM variables   |
 +==========================+=============================+=================+
 | ``SOIL_TEMPERATURE``     | ``QTY_SOIL_TEMPERATURE``    | ``T_SOISNO``    |
-+--------------------------+-----------------------------------------------+
++--------------------------+-----------------------------+-----------------+
 | ``MODIS_SNOWCOVER_FRAC`` | ``QTY_SNOWCOVER_FRAC``      | ``frac_sno``    |
-+--------------------------+-----------------------------------------------+
++--------------------------+-----------------------------+-----------------+
 | ``MODIS_LEAF_AREA_INDEX``| ``QTY_LEAF_AREA_INDEX``     | ``TLAI``        |
-+--------------------------+-----------------------------------------------+
++--------------------------+-----------------------------+-----------------+
 | ``BIOMASS``              | ``QTY_LEAF_CARBON``         | ``leafc``       |                   
 |                          | ``QTY_LIVE_STEM_CARBON``    | ``livestemc``   |
 |                          | ``QTY_DEAD_STEM_CARBON``    | ``deadstemc``   |
-+--------------------------+-----------------------------------------------+
++--------------------------+-----------------------------+-----------------+
 
 .. Note::
 
@@ -740,7 +737,7 @@ Quantities for this tutorial:
 
 Second, the DART state space also defines which portion of the CLM model state is updated by DART. 
 In DA terminology, limiting the influence of the observations to a subset of the CLM model
-state is know as 'localization' which is discussed more fully in Step ####.
+state is know as 'localization' which is discussed more fully in Step 9.
 In theory the complete CLM model state may be updated based on the relationship with the observations.
 In practice, a smaller subset of model state variables, that have a close physical relationship with
 the observations, are included in the DART state space.  In this tutorial, for example, we limit
@@ -883,7 +880,7 @@ for soil carbon or soil moisture variables which typically only have observation
 near the land surface, whereas the model state is distributed in layers well
 below the surface.  For vertical localization the ``horiz_dist_only`` must be set
 to ``.false.`` For more information on localization  see 
-`assim_tools_mod <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/assim_tools_mod.html>__`` 
+`assim_tools_mod <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/assim_tools_mod.html>`__ 
 
 
 Step 10: Set the Inflation 
@@ -905,7 +902,7 @@ in such a way that the mean remains unchanged.
 Although **inflation** was originally designed to account for ensemble sampling errors,
 it has also been demonstrated to help address systemic errors between models and
 observations as well. More information on inflation can be found 
-`here <https://docs.dart.ucar.edu/en/latest/guide/inflation.html>__`.    
+`here <https://docs.dart.ucar.edu/en/latest/guide/inflation.html>`__.    
 
 In this tutorial we implement a time and space varying inflation (inflation flavor
 5: enhanced spatial-varying; inverse gamma) such that the inflation becomes an 
@@ -956,14 +953,15 @@ the ``&fill_inflation_restart_nml`` as follows:
 | Inflation namelist             | Description                                                   |
 | variable                       |                                                               |
 +================================+===============================================================+
-| ``inf_flavor``                 | Inflation flavor [prior, posterior]                           |
-|                                | 0: No inflation (Prior and/or Posterior) and all other        |
-|                                |    inflation variables are ignored                            |
-|                                | 2: Spatially-varying state space inflation (gaussian)         |
-|                                | 3: Spatially-uniform state space inflation (gaussian)         |
-|                                | 4: Relaxation To Prior Spread (Posterior inflation only)      |     
-|                                | 5: Enhanced Spatially-varying state space inflation           | 
-|                                |    (inverse gamma)                                            |             
+| ``inf_flavor``                 | The inflation algorithm type as described below:              |
+|                                |                                                               |
+|                                | - 0: No inflation (Prior and/or Posterior) and all other      |
+|                                |   inflation variables are ignored                             |
+|                                | - 2: Spatially-varying state space inflation (gaussian)       |
+|                                | - 3: Spatially-uniform state space inflation (gaussian)       |
+|                                | - 4: Relaxation To Prior Spread (Posterior inflation only)    |     
+|                                | - 5: Enhanced Spatially-varying state space inflation         | 
+|                                |   (inverse gamma)                                             |             
 +--------------------------------+---------------------------------------------------------------+
 | ``inf_initial_from_restart``   | If ``.true.`` will read inflation settings from file named    |
 |                                | ``input_{prior,post}inf_mean.nc``. If ``.false.`` will take   |
@@ -1031,13 +1029,16 @@ list of DART executables must be generated.  At this point you should have alrea
 your ``mkmf_template`` and tested your local build environment in Step 4.  Here compile
 the rest of the required DART scripts to perform the assimilation as follows:
 
+::
+
  > cd ~/DART/models/clm/work/
  > ./quickbuild.csh -mpi
 
 After completion the following DART executables should be available within your ``work``
 folder.
 
-..
+::
+
   preprocess
   advance_time
   clm_to_dart
@@ -1211,8 +1212,356 @@ is queued (Q), running (R) or completed.
 Step 13: Diagnose the Assimilation Run
 --------------------------------------
 
+Once the job has completed it is important to confirm it ran as expected
+without any errors.  To confirm this view the ``CaseStatus`` files:
+
+::
+
+ > cd <caseroot>
+ > cat CaseRoot
+
+A successful assimilation run will look like the following at the end
+of the file with ``case.run success`` at the end:
+
+::
+
+ 2022-01-14 14:21:11: case.submit starting 
+ ---------------------------------------------------
+ 2022-01-14 14:21:18: case.submit success case.run:2465146.chadmin1.ib0.cheyenne.ucar.edu
+ ---------------------------------------------------
+ 2022-01-14 14:21:28: case.run starting 
+ ---------------------------------------------------
+ 2022-01-14 14:21:33: model execution starting 
+ ---------------------------------------------------
+ 2022-01-14 14:23:58: model execution success 
+ ---------------------------------------------------
+ 2022-01-14 14:23:58: case.run success 
+ ---------------------------------------------------
+
+A failed run will provide an error message and a log file either from
+CESM or DART that hopefully provides more details of the error. This
+will look like this:
+
+::
+
+ ---------------------------------------------------
+ 2022-01-14 14:24:57: case.run starting 
+ ---------------------------------------------------
+ 2022-01-14 14:24:58: model execution starting 
+ ---------------------------------------------------
+ 2022-01-14 14:25:08: model execution error 
+ ERROR: Command: 'mpiexec_mpt -p "%g:"  -np 360  omplace -tm open64 
+ /glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/bld/cesm.exe 
+ >> cesm.log.$LID 2>&1 ' failed with error '' from dir 
+ '/glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/run'
+ ---------------------------------------------------
+ 2022-01-14 14:25:08: case.run error 
+ ERROR: RUN FAIL: Command 'mpiexec_mpt -p "%g:"  -np 360  omplace -tm open64
+ /glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/bld/cesm.exe   >> 
+ cesm.log.$LID 2>&1 ' failed See log file for details: 
+ /glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/run/cesm.log.2465146.chadmin1.ib0.cheyenne.ucar.edu.220114-142457
+
+If the case ran successfully proceed to the next step in the tutorial, **but if 
+the case did not run successfully** locate the log file details which describe
+the error and resolve the issue.  Contact dart@ucar.edu if necessary.
 
 
+Just because an assimilation ran successfully (without errors) does not mean
+it ran with good performance. A simple, first check after any assimilation is to 
+make sure:
+
+1) Observations have been  accepted
+2) The CLM posterior member values are updated from their prior values
+
+A quick way to confirm observation acceptance and the posteriors have been updated
+is through the ``obs_seq.final`` file located in your case run folder. Below we provide
+an example of a successful update (``clm_obs_seq.2011-01-02-00000.final``)  which is
+derived from the same leaf area observation in ``obs_seq.2011-01-02-00000`` as described
+in Step 7.  
+
+::
+
+ OBS            3
+   6.00864688253571
+   5.44649167346675
+   5.45489142211957
+   5.45808308572015
+   3.479253215076174E-002
+   3.469211455745640E-002
+   5.41512442472872
+   5.41843086313655
+   5.44649167346675
+   5.44970758027390
+   5.50877061923831
+   5.51180677764943
+   5.46367193547511
+   5.46683825691274
+   5.44039845768897
+   5.44363195062815
+   0.000000000000000E+000
+   0.000000000000000E+000
+           2           4          -1
+ obdef
+ loc3d
+     5.235987755982989         0.000000000000000        -888888.0000000000     -2
+ kind
+          23
+     0     149750
+  0.200000000000000
+
+::
+
+   <observation sequence number>
+   <observation value>
+   <true observation value>
+   <prior ensemble mean>
+   <posterior ensemble mean>
+   <prior ensemble spread>
+   <posterior ensemble spread>
+   <prior member 1>
+   <posterior member 1>
+   <prior member 2>
+   <posterior member 2>
+   <prior member 3>
+   <posterior member 3>
+   <prior member 4>
+   <posterior member 4>
+   <prior member 5>
+   <posterior member 5>
+   <data product QC>
+   <DART quality control>
+ 
+ obdef
+ loc3d
+     <longitude>    <latitude>   <vertical level>   <vertical code>
+ kind
+    <observation quantity number>
+    <seconds>     <days>
+    <observation error variance>
+
+
+In the example above, the observation has been **accepted**
+denoted by a ``DART quality control value = 0``. If the 
+``DART quality control value =7`` this indicates the observation has
+fallen outside the ``outlier_threshold`` value and is rejected. 
+For more details on the DART quality control variables read the  
+`documentation <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/quality_control_mod.html>`__
+
+First, in your own tutorial assimilation confirm that this observation
+(and other observations) was accepted.
+
+Second, confirm that the ``posterior member`` values have been updated
+from their respective ``prior member`` values.  In general the
+``posterior member`` and ``posterior ensemble mean`` values should become
+closer to the `observation value` as compared to the prior values.
+
+
+::
+
+ > cd <caseroot>
+ > vi clm_obs_seq.2011-01-02-00000.final
+
+
+This tutorial has been purposely designed such that all observations
+are accepted and the posteriors have been updated.  In research applications,
+however, the vast majority of observations may be rejected if there is
+large systemic biases between the model ensemble and the observations.
+In that case, it may take many assimilation time steps before the inflation
+creates a sufficient enough ensemble spread such that the observation falls
+within the outlier threshold and is accepted.  In other cases, 
+an observation may be accepted, but the posterior update is negligible. 
+If you experience these issues, a helpful troubleshooting guide is 
+located `here <https://docs.dart.ucar.edu/en/latest/guide/dart-quality-control.html>`__   
+
+
+Matlab Diagnostics
+------------------
+
+Once you have confirmed that the assimilation has been completed
+reasonably well as outlined by the steps above, the DART package includes
+a wide variety of Matlab diagnostic scripts that provide a more formal evaluation
+of assimilation performance.  These diagnostics can provide clues
+to further maximize performance through adjustments of the DART settings 
+(localization, inflation, etc.). The full suite of diagnostic scripts can be found
+at this path in your DART installation (~/DART/diagnostics/matlab) with supporting 
+documentation found `here <https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`__
+
+
+.. Note::
+   
+ Additional scripts that are designed for CLM output visualization
+ can be found here (~/DART/models/clm/matlab).  The ``clm_get_var.m`` and ``clm_plot_var.m``
+ scripts are designed to re-constitute a vector-based file (e.g. restart.nc) into 
+ gridded averages to allow viewing of spatial maps.  These scripts are helpful to
+ view the model update by DART (innovations). An example of how to implement these
+ scripts can be found here (~/DART/models/clm/matlab/README.txt).
+
+          
+Here we provide instructions to execute two highly recommended matlab scripts.
+First, the ``plot_rmse_xxx_evolution.m`` script provides a time series of 
+assimilation statistics of 1) observation acceptance, 2) RMSE between
+the observations and the expected observation (derived from the CLM state),
+and 3) a third statistic of your choosing (we recommended 'total spread').
+
+The observation acceptance statistic compares the number of observations assimilated
+versus the number of observations available for your domain.  In general, it
+is desirable to assimilate the majority of observations that are available.
+The RMSE statistic quantifies the mismatch between the observations and the
+CLM state.  A successful assimilation reduces the RMSE, thus reducing the mismatch
+between the observations and the CLM state. Finally the total spread provides
+contributions from the ensemble spread and observation error variance. This value
+should be comparable to the RMSE.
+
+To execute ``plot_rmse_xxx_evolution.m`` do the following:
+
+::
+ 
+ > cd ~/DART/models/clm/work
+
+Confirm the DART executables used for the matlab diagnostics exist.
+These should have been compiled during Step 11 of this tutorial.
+The important DART executables for the diagnostics are
+``obs_diag`` and ``obs_seq_to_netcdf``.  If they do not exist,
+perform the ``./quickbuild.csh -mpi`` command to create them.
+
+Next generate a text file that includes all the ``obs_seq.final``
+files from the tutorial simulation
+
+::
+ 
+ > ls <rundir>/*final > obs_seq_files_tutorial.txt 
+
+Next edit the ``&obs_diag_nml`` namelist within the ``input.nml``.
+to assign the `obs_seqence_list` 
+to the text file containing the names of the ``obs_seq<>.final``
+files associated with the tutorial.  Next, specify how the
+observations are displayed by defining the ``bin`` settings, which
+for this tutorial are set such that every day of observations
+are displayed individually. Because the tutorial is a global run
+we define the ``lonlim`` and ``latlim`` setting to include the
+entire globe.  For more information about the  ``obs_diag`` namelist
+settings go `here <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__  
+
+::
+
+ &obs_diag_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq_files_tutorial.txt'
+   first_bin_center =  2011, 1,  1, 0, 0, 0
+   last_bin_center  =  2011, 1,  5, 0, 0, 0
+   bin_separation   =     0, 0,  1, 0, 0, 0
+   bin_width        =     0, 0,  1, 0, 0, 0
+   time_to_skip     =     0, 0,  0, 0, 0, 0
+   max_num_bins     = 1000
+   trusted_obs      = 'null'
+   Nregions   = 1
+   lonlim1    =     0.0,     
+   lonlim2    =   360.0,   
+   latlim1    =   -90.0,     
+   latlim2    =    90.0,   
+   reg_names  = 'Globe', 
+   hlevel_edges =  0.0, 1.0, 2.0, 5.0, 10.0, 40.0
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
+   /
+
+Next convert the information in the ``obs_seq<>.final`` files into
+a netcdf format (``obs_diag_output.nc``) by executing the 
+``obs_diag`` executable.
+
+::
+ 
+ >  ./obs_diag
+
+Next, use Matlab to create the ``plot_rmse_xxx_evolution.m`` figures.
+Note that this function automatically plots the RMSE, where the ``copy``
+and the ``obsname`` variable are customizable.
+
+::
+
+ > cd <dartroot>/diagnostics/matlab
+ > module load matlab
+ >> matlab -nodesktop
+ >> fname   = '<dartroot>/models/clm/work/obs_diag_output.nc';
+ >> copy    = 'totalspread';
+ >> obsname = 'MODIS_LEAF_AREA_INDEX';
+ >> plotdat = plot_rmse_xxx_evolution(fname, copy, 'obsname', obsname);
+
+
+Second, the ``link_obs.m`` provides several features, including a spatial
+map of the observation locations with color coded DART QC values.  This allows
+the user to identify observation acceptance as a function of sub-regions.
+
+Next edit both the ``&obs_seq_to_netcdf_nml`` and ``&schedule_nml`` namelist sections
+within ``input.nml``.
+
+For this tutorial we plot a list of  ``obs_seq<>.final`` files as shown below,
+which includes the global domain.  We include all observations within a single
+``bin``.  For more information about these settings go 
+`here <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__ 
+
+::
+
+ &obs_seq_to_netcdf_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq_files_tutorial.txt'
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
+
+ &schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+
+Next execute the ``obs_seq_to_netcdf`` to convert the observation
+information into a netcdf readable file (``obs_epoch_001.nc``) for 
+``link_obs.m``
+
+::
+
+ > ./obs_seq_to_netcdf
+
+
+Next, use Matlab to create the ``link_obs.m`` figures.
+
+::
+
+ > cd <dartroot>/diagnostics/matlab
+ > module load matlab
+ > matlab -nodesktop
+ >> fname         = '<dartroot>/models/clm/work/obs_epoch_001.nc';
+ >> ObsTypeString = 'MODIS_LEAF_AREA_INDEX';
+ >> ObsCopyString = 'observations';
+ >> CopyString    = 'prior ensemble mean';
+ >> QCString      = 'DART quality control';
+ >> region        = [0 360 -90 90 -Inf Inf];
+ >> global obsmat;
+ >> link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region) 
+
+The ``link_obs.m`` script creates 3 separate figures including a 1) 3D geographic
+scatterplot, 2) observation diagnostic plot as a function of time, and 3) 2D
+scatterplot that typically compares the 'prior/posterior expected obsevations'
+against the 'actual observation'. Read the commented section within the `link_obs.m`
+script for more information.  
+
+
+If you have completed all these steps (1-13) **Congratulations!** -- you are well on
+your way to designing CLM5-DART assimilations for your own research.
 
 
 
