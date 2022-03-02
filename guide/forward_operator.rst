@@ -96,47 +96,6 @@ and returns.  If not, it interpolates values for other consitituent
 fields and does a generic computation.
 
 
-Possible Future Enhancements
-============================
-
-Units
------
-
-Expected values returned from the forward operator code must use
-the same units as the observation in the observation sequence file.
-
-Recent updates to DART include being able to define the units
-used by observation types.  Upcoming changes are expected to
-allow fields in the state vector to define their units.
-
-The observation file creation must ensure the observation values
-are in the correct units, and forward operator code may be able
-to query the state vector fields to ensure they are using the
-expected units.  Contact the DART team at dart@ucar.edu for
-more details on this feature.
-
-Multiple Values from a Single Call
-----------------------------------
-
-There are some cases where an extensive computation is required to
-return the expected value and multiple values are returned from
-a single computation, for example an external library like a 
-radiative transfer model.
-
-Although there is redundant computation in using only
-a single value from a library call, in practice this is often
-fast enough to not be worth trying to cache and reuse the other
-values.
-
-In future releases of DART there is the possibility of adding the
-feature of calling the forward operator code for multiple locations 
-at a single time, where the forward operator code returns multiple expected values.
-So far the additional code complexity has not justified this but if
-you have a use case which might fit this situation email
-dart@ucar.edu for further discussion.
-
-
-
 Parallelism Implementation Details
 ==================================
 
