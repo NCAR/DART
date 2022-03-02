@@ -6,27 +6,27 @@ CLM5-DART Tutorial
 Introduction
 ------------
 
-This document will describe how to get started with your own Community
-Land Model (CLM) data assimilation experiments using DART. This tutorial
-covers how to set up a simple assimilation using CLM5-DART. The
+This tutorial describes how to set up a simple assimilation using CLM5-DART. The
 expectation is that the user is very familiar with running CLM off-line
-and thus the tutorial focues upon the CLM-specific aspects of integrating
-with DART.
+and thus the tutorial focuses upon the specific aspects of integrating CLM
+with DART. Once completed, the goal is that the user should be familar enough
+with the concepts of CLM5-DART in order to design an assimilation for their own
+research interests.
 
 This tutorial was assembled to be compatible with CLM5.0.34 as part
-of CESM (release-cesm2.2.01) and the latest release on the 
-`DART repository <https://github.com/NCAR/DART.git>`__
+of CESM (release-cesm2.2.01) and the latest release on the ``main`` branch of the
+the `DART repository. <https://github.com/NCAR/DART.git>`__
 Other combinations of CLM and DART (prior to DART version 9.13.0) may not be compatible
 with this tutorial.
 
 
 It is not recommended to use this tutorial without prior experience
 with running and understanding CLM. If new to CLM we recommend you
-attend a CLM tutorial(******) or review the CLM documentation as described below.
-
-Review the CLM `Technical Description, <https://escomp.github.io/ctsm-docs/versions/master/html/tech_note/index.html>`__
+attend a `CLM tutorial <https://www.cesm.ucar.edu/events/tutorials/>`__
+or review the CLM documentation including the 
+`Technical Description, <https://escomp.github.io/ctsm-docs/versions/master/html/tech_note/index.html>`__
 `User Guide, <https://escomp.github.io/ctsm-docs/versions/master/html/users_guide/index.html>`__ 
-and the  `CESM User Forum <https://bb.cgd.ucar.edu/cesm/>`__
+and use the `CESM User Forum <https://bb.cgd.ucar.edu/cesm/>`__
 for CLM-specific assistance.
 
 If you are new to DART, we recommend that you become familiar
@@ -51,7 +51,7 @@ Examples of setup modifications include changes to localization, inflation,
 observations that are assimilated, updated model state variables, assimilation time window,
 assimilation frequency, and the model and observation grid resolution.
 
-We encourage users complete the tutorial and then modify CLM-DART to pursue their own
+We encourage users to complete the tutorial and then modify CLM-DART to pursue their own
 research questions.  We have comprehensive and searchable `documentation
 <https://docs.dart.ucar.edu/en/latest/README.html>`__, with trained and experienced
 staff that can help troubleshoot issues (dart@ucar.edu).
@@ -72,7 +72,7 @@ generally easier to assimilate than real-world
 observations because they remove systemic differences between
 the model and observations.  This assimilation uses a 5-member
 ensemble (i.e. 5 CLM simulations run simultaneously). An ensemble
-is required within Ensemble Kalman Filter (EnKF) DA to calculate
+is required within Ensemble Kalman Filter (EnKF) data assimilation to calculate
 the modeled covariance amongst the state variables in CLM.
 The covariance amongst the CLM state variables dictates how
 the CLM model state is updated during the assimilation step given
@@ -80,45 +80,59 @@ a set of observations.  The beginning of the assimilation starts
 from near present day (January-2011) and is initalized in 'hybrid' mode from 
 a set of CLM restart files generated from a previous CLM 5-member
 ensemble simulation. The atmospheric forcing used for the assimilation 
-comes from the Community Atmospheric Model (CAM6) reanalysis  (****link).
+comes from the Community Atmospheric Model (CAM) reanalysis 
+(`ds199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__ and `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__).
 This reanalysis atmospheric data includes 80 total ensemble members in
 which the across-member variation represents atmospheric uncertainty.
 We use 5 different ensemble members from the CAM6 reanalysis to generate
-spread within this CLM-DART tutorial simulation.
+spread within this CLM5-DART tutorial simulation.
 
 .. NOTE::
 
   This CLM5-DART tutorial has been simplified to reduce run-time and
-  computational expense. For research applications the assimilations are
+  computational expense. For research applications an assimilation is
   typically run for many model months/years.  In addition a 5-member ensemble is
   generally too small to properly sample model uncertainty and we recommend
   80, but no less than 40 ensemble members for research applications.     
     
 
 The goal of this tutorial is to demonstrate how CLM5 and DART
-interact to perform data assimilation (DA) to provide an
+interact to perform data assimilation to provide an
 observation-constrained simulation of CLM. This requires
 setting numerous namelist/input values that control the 
 configuration of CLM and DART setup. 
 
 After running this tutorial, you should be able to understand the major steps
-involved in setting up your own data assimilation (DA) experiments.
+involved in setting up your own data assimilation experiments.
 However, you will need to do additional work to customize the CLM5-DART
 system for your particular research needs. For example, this tutorial 
-provides both the restart and observation sequence files to simplify
-the process, yet these will not be sufficient for you own work.
+provides both the initial conditions and observation sequence files to simplify
+the process and are specific to the tutorial, whereas you will need to generate
+custom initial conditions and observation sequence files for your own work.
 
 
 .. Important ::
 
   We have provided tutorial instructions for the NCAR
-  supercomputer, however, if using your own machine you will need to 
-  customize the setup scripts. These system-specific setup steps may take a
-  good deal of effort, especially if you are unfamiliar with details such
-  as compilers, MPI, NetCDF libraries, batch submission systems etc.  To
-  perform this tutorial we assume the user is comfortable with LINUX
-  operating systems as well as using text editors (e.g. vi, nedit, emacs) to
-  edit the CLM5-DART setup scripts, namelist files etc.
+  supercomputer Cheyenne, however, if using your own machine you will need to 
+  customize the setup scripts in order to properly compile DART (see Step 4:
+  Compiling DART). These system-specific setup steps may take a good deal of 
+  effort, especially if you are unfamiliar with details such as compilers, MPI,
+  NetCDF libraries, batch submission systems etc. To perform this tutorial we 
+  assume the user is comfortable with LINUX operating systems as well as using 
+  text editors (e.g. vi, nedit, emacs) to edit the CLM5-DART setup scripts 
+  and namelist files etc.
+
+  Other required files to run the tutorial include the meteorology (Step 5), 
+  reference case (Step 6), and observation files (Step 7).  These are all readily available
+  if you are using Cheyenne.  If you are using your own machine you need 
+  use the following links to download these files directly:
+                      
+  1. `CAM6 Reanalysis Meteorology <https://rda.ucar.edu/datasets/ds345.0/>`__,
+  Year 2011, ensemble members 1-5 only: ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x3h.2011.nc`` 
+  
+  2. `Reference Case and Observations <https://www.image.ucar.edu/pub/DART/CESM/clmdart_tutorial/>`__ 
+   
 
 Step 1: Download CLM5
 ---------------------
@@ -161,20 +175,21 @@ Adding CLM5 SourceMods
 
 Some minor modifications have to be made to the CLM5 source code in order
 to be run with DART. Most importantly, these include skipping several
-balance checks in CLM5 for the time step These sourcecode modifications are brought in 
+balance checks in CLM5 for the time step immediately after the assimilation
+update step.  These sourcecode modifications are brought in 
 through the SourceMod mechanism in CLM where modifications overwrite
 the template sourcecode during the compilation step. The SourceMods
-are located as tar files `here <http://www.image.ucar.edu/pub/DART/CESM>`__
+are located as tar files `here. <http://www.image.ucar.edu/pub/DART/CESM>`__
 For this tutorial use the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
 and untar it on your local machine.  For more information on the 
-SourceMods see the main `CLM documentation <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__
+SourceMods see the main `CLM-DART documentation. <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__
 
 
 
 Step 2: Download DART
 --------------------- 
 
-The tutorial material is available within the most recent release of
+The tutorial material is available within the most recent release of the
 DART repository on the `main branch <https://github.com/NCAR/DART>`__.
 
   ::
@@ -194,7 +209,7 @@ we recommend you check out a new feature branch:
 
 .. Note::
 
-  For more experienced users that intend to use DART for their own
+  For more experienced git users that intend to use DART for their own
   research we recommend the following steps which facilitates sharing of
   your code. Consider 'forking' the DART repository ~/NCAR/DART.git and
   setting up remote 'origin' and 'upstream' repositories for your local branch.
@@ -215,17 +230,17 @@ Step 3: Navigating DART Scripts
 
 Below is a table of the key CLM5-DART setup scripts that include the 
 settings required to perform an  assimilation run. All scripts are 
-located at path ``~/DART/models/clm/shell_scripts/cesm2_2/`` with the 
-exception of ``input.nml`` which is located at ``~/DART/models/clm/work/``.
+located at path ``<dartroot>/models/clm/shell_scripts/cesm2_2/`` with the 
+exception of ``input.nml`` which is located at ``<dartroot>/models/clm/work/``.
 
 You will be asked to locate, edit, and execute these scripts during the tutorial
-and are critical to customizing the assimilation run.  Given their importance, we
+and are they are critical to customizing the assimilation run.  Given their importance, we
 introduce them right away.
 
 For additional description of the CLM5-DART scripts and concepts please
-visit
+visit the main CLM5-DART documentation 
 `here <https:/docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__. 
-Feel free to supplement this tutorial with that CLM5-DART documentation page. 
+In general, feel free to supplement this tutorial with the main CLM5-DART documentation. 
 In some cases it will provide more detailed information than in this tutorial.
 If a concept is unclear we recommend using the search bar provided with
 the main `DART documentation <https:/docs.dart.ucar.edu/en/latest/README.html>`__.
@@ -241,14 +256,14 @@ the main `DART documentation <https:/docs.dart.ucar.edu/en/latest/README.html>`_
 |                         | to the ``run`` directory to create a ``hybrid`` run.         |
 |                         | It uses traditional commands ``create_newcase``,             |
 |                         | ``case.setup``, ``preview_namelists`` and ``case.build``     |
-|                         | included as part of CESM package.                            |
+|                         | included as part of the CESM package.                        |
 +-------------------------+--------------------------------------------------------------+
 | DART_params.csh         | The companion script to ``CLM5_setup_assimilation``          |
 |                         | that defines important case settings for CLM and DART.       |
 |                         | The majority of case setting edits occur within this script. |
 +-------------------------+--------------------------------------------------------------+
 | CESM_DART_config        | Once the case is created, this script turns 'on'             |
-|                         | assimilation by providing links between CLM and DART         |
+|                         | assimilation by providing links between the CLM and DART     |
 |                         | code. Converts a 'free' run into an assimilation run.        |
 +-------------------------+--------------------------------------------------------------+
 | assimilate.csh          | This script is executed during the assimilation case         |
@@ -258,9 +273,8 @@ the main `DART documentation <https:/docs.dart.ucar.edu/en/latest/README.html>`_
 |                         | to DART and executes the ``filter`` step to update the CLM   |
 |                         | state variable. These updated files are then reinserted      |
 |                         | into the restart file for the next CLM forecast step.        |
-|                         | forecast step.                                               |
 +-------------------------+--------------------------------------------------------------+
-| input.nml               | Contains DART specific namelist settings that control        |
+| input.nml               | Contains DART specific namelist settings such as             |
 |                         | DA type, inflation, localization, outlier threshold etc.     |
 +-------------------------+--------------------------------------------------------------+
 
@@ -277,7 +291,7 @@ This is an example of how to set up the system environment for Cheyenne:
 ::
 
  # Navigate to compiling templates
- > cd ~/DART/build_template
+ > cd <dartroot>/DART/build_template
  # Use example template for intel compiler, linux environment
  > cp mkmf.template.intel.linux mkmf_template
  
@@ -300,8 +314,8 @@ Confirm the ``mkmf_template`` has the following settings:
 Next we will test to make sure the DART scripts can be run correctly,
 by compiling and executing the ``preprocess`` script.  The ``preprocess``
 script must be run **before** the core DART code is compiled because
-it writes the source code the supports the observations that will be 
-assimilated.  This provides the necessary support for the specific
+it writes the source code that supports the observations.
+This provides the necessary support for the specific
 observations that we wish to assimilate into CLM.  For more information
 see the `preprocess documentation  <https:/docs.dart.ucar.edu/en/latest/guide/preprocess-program.html>`__
 
@@ -310,7 +324,7 @@ are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
 
 ::
 
- > cd ~/DART/models/clm/work
+ > cd <dartroot>/DART/models/clm/work
  # View and edit the input.nml
  > vi input.nml
 
@@ -344,8 +358,8 @@ Next compile and execute the preprocess script:
  > ./preprocess
 
 Confirm the new source code has been generated for 
-``~/DART/observations/forward_operators/obs_def_mod.f90`` 
-and ``~/DART/assimilation_code/modules/observations/obs_kind_mod.f90`` 
+``<dartroot>/observations/forward_operators/obs_def_mod.f90`` 
+and ``<dartroot>/assimilation_code/modules/observations/obs_kind_mod.f90`` 
 
 
 
@@ -360,23 +374,24 @@ and 2) correlation between state variables.  Given the sensitivity of CLM to
 atmospheric conditions an established method to generate multi-instance CLM
 simulations is through weather reanalysis data generated from a CAM-DART assimilation. These
 CAM-DART reanalyses are available from 1997-2010 `ds199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__,
-and 2011-2020 `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__.
+and 2011-2020 `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__. 
 
-For this tutorial we will use the January 2011 CAM6 reanalysis only.  
+For this tutorial we will use the January 2011 CAM6 reanalysis (ds345.0) only.  
 To make sure the scripts can locate the weather data first make sure
 the ``DART_params.csh``  variable ``dartroot`` is set to the path of your
 DART installation. For example, if you have a Cheyenne account and you
 followed the DART cloning instructions in Step 2 above your ``dartroot``
-variable will be: `/<your Cheyenne work directory>/DART`
+variable will be: `/<your Cheyenne work directory>/DART.` Make sure you update
+the default ``dartroot`` as shown below. 
 
  ::
 
   setenv dartroot          /glade/work/${USER}/git/DART_public
 
 
-Next confirm within the ``CLM5_setup_assimilation`` script that the path (`${SOURCEDIR}/${STREAMFILE_***}`) 
-to all four of your atmospheric stream file templates (e.g. datm.streams.txt.CPLHISTForcing.Solar*)
-is correct.  
+Next confirm within the ``CLM5_setup_assimilation`` script that the path (``${SOURCEDIR}/${STREAMFILE_*}``) 
+to all four of your atmospheric stream file templates (e.g. ``datm.streams.txt.CPLHISTForcing.Solar*``)
+is correct. In particular make sure the ``SOURCEDIR`` variable is set correctly below:  
 
  ::
 
@@ -397,8 +412,9 @@ is correct.
 Next, edit each of your atmospheric stream file templates to make sure the
 ``filePath`` within ``domainInfo`` and ``fieldInfo`` below is set correctly to
 reference the CAM6 reanalysis file.  The example below is for 
- ``datm.streams.txt.CPLHISTForcing.nonSolarFlux_complete``.  Repeat this for
-all four of the template stream files.
+``datm.streams.txt.CPLHISTForcing.nonSolarFlux_single_year``.  Repeat this for
+all four of the template stream files including for ``Solar``, ``State1hr``
+and ``State3hr``.
 
  ::
    
@@ -446,15 +462,15 @@ all four of the template stream files.
  | filePath                 | Directory of CAM6 reanalysis file.  For tutorial, this only  |
  |                          | includes year 2011, with ensemble members 1-5. During        |
  |                          | execution of ``CLM5_setup_assimilation`` the text ``NINST``  |
- |                          | is replaced with ensemble member number 01-05.               |
+ |                          | is replaced with ensemble member number ``0001-0005``.       |
  +--------------------------+--------------------------------------------------------------+
  | fileNames                | The CAM6 reanalysis file name. For tutorial, this only       |
  |                          | includes year 2011, with ensemble member 1-5. During         |
  |                          | execution of ``CLM5_setup_assimilation`` the text ``NINST``  |
- |                          | is replaced with ensemble member number 01-05.               |
+ |                          | is replaced with ensemble member number ``0001-0005``.       |
  +--------------------------+--------------------------------------------------------------+
  | variableNames            | Meteorology variables within CAM6 reanalysis. First column   |
- |                          | is variable name within netCDF reanalysis file, whereas the  |
+ |                          | is variable name within netCDF reanalysis file, whereas      |
  |                          | the second column is the meteorology variable name recognized|
  |                          | by CLM.                                                      |
  +--------------------------+--------------------------------------------------------------+
@@ -486,11 +502,11 @@ This initial ensemble spinup was run with resolution ``f09_09_mg17`` (0.9x1.25 g
 with compset ``2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV`` (CESM run with 
 only land and river components active).  The starting point of the assimilation is run in
 CLM 'hybrid' mode which allows the starting date of the assimilaton to be different than
-reference case, and loosens the requirements of the system state.  The tradeoff is that
+the reference case, and loosens the requirements of the system state.  The tradeoff is that
 restarting in hybrid mode does not provide bit-by-bit reproducible simulations.
 
-For the tutorial, set the ``DART_parms.csh`` variables such that the ensemble spinup
-restart files at date 1-1-2011 are set as the initial conditions for the assimilation:
+For the tutorial, set the ``DART_parms.csh`` variables such that the end of the
+ensemble spinup (at time 1-1-2011) are used as the initial conditions for the assimilation:
 
 ::
 
@@ -514,13 +530,13 @@ restart files at date 1-1-2011 are set as the initial conditions for the assimil
 | Important variables       |  Description                                                |
 | to set initial conditions |                                                             |
 +===========================+=============================================================+
-| refcase                   | The (reference) casename for the spinup ensemble that the   |
-|                           | assimilation will start from                                |
+| refcase                   | The reference casename from the spinup ensemble that serves |
+|                           | as the starting conditions for the assimilation.            |
 +---------------------------+-------------------------------------------------------------+
 | refyear, refmon, refday   | The year, month, day and time of day of the reference case  |
-| reftod                    | that the assimilation will start from                       |
+| reftod                    | that the assimilation will start from.                      |
 +---------------------------+-------------------------------------------------------------+
-| stagedir                  | The directory location of the reference case files          |
+| stagedir                  | The directory location of the reference case files.         |
 +---------------------------+-------------------------------------------------------------+
 
 
@@ -538,7 +554,7 @@ assimilation through an observation sequence file whose format is described
 
 First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
 is pointed to the directory where the observation sequence files are 
-located.
+located. In Cheyenne they are located in the directory as:
 
 ::
  
@@ -547,8 +563,8 @@ located.
 In this tutorial we have several observation types that are to be
 assimilated, including ``SOIL_TEMPERATURE``, ``MODIS_SNOWCOVER_FRAC``,
 ``MODIS_LEAF_AREA_INDEX`` and ``BIOMASS``. To enable the assimilation
-of these observations types they must be included within the 
-``input.nml`` file:
+of these observations types they must be included within 
+the ``&obs_kind_nml`` within the ``input.nml`` file as:
 
 
 
@@ -605,37 +621,38 @@ within an observation sequence file used within this tutorial (``obs_seq.2011-01
 | Observation Sequence File   | Description                                                 |
 | Variable                    |                                                             |
 +=============================+=============================================================+
-| Observation sequence        | The chronological order of the observation within the       |
+| observation sequence        | The chronological order of the observation within the       |
 | number                      | observation sequence file.  This determines the order in    |
-|                             | which the observation is assimilated by DART for this time  |
-|                             | step.                                                       |
+|                             | which the observation is assimilated by DART for a given    |
+|                             | time step.                                                  |
 +-----------------------------+-------------------------------------------------------------+
-| Observation value           | The actual observation value that the DART ``filter`` step  |
+| observation value           | The actual observation value that the DART ``filter`` step  |
 |                             | uses to update the CLM model.  This is derived from the     |
 |                             | true observation value generated from CLM model output with |
 |                             | uncertainty added.                                          |
 +-----------------------------+-------------------------------------------------------------+
-| True observation value      | The observation generated from CLM output.  In this case    |
+| true observation value      | The observation generated from CLM output.  In this case    |
 |                             | the observation was generated as part of a perfect model    |
 |                             | experiment (OSSE; Observing System Simulation Experiment),  |
 |                             | thus the 'true' value is known.                             |
 +-----------------------------+-------------------------------------------------------------+
-| Observation quality         | The quality control value provided from the data            |
+| observation quality         | The quality control value provided from the data            |
 | control                     | provider.  This can be used as a filter in which to exclude |
 |                             | low quality observations from the assimilation.             |
 |                             |                                                             |
 +-----------------------------+-------------------------------------------------------------+
-| longitude, latitude         | Horizontal observation location in radians                  |
+| longitude, latitude         | Horizontal spatial location of the observation  in radians  |
 +-----------------------------+-------------------------------------------------------------+
-| Level, Vertical level type  | Vertical observation location in units defined by           |
+| level, vertical level type  | Vertical observation location in units defined by           |
 | code                        | vertical level type                                         |
 +-----------------------------+-------------------------------------------------------------+
-| Observation type number     | The DART observation type assigned to the obervation type   | 
-|                             | (e.g. MODIS_LEAF_AREA_INDEX (23) --> QTY_LEAF_AREA_INDEX)   |
+| observation type number     | The DART observation type assigned to the obervation type   | 
+|                             | (e.g. ``MODIS_LEAF_AREA_INDEX (23)`` -->                    |
+|                             | ``QTY_LEAF_AREA_INDEX)``                                    |
 +-----------------------------+-------------------------------------------------------------+
 | second, days                | Time of the observations in reference to Jan 1, 1601        |
 +-----------------------------+-------------------------------------------------------------+
-| Observation error variance  | Uncertainty of Observation Value                            |
+| observation error variance  | Uncertainty of the observation Value                        |
 +-----------------------------+-------------------------------------------------------------+
 
 
@@ -683,16 +700,18 @@ the model from entering into unrealistic state space.
 
 .. Note::
 
-   This tutorial already provides properly formatted observations for the user, however, when using 'real' observations
-   for research applications DART provides 
+   This tutorial already provides properly formatted synthetic observations for the user, 
+   however, when using 'real' observations for research applications DART provides 
    `observation converters <https://docs.dart.ucar.edu/en/latest/guide/available-observation-converters.html>`__.
    Observation converters are scripts that convert the various data product formats into the 
    observation sequence file format required by the DART code.  Observations converters most relevant for 
-   land DA and the CLM model include those for `leaf area <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/MODIS/MOD15A2_to_obs.html>`__, `flux data <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/Ameriflux/level4_to_obs.html>`__,
-  `snow <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/snow/snow_to_obs.html>`__ and 
-  soil moisture `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NASA_Earthdata/README.html>`__  and `here <https://docs.dart.ucar.edu/en/latest/observations/obs_converters/NSIDC/SMAP_L2_to_obs.html>`__.
-  Even if an observation converter is not available for a particular data product, it is generally straightforward
-  to modify them for your specific application.
+   land DA and the CLM model include those for :doc:`leaf area, <../../../observations/obs_converters/MODIS/MOD15A2_to_obs>`
+   :doc:`flux data, <../../../observations/obs_converters/Ameriflux/level4_to_obs>`
+   :doc:`snow, <../../../observations/obs_converters/snow/snow_to_obs>` and 
+   :doc:`soil moisture here <../../../observations/obs_converters/NASA_Earthdata/README>` and
+   :doc:`here. <../../../observations/obs_converters/NSIDC/SMAP_L2_to_obs>`
+   Even if an observation converter is not available for a particular data product, it is generally straightforward
+   to modify them for your specific application.
  
 
 Step 8: Setting up the DART and CLM states 
@@ -706,9 +725,9 @@ of the model update in the DART ``filter`` step.
 
 In this tutorial, observations of ``SOIL_TEMPERATURE``, ``MODIS_SNOWCOVER_FRAC``, 
 ``MODIS_LEAF_AREA_INDEX``, and ``BIOMASS`` are supported by specific clm variables. See the table
-below which defines the dependency of each DART observation type upon specific DART Quantities 
-required for the forward operator. We also includ the CLM variables that serve as the DART
-Quantities for this tutorial:
+below which defines the dependency of each DART **observation type** upon specific DART **quantities** 
+required for the forward operator. We also include the CLM variables that serve as the DART
+quantities for this tutorial:
 
 
 +--------------------------+-----------------------------+-----------------+
@@ -727,10 +746,10 @@ Quantities for this tutorial:
 
 .. Note::
 
-  For this tutorial example most of the Observation types rely on a single Quantity
+  For this tutorial example most of the **observation types** rely on a single **quantity**
   (and CLM variable) to calculate the expected observation.  For these the CLM
   variable is spatially interpolated to best match the location of the observation.
-  The ``BIOMASS`` observation type is the exception in which 3 Quantities are required
+  The ``BIOMASS`` observation type is the exception in which 3 **quantities** are required
   to calculate the expected observation.  In that case the sum of the CLM
   variables of leaf, live stem and structural (dead) carbon represents the biomass observation. 
  
@@ -742,7 +761,7 @@ In theory the complete CLM model state may be updated based on the relationship 
 In practice, a smaller subset of model state variables, that have a close physical relationship with
 the observations, are included in the DART state space.  In this tutorial, for example, we limit
 the update to CLM variables most closely related to biomass, leaf area, soil temperature and
-snow.  See the ``&model_nml`` within ``input.nml`` below.  
+snow. Modify the ``&model_nml`` within ``input.nml`` as below:  
 
 
 ::
@@ -762,7 +781,8 @@ snow.  See the ``&model_nml`` within ``input.nml`` below.
    /
 
 
-The table below provides a description for each of the columns for ``clm_variables``.
+The table below provides a description for each of the columns for ``clm_variables`` within
+``&model_nml``.
 
 .. container::
 
@@ -804,12 +824,14 @@ with no impact on the evolution of the model state.
 
 A **second** important distinction amongst ``clm_variables`` is that the ``restart`` file
 state variables are automatically generated after each simulation time step, thus are readily
-available to include within the DART state.  The ``history`` or ``vector`` file variables,
+available to include within the DART state. In contrast, the ``history`` or ``vector`` file variables
 must be manually generated through the ``user_nl_clm`` file within CLM.  This is generated
-within the portion of the ``CLM5_setup_assimilation`` script as follows:
+within the portion of the ``CLM5_setup_assimilation`` script as shown below.  Modify this
+portion of the ``CLM5_setup_assimilation`` script so that it appears as follows:
 
 
-..
+::
+
    echo "hist_empty_htapes = .true."                                      >> ${fname}
    echo "hist_fincl1 = 'NEP','H2OSOI','TSOI','EFLX_LH_TOT','TLAI'"        >> ${fname}
    echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                 >> ${fname}
@@ -820,8 +842,9 @@ within the portion of the ``CLM5_setup_assimilation`` script as follows:
    echo "hist_dov2xy = .true.,.true.,.false."                             >> ${fname}
    echo "hist_type1d_pertape = ' ',' ',' '"                               >> ${fname}
 
-The ``hist_fincl`` setting generates history files for each of the clm variables as defined
-above. The ``hist_dov2xy`` setting determines whether the history file is output
+The ``hist_fincl`` setting generates history files (``fincl1->h0``; ``fincl2->h1``; 
+``fincl3->h2``) for each of the clm variables as defined above. The 
+``hist_dov2xy`` setting determines whether the history file is output
 in structured gridded format (``.true.``) or in unstructured, vector history format (``.false.``).
 Most of the history files variables in this example are provided just for illustration, however,
 the tutorial requires that the ``TLAI`` variable is output in vector history format.
@@ -834,7 +857,7 @@ Step 9: Set the spatial localization
 Localization is the term used to restrict the portion of the state to regions 
 related to the observation.  Step 8 is a type of localization in that it restricts
 the state update to a subset of CLM variables.  Here, we further restrict the influence
-of the observation to the state space most nearly collocated with the observation.
+of the observation to the state space most nearly physically collocated with the observation.
 The spatial localization is set through the the ``assim_tools_nml``, ``cov_cutoff_nml``
 and ``location_nml`` settings witin ``input.nml`` as: 
 
@@ -857,21 +880,21 @@ and ``location_nml`` settings witin ``input.nml`` as:
     horiz_dist_only             = .true.
 
 
-+-----------------------------+-------------------------------------------------------------+
-| Localization namelist       | Description                                                 |
-| variable                    |                                                             |
-+=============================+=============================================================+
-| ``cutoff``                  | Value (radians) of the half-width of the localization radius|
-|                             | At 2*``cutoff`` distance between observation and model state|
-|                             | the observation has no impact on state.                     |
-+-----------------------------+-------------------------------------------------------------+
-| ``select_localization``     | Defines a function that determines the decreasing impact    |
-|                             | an observation has on model state.  Value of 1 is           |
-|                             | the Gaspari-Cohn function.                                  |
-+-----------------------------+-------------------------------------------------------------+
-| ``horiz_dist_only``         | If ``.true.`` localization applied only horizontally.  If   |
-|                             | ``.false.`` localization also applied in vertical.          |
-+-----------------------------+-------------------------------------------------------------+
++-----------------------------+--------------------------------------------------------------+
+| Localization namelist       | Description                                                  |
+| variable                    |                                                              |
++=============================+==============================================================+
+| ``cutoff``                  | Value (radians) of the half-width of the localization radius.|
+|                             | At 2* ``cutoff`` distance between observation and model      |
+|                             | state, the observation has no impact on state.               |
++-----------------------------+--------------------------------------------------------------+
+| ``select_localization``     | Defines a function that determines the decreasing impact     |
+|                             | an observation has on the model state.  Value of 1 is        |
+|                             | the Gaspari-Cohn function.                                   |
++-----------------------------+--------------------------------------------------------------+
+| ``horiz_dist_only``         | If ``.true.`` localization applied only horizontally.  If    |
+|                             | ``.false.`` localization also applied in vertical.           |
++-----------------------------+--------------------------------------------------------------+
 
 
 In some research applications (not this tutorial) it may also be important to
@@ -880,7 +903,8 @@ for soil carbon or soil moisture variables which typically only have observation
 near the land surface, whereas the model state is distributed in layers well
 below the surface.  For vertical localization the ``horiz_dist_only`` must be set
 to ``.false.`` For more information on localization  see 
-`assim_tools_mod <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/assim_tools_mod.html>`__ 
+`assim_tools_mod. <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/assim_tools_mod.html>`__ 
+
 
 
 Step 10: Set the Inflation 
@@ -892,7 +916,7 @@ to adjust) and the expected observation. The strength of the covariance determin
 the model update. For CLM-DART assimilations the ensemble spread is generated through
 a boundary condition: the atmospheric forcing as described in Step 5. However, because
 the number of ensemble members is limited and boundary condition uncertainty is only
-one source model uncertainty, the true ensemble spread is undersampled. To help
+one source of model uncertainty, the true ensemble spread is undersampled. To help
 compensate for this we employ **inflation** during the assimilation which changes
 the spread of the ensemble without changing the ensemble mean. The **inflation** 
 algorithm computes the ensemble mean and standard deviation for each variable in
@@ -908,7 +932,7 @@ In this tutorial we implement a time and space varying inflation (inflation flav
 5: enhanced spatial-varying; inverse gamma) such that the inflation becomes an 
 added state property which is updated during each assimilation
 step similar to CLM state variables.  The inflation state properties include 
-both a mean and standard deviation. The mean value determines how much added spread
+both a mean and standard deviation. The mean value determines how much spread
 is added across the ensemble (spread is generated when mean > 1).  The standard deviation
 defines the certainty of the mean inflation value, thus a small value 
 indicates high certainty and slow evolution of the mean with time. Conversely a high
@@ -1026,12 +1050,12 @@ Step 11: Complete the Assimilation Setup
 
 A few setup steps remain before the assimilation case can be executed.  First, the complete
 list of DART executables must be generated.  At this point you should have already customized
-your ``mkmf_template`` and tested your local build environment in Step 4.  Here compile
-the rest of the required DART scripts to perform the assimilation as follows:
+your ``mkmf_template`` and tested your local build environment in Step 4.  In this step,
+you must compile the rest of the required DART scripts to perform the assimilation as follows:
 
 ::
 
- > cd ~/DART/models/clm/work/
+ > cd <dartroot>/models/clm/work/
  > ./quickbuild.csh -mpi
 
 After completion the following DART executables should be available within your ``work``
@@ -1060,7 +1084,7 @@ Modify the ``cesmtag`` and ``CASE`` variable:
 
 ::
  
- setenv cesmtag        <``cesm_DART`` or your cesm installationfolder>
+ setenv cesmtag        <your cesm installation folder>
  setenv resolution     f09_f09_mg17
  setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
  setenv num_instances  5
@@ -1084,7 +1108,7 @@ in Step 1:
  setenv SourceModDir   <your SourceMods directory>
 
 
-Confirm the variables are set to match your personal
+Confirm the following variables are set to match your personal
 environment, especially ``cesmroot``, ``caseroot``, ``cime_output_root``,
 ``dartroot`` and ``project``. 
 
@@ -1116,12 +1140,12 @@ Set up the assimilation case by executing ``CLM5_setup_assimilation``
 
 ::
 
- > cd ~/DART/models/clm/shell_scripts/cesm2_2/
+ > cd <dartroot>/models/clm/shell_scripts/cesm2_2/
  > ./CLM5_setup_assimilation
 
 .. Caution::
 
- Once the setup is complete the script will provide steps
+ Once the setup is complete the script will output steps
  (1-8) displaying 'Check the case'. These steps are good for general reference,
  however, **for the tutorial ignore these steps and continue to follow the instructions
  below.**  
@@ -1165,9 +1189,9 @@ Make sure the run-time settings are as follows:
 +=============================+=============================================================+
 | ``DATA_ASSIMILATION_LND``   | If ``.TRUE.`` data assimilation is enabled.  If ``.FALSE.`` |
 |                             | no data assimilation is performed, and simulation is        |
-|                             | performed as normal CLM run.                                |
+|                             | performed as a normal CLM run.                              |
 +-----------------------------+-------------------------------------------------------------+
-| ``DATA_ASSIMILATION_SCRIPT``| Location of script (assimilate.csh) that performs the       |
+| ``DATA_ASSIMILATION_SCRIPT``| Location of script ``assimilate.csh`` that performs the     |
 |                             | assimilation.  Controls execution of DART scripts and passes|
 |                             | files between DART and CLM code.                            |
 +-----------------------------+-------------------------------------------------------------+
@@ -1199,7 +1223,7 @@ the assimilation run:
  > cd <caseroot directory>
  > ./case.submit
 
-Check the status of the job on Cheyenne using PBS command to determine if job
+Check the status of the job on Cheyenne using PBS commands to determine if job
 is queued (Q), running (R) or completed.
 
 ::
@@ -1345,7 +1369,7 @@ denoted by a ``DART quality control value = 0``. If the
 ``DART quality control value =7`` this indicates the observation has
 fallen outside the ``outlier_threshold`` value and is rejected. 
 For more details on the DART quality control variables read the  
-`documentation <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/quality_control_mod.html>`__
+`documentation. <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/quality_control_mod.html>`__
 
 First, in your own tutorial assimilation confirm that this observation
 (and other observations) was accepted.
@@ -1371,7 +1395,7 @@ creates a sufficient enough ensemble spread such that the observation falls
 within the outlier threshold and is accepted.  In other cases, 
 an observation may be accepted, but the posterior update is negligible. 
 If you experience these issues, a helpful troubleshooting guide is 
-located `here <https://docs.dart.ucar.edu/en/latest/guide/dart-quality-control.html>`__   
+located `here. <https://docs.dart.ucar.edu/en/latest/guide/dart-quality-control.html>`__   
 
 
 Matlab Diagnostics
@@ -1383,18 +1407,18 @@ a wide variety of Matlab diagnostic scripts that provide a more formal evaluatio
 of assimilation performance.  These diagnostics can provide clues
 to further maximize performance through adjustments of the DART settings 
 (localization, inflation, etc.). The full suite of diagnostic scripts can be found
-at this path in your DART installation (~/DART/diagnostics/matlab) with supporting 
-documentation found `here <https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`__
+at this path in your DART installation (``<dartroot>/diagnostics/matlab``) with supporting 
+documentation found `here. <https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`__
 
 
 .. Note::
    
  Additional scripts that are designed for CLM output visualization
- can be found here (~/DART/models/clm/matlab).  The ``clm_get_var.m`` and ``clm_plot_var.m``
+ can be found here (``<dartroot>/models/clm/matlab``).  The ``clm_get_var.m`` and ``clm_plot_var.m``
  scripts are designed to re-constitute a vector-based file (e.g. restart.nc) into 
  gridded averages to allow viewing of spatial maps.  These scripts are helpful to
  view the model update by DART (innovations). An example of how to implement these
- scripts can be found here (~/DART/models/clm/matlab/README.txt).
+ scripts can be found here (``<dartroot>/models/clm/matlab/README.txt``).
 
           
 Here we provide instructions to execute two highly recommended matlab scripts.
@@ -1416,7 +1440,7 @@ To execute ``plot_rmse_xxx_evolution.m`` do the following:
 
 ::
  
- > cd ~/DART/models/clm/work
+ > cd <dartroot>/models/clm/work
 
 Confirm the DART executables used for the matlab diagnostics exist.
 These should have been compiled during Step 11 of this tutorial.
@@ -1424,7 +1448,7 @@ The important DART executables for the diagnostics are
 ``obs_diag`` and ``obs_seq_to_netcdf``.  If they do not exist,
 perform the ``./quickbuild.csh -mpi`` command to create them.
 
-Next generate a text file that includes all the ``obs_seq.final``
+Next generate a text file that includes all the ``obs_seq*.final``
 files from the tutorial simulation
 
 ::
@@ -1433,14 +1457,14 @@ files from the tutorial simulation
 
 Next edit the ``&obs_diag_nml`` namelist within the ``input.nml``.
 to assign the `obs_seqence_list` 
-to the text file containing the names of the ``obs_seq<>.final``
+to the text file containing the names of the ``obs_seq*.final``
 files associated with the tutorial.  Next, specify how the
 observations are displayed by defining the ``bin`` settings, which
 for this tutorial are set such that every day of observations
 are displayed individually. Because the tutorial is a global run
 we define the ``lonlim`` and ``latlim`` setting to include the
 entire globe.  For more information about the  ``obs_diag`` namelist
-settings go `here <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__  
+settings go `here.  <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__  
 
 ::
 
@@ -1468,7 +1492,7 @@ settings go `here <https://docs.dart.ucar.edu/en/latest/assimilation_code/progra
    verbose               = .true.
    /
 
-Next convert the information in the ``obs_seq<>.final`` files into
+Next convert the information in the ``obs_seq*.final`` files into
 a netcdf format (``obs_diag_output.nc``) by executing the 
 ``obs_diag`` executable.
 
@@ -1501,7 +1525,7 @@ within ``input.nml``.
 For this tutorial we plot a list of  ``obs_seq<>.final`` files as shown below,
 which includes the global domain.  We include all observations within a single
 ``bin``.  For more information about these settings go 
-`here <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__ 
+`here. <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__ 
 
 ::
 
@@ -1556,7 +1580,7 @@ Next, use Matlab to create the ``link_obs.m`` figures.
 The ``link_obs.m`` script creates 3 separate figures including a 1) 3D geographic
 scatterplot, 2) observation diagnostic plot as a function of time, and 3) 2D
 scatterplot that typically compares the 'prior/posterior expected obsevations'
-against the 'actual observation'. Read the commented section within the `link_obs.m`
+against the 'actual observation'. Read the commented section within the ``link_obs.m``
 script for more information.  
 
 
