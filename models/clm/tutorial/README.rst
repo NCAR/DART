@@ -317,7 +317,7 @@ script must be run **before** the core DART code is compiled because
 it writes the source code that supports the observations.
 This provides the necessary support for the specific
 observations that we wish to assimilate into CLM.  For more information
-see the `preprocess documentation  <https:/docs.dart.ucar.edu/en/latest/guide/preprocess-program.html>`__
+see the :doc:`preprocess documentation. <../../../guide/preprocess-program>`
 
 First make sure the list of ``obs_def`` and ``obs_quantity`` module source codes 
 are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
