@@ -1430,17 +1430,12 @@ call init_random_seq(random_seq, my_task_id())
 
 DOMAINS : do idom = 1, dom_count
 
-   print *, 'idom: ', idom
-
    VARIABLES : do ivar = 1, get_num_variables(idom)
 
       start_ind = get_index_start(idom, ivar)
       end_ind   = get_index_end(  idom, ivar)
 
       clamp_min_val = get_io_clamping_minval(idom, ivar)
-
-      print *, 'ivar: ', ivar, ', start: ', start_ind, ', end: ', end_ind
-      print *, 'minval: ', clamp_min_val
 
       INDICES : do i = start_ind, end_ind
          MEMBERS : do copy = 1, ens_size
