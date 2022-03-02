@@ -100,13 +100,13 @@ Parallelism Implementation Details
 ==================================
 
 The forward operator code is called for each observation to be assimilated.
-The current version of DART does this in parallel with each MPI task computing the values for
+DART does this in parallel with each MPI task computing the values for
 all ensemble members for a subset of the observations.  The state data for the ensembles is
 distributed across all tasks, so MPI one-sided communication is used for tasks to retrieve
 needed data values from other tasks.
 
-See sections below for more details on other parallelism options and how this was done
-in previous versions of DART.
+See sections below for more details on other parallelism options and how this differs from
+previous versions of DART.
 
 The forward operator is performed in ``get_obs_ens_distrb_state``. 
 A limited call tree for ``get_obs_ens_distrb_state`` is shown below.
@@ -114,27 +114,26 @@ A limited call tree for ``get_obs_ens_distrb_state`` is shown below.
 |image1|
 
 The QC_LOOP is in ``get_obs_ens_distrb_state`` because the qc across the ensemble is known. 
-This removes the need for a transpose of the forward_op_ens_handle. 
 The window opening and closing in
 ``get_obs_ens_distrb_state`` is as follows:
 
 #. State window created (tasks can access other tasks's memory)
 #. Forward operator called
-#. QC calculated
 #. State window destroyed (tasks can no longer access other tasks's memory)
+#. QC calculated for the ensemble
 
 However, there may be occasions where having only the first ens_size tasks perform the forward operator
 is desired. For example, if the forward operator is being read from a file, or the forward operator uses a large portion of the state.
 Or when debugging it may be easier to have 1 task per ensemble member.
 
-To transpose and do the forward operators like previous versions of DART, 
+To transpose and do the forward operators without using MPI one-sided communication, 
 you can use the filter_nml namelist option ``distribute_state = .false.`` 
 The process is the same as above except the window creation and destruction are transposing the state.
 
 #. State window created (state ensemble is transposed var complete)
 #. Forward operator called
-#. QC calculated
 #. State window destroyed (state ensemble is tranaposed to copy complete)
+#. QC calculated for the ensemble
 
 Note, that if you have fewer tasks than ensemble members some tasks will still be doing vectorized forward operators
 (because they own more than one ensemble member).
