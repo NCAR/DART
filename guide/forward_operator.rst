@@ -27,7 +27,7 @@ type of forward operator.
 
 Forward operator code will be called by other DART code and so the subroutine calling
 sequences are fixed.  See documentation for 
-:doc:`../observation/forward_operators/obs_def_mod`
+:doc:`../observations/forward_operators/obs_def_mod`
 for more details.
 
 The routine that must return an ensemble-sized array of expected values is usually
@@ -57,18 +57,18 @@ water in the column.
 There are 2 common approaches to implementing code of this type.
 
 #. Use a synthetic set of pressure or height vertical values at the horizontal location.
-The forward operator code uses the horizontal components of
-the requested location and constructs a set of synthetic locations
-with fixed steps in pressure or height in the vertical, calls 
-interpolate for each vertical location, and sums the results.
+   The forward operator code uses the horizontal components of
+   the requested location and constructs a set of synthetic locations
+   with fixed steps in pressure or height in the vertical, calls 
+   interpolate for each vertical location, and sums the results.
 
 #. Use a synthetic set of model levels in the vertical at the horizontal location.
-The forward operator code uses the horizontal components of
-the requested location and construct a set of synthetic locations
-with model level numbers in the vertical, calls interpolate for each
-vertical location, and sums the results.  This approach has the
-advantage of minimizing the interpolation needed for the model-specific
-code to compute the vertical value.
+   The forward operator code uses the horizontal components of
+   the requested location and construct a set of synthetic locations
+   with model level numbers in the vertical, calls interpolate for each
+   vertical location, and sums the results.  This approach has the
+   advantage of minimizing the interpolation needed for the model-specific
+   code to compute the vertical value.
 
 In both cases the code must expect errors when the
 vertical coordinate moves outside of the model grid.
@@ -80,7 +80,7 @@ the actual state vector fields required for this observation type.
 
 
 Optional Precomputed Fields
---------------------------
+---------------------------
 
 If a complex computation is already being performed by the model
 for an observed type, those values can be added to the state vector
