@@ -148,7 +148,6 @@ logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
-
 ! indices associated with variable_table columns
 integer, parameter :: VT_VARNAME_INDEX  = 1
 integer, parameter :: VT_DARTQTY_INDEX  = 2
@@ -385,7 +384,6 @@ end function get_model_size
 !> given an index into the state vector, return its location and
 !> if given, the var kind.   despite the name, var_type is a generic
 !> kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
-
 subroutine get_state_meta_data(index_in, location, var_type)
 
 integer(i8),         intent(in)  :: index_in
@@ -401,15 +399,16 @@ real(r8) :: xlocation, ylocation, zlocation
 if ( .not. module_initialized ) call static_init_model()
 
 ! get the local indicies and type from dart index.
+
 call get_model_variable_indices(index_in, x_index, y_index, z_index, var_id=var_id)
 
 xlocation = 0.0_r8
 ylocation = 0.0_r8
 zlocation = 0.0_r8
 
-if (on_vgrid(var_id)) then
+if (on_vgrid(var_id)) then  
 
-   xlocation = xh(x_index)
+   xlocation = xh(x_index) 
    ylocation = yf(y_index)
 
    if (y_index == 1 .or. y_index > nj ) then ! off height grid
@@ -434,7 +433,7 @@ if (on_vgrid(var_id)) then
 
    endif
 
-elseif (on_ugrid(var_id)) then
+elseif (on_ugrid(var_id)) then  
 
    xlocation = xf(x_index)
    ylocation = yh(y_index)
@@ -461,7 +460,7 @@ elseif (on_ugrid(var_id)) then
 
    endif
 
-else ! on sgrid
+else ! on sgrid   
 
    xlocation = xh(x_index)
    ylocation = yh(y_index)
@@ -692,7 +691,9 @@ integer(i8) :: indx
 integer     :: hstatus ! for non-sgrid height interpolation
 
 ! need to know
-integer :: nlevs ! number of levels (zhalf and zfull have different number?)
+integer :: nlevs,nlevs_shrink ! number of levels (zhalf and zfull have different number?)
+! nlevs_shrink is necesary when working with three-d data because only lowest two gridpoints
+! are saved otherwise
 integer :: varid
 integer :: ndims
 real(r8), allocatable :: Q11_ens(:, :), Q12_ens(:, :), Q21_ens(:, :), Q22_ens(:, :)
@@ -728,7 +729,6 @@ if (varid < 0) then
    istatus(:) = 11
    return ! this kind isn't found in the state vector
 endif
-
 nlevs = get_z_axis_length(varid)
 ndims = get_num_dims(domid, varid)
 if (debug > 99) then
@@ -737,23 +737,22 @@ if (debug > 99) then
 endif
 ! 2d vs. 3d variable test
 if (ndims == 3) then
-   nlevs = 2
+   nlevs_shrink = 2
 else if (ndims == 2) then ! 2D, surface obs
-   nlevs = 1
+   nlevs_shrink = 1
 else
    ! should this be an error?
    write(string1, *) 'ndims not 3 or 2, unexpected? is ', ndims
    call say(string1)
-   nlevs = 1  !? just a guess
+   nlevs_shrink = 1  !? just a guess
    call write_location(0,location,charstring=string1)
    write(string1, *) 'task ', my_task_id(), ' kind ', obs_kind, ' (', &
                              trim(get_name_for_quantity(obs_kind)), ')  loc: ', trim(string1)
 
    call say(string1)
-   write(string1, *) 'varid, nlevs, ndims = ', varid, nlevs, ndims
+   write(string1, *) 'varid, nlevs, nlevs_shrink, ndims = ', varid, nlevs, nlevs_shrink, ndims
    call say(string1)
 endif
-
 
 if( .not. observation_on_grid(obs_loc_array, ndims) ) then
    ! no need to interpolate
@@ -764,8 +763,9 @@ endif
 if (debug > 99) then
    write(string1, *) 'nlevs', nlevs
    call say(string1)
+   !write(string1, *) 'nlevs_shrink', nlevs_shrink
+   !call say(string1)
 endif
-
 ! Interpolate the height field (z) to get the height at each level at
 ! the observation location. This allows us to find which level an observation
 ! is in.
@@ -774,41 +774,35 @@ endif
 ! Need grid from kind
 call get_x_axis(varid, axis, axis_length)
 call get_enclosing_coord(obs_loc_array(1), axis(1:axis_length), x_ind, x_val)
-
 call get_y_axis(varid, axis, axis_length)
 call get_enclosing_coord(obs_loc_array(2), axis(1:axis_length), y_ind, y_val)
-
 ! wrap the indicies if the observation is near the boundary
 if (periodic_x) call wrap_x( obs_loc_array(1), x_ind, x_val )
 if (periodic_y) call wrap_y( obs_loc_array(2), y_ind, y_val )
-
-if (nlevs == 2) then ! you need to find which 2 levels you are between
+if (nlevs_shrink == 2) then ! you need to find which 2 levels you are between
    ! If variable is on ni, nj grid:
    if (is_on_s_grid(varid)) then
-      call height_interpolate_s_grid(obs_loc_array, varid, nlevs, z_ind, z_val)
+      call height_interpolate_s_grid(obs_loc_array, varid, nlevs, nlevs_shrink, z_ind, z_val)
    else
-      call height_interpolate(obs_loc_array, varid, nlevs, x_ind, y_ind, z_ind, x_val, y_val, z_val, hstatus)
+      call height_interpolate(obs_loc_array, varid, nlevs, nlevs_shrink, x_ind, y_ind, z_ind, x_val, y_val, z_val, hstatus)
       if (hstatus /= 0) return
    endif
-
 if (debug > 99) print*, 'x y enclosing', x_ind, y_ind, x_val, y_val
-
 if (debug > 99) print*, 'nlevs: ', nlevs, ', num_dims:', get_num_dims(domid, varid)
-
 if (debug > 99) print*, 'z_ind', z_ind, 'varid', varid
 
 endif
 
 ! top and bottom, or just one value if 2d variable
-allocate(Q11_ens(ens_size, nlevs))
-allocate(Q12_ens(ens_size, nlevs))
-allocate(Q21_ens(ens_size, nlevs))
-allocate(Q22_ens(ens_size, nlevs))
+allocate(Q11_ens(ens_size, nlevs_shrink))
+allocate(Q12_ens(ens_size, nlevs_shrink))
+allocate(Q21_ens(ens_size, nlevs_shrink))
+allocate(Q22_ens(ens_size, nlevs_shrink))
 
 ! interpolated value
-allocate(P_ens(ens_size, nlevs))
+allocate(P_ens(ens_size, nlevs_shrink))
 
-do i = 1, nlevs
+do i = 1, nlevs_shrink
    indx = get_dart_vector_index(x_ind(1), y_ind(1), z_ind(i), domid, varid)
    Q11_ens(:, i) = get_state(indx, state_ens_handle)
    indx = get_dart_vector_index(x_ind(1), y_ind(2), z_ind(i), domid, varid)
@@ -823,7 +817,7 @@ enddo
 
 ! P_ens is the interpolated value at the level below and above the obs for each ensemble member.
 ! P_ens is (ens_size, nlevs)
-P_ens(:, :) = bilinear_interpolation_ens(ens_size, nlevs, obs_loc_array(1), obs_loc_array(2), &
+P_ens(:, :) = bilinear_interpolation_ens(ens_size, nlevs_shrink, obs_loc_array(1), obs_loc_array(2), &
                               x_val(1), x_val(2),y_val(1) , y_val(2), Q11_ens, Q12_ens, Q21_ens, Q22_ens)
 
 deallocate(Q11_ens, Q12_ens, Q21_ens, Q22_ens)
@@ -831,7 +825,7 @@ deallocate(Q11_ens, Q12_ens, Q21_ens, Q22_ens)
 ! Interpolate between P to get the expected value
 
 ! If 2d don't call this.
-if (nlevs == 2) then
+if (nlevs_shrink == 2) then
    expected_obs = linear_interpolation(ens_size, obs_loc_array(3), z_val(1), z_val(2), P_ens(:, 1), P_ens(:, 2) )
 else
    expected_obs = P_ens(:,1)
@@ -848,11 +842,11 @@ end subroutine model_interpolate
 !> Interpolate height from corners of the bounding box locations to the
 !> observation location.
 
-subroutine height_interpolate_s_grid(obs_loc_array, varid, nlevs, z_ind, z_val)
+subroutine height_interpolate_s_grid(obs_loc_array, varid, nlevs, nlevs_shrink, z_ind, z_val)
 
 real(r8), intent(in)  :: obs_loc_array(3)
 integer,  intent(in)  :: varid
-integer,  intent(in)  :: nlevs
+integer,  intent(in)  :: nlevs, nlevs_shrink ! JDL nlevs_shrink is an addition to show number of gridpoints to collapse upon
 
 integer,  intent(out) :: z_ind(2)
 real(r8), intent(out) :: z_val(2)
@@ -916,11 +910,11 @@ end subroutine height_interpolate_s_grid
 !> of the observation. Then interpolate the height at each corner of the
 !> bounding box to the observation location
 
-subroutine height_interpolate(obs_loc_array, varid, nlevs, x_ind, y_ind, z_ind, x_val, y_val, z_val, istatus)
+subroutine height_interpolate(obs_loc_array, varid, nlevs, nlevs_shrink, x_ind, y_ind, z_ind, x_val, y_val, z_val, istatus)
 
 real(r8), intent(in)  :: obs_loc_array(3)
 integer,  intent(in)  :: varid
-integer,  intent(in)  :: nlevs
+integer,  intent(in)  :: nlevs, nlevs_shrink
 integer,  intent(in)  :: x_ind(2) ! x indices on on the variable grid
 integer,  intent(in)  :: y_ind(2) ! y indices on on the variable grid
 integer,  intent(out) :: z_ind(2)
@@ -1127,6 +1121,37 @@ if ( periodic_x .and. periodic_y ) then
       return ! exit early
 
    endif
+elseif ( periodic_x) then
+    ! require that the point is contained within the staggered grid for the 
+    ! y - direction since you cannot wrap-around
+    if ( (obs_location(1) < xf(1)) .or. (obs_location(1) > xf(nip1)) .or. &
+        (obs_location(2) < yh(1)) .or. (obs_location(2) > yh(nj)) ) then
+
+      if (debug > 0) then
+         print *, 'periodic boundary conditions - in x-direction'
+         print *, 'OBSERVATION_x,y at ', obs_location(1:2), ' is off x,y grid'
+         print *, 'x_min, x_max ', xf(1), xf(nip1)
+         print *, 'y_min, y_max ', yh(1), yh(nj)
+      endif
+
+      return ! exit early
+    endif
+elseif ( periodic_y) then
+    ! require that the point is contained within the staggered grid for the 
+    ! x - direction since you cannot wrap-arround
+    if ( (obs_location(1) < xh(1)) .or. (obs_location(1) > xh(ni)) .or. &
+        (obs_location(2) < yf(1)) .or. (obs_location(2) > yf(njp1)) ) then
+
+      if (debug > 0) then
+         print *, 'periodic boundary conditions - in y-direction'
+         print *, 'OBSERVATION_x,y at ', obs_location(1:2), ' is off x,y grid'
+         print *, 'x_min, x_max ', xh(1), xh(ni)
+         print *, 'y_min, y_max ', yf(1), yf(njp1)
+      endif
+
+      return ! exit early
+    endif
+ 
 elseif ( (.not. periodic_x) .and. (.not. periodic_y) ) then
    ! require that the point is contained within the staggered grid for now.
    ! you could extrapolate for values that are within xf-xh, yf-yh
@@ -1147,8 +1172,8 @@ elseif ( (.not. periodic_x) .and. (.not. periodic_y) ) then
 
    endif
 else
-   write(string1,*) 'only grids with periodic x and y grids, or non-periodic '
-   write(string2,*) 'boundary conditions supported'
+   write(string1,*) ' Unsupported combination of periodic boundary conditions.'
+   write(string2,*) 'Contact DART support for more help.'
    call error_handler(E_ERR, 'observation_on_grid', string1, &
                   source, revision, revdate, text2=string2)
 endif
@@ -2181,7 +2206,6 @@ if (ngood == MAX_STATE_VARIABLES) then
 endif
 
 end subroutine parse_variable_input
-
 
 !===================================================================
 ! End of model_mod
