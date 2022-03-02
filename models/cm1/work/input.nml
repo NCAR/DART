@@ -15,12 +15,11 @@
   first_obs_seconds           = -1
   last_obs_days               = -1
   last_obs_seconds            = -1
-  distributed_state           = .false.
-  ens_size                    = 20 
-  num_output_obs_members      = 20
-  num_output_state_members    = 20
+  ens_size                    = 40 
+  num_output_obs_members      = 40
+  num_output_state_members    = 40
   output_interval             = 1
-  output_members              = .true.
+  output_members              = .true. 
   output_mean                 = .true.
   output_sd                   = .true.
   stages_to_write             = 'preassim', 'analysis', 'output'
@@ -32,66 +31,135 @@
   num_groups                  = 1
   output_forward_op_errors    = .false.
 
-  inf_flavor                  = 2,                 0
-  inf_initial_from_restart    = .false.,           .false.
-  inf_sd_initial_from_restart = .false.,           .false.
-  inf_initial                 = 1.0,               1.0
+
+  inf_flavor                  =  2,                 0,
+  inf_initial_from_restart    = .true.,           .false.,
+  inf_sd_initial_from_restart = .true.,           .false.,
+  inf_deterministic           = .true.,            .true.,
+  inf_initial                 = 1.0,               0.90,
   inf_lower_bound             = 1.0,               1.0
-  inf_upper_bound             = 1000000.0,         1000000.0
+  inf_upper_bound             = 100.0,            100.0
   inf_damping                 = 0.9,               0.9
   inf_sd_initial              = 0.6,               0.6
   inf_sd_lower_bound          = 0.6,               0.6
   inf_sd_max_change           = 1.05,              1.05
+
 /
 
+
+! The model_nml namelist is currently made for a simulation run with the Morrison Microphysics scheme.   
+! The hydrometeor fields will need to be updated if a different microphysics option is used
+!
+! Several surface observations can only be assimilated if you run the CM1 
+! with a surace parameterization and set "output_sfcdiags = 1".  
+! The following output variables include:
+! 
+! Model Output Variables -> Assimilated Observations
+! 1.) t2    -> TEMPERATURE_2M
+! 2.) u10   -> U_WIND_10
+! 3.) v10   -> V_WIND_10
+! 4.) q2    -> SPECIFIC_HUMIDITY_2M
+! 5.) psfc  -> SURFACE_PRESSURE
+! 
+! RADIOSONDE_TEMPERATURE and RADIOSONDE_SPECIFIC_HUMIDITY observations require 
+! air temperature and specific humidity as inputs. To do this you will have to 
+! go into CM1 code and tell the model to output three-dimensional air temperature and
+! specific humidity variables in "./src/writeout_nc.F" and "./src/restart.F"
+!
 
 &model_nml
   assimilation_period_days    = 0
   assimilation_period_seconds = 60
   calendar                    = 'Gregorian'
   cm1_template_file           = 'cm1out_rst_000001.nc'
-  periodic_x                  = .true.
-  periodic_y                  = .true.
+  periodic_x                  = .false.
+  periodic_y                  = .false. 
   debug                       = 0
-  model_variables = 'ua'   , 'QTY_U_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
-                    'va'   , 'QTY_V_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
-                    'wa'   , 'QTY_VERTICAL_VELOCITY'     , 'NULL', 'NULL', 'UPDATE',
-                    'theta', 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
-                    'ppi'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
-                    'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
-                    'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
-                    't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
-                    'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
-                    'tsk'  , 'QTY_SKIN_TEMPERATURE'      , 0.0000, 'NULL', 'UPDATE',
-                    'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
-                    'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
-                    'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
-                    'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
-                    'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
-                    'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
-                    'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
-                    'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE' 
+  model_variables = 'ua'   , 'QTY_U_WIND_COMPONENT'        , 'NULL', 'NULL', 'UPDATE',
+                    'va'   , 'QTY_V_WIND_COMPONENT'        , 'NULL', 'NULL', 'UPDATE',
+                    'wa'   , 'QTY_VERTICAL_VELOCITY'       , 'NULL', 'NULL', 'UPDATE',
+                    'theta', 'QTY_POTENTIAL_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
+                    'prs'  , 'QTY_PRESSURE'                , 'NULL', 'NULL', 'UPDATE',
+                    'qv'   , 'QTY_VAPOR_MIXING_RATIO'      , 0.0000, 'NULL', 'UPDATE',
+                    'qc'   , 'QTY_CLOUD_LIQUID_WATER'      , 0.0000, 'NULL', 'UPDATE',
+                    'qr'   , 'QTY_RAINWATER_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
+                    'qi'   , 'QTY_CLOUD_ICE'               , 0.0000, 'NULL', 'UPDATE',
+                    'qs'   , 'QTY_SNOW_MIXING_RATIO'       , 0.0000, 'NULL', 'UPDATE',
+                    'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
+                   'ncr'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                   'nci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
+                   'ncs'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                   'ncg'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
+                   'rho'   , 'QTY_DENSITY'                 , 0.0000, 'NULL', 'UPDATE',
+                   'dbz'   , 'QTY_RADAR_REFLECTIVITY'      , 0.0000, 'NULL', 'UPDATE',
+  
+                   ! Model variables that are output when you run with a simulation with 
+                   ! a surface model and set "output_sfcdiags = 1"
+                   !
+                   !'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                   !'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                   !'t2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
+                   !'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
+                   !'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
+                   !'tsk'  , 'QTY_SKIN_TEMPERATURE'      , 0.0000, 'NULL', 'UPDATE',
+                   !'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
+               
+                   ! Model variables that must be output by CM1 to assimilate RADIOSONDE TEMPERATURE
+                   ! and RADIOSONDE_SPECIFIC_HUMIDITY observations
+                   !
+                   !'air_temp'  , 'QTY_TEMPERATURE'             , 'NULL', 'NULL', 'UPDATE',
+                   !'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'       , 0.0000, 'NULL', 'UPDATE',
 /
 
+!
+! This is a non-exhaustive list of variables that could be assimilated into CM1 forecasts
+!
+! Remember: TEMPERATURE_2M, U_WIND_10M, V_WIND_10M, SURFACE_PRESSURE, and SPECIFIC_HUMIDITY_2M 
+!           require that CM1 is run with a surface model and outputs surface diagnostic variables
+!
+! If you are running CM1 simulations without a surface model you could theoretically assimilate a single
+! RADIOSONDE observation that is near the surface to act as a "surface observation". DART will then ingest a 
+! 3D model field rather than referring to the 2D surface model output.
+!
+! Also remember RADIOSONDE_TEMPERATURE and RADIOSONDE_SPECIFIC_HUMIDITY observations 
+! requires CM1 to output three-dimensional arrays of air tempeature (i.e., air_temp) 
+! and specific humidity (spec_hum)   
+!
 
 &obs_kind_nml
-  assimilate_these_obs_types = 'TEMPERATURE_2M',
-                               'U_WIND_10M',
-                               'V_WIND_10M',
-                               'SURFACE_PRESSURE',
-                               'SPECIFIC_HUMIDITY_2M'
+
+  assimilate_these_obs_types  = 'RADIOSONDE_U_WIND_COMPONENT', 
+                                'RADIOSONDE_V_WIND_COMPONENT', 
+                                'RADAR_REFLECTIVITY', 
+                                'DOPPLER_RADIAL_VELOCITY',
+  
+  !  Observations that require CM1 to output 3D fields of air temperature and specific humidity
+  !  This will require you to make minor modifications to the code
+  !                             'RADIOSONDE_TEMPERATURE', 
+  !                             'RADIOSONDE_SPECIFIC_HUMIDITY' 
+
+  !  Observations that require CM1 simulations to be run with a surface model                          
+  !  Then set "output_sfcdiags = 1"
+  !                             'TEMPERATURE_2M',
+  !                             'U_WIND_10M',
+  !                             'V_WIND_10M',
+  !                             'SURFACE_PRESSURE',
+  !                             'SPECIFIC_HUMIDITY_2M'
+                   
+
+
   evaluate_these_obs_types   = ''
 /
 
 
 &location_nml
-   x_is_periodic       = .true.
+   x_is_periodic       = .false.
    y_is_periodic       = .true.
    z_is_periodic       = .false.
    min_x_for_periodic  = 0.0
-   max_x_for_periodic  = 128000.0
+   max_x_for_periodic  = 200000.0
    min_y_for_periodic  = 0.0
-   max_y_for_periodic  = 128000.0
+   max_y_for_periodic  = 200000.0
    min_z_for_periodic  = 0.0
    max_z_for_periodic  = 1.0
    compare_to_correct  = .false.
@@ -131,7 +199,8 @@
   input_obs_def_mod_file   = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
   output_obs_def_mod_file  = '../../../observations/forward_operators/obs_def_mod.f90'
   obs_type_files           = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
-                             '../../../observations/forward_operators/obs_def_surface_mod.f90'
+                             '../../../observations/forward_operators/obs_def_surface_mod.f90',
+                            '../../../observations/forward_operators/obs_def_radar_mod.f90'
   quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
 /
 
@@ -148,7 +217,7 @@
 
 &assim_tools_nml
   adaptive_localization_threshold = -1
-  cutoff                          = 4000.0
+  cutoff                          = 15000.0
   filter_kind                     = 1
   print_every_nth_obs             = 100
   rectangular_quadrature          = .true.
@@ -159,6 +228,8 @@
   distribute_mean                 = .true.
   output_localization_diagnostics = .false.
   localization_diagnostics_file   = 'localization_diagnostics'
+  special_localization_obs_types    = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+  special_localization_cutoffs      = 50000., 50000., 6000., 6000.
 /
 
 
@@ -291,3 +362,32 @@
   interp_test_zrange    = 100.0,  101.0
   verbose               = .true.
 /
+
+! This block of code is for assimilating radar observations
+! Rather than diagnosing radar reflectivity directly from model output
+! I feed the DART system the 3D radar reflectivity variable output by cm1.
+! If you decide to follow this same technique set microphysics_type = 5.
+!
+! To calculate radar radial velocity you need to set allow_dbztowt_conv=.true.
+! this will allow the DART to diagnose particle fall speed via reflecvtivity 
+! which is used for the radial velocity calculation
+
+&obs_def_radar_mod_nml
+   apply_ref_limit_to_obs      =   .false.,
+   reflectivity_limit_obs      =     -10.0,
+   lowest_reflectivity_obs     =     -10.0,
+   apply_ref_limit_to_fwd_op   =   .false.,
+   reflectivity_limit_fwd_op   =     -10.0,
+   lowest_reflectivity_fwd_op  =     -10.0,
+   max_radial_vel_obs          =   1000000,
+   allow_wet_graupel           =   .false.,
+   microphysics_type           =         5,
+   allow_dbztowt_conv          =    .true.,
+   dielectric_factor           =     0.224,
+   n0_rain                     =     8.0e6,
+   n0_graupel                  =     4.0e6,
+   n0_snow                     =     3.0e6,
+   rho_rain                    =    1000.0,
+   rho_graupel                 =     400.0,
+   rho_snow                    =     100.0
+   /
