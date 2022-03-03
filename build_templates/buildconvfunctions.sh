@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #-------------------------
 # Build functions for observation converters
 #-------------------------
@@ -23,9 +24,9 @@
 #  windowsrc=""
 #  m=""
 #-------------------------
-set -ef -o pipefail
+set -e
 declare -a programs
-source $DART/build_templates/buildpreprocess.sh
+source "$DART"/build_templates/buildpreprocess.sh
 
 # Defaults
 mpisrc="null_mpi"
@@ -54,10 +55,10 @@ function print_usage() {
 # Remove programs, .o. .mod
 #--------------------------
 cleanup() {
-\rm -f *.o *.mod Makefile
+\rm -f -- *.o *.mod Makefile
 
-for p in ${programs[@]}; do 
-  \rm -f $p
+for p in "${programs[@]}"; do
+  \rm -f -- "$p"
 done
 }
 
@@ -93,8 +94,8 @@ single_prog=$1
 #-------------------------
 function findconvsrc() {
 
-local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
-local conv=$(find $DART/observations/obs_converters/$CONVERTER -type f -name "*.f90" )
+local core=$(find "$DART"/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
+local conv=$(find "$DART"/observations/obs_converters/"$CONVERTER" -type f -name "*.f90" )
 local modelsrc="$DART/models/template/model_mod.f90"
 local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \
@@ -110,17 +111,17 @@ local misc="$DART/models/utilities/ \
 local obserrsrc=$DART/observations/obs_converters/obs_error/$OBS_ERROR"_obs_err_mod.f90"
 
 # remove null/mpi from list
-local mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
-local nullmpi=$DART/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
-local nullwin=$DART/assimilation_code/modules/utilities/null_win_mod.f90
-local craywin=$DART/assimilation_code/modules/utilities/cray_win_mod.f90
-local nocraywin=$DART/assimilation_code/modules/utilities/no_cray_win_mod.f90
+local mpi="$DART"/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+local nullmpi="$DART"/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+local nullwin="$DART"/assimilation_code/modules/utilities/null_win_mod.f90
+local craywin="$DART"/assimilation_code/modules/utilities/cray_win_mod.f90
+local nocraywin="$DART"/assimilation_code/modules/utilities/no_cray_win_mod.f90
 
-if [ $mpisrc == "mpi" ]; then
+if [ "$mpisrc" == "mpi" ]; then
 
    core=${core//$nullmpi/}
    core=${core//$nullwin/}
-   if [ windowsrc == "craywin" ]; then
+   if [ "$windowsrc" == "craywin" ]; then
        core=${core//$nocraywin/}
    else #nocraywin
        core=${core//$craywin/}
@@ -144,14 +145,14 @@ nuisance=(\
 "$DART/models/bgrid_solo/fms_src/shared/time_manager/time_manager.f90"
 )
 
-for nus in  ${nuisance[@]}; do
+for nus in  "${nuisance[@]}"; do
  convsrc=${convsrc//$nus/}
 done
 
 # remove converter(s) {main.f90} from list
 
-for p in ${programs[@]}; do
-  prog=$DART/observations/obs_converters/$CONVERTER/$p.f90
+for p in "${programs[@]}"; do
+  prog="$DART"/observations/obs_converters/"$CONVERTER"/"$p".f90
   convsrc=${convsrc//$prog/}
 done
 
@@ -201,6 +202,9 @@ if [ ! -z "$single_prog" ] ; then # build a single program
        echo "building dart program " $single_prog
        dartbuild $single_prog
        exit
+    else
+       echo "ERROR: unknown program " $single_prog
+       exit 4
     fi
 fi
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #-------------------------
 # Build functions for DART
 #-------------------------
@@ -19,7 +20,7 @@
 #            set by quickbuild.sh
 #-------------------------
 
-set -ef -o pipefail
+set -e
 EXTRA=""
 EXCLUDE=""
 
@@ -28,7 +29,7 @@ declare -a serial_programs
 declare -a model_programs
 declare -a model_serial_programs
 
-source $DART/build_templates/buildpreprocess.sh
+source "$DART"/build_templates/buildpreprocess.sh
 
 #-------------------------
 # print usage and exit
@@ -57,11 +58,12 @@ function print_usage() {
 # Remove programs, .o. .mod
 #--------------------------
 cleanup() {
-\rm -f *.o *.mod Makefile
+
+\rm -f -- *.o *.mod Makefile
 all_programs=("${programs[@]}" "${model_programs[@]}" "${serial_programs[@]}" "${model_serial_programs[@]}")
 
 for p in ${all_programs[@]}; do 
-  \rm -f $p
+  \rm -f -- $p
 done
 }
 
@@ -128,17 +130,17 @@ local misc="$DART/models/utilities/ \
 # so adding individual files from assimilation_code/modules/observations
 
 # remove null/mpi from list
-mpi=$DART/assimilation_code/modules/utilities/mpi_utilities_mod.f90
-nullmpi=$DART/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
-nullwin=$DART/assimilation_code/modules/utilities/null_win_mod.f90
-craywin=$DART/assimilation_code/modules/utilities/cray_win_mod.f90
-nocraywin=$DART/assimilation_code/modules/utilities/no_cray_win_mod.f90
+local mpi="$DART"/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+local nullmpi="$DART"/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+local nullwin="$DART"/assimilation_code/modules/utilities/null_win_mod.f90
+local craywin="$DART"/assimilation_code/modules/utilities/cray_win_mod.f90
+local nocraywin="$DART"/assimilation_code/modules/utilities/no_cray_win_mod.f90
 
-if [ $mpisrc == "mpi" ]; then
+if [ "$mpisrc" == "mpi" ]; then
 
    core=${core//$nullmpi/}
    core=${core//$nullwin/}
-   if [ windowsrc == "craywin" ]; then
+   if [ "$windowsrc" == "craywin" ]; then
        core=${core//$nocraywin/}
    else #nocraywin
        core=${core//$craywin/}
@@ -169,7 +171,7 @@ nuisance=(\
 "$DART/models/bgrid_solo/fms_src/shared/time_manager/time_manager.f90"
 )
 
-for nus in  ${nuisance[@]}; do
+for nus in  "${nuisance[@]}"; do
  dartsrc=${dartsrc//$nus/}
 done
 
