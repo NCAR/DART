@@ -1,7 +1,6 @@
 #!/bin/bash
 
 main() {
-set -e
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 

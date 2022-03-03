@@ -1,7 +1,7 @@
 #!/bin/bash
 
 main() {
-set -e
+
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
 source $DART/build_templates/buildfunctions.sh

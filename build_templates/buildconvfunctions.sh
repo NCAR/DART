@@ -25,7 +25,7 @@
 #  windowsrc=""
 #  m=""
 #-------------------------
-
+set -ef -o pipefail
 declare -a programs
 source $DART/build_templates/buildpreprocess.sh
 

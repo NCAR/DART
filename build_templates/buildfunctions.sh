@@ -21,7 +21,9 @@
 #            set by quickbuild.sh
 #-------------------------
 
+set -ef -o pipefail
 EXTRA=""
+EXCLUDE=""
 
 declare -a programs
 declare -a serial_programs
@@ -83,7 +85,7 @@ mpisrc=mpi
 windowsrc=no_cray_win
 m="-w" # mkmf wrapper arg
 
-# if the first argument is mpi or nompi
+# if the first argument is help, nompi, clean
 case $1 in
   help)
     print_usage
