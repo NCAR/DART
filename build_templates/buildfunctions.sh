@@ -8,8 +8,9 @@
 #  LOCATION - location module to use
 #             set by quickbuild.sh
 #  EXTRA - other source files that
-#          are not in $CONVERTER
-#          for example, a specific model_mod
+#          are not in $MODEL directory
+#          for example, files from another
+#          model diretory.
 #          set by quickbuild.sh
 #  EXCLUDE - directories in model dir to exclude
 #            from the collection of .f90 files
