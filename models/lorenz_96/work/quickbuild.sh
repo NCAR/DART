@@ -4,7 +4,7 @@ main() {
 
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
-source $DART/build_templates/buildfunctions.sh
+source "$DART"/build_templates/buildfunctions.sh
 
 MODEL=lorenz_96
 LOCATION=oned

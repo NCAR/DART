@@ -6,7 +6,7 @@ main() {
 
 CONVERTER=snow
 LOCATION=threed_sphere
-source $DART/build_templates/buildconvfunctions.sh
+source "$DART"/build_templates/buildconvfunctions.sh
 
 programs=( \
 snow_to_obs \

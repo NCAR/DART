@@ -3,7 +3,7 @@
 main() {
 
 [ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
-source $DART/build_templates/buildfunctions.sh
+source "$DART"/build_templates/buildfunctions.sh
 
 MODEL=cm1
 LOCATION=threed_cartesian
