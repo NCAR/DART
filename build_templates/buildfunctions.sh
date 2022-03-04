@@ -301,3 +301,20 @@ for p in ${model_serial_programs[@]}; do
 done
 
 }
+
+#-------------------------
+# Build any NetCDF files from .cdl files
+#-------------------------
+function cdl_to_netcdf {
+
+shopt -s nullglob
+for f in *.cdl ; do
+  local outname=$(basename "$f" .cdl ).nc
+  if [ ! -f "$outname" ]; then
+    echo "building" "$outname" "from" "$f"
+    ncgen -o "$outname" "$f"
+  fi
+done
+shopt -u nullglob
+
+}
