@@ -138,7 +138,7 @@ Step 1: Download CLM5
 ---------------------
 
 CLM is continually being updated by the model developer and user community
-consisting of both NCAR and University scientists and researchers.
+consisting of both NCAR and university scientists and researchers.
 In contrast, DART is maintained by a relatively small group that supports
 numerous earth system models (20+) including CLM. Therefore the DART team
 focuses on only supporting official released versions of CLM.  This documentation
@@ -150,24 +150,10 @@ checking out ``release-cesm2.2.0``.
 
   ::
 
-    > cd <your Cheyenne work directory>
-    > git clone https://github.com/escomp/cesm.git cesm_dart
-    > cd cesm_dart
-    #Explore the available tags
-    > git tag
-    > git checkout release-cesm2.2.0
-    #Confirm release-cesm2.2.0 is checked out
-    > git status
-    > ./manage_externals/checkout_external
-
-.. Note::
-   
- If you want to use git to keep track of your personal changes
- to CLM you should check out a branch to add/commit/track
- changes:
- ::
-
-  > git checkout -b <my_cesm_dart_branch>
+    git clone https://github.com/escomp/cesm.git cesm_dart
+    cd cesm_dart
+    git checkout release-cesm2.2.0
+    ./manage_externals/checkout_external
 
 
 Adding CLM5 SourceMods
@@ -181,8 +167,13 @@ through the SourceMod mechanism in CLM where modifications overwrite
 the template sourcecode during the compilation step. The SourceMods
 are located as tar files `here. <http://www.image.ucar.edu/pub/DART/CESM>`__
 For this tutorial use the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
-and untar it on your local machine.  For more information on the 
-SourceMods see the main `CLM-DART documentation. <https://docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__
+and untar it on your local machine.  
+
+:: 
+  tar -xvf DART_SourceMods_cesm2_2_0_2021_07_02.tar
+
+For more information on the 
+SourceMods see the main CLM-DART documentation. :doc:`CLM-DART documentation <../readme>`
 
 
 
@@ -194,32 +185,9 @@ DART repository on the `main branch <https://github.com/NCAR/DART>`__.
 
   ::
  
-   #Quickstart approach to download DART:
-   > cd <your Cheyenne work directory>
-   > git clone https://github.com/NCAR/DART.git
-   > cd DART
-   > git checkout main
-
-If you wish to track new features within your local copy of DART
-we recommend you check out a new feature branch:
-
-  ::
-
-   > git checkout -b <my_dart_feature_branch>
-
-.. Note::
-
-  For more experienced git users that intend to use DART for their own
-  research we recommend the following steps which facilitates sharing of
-  your code. Consider 'forking' the DART repository ~/NCAR/DART.git and
-  setting up remote 'origin' and 'upstream' repositories for your local branch.
-  For more information please go `here <https://github.com/NCAR/DART/wiki>`__.
-  Setting your remote repositories such that the 'upstream' points to
-  ~/NCAR/DART.git and 'origin' points to ~/<your git account name>/DART.git
-  helps to obtain new DART features, and also allows the DART team
-  to view any local changes that your 'push' to your 'origin'.  This helps
-  in troubleshooting and also contributing new features to the DART code.
-    
+  cd /glade/work/$USER/
+  git clone https://github.com/NCAR/DART.git
+  cd DART
 
 
 
@@ -230,20 +198,18 @@ Step 3: Navigating DART Scripts
 
 Below is a table of the key CLM5-DART setup scripts that include the 
 settings required to perform an  assimilation run. All scripts are 
-located at path ``<dartroot>/models/clm/shell_scripts/cesm2_2/`` with the 
-exception of ``input.nml`` which is located at ``<dartroot>/models/clm/work/``.
+located at path ``DART/models/clm/shell_scripts/cesm2_2/`` with the 
+exception of ``input.nml`` which is located at ``DART/models/clm/work/``.
 
 You will be asked to locate, edit, and execute these scripts during the tutorial
 and are they are critical to customizing the assimilation run.  Given their importance, we
 introduce them right away.
 
 For additional description of the CLM5-DART scripts and concepts please
-visit the main CLM5-DART documentation 
-`here <https:/docs.dart.ucar.edu/en/latest/models/clm/readme.html>`__. 
+visit the main :doc:`CLM-DART documentation <../readme>`
 In general, feel free to supplement this tutorial with the main CLM5-DART documentation. 
 In some cases it will provide more detailed information than in this tutorial.
-If a concept is unclear we recommend using the search bar provided with
-the main `DART documentation <https:/docs.dart.ucar.edu/en/latest/README.html>`__.
+If a concept is unclear we recommend using the search bar at the top of this page.
 
 
 
@@ -290,10 +256,8 @@ This is an example of how to set up the system environment for Cheyenne:
 
 ::
 
- # Navigate to compiling templates
- > cd <dartroot>/DART/build_template
- # Use example template for intel compiler, linux environment
- > cp mkmf.template.intel.linux mkmf_template
+ cd DART/build_templates
+ cp mkmf.template.intel.linux mkmf.template
  
 Confirm the ``mkmf_template`` has the following settings:
 
@@ -324,7 +288,7 @@ are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
 
 ::
 
- > cd <dartroot>/DART/models/clm/work
+  cd DART/models/clm/work
  # View and edit the input.nml
  > vi input.nml
 
@@ -351,15 +315,13 @@ Next compile and execute the preprocess script:
 
 ::
 
- # Build the executable
- > csh mkmf_preprocess
- > make
- # Execute preprocess
- > ./preprocess
+ csh mkmf_preprocess
+ make
+ ./preprocess
 
 Confirm the new source code has been generated for 
-``<dartroot>/observations/forward_operators/obs_def_mod.f90`` 
-and ``<dartroot>/assimilation_code/modules/observations/obs_kind_mod.f90`` 
+``DART/observations/forward_operators/obs_def_mod.f90`` 
+and ``DART/assimilation_code/modules/observations/obs_kind_mod.f90`` 
 
 
 
@@ -386,7 +348,7 @@ the default ``dartroot`` as shown below.
 
  ::
 
-  setenv dartroot          /glade/work/${USER}/git/DART_public
+  setenv dartroot          /glade/work/${USER}/DART
 
 
 Next confirm within the ``CLM5_setup_assimilation`` script that the path (``${SOURCEDIR}/${STREAMFILE_*}``) 
@@ -547,10 +509,10 @@ Step 7: Setting up the observations to be assimilated
 In 'Step 4: Compiling DART' we have already completed an important
 step by executing ``preprocess`` which generates source code 
 (``obs_def_mod.f90``, ``obs_kind_mod.f90``) that supports the assimilation of observations
-used for this tutorial.  In this step, we link the observations to the DART
-code so they can be read during the assimilation. The observations are read into the
+used for this tutorial.  In this step, we compile these observation definitions in to the DART
+executables. The observations are read into the
 assimilation through an observation sequence file whose format is described 
-`here <https://docs.dart.ucar.edu/en/latest/guide/detailed-structure-obs-seq.html>`__.
+:doc:`here <../../guide/detailed-structure-obs-seq>`
 
 First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
 is pointed to the directory where the observation sequence files are 
@@ -926,7 +888,7 @@ in such a way that the mean remains unchanged.
 Although **inflation** was originally designed to account for ensemble sampling errors,
 it has also been demonstrated to help address systemic errors between models and
 observations as well. More information on inflation can be found 
-`here <https://docs.dart.ucar.edu/en/latest/guide/inflation.html>`__.    
+:doc: `here <../../guide/inflation>`
 
 In this tutorial we implement a time and space varying inflation (inflation flavor
 5: enhanced spatial-varying; inverse gamma) such that the inflation becomes an 
@@ -1050,13 +1012,13 @@ Step 11: Complete the Assimilation Setup
 
 A few setup steps remain before the assimilation case can be executed.  First, the complete
 list of DART executables must be generated.  At this point you should have already customized
-your ``mkmf_template`` and tested your local build environment in Step 4.  In this step,
+your ``mkmf.template`` and tested your local build environment in Step 4.  In this step,
 you must compile the rest of the required DART scripts to perform the assimilation as follows:
 
 ::
 
- > cd <dartroot>/models/clm/work/
- > ./quickbuild.csh -mpi
+ cd DART/models/clm/work/
+ ./quickbuild.csh -mpi
 
 After completion the following DART executables should be available within your ``work``
 folder.
@@ -1140,8 +1102,8 @@ Set up the assimilation case by executing ``CLM5_setup_assimilation``
 
 ::
 
- > cd <dartroot>/models/clm/shell_scripts/cesm2_2/
- > ./CLM5_setup_assimilation
+ cd DART/models/clm/shell_scripts/cesm2_2/
+ ./CLM5_setup_assimilation
 
 .. Caution::
 
@@ -1157,8 +1119,8 @@ do the following:
 
 ::
 
- > cd <caseroot>
- > ./CESM_DART_config
+ cd <caseroot>
+ ./CESM_DART_config
 
 .. Caution::
 
@@ -1228,7 +1190,7 @@ is queued (Q), running (R) or completed.
 
 ::
 
- > qstat -u <your username>
+ qstat -u <your username>
 
 
 
@@ -1241,8 +1203,8 @@ without any errors.  To confirm this view the ``CaseStatus`` files:
 
 ::
 
- > cd <caseroot>
- > cat CaseRoot
+ cd <caseroot>
+ cat CaseRoot
 
 A successful assimilation run will look like the following at the end
 of the file with ``case.run success`` at the end:
@@ -1369,7 +1331,7 @@ denoted by a ``DART quality control value = 0``. If the
 ``DART quality control value =7`` this indicates the observation has
 fallen outside the ``outlier_threshold`` value and is rejected. 
 For more details on the DART quality control variables read the  
-`documentation. <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/quality_control_mod.html>`__
+:doc:`documentation. <../../assimilation_code/modules/assimilation/quality_control_mod
 
 First, in your own tutorial assimilation confirm that this observation
 (and other observations) was accepted.
@@ -1382,8 +1344,8 @@ closer to the `observation value` as compared to the prior values.
 
 ::
 
- > cd <caseroot>
- > vi clm_obs_seq.2011-01-02-00000.final
+  cd <caseroot>
+  less clm_obs_seq.2011-01-02-00000.final
 
 
 This tutorial has been purposely designed such that all observations
@@ -1395,7 +1357,8 @@ creates a sufficient enough ensemble spread such that the observation falls
 within the outlier threshold and is accepted.  In other cases, 
 an observation may be accepted, but the posterior update is negligible. 
 If you experience these issues, a helpful troubleshooting guide is 
-located `here. <https://docs.dart.ucar.edu/en/latest/guide/dart-quality-control.html>`__   
+located :doc:`here. <../../guide/quality_control_mod`
+
 
 
 Matlab Diagnostics
@@ -1414,11 +1377,11 @@ documentation found `here. <https://docs.dart.ucar.edu/en/latest/guide/matlab-ob
 .. Note::
    
  Additional scripts that are designed for CLM output visualization
- can be found here (``<dartroot>/models/clm/matlab``).  The ``clm_get_var.m`` and ``clm_plot_var.m``
+ can be found here (``DART/models/clm/matlab``).  The ``clm_get_var.m`` and ``clm_plot_var.m``
  scripts are designed to re-constitute a vector-based file (e.g. restart.nc) into 
  gridded averages to allow viewing of spatial maps.  These scripts are helpful to
  view the model update by DART (innovations). An example of how to implement these
- scripts can be found here (``<dartroot>/models/clm/matlab/README.txt``).
+ scripts can be found here (``DART/models/clm/matlab/README.txt``).
 
           
 Here we provide instructions to execute two highly recommended matlab scripts.
@@ -1440,7 +1403,7 @@ To execute ``plot_rmse_xxx_evolution.m`` do the following:
 
 ::
  
- > cd <dartroot>/models/clm/work
+ cd DART/models/clm/work
 
 Confirm the DART executables used for the matlab diagnostics exist.
 These should have been compiled during Step 11 of this tutorial.
@@ -1453,7 +1416,7 @@ files from the tutorial simulation
 
 ::
  
- > ls <rundir>/*final > obs_seq_files_tutorial.txt 
+ ls <rundir>/*final > obs_seq_files_tutorial.txt 
 
 Next edit the ``&obs_diag_nml`` namelist within the ``input.nml``.
 to assign the `obs_seqence_list` 
@@ -1464,7 +1427,7 @@ for this tutorial are set such that every day of observations
 are displayed individually. Because the tutorial is a global run
 we define the ``lonlim`` and ``latlim`` setting to include the
 entire globe.  For more information about the  ``obs_diag`` namelist
-settings go `here.  <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__  
+settings go :doc:`here.  <../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`
 
 ::
 
@@ -1506,9 +1469,9 @@ and the ``obsname`` variable are customizable.
 
 ::
 
- > cd <dartroot>/diagnostics/matlab
- > module load matlab
- >> matlab -nodesktop
+ cd DART/diagnostics/matlab
+ module load matlab
+ matlab -nodesktop
  >> fname   = '<dartroot>/models/clm/work/obs_diag_output.nc';
  >> copy    = 'totalspread';
  >> obsname = 'MODIS_LEAF_AREA_INDEX';
@@ -1525,7 +1488,7 @@ within ``input.nml``.
 For this tutorial we plot a list of  ``obs_seq<>.final`` files as shown below,
 which includes the global domain.  We include all observations within a single
 ``bin``.  For more information about these settings go 
-`here. <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__ 
+`here. <../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf>` 
 
 ::
 
@@ -1558,16 +1521,16 @@ information into a netcdf readable file (``obs_epoch_001.nc``) for
 
 ::
 
- > ./obs_seq_to_netcdf
+ ./obs_seq_to_netcdf
 
 
 Next, use Matlab to create the ``link_obs.m`` figures.
 
 ::
 
- > cd <dartroot>/diagnostics/matlab
- > module load matlab
- > matlab -nodesktop
+ cd DART/diagnostics/matlab
+ module load matlab
+ matlab -nodesktop
  >> fname         = '<dartroot>/models/clm/work/obs_epoch_001.nc';
  >> ObsTypeString = 'MODIS_LEAF_AREA_INDEX';
  >> ObsCopyString = 'observations';
