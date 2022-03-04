@@ -59,10 +59,10 @@ done
 i=0
 for st in ${status[@]}; do
     if [[ ${st} -ne 0 ]]; then
-        echo "$i ${dirs[$i]} failed"
+        echo "RESULT: $i ${dirs[$i]} failed"
         OVERALL_EXIT=1
     else
-        echo "$i  ${dirs[$i]} finished"
+        echo "RESULT: $i  ${dirs[$i]} finished"
     fi
     ((i+=1))
 done
