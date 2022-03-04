@@ -171,6 +171,7 @@ nml_test
 parse_args_test
 sort_test
 stacktest
+obs_rwtest
 
 
 # Directories to NOT IGNORE ... same as executable names
