@@ -10,7 +10,7 @@ LOCATION=threed_cartesian
 
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 programs=( \
 closest_member_tool \
@@ -35,7 +35,7 @@ obs_sequence_tool
 arguments "$@"
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 # build and run preprocess before making any other DART executables
 buildpreprocess
@@ -44,7 +44,7 @@ buildpreprocess
 buildit
 
 # clean up
-\rm -f *.o *.mod
+\rm -f -- *.o *.mod
 
 }
 

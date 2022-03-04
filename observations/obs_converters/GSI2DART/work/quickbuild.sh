@@ -21,7 +21,7 @@ gsi_to_dart
 arguments "$@"
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 # run the c preprocessor on  enkf/kinds.F90
 \rm -f ../enkf/mykinds.f90
@@ -35,7 +35,7 @@ buildconv
 
 
 # clean up
-\rm -f *.o *.mod
+\rm -f -- *.o *.mod
 
 }
 

@@ -27,7 +27,7 @@ advance_time \
 arguments "$@"
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 # build and run preprocess before making any other DART executables
 buildpreprocess
@@ -37,7 +37,7 @@ buildconv
 
 
 # clean up
-\rm -f *.o *.mod
+\rm -f -- *.o *.mod
 
 }
 

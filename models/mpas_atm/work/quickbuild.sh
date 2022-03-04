@@ -11,7 +11,7 @@ EXTRA="$DART/assimilation_code/location/threed_cartesian/xyz_location_mod.f90"
 
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 programs=( \
 closest_member_tool \
@@ -45,7 +45,7 @@ update_mpas_states \
 arguments "$@"
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 # build and run preprocess before making any other DART executables
 buildpreprocess
@@ -54,7 +54,7 @@ buildpreprocess
 buildit
 
 # clean up
-\rm -f *.o *.mod
+\rm -f -- *.o *.mod
 
 }
 

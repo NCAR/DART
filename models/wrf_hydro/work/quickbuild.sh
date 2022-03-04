@@ -11,7 +11,7 @@ EXTRA="$DART/models/wrf/module_map_utils.f90"
 
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 programs=( \
 closest_member_tool \
@@ -46,7 +46,7 @@ create_identity_streamflow_obs
 arguments "$@"
 
 # clean the directory
-\rm -f *.o *.mod Makefile .cppdefs
+\rm -f -- *.o *.mod Makefile .cppdefs
 
 # build and run preprocess before making any other DART executables
 buildpreprocess
@@ -55,7 +55,7 @@ buildpreprocess
 buildit
 
 # clean up
-\rm -f *.o *.mod
+\rm -f -- *.o *.mod
 
 }
 
