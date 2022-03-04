@@ -152,6 +152,15 @@ test_diag_structure
 test_read_write_restarts
 test_read_write_time
 test_state_structure
+test_corr
+test_diff
+test_exp
+test_gamma
+test_gaussian
+test_hist
+test_inv_gamma
+test_random
+test_reseed
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
