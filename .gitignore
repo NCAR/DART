@@ -161,6 +161,7 @@ test_hist
 test_inv_gamma
 test_random
 test_reseed
+timetest
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
