@@ -1,4 +1,4 @@
-# Template for Intel ifort and Mac OSX
+# Template for Intel Fortran Compiler on Linux clusters and workstations.
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -25,7 +25,7 @@
 #     -check <keywords>    enables/disables more specific runtime checks.
 #           keywords:  [arg_temp_created,bounds,overflow,format,pointers,uninit]
 #     -warn <keywords>  the level of warning messages issued.
-#           keywords:  [alignments, declarations,
+#           keywords:  [alignments, argument_checking, declarations,
 #                      errors, fileopt, general, ignore_loc,
 #                      stderrors, truncated_source, uncalled,
 #                      uninitialized, unused, usage, all]
@@ -33,6 +33,9 @@
 #           Typically this is when a real function is called as if it were a
 #           subroutine, OR a subroutine is called as if it were a function (return
 #           values left of FP stack OR too much data is taken off the FP stack)
+#     -vec-reportN  controls how much diagnostic output is printed about
+#                   loops vectorized by the compiler. N = 0 is silent,
+#                   N can have values up to 5.
 #     -traceback    tells the compiler to generate extra information in the
 #                   object file to provide source file traceback information
 #                   when a severe error occurs at run time
@@ -81,7 +84,6 @@
 #                (e.g. csh family: setenv FORT_BUFFERED true    or
 #                ksh family: export FORT_BUFFERED=true).  
 #
-#
 # FFLAGS   possibly useful, not normally used by DART
 #     -fpp     run Fortran preprocessor on source files prior to compilation
 #     -free    interpret source as free-format, regardless of file extension
@@ -118,7 +120,7 @@ LD = ifort
 # LIBS = -L$(NETCDF)/lib -lnetcdf
 # LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 # LIBS = -L$(NETCDF)/lib -lnetcdf           -lcurl -lhdf5_hl -lhdf5 -lz -lm
-# LIBS = -L$(NETCDF)/lib -lnetcdf -lnetcdff -lcurl -lhdf5_hl -lhdf5 -lz -lm
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz -lm
 #
 # If you get an error "ld: library not found for -lnetcdff" (note 2 f's),
 # remove it from the LIBS line. The same is true for any library. If 'ld'
@@ -128,27 +130,27 @@ LD = ifort
 # uncomment the following line and set value to where lib and include
 # are found for the netcdf files that match this compiler.
 #
-NETCDF = /Users/hkershaw/software/intel
+# NETCDF = /opt/local
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-
-# for Intel 9.x:
-#FFLAGS  = $(INCS) -O2
-#LDFLAGS = $(INCS) -Wl,-stack_size,10000000 $(LIBS)
-
-# for Intel 10.x and beyond:
-FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -assume buffered_io
-LDFLAGS = $(INCS) $(LIBS)
+FFLAGS  = -O -assume buffered_io $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
 # FFLAGS = -g -C -check noarg_temp_created -fpe0 \
 #          -fp-model precise  -ftrapuv -traceback \
 #          -warn declarations,uncalled,unused $(INCS)
 #
+# for speed on yellowstone (verify against a run with with -O and -fp-model precise
+#        that the numerical differences aren't too large to be acceptable):
+# FFLAGS = -O3 -axavx -ipo -vec-report0 $(INCS)
+#
+# Some optimized (BLAS, LAPACK) libraries may be available with:
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
+#
 # If you get this error: libimf.so: warning: warning: feupdateenv is not implemented
 # try adding: -limf -lm to your LIBS line.
-
 
 # <next few lines under version control, do not edit>
 # $URL$

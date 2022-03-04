@@ -4,7 +4,7 @@
 #   1. DART directory
 #   2. compiler
 
-export DART=/Users/hkershaw/DART/Refactor/Build_system/DART.build-all
+export DART=/glade/scratch/hkershaw/DART/Compile_all/DART
 FC=intel
 
 
@@ -20,6 +20,14 @@ cd $DART
 # running this once at the beginning otherwise all make commands will
 # try and alter the mpi_*_utilities_mod.f90 simultaneously
 cd assimilation_code/modules/utilities; ./fixsystem $FC
+cd -
+
+
+# build preprocess once
+pp_dir=$DART/assimilation_code/programs/preprocess
+cd $pp_dir
+$DART/build_templates/mkmf -x -p $pp_dir/preprocess \
+      -a $DART $pp_dir/path_names_preprocess
 cd -
 
 # local versions of obs_def_mod.f90 and obs_kind_mod.f90
