@@ -9,9 +9,9 @@ CONVERTER=text
 LOCATION=threed_sphere
 
 
-programs=( \
-text_to_obs \
-obs_sequence_tool \
+programs=(
+text_to_obs
+obs_sequence_tool
 advance_time
 )
 

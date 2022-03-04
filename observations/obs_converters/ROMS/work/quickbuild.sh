@@ -10,10 +10,10 @@ LOCATION=threed_sphere
 EXTRA="$DART/models/ROMS/model_mod.f90"
 
 
-programs=( \
-convert_roms_obs \
-obs_seq_to_netcdf \
-obs_sequence_tool \
+programs=(
+convert_roms_obs
+obs_seq_to_netcdf
+obs_sequence_tool
 advance_time
 )
 

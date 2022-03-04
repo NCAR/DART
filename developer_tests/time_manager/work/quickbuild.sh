@@ -11,7 +11,7 @@ LOCATION="threed_sphere"
 dev_test=1
 TEST="time_manager"
 
-serial_programs=( \
+serial_programs=(
 timetest
 )
 

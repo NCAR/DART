@@ -9,8 +9,8 @@ CONVERTER=SSEC
 LOCATION=threed_sphere
 
 
-programs=( \
-ssec_satwnd \
+programs=(
+ssec_satwnd
 )
 
 # build arguments

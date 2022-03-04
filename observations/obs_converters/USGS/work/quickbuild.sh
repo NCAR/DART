@@ -9,10 +9,10 @@ CONVERTER=USGS
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_streamflow \
-obs_seq_to_netcdf \
-obs_sequence_tool \
+programs=(
+convert_streamflow
+obs_seq_to_netcdf
+obs_sequence_tool
 advance_time
 )
 

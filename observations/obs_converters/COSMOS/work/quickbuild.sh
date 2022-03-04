@@ -9,10 +9,10 @@ CONVERTER=COSMOS
 LOCATION=threed_sphere
 
 
-programs=( \
-COSMOS_development \
-COSMOS_to_obs \
-obs_sequence_tool \
+programs=(
+COSMOS_development
+COSMOS_to_obs
+obs_sequence_tool
 advance_time
 )
 

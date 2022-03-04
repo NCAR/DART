@@ -9,8 +9,8 @@ CONVERTER=GOES
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_goes_ABI_L1b \
+programs=(
+convert_goes_ABI_L1b
 )
 
 # build arguments

@@ -9,9 +9,9 @@ CONVERTER=MIDAS
 LOCATION=threed_sphere
 
 
-programs=( \
-MIDAS_to_obs \
-obs_sequence_tool \
+programs=(
+MIDAS_to_obs
+obs_sequence_tool
 advance_time
 )
 

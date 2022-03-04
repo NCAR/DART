@@ -9,9 +9,9 @@ CONVERTER=SABER
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_saber_cdf \
-obs_sequence_tool \
+programs=(
+convert_saber_cdf
+obs_sequence_tool
 advance_time
 )
 

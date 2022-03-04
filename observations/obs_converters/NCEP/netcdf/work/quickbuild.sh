@@ -10,8 +10,8 @@ LOCATION=threed_sphere
 EXTRA=obs_error.path_names
 
 
-programs=( \
-convert_pb_netcdf \
+programs=(
+convert_pb_netcdf
 )
 
 # build arguments

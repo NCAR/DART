@@ -9,9 +9,9 @@ CONVERTER=DWL
 LOCATION=threed_sphere
 
 
-programs=( \
-dwl_to_obs \
-obs_sequence_tool \
+programs=(
+dwl_to_obs
+obs_sequence_tool
 advance_time
 )
 

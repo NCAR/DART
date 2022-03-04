@@ -9,10 +9,10 @@ CONVERTER=GRACE
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_daily_grace \
-obs_seq_to_netcdf \
-obs_sequence_tool \
+programs=(
+convert_daily_grace
+obs_seq_to_netcdf
+obs_sequence_tool
 advance_time
 )
 

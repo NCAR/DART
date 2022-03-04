@@ -9,9 +9,9 @@ CONVERTER=quikscat
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_L2b \
-obs_sequence_tool \
+programs=(
+convert_L2b
+obs_sequence_tool
 advance_time
 )
 

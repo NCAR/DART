@@ -9,9 +9,9 @@ CONVERTER=CHAMP
 LOCATION=threed_sphere
 
 
-programs=( \
-CHAMP_density_text_to_obs \
-obs_sequence_tool \
+programs=(
+CHAMP_density_text_to_obs
+obs_sequence_tool
 advance_time
 )
 

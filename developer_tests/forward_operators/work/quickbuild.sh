@@ -11,7 +11,7 @@ LOCATION="threed_sphere"
 dev_test=1
 TEST="forward_operators"
 
-programs=( \
+programs=(
 rttov_test
 rttov_unit_tests
 )

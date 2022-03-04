@@ -9,9 +9,9 @@ CONVERTER=tropical_cyclone
 LOCATION=threed_sphere
 
 
-programs=( \
-tc_to_obs \
-obs_sequence_tool \
+programs=(
+tc_to_obs
+obs_sequence_tool
 advance_time
 )
 

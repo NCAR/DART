@@ -13,7 +13,7 @@ LOCATION=threed_sphere
 mpisrc=mpi
 m="-w" 
 
-programs=( \
+programs=(
 gsi_to_dart
 )
 

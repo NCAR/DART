@@ -9,10 +9,10 @@ CONVERTER=tpw
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_gpspw \
-convert_tpw \
-obs_sequence_tool \
+programs=(
+convert_gpspw
+convert_tpw
+obs_sequence_tool
 advance_time
 )
 

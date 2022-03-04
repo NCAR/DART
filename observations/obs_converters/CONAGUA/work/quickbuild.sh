@@ -9,10 +9,10 @@ CONVERTER=CONAGUA
 LOCATION=threed_sphere
 
 
-programs=( \
-CONAGUA_convert_streamflow \
-obs_seq_to_netcdf \
-obs_sequence_tool \
+programs=(
+CONAGUA_convert_streamflow
+obs_seq_to_netcdf
+obs_sequence_tool
 advance_time
 )
 

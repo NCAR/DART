@@ -11,15 +11,15 @@ LOCATION="threed_sphere"
 dev_test=1
 TEST="utilities"
 
-serial_programs=( \
-PrecisionCheck \
-error_handler_test \
-file_utils_test \
-find_enclosing_indices_test \
-find_first_occurrence_test \
-nml_test \
-parse_args_test \
-sort_test \
+serial_programs=(
+PrecisionCheck
+error_handler_test
+file_utils_test
+find_enclosing_indices_test
+find_first_occurrence_test
+nml_test
+parse_args_test
+sort_test
 stacktest
 )
 

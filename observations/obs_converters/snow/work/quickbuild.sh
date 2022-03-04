@@ -8,10 +8,10 @@ CONVERTER=snow
 LOCATION=threed_sphere
 source "$DART"/build_templates/buildconvfunctions.sh
 
-programs=( \
-snow_to_obs \
-snow_to_obs_netcdf \
-obs_sequence_tool \
+programs=(
+snow_to_obs
+snow_to_obs_netcdf
+obs_sequence_tool
 advance_time
 )
 

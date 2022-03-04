@@ -9,9 +9,9 @@ CONVERTER=SSUSI
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_f16_edr_dsk \
-obs_sequence_tool \
+programs=(
+convert_f16_edr_dsk
+obs_sequence_tool
 advance_time
 )
 

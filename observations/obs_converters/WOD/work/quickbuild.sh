@@ -9,9 +9,9 @@ CONVERTER=WOD
 LOCATION=threed_sphere
 
 
-programs=( \
-wod_to_obs \
-obs_sequence_tool \
+programs=(
+wod_to_obs
+obs_sequence_tool
 advance_time
 )
 

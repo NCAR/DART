@@ -11,7 +11,7 @@ LOCATION="oned"
 dev_test=1
 TEST="obs_sequence"
 
-programs=( \
+programs=(
 obs_rwtest
 )
 

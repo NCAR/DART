@@ -10,17 +10,17 @@ LOCATION=threed_sphere
 EXTRA=obs_errors.path_names
 
 
-programs=( \
-convert_madis_acars \
-convert_madis_marine \
-convert_madis_mesonet \
-convert_madis_metar \
-convert_madis_profiler \
-convert_madis_rawin \
-convert_madis_satwnd \
-obs_seq_to_netcdf \
-obs_sequence_tool \
-advance_time \
+programs=(
+convert_madis_acars
+convert_madis_marine
+convert_madis_mesonet
+convert_madis_metar
+convert_madis_profiler
+convert_madis_rawin
+convert_madis_satwnd
+obs_seq_to_netcdf
+obs_sequence_tool
+advance_time
 )
 
 # build arguments

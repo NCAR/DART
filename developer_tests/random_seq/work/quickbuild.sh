@@ -11,15 +11,15 @@ LOCATION="threed_sphere"
 dev_test=1
 TEST="random_seq"
 
-serial_programs=( \
-test_corr \
-test_diff \
-test_exp \
-test_gamma \
-test_gaussian \
-test_hist \
-test_inv_gamma \
-test_random \
+serial_programs=(
+test_corr
+test_diff
+test_exp
+test_gamma
+test_gaussian
+test_hist
+test_inv_gamma
+test_random
 test_reseed
 )
 

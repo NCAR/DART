@@ -9,10 +9,10 @@ CONVERTER=GTSPP
 LOCATION=threed_sphere
 
 
-programs=( \
-thinned_gtspp_to_obs \
-gtspp_to_obs \
-obs_sequence_tool \
+programs=(
+thinned_gtspp_to_obs
+gtspp_to_obs
+obs_sequence_tool
 advance_time
 )
 

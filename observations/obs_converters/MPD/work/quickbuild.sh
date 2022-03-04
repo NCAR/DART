@@ -9,8 +9,8 @@ CONVERTER=MPD
 LOCATION=threed_sphere
 
 
-programs=( \
-MPD_text_to_obs \
+programs=(
+MPD_text_to_obs
 )
 
 # build arguments

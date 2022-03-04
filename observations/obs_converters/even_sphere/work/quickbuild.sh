@@ -10,8 +10,8 @@ LOCATION=threed_sphere
 EXTRA="$DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90"
 
 
-programs=( \
-create_sphere_obs \
+programs=(
+create_sphere_obs
 advance_time
 )
 

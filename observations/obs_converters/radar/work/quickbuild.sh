@@ -9,9 +9,9 @@ CONVERTER=radar
 LOCATION=threed_sphere
 
 
-programs=( \
-create_obs_radar_sequence \
-obs_sequence_tool \
+programs=(
+create_obs_radar_sequence
+obs_sequence_tool
 advance_time
 )
 

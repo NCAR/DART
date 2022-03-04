@@ -9,9 +9,9 @@ CONVERTER=gnd_gps_vtec
 LOCATION=threed_sphere
 
 
-programs=( \
-gnd_gps_vtec_text_to_obs \
-obs_sequence_tool \
+programs=(
+gnd_gps_vtec_text_to_obs
+obs_sequence_tool
 advance_time
 )
 

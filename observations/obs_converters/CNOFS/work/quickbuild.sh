@@ -9,9 +9,9 @@ CONVERTER=CNOFS
 LOCATION=threed_sphere
 
 
-programs=( \
-CNOFS_text_to_obs \
-obs_sequence_tool \
+programs=(
+CNOFS_text_to_obs
+obs_sequence_tool
 advance_time
 )
 

@@ -9,10 +9,10 @@ CONVERTER=SST
 LOCATION=threed_sphere
 
 
-programs=( \
-oi_sst_to_obs \
-sst_to_obs \
-obs_sequence_tool \
+programs=(
+oi_sst_to_obs
+sst_to_obs
+obs_sequence_tool
 advance_time
 )
 

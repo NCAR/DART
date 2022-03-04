@@ -9,7 +9,7 @@ CONVERTER="NCEP/prep_bufr"
 LOCATION=threed_sphere
 
 
-programs=( \
+programs=(
 advance_time
 )
 

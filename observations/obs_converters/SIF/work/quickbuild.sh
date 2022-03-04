@@ -9,9 +9,9 @@ CONVERTER=SIF
 LOCATION=threed_sphere
 
 
-programs=( \
-SIF_to_obs_netcdf \
-obs_sequence_tool \
+programs=(
+SIF_to_obs_netcdf
+obs_sequence_tool
 advance_time
 )
 

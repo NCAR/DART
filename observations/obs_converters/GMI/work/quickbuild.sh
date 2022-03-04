@@ -9,7 +9,7 @@ CONVERTER=GMI
 LOCATION=threed_sphere
 
 
-programs=( \
+programs=(
 convert_gmi_L1
 )
 

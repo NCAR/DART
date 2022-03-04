@@ -9,20 +9,20 @@ MODEL=lorenz_04
 LOCATION=oned
 
 
-programs=( \
-closest_member_tool \
-filter \
-model_mod_check \
+programs=(
+closest_member_tool
+filter
+model_mod_check
 perfect_model_obs
 )
 
-serial_programs=( \
-create_fixed_network_seq \
-create_obs_sequence \
-fill_inflation_restart \
-integrate_model \
-obs_common_subset \
-obs_diag \
+serial_programs=(
+create_fixed_network_seq
+create_obs_sequence
+fill_inflation_restart
+integrate_model
+obs_common_subset
+obs_diag
 obs_sequence_tool
 )
 

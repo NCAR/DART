@@ -9,9 +9,9 @@ CONVERTER=Ameriflux
 LOCATION=threed_sphere
 
 
-programs=( \
-level4_to_obs \
-obs_sequence_tool \
+programs=(
+level4_to_obs
+obs_sequence_tool
 advance_time
 )
 

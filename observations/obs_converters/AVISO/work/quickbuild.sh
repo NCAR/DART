@@ -9,9 +9,9 @@ CONVERTER=AVISO
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_aviso \
-obs_sequence_tool \
+programs=(
+convert_aviso
+obs_sequence_tool
 advance_time
 )
 

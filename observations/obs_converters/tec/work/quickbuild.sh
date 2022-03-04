@@ -9,9 +9,9 @@ CONVERTER=tec
 LOCATION=threed_sphere
 
 
-programs=( \
-tec_to_obs \
-obs_sequence_tool \
+programs=(
+tec_to_obs
+obs_sequence_tool
 advance_time
 )
 

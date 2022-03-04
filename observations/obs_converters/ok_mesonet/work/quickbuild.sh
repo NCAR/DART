@@ -12,10 +12,10 @@ EXTRA="$DART/observations/obs_converters/obs_error/dewpoint_obs_err_mod.f90
        $DART/observations/obs_converters/MADIS/meteor_mod.f90"
 
 
-programs=( \
-convert_ok_mesonet \
-read_geo \
-obs_sequence_tool \
+programs=(
+convert_ok_mesonet
+read_geo
+obs_sequence_tool
 advance_time
 )
 

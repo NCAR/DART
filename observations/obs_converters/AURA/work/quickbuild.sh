@@ -9,9 +9,9 @@ CONVERTER=AURA
 LOCATION=threed_sphere
 
 
-programs=( \
-convert_aura \
-obs_sequence_tool \
+programs=(
+convert_aura
+obs_sequence_tool
 advance_time
 )
 

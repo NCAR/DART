@@ -9,9 +9,9 @@ CONVERTER="NCEP/ascii_to_obs"
 LOCATION=threed_sphere
 
 
-programs=( \
-create_real_obs \
-prepbufr_to_obs \
+programs=(
+create_real_obs
+prepbufr_to_obs
 )
 
 # build arguments

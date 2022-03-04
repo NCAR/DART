@@ -10,11 +10,11 @@ CONVERTER=gps
 LOCATION=threed_sphere
 LIBRARIES="../../NCEP/prep_bufr/lib/bufrlib.a"  
 
-programs=( \
-convert_cosmic_gps_cdf \
-convert_cosmic_ionosphere \
-convert_gpsro_bufr \
-obs_sequence_tool \
+programs=(
+convert_cosmic_gps_cdf
+convert_cosmic_ionosphere
+convert_gpsro_bufr
+obs_sequence_tool
 advance_time
 )
 

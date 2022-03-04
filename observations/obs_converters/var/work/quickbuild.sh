@@ -11,11 +11,11 @@ EXTRA="$DART/models/wrf/model_mod.f90 \
        $DART/models/wrf/module_map_utils.f90"
 
 
-programs=( \
-gts_to_dart \
-littler_tf_dart \
-rad_3dvar_to_dart \
-obs_sequence_tool \
+programs=(
+gts_to_dart
+littler_tf_dart
+rad_3dvar_to_dart
+obs_sequence_tool
 advance_time
 )
 
