@@ -52,8 +52,8 @@ observations that are assimilated, updated model state variables, assimilation t
 assimilation frequency, and the model and observation grid resolution.
 
 We encourage users to complete the tutorial and then modify CLM-DART to pursue their own
-research questions.  We have comprehensive and searchable `documentation
-<https://docs.dart.ucar.edu/en/latest/README.html>`__, with trained and experienced
+research questions.  We have comprehensive and searchable :doc:`documentation
+<../../../README>`, with trained and experienced
 staff that can help troubleshoot issues (dart@ucar.edu).
 
 
@@ -1357,7 +1357,7 @@ creates a sufficient enough ensemble spread such that the observation falls
 within the outlier threshold and is accepted.  In other cases, 
 an observation may be accepted, but the posterior update is negligible. 
 If you experience these issues, a helpful troubleshooting guide is 
-located :doc:`here. <../../../guide/quality_control_mod>`
+located :doc:`here. <../../../guide/dart-quality-control>`
 
 
 
@@ -1370,7 +1370,7 @@ a wide variety of Matlab diagnostic scripts that provide a more formal evaluatio
 of assimilation performance.  These diagnostics can provide clues
 to further maximize performance through adjustments of the DART settings 
 (localization, inflation, etc.). The full suite of diagnostic scripts can be found
-at this path in your DART installation (``<dartroot>/diagnostics/matlab``) with supporting 
+at this path in your DART installation (``DART/diagnostics/matlab``) with supporting 
 documentation found :doc:`here. <../../../guide/matlab-observation-space>`
 
 
@@ -1427,7 +1427,7 @@ for this tutorial are set such that every day of observations
 are displayed individually. Because the tutorial is a global run
 we define the ``lonlim`` and ``latlim`` setting to include the
 entire globe.  For more information about the  ``obs_diag`` namelist
-settings go :doc:`here.  <../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`
+settings go :doc:`here.  <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag>`
 
 ::
 
