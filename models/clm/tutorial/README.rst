@@ -512,7 +512,7 @@ step by executing ``preprocess`` which generates source code
 used for this tutorial.  In this step, we compile these observation definitions in to the DART
 executables. The observations are read into the
 assimilation through an observation sequence file whose format is described 
-:doc:`here. <../../guide/detailed-structure-obs-seq>`
+:doc:`here. <../../../guide/detailed-structure-obs-seq>`
 
 First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
 is pointed to the directory where the observation sequence files are 
