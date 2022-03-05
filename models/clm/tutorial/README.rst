@@ -169,11 +169,12 @@ are located as tar files `here. <http://www.image.ucar.edu/pub/DART/CESM>`__
 For this tutorial use the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
 and untar it on your local machine.  
 
-:: 
+::
+ 
   tar -xvf DART_SourceMods_cesm2_2_0_2021_07_02.tar
 
 For more information on the 
-SourceMods see the main CLM-DART documentation. :doc:`CLM-DART documentation <../readme>`
+SourceMods see the main :doc:`CLM-DART documentation. <../readme>`
 
 
 
@@ -183,7 +184,7 @@ Step 2: Download DART
 The tutorial material is available within the most recent release of the
 DART repository on the `main branch <https://github.com/NCAR/DART>`__.
 
-  ::
+::
  
   cd /glade/work/$USER/
   git clone https://github.com/NCAR/DART.git
@@ -289,8 +290,7 @@ are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
 ::
 
   cd DART/models/clm/work
- # View and edit the input.nml
- > vi input.nml
+  vi input.nml
 
 This example uses namelist setting that specifically loads ``obs_def`` and 
 ``obs_quantity`` commonly used for land DA, including models like CLM.
@@ -512,7 +512,7 @@ step by executing ``preprocess`` which generates source code
 used for this tutorial.  In this step, we compile these observation definitions in to the DART
 executables. The observations are read into the
 assimilation through an observation sequence file whose format is described 
-:doc:`here <../../guide/detailed-structure-obs-seq>`
+:doc:`here. <../../guide/detailed-structure-obs-seq>`
 
 First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
 is pointed to the directory where the observation sequence files are 
@@ -664,7 +664,7 @@ the model from entering into unrealistic state space.
 
    This tutorial already provides properly formatted synthetic observations for the user, 
    however, when using 'real' observations for research applications DART provides 
-   `observation converters <https://docs.dart.ucar.edu/en/latest/guide/available-observation-converters.html>`__.
+   :doc:`observation converters. <../../../guide/available-observation-converters>`
    Observation converters are scripts that convert the various data product formats into the 
    observation sequence file format required by the DART code.  Observations converters most relevant for 
    land DA and the CLM model include those for :doc:`leaf area, <../../../observations/obs_converters/MODIS/MOD15A2_to_obs>`
@@ -864,8 +864,8 @@ localize in the vertical direction.  For land modeling this could be important
 for soil carbon or soil moisture variables which typically only have observations
 near the land surface, whereas the model state is distributed in layers well
 below the surface.  For vertical localization the ``horiz_dist_only`` must be set
-to ``.false.`` For more information on localization  see 
-`assim_tools_mod. <https://docs.dart.ucar.edu/en/latest/assimilation_code/modules/assimilation/assim_tools_mod.html>`__ 
+to ``.false.`` For more information on localization see
+:doc:`assim_tools_mod. <../../../assimilation_code/modules/assimilation/assim_tools_mod>` 
 
 
 
@@ -888,7 +888,7 @@ in such a way that the mean remains unchanged.
 Although **inflation** was originally designed to account for ensemble sampling errors,
 it has also been demonstrated to help address systemic errors between models and
 observations as well. More information on inflation can be found 
-:doc: `here <../../guide/inflation>`
+:doc:`here. <../../../guide/inflation>`
 
 In this tutorial we implement a time and space varying inflation (inflation flavor
 5: enhanced spatial-varying; inverse gamma) such that the inflation becomes an 
@@ -1331,7 +1331,7 @@ denoted by a ``DART quality control value = 0``. If the
 ``DART quality control value =7`` this indicates the observation has
 fallen outside the ``outlier_threshold`` value and is rejected. 
 For more details on the DART quality control variables read the  
-:doc:`documentation. <../../assimilation_code/modules/assimilation/quality_control_mod
+:doc:`documentation. <../../../assimilation_code/modules/assimilation/quality_control_mod>`
 
 First, in your own tutorial assimilation confirm that this observation
 (and other observations) was accepted.
@@ -1357,7 +1357,7 @@ creates a sufficient enough ensemble spread such that the observation falls
 within the outlier threshold and is accepted.  In other cases, 
 an observation may be accepted, but the posterior update is negligible. 
 If you experience these issues, a helpful troubleshooting guide is 
-located :doc:`here. <../../guide/quality_control_mod`
+located :doc:`here. <../../../guide/quality_control_mod>`
 
 
 
@@ -1371,7 +1371,7 @@ of assimilation performance.  These diagnostics can provide clues
 to further maximize performance through adjustments of the DART settings 
 (localization, inflation, etc.). The full suite of diagnostic scripts can be found
 at this path in your DART installation (``<dartroot>/diagnostics/matlab``) with supporting 
-documentation found `here. <https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`__
+documentation found :doc:`here. <../../../guide/matlab-observation-space>`
 
 
 .. Note::
@@ -1461,7 +1461,7 @@ a netcdf format (``obs_diag_output.nc``) by executing the
 
 ::
  
- >  ./obs_diag
+   ./obs_diag
 
 Next, use Matlab to create the ``plot_rmse_xxx_evolution.m`` figures.
 Note that this function automatically plots the RMSE, where the ``copy``
@@ -1488,7 +1488,7 @@ within ``input.nml``.
 For this tutorial we plot a list of  ``obs_seq<>.final`` files as shown below,
 which includes the global domain.  We include all observations within a single
 ``bin``.  For more information about these settings go 
-`here. <../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf>` 
+:doc:`here. <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf>` 
 
 ::
 
