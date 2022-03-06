@@ -562,6 +562,7 @@ within an observation sequence file used within this tutorial (``obs_seq.2011-01
    0.200000000000000
 
 
+Below is the same portion of the file as above, but with the variable names:
 
 ::
 
@@ -1182,7 +1183,7 @@ the assimilation run:
 
 ::
 
- > cd <caseroot directory>
+ > cd <caseroot>
  > ./case.submit
 
 Check the status of the job on Cheyenne using PBS commands to determine if job
@@ -1294,6 +1295,9 @@ in Step 7.
           23
      0     149750
   0.200000000000000
+
+Below we provide the variable names for the ``clm_obs_seq.2011-01-02-00000.final``
+example from above.
 
 ::
 
@@ -1411,8 +1415,8 @@ The important DART executables for the diagnostics are
 ``obs_diag`` and ``obs_seq_to_netcdf``.  If they do not exist,
 perform the ``./quickbuild.csh -mpi`` command to create them.
 
-Next generate a text file that includes all the ``obs_seq*.final``
-files from the tutorial simulation
+Next generate a text file that includes all the ``clm_obs_seq*.final``
+files that were created from the tutorial simulation
 
 ::
  
@@ -1420,7 +1424,7 @@ files from the tutorial simulation
 
 Next edit the ``&obs_diag_nml`` namelist within the ``input.nml``.
 to assign the `obs_seqence_list` 
-to the text file containing the names of the ``obs_seq*.final``
+to the text file containing the names of the ``clm_obs_seq*.final``
 files associated with the tutorial.  Next, specify how the
 observations are displayed by defining the ``bin`` settings, which
 for this tutorial are set such that every day of observations
@@ -1455,7 +1459,7 @@ settings go :doc:`here.  <../../../assimilation_code/programs/obs_diag/threed_sp
    verbose               = .true.
    /
 
-Next convert the information in the ``obs_seq*.final`` files into
+Next convert the information in the ``clm_obs_seq*.final`` files into
 a netcdf format (``obs_diag_output.nc``) by executing the 
 ``obs_diag`` executable.
 
@@ -1485,7 +1489,7 @@ the user to identify observation acceptance as a function of sub-regions.
 Next edit both the ``&obs_seq_to_netcdf_nml`` and ``&schedule_nml`` namelist sections
 within ``input.nml``.
 
-For this tutorial we plot a list of  ``obs_seq<>.final`` files as shown below,
+For this tutorial we plot a list of the  ``clm_obs_seq*.final`` files as shown below,
 which includes the global domain.  We include all observations within a single
 ``bin``.  For more information about these settings go 
 :doc:`here. <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf>` 
