@@ -172,7 +172,8 @@ parse_args_test
 sort_test
 stacktest
 obs_rwtest
-
+test_quad_irreg_interp
+test_quad_reg_interp
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

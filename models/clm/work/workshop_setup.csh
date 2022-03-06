@@ -18,7 +18,7 @@ set MODEL = "CLM"
 
 set MPICMD='mpiexec_mpt'
 
-csh quickbuild.csh
+./quickbuild.sh
 
 cp clm_dart.clm2.r.2013-07-02-00000.nc  clm_restart.nc
 cp clm_dart.clm2.h0.2013-07-02-00000.nc clm_history.nc
