@@ -292,6 +292,15 @@ are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
   cd DART/models/clm/work
   vi input.nml
 
+.. Note::
+
+ We use the **vi editor** within the tutorial instructions, but we recommend that
+ you use the text editor you are most comfortable with. To close the vi 
+ editor follow these instructions from 
+ `stackoverflow. <https://stackoverflow.com/questions/11828270/how-do-i-exit-the-vim-editor>`__
+
+
+
 This example uses namelist setting that specifically loads ``obs_def`` and 
 ``obs_quantity`` commonly used for land DA, including models like CLM.
 Confirm the settings are as follows:
