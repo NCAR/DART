@@ -531,7 +531,6 @@ References
    :hidden:
          
    models/MITgcm_ocean/create_ocean_obs
-   models/MITgcm_ocean/trans_mitdart
    models/NCOMMAS/dart_to_ncommas
    models/NCOMMAS/ncommas_to_dart
 
