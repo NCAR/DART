@@ -36,13 +36,12 @@ inheritance between platform-specific observations like *DRIFTER_U_CURRENT_COMPO
 observations to assimilate. :doc:`./create_ocean_obs` is the program to create a DART observation sequence from a very
 particular ASCII file.
 
-| 
 
 Converting between DART and the model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 +---------------------------+-----------------------------------------------------------------------------------------+
-| trans_mitdart             | converts the ocean model snapshot files into a DART netcdf files and back               |
+| trans_mitdart             | converts the ocean model snapshot files into DART netcdf files and back                 |
 +---------------------------+-----------------------------------------------------------------------------------------+
 
 The data assimilation period is controlled in the ``input.nml``\ ``&model_nml`` namelist. In combination with the ocean
@@ -85,12 +84,8 @@ Controlling the model advances
 Getting started
 ^^^^^^^^^^^^^^^
 
-I always like running something akin to a 'perfect model' experiment to start. Since I have not come up with a good way
-to perturb a single model state to generate an ensemble, here's the next best thing. Please keep in mind that the
-details for running each program are covered in their own documentation.
 
-#. create a set of initial conditions for DART as described in Generating the intial ensemble and keep a copy of the
-   'middle' snapshot - then use it as the initial condition for ``perfect_model_obs``.
+#. create an initial ensemble for DART.
 #. create a TINY set of 'perfect' observations in the normal fashion:
    :doc:`../../assimilation_code/programs/create_obs_sequence/create_obs_sequence` and then
    :doc:`../../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq` to create an empty
