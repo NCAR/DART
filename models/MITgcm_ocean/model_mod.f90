@@ -60,7 +60,6 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_io_clamping_minval, get_num_domains, &
                                   get_io_clamping_maxval
 
-!!!!! TODO: check if needed
 use netcdf
 
 implicit none
@@ -1175,8 +1174,6 @@ subroutine nc_write_model_atts(ncFileID, domain_id)
 !     to define the location dimension and variable ID. All we need to do
 !     is query, verify, and fill ...
 !
-use typeSizes
-use netcdf
 
 integer, intent(in)  :: ncFileID
 integer, intent(in)  :: domain_id
