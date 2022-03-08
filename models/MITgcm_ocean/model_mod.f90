@@ -40,7 +40,7 @@ use mpi_utilities_mod,     only : my_task_id
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
-use default_model_mod,     only : nc_write_model_vars
+use default_model_mod,     only : nc_write_model_vars, adv_1step
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -560,37 +560,6 @@ if ( .not. module_initialized ) call static_init_model
 x = 0.0_r8
 
 end subroutine init_conditions
-
-
-
-subroutine adv_1step(x, time)
-!------------------------------------------------------------------
-!
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to 
-! compute a timestep, for instance for radiation computations.
-! This interface is only called IF the namelist parameter
-! async is set to 0 in perfect_model_obs or filter -OR- if the 
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If none of these options
-! are used (the model will only be advanced as a separate 
-! model-specific executable), this can be a NULL INTERFACE.
-
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
-
-if ( .not. module_initialized ) call static_init_model
-
-if (do_output()) then
-   call print_time(time,'NULL interface adv_1step (no advance) DART time is')
-   call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
-   call error_handler(E_ERR,'adv_1step','not configured to advance model',source)
-endif
-
-end subroutine adv_1step
-
 
 
 function get_model_size()
