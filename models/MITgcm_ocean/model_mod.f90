@@ -40,7 +40,8 @@ use mpi_utilities_mod,     only : my_task_id
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
-use default_model_mod,     only : nc_write_model_vars, adv_1step
+use default_model_mod,     only : nc_write_model_vars, adv_1step, &
+                                  init_conditions => fail_init_conditions
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -538,28 +539,6 @@ model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size
 
 end subroutine static_init_model
-
-
-
-
-subroutine init_conditions(x)
-!------------------------------------------------------------------
-!
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no 
-! synthetic data experiments using perfect_model_obs are planned, 
-! this can be a NULL INTERFACE.
-
-real(r8), intent(out) :: x(:)
-
-if ( .not. module_initialized ) call static_init_model
- 
-x = 0.0_r8
-
-end subroutine init_conditions
 
 
 function get_model_size()
