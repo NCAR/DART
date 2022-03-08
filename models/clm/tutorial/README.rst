@@ -705,7 +705,8 @@ quantities for this tutorial:
 +--------------------------+-----------------------------+-----------------+
 | DART Observation Type    | DART Observation Quantities | CLM variables   |
 +==========================+=============================+=================+
-| ``SOIL_TEMPERATURE``     | ``QTY_SOIL_TEMPERATURE``    | ``T_SOISNO``    |
+| ``SOIL_TEMPERATURE``     | ``QTY_SOIL_TEMPERATURE``    | ``TSOI``        |
+|                          | ``QTY_TEMPERATURE``         | ``T_SOISNO``    |
 +--------------------------+-----------------------------+-----------------+
 | ``MODIS_SNOWCOVER_FRAC`` | ``QTY_SNOWCOVER_FRAC``      | ``frac_sno``    |
 +--------------------------+-----------------------------+-----------------+
@@ -721,7 +722,7 @@ quantities for this tutorial:
   For this tutorial example most of the **observation types** rely on a single **quantity**
   (and CLM variable) to calculate the expected observation.  For these the CLM
   variable is spatially interpolated to best match the location of the observation.
-  The ``BIOMASS`` observation type is the exception in which 3 **quantities** are required
+  The ``BIOMASS`` observation type is an exception in which 3 **quantities** are required
   to calculate the expected observation.  In that case the sum of the CLM
   variables of leaf, live stem and structural (dead) carbon represents the biomass observation. 
  
@@ -750,6 +751,7 @@ snow. Modify the ``&model_nml`` within ``input.nml`` as below:
                     'livestemc',   'QTY_LIVE_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
                     'deadstemc',   'QTY_DEAD_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
                     'TLAI',        'QTY_LEAF_AREA_INDEX',        '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'TSOI',        'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'history' , 'NO_COPY_BACK'
    /
 
 
@@ -820,6 +822,12 @@ The ``hist_fincl`` setting generates history files (``fincl1->h0``; ``fincl2->h1
 in structured gridded format (``.true.``) or in unstructured, vector history format (``.false.``).
 Most of the history files variables in this example are provided just for illustration, however,
 the tutorial requires that the ``TLAI`` variable is output in vector history format.
+
+The ``restart``, ``history`` and ``vector`` files define domains 1,2 and 3 respectively
+within DART. The ``restart`` domain (domain 1) must always be defined, however domains 2 and 3 are optional.
+In this tutorial example all 3 domains are required, where domain 2 corresponds to the
+``h0`` history file, and domain 3 corresponds with the ``h2`` history files. 
+
   
 
 
@@ -1014,7 +1022,30 @@ the ``&fill_inflation_restart_nml`` as follows:
 +--------------------------------+---------------------------------------------------------------+               
 
 
+It is also important to confirm that the domains defined in Step 8 (``restart``, ``history``, ``vector``)
+are the same as what is defined in the ``&fill_inflation_restart_nml`` and ``&filter_nml`` namelist settings.
+Confirm the input and output file list account for all 3 domains as:
 
+::
+
+ &filter_nml
+    input_state_file_list    = 'restart_files.txt',
+                               'history_files.txt',
+                               'vector_files.txt'
+    output_state_file_list   = 'restart_files.txt',
+                               'history_files.txt',
+                               'vector_files.txt'
+::
+
+ &fill_inflation_restart_nml
+   input_state_files = 'clm_restart.nc','clm_history.nc','clm_vector_history.nc'
+   single_file       = .false.
+
+
+.. Important::
+
+  The ``input_state_file_list``, ``output_state_file_list`` and ``input_state_files`` must match the domains
+  that were defined in Step 8.   
 
 
 Step 11: Complete the Assimilation Setup
