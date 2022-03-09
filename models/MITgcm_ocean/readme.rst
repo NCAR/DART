@@ -8,13 +8,6 @@ Overview
 The `MIT ocean GCM <http://mitgcm.org/>`__ version 'checkpoint59a' is the foundation of this directory. It was
 modified by Ibrahim Hoteit of Scripps for his use, and so it differs from the original distribution.
 
-Since the model is highly parallelized, it can be compiled with a target number of processors in mind. From DART's
-perspective, the most logical strategy is to run ``filter`` or ``perfect_model_obs`` with **async=4**: advance the
-model in parallel ... one ensemble member after another. In this mode, the same set of processors are used for the
-data assimilation. The performance of the parallel assimilation algorithm has been tested up through 64 processors,
-and should scale well beyond that - but it remains to be quantified. The scaling for the ocean model is unknown to me,
-but Ibrahim routinely runs with many more than 64 processors.
-
 As for all DART experiments, the overall design for an experiment is this: the DART program ``filter`` will read the
 initial conditions file, the observation sequence file, and the DART namelist to decide whether or not to advance the
 ocean model. All of the control of the execution of the ocean model is done by DART directly. If the model needs to be
@@ -23,6 +16,10 @@ ENTIRELY responsible for getting all the input files, data files, namelists, etc
 the model, and copying the results back to the parent directory (which we call CENTRALDIR). The whole process hinges
 on setting the ocean model namelist values such that it is doing a cold start for every model advance.
 
+
+The data assimilation period is controlled in the ``input.nml``\ ``&model_nml`` namelist. In combination with the ocean
+model dynamics timestep ``data``\ ``&PARM03:deltaTClock`` this determines the amount of time the model will advance for
+each assimilation cycle.
 
 
 Observations
@@ -40,21 +37,8 @@ particular ASCII file.
 Converting between DART and the model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-+---------------------------+-----------------------------------------------------------------------------------------+
-| trans_mitdart             | converts the ocean model snapshot files into DART netcdf files and back                 |
-+---------------------------+-----------------------------------------------------------------------------------------+
-
-The data assimilation period is controlled in the ``input.nml``\ ``&model_nml`` namelist. In combination with the ocean
-model dynamics timestep ``data``\ ``&PARM03:deltaTClock`` this determines the amount of time the model will advance for
-each assimilation cycle.
-
-
-Fortran direct-access big-endian data files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The MITgcm_ocean model uses Fortran direct-access big-endian data files. It is up to you to determine the proper
-compiler flags to compile DART such that DART can read and write these files. Every compiler/architecture is different,
-but we have put notes in each ``mkmf.template`` if we know how to achieve this.
+The MITgcm_ocean model uses Fortran direct-access big-endian data files. The program trans_mitdart is provided to
+convert the MITgcm_ocean model files to DART netcdf files and back.
 
 
 Controlling the model advances
@@ -63,7 +47,7 @@ Controlling the model advances
 | The assimilation period is specified by two namelist parameters in the ``input.nml``\ ``&model_nml`` namelist:
   ``assimilation_period_days`` and ``assimilation_period_seconds``. Normally, all observations within (+/-) HALF of the
   total assimilation period are used in the assimilation.
-| The time of the initial conditions is specified by two namelist parameters in the ``input.nml``\ &model_nml``
+| The time of the initial conditions is specified by two namelist parameters in the ``input.nml``\ ``&model_nml``
   namelist: ``init_time_days`` and ``init_time_seconds``; depending on the settings of these parameters, the times may
   or may not come directly from the DART initial conditions files.
 | The ocean model **MUST always** start from the input datasets defined in the ``data``\ ``&PARM05`` namelist.
@@ -79,7 +63,7 @@ Controlling the model advances
   until 1) there are no more observations to assimilate (i.e. the observation sequence file is exhausted) or 2) the time
   specified by ``input.nml``\ ``&filter_nml:last_obs_days,last_obs_seconds`` has been reached.
 
-| 
+
 
 Getting started
 ^^^^^^^^^^^^^^^
@@ -106,8 +90,7 @@ A perfectly sensible approach to get to know the system would be to try to
 Exploring the output
 ^^^^^^^^^^^^^^^^^^^^
 
-Is pretty much like any other model. The netCDF files have the model prognostic variables before and after the
-assimilation. There are Matlab® scripts for perusing the netCDF files in the ``DART/matlab`` directory. There are
+There are Matlab® scripts for perusing netCDF files in the ``DART/matlab`` directory. There are
 Matlab® scripts for exploring the performance of the assimilation in observation-space (after running
 :doc:`../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag` to explore the ``obs_seq.final`` file) - use the
 scripts starting with ``'plot_'``, e.g. ``DART/diagnostics/matlab/plot_*.m``. As always, there are some model-specific
