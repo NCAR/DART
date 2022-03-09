@@ -85,8 +85,7 @@ public :: get_model_size,         &
           convert_vertical_obs,   &
           convert_vertical_state, &
           read_model_time,        &
-          write_model_time,       &
-          ens_mean_for_model
+          write_model_time
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -1430,22 +1429,6 @@ read_model_time = model_time
 !endif
 
 end function read_model_time
-
-
-!------------------------------------------------------------------
-!> If the ensemble mean will be needed for some operation, this
-!> code must allocate space for the ensemble mean.
-!> If the ensemble mean is not needed, this routine does nothing.
-
-subroutine ens_mean_for_model(ens_mean)
-
-real(r8), intent(in) :: ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-end subroutine ens_mean_for_model
-
-
 
 
 function read_meta(fbase, vartype)
