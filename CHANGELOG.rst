@@ -22,6 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 10th 2022 :: Tracer advection model. Tag v9.14.0**
+
+- New model for tracer advection based on Lorenz_96 using a
+  Semi-Lagrangian scheme. 
+- Forward operator documentation updated to Manhattan
+
+*lorenz_96_tracer_advection contributed by Fairuz Ishraque (SIParCS)*
+
 **February 11 2022 :: Bug-fix for nag compiler. Tag v9.13.2**
 
 - Bug-fix for fixsystem preprocessing for NAG compiler
