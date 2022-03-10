@@ -139,7 +139,7 @@ switch lower(model)
 
       vars.fname = fname;
 
-   case {'simple_advection'}
+   case {'simple_advection', 'lorenz_96_tracer_advection'}
 
       num_locs = dim_length(fname,'location'); % # of X variables
       loc1d    =     ncread(fname,'location');
