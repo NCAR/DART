@@ -45,20 +45,16 @@ use default_model_mod,     only : nc_write_model_vars, adv_1step, &
 
 use dart_time_io_mod,      only : write_model_time
 
-
-use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
-                                  get_my_vars, get_copy_owner_index
+use ensemble_manager_mod,  only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
-                                  get_varid_from_kind, get_variable_name, &
-                                  state_structure_info, get_varid_from_varname, &
+                                  get_varid_from_kind, &
                                   get_index_start, get_index_end, &
                                   get_dart_vector_index, get_num_variables, &
-                                  get_num_dims, get_domain_size, &
-                                  get_io_clamping_minval, get_num_domains, &
-                                  get_io_clamping_maxval
+                                  get_domain_size, &
+                                  get_io_clamping_minval, get_num_domains
 
 use netcdf
 
@@ -1374,7 +1370,7 @@ call init_random_seq(random_seq, my_task_id())
 
 DOMAINS : do idom = 1, dom_count
 
-   VARIABLES : do ivar = 1, get_num_variables(idom)
+   VARIABLES : do ivar = 1, get_num_variables(idom) !HK todo this needs to be the domain_id returned from add_domain
 
       start_ind = get_index_start(idom, ivar)
       end_ind   = get_index_end(  idom, ivar)
