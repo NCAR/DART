@@ -62,7 +62,7 @@ CheckModel(input_file); % make sure model is supported - no need for anything el
 pinfo   = CheckModelCompatibility(truth_file,input_file);
 
 switch lower(pinfo.model)
-    case{'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
+    case{'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_96_tracer_advection', ...
          'lorenz_04', 'forced_lorenz_96','ikeda','simple_advection', 'null'}
 
     case{'fms_bgrid'}
