@@ -153,7 +153,7 @@ checking out ``release-cesm2.2.0``.
     git clone https://github.com/escomp/cesm.git cesm_dart
     cd cesm_dart
     git checkout release-cesm2.2.0
-    ./manage_externals/checkout_external
+    ./manage_externals/checkout_externals
 
 
 Adding CLM5 SourceMods
@@ -204,7 +204,7 @@ located at path ``DART/models/clm/shell_scripts/cesm2_2/`` with the
 exception of ``input.nml`` which is located at ``DART/models/clm/work/``.
 
 You will be asked to locate, edit, and execute these scripts during the tutorial
-and are they are critical to customizing the assimilation run.  Given their importance, we
+and they are critical to customizing the assimilation run.  Given their importance, we
 introduce them right away.
 
 For additional description of the CLM5-DART scripts and concepts please
@@ -730,7 +730,7 @@ quantities for this tutorial:
 
 Second, the DART state space also defines which portion of the CLM model state is updated by DART. 
 In DA terminology, limiting the influence of the observations to a subset of the CLM model
-state is know as 'localization' which is discussed more fully in Step 9.
+state is known as 'localization' which is discussed more fully in Step 9.
 In theory the complete CLM model state may be updated based on the relationship with the observations.
 In practice, a smaller subset of model state variables, that have a close physical relationship with
 the observations, are included in the DART state space.  In this tutorial, for example, we limit
@@ -1246,7 +1246,7 @@ without any errors.  To confirm this view the ``CaseStatus`` files:
 ::
 
  cd <caseroot>
- cat CaseRoot
+ cat CaseStatus
 
 A successful assimilation run will look like the following at the end
 of the file with ``case.run success`` at the end:
@@ -1389,7 +1389,7 @@ closer to the `observation value` as compared to the prior values.
 
 ::
 
-  cd <caseroot>
+  cd <rundir>
   less clm_obs_seq.2011-01-02-00000.final
 
 
