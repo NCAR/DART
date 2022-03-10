@@ -23,6 +23,7 @@ DART supported models:
 - :doc:`lorenz_84/readme`
 - :doc:`lorenz_96/readme`
 - :doc:`lorenz_96_2scale/readme`
+- :doc:`lorenz_96_tracer_advection/readme`
 - :doc:`forced_lorenz_96/readme`
 - :doc:`MITgcm_ocean/readme`
 - :doc:`mpas_atm/readme`

@@ -91,7 +91,7 @@ switch lower(pinfo.model)
       fprintf('Correlating variable %s index %d at time %d.\n', ...
            pinfo.base_var,pinfo.base_var_index, pinfo.base_time)
 
-   case {'simple_advection'}
+   case {'simple_advection', 'lorenz_96_tracer_advection'}
 
       disp('Your choice of variables are:')
       disp(pinfo.vars)
