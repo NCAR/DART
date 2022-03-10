@@ -60,12 +60,8 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'trans_mitdart.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
-logical, save       :: module_initialized = .false.
 character(len=1024) :: msgstring
 integer             :: io, iunit
 
@@ -122,15 +118,12 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 
-!=======================================================================
-! Get the party started
-!=======================================================================
-
 call initialize_utilities(source)
-call register_module(source,revision,revdate)
 
 call find_namelist_in_file('input.nml', 'trans_mitdart_nml', iunit)
 read(iunit, nml = trans_mitdart_nml, iostat = io) 
+
+call static_init_trans()
 
 if (go_to_dart) then 
    call MIT2DART()
@@ -150,10 +143,6 @@ subroutine static_init_trans()
 ! it reads in the grid information and then the model data.
 
 integer :: i, io
-
-! Since this routine calls other routines that could call this routine
-! we'll say we've been initialized pretty dang early.
-module_initialized = .true.
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -284,12 +273,12 @@ integer :: chl_varid
 
 real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
 
-real :: FVAL=-999.0
+real(r4) :: FVAL
 
-if ( .not. module_initialized ) call static_init_trans
+FVAL=-999.0_r4
 
-ALLOCATE(data_3d(Nx,Ny,Nz))
-ALLOCATE(data_2d(Nx,Ny))
+allocate(data_3d(Nx,Ny,Nz))
+allocate(data_2d(Nx,Ny))
 
 call check(nf90_create(path="OUTPUT.nc",cmode=or(nf90_clobber,nf90_64bit_offset),ncid=ncid))
 
@@ -611,8 +600,8 @@ endif
 
 call check(nf90_close(ncid))
 
-DEALLOCATE(data_3d)
-DEALLOCATE(data_2d)
+deallocate(data_3d)
+deallocate(data_2d)
 
 end subroutine MIT2DART
 
@@ -623,12 +612,10 @@ subroutine DART2MIT()
 
 integer :: ncid, varid, iunit
 real(r4), allocatable :: data_3d(:,:,:),data_2d(:,:)
-real :: FVAL
+real(r4) :: FVAL
 
-if ( .not. module_initialized ) call static_init_trans
-
-ALLOCATE(data_3d(Nx,Ny,Nz))
-ALLOCATE(data_2d(Nx,Ny))
+allocate(data_3d(Nx,Ny,Nz))
+allocate(data_2d(Nx,Ny))
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
@@ -778,8 +765,8 @@ endif
 
 call check( NF90_CLOSE(ncid) )
 
-DEALLOCATE(data_3d)
-DEALLOCATE(data_2d)
+deallocate(data_3d)
+deallocate(data_2d)
 
 end subroutine DART2MIT
 
@@ -787,7 +774,7 @@ end subroutine DART2MIT
 !> Subroutine that checks error status on NC file 
 !>  Check the error status of the netcdf command
 
-SUBROUTINE check(status)
+subroutine check(status)
 
 integer, intent (in) :: status
 
@@ -796,11 +783,11 @@ if(status /= nf90_noerr) then
     stop "Stopped"
 end if
 
-END SUBROUTINE check
+end subroutine check
 
 
 !===============================================================================
-!> Check the tracer variables after reading from the bianries
+!> Check the tracer variables after reading from the binaries
 !> Make sure they are non-negative
 !> Do the transform if requested
 !> md: mit2dart; dm: dart2mit
@@ -808,9 +795,11 @@ END SUBROUTINE check
 subroutine fill_var_md(var, fillval)
 
 real(r4), intent(inout) :: var(:, :, :)
-real,     intent(in)    :: fillval
+real(r4), intent(in)    :: fillval
 
-real :: low_conc = 1.0e-12
+real(r4) :: low_conc
+
+low_conc = 1.0e-12
 
 ! Make sure the tracer concentration is positive 
 where(var < 0.0_r4) var = low_conc
@@ -827,10 +816,12 @@ endif
 
 end subroutine
 
+!------------------------------------------------------------------
+
 subroutine fill_var_dm(var, fillval)
 
 real(r4), intent(inout) :: var(:, :, :)
-real,     intent(in)    :: fillval
+real(r4), intent(in)    :: fillval
 
 if (log_transform) then
    where (var == fillval)
