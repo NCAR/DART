@@ -166,11 +166,12 @@ update step.  These sourcecode modifications are brought in
 through the SourceMod mechanism in CLM where modifications overwrite
 the template sourcecode during the compilation step. The SourceMods
 are located as tar files `here. <http://www.image.ucar.edu/pub/DART/CESM>`__
-For this tutorial use the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
-and untar it on your local machine.  
+For this tutorial retrieve the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
+and untar it on your local machine as:  
 
 ::
  
+  wget https://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm2_2_0_2021_07_02.tar
   tar -xvf DART_SourceMods_cesm2_2_0_2021_07_02.tar
 
 For more information on the 
