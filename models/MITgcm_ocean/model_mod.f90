@@ -54,7 +54,7 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_index_start, get_index_end, &
                                   get_dart_vector_index, get_num_variables, &
                                   get_domain_size, &
-                                  get_io_clamping_minval, get_num_domains
+                                  get_io_clamping_minval
 
 use netcdf
 
@@ -1351,7 +1351,7 @@ integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: pert_amp
 logical,             intent(out)   :: interf_provided
 
-integer  :: i, idom, ivar, dom_count
+integer  :: i, ivar
 integer  :: copy, start_ind, end_ind
 real(r8) :: pertval, clamp_min_val 
 
@@ -1361,43 +1361,34 @@ if ( .not. module_initialized ) call static_init_model
 
 interf_provided = .true.
 
-! Number of domains
-! Only 1 domain, so far: both physical and biological variables 
-! are concatenated in a single domain
-dom_count = get_num_domains()
-
 call init_random_seq(random_seq, my_task_id())
 
-DOMAINS : do idom = 1, dom_count
+VARIABLES : do ivar = 1, get_num_variables(domain_id)
 
-   VARIABLES : do ivar = 1, get_num_variables(idom) !HK todo this needs to be the domain_id returned from add_domain
+   start_ind = get_index_start(domain_id, ivar)
+   end_ind   = get_index_end(  domain_id, ivar)
 
-      start_ind = get_index_start(idom, ivar)
-      end_ind   = get_index_end(  idom, ivar)
+   clamp_min_val = get_io_clamping_minval(domain_id, ivar)
 
-      clamp_min_val = get_io_clamping_minval(idom, ivar)
+   INDICES : do i = start_ind, end_ind
+      MEMBERS : do copy = 1, ens_size
 
-      INDICES : do i = start_ind, end_ind
-         MEMBERS : do copy = 1, ens_size
+         ! Only perturb the actual ocean cells;
+         ! Leave the land and ocean floor values alone.
+         if( state_ens_handle%copies(copy, i) == FVAL ) cycle MEMBERS
 
-            ! Only perturb the actual ocean cells;
-            ! Leave the land and ocean floor values alone.
-            if( state_ens_handle%copies(copy, i) == FVAL ) cycle MEMBERS
+         pertval = random_gaussian(random_seq, state_ens_handle%copies(copy, i), &
+                                         model_perturbation_amplitude)
 
-            pertval = random_gaussian(random_seq, state_ens_handle%copies(copy, i), &
-                                            model_perturbation_amplitude)
+         ! Clamping: Samples obtained from truncated Gaussian dist. 
+         if (.not. log_transform) pertval = max(clamp_min_val, pertval)
 
-            ! Clamping: Samples obtained from truncated Gaussian dist. 
-            if (.not. log_transform) pertval = max(clamp_min_val, pertval)
+         state_ens_handle%copies(copy, i) = pertval
 
-            state_ens_handle%copies(copy, i) = pertval
+      enddo MEMBERS
+   enddo INDICES
 
-         enddo MEMBERS
-      enddo INDICES
- 
-   enddo VARIABLES
-enddo DOMAINS
-
+enddo VARIABLES
 
 end subroutine pert_model_copies
 
