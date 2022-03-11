@@ -41,7 +41,7 @@ type hybrid_type
    integer               :: flavor
    integer               :: sample_size
    logical               :: output_restart = .false.
-   logical               :: scaling = .true.
+   real(r8)              :: scaling = 0.0_r8
    real(r8)              :: weight, sd
    real(r8)              :: minmax_mean(2), minmax_sd(2)
    logical               :: mean_from_restart
@@ -138,7 +138,7 @@ integer,           intent(in)    :: ens_size
 logical,           intent(in)    :: mean_from_restart
 logical,           intent(in)    :: sd_from_restart
 logical,           intent(in)    :: output_hybrid
-logical,           intent(in)    :: hyb_scale
+real(r8),          intent(in)    :: hyb_scale
 real(r8),          intent(in)    :: hyb_weight_initial, hyb_weight_sd_initial
 
 ! Record the module version if this is first initialize call
@@ -192,7 +192,7 @@ end function hyb_sd_from_restart
 function scale_static_background(hybrid_handle)
 
 type(hybrid_type) :: hybrid_handle
-logical           :: scale_static_background
+real(r8)          :: scale_static_background
 
 scale_static_background = hybrid_handle%scaling
 
