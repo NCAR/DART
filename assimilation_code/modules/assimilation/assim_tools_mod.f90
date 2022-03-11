@@ -400,12 +400,12 @@ real(digits12), allocatable :: elapse_array(:)
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
 ! Hybrid configuration variables
-logical               :: do_hybrid, hybrid_scaling, local_single_ss_hybrid
+logical               :: do_hybrid, local_single_ss_hybrid
 integer               :: stat_mean_copy, stat_sd_copy
 integer               :: stat_obs_mean_copy, stat_obs_var_copy
 integer               :: hybrid_ens_size
 real(r8)              :: my_hybrid_weight, my_hybrid_weight_sd
-real(r8)              :: orig_hybrid_weight
+real(r8)              :: hybrid_scaling, orig_hybrid_weight
 real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
 real(r8)              :: hyb_obs_var, corr_rho
 real(r8), allocatable :: stat_obs_prior(:) 
@@ -706,63 +706,70 @@ allow_missing_in_state = get_missing_ok_status()
 ! Rescaling factor so that the total variance of the 
 ! rescaled static covariance  more  appropriately  estimated  
 ! the total forecast-error variance
-if (do_hybrid .and. hybrid_scaling) then 
-   i_qc = 0
-
-   allocate(dtrd(obs_ens_handle%num_vars), tr_R(obs_ens_handle%num_vars), &
-            tr_B(obs_ens_handle%num_vars))
-
-   ! loop over all observations 
-   do i = 1, obs_ens_handle%num_vars
-
-      call get_obs_from_key(obs_seq, keys(i), observation)
-      call get_obs_def(observation, obs_def)
+if (do_hybrid) then 
    
-      ! value and variance of obs
-      obs_err_var = get_obs_def_error_variance(obs_def)
-      call get_obs_values(observation, obs, obs_val_index)
+   if(hybrid_scaling < 0.0_r8) then
+
+     i_qc = 0
   
-      !print *, 'obs: ', obs(1), 'var: ', obs_err_var
-
-      call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
-
-      if(ens_handle%my_pe == owner) then
-        obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
-        
-        if(nint(obs_qc)==0) then
-          i_qc = i_qc + 1
-
-          ens_mean   = obs_ens_handle%copies(OBS_PRIOR_MEAN_START:OBS_PRIOR_MEAN_END, owners_index)
+     allocate(dtrd(obs_ens_handle%num_vars), tr_R(obs_ens_handle%num_vars), &
+              tr_B(obs_ens_handle%num_vars))
+  
+     ! loop over all observations 
+     do i = 1, obs_ens_handle%num_vars
+  
+        call get_obs_from_key(obs_seq, keys(i), observation)
+        call get_obs_def(observation, obs_def)
+     
+        ! value and variance of obs
+        obs_err_var = get_obs_def_error_variance(obs_def)
+        call get_obs_values(observation, obs, obs_val_index)
+    
+        call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
+  
+        if(ens_handle%my_pe == owner) then
+          obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
           
-          dtrd(i_qc) = (obs(1)-ens_mean(1))**2
-          tr_R(i_qc) = obs_err_var
-          tr_B(i_qc) = stat_obs_ens_handle%copies(stat_obs_var_copy, owners_index)
-          
+          if(nint(obs_qc)==0) then
+            i_qc = i_qc + 1
+  
+            ens_mean   = obs_ens_handle%copies(OBS_PRIOR_MEAN_START:OBS_PRIOR_MEAN_END, owners_index)
+            
+            dtrd(i_qc) = (obs(1)-ens_mean(1))**2
+            tr_R(i_qc) = obs_err_var
+            tr_B(i_qc) = stat_obs_ens_handle%copies(stat_obs_var_copy, owners_index)
+            
+          endif
         endif
-      endif
-   enddo
-   sum_d = sum(dtrd(1:i_qc))
-   sum_R = sum(tr_R(1:i_qc))
-   sum_B = sum(tr_B(1:i_qc))
-
-   call sum_across_tasks(sum_d, sum_d_all)
-   call sum_across_tasks(sum_R, sum_R_all)
-   call sum_across_tasks(sum_B, sum_B_all)
+     enddo
+     sum_d = sum(dtrd(1:i_qc))
+     sum_R = sum(tr_R(1:i_qc))
+     sum_B = sum(tr_B(1:i_qc))
   
-   !fs = (sum(dtrd(1:i_qc)) - sum(tr_R(1:i_qc)) ) / sum(tr_B(1:i_qc))
-   fs = (sum_d_all - sum_R_all) / sum_B_all
-   fs = max(0.0_r8, fs)
+     call sum_across_tasks(sum_d, sum_d_all)
+     call sum_across_tasks(sum_R, sum_R_all)
+     call sum_across_tasks(sum_B, sum_B_all)
+  
+     fs = (sum_d_all - sum_R_all) / sum_B_all
+     !print *, 'fs: ', fs
+     if (fs <= 0.0_r8 ) fs = 1.0_r8
+ 
+     deallocate(dtrd, tr_R, tr_B)
+   elseif(hybrid_scaling > 0.0_r8) then 
+     fs = hybrid_scaling
+   else 
+     fs = 1.0_r8
+   endif
 
    !print *, 'scale: ', fs
-  
+   !print *, 'input scale: ', hybrid_scaling
+
    stat_ens_handle%copies(1:hybrid_ens_size, :) = sqrt(fs) * & 
                      stat_ens_handle%copies(1:hybrid_ens_size, :)
    stat_obs_ens_handle%copies(1:hybrid_ens_size, :) = sqrt(fs) * &
                      stat_obs_ens_handle%copies(1:hybrid_ens_size, :)
    stat_obs_ens_handle%copies(stat_obs_var_copy, :) = fs * &
                      stat_obs_ens_handle%copies(stat_obs_var_copy, :)
-
-   deallocate(dtrd, tr_R, tr_B)
 endif
 
 ! use MLOOP for the overall outer loop times; LG_GRN is for
@@ -2287,7 +2294,7 @@ clim_obs_state_cov = sum( (clim_state - clim_state_mean) * (clim_obs - clim_obs_
 hyb_obs_prior_var  = weight_factor * obs_prior_var + (1.0_r8 - weight_factor) * clim_obs_prior_var 
 hyb_obs_state_cov  = weight_factor * obs_state_cov + (1.0_r8 - weight_factor) * clim_obs_state_cov 
 
-if (obs_prior_var > 0.0_r8) then
+if (hyb_obs_prior_var > 0.0_r8) then
    reg_coef = hyb_obs_state_cov / hyb_obs_prior_var
 else
    reg_coef = 0.0_r8

@@ -275,7 +275,7 @@ integer            :: hyb_flavor                        = 1
 integer            :: hyb_ens_size                      = 100
 character(len=256) :: hyb_state_file_list(MAX_NUM_DOMS) = ''  ! Name of files containing a list of static (climatology) state files 
 character(len=256) :: hyb_state_files(MAX_FILES)        = ''
-logical            :: hyb_scaling                       = .true.
+real(r8)           :: hyb_scaling                       = 0.0_r8
 logical            :: hyb_initial_from_restart          = .false.
 logical            :: hyb_sd_initial_from_restart       = .false.
 real(r8)           :: hyb_weight_initial                = 0.5_r8

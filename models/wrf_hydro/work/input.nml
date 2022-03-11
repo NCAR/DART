@@ -93,7 +93,7 @@
    hyb_flavor                   = 2
    hyb_ens_size                 = 1000
    hyb_state_file_list          = 'static_file_list.txt'
-   hyb_scaling                  = .true.
+   hyb_scaling                  = 0
    hyb_initial_from_restart     = .false.
    hyb_sd_initial_from_restart  = .false.
    hyb_weight_initial           = 0.5
