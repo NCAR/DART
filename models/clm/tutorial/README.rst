@@ -824,7 +824,7 @@ in structured gridded format (``.true.``) or in unstructured, vector history for
 Most of the history files variables in this example are provided just for illustration, however,
 the tutorial requires that the ``TLAI`` variable is output in vector history format.
 
-The ``restart``, ``history`` and ``vector`` files define domains 1,2 and 3 respectively
+The ``restart``, ``history`` and ``vector`` files define domains 1, 2 and 3 respectively
 within DART. The ``restart`` domain (domain 1) must always be defined, however domains 2 and 3 are optional.
 In this tutorial example all 3 domains are required, where domain 2 corresponds to the
 ``h0`` history file, and domain 3 corresponds with the ``h2`` history files. 
@@ -1147,6 +1147,15 @@ Set up the assimilation case by executing ``CLM5_setup_assimilation``
  cd DART/models/clm/shell_scripts/cesm2_2/
  ./CLM5_setup_assimilation
 
+
+It takes approximately 7-10 minutes for the script to create the assimilation case
+which includes compiling the CESM executable.  The script is submitted to 
+a login node where it performs low-intensive tasks including the execution of
+``case_setup``, and ``preview_namelist`` and stages the appropriate files in the ``rundir``.
+However, compiling CESM is more resource intensive, thus the ``case_build`` command is
+automatically submitted using ``qcmd`` which starts a non-interactive job on a single
+batch node in the Cheyenne "regular" queue for a default time of 1 hour.   
+
 .. Caution::
 
  Once the setup is complete the script will output steps
@@ -1173,19 +1182,21 @@ do the following:
 
 Now that DART is enabled, confirm, and if necessary, modify the run-time
 settings to perform daily assimilations for 5 total days. Use the
-scripts ``xmlquery`` to view the current settings (e.g. ``./xmlquery STOP_OPTION``)
-and ``xmlchange`` to change the current settings (e.g. ``./xmlchange STOP_OPTION=nhours``).
+scripts ``xmlquery`` to view the current settings (e.g. ``./xmlquery STOP_OPTION``), or
+you can view all the environment run settings within ``env_run.xml``.
+Use the ``xmlchange`` command to change the current setting (e.g. ``./xmlchange STOP_OPTION=nhours``).
 Make sure the run-time settings are as follows:
 
 ::
  
  DATA_ASSIMILATION_LND=TRUE
- DATA_ASSIMILATION_SCRIPT= ~/assimilate.csh
+ DATA_ASSIMILATION_SCRIPT= <dartroot>/models/clm/shell_scripts/cesm2_2/assimilate.csh
  STOP_OPTION=nhours
  STOP_N=24
  DATA_ASSIMILATION_CYCLES=5
  RESUBMIT=0
  CONTINUE_RUN=FALSE
+
 
 +-----------------------------+-------------------------------------------------------------+
 | Run Time Assimilation Case  | Description                                                 |
@@ -1234,7 +1245,8 @@ is queued (Q), running (R) or completed.
 
  qstat -u <your username>
 
-
+The job requires approximately 5-10 minutes of runtime to complete the requested 
+5 assimilation cycles.
 
 
 Step 13: Diagnose the Assimilation Run
