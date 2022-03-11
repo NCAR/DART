@@ -538,7 +538,7 @@ def run_filter_experiment(run_dir: pathlib.Path):
         print('    ' + str(ncores_wrf_hydro) + ' processors.')
 
     print('\nDART Filter parallelization over:')
-    print('    ' + str(ncores_wrf_hydro) + ' processors.')
+    print('    ' + str(ncores_dart) + ' processors.')
 
     curr_ens_time = hydrodartpy.get_ensemble_time(run_dir)
     prev_ens_time = curr_ens_time - datetime.timedelta(hours=model_adv_hr)
