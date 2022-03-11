@@ -1359,7 +1359,7 @@ integer :: check_obs_seq_header
 
 integer :: ios
 character(len=12) :: file_header   ! 'obs_sequence'
-character(len=20) :: toc_header    ! 'obs_kind_definitions'
+character(len=20) :: toc_header    ! 'obs_kind_definitions' (old) OR 'obs_type_definitions' (new, and correct)
 
 if (read_format == 'formatted') then
    read(file_id, *, iostat = ios) file_header
@@ -1378,7 +1378,7 @@ else
    read(file_id, iostat = ios) toc_header
 endif
    
-if(ios /= 0 .or. toc_header /= 'obs_kind_definitions') then
+if(ios /= 0 .or. (toc_header /= 'obs_kind_definitions' .and. toc_header /= 'obs_type_definitions')) then
    check_obs_seq_header = -1
    return
 endif

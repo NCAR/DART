@@ -1368,8 +1368,8 @@ else
    read(ifile,    iostat=rc) header
 endif
 
-if(rc /= 0 .or. header /= 'obs_kind_definitions') then
-   write(msg_string,  *) 'Did not find expected "obs_kind_definitions" string at start of obs_seq file '
+if(rc /= 0 .or. (header /= 'obs_type_definitions' .and. header /= 'obs_kind_definitions')) then
+   write(msg_string,  *) 'Did not find expected "obs_type_definitions" or "obs_kind_definitions" string at start of obs_seq file '
    write(msg_string1, *) 'Bad file format, corrupted file, or wrong-endian binary file'
    call error_handler(E_ERR, 'read_obs_kind', msg_string, &
       source, revision, revdate, text2=msg_string1)

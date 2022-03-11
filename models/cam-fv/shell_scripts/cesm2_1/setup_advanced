@@ -1522,6 +1522,8 @@ Time to check the case.
    b) on https://github.com/NCAR/DART_CASES make a branch named $case,
    c) clone that branch into a new, git-controlled CASEROOT,
    d) copy the contents of temp_name back into the git CASEROOT.
+   e) archive the printed output from this script to the CASEROOT directory.
+
 
 6)  Submit the job (and get mail when it starts and stops):
     ./case.submit -M begin,end
@@ -1543,5 +1545,17 @@ EndOfText
 
 cat CESM_instructions.txt
 cat DART_instructions.txt
+
+# Archive the printed output from this script to the CASEROOT directory.
+# Actually, on cheyenne this file doesn't exist until the job has finished
+# set JOBNUM = `echo $PBS_JOBID | cut -d'.' -f 1`
+# # The -x seems irrelevant, but somehow enables the call to qstat to work reliably 
+# # on casper and cheyenne.
+# # Get the location of the output file, which was defined in a PBS directive near the top.
+# set lines = `/glade/u/apps/dav/opt/usr/bin/qstat -fx $JOBNUM | grep -A 1 'Output_Path ='`
+# @ first = $#lines - 1
+# set part1 = `echo $lines[$first] | cut -d':' -f2`
+# set Output_Path = ${part1}$lines[$#lines]
+# cp $Output_Path $caseroot
 
 exit 0

@@ -2354,7 +2354,7 @@ enddo
 
 ! return index values.  if indirect, return indices
 ! directly into the data array so caller doesn't have
-! do redo the indirection.
+! to redo the indirection.
 if (.not. direct) then
    smaller_index = indirect_indices(i)
    larger_index  = indirect_indices(i+1)

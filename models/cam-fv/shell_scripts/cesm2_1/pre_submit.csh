@@ -21,7 +21,7 @@
 # Run in $CASEROOT
 
 if ($#argv != 4) then
-   echo "Usage: submit first_date last_date cycles_per_job queue"
+   echo "Usage: ./pre_submit.csh first_date last_date cycles_per_job queue"
    echo "       first_date, last_date = YYYY-MM-DD-SSSSS"
    echo "       first_date = last_date -> assimilation only."
    echo "       cycles_per_job: The number of jobs will be calculated from the dates"
@@ -234,8 +234,8 @@ echo '   Edit push_prep.csh to make it a csh script '
 echo '   % csh push_prep.csh'
 echo '   % git commit '
 echo "     with comments about the important modifications."
-echo '   % git push origin '$data_CASEROOT:t
-echo "   On github...kdraeder/DART_CASES issue the pull request."
+echo '   % git push upstream '$data_CASE
+echo "   On github...NCAR/DART_CASES issue the pull request."
 # Echo the submit command, without generating new ${comp}_in_#### files.
 echo "After approval, submit the job using"
 echo './case.submit -M begin,end --skip-preview-namelist'

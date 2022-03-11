@@ -1634,7 +1634,11 @@ integer,  intent(out) :: my_status
 call find_enclosing_indices(nlevels, pressures, p_val, lev1, lev2, fract, my_status, & 
                             inverted = .false., log_scale = use_log_vertical_scale)
 
-if (my_status /= 0) my_status = 10
+if (my_status /= 0) then
+   write(string1,*)'find_enclosing_indices failed, status =  ',my_status,' p_val = ',p_val
+   call error_handler(E_MSG,'pressure_to_level',string1,source,revision,revdate)
+   my_status = 10
+endif
 
 end subroutine pressure_to_level
 
@@ -1692,7 +1696,14 @@ fract = MISSING_R8
 ! out of range checks
 if (vert_value < 1.0_r8 .or. vert_value > valid_range) return
 
+! KDR; if vert_value is passed in as a real (constructed from real(lev,r8))
+!      couldn't it be slightly smaller than k?  So floor should be replaced by NINT?
 integer_level = floor(vert_value) 
+! KDR; is integer_level converted to real for this calculation, by the same recipe
+!      as vert_value (real(lev,r8))?  Then fract_level is always 0.
+!      if not, it might be 0 or .9999999999999
+!      In either case the definition of l1 and l2 ensure that the right level
+!      will be used with fract_level.
 fract_level = vert_value - integer_level 
 
 ! cam levels start at the top so level 1 is
@@ -3180,6 +3191,8 @@ end function generic_pressure_to_height
 !--------------------------------------------------------------------
 !> using the cam eta arrays, convert a pressure directly to model level
 !> use P0 as surface, ignore elevation.
+
+! KDR: I don't see that this is used anywhere.
 
 function generic_cam_pressure_to_cam_level(pressure, status)
 real(r8), intent(in)  :: pressure
