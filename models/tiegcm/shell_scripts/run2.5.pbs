@@ -32,3 +32,6 @@ JOBID=`echo ${PBS_JOBID} | cut -d'.' -f1 | cut -d'[' -f1`
 # Make tar file of task log files:
 tar -cf /glade/scratch/hkershaw/DART/TIEGCM/tiegcm2.0/tiegcm_res2.5_${JOBID}.out.tar *task*.out 
 rm *task*.out
+
+# increment the start,stop in tiegcm_res2.5.inp
+./overwrite.py
