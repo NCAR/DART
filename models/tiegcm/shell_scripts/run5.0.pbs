@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+#PBS -A P86850054
+#PBS -J 1-5
+#PBS -N tiegcm2.0_5deg
+#PBS -j oe
+#PBS -k eod
+#PBS -q regular
+#PBS -l walltime=00:10:00
+##PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -l select=1:ncpus=32:mpiprocs=32:ompthreads=1
+
+export TMPDIR=/glade/scratch/hkershaw/temp
+mkdir -p /glade/scratch/hkershaw
+#
+export TGCMDATA=/glade/scratch/hkershaw/DART/TIEGCM/DATA/tiegcm_res5.0_data
+export MP_LABELIO=YES
+export MP_SHARED_MEMORY=yes
+#
+mem="mem"$(printf "%02d" $PBS_ARRAY_INDEX)
+cd $mem
+
+JOBID=`echo ${PBS_JOBID} | cut -d'.' -f1 | cut -d'[' -f1` 
+
+# Execute:
+ mpiexec_mpt ./tiegcm.exe tiegcm_res5.0.inp &> tiegcm_res5.0_${JOBID}.out
+#
+# Save stdout:
+/glade/scratch/hkershaw/DART/TIEGCM/tiegcm2.0/tiegcm2.0/scripts/rmbinchars tiegcm_res5.0_${JOBID}.out # remove any non-ascii chars in stdout file
+/glade/scratch/hkershaw/DART/TIEGCM/tiegcm2.0/tiegcm2.0/scripts/mklogs tiegcm_res5.0_${JOBID}.out     # break stdout into per-task log files
+#
+# Make tar file of task log files:
+tar -cf /glade/scratch/hkershaw/DART/TIEGCM/tiegcm2.0/tiegcm_res5.0_${JOBID}.out.tar *task*.out 
+rm *task*.out
+
+# increment the start,stop in tiegcm_res5.0.inp
+./overwrite.py
+
