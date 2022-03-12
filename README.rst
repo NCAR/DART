@@ -390,6 +390,7 @@ References
    models/lorenz_84/readme
    models/lorenz_96/readme
    models/lorenz_96_2scale/readme
+   models/lorenz_96_tracer_advection/readme
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
    models/mpas_atm/readme
