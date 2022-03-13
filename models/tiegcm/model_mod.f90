@@ -74,7 +74,6 @@ use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute, &
                                  nc_put_variable,nc_add_attribute_to_variable, &
                                  nc_define_real_variable, nc_define_character_variable
 
-use typesizes  !HK do we need these with netcdf_utilities_mod?
 use netcdf
 
 implicit none
@@ -327,10 +326,8 @@ integer,            intent(out) :: istatus(ens_size)
 
 integer  :: which_vert
 integer  :: lat_below, lat_above, lon_below, lon_above ! these are indices
-integer  :: zero_lon_index
 real(r8) :: lon_fract, lat_fract
 real(r8) :: lon, lat, lon_lat_lev(3)
-real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8), dimension(ens_size) :: val11, val12, val21, val22
 real(r8) :: height
 integer  :: level, bogus_level
@@ -526,14 +523,11 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_qty
 
-integer  :: remainder
-integer  :: relindx, absindx
 integer  :: lon_index, lat_index, lev_index
 integer  :: local_qty, var_id, dom_id
 integer  :: seconds, days ! for f10.7 location
 real(r8) :: longitude ! for f10.7 location
 character(len=NF90_MAX_NAME) :: dim_name
-integer  :: d
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -595,7 +589,6 @@ integer, intent(in)  :: dom_id
 !-------------------------------------------------------------------------------
 
 character(len=70), allocatable, dimension(:) :: textblock
-integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: nlines, linelen
 logical :: has_tiegcm_namelist
 
@@ -852,7 +845,7 @@ integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
 
 integer :: var_id, dom_id, lon_index, lat_index, lev_index
-integer :: i, d
+integer :: i
 real(r8) :: height(1), height1(1), height2(1)
 character(len=NF90_MAX_NAME) :: dim_name
 integer(i8) :: height_idx
@@ -980,15 +973,10 @@ end function read_model_time
 !-------------------------------------------------------------------------------
 subroutine write_model_time(ncid, dart_time)
 
-use typeSizes
-use netcdf
-
 integer,         intent(in) :: ncid
 type(time_type), intent(in) :: dart_time
 
-integer :: dim_ids(2), var_id, ret
-integer :: year, month, day, hour, minute, second
-character(len=19) :: timestring
+
 
 end subroutine write_model_time
 
@@ -1340,8 +1328,6 @@ integer :: nfields_secondary     ! number of variables from secondary file
 integer :: nfields_constructed   ! number of constructed state variables
 
 integer  :: i, nrows, ncols
-integer  :: index1, indexN, varsize
-integer  :: ncid, ncid1, ncid2, ncerr, VarID, dimlen
 
 !HK obstypelength vs NF90_MAX_NAME?
 character(len=NF90_MAX_NAME) :: varname
@@ -1589,7 +1575,7 @@ real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
 real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
 
 real(r8) :: earth_radiusm
-integer  :: nlev10, j, k, i, var_id
+integer  :: nlev10, j, i, var_id
 integer(i8) :: idx
 
 allocate( NE(nilev, ens_size), NEm_extended(nilev+10, ens_size), &
