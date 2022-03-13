@@ -48,7 +48,7 @@
 ! COSMIC_ELECTRON_DENSITY,         QTY_ELECTRON_DENSITY
 ! GND_GPS_VTEC,		           QTY_GND_GPS_VTEC
 ! CHAMP_DENSITY,                   QTY_DENSITY
-! MIDAS_TEC,                       QTY_VERTICAL_TEC
+! MIDAS_TEC,                       QTY_VERTICAL_TEC,               COMMON_CODE
 ! SSUSI_O_N2_RATIO,                QTY_O_N2_COLUMN_DENSITY_RATIO
 ! GPS_VTEC_EXTRAP,                 QTY_VERTICAL_TEC,               COMMON_CODE
 ! SABER_TEMPERATURE,               QTY_TEMPERATURE,                COMMON_CODE
@@ -58,7 +58,6 @@
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_upper_atm_mod, only : get_expected_upper_atm_density
 !  use obs_def_upper_atm_mod, only : get_expected_gnd_gps_vtec
-!  use obs_def_upper_atm_mod, only : get_expected_vtec
 !  use obs_def_upper_atm_mod, only : get_expected_O_N2_ratio
 !  use obs_def_upper_atm_mod, only : get_expected_electron_density
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -68,8 +67,6 @@
 !      call get_expected_upper_atm_density(state_handle, ens_size, location, expected_obs, istatus)
 ! case(CHAMP_DENSITY) 
 !      call get_expected_upper_atm_density(state_handle, ens_size, location, expected_obs, istatus)
-! case(MIDAS_TEC) 
-!      call get_expected_vtec(state_handle, ens_size, location, expected_obs, istatus)
 ! case(GND_GPS_VTEC)
 !      call get_expected_gnd_gps_vtec(state_handle, ens_size, location, expected_obs, istatus)
 ! case(SSUSI_O_N2_RATIO)
@@ -82,8 +79,6 @@
 ! case(SAT_RHO) 
 !      continue
 ! case(CHAMP_DENSITY) 
-!      continue
-! case(MIDAS_TEC) 
 !      continue
 ! case(GND_GPS_VTEC)
 !      continue
@@ -98,8 +93,6 @@
 !      continue
 ! case(CHAMP_DENSITY) 
 !      continue
-! case(MIDAS_TEC) 
-!      continue
 ! case(GND_GPS_VTEC)
 !      continue
 ! case(SSUSI_O_N2_RATIO)
@@ -112,8 +105,6 @@
 ! case(SAT_RHO) 
 !      continue
 ! case(CHAMP_DENSITY) 
-!      continue
-! case(MIDAS_TEC) 
 !      continue
 ! case(GND_GPS_VTEC)
 !      continue
@@ -151,7 +142,6 @@ implicit none
 private
 public :: get_expected_upper_atm_density, &
           get_expected_gnd_gps_vtec, &
-          get_expected_vtec, &
           get_expected_O_N2_ratio, &
           get_expected_electron_density
 
@@ -349,31 +339,6 @@ elsewhere
 end where
 
 end subroutine get_expected_gnd_gps_vtec
-
-!-----------------------------------------------------------------------------
-
-! Given DART state vector and a location, 
-! it computes thermospheric neutral density [Kg/m3] 
-! The istatus variable should be returned as 0 unless there is a problem
-
-subroutine get_expected_vtec(state_handle, ens_size, location, expected_obs, istatus)
-
-type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: ens_size
-type(location_type), intent(in) :: location
-real(r8),           intent(out) :: expected_obs(ens_size)
-integer,            intent(out) :: istatus(ens_size)
-
-
-if ( .not. module_initialized ) call initialize_module
-
-call error_handler(E_ERR, 'get_expected_vtec', 'routine needs to be written', &
-           source, revision, revdate)
-
-expected_obs = missing_r8
-istatus = 1
-
-end subroutine get_expected_vtec
 
 !-----------------------------------------------------------------------------
 

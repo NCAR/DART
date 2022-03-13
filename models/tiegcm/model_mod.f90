@@ -157,13 +157,6 @@ integer, parameter :: VT_STATEINDX    = 6 ! ... update (state) or not
 
 character(len=obstypelength) :: variable_table(MAX_NUM_VARIABLES, MAX_NUM_COLUMNS)
 
-! include_vTEC = .true.  vTEC must be calculated from other vars
-! include_vTEC = .false. just ignore vTEC altogether
-
-!HK why are there two of these?
-logical  :: include_vTEC = .true.
-logical  :: include_vTEC_in_state = .false.
-
 ! IMPORTANT: 1 D model parameters (e.g., F107) are read in from "tiegcm.nml"
 ! (note "estimate_f10_7" option is still under
 ! development by Tomoko Matsuo as of June 24, 2011)
@@ -436,6 +429,19 @@ if ( iqty == QTY_PRESSURE) then
    return
 
 endif ! end of QTY_PRESSURE
+
+
+if ( iqty == QTY_VERTICAL_TEC ) then !extrapolate vtec
+
+   call extrapolate_vtec(state_handle, ens_size, lon_below, lat_below, val11)
+   call extrapolate_vtec(state_handle, ens_size, lon_below, lat_above, val11)
+   call extrapolate_vtec(state_handle, ens_size, lon_above, lat_below, val11)
+   call extrapolate_vtec(state_handle, ens_size, lon_above, lat_above, val11)
+   obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
+   istatus(:) = 0
+
+   return
+endif
 
 ! check if qty is in the state vector
 call find_qty_in_state(iqty, dom_id, var_id)
@@ -1401,13 +1407,6 @@ ROWLOOP : do i = 1, nrows
 
 enddo ROWLOOP
 
-! Make sure variable exists in netCDF file, as long as it is not vTEC.
-! vTEC gets constructed.
-
-if (varname == 'VTEC') include_vTEC_in_state = .true.
-
-
-! Do we need to augment the state vector with the parameter to estimate?
 if ( estimate_f10_7 ) then
 
    nfields = nfields + 1
@@ -1418,22 +1417,6 @@ if ( estimate_f10_7 ) then
    variable_table(nfields,VT_MAXVALINDX)  = 'NA'
    variable_table(nfields,VT_ORIGININDX)  = 'CALCULATE'
    variable_table(nfields,VT_STATEINDX)   = 'UPDATE'
-
-endif
-
-if (include_vTEC_in_state) then
-   ! FIXME ... check to make sure all required variables are part of the DART
-   ! state vector. These should be part of the DART state vector :
-   ! If this is the case, then we _could_ use a more standard obs_def approach
-   ! and call model_interpolate to return the VTEC on demand. What we have now
-   ! is basically 'cached' the forward obs operator and created VTEC. HOWEVER,
-   ! if we are doing prior state-space inflation, this has an impact on the
-   ! VTEC in the state vector. Also ... same for ZG ... this is not great.
-
-   ! NE
-   ! TI
-   ! TE
-   ! OP
 
 endif
 
@@ -1568,7 +1551,7 @@ enddo
 domain_id(domain_num) = add_domain(nvar, var_names, &
        kind_list, clamp_vals, update_list, init_parameter_estimate=initialize_f10_7)
 
-do i = 1, nvar ! HK f10_7 and VTEC and anything else?
+do i = 1, nvar ! HK f10_7
   if (var_names(i) == 'f10_7') then
     ! dimensions to match what? Lanai has single value f10_7
     call add_dimension_to_variable(domain_id(domain_num), i, 'parameter', 1)
@@ -1576,10 +1559,6 @@ do i = 1, nvar ! HK f10_7 and VTEC and anything else?
     if (initialize_f10_7) call set_parameter_value(domain_id(domain_num), i, f10_7)
   endif
 
-  !HK I don't understand why VTEC is a state variable vs. calculating it on the fly.
-  if(var_names(i) == 'VTEC') then
-     call error_handler(E_ERR,'load_up_calculated_variables', 'VTEC not sure yet.')
-  endif
 enddo
 
 call finished_adding_domain(domain_id(domain_num))
@@ -1589,7 +1568,7 @@ end subroutine load_up_calculated_variables
 !-------------------------------------------------------------------------------
 
 
-subroutine calculate_vtec(state_handle, ens_size, lon_index, lat_index, vTEC)
+subroutine extrapolate_vtec(state_handle, ens_size, lon_index, lat_index, vTEC)
 !
 ! Create the vTEC from constituents in state.
 !
@@ -1685,7 +1664,7 @@ deallocate( NE, NEm_extended, ZG_extended)
 deallocate( TI, TE )
 deallocate( delta_ZG, NE_middle )
 
-end subroutine calculate_vtec
+end subroutine extrapolate_vtec
 
 
 !-------------------------------------------------------------------------------
