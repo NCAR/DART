@@ -321,7 +321,7 @@
    output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc", "params.nc"
    test1thru             = 4
    run_tests             = 0,1,2,3,4,5,7
-   x_ind                 = 676513
+   x_ind                 = 1
    loc_of_interest       = 240.0, 12.49, 200000.0
    quantity_of_interest  = 'QTY_DENSITY_ION_OP'
    interp_test_dlon      = 0.1
