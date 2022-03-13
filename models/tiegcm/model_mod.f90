@@ -2,13 +2,19 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+
+! TODOs
+!  - Nick Dietrich fix_mmr. When do to this?
+!  - model_time
+!  - get_state_meta_data 2D variables
+!  - test vtec
+!  - f107 netcdf to nml
 
 module model_mod
 
 !-------------------------------------------------------------------------------
 !
-! Interface for HAO-TIEGCM
+! Interface for HAO-TIEGCM 2.0
 !
 !-------------------------------------------------------------------------------
 
@@ -532,8 +538,6 @@ character(len=NF90_MAX_NAME) :: dim_name
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, lev_index, var_id=var_id, dom_id=dom_id, kind_index=local_qty)
-
-!print*, 'HK index_in, lon_index, lat_index, lev_index', index_in, lon_index, lat_index, lev_index, var_id
 
 if(present(var_qty)) var_qty = local_qty
 
