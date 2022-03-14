@@ -1249,18 +1249,18 @@ The job requires approximately 5-10 minutes of runtime to complete the requested
 5 assimilation cycles.
 
 
-.. Helpful-Tip::
- The DART code provides a way to restart an assimilation case using the
- ``stage_cesm_files`` script located within ``<caseroot>``.  This script will re-start the
- run at a prior point in time by re-staging the proper restart files to the ``<rundir>``
- and editing the ``rpointer`` files to reference the re-staged files. This script comes in handy
- if an assimilation run fails or if the ``input.nml`` settings are modified without having
- to re-create the assimilation case from scratch using ``CLM5_setup_assimilation``.
+.. Tip::
+ The DART code provides the script ``stage_cesm_files`` within ``<caseroot>`` to restart an assimilation
+ case.  This script re-starts the assimilation at a prior point in time by re-staging the proper restart
+ files to the ``<rundir>`` and edits the ``rpointer`` files to reference the re-staged files. 
+ This script comes in handy if an assimilation run fails or if the user modifies the ``input.nml``
+ settings and does not want to  re-create the assimilation case from scratch using 
+ ``CLM5_setup_assimilation``.
 
- Also the ``stage_dart_files`` script is available if you make changes to the DART source code
+ Also the ``stage_dart_files`` script is available if the user makes changes to the DART source code
  after an assimilation case has been created.  Changes to the DART source code requires the
  executables to be re-compiled within ``<dartroot>/models/clm/work``.  Executing ``stage_dart_files``
- transfers the DART executables to ``<exeroot>`` making them avaiable when the case is submitted.
+ transfers the DART executables to ``<exeroot>`` making them available when the case is submitted.
 
 
 
