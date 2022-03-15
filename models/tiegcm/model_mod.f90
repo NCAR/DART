@@ -1583,7 +1583,7 @@ integer  :: nlev10, j, i, var_id
 integer(i8) :: idx
 
 allocate( NE(nilev, ens_size), NEm_extended(nilev+10, ens_size), &
-          ZG_extended(nilev+10, ens_size))
+          ZG(nilev, ens_size), ZG_extended(nilev+10, ens_size))
 allocate( TI(nlev, ens_size), TE(nlev, ens_size) )
 allocate( delta_ZG(nlev+9, ens_size), NE_middle(nlev+9, ens_size) )
 
@@ -1650,7 +1650,7 @@ do i = 1, ens_size
    vTEC(i) = sum(NE_middle(:,i) * delta_ZG(:,i)) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)
 enddo
 
-deallocate( NE, NEm_extended, ZG_extended)
+deallocate( NE, NEm_extended, ZG, ZG_extended)
 deallocate( TI, TE )
 deallocate( delta_ZG, NE_middle )
 
