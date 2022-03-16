@@ -24,8 +24,7 @@ CLM/DART. The
 `CTSM Documentation <https://escomp.github.io/ctsm-docs/versions/master/html/index.html>`__
 has reference material for CLM.
 
-**Second**, we recommend the user complete the `CLM5-DART Tutorial. 
-:doc: <tutorial/README.rst>` 
+**Second**, we recommend the user complete the :doc:`CLM5-DART Tutorial. <tutorial/README>` 
 This tutorial provides the user with 13 steps of hands-on experience for downloading, compiling, editing,
 executing,and diagnosing a simple CLM5-DART assimilation run. It will provide users with
 skills to modify the CLM-DART scripts for their own research applications.
