@@ -177,6 +177,16 @@ and untar it on your local machine as:
 For more information on the 
 SourceMods see the main :doc:`CLM-DART documentation. <../readme>`
 
+Compiling CLM5
+--------------
+
+Compiling CLM5 on the NCAR machine Cheyenne is straightforward because the 
+run and build environment settings are already defined within the ``config_machines.xml``
+file located within the CESM installation: ``<cesmroot>/cime/config/cesm/machines``. If
+you are using your own machine please follow the porting instructions located 
+`here <https://esmci.github.io/cime/versions/master/html/users_guide/porting-cime.html>`__.
+When performing a CLM5-DART assimilation run, the compiling step for CLM5 occurs within
+the ``CLM5_setup_assimilation`` script described later within this tutorial.
 
 
 Step 2: Download DART
@@ -254,7 +264,21 @@ Step 4: Compiling DART
 Similar to CLM, it is necessary to compile the DART code before an assimilation
 can be performed.  The DART code includes a variety of build template scripts that provide
 the appropriate compiler and library settings depending upon your system environment.
-This is an example of how to set up the system environment for Cheyenne:
+This is an example of the default system environment for Cheyenne (e.g. ``module list``), 
+which was used to perform this tutorial:
+
+::
+
+ Currently Loaded Modules:
+   1) ncarenv/1.3   2) intel/19.0.5   3) ncarcompilers/0.5.0   4) mpt/2.22   5) netcdf/4.7.4 
+
+
+Please note in this example we used the ``intel`` fortran compiler with ``netcdf`` libraries
+to support the netcdf file format and the ``mpt`` libraries to support the ``mpi`` tasks.  
+      
+Below are instructions on how to modify the DART template script ``mkmf_template``
+to properly compile DART on Cheyenne:
+
 
 ::
 
