@@ -1885,7 +1885,7 @@ logical  :: do_uniform_tail(2)
 integer  :: i
 
 ! Parameter to control switch to uniform approximation for normal tail
-real(r8), parameter :: uniform_threshold = 1e-10_r8
+real(r8), parameter :: uniform_threshold = 1e-5_r8
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
@@ -2017,14 +2017,14 @@ integer  :: i, j, lowest_box
 ! May want to move the weight normalization to this subroutine
 
 ! Compute the posterior tail amplitudes and amount of mass outside the tail normals
-if(is_bounded(1) .and. .not. do_uniform_tail(1)) then
+if(.not. do_uniform_tail(1)) then
    ! Ratio is ratio of posterior weight to prior weight (which is 1 / (N + 1)); multiply by N + 1
    post_tail_amp(1) = prior_tail_amp(1) * post_weight(1) * (ens_size + 1)
    ! Compute the amount of mass outside the tail normals
    post_bound_mass(1) = prior_bound_mass(1) * post_weight(1) * (ens_size + 1)
 endif
 
-if(is_bounded(2) .and. .not. do_uniform_tail(2)) then
+if(.not. do_uniform_tail(2)) then
    post_tail_amp(2) = prior_tail_amp(2) * post_weight(ens_size + 1) * (ens_size + 1)
    post_bound_mass(2) = prior_bound_mass(2) * post_weight(ens_size + 1) * (ens_size + 1)
 endif
@@ -2076,8 +2076,9 @@ do i = 1, ens_size
    !--------------------------------------------------------------------------
    else if(umass > cumul_mass(ens_size)) then
       ! It's in the right tail; will work coming in from the right using symmetry of tail normal
-      if(is_bounded(2) .and. ens(ens_size) == bound(2)) then
-         sort_post(i) = ens(ens_size)
+      if(do_uniform_tail(2) .and. is_bounded(2)) then
+         sort_post(i) = ens(ens_size) + &
+            (umass - cumul_mass(ens_size)) / (1.0_r8 - cumul_mass(ens_size)) * (bound(2) - ens(ens_size))
       else
          ! Target quantile distance from the upper bound; will come in from below
          target_mass = post_bound_mass(2) + (1.0_r8 - umass)
