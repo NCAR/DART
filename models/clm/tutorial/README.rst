@@ -1530,8 +1530,8 @@ settings go :doc:`here.  <../../../assimilation_code/programs/obs_diag/threed_sp
  &obs_diag_nml
    obs_sequence_name = ''
    obs_sequence_list = 'obs_seq_files_tutorial.txt'
-   first_bin_center =  2011, 1,  1, 0, 0, 0
-   last_bin_center  =  2011, 1,  5, 0, 0, 0
+   first_bin_center =  2011, 1,  2, 0, 0, 0
+   last_bin_center  =  2011, 1,  6, 0, 0, 0
    bin_separation   =     0, 0,  1, 0, 0, 0
    bin_width        =     0, 0,  1, 0, 0, 0
    time_to_skip     =     0, 0,  0, 0, 0, 0
@@ -1542,7 +1542,7 @@ settings go :doc:`here.  <../../../assimilation_code/programs/obs_diag/threed_sp
    lonlim2    =   360.0,   
    latlim1    =   -90.0,     
    latlim2    =    90.0,   
-   reg_names  = 'Globe', 
+   reg_names  = 'tutorial', 
    hlevel_edges =  0.0, 1.0, 2.0, 5.0, 10.0, 40.0
    print_mismatched_locs = .false.
    create_rank_histogram = .true.
@@ -1572,6 +1572,18 @@ and the ``obsname`` variable are customizable.
  >> copy    = 'totalspread';
  >> obsname = 'MODIS_LEAF_AREA_INDEX';
  >> plotdat = plot_rmse_xxx_evolution(fname, copy, 'obsname', obsname);
+
+
+The finished figure should look like the following below. Click on it
+to enlarge.  Notice that the figure has two axes; the left providing the RMSE and 
+total spread statistics, whereas the right provides the observations
+available and observations assimilated for each time step.
+
++-------------------------------------------------------------+
+| |plot_rmse|                                                 |
++-------------------------------------------------------------+
+
+
 
 
 Second, the ``link_obs.m`` provides several features, including a spatial
@@ -1642,9 +1654,32 @@ scatterplot that typically compares the 'prior/posterior expected obsevations'
 against the 'actual observation'. Read the commented section within the ``link_obs.m``
 script for more information.  
 
+The completed ``link_obs.m`` figures are shown below for the 3D geographic
+scatterplot (left) and the 2d scatterplot (right). Click to enlarge. Note that the 2D
+scatterplot compares the prior expected observations vs. the actual observations.
+The 1:1 fit for this plot is poor, but should be slightly improved if you
+compare the posterior observations vs. the actual observations.
+
++-----------------------------------+-------------------------+
+| |link_obs1|                       | |link_obs3|             |
++-----------------------------------+-------------------------+
+
 
 If you have completed all these steps (1-13) **Congratulations!** -- you are well on
 your way to designing CLM5-DART assimilations for your own research.
 
 
+References
+----------
 
+.. |plot_rmse| image:: ../../../guide/images/CLM_tutorial_plotrmse.png
+   :height: 300px
+   :width: 100%
+
+.. |link_obs1| image:: ../../../guide/images/CLM_tutorial_linkobs1.png
+   :height: 300px
+   :width: 100%
+
+.. |link_obs3| image:: ../../../guide/images/CLM_tutorial_linkobs3.png
+   :height: 300px
+   :width: 100%
