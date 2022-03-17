@@ -197,6 +197,8 @@ if [ $dev_test -eq 0 ]; then
   #look in $program directory for {main}.f90
   if [ $1 == "obs_diag" ]; then
     program=$DART/assimilation_code/programs/obs_diag/$LOCATION
+  elif [ $1 == "streamflow_obs_diag" ]; then
+    program=$DART/assimilation_code/programs/obs_diag/streamflow
   else
     program=$DART/assimilation_code/programs/$1
   fi

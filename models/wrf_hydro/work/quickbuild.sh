@@ -38,6 +38,7 @@ obs_seq_coverage
 obs_seq_to_netcdf
 obs_seq_verify
 obs_sequence_tool
+streamflow_obs_diag
 )
 
 
