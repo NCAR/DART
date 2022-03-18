@@ -377,7 +377,7 @@ To make sure the scripts can locate the weather data first make sure
 the ``DART_params.csh``  variable ``dartroot`` is set to the path of your
 DART installation. For example, if you have a Cheyenne account and you
 followed the DART cloning instructions in Step 2 above your ``dartroot``
-variable will be: `/<your Cheyenne work directory>/DART.` Make sure you update
+variable will be: ``/<your Cheyenne work directory>/DART``. Make sure you update
 the default ``dartroot`` as shown below. 
 
  ::
@@ -426,7 +426,7 @@ and ``State3hr``.
             /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
          </filePath>
          <fileNames>
-            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc
+            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.RUNYEAR.nc
          </fileNames>
       </domainInfo>
       ...
@@ -447,7 +447,7 @@ and ``State3hr``.
             1800
          </offset>
          <fileNames>
-            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc
+            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.RUNYEAR.nc
          </fileNames>
       </fieldInfo>
 
@@ -459,11 +459,16 @@ and ``State3hr``.
  |                          | includes year 2011, with ensemble members 1-5. During        |
  |                          | execution of ``CLM5_setup_assimilation`` the text ``NINST``  |
  |                          | is replaced with ensemble member number ``0001-0005``.       |
+ |                          | The ensemble member number is set through the                |
+ |                          | ``num_instances`` variable located in ``DART_params.csh``.   |
  +--------------------------+--------------------------------------------------------------+
- | fileNames                | The CAM6 reanalysis file name. For tutorial, this only       |
- |                          | includes year 2011, with ensemble member 1-5. During         |
- |                          | execution of ``CLM5_setup_assimilation`` the text ``NINST``  |
- |                          | is replaced with ensemble member number ``0001-0005``.       |
+ | fileNames                | The CAM6 reanalysis file name. For the tutorial, this only   |
+ |                          | includes year 2011, with ensemble members 1-5. The ``NINST`` |
+ |                          | variable is replaced in the same way as described above for  |
+ |                          | ``filepath``.  For this tutorial the ``RUNYEAR``             |
+ |                          | variable will be replaced by ``2011``.  The ``RUNYEAR``      |
+ |                          | variable is set through ``stream_year_first`` located within |
+ |                          | ``DART_params.csh``.                                         |
  +--------------------------+--------------------------------------------------------------+
  | variableNames            | Meteorology variables within CAM6 reanalysis. First column   |
  |                          | is variable name within netCDF reanalysis file, whereas      |
@@ -471,6 +476,23 @@ and ``State3hr``.
  |                          | by CLM.                                                      |
  +--------------------------+--------------------------------------------------------------+
 
+Finally, edit the ``DART_params.csh`` file such that the ``RUNYEAR`` and ``NINST`` variables
+within the atmospheric stream templates are replaced with the appropriate year and 
+ensemble member.  To do this confirm the settings within ``DART_params.csh`` are as follows:
+
+
+::
+ 
+ setenv num_instances  5
+
+  ..
+  ..
+
+ setenv stream_year_align 2011
+ setenv stream_year_first 2011
+ setenv stream_year_last  2011
+  
+  
 
 
 
@@ -1115,7 +1137,6 @@ Modify the ``cesmtag`` and ``CASE`` variable:
  setenv cesmtag        <your cesm installation folder>
  setenv resolution     f09_f09_mg17
  setenv compset        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
- setenv num_instances  5
 
   ..
   ..
@@ -1125,6 +1146,7 @@ Modify the ``cesmtag`` and ``CASE`` variable:
  else
    setenv CASE <your tutorial case name>
  endif
+
 
 
 Modify the ``SourceModDir`` to match the directory that you set
