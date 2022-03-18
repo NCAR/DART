@@ -274,6 +274,11 @@ integer :: chl_varid
 real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
 
 real(r4) :: FVAL
+integer :: recl3d
+integer :: recl2d
+
+recl3d = Nx*Ny*Nz*4
+recl2d = Nx*Ny*4
 
 FVAL=-999.0_r4
 
@@ -488,35 +493,35 @@ call check(nf90_put_var(ncid, ZCVarID, ZC ))
 
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,SVarID,data_3d,start=(/1,1,1/)))
 
 open(iunit, file='PTMP.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=4*Nx*Ny*Nz,  convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,TVarID,data_3d,start=(/1,1,1/)))
 
 open(iunit, file='UVEL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=4*Nx*Ny*Nz,  convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,UVarID,data_3d,start=(/1,1,1/)))
 
 open(iunit, file='VVEL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=4*Nx*Ny*Nz,  convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
 call check(nf90_put_var(ncid,VVarID,data_3d,start=(/1,1,1/)))
  
 open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=4*Nx*Ny,  convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl2d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_2d
 close(iunit)
 where (data_2d == 0.0_r4) data_2d = FVAL
@@ -524,70 +529,70 @@ call check(nf90_put_var(ncid,EtaVarID,data_2d,start=(/1,1/)))
 
 if (do_bgc) then 
    open(iunit, file='NO3.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,no3_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='PO4.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,po4_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='O2.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,o2_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='PHY.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,phy_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='ALK.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,alk_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='DIC.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,dic_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='DOP.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,dop_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='DON.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,don_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='FET.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
    call check(nf90_put_var(ncid,fet_varid,data_3d,start=(/1,1,1/)))
    
    open(iunit, file='CHL.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=4*Nx*Ny,  convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl2d,  convert='BIG_ENDIAN')
    read(iunit,rec=1)data_2d
    close(iunit)
    where (data_2d == 0.0_r4) 
@@ -613,9 +618,14 @@ subroutine DART2MIT()
 integer :: ncid, varid, iunit
 real(r4), allocatable :: data_3d(:,:,:),data_2d(:,:)
 real(r4) :: FVAL
+integer :: recl3d
+integer :: recl2d
 
 allocate(data_3d(Nx,Ny,Nz))
 allocate(data_2d(Nx,Ny))
+
+recl3d = Nx*Ny*Nz*4
+recl2d = Nx*Ny*4
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
@@ -627,7 +637,7 @@ call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
 where (data_3d == FVAL) data_3d = 0.0_r4
 
 open(iunit, file='PSAL.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -637,7 +647,7 @@ call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
 where (data_3d == FVAL) data_3d = 0.0_r4
 
 open(iunit, file='PTMP.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -647,7 +657,7 @@ call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
 where (data_3d == FVAL) data_3d = 0.0_r4
 
 open(iunit, file='UVEL.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -657,7 +667,7 @@ call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
 where (data_3d == FVAL) data_3d = 0.0_r4
 
 open(iunit, file='VVEL.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_3d
 close(iunit)
 
@@ -667,7 +677,7 @@ call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
 where (data_2d == FVAL) data_2d = 0.0_r4
 
 open(iunit, file='ETA.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=4*Nx*Ny, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
 write(iunit,rec=1)data_2d
 close(iunit)
 
@@ -678,7 +688,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='NO3.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -688,7 +698,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='PO4.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -698,7 +708,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='O2.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -708,7 +718,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='PHY.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -718,7 +728,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='ALK.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -728,7 +738,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='DIC.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -738,7 +748,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='DOP.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -748,7 +758,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='DON.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
    
@@ -758,7 +768,7 @@ if (do_bgc) then
    call fill_var_dm(data_3d, FVAL)
  
    open(iunit, file='FET.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=4*Nx*Ny*Nz, convert='BIG_ENDIAN')
+               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    write(iunit,rec=1)data_3d
    close(iunit)
 endif
