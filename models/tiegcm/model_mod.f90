@@ -40,7 +40,7 @@ use     location_mod, only : location_type,                                     
 use    utilities_mod, only : file_exist, open_file, close_file, logfileunit,        &
                              error_handler, E_ERR, E_MSG, E_WARN, nmlfileunit,      &
                              do_output, find_namelist_in_file, check_namelist_read, &
-                             do_nml_file, do_nml_term, nc_check, register_module,   &
+                             do_nml_file, do_nml_term, register_module,             &
                              file_to_text, find_textfile_dims, to_upper
 
 use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,           &
@@ -78,7 +78,8 @@ use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute, &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
                                  nc_define_dimension, nc_end_define_mode, &
                                  nc_put_variable,nc_add_attribute_to_variable, &
-                                 nc_define_real_variable, nc_define_character_variable
+                                 nc_define_real_variable, nc_define_character_variable, &
+                                 nc_check
 
 use netcdf
 
