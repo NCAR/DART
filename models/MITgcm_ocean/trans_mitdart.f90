@@ -86,6 +86,10 @@ integer, parameter :: max_ny = 2048
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
+!-- record lengths for reading/writing binary files
+integer :: recl3d
+integer :: recl2d
+
 !--   Gridding parameters variable declarations 
 logical :: usingCartesianGrid, usingCylindricalGrid, &
            usingSphericalPolarGrid, usingCurvilinearGrid, &
@@ -243,6 +247,10 @@ do i=2, Nz
  ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
 
+! set record lengths
+recl3d = Nx*Ny*Nz*4
+recl2d = Nx*Ny*4
+
 ! MEG Better have that as inout namelist parameter
 ! Are we also doing bgc on top of physics?
 ! If we found nitrate then the rest of the binaries (for the 
@@ -274,11 +282,6 @@ integer :: chl_varid
 real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
 
 real(r4) :: FVAL
-integer :: recl3d
-integer :: recl2d
-
-recl3d = Nx*Ny*Nz*4
-recl2d = Nx*Ny*4
 
 FVAL=-999.0_r4
 
@@ -618,14 +621,9 @@ subroutine DART2MIT()
 integer :: ncid, varid, iunit
 real(r4), allocatable :: data_3d(:,:,:),data_2d(:,:)
 real(r4) :: FVAL
-integer :: recl3d
-integer :: recl2d
 
 allocate(data_3d(Nx,Ny,Nz))
 allocate(data_2d(Nx,Ny))
-
-recl3d = Nx*Ny*Nz*4
-recl2d = Nx*Ny*4
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
