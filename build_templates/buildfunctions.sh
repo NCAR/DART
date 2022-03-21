@@ -70,7 +70,7 @@ cleanup() {
 all_programs=("${programs[@]}" "${model_programs[@]}" "${serial_programs[@]}" "${model_serial_programs[@]}")
 
 for p in ${all_programs[@]}; do 
-  \rm -f -- $p
+  \rm -f -- $(basename $p)
 done
 }
 
