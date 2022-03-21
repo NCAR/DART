@@ -844,7 +844,7 @@ step.  The CLM ``history`` and ``vector`` files, on the other hand, are diagnost
 with no impact on the evolution of the model state.
 
 A **second** important distinction amongst ``clm_variables`` is that the ``restart`` file
-state variables are automatically generated after each simulation time step, thus are readily
+state variables are automatically generated after each CLM simulation time step, thus are readily
 available to include within the DART state. In contrast, the ``history`` or ``vector`` file variables
 must be manually generated through the ``user_nl_clm`` file within CLM.  This is generated
 within the portion of the ``CLM5_setup_assimilation`` script as shown below.  Modify this
@@ -1093,6 +1093,32 @@ Confirm the input and output file list account for all 3 domains as:
 
   The ``input_state_file_list``, ``output_state_file_list`` and ``input_state_files`` must match the domains
   that were defined in Step 8.   
+
+
+The ``assimilate.csh`` script assigns the CLM file that defines each domain. In this tutorial
+the ``restart``, ``history`` and ``vector`` domains are defined by the ``.r.``,
+``.h0.`` and ``.h2.`` files respectively. ***We show the portions of the assimilate.csh script
+below for illustration purposes only.  Do not modify these lines for the tutorial.***  
+
+The domains are set within the ``Block 4: DART INFLATION`` portion of the
+script as:
+
+::
+
+ set     LND_RESTART_FILENAME = ${CASE}.clm2_0001.r.${LND_DATE_EXT}.nc
+ set     LND_HISTORY_FILENAME = ${CASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
+ set LND_VEC_HISTORY_FILENAME = ${CASE}.clm2_0001.h2.${LND_DATE_EXT}.nc
+
+and set again during the ``Block 5: REQUIRED DART namelist settings`` in prepration for
+the ``filter`` step as:
+
+::
+  
+ ls -1         clm2_*.r.${LND_DATE_EXT}.nc  >! restart_files.txt
+ ls -1 ${CASE}.clm2_*.h0.${LND_DATE_EXT}.nc >! history_files.txt
+ ls -1 ${CASE}.clm2_*.h2.${LND_DATE_EXT}.nc >! vector_files.txt
+
+
 
 
 Step 11: Complete the Assimilation Setup
