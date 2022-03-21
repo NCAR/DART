@@ -19,10 +19,14 @@
 #  EXCLUDE - directories in model dir to exclude
 #            from the collection of .f90 files
 #            set by quickbuild.sh
+#  MODEL - model being compiled, set by quickbuild.sh
 #  dartsrc - created by findsrc
 #  programs, serial_programs, model_programs, model_serial_programs
 #          - arrays of program names to build
 #            set by quickbuild.sh
+#
+#  dev_test - developer_test compilation. set by quickbuild.sh
+#  TEST - used when compiling developer_tests. set by quickbuild.sh
 #-------------------------
 
 set -e
