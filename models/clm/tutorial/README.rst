@@ -1477,19 +1477,30 @@ fallen outside the ``outlier_threshold`` value and is rejected.
 For more details on the DART quality control variables read the  
 :doc:`documentation. <../../../assimilation_code/modules/assimilation/quality_control_mod>`
 
-First, in your own tutorial assimilation confirm that this observation
-(and other observations) was accepted.
 
-Second, confirm that the ``posterior member`` values have been updated
-from their respective ``prior member`` values.  In general the
-``posterior member`` and ``posterior ensemble mean`` values should become
-closer to the `observation value` as compared to the prior values.
-
+Now, compare your ``clm_obs_seq.final`` file to the example provided above:
 
 ::
 
   cd <rundir>
   less clm_obs_seq.2011-01-02-00000.final
+
+
+
+First, confirm that the observation (and other observations) was accepted.
+
+Second, confirm that the ``posterior member`` values have been updated
+from their respective ``prior member`` values.  Your simulation has run
+successfully if the ``posterior member`` and ``posterior ensemble mean``
+values have moved closer to the `observation value` as compared to
+the prior values.
+
+Do not expect your own ``clm_obs_seq.final`` file to be bit-by-bit identical 
+(i.e. identical to the 14th decimal place) to the example given above.
+Slight changes in compiler and run time environment are known to cause
+small changes when running CLM-DART.  Furthermore, CLM is set up
+to run in ``hybrid`` mode, which unlike ``branch`` mode does not provide
+bit-by-bit reproducibility. 
 
 
 This tutorial has been purposely designed such that all observations
