@@ -8,7 +8,7 @@
 #   1. DART directory
 #   2. compiler
 
-export DART=/glade/scratch/hkershaw/DART/Compile_all/DART
+export DART=""
 FC=intel
 
 
@@ -35,7 +35,7 @@ $DART/build_templates/mkmf -x -p $pp_dir/preprocess \
 cd -
 
 # local versions of obs_def_mod.f90 and obs_kind_mod.f90
-find . -name input.nml -exec sed -i '' -e "/^[[:space:]]*#/! s|.*output_obs_def_mod_file.*|output_obs_def_mod_file = './obs_def_mod.f90'|g" \
+find . -name input.nml -exec sed -i  -e "/^[[:space:]]*#/! s|.*output_obs_def_mod_file.*|output_obs_def_mod_file = './obs_def_mod.f90'|g" \
       -e "/^[[:space:]]*#/! s|.*output_obs_qty_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" \
       -e "/^[[:space:]]*#/! s|.*output_obs_kind_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" {} \;  
 
