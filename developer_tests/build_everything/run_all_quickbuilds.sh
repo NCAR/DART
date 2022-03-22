@@ -8,7 +8,7 @@
 #   1. DART directory
 #   2. compiler
 
-export DART=""
+export DART=$(git rev-parse --show-toplevel)
 FC=intel
 
 
@@ -16,6 +16,13 @@ if [[ ! -d $DART ]] ; then
   echo "No DART directory: " $DART
   exit 1
 fi 
+
+if [[ -z  $PBS_ENVIRONMENT ]]; then
+  echo "ERROR: Run this in a batch job"
+  echo "       qsub submit_me.sh"
+  echo "       or an interactive session"
+  exit 2
+fi
 
 cp mkmf.template.compile_all $DART/build_templates/mkmf.template
 cd $DART
