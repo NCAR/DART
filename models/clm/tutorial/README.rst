@@ -1622,6 +1622,8 @@ Next, use Matlab to create the ``plot_rmse_xxx_evolution.m`` figures.
 Note that this function automatically plots the RMSE, where the ``copy``
 and the ``obsname`` variable are customizable.
 
+
+
 ::
 
  cd DART/diagnostics/matlab
@@ -1631,6 +1633,15 @@ and the ``obsname`` variable are customizable.
  >> copy    = 'totalspread';
  >> obsname = 'MODIS_LEAF_AREA_INDEX';
  >> plotdat = plot_rmse_xxx_evolution(fname, copy, 'obsname', obsname);
+
+
+.. Tip::
+ When remotley logged into  Cheyenne there is a time delay when the Matlab figures are rendering,
+ and also when interacting with the figures.  For the purposes of this tutorial this
+ delay is minimal. However, to improve responsiveness for your own research you may find it
+ convenient to port your diagnostic files (e.g. obs_diag_output.nc) and run the Matlab diagnostics
+ on your local machine.  This requires a compiled version of  DART and a Matlab license for your
+ local machine. 
 
 
 The finished figure should look like the following below. Click on it
@@ -1728,8 +1739,6 @@ If you have completed all these steps (1-13) **Congratulations!** -- you are wel
 your way to designing CLM5-DART assimilations for your own research.
 
 
-References
-----------
 
 .. |plot_rmse| image:: ../../../guide/images/CLM_tutorial_plotrmse.png
    :height: 300px
