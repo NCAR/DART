@@ -730,7 +730,7 @@ istatus = 2
 end subroutine height_bounds
 
 
-subroutine lat_lon_interpolate(state_handle, ens_size, llon, llat, level, var_id, var_type, interp_val, istatus)
+subroutine lat_lon_interpolate(state_handle, ens_size, llon, llat, level, var_id, qty, interp_val, istatus)
 !=======================================================================
 !
 
@@ -741,7 +741,7 @@ integer,             intent(in)  :: ens_size
 
 real(r8),            intent(in) :: llon, llat
 integer,             intent(in) :: level
-integer,             intent(in) :: var_id, var_type
+integer,             intent(in) :: var_id, qty
 integer,            intent(out) :: istatus(ens_size)
 real(r8),           intent(out) :: interp_val(ens_size)
 
@@ -763,7 +763,7 @@ istatus = 0
 ! V is on the YG latitude grid
 
 lat_array = yc
-if(var_type == QTY_V_CURRENT_COMPONENT) lat_array = yg
+if(qty == QTY_V_CURRENT_COMPONENT) lat_array = yg
 
 call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 
@@ -775,7 +775,7 @@ endif
 
 ! Find out what longitude box and fraction
 lon_array = xc
-if(var_type == QTY_U_CURRENT_COMPONENT) lon_array = xg
+if(qty == QTY_U_CURRENT_COMPONENT) lon_array = xg
 
 call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 
@@ -1066,18 +1066,18 @@ end subroutine set_model_end_time
 !> required for all filter applications as it is required for computing
 !> the distance between observations and state variables.
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: var_type
+integer,             intent(out), optional :: qty
 
 real(r8) :: lat, lon, depth
 integer  :: iloc, jloc, kloc
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, iloc, jloc, kloc, kind_index = var_type)
+call get_model_variable_indices(index_in, iloc, jloc, kloc, kind_index = qty)
 
 lon   = XC(iloc)
 lat   = YC(jloc)
@@ -1085,10 +1085,10 @@ depth = ZC(kloc)
 
 ! Acounting for surface variables and those on staggered grids
 ! MEG: check chl's depth here
-if (var_type == QTY_SEA_SURFACE_HEIGHT .or. &
-    var_type == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
-if (var_type == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
-if (var_type == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
+if (qty == QTY_SEA_SURFACE_HEIGHT .or. &
+    qty == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
+if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
+if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
