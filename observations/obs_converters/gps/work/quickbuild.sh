@@ -6,7 +6,7 @@
 
 main() {
 
-[ -z "$DART" ] && echo "ERROR: Must set DART environment variable" && exit 9
+export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildconvfunctions.sh
 
 
