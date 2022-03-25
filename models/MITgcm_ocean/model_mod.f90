@@ -648,13 +648,11 @@ if (varid < 1) then
    return
 endif
 
-base_offset = get_index_start(domain_id, varid)
-
 ! Do horizontal interpolations for the appropriate levels
 
 ! For Sea Surface Height don't need the vertical coordinate
 if( is_vertical(location,"SURFACE") ) then
-   call lat_lon_interpolate(state_handle, ens_size, base_offset, llon, llat, quantity, interp_val, istatus)
+   call lat_lon_interpolate(state_handle, ens_size, llon, llat, 1, varid, quantity, interp_val, istatus)
    return
 endif
    
@@ -665,29 +663,19 @@ if(hstatus /= 0) then
    return
 endif
 
-! Find the base location for the top height and interpolate horizontally on this level
-offset = base_offset + (hgt_top - 1) * nx * ny
-!print *, 'relative top height offset = ', offset(1) - base_offset
-!print *, 'absolute top height offset = ', offset(1)
-
-call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, quantity, top_val, istatus)
+call lat_lon_interpolate(state_handle, ens_size, llon, llat, hgt_top, varid, quantity, top_val, istatus)
 ! Failed istatus from interpolate means give up
 do i =1,ens_size
    if(istatus(i) /= 0) return
 enddo
    
-! Find the base location for the bottom height and interpolate horizontally on this level
-offset = base_offset + (hgt_bot - 1) * nx * ny
-!print *, 'relative bot height offset = ', offset(1) - base_offset
-!print *, 'absolute bot height offset = ', offset(1)
-call lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, quantity, bot_val, istatus)
+call lat_lon_interpolate(state_handle, ens_size, llon, llat, hgt_bot, varid, quantity, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 do i =1,ens_size
    if(istatus(i) /= 0) return
 enddo
 ! Then weight them by the fraction and return
 interp_val = bot_val + hgt_fract * (top_val - bot_val)
-!print *, 'model_interp: interp val = ',interp_val(1)
 
 end subroutine model_interpolate
 
@@ -742,19 +730,18 @@ istatus = 2
 end subroutine height_bounds
 
 
-subroutine lat_lon_interpolate(state_handle, ens_size, offset, llon, llat, var_type, interp_val, istatus)
+subroutine lat_lon_interpolate(state_handle, ens_size, llon, llat, level, var_id, var_type, interp_val, istatus)
 !=======================================================================
 !
 
-! Subroutine to interpolate to a lat lon location given that portion of state
-! vector. 
+! Subroutine to interpolate to a lat lon location for a given level
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-integer(i8),         intent(in)  :: offset
 
 real(r8),            intent(in) :: llon, llat
-integer,             intent(in) :: var_type
+integer,             intent(in) :: level
+integer,             intent(in) :: var_id, var_type
 integer,            intent(out) :: istatus(ens_size)
 real(r8),           intent(out) :: interp_val(ens_size)
 
@@ -799,8 +786,6 @@ if(lon_status /= 0) then
 endif
 
 
-! TJH get_val() should be replaced with get_dart_vector_index() and get_state()
-
 ! Vector is laid out with lat outermost loop, lon innermost loop
 ! Find the bounding points for the lat lon box
 ! NOTE: For now, it is assumed that a real(r8) value of exactly 0.0 indicates
@@ -810,48 +795,31 @@ endif
 ! will be that an observation whos forward operator requires interpolating
 ! from a point that has exactly 0.0 (but is not masked) will not be 
 ! assimilated.
-!print *, 'lon_bot, lon_top = ', lon_bot, lon_top
-!print *, 'lat_bot, lat_top = ', lat_bot, lat_top
 
-pa = get_val(lon_bot, lat_bot, nx, state_handle, offset, ens_size, masked)
-!print *, 'pa = ', pa
+pa = get_val(lon_bot, lat_bot, level, var_id, state_handle, ens_size, masked)
 if(masked) then
    istatus = 13
    return
 endif
-pb = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, masked)
-!print *, 'pb = ', pb
+pb = get_val(lon_top, lat_bot, level, var_id, state_handle, ens_size, masked)
 if(masked) then
    istatus = 14
    return
 endif
-pc = get_val(lon_bot, lat_top, nx, state_handle, offset, ens_size, masked)
-!print *, 'pc = ', pc
+pc = get_val(lon_bot, lat_top, level, var_id, state_handle, ens_size, masked)
 if(masked) then
    istatus = 15
    return
 endif
-pd = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, masked)
-!print *, 'pd = ', pd
+pd = get_val(lon_top, lat_top, level, var_id, state_handle, ens_size, masked)
 if(masked) then
    istatus = 16
    return
 endif
 
-!print *, 'pa,b,c,d = ', pa(1), pb(1), pc(1), pd(1)
-
-! Finish bi-linear interpolation 
-! First interpolate in longitude
-!print *, 'bot lon_fract, delta = ', lon_fract, (pb(1)-pa(1))
 xbot = pa + lon_fract * (pb - pa)
-!print *, 'xbot = ', xbot(1)
-!print *, 'top lon_fract, delta = ', lon_fract, (pd(1)-pc(1))
 xtop = pc + lon_fract * (pd - pc)
-!print *, 'xtop = ', xtop(1)
-! Now interpolate in latitude
-!print *, 'lat_fract, delta = ', lat_fract, (xtop(1) - xbot(1))
 interp_val = xbot + lat_fract * (xtop - xbot)
-!print *, 'lat_lon_interp: interp_val = ', interp_val(1)
 
 end subroutine lat_lon_interpolate
 
@@ -939,22 +907,16 @@ if ( .not. module_initialized ) call static_init_model
 ! Default is success
 istatus = 0
 
-!print *, 'computing bounds for = ', llon
 ! This is inefficient, someone could clean it up
 ! Plus, it doesn't work for a global model that wraps around
 do i = 2, nlons
    dist_bot = lon_dist(llon, lon_array(i - 1))
    dist_top = lon_dist(llon, lon_array(i))
-!print *, 'dist top, bot = ', dist_top, dist_bot
    if(dist_bot >= 0 .and. dist_top < 0) then
       bot = i - 1
       top = i
-!print *, 'bot, top = ', bot, top
-!print *, 'numerator = ',  dist_bot
-!print *, 'denomenator = ', dist_bot + abs(dist_top)
       fract = dist_bot / (dist_bot + abs(dist_top))
       ! orig: fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
-!print *, 'fract = ', fract
       return
    endif
 end do
@@ -992,14 +954,14 @@ endif
 end function lon_dist
 
 
-function get_val(lon_index, lat_index, nlon, state_handle,offset,ens_size, masked)
+function get_val(lon_index, lat_index, level, var_id, state_handle,ens_size, masked)
 !=======================================================================
 !
 
 ! Returns the value from a single level array given the lat and lon indices
-integer,             intent(in)  :: lon_index, lat_index, nlon
+integer,             intent(in)  :: lon_index, lat_index, level
+integer,             intent(in)  :: var_id ! state variable
 type(ensemble_type), intent(in)  :: state_handle
-integer(i8),         intent(in)  :: offset
 integer,             intent(in)  :: ens_size
 logical,             intent(out) :: masked
 real(r8)                         :: get_val(ens_size)
@@ -1009,17 +971,8 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-! print *, 'lat_index, lon_index, nlon, offset', lat_index, lon_index, nlon, offset
-
-!TJH: this calculation is only correct for slabs ...
-state_index=int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
-
-!TJH DART has an accessor function ...
-!TJH state_index = get_dart_vector_index(lon_index,lat_index,lev_index,dom_id,var_id)
-
+state_index = get_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
 get_val = get_state(state_index,state_handle)
-
-!print *, 'get_val = ', get_val
 
 ! Masked returns false if the value is masked
 ! A grid variable is assumed to be masked if its value is FVAL. 
