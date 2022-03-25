@@ -64,6 +64,8 @@ cleanup() {
 for p in "${programs[@]}"; do
   \rm -f -- "$p"
 done
+
+\rm -f -- preprocess
 }
 
 #-------------------------

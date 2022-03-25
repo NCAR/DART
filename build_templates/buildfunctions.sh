@@ -76,6 +76,9 @@ all_programs=("${programs[@]}" "${model_programs[@]}" "${serial_programs[@]}" "$
 for p in ${all_programs[@]}; do 
   \rm -f -- $(basename $p)
 done
+
+\rm -f -- preprocess
+
 }
 
 #-------------------------
