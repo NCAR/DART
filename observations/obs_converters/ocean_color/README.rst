@@ -67,7 +67,7 @@ with an ampersand '&' and terminate with a slash '/'.
   |                 |           | allows one to take every nth observation.                                               |
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
   | special_mask    | logical   | A simple procedure to ignore data in certain areas.                                     |
-  |                 |           | User can edit this according to their case.                                             |
+  |                 |           | Users can the code in convert_sat_chl.f90 to change the mask location                   |
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
   | debug           | logical   | Print extra information during the ``convert_sat_chl`` execution.                       |
   +-----------------+-----------+-----------------------------------------------------------------------------------------+
