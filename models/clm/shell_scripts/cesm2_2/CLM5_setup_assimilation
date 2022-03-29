@@ -397,8 +397,18 @@ cat << EndOfText >! stage_cesm_files
 #                           the very first one.
 #  2) be sure 'restart_time' is set to the day and time that you want to
 #     restart from if not the initial time.
+#
+#  3) be sure the prior inflation files are re-staged 
+#     STAGE_INFLATION FALSE => no restage, default setting when case is first created
+#     STAGE_INFLATION TRUE  => you are starting from a previous step or
+#                              from the initial time            
+#
+#
+#
 
 set restart_time = $init_time
+set STAGE_INFLATION = FALSE
+
 
 # get the settings for this case from the CESM environment
 cd ${caseroot}
@@ -523,6 +533,93 @@ else     # CONTINUE_RUN == FALSE
    echo "All files set to run the FIRST experiment step at time" $init_time
 
 endif
+
+   #----------------------------------------------------------------------
+   # This block modifies the inflation rpointer files (priorinf_pointer_d{01-03}.txt)
+   # such that the DART code uses the inflation files (clm_output_priorinf*.nc) from the 
+   # previous time step (e.g. restart_time)
+   # e.g. the following files:
+   # clm_output_priorinf_mean_d01.2011-01-03-00000.nc
+   # clm_output_priorinf_sd_d01.2011-01-03-00000.nc
+   # would be used to apply inflation for time step: 2011-01-04
+   #----------------------------------------------------------------------
+
+if ( \${STAGE_INFLATION} == TRUE) then
+
+# Confirm inflation is being used.
+
+set  MYSTRING = \`grep inf_flavor input.nml\`
+set  MYSTRING = \`echo \$MYSTRING | sed -e "s#[=,'\.]# #g"\`
+set  PRIOR_INF = \$MYSTRING[2]
+set  POSTE_INF = \$MYSTRING[3]
+
+  if ( \$PRIOR_INF != 0 ) then
+
+    if  ( \${CONTINUE_RUN} == FALSE) then
+       # Generate cookie such that fill_inflation_restart 
+       # generates inflation files
+
+       date >! \${RUNDIR}/clm_inflation_cookie
+
+    else  # CONTINUE_RUN=TRUE
+
+         if ( ! -e priorinf_pointer_d01.txt ) then
+
+         echo "ERROR: priorinf_pointer_d01.txt file not found"
+         echo "At least 1 domain pointer file should exist if assimilation run is re-staged"
+         echo "Prior inflation files will not be re-staged"
+         exit 2
+
+         endif
+
+       @ domaincount = 0
+       echo "     "
+       echo "Re-setting priorinf pointer files for " \$restart_time
+       echo "     "
+
+     foreach POINTERFILE ( priorinf_pointer*.txt )
+
+        @ domaincount ++
+
+        set POINTERFILE = \`printf priorinf_pointer_d%02d.txt \$domaincount\`
+        echo "Located inflation pointer file: " \$POINTERFILE
+        set DOMAIN = \`printf _d%02d \$domaincount\`
+        set FILE   = \`printf clm_output_priorinf_mean\${DOMAIN}.\${restart_time}.nc\`
+
+         if ( ! -e \${FILE} ) then
+         echo "ERROR: \${FILE} not found"
+         echo "This file must exist to be inserted in \${POINTERFILE}"
+         echo "Prior inflation file will not be re-staged"
+         exit 3
+         endif
+
+        set SDFILE = \`echo \$FILE | sed -e "s#mean#sd#"\`
+        echo "Inserting the prior inflation file into pointer: " \$FILE
+        echo \$FILE   >! \$POINTERFILE
+        echo \$SDFILE >> \$POINTERFILE
+
+     end
+
+     echo "The priorinf pointer files are reset to rerun experiment at: " \$restart_time
+     echo "    "
+
+    endif
+
+  else   # \$PRIOR_INF==0
+
+    echo "Warning: Prior inflation is turned off for this assimilation"
+    echo "Inflation files will not be re-staged"
+    echo "Check your input.nml inflation settings"
+
+  endif
+
+   if ( \$POSTE_INF != 0 ) then
+      echo "ERROR: stage_cesm_files not configured to stage posterior inflation files."
+      exit 4
+   endif
+
+endif
+
 exit 0
 
 EndOfText
