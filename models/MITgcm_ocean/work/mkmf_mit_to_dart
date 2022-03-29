@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../build_templates/mkmf -p trans_mitdart -t ../../../build_templates/mkmf.template   \
- -a "../../.." path_names_trans_mitdart
+../../../build_templates/mkmf -p mit_to_dart -t ../../../build_templates/mkmf.template   \
+ -a "../../.." path_names_mit_to_dart
 
 exit $status
 

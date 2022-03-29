@@ -1,75 +1,28 @@
-!Program to Convert DART-netcdf files to MITgcm-binary and vice-versa.
-!Author: S Siva Reddy, sivamtech07@gmail.com/sivareddy.sanikommu@kaust.edu.sa
-!Date: 30-Jul-2020
-!*******************************************************************************
-!When converting from DART-netcdf to MITgcm: 
-!  Inputs:
-!       MODE.txt		! echo "D2M" > MODE.txt 
-!              data             !GRID INFORMATION IS READ FROM HERE
-!              INPUT.nc	!PSAL,PTMP,UVEL,VVEL, and ETA, NO3, ... data is read from here       
-! 
-!  Outputs: 14 variables >>
-!              PSAL.data
-!              PTMP.data
-!              UVEL.data
-!              VVEL.data
-!              ETA.data
-!              DIC.data
-!              ALK.data
-!              O2.data
-!              NO3.data
-!              PO4.data
-!              FET.data
-!              DON.data
-!              DOP.data
-!              PHY.data
-!
-!
-!When converting from MITgcm to DART-netcdf : 
-!  Inputs:
-!       MODE.txt		! echo "M2D" > MODE.txt
-!       data		!GRID INFORMATION IS READ FROM HERE
-!  15 variables >> 
-!              PSAL.data
-!              PTMP.data
-!              UVEL.data
-!              VVEL.data
-!              ETA.data
-!              DIC.data
-!              ALK.data
-!              O2.data
-!              NO3.data
-!              PO4.data
-!              FET.data
-!              DON.data
-!              DOP.data
-!              PHY.data
-!              CHL.data
-!  Outputs:
-!       OUTPUT.nc
-!*********************************************************************
-!Main Program
-!---------------------------------------------------------------------
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program trans_mitdart
+
+module trans_mitdart_mod
 
 use types_mod,     only: r4, r8
 use utilities_mod, only: initialize_utilities, register_module, &
-                         get_unit, find_namelist_in_file, file_exist
+                         get_unit, find_namelist_in_file, file_exist, &
+                         check_namelist_read
 use netcdf
 
 implicit none
 
-character(len=*), parameter :: source   = 'trans_mitdart.f90'
+character(len=*), parameter :: source   = 'trans_mitdart_mod.f90'
 
+logical             :: module_initialized = .false.
 character(len=1024) :: msgstring
 integer             :: io, iunit
 
-logical             :: go_to_dart    = .false. 
 logical             :: do_bgc        = .false.
 logical             :: log_transform = .false. 
 
-namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform
+namelist /trans_mitdart_nml/ do_bgc, log_transform
 
 !------------------------------------------------------------------
 !
@@ -122,18 +75,9 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 
-call initialize_utilities(source)
+private
 
-call find_namelist_in_file('input.nml', 'trans_mitdart_nml', iunit)
-read(iunit, nml = trans_mitdart_nml, iostat = io) 
-
-call static_init_trans()
-
-if (go_to_dart) then 
-   call MIT2DART()
-else
-   call DART2MIT()
-endif
+public :: static_init_trans, mit2dart, dart2mit
 
 contains
 
@@ -147,6 +91,14 @@ subroutine static_init_trans()
 ! it reads in the grid information and then the model data.
 
 integer :: i, io
+
+if (module_initialized) return
+
+module_initialized = .true.
+
+call find_namelist_in_file('input.nml', 'trans_mitdart_nml', iunit)
+read(iunit, nml = trans_mitdart_nml, iostat = io)
+call check_namelist_read(iunit, io, 'trans_mitdart_nml')
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -263,7 +215,7 @@ end subroutine static_init_trans
 !------------------------------------------------------------------
 !> converts the binary input files to a netCDF file
 
-subroutine MIT2DART()
+subroutine mit2dart()
 
 integer  :: ncid, iunit
 
@@ -282,6 +234,8 @@ integer :: chl_varid
 real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
 
 real(r4) :: FVAL
+
+if (.not. module_initialized) call static_init_trans
 
 FVAL=-999.0_r4
 
@@ -611,12 +565,12 @@ call check(nf90_close(ncid))
 deallocate(data_3d)
 deallocate(data_2d)
 
-end subroutine MIT2DART
+end subroutine mit2dart
 
 !------------------------------------------------------------------
 !> Subroutine for Reading netCDF and writing in binary
 
-subroutine DART2MIT()
+subroutine dart2mit()
 
 integer :: ncid, varid, iunit
 real(r4), allocatable :: data_3d(:,:,:),data_2d(:,:)
@@ -624,6 +578,8 @@ real(r4) :: FVAL
 
 allocate(data_3d(Nx,Ny,Nz))
 allocate(data_2d(Nx,Ny))
+
+if (.not. module_initialized) call static_init_trans
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
@@ -776,7 +732,7 @@ call check( NF90_CLOSE(ncid) )
 deallocate(data_3d)
 deallocate(data_2d)
 
-end subroutine DART2MIT
+end subroutine dart2mit
 
 !===============================================================================
 !> Subroutine that checks error status on NC file 
@@ -807,6 +763,8 @@ real(r4), intent(in)    :: fillval
 
 real(r4) :: low_conc
 
+if (.not. module_initialized) call static_init_trans
+
 low_conc = 1.0e-12
 
 ! Make sure the tracer concentration is positive 
@@ -831,6 +789,8 @@ subroutine fill_var_dm(var, fillval)
 real(r4), intent(inout) :: var(:, :, :)
 real(r4), intent(in)    :: fillval
 
+if (.not. module_initialized) call static_init_trans
+
 if (log_transform) then
    where (var == fillval)
        var = 0.0_r4
@@ -843,9 +803,7 @@ endif
 
 end subroutine
 
+!------------------------------------------------------------------
 
-!===================================================================
-! End of trans_mitdart
-!===================================================================
-end program trans_mitdart
+end module trans_mitdart_mod
 
