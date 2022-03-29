@@ -199,7 +199,6 @@
   /
 
 &trans_mitdart_nml
-   go_to_dart    = .true.
    do_bgc        = .true.
    log_transform = .true.
   / 

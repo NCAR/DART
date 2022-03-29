@@ -37,9 +37,30 @@ particular ASCII file.
 Converting between DART and the model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The MITgcm_ocean model uses Fortran direct-access big-endian data files. The program trans_mitdart is provided to
-convert the MITgcm_ocean model files to DART netcdf files and back.
+The MITgcm_ocean model reads and writes Fortran direct-access big-endian data files. To convert MITgcm_ocean files
+into netcdf files for input to DART use the program ``mit_to_dart``.  To convert the netcdf output from DART to
+MITgcm_ocean files use the program ``dart_to_mit``. When converting from DART to MIT and back, the following options
+can be set in the ``&trans_mitdart_nml`` namelist in ``input.nml``.
 
+.. code-block:: fortran
+
+   &trans_mitdart_nml
+     do_bgc = .false.         ! change to .true. if doing bio-geo-chemistry
+     log_transform = .false.  ! change to .true. if using log_transform
+   /
+
+
+.. Warning::
+
+   The ``trans_mit_dart_mod`` module has hardcoded record lengths, ``recl3d`` and ``recl2d``.
+   Be sure to check these are correct for the compiler you are using.
+
+  .. code-block:: fortran
+  
+    ! set record lengths
+    recl3d = Nx*Ny*Nz*4
+    recl2d = Nx*Ny*4
+  
 
 Controlling the model advances
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
