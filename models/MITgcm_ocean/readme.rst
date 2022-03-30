@@ -6,16 +6,8 @@ Overview
 --------
 
 The `MIT ocean GCM <http://mitgcm.org/>`__ version 'checkpoint59a' is the foundation of this directory. It was
-modified by Ibrahim Hoteit of Scripps for his use, and so it differs from the original distribution.
-
-As for all DART experiments, the overall design for an experiment is this: the DART program ``filter`` will read the
-initial conditions file, the observation sequence file, and the DART namelist to decide whether or not to advance the
-ocean model. All of the control of the execution of the ocean model is done by DART directly. If the model needs to be
-advanced, ``filter`` makes a call to the shell to execute the script ``advance_model.csh``. ``advance_model.csh`` is
-ENTIRELY responsible for getting all the input files, data files, namelists, etc. into a temporary directory, running
-the model, and copying the results back to the parent directory (which we call CENTRALDIR). The whole process hinges
-on setting the ocean model namelist values such that it is doing a cold start for every model advance.
-
+modified by Ibrahim Hoteit of Scripps for his use, and so it differs from the original distribution. The whole
+process hinges on setting the ocean model namelist values such that it is doing a cold start for every model advance.
 
 The data assimilation period is controlled in the ``input.nml``\ ``&model_nml`` namelist. In combination with the ocean
 model dynamics timestep ``data``\ ``&PARM03:deltaTClock`` this determines the amount of time the model will advance for
@@ -25,13 +17,8 @@ each assimilation cycle.
 Observations
 ^^^^^^^^^^^^
 
-The observations for the ocean model were the first observations of oceanic quantities, so there is an
-``observations/forward_operators/obs_def_MITgcm_ocean_mod.f90`` file containing the novel observation definitions like
-*salinity, sea surface height, current components ...*. In keeping with the DART philosophy, there is a concept of
-inheritance between platform-specific observations like *DRIFTER_U_CURRENT_COMPONENT* and the general
-*U_CURRENT_COMPONENT*. Using the specific types when possible will allow flexibility specifying what kinds of
-observations to assimilate. :doc:`./create_ocean_obs` is the program to create a DART observation sequence from a very
-particular ASCII file.
+The forward operators for ocean observations are in ``observations/forward_operators/obs_def_oceam_mod.f90``.
+:doc:`./create_ocean_obs` is the program to create a DART observation sequence from a particular ASCII file.
 
 
 Converting between DART and the model
