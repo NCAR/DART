@@ -100,23 +100,16 @@ call find_namelist_in_file('input.nml', 'trans_mitdart_nml', iunit)
 read(iunit, nml = trans_mitdart_nml, iostat = io)
 call check_namelist_read(iunit, io, 'trans_mitdart_nml')
 
+
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
 delY(:) = 0.0_r4
 delZ(:) = 0.0_r4
 delR(:) = 0.0_r4
 
-open(unit = 11, file = "data", iostat = io)
-if (io /= 0) then
-   print *, 'Error while opening ', trim("data")
-   STOP 5
-endif
-
-read(11, nml = PARM04, iostat = io)
-if (io /= 0) then
-   print *, 'Error while reading ', trim("data")
-   STOP 5
-endif
+call find_namelist_in_file('data', 'PARM04', iunit)
+read(iunit, nml = PARM04, iostat = io)
+call check_namelist_read(iunit, io, 'data')
 
 ! we use either delR or delZ in mitgcm
 if (delR(1) /= 0.0_r4) then
