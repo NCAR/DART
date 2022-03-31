@@ -1,112 +1,132 @@
 &perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .true.,
-   async                 = 4,
-   init_time_days        = -1,
-   init_time_seconds     = -1,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.perfect",
-   adv_ens_command       = "../shell_scripts/advance_model.csh",
-   output_timestamps     = .false.,
-   trace_execution       = .false.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs   = -1,
-   silence               = .false.,
+   start_from_restart       = .true.
+   output_restart           = .true.
+   async                    = 4
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   output_interval          = 1
+   restart_in_file_name     = 'perfect_ics'
+   restart_out_file_name    = 'perfect_restart'
+   obs_seq_in_file_name     = 'obs_seq.in'
+   obs_seq_out_file_name    = 'obs_seq.perfect'
+   adv_ens_command          = '../shell_scripts/advance_model.csh'
+   output_timestamps        = .false.
+   trace_execution          = .false.
+   output_forward_op_errors = .false.
+   print_every_nth_obs      = -1
+   silence                  = .false.
   /
+
 
 &filter_nml
-   async                    = 4,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 20,
-   start_from_restart       = .true.,
-   output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = 148805,
-   init_time_seconds        =      0,
-   first_obs_days           = 148805,
-   first_obs_seconds        =      0,
-   last_obs_days            = 148865,
-   last_obs_seconds         =      0,
-   num_output_state_members = 20,
-   num_output_obs_members   = 20,
-   output_interval          = 1,
-   num_groups               = 1,
-   input_qc_threshold       =  3.0,
-   outlier_threshold        =  3.0,
-   output_forward_op_errors = .false.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
-   trace_execution          = .false.,
-   silence                  = .false.,
-
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_output_restart          = .true.,                  .true.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
-   inf_initial                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_sd_lower_bound          = 0.0,                     0.0,
-   inf_sd_max_change           = 1.05,                    1.05,
+   single_file_in               = .false.
+   input_state_file_list        = 'input_list.txt'
+   init_time_days               = -1
+   init_time_seconds            = -1
+   perturb_from_single_instance = .true.
+   perturbation_amplitude       = 0.2
+   stages_to_write              = 'output'
+   single_file_out              = .false.
+   output_state_file_list       = 'output_list.txt'
+   output_interval              = 1
+   output_members               = .true.
+   num_output_state_members     = 80
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+   compute_posterior            = .true.
+   ens_size                     = 80
+   num_groups                   = 1
+   distributed_state            = .true.
+   async                        = 0
+   obs_sequence_in_name         = 'obs_seq.out'
+   obs_sequence_out_name        = 'obs_seq.final'
+   first_obs_days               = -1
+   first_obs_seconds            = -1
+   last_obs_days                = -1
+   last_obs_seconds             = -1
+   inf_flavor                   = 3,                       0
+   inf_initial_from_restart     = .false.,                 .false.
+   inf_sd_initial_from_restart  = .false.,                 .false.
+   inf_initial                  = 1.0,                     1.0
+   inf_lower_bound              = 1.0,                     1.0
+   inf_upper_bound              = 1000000.0,               1000000.0
+   inf_damping                  = 1.0,                     1.0
+   inf_sd_initial               = 0.0,                     0.0
+   inf_sd_lower_bound           = 0.0,                     0.0
+   output_forward_op_errors     = .false.
   /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'
-   /
 
-# cutoff of 0.03 (radians) is about 200km
+&quality_control_nml
+   input_qc_threshold          = 3
+   outlier_threshold           = 3
+   enable_special_outlier_code = .false.
+  /
+
+
+# distribute_mean = false is faster if your model does vertical
+#                   conversions but takes more memory
+# distribute_mean = true is slower but takes much less memory and
+#                   may allow you to run at all compared to not
+#                   for very large state vectors
+#
+# enabling sampling error correction is generally beneficial
+# the default file is in assimilation_code/programs/gen_sampling_err_table/work
+#
+# With a deterministic filter (filter_kind == 1 or 8)
+# and a deterministic inflation (filter_nml:inf_deterministic == .true.)
+# sort_obs_inc is not needed and is expensive. Should be .false.
+#
+# specify special localization items in the same order
+# in both lists, the same number of items
+
 &assim_tools_nml
-   filter_kind                     = 1,
-   cutoff                          = 0.03,
-   sort_obs_inc                    = .false.,
-   spread_restoration              = .false.,
-   sampling_error_correction       = .false.,
-   adaptive_localization_threshold = -1,
-   output_localization_diagnostics = .false.,
-   localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0
-   /
+   filter_kind                       = 1
+   cutoff                            = 0.025
+   distribute_mean                   = .false.
+   sort_obs_inc                      = .false.
+   spread_restoration                = .false.
+   sampling_error_correction         = .false.
+   adaptive_localization_threshold   = -1
+   adaptive_cutoff_floor             = 0.0
+   output_localization_diagnostics   = .false.
+   localization_diagnostics_file     = 'localization_diagnostics'
+   print_every_nth_obs               = 0
+   rectangular_quadrature            = .true.
+   gaussian_likelihood_tails         = .false.
+   close_obs_caching                 = .true.
+   adjust_obs_impact                 = .false.
+   obs_impact_filename               = ''
+   allow_any_impact_values           = .false.
+   convert_all_obs_verticals_first   = .true.
+   convert_all_state_verticals_first = .false.
+   special_localization_cutoffs      = -888888.0
+  /
+
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
-   single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2
-   /
+   layout                      = 1
+   tasks_per_node              = 1
+   communication_configuration = 1
+   debug                       = .false.
+  /
+
 
 &cov_cutoff_nml
    select_localization = 1
-   /
+  /
 
-&reg_factor_nml
-   select_regression    = 1,
-   input_reg_file       = "time_mean_reg",
-   save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"
-   /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.
-   /
+   read_binary_file_format   = 'native'
+  /
+
 
 &obs_kind_nml
    assimilate_these_obs_types = 'SALINITY',
@@ -140,95 +160,134 @@
                                 'SATELLITE_INFRARED_SST',
                                 'SATELLITE_SSH',
                                 'SATELLITE_SSS',
-                                'HFRADAR_RADIAL_VELOCITY'
-   /
+                                'HFRADAR_RADIAL_VELOCITY', 
+                                'OCEAN_COLOR'
+  /
+
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
-   /
+   overwrite_output        = .true. 
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
+  /
 
-# model specific namelist info
 
 &model_nml
-   assimilation_period_days     = 1,
-   assimilation_period_seconds  = 0, 
-   model_perturbation_amplitude = 0.2, 
-   /
+   assimilation_period_days     = 0
+   assimilation_period_seconds  = 259200
+   model_perturbation_amplitude = 0.2
+   model_shape_file             = 'OUTPUT.nc'
+   mitgcm_variables = 'PSAL', 'QTY_SALINITY',                   'NA',  'NA', 'update',
+                      'PTMP', 'QTY_TEMPERATURE',                'NA',  'NA', 'update',
+                      'UVEL', 'QTY_U_CURRENT_COMPONENT',        'NA',  'NA', 'update',
+                      'VVEL', 'QTY_V_CURRENT_COMPONENT',        'NA',  'NA', 'update',
+                      'ETA',  'QTY_SEA_SURFACE_HEIGHT'          'NA',  'NA', 'update', 
+                      'NO3',  'QTY_NITRATE_CONCENTRATION',      '0.0', 'NA', 'update',
+                      'PO4',  'QTY_PHOSPHATE_CONCENTRATION',    '0.0', 'NA', 'update', 
+                      'O2',   'QTY_DISSOLVED_OXYGEN',           '0.0', 'NA', 'update',
+                      'PHY',  'QTY_PHYTOPLANKTON_BIOMASS',      '0.0', 'NA', 'update',
+                      'ALK',  'QTY_ALKALINITY',                 '0.0', 'NA', 'update',
+                      'DIC',  'QTY_DISSOLVED_INORGANIC_CARBON', '0.0', 'NA', 'update',
+                      'DOP',  'QTY_DISSOLVED_ORGANIC_P',        '0.0', 'NA', 'update',
+                      'DON',  'QTY_DISSOLVED_ORGANIC_NITROGEN', '0.0', 'NA', 'update',
+                      'FET',  'QTY_DISSOLVED_INORGANIC_IRON',   '0.0', 'NA', 'update',
+                      'CHL',  'QTY_SURFACE_CHLOROPHYLL',        '0.0', 'NA', 'no_copyback'
+  /
+
+&trans_mitdart_nml
+   do_bgc        = .true.
+   log_transform = .true.
+  / 
 
 &location_nml
-   horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0, 
-   vert_normalization_height   = 10000.0,
-   vert_normalization_level    = 20.0,
-   approximate_distance        = .false.,
-   nlon                        = 71,
-   nlat                        = 36,
-   output_box_info             = .true.
-   /
+   horiz_dist_only = .true.
+   nlon            = 71
+   nlat            = 36
+   output_box_info = .false.
+  /
+
+
+&state_vector_io_nml
+   buffer_state_io         = .true.
+   single_precision_output = .false.
+  /
+
 
 &utilities_nml
-   TERMLEVEL = 1,
-   module_details = .true.,
-   logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml'
-   /
+   TERMLEVEL      = 2
+   logfilename    = 'dart_log.out'
+   nmlfilename    = 'dart_log.nml'
+   module_details = .true.
+   print_debug    = .false.
+   write_nml      = 'file'
+  /
 
-&obs_sequence_tool_nml
-   num_input_files = 8,
-   filename_seq    = '../observations/ssh_pseudo.obs_seq.out',
-                     '../observations/gliders_t_pseudo.obs_seq.out',
-                     '../observations/drifters_u_pseudo.obs_seq.out',
-                     '../observations/drifters_v_pseudo.obs_seq.out',
-                     '../observations/adcp_u_pseudo.obs_seq.out',
-                     '../observations/adcp_v_pseudo.obs_seq.out',
-                     '../observations/tmi_pseudo.obs_seq.out',
-                     '../observations/hfr_pseudo.obs_seq.out',
-   filename_out    = 'obs_seq.out',
-   gregorian_cal   = .true.
-   /
 
-# other possible obs tool namelist items:
-#
-# print out how many obs of each type are in the file:
-#   print_only        = .true.,
-#
-# keep only obs in time period:
-#   first_obs_days    = -1,
-#   first_obs_seconds = -1,
-#   last_obs_days     = -1,
-#   last_obs_seconds  = -1,
-#
-# keep only obs in a bounding box:
-#   min_lat           = -90.0,
-#   max_lat           =  90.0,
-#   min_lon           =   0.0,
-#   max_lon           = 360.0,
-#
-# keep only the U and V radiosonde winds:
-#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
-#                        'RADIOSONDE_V_WIND_COMPONENT',
-#   keep_types         = .true.,
-#
-# remove the U and V radiosonde winds:
-#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
-#                        'RADIOSONDE_V_WIND_COMPONENT',
-#   keep_types         = .false.,
-#
-# keep only observations with a DART QC of 0:
-#   qc_metadata        = 'Dart quality control',
-#   min_qc             = 0,
-#   max_qc             = 0,
-#
-# keep only radiosonde temp obs between 250 and 300 K:
-#   copy_metadata      = 'NCEP BUFR observation',
-#   copy_type          = 'RADIOSONDE_TEMPERATURE',
-#   min_copy           = 250.0,
-#   max_copy           = 300.0,
-#
+&mpi_utilities_nml
+   reverse_task_layout        = .false.
+   all_tasks_print            = .false.
+   verbose                    = .false.
+   async2_verbose             = .false.
+   async4_verbose             = .false.
+   shell_name                 = ''
+   separate_node_sync         = .false.
+   create_local_comm          = .true.
+   make_copy_before_sendrecv  = .false.
+  /
+
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = 'time_mean_reg'
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = 'reg_diagnostics'
+  /
+
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.01
+   prior_inf_sd    = 0.6
+
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'filter_ics.0001.nc'
+   single_file       = .false.
+   verbose           = .false.
+  /
+
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'ics'
+   restart_out_file_name = 'restart'
+  /
+
+
+#-------------------------------------------------------------------------------
+# Everything below here is for diagnostics or observation processing
+
+&create_ocean_obs_nml
+   year        = 2010
+   month       =   12
+   day         =   30
+   tot_days    =    4
+   max_num     = 1000000
+   fname       = '../inputs/2obs_obs_seq.txt'
+   output_name = 'obs_seq.out'
+   lon1        = 20.0
+   lon2        = 60.0
+   lat1        =  5.0
+   lat2        = 35.0
+   hfradar     = .false.
+  /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -238,72 +297,146 @@
 #
 # Acceptable latitudes range from  [-90,  90]
 # Acceptable longitudes range from [  0, Inf]
+#
+# you can specify either [phm]level_edges or [phm]level,
+# but not both. You can mix and match. plevel & hlevel_edges is fine.
 
 &obs_diag_nml
-   obs_sequence_name = 'obs_seq.final',
-   obs_sequence_list = '',
-   first_bin_center =  2008, 6, 1, 0, 0, 0 ,
-   last_bin_center  =  2008, 6,30,24, 0, 0 ,
-   bin_separation   =     0, 0, 1, 0, 0, 0 ,
-   bin_width        =     0, 0, 1, 0, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
-   max_num_bins     = 1000,
-   trusted_obs      = 'null',
-   Nregions   = 3,
-   lonlim1    = 260.0, 270.0, 260.0,
-   lonlim2    = 310.0, 310.0, 300.0,
-   latlim1    =   0.0,   0.0,  20.0,
-   latlim2    =  40.0,  20.0,  40.0,
-   reg_names  = 'Gulf & Caribbean', 'Caribbean', 'Gulf of Mexico',
-   print_mismatched_locs = .false.,
-   create_rank_histogram = .true.,
-   outliers_in_histogram = .true.,
-   use_zero_error_obs    = .false.,
-   verbose               = .true.,
-   hlevel =  -2.50185,   -7.7967, -13.72595, -20.40305,  -27.9614, 
+   obs_sequence_name     = ''
+   obs_sequence_list     = ''
+   first_bin_center      =  2003, 1, 1, 0, 0, 0
+   last_bin_center       =  2003, 1, 2, 0, 0, 0
+   bin_separation        =     0, 0, 0, 6, 0, 0
+   bin_width             =     0, 0, 0, 6, 0, 0
+   time_to_skip          =     0, 0, 1, 0, 0, 0
+   max_num_bins          = 1000
+   trusted_obs           = 'null'
+
+   Nregions              = 1
+   reg_names             = 'Earth'
+   lonlim1               = 0.0
+   lonlim2               = 360.0
+   latlim1               = -90.0
+   latlim2               = -90.0
+   use_zero_error_obs    = .false.
+   create_rank_histogram = .false.
+   outliers_in_histogram = .true.
+   verbose               = .false.
+   hlevel =  -2.50185,   -7.7967, -13.72595, -20.40305,  -27.9614,
             -36.55765,  -46.3757,  -57.6311, -70.57615,  -85.5057,
-            -102.7636, -122.7502, -145.9296, -172.8393, -204.0984, 
-            -240.4174, -282.6075, -331.5891, -388.3994, -454.1974, 
-            -530.2654, -618.0071, -718.9376, -834.6679, -966.8794, 
-            -1117.289, -1287.607, -1479.480, -1694.436, -1933.820, 
-            -2198.734, -2489.986, -2808.042, -3153.009, -3524.622, 
+            -102.7636, -122.7502, -145.9296, -172.8393, -204.0984,
+            -240.4174, -282.6075, -331.5891, -388.3994, -454.1974,
+            -530.2654, -618.0071, -718.9376, -834.6679, -966.8794,
+            -1117.289, -1287.607, -1479.480, -1694.436, -1933.820,
+            -2198.734, -2489.986, -2808.042, -3153.009, -3524.622,
             -3922.264, -4344.997, -4791.606, -5260.660, -5750.303
-   /
+  /
 
-# These are Ibrahims synthetic observations - isolated by platform.
-#  fname    = '../observations/adcp_u_pseudo.txt',
-#  fname    = '../observations/adcp_v_pseudo.txt',
-#  fname    = '../observations/drifters_u_pseudo.txt',
-#  fname    = '../observations/drifters_v_pseudo.txt',
-#  fname    = '../observations/gliders_s_pseudo.txt',
-#  fname    = '../observations/gliders_t_pseudo.txt',
-#  fname    = '../observations/ssh_pseudo.txt',
-#  fname    = '../observations/tmi_pseudo.txt',
 
-&create_ocean_obs_nml
-   year     = 2008,
-   month    = 06,
-   day      = 1,
-   tot_days = 30,
-   max_num  = 80000,
-   fname       = '../inputs/pseudo_hfr.txt',
-   output_name = '../observations/hfr_pseudo.obs_seq.out',
-   lon1     = 0.0,
-   lon2     = 360.0,
-   lat1     = -90.0,
-   lat2     =  90.0,
-   hfradar  = .true.
-   /
+# OBS_SEQUENCE_TOOL IS QUITE VERSATILE.
+# SEE THE .HTML FILE FOR MORE DETAILED EXAMPLES AND FULL DOCUMENTATION.
+# here are brief examples of possible settings:
+#
+# keep only observations with a DART QC of 0:
+#   qc_metadata        = 'Dart quality control'
+#   min_qc             = 0
+#   max_qc             = 0
+#
+# keep only radiosonde temp obs between 250 and 300 K:
+#   copy_metadata      = 'NCEP BUFR observation'
+#   copy_type          = 'RADIOSONDE_TEMPERATURE'
+#   min_copy           = 250.0
+#   max_copy           = 300.0
+#
+# keep only the U and V radiosonde winds:
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+#                        'RADIOSONDE_V_WIND_COMPONENT'
+#   keep_types         = .true.
+#
+# remove the U and V radiosonde winds:
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+#                        'RADIOSONDE_V_WIND_COMPONENT'
+#   keep_types         = .false.
+#
+# change the metadata strings:
+#   edit_copy_metadata  = .true.
+#   new_copy_metadata   = 'observations'
+#   edit_qc_metadata    = .true.
+#   new_qc_metadata     = 'QC', 'DART quality control'
+#
+# change the number and order of the copies and qc:
+#   edit_copies    = .true.
+#   new_copy_index = 1, 2, 81, 82
+#   edit_qcs       = .true.
+#   new_qc_index   =  2
+#
+# add a new copy or qc by using 0 as the index number:
+#   edit_copies    = .true.
+#   new_copy_index = 1, 2, 0, 81, 82
+#   new_copy_data  = 5.0
+#   edit_qcs       = .true.
+#   new_qc_index   =  1, 2, 0, 0
+#   new_qc_data    = 0.0, 3.0
+#
+# allow different metadata strings in multiple files to match:
+#   synonymous_copy_list = 'NCEP BUFR observations', 'observations'
+#   synonymous_qc_list   = 'NCEP QC index', 'AIRS QC', 'QC'
 
-# Maximum number of HFRADAR observations in one observation sequence.
-&obs_def_ocean_nml
-   max_radial_vel_obs = 80000,
-   /
+&obs_sequence_tool_nml
+   filename_seq         = 'obs_seq.in'
+   filename_seq_list    = ''
+   filename_out         = 'obs_seq.out.NAME'
+   first_obs_days       = 149747
+   first_obs_seconds    = 43200
+   last_obs_days        = 149750
+   last_obs_seconds     = 43200
+   obs_types            = ''
+   keep_types           = .true.
+   min_box              = -888888.0
+   max_box              = -888888.0
+   min_lat              =  5.0
+   max_lat              =  35.0
+   min_lon              =  20.0
+   max_lon              =  60.0
+   copy_metadata        = ''
+   min_copy             = -888888.0
+   max_copy             = -888888.0
+   copy_type            = ''
+   edit_copy_metadata   = .false.
+   new_copy_metadata    = ''
+   edit_copies          = .false.
+   new_copy_index       = -1
+   new_copy_data        = -888888.0
+   qc_metadata          = ''
+   min_qc               = -888888.0
+   max_qc               = -888888.0
+   edit_qc_metadata     = .false.
+   new_qc_metadata      = ''
+   edit_qcs             = .false.
+   new_qc_index         = -1
+   new_qc_data          = -888888.0
+   synonymous_copy_list = ''
+   synonymous_qc_list   = ''
+   print_only           = .false.
+   gregorian_cal        = .true.
+  /
 
-# The obs_seq_to_netcdf_nml and schedule_nml are used to convert 
+
+# The obs_seq_to_netcdf_nml and schedule_nml are used to convert
 # observation sequence files to netCDF files.
 # note that only one of name or list can be used, and the other
 # must be set to '' to avoid ambiguity.
+
+&schedule_nml
+   calendar             = 'Gregorian',
+   first_bin_start      =  1601,  1,  1,  0,  0,  0,
+   first_bin_end        =  2999,  1,  1,  0,  0,  0,
+   last_bin_end         =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
+   max_num_bins         = 1000,
+   print_table          = .true.
+  /
 
 &obs_seq_to_netcdf_nml
    obs_sequence_name = 'hfr/obs_seq.final',
@@ -314,16 +447,31 @@
    latlim1    =  -90.0,
    latlim2    =   90.0,
    verbose    = .true.
-   /
+  /
 
-&schedule_nml
-   calendar       = 'Gregorian',
-   first_bin_start =  1601,  1,  1,  0,  0,  0,
-   first_bin_end   =  2999,  1,  1,  0,  0,  0,
-   last_bin_end    =  2999,  1,  1,  0,  0,  0,
-   bin_interval_days    = 1000000,
-   bin_interval_seconds = 0,
-   max_num_bins         = 1000,
-   print_table          = .true.
+# possible vertical coordinate systems are:
+# VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
+#   quantity_of_interest = 'QTY_TEMPERATURE'
+#   quantity_of_interest = 'QTY_SALINITY'
+#   quantity_of_interest = 'QTY_U_CURRENT'
+#   quantity_of_interest = 'QTY_V_CURRENT'
+#   quantity_of_interest = 'QTY_DENSITY'
+
+&model_mod_check_nml
+   input_state_files     = 'OUTPUT.nc'
+   output_state_files    = 'check_me'
+   verbose               = .TRUE.
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 5, 6, 7
+   x_ind                 = 37500001
+   loc_of_interest       = 38.6, 20.0, 12.01
+   quantity_of_interest  = 'QTY_TEMPERATURE'
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   interp_test_lonrange  = 30.0, 45.0
+   interp_test_dlon      = 0.10
+   interp_test_latrange  = 10.0, 30.0
+   interp_test_dlat      = 0.10
+   interp_test_vertrange = 0.0,  -100.00
+   interp_test_dvert     = -10.0
    /
 

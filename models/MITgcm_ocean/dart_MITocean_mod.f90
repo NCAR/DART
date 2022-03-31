@@ -1,30 +1,35 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module dart_MITocean_mod
 
 use types_mod,        only : r8, rad2deg, PI
+
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, interactive_obs_def, &
                              copy_obs_def, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              set_obs_def_key
+
 use time_manager_mod, only : time_type, get_date, set_time, GREGORIAN, &
                              set_date, set_calendar_type, get_time, &
                              print_date, print_time, operator(>=), &
                              operator(<), operator(>), operator(+)  
-use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
+
+use    utilities_mod, only : open_file, close_file, file_exist, &
                              register_module, error_handler, &
                              E_ERR, E_MSG, timestamp, is_longitude_between
+
 use     location_mod, only : location_type, set_location, VERTISHEIGHT, VERTISSURFACE
+
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
-                             copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def, &
-                             get_first_obs, get_last_obs, get_obs_def
+                             copy_obs, set_copy_meta_data, set_qc_meta_data, &
+                             get_first_obs, get_last_obs, get_obs_def, set_obs_def
+
 use     obs_kind_mod, only : get_index_for_type_of_obs
+
 use obs_def_ocean_mod, only : set_hf_radial_vel
 
 implicit none
@@ -33,10 +38,9 @@ private
 public :: real_obs_sequence
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'dart_MITocean_mod'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 logical, save :: module_initialized = .false.
 
@@ -48,20 +52,18 @@ integer :: print_every_Nth  = 10000
 contains
 
 !-------------------------------------------------
+!>  this function is to prepare data to DART sequence format
 
 function real_obs_sequence (obsfile, time1, timeN, max_num, &
           lon1, lon2, lat1, lat2, hfradar)
-!------------------------------------------------------------------------------
-!  this function is to prepare data to DART sequence format
-!
-character(len=129), intent(in) :: obsfile
-type(time_type),    intent(in) :: time1, timeN
-integer,            intent(in) :: max_num
-real(r8),           intent(in) :: lon1, lon2, lat1, lat2
-logical,            intent(in) :: hfradar
+
+character(len=*), intent(in) :: obsfile
+type(time_type),  intent(in) :: time1, timeN
+integer,          intent(in) :: max_num
+real(r8),         intent(in) :: lon1, lon2, lat1, lat2
+logical,          intent(in) :: hfradar
 
 type(obs_sequence_type) :: real_obs_sequence
-
 
 type(obs_def_type) :: obs_def
 type(obs_type) :: obs, prev_obs
@@ -70,16 +72,16 @@ integer :: days, seconds
 integer :: yy, mn, dd, hh, mm, ss
 integer :: startdate1, startdate2
 integer :: obs_num, calender_type, iskip
-integer :: obs_unit, id, defkey
+integer :: obs_unit, ios, id, defkey
 integer :: which_vert, obstype
 
 real (r8) :: lon, lat, vloc, obs_value
 real (r8) :: aqc, var2, angle
 type(time_type) :: time, pre_time
 
-character(len = 32) :: obs_kind_name
-character(len = 80) :: label
-character(len = 129) :: copy_meta_data, qc_meta_data
+character(len=32) :: obs_kind_name
+character(len=80) :: label
+character(len=129) :: copy_meta_data, qc_meta_data
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -113,9 +115,8 @@ call set_calendar_type(calender_type)
 
 ! open observation data file
 
-obs_unit  = get_unit()
-open(unit = obs_unit, file = obsfile, form='formatted', status='old')
-print*, 'input file opened= ', trim(obsfile)
+obs_unit = open_file(obsfile, form='formatted', action='read')
+print*, 'input file opened= "'//trim(obsfile)//'"'
 rewind (obs_unit)
 
 obs_num = 0
@@ -128,20 +129,22 @@ defkey  = 1
 obsloop:  do
 
    if (hfradar) then
-      read(obs_unit,*,end=200) lon, lat, vloc, angle, obs_value, which_vert, var2, aqc, &
-                                 obs_kind_name, startdate1, startdate2, id
+      read(obs_unit,*,iostat=ios,end=200) lon, lat, vloc, angle, obs_value, &
+              which_vert, var2, aqc, obs_kind_name, startdate1, startdate2, id
    else
-      read(obs_unit,*,end=200) lon, lat, vloc, obs_value, which_vert, var2, aqc, &
-                                 obs_kind_name, startdate1, startdate2
+      read(obs_unit,*,iostat=ios,end=200) lon, lat, vloc, obs_value, &
+              which_vert, var2, aqc, obs_kind_name, startdate1, startdate2
    endif
 
-  !print*,''
-  !print*,' Observation ', obs_num+1
-  !print*,' lon lat vloc obs_value ',lon, lat, vloc, obs_value
-  !print*,' which_vert var2 aqc ',which_vert, var2, aqc
-  !print*,' obs_kind_name ',obs_kind_name
-  !print*,' date1 date2 ',startdate1, startdate2
-  !if (hfradar) print*, 'angle id ',angle, id
+   if (ios /= 0) then
+      print*,''
+      print*,' Observation ', obs_num+1
+      print*,' lon lat vloc obs_value ',lon, lat, vloc, obs_value
+      print*,' which_vert var2 aqc ',which_vert, var2, aqc
+      print*,' obs_kind_name ',obs_kind_name
+      print*,' date1 date2 ',startdate1, startdate2
+      if (hfradar) print*, 'angle id ',angle, id
+   endif
 
    ! Calculate the DART time from the observation time 
    yy =     startdate1/10000
@@ -340,8 +343,3 @@ end subroutine initialize_module
 
 end module dart_MITocean_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

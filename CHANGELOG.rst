@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 31 2022 :: MiTgcm-ocean NBLING. Tag: v9.16.0**
+
+- MITgcm-ocean interface updated to Manhattan.
+- Support for NBLING (ocean biogeochemistry) for MITgcm-ocean.
+- New observation converter for ocean color.
+
 **March 22 2022 :: CLM5-DART Tutorial. Tag: v9.15.0**
 
 - New CLM5-DART tutorial providing new users with 13 steps
@@ -31,7 +37,7 @@ The changes are now listed with the most recent at the top.
   files correctly and provide reproducibility
 
 
-**March 10th 2022 :: Tracer advection model. Tag v9.14.0**
+**March 10 2022 :: Tracer advection model. Tag v9.14.0**
 
 - New model for tracer advection based on Lorenz_96 using a
   Semi-Lagrangian scheme. 
