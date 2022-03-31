@@ -447,7 +447,8 @@ Description of each namelist entry
 
 Some other areas of interest in input.nml will also be discussed
 
-.. &assim_tools_nml::
+&assim_tools_nml
+~~~~~~~~~~~~~~~~~~
 
 The CM1 DART code was updated so that horizontal and vertical localization radii
 can be defined for each assimilated observation type.  The horizontal and vertical localization
@@ -456,9 +457,12 @@ code block of input.nml.  However, you can use ``special_localization_obs_types`
 ``special_localization_cutoffs`` variables to define the observation type and corresponding
 half localization radius, respectively. 
 
-horizontal localization radius = 2 * special_localization_cutoffs[ob_type]
 
-An example of the code block is provided below. 
+``horizontal localization radius = 2 * special_localization_cutoffs[ob_type]``
+
+An example of the &assim_tools_nml using per-type radii is provided below.
+
+.. code-block:: text
 
    &assim_tools_nml
      adaptive_localization_threshold = -1
@@ -479,23 +483,29 @@ An example of the code block is provided below.
 
 
 
-.. &location_nml:: 
+&location_nml
+~~~~~~~~~~~~~~~
 
 You can also define the vertical localization radius for each observation 
-type in this code block.  ``special_vert_normalization_obs_types`` is 
+type.  ``special_vert_normalization_obs_types`` is
 where you define the observation type and ``special_vert_normalization_heights`` is
 where you define the normalization factor in the vertical. If you just one set one normalization for all
 observation types use ``vert_normalization_height`` (not typically recommended since horizontal localization
 radii often switch between obs types).
 
-vertical localization radius = 2 * special_localization_cutoffs[ob_type]* special_vert_normalization_heights[ob_type]
+
+``vertical localization radius = 2 * special_localization_cutoffs[ob_type]* special_vert_normalization_heights[ob_type]``
+
 or if no obs types are defined...
-vertical localization radius = 2 * cutoff * vert_normalization_height
+
+``vertical localization radius = 2 * cutoff * vert_normalization_height``
 
 You can also define periodic boundary conditions in the &location_nml code block.  Do not change ``nx``, ``ny``, and ``nz``
 they are defined search radii used by DART (not the domain size itself).
 
 An example of the &location_nml is provided below.
+
+.. code-block:: text
 
    &location_nml
       x_is_periodic       = .false.  
@@ -518,8 +528,11 @@ An example of the &location_nml is provided below.
       special_vert_normalization_heights   = 0.04, 0.04, 0.33, 0.33
    /
 
-.. &obs_def_radar_mod_nml::
-The block defines how radar observations are assimilated 
+
+&obs_def_radar_mod_nml
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The block defines how radar observations are assimilated
 e.g., what forward operator is used for reflectivity, radial velocity,
 microphysical information, observation cutoff values. 
 
@@ -531,7 +544,9 @@ To calculate radar radial velocity you need to set ``allow_dbztowt_conv=.true.``
 this will allow the DART to diagnose particle fall speed via reflecvtivity
 which is used for the radial velocity calculation. 
 
-A sample of the &obs_def_radar_mod_nml code block is provided below:
+A sample &obs_def_radar_mod_nml is provided below:
+
+.. code-block:: text
 
    &obs_def_radar_mod_nml
       apply_ref_limit_to_obs      =   .false.,
