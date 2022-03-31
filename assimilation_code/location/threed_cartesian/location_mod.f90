@@ -45,10 +45,9 @@ character(len = 129), parameter :: LocationLName = &
 character(len = 129), parameter :: LocationStorageOrder = "X Y Z"
 character(len = 129), parameter :: LocationUnits = "none none none"
 
-! The possible numeric values for the location_type%which_vert component.
-! The numeric values are PRIVATE to this module. The parameter names are PUBLIC.
+! The numeric value for the vertical component
+! Used with CM1 when using normalized vertical localization
 integer, parameter :: VERTISHEIGHT      =  1  ! by height (in meters)
-!--- Can eventually add other heights if necesary (JDL) 
 
 type location_type
    private
@@ -118,7 +117,6 @@ logical, save         :: module_initialized = .false.
 character(len = 512) :: errstring
 character(len = 512) :: msgstring, msgstring1, msgstring2
 
-! JDL NEW
 ! Horizontal localization/cutoff values are passed in by the caller.
 ! The Vertical normalization values are globals; are specified by namelist
 ! here, and apply to all specific types unless a 'special list' is also specified
@@ -126,16 +124,9 @@ character(len = 512) :: msgstring, msgstring1, msgstring2
 
 logical :: has_special_vertical_norms = .false.
 integer :: num_special_vert_norms = 0
-integer :: location_vertical_localization_coord = 0
 
-! JDL NEW
 ! Global storage for vertical distance normalization factors
-! The 4 below is for the 4 vertical units (pressure, level, height,
-! scale height).  undefined and surface don't need vert distances.
-! NOTE: Code that uses VERT_TYPE_COUNT depends on pressure, level,
-! height, and scale height having actual values between 1 and 4, or
-! this code will break.
-integer, parameter    :: VERT_TYPE_COUNT = 1 ! JDL JUST WORKING ON HEIGHT
+integer, parameter    :: VERT_TYPE_COUNT = 1 ! only height supported
 real(r8)              :: vert_normalization(VERT_TYPE_COUNT)
 real(r8), allocatable :: per_type_vert_norm(:,:)  ! if doing per-type
 
@@ -190,23 +181,15 @@ integer :: ny               = 10
 integer :: nz               = 10
 
 
-!--- JDL: Additional Items for Vertical Localization
+! Additional Items for Vertical Localization
 !------------------------------------------------------------------------
 ! Namelist with default values
 !
-! horiz_dist_only is currently ignored (JDL)
-!
-! horiz_dist_only == .true.            -> Only the great circle horizontal distance is
-!                                         computed in get_dist.
-! horiz_dist_only == .false.           -> Square root of sum of squared horizontal and
-!                                         normalized vertical dist computed in get_dist
 ! vert_normalization_height            -> Number meters that give a distance equivalent
 !                                         to one radian in horizontal
 ! special_vert_normalization_obs_types -> Which obs types to modify the default vert
 !                                         normalization values
-! special_vert_normalization_pressure  -> must give all 4 values for each type listed
-
-!logical  :: horiz_dist_only                 = .true. ! JDL While DEFAULT - You'll want false
+! special_vert_normalization_heights   -> value for each obs type
 real(r8) :: vert_normalization_height       = 10000.0_r8
 integer, parameter :: MAX_ITEMS = 500
 character(len=OBSTYPELENGTH) :: special_vert_normalization_obs_types(MAX_ITEMS)
@@ -217,7 +200,6 @@ namelist /location_nml/ &
    x_is_periodic, min_x_for_periodic, max_x_for_periodic,   &
    y_is_periodic, min_y_for_periodic, max_y_for_periodic,   &
    z_is_periodic, min_z_for_periodic, max_z_for_periodic,   &
-   !nx, ny, nz, horiz_dist_only, vert_normalization_height,  &
    nx, ny, nz, vert_normalization_height,                   &
    special_vert_normalization_obs_types,                    &
    special_vert_normalization_heights, debug
@@ -302,8 +284,7 @@ vert_normalization(VERTISHEIGHT)      = vert_normalization_height
 if (special_vert_normalization_obs_types(1) /= 'null' .or. &
     special_vert_normalization_heights(1)   /= missing_r8) then
 
-   ! FIXME: add code to check for mismatched length lists.  are we going to force
-   ! users to specify all 4 values for any obs type that is not using the defaults?
+   ! FIXME: add code to check for mismatched length lists.
 
    typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
    allocate(per_type_vert_norm(VERT_TYPE_COUNT, typecount))
@@ -355,34 +336,6 @@ call error_handler(E_MSG,'location_mod:',msgstring,source)
 if (allocated(per_type_vert_norm)) then
    typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
    do i = 1, typecount
-         !if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
-         !    (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
-         !    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
-         !    (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
-
-         !   write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
-         !   call error_handler(E_MSG,'location_mod:',msgstring,source)
-         !   if (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) then
-         !      write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
-         !            per_type_vert_norm(VERTISPRESSURE, i)
-         !      call error_handler(E_MSG,'location_mod:',msgstring,source)
-         !   endif
-         !   if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
-         !      write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
-         !            per_type_vert_norm(VERTISHEIGHT, i)
-         !      call error_handler(E_MSG,'location_mod:',msgstring,source)
-         !   endif
-          !  if (per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) then
-          !     write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
-          !           per_type_vert_norm(VERTISLEVEL, i)
-          !     call error_handler(E_MSG,'location_mod:',msgstring,source)
-          !  endif
-          !  if (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height) then
-          !     write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
-          !           per_type_vert_norm(VERTISSCALEHEIGHT, i)
-          !     call error_handler(E_MSG,'location_mod:',msgstring,source)
-          !  endif
-         ! JDL - Strip Down to Just VERTISHEIGHT Right Now (CM1 is in meter coordinates only right now)
       if    (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
          write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
          call error_handler(E_MSG,'location_mod:',msgstring,source)
@@ -394,7 +347,6 @@ if (allocated(per_type_vert_norm)) then
       endif
    enddo
 endif
-!endif
 
 
 end subroutine initialize_module
@@ -403,7 +355,7 @@ end subroutine initialize_module
 
 function get_dist(loc1, loc2, type1, kind2)
 
-! JDL I don't think I need to include the no_vert variable, but keep this 
+! @todo JDL I don't think I need to include the no_vert variable, but keep this
 ! in mind in case problems arise later on.  Probbably also don't need kind2 since 
 ! we are just looking at heights
 
@@ -423,7 +375,6 @@ real(r8)                        :: get_dist
 real(r8) :: diff(3), next_diff(3)
 logical  :: below_L1(3), below_L2(3)
 real(r8) :: square_dist, this_dist
-!logical  :: comp_h_only ! Only comput the horizontal component
 
 
 if ( .not. module_initialized ) call initialize_module
@@ -681,8 +632,6 @@ end function get_dist
 
 ! return the 3d distance given the separation along each axis
 
-!pure function dist_3d(separation)
-!function dist_3d(separation) result(val)
 function dist_3d(separation,type1) result(val)
 
 real(r8), intent(in) :: separation(3)
@@ -717,8 +666,6 @@ end function dist_3d
 ! return the square of the 3d distance given the separation along each axis
 ! (saves doing a square root)
 
-!pure function dist_3d_sq(separation)
-!function dist_3d_sq(separation) result(val)
 function dist_3d_sq(separation,type1) result(val)
 
 real(r8), intent(in) :: separation(3)
