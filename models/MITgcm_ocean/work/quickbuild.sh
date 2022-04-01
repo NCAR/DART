@@ -35,6 +35,7 @@ obs_sequence_tool
 model_serial_programs=(
 dart_to_mit
 mit_to_dart
+create_ocean_obs
 )
 
 arguments "$@"
