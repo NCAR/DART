@@ -190,7 +190,7 @@ integer :: nz               = 10
 ! special_vert_normalization_obs_types -> Which obs types to modify the default vert
 !                                         normalization values
 ! special_vert_normalization_heights   -> value for each obs type
-real(r8) :: vert_normalization_height       = 10000.0_r8
+real(r8) :: vert_normalization_height       = 1.0_r8
 integer, parameter :: MAX_ITEMS = 500
 character(len=OBSTYPELENGTH) :: special_vert_normalization_obs_types(MAX_ITEMS)
 real(r8) :: special_vert_normalization_heights(MAX_ITEMS)
@@ -637,8 +637,7 @@ function dist_3d(separation,type1) result(val)
 real(r8), intent(in) :: separation(3)
 real(r8) :: val, vert_normal
 integer, optional,   intent(in) :: type1 ! JDL Addition
-!--- JDL Update Function to account for Normalization in Vertical
-!--- JDL Addition to Account for Vertical Normalization
+
 if (allocated(per_type_vert_norm)) then
    if (.not. present(type1)) then
       write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization 3d'
@@ -649,13 +648,10 @@ else
    vert_normal = separation(IZ)/vert_normalization(VERTISHEIGHT)
 
 endif
-!--- JDL End Addition for Vertical Normalization
-
 
 val = sqrt(separation(IX)*separation(IX) + &
            separation(IY)*separation(IY) + &
            vert_normal*vert_normal )
-           !separation(IZ)*separation(IZ) )
 
 if (debug > 0) write(0,*)  'dist_3d called, distance computed: ', val
 if (debug > 0) write(0,*)  'XYZ separations: ', separation
@@ -672,8 +668,6 @@ real(r8), intent(in) :: separation(3)
 real(r8) :: val, vert_normal
 integer, optional,   intent(in) :: type1 ! JDL Addition
 
-!--- JDL Update Function to account for Normalization in Vertical
-!--- JDL Addition to Account for Vertical Normalization
 if (allocated(per_type_vert_norm)) then
    if (.not. present(type1)) then
       write(msgstring, *) 'obs type required in get_dist`() if doing per-type vertical normalization 3d sq'
@@ -683,12 +677,10 @@ if (allocated(per_type_vert_norm)) then
 else
    vert_normal = separation(IZ) / vert_normalization(VERTISHEIGHT)
 endif
-!--- JDL End Addition for Vertical Normalization
 
 val = separation(IX)*separation(IX) + &
       separation(IY)*separation(IY) + &
       vert_normal * vert_normal
-      !separation(IZ)*separation(IZ)
 
 if (debug > 0) write(0,*)  'dist_3d_sq called, distance computed: ', val
 if (debug > 0) write(0,*)  'XYZ separations: ', separation
