@@ -319,6 +319,7 @@ References
    observations/obs_converters/gnd_gps_vtec/README
    observations/obs_converters/gps/gps
    observations/obs_converters/ok_mesonet/ok_mesonet
+   observations/obs_converters/ocean_color/README
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
@@ -531,9 +532,7 @@ References
    :caption: non-compiling models
    :hidden:
          
-   models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
-   models/MITgcm_ocean/trans_sv_pv
    models/NCOMMAS/dart_to_ncommas
    models/NCOMMAS/ncommas_to_dart
 

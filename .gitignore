@@ -81,6 +81,9 @@ cice_to_dart
 dart_to_cice
 column_rand
 pert_sounding
+dart_to_mit
+mit_to_dart
+create_ocean_obs
 
 # Observation converter exectutables
 convert_aviso
