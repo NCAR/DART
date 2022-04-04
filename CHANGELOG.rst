@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 1 2022 :: Per-obs-type localization for 3D Cartesian location_mod. Tag: v9.16.1**
+
+- Optional per-obs-type localization for 3D Cartesian location
+
+*Contributed by Jon Labriola for use with CM1*
+
 **March 31 2022 :: MiTgcm-ocean NBLING. Tag: v9.16.0**
 
 - MITgcm-ocean interface updated to Manhattan.
