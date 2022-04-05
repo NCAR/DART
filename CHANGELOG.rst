@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 5 2022 :: Bug-fix for NetCDF variables with NaN attributes. Tag: v9.16.2**
+
+- Fix for checking attributes of NetCDF variables that have a NaN as the missing or _FillValue.
+
 **April 1 2022 :: Per-obs-type localization for 3D Cartesian location_mod. Tag: v9.16.1**
 
 - Optional per-obs-type localization for 3D Cartesian location
