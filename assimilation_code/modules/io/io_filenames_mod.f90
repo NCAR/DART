@@ -745,7 +745,7 @@ real(r8),         intent(in) :: spvalR8
 real(r8) :: ret_spvalR8
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
-   if (isnan(ret_spvalR8)) then
+   if (ret_spvalR8 /= ret_spvalR8) then
       return
    endif
    if (spvalR8 /= ret_spvalR8) then
