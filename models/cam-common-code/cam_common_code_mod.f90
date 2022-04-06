@@ -50,9 +50,9 @@ public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heigh
           set_vert_localization, vert_interp, vertical_localization_type, write_model_time
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = 'cam_common_code.f90'
+character(len=32 ), parameter :: revision = ''
+character(len=128), parameter :: revdate  = ''
 
 !> Metadata from the template netCDF file that describes 
 !> where the variable data is located and what size it is.
