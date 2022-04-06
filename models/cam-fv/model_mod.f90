@@ -2,7 +2,6 @@
 ! by ucar, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/dares/dart/dart_download
 !
-! $Id$
 !----------------------------------------------------------------
 !>
 !> this is the interface between the cam-fv atmosphere model and dart.
@@ -124,9 +123,9 @@ public :: nc_write_model_vars,           &
           init_conditions
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'cam-fv/model_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 ! maximum number of fields you can list to be perturbed
 ! to generate an ensemble if starting from a single state.
@@ -2681,8 +2680,3 @@ end subroutine get_close_state
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
