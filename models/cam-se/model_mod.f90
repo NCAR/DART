@@ -97,8 +97,6 @@ use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pres
                                    read_model_time, ref_model_top_pressure, ref_nlevels, scale_height, &
                                    set_vert_localization, vert_interp, vertical_localization_type, write_model_time
           
-use typeSizes
-
 implicit none
 private
 
