@@ -27,6 +27,19 @@ use   ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars
 use   netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_get_variable, nc_get_variable_size, &
                                    nc_variable_exists
 
+use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, nc_create_file, &
+                                   nc_add_attribute_to_variable, &
+                                   nc_define_integer_variable, nc_define_double_variable, &
+                                   nc_define_real_variable, &
+                                   nc_define_real_scalar, &
+                                   nc_add_global_creation_time, &
+                                   nc_add_global_attribute, &
+                                   nc_define_dimension, nc_put_variable, &
+                                   nc_synchronize_file, nc_end_define_mode, &
+                                   nc_begin_define_mode, nc_open_file_readonly, &
+                                   nc_close_file, nc_variable_exists, nc_get_global_attribute, &
+                                   nc_get_dimension_size
+
 use      time_manager_mod,  only : time_type, get_date, set_date
 
 use   netcdf_utilities_mod, only : nc_begin_define_mode, nc_define_integer_variable, &
@@ -42,12 +55,15 @@ private
 public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
           cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
           common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
-          free_cam_grid, free_std_atm_tables, generic_height_to_pressure, get_cam_grid, &
-          gph2gmh, grid_data, height_to_level, init_damping_ramp_info, &
+          free_cam_grid, free_std_atm_tables, generic_height_to_pressure, &
+          gph2gmh, height_to_level, init_damping_ramp_info, &
           init_discard_high_obs, init_globals, init_sign_of_vert_units, &
           is_surface_field, obs_too_high, ok_to_interpolate, pressure_to_level, ramp_end, &
           read_model_time, ref_model_top_pressure, ref_nlevels, scale_height, &
           set_vert_localization, vert_interp, vertical_localization_type, write_model_time
+
+public :: nc_write_model_atts, grid_data, read_grid_info
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = 'cam_common_code.f90'
@@ -140,9 +156,8 @@ contains
 !> into this category.
 !> 
 
-subroutine get_cam_grid(grid_file, grid)
+subroutine get_cam_grid(grid_file)
 character(len=*), intent(in)  :: grid_file
-type(cam_grid), intent(out) :: grid
 
 character(len=*), parameter :: routine = 'get_cam_grid:'
 
@@ -151,20 +166,20 @@ integer :: ncid
 ! put this in a subroutine that deals with the grid
 ncid = nc_open_file_readonly(grid_file, routine)
 
-call fill_cam_1d_array(ncid, 'lon',  grid%lon)
-call fill_cam_1d_array(ncid, 'lat',  grid%lat)
-call fill_cam_1d_array(ncid, 'lev',  grid%lev)
-call fill_cam_1d_array(ncid, 'ilev', grid%ilev) ! for staggered vertical grid
-call fill_cam_1d_array(ncid, 'slon', grid%slon)
-call fill_cam_1d_array(ncid, 'slat', grid%slat)
-call fill_cam_1d_array(ncid, 'gw',   grid%gw)   ! gauss weights
-call fill_cam_1d_array(ncid, 'hyai', grid%hyai)
-call fill_cam_1d_array(ncid, 'hybi', grid%hybi)
-call fill_cam_1d_array(ncid, 'hyam', grid%hyam)
-call fill_cam_1d_array(ncid, 'hybm', grid%hybm)
+call fill_cam_1d_array(ncid, 'lon',  grid_data%lon)
+call fill_cam_1d_array(ncid, 'lat',  grid_data%lat)
+call fill_cam_1d_array(ncid, 'lev',  grid_data%lev)
+call fill_cam_1d_array(ncid, 'ilev', grid_data%ilev) ! for staggered vertical grid
+call fill_cam_1d_array(ncid, 'slon', grid_data%slon)
+call fill_cam_1d_array(ncid, 'slat', grid_data%slat)
+call fill_cam_1d_array(ncid, 'gw',   grid_data%gw)   ! gauss weights
+call fill_cam_1d_array(ncid, 'hyai', grid_data%hyai)
+call fill_cam_1d_array(ncid, 'hybi', grid_data%hybi)
+call fill_cam_1d_array(ncid, 'hyam', grid_data%hyam)
+call fill_cam_1d_array(ncid, 'hybm', grid_data%hybm)
 
 ! P0 is a scalar with no dimensionality
-call fill_cam_0d_array(ncid, 'P0',   grid%P0)
+call fill_cam_0d_array(ncid, 'P0',   grid_data%P0)
 
 call nc_close_file(ncid, routine)
 
@@ -227,6 +242,151 @@ call free_cam_1d_array(grid%hybm)
 call free_cam_1d_array(grid%P0)
 
 end subroutine free_cam_grid
+
+!-----------------------------------------------------------------------
+!>
+!> Writes the model-specific attributes to a DART 'diagnostic' netCDF file.
+!> This includes coordinate variables and some metadata, but NOT the
+!> actual DART state.
+!>
+!> @param ncid    the netCDF handle of the DART diagnostic file opened by
+!>                assim_model_mod:init_diag_output
+
+subroutine nc_write_model_atts(ncid, dom_id)
+
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: dom_id    ! not used since there is only one domain
+
+!----------------------------------------------------------------------
+! local variables
+!----------------------------------------------------------------------
+
+character(len=*), parameter :: routine = 'nc_write_model_atts'
+
+!-------------------------------------------------------------------------------
+! Write Global Attributes
+!-------------------------------------------------------------------------------
+
+call nc_begin_define_mode(ncid, routine)
+
+call nc_add_global_creation_time(ncid, routine)
+
+call nc_add_global_attribute(ncid, "model_source", source, routine)
+call nc_add_global_attribute(ncid, "model_revision", revision, routine)
+call nc_add_global_attribute(ncid, "model_revdate", revdate, routine)
+
+call nc_add_global_attribute(ncid, "model", "CAM", routine)
+
+! this option is for users who want the smallest output
+! or diagnostic files - only the state vector data will
+! be written.   otherwise, if you want to plot this data
+! the rest of this routine writes out enough grid info
+! to make the output file look like the input.
+!HK if (suppress_grid_info_in_output) then
+!HK    call nc_end_define_mode(ncid, routine)
+!HK   return
+!HK endif
+
+!----------------------------------------------------------------------------
+! Output the grid variables.
+!----------------------------------------------------------------------------
+! Define the new dimensions IDs
+!----------------------------------------------------------------------------
+
+call nc_define_dimension(ncid, 'lon',  grid_data%lon%nsize,  routine)
+call nc_define_dimension(ncid, 'lat',  grid_data%lat%nsize,  routine)
+!SENote: No staggered grids in SE
+!call nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
+!call nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
+call nc_define_dimension(ncid, 'lev',  grid_data%lev%nsize,  routine)
+call nc_define_dimension(ncid, 'ilev', grid_data%ilev%nsize, routine)
+call nc_define_dimension(ncid, 'gw',   grid_data%gw%nsize,   routine)
+call nc_define_dimension(ncid, 'hyam', grid_data%hyam%nsize, routine)
+call nc_define_dimension(ncid, 'hybm', grid_data%hybm%nsize, routine)
+call nc_define_dimension(ncid, 'hyai', grid_data%hyai%nsize, routine)
+call nc_define_dimension(ncid, 'hybi', grid_data%hybi%nsize, routine)
+
+!----------------------------------------------------------------------------
+! Create the Coordinate Variables and the Attributes
+! The contents will be written in a later block of code.
+!----------------------------------------------------------------------------
+
+! U,V Grid Longitudes
+call nc_define_real_variable(     ncid, 'lon', (/ 'lon' /),                 routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'long_name', 'longitude',    routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'units',     'degrees_east', routine)
+
+! U,V Grid Latitudes
+call nc_define_real_variable(     ncid, 'lat', (/ 'lat' /),                  routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'long_name', 'latitude',      routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'units',     'degrees_north', routine)
+
+! Vertical Grid Latitudes
+call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /),                                                     routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'long_name',      'hybrid level at midpoints (1000*(A+B))',      routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'hPa',                                         routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'positive',       'down',                                        routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hybm p0: P0 ps: PS',               routine)
+
+
+call nc_define_real_variable(     ncid, 'ilev', (/ 'ilev' /),                                                    routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'long_name',      'hybrid level at interfaces (1000*(A+B))',     routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'hPa',                                         routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'positive',       'down',                                        routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'formula_terms',  'a: hyai b: hybi p0: P0 ps: PS',               routine)
+
+! Hybrid Coefficients
+call nc_define_real_variable(     ncid, 'hyam', (/ 'lev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hyam', 'long_name', 'hybrid A coefficient at layer midpoints', routine)
+
+call nc_define_real_variable(     ncid, 'hybm', (/ 'lev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hybm', 'long_name', 'hybrid B coefficient at layer midpoints', routine)
+
+
+call nc_define_real_variable(     ncid, 'hyai', (/ 'ilev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hyai', 'long_name', 'hybrid A coefficient at layer interfaces', routine)
+
+
+call nc_define_real_variable(     ncid, 'hybi', (/ 'ilev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hybi', 'long_name', 'hybrid B coefficient at layer interfaces', routine)
+
+! Gaussian Weights
+call nc_define_real_variable(     ncid, 'gw', (/ 'lat' /),                  routine)
+call nc_add_attribute_to_variable(ncid, 'gw', 'long_name', 'gauss weights', routine)
+
+call nc_define_real_scalar(       ncid, 'P0', routine)
+call nc_add_attribute_to_variable(ncid, 'P0', 'long_name', 'reference pressure', routine)
+call nc_add_attribute_to_variable(ncid, 'P0', 'units',     'Pa',                 routine)
+
+! Finished with dimension/variable definitions, must end 'define' mode to fill.
+
+call nc_end_define_mode(ncid, routine)
+
+!----------------------------------------------------------------------------
+! Fill the coordinate variables
+!----------------------------------------------------------------------------
+
+call nc_put_variable(ncid, 'lon',  grid_data%lon%vals,  routine)
+call nc_put_variable(ncid, 'lat',  grid_data%lat%vals,  routine)
+!SENote: all the staggered stuff is gone for SE
+!call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
+!call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
+call nc_put_variable(ncid, 'lev',  grid_data%lev%vals,  routine)
+call nc_put_variable(ncid, 'ilev', grid_data%ilev%vals, routine)
+call nc_put_variable(ncid, 'gw',   grid_data%gw%vals,   routine)
+call nc_put_variable(ncid, 'hyam', grid_data%hyam%vals, routine)
+call nc_put_variable(ncid, 'hybm', grid_data%hybm%vals, routine)
+call nc_put_variable(ncid, 'hyai', grid_data%hyai%vals, routine)
+call nc_put_variable(ncid, 'hybi', grid_data%hybi%vals, routine)
+call nc_put_variable(ncid, 'P0',   grid_data%P0%vals,   routine)
+
+! flush any pending i/o to disk
+call nc_synchronize_file(ncid, routine)
+
+end subroutine nc_write_model_atts
+
 
 !-----------------------------------------------------------------------
 !>
@@ -1874,6 +2034,18 @@ std_atm_hgt_col(201) =    0.0_r8  ;  std_atm_pres_col(201) = 1.013E+05_r8
 std_atm_hgt_col(:) = std_atm_hgt_col(:) * 1000.0_r8
 
 end subroutine load_high_top_table
+
+!-----------------------------------------------------------------------
+!> Read in the grid information from the given CAM restart file.
+!> Note that none of the data will be used from this file; just the
+!> grid size and locations.
+subroutine read_grid_info(grid_file)
+character(len=*), intent(in)  :: grid_file  ! cam template file
+
+! Get the grid info plus additional non-state arrays
+call get_cam_grid(grid_file)
+
+end subroutine read_grid_info
 
 !========================================================================
 

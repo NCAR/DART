@@ -90,13 +90,17 @@ use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
 use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
                                    cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
                                    common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
-                                   free_cam_grid, free_std_atm_tables, generic_height_to_pressure, get_cam_grid, &
-                                   gph2gmh, grid_data, height_to_level, init_damping_ramp_info, &
+                                   free_cam_grid, free_std_atm_tables, generic_height_to_pressure,  &
+                                   gph2gmh, height_to_level, init_damping_ramp_info, &
                                    init_discard_high_obs, init_globals, init_sign_of_vert_units, &
                                    is_surface_field, obs_too_high, ok_to_interpolate, pressure_to_level, ramp_end, &
                                    read_model_time, ref_model_top_pressure, ref_nlevels, scale_height, &
                                    set_vert_localization, vert_interp, vertical_localization_type, write_model_time
-          
+
+
+use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info
+
+         
 implicit none
 private
 
@@ -324,7 +328,9 @@ cdebug_level = debug_level
 
 call set_calendar_type('GREGORIAN')
 
-call read_grid_info(cam_template_filename, grid_data)
+call read_grid_info(cam_template_filename)
+! This non-state variable is used to compute surface elevation.
+call read_cam_phis_array(cam_phis_filename)
 
 ! initialize global values that are used frequently
 call init_globals()
@@ -629,151 +635,7 @@ call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
 end function shortest_time_between_assimilations
 
-!-----------------------------------------------------------------------
-!>
-!> Writes the model-specific attributes to a DART 'diagnostic' netCDF file.
-!> This includes coordinate variables and some metadata, but NOT the
-!> actual DART state.
-!>
-!> @param ncid    the netCDF handle of the DART diagnostic file opened by
-!>                assim_model_mod:init_diag_output
 
-subroutine nc_write_model_atts(ncid, dom_id)
-
-integer, intent(in) :: ncid      ! netCDF file identifier
-integer, intent(in) :: dom_id    ! not used since there is only one domain
-
-!----------------------------------------------------------------------
-! local variables 
-!----------------------------------------------------------------------
-
-character(len=*), parameter :: routine = 'nc_write_model_atts'
-
-if ( .not. module_initialized ) call static_init_model
-
-!-------------------------------------------------------------------------------
-! Write Global Attributes 
-!-------------------------------------------------------------------------------
-
-call nc_begin_define_mode(ncid, routine)
-
-call nc_add_global_creation_time(ncid, routine)
-
-call nc_add_global_attribute(ncid, "model_source", source, routine)
-call nc_add_global_attribute(ncid, "model_revision", revision, routine)
-call nc_add_global_attribute(ncid, "model_revdate", revdate, routine)
-
-call nc_add_global_attribute(ncid, "model", "CAM", routine)
-
-! this option is for users who want the smallest output
-! or diagnostic files - only the state vector data will
-! be written.   otherwise, if you want to plot this data
-! the rest of this routine writes out enough grid info
-! to make the output file look like the input.
-if (suppress_grid_info_in_output) then
-   call nc_end_define_mode(ncid, routine)
-   return
-endif
-
-!----------------------------------------------------------------------------
-! Output the grid variables.
-!----------------------------------------------------------------------------
-! Define the new dimensions IDs
-!----------------------------------------------------------------------------
-
-call nc_define_dimension(ncid, 'lon',  grid_data%lon%nsize,  routine)
-call nc_define_dimension(ncid, 'lat',  grid_data%lat%nsize,  routine)
-!SENote: No staggered grids in SE
-!call nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
-!call nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
-call nc_define_dimension(ncid, 'lev',  grid_data%lev%nsize,  routine)
-call nc_define_dimension(ncid, 'ilev', grid_data%ilev%nsize, routine)
-call nc_define_dimension(ncid, 'gw',   grid_data%gw%nsize,   routine)
-call nc_define_dimension(ncid, 'hyam', grid_data%hyam%nsize, routine)
-call nc_define_dimension(ncid, 'hybm', grid_data%hybm%nsize, routine)
-call nc_define_dimension(ncid, 'hyai', grid_data%hyai%nsize, routine)
-call nc_define_dimension(ncid, 'hybi', grid_data%hybi%nsize, routine)
-
-!----------------------------------------------------------------------------
-! Create the Coordinate Variables and the Attributes
-! The contents will be written in a later block of code.
-!----------------------------------------------------------------------------
-
-! U,V Grid Longitudes
-call nc_define_real_variable(     ncid, 'lon', (/ 'lon' /),                 routine)
-call nc_add_attribute_to_variable(ncid, 'lon', 'long_name', 'longitude',    routine)
-call nc_add_attribute_to_variable(ncid, 'lon', 'units',     'degrees_east', routine)
-
-! U,V Grid Latitudes
-call nc_define_real_variable(     ncid, 'lat', (/ 'lat' /),                  routine)
-call nc_add_attribute_to_variable(ncid, 'lat', 'long_name', 'latitude',      routine)
-call nc_add_attribute_to_variable(ncid, 'lat', 'units',     'degrees_north', routine)
-
-! Vertical Grid Latitudes
-call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /),                                                     routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'long_name',      'hybrid level at midpoints (1000*(A+B))',      routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'hPa',                                         routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'positive',       'down',                                        routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hybm p0: P0 ps: PS',               routine)
-
-
-call nc_define_real_variable(     ncid, 'ilev', (/ 'ilev' /),                                                    routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'long_name',      'hybrid level at interfaces (1000*(A+B))',     routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'hPa',                                         routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'positive',       'down',                                        routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'formula_terms',  'a: hyai b: hybi p0: P0 ps: PS',               routine)
-
-! Hybrid Coefficients
-call nc_define_real_variable(     ncid, 'hyam', (/ 'lev' /),                                            routine)
-call nc_add_attribute_to_variable(ncid, 'hyam', 'long_name', 'hybrid A coefficient at layer midpoints', routine)
-
-call nc_define_real_variable(     ncid, 'hybm', (/ 'lev' /),                                            routine)
-call nc_add_attribute_to_variable(ncid, 'hybm', 'long_name', 'hybrid B coefficient at layer midpoints', routine)
-
-
-call nc_define_real_variable(     ncid, 'hyai', (/ 'ilev' /),                                            routine)
-call nc_add_attribute_to_variable(ncid, 'hyai', 'long_name', 'hybrid A coefficient at layer interfaces', routine)
-
-
-call nc_define_real_variable(     ncid, 'hybi', (/ 'ilev' /),                                            routine)
-call nc_add_attribute_to_variable(ncid, 'hybi', 'long_name', 'hybrid B coefficient at layer interfaces', routine)
-
-! Gaussian Weights
-call nc_define_real_variable(     ncid, 'gw', (/ 'lat' /),                  routine)
-call nc_add_attribute_to_variable(ncid, 'gw', 'long_name', 'gauss weights', routine)
-
-call nc_define_real_scalar(       ncid, 'P0', routine)
-call nc_add_attribute_to_variable(ncid, 'P0', 'long_name', 'reference pressure', routine)
-call nc_add_attribute_to_variable(ncid, 'P0', 'units',     'Pa',                 routine)
-
-! Finished with dimension/variable definitions, must end 'define' mode to fill.
-
-call nc_end_define_mode(ncid, routine)
-
-!----------------------------------------------------------------------------
-! Fill the coordinate variables
-!----------------------------------------------------------------------------
-
-call nc_put_variable(ncid, 'lon',  grid_data%lon%vals,  routine)
-call nc_put_variable(ncid, 'lat',  grid_data%lat%vals,  routine)
-!SENote: all the staggered stuff is gone for SE
-!call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
-!call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
-call nc_put_variable(ncid, 'lev',  grid_data%lev%vals,  routine)
-call nc_put_variable(ncid, 'ilev', grid_data%ilev%vals, routine)
-call nc_put_variable(ncid, 'gw',   grid_data%gw%vals,   routine)
-call nc_put_variable(ncid, 'hyam', grid_data%hyam%vals, routine)
-call nc_put_variable(ncid, 'hybm', grid_data%hybm%vals, routine)
-call nc_put_variable(ncid, 'hyai', grid_data%hyai%vals, routine)
-call nc_put_variable(ncid, 'hybi', grid_data%hybi%vals, routine)
-call nc_put_variable(ncid, 'P0',   grid_data%P0%vals,   routine)
-
-! flush any pending i/o to disk
-call nc_synchronize_file(ncid, routine)
-
-end subroutine nc_write_model_atts
 
 
 !-----------------------------------------------------------------------
@@ -2147,35 +2009,16 @@ if (debug_level > 100) call state_structure_info(domain_id)
 
 end subroutine set_cam_variable_info
 
-
-!-----------------------------------------------------------------------
-!> Read in the grid information from the given CAM restart file.
-!> Note that none of the data will be used from this file; just the
-!> grid size and locations.  Also read in the elevation information
-!> from the "PHIS' file.
-
-subroutine read_grid_info(grid_file, grid)
-character(len=*), intent(in)  :: grid_file
-type(cam_grid),   intent(out) :: grid
-
-! Get the grid info plus additional non-state arrays
-call get_cam_grid(grid_file, grid)
-
-! This non-state variable is used to compute surface elevation.
-call read_cam_phis_array(cam_phis_filename)
-
-end subroutine read_grid_info
-
 !-----------------------------------------------------------------------
 !>
-!> 
+!>
 
 subroutine read_cam_phis_array(phis_filename)
 character(len=*),   intent(in)    :: phis_filename
 
 character(len=*), parameter :: routine = 'read_cam_phis_array'
 
-integer :: ncid, nsize(3)   ! lon, lat, time
+integer :: ncid, nsize(3)   ! lon, lat, time !HK nope? space filling curve
 
 ncid = nc_open_file_readonly(phis_filename, routine)
 
