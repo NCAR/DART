@@ -95,7 +95,8 @@ use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pres
                                    set_vert_localization, vert_interp, vertical_localization_type, write_model_time
 
 use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, &
-                                set_cam_variable_info
+                                set_cam_variable_info, MAX_STATE_VARIABLES, &
+                                num_state_table_columns
 
 implicit none
 private
@@ -169,8 +170,6 @@ logical :: no_normalization_of_scale_heights = .true.
 ! for no clamping, use the string 'NA'
 ! to have the assimilation change the variable use 'UPDATE', else 'NO_UPDATE'
 
-integer, parameter :: MAX_STATE_VARIABLES = 100
-integer, parameter :: num_state_table_columns = 5
 character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLES * &
                                                    num_state_table_columns ) = ' '
 
