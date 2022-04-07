@@ -666,6 +666,7 @@ end subroutine end_model
 
 
 !--------------------------------------------------------------------
+!HK I don't think you need this wrapper.
 !> if the namelist is set to not use this custom routine, the default
 !> dart routine will add 'pert_amp' of noise to every field in the state
 !> to generate an ensemble from a single member.  if it is set to true
