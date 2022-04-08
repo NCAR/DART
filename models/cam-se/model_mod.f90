@@ -110,7 +110,8 @@ use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, 
                                 cperturbation_amplitude, &
                                 cassimilation_period_days, &
                                 cassimilation_period_seconds, &
-                                csuppress_grid_info_in_output
+                                csuppress_grid_info_in_output, &
+                                common_initialized
          
 implicit none
 private
@@ -313,6 +314,7 @@ if ( module_initialized ) return
 call register_module(source, revision, revdate)
 
 module_initialized = .true.
+common_initialized = .true.
 
 ! Read the DART namelist for this model
 call find_namelist_in_file('input.nml', 'model_nml', iunit)
