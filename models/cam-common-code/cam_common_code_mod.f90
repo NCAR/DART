@@ -69,7 +69,8 @@ public :: nc_write_model_atts, grid_data, read_grid_info, set_cam_variable_info,
           cfields_to_perturb, &
           cperturbation_amplitude, &
           cassimilation_period_days, &
-          cassimilation_period_seconds
+          cassimilation_period_seconds, &
+          csuppress_grid_info_in_output
 
 
 ! version controlled file description for error handling, do not edit
@@ -124,6 +125,7 @@ character(len=32)  :: cfields_to_perturb(MAX_PERT) = ""
 real(r8)           :: cperturbation_amplitude(MAX_PERT) = 0.0_r8
 integer            :: cassimilation_period_days        = 0
 integer            :: cassimilation_period_seconds     = 21600
+logical            :: csuppress_grid_info_in_output = .false.
 
 ! Just a global storage for output strings
 character(len=512)  :: string1, string2, string3
@@ -398,10 +400,10 @@ call nc_add_global_attribute(ncid, "model", "CAM", routine)
 ! be written.   otherwise, if you want to plot this data
 ! the rest of this routine writes out enough grid info
 ! to make the output file look like the input.
-!HK if (suppress_grid_info_in_output) then
-!HK    call nc_end_define_mode(ncid, routine)
-!HK   return
-!HK endif
+if (csuppress_grid_info_in_output) then
+   call nc_end_define_mode(ncid, routine)
+   return
+endif
 
 !----------------------------------------------------------------------------
 ! Output the grid variables.

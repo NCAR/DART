@@ -104,8 +104,8 @@ use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, 
                                 cfields_to_perturb, &
                                 cperturbation_amplitude, &
                                 cassimilation_period_days, &
-                                cassimilation_period_seconds
-
+                                cassimilation_period_seconds, &
+                                csuppress_grid_info_in_output
 
 implicit none
 private
@@ -278,6 +278,7 @@ ccustom_routine_to_generate_ensemble = custom_routine_to_generate_ensemble
 cperturbation_amplitude = perturbation_amplitude
 cassimilation_period_days = assimilation_period_days
 cassimilation_period_seconds = assimilation_period_seconds
+csuppress_grid_info_in_output = suppress_grid_info_in_output
 
 
 call set_calendar_type('GREGORIAN')
