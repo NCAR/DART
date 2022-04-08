@@ -475,6 +475,17 @@ call nc_define_real_scalar(       ncid, 'P0', routine)
 call nc_add_attribute_to_variable(ncid, 'P0', 'long_name', 'reference pressure', routine)
 call nc_add_attribute_to_variable(ncid, 'P0', 'units',     'Pa',                 routine)
 
+! FV only variables
+if(grid_data%slon%nsize > 0) then
+   call nc_define_real_variable(     ncid, 'slon', (/ 'slon' /),                       routine)
+   call nc_add_attribute_to_variable(ncid, 'slon', 'long_name', 'staggered longitude', routine)
+   call nc_add_attribute_to_variable(ncid, 'slon', 'units',     'degrees_east',        routine)
+endif
+if(grid_data%slat%nsize > 0) then
+   call nc_define_real_variable(     ncid, 'slat', (/ 'slat' /),                      routine)
+   call nc_add_attribute_to_variable(ncid, 'slat', 'long_name', 'staggered latitude', routine)
+   call nc_add_attribute_to_variable(ncid, 'slat', 'units',     'degrees_north',      routine)
+endif
 if(grid_data%gw%nsize > 0) then
    ! Gaussian Weights
    call nc_define_real_variable(     ncid, 'gw', (/ 'lat' /),                  routine)
