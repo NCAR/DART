@@ -89,7 +89,7 @@ use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
 
 use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
                                    cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
-                                   common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
+                                   pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
                                    free_cam_grid, free_std_atm_tables, generic_height_to_pressure,  &
                                    gph2gmh, height_to_level, init_damping_ramp_info, &
                                    init_discard_high_obs, init_globals, init_sign_of_vert_units, &
@@ -100,7 +100,7 @@ use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pres
 
 use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, &
                                 set_cam_variable_info, MAX_STATE_VARIABLES, &
-                                num_state_table_columns
+                                num_state_table_columns, MAX_PERT
 
          
 implicit none
@@ -135,10 +135,6 @@ public :: nc_write_model_vars,           &
 character(len=*), parameter :: source   = 'cam-se/model_mod.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
-
-! maximum number of fields you can list to be perturbed
-! to generate an ensemble if starting from a single state.
-integer, parameter :: MAX_PERT = 100
 
 ! model_nml namelist variables and default values
 ! Which vertical coordinate: Dry mass if for versions with CESM2 and later
@@ -664,27 +660,6 @@ if (using_chemistry) call finalize_chem_tables()
 
 end subroutine end_model
 
-
-!--------------------------------------------------------------------
-!HK I don't think you need this wrapper.
-!> if the namelist is set to not use this custom routine, the default
-!> dart routine will add 'pert_amp' of noise to every field in the state
-!> to generate an ensemble from a single member.  if it is set to true
-!> this routine will be called.  the pert_amp will be ignored, and the
-!> given list of quantities will be perturbed by the given amplitude
-!> (which can be different for each field) to generate an ensemble.
-
-subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
-type(ensemble_type), intent(inout) :: state_ens_handle 
-integer,             intent(in)    :: ens_size
-real(r8),            intent(in)    :: pert_amp   ! ignored in this version
-logical,             intent(out)   :: interf_provided
-
-call common_pert_model_copies(state_ens_handle, ens_size, MAX_PERT, &
-   custom_routine_to_generate_ensemble, fields_to_perturb, perturbation_amplitude, &
-   interf_provided)
-
-end subroutine pert_model_copies
 
 !--------------------------------------------------------------------
 !> Does an conversion to localization vertical coordinate for a set of obs

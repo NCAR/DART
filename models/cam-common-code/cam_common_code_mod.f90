@@ -54,7 +54,7 @@ private
 
 public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
           cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
-          common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
+          pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
           free_cam_grid, free_std_atm_tables, generic_height_to_pressure, &
           gph2gmh, height_to_level, init_damping_ramp_info, &
           init_discard_high_obs, init_globals, init_sign_of_vert_units, &
@@ -63,7 +63,8 @@ public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heigh
           set_vert_localization, vert_interp, vertical_localization_type, write_model_time
 
 public :: nc_write_model_atts, grid_data, read_grid_info, set_cam_variable_info, &
-          MAX_STATE_VARIABLES, num_state_table_columns
+          MAX_STATE_VARIABLES, num_state_table_columns, common_initialized, &
+          MAX_PERT
 
 
 ! version controlled file description for error handling, do not edit
@@ -98,11 +99,21 @@ type(cam_grid) :: grid_data
 
 integer, parameter :: MAX_STATE_VARIABLES = 100
 integer, parameter :: num_state_table_columns = 5
+! maximum number of fields you can list to be perturbed
+! to generate an ensemble if starting from a single state.
+integer, parameter :: MAX_PERT = 100
+
+
+logical :: common_initialized = .false. ! static_init_model sets this to true
 
 ! Value from namelist in model_mod CAM
 logical :: cuse_log_vertical_scale = .false.
 logical :: cno_normalization_of_scale_heights = .true.
 integer :: cdebug_level = 0
+logical            :: ccustom_routine_to_generate_ensemble
+character(len=32)  :: cfields_to_perturb(MAX_PERT)
+real(r8)           :: cperturbation_amplitude(MAX_PERT)
+
 
 ! Just a global storage for output strings
 character(len=512)  :: string1, string2, string3
@@ -1061,16 +1072,11 @@ end function read_model_time
 !> this routine will be called.  the pert_amp will be ignored, and the
 !> given list of quantities will be perturbed by the given amplitude
 !> (which can be different for each field) to generate an ensemble.
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-subroutine common_pert_model_copies(state_ens_handle, ens_size, MAX_PERT, &
-   custom_routine_to_generate_ensemble, fields_to_perturb, perturbation_amplitude, &
-   interf_provided)
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,             intent(in)    :: ens_size
-integer,             intent(in)    :: MAX_PERT
-logical,             intent(in)    :: custom_routine_to_generate_ensemble
-character(len=32),   intent(in)    :: fields_to_perturb(MAX_PERT)
-real(r8),            intent(in)    :: perturbation_amplitude(MAX_PERT)
+real(r8),            intent(in)    :: pert_amp   ! ignored in this version
 logical,             intent(out)   :: interf_provided
 
 type(random_seq_type) :: seq
@@ -1084,12 +1090,14 @@ integer(i8), allocatable :: my_vars(:)
 logical,  allocatable :: do_these_qtys(:)
 real(r8), allocatable :: perturb_by(:)
 
-character(len=*), parameter :: routine = 'common_pert_model_copies:'
+character(len=*), parameter :: routine = 'pert_model_copies'
+
+if (.not. common_initialized) call error_handler(E_ERR, 'routine', 'static_init_model not called')
 
 ! set by namelist to select using the default routine in filter
 ! (adds the same noise to all parts of the state vector)
 ! or the code here that lets you specify which fields get perturbed.
-if (custom_routine_to_generate_ensemble) then
+if (ccustom_routine_to_generate_ensemble) then
    interf_provided = .true.
 else
    interf_provided = .false.
@@ -1108,17 +1116,17 @@ perturb_by(:)    = 0.0_r8
 ! this loop is over the number of field names/perturb values
 ! in the namelist.  it quits when it finds a blank field name.
 do i=1, MAX_PERT
-   if (fields_to_perturb(i) == '') exit
+   if (cfields_to_perturb(i) == '') exit
 
-   myqty = get_index_for_quantity(fields_to_perturb(i))
+   myqty = get_index_for_quantity(cfields_to_perturb(i))
    if (myqty < 0) then
       string1 = 'unrecognized quantity name in "fields_to_perturb" list: ' // &
-                trim(fields_to_perturb(i))
+                trim(cfields_to_perturb(i))
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
    endif
 
    do_these_qtys(myqty) = .true.
-   perturb_by(myqty)    = perturbation_amplitude(i)
+   perturb_by(myqty)    = cperturbation_amplitude(i)
 enddo
 
 ! get the global index numbers of the part of the state that 
@@ -1149,7 +1157,7 @@ enddo
 deallocate(my_vars)
 deallocate(do_these_qtys, perturb_by)
 
-end subroutine common_pert_model_copies
+end subroutine pert_model_copies
 
 
 !--------------------------------------------------------------------
