@@ -40,7 +40,7 @@ use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, nc_cre
                                    nc_close_file, nc_variable_exists, nc_get_global_attribute, &
                                    nc_get_dimension_size
 
-use      time_manager_mod,  only : time_type, get_date, set_date
+use      time_manager_mod,  only : time_type, get_date, set_date, set_time
 
 use   netcdf_utilities_mod, only : nc_begin_define_mode, nc_define_integer_variable, &
                                         nc_end_define_mode, nc_put_variable
@@ -64,7 +64,12 @@ public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heigh
 
 public :: nc_write_model_atts, grid_data, read_grid_info, set_cam_variable_info, &
           MAX_STATE_VARIABLES, num_state_table_columns, common_initialized, &
-          MAX_PERT
+          MAX_PERT, shortest_time_between_assimilations, domain_id, &
+          ccustom_routine_to_generate_ensemble, &
+          cfields_to_perturb, &
+          cperturbation_amplitude, &
+          cassimilation_period_days, &
+          cassimilation_period_seconds
 
 
 ! version controlled file description for error handling, do not edit
@@ -97,6 +102,10 @@ end type
 
 type(cam_grid) :: grid_data
 
+! this id allows us access to all of the state structure
+! info and is required for getting state variables.
+integer :: domain_id = -1
+
 integer, parameter :: MAX_STATE_VARIABLES = 100
 integer, parameter :: num_state_table_columns = 5
 ! maximum number of fields you can list to be perturbed
@@ -110,10 +119,11 @@ logical :: common_initialized = .false. ! static_init_model sets this to true
 logical :: cuse_log_vertical_scale = .false.
 logical :: cno_normalization_of_scale_heights = .true.
 integer :: cdebug_level = 0
-logical            :: ccustom_routine_to_generate_ensemble
-character(len=32)  :: cfields_to_perturb(MAX_PERT)
-real(r8)           :: cperturbation_amplitude(MAX_PERT)
-
+logical            :: ccustom_routine_to_generate_ensemble = .true.
+character(len=32)  :: cfields_to_perturb(MAX_PERT) = ""
+real(r8)           :: cperturbation_amplitude(MAX_PERT) = 0.0_r8
+integer            :: cassimilation_period_days        = 0
+integer            :: cassimilation_period_seconds     = 21600
 
 ! Just a global storage for output strings
 character(len=512)  :: string1, string2, string3
@@ -171,11 +181,10 @@ contains
 !>@param variable_array  the list of variables and kinds from model_mod_nml
 !>@param nfields         the number of variable/Quantity pairs specified
 
-subroutine set_cam_variable_info(cam_template_filename, variable_array, domain_id)
+subroutine set_cam_variable_info(cam_template_filename, variable_array)
 
 character(len=*), intent(in)  :: cam_template_filename
 character(len=*), intent(in)  :: variable_array(:)
-integer,          intent(out) :: domain_id
 
 character(len=*), parameter :: routine = 'set_cam_variable_info:'
 
@@ -346,6 +355,9 @@ call free_cam_1d_array(grid%hybm)
 call free_cam_1d_array(grid%P0)
 
 end subroutine free_cam_grid
+
+
+
 
 !-----------------------------------------------------------------------
 !>
@@ -585,10 +597,9 @@ end subroutine obs_too_high
 !> if it is a field in the state, return the variable id from
 !> the state structure.  if not in the state, varid will return -1
 
-subroutine ok_to_interpolate(obs_qty, varid, domain_id, my_status)
+subroutine ok_to_interpolate(obs_qty, varid, my_status)
 integer, intent(in)  :: obs_qty
 integer, intent(out) :: varid
-integer, intent(in)  :: domain_id
 integer, intent(out) :: my_status
 
 ! See if the state contains the obs quantity 
@@ -1158,6 +1169,32 @@ deallocate(my_vars)
 deallocate(do_these_qtys, perturb_by)
 
 end subroutine pert_model_copies
+
+!-----------------------------------------------------------------------
+!>
+!> Set the desired minimum model advance time. This is generally NOT the
+!> dynamical timestep of the model, but rather the shortest forecast length
+!> you are willing to make. This impacts how frequently the observations
+!> may be assimilated.
+!>
+!>
+
+function shortest_time_between_assimilations()
+
+character(len=*), parameter :: routine = 'shortest_time_between_assimilations:'
+
+type(time_type) :: shortest_time_between_assimilations
+
+if (.not. common_initialized) call error_handler(E_ERR, 'routine', 'static_init_model not called')
+
+shortest_time_between_assimilations = set_time(cassimilation_period_seconds, &
+                                               cassimilation_period_days)
+
+write(string1,*)'assimilation period is ',cassimilation_period_days,   ' days ', &
+                                          cassimilation_period_seconds,' seconds'
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
+
+end function shortest_time_between_assimilations
 
 
 !--------------------------------------------------------------------

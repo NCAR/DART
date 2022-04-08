@@ -13,8 +13,7 @@ module model_mod
 
 use             types_mod,  only : MISSING_R8, MISSING_I, i8, r8, vtablenamelength, &
                                    gravity, DEG2RAD
-use      time_manager_mod,  only : set_time, time_type, set_date, &
-                                   set_calendar_type, get_date
+use      time_manager_mod,  only : set_calendar_type
 use          location_mod,  only : location_type, set_vertical, set_location, &
                                    get_location, write_location, is_vertical, &
                                    VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, &
@@ -96,7 +95,16 @@ use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pres
 
 use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, &
                                 set_cam_variable_info, MAX_STATE_VARIABLES, &
-                                num_state_table_columns, MAX_PERT
+                                num_state_table_columns, MAX_PERT, &
+                                shortest_time_between_assimilations, domain_id, &
+                                cuse_log_vertical_scale, &
+                                cno_normalization_of_scale_heights, &
+                                cdebug_level, &
+                                ccustom_routine_to_generate_ensemble, &
+                                cfields_to_perturb, &
+                                cperturbation_amplitude, &
+                                cassimilation_period_days, &
+                                cassimilation_period_seconds
 
 
 implicit none
@@ -194,10 +202,6 @@ namelist /model_nml/  &
 character(len=512) :: string1, string2, string3
 logical, save      :: module_initialized = .false.
 
-! this id allows us access to all of the state structure
-! info and is required for getting state variables.
-integer :: domain_id
-
 integer, parameter :: STAGGER_NONE = -1
 integer, parameter :: STAGGER_U    =  1
 integer, parameter :: STAGGER_V    =  2
@@ -269,6 +273,12 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 cuse_log_vertical_scale = use_log_vertical_scale
 cno_normalization_of_scale_heights = no_normalization_of_scale_heights
 cdebug_level = debug_level
+ccustom_routine_to_generate_ensemble = custom_routine_to_generate_ensemble
+ccustom_routine_to_generate_ensemble = custom_routine_to_generate_ensemble
+cperturbation_amplitude = perturbation_amplitude
+cassimilation_period_days = assimilation_period_days
+cassimilation_period_seconds = assimilation_period_seconds
+
 
 call set_calendar_type('GREGORIAN')
 
@@ -282,7 +292,7 @@ call init_globals()
 
 ! read the namelist &model_nml :: state_variables
 ! to set up what will be read into the cam state vector
-call set_cam_variable_info(cam_template_filename, state_variables, domain_id)
+call set_cam_variable_info(cam_template_filename, state_variables)
 
 call fill_cam_stagger_info(grid_stagger)
 
@@ -744,7 +754,7 @@ interp_vals(:) = MISSING_R8
 istatus(:)     = 99
 
 ! do we know how to interpolate this quantity?
-call ok_to_interpolate(obs_qty, varid, domain_id, status1)
+call ok_to_interpolate(obs_qty, varid, status1)
 
 if (status1 /= 0) then  
    if(debug_level > 12) then
@@ -1426,35 +1436,6 @@ end function get_interp_handle
 
 !-----------------------------------------------------------------------
 !>
-!> Set the desired minimum model advance time. This is generally NOT the
-!> dynamical timestep of the model, but rather the shortest forecast length
-!> you are willing to make. This impacts how frequently the observations
-!> may be assimilated.
-!>
-!>
-
-function shortest_time_between_assimilations()
-
-character(len=*), parameter :: routine = 'shortest_time_between_assimilations:'
-
-type(time_type) :: shortest_time_between_assimilations
-
-if ( .not. module_initialized ) call static_init_model
-
-shortest_time_between_assimilations = set_time(assimilation_period_seconds, &
-                                               assimilation_period_days)
-
-write(string1,*)'assimilation period is ',assimilation_period_days,   ' days ', &
-                                          assimilation_period_seconds,' seconds'
-call error_handler(E_MSG,routine,string1,source,revision,revdate)
-
-end function shortest_time_between_assimilations
-
-
-
-
-!-----------------------------------------------------------------------
-!>
 !> Does any shutdown and clean-up needed for model.
 !>
 
@@ -2004,7 +1985,7 @@ if (query_location(location) == VERTISSURFACE) then
    qty = QTY_SURFACE_PRESSURE
 endif
 
-call ok_to_interpolate(qty, varid, domain_id, my_status)
+call ok_to_interpolate(qty, varid, my_status)
 if (my_status /= 0) return
 
 call interpolate_values(ens_handle, ens_size, location, &
@@ -2036,7 +2017,7 @@ character(len=*), parameter :: routine = 'obs_vertical_to_height'
 
 ens_size = 1
 
-call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, domain_id, my_status)
+call ok_to_interpolate(QTY_GEOMETRIC_HEIGHT, varid, my_status)
 if (my_status /= 0) return
 
 call interpolate_values(ens_handle, ens_size, location, &
@@ -2105,7 +2086,7 @@ if (no_normalization_of_scale_heights) then
       ptype = QTY_PRESSURE
    endif
 
-   call ok_to_interpolate(ptype, varid1, domain_id, my_status)
+   call ok_to_interpolate(ptype, varid1, my_status)
    if (my_status /= 0) return
       
    !>@todo FIXME IFF the obs location is already pressure, we can take it at
@@ -2136,7 +2117,7 @@ else
 
    else
 
-      call ok_to_interpolate(QTY_PRESSURE, varid1, domain_id, my_status)
+      call ok_to_interpolate(QTY_PRESSURE, varid1, my_status)
       if (my_status /= 0) return
    
       !>@todo FIXME IFF the obs location is already pressure, we can take it at
@@ -2156,7 +2137,7 @@ else
          endif
       endif
                                  
-      call ok_to_interpolate(QTY_SURFACE_PRESSURE, varid2, domain_id, my_status)
+      call ok_to_interpolate(QTY_SURFACE_PRESSURE, varid2, my_status)
       if (my_status /= 0) return
       
       call interpolate_values(ens_handle, ens_size, location, QTY_SURFACE_PRESSURE, varid2, &
