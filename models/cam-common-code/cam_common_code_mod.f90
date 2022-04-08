@@ -326,7 +326,7 @@ if(nc_variable_exists(ncid, varname)) then
 !SENote: this is the else statement to create something for the slon, slat, and gw fields that aren't used in SE CORE
 else
    allocate(grid_array%vals(1))
-   grid_array%nsize = 1
+   grid_array%nsize = -1 ! so you can test before writing
    grid_array%vals(1) = MISSING_R8
 endif
 
@@ -411,16 +411,17 @@ call nc_add_global_attribute(ncid, "model", "CAM", routine)
 
 call nc_define_dimension(ncid, 'lon',  grid_data%lon%nsize,  routine)
 call nc_define_dimension(ncid, 'lat',  grid_data%lat%nsize,  routine)
-!SENote: No staggered grids in SE
-!call nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
-!call nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
 call nc_define_dimension(ncid, 'lev',  grid_data%lev%nsize,  routine)
 call nc_define_dimension(ncid, 'ilev', grid_data%ilev%nsize, routine)
-call nc_define_dimension(ncid, 'gw',   grid_data%gw%nsize,   routine)
 call nc_define_dimension(ncid, 'hyam', grid_data%hyam%nsize, routine)
 call nc_define_dimension(ncid, 'hybm', grid_data%hybm%nsize, routine)
 call nc_define_dimension(ncid, 'hyai', grid_data%hyai%nsize, routine)
 call nc_define_dimension(ncid, 'hybi', grid_data%hybi%nsize, routine)
+
+! cam-fv only variables
+if(grid_data%slon%nsize > 0) call nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
+if(grid_data%slat%nsize > 0) call nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
+if(grid_data%gw%nsize > 0)   call nc_define_dimension(ncid, 'gw',   grid_data%gw%nsize,   routine)
 
 !----------------------------------------------------------------------------
 ! Create the Coordinate Variables and the Attributes
@@ -468,13 +469,15 @@ call nc_add_attribute_to_variable(ncid, 'hyai', 'long_name', 'hybrid A coefficie
 call nc_define_real_variable(     ncid, 'hybi', (/ 'ilev' /),                                            routine)
 call nc_add_attribute_to_variable(ncid, 'hybi', 'long_name', 'hybrid B coefficient at layer interfaces', routine)
 
-! Gaussian Weights
-call nc_define_real_variable(     ncid, 'gw', (/ 'lat' /),                  routine)
-call nc_add_attribute_to_variable(ncid, 'gw', 'long_name', 'gauss weights', routine)
-
 call nc_define_real_scalar(       ncid, 'P0', routine)
 call nc_add_attribute_to_variable(ncid, 'P0', 'long_name', 'reference pressure', routine)
 call nc_add_attribute_to_variable(ncid, 'P0', 'units',     'Pa',                 routine)
+
+if(grid_data%gw%nsize > 0) then
+   ! Gaussian Weights
+   call nc_define_real_variable(     ncid, 'gw', (/ 'lat' /),                  routine)
+   call nc_add_attribute_to_variable(ncid, 'gw', 'long_name', 'gauss weights', routine)
+endif
 
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -484,19 +487,22 @@ call nc_end_define_mode(ncid, routine)
 ! Fill the coordinate variables
 !----------------------------------------------------------------------------
 
+
+
 call nc_put_variable(ncid, 'lon',  grid_data%lon%vals,  routine)
 call nc_put_variable(ncid, 'lat',  grid_data%lat%vals,  routine)
-!SENote: all the staggered stuff is gone for SE
-!call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
-!call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
 call nc_put_variable(ncid, 'lev',  grid_data%lev%vals,  routine)
 call nc_put_variable(ncid, 'ilev', grid_data%ilev%vals, routine)
-call nc_put_variable(ncid, 'gw',   grid_data%gw%vals,   routine)
 call nc_put_variable(ncid, 'hyam', grid_data%hyam%vals, routine)
 call nc_put_variable(ncid, 'hybm', grid_data%hybm%vals, routine)
 call nc_put_variable(ncid, 'hyai', grid_data%hyai%vals, routine)
 call nc_put_variable(ncid, 'hybi', grid_data%hybi%vals, routine)
 call nc_put_variable(ncid, 'P0',   grid_data%P0%vals,   routine)
+
+!SENote: all the staggered stuff is gone for SE
+if(grid_data%slon%nsize > 0) call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
+if(grid_data%slat%nsize > 0) call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
+if(grid_data%gw%nsize > 0)   call nc_put_variable(ncid, 'gw',   grid_data%gw%vals,   routine)
 
 ! flush any pending i/o to disk
 call nc_synchronize_file(ncid, routine)
