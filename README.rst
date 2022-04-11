@@ -524,7 +524,6 @@ References
    :maxdepth: 2
    :caption: Misc
    
-   Release Notes <guide/Manhattan_release>
    models/CESM/doc/setup_guidelines
 
    
