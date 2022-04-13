@@ -717,6 +717,9 @@ real(r4),         intent(in) :: spvalR4
 real(r4) :: ret_spvalR4
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
+   if (ret_spvalR4 /= ret_spvalR4) then 
+      return
+   endif
    if (spvalR4 /= ret_spvalR4) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
@@ -742,6 +745,9 @@ real(r8),         intent(in) :: spvalR8
 real(r8) :: ret_spvalR8
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
+   if (ret_spvalR8 /= ret_spvalR8) then
+      return
+   endif
    if (spvalR8 /= ret_spvalR8) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)
