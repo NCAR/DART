@@ -94,12 +94,12 @@ it out and set $NETCDF in your environment. *This NetCDF library must have been
 compiled with the same compiler that you use to compile DART and must include
 the F90 interfaces.*
 
-Go into ``models/lorenz_63/work`` and run *quickbuild.csh*.
+Go into ``models/lorenz_63/work`` and run *quickbuild.sh nompi*.
 
 .. code-block::
 
    $ cd models/lorenz_63/work
-   $ ./quickbuild.csh
+   $ ./quickbuild.sh nompi
 
 If it compiles, run this series of commands to do a very basic test:
 
@@ -116,7 +116,7 @@ and doesn’t grow unbounded) you have successfully installed DART and completed
 your first assimilation with it.
 
 If you are planning to run one of the larger models and want to use the Lorenz
-63 model as a test, run ``./quickbuild.csh -mpi``. It will build filter and any
+63 model as a test, run ``./quickbuild.sh``. It will build filter and any
 other MPI-capable executables with MPI.
 
 .. important::

@@ -363,8 +363,8 @@ echo "Creating module from COAMPS utility package..."
 echo "Building DART binaries..."
 cd ${DART_WORK}
 cp $DART_BASE/input.nml .
-${DART_SCRIPTS}/quickbuild.csh > ${DART_BASE}/make.out
-check_return $? quickbuild.csh
+${DART_SCRIPTS}/quickbuild.sh > ${DART_BASE}/make.out
+check_return $? quickbuild.sh
 
 # Link the DART binaries to the DART working directory
 echo

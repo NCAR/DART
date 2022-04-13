@@ -6,38 +6,23 @@ Now that the DART code has been downloaded and the prerequisites have
 been verified, you can now begin building and verifying the DART
 installation.
 
-Customizing the build scripts — overview
-========================================
+DART executable programs are built with the command ``./quickbuild.sh``.
+To see the build options, run ``./quickbuild.sh help``
 
-DART executable programs are constructed using two tools: *mkmf*, and
-*make*. The *make* utility is a very commonly used tool that requires a
-user-defined input file (a ``Makefile``) that records dependencies
-between different source files. *make* then performs actions to the
-source hierarchy, in order of dependence, when one or more of the source
-files is modified. *mkmf* is a *perl* script that generates a *make*
-input file (named *Makefile*) and an example namelist
-``input.nml.<program>_default`` with default values.
-
-*mkmf* (think *"make makefile"*) requires two separate input files. The
-first is a template file which specifies the commands required for a
-specific Fortran90 compiler and may also contain pointers to directories
-containing pre- compiled utilities required by the DART system. **This
+``quickbuild.sh`` uses ``mkmf`` to generate a Makefile for each DART
+program. *mkmf* (think *"make makefile"*) requires a template file which
+specifies the commands required for a
+specific Fortran90 compiler and any required library flags. **This
 template file will need to be modified to reflect your system as
 detailed in the next section**.
 
-The second input file is a ``path_names`` file which is supplied by DART
-and can be used without modification. An *mkmf* command is executed
-which uses the ``path_names`` file and the mkmf template file to produce
-a ``Makefile`` which is subsequently used by the standard *make*
-utility.
 
-Shell scripts that execute the *mkmf* command for all standard DART
-executables are provided with the standard DART distribution. For more
+For more
 information on the `mkmf <https://github.com/NOAA-GFDL/mkmf>`__ tool
 please see the `mkmf
 documentation <https://github.com/NOAA-GFDL/mkmf>`__.
 
-Building and Customizing the ‘mkmf.template’ file
+Customizing the ‘mkmf.template’ file
 =================================================
 
 A series of templates for different compilers/architectures can be found
@@ -49,11 +34,11 @@ is how you inform the build process of the specifics of your system.
 
 For the discussion that follows, knowledge of the contents of one of these
 templates (e.g. ``DART/build_templates/mkmf.template.intel.linux``)
-is needed. Note that only the LAST lines of the file are shown here. The
+is needed. Note that only the relevant lines of the file are shown here. The
 first portion of the file is a large comment block that provides
 valuable advice on how to customize the *mkmf* template file if needed.
 
-.. code-block:: bash
+.. code-block:: text
 
    MPIFC = mpif90
    MPILD = mpif90
@@ -86,16 +71,6 @@ valuable advice on how to customize the *mkmf* template file if needed.
 | LDFLAGS | the linker flags passed to LD during compilation. See your particular linker’s documentation for more information.                                                                                                               |
 +---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-Customizing the path names files
-================================
-
-Several ``path_names_*`` files are provided in the "work" directory for
-each specific model. In this case, the directory of interest is
-``DART/models/lorenz_63/work`` (see the next section). Since each
-model comes with its own set of files, the ``path_names_*`` files
-typically need no customization. However, modifying these files will be
-required if you wish to add your model to DART. See `How do I run DART
-with my model? <#RunWithMyModel>`__ for more information.
 
 Building the Lorenz_63 DART project
 ===================================
@@ -131,39 +106,37 @@ that has the components necessary to build the executables.
           weather, has 28 separate programs. Nonetheless, each of these
           programs are built the same way.
 
-The ``quickbuild.csh`` in each directory builds all seven programs
-necessary for Lorenz 63. Describing what the ``quickbuild.csh`` script
-does is useful for understanding how to get started with DART.
+Use ``quickbuild.sh`` to build all seven programs
+necessary for Lorenz 63.
 
-The following shell commands show how to build two of these seven
-programs for the lorenz_63 model: *preprocess* and *obs_diag*.
+To see the options for ``quickbuild.sh`` run ``quickbuild.sh help``.
+
+The first step of quickbuild is to build and run *preprocess*.
 *preprocess* is a special program that needs to be built and run to
 automatically generate Fortran code that is used by DART to support a
 subset of observations - which are (potentially) different for every
 model. Once *preprocess* has been run and the required Fortran code has
-been generated, any of the other DART programs may be built in the same
-way as *obs_diag* in this example. Thus, the following runs *mkmf* to
-make a ``Makefile`` for *preprocess*, makes the *preprocess* program,
-runs *preprocess* to generate the Fortran observation code, runs *mkmf*
-to make a ``Makefile`` for *obs_diag*, then makes the *obs_diag*
-program:
+been generated, any of the other DART programs may be built.
+
+To build all DART programs:
 
 .. code-block:: bash
 
    $ cd DART/models/lorenz_63/work
-   $ ./mkmf_preprocess
-   $ make
-   $ ./preprocess
-   $ ./mkmf_obs_diag
-   $ make
+   $ ./quickbuild.sh
 
-The remaining executables are built in the same fashion as *obs_diag*:
-run the particular *mkmf* script to generate a Makefile, then execute
-*make* to build the corresponding program.
 
-Currently, DART executables are built in a ``work`` subdirectory under
+To build a single DART program, for example obs_diag:
+
+.. code-block:: bash
+
+   $ cd DART/models/lorenz_63/work
+   $ ./quickbuild.sh obs_diag
+
+
+The DART executables are built in a ``work`` subdirectory under
 the directory containing code for the given model. The Lorenz_63 model
-has seven ``mkmf_xxxxxx`` files for the following programs:
+has the following programs:
 
 
 +--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -185,22 +158,20 @@ has seven ``mkmf_xxxxxx`` files for the following programs:
 +--------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
-As mentioned above, ``quickbuild.csh`` is a script that will build every
-executable in the directory. There is an optional argument that will
-additionally build the MPI-enabled versions which will not be covered in
-this set of instructions. See The DART MPI introduction page for more
-information on using DART with MPI.
+As mentioned above, ``quickbuild.sh`` is a script that will build every
+executable in the directory. There is an optional argument ``nompi`` that will
+build without MPI.
 
-Running ``quickbuild.csh`` will compile all the executables mentioned
+Running ``quickbuild.sh`` will compile all the executables mentioned
 above for the lorenz_63 model:
 
 .. code-block:: bash
 
    $ cd DART/models/lorenz_63/work
-   $ ./quickbuild.csh
+   $ ./quickbuild.sh
 
-The result (hopefully) is that seven executables now reside in your work
-directory.
+If the build is successful, you will see the seven programs
+in your work directory.
 
 .. note:: The most common problem is that the netCDF libraries and/or include
           files were not found in the specified location(s). The second most
@@ -208,4 +179,4 @@ directory.
           different compiler than the one used for DART. Find (or compile) a 
           compatible netCDF library, edit the ``DART/build_templates/mkmf.template``
           to point to the correct locations of the includes and library files,
-          recreate the ``Makefile``\ s, and try again.
+          then run ``./quickbuild.sh`` again.

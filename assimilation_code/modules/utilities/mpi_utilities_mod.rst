@@ -11,8 +11,8 @@ routines. However, to be able to run most larger models with a reasonable number
 will be needed.
 
 The main DART executable ``filter`` can be compiled and run as either a serial program or a parallel program. Most work
-directories in the DART distribution source tree have a ``quickbuild.csh`` script which can take a ``-mpi`` or a
-``-nompi`` flag. This flag changes the list of files to be compiled to use either the module which uses the MPI library
+directories in the DART distribution source tree have a ``quickbuild.sh`` script which can take a ``mpi`` or a
+``nompi`` arguement. This arguement changes the list of files to be compiled to use either the module which uses the MPI library
 or the one which makes no MPI calls. No source code changes are required to switch between the two options.
 
 A parallel program generally runs faster and requires less memory per CPU than the serial code. It requires an

@@ -676,7 +676,7 @@ Time to check the case.
 
 5) IF NEEDED, compile all the DART executables by
    cd  ${dartroot}/models/clm/work
-   ./quickbuild.csh -mpi
+   ./quickbuild.sh
 
 6) Modify the case to enable data assimilation and
    run DART by executing

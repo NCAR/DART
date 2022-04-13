@@ -566,7 +566,7 @@ Time to check the case.
 
 6) IF NEEDED, compile all the DART executables by
    cd  ${dartroot}/models/clm/work
-   ./quickbuild.csh -mpi
+   ./quickbuild.sh
 
 7) Modify the case to enable perfect_model_obs and
    run DART by executing

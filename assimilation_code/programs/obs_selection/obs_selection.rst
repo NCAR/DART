@@ -182,15 +182,10 @@ programs. It is also possible to build this tool in the ``$DART/observations/uti
 ``preprocess`` program must be built and run first to define what set of observation types will be supported. See the
 :doc:`../../../assimilation_code/programs/preprocess/preprocess` for more details on how to define the list and run it.
 The ``&preprocess_nml`` namelist in the ``input.nml`` file must contain files with definitions for the combined set of
-all observation types which will be encountered over all input obs_seq files. The other important choice when building
-the tool is to include a compatible locations module in the ``path_names_obs_selection`` file. For the low-order models
-the ``oned`` module should be used; for real-world observations the ``threed_sphere`` module should be used.
+all observation types which will be encountered over all input obs_seq files.
 
-Usually the directories where executables are built will include a ``quickbuild.csh`` script which builds and runs
-preprocess and then builds the rest of the executables by executing all files with names starting with ``mkmf_``. If the
-obs_selection tool is not built because there is no ``mkmf_obs_selection`` and ``path_names_obs_selection`` file in the
-current directory they can be copied from another model. The ``path_names_obs_selection`` file will need to be edited to
-be consistent with the model you are building.
+Usually the directories where executables are built will include a ``quickbuild.sh`` script which builds and runs
+preprocess and then builds the rest of the executables.
 
 Modules used
 ------------

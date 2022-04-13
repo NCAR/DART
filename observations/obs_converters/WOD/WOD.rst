@@ -105,7 +105,7 @@ The data is distributed in a specialized packed ASCII format. In this directory 
 is an example reader program to print out data values from the files. The program ``wod_to_obs`` converts these packed
 ASCII files into DART obs_sequence files.
 
-As with most other DART directories, the ``work`` directory contains a ``quickbuild.csh`` script to build all necessary
+As with most other DART directories, the ``work`` directory contains a ``quickbuild.sh`` script to build all necessary
 executables.
 
 Namelist
