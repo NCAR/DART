@@ -39,6 +39,7 @@ class DartWork(object):
         self.compile(path_dart, path_rel, mpi)
 
         # list the mkmfs and get the binaries.
+        # HK note: the mkmf_ files no longer exist. 
         mkmfs = list((pathlib.PosixPath(path_dart) / path_rel).glob('mkmf_*'))
         dart_exes = [pathlib.PosixPath(str(mm).replace('/mkmf_','/')) for mm in mkmfs]
         build_exes = [(build_dir / path_rel / dd.name) for dd in dart_exes]
@@ -54,9 +55,9 @@ class DartWork(object):
     ):
 
         # compile each workdir
-        build_cmd = './quickbuild.csh'
-        if mpi:
-            build_cmd += ' -mpi'
+        build_cmd = './quickbuild.sh'
+        if not mpi:
+            build_cmd += 'nompi'
 
         print(path_rel + ': Running "' + build_cmd + '"')
         self.compile_subproc = subprocess.run(
