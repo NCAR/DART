@@ -30,20 +30,26 @@
 #
 # the processing directory name is relative to the 'work' directory.
 #
-# (2021 update: see satlist, below, for a new list)
+# (2021-11 update: see satlist, below, for a new list)
 # the options for satellite names, and available data times are:
 #
-#    cosmic:      all 6 COSMIC : 2006.194 - now*
+# >  cosmic:      all 6 COSMIC : 2006.194 - now*
 #    cosmic-2013: reprocessed COSMIC : 2006.194 - now*
 #    cosmicrt:    COSMIC : realtime
 #    champ:       CHAMP : 2001.139 - 2008.274
-#    grace:       Grace-A : 2007.059 - now*
-#    tsx:         German TerraSAR-X : 2008.041 - now*
-#    metopa:      Metop-A/GRAS : 2008.061 - now*
+# >  grace:       Grace-A : 2007.059 - now*
+# >  tsx:         German TerraSAR-X : 2008.041 - now*
+# >  metopa:      Metop-A/GRAS : 2008.061 - now*
 #    sacc:        Argentinan SAC-C : 2006.068 - now*
 #    saccrt:      SAC-C : realtime
 #    ncofs:       new Air Force C/NOFS : 2010.335 - now*
 #    ncofsrt:     C/NOFS : realtime
+# I used these for the 2020 files
+# cosmic
+# grace
+# metopa
+# metopb
+# tsx
 #
 #  - dates are YYYY.DDD where DDD is day number in year
 #  - now* means current date minus 3-4 months.  reprocessed data
@@ -150,7 +156,7 @@ endif
 
 set datea   = $1     # target date, YYYYMMDD
 set datadir = $2     # under what directory to process the files
-                     # KDR; ../cosmic/$year$mo$day
+                     # KDR; ../$platform(kdr_multi_parallel.batch)/$year$mo$day
 set downld  = $3     # download?  'yes' or 'no'
 set convert = $4     # convert?   'yes' or 'no'
 set cleanup = $5     # delete downloaded files at end? 'yes' or 'no'
@@ -201,7 +207,7 @@ if ( ! -d $datadir ) then
   echo 'creating data processing directory: ' $datadir
   mkdir -p $datadir
 endif
-if ( ! -e $datadir/input.nml ) then
+if ( ! -e $datadir/input.nml || -z $datadir/input.nml) then
   echo 'data processing directory does not contain an input.nml'
   echo 'copying from work dir to data proc dir'
   echo `pwd`/input.nml '->' $datadir/input.nml
@@ -337,6 +343,12 @@ if ( $convert == 'yes') then
       echo $nfiles ' to process for file ' $datea 
    endif
    
+# KDR
+# setenv CONV_PROG      convert_cosmic_gps_cdf
+# Copied CONV_PROG into
+# setenv DART_DIR /glade/scratch/raeder/gps_conversion
+# setenv DART_WORK_DIR  $DART_DIR/work
+# ? From where?
    ./$CONV_PROG >>! convert_output_log
 
    if ( -e obs_seq.gpsro ) then

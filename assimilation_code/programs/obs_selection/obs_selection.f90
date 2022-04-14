@@ -6,7 +6,7 @@
 
 ! nsc 12apr2012 -
 ! was too slow for large lists and large obs_seq files.
-! sorted the obs_def list by time and then started the search
+! sorted the obs_def (selection file) list by time and then started the search
 ! at the time of the next obs, and quit looping when past that time.
 ! really speeded up - may not have to do anything more complicated
 ! at this time.
@@ -15,7 +15,8 @@
 ! by the x coord for starters), or binning in spatial bins if
 ! still too slow.  but the current fixes should go a long way
 ! to making the performance acceptable.
-!
+! KDR; Added ability to save obs from the input files, that are not selected,
+! to a separate file from the selected obs.  See _ext variables.
 
 program obs_selection
 
@@ -36,10 +37,10 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of
                              get_obs_def_location, read_obs_def
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs, &
                              read_type_of_obs_table
-use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
-                             print_date, set_calendar_type, GREGORIAN,     &
-                             operator(/=), operator(<=), NO_CALENDAR,      &
-                             get_calendar_type, time_index_sort, operator(==)
+use time_manager_mod, only : time_type, print_time, set_time, time_index_sort, &
+                             get_calendar_type, print_date, set_calendar_type, GREGORIAN, NO_CALENDAR, &
+                             operator(/=), operator(<=), operator(>), operator(==), operator(<) 
+                             
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              init_obs, assignment(=), get_obs_def, &
                              init_obs_sequence, static_init_obs_sequence, &
@@ -63,16 +64,21 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-type(obs_sequence_type) :: seq_in, seq_out
+type(obs_sequence_type) :: seq_in, seq_out, seq_ext
+type(obs_def_type),  allocatable :: obs_def_list(:)
 type(obs_type)          :: obs_in, next_obs_in
 type(obs_type)          :: obs_out, prev_obs_out
+type(obs_type)          :: obs_ext, prev_obs_ext
 type(time_type)         :: t1, t2
 logical                 :: is_there_one, is_this_last
 integer                 :: size_seq_in, num_copies_in, num_qc_in
 integer                 :: size_seq_out, num_copies_out, num_qc_out
+integer                 :: size_seq_ext, num_copies_ext, num_qc_ext
 integer                 :: num_inserted, iunit, io, i, j, ocount
+integer                 :: num_inserted_ext
 integer                 :: total_num_inserted, base_index, next_base_index
 integer                 :: max_num_obs, file_id, this_type
+integer                 :: obs_def_count
 logical, allocatable    :: type_wanted(:)
 integer                 :: first_seq, num_good_called, num_good_searched
 character(len=129)      :: read_format, meta_data
@@ -88,14 +94,13 @@ character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
 integer, parameter               :: max_num_input_files = 1000
 integer, parameter               :: max_obs_input_types = 500
 integer                          :: num_input_files = 0
-type(obs_def_type),  allocatable :: obs_def_list(:)
-integer                          :: obs_def_count
 integer                          :: print_every_nth_obs = 100
 
 
 character(len=256) :: filename_seq(max_num_input_files) = ''
 character(len=256) :: filename_seq_list = ''
 character(len=256) :: filename_out  = 'obs_seq.processed'
+character(len=256) :: filename_ext  = 'obs_seq.extras'
 logical            :: process_file(max_num_input_files)
 
 character(len=256) :: selections_file = 'obsdef_mask.txt'
@@ -117,7 +122,7 @@ character(len=32) :: calendar     = 'Gregorian'
 
 
 namelist /obs_selection_nml/ &
-         num_input_files, filename_seq, filename_seq_list, filename_out, &
+         num_input_files, filename_seq, filename_seq_list, filename_out, filename_ext, &
          selections_file, selections_is_obs_seq, print_only, calendar,   &
          print_timestamps, partial_write, latlon_tolerance,              &
          surface_tolerance, pressure_tolerance, height_tolerance,        &
@@ -128,6 +133,11 @@ namelist /obs_selection_nml/ &
 !
 ! Process each input observation sequence file in turn, optionally
 ! selecting observations to insert into the output sequence file.
+! The selection is done by picking the next ob in the (list of)
+! input files, then searching through the (time ordered) obs 
+! in the selection file.  If it is found, then it (the input ob)
+! is written to an "output" file.  If it is not, then write it
+! to a new "extras" file.  
 !----------------------------------------------------------------
 
 call obs_seq_modules_used()
@@ -175,10 +185,10 @@ num_copies_out   = 0
 num_qc_out       = 0
 size_seq_out     = 0
 
-! TWO PASS algorithm; open each file, trim it if requested, and count
-! the number of actual observations.  then the output file can be
-! created with the correct size, and as observations are put into it
-! they'll be sorted, and unused obs will be removed.
+! TWO PASS algorithm; open each input file, trim it if requested, and count
+! the number of actual observations.  then the output files can be
+! created with the correct size, and as observations are put into them
+! they'll be sorted, and unused obs will be written to a second file.
 
 ! pass 1:
 
@@ -243,6 +253,8 @@ call init_obs(     obs_in,  num_copies_in,  num_qc_in )
 call init_obs(next_obs_in,  num_copies_in,  num_qc_in )
 call init_obs(     obs_out, num_copies_out, num_qc_out)
 call init_obs(prev_obs_out, num_copies_out, num_qc_out)
+call init_obs(     obs_ext, num_copies_out, num_qc_out)
+call init_obs(prev_obs_ext, num_copies_out, num_qc_out)
 
 total_num_inserted = 0
 
@@ -264,13 +276,16 @@ FILES: do i = 1, num_input_files
    ! create the output sequence here based on the first input file
    if (first_seq < 0) then
       call init_obs_sequence(seq_out, num_copies_out, num_qc_out, size_seq_out)
+      call init_obs_sequence(seq_ext, num_copies_out, num_qc_out, size_seq_out)
       do j=1, num_copies_out
          meta_data = get_copy_meta_data(seq_in, j)
          call set_copy_meta_data(seq_out, j, meta_data)
+         call set_copy_meta_data(seq_ext, j, meta_data)
       enddo
       do j=1, num_qc_out
          meta_data = get_qc_meta_data(seq_in, j)
          call set_qc_meta_data(seq_out, j, meta_data)
+         call set_qc_meta_data(seq_ext, j, meta_data)
       enddo
       first_seq = i
    else
@@ -282,9 +297,7 @@ FILES: do i = 1, num_input_files
       call compare_metadata(seq_out, seq_in, filename_seq(first_seq), filename_seq(i))
    endif
 
-   size_seq_out = get_num_key_range(seq_out)   !current size of seq_out
-   size_seq_in = get_num_key_range(seq_in)     !current size of seq_in
-
+   size_seq_ext = get_num_key_range(seq_ext)   !current size of seq_ext
    size_seq_out = get_num_key_range(seq_out)   !current size of seq_out
    size_seq_in = get_num_key_range(seq_in)     !current size of seq_in
 
@@ -294,7 +307,7 @@ FILES: do i = 1, num_input_files
    if (print_only) call print_obs_seq(seq_in, filename_seq(i))
 
    !-------------------------------------------------------------
-   ! Start to insert obs from sequence_in into sequence_out
+   ! Start to insert obs from sequence_in into sequence_out and sequence_ext
    !
    ! NOTE: insert_obs_in_seq CHANGES the obs passed in.
    !       Must pass a copy of incoming obs to insert_obs_in_seq.
@@ -303,6 +316,7 @@ FILES: do i = 1, num_input_files
    num_good_searched = 0
 
    num_inserted = 0
+   num_inserted_ext = 0
    is_there_one = get_first_obs(seq_in, obs_in)
 
    if ( .not. is_there_one )  then
@@ -321,8 +335,9 @@ FILES: do i = 1, num_input_files
    if (print_timestamps) call timestamp(string1='start of first obs', pos='brief')
    ocount = 1
 
-   ! figure out the time of the first obs in this file, and set the
-   ! offset for the first item in the selection file that's at this time.
+   ! figure out the time of the first obs in this input file, and set the
+   ! selection file offset (base_index) for the first item in the selection file 
+   ! that's at or after this time.
    t1 = get_time_from_obs(obs_in)
    base_index = set_base(t1, obs_def_list, obs_def_count)
 
@@ -333,9 +348,15 @@ FILES: do i = 1, num_input_files
            source, revision, revdate, text2=msgstring2)
       call destroy_obs_sequence(seq_in)
       write(msgstring, *) 'input file ', i
-      if (print_timestamps) call timestamp(string1='cyc 1 of '//trim(msgstring), pos='brief')
+      if (print_timestamps) call timestamp(string1='      cyc 1 of '//trim(msgstring), pos='brief')
       cycle FILES      
    endif
+   ! next_base_index keeps track of the *first* selection ob that has a time >= the current candidate ob.
+   ! Often whole profiles have the same time.  As the candidate obs are handled one by one, the search
+   ! in the selection list must start at the first ob having the same time.
+   ! next_base_index must be > 0 here, but can become < 0 in the loop below,
+   ! when the candidate obs are after all of the selection obs.
+   ! the program will continue; all those will be written to the extras file.
    next_base_index = base_index
 
    if (good_selection(obs_in, obs_def_list, obs_def_count, next_base_index)) then
@@ -345,6 +366,13 @@ FILES: do i = 1, num_input_files
 
       prev_obs_out = obs_out            ! records new position in seq_out
       num_inserted = num_inserted + 1
+   else
+      obs_ext = obs_in
+
+      call insert_obs_in_seq(seq_ext, obs_ext)  ! new_obs linked list info changes
+
+      prev_obs_ext = obs_ext            ! records new position in seq_ext
+      num_inserted_ext = num_inserted_ext + 1
    endif
 
    call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
@@ -365,20 +393,25 @@ FILES: do i = 1, num_input_files
          t2 = get_time_from_obs(next_obs_in)
          if (t1 /= t2) then
             base_index = next_base_index
+            ! Only update next_base_index if the candidate ob has advanced to a new time.
+            ! Otherwise, we need to search all of the selector obs at the current time.
             next_base_index = set_base(t2, obs_def_list, obs_def_count, base_index)
             t1 = t2
   
-            if (next_base_index < 0) then
-               ! next obs in selection file is after all the rest of the obs in this
-               ! input obs_seq file, so we can move on now.
-               write(msgstring, *) 'done with ', trim(filename_seq(i))
-               call error_handler(E_MSG, 'obs_selection', msgstring, &
-                    source, revision, revdate)
-               call destroy_obs_sequence(seq_in)
-               write(msgstring, *) 'input file ', i
-               if (print_timestamps) call timestamp(string1='cyc 2 of '//trim(msgstring), pos='brief')
-               cycle FILES      
-            endif
+!     This is not a good idea if extras will be sent to a separate file,
+!     at least for extras after the last matchable ob.
+!     This could be conditional on whether user wants to save extra obs.
+!             if (next_base_index < 0) then
+!                ! next obs in selection file is after all the rest of the obs in this
+!                ! input obs_seq file, so we can move on now.
+!                write(msgstring, *) 'done with ', trim(filename_seq(i))
+!                call error_handler(E_MSG, 'obs_selection', msgstring, &
+!                     source, revision, revdate)
+!                call destroy_obs_sequence(seq_in)
+!                write(msgstring, *) 'input file ', i
+!                if (print_timestamps) call timestamp(string1='      cyc 2 of '//trim(msgstring), pos='brief')
+!                cycle FILES      
+!             endif
          endif
 
          if (good_selection(next_obs_in, obs_def_list, obs_def_count, next_base_index)) then
@@ -405,14 +438,31 @@ FILES: do i = 1, num_input_files
                        source, revision, revdate)
                endif
             endif
+         else 
+            obs_ext = next_obs_in
+
+            if (num_inserted_ext > 0) then
+               call insert_obs_in_seq(seq_ext, obs_ext, prev_obs_ext)
+            else
+               call insert_obs_in_seq(seq_ext, obs_ext)
+            endif
+
+            prev_obs_ext = obs_ext    ! update position in seq_ext for next insert
+            num_inserted_ext = num_inserted_ext + 1
+
 
          endif
 
-      endif
+      endif   ! if (this_type < 0 .or. type_wanted(this_type)) then
 
       obs_in     = next_obs_in   ! next obs is the current one now
 
       call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
+
+      if (is_this_last) then
+         write(msgstring, *) 'Last ob in file ',i,' ocount =', ocount,' next_base_index =',next_base_index
+         call error_handler(E_MSG, 'obs_selection', msgstring)
+      endif
 
       if (print_timestamps) then
          if (mod(ocount,10000) == 0) then
@@ -424,7 +474,6 @@ FILES: do i = 1, num_input_files
    enddo ObsLoop
 
    total_num_inserted = total_num_inserted + num_inserted
-
 
    if (.not. print_only) then
       print*, '--------------  Obs seq file # :          ', i
@@ -440,26 +489,25 @@ FILES: do i = 1, num_input_files
    write(msgstring, *) 'input file ', i
    if (print_timestamps) call timestamp(string1='end   of '//trim(msgstring), pos='brief')
 
-   ! DEBUG diagnostics
-   !print *, 'size of mask file = ',  obs_def_count
-   !print *, 'average search length = ', num_good_searched / num_good_called
-   !print *, 'number of time search called = ', num_good_called
-
 enddo FILES
 
-write(msgstring,*) 'Starting to process output sequence file ', trim(filename_out)
+write(msgstring,*) 'Starting to process output sequence files ', trim(filename_out), ' ', trim(filename_ext)
 call error_handler(E_MSG,'obs_selection',msgstring)
 
 if (.not. print_only) then
    print*, 'Total number of obs  inserted  :          ', total_num_inserted
    print*, 'Actual number of obs in the new seq file :', get_num_key_range(seq_out)
+   print*, 'Actual number of obs in the extras file :', get_num_key_range(seq_ext)
 else
    print*, 'Total number of selected obs in all files :', get_num_key_range(seq_out)
 endif
 
 call print_obs_seq(seq_out, filename_out)
+call print_obs_seq(seq_ext, filename_ext)
+! KDR extras version
 if (.not. print_only) then
    call write_obs_seq(seq_out, filename_out)
+   call write_obs_seq(seq_ext, filename_ext)
 else
    write(msgstring,*) 'Output sequence file not created; print_only in namelist is .true.'
    call error_handler(E_MSG,'', msgstring)
@@ -467,10 +515,13 @@ endif
 
 ! Time to clean up
 
+! KDR extras version
+call destroy_obs_sequence(seq_ext)
 call destroy_obs_sequence(seq_out)
 call destroy_obs(     obs_in )
 call destroy_obs(next_obs_in )
 call destroy_obs(     obs_out)
+call destroy_obs(     obs_ext)
 !call destroy_obs(prev_obs_out)
 
 call finalize_utilities()
@@ -1008,7 +1059,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
      endif
 
      ! in an obs_seq file, using get_next_obs you will
-     ! be guarenteed to get these in increasing time order.
+     ! be guaranteed to get these in increasing time order.
 
      is_this_last = .false.
      do i = 1, count
@@ -1040,7 +1091,8 @@ end subroutine read_selection_list
 !---------------------------------------------------------------------
 function set_base(obs_time, selection_list, selection_count, startindex)
 
-! find offset of first obs_def entry that has a time >= to the given one
+! find offset of first obs_def(selection) entry that has a time >= 
+! the given one (usually the time of an input file ob)
 ! if optional startindex is given, start looking there.
 
  type(time_type),    intent(in) :: obs_time
@@ -1068,6 +1120,9 @@ function set_base(obs_time, selection_list, selection_count, startindex)
     ! if we have looped through the obs_def list far enough so
     ! the next obs_def entry has a time more than or equal to the
     ! one of the next observation, stop and return this index.
+    ! At first glance it seems that only = is useful because selection list is time ordered 
+    ! and good_selection searches from def_time *forward*.
+    ! But the first obs_time needs the < because good_selection has not been run yet.
     if (obs_time <= def_time) then
        set_base = i
        return
@@ -1102,20 +1157,24 @@ function good_selection(obs_in, selection_list, selection_count, startindex)
  type(time_type)     :: base_obs_time, test_obs_time
  type(location_type) :: base_obs_loc,  test_obs_loc
 
+! Here base refers to the input obs list, not the selection
  call get_obs_def(obs_in, base_obs_def)
  base_obs_loc  = get_obs_def_location(base_obs_def)
  base_obs_time = get_obs_def_time(base_obs_def)
  base_obs_type = get_obs_def_type_of_obs(base_obs_def)
 
  ! this program now time-sorts the selection list first, so we
- ! are guarenteed the obs_defs will be encountered in time order.
+ ! are guaranteed the obs_defs will be encountered in time order.
  ! now optimize in two ways:  first, the caller will pass in an
  ! offset that is less than or equal to the first obs for this time,
  ! and second this routine will return when the obs_def time is
  ! larger than the time to match.  that should save a lot of looping.
 
- if (startindex < 1 .or. startindex > selection_count) then
-    write(msgstring2, *) 'startindex ', startindex, ' is not between 1 and ', selection_count
+ ! if you get to a larger time without a match you can bail early.
+ good_selection = .false.
+
+ if (startindex > selection_count) then
+    write(msgstring2, *) 'startindex ', startindex, ' is larger than ', selection_count
     call error_handler(E_ERR, 'good_selection', &
        'invalid startindex, internal error should not happen', &
        source, revision, revdate, text2=msgstring2) 
@@ -1124,23 +1183,27 @@ function good_selection(obs_in, selection_list, selection_count, startindex)
  ! statistics for timing/debugging
  num_good_called = num_good_called + 1
 
- ! the obs_def list is time-sorted now.  if you get to a larger
- ! time without a match you can bail early.
- good_selection = .false.
-
  ! first select on time - it is an integer comparison
- ! and quicker than location test.  then type, and
- ! finally location.
+ ! and quicker than location test.  then type, and finally location.
+ ! startindex is either 1, or the index of the selection ob
+ ! that is the *first* to match the input ob time or is after it.
  do i = startindex, selection_count
 
     test_obs_time = get_obs_def_time(selection_list(i))
 
     ! if past the possible times, return now.
+! Startindex has been brought to to a selection ob that is *after* or *at* the input ob time
+! we're trying to find in the selection list.
+! This is never entered because startindex always ensures input_ob_time <= selection_ob_time.
     if (base_obs_time > test_obs_time) then
        num_good_searched = i - startindex + 1
        return
     endif
 
+! On entry input_ob_time is <= selection_ob_time.
+! If it's <, which is the same as /=, then it doesn't do any good to cycle test_obs_time
+! to the next (maybe later) ob.  So in the < case, it would never find a time match
+! and it would be better to return and not search the rest of the selection list.
     if (base_obs_time /= test_obs_time) cycle
 
     test_obs_type = get_obs_def_type_of_obs(selection_list(i))

@@ -22,7 +22,7 @@ program convert_cosmic_gps_cdf
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use          types_mod, only : r8
+use          types_mod, only : r8,  MISSING_R8
 use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                                increment_time, get_time, set_date, operator(-),  &
                                print_date
@@ -86,6 +86,8 @@ integer, parameter :: NMAXLEVELS = 200   !  max number of observation levels
 
 logical  :: local_operator         = .true.   ! see html file for more on non/local
 logical  :: use_original_kuo_error = .false.  ! alternative is use lidia c's version
+real(r8) :: use_constant_error     = MISSING_R8 ! user supplied error variance 
+                                                !(mostly for flagging GPS platforms)
 real(r8) :: obs_levels(NMAXLEVELS) = -1.0_r8
 real(r8) :: ray_ds                 = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
 real(r8) :: ray_htop               = 15000.0_r8 ! max height (m) for nonlocal op
@@ -96,7 +98,7 @@ character(len=256) :: gpsro_out_file        = 'obs_seq.gpsro'
 namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, ray_ds,   &
                                   ray_htop, gpsro_netcdf_file,          &
                                   gpsro_netcdf_filelist, gpsro_out_file, &
-                                  use_original_kuo_error
+                                  use_original_kuo_error, use_constant_error
 
 ! initialize some values
 obs_num = 1
@@ -314,7 +316,9 @@ fileloop: do      ! until out of files
         rfict     = 0.0_r8
    
         obsval = refro
-        if (use_original_kuo_error) then
+        if (use_constant_error .ne. MISSING_R8) then
+           oerr = use_constant_error
+        else if (use_original_kuo_error) then
            oerr   = 0.01_r8 * ref_obserr_kuo_percent(hghto * 0.001_r8) * obsval
         else
            oerr   = gsi_refractivity_error(hghto, lato, is_it_global=.true., factor=1.0_r8)
@@ -345,7 +349,11 @@ fileloop: do      ! until out of files
      call set_obs_def_location(obs_def,set_location(lono,lato,hghto,VERTISHEIGHT))
      call set_obs_def_type_of_obs(obs_def, GPSRO_REFRACTIVITY)
      call set_obs_def_time(obs_def, set_time(osec, oday))
-     call set_obs_def_error_variance(obs_def, oerr * oerr)
+     if (use_constant_error .ne. MISSING_R8) then
+        call set_obs_def_error_variance(obs_def, oerr )
+     else
+        call set_obs_def_error_variance(obs_def, oerr * oerr)
+     endif
      call set_obs_def_key(obs_def, obs_num)
      call set_obs_def(obs, obs_def)
    
@@ -368,6 +376,10 @@ fileloop: do      ! until out of files
 end do fileloop
 
 ! done with main loop.  if we added any new obs to the sequence, write it out.
+if (use_constant_error .ne. MISSING_R8) gpsro_out_file = trim(gpsro_out_file)//'.neg_err_var'
+write(msgstring,  *) ' use_constant_error and gpsro_out_file = ',use_constant_error,gpsro_out_file
+call error_handler(E_MSG, 'convert_cosmic_gps_obs', msgstring, source, revision, revdate)
+
 if (obs_num > 1) call write_obs_seq(obs_seq, gpsro_out_file)
 
 ! cleanup memory

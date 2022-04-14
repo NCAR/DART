@@ -15,6 +15,7 @@
    filename_seq          = ''
    filename_seq_list     = ''
    filename_out          = 'obs_seq.processed'
+   filename_ext          = 'obs_seq.extras'
    num_input_files       = 0
    selections_file       = 'obsdef_mask.txt'
    selections_is_obs_seq = .false.

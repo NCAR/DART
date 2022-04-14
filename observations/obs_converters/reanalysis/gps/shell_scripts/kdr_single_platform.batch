@@ -48,11 +48,15 @@
 # qpeek    see output from a running job
 #
 # This form of "anything.YYYY-M-D.M-D" will be parsed into start and end dates. 
-#PBS -N gpsobs.2020-2-1.12-31
-#PBS -l walltime=08:00:00
-#PBS -q regular
-#PBS -l select=1:ncpus=36:mpiprocs=36
-#PBS -A your_account
+#PBS -N gpsobs_tdx.2018-1-1.1-1
+#PBS -q share
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=1:mpiprocs=1
+# #PBS -N gpsobs.2020-2-1.12-31
+# #PBS -l walltime=08:00:00
+# #PBS -l select=1:ncpus=36:mpiprocs=36
+# #PBS -q regular
+#PBS -A P86850054
 #
 #==========================================================================
 # LSF directives                bsub < script.csh
@@ -92,11 +96,6 @@ echo "end_month = $end_month, end_day = $end_day"
 # should match the mpiprocs=X setting above
 set njobs = 36
 
-# where to download the data and do the conversions, relative to
-# the shell_scripts directory containing these scripts.  
-# the script below will add /YYYYMM to the end of this string.
-set datadir = ../cosmic
-
 # for each day: 
 #  download the data from the web site or not, 
 #  convert to daily obs_seq files or not, and 
@@ -104,7 +103,7 @@ set datadir = ../cosmic
 
 set do_download = 'yes'
 set do_convert  = 'yes'
-set do_delete   = 'yes'
+set do_delete   = 'no'
 
 
 # set the list of satellite data to convert.
@@ -125,31 +124,31 @@ set do_delete   = 'yes'
 # for the current table of satellites and days that have data files.
 # these dates were current as of Sep 2021.  '+' = updated 2021-9
 #
-#  name_to_use    date range           what instrument?
-#  -----------    ----------           ---------------
-#  champ2016    2001.138 - 2008.279    CHAMP
-#  cnofs        2010.060 - 2011.365    Air Force C/NOFS
-#  cnofsrt      2012.001 - 2015.193      "    (realtime)
-#  cosmic2013   2006.112 - 2014.120    COSMIC, reprocessed
-#+ cosmic1      2014.121 - 2020.122      "    (not reprocessed yet?)
-#+ cosmic2      2019.275 - 2021.?      
-#  cosmicrt     2014.181 - 2016.123      "    (realtime)
-#+ geoopt       2020.351 - 2021.014
-#  gpsmet       1995.111 - 1997.047    ?
-#  gpsmetas     1995.237 - 1997.016    ?
-#+ grace        2007.059 - 2017.334    Grace-A
-#+ kompsat5rt   2015.305 - 2021.059    ?
-#+ metopa       2016.001 - 2021.059    
-#+ metopb       2016.001 - 2021.059    Metop-B/GRAS 
-#+ metopc       2019.195 - 2021.059    
-#  metopa2016   2007.274 - 2015.365    Metop-A/GRAS, reprocessed 2016
-#+ metopb2016   2013.032 - 2015.365    
-#+ paz          2018.130 - 2021.059    
-#+ spire        2020.352 - 2021.015 
-#  sacc         2006.068 - 2011.215    Argentinan SAC-C
-#  saccrt       2011.329 - 2013.226      "    (realtime)
-#+ tdx          2016.001 - 2021.059
-#+ tsx          2008.041 - 2021.059    German TerraSAR-X
+#  index(obs_err)  name_to_use    date range           what instrument?
+#  --------------  -----------    ----------           ---------------
+#  1               champ2016    2001.138 - 2008.279    CHAMP
+#  2               cnofs        2010.060 - 2011.365    Air Force C/NOFS
+#  3               cnofsrt      2012.001 - 2015.193      "    (realtime)
+#  4               cosmic2013   2006.112 - 2014.120    COSMIC, reprocessed
+#+ 5               cosmic1      2014.121 - 2020.122      "    (not reprocessed yet?)
+#+ 6               cosmic2      2019.275 - 2021.?      
+#  7               cosmicrt     2014.181 - 2016.123      "    (realtime)
+#+ 8               geoopt       2020.351 - 2021.014
+#  9               gpsmet       1995.111 - 1997.047    ?
+#  10              gpsmetas     1995.237 - 1997.016    ?
+#+ 11              grace        2007.059 - 2017.334    Grace-A
+#+ 12              kompsat5     2015.305 - 2021.059    ?
+#+ 13              metopa       2016.001 - 2021.059    
+#+ 14              metopb       2016.001 - 2021.059    Metop-B/GRAS 
+#+ 15              metopc       2019.195 - 2021.059    
+#  16              metopa2016   2007.274 - 2015.365    Metop-A/GRAS, reprocessed 2016
+#+ 17              metopb2016   2013.032 - 2015.365    
+#+ 18              paz          2018.130 - 2021.059    
+#+ 19              spire        2020.352 - 2021.015 
+#  20              sacc         2006.068 - 2011.215    Argentinan SAC-C
+#  21              saccrt       2011.329 - 2013.226      "    (realtime)
+#+ 22              tdx          2016.001 - 2021.059
+#+ 23              tsx          2008.041 - 2021.059    German TerraSAR-X
 #
 
 # which satellites to include:
@@ -157,34 +156,66 @@ set do_delete   = 'yes'
 # The pathnames of the data are no longer uniform, 
 # so specify the pathname after the satellite name.
 # _YYYY_MM.tar.gz will be appended in gpsro_to_obsseq.csh
+# MISTAKE: postProc should be nrt.  This affected 2020-12 days 351-366
+# echo spire     noaa/nrt/level2/YYYY/DDD/atmPrf_postProc  >> satlist
 rm -fr satlist
 touch satlist
-echo geoopt    noaa/nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
-echo spire     noaa/nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
-echo metopa    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-echo metopb    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-echo metopc    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-echo kompsat5  postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-echo paz       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-echo tdx       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-echo tsx       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+# Debugging excess (bad?) obs in the files KR created, compared to JS' files.
+# Create separate obs_seq files for each obs platform.
+# Tag the obs in each with a different obs err var, 
+# using the new namelist parameter ../work/input.nml/use_constant_error.
+# 2020-01-01
+set platforms = (champ2016 cnofs cnofsrt cosmic2013 cosmic1 cosmic2 cosmicrt \
+                 geoopt gpsmet gpsmetas grace kompsat5 \
+                 metopa metopb metopc metopa2016 metopb2016 \
+                 paz spire sacc saccrt tdx tsx)
+set platform = 22
+set obs_err_var = -$platform
 
+if ($platform == 5) \
+   echo cosmic1   postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 6) \
+   echo cosmic2        nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
+if ($platform == 8) \
+   echo geoopt    noaa/nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
+if ($platform == 12) \
+   echo kompsat5  postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 13) \
+   echo metopa    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 14) \
+   echo metopb    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 15) \
+   echo metopc    postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 18) \
+   echo paz       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 19) \
+   echo spire     noaa/nrt/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 22) \
+   echo tdx       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
+if ($platform == 23) \
+   echo tsx       postProc/level2/YYYY/DDD/atmPrf_postProc  >> satlist
 
-# echo spire     noaa/nrt/level2/YYYY/DDD/atmPrf_postProc  >> satlist
-# MISTAKE: postProc should be nrt.  This affected 2020-12 days 351-366
-# Will be fixed when gpsro are recreated without cosmic2.
-
-# cosmic2 N. and S. Hemisphere low level biases are much worse 
-# when 2020-01 COSMIC2 is included.  Tropics are better.
-# Test 2020-02
-#    JS didn't include them.
-# echo cosmic2        nrt/level2/YYYY/DDD/atmPrf_nrt       >> satlist
-
+# 2018-01-01
+#+ cosmic1      2014.121 - 2020.122      "    (not reprocessed yet?)
+#+ kompsat5     2015.305 - 2021.059    ?
+#+ metopa       2016.001 - 2021.059    
+#+ metopb       2016.001 - 2021.059    Metop-B/GRAS 
+#    >>> None available for 2018-01-01 <<<
+#+ metopc       2019.195 - 2021.059    
+#    >>> All are after 2018-01-01
+#+ tdx          2016.001 - 2021.059
+#+ tsx          2008.041 - 2021.059    German TerraSAR-X
 # echo cosmic      >> satlist
 # echo grace       >> satlist
 # echo metopa      >> satlist
 # echo metopb      >> satlist
 # echo tsx         >> satlist
+
+# where to download the data and do the conversions, relative to
+# the shell_scripts directory containing these scripts.  
+# the script below will add /YYYYMM to the end of this string.
+# set datadir = ../cosmic
+set datadir = ../GPS_$platforms[$platform]
 
 # END USER SETTINGS
 
@@ -217,16 +248,17 @@ mkdir -p $TMPDIR
 
 # make the converter script happy by making these files consistent
 # and link to a working advance_time
+# This input.nml is not what's used to create the files.  That's input.nml.template.
 
 cp satlist ../work
 if ( ! -f advance_time) ln -sf ../work/advance_time .
 
-# kdr_single_platform.csh
-# sed -e "s#use_constant_error[ ]*=[ ]*-888888.0d0#use_constant_error = $obs_err_var#" \
-# No, don't want Kuo error.  Use GSI when not using constant(flag) error.
-# sed -e "s#use_original_kuo_error[ ]*=[ ]*.false.#use_original_kuo_error = .true.#" \
-#    ./input.nml.template >! ../work/input.nml
-cp ./input.nml.template ../work/input.nml
+sed -e "s#use_constant_error[ ]*=[ ]*-888888.0d0#use_constant_error = $obs_err_var#" \
+   ./input.nml.template >! ../work/input.nml
+# if ( ! -f input.nml ) then
+#   echo \&utilities_nml > input.nml
+#   echo / >> input.nml
+# endif
 
 echo job started at `date`
 
