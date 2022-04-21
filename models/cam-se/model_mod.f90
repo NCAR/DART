@@ -2858,7 +2858,7 @@ allocate(close_ind(ncol), dist(ncol))
 !SENote IMPORTANT: This only works with approximate_distance = .false. Somehow this must be overridden from
 ! Namelist or documented. Note that there is an error trap for failure that recommends changing to 
 ! approximate_distance false below.
-call get_close(cs_gc, obs_loc, obs_kind, cs_locs, cs_kinds, &
+call get_close(cs_gc, obs_loc, 1, cs_locs, cs_kinds, &
                        num_close, close_ind, dist)
 
 dist_1 = 10.0_r8
