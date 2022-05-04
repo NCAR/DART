@@ -357,8 +357,6 @@ References
    
 .. toctree::
    :maxdepth: 2
-.. toctree::
-   :maxdepth: 2
    :caption: Models
 
    models/README
@@ -535,13 +533,6 @@ References
    models/NCOMMAS/dart_to_ncommas
    models/NCOMMAS/ncommas_to_dart
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Build templates
-   :hidden:
-
-   build_templates/mkmf
 
 .. toctree::
    :maxdepth: 2
