@@ -5,10 +5,10 @@ Compiling DART
 
 To build DART executables you will need to 
 
-#. Create an mkmf.template with appropriate compiler and libary flags.
+#. Create an mkmf.template with appropriate compiler and library flags.
 #. Choose which model you want to use with DART, and cd into that work directory. 
    For example, if you want to build DART for the lorenz_63 model, ``cd DART/models/lorenz_63/work``
-#. Build the DART exectables with ``./quickbuild.sh``
+#. Build the DART executables with ``./quickbuild.sh``
 
 
 For more detail on how quickbuild.sh works see :ref:`DART build system`.

@@ -3,8 +3,8 @@
 DART build system
 =================
 
-The DART build system constists of a ``quickbuild.sh`` script for each 
-model or observation converter and several build functions in ``DART/build_templates/``:
+The DART build system consists of a ``quickbuild.sh`` script for each 
+model or observation converter and several build functions in ``DART/build_templates/``
 
 .. code-block:: text
 
@@ -13,10 +13,10 @@ model or observation converter and several build functions in ``DART/build_templ
    buildpreprocess.sh
  
 
-The DART build process is envoked by running ``quickbuild.sh`` and
+The DART build process is invoked by running ``quickbuild.sh`` and
 consists of the following steps:
 
-#. Find the root of the DART git repostory you are running in
+#. Find the root of the DART git repository you are running in
 #. Source the build functions
 #. Parse the arguments to quickbuild.sh
 #. Clean any existing .o .mod files
@@ -31,7 +31,7 @@ consists of the following steps:
      * compile the source code into the executable
 
 
-The Makefile is created using ``mkmf``, which maps out the dependecies 
+The Makefile is created using ``mkmf``, which maps out the dependencies 
 between the source files.  For more
 information on mkmf please see the `mkmf
 documentation <https://github.com/NOAA-GFDL/mkmf>`__.
@@ -62,7 +62,7 @@ to add your required program to the appropriate array.
 For models there are four arrays in quickbuild.sh:
 
 .. code-block:: text
-      
+ 
   programs=(
   DART programs that can be compiled with mpi go here
   )
@@ -114,7 +114,7 @@ The source code which gets compiled into DART executables is a function of
 * Location specific code (threed sphere, threed Cartesian, oned, ...)
 * Model/converter specific code
 * External libraries
-* mpi/null mpi utilties
+* mpi/null mpi utilities
 * obs_def_mod.f90 and obs_kind_mod.f90 (created by preprocess)
 
 The core DART code is collected from the ``DART/assimilation_code/modules/`` directory. 
@@ -138,7 +138,7 @@ module are defined in ``quickbuild.sh``
    CONVERTER=MADIS
    LOCATION=threed_sphere
 
-The model/observation convertery directory will be searched for .f90 files.
+The model/observation converter directory will be searched for .f90 files.
 
 *Additionally* any .f90 files in the work directory where you are running 
 ``quickbuild.sh`` will be added to the list of source files. .f90 files in
