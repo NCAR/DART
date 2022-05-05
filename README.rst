@@ -246,6 +246,7 @@ References
    :caption: Run DART with your model
 
    guide/advice-for-new-collaborators
+   DART build system <guide/quickbuild.rst>
    guide/assimilation-complex-model
    guide/mpi_intro
    guide/filters
