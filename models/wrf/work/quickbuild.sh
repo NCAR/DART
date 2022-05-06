@@ -26,6 +26,7 @@ wakeup_filter
 )
 
 serial_programs=(
+#radiance_obs_to_netcdf  # needs rttov
 advance_time
 create_fixed_network_seq
 create_obs_sequence
@@ -39,8 +40,6 @@ obs_seq_verify
 obs_sequence_tool
 )
 
-
-#radiance_obs_to_netcdf \  # needs rttov
 
 model_serial_programs=(
 WRF_DART_utilities/add_pert_where_high_refl

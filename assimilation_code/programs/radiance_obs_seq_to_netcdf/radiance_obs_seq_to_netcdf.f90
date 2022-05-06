@@ -10,7 +10,7 @@
 !> For example, the location of the radar and direction are not converted,
 !> but the location of the observation IS converted.
 
-program obs_seq_to_netcdf
+program radiance_obs_seq_to_netcdf
 
 !-----------------------------------------------------------------------
 ! The programs defines a series of epochs (periods of time) 
@@ -61,7 +61,7 @@ use netcdf
 
 implicit none
 
-character(len=*), parameter :: source = 'radiance/obs_seq_to_netcdf.f90'
+character(len=*), parameter :: source = 'radiance_obs_seq_to_netcdf.f90'
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
@@ -109,7 +109,7 @@ logical :: debug = .false.   ! undocumented ... on purpose
 logical :: verbose = .false.
 logical :: append_to_netcdf = .false.
 
-namelist /obs_seq_to_netcdf_nml/ obs_sequence_name, obs_sequence_list, &
+namelist /radiance_obs_seq_to_netcdf_nml/ obs_sequence_name, obs_sequence_list, &
                                  lonlim1, lonlim2, latlim1, latlim2, &
                                  verbose, append_to_netcdf, debug
 
@@ -167,7 +167,7 @@ character(len=512) :: string1, string2, string3
 ! Get the party started
 !=======================================================================
 
-call initialize_utilities('obs_seq_to_netcdf')
+call initialize_utilities('radiance_obs_seq_to_netcdf')
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
 call init_obs(       obs1, 0, 0) ! I am initialiazing these obs
@@ -194,18 +194,18 @@ enddo
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file('input.nml', 'obs_seq_to_netcdf_nml', ncunit)
-read(ncunit, nml = obs_seq_to_netcdf_nml, iostat = io)
-call check_namelist_read(ncunit, io, 'obs_seq_to_netcdf_nml')
+call find_namelist_in_file('input.nml', 'radiance_obs_seq_to_netcdf_nml', ncunit)
+read(ncunit, nml = radiance_obs_seq_to_netcdf_nml, iostat = io)
+call check_namelist_read(ncunit, io, 'radiance_obs_seq_to_netcdf_nml')
 
 ! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=obs_seq_to_netcdf_nml)
-if (do_nml_term()) write(    *      , nml=obs_seq_to_netcdf_nml)
+if (do_nml_file()) write(nmlfileunit, nml=radiance_obs_seq_to_netcdf_nml)
+if (do_nml_term()) write(    *      , nml=radiance_obs_seq_to_netcdf_nml)
 
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
    write(string1,*)'specify "obs_sequence_name" -OR- "obs_sequence_list"'
    write(string2,*)'set other to an empty string ... i.e. ""'
-   call error_handler(E_ERR, 'obs_seq_to_netcdf', string1, source, text2=string2)
+   call error_handler(E_ERR, 'radiance_obs_seq_to_netcdf', string1, source, text2=string2)
 endif
 
 !----------------------------------------------------------------------
@@ -260,11 +260,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(string1,*)'opening ', trim(obs_seq_in_file_name)
-      call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
+      call error_handler(E_MSG,'radiance_obs_seq_to_netcdf',string1,source)
    else
       write(string1,*)trim(obs_seq_in_file_name),&
                         ' does not exist. Finishing up.'
-      call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
+      call error_handler(E_MSG,'radiance_obs_seq_to_netcdf',string1,source)
       exit ObsFileLoop
    endif
 
@@ -292,7 +292,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    if ((num_qc <= 0) .or. (num_copies <=0)) then
       write(string1,*)'need at least 1 qc and 1 observation copy'
-      call error_handler(E_ERR,'obs_seq_to_netcdf',string1,source)
+      call error_handler(E_ERR,'radiance_obs_seq_to_netcdf',string1,source)
    endif
 
    allocate( copyvals(allNcopies), &
@@ -355,7 +355,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             string2 = 'does not match the same observation copy from the first file.'
             write(string3,'(''obs copy >'',a,''< expected >'',a,''<'')') &
                         trim(obs_copy_names(i)), trim(module_obs_copy_names(i))
-            call error_handler(E_ERR,'obs_seq_to_netcdf',string1, &
+            call error_handler(E_ERR,'radiance_obs_seq_to_netcdf',string1, &
                 source,text2=string2,text3=string3)
 
          endif
@@ -367,7 +367,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             string2 = 'does not match the same qc copy from the first file.'
             write(string3,'(''qc  copy >'',a,''< expected >'',a,''<'')') &
                          trim(qc_copy_names(i)), trim(module_qc_copy_names(i))
-            call error_handler(E_ERR,'obs_seq_to_netcdf',string1, &
+            call error_handler(E_ERR,'radiance_obs_seq_to_netcdf',string1, &
                 source,text2=string2,text3=string3)
          endif
       enddo
@@ -380,7 +380,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    is_there_one = get_first_obs(seq, obs1)
    if ( .not. is_there_one ) then
-      call error_handler(E_ERR,'obs_seq_to_netcdf','No first observation  in sequence.', &
+      call error_handler(E_ERR,'radiance_obs_seq_to_netcdf','No first observation  in sequence.', &
       source)
    endif
    call get_obs_def(obs1,   obs_def)
@@ -388,7 +388,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    is_there_one = get_last_obs(seq, obsN)
    if ( .not. is_there_one ) then
-      call error_handler(E_ERR,'obs_seq_to_netcdf','No last observation in sequence.', &
+      call error_handler(E_ERR,'radiance_obs_seq_to_netcdf','No last observation in sequence.', &
       source)
    endif
    call get_obs_def(obsN,   obs_def)
@@ -470,7 +470,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       else
          if (.not. epoch_file_created(iepoch)) then
             write(string1,*) 'creating file ', ncName
-            call error_handler(E_MSG,'obs_seq_to_netcdf',string1,source)
+            call error_handler(E_MSG,'radiance_obs_seq_to_netcdf',string1,source)
             ncunit = InitNetCDF(ncName, iepoch)
             epoch_file_created(iepoch) = .true.
          else
@@ -581,7 +581,7 @@ do iepoch = 1, Nepochs
    if ( total_obs_in_epoch(iepoch) == 0 ) then
       write(string1,'(''epoch '',i6,'' has no observations. verbose=.TRUE. may help'')')iepoch
       write(string2,*)'schedule_nml might not match observation times in files.'
-      call error_handler(E_MSG, 'obs_seq_to_netcdf', string1, &
+      call error_handler(E_MSG, 'radiance_obs_seq_to_netcdf', string1, &
               source, text2=string2, text3=' ')
    endif
 
@@ -616,7 +616,7 @@ if (allocated(module_obs_copy_names)) &
 deallocate(obs_seq_filenames)
 deallocate(epoch_file_created)
 
-call error_handler(E_MSG,'obs_seq_to_netcdf','Finished successfully.',source)
+call error_handler(E_MSG,'radiance_obs_seq_to_netcdf','Finished successfully.',source)
 call finalize_utilities()
 
 
@@ -663,7 +663,7 @@ call get_time(mytime,seconds,days)
 epoch_edges(2) = days + seconds/86400.0_digits12
 
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
-         ncid = ncid), 'obs_seq_to_netcdf:InitNetCDF', 'create '//trim(fname))
+         ncid = ncid), 'radiance_obs_seq_to_netcdf:InitNetCDF', 'create '//trim(fname))
 
 write(string1,*)trim(ncName), ' is fortran unit ',ncid
 call error_handler(E_MSG,'InitNetCDF',string1,source)
@@ -678,7 +678,7 @@ write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), &
            'InitNetCDF', 'put_att creation_date '//trim(fname))
 
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_to_netcdf_source', source ), &
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'radiance_obs_seq_to_netcdf_source', source ), &
            'InitNetCDF', 'put_att obs_seq_to_netcdf_source '//trim(fname))
 
 ! write all observation sequence files used
@@ -701,7 +701,7 @@ enddo FILEloop
 !----------------------------------------------------------------------------
  
 call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
-            'obs_seq_to_netcdf:InitNetCDF', 'set_nofill '//trim(fname))
+            'radiance_obs_seq_to_netcdf:InitNetCDF', 'set_nofill '//trim(fname))
 
 ! write all namelist quantities
 
@@ -1272,5 +1272,5 @@ NC_Compatibility_Check = ncid
 end function NC_Compatibility_Check
 
 
-end program obs_seq_to_netcdf
+end program radiance_obs_seq_to_netcdf
 

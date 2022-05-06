@@ -397,7 +397,8 @@ public ::         set_visir_metadata, &
                 write_rttov_metadata, &
           interactive_rttov_metadata, &
                get_expected_radiance, &
-            get_rttov_option_logical
+            get_rttov_option_logical, &
+                         get_channel
 
 ! The rttov_test.f90 program uses these, but no one else should.
 
