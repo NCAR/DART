@@ -26,7 +26,7 @@ wakeup_filter
 )
 
 serial_programs=(
-#radiance_obs_to_netcdf  # needs rttov
+#radiance_obs_seq_to_netcdf  # needs rttov
 advance_time
 create_fixed_network_seq
 create_obs_sequence
