@@ -63,7 +63,9 @@ ensureTrailingSlash($opt_a) if $opt_a;
 my $nmlfile = "input.nml.${opt_p}_default";
 
 #some generic declarations
-my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word, $nml );
+my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word, $nml);
+#for collection default .nml files
+my( $nml_path, $nml_name, $nml_suffix);
 my @list;
 my @nml_list;
 #some constants
@@ -225,9 +227,6 @@ foreach $target ( @targets ) {
 	 $path = '' if $path eq './';
 	 $object = "$name.o";
 	 $source_of{$object} = "$path$name$suffix" if( $suffix && !$source_of{$object} );
-#check for namelist files in the path and add it to the list
-         $nml = "${path}${name}.nml";
-         push @nml_list, $nml if -e $nml;
       }
       closedir DIR;
       $scanned{$target} = 1;
@@ -270,9 +269,6 @@ foreach $target ( @targets ) {
 		     $compile_cmd{$file} = $line;
 		     print "Special command for file $file: ($line)\n" if $opt_v;
 		  }
-#check for namelist files in the path and add it to the list
-                  $nml = "${path}${name}.nml";
-                  push @nml_list, $nml if -e $nml;
 	       }
 	    }
 	    close CMDFILE;
@@ -280,6 +276,7 @@ foreach $target ( @targets ) {
       }
    }
 }
+
 
 delete $source_of{''};
 my @dirs = keys %scanned;
@@ -341,6 +338,12 @@ sub scanfile_for_keywords {
    close FILE;
    $scanned{$file} = 1;
    print "   uses modules=$modules_used_by{$object}, and includes=$includes_in{$file}.\n" if $opt_d;
+
+#check for namelist files add it to the list
+   ($nml_name,$nml_path,$nml_suffix) = fileparse($file, @src_suffixes);
+   $nml = "${nml_path}${nml_name}.nml";
+   push @nml_list, $nml if -e $nml;
+
 }
 
 foreach $object ( @objects ) {
@@ -430,6 +433,23 @@ foreach $object ( @objects ) {
       }
    }
 }
+
+#before proceeding, dump namelist file if any
+if ( @nml_list ) {
+  unlink $nmlfile if -e $nmlfile;
+  open NMLFILE, ">$nmlfile";
+  foreach ( @nml_list ) {
+    open THISNML, "$_";
+    while (<THISNML>) {
+      print NMLFILE;
+    }
+    close THISNML;
+  }
+  close NMLFILE;
+} else {
+print "Did not find any namelist files - not touching $nmlfile\n";
+}
+
 
 #lines to facilitate creation of local copies of source from other directories
 #commented out because it makes make default rules kick in

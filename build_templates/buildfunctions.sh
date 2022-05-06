@@ -71,6 +71,7 @@ function print_usage() {
 cleanup() {
 
 \rm -f -- *.o *.mod Makefile
+\rm -f -- input.nml.*_default
 all_programs=("${programs[@]}" "${model_programs[@]}" "${serial_programs[@]}" "${model_serial_programs[@]}")
 
 for p in ${all_programs[@]}; do 
@@ -312,6 +313,9 @@ for p in ${model_serial_programs[@]}; do
   modelbuild $p  
   ((i++))
 done
+
+# when building all programs, remove input.nml.*_default files
+\rm -f -- input.nml.*_default
 
 }
 
