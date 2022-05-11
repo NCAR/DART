@@ -54,18 +54,20 @@ You are now ready to launch MATLAB. To do so, execute the command below, and
 replace ``MATLABROOT`` with the directory that MATLAB is installed in on your computer.
 By default, MATLAB is installed in the following locations:
 
-* Windows (64-bit):
-  * C:\Program Files\MATLAB\R20XXx (64-bit MATLAB)
-  * C:\Program Files (x86)\MATLAB\R20XXx (32-bit MATLAB)
+.. code-block:: bash
 
-* Windows (32-bit):
-  * C:\Program Files\MATLAB\R20XXx
+   Windows (64-bit):
+   C:\Program Files\MATLAB\R20XXx (64-bit MATLAB)
+   C:\Program Files (x86)\MATLAB\R20XXx (32-bit MATLAB)
 
-* Linux:
-  * /usr/local/MATLAB/R20XXx
+   Windows (32-bit):
+   C:\Program Files\MATLAB\R20XXx
 
-* Mac:
-  * /Applications/MATLAB_R20XXx.app
+   Linux:
+   /usr/local/MATLAB/R20XXx
+
+   Mac:
+   /Applications/MATLAB_R20XXx.app
 
 ``R20XXx`` must also be replaced with the version of MATLAB that you have
 installed. For example, the full command for a Mac user having installed the
