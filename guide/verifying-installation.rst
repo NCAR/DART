@@ -55,25 +55,26 @@ replace ``MATLABROOT`` with the directory that MATLAB is installed in on your co
 By default, MATLAB is installed in the following locations:
 
 * Windows (64-bit):
-* C:\Program Files\MATLAB\R20XXx (64-bit MATLAB)
-* C:\Program Files (x86)\MATLAB\R20XXx (32-bit MATLAB)
+  * C:\Program Files\MATLAB\R20XXx (64-bit MATLAB)
+  * C:\Program Files (x86)\MATLAB\R20XXx (32-bit MATLAB)
 
 * Windows (32-bit):
-* C:\Program Files\MATLAB\R20XXx
+  * C:\Program Files\MATLAB\R20XXx
 
 * Linux:
-* /usr/local/MATLAB/R20XXx
+  * /usr/local/MATLAB/R20XXx
 
 * Mac:
-* /Applications/MATLAB_R20XXx.app
+  * /Applications/MATLAB_R20XXx.app
 
 ``R20XXx`` must also be replaced with the version of MATLAB that you have
 installed. For example, the full command for a Mac user having installed the
 latest version of MATLAB would be ``/Applications/MATLAB_R2022a.app/bin/matlab -nodesktop``.
 
 If the corresponding MATLABROOT listed above does not work, you can identify the
-correct MATLABROOT by opening the MATLAB application and executing the command
-``matlabroot``, which will display the correct location.
+correct directory by opening the MATLAB application and executing the command
+``matlabroot``, which will display the correct location with the correct version
+incorporated into the MATLABROOT.
 
 Upon successfully launching MATLAB, the MATLAB header will be outputted to your
 terminal as it is below.
@@ -98,7 +99,7 @@ directory.
 
 You are now ready to run the diagnostics. The following MATLAB scripts (plot_total_err
 and plot_ens_time_series,) compare the ensemble members with the truth and can
-calculate the error in the assimilation. They will produce the graphics as shown 
+calculate the error in the assimilation. They will produce the graphics as shown
 below:
 
 .. note:: When prompted to input file names while running the diagnostics, simply
