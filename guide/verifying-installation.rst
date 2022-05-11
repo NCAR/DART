@@ -30,13 +30,13 @@ run some of the functions available in ``DART/diagnostics/matlab/``.
 Usually, we launch MATLAB from the ``DART/models/lorenz_63/work`` directory.
 Execute the following command in your terminal to navigate to this directory.
 
-.. note:: The lines of code that are marked with a ``$`` symbol are commands that
-          you will execute in your terminal. To execute a command, type it in
-          exactly as seen, unless specified otherwise, and hit enter.
-
 .. code-block:: bash
 
    $ cd DART/models/lorenz_63/work
+
+.. note:: The lines of code that are marked with a ``$`` symbol are commands that
+          you will execute in your terminal. To execute a command, type it in
+          exactly as seen, unless specified otherwise, and hit enter.
 
 In the case of this Lorenz model, we know the "true" (by definition)
 state of the model that is consistent with the observations, which is
@@ -50,11 +50,12 @@ scripts. To do so, execute the following three commands in the terminal.
    $ ./filter
    $ ./perfect_model_obs
 
-You are now ready to launch MATLAB. To do so, execute the command below, and
-replace ``MATLABROOT`` with the directory that MATLAB is installed in on your computer.
-By default, MATLAB is installed in the following locations:
+You are now ready to launch MATLAB. To do so, execute the command
+``MATLABROOT/bin/matlab -nodesktop``, and replace ``MATLABROOT`` with the
+directory that MATLAB is installed in on your computer. By default, MATLAB is
+installed in the following locations:
 
-.. code-block:: bash
+.. code-block:: text
 
    Windows (64-bit):
    C:\Program Files\MATLAB\R20XXx (64-bit MATLAB)
@@ -101,8 +102,8 @@ directory.
 
 You are now ready to run the diagnostics. The following MATLAB scripts (plot_total_err
 and plot_ens_time_series,) compare the ensemble members with the truth and can
-calculate the error in the assimilation. They will produce the graphics as shown
-below:
+calculate the error in the assimilation. Running ``plot_total_err`` and
+``plot_ens_time_series`` will produce the graphics as shown below:
 
 .. note:: When prompted to input file names while running the diagnostics, simply
           hit enter to select the default.
