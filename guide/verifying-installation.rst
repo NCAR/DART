@@ -50,9 +50,9 @@ scripts. To do so, execute the following three commands in the terminal.
    $ ./filter
    $ ./perfect_model_obs
 
-We are now ready to launch MATLAB. To execute the following command, replace
-MATLABROOT with the directory that MATLAB is installed in on your computer. By
-default, MATLAB is installed in the following locations:
+You are now ready to launch MATLAB. To do so, execute the command below, and
+replace ``MATLABROOT`` with the directory that MATLAB is installed in on your computer.
+By default, MATLAB is installed in the following locations:
 
 * Windows (64-bit):
 * C:\Program Files\MATLAB\R20XXx (64-bit MATLAB)
@@ -67,9 +67,16 @@ default, MATLAB is installed in the following locations:
 * Mac:
 * /Applications/MATLAB_R20XXx.app
 
-If these do not work, and you are still faced with the error ``command not
-found: matlab``, you can identify your path by opening the MATLAB application
-and using the ``matlabroot`` command.
+``R20XXx`` must also be replaced with the version of MATLAB that you have
+installed. For example, the full command for a Mac user having installed the
+latest version of MATLAB would be ``/Applications/MATLAB_R2022a.app/bin/matlab -nodesktop``.
+
+If the corresponding MATLABROOT listed above does not work, you can identify the
+correct MATLABROOT by opening the MATLAB application and executing the command
+``matlabroot``, which will display the correct location.
+
+Upon successfully launching MATLAB, the MATLAB header will be outputted to your
+terminal as it is below.
 
 .. code-block:: bash
 
@@ -81,35 +88,32 @@ and using the ``matlabroot`` command.
                                R2022a Update 1 (9.12.0.1927505) 64-bit (maci64)
                                                 April 6, 2022
 
-
-   To get started, type doc.
-   For product information, visit www.mathworks.com.
-
-Now that we have launched MATLAB, we will now use the MATLAB *addpath* command
+Now that you have launched MATLAB, you must now use the MATLAB *addpath* command
 to make the ``DART/matlab/`` functions available for execution in any working
 directory.
 
 .. code-block:: bash
 
-     [matlab_prompt] addpath ../../../diagnostics/matlab
+     $ addpath ../../../diagnostics/matlab
 
-We will now run the diagnostics. The following MATLAB scripts (plot_total_err,
-plot_ens_time_series, and perfect_model_obs) compare the ensemble members with
-the truth and can calculate the error in the assimilation:
+You are now ready to run the diagnostics. The following MATLAB scripts (plot_total_err
+and plot_ens_time_series,) compare the ensemble members with the truth and can
+calculate the error in the assimilation. They will produce the graphics as shown 
+below:
 
-.. note:: When prompted to input file names while running the diagnostics, you
-          can simply hit enter to select the default.
+.. note:: When prompted to input file names while running the diagnostics, simply
+          hit enter to select the default.
 
 .. code-block:: bash
 
-   [matlab_prompt] plot_total_err
+   $ plot_total_err
    Input name of ensemble trajectory file:
    <cr> for preassim.nc
 
    Comparing true_state.nc and
              preassim.nc
 
-   [matlab_prompt] plot_ens_time_series
+   $ plot_ens_time_series
    Input name of ensemble trajectory file;
    (cr) for preassim.nc
 
