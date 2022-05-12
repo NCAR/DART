@@ -194,7 +194,7 @@ done
 
 #-------------------------
 # Build a program 
-# Arguements: 
+# Arguments: 
 #  program name
 #-------------------------
 function dartbuild() {
@@ -224,7 +224,7 @@ fi
 #-------------------------
 # Build a model specific program
 # looks in $DART/models/$MODEL/src/programs for {main}.f90 
-# Arguements: 
+# Arguments:
 #  program name
 #-------------------------
 function modelbuild() {

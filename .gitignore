@@ -61,6 +61,7 @@ obs_loop
 obs_selection
 obs_seq_coverage
 obs_seq_to_netcdf
+radiance_obs_seq_to_netcdf
 obs_seq_verify
 obs_sequence_tool
 obs_total_error

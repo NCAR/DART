@@ -166,7 +166,7 @@ done
 
 #-------------------------
 # Build a program 
-# Arguements: 
+# Arguments:
 #  program name
 #-------------------------
 function dartbuild() {
