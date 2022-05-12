@@ -31,7 +31,6 @@
   num_groups                  = 1
   output_forward_op_errors    = .false.
 
-
   inf_flavor                  =  2,                 0,
   inf_initial_from_restart    = .true.,           .false.,
   inf_sd_initial_from_restart = .true.,           .false.,
@@ -66,6 +65,10 @@
 ! go into CM1 code and tell the model to output three-dimensional air temperature and
 ! specific humidity variables in "./src/writeout_nc.F" and "./src/restart.F"
 !
+! RADIOSONDE_DEWPOINT observations can be calculated by being passed 
+! water vapor mixing ratio and air pressure fields, both of which are standard outputs of
+! cm1.  In my experience, results improve when assimilating DEWPOINT temperature information
+! rather than specific humidity information because the dynamic range is much narrower
 
 &model_nml
   assimilation_period_days    = 0
@@ -79,7 +82,7 @@
                     'va'   , 'QTY_V_WIND_COMPONENT'        , 'NULL', 'NULL', 'UPDATE',
                     'wa'   , 'QTY_VERTICAL_VELOCITY'       , 'NULL', 'NULL', 'UPDATE',
                     'theta', 'QTY_POTENTIAL_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
-                    'prs'  , 'QTY_PRESSURE'                , 'NULL', 'NULL', 'UPDATE',
+                    'prs'  , 'QTY_PRESSURE'                , 0.0000, 'NULL', 'UPDATE',
                     'qv'   , 'QTY_VAPOR_MIXING_RATIO'      , 0.0000, 'NULL', 'UPDATE',
                     'qc'   , 'QTY_CLOUD_LIQUID_WATER'      , 0.0000, 'NULL', 'UPDATE',
                     'qr'   , 'QTY_RAINWATER_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
@@ -127,7 +130,6 @@
 !
 
 &obs_kind_nml
-
   assimilate_these_obs_types  = 'RADIOSONDE_U_WIND_COMPONENT', 
                                 'RADIOSONDE_V_WIND_COMPONENT', 
                                 'RADAR_REFLECTIVITY', 
@@ -138,6 +140,11 @@
   !                             'RADIOSONDE_TEMPERATURE', 
   !                             'RADIOSONDE_SPECIFIC_HUMIDITY' 
 
+
+  !  Observations that require water vapor mixing ratio and atmospheric pressure as inputs.  
+  !  These are typically output by the CM1 model
+                                'RADIOSONDE_DEWPOINT'
+
   !  Observations that require CM1 simulations to be run with a surface model                          
   !  Then set "output_sfcdiags = 1"
   !                             'TEMPERATURE_2M',
@@ -146,15 +153,29 @@
   !                             'SURFACE_PRESSURE',
   !                             'SPECIFIC_HUMIDITY_2M'
                    
-
-
   evaluate_these_obs_types   = ''
 /
 
+! This block is where you define the vertical localization radius for difference observations.
+! Define the observation type in 'special_vert_normalization_obs_types' and define the vertical 
+! radius in 'special_vert_normalization_heights'.
+!
+! The vertical localization radius is defined as '2 x special_vert_normalization_heights x special_localization_cutoffs'
+! For example if... special_vert_normalization_heights = 50000 m (for RADIOSONDE)
+!                   special_localization_cutoffs = 0.04 (for RADIOSONDE)
+!        
+!                   the horizontal localization radius will be 100000 m
+!                   the vertical locaalization radius will be 4000 m
+!
+! If the observation type you are assimilating is not defined then CM1 will use vert_normalization_height to 
+! define the vertical localization radius. i.e., vertical localization = 2 x cutoff x vert_normalization_height
+!
+! You should also define boundary condition information in this code block.  Do not change nx, ny, nor nz. 
+! These are specific search radii used by DART, not the forecast domain size.
 
 &location_nml
    x_is_periodic       = .false.
-   y_is_periodic       = .true.
+   y_is_periodic       = .false.
    z_is_periodic       = .false.
    min_x_for_periodic  = 0.0
    max_x_for_periodic  = 200000.0
@@ -168,6 +189,9 @@
    nx                  = 10
    ny                  = 10
    nz                  = 10
+   vert_normalization_height = 1
+   special_vert_normalization_obs_types = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+   special_vert_normalization_heights   = 0.04, 0.04, 0.33, 0.33
 /
 
 
@@ -200,8 +224,10 @@
   output_obs_def_mod_file  = '../../../observations/forward_operators/obs_def_mod.f90'
   obs_type_files           = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                              '../../../observations/forward_operators/obs_def_surface_mod.f90',
-                            '../../../observations/forward_operators/obs_def_radar_mod.f90'
-  quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+                            '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                            '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                            '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90', 
+ quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
 /
 
 
@@ -214,6 +240,12 @@
 
 ! If performing vertical conversion, try
 ! 'distribute_mean = .false.'
+
+! 'cutoff' initially defines the localization radius (horizontal and vertical 
+! for all observations.  If you want to specify the localization 
+! radius for each observation type you can list the observation types in 'special_localization_obs_types'
+! 'special_localization_cutoffs' defines the localization half-radius for each 
+! observation type 
 
 &assim_tools_nml
   adaptive_localization_threshold = -1
