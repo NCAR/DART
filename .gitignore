@@ -147,6 +147,7 @@ convert_cosmic_gps_cdf
 convert_cosmic_ionosphere
 convert_gpsro_bufr
 SMAP_L2_to_obs
+convert_sat_chl
 
 # Test programs built by developer_tests
 rttov_test
