@@ -59,7 +59,7 @@ function print_usage() {
 # Remove programs, .o. .mod
 #--------------------------
 cleanup() {
-\rm -f -- *.o *.mod Makefile
+\rm -f -- *.o *.mod Makefile input.nml*_default
 
 for p in "${programs[@]}"; do
   \rm -f -- "$p"
@@ -221,6 +221,9 @@ for p in ${programs[@]}; do
   dartbuild $p
   ((i++))
 done
+
+# when building all programs, remove input.nml.*_default files
+\rm -f -- input.nml.*_default
 
 }
 
