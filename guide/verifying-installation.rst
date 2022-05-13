@@ -31,7 +31,7 @@ you have yet to download DART, see :doc:`Downloading DART <downloading-dart>` fo
 instructions on how to do so. Usually, we launch MATLAB from the
 ``DART/models/lorenz_63/work`` directory. First, open your terminal and navigate
 to the directory where you downloaded DART. Then, execute the following command
-in your terminal to navigate to the``DART/models/lorenz_63/work`` directory.
+in your terminal to navigate to the ``DART/models/lorenz_63/work`` directory.
 
 .. code-block:: bash
 
