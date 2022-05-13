@@ -121,8 +121,8 @@ calculate the error in the assimilation. Running ``plot_total_err`` and
              preassim.nc
 
    $ plot_ens_time_series
-   Input name of ensemble trajectory file;
-   (cr) for preassim.nc
+   Input name of ensemble trajectory file:
+   <cr> for preassim.nc
 
    Comparing true_state.nc and
              preassim.nc
