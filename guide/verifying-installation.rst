@@ -15,7 +15,7 @@ model: what is it and why should we care? <lorenz-63-model>` or :doc:`What is
 data assimilation? <introduction-ensemble-da>` for more information.
 
 This sensitivity is of practical interest for verifying these results.
-The initial conditions files and observations sequences are provided in
+The initial conditions files and observation sequences are provided in
 ASCII, which is portable across systems, but there may be some
 machine-specific round-off error in the conversion from ASCII to machine
 binary. As Lorenz 63 is such a nonlinear model, extremely small
@@ -26,9 +26,12 @@ Your results should start out looking VERY SIMILAR and may diverge with
 time.
 
 The simplest way to determine if the installation is successful is to
-run some of the functions available in ``DART/diagnostics/matlab/``.
-Usually, we launch MATLAB from the ``DART/models/lorenz_63/work`` directory.
-Execute the following command in your terminal to navigate to this directory.
+run some of the functions available in ``DART/diagnostics/matlab/``. If
+you have yet to download DART, see :doc:`Downloading DART <downloading-dart>` for
+instructions on how to do so. Usually, we launch MATLAB from the
+``DART/models/lorenz_63/work`` directory. First, open your terminal and navigate
+to the directory where you downloaded DART. Then, execute the following command
+in your terminal to navigate to the``DART/models/lorenz_63/work`` directory.
 
 .. code-block:: bash
 
@@ -36,7 +39,7 @@ Execute the following command in your terminal to navigate to this directory.
 
 .. note:: The lines of code that are marked with a ``$`` symbol are commands that
           you will execute in your terminal. To execute a command, type it in
-          exactly as seen, unless specified otherwise, and hit enter.
+          exactly as seen, unless specified otherwise, and press enter.
 
 In the case of this Lorenz model, we know the "true" (by definition)
 state of the model that is consistent with the observations, which is
@@ -47,8 +50,8 @@ scripts. To do so, execute the following three commands in the terminal.
 .. code-block:: bash
 
    $ csh quickbuild.csh
-   $ ./filter
    $ ./perfect_model_obs
+   $ ./filter
 
 You are now ready to launch MATLAB. To do so, execute the command
 ``MATLABROOT/bin/matlab -nodesktop``, and replace ``MATLABROOT`` with the
@@ -76,8 +79,8 @@ latest version of MATLAB would be ``/Applications/MATLAB_R2022a.app/bin/matlab -
 
 If the corresponding MATLABROOT listed above does not work, you can identify the
 correct directory by opening the MATLAB application and executing the command
-``matlabroot``, which will display the correct location with the correct version
-incorporated into the MATLABROOT.
+``matlabroot``. This will display the directory where MATLAB is installed. It
+will have the correct version already incorporated into the MATLABROOT.
 
 Upon successfully launching MATLAB, the MATLAB header will be outputted to your
 terminal as it is below.
@@ -93,7 +96,7 @@ terminal as it is below.
                                                 April 6, 2022
 
 Now that you have launched MATLAB, you must now use the MATLAB *addpath* command
-to make the ``DART/matlab/`` functions available for execution in any working
+to make the ``DART/diagnostics/matlab/`` functions available for execution in any working
 directory.
 
 .. code-block:: bash
@@ -106,7 +109,7 @@ calculate the error in the assimilation. Running ``plot_total_err`` and
 ``plot_ens_time_series`` will produce the graphics as shown below:
 
 .. note:: When prompted to input file names while running the diagnostics, simply
-          hit enter to select the default.
+          press enter to select the default.
 
 .. code-block:: bash
 
@@ -173,7 +176,7 @@ learn more about:
    workflow.
 -  :doc:`How do I run DART with my model? <required-model-mod-routines>`
 -  :doc:`How do I add my observations to DART? <adding-your-observations-to-dart>`
--  :doc:`How would I use DART for teaching students and/or
+-  :doc:`How would I use DART for teaching students or
    myself? <../theory/readme>`
 -  :doc:`How can I contribute to DART? <contributors-guide>`
 
