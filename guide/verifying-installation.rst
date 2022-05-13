@@ -76,8 +76,7 @@ latest version of MATLAB would be ``/Applications/MATLAB_R2022a.app/bin/matlab -
 
 If the corresponding MATLABROOT listed above does not work, you can identify the
 correct directory by opening the MATLAB application and executing the command
-``matlabroot``, which will display the correct location with the correct version
-incorporated into the MATLABROOT.
+``matlabroot``, which will display the directory where MATLAB is installed.
 
 Upon successfully launching MATLAB, the MATLAB header will be outputted to your
 terminal as it is below.
