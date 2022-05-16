@@ -85,6 +85,9 @@ pert_sounding
 dart_to_mit
 mit_to_dart
 create_ocean_obs
+gitm_blocks_to_netcdf
+gitm_to_netcdf
+netcdf_to_gitm_blocks
 
 # Observation converter exectutables
 convert_aviso
@@ -149,6 +152,7 @@ convert_cosmic_ionosphere
 convert_gpsro_bufr
 SMAP_L2_to_obs
 convert_sat_chl
+ssec_satwnd
 
 # Test programs built by developer_tests
 rttov_test

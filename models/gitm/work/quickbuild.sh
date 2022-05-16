@@ -40,7 +40,6 @@ obs_sequence_tool
 )
 
 model_serial_programs=(
-dart_gitm_mod
 gitm_blocks_to_netcdf
 gitm_to_netcdf
 netcdf_to_gitm_blocks
