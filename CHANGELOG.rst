@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 16 2022 :: Installation documentation update. Tag: v9.16.3**
+
+- Improved installation documentation.
+
 **April 5 2022 :: Bug-fix for NetCDF variables with NaN attributes. Tag: v9.16.2**
 
 - Fix for checking attributes of NetCDF variables that have a NaN as the missing or _FillValue.
