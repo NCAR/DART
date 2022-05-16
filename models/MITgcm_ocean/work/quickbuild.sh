@@ -13,8 +13,6 @@ MODEL=MITgcm_ocean
 LOCATION=threed_sphere
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
 
 programs=(
 filter

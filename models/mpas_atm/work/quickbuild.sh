@@ -14,9 +14,6 @@ LOCATION=threed_sphere
 EXTRA="$DART/assimilation_code/location/threed_cartesian/xyz_location_mod.f90"
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 closest_member_tool
 filter

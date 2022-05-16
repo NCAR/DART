@@ -14,9 +14,6 @@ LOCATION=threed_sphere
 EXTRA=extra_source.path_names
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 closest_member_tool
 filter

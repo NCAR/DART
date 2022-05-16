@@ -10,8 +10,6 @@ LOCATION=threed_sphere
 TEST=quad_interpolate
 dev_test=1
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
 
 programs=(
 )

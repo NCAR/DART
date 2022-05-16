@@ -14,9 +14,6 @@ LOCATION=threed_sphere
 EXCLUDE=experiments
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 closest_member_tool
 filter

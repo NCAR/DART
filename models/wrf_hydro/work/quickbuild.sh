@@ -14,9 +14,6 @@ LOCATION=threed_sphere
 EXTRA="$DART/models/wrf/module_map_utils.f90"
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 closest_member_tool
 filter

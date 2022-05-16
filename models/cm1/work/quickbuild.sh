@@ -13,9 +13,6 @@ MODEL=cm1
 LOCATION=threed_cartesian
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 closest_member_tool
 filter

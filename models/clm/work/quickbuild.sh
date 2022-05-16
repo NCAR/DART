@@ -13,9 +13,6 @@ MODEL=clm
 LOCATION=threed_sphere
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 filter
 model_mod_check

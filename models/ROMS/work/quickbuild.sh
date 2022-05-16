@@ -13,9 +13,6 @@ MODEL=ROMS
 LOCATION=threed_sphere
 
 
-# clean the directory
-\rm -f -- *.o *.mod Makefile .cppdefs
-
 programs=(
 closest_member_tool
 filter
