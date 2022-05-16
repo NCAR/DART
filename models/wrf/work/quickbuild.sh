@@ -11,6 +11,7 @@ source "$DART"/build_templates/buildfunctions.sh
 
 MODEL=wrf
 LOCATION=threed_sphere
+EXCLUDE=experiments
 
 
 # clean the directory
@@ -52,7 +53,6 @@ select
 WRF_BC/update_wrf_bc
 WRF_DART_utilities/wrf_dart_obs_preprocess
 WRF_DART_utilities/extract
-experiments/Radar/IC/sounding_perturbation/pert_sounding
 WRF_DART_utilities/grid_refl_obs
 )
 
