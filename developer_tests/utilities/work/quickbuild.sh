@@ -34,7 +34,8 @@ arguments "$@"
 # clean the directory
 \rm -f -- *.o *.mod Makefile .cppdefs
 
-# preprocess not needed for these tests
+# build and run preprocess before making any other DART executables
+buildpreprocess
 
 # build 
 buildit
