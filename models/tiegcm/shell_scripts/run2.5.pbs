@@ -22,6 +22,12 @@ cd $mem
 
 JOBID=`echo ${PBS_JOBID} | cut -d'.' -f1 | cut -d'[' -f1` 
 
+# overwrite F10_7 with value from dart state
+if [ -f out_params.nc ]; then 
+   echo "Using F10.7 from out_params.nc"
+  ./writef10_7.py $(ncdump out_params.nc  | grep 'f10_7 =' | cut -d " " -f 4)
+fi
+
 # Execute:
  mpiexec_mpt ./tiegcm.exe tiegcm_res2.5.inp &> tiegcm_res2.5_${JOBID}.out
 #
