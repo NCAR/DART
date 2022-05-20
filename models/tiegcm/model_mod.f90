@@ -989,7 +989,11 @@ end subroutine write_model_time
 ! Routines below here are private to the module
 !===============================================================================
 
-
+!HK @todo this routine reads the same f10.7 for each ensemble member.
+!  Better to create a netcdf file with f10.7 from the namelist for each ensemble
+!  member.
+!  Or if you are setting the same value across the ensemble initially, just
+!  have f10.7 as a namelist option in model_nml.
 subroutine read_TIEGCM_namelist(file_name)
 ! Under certain situations, the value of f10.7 is a parameter to be estimated
 ! and needs to be added to state vector
