@@ -71,7 +71,7 @@ namelist.
 +-----------------------------+----------------------+---------------------------------------+
 | tiegcm_namelist_file_name   | character(len=256)   | The TIEGCM namelist file name.        |
 +-----------------------------+----------------------+---------------------------------------+
-| model_res                   | real(r8)             | TIEGCM model resultion 5.0 or 2.5     |
+| model_res                   | real(r8)             | TIEGCM model resolution 5.0 or 2.5    |
 +-----------------------------+----------------------+---------------------------------------+
 | assimilation_period_seconds | integer              | This specifies the width of the       |
 |                             |                      | assimilation window. The current      |
