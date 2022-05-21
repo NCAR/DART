@@ -126,6 +126,7 @@ integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
 logical            :: initialize_f10_7 = .false.
 integer            :: assimilation_period_seconds = 3600
+real(r8)           :: model_res = 5.0
 
 integer, parameter :: MAX_NUM_VARIABLES = 30
 integer, parameter :: MAX_NUM_COLUMNS = 6
@@ -134,7 +135,7 @@ character(len=NF90_MAX_NAME) :: variables(MAX_NUM_VARIABLES * MAX_NUM_COLUMNS) =
 namelist /model_nml/ tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, tiegcm_namelist_file_name, &
                      variables, debug, estimate_f10_7, initialize_f10_7, &
-                     assimilation_period_seconds
+                     assimilation_period_seconds, model_res
                      
 
 !-------------------------------------------------------------------------------
@@ -1584,13 +1585,25 @@ real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
 real(r8), PARAMETER :: omass      = 2.678e-26_r8 ! mass of atomic oxgen kg
 
 real(r8) :: earth_radiusm
-integer  :: nlev10, j, i, var_id
+integer  :: nlevX, nilevX, j, i, var_id
 integer(i8) :: idx
 
-allocate( NE(nilev, ens_size), NEm_extended(nilev+10, ens_size), &
-          ZG(nilev, ens_size), ZG_extended(nilev+10, ens_size))
+! NE,ZG are extrapolated
+!  20 more layers for 2.5 degree resolution
+!  10 more layers for 5 degree resolution
+if (model_res == 2.5) then
+  nlevX  = nlev + 20
+  nilevX  = nilev + 20
+else
+  nlevX = nlev + 10
+  nilevX = nilev + 10
+endif
+
+
+allocate( NE(nilev, ens_size), NEm_extended(nilevX, ens_size), &
+          ZG(nilev, ens_size), ZG_extended(nilevX, ens_size))
 allocate( TI(nlev, ens_size), TE(nlev, ens_size) )
-allocate( delta_ZG(nlev+9, ens_size), NE_middle(nlev+9, ens_size) )
+allocate( delta_ZG(nlevX-1, ens_size), NE_middle(nlevX-1, ens_size) )
 
 ! NE (interfaces)
 var_id = get_varid_from_varname(domain_id(RESTART_DOM), 'NE')
@@ -1637,19 +1650,16 @@ Tplasma(:) = (TI(nlev-1,:) + TE(nlev-1,:)) / 2.0_r8
 ! Compute plasma scale height
 Hplasma(:) = (2.0_r8 * k_constant / omass ) * Tplasma(:) / GRAVITYtop(:)
 
-! NE is extrapolated to 10 more layers
-nlev10  = nlev + 10
-
 ZG_extended(1:nilev,:) = ZG
 NEm_extended(1:nilev,:) = NE
 
-do j = nlev, nlev10
+do j = nlev, nlevX
    NEm_extended(j,:) = NEm_extended(j-1,:) * exp(-0.5_r8)
     ZG_extended(j,:) =  ZG_extended(j-1,:) + Hplasma(:) / 2.0_r8
 enddo
 
-delta_ZG(1:(nlev10-1),:) =  ZG_extended(2:nlev10,:) -  ZG_extended(1:(nlev10-1),:)
-NE_middle(1:(nlev10-1),:) = (NEm_extended(2:nlev10,:) + NEm_extended(1:(nlev10-1),:)) / 2.0_r8
+delta_ZG(1:(nlevX-1),:) =  ZG_extended(2:nlevX,:) -  ZG_extended(1:(nlevX-1),:)
+NE_middle(1:(nlevX-1),:) = (NEm_extended(2:nlevX,:) + NEm_extended(1:(nlevX-1),:)) / 2.0_r8
 
 do i = 1, ens_size
    vTEC(i) = sum(NE_middle(:,i) * delta_ZG(:,i)) * 1.0e-16_r8 ! Convert to TECU (1.0e+16 #/m^2)

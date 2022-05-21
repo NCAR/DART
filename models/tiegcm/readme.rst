@@ -43,6 +43,7 @@ namelist.
       tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
       tiegcm_secondary_file_name  = 'tiegcm_s.nc'
       tiegcm_namelist_file_name   = 'tiegcm.nml'
+      model_res                   = 5.0
       assimilation_period_seconds = 3600
       estimate_f10_7              = .false.
       initialize_f10_7            = .false.
@@ -69,6 +70,8 @@ namelist.
 | tiegcm_secondary_file_name  | character(len=256)   | The TIEGCM secondary file name.       |
 +-----------------------------+----------------------+---------------------------------------+
 | tiegcm_namelist_file_name   | character(len=256)   | The TIEGCM namelist file name.        |
++-----------------------------+----------------------+---------------------------------------+
+| model_res                   | real(r8)             | TIEGCM model resultion 5.0 or 2.5     |
 +-----------------------------+----------------------+---------------------------------------+
 | assimilation_period_seconds | integer              | This specifies the width of the       |
 |                             |                      | assimilation window. The current      |
