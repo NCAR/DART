@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 23 2022 :: Bug-fix for RTPS inflation flavor. Tag: v9.16.4**
+
+- Order of operations changed to avoid inadvertent changes to ens 
+  when using RTPS.
+
 **May 16 2022 :: Installation documentation update. Tag: v9.16.3**
 
 - Improved installation documentation.
