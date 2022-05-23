@@ -37,3 +37,15 @@ fi
  ./preprocess
 }
 
+#-------------------------
+# clean up *.mod *.o for preprocess
+#-------------------------
+function cleanpreprocess() {
+
+ local pp_dir=$DART/assimilation_code/programs/preprocess
+ cd $pp_dir
+ \rm -f -- *.o *.mod Makefile preprocess
+ cd -
+
+}
+

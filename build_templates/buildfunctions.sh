@@ -79,6 +79,7 @@ for p in ${all_programs[@]}; do
 done
 
 \rm -f -- preprocess
+cleanpreprocess
 
 }
 
