@@ -66,6 +66,8 @@ for p in "${programs[@]}"; do
 done
 
 \rm -f -- preprocess
+cleanpreprocess
+
 }
 
 #-------------------------
