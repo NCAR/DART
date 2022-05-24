@@ -22,6 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 24 2022 :: New build tools for DART. Tag: v10.0.0**
+
+- mkmf\_ and path_names\_ files replaced with buildfunctions to collect source code.
+- quickbuild.csh replaced with quickbuild.sh
+- developer_tests/build_everything for simultaneous runs of every quickbuild.sh 
+- Several build/compilation related bug fixes
+
+
 **May 23 2022 :: Bug-fix for RTPS inflation flavor. Tag: v9.16.4**
 
 - Order of operations changed to avoid inadvertent changes to ens 
