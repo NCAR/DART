@@ -7,7 +7,7 @@
 program ps_rand_local
 
 use      types_mod, only : r8, PI
-use  utilities_mod, only : get_unit, error_handler, E_ERR
+use  utilities_mod, only : get_unit, error_handler, E_ERR, initialize_utilities
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use   location_mod, only : VERTISSURFACE
 
@@ -29,6 +29,9 @@ call init_random_seq(r)
 ! Set up constants
 num_sets =  1
 level    = -1
+
+! Initializer to allow for use of functions and subroutines from utilities_mod
+call initialize_utilities('ps_rand_local')
 
 ! Open an output file and write header info
 iunit = get_unit()
