@@ -550,7 +550,7 @@ if(inflate_handle%deterministic) then
       ! only inflate if spreads are > 0
       if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
           inflate = 1.0_r8 + inflate * ((fsprd-asprd) / asprd) 
-          ens     = mean + (ens-mean) * inflate 
+          ens = ens * inflate + mean * (1.0_r8 - inflate)
    else 
 
       ! Spread the ensemble out linearly for deterministic
