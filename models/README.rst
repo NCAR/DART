@@ -49,19 +49,15 @@ Hints for porting a new model to DART:
 Copy the contents of the ``DART/models/template`` directory 
 into a ``DART/models/xxx`` directory for your new model.
 
-If the coordinate system for the model is 1D, you're ok as-is.
-If model coordinates are 3D, edit the work/path_names_* files
-and change location/oned/* to location/threed_sphere/*
-
 If your model is closer to the simpler examples (e.g. lorenz),
 the existing model_mod.f90 is a good place to start.
 If your model is a full 3d geophysical one (e.g. like cam, pop, etc)
 then rename full_model_mod.f90 to model_mod.f90 and start there.
 
-Edit all the work/path_names_* files and change models/template/xxx
-to use the name of the directory for your model.
+Set ``LOCATION`` in quickbuild.sh to ``LOCATION=threed_sphere`` for
+full 3d geophysical models.
 
-Try ``./quickbuild.csh`` and everything should compile at this point.
+Try ``./quickbuild.sh`` and everything should compile at this point.
 
 The required subroutines are these:
 

@@ -1,1 +1,0 @@
-../shell_scripts/quickbuild.csh

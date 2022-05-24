@@ -339,7 +339,7 @@ Time to check the case.
 
 5) IF NEEDED, compile all the DART executables by
    cd  ${dartroot}/models/cice/work
-   ./quickbuild.csh -mpi
+   ./quickbuild.sh
 
 5) configure the case to be able to DART by executing
    cd ${caseroot}

@@ -129,7 +129,7 @@ environment variable.
 Building the DART executables for the tutorial follows the same process
 as building any of the DART executables. Configure the ``mkmf.template``
 file for your system, configure the ``input.nml`` for the model you want
-to compile, and run ``quickbuild.csh`` (which is not necessarily quick,
+to compile, and run ``quickbuild.sh`` (which is not necessarily quick,
 but it is quicker than doing it by hand) to compile all the programs you
 might need for an experiment with that model.
 
@@ -181,7 +181,7 @@ might need for an experiment with that model.
    ::
 
       cd $DART_DIR/models/wrf/work
-      ./quickbuild.csh
+      ./quickbuild.sh
 
    Many executables are built, the following executables are needed for the
    tutorial and will be copied to the right place by the *setup.csh* script
@@ -619,13 +619,13 @@ To (again, *optionally*) reproduce the observation sequence files in the
 
 -  Go to the
    ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/``
-   directory and run *quickbuild.csh* to build the DART
+   directory and run *quickbuild.sh* to build the DART
    PREPBUFR-to-intermediate-file observation processor:
 
    ::
 
       cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
-      ./quickbuild.csh
+      ./quickbuild.sh
 
 -  Download the PREPBUFR observations for your desired time. Go to the
    `NCAR/UCAR Research Data
@@ -725,7 +725,7 @@ To (again, *optionally*) reproduce the observation sequence files in the
    ::
 
       cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
-      ./quickbuild.csh
+      ./quickbuild.sh
 
 -  Run the *create_real_obs* program to create the DART observation
    sequence files:
@@ -766,7 +766,7 @@ inflated during the first assimilation cycle.
 
 It is convenient to create initial inflation files before you start an
 experiment. The initial inflation files may be created with
-*fill_inflation_restart*, which was built by the *quickbuild.csh* step.
+*fill_inflation_restart*, which was built by the *quickbuild.sh* step.
 A pair of inflation files is needed for each WRF domain.
 
 Within the ``$BASE_DIR/rundir`` directory, the *input.nml* file has some

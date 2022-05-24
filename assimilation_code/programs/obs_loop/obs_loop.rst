@@ -84,10 +84,8 @@ it. The ``&preprocess_nml`` namelist in the ``input.nml`` file must contain file
 of all observation types which will be encountered over all input obs_seq files.
 
 If you have observation types which are not part of the default list in the &preprocess_nml namelist, add them to the
-input.nml file and then either run quickbuild.csh or make and run preprocess and then make the obs_loop tool.
+input.nml file and then run quickbuild.sh.
 
-Usually the directories where executables are built will include a ``quickbuild.csh`` script which builds and runs
-preprocess and then builds the rest of the executables by executing all files with names starting with ``mkmf_``.
 
 Files
 -----
