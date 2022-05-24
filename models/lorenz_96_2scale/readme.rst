@@ -43,7 +43,7 @@ To run Lorenz 96 2-scale with its default settings:
 
 1. Ensure you have the correct settings in mkmf.template in
    ``<DARTROOT>/build_templates/mkmf.template``
-2. Build the DART executables using the ``quickbuild.csh`` script in the
+2. Build the DART executables using the ``quickbuild.sh`` script in the
    ``./work`` directory.
 3. Once the executables have been built, the two Perl scripts provided in the
    ``./shell_scripts`` directory, ``spinup_model.pl`` and ``run_expt.pl``, can

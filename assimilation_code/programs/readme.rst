@@ -1,3 +1,6 @@
+
+.. _DART programs:
+
 Programs included with DART
 ===========================
 
