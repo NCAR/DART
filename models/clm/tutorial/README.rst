@@ -345,14 +345,12 @@ Confirm the settings are as follows:
                               '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
     /
 
-Next compile and execute the preprocess script:
+Next run quickbuild.sh to build and run preprocess and build the dart exectuables:
 
 ::
 
- csh mkmf_preprocess
- make
- ./preprocess
-
+ ./quickbuild.sh
+ 
 Confirm the new source code has been generated for 
 ``DART/observations/forward_operators/obs_def_mod.f90`` 
 and ``DART/assimilation_code/modules/observations/obs_kind_mod.f90`` 
@@ -1132,7 +1130,7 @@ you must compile the rest of the required DART scripts to perform the assimilati
 ::
 
  cd DART/models/clm/work/
- ./quickbuild.csh -mpi
+ ./quickbuild.sh
 
 After completion the following DART executables should be available within your ``work``
 folder.
@@ -1564,7 +1562,7 @@ Confirm the DART executables used for the matlab diagnostics exist.
 These should have been compiled during Step 11 of this tutorial.
 The important DART executables for the diagnostics are
 ``obs_diag`` and ``obs_seq_to_netcdf``.  If they do not exist,
-perform the ``./quickbuild.csh -mpi`` command to create them.
+perform the ``./quickbuild.sh`` command to create them.
 
 Next generate a text file that includes all the ``clm_obs_seq*.final``
 files that were created from the tutorial simulation

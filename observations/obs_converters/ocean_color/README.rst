@@ -31,7 +31,7 @@ Programs and Scripts
 
 The programs and scripts in the ``observations/obs_converters/ocean_color`` directory download the data
 and create DART observation sequence (obs_seq) files. All programs are built in the ``ocean_color/work``
-directory and can be done by running ``./quickbuild.csh`` In addition to the main converter (i.e.,
+directory and can be done by running ``./quickbuild.sh`` In addition to the main converter (i.e.,
 ``convert_sat_chl``), other programs such ``advance_time`` and ``preprocess`` utilities will be built.
 
 **Converter namelist** ``convert_sat_chl_nml``:

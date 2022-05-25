@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+
+main() {
+
+export DART=$(git rev-parse --show-toplevel)
+source "$DART"/build_templates/buildconvfunctions.sh
+
+CONVERTER=NASA_Earthdata
+LOCATION=threed_sphere
+
+
+programs=(
+AMSR_E_L2_to_obs
+LPRM_L3_to_obs
+advance_time
+netCDF_to_obs
+obs_seq_to_netcdf
+)
+
+# build arguments
+arguments "$@"
+
+# clean the directory
+\rm -f -- *.o *.mod Makefile .cppdefs
+
+# build and run preprocess before making any other DART executables
+buildpreprocess
+
+# build 
+buildconv
+
+
+# clean up
+\rm -f -- *.o *.mod
+
+}
+
+main "$@"

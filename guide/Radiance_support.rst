@@ -110,7 +110,7 @@ steps:
    evaluate_these_obs_types)
 5. Include observations/forward_operators/obs_def_rttov_mod.f90 in the
    input_files section under &preprocess
-6. In your model of choice, run ./quickbuild.csh and ensure the RTTOV
+6. In your model of choice, run ./quickbuild.sh and ensure the RTTOV
    libraries are built
 7. For OSSE runs with perfect_model_obs:
 

@@ -49,7 +49,7 @@ scripts. To do so, execute the following three commands in the terminal.
 
 .. code-block:: bash
 
-   $ csh quickbuild.csh
+   $ ./quickbuild.sh
    $ ./perfect_model_obs
    $ ./filter
 

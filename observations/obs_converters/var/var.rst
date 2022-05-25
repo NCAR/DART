@@ -17,7 +17,7 @@ obs formats related to 3D-Var, WRF-Var, and MM5:
 
 You need to add some WRF-Var source files to the 3DVAR_OBSPROC
 directory, and then you can go into the work directory and
-run the 'quickbuild.csh' script.
+run the 'quickbuild.sh' script.
 
 The little-r converter may need changes to the code to convert
 from the original quality control flags into QC flags compatible

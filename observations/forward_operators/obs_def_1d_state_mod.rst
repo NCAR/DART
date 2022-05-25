@@ -6,7 +6,7 @@ Overview
 
 The list of observation types to be supported by the DART executables is defined at compile time. The observations DART
 supports can be changed at any time by adding or removing items from the preprocess namelist and rerunning
-*quickbuild.csh*.
+*quickbuild.sh*.
 
 | ``Preprocess`` takes observation specific code sections from special obs_def files to generate ``obs_def_mod.f90`` and
   ``obs_kind_mod.f90`` which are then compiled into ``filter`` and other DART programs. One of the motivations behind

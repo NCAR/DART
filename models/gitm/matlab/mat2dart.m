@@ -52,7 +52,7 @@ unix('wc -l < text.txt');
 s=unix('./text_to_obs'); %run the converter
 if s~=0 
     unix('ls'); %show me what files are in this directory - LiSt the directory
-    error(['Converter did not run. ' 10 'A) is this the correct directory at all?' 10 'B) Is it compiled (./quickbuild.csh) (ie Is text_to_obs present in what is shown above?)?'])
+    error(['Converter did not run. ' 10 'A) is this the correct directory at all?' 10 'B) Is it compiled (./quickbuild.sh) (ie Is text_to_obs present in what is shown above?)?'])
 end
 
 disp('just so you know, here is what the end of DART file looks like')
