@@ -391,13 +391,7 @@ Check the DART configuration:
 
 5) If you stage your own inflation files, make sure you read the "INFLATION" section
    in ${CASEROOT}/assimilate.csh.  
-   At the very least, copy your inflation files
-   in ${RUNDIR} 
-#    into the appropriate names:
-#       input_priorinf_mean.nc
-#       input_priorinf_sd.nc
-#       input_postinf_mean.nc 
-#       input_postinf_sd.nc   
+   At the very least, copy your inflation files into ${RUNDIR}.
    If assimilate.csh does not find inflation files, it will call fill_inflation_restart
    to create some from the inflation values in input.nml.
 

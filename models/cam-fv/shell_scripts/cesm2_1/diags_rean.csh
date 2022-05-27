@@ -80,13 +80,13 @@ set yymm = `printf %4d-%02d $data_year $data_month`
 
 # ? Give this as an argument
 set diag_dir = 	${data_DOUT_S_ROOT}/esp/hist/Diags_NTrS_${yymm}
-set proj_dir = ${data_proj_space}/${data_CASE}/esp/hist/${yymm}
+set proj_dir = ${data_proj_space}/esp/hist/${yymm}
 echo "diag_dir = $diag_dir"
 echo "proj_dir = $proj_dir"
 
 
 if (! -d $diag_dir) then
-   mkdir $diag_dir
+   mkdir -p $diag_dir
    cd $diag_dir
    echo "In $diag_dir"
 else
@@ -149,7 +149,7 @@ endif
 
 # cd ../${obs_dir}
 if (! -d ${proj_dir}) then
-   mkdir ${proj_dir}
+   mkdir -p ${proj_dir}
 else
    echo "ERROR: $proj_dir exists."
    echo "       Refusing to overwrite"

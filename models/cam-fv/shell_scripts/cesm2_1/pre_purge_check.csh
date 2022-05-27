@@ -12,7 +12,8 @@
 # that take an unknown amount of time to finish.
 # Usage: after case.st_archive and repack_st_archive are finished,
 #        on casper:
-#        % pre_purge.csh 
+#        % pre_purge_check.csh > pre_purge.YYYY-MM
+#     or % pre_purge_check.csh |& tee pre_purge_check.YYYY-MM
 
 # On the data-access node.
 
@@ -27,17 +28,31 @@ echo "data_campaign   = ${data_campaign}"
 
 set ym = `printf %s-%02d $data_year $data_month`
 
-cd ${data_proj_space}/${data_CASE}
+if (! -d ${data_proj_space}) then
+   echo "No ${data_proj_space}."
+   echo " That's OK if all of repack_st_arch: do_{forcing,hist,obs_space} = false; enter 'go'"
+   set go = $<
+   if ($go == 'go') then
+      echo "WARNING; not checking for archived forcing, history, or obs space."
+      goto CAMPAIGN
+   else
+      exit
+   endif
+else
+   cd ${data_proj_space}
 
-echo "Coupler history (forcing) files in project space `pwd`:"
-ls -l cpl/hist/00${data_NINST}/*${data_year}*
+   echo "Coupler history (forcing) files in project space `pwd`:"
+   ls -l cpl/hist/00${data_NINST}/*${data_year}*
+   
+   echo "\n Component history files in project space `pwd`:"
+   ls -l {lnd,atm,ice,rof}/hist/00${data_NINST}/*.{clm2,cam,cice,mosart}_*.h*${data_year}*[cz]
+   
+   echo "\n DART obs space diagnostic files in project space `pwd`/esp/hist/${ym}:"
+   ls -l esp/hist/${ym}
 
-echo "\n Component history files in project space `pwd`:"
-ls -l {lnd,atm,ice,rof}/hist/00${data_NINST}/*.{clm2,cam,cice,mosart}_*.h*${data_year}*[cz]
+endif
 
-echo "\n DART obs space diagnostic files in project space `pwd`/esp/hist/${ym}:"
-ls -l esp/hist/${ym}
-
+CAMPAIGN:
 echo "\n Restart files in Campaign Storage:"
 ls -l ${data_campaign}/${data_CASE}/rest/${ym}/*{00${data_NINST},inf}*
 

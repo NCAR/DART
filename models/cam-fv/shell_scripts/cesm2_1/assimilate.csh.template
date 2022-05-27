@@ -82,7 +82,9 @@ else if ($?PBS_NODEFILE) then
    # before and after cheyenne July down time.
    # Mick says the old MPT, which was used to build and run the old filter,
    # was mpt/2.21.
-   module swap mpt/2.21
+   # Not useful; modules are built into executables, so changing this doesn't help.
+   # And we want to use defaults in 2022.
+   # module swap mpt/2.21
    echo "Modules used for this assimilation:"
    module list
    echo "-----------------------------------"
