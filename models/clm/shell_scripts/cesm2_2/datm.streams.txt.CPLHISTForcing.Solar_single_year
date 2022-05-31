@@ -1,0 +1,68 @@
+<streamstemplate>
+      <general_comment>
+         streams template for datm in CESM2_2
+         Two CAM-DART Ensemble Reanalysis efforts have been completed and provide
+         DATM forcing files particularly appropriate for CESM experiments.
+
+         NCAR RDA ds199.1 | DOI: 10.5065/38ED-RZ08
+         Spans 1998_01-2010_12 at 1.875x2.5 degrees resolution every 6 hours
+         a2x6h_Faxa_swndr long_name = "Direct near-infrared incident solar radiation" ;
+         a2x6h_Faxa_swvdr long_name = "Direct visible incident solar radiation" ;
+         a2x6h_Faxa_swndf long_name = "Diffuse near-infrared incident solar radiation" ;
+         a2x6h_Faxa_swvdf long_name = "Diffuse visible incident solar radiation" ;
+
+         NCAR RDA ds345.0 | DOI: 10.5065/JG1E-8525
+         Spans 2010_07-2019_12 at 0.9x1.25 degree resolution
+         a2x1hi_Faxa_swndr long_name = "Direct near-infrared incident solar radiation" ;
+         a2x1hi_Faxa_swvdr long_name = "Direct visible incident solar radiation" ;
+         a2x1hi_Faxa_swndf long_name = "Diffuse near-infrared incident solar radiation" ;
+         a2x1hi_Faxa_swvdf long_name = "Diffuse visible incident solar radiation" ;
+
+         The RDA collections are on spinning disk at NCAR:
+         /glade/collections/rda/data/ds345.0/cpl_unzipped/----/{CASENAME}.cpl_----.ha2x*.YYYY.nc
+      </general_comment>
+<stream>
+      <comment>
+         Stream description file for CPL history 1-hourly Solar data at 0.9x1.25 resolution
+      </comment>
+      <dataSource>
+         Raeder et al. 80 member CAM/DART reanalysis V2
+         https://rda.ucar.edu/datasets/ds345.0
+         https://doi.org/10.5065/JG1E-8525
+      </dataSource>
+      <domainInfo>
+         <variableNames>
+            time          time
+            doma_lon      lon
+            doma_lat      lat
+            doma_area     area
+            doma_mask     mask
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+         </filePath>
+         <fileNames>
+            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.RUNYEAR.nc
+         </fileNames>
+      </domainInfo>
+      <fieldInfo>
+         <variableNames>
+            a2x1hi_Faxa_swndr     swndr
+            a2x1hi_Faxa_swvdr     swvdr
+            a2x1hi_Faxa_swndf     swndf
+            a2x1hi_Faxa_swvdf     swvdf
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+         </filePath>
+         <offset>
+            1800
+         </offset>
+         <fileNames>
+            f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.RUNYEAR.nc
+         </fileNames>
+      </fieldInfo>
+      <build_streams_documentation>
+      </build_streams_documentation>
+</stream>
+</streamstemplate>

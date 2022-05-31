@@ -35,7 +35,7 @@ Programs
 --------
 
 The programs in the ``DART/observations/tpw`` directory extract data from the distribution text files and create DART
-observation sequence (obs_seq) files. Build them in the ``work`` directory by running the ``./quickbuild.csh`` script.
+observation sequence (obs_seq) files. Build them in the ``work`` directory by running the ``./quickbuild.sh`` script.
 In addition to the converters, several other general observation sequence file utilities will be built.
 
 Generally the input data comes in daily files, with the string YYYYMMDD (year, month, day) as part of the name. This

@@ -262,6 +262,15 @@ has_cycling = single_file_out
 call parse_filenames(input_state_files,  input_filelist,  nfilesin)
 call parse_filenames(output_state_files, output_filelist, nfilesout)
 
+!> @todo FIXME  if nfilesout == 0 and write_output_state_to_file is .false.
+!> that shouldn't be an error.  if nfilesin == 0 and read_input_state_from_file
+!> is false, that also shouldn't be an error.  (unless you're writing the mean
+!> and sd, and then maybe we should have a different name for output of input values.)
+if (nfilesin == 0 .or. nfilesout == 0 ) then
+   msgstring = 'must specify both "input_state_files" and "output_state_files" in the namelist'
+   call error_handler(E_ERR,'perfect_main',msgstring,source)
+endif
+
 allocate(true_state_filelist(nfilesout))
 
 ! mutiple domains ( this is very unlikely to be the case, but in order to
@@ -273,15 +282,6 @@ if (nfilesout > 1) then
    enddo
 else
    true_state_filelist(1) = 'true_state.nc'
-endif
-
-!> @todo FIXME  if nfilesout == 0 and write_output_state_to_file is .false.
-!> that shouldn't be an error.  if nfilesin == 0 and read_input_state_from_file
-!> is false, that also shouldn't be an error.  (unless you're writing the mean
-!> and sd, and then maybe we should have a different name for output of input values.)
-if (nfilesin == 0 .or. nfilesout == 0 ) then
-   msgstring = 'must specify both "input_state_files" and "output_state_files" in the namelist'
-   call error_handler(E_ERR,'perfect_main',msgstring,source)
 endif
 
 call io_filenames_init(file_info_input,  1, cycling=has_cycling, single_file=single_file_in)
@@ -638,17 +638,17 @@ end subroutine perfect_main
 
 subroutine perfect_initialize_modules_used()
 
-! Standard initialization (mpi not needed to use ensemble manager
-! since we are enforcing that this run as a single task).
+! Standard initialization
 call initialize_mpi_utilities('perfect_model_obs')
 
 ! Initialize modules used that require it
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
+
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
-! Initialize the model class data now that obs_sequence is all set up
+
 call state_vector_io_init()
 call initialize_qc()
 

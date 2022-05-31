@@ -76,7 +76,7 @@ write(*,*)
 write(*,*) "WARNING, BE CAREFUL: the TEC files from different dates might have different number of columns!"
 write(*,*) "For example, on some dates in 2002 there are 13 columns, whereas in 2006 there are 10 "
 write(*,*) "If you are getting some weird data/results, this could be the issue "
-write(*,*) "To fix it, change ../gnd_gps_vtec_text_to_obs.f90:line~175 and recompile with ./quickbuild.csh"
+write(*,*) "To fix it, change ../gnd_gps_vtec_text_to_obs.f90:line~175 and recompile with ./quickbuild.sh"
 write(*,*)
 
 ! Set the DART data quality control.   0 is good data.

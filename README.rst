@@ -78,24 +78,87 @@ Email dart@ucar.edu for advice if you are interested in a model which has not be
 Quick-start
 -----------
 
-1. fork the NCAR/DART repo
+DART is available through `GitHub <https://github.com/NCAR/DART>`__. To
+download the latest version of DART, use:
+
+.. code::
+
+   git clone https://github.com/NCAR/DART.git
+
+
+Go into the ``build_templates`` directory and copy over the closest
+``mkmf.template``._compiler.system\_ file into ``mkmf.template``.
+
+Edit it to set the NETCDF directory location if not in ``/usr/local`` or comment
+it out and set $NETCDF in your environment. *This NetCDF library must have been
+compiled with the same compiler that you use to compile DART and must include
+the F90 interfaces.*
+
+Go into ``models/lorenz_63/work`` and run *quickbuild.sh nompi*.
+
+.. code-block::
+
+   $ cd models/lorenz_63/work
+   $ ./quickbuild.sh nompi
+
+If it compiles, run this series of commands to do a very basic test:
+
+.. code-block::
+
+   $ ./perfect_model_obs
+   $ ./filter
+
+If that runs and you have Matlab installed on your system add
+``DART/diagnostics/matlab`` to your matlab search path and run the
+``plot_total_err`` diagnostic script while in the ``models/lorenz_63/work``
+directory. If the output plots and looks reasonable (error level stays around 2
+and doesn’t grow unbounded) you have successfully installed DART and completed
+your first assimilation with it.
+
+If you are planning to run one of the larger models and want to use the Lorenz
+63 model as a test, run ``./quickbuild.sh``. It will build filter and any
+other MPI-capable executables with MPI.
+
+.. important::
+
+   The ``mpif90`` command you use must have been built with the same version of
+   the compiler as you are using.
+
+If any of these steps fail or you don’t know how to do them, go to the DART
+project web page listed above for very detailed instructions that should get you
+over any bumps in the process.
+
+Quick-start for developers
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To create a fork of DART for your own development you will need
+a `GitHub <https://github.com/>`__ account. 
+
+1. fork the NCAR/DART repo on GitHub
 2. clone your (new) fork to your machine - this will set up a remote named
-   ‘origin’. To clone DART and checkout the latest release, use
+   ‘origin’.
 
 .. code::
 
    git clone https://github.com/USERNAME/DART.git
-   cd DART
-   git checkout -b v9.10.0-branch tags/v9.10.0 
 
 where `USERNAME` is your GitHub username. 
 
-3. create a remote to point back to the NCAR/DART repo … convention dictates
+3. create a remote to point back to the NCAR/DART repo. Convention dictates
    that this remote should be called ‘upstream’
+
+.. code::
+
+   git remote add upstream https://github.com/NCAR/DART.git
+
+Use ‘upstream’ to keep your fork up to date with NCAR/DART. GitHub has documentation
+on `working with forks <https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/working-with-forks>`__.
+
 4. Download one of the tar files (listed below) of ‘large’ files so you can test
    your DART installation.
-5. If you want to issue a PR, create a feature branch and push that to your fork
-   and issue the PR.
+5. If you want to contribute your work back to the DART community, create a feature
+   branch with your work, then issue a `pull request <https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork>`__
+   to propose changes to NCAR/DART.
 
 There are several large files that are needed to run some of the tests and
 examples but are not included in order to keep the repository as small as
@@ -122,47 +185,6 @@ files are available at:
 Download the appropriate tar file and untar it into your DART repository. Ignore
 any warnings about ``tar: Ignoring unknown extended header keyword``.
 
-Go into the ``build_templates`` directory and copy over the closest
-``mkmf.template``._compiler.system\_ file into ``mkmf.template``.
-
-Edit it to set the NETCDF directory location if not in ``/usr/local`` or comment
-it out and set $NETCDF in your environment. *This NetCDF library must have been
-compiled with the same compiler that you use to compile DART and must include
-the F90 interfaces.*
-
-Go into ``models/lorenz_63/work`` and run *quickbuild.csh*.
-
-.. code-block::
-
-   $ cd models/lorenz_63/work
-   $ ./quickbuild.csh
-
-If it compiles, run this series of commands to do a very basic test:
-
-.. code-block::
-
-   $ ./perfect_model_obs
-   $ ./filter
-
-If that runs and you have Matlab installed on your system add
-``DART/diagnostics/matlab`` to your matlab search path and run the
-``plot_total_err`` diagnostic script while in the ``models/lorenz_63/work``
-directory. If the output plots and looks reasonable (error level stays around 2
-and doesn’t grow unbounded) you have successfully installed DART and completed
-your first assimilation with it.
-
-If you are planning to run one of the larger models and want to use the Lorenz
-63 model as a test, run ``./quickbuild.csh -mpi``. It will build filter and any
-other MPI-capable executables with MPI.
-
-.. important::
-
-   The ``mpif90`` command you use must have been built with the same version of
-   the compiler as you are using.
-
-If any of these steps fail or you don’t know how to do them, go to the DART
-project web page listed above for very detailed instructions that should get you
-over any bumps in the process.
 
 Citing DART
 -----------
@@ -224,6 +246,7 @@ References
    :caption: Run DART with your model
 
    guide/advice-for-new-collaborators
+   DART build system <guide/quickbuild.rst>
    guide/assimilation-complex-model
    guide/mpi_intro
    guide/filters
@@ -263,8 +286,9 @@ References
 .. toctree::
    :hidden:
 
-   observations/obs_converters/AIRS/AIRS
    observations/obs_converters/AIRS/README
+   observations/obs_converters/AIRS/convert_airs_L2
+   observations/obs_converters/AIRS/convert_amsu_L1
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
@@ -283,9 +307,12 @@ References
    observations/obs_converters/MODIS/readme
    observations/obs_converters/MODIS/MOD15A2_to_obs
    observations/obs_converters/MPD/README
+   observations/obs_converters/NASA_Earthdata/README
    observations/obs_converters/NCEP/prep_bufr/prep_bufr
    observations/obs_converters/NCEP/ascii_to_obs/create_real_obs
+   observations/obs_converters/NSIDC/SMAP_L2_to_obs
    observations/obs_converters/ROMS/ROMS
+   observations/obs_converters/SIF/SIF_to_obs_netcdf
    observations/obs_converters/SSEC/SSEC
    observations/obs_converters/SST/SST
    observations/obs_converters/SSUSI/convert_f16_edr_dsk
@@ -293,10 +320,11 @@ References
    observations/obs_converters/gnd_gps_vtec/README
    observations/obs_converters/gps/gps
    observations/obs_converters/ok_mesonet/ok_mesonet
+   observations/obs_converters/ocean_color/README
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
-   observations/obs_converters/radar/radar
+   observations/obs_converters/radar/README
    observations/obs_converters/snow/snow_to_obs
    observations/obs_converters/text/text_to_obs
    observations/obs_converters/tpw/tpw
@@ -325,10 +353,9 @@ References
    theory/readme
    theory/conditional-probability-bayes-theorem
    guide/DART_LAB/DART_LAB
+   CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
-
-.. toctree::
-   :maxdepth: 2
+   
 .. toctree::
    :maxdepth: 2
    :caption: Models
@@ -347,6 +374,8 @@ References
    models/CESM/readme
    models/cice/readme
    models/clm/readme
+   models/clm/clm_to_dart
+   models/clm/dart_to_clm
    models/cm1/readme
    models/coamps_nest/readme
    models/coamps/readme
@@ -362,6 +391,7 @@ References
    models/lorenz_84/readme
    models/lorenz_96/readme
    models/lorenz_96_2scale/readme
+   models/lorenz_96_tracer_advection/readme
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
    models/mpas_atm/readme
@@ -441,7 +471,6 @@ References
    assimilation_code/programs/advance_time/advance_time
    assimilation_code/programs/model_mod_check/model_mod_check
    assimilation_code/programs/closest_member_tool/closest_member_tool
-   assimilation_code/programs/restart_file_tool/restart_file_tool
    assimilation_code/programs/filter/filter
    assimilation_code/programs/obs_keep_a_few/obs_keep_a_few
    assimilation_code/programs/create_obs_sequence/create_obs_sequence
@@ -494,7 +523,6 @@ References
    :maxdepth: 2
    :caption: Misc
    
-   Release Notes <guide/Manhattan_release>
    models/CESM/doc/setup_guidelines
 
    
@@ -502,22 +530,10 @@ References
    :caption: non-compiling models
    :hidden:
          
-   models/cam-old/cam_to_dart
-   models/cam-old/readme
-   models/cam-old/dart_to_cam
-   models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
-   models/MITgcm_ocean/trans_sv_pv
    models/NCOMMAS/dart_to_ncommas
    models/NCOMMAS/ncommas_to_dart
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Build templates
-   :hidden:
-
-   build_templates/mkmf
 
 .. toctree::
    :maxdepth: 2

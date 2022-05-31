@@ -115,7 +115,7 @@ Time enters into the assimilation system in 3 places: the time of
 the state vector data (the current model time when this data was
 produced), the time of each observation, and the assimilation window
 length. The window length is set by the model-dependent routine
-``shortest_time_between_assimilations()``.  
+``shortest_time_between_assimilations()``.
 The internal timestepping of the model is unrelated to any of these times
 and is outside the scope of the assimilation system.
 
@@ -243,11 +243,11 @@ Converting a series of observations
 -----------------------------------
 
 If you are running a series of assimilation steps you may
-need a separate observation sequence (obs_seq) file per step.  
+need a separate observation sequence (obs_seq) file per step.
 The suggested process is to create the first few files by hand to check
-the resulting obs_seq files and then write scripts (python, shell) 
-to automate the creation of the remainder of the files.  
-The following are some of the considerations to take 
+the resulting obs_seq files and then write scripts (python, shell)
+to automate the creation of the remainder of the files.
+The following are some of the considerations to take
 into account when creating scripts for a series of obs_seq files.
 
 Looping in Time
@@ -273,11 +273,11 @@ accounting for leap days, etc.
 Observation conversion programs usually take one of two strategies
 for their input and output filenames.
 
-* Have fixed input and output filenames for the converter. 
+* Have fixed input and output filenames for the converter.
   Have the script make symbolic links from the actual filenames to the
   fixed names for the files for each conversion run.
 
-* Have a Fortran namelist variable that sets the input and output 
+* Have a Fortran namelist variable that sets the input and output
   filenames for the converter.  Have the script generate or edit the
   namelist file (e.g. with the `sed` stream editor) to set the actual
   filenames for each conversion run.
@@ -295,12 +295,12 @@ Multiple Observation Files
 It is common that an assimilation will want to use observations
 from different sources.  Generally it is easier to convert observations
 from each source separately and then merge them together with the
-``obs_sequence_tool``.  
+``obs_sequence_tool``.
 
-Creating filenames and directory names which follow a pattern 
-that can be generated with the ``advance_time`` program makes this easier to do.  
+Creating filenames and directory names which follow a pattern
+that can be generated with the ``advance_time`` program makes this easier to do.
 
-The ``obs_sequence_tool`` can read the input filenames from a separate ascii file. 
+The ``obs_sequence_tool`` can read the input filenames from a separate ascii file.
 This makes generating the filenames easy from a script; it can
 simply concatinate the input filenames echo'd to an ascii file and
 then run the obs_sequence_tool.  The output file can either be set
@@ -326,7 +326,7 @@ values, missing files, duplicated data, etc.  The list is as long as your
 imagination.  It can be very useful to write or adapt programs like ``obs_info``
 to print out the first and last obs times in a file, the count of each obs type, etc.
 Especially for observations which are close to the start/end of a month or year,
-it is easy to find truncated data files.  
+it is easy to find truncated data files.
 
 If converting a large number of files it is also common for computer system
 failures to occur at random times.  File systems fill up, batch jobs exit early,
@@ -357,54 +357,49 @@ observations into the format required by DART.
 The current list of converters (some directories contain multiple
 converters) include:
 
--  `AIRS <AIRS/AIRS.html>`__ `atmospheric variables <AIRS/AIRS.html>`__
-   and `AMSUA radiances <AIRS/README.html>`__
--  AURA (uses a combination of IDL and Fortran)
--  `Aviso+/CMEMS <AVISO/AVISO.html>`__
--  `Ameriflux <Ameriflux/level4_to_obs.html>`__
--  `CHAMP <CHAMP/work/README.html>`__
--  `cice <cice/cice_to_obs.html>`__
--  CNOFS
--  `CONAGUA <CONAGUA/README.html>`__
--  `COSMOS <COSMOS/COSMOS_to_obs.html>`__
--  `DWL <DWL/dwl_to_obs.html>`__
--  `GMI <GMI/README.html>`__
--  `GOES <GOES/README.html>`__
--  `GPSPW <GPSPW/README.html>`__
--  GRACE
--  `GSI2DART <GSI2DART/readme.html>`__
--  `GTSPP <GTSPP/GTSPP.html>`__
--  `MADIS <MADIS/MADIS.html>`__
--  `MIDAS <MIDAS/MIDAS_to_obs.html>`__
--  `MODIS <MODIS/MOD15A2_to_obs.html>`__
--  `MPD <MPD/README.html>`__
--  `NCEP (prepbufr->ascii) <NCEP/prep_bufr/prep_bufr.html>`__
--  `NCEP (ascii->obs_seq) <NCEP/ascii_to_obs/create_real_obs.html>`__
--  `ROMS <ROMS/ROMS.html>`__
--  `SSEC <SSEC/SSEC.html>`__
--  `SST <SST/SST.html>`__
--  `SSUSI <SSUSI/convert_f16_edr_dsk.html>`__
--  `WOD <WOD/WOD.html>`__
--  `gnd_gps_vtec <gnd_gps_vtec/README.html>`__
--  `GPS <gps/gps.html>`__
--  `ok_mesonet <ok_mesonet/ok_mesonet.html>`__
--  `QuikSCAT <quikscat/QuikSCAT.html>`__
--  `Radar <radar/radar.html>`__
--  `snow <snow/snow_to_obs.html>`__
--  `Text <text/text_to_obs.html>`__
--  text_GITM
--  `tpw <tpw/tpw.html>`__
--  `Tropical Cyclones <tropical_cyclone/tc_to_obs.html>`__
--  `Var (little-r) <var/littler_tf_dart.html>`__
--  `Var (radar) <var/rad_3dvar_to_dart.html>`__
-
-There are also a couple utilities of note:
-
--  `Even Sphere <even_sphere/README.html>`__ - a utility for generating
-   evenly-spaced observation locations that can then be used in a
-   perfect model experiment.
--  `obs_error <obs_error/README.html>`__ - modules that specify observation
-   errors based on what is used by ECMWF and NCEP
+-  ``AIRS``: :doc:`./AIRS/README`
+-  ``AURA``: See ``./AURA``
+-  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
+-  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
+-  ``CHAMP``: :doc:`./CHAMP/work/README`
+-  ``cice``: :doc:`./cice/cice_to_obs`
+-  ``CNOFS``: See ``./CNOFS``
+-  ``CONAGUA``: :doc:`./CONAGUA/README`
+-  ``COSMOS``: :doc:`./COSMOS/COSMOS_to_obs`
+-  ``DWL``: :doc:`./DWL/dwl_to_obs`
+-  ``GMI``: :doc:`./GMI/README`
+-  ``GOES``: :doc:`./GOES/README`
+-  ``GPSPW``: :doc:`./GPSPW/README`
+-  ``GRACE``: See ``./GRACE``
+-  ``GSI2DART``: :doc:`./GSI2DART/readme`
+-  ``GTSPP``: :doc:`./GTSPP/GTSPP`
+-  ``MADIS``: :doc:`./MADIS/MADIS`
+-  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
+-  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
+-  ``MPD``: See ``./MPD``
+-  ``NASA_Earthdata``:doc:`./NASA_Earthdata/README`
+-  ``NCEP``: (prepbufr-> ascii) :doc:`./NCEP/prep_bufr/prep_bufr`
+-  ``NCEP``: (ascii-> obs_seq) :doc:`./NCEP/ascii_to_obs/create_real_obs`
+-  ``NSIDC``:doc:`./NSIDC/SMAP_L2_to_obs`
+-  ``ROMS``: :doc:`./ROMS/ROMS`
+-  ``SIF``: :doc:`./SIF/SIF_to_obs_netcdf`
+-  ``SSEC``: :doc:`./SSEC/SSEC`
+-  ``SST``: :doc:`./SST/SST`
+-  ``ocean color``: :doc:`./ocean_color/README`
+-  ``SSUSI``: :doc:`./SSUSI/convert_f16_edr_dsk`
+-  ``WOD``: :doc:`./WOD/WOD`
+-  ``gnd_gps_vtec``: :doc:`./gnd_gps_vtec/README`
+-  ``GPS``: :doc:`./gps/gps`
+-  ``ok_mesonet``: :doc:`./ok_mesonet/ok_mesonet`
+-  ``QuikSCAT``: :doc:`./quikscat/QuikSCAT`
+-  ``Radar``: :doc:`./radar/README`
+-  ``snow``: :doc:`./snow/snow_to_obs`
+-  ``Text``: :doc:`./text/text_to_obs`
+-  ``text_GITM``: See ``./text_GITM``
+-  ``tpw``: :doc:`./tpw/tpw`
+-  ``Tropical Cyclones``: :doc:`./tropical_cyclone/tc_to_obs`
+-  ``Var (little-r)``: :doc:`./var/littler_tf_dart`
+-  ``Var (radar)``: :doc:`./var/rad_3dvar_to_dart`
 
 In addition the following external program produces DART observation
 sequence files:
@@ -421,10 +416,19 @@ For generating synthetic observations, see the
 `create_obs_sequence <../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__
 program documentation. You can also generate observation files based on
 text input. See the `text_to_obs <text/text_to_obs.html>`__ program
-documentation. Or for simulating a large complex observing system, you
+documentation and even_sphere. Or for simulating a large complex observing system, you
 can use the DART library routines in a Fortran program to compute the
 observation information and have the DART routines write the output
 file.
+
+There are a couple utilities of note:
+
+-  `even_sphere <even_sphere/README.html>`__ - a utility for generating
+   a text file of evenly-spaced observation locations that can then be used in a
+   perfect model experiment.
+-  `obs_error <obs_error/README.html>`__ - modules that specify observation
+   errors based on what is used by ECMWF and NCEP
+
 
 See the
 `perfect_model <../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
@@ -435,4 +439,3 @@ operators compute the observation values.
 Contact the `DART development group <mailto:dart@ucar.edu>`__ if you
 have observations in a different format that you want to convert. We can
 give you advice and pointers on how to approach writing the code.
-

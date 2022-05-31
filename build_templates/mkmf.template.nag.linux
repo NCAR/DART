@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
@@ -20,6 +18,7 @@
 #
 # FFLAGS   useful for bitwise reproducibility and accuracy control
 #          (these will slow down performance to various degrees)
+#  (currently none listed)
 #
 # FFLAGS   useful for production
 #     -O2        default.  optimize without too much unrepeatable numerical games
@@ -30,8 +29,10 @@
 #                optimization level on the offending source files.
 #
 # FFLAGS   possibly useful, not normally used by DART
+#  (currently none listed)
 #
 # Runtime environment variables that influence the compiler behavior:
+#  (currently none listed)
 #
 #
 # IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
@@ -63,9 +64,15 @@ LD = nagfor
 # NETCDF = /opt/local
 NETCDF = /usr/local/netcdf_c-4.3.2_f-4.4.1-nag-6.0
 
+# NAG defaults to strict argument checking.  MPI allows you to 
+# pass different array types to the same routine.  'use mpi_f08' will
+# provide the right interface blocks to make this compile successfully.
+# we currently have 'use mpi' for backwards compatibility and that
+# provokes a fatal compile error in the mpi_utilities_mod.f90 file.
+# the -mismatch flag turns the error into a warning.
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O $(INCS)
+FFLAGS  = -O -mismatch $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
@@ -76,7 +83,3 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 # LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
 #
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

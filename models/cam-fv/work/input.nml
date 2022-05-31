@@ -13,15 +13,25 @@
 !
 ! for recommendations on namelist settings for CAM.
 
+! ens_size, num_output_*  will be (re)set by the setup script
+! To use a pre-existing ensemble, make the following changes
+! This applies to the second cycle after starting from a single ensemble member.
+! It's not necessary to change any other variables controlling the perturbation
+! because this will cause them to be ignored.
+!    perturb_from_single_instance = .false.
+! Other variables of interest
 ! stages_to_write          Controls diagnostic and restart output.  Valid values are
 !                          'input', 'forecast','preassim', 'postassim', 'analysis', and 'output'.
 !                          If only prior inflation is used, then 'postassim' and 'analysis'
-!                          are redundant with 'output'.
-!                          If only posterior inflation is used, 'analysis' and 'preassim'
+!                          are redundant with 'output'.  Just use 'output'.
+!                          If only posterior inflation is used, 'forecast' and 'preassim'
 !                          are redundant with 'input'.
 !                          If you want input_mean and input_sd, you'll
 !                          need to set output_mean and output_sd = .true.
 !                          (and include 'input' in stages_to_write).
+!    inf_initial_from_restart These should be true because assimilate.csh will create
+!    inf_sd_from_restart      inflation restart files from the values in inf*_initial
+!                             if needed.
 
 &filter_nml
    input_state_files            = ''
@@ -31,7 +41,7 @@
    init_time_days               = -1
    init_time_seconds            = -1
 
-   stages_to_write              = 'preassim','output'
+   stages_to_write              = 'forecast','output'
 
    output_state_files           = ''
    output_state_file_list       = 'cam_init_files'
@@ -47,12 +57,12 @@
    num_groups                   = 1
    distributed_state            = .true.
 
-   inf_flavor                  = 2,                       0
-   inf_initial_from_restart    = .false.,                 .false.
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .true.,                  .false.
    inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
+   inf_lower_bound             = 0.0,                     0.0
    inf_upper_bound             = 100.0,                   100.0
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_sd_initial_from_restart = .true.,                  .false.
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
    inf_sd_max_change           = 1.05,                    1.05
@@ -61,19 +71,32 @@
 
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
-   first_obs_days           = -1
-   first_obs_seconds        = -1
-   last_obs_days            = -1
-   last_obs_seconds         = -1
-   compute_posterior        = .false.
    num_output_obs_members   = 3
+   compute_posterior        = .false.
 
-   adv_ens_command          = 'no_CESM_advance_script'
    trace_execution          = .true.
    output_timestamps        = .true.
    output_forward_op_errors = .false.
    silence                  = .false.
    /
+! Moha's enhanced (gamma distribution) adaptive:
+!    inf_flavor                  = 5,                       0
+!    inf_lower_bound             = 0.0,                     0.0
+! flavor 2
+!    inf_flavor                  = 2,                       0
+!    inf_lower_bound             = 1.0,                     1.0
+
+
+! Not used in CAM assims
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   obs_window_days          = -1
+   obs_window_seconds       = -1
+   adv_ens_command          = 'no_CESM_advance_script'
+   tasks_per_model_advance      = -1  Used only for models run inside filter.
+   write_obs_every_cycle        = .false. intended for debugging when cycling inside filter.
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
@@ -102,11 +125,9 @@
 #========================================================================
 !
 ! Creation of initial ensemble from a single model state.
-!     fields_to_perturb lists the state variables to be perturbed to make the ensemble.
-!         Providing an empty list is one of the changes to use an existing ensemble.
-!     perturbation_amplitude > 0 allows each point of the fields_to_perturb fields 
-!         of each ensemble member to be randomly perturbed with a standard deviation 
-!         of perturbation_amplitude.
+!     fields_to_perturb lists the DART QTY_s of the state variables to be perturbed to make the ensemble.
+!     perturbation_amplitude > 0 allows each point of the fields_to_perturb fields of each ens member 
+!         to be randomly perturbed with a standard deviation of perturbation_amplitude.  
 !         Each field can be given a different perturbation_amplitude.
 !     Used by filter's call to pert_model_copies.
 !
@@ -182,13 +203,13 @@
    custom_routine_to_generate_ensemble = .true.
    fields_to_perturb                   = 'QTY_TEMPERATURE'
    perturbation_amplitude              = 0.1
-   state_variables       = 'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
-                           'US',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
-                           'VS',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
-                           'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
-                           'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
-                           'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
-                           'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
+   state_variables  = 'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
+                      'US',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+                      'VS',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+                      'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
+                      'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
+                      'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
+                      'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
    use_log_vertical_scale              = .true.
    use_variable_mean_mass              = .false.
    no_normalization_of_scale_heights   = .true.
@@ -202,7 +223,38 @@
    debug_level                    = 0
    /
 
-
+! Other fields in the CAM initial file, which could be included in the model state:
+! These QTYs should be changed to physically meaningful values before any real assim.
+!                       'DMS',   'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'H2O2',  'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'H2SO4', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMICE','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMLIQ','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMRAI','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMSNO','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'RAINQM','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'SNOWQM','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'SO2',   'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'SOAG',  'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'bc_a1', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'bc_a4', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'dst_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'dst_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'dst_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'ncl_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'ncl_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'ncl_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a4','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'pom_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'pom_a4','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'so4_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'so4_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'so4_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'soa_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'soa_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
 &location_nml
    horiz_dist_only                 = .false.
    vert_normalization_pressure     = 20000.0
@@ -231,10 +283,11 @@
 
    input_state_files = 'caminput.nc'
    single_file       = .false.
+                       
    verbose           = .false.
    /
 
-! to use chemistry or saber temperatures, include the following.
+! to use chemistry or saber temperatures, include the following below.
 !                             '../../../observations/forward_operators/obs_def_CO_Nadir_mod.f90',
 !                             '../../../observations/forward_operators/obs_def_SABER_mod.f90',
 !                             '../../../observations/forward_operators/obs_def_MOPITT_CO_mod.f90',
@@ -300,12 +353,12 @@
    cutoff                            = 0.15
    sort_obs_inc                      = .false.
    spread_restoration                = .false.
-   sampling_error_correction         = .false.
+   sampling_error_correction       = .true.
    adaptive_localization_threshold   = -1
    output_localization_diagnostics   = .false.
    localization_diagnostics_file     = 'localization_diagnostics'
    convert_all_obs_verticals_first   = .true.
-   convert_all_state_verticals_first = .false.
+   convert_all_state_verticals_first = .true.
    print_every_nth_obs               = 10000
    distribute_mean                   = .false.
    /
@@ -342,6 +395,8 @@
 
 !  : error codes >= TERMLEVEL will cause termination
 !  E_DBG = -2,   E_MSG = -1,  E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
+!  write_nml default is 'file'.
+!    write_nml = 'none'  reduces printed output.
 &utilities_nml
    TERMLEVEL      = 2
    module_details = .false.
@@ -458,7 +513,11 @@
 ! 1000, 925, 850, 700, 600, 500, 400, 300,  250,  200,  150,  100,   70,   50,   30,   20,   10 hPa
 !    +950(MetOffc)     -600(skipped in obs_diag.f90 defaults)   -70 and less skipped in obs_diag.f90
 ! Corresponding heights (assuming a standard atmosphere)
-! 0,  650, 1350, 2900,4100,5480,7090,9080,10280,11700,13520,16100,18358,21060,24640,27480,32330
+! 200,  650, 1350, 2900,4100,5480,7090,9080,10280,11700,13520,16100,18358,21060,24640,27480,32330
+! I've changed the height vertical axis in plot_rmse_xxx* to be logarithmic 
+! in order to make the layers look more like the pressure layers.
+! So the bottom edge can't be 0.
+! The lowest GPS ob is 200, so that's the new lowest edge
 !
 !    plevel = 1000.,925.,850.,700.,500.,400.,300.,250.,200.,150.,100.,50.,20.,10.
 !    hlevel = 1000., 2000., 3000., 4000., 5000., 6000., 7000., 8000., 9000., 10000.,11000.
@@ -481,15 +540,15 @@
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final'
    obs_sequence_list = ''
-   first_bin_center  =  2013, 1, 1, 0, 0, 0
-   last_bin_center   =  2013, 1, 2, 0, 0, 0
+   first_bin_center  =  BOGUS_YEAR, 1, 1, 0, 0, 0
+   last_bin_center   =  BOGUS_YEAR, 1, 2, 0, 0, 0
    bin_separation    =     0, 0, 0, 6, 0, 0
    bin_width         =     0, 0, 0, 6, 0, 0
    time_to_skip      =     0, 0, 1, 0, 0, 0
    max_num_bins      = 1000
    trusted_obs       = 'null'
    plevel_edges = 1035.5, 962.5, 887.5, 775, 600, 450, 350, 275, 225,   175,   125,   75,   35,   15,    2
-   hlevel_edges =      0, 630,   930,  1880,3670,5680,7440,9130,10530,12290, 14650,18220,23560,29490,43000
+   hlevel_edges =    200, 630,   930,  1880,3670,5680,7440,9130,10530,12290, 14650,18220,23560,29490,43000
    Nregions     = 3
    reg_names    = 'Northern Hemisphere', 'Tropics', 'Southern Hemisphere'
    lonlim1      =   0.0,   0.0,   0.0

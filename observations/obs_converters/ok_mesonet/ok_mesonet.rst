@@ -24,7 +24,7 @@ Programs
 --------
 
 The programs in the ``DART/observations/ok_mesonet/`` directory extract data from the distribution files and create DART
-observation sequence (obs_seq) files. Build them in the ``work`` directory by running the ``./quickbuild.csh`` script.
+observation sequence (obs_seq) files. Build them in the ``work`` directory by running the ``./quickbuild.sh`` script.
 In addition to the converters, the ``advance_time`` and ``obs_sequence_tool`` utilities will be built.
 
 The converter is a preliminary version which has no namelist inputs. It has hard-coded input and output filenames. It

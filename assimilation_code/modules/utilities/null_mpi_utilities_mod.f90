@@ -26,25 +26,40 @@ use    utilities_mod, only : error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, finalize_utilities
 use time_manager_mod, only : time_type, set_time
 
-! the NAG compiler needs these special definitions enabled
+! We build on case-insensitive systems so we cannot reliably
+! count on having the build system run the fortran preprocessor
+! since the usual distinction is between bob.F90 and bob.f90
+! to decide what needs preprocessing.  instead we utilize a
+! script we provide called 'fixsystem' which looks for the
+! special XXX_BLOCK_EDIT comment lines and comments the blocks
+! in and out depending on the target compiler.
+
+! the NAG compiler needs these special definitions enabled.
+! the #ifdef lines are only there in case someday we can use
+! the fortran preprocessor.  they need to stay commented out.
 
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!#ifdef __NAG__
- !use F90_unix_proc, only : sleep, system, exit
- !! block for NAG compiler
- !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
- !    INTEGER,INTENT(IN) :: SECONDS
- !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
- !
- !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
- !    CHARACTER*(*),INTENT(IN) :: STRING
- !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
- !
- !!also used in exit_all outside this module
- !  SUBROUTINE EXIT(STATUS)
- !    INTEGER,OPTIONAL :: STATUS
- !! end block
-!#endif
+! !#ifdef __NAG__
+!
+! use F90_unix_proc, only : sleep, system, exit
+!
+! !! NAG only needs the use statement above, but
+! !! these are the calling sequences if you need
+! !! to use these routines additional places in code.
+! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
+! !    INTEGER,INTENT(IN) :: SECONDS
+! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
+! !
+! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
+! !    CHARACTER*(*),INTENT(IN) :: STRING
+! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
+! !
+! !!also used in exit_all outside this module
+! !  SUBROUTINE EXIT(STATUS)
+! !    INTEGER,OPTIONAL :: STATUS
+! !! end block
+!
+!  !#endif
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 
 
@@ -95,7 +110,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
           get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
-          start_mpi_timer, read_mpi_timer, send_sum_to,                      &
+          start_mpi_timer, read_mpi_timer, send_sum_to, get_global_max,      &
           all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 character(len=*), parameter :: source = 'null_mpi_utilities_mod.f90'
@@ -637,6 +652,21 @@ end subroutine get_from_fwd
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+
+!> Collect global max values on each task.
+
+subroutine get_global_max(max)
+
+real(r8), intent(inout)  :: max       !> global max over tasks
+
+! Nothing to do with only one task.
+
+end subroutine get_global_max
+
 
 end module mpi_utilities_mod
 
@@ -659,4 +689,3 @@ subroutine exit_all(exit_code)
    call exit(exit_code)
 
 end subroutine exit_all
-

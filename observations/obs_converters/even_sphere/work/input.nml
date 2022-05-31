@@ -1,0 +1,44 @@
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   quantity_files          = '../../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/land_quantities_mod.f90',
+                             '../../../../assimilation_code/modules/observations/ocean_quantities_mod.f90',
+  obs_type_files           = '../../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_GWD_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   /
+
+
+&obs_kind_nml
+   /
+
+&location_nml
+   /
+
+&obs_def_gps_nml
+   max_gpsro_obs = 10000
+   /
+
+&create_sphere_obs_nml
+   number_of_locations = 25
+   obs_levels          = -1
+   year                = 2012 
+   month               = 5
+   day                 = 1
+   hour                = 0
+   /
+
+&utilities_nml
+   module_details = .false.
+   termlevel      = 2
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+   /
+

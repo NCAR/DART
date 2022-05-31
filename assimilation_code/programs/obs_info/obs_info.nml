@@ -1,0 +1,10 @@
+
+&obs_info_nml
+   filename_in             = ''
+   filelist_in             = ''
+   calendar                = 'Gregorian'
+   filenames_from_terminal = .false.
+   csv_style_output        = .false.
+   output_file             = ''
+   /
+

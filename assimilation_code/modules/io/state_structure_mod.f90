@@ -115,6 +115,7 @@ public :: add_domain,                 &
           get_has_missing_value,      &
           get_FillValue,              &
           get_missing_value,          &
+          get_has_FillValue,          &
           get_add_offset,             &
           get_scale_factor,           &
           set_dart_kinds,             &
@@ -167,6 +168,7 @@ type io_information
    character(len=NF90_MAX_NAME) :: short_name = ' '
    character(len=NF90_MAX_NAME) :: long_name  = ' '
    logical  :: has_missing_value = .false.
+   logical  :: has_FillValue     = .false.
    integer  :: missingINT   = MISSING_I   ! missing values
    real(r4) :: missingR4    = MISSING_R4
    real(r8) :: missingR8    = MISSING_R8
@@ -411,7 +413,7 @@ function add_domain_blank(domain_size) result(dom_id)
 integer(i8), intent(in) :: domain_size
 integer :: dom_id
 
-integer :: domain_offset
+integer(i8) :: domain_offset
 
 ! add to domains
 call assert_below_max_num_domains('add_domain_blank')
@@ -753,10 +755,12 @@ character(len=512) :: ncFilename
 character(len=NF90_MAX_NAME) :: var_name
 character(len=NF90_MAX_NAME) :: cf_long_name, cf_short_name, cf_units
 
+character(len=*), parameter :: routine = 'load_common_cf_conventions'
+
 ncFilename = domain%info_file
 
 ret = nf90_open(ncFilename, NF90_NOWRITE, ncid)
-call nc_check(ret, 'load_common_cf_conventions','nf90_open '//trim(ncFilename))
+call nc_check(ret, routine,'nf90_open '//trim(ncFilename))
 
 ! determine attributes of each variable in turn
 
@@ -765,114 +769,170 @@ nvars = domain%num_variables
 do ivar = 1, nvars
    var_name = domain%variable(ivar)%varname
 
-   call nc_check(nf90_inq_varid(ncid, trim(var_name), VarID), &
-            'load_common_cf_conventions', 'inq_varid '//trim(var_name))
+   ret = nf90_inq_varid(ncid, trim(var_name), VarID)
+   call nc_check(ret, routine, 'inq_varid '//trim(var_name))
 
    ! If the short_name, long_name and/or units attributes are set, get them.
    ! They are not REQUIRED by DART but are nice to keep around if they are present.
 
    if( nf90_inquire_attribute(    ncid, VarID, 'long_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(ncid, VarID, 'long_name' , cf_long_name), &
-                     'load_common_cf_conventions', 'get_att long_name '//trim(var_name))
+      ret = nf90_get_att(ncid, VarID, 'long_name' , cf_long_name)
+      call nc_check(ret, routine, 'get_att long_name '//trim(var_name))
       domain%variable(ivar)%io_info%long_name = cf_long_name
    endif
 
    if( nf90_inquire_attribute(    ncid, VarID, 'short_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(ncid, VarID, 'short_name' , cf_short_name), &
-                     'load_common_cf_conventions', 'get_att short_name '//trim(var_name))
+      ret = nf90_get_att(ncid, VarID, 'short_name' , cf_short_name)
+      call nc_check(ret, routine, 'get_att short_name '//trim(var_name))
       domain%variable(ivar)%io_info%short_name = cf_short_name
    endif
 
    if( nf90_inquire_attribute(    ncid, VarID, 'units') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(ncid, VarID, 'units' , cf_units), &
-                  'load_common_cf_conventions', 'get_att units '//trim(var_name))
+      ret = nf90_get_att(ncid, VarID, 'units' , cf_units)
+      call nc_check(ret, routine, 'get_att units '//trim(var_name))
       domain%variable(ivar)%io_info%units = cf_units
    endif
 
-   ! Saving any FillValue, missing_value attributes.
+   ! Saving any FillValue, missing_value attributes ...
+   ! Also stuff them into the 'r8' slots to facilitate simpler clamp_variable
+   ! implementation. (Since we coerce the DART state to 'r8')
 
    var_xtype = domain%variable(ivar)%io_info%xtype
    select case (var_xtype)
       case ( NF90_INT )
-          if (nf90_get_att(ncid, NF90_GLOBAL, '_FillValue', cf_spvalINT) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalINT       = cf_spvalINT
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ! Sometimes the attributes are specified as GLOBAL attributes
+          ret = nf90_get_att(ncid, NF90_GLOBAL, '_FillValue',    cf_spvalINT)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalINT            = cf_spvalINT
+             domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalINT,r8)
+             domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
-          if (nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalINT) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%missingINT        = cf_spvalINT
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalINT)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingINT          = cf_spvalINT
+             domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalINT,r8)
+             domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
-          if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalINT) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalINT     = cf_spvalINT
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ! Usually the attributes are specified as variable attributes
+          ret = nf90_get_att(ncid, VarID, '_FillValue',          cf_spvalINT)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalINT            = cf_spvalINT
+             domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalINT,r8)
+             domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
-          if (nf90_get_att(ncid, VarID, 'missing_value' , cf_spvalINT) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%missingINT   = cf_spvalINT
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, VarID, 'missing_value',       cf_spvalINT)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingINT          = cf_spvalINT
+             domain%variable(ivar)%io_info%missingR8           = real(cf_spvalINT,r8)
+             domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
 
       case ( NF90_FLOAT )
-          if (nf90_get_att(ncid, NF90_GLOBAL, '_FillValue', cf_spvalR4) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalR4        = cf_spvalR4
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, NF90_GLOBAL, '_FillValue',    cf_spvalR4)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4             = cf_spvalR4
+             domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalR4,r8)
+             domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
-          if (nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR4) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%missingR4         = cf_spvalR4
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR4)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4           = cf_spvalR4
+             domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalR4,r8)
+             domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
-          if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalR4) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalR4      = cf_spvalR4
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, VarID, '_FillValue',          cf_spvalR4)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4             = cf_spvalR4
+             domain%variable(ivar)%io_info%spvalR8             = real(cf_spvalR4,r8)
+             domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
-          if (nf90_get_att(ncid, VarID, 'missing_value' , cf_spvalR4) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%missingR4    = cf_spvalR4
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, VarID, 'missing_value',       cf_spvalR4)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4           = cf_spvalR4
+             domain%variable(ivar)%io_info%missingR8           = real(cf_spvalR4,r8)
+             domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
 
       case ( NF90_DOUBLE )
-          if (nf90_get_att(ncid, NF90_GLOBAL, '_FillValue', cf_spvalR8) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalR8        = cf_spvalR8
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+
+          ! If r8 = r4, 
+          ! the missing_value must be present in both missingR4 and missingR8 
+          ! ditto for _FillValue.
+          ! This satisfies the overloaded operator 'get_missing_value, get_FillValue'
+
+          ret = nf90_get_att(ncid, NF90_GLOBAL, '_FillValue',    cf_spvalR8)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4             = cf_spvalR8
+             domain%variable(ivar)%io_info%spvalR8             = cf_spvalR8
+             domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
-          if (nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR8) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%missingR8         = cf_spvalR8
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR8)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4           = cf_spvalR8
+             domain%variable(ivar)%io_info%missingR8           = cf_spvalR8
+             domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
-          if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalR8) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%spvalR8      = cf_spvalR8
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, VarID, '_FillValue',          cf_spvalR8)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4             = cf_spvalR8
+             domain%variable(ivar)%io_info%spvalR8             = cf_spvalR8
+             domain%variable(ivar)%io_info%has_FillValue       = .true.
           endif
-          if (nf90_get_att(ncid, VarID, 'missing_value' , cf_spvalR8) == NF90_NOERR) then
-             domain%variable(ivar)%io_info%missingR8    = cf_spvalR8
-             domain%variable(ivar)%io_info%has_missing_value = .true.
+          ret = nf90_get_att(ncid, VarID, 'missing_value',       cf_spvalR8)
+          if (ret == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4           = cf_spvalR8
+             domain%variable(ivar)%io_info%missingR8           = cf_spvalR8
+             domain%variable(ivar)%io_info%has_missing_value   = .true.
           endif
 
       case DEFAULT
          write(string1,*) ' unsupported netcdf variable type : ', var_xtype
-         call error_handler(E_ERR, 'load_common_cf_conventions',string1,source)
+         call error_handler(E_ERR,routine,string1,source)
    end select
 
-   !>@todo FIXME : Not using scale factor or offset at the moment. Need to
+   ! If the variable has one or the other, no problem.
+   ! If the variable has both _FillValue and missing_value attributes, the
+   ! values must be the same or we are lost. DART only supports one missing
+   ! value code. When we go to write, we have no way of knowing which value
+   ! to use as a replacement for the DART missing code.
+
+   if ( domain%variable(ivar)%io_info%has_missing_value .and. &
+        domain%variable(ivar)%io_info%has_FillValue ) then
+
+      if ( domain%variable(ivar)%io_info%missingR8 /= &
+           domain%variable(ivar)%io_info%spvalR8 ) then
+
+         write(string1, *) trim(var_name)//' missing_value /= _FillValue '
+         write(string2,*) 'missing_value is ', domain%variable(ivar)%io_info%missingR8 
+         write(string3,*) '_FillValue    is ', domain%variable(ivar)%io_info%spvalR8
+         call error_handler(E_ERR,'set_dart_missing_value:',string1, &
+                source, text2=string2, text3=string3)
+      endif
+
+   endif
+
+   !>@todo FIXME : Not supporting scale factor or offset at the moment, so just error.
+   !>              To fully support netCDF I/O we need to
    !>              pack and unpack the variable if these attributes exist.
    if (nf90_get_att(ncid, VarID, 'scale_factor',   cf_scale_factor) == NF90_NOERR) then
       domain%variable(ivar)%io_info%scale_factor = cf_scale_factor
       write(string1,*) 'scale_factor not supported at the moment'
       write(string2,*) 'contact DART if you would like to get this to work'
-      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,text2=string2)
+      call error_handler(E_ERR,routine,string1,source,text2=string2)
    endif
 
    if (nf90_get_att(ncid, VarID, 'add_offset', cf_add_offset) == NF90_NOERR) then
       domain%variable(ivar)%io_info%add_offset = cf_add_offset
       write(string1,*) 'add_offset not supported at the moment'
       write(string2,*) 'contact DART if you would like to get this to work'
-      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,text2=string2)
+      call error_handler(E_ERR,routine,string1,source,text2=string2)
    endif
 
 enddo
 
 ! close netcdf file
 ret = nf90_close(ncid)
-call nc_check(ret, 'load_common_cf_conventions nf90_close', trim(ncFilename))
+call nc_check(ret, routine, 'nf90_close', trim(ncFilename))
 
 end subroutine load_common_cf_conventions
 
@@ -1391,7 +1451,8 @@ integer, intent(in) :: iloc, jloc, kloc
 integer, intent(in) :: dom_id, var_id
 integer(i8)         :: get_dart_vector_index
 
-integer :: ndims, offset
+integer :: ndims
+integer(i8) :: offset
 integer :: dsize(NF90_MAX_VAR_DIMS)
 
 ndims = get_num_dims(dom_id, var_id)
@@ -1546,7 +1607,8 @@ integer, intent(in) :: dom_id ! domain identifier
 
 integer :: ivar, jdim
 integer :: num_vars, num_dims, variable_size
-integer :: next_start, count_dims
+integer(i8) :: next_start
+integer :: count_dims
 integer(i8) :: domain_offset
 
 if ( state%domain(dom_id)%method /= 'spec') then
@@ -1618,6 +1680,7 @@ character(len=NF90_MAX_NAME) :: dim_name
 integer  :: missingINT, spval_int
 real(r4) :: missingR4,  spval_r4
 real(r8) :: missingR8,  spval_r8
+logical  :: has_missing, has_Fill
 
 if ( .not. do_output() ) return
 
@@ -1654,8 +1717,8 @@ do ivar = 1, num_vars
    write(*,*)         'var_size    : ', get_variable_size(dom_id,ivar)
    write(*,*)         'index_start : ', get_index_start(dom_id,ivar)
    write(*,*)         'index_end   : ', get_index_end(dom_id,ivar)
-   write(*,*)         'kind_string : ', get_kind_string(dom_id,ivar)
-   write(*,'(A,I3)') ' dart_kind   : ', get_kind_index(dom_id,ivar)
+   write(*,*)         'quantity    : ', get_kind_string(dom_id,ivar)
+   write(*,'(A,I3)') ' qty_index   : ', get_kind_index(dom_id,ivar)
    write(*,*)         'clamping    : ', do_io_clamping(dom_id,ivar)
    write(*,*)         'minvalue    : ', get_io_clamping_minval(dom_id,ivar)
    write(*,*)         'maxvalue    : ', get_io_clamping_maxval(dom_id,ivar)
@@ -1683,35 +1746,49 @@ do ivar = 1, num_vars
        write(*,200) jdim, array_ids(jdim), array_lengths(jdim), trim(dim_name)
    enddo
 
-
    if ( state%domain(dom_id)%info_file /= 'NULL' ) then
-      write(*,*) 'CF-Conventions that exist in : ', trim(state%domain(dom_id)%info_file)
       write(*,*) 'units             : ', trim(get_units(dom_id,ivar))
       write(*,*) 'short_name        : ', trim(get_short_name(dom_id,ivar))
       write(*,*) 'long_name         : ', trim(get_long_name(dom_id,ivar))
       write(*,*) 'has_missing_value : ', get_has_missing_value(dom_id,ivar)
-      if (get_has_missing_value(dom_id,ivar)) then
-         select case (get_xtype(dom_id,ivar))
-            case (NF90_INT)
-              call get_missing_value(dom_id,ivar,missingINT)
-              call get_FillValue    (dom_id,ivar,spval_int)
-              write(*,*) 'xtype             : ', 'NF90_INT'
-              write(*,*) 'missing_value     : ', missingINT
-              write(*,*) 'get_FillValue     : ', spval_int
-            case (NF90_FLOAT)
-              call get_missing_value(dom_id,ivar,missingR4)
-              call get_FillValue    (dom_id,ivar,spval_r4)
-              write(*,*) 'xtype             : ', 'NF90_FLOAT'
-              write(*,*) 'missing_value     : ', missingR4
-              write(*,*) 'get_FillValue     : ', spval_r4
-            case (NF90_DOUBLE)
-              call get_missing_value(dom_id,ivar,missingR8)
-              call get_FillValue    (dom_id,ivar,spval_r8)
-              write(*,*) 'xtype             : ', 'NF90_DOUBLE'
-              write(*,*) 'missing_value     : ', missingR8
-              write(*,*) 'get_FillValue     : ', spval_r8
-         end select
-      endif
+      write(*,*) 'has_FillValue     : ', get_has_FillValue(dom_id,ivar)
+
+      has_missing = get_has_missing_value(dom_id,ivar)
+      has_Fill    = get_has_FillValue(    dom_id,ivar)
+
+      select case (get_xtype(dom_id,ivar))
+         case (NF90_INT)
+            write(*,*) 'xtype             : ', 'NF90_INT'
+            if (has_missing) then
+               call get_missing_value(dom_id,ivar,missingINT)
+               write(*,*) 'missing_value     : ', missingINT
+            endif
+            if (has_Fill) then
+               call get_FillValue(    dom_id,ivar,spval_int)
+               write(*,*) '_FillValue        : ', spval_int
+            endif
+         case (NF90_FLOAT)
+            write(*,*) 'xtype             : ', 'NF90_FLOAT'
+            if (has_missing) then
+               call get_missing_value(dom_id,ivar,missingR4)
+               write(*,*) 'missing_value     : ', missingR4
+            endif
+            if (has_Fill) then
+               call get_FillValue(    dom_id,ivar,spval_r4)
+               write(*,*) '_FillValue        : ', spval_r4
+            endif
+         case (NF90_DOUBLE)
+            write(*,*) 'xtype             : ', 'NF90_DOUBLE'
+            if (has_missing) then
+               call get_missing_value(dom_id,ivar,missingR8)
+               write(*,*) 'missing_value     : ', missingR8
+            endif
+            if (has_Fill)    then
+               call get_FillValue(    dom_id,ivar,spval_r8)
+               write(*,*) '_FillValue        : ', spval_r8
+            endif
+      end select
+
    endif
 
    !>@todo FIXME : only storing r8 at the moment since DART is not using these values
@@ -2025,8 +2102,7 @@ end function get_short_name
 
 
 !-------------------------------------------------------------------------------
-!> Return if a variable has a missing value
-
+!> Return .true. if the variable has a 'missing_value' 
 
 function get_has_missing_value(dom_id, var_id)
 
@@ -2037,6 +2113,20 @@ logical :: get_has_missing_value
 get_has_missing_value = state%domain(dom_id)%variable(var_id)%io_info%has_missing_value
 
 end function get_has_missing_value
+
+
+!-------------------------------------------------------------------------------
+!> Return .true. if the variable has a 'FillValue'
+
+function get_has_FillValue(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+logical :: get_has_FillValue
+
+get_has_FillValue = state%domain(dom_id)%variable(var_id)%io_info%has_FillValue
+
+end function get_has_FillValue
 
 
 !-------------------------------------------------------------------------------

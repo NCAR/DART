@@ -22,6 +22,204 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 24 2022 :: New build tools for DART. Tag: v10.0.0**
+
+- mkmf\_ and path_names\_ files replaced with buildfunctions to collect source code.
+- quickbuild.csh replaced with quickbuild.sh
+- developer_tests/build_everything for simultaneous runs of every quickbuild.sh 
+- Several build/compilation related bug fixes
+
+
+**May 23 2022 :: Bug-fix for RTPS inflation flavor. Tag: v9.16.4**
+
+- Order of operations changed to avoid inadvertent changes to ens 
+  when using RTPS.
+
+**May 16 2022 :: Installation documentation update. Tag: v9.16.3**
+
+- Improved installation documentation.
+
+**April 5 2022 :: Bug-fix for NetCDF variables with NaN attributes. Tag: v9.16.2**
+
+- Fix for checking attributes of NetCDF variables that have a NaN as the missing or _FillValue.
+
+**April 1 2022 :: Per-obs-type localization for 3D Cartesian location_mod. Tag: v9.16.1**
+
+- Optional per-obs-type localization for 3D Cartesian location
+
+*Contributed by Jon Labriola for use with CM1*
+
+**March 31 2022 :: MiTgcm-ocean NBLING. Tag: v9.16.0**
+
+- MITgcm-ocean interface updated to Manhattan.
+- Support for NBLING (ocean biogeochemistry) for MITgcm-ocean.
+- New observation converter for ocean color.
+
+**March 22 2022 :: CLM5-DART Tutorial. Tag: v9.15.0**
+
+- New CLM5-DART tutorial providing new users with 13 steps
+  for download, setup, execution, and diagnosis of a simple 
+  global assimilation run.
+- Stage_cesm_files script corrected to re-stage prior inflation
+  files correctly and provide reproducibility
+
+
+**March 10 2022 :: Tracer advection model. Tag v9.14.0**
+
+- New model for tracer advection based on Lorenz_96 using a
+  Semi-Lagrangian scheme. 
+- Forward operator documentation updated to Manhattan
+
+*lorenz_96_tracer_advection contributed by Fairuz Ishraque (SIParCS)*
+
+**February 11 2022 :: Bug-fix for nag compiler. Tag v9.13.2**
+
+- Bug-fix for fixsystem preprocessing for NAG compiler
+
+**February 7 2022 :: CM1 and 3D Cartesian location_mod updates. Tag v9.13.1**
+
+*Contributed by Jon Labriola*
+
+- Updated CM1 model_mod to use mixed-case boundary conditions, for example
+  periodic in the x-direction but non-periodic in the y-direction.
+- Added capability to CM1 model_mod to interpolate 3D fields such as reflectivity.  
+- Added capability to use multiple localization radii to threed_cartisian
+  location_mod.
+- Bug-fix for threed_cartesian location_mod for periodic boundaries.
+
+**February 3 2022 :: CLM with SWE repartitioning. Tag: v9.13.0** 
+
+- Updated Community Land Model (CLM) model_mod, scripting, and diagnostics.
+- New capability to repartition snow layer mass and dimension variables.
+  The repartitioning ensures that the adjustments applied to the snow layers
+  are consistent (mass and dimensions are conserved) with the adjustment of
+  the total snow water equivalent.
+- New observation converters for NASA_Earthdata and NSIDC
+- Support for netcdf _FillValue
+- Bug-fix for clm nc_write_model_atts lon vs nlon
+
+**January 11 2022 :: Bug fix for inflation namelist options. Tag: v9.12.1**
+
+- reverted inf_flavor namelist option to be integer only to conform to Fortran
+  standards. 
+
+**December 7 2021 :: Refactored filter_assim. Tag: v9.12.0**
+
+- Filter_assim refactored so each process calcuates increments
+- Code readability changes 
+
+**November 22 2021 :: Bug fix for groups with posterior spatially-varying adaptive inflation. Tag: v9.11.13**
+
+- Removed the additional outlier threshold test for each group when using posterior 
+  spatially-varying adaptive inflation. The outlier test is done for the entire ensemble
+  when the posterior forward operators are computed.
+
+**October 27 2021 :: Observation converter documentation update. Tag: v9.11.12**
+
+- Improved documentation for radar observation converters
+
+**September 30 2021 :: Bug fix for very large models. Tag v9.11.11**
+
+- mpi_utilties_mod using correct check for message length > SNDRCV_MAXSIZE
+- new developers test for large message sizes
+- State vector IO updated to use i8 for state indexing
+- WRF model_mod now using i8  
+
+**September 21 2021 :: Bug fix for perfect_model_obs. Tag v9.11.10**
+
+- perfect_model_obs now exits cleanly when no filenames are given
+  for the input_state_files or output_state_files namelist options. 
+
+**August 30 2021 :: Repository clean-up and DART registration form. Tag: v9.11.9**
+
+*removed obsolete code:*
+
+- cam-old
+- restart_file_tool
+- html boilerplate from pre-readthedocs documentation
+- null versions of clamp_mod and vert_convert_mod
+- io test harnesses
+- jekyll website
+
+*removed experimental code:*
+
+- pnetcdf (for restart files)
+- filter.separate_seq (split obs_seq across cores)
+
+**August 26 2021 :: NAG compiler fixes and updates to developer tests Tag: v9.11.8**
+
+- bug fix for fixsytem for the NAG compiler
+- new developer test for mpi one-sided communication
+- removed obsolete async 4 developer tests 
+
+**August 19 2021 :: WRF-Hydro diagnostics Tag: v9.11.7**
+
+- Improved DART diagnostic routines for WRF-Hydro
+
+**August 10 2021 :: Documentation and GitHub template update Tag: v9.11.6**
+
+- External forward operator documentation
+- Typo fixes for GitHub templates 
+
+**August 5 2021 :: bug fix for obs_seq_to_netcdf and grabbufr.x Tag: v9.11.5**
+
+- obs_seq_to_netcdf now works correctly with mulitple obs_seq per epoch.
+- grabbufr.x STAT function returns correctly for long filenames when using PGI
+
+**July 23 2021 :: bug fix for wrf non-initialized unique levels. Tag: v9.11.4**
+
+- The array uniquek is now initialized to an invalid level to prevent random
+  reasonable level values in the array.
+
+**June 24 2021 :: bug fix for cam-fv model_interpolate. Tag: v.9.11.3**
+
+- cam-fv model_interpolate now passes the correct array slice of quad_vals
+  to quad_lon_lat_evaluate
+
+**June 24 2021 :: latest version of local particle filter.  Tag: v9.11.2**
+
+- latest version of particle filter from Jon Potterjoy
+- new mpi routine get_global_max
+
+**June 18 2021 :: build fixes for PGI compiler and intel compiler osx. Tag: v9.11.1**
+
+- mkmf.templates fixes for intel.osx and pgi
+- input.nml fix for obs_total_error
+- path_names fix for test_quad_*_interp 
+
+**June 8 2021 :: New observation converter for Solar Induced Fluorescence (SIF).  Tag: v9.11.0**
+
+- Converter for harmonized SIF retrievals
+
+**Jun 7 2021 :: fix typos in POP documentation Tag: v9.10.6**
+
+- fix some spelling mistakes, does not change meaning.
+
+**May 18 2021 :: updated process to generate obs on a sphere.  Tag: v9.10.5**
+
+- Matlab scripts and new scripts for cam-fv make it simpler to
+  generate synthetic observations evenly spaced around the sphere.
+- Moved create_sphere_obs into the even_sphere directory.
+
+**May 10 2021 :: obs_info support for identity obs Tag: v9.10.4**
+
+- programs/obs_utils/obs_info.f90 now supports reporting identity obs
+
+**May 6 2021 :: fix AMSUA converter bug. Tag: v9.10.3**
+
+- AIRS/convert_amsu_L1.f90 correctly handles multiple input files 
+- separated AIRS/README, convert_amsu_L1, and convert_airs_L2 documentation
+
+**May 4 2021 :: issue and pull request templates.  Tag: v9.10.2**
+
+*Github changes*
+
+- Templates for pull requests, bug reports and feature requests
+
+*Documentation updates*
+
+- Removed outdated instructions for checking out a tag
+
 **April 29 2021 :: change default GitHub branch. Tag: v9.10.1**
 
 - Replaced the default branch ("Manhattan") with "main".
