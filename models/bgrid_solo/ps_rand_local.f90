@@ -85,7 +85,7 @@ do while(num_done < num)
    write(iunit, '(F6.1)') top_lat
 
    ! Time is 0 days and 0 seconds for create_obs_sequence base
-   write(iunit, '(I1)') 0, 0
+   write(iunit, *) 0, 0
 
    ! Error variance
    write(iunit, '(F5.1)') err_var
