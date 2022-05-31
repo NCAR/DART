@@ -36,7 +36,7 @@
 &filter_nml
    single_file_in               = .false.,
    input_state_files            = ''
-   input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt', 'dummy.txt'
+   input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt'
    init_time_days               = 153131,
    init_time_seconds            = 0,
    perturb_from_single_instance = .true.,
@@ -46,7 +46,7 @@
 
    single_file_out              = .false.,
    output_state_files           = ''
-   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt', 'params.txt'
+   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt'
    output_interval              = 1,
    output_members               = .true.
    num_output_state_members     = 0,
