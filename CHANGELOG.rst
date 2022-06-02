@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 2 2022 :: Bug-fixes for ps_rand_local in the Bgrid Model. Tag: v10.0.1**
+
+- performs the missing call for initialize_utilities() 
+- fixes improper formatting when writing into ps_rand.out
+
+
 **May 24 2022 :: New build tools for DART. Tag: v10.0.0**
 
 - mkmf\_ and path_names\_ files replaced with buildfunctions to collect source code.
