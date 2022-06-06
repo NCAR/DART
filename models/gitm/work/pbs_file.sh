@@ -61,7 +61,7 @@ if [ $bui -eq 1 ]; then
     else #estimate f107
 	sed -i'.tmp' 's/dist(k) =.*!changed.*/dist(k) = 0 !changed by pbs_file script/' ../model_mod.f90 #every obs is exactly very close to the f107 location
     fi
-    ./quickbuild.csh  || exit 2
+    ./quickbuild.sh  || exit 2
 fi
 
 echo 'pbs_file.sh: start' `date` 
