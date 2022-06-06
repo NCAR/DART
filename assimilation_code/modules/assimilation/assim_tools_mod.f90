@@ -2684,7 +2684,7 @@ else
 endif
 
 ! Test to set the close_obs_caching to false after the first run. 
-close_obs_caching = .false.
+! close_obs_caching = .false.
 
 end subroutine get_close_state_cached
 
