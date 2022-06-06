@@ -1361,12 +1361,12 @@ if ( .not. module_initialized ) call static_init_model
 
 read_model_time = model_time
 
-!if (do_output() .and. debug > 0 .and. present(last_time)) then
+if (do_output()) then
    call print_time(read_model_time, str='MITgcm_ocean time is ',iunit=logfileunit)
    call print_time(read_model_time, str='MITgcm_ocean time is ')
    call print_date(read_model_time, str='MITgcm_ocean date is ',iunit=logfileunit)
    call print_date(read_model_time, str='MITgcm_ocean date is ')
-!endif
+endif
 
 end function read_model_time
 
