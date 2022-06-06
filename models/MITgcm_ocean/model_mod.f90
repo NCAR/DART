@@ -1323,7 +1323,7 @@ VARIABLES : do ivar = 1, get_num_variables(domain_id)
 
    clamp_min_val = get_io_clamping_minval(domain_id, ivar)
 
-   INDICES : do i = start_ind, end_ind
+   INDICES : do i = 1, state_ens_handle%my_num_vars
       MEMBERS : do copy = 1, ens_size
 
          ! Only perturb the actual ocean cells;
