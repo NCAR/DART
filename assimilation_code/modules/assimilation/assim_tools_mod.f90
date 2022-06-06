@@ -373,6 +373,7 @@ logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
+logical :: close_obs_caching_init
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -396,6 +397,9 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
 
 ! Initialize assim_tools_module if needed
 if (.not. module_initialized) call assim_tools_init()
+
+!EL Record down the initial value of close_obs_caching after initialization
+close_obs_caching_init = close_obs_caching
 
 !HK make window for mpi one-sided communication
 ! used for vertical conversion in get_close_obs
@@ -698,7 +702,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call  get_close_state_cached(gc_state, base_obs_loc, base_obs_type,      &
       my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
       ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
-      last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
+      last_close_state_dist, num_close_states_cached, num_close_states_calls_made, my_num_state)
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
 
    ! Loop through to update each of my state variables that is potentially close
@@ -785,7 +789,16 @@ endif
 
 ! diagnostics for stats on saving calls by remembering obs at the same location.
 ! change .true. to .false. in the line below to remove the output completely.
+
+! EL: 
+if (close_obs_caching_init) then
+   if (num_close_obs_cached == 0 .or. num_close_states_cached == 0) then
+      print *, "No observations or states was cached. Setting close_obs_caching = .false. may significantly improve the runtime"
+   endif
+endif
+
 if (close_obs_caching) then
+
    if (num_close_obs_cached > 0 .and. do_output()) then
       print *, "Total number of calls made    to get_close_obs for obs/states:    ", &
                 num_close_obs_calls_made + num_close_states_calls_made
@@ -2623,7 +2636,7 @@ end subroutine get_close_obs_cached
 subroutine get_close_state_cached(gc_state, base_obs_loc, base_obs_type, &
    my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
    ens_handle, last_base_states_loc, last_num_close_states, last_close_state_ind,               &
-   last_close_state_dist, num_close_states_cached, num_close_states_calls_made)
+   last_close_state_dist, num_close_states_cached, num_close_states_calls_made, my_num_state)
 
 type(get_close_type),          intent(in)    :: gc_state
 type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
@@ -2637,6 +2650,7 @@ integer, intent(inout) :: last_num_close_states
 integer, intent(inout) :: last_close_state_ind(:)
 real(r8), intent(inout) :: last_close_state_dist(:)
 integer, intent(inout) :: num_close_states_cached, num_close_states_calls_made
+integer                :: my_num_state    ! Number of either states or observations
 
 ! This logic could be arranged to make code less redundant
 if (.not. close_obs_caching) then
@@ -2660,7 +2674,17 @@ else
       last_close_state_dist(:) = close_state_dist(:)
       num_close_states_calls_made = num_close_states_calls_made +1
    endif
+! EL Check if too few states are cached. If so, turn off close_obs_caching for the user.
+   if ( num_close_states_calls_made > my_num_state / 10.0_r8 ) then
+      if ( num_close_states_cached / num_close_states_calls_made <= 0.05_r8 ) then
+          print *, "Too few states are cached, turning off close_obs_caching"
+          close_obs_caching = .false.
+      endif
+   endif
 endif
+
+! Test to set the close_obs_caching to false after the first run. 
+close_obs_caching = .false.
 
 end subroutine get_close_state_cached
 
