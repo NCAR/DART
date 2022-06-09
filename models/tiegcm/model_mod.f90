@@ -1777,14 +1777,13 @@ end subroutine find_qty_in_state
 ! find enclosing lon indices
 ! Compute bracketing lon indices:
 ! TIEGCM [-180 175]  DART [180, 185, ..., 355, 0, 5, ..., 175]
-! HK in read_TIEGCM_definition the longitudes are converted to 0 to 360
 subroutine compute_bracketing_lon_indices(lon, idx_below, idx_above, fraction)
 
 real(r8), intent(in)  :: lon ! longitude
 integer,  intent(out) :: idx_below, idx_above ! index in lons()
 real(r8), intent(out) :: fraction ! fraction to use for interpolation
 
-if(lon > top_lon .and. lon < bot_lon) then     ! at wraparound point [175 < lon < 180]
+if(lon >= top_lon .and. lon < bot_lon) then     ! at wraparound point [175 <= lon < 180]
    idx_below = nlon
    idx_above = 1
    fraction = (lon - top_lon) / delta_lon
@@ -2026,15 +2025,14 @@ end subroutine vert_interp_lev
 
 !-------------------------------------------------------------------------------
 ! Compute neighboring lat rows: TIEGCM [-87.5, 87.5] DART [-90, 90]
-! HK note from model_interpolate: What should be done?
-! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE IS NOT GREAT!
+! Poles >|87.5| set to |87.5| 
 subroutine compute_bracketing_lat_indices(lat, idx_below, idx_above, fraction)
 
 real(r8), intent(in)  :: lat ! latitude
 integer,  intent(out) :: idx_below, idx_above ! index in lats()
 real(r8), intent(out) :: fraction ! fraction to use for interpolation
 
-if(lat >= bot_lat .and. lat <= top_lat) then ! -87.5 <= lat <= 87.5
+if(lat >= bot_lat .and. lat < top_lat) then ! -87.5 <= lat < 87.5
    idx_below = int((lat - bot_lat) / delta_lat) + 1
    idx_above = idx_below + 1
    fraction = (lat - lats(idx_below) ) / delta_lat
@@ -2042,7 +2040,7 @@ else if(lat < bot_lat) then ! South of bottom lat
    idx_below = 1
    idx_above = 1
    fraction = 1.0_r8
-else                        ! North of top lat
+else                        ! On or North of top lat
    idx_below = nlat
    idx_above = nlat
    fraction = 1.0_r8
