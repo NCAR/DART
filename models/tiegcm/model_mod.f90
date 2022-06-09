@@ -597,6 +597,7 @@ integer, intent(in)  :: dom_id
 character(len=70), allocatable, dimension(:) :: textblock
 integer :: nlines, linelen
 logical :: has_tiegcm_namelist
+real(r8), allocatable :: temp_lons(:)
 
 character(len=*), parameter :: routine = 'nc_write_model_atts'
 
@@ -675,11 +676,15 @@ call nc_end_define_mode(ncid, routine)
 
 ! Fill in the coordinate variables
 
-where (lons >= 180.0_r8) lons = lons - 360.0_r8
-call nc_put_variable(ncid, 'lon',  lons,  routine)
+! longitude - TIEGCM uses values +/- 180, DART uses values [0,360]
+allocate(temp_lons(nlon))
+temp_lons = lons
+where (temp_lons >= 180.0_r8) temp_lons = temp_lons - 360.0_r8
+call nc_put_variable(ncid, 'lon',  temp_lons,  routine)
 call nc_put_variable(ncid, 'lat',  lats,  routine)
 call nc_put_variable(ncid, 'lev',  all_levs,   routine)
 call nc_put_variable(ncid, 'ilev', ilevs,  routine)
+deallocate(temp_lons)
 
 ! Fill tiegcm in namelist variable
 if (has_tiegcm_namelist) then
