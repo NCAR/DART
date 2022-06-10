@@ -792,7 +792,7 @@ endif
 
 ! EL: 
 if (close_obs_caching_init) then
-   if (num_close_obs_cached == 0 .or. num_close_states_cached == 0) then
+   if ( ( num_close_obs_cached == 0 .or. num_close_states_cached == 0 ) .and. (do_output()) ) then
       print *, "No observations or states was cached. Setting close_obs_caching = .false. may significantly improve the runtime"
    endif
 endif
@@ -2677,7 +2677,9 @@ else
 ! EL Check if too few states are cached. If so, turn off close_obs_caching for the user.
    if ( num_close_states_calls_made > my_num_state / 10.0_r8 ) then
       if ( num_close_states_cached / num_close_states_calls_made <= 0.05_r8 ) then
-          print *, "Too few states are cached, turning off close_obs_caching"
+          if (do_output()) then
+              print *, "Too few states are cached, turning off close_obs_caching"
+          endif
           close_obs_caching = .false.
       endif
    endif
