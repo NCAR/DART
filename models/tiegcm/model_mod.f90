@@ -116,9 +116,7 @@ character(len=128), parameter :: revdate  = ''
 !-------------------------------------------------------------------------------
 ! namelist with default values
 
-! IMPORTANT: Change output file names in tiegcm.nml to match these names
-! i.e.  OUTPUT='tiegcm_restart_p.nc'
-!       SECOUT='tiegcm_s.nc'
+
 character(len=256) :: tiegcm_restart_file_name   = 'tiegcm_restart_p.nc'
 character(len=256) :: tiegcm_secondary_file_name = 'tiegcm_s.nc'
 character(len=256) :: tiegcm_namelist_file_name  = 'tiegcm.nml'
@@ -1352,7 +1350,7 @@ character(len=NF90_MAX_NAME) :: maxvalstring
 character(len=NF90_MAX_NAME) :: filename
 character(len=NF90_MAX_NAME) :: state_or_aux
 
-nrows = size(variable_table,1) !HK these are MAX_NUM_VARIABLES, MAX_NUM_COLUMNS
+nrows = size(variable_table,1) ! these are MAX_NUM_VARIABLES, MAX_NUM_COLUMNS
 ncols = size(variable_table,2)
 
 ! Convert the (input) 1D array "variables" into a table with six columns.
@@ -1362,7 +1360,7 @@ ncols = size(variable_table,2)
 ! Column 2 is the corresponding DART kind.
 ! Column 3 is the minimum value ("NA" if there is none) Not Applicable
 ! Column 4 is the maximum value ("NA" if there is none) Not Applicable
-! Column 5 is the file of origin 'restart' or 'secondary' or 'calculate'
+! Column 5 is the file of origin tiegcm 'restart' or 'secondary'
 ! Column 6 is whether or not the variable should be updated in the restart file.
 
 nfields = 0
@@ -1404,7 +1402,6 @@ ROWLOOP : do i = 1, nrows
    nfields=nfields+1
    if (variable_table(i,VT_ORIGININDX) == 'RESTART') nfields_restart = nfields_restart+1
    if (variable_table(i,VT_ORIGININDX) == 'SECONDARY') nfields_secondary = nfields_secondary+1
-   if (variable_table(i,VT_ORIGININDX) == 'CALCULATE') nfields_constructed = nfields_constructed+1
 
 enddo ROWLOOP
 
@@ -1442,8 +1439,8 @@ if (do_output() .and. (debug > 99)) then
 endif
 
 
-call load_up_state_structure_from_file('tiegcm_restart_p.nc', nfields_restart, 'RESTART', RESTART_DOM)
-call load_up_state_structure_from_file('tiegcm_s.nc', nfields_secondary, 'SECONDARY', SECONDARY_DOM)
+call load_up_state_structure_from_file(tiegcm_restart_file_name, nfields_restart, 'RESTART', RESTART_DOM)
+call load_up_state_structure_from_file(tiegcm_secondary_file_name, nfields_secondary, 'SECONDARY', SECONDARY_DOM)
 if (estimate_f10_7) then
    call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
    model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
@@ -1509,12 +1506,12 @@ deallocate(var_names, kind_list, clamp_vals, update_list)
 
 end subroutine load_up_state_structure_from_file
 !-------------------------------------------------------------------------------
-! calculated variables do not have a netcdf file
-! HK or do they? What happens for multiple assimilation cycles?
+! f10_7 is the only calculated variable
+! May have a netcdf file, or may be initialized
 subroutine load_up_calculated_variables(nvar, domain_name, domain_num)
 
 integer,          intent(in) :: nvar ! number of variables in domain
-character(len=*), intent(in) :: domain_name ! restart, secondary
+character(len=*), intent(in) :: domain_name ! calculate
 integer,          intent(in) :: domain_num
 
 integer :: i,j
@@ -1552,7 +1549,7 @@ enddo
 domain_id(domain_num) = add_domain(nvar, var_names, &
        kind_list, clamp_vals, update_list, init_parameter_estimate=initialize_f10_7)
 
-do i = 1, nvar ! HK f10_7
+do i = 1, nvar
   if (var_names(i) == 'f10_7') then
     ! dimensions to match what? Lanai has single value f10_7
     call add_dimension_to_variable(domain_id(domain_num), i, 'parameter', 1)

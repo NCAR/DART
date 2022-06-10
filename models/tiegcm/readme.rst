@@ -57,7 +57,6 @@ namelist.
                   'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'secondary',  'NO_COPY_BACK',
                   'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'secondary',  'NO_COPY_BACK',
                   'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
-                  'VTEC',  'QTY_VERTICAL_TEC',              'NA',      'NA',      'calculate',  'NO_COPY_BACK'
       /
 
 
@@ -65,9 +64,9 @@ namelist.
 +-----------------------------+----------------------+---------------------------------------+
 | Namelist entry              | Type                 | Description                           |
 +=============================+======================+=======================================+
-| tiegcm_restart_file_name    | character(len=256)   | The TIEGCM restart file name.         |
+| tiegcm_restart_file_name    | character(len=256)   | The TIEGCM restart template           |
 +-----------------------------+----------------------+---------------------------------------+
-| tiegcm_secondary_file_name  | character(len=256)   | The TIEGCM secondary file name.       |
+| tiegcm_secondary_file_name  | character(len=256)   | The TIEGCM secondary template         |
 +-----------------------------+----------------------+---------------------------------------+
 | tiegcm_namelist_file_name   | character(len=256)   | The TIEGCM namelist file name.        |
 +-----------------------------+----------------------+---------------------------------------+
@@ -122,7 +121,7 @@ namelist.
 
 ::
 
-      variables = 'NAME', 'QTY', 'MIN', 'MAX', 'restart', 'UPDATE'
+      variables = 'NAME', 'QTY', 'MIN', 'MAX', 'FILE', 'UPDATE'
 
 
 ``NAME`` The variable name in the TIEGCM netCDF file. 
@@ -133,9 +132,9 @@ namelist.
 
 ``MAX`` The a maximum bound (if any) for the variable.  
 
-``FILE`` The netcdf file containing the variable
+``FILE`` The tiegcm netcdf file containing the variable. 'restart' or 'secondary'
 
-``UPDATE`` filter will update the variable in the TIEGCM restart file. Use ``NO_COPY_BACK`` to prevent
+``UPDATE`` filter will update the variable in the TIEGCM netcdf file. Use ``NO_COPY_BACK`` to prevent
 filter from updating the variable.
 
 
