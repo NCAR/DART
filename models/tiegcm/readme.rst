@@ -42,11 +42,11 @@ namelist.
    &model_nml 
       tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
       tiegcm_secondary_file_name  = 'tiegcm_s.nc'
-      tiegcm_namelist_file_name   = 'tiegcm.nml'
       model_res                   = 5.0
       assimilation_period_seconds = 3600
       estimate_f10_7              = .false.
       initialize_f10_7            = .false.
+      f10_7                       = 74.0
       debug                       = 0
       variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
                   'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
@@ -68,9 +68,8 @@ namelist.
 +-----------------------------+----------------------+---------------------------------------+
 | tiegcm_secondary_file_name  | character(len=256)   | The TIEGCM secondary template         |
 +-----------------------------+----------------------+---------------------------------------+
-| tiegcm_namelist_file_name   | character(len=256)   | The TIEGCM namelist file name.        |
-+-----------------------------+----------------------+---------------------------------------+
 | model_res                   | real(r8)             | TIEGCM model resolution 5.0 or 2.5    |
+|                             |                      | degrees                               |
 +-----------------------------+----------------------+---------------------------------------+
 | assimilation_period_seconds | integer              | This specifies the width of the       |
 |                             |                      | assimilation window. The current      |
@@ -104,7 +103,7 @@ namelist.
 | initialize_f10_7            | logical              | If ``estimate_f107=.true.``           |
 |                             |                      | ``initialize_f10_7=.true.``           |
 |                             |                      | initializes f10.7 with the value from |
-|                             |                      | tiegcm namelist.                      |
+|                             |                      | the model_nml namelist.               |
 |                             |                      | ``initialize_f10_7=.false.`` reads    |
 |                             |                      | f10.7 from a netcdf file              | 
 +-----------------------------+----------------------+---------------------------------------+
