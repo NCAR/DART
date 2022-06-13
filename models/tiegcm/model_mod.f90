@@ -29,7 +29,7 @@ use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,    
                              operator(/=), operator(<=)
 
 use     location_mod, only : location_type,                                         &
-                             loc_get_close_obs => get_close_obs,                    &
+                             get_close_obs,                                         &
                              loc_get_close_state => get_close_state,                &
                              set_location, get_location,                            &
                              get_dist, query_location,                              &
@@ -658,9 +658,9 @@ do k = 1,num_close
    q_ind  = close_ind(k)
    if (loc_qtys(q_ind) == QTY_GEOMETRIC_HEIGHT) then
       if (do_output() .and. (debug > 99)) then
-         write(     *     ,*)'get_close_obs ZG distance is ', &
+         write(     *     ,*)'get_close_state ZG distance is ', &
                      dist(k),' changing to ',10.0_r8 * PI
-         write(logfileunit,*)'get_close_obs ZG distance is ', &
+         write(logfileunit,*)'get_close_state ZG distance is ', &
                      dist(k),' changing to ',10.0_r8 * PI
       endif
       dist(k) = 10.0_r8 * PI
@@ -687,38 +687,6 @@ endif
 
 end subroutine get_close_state
 
-!-------------------------------------------------------------------------------
-
-
-subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind, dist, state_handle)
-! Given a DART ob (referred to as "base") and a set of obs priors or
-! state variables returns the subset of close ones to the "base" ob, their
-! indices, and their distances to the "base" ob...
-
-! For vertical distance computations, general philosophy is to convert all
-! vertical coordinates to a common coordinate.
-! FOR NOW VERTICAL LOCALIZATION IS DONE ONLY IN HEIGHT (ZG)
-! OBS VERTICAL LOCATION IS GIVEN IN HEIGHT (model_interpolate)
-! STATE VERTICAL LOCATION IS GIVEN IN HEIGHT
-
-! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
-! locations are possibly modified here and returned as such to the calling
-! routine. The calling routine is always filter_assim and these arrays are local
-! arrays within filter_assim. In other words, these modifications will only
-! matter within filter_assim, but will not propagate backwards to filter.
-
-type(get_close_type),          intent(in)     :: gc
-type(location_type),           intent(inout)  :: base_loc, locs(:)
-integer,                       intent(in)     :: base_type, loc_qtys(:), loc_types(:)
-integer,                       intent(out)    :: num_close, close_ind(:)
-real(r8),            optional, intent(out)    :: dist(:)
-type(ensemble_type), optional, intent(in)     :: state_handle
-
-call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                       num_close, close_ind, dist)
-
-end subroutine get_close_obs
 
 !-------------------------------------------------------------------------------
 
