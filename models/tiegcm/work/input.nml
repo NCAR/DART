@@ -123,11 +123,10 @@
 # 2: DART KIND
 # 3: minimum value - as a character string - if none, use 'NA'
 # 4: maximum value - as a character string - if none, use 'NA'
-# 5: what file contains the variable - anything from 'restart' also gets UPDATED BY DART.
-# 6: does the variable get updated in the restart file or not ...
-#    only variables from restart files may be updated.
-#    'UPDATE' =>        update the variable in the restart file
-#    'NO_COPY_BACK' => do not update the variable in the restart file
+# 5: which tiegcm netcdf file contains the variable - restart or secondary
+# 6: does the updated variable  
+#    'UPDATE' =>       updated variable written to file
+#    'NO_COPY_BACK' => variable not written to file
 #    all these variables will be updated INTERNALLY IN DART.
 #
 # This is an example of how to restrict the range of each variable
@@ -146,13 +145,11 @@
 #              'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',   'NO_COPY_BACK',
 #              'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',   'NO_COPY_BACK',
 #              'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary', 'NO_COPY_BACK',
-#              'VTEC',  'QTY_VERTICAL_TEC',              'NA',      'NA',      'calculate'  'NO_COPY_BACK' 
 
 &model_nml
    debug                       = 1
    tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
    tiegcm_secondary_file_name  = 'tiegcm_s.nc'
-   tiegcm_namelist_file_name   = 'tiegcm.nml'
    assimilation_period_seconds = 3600
    estimate_f10_7              = .false.
    initialize_f10_7            = .false.
@@ -318,17 +315,17 @@
 
 &model_mod_check_nml
    input_state_files     = "tiegcm_restart_p.nc", "tiegcm_s.nc"
-   output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc", "params.nc"
-   test1thru             = 4
+   output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc"
+   test1thru             = 7
    run_tests             = 0,1,2,3,4,5,7
    x_ind                 = 1
    loc_of_interest       = 240.0, 12.49, 200000.0
    quantity_of_interest  = 'QTY_DENSITY_ION_OP'
-   interp_test_dlon      = 0.1
-   interp_test_dlat      = 0.1
+   interp_test_dlon      = 5 
+   interp_test_dlat      = 5 
    interp_test_dvert     = 50000.0
-   interp_test_lonrange  = 205.0,  226.0
-   interp_test_latrange  = 30.0,   47.0
+   interp_test_lonrange  = 0,  360 
+   interp_test_latrange  = -87.5,   87.5
    interp_test_vertrange = 200000.0, 300000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .false.
