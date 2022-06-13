@@ -81,6 +81,8 @@ use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute, &
                                  nc_define_real_variable, nc_define_character_variable, &
                                  nc_check
 
+use dart_time_io_mod,     only : write_model_time
+
 use netcdf
 
 implicit none
@@ -871,15 +873,6 @@ endif
 
 end function read_model_time
 
-!-------------------------------------------------------------------------------
-subroutine write_model_time(ncid, dart_time)
-
-integer,         intent(in) :: ncid
-type(time_type), intent(in) :: dart_time
-
-
-
-end subroutine write_model_time
 
 !===============================================================================
 ! Routines below here are private to the module
