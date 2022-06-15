@@ -153,6 +153,9 @@ convert_gpsro_bufr
 SMAP_L2_to_obs
 convert_sat_chl
 ssec_satwnd
+gts_to_dart
+littler_tf_dart
+rad_3dvar_to_dart
 
 # Test programs built by developer_tests
 rttov_test
