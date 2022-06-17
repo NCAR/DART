@@ -6,8 +6,8 @@
 
 Before building the executables in the work directory you 
 will need to copy some of the WRF distribution files into 
-this directory.  The files listed below are what is needed 
-with WRFDA v3.2.1 (the current release at this time).
+this directory (DART/observations/obs_converters/var/3DVAR_OBSPROC).  The files listed below are what is needed 
+with WRFDA v3.2.1 (the current release at this time). The files can be found here: [](https://github.com/wrf-model/WRF/tree/master/var/obsproc/MAP_plot)
 
 From WRF/var/obsproc/MAP_plot/Dir_map, copy to here:
 
