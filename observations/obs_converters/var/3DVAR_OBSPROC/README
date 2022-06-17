@@ -18,7 +18,7 @@ DA_Read_Obs_Info.inc
 DA_Setup_Obs_Structures.inc
 module_obs.F90
 
-As well as from WRFDA/var/obsproc/MAP_plot/include, copy to here:
+As well as from WRF/var/obsproc/MAP_plot/include, copy to here:
 
 maps.incl
 nestdmn.incl
