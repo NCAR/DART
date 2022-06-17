@@ -4,11 +4,11 @@
 Overview
 --------
 
-The programs in this directory help convert data which is 
+The programs in the ``obs_converters/var`` directory help convert data which is 
 formatted for input into the 3DVAR/4DVAR programs into DART
 obs_seq observation files.
 
-This directory contains conversion programs for various
+The directory contains conversion programs for various
 obs formats related to 3D-Var, WRF-Var, and MM5:
 
 - :doc:`./littler_tf_dart` to and back from little-r format, temperature and winds only.
