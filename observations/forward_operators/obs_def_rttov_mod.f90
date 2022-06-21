@@ -1571,7 +1571,7 @@ if (present(opts_scatt)) then
 
    do i=1,nch
       use_chan(:,:) = .FALSE._jplm
-      makes problems when compiling, i dont need this part of the code anyway
+
       if (size(sensor % channels) /= 0) then
          ich = sensor % channels(i)
       else
@@ -1585,6 +1585,7 @@ if (present(opts_scatt)) then
 
       ! Populate chanprof and frequencies arrays for this one channel
       call rttov_scatt_setupindex (                    &
+            errorstatus=errorstatus,                   &
             nprofiles=ens_size,                        &
             n_chan=runtime % coefs % coef % fmv_chn,   &
             coef_rttov=runtime % coefs,                &
