@@ -2265,10 +2265,10 @@ DO imem = 1, ens_size
    else if (is_mw) then
       ! RTTOV-SCATT, add MW clouds
       if (allocated(clouds % cfrac)) then
-         runtime % cld_profiles(imem) % cc(:) = min(max(clouds % cfrac(imem, lvlidx),0.0_r8),1.0_r8)
+         ! Not implemented. Since opts_scatt%lusercfrac=.true., we let RTTOV calculate CFRAC.
       else
          ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
-         runtime % cld_profiles(imem) % cc(:) = 1.0_jprb
+         runtime % cld_profiles(imem) % cfrac = 1.0_jprb
       end if
 
 
