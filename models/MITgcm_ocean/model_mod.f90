@@ -1331,9 +1331,7 @@ INDICES : do i = 1, state_ens_handle%my_num_vars
                                       model_perturbation_amplitude)
 
       ! Clamping: Samples obtained from truncated Gaussian dist. 
-      if (.not. log_transform) then
-         pertval = max(clamp_min_val, pertval)
-      endif
+      if (.not. log_transform) pertval = max(clamp_min_val, pertval)
 
       state_ens_handle%copies(copy, i) = pertval
 
