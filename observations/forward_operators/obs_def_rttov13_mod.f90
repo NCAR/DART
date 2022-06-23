@@ -53,7 +53,7 @@
 !
 ! The units for all observations with a quantity of QTY_RADANCE are as
 ! described in the RTTOV v12 user guide V1.3 (p54): "mW/cm-1/sr/sq.m"
-! Doc ID: NWPSAF-MO-UD-037, Date: 05/03/2019
+! Doc ID: NWPSAF-MO-UD-037, Date: 05/03/2019QTY_O3
 !
 ! The observation converters are responsible for providing these 
 ! observations with the correct units.
@@ -517,16 +517,18 @@ end type aerosol_profile_type
 ! container type for clouds - note RTTOV uses different cloud fields depending on scheme, frequency, type, etc. Note these values are on layers, not levels, so the 
 ! size of the arrays are (ens_size, numlevels-1)
 type cloud_profile_type
-   real(r8), allocatable :: cfrac(:,:)         ! (VIS/IR/MW) cloud fractional cover (0-1) 
+   real(r8), allocatable :: hydro(:,:,:)         ! (MW) hydrometeor concentrations, dimension (imem, nlevels, nhydro)
+   real(r8), allocatable :: hydro_frac(:,:)    ! (MW) cloud fraction (0-1) dimension (imem, nlevels, nhydro_frac=1)
+   real(r8), allocatable :: cfrac(:,:)         ! (VIS/IR) cloud fractional cover (0-1) (imem, nlevels)
    real(r8), allocatable :: simple_cfrac(:)    ! (VIS/IR)    cloud fraction for simple cloud (0-1) 
    real(r8), allocatable :: ctp(:)             ! (VIS/IR)    cloud top pressure for simple cloud (hPa) 
    real(r8), allocatable :: w(:,:)             ! (VIS/IR)    vertical velocity (used for classification of cumulus vs. stratus)
-   real(r8), allocatable :: clw(:,:)           ! (VIS/IR/MW) cloud non-precipitating water
-   real(r8), allocatable :: rain(:,:)          ! (VIS/IR/MW) cloud precipitating water
-   real(r8), allocatable :: ciw(:,:)           ! (VIS/IR/MW) cloud non-precipitating ice concentration
-   real(r8), allocatable :: snow(:,:)          ! (VIS/IR/MW) cloud precipitating ice (fluffy)
-   real(r8), allocatable :: graupel(:,:)       ! (VIS/IR/MW) cloud precipitating ice (soft hail / snow pellets)
-   real(r8), allocatable :: hail(:,:)          ! (VIS/IR/MW) cloud precipitating ice (hard hail)
+   real(r8), allocatable :: clw(:,:)           ! (MW) cloud non-precipitating water; "clear air MW radiance", outside RTTOV-SCATT
+   real(r8), allocatable :: rain(:,:)          ! (VIS/IR) cloud precipitating water
+   real(r8), allocatable :: ciw(:,:)           ! (VIS/IR) cloud non-precipitating ice concentration
+   real(r8), allocatable :: snow(:,:)          ! (VIS/IR) cloud precipitating ice (fluffy)
+   real(r8), allocatable :: graupel(:,:)       ! (VIS/IR) cloud precipitating ice (soft hail / snow pellets)
+   real(r8), allocatable :: hail(:,:)          ! (VIS/IR) cloud precipitating ice (hard hail)
    real(r8), allocatable :: clwde(:,:)         ! (VIS/IR)    cloud liquid effective diameter if clw_scheme = 2
    real(r8), allocatable :: icede(:,:)         ! (VIS/IR)    cloud liquid effective diameter if ice_scheme = 1
 end type cloud_profile_type
@@ -615,7 +617,7 @@ integer, parameter :: MW = 2
 integer, parameter :: SUBTYPE = 1 
 integer, parameter :: SUBKEY = 2
 
-logical :: debug = .false.
+logical :: debug = .true.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
@@ -656,7 +658,7 @@ logical              :: use_salinity         = .false.  ! use ocean salinity (in
 logical              :: cfrac_data           = .false.  ! specify cloud fraction? (VIS/IR/MW)
 logical              :: clw_data             = .false.  ! specify non-precip cloud liquid water? (VIS/IR/MW)
 logical              :: rain_data            = .false.  ! specify precip cloud liquid water? (VIS/IR/MW)
-logical              :: ciw_data             = .false.  ! specify non-precip cloud ice? (VIS/IR/MW)
+logical              :: ciw_data             = .false.  ! specify non-precip cloud ice? (VIS/IR)
 logical              :: snow_data            = .false.  ! specify precip cloud fluffy ice? (VIS/IR/MW)
 logical              :: graupel_data         = .false.  ! specify precip cloud soft-hail? (VIS/IR/MW)
 logical              :: hail_data            = .false.  ! specify precip cloud hard-hail? (VIS/IR/MW)
@@ -1832,7 +1834,7 @@ if (clw_data) then
 
    if (clw_scheme == 2) then
       allocate(clouds%clwde(ens_size, numlevels)) 
-      clouds%clwde = 0.0_jprb
+      clouds%clwde = 20.0_jprb  ! lkugler default value
    end if
 end if
 
@@ -1842,11 +1844,11 @@ if (rain_data) then
 end if
 
 if (ciw_data) then
-   allocate(clouds%ciw(ens_size, numlevels))
+   allocate(clouds%ciw(ens_size, numlevels)) 
    clouds%ciw = 0.0_jprb
    if (ice_scheme == 1 .and. use_icede) then
       allocate(clouds%icede(ens_size, numlevels))
-      clouds%icede = 0.0_jprb
+      clouds%icede = 60.0_jprb  ! lkugler default value
    end if
 end if
 
@@ -2264,68 +2266,37 @@ DO imem = 1, ens_size
       end if ! add IR clouds
    else if (is_mw) then
       ! RTTOV-SCATT, add MW clouds
+
+      ! Changes v12->v13: 
+      ! variable `clouds % cc ` removed
+      ! Instead of named variables (e.g. rain, snow, hail, ...), an arbitrary
+      ! number of hydrometeor types is specified in the hydro(nlevels,nhydro) member array (see guide)
+
+      ! Removed variables: cc, clw, ciw, totalice, rain, sp
+      ! New variables: hydro_frac(nlevels, nhydro_frac), hydro(nlevels, nhydro)
+
+      ! nhydro = number of hydrometeor types (e.g. rain, snow, ...)
+      ! nhydro_frac = 1 or nhydro
+
       if (allocated(clouds % cfrac)) then
          ! Not implemented. Since opts_scatt%lusercfrac=.true., we let RTTOV calculate CFRAC.
+         ! TODO: what do do now?
       else
          ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
          runtime % cld_profiles(imem) % cfrac = 1.0_jprb
       end if
 
-
-      if (allocated(clouds % clw)) then
-         runtime % cld_profiles(imem) % clw(:) = max(clouds % clw(imem,lvlidx),0.0_r8)
+      ! cloud fraction per hydrometeor type 
+      if (allocated(clouds % hydro_frac)) then
+         ! TODO
+         ! runtime % cld_profiles(imem) % hydro_frac(imem,lvlidx) = ! get values from cfrac
       else
-         runtime % cld_profiles(imem) % clw = 0.0_jprb
+         runtime % cld_profiles(imem) % hydro_frac = 1.0_jprb
       end if
 
-      if (allocated(clouds % rain)) then
-         runtime % cld_profiles(imem) % rain(:) = max(clouds % rain(imem,lvlidx),0.0_r8)
-      else
-         runtime % cld_profiles(imem) % rain = 0.0_jprb
-      end if
+      ! used for RTTOV-SCATT, will be filled later by model input
+      runtime % cld_profiles(imem) % hydro = 0.0_jprb 
 
-      if (use_totalice) then
-         totalice(:) = 0.0_r8
-
-         if (allocated(clouds % ciw)) then
-            totalice(:) = totalice(:) + max(clouds % ciw(imem,lvlidx),0.0_r8)
-         end if 
-
-         if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
-         end if 
-
-         if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
-         end if 
-
-         if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
-         end if 
-
-         runtime % cld_profiles(imem) % totalice(:) = totalice(:)
-      else
-         if (allocated(clouds % ciw)) then
-            runtime % cld_profiles(imem) % ciw(:) = max(clouds % ciw(imem,lvlidx),0.0_r8)
-         end if 
-
-         ! "totalice" here is being used only for solid precipitation (no ciw)
-         totalice(:) = 0.0_r8
-
-         if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
-         end if 
-
-         if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
-         end if 
-
-         if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
-         end if 
-
-         runtime % cld_profiles(imem) % sp(:) = totalice(:)
-      end if
 
       ! also add "half-level pressures" as requested by RTTOV-Scatt
       runtime % cld_profiles(imem) % ph(2:nlevels) = 0.5_jprb*(atmos % pressure(imem,ly1idx)+atmos % pressure(imem,ly2idx))/100.0_jprb
@@ -3727,6 +3698,13 @@ GETLEVELDATA : do i = 1,numlevels
       end if
    end if
 
+   if (w_data) then
+      ! specify vertical velocity
+      call interpolate(state_handle, ens_size, loc, QTY_VERTICAL_VELOCITY, clouds%w(:, i), this_istatus)
+      call check_status('QTY_VERTICAL_VELOCITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
+   end if
+
    if (cfrac_data) then
       ! specify cloud fraction
       call interpolate(state_handle, ens_size, loc, QTY_CLOUD_FRACTION, clouds%cfrac(:, i), this_istatus)
@@ -3734,18 +3712,26 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
    end if
 
+   ! clwde should be specified when clw_scheme == 2 (takes particle diameter from model); clw_scheme = 1 would parametrize diameters depending on cloud type
+   if (clw_scheme == 2) then
+      ! The effective diameter must also be specified with clw_scheme 2
+      ! call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
+      !clouds%clwde(:, i) = 2*1e6*clouds%clwde(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
+      call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
+      if (return_now) return
+   end if
+
+   ! RTTOV v13 replaces individual hydrometeor variables (rain, snow, ...) with one variable (hydro)
+   ! Nevertheless we read into separate variables here
+
+   ! RTTOV input variables, i.e. cld_profiles%hydro (MW) or profiles%clouds (VIS/IR) 
+   ! will be built later in subroutine do_forward_model
+
    if (clw_data) then
-      ! specify non-precip cloud liquid water
+      ! specify non-precip cloud liquid water ! for MW (but not used by RTTOV-SCATT anymore since v13)
       call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_MIXING_RATIO, clouds%clw(:, i), this_istatus)
       call check_status('QTY_CLOUDWATER_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
       if (return_now) return
-
-      if (clw_scheme == 2) then
-         ! The effective diameter must also be specified with clw_scheme 2
-         call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
-         call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
-         if (return_now) return
-      end if
    end if
 
    if (rain_data) then
@@ -3763,7 +3749,8 @@ GETLEVELDATA : do i = 1,numlevels
 
       if (ice_scheme == 1 .and. use_icede) then
          ! if use_icede with ice_scheme 1, must also specify ice effective diameter
-         call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
+         !call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
+         !clouds%icede(:, i) = 2*1e6*clouds%icede(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
          call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
@@ -3787,13 +3774,6 @@ GETLEVELDATA : do i = 1,numlevels
       ! specify precip hard-hail (i.e. hail)
       call interpolate(state_handle, ens_size, loc, QTY_HAIL_MIXING_RATIO, clouds%hail(:, i), this_istatus)
       call check_status('QTY_HAIL_MIXING_RATIO', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
-      if (return_now) return
-   end if
-
-   if (w_data) then
-      ! specify vertical velocity
-      call interpolate(state_handle, ens_size, loc, QTY_VERTICAL_VELOCITY, clouds%w(:, i), this_istatus)
-      call check_status('QTY_VERTICAL_VELOCITY', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
       if (return_now) return
    end if
 
