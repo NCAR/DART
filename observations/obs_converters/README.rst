@@ -398,6 +398,7 @@ converters) include:
 -  ``text_GITM``: See ``./text_GITM``
 -  ``tpw``: :doc:`./tpw/tpw`
 -  ``Tropical Cyclones``: :doc:`./tropical_cyclone/tc_to_obs`
+-  ``3DVAR/4DVAR``: :doc:`./var/var`
 -  ``Var (little-r)``: :doc:`./var/littler_tf_dart`
 -  ``Var (radar)``: :doc:`./var/rad_3dvar_to_dart`
 
