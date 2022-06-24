@@ -22,6 +22,16 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 24 2022 :: Bug-fixes for MITgcm_ocean and Var obs converter. Tag: v10.0.2**
+
+- MITgcm_ocean pert_model_copies routine fixed to use the correct variable clamping
+  value and indices for each element of the copies array. 
+- Var obs converter quicklbuild.sh fixed to correctly locate the required 
+  3DVAR_OBSPROC code.
+- Documentation for Var obs converter updated with information for where to 
+  get the latest WRF 3DVAR_OBSPROC code.
+
+
 **June 2 2022 :: Bug-fixes for ps_rand_local in the Bgrid Model. Tag: v10.0.1**
 
 - performs the missing call for initialize_utilities() 
