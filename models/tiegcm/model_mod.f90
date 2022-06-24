@@ -8,7 +8,6 @@
 !  - model_time
 !  - get_state_meta_data 2D variables
 !  - test vtec
-!  - f107 netcdf to nml
 
 module model_mod
 
@@ -145,7 +144,7 @@ namelist /model_nml/ tiegcm_restart_file_name, &
 ! nlev is number of midpoint levels
 integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
-! HK levels + top level boundary condition for nlev.
+! levels + top level boundary condition for nlev.
 integer                               :: all_nlev
 real(r8),dimension(:),    allocatable :: all_levs
 ! HK are plevs, pilves per ensemble member?
@@ -184,10 +183,10 @@ real(r8)  :: delta_lat      = MISSING_R8
 integer   :: zero_lon_index = MISSING_I
 
 
-! FOR NOW OBS LOCATIONS ARE EXPECTED GIVEN IN HEIGHT [m],
-! AND SO VERTICAL LOCALIZATION COORDINATE IS *always* HEIGHT
-! (note that gravity adjusted geopotential height (ZG)
-!  read in from "tiegcm_s.nc" *WARNING* ZG is 'cm', DART is mks)
+! Obs locations are expected to be given in height [m],
+! and so vertical localization coordinate is *always* height.
+! Note that gravity adjusted geopotential height (ZG) is read in
+! "tiegcm_s.nc". ZG is 'cm', dart is mks(HK mks?))
 integer               :: ivarZG
 
 character(len=512)    :: string1, string2, string3
@@ -208,8 +207,6 @@ if (module_initialized) return ! only need to do this once
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
-! Since this routine calls other routines that could call this routine
-! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
 
 ! Read the namelist entry for model_mod from input.nml
@@ -225,9 +222,7 @@ if (do_output()) then
    write(logfileunit,*)'static_init_model: debug level is ',debug
 endif
 
-! Read in TIEGCM grid definition etc from TIEGCM restart file
-! Read in TIEGCM auxiliary variables from TIEGCM 'secondary' file
-
+! Read in TIEGCM grid definition TIEGCM restart file
 call read_TIEGCM_definition(tiegcm_restart_file_name)
 
 if ( estimate_f10_7 ) then
@@ -248,10 +243,9 @@ call set_calendar_type('Gregorian')
 ! Convert the last year/day/hour/minute to a dart time.
 state_time = read_model_time(tiegcm_restart_file_name)
 
-! Ensure assimilation_period is a multiple of the dynamical timestep
-! The time is communicated to TIEGCM through their "STOP" variable,
+! Assumes assimilation_period is a multiple of the dynamical timestep
+! TIEGCM namelist has variable "STOP"
 ! which is an array of length 3 corresponding to day-of-year, hour, minute
-
 time_step = set_time(assimilation_period_seconds, 0)
 
 end subroutine static_init_model
@@ -260,8 +254,7 @@ end subroutine static_init_model
 !-------------------------------------------------------------------------------
 
 function get_model_size()
-! Returns the size of the model as an integer. Required for all
-! applications.
+! Returns the size of the model as an integer.
 
 integer(i8) :: get_model_size
 
@@ -277,14 +270,10 @@ end function get_model_size
 
 
 subroutine model_interpolate(state_handle, ens_size, location, iqty, obs_val, istatus)
-! Given  a location, and a model state variable qty,
-! interpolates the state variable field to that location and returns
-! the value in obs_val for each ensemble member.
-! The istatus variable should be returned as
-! 0 unless there is some problem in computing the interpolation in
-! which case an alternate value should be returned. The iqty variable
-! is a integer that specifies the qty of field (for
-! instance temperature, zonal wind component, etc.).
+! Given a location, and a model state variable qty,
+! interpolates the state variable field to that location.
+! obs_val is the interpolated value for each ensemble member
+! istatus is the success (0) or failure of the interpolation
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
@@ -333,7 +322,7 @@ lon_lat_lev = get_location(location)
 lon         = lon_lat_lev(1) ! degree
 lat         = lon_lat_lev(2) ! degree
 height      = lon_lat_lev(3) ! level (int) or height (real)
-level       = int(lon_lat_lev(3))  ! HK can I just convert lon_lat_lev to int always?
+level       = int(lon_lat_lev(3))
 
 
 which_vert = nint(query_location(location))
@@ -366,19 +355,17 @@ if ( iqty == QTY_PRESSURE) then
    elseif (which_vert == VERTISHEIGHT) then
 
       ! If PRESSURE; calculate the pressure from several variables. HK I don't understand this.
-      ! vert_interp() interpolates the state column to
-      ! the same vertical height as the observation.
-      ! THEN, it is the same as the 2D case.
+
 
       ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
       ! At present, vert_interp will simply fail because height is a negative number.
       ! HK what are you supposed to do for pressure with VERTISUNDEF? level 1?
 
       ! HK pressure is not in the state so do not call get_state.
-      call error_handler(E_ERR, 'model_interpolate', 'vert is hieght for pressure interpolate')
+      call error_handler(E_ERR, 'model_interpolate', 'vert is height for pressure interpolate')
 
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
-      if (any(istatus /= 0)) return  !HK bail at the first failure
+      if (any(istatus /= 0)) return  ! bail at the first failure
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_above, height, iqty, val12, istatus)
       if (any(istatus /= 0)) return
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_below, height, iqty, val21, istatus)
@@ -418,12 +405,8 @@ endif
 
 if( which_vert == VERTISHEIGHT ) then
 
-   ! vert_interp() interpolates the state column to
-   ! the same vertical height as the observation.
-   ! THEN, it is the same as the 2D case.
-
    call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
-   if (any(istatus /= 0)) return  !HK bail at the first failure
+   if (any(istatus /= 0)) return  ! bail at the first failure
    call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_above, height, iqty, val12, istatus)
    if (any(istatus /= 0)) return
    call vert_interp(state_handle, ens_size, dom_id, var_id, lon_above, lat_below, height, iqty, val21, istatus)
@@ -481,12 +464,8 @@ end function shortest_time_between_assimilations
 
 
 subroutine get_state_meta_data(index_in, location, var_qty)
-! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
+! Given an integer index into the state vector, returns the
+! associated location and optionally the variable quantity.
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
@@ -495,7 +474,7 @@ integer, optional,   intent(out) :: var_qty
 integer  :: lon_index, lat_index, lev_index
 integer  :: local_qty, var_id, dom_id
 integer  :: seconds, days ! for f10.7 location
-real(r8) :: longitude ! for f10.7 location
+real(r8) :: longitude     ! for f10.7 location
 character(len=NF90_MAX_NAME) :: dim_name
 
 if ( .not. module_initialized ) call static_init_model
@@ -521,7 +500,7 @@ dim_name = ilev_or_lev(dom_id, var_id)
 select case (trim(dim_name))
    case ('ilev')
       location  = set_location(lons(lon_index), lats(lat_index), ilevs(lev_index), VERTISLEVEL)
-   case ('lev') ! height on midpoint
+   case ('lev')
       location  = set_location(lons(lon_index), lats(lat_index), levs(lev_index), VERTISLEVEL)
    case default
     call error_handler(E_ERR, 'get_state_meta_data', 'expecting ilev or ilat dimension')
@@ -535,8 +514,7 @@ end subroutine get_state_meta_data
 
 
 subroutine end_model()
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
+! Does any shutdown and clean-up needed for model.
 
 end subroutine end_model
 
@@ -624,11 +602,9 @@ end subroutine nc_write_model_atts
 
 
 !-------------------------------------------------------------------------------
-! For vertical distance computations, general philosophy is to convert all
-! vertical coordinates to a common coordinate.
-! FOR NOW VERTICAL LOCALIZATION IS DONE ONLY IN HEIGHT (ZG)
-! OBS VERTICAL LOCATION IS GIVEN IN HEIGHT (model_interpolate)
-! STATE VERTICAL LOCATION IS GIVEN IN HEIGHT
+! Vertical localization is done only in height (ZG).
+! obs vertical location is given in height (model_interpolate).
+! state vertical location is given in height.
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, state_handle)
 
@@ -654,6 +630,7 @@ call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                        num_close, close_ind, dist)
 
 ! Make the ZG part of the state vector far from everything so it does not get updated.
+! HK Note if you have inflation on ZG has been inflated.
 ! Scroll through all the obs_loc(:) and obs_kind(:) elements
 
 do k = 1,num_close
@@ -714,7 +691,6 @@ if ( which_vert == VERTISHEIGHT .or. which_vert == VERTISUNDEF) then
   return
 endif
 
-! HK can I just call model_interpolate here?
 do i = 1, num
    current_vert_type = nint(query_location(locs(i)))
    if (( current_vert_type == which_vert ) .or. &
@@ -735,7 +711,6 @@ enddo
 end subroutine convert_vertical_obs
 
 !-------------------------------------------------------------------------------
-! HK what can you localize in? height only?
 subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 
@@ -918,7 +893,6 @@ if( TimeDimID /= DimID ) then
 endif
 
 ! longitude - TIEGCM uses values +/- 180, DART uses values [0,360]
-! HK check this against "Compute bracketing lon indices"
 
 call nc_check(nf90_inq_dimid(ncid, 'lon', DimID), 'read_TIEGCM_definition', &
                   'inq_dimid lon')
@@ -992,7 +966,7 @@ if ((nlev+1) .ne. nilev) then
 endif
 
 
-! Get lon and lat grid specs !HK these are static
+! Get lon and lat grid specs
 bot_lon        = lons(1)                         ! 180.
 delta_lon      = abs((lons(1)-lons(2)))          ! 5. or 2.5
 zero_lon_index = int(bot_lon/delta_lon) + 1      ! 37 or 73
@@ -1017,7 +991,6 @@ integer :: nfields_constructed   ! number of constructed state variables
 
 integer  :: i, nrows, ncols
 
-!HK obstypelength vs NF90_MAX_NAME?
 character(len=NF90_MAX_NAME) :: varname
 character(len=NF90_MAX_NAME) :: dartstr
 character(len=NF90_MAX_NAME) :: minvalstring
@@ -1376,7 +1349,7 @@ val        = MISSING_R8
 
 is_pressure = (iqty == QTY_PRESSURE)
 if (is_pressure) then
-   vertstagger = 'ilev'  !HK what should this be? Does it matter?
+   vertstagger = 'ilev'
 else
    vertstagger = ilev_or_lev(dom_id, var_id)
 endif
@@ -1393,14 +1366,8 @@ end subroutine vert_interp
 
 !-------------------------------------------------------------------------------
 subroutine find_qty_in_state(iqty, which_dom, var_id)
-! Finds the first variable of the appropriate DART KIND
-!
-! Note from FindVar_by_kind:
-! FIXME There is some confusion about using the T-minus-1 variables
-! in this construct. Both TN and TN_NM have the same dart_kind,
-! so we use the first one ... but it is not guaranteed that TN
-! must preceed TN_NM, for example.
-! HK we can force X rather than X_MN
+! Returns the variable id for a given DART qty
+! Will return X rather than X_MN variable.
 
 integer, intent(in)  :: iqty
 integer, intent(out) :: which_dom
@@ -1413,8 +1380,6 @@ character(NF90_MAX_NAME) :: varname
 which_dom = -1
 var_id = -1
 
-!HK can you ever have the same variable in restart and secondary?
-!   I don't think so
 do id = 1, get_num_domains() ! RESTART_DOM, SECONDARY_DOM, CONSTRUCT_DOM
 
    num_same_kind = get_num_varids_from_kind(domain_id(id), iqty)
@@ -1665,7 +1630,7 @@ found = .false.
 
    delta_z(:) = zgrid_upper(:) - zgrid_lower(:)
 
-   where (zgrid_upper == zgrid_lower)  ! avoid divide by zero ! HK does this happen?
+   where (zgrid_upper == zgrid_lower)  ! avoid divide by zero
       frac_lev = 0
    elsewhere
       frac_lev = (zgrid_upper - height)/delta_z
