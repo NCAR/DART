@@ -22,6 +22,23 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 27 2022 :: Manhattan TIEGCM 2.0. Tag: v10.0.2-tiegcm.0**
+
+Manhattan TIEGCM 2.0 Pre release version.
+
+- Supports 2.5 degree and 5 degree grids.
+- Vectorized model_interpolate.
+- State data read directly from model netcdf file.
+- Model_interpolate uses X rather than X_MN variable no matter the order of state variables in model_nml.
+- Extrapolation of VTEC in model_interpolate. 10 layers for 5 degree, 20 for 2.5 degree.
+- Added hyperslice subroutine to state_structure_mod to read only part of a netcdf variable.
+- Separated functions for io_dim_length and dim_length in state_structure_mod to allow for hyperslice. 
+- direct_netcdf_mod reads the last timeslice of the TIEGCM netcdf file.
+- Removed read of tiegcm namelist from model_mod. 
+- Support for f10.7 as part of the state.
+- shell_scripts directory for initial cycling tests on Cheyenne (not general)
+
+
 **June 24 2022 :: Bug-fixes for MITgcm_ocean and Var obs converter. Tag: v10.0.2**
 
 - MITgcm_ocean pert_model_copies routine fixed to use the correct variable clamping
