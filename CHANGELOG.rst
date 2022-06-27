@@ -24,7 +24,7 @@ The changes are now listed with the most recent at the top.
 
 **June 27 2022 :: Manhattan TIEGCM 2.0. Tag: v10.0.2-tiegcm.0**
 
-Manhattan TIEGCM 2.0 Pre release version.
+Manhattan TIEGCM 2.0 Pre-release version.
 
 - Supports 2.5 degree and 5 degree grids.
 - Vectorized model_interpolate.
