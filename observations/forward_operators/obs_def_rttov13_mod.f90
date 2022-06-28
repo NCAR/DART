@@ -617,7 +617,7 @@ integer, parameter :: MW = 2
 integer, parameter :: SUBTYPE = 1 
 integer, parameter :: SUBKEY = 2
 
-logical :: debug = .true.
+logical :: debug = .false.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
@@ -2173,29 +2173,29 @@ DO imem = 1, ens_size
          totalwater(:) = 0.0_jprb
 
          if (allocated(clouds % clw)) then
-            totalwater(:) = totalwater(:) + max(clouds % clw(imem,lvlidx),0.0_r8)
+            totalwater(:) = totalwater(:) + max(clouds % clw(imem,:),0.0_r8)
          end if
 
          if (allocated(clouds % rain)) then
-            totalwater(:) = totalwater(:) + max(clouds % rain(imem,lvlidx),0.0_r8)
+            totalwater(:) = totalwater(:) + max(clouds % rain(imem,:),0.0_r8)
          end if
 
          totalice(:) = 0.0_r8
 
          if (allocated(clouds % ciw)) then
-            totalice(:) = totalice(:) + max(clouds % ciw(imem,lvlidx),0.0_r8)
+            totalice(:) = totalice(:) + max(clouds % ciw(imem,:),0.0_r8)
          end if 
 
          if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
+            totalice(:) = totalice(:) + max(clouds % snow(imem,:),0.0_r8)
          end if 
 
          if (allocated(clouds % graupel)) then
-            totalice(:) = totalice(:) + max(clouds % graupel(imem,lvlidx),0.0_r8)
+            totalice(:) = totalice(:) + max(clouds % graupel(imem,:),0.0_r8)
          end if 
 
          if (allocated(clouds % hail)) then
-            totalice(:) = totalice(:) + max(clouds % hail(imem,lvlidx),0.0_r8)
+            totalice(:) = totalice(:) + max(clouds % hail(imem,:),0.0_r8)
          end if 
 
          ! Classify liquid water cloud type. If the maximum absolute w is > 0.5 m/s, classify as a cumulus cloud.
