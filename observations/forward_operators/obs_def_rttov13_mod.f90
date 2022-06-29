@@ -1879,10 +1879,6 @@ if (htfrtc_simple_cloud) then
    clouds%ctp = 0.0_jprb
 end if
 
-if (cfrac_data) then
-   allocate(clouds%cfrac(ens_size, numlevels))
-   clouds%cfrac = 0.0_jprb
-end if
 
 end subroutine cloud_profile_setup
 
