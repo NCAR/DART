@@ -518,7 +518,7 @@ end type aerosol_profile_type
 ! size of the arrays are (ens_size, numlevels-1)
 type cloud_profile_type
    real(r8), allocatable :: hydro(:,:,:)         ! (MW) hydrometeor concentrations, dimension (imem, nlevels, nhydro)
-   real(r8), allocatable :: hydro_frac(:,:)    ! (MW) cloud fraction (0-1) dimension (imem, nlevels, nhydro_frac=1)
+   real(r8), allocatable :: hydro_frac(:)    ! (MW) cloud fraction (0-1) dimension (imem, nlevels, nhydro_frac=1)
    real(r8), allocatable :: cfrac(:,:)         ! (VIS/IR) cloud fractional cover (0-1) (imem, nlevels)
    real(r8), allocatable :: simple_cfrac(:)    ! (VIS/IR)    cloud fraction for simple cloud (0-1) 
    real(r8), allocatable :: ctp(:)             ! (VIS/IR)    cloud top pressure for simple cloud (hPa) 
@@ -1879,6 +1879,16 @@ if (htfrtc_simple_cloud) then
    clouds%ctp = 0.0_jprb
 end if
 
+if (cfrac_data) then
+   allocate(clouds%cfrac(ens_size, numlevels))
+   clouds%cfrac = 0.0_jprb
+end if
+
+if (cfrac_data) then
+   allocate(clouds%cfrac(ens_size, numlevels))
+   clouds%cfrac = 0.0_jprb
+end if
+
 end subroutine cloud_profile_setup
 
 !----------------------------------------------------------------------
@@ -2268,9 +2278,9 @@ DO imem = 1, ens_size
       ! RTTOV-SCATT, add MW clouds
 
       ! Changes v12->v13: 
-      ! variable `clouds % cc ` removed
-      ! Instead of named variables (e.g. rain, snow, hail, ...), an arbitrary
-      ! number of hydrometeor types is specified in the hydro(nlevels,nhydro) member array (see guide)
+      ! variable `clouds % cc` removed
+      ! Instead of named variables (e.g. rain, snow, hail, ...),
+      ! a number of hydrometeor types can be specified in the hydro(nlevels,nhydro) member array (see guide)
 
       ! Removed variables: cc, clw, ciw, totalice, rain, sp
       ! New variables: hydro_frac(nlevels, nhydro_frac), hydro(nlevels, nhydro)
@@ -2278,25 +2288,37 @@ DO imem = 1, ens_size
       ! nhydro = number of hydrometeor types (e.g. rain, snow, ...)
       ! nhydro_frac = 1 or nhydro
 
-      if (allocated(clouds % cfrac)) then
-         ! Not implemented. Since opts_scatt%lusercfrac=.true., we let RTTOV calculate CFRAC.
-         ! TODO: what do do now?
+      if (allocated(clouds % cfrac) .and. runtime % opts_scatt % lusercfrac) then
+         ! Use custom cfrac values
+         ! TODO: specify cfrac (scalar?!)
+         ! runtime % cld_profiles(imem) % cfrac = ? not implemented
       else
-         ! Assume cloud fraction is 1 everywhere. No harm if no clouds.
-         runtime % cld_profiles(imem) % cfrac = 1.0_jprb
+         ! normally calculated internally in RTTOV-SCATT
+         runtime % cld_profiles(imem) % cfrac = -1
       end if
 
       ! cloud fraction per hydrometeor type 
-      if (allocated(clouds % hydro_frac)) then
-         ! TODO
-         ! runtime % cld_profiles(imem) % hydro_frac(imem,lvlidx) = ! get values from cfrac
-      else
-         runtime % cld_profiles(imem) % hydro_frac = 1.0_jprb
-      end if
+      ! TODO: How do we get this from model data? From the 3D rain field?
+      runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
 
-      ! used for RTTOV-SCATT, will be filled later by model input
-      runtime % cld_profiles(imem) % hydro = 0.0_jprb 
-
+      ! code proposed, depends on the hydrotables of RTTOV?
+      ! TODO: adapt to hydrotable, change indices of hydro(:,X) <--- here
+      runtime % cld_profiles(imem) % hydro = 0.0_jprb
+      if (allocated(clouds % clw)) then
+         runtime % cld_profiles(imem) % hydro(:,0) = max(clouds % clw(imem,:),0.0_r8)
+      endif
+      if (allocated(clouds % rain)) then
+         runtime % cld_profiles(imem) % hydro(:,1) = max(clouds % rain(imem,:),0.0_r8)
+      endif
+      if (allocated(clouds % ciw)) then
+         runtime % cld_profiles(imem) % hydro(:,2) = max(clouds % ciw(imem,:),0.0_r8)
+      endif
+      if (allocated(clouds % snow)) then
+         runtime % cld_profiles(imem) % hydro(:,3) = max(clouds % snow(imem,:),0.0_r8)
+      endif
+      if (allocated(clouds % hail)) then
+         runtime % cld_profiles(imem) % hydro(:,4) = max(clouds % hail(imem,:),0.0_r8)
+      endif
 
       ! also add "half-level pressures" as requested by RTTOV-Scatt
       runtime % cld_profiles(imem) % ph(2:nlevels) = 0.5_jprb*(atmos % pressure(imem,ly1idx)+atmos % pressure(imem,ly2idx))/100.0_jprb
@@ -3720,12 +3742,6 @@ GETLEVELDATA : do i = 1,numlevels
       call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
       if (return_now) return
    end if
-
-   ! RTTOV v13 replaces individual hydrometeor variables (rain, snow, ...) with one variable (hydro)
-   ! Nevertheless we read into separate variables here
-
-   ! RTTOV input variables, i.e. cld_profiles%hydro (MW) or profiles%clouds (VIS/IR) 
-   ! will be built later in subroutine do_forward_model
 
    if (clw_data) then
       ! specify non-precip cloud liquid water ! for MW (but not used by RTTOV-SCATT anymore since v13)
