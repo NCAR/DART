@@ -6698,10 +6698,10 @@ function boundsCheck ( ind, periodic, id, dim, type )
      !   staggering because the ZNU and ZNW grids allow different index ranges
      if ( wrf%dom(id)%var_size(dim,type) == wrf%dom(id)%bts ) then
         ! W vertical grid allows [1 bts)
-        if ( ind >= 1 .and. ind < wrf%dom(id)%bts ) boundsCheck = .true.
+        if ( ind >= 1 .and. ind <= wrf%dom(id)%bts ) boundsCheck = .true.
      else
         ! M vertical grid allows [1 bt)
-        if ( ind >= 1 .and. ind < wrf%dom(id)%bt ) boundsCheck = .true.
+        if ( ind >= 1 .and. ind <= wrf%dom(id)%bt ) boundsCheck = .true.
      endif
   
   else
