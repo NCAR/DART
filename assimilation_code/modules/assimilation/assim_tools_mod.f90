@@ -2647,9 +2647,9 @@ if (.not. close_obs_caching) then
                       num_close_states, close_state_ind, close_state_dist, ens_handle)
 else
    if (base_obs_loc == last_base_states_loc) then
-      num_close_states     = last_num_close_states
-      close_state_ind(:)  = last_close_state_ind(:)
-      close_state_dist(:) = last_close_state_dist(:)
+  !    num_close_states     = last_num_close_states
+  !    close_state_ind(:)  = last_close_state_ind(:)
+  !    close_state_dist(:) = last_close_state_dist(:)
       num_close_states_cached = num_close_states_cached + 1
    else
       call get_close_state(gc_state, base_obs_loc, base_obs_type, &
@@ -2658,8 +2658,8 @@ else
 
       last_base_states_loc      = base_obs_loc
       last_num_close_states     = num_close_states
-      last_close_state_ind(:)  = close_state_ind(:)
-      last_close_state_dist(:) = close_state_dist(:)
+    !  last_close_state_ind(:)  = close_state_ind(:)
+    !  last_close_state_dist(:) = close_state_dist(:)
       num_close_states_calls_made = num_close_states_calls_made +1
    endif
 endif
