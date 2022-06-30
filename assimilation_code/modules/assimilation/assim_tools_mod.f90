@@ -2598,9 +2598,9 @@ if (.not. close_obs_caching) then
                       num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 else
    if (base_obs_loc == last_base_obs_loc) then
-      num_close_obs     = last_num_close_obs
-      close_obs_ind(:)  = last_close_obs_ind(:)
-      close_obs_dist(:) = last_close_obs_dist(:)
+  !    num_close_obs     = last_num_close_obs
+  !    close_obs_ind(:)  = last_close_obs_ind(:)
+  !    close_obs_dist(:) = last_close_obs_dist(:)
       num_close_obs_cached = num_close_obs_cached + 1
    else
       call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
@@ -2609,8 +2609,8 @@ else
 
       last_base_obs_loc      = base_obs_loc
       last_num_close_obs     = num_close_obs
-      last_close_obs_ind(:)  = close_obs_ind(:)
-      last_close_obs_dist(:) = close_obs_dist(:)
+  !    last_close_obs_ind(:)  = close_obs_ind(:)
+  !    last_close_obs_dist(:) = close_obs_dist(:)
       num_close_obs_calls_made = num_close_obs_calls_made +1
    endif
 endif
