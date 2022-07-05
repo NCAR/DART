@@ -16,7 +16,7 @@ use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_o
                                  find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-use       sort_mod,       only : index_sort
+use       sort_mod,       only : index_sort 
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -483,7 +483,7 @@ if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
             if (vstatus(i) /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
          endif
       enddo
-   endif
+   endif 
 endif
 
 ! Get info on my number and indices for state
@@ -620,7 +620,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
    else
       call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         orig_obs_prior_mean, orig_obs_prior_var,                          &
+         orig_obs_prior_mean, orig_obs_prior_var,                          & 
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
@@ -659,7 +659,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
       end do
    endif
-
+  
    ! Adaptive localization needs number of other observations within localization radius.
    ! Do get_close_obs first, even though state space increments are computed before obs increments.
    call  get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type,      &
@@ -685,7 +685,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Find state variables on my process that are close to observation being assimilated
    call  get_close_state_cached(gc_state, base_obs_loc, base_obs_type,      &
       my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
-      ens_handle, last_base_states_loc, last_num_close_states, num_close_states_cached,                 &
+      ens_handle, last_base_states_loc, last_num_close_states, num_close_states_cached,              &
       num_close_states_calls_made)
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
 
@@ -703,7 +703,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          my_state_kind(state_index), close_state_dist(j), cutoff_rev)
 
       if(final_factor <= 0.0_r8) cycle STATE_UPDATE
-
+      
       call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
          my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
          obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
@@ -2559,15 +2559,14 @@ end subroutine get_my_obs_loc
 
 subroutine get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type, &
    my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
-   ens_handle, last_base_obs_loc, last_num_close_obs, num_close_obs_cached,              &
+   ens_handle, last_base_obs_loc, last_num_close_obs, num_close_obs_cached,               &
    num_close_obs_calls_made)
 
 type(get_close_type),          intent(in)  :: gc_obs
 type(location_type),           intent(inout) :: base_obs_loc, my_obs_loc(:)
 integer,                       intent(in)  :: base_obs_type, my_obs_kind(:), my_obs_type(:)
-integer,                       intent(out) :: num_close_obs
-integer,                       intent(inout) :: close_obs_ind(:)
-real(r8),                      intent(inout) :: close_obs_dist(:)
+integer,                       intent(out) :: num_close_obs, close_obs_ind(:)
+real(r8),                      intent(out) :: close_obs_dist(:)
 type(ensemble_type),           intent(in)  :: ens_handle
 type(location_type), intent(inout) :: last_base_obs_loc
 integer, intent(inout) :: last_num_close_obs
@@ -2580,6 +2579,7 @@ if (.not. close_obs_caching) then
                       num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 else
    if (base_obs_loc == last_base_obs_loc) then
+      num_close_obs     = last_num_close_obs
       num_close_obs_cached = num_close_obs_cached + 1
    else
       call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
@@ -2600,16 +2600,15 @@ end subroutine get_close_obs_cached
 
 subroutine get_close_state_cached(gc_state, base_obs_loc, base_obs_type, &
    my_state_loc, my_state_kind, my_state_indx, num_close_states, close_state_ind, close_state_dist,  &
-   ens_handle, last_base_states_loc, last_num_close_states, num_close_states_cached,              &
+   ens_handle, last_base_states_loc, last_num_close_states, num_close_states_cached,               &
    num_close_states_calls_made)
 
 type(get_close_type),          intent(in)    :: gc_state
 type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
 integer,                       intent(in)    :: base_obs_type, my_state_kind(:)
 integer(i8),                   intent(in)    :: my_state_indx(:)
-integer,                       intent(out)   :: num_close_states
-integer,                       intent(inout)   :: close_state_ind(:)
-real(r8),                      intent(inout)   :: close_state_dist(:)
+integer,                       intent(out)   :: num_close_states, close_state_ind(:)
+real(r8),                      intent(out)   :: close_state_dist(:)
 type(ensemble_type),           intent(in)    :: ens_handle
 type(location_type), intent(inout) :: last_base_states_loc
 integer, intent(inout) :: last_num_close_states
@@ -2622,6 +2621,7 @@ if (.not. close_obs_caching) then
                       num_close_states, close_state_ind, close_state_dist, ens_handle)
 else
    if (base_obs_loc == last_base_states_loc) then
+      num_close_states     = last_num_close_states
       num_close_states_cached = num_close_states_cached + 1
    else
       call get_close_state(gc_state, base_obs_loc, base_obs_type, &
@@ -2844,3 +2844,4 @@ end subroutine test_close_obs_dist
 !========================================================================
 
 end module assim_tools_mod
+
