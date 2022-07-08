@@ -556,9 +556,12 @@ do iloc = 1,model_size
                                    kind_string=qty_string)
 
    ! CLM has (potentially many) columns and needs i7 ish precision
-   write(string1,'(i11,1x,''i,j,k'',3(1x,i7),'' domain '',i2)') &
+!    write(string1,'(i11,1x,''i,j,k'',3(1x,i7),'' domain '',i2)') &
+!                   iloc, ix, iy, iz, dom_id
+   ! EL: integer to short for the new I/O method
+   ! Change to long int to avoid problems
+   write(string1,'(i21,1x,''i,j,k'',3(1x,i21),'' domain '',i2)') &
                   iloc, ix, iy, iz, dom_id
-
    call get_state_meta_data(iloc, loc, var_type)
    metadata_qty_string = trim(get_name_for_quantity(var_type))
 

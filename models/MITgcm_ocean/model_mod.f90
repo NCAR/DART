@@ -20,7 +20,7 @@ use     location_mod,      only : location_type, get_close_init, &
                                   get_close_state, get_close_obs, set_location, &
                                   VERTISHEIGHT, get_location, is_vertical, &
                                   convert_vertical_obs, convert_vertical_state
-
+! EL use only nc_check was here, deleted for now for testing
 use    utilities_mod,      only : error_handler, E_ERR, E_WARN, E_MSG, &
                                   logfileunit, get_unit, nc_check, do_output, to_upper, &
                                   find_namelist_in_file, check_namelist_read, &
@@ -55,6 +55,9 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_dart_vector_index, get_num_variables, &
                                   get_domain_size, &
                                   get_io_clamping_minval
+                                  
+use netcdf_utilities_mod,  only : nc_open_file_readonly, nc_get_variable, & 
+                                  nc_get_variable_size
 
 use netcdf
 
@@ -258,6 +261,9 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+real(r4), allocatable :: XC_sq(:), YC_sq(:), XG_sq(:), YG_sq(:), ZC_sq(:)
+integer               :: xcsqsize, ycsqsize, zcsqsize
+integer               :: shape_file_id
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -287,7 +293,7 @@ namelist /model_nml/ assimilation_period_days,     &
                      assimilation_period_seconds,  &
                      model_perturbation_amplitude, &
                      model_shape_file,             &
-                     mitgcm_variables
+                     mitgcm_variables 
 
 logical :: go_to_dart    = .false.
 logical :: do_bgc        = .false.
@@ -523,17 +529,40 @@ if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 
 call parse_variable_input(mitgcm_variables, model_shape_file, nvars, &
-                      var_names, quantity_list, clamp_vals, update_list)
+                var_names, quantity_list, clamp_vals, update_list)
 
 domain_id = add_domain(model_shape_file, nvars, &
                     var_names, quantity_list, clamp_vals, update_list )
+! Open the file
+shape_file_id = nc_open_file_readonly(model_shape_file)
+! Get the size
+call nc_get_variable_size(shape_file_id, 'XC_3D', xcsqsize)
+call nc_get_variable_size(shape_file_id, 'YC_3D', ycsqsize)
+call nc_get_variable_size(shape_file_id, 'ZC_3D', zcsqsize)
+
+! Allocate the variable and get the values
+allocate(xc_sq(xcsqsize))
+allocate(yc_sq(ycsqsize))
+allocate(zc_sq(zcsqsize))
+allocate(xg_sq(xcsqsize))
+allocate(yg_sq(ycsqsize))
+
+call nc_get_variable(shape_file_id, 'XC_3D', XC_sq)
+call nc_get_variable(shape_file_id, 'YC_3D', YC_sq)
+call nc_get_variable(shape_file_id, 'ZC_3D', ZC_sq)
+
+! EL: tentative solution of XG values
+do i=1, xcsqsize
+	XG_sq(i) = XC_sq(i) - 0.5*delX(1)
+	YG_sq(i) = YC_sq(i) - 0.5*delY(1)
+enddo
+
 
 model_size = get_domain_size(domain_id)
 
 if (do_output()) write(*,*) 'model_size = ', model_size
 
 end subroutine static_init_model
-
 
 function get_model_size()
 !------------------------------------------------------------------
@@ -954,6 +983,67 @@ endif
 end function lon_dist
 
 
+function get_dart_vector_index_new(iloc, jloc, kloc, dom_id, var_id)
+
+integer, intent(in) :: iloc, jloc, kloc
+integer, intent(in) :: dom_id, var_id
+integer(i8)         :: get_dart_vector_index_new
+real(r4)            :: x_var, y_var, z_var   ! The target lat, lon, level values
+integer             :: i    ! loop counter
+logical             :: x_close, y_close, z_close
+integer             :: ct
+
+! integer :: ndims
+integer(i8) :: offset
+! integer :: dsize(NF90_MAX_VAR_DIMS)
+
+! Step 1
+offset = get_index_start(dom_id, var_id)
+
+! Step 2
+x_var = XC(iloc)
+y_var = YC(jloc)
+z_var = ZC(kloc)
+
+! Set the default value to be -1
+get_dart_vector_index_new = -1
+! Step 3, 4
+do i=1, xcsqsize
+	x_close = .FALSE.
+	y_close = .FALSE. 
+	z_close = .FALSE.
+	! If we find the value
+	if ( XC_sq(i) .eq. x_var ) then
+		x_close = .TRUE. 
+	endif
+	if ( YC_sq(i) .eq. y_var ) then
+		y_close = .TRUE. 
+	endif
+	
+	if ( ZC_sq(i) .eq. z_var ) then
+		z_close = .TRUE. 
+	endif
+	
+	if (x_close .and. y_close .and. z_close )then
+		get_dart_vector_index_new = offset + i - 1
+		exit
+	endif
+enddo
+
+end function get_dart_vector_index_new
+
+!> The iloc, jloc, and kloc here are the grid indices
+!> For example, it might be (1000,1000,50)
+!> For the original case, the approach was to find the offset (i.e. where the specific
+!> variable starts in the state vector, then add number of values in dimensions to the offset
+!> to get the values. 
+
+!> NEW APPROACH: 
+!> 1. still need to find offset
+!> 2. Need to find XC(iloc), YC(jloc), ZC(kloc) 
+!> 3. Start searching for the values above in XC_sq, YC_sq, ZC_sq (long arrays)
+!> 4. return the value and add offset, that should be it.   
+
 function get_val(lon_index, lat_index, level, var_id, state_handle,ens_size, masked)
 !=======================================================================
 !
@@ -963,7 +1053,7 @@ integer,             intent(in)  :: lon_index, lat_index, level
 integer,             intent(in)  :: var_id ! state variable
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-logical,             intent(out) :: masked
+logical,             intent(out) :: masked                       
 real(r8)                         :: get_val(ens_size)
 
 integer(i8) :: state_index
@@ -971,8 +1061,13 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-state_index = get_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
-get_val = get_state(state_index,state_handle)
+state_index = get_dart_vector_index_new(lon_index, lat_index, level, domain_id, var_id)
+
+if (state_index .ne. -1) then
+	get_val = get_state(state_index,state_handle)
+else
+	masked = .true. 
+endif
 
 ! Masked returns false if the value is masked
 ! A grid variable is assumed to be masked if its value is FVAL. 
@@ -984,11 +1079,12 @@ get_val = get_state(state_index,state_handle)
 ! trans_mitdart already looks for 0.0 and makes them FVAL
 ! So, in the condition below we don't need to check for zeros
 ! The only mask is FVAL
-masked = .false.
-do i=1,ens_size
-!   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
-    if(get_val(i) == FVAL) masked = .true.
-enddo
+
+! No need to search for fill values now. Default get_state_vector_index_new is -1
+! do i=1,ens_size
+! !   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
+!     if(get_val(i) == FVAL) masked = .true.
+! enddo
 
 end function get_val
 
@@ -1072,25 +1168,27 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
-real(r8) :: lat, lon, depth
+real(r4) :: lat, lon, depth
 integer  :: iloc, jloc, kloc
 
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, iloc, jloc, kloc, kind_index = qty)
 
-lon   = XC(iloc)
-lat   = YC(jloc)
-depth = ZC(kloc)
+! The new array is 1-D
+
+lon   = XC_sq(iloc)
+lat   = YC_sq(iloc)
+depth = ZC_sq(iloc)
 
 ! Acounting for surface variables and those on staggered grids
 ! MEG: check chl's depth here
 if (qty == QTY_SEA_SURFACE_HEIGHT .or. &
     qty == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
-if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
-if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
+if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG_sq(iloc)
+if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG_sq(iloc)  
 
-location = set_location(lon, lat, depth, VERTISHEIGHT)
+location = set_location(real(lon, r8), real(lat, r8), real(depth, r8), VERTISHEIGHT)
 
 end subroutine get_state_meta_data
 
@@ -1323,7 +1421,7 @@ VARIABLES : do ivar = 1, get_num_variables(domain_id)
 
    clamp_min_val = get_io_clamping_minval(domain_id, ivar)
 
-   INDICES : do i = start_ind, end_ind
+   INDICES : do i = 1, state_ens_handle%my_num_vars
       MEMBERS : do copy = 1, ens_size
 
          ! Only perturb the actual ocean cells;
@@ -1361,12 +1459,12 @@ if ( .not. module_initialized ) call static_init_model
 
 read_model_time = model_time
 
-!if (do_output() .and. debug > 0 .and. present(last_time)) then
+if (do_output()) then
    call print_time(read_model_time, str='MITgcm_ocean time is ',iunit=logfileunit)
    call print_time(read_model_time, str='MITgcm_ocean time is ')
    call print_date(read_model_time, str='MITgcm_ocean date is ',iunit=logfileunit)
    call print_date(read_model_time, str='MITgcm_ocean date is ')
-!endif
+endif
 
 end function read_model_time
 
