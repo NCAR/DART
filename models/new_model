@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+model_name=$1
+location_mod=$2
+
+if [[ ("$@" = "help") || ("$@" = "--help") || ($# -eq 0) ]]; then
+  echo "Usage: $0 [model_name] [location_mod]"
+  exit 0
+elif [[ -d "$model_name" ]]; then
+  echo "$model_name already exists! Please try a different model name."
+  exit 1
+elif [[ $# -eq 1 ]]; then
+  echo "Please enter a proper location! (Hint: check DART/assimilation_code/location for location modules avaliable.)"
+  exit 1
+elif [[ ! -d "../assimilation_code/location/$location_mod" ]]; then
+  echo "$location_mod is not a proper location module! Please try a different location name."
+  exit 1
+else
+  cp -R template "$model_name"
+  rm -r "$model_name"/shell_scripts "$model_name"/model_mod.nml
+  sed -i '' -e  "s/template_model/$model_name/" -e "s/template_location/$location_mod/" "$model_name/work/quickbuild.sh"
+  printf "$model_name created successfully!\nTo get started,\n\tcd work/MODEL_NAME\n"
+fi
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
