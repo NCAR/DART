@@ -4,11 +4,8 @@
 !
 !----------------------------------------------------------------
 !>
-!> this is the interface between the cam-fv atmosphere model and dart.
+!> this is the interface between the cam-se atmosphere model and dart.
 !> the required public interfaces and arguments cannot be changed.
-
-
-! This is a prototype version of CAM-SE with Manhattan using common code
 !>
 !----------------------------------------------------------------
 
@@ -700,8 +697,8 @@ end subroutine convert_vertical_obs
 !>  in:    loc_indx(:) - location index
 !>  in:    which_vert  - vertical location to convert
 !>  out:   istatus     - return status 0 is a successful conversion
-!> At present there is no way for this routine to fail.
-!>
+!> At present there is no way for this routine to fail. !HK todo FV also
+!>  has no fail in this routine. Is this ok?
 
 subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
@@ -815,7 +812,6 @@ do i=1, num_close
    this = close_ind(i)
 
    vert_type = query_location(locs(this))
-!print *, 'close_o, vval, vtype = ', i, query_location(locs(this), 'VLOC'), vert_type
 
    if (vert_type /= vertical_localization_type) then
       call convert_vertical_obs(ens_handle, 1, locs(this:this), &
@@ -905,7 +901,6 @@ do i=1, num_close
    this = close_ind(i)
 
    vert_type = query_location(locs(this))
-!print *, 'close_s, vval, vtype = ', i, query_location(locs(this), 'VLOC'), vert_type
 
    if (vert_type /= vertical_localization_type) then
       call convert_vertical_state(ens_handle, 1, locs(this:this), &
@@ -1886,7 +1881,7 @@ character(len=*),   intent(in)    :: phis_filename
 
 character(len=*), parameter :: routine = 'read_cam_phis_array'
 
-integer :: ncid, nsize(3)   ! lon, lat, time !HK nope? space filling curve
+integer :: ncid, nsize(3)   ! lon, lat, time !HK todo nope? space filling curve nsize=1
 
 ncid = nc_open_file_readonly(phis_filename, routine)
 
@@ -1941,7 +1936,6 @@ do k = 1, nlevels
 
    !>tv == virtual temperature.
    tv(k,:) = temperature(:)*(1.0_r8 + rr_factor*specific_humidity(:))
-   !print*, 'tv(levels)', k,tv(k,1), temperature(1), specific_humidity(1)
 enddo
 
 end subroutine compute_se_virtual_temperature
