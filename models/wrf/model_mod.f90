@@ -3758,7 +3758,7 @@ integer, intent(in) :: dom_id
 logical, parameter :: write_precip = .false.
 
 integer, dimension(num_domains) :: weDimID, weStagDimID, snDimID, snStagDimID, &
-     btDimID, btStagDimID, slSDimID, tmp
+     btDimID, btStagDimID, slSDimID
 
 integer :: MemberDimID, DomDimID
 integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID, STAND_LONVarID
@@ -3777,7 +3777,7 @@ integer :: TimeDimID
 !integer, dimension(num_domains) :: MapFacMVarID, MapFacUVarID, MapFacVVarID
 
 integer :: var_id
-integer :: i, id, ret
+integer :: i, id, ret, tmp
 
 character(len=129) :: title
 character(len=32) :: context = 'nc_write_model_atts'
@@ -4293,19 +4293,19 @@ call nc_check(nf90_put_var(ncid,  MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj
 
 !nc -- convert internally logical boundary condition variables into integers before filling
 if ( wrf%dom(dom_id)%periodic_x ) then
-   tmp(dom_id) = 1
+   tmp = 1
 else
-   tmp(dom_id) = 0
+   tmp = 0
 endif
-call nc_check(nf90_put_var(ncid, PERIODIC_XVarID, tmp(1:num_domains) ), &
+call nc_check(nf90_put_var(ncid, PERIODIC_XVarID, tmp ), &
               'nc_write_model_atts','put_var PERIODIC_XVarID')
 
 if ( wrf%dom(dom_id)%polar ) then
-   tmp(dom_id) = 1
+   tmp = 1
 else
-   tmp(dom_id) = 0
+   tmp = 0
 endif
-call nc_check(nf90_put_var(ncid, POLARVarID, tmp(1:num_domains) ), &
+call nc_check(nf90_put_var(ncid, POLARVarID, tmp ), &
               'nc_write_model_atts','put var POLARVarID')
 
 
