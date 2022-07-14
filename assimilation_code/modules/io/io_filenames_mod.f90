@@ -53,8 +53,8 @@ use state_structure_mod,  only : get_num_domains, &
                                  get_add_offset, &
                                  get_scale_factor, &
                                  get_has_missing_value, &
-                                 do_io_update, &
                                  get_has_FillValue, &
+                                 do_io_update, &
                                  get_io_dim_length
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
