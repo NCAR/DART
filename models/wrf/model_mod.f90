@@ -301,7 +301,7 @@ TYPE wrf_static_data_for_dart
    !   input NetCDF file ("periodic_x" and "polar" are namelist items in the &bdy_control
    !   section of a standard WRF "namelist.input" file), but for now we have included them
    !   in the "model_nml" group of DART's own "input.nml".  Above, their default values are
-   !   both set to .true. (indicating a global domain). 
+   !   both set to .false. 
    logical  :: periodic_x
    logical  :: periodic_y
    logical  :: polar
