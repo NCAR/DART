@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 14 2022 :: Performance improvement - removal of redundant caching. Tag: v10.0.3**
+- Reduces the runtime by removing redundant caching in the get_close_obs_cached and 
+  get_close_state_cached subroutines in assim_tools_mod.f90
+
 **June 24 2022 :: Bug-fixes for MITgcm_ocean and Var obs converter. Tag: v10.0.2**
 
 - MITgcm_ocean pert_model_copies routine fixed to use the correct variable clamping
