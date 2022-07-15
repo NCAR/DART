@@ -45,8 +45,7 @@ namelist.
       model_res                   = 5.0
       assimilation_period_seconds = 3600
       estimate_f10_7              = .false.
-      initialize_f10_7            = .false.
-      f10_7                       = 74.0
+      f10_7_file_name             = 'f10_7.nc'
       debug                       = 0
       variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
                   'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
@@ -100,12 +99,12 @@ namelist.
 |                             |                      | index is taken to be longitude of     |
 |                             |                      | local noon and latitude zero.         |
 +-----------------------------+----------------------+---------------------------------------+
-| initialize_f10_7            | logical              | If ``estimate_f107=.true.``           |
-|                             |                      | ``initialize_f10_7=.true.``           |
-|                             |                      | initializes f10.7 with the value from |
-|                             |                      | the model_nml namelist.               |
-|                             |                      | ``initialize_f10_7=.false.`` reads    |
-|                             |                      | f10.7 from a netcdf file              | 
+| f10_7_file_name             | character(len=256)   | If ``estimate_f107=.true.``           |
+|                             |                      | f10.7 will be part of the dart state. |
+|                             |                      | The variable f10_7 is read from       |
+|                             |                      | ``f10_7_file_name``                   |
+|                             |                      | An example f10_7.cdl file is          |
+|                             |                      | given in the work directory           |
 +-----------------------------+----------------------+---------------------------------------+
 | debug                       | integer              | Set to 0 (zero) for minimal output.   |
 |                             |                      | Successively larger values generate   |
@@ -136,6 +135,21 @@ namelist.
 ``UPDATE`` filter will update the variable in the TIEGCM netcdf file. Use ``NO_COPY_BACK`` to prevent
 filter from updating the variable.
 
+Below is an example showing the namelist options necessary to add f10.7 to the DART state
+
+:: 
+
+      &filter_nml
+         input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt', 'f10.7.txt'
+         output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt', 'out_f10.7.txt' 
+      
+      &model_nml
+        estimate_f10_7 = .true.
+        f10_7_file_name = 'f10_7.nc'
+        variables =  'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
+                     ...
+                     'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
+                     'f10_7'  'QTY_1D_PARAMETER'               'NA',      'NA',      'calculate', 'UPDATE'
 
 
 References

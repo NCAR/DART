@@ -93,7 +93,7 @@ public :: add_domain,                 &
           get_io_dim_lengths,         &
           get_io_num_unique_dims,     &
           get_io_unique_dim_name,     &
-          get_io_unique_dim_length,   & ! HK what is the point of this?
+          get_io_unique_dim_length,   &
           get_io_dim_length,          &
           add_time_unlimited,         &
           get_unlimited_dimid,        &
@@ -125,9 +125,6 @@ public :: add_domain,                 &
           add_dimension_to_variable,  &
           finished_adding_domain,     &
           state_structure_info,       &
-          is_init_parameter_estimate, &
-          set_parameter_value,        &
-          get_parameter_value,        &
           hyperslice_domain,          &
           has_unlimited_dim
   
@@ -166,9 +163,7 @@ type io_information
    ! dimension information, including unlimited dimensions
    integer :: io_numdims  = 0
    integer, dimension(NF90_MAX_VAR_DIMS) :: io_dimIds
-   !character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname !HK would you have different name IO vs DART?
    integer,                      dimension(NF90_MAX_VAR_DIMS) :: dimlens
-    !HK start and count?
    
    ! update information
    logical :: update = .true. ! default to update variables
@@ -216,7 +211,6 @@ type variable_type
    ! dart information
    integer :: dart_kind = -1
    character(len=obstypelength) :: kind_string = 'unknown'
-   real(r8) :: parameter_value = MISSING_R8
 
    type(io_information) :: io_info
 
@@ -249,8 +243,6 @@ type domain_type
    ! string identifying the manner in which the domain was created
    ! 'blank', 'file', or 'spec'
    character(len=6) :: method = 'none'
-   ! if init_parameter_estimate = .true. the variable values set rather than read
-   logical :: init_parameter_estimate = .false.
 
 end type domain_type
 
@@ -381,16 +373,13 @@ end function add_domain_from_file
 !> Returns a dom_id that can be used to harvest information of a particular domain
 
 
-function add_domain_from_spec(num_vars, var_names, kind_list, clamp_vals, &
-           update_list, init_parameter_estimate) result(dom_id)
+function add_domain_from_spec(num_vars, var_names, kind_list, clamp_vals, update_list) result(dom_id)
 
 integer,          intent(in) :: num_vars
 character(len=*), intent(in) :: var_names(num_vars)
 integer,          intent(in), optional :: kind_list(num_vars)
 real(r8),         intent(in), optional :: clamp_vals(num_vars, 2)
 logical,          intent(in), optional :: update_list(num_vars)
-logical,          intent(in), optional :: init_parameter_estimate
-
 integer :: dom_id
 
 integer :: ivar
@@ -417,8 +406,7 @@ enddo
 if ( present(kind_list)   ) call set_dart_kinds (dom_id, num_vars, kind_list)
 if ( present(clamp_vals)  ) call set_clamping   (dom_id, num_vars, clamp_vals)
 if ( present(update_list) ) call set_update_list(dom_id, num_vars, update_list)
-if ( present(init_parameter_estimate)) &
-  state%domain(dom_id)%init_parameter_estimate = init_parameter_estimate
+
 end function add_domain_from_spec
 
 
@@ -1715,51 +1703,6 @@ state%domain(dom_id)%variable(var_id)%io_info%io_dimids(d_new) = d_new
 state%domain(dom_id)%num_unique_dims = d_new
 
 end subroutine add_dimension_to_variable
-
-!-------------------------------------------------------------------------------
-! For parameter estimation domain (tiegcm)
-! add_domain_from_spec + a vaule for the variable
-!  f10.7 is a single value, but maybe could be per ensemble member?
-subroutine set_parameter_value(dom_id, var_id, value)
-
-integer,  intent(in)  :: dom_id
-integer,  intent(in)  :: var_id ! this is the order you gave in add_domain
-real(r8), intent(in)  :: value  ! what to set the variable to
-
-if ( .not. state%domain(dom_id)%init_parameter_estimate) then
-  call error_handler(E_ERR, 'set_variable_value', 'not using initialization for parameter_estimate domain')
-endif
-
-state%domain(dom_id)%variable(var_id)%parameter_value = value
-
-end subroutine set_parameter_value
-
-!-------------------------------------------------------------------------------
-function get_parameter_value(dom_id, var_id)
-
-integer, intent(in)  :: dom_id ! domain identifier
-integer, intent(in)  :: var_id ! order from add_domain_from_spec
-real(r8) :: get_parameter_value
-
-
-if ( .not. state%domain(dom_id)%init_parameter_estimate) then
-  call error_handler(E_ERR, 'get_variable_value', 'variables not initialized for parameter_estimate domain')
-endif
-
-get_parameter_value = state%domain(dom_id)%variable(var_id)%parameter_value
-
-end function get_parameter_value
-
-!-------------------------------------------------------------------------------
-! return whether the domain is parameter estimation
-function is_init_parameter_estimate(dom_id)
-
-integer, intent(in) :: dom_id ! domain identifier
-logical :: is_init_parameter_estimate
-
-is_init_parameter_estimate = state%domain(dom_id)%init_parameter_estimate
-
-end function is_init_parameter_estimate
 
 
 !-------------------------------------------------------------------------------

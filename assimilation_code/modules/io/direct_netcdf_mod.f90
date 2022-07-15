@@ -92,8 +92,8 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_has_FillValue, &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
-                                 end_diagnostic_structure, get_parameter_value, &
-                                 is_init_parameter_estimate, has_unlimited_dim
+                                 end_diagnostic_structure, &
+                                 has_unlimited_dim
 
 use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  stage_metadata_type, get_file_description, &
@@ -824,10 +824,7 @@ end subroutine write_augmented_state
 
 !-------------------------------------------------------------------------------
 !> Read in variables from start_var to end_var
-!> TIEGCM:
-!>   top level is not part of the state (it is the boundary condition)
-!>   read the last time slice
-!>   parameter (can be set rather than read).
+!> Read the latest time slice in the file
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
 
 integer,  intent(in)    :: ncfile_in
@@ -847,21 +844,6 @@ logical :: missing_possible
 
 missing_possible = get_missing_ok_status()
 
-! check for a calcluated domain - set don't read these variables
-if ( is_init_parameter_estimate(domain) ) then
-
-   istart = 1
-
-   do i = start_var, end_var
-      var_size = get_variable_size(domain, i)
-      iend = istart + var_size - 1
-      var_block(istart:iend) = get_parameter_value(domain, i)
-      istart = istart + var_size
-   end do
-
-   return
-endif
-
 istart = 1
 
 do i = start_var, end_var
@@ -878,7 +860,7 @@ do i = start_var, end_var
       allocate(slice_start(num_dims))
       slice_start(:) = 1 ! default to read all dimensions start at 1
       counts(num_dims) = 1 ! one slice of unlimited dimesion
-      counts(1:num_dims-1) = get_dim_lengths(domain, i) !HK you only want to read the state right?
+      counts(1:num_dims-1) = get_dim_lengths(domain, i) ! the state
       
       ! read latest time slice - hack to get started with tiegcm
       ! not sure if it will always be the last time slice
@@ -893,7 +875,7 @@ do i = start_var, end_var
       allocate(counts(num_dims))
       allocate(slice_start(num_dims))
       slice_start(:) = 1 ! default to read all dimensions start at 1
-      counts(:) = get_dim_lengths(domain, i) !HK you only want to read the state right?
+      counts(:) = get_dim_lengths(domain, i) ! the state
    endif
 
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
@@ -949,10 +931,8 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
    ! open netcdf file
    if (query_read_copy(name_handle, copy)) then
       netcdf_filename = get_restart_filename(name_handle, copy, domain)
-      if (.not. is_init_parameter_estimate(domain)) then
-         ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-         call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
-      endif
+      ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+      call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
    endif
 
    block_size = get_domain_size(domain)
@@ -961,12 +941,9 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    if (query_read_copy(name_handle, copy)) then
       call read_variables(ncfile, vector, 1, get_num_variables(domain), domain)
-
-      if (.not. is_init_parameter_estimate(domain)) then
-         ! close netcdf file
-         ret = nf90_close(ncfile)
-         call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
-      endif
+      ! close netcdf file
+      ret = nf90_close(ncfile)
+      call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
       state_ens_handle%copies(copy, istart:iend) = vector
 
    endif
@@ -1159,10 +1136,8 @@ COPIES: do c = 1, ens_size
 
       if (query_read_copy(name_handle, my_copy)) then
          netcdf_filename = get_restart_filename(name_handle, my_copy, domain)
-         if (.not. is_init_parameter_estimate(domain)) then
-           ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-           call nc_check(ret, 'read_transpose opening', netcdf_filename)
-         endif
+         ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+         call nc_check(ret, 'read_transpose opening', netcdf_filename)
       endif
 
    endif
@@ -1259,10 +1234,8 @@ COPIES: do c = 1, ens_size
    ! close netcdf file
    if (is_reader) then
       if (query_read_copy(name_handle, my_copy)) then
-         if (.not. is_init_parameter_estimate(domain)) then
-           ret = nf90_close(ncfile)
-           call nc_check(ret, 'read_transpose closing', netcdf_filename)
-         endif
+         ret = nf90_close(ncfile)
+         call nc_check(ret, 'read_transpose closing', netcdf_filename)
       endif
    endif
 
@@ -1615,7 +1588,7 @@ do i = start_var, end_var
          counts(num_dims) = 1 ! one slice of unlimited dimesion
          counts(1:num_dims-1) = get_dim_lengths(domain, i)
 
-         ! read latest time slice - hack to get started with tiegcm
+         ! write the latest time slice - hack to get started with tiegcm
          ! not sure if it will always be the last time slice
          ret = nf90_inquire(ncid, unlimitedDimID=unlim_dimID)
          call nc_check(ret, 'write_variables: nf90_inquire', 'unlimitedDimID')

@@ -63,7 +63,7 @@ use default_model_mod, only : adv_1step,                                &
 
 use state_structure_mod, only : add_domain, get_dart_vector_index, add_dimension_to_variable, &
                                 finished_adding_domain, state_structure_info, &
-                                get_domain_size, set_parameter_value, get_model_variable_indices, &
+                                get_domain_size, get_model_variable_indices, &
                                 get_num_dims, get_dim_name, get_variable_name, &
                                 get_varid_from_varname, get_num_varids_from_kind, &
                                 get_varid_from_kind, get_varids_from_kind, &
@@ -122,10 +122,9 @@ character(len=256) :: tiegcm_restart_file_name   = 'tiegcm_restart_p.nc'
 character(len=256) :: tiegcm_secondary_file_name = 'tiegcm_s.nc'
 integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
-logical            :: initialize_f10_7 = .false.
+character(len=256) :: f10_7_file_name = 'f10_7.nc'
 integer            :: assimilation_period_seconds = 3600
 real(r8)           :: model_res = 5.0_r8
-real(r8)           :: f10_7 = 74.0_r8
 
 integer, parameter :: MAX_NUM_VARIABLES = 30
 integer, parameter :: MAX_NUM_COLUMNS = 6
@@ -133,7 +132,8 @@ character(len=NF90_MAX_NAME) :: variables(MAX_NUM_VARIABLES * MAX_NUM_COLUMNS) =
 
 namelist /model_nml/ tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, &
-                     variables, debug, estimate_f10_7, initialize_f10_7, &
+                     variables, debug, estimate_f10_7, &
+                     f10_7_file_name, &
                      assimilation_period_seconds, model_res
                      
 
@@ -226,12 +226,7 @@ endif
 call read_TIEGCM_definition(tiegcm_restart_file_name)
 
 if ( estimate_f10_7 ) then
-  if (initialize_f10_7) then
-   write(string1, '(f10.5)') f10_7
-   call error_handler(E_MSG, 'initalizing f10_7 as', string1 )
-  else
-   call error_handler(E_MSG, 'reading f10_7 estimate', 'from netcdf file')
-  endif
+   call error_handler(E_MSG, 'f10_7 part of DART state', source)
 endif
 
 ! error-check, convert namelist input to variable_table, and build the
@@ -1050,21 +1045,9 @@ ROWLOOP : do i = 1, nrows
    nfields=nfields+1
    if (variable_table(i,VT_ORIGININDX) == 'RESTART') nfields_restart = nfields_restart+1
    if (variable_table(i,VT_ORIGININDX) == 'SECONDARY') nfields_secondary = nfields_secondary+1
+   if (variable_table(i,VT_ORIGININDX) == 'CALCULATE') nfields_constructed = nfields_constructed + 1
 
 enddo ROWLOOP
-
-if ( estimate_f10_7 ) then
-
-   nfields = nfields + 1
-   nfields_constructed = nfields_constructed+1
-   variable_table(nfields,VT_VARNAMEINDX) = 'f10_7'
-   variable_table(nfields,VT_KINDINDX)    = 'QTY_1D_PARAMETER'
-   variable_table(nfields,VT_MINVALINDX)  = 'NA'
-   variable_table(nfields,VT_MAXVALINDX)  = 'NA'
-   variable_table(nfields,VT_ORIGININDX)  = 'CALCULATE'
-   variable_table(nfields,VT_STATEINDX)   = 'UPDATE'
-
-endif
 
 ! Record the contents of the DART state vector
 if (do_output() .and. (debug > 99)) then
@@ -1086,11 +1069,16 @@ if (do_output() .and. (debug > 99)) then
    enddo
 endif
 
+if (nfields_secondary == 0) call error_handler(E_ERR, 'ZG is required in &model_nml::variables', source)
 
 call load_up_state_structure_from_file(tiegcm_restart_file_name, nfields_restart, 'RESTART', RESTART_DOM)
 call load_up_state_structure_from_file(tiegcm_secondary_file_name, nfields_secondary, 'SECONDARY', SECONDARY_DOM)
+
 if (estimate_f10_7) then
-   call load_up_calculated_variables(nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
+   if (nfields_constructed == 0) then
+      call error_handler(E_ERR, 'expecting f10.7 in &model_nml::variables', source)
+   endif
+   call load_up_state_structure_from_file(f10_7_file_name, nfields_constructed, 'CALCULATE', CONSTRUCT_DOM)
    model_size = get_domain_size(RESTART_DOM) + get_domain_size(SECONDARY_DOM) &
                           + get_domain_size(CONSTRUCT_DOM)
 else
@@ -1147,72 +1135,13 @@ enddo
 domain_id(domain_num) = add_domain(filename, nvar, &
                           var_names, kind_list, clamp_vals, update_list)
 
-! remove top level from all lev variables
+! remove top level from all lev variables - this is the boundary condition
 call hyperslice_domain(domain_id(domain_num), 'lev', nlev)
 
 deallocate(var_names, kind_list, clamp_vals, update_list)
 
 end subroutine load_up_state_structure_from_file
 !-------------------------------------------------------------------------------
-! f10_7 is the only calculated variable
-! May have a netcdf file, or may be initialized
-subroutine load_up_calculated_variables(nvar, domain_name, domain_num)
-
-integer,          intent(in) :: nvar ! number of variables in domain
-character(len=*), intent(in) :: domain_name ! calculate
-integer,          intent(in) :: domain_num
-
-integer :: i,j
-
-character(len=NF90_MAX_NAME), allocatable :: var_names(:)
-real(r8), allocatable :: clamp_vals(:,:)
-integer, allocatable :: kind_list(:)
-logical, allocatable :: update_list(:)
-
-
-allocate(var_names(nvar), kind_list(nvar), &
-     clamp_vals(nvar,2), update_list(nvar))
-
-update_list(:) = .true. ! default to update state variable
-clamp_vals(:,:) = MISSING_R8 ! default to no clamping
-
-j = 0
-do i = 1, nfields
-   if (variable_table(i,VT_ORIGININDX) == domain_name) then
-      j = j+1
-      var_names(j) = variable_table(i, VT_VARNAMEINDX)
-      kind_list(j) = get_index_for_quantity(variable_table(i, VT_KINDINDX))
-      if (variable_table(i, VT_MINVALINDX) /= 'NA') then
-         read(variable_table(i, VT_MINVALINDX), '(d16.8)') clamp_vals(j,1)
-      endif
-      if (variable_table(i, VT_MAXVALINDX) /= 'NA') then
-        read(variable_table(i, VT_MAXVALINDX), '(d16.8)') clamp_vals(j,2)
-      endif
-      if (variable_table(i, VT_STATEINDX) == 'NO_COPY_BACK') then
-         update_list(j) = .false.
-      endif
-   endif
-enddo
-
-domain_id(domain_num) = add_domain(nvar, var_names, &
-       kind_list, clamp_vals, update_list, init_parameter_estimate=initialize_f10_7)
-
-do i = 1, nvar
-  if (var_names(i) == 'f10_7') then
-    ! dimensions to match what? Lanai has single value f10_7
-    call add_dimension_to_variable(domain_id(domain_num), i, 'parameter', 1)
-    ! initialize to namelist value, or read from file
-    if (initialize_f10_7) call set_parameter_value(domain_id(domain_num), i, f10_7)
-  endif
-
-enddo
-
-call finished_adding_domain(domain_id(domain_num))
-
-end subroutine load_up_calculated_variables
-
-!-------------------------------------------------------------------------------
-
 
 subroutine extrapolate_vtec(state_handle, ens_size, lon_index, lat_index, vTEC)
 !

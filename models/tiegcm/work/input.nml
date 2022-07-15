@@ -33,6 +33,10 @@
    silence                    = .false.
    /
 
+# Example for f10.7 estimation. 
+#   input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt', 'f10.7.txt'
+#   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt', 'out_f10.7.txt' 
+
 &filter_nml
    single_file_in               = .false.,
    input_state_files            = ''
@@ -145,11 +149,13 @@
 #              'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',   'NO_COPY_BACK',
 #              'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',   'NO_COPY_BACK',
 #              'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary', 'NO_COPY_BACK',
-
+#              'f10_7'  'QTY_1D_PARAMETER'               'NA',      'NA',      'calculate', 'UPDATE'
 &model_nml
    debug                       = 1
    tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
    tiegcm_secondary_file_name  = 'tiegcm_s.nc'
+   estimate_f10_7 = .false.
+   f10_7_file_name = 'f10_7.nc'
    assimilation_period_seconds = 3600
    variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
                'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
