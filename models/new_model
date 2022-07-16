@@ -3,13 +3,11 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 model_name=$1
 location_mod=$2
 
-if [[ ("$@" = "help") || ("$@" = "--help") || ($# -eq 0) ]]; then
+if [[ ("$1" = "help") || ("$1" = "--help") || ($# -eq 0) ]]; then
   echo "Usage: $0 [model_name] [location_mod]"
   exit 0
 elif [[ -d "$model_name" ]]; then
@@ -23,14 +21,28 @@ elif [[ ! -d "../assimilation_code/location/$location_mod" ]]; then
   exit 1
 else
   cp -R template "$model_name"
-  rm -r "$model_name"/shell_scripts "$model_name"/model_mod.nml
+  rm -r "$model_name"/shell_scripts "$model_name"/model_mod.nml "$model_name/readme.rst"
+  mv "$model_name/new_model.rst" "$model_name/readme.rst"
+  sed -i '' "s/template_model/$model_name/" "$model_name/readme.rst"
   sed -i '' -e  "s/template_model/$model_name/" -e "s/template_location/$location_mod/" "$model_name/work/quickbuild.sh"
-  printf "$model_name created successfully!\nTo get started,\n\tcd work/MODEL_NAME\n"
+  case $location_mod in
+    threed | threed_cartesian | threed_sphere) # threed does not compile, but is a good framework
+      rm -r "$model_name"/oned_model_mod.f90 "$model_name"/work/oned_input.nml
+      mv "$model_name/threed_model_mod.f90" "$model_name/model_mod.f90"
+      mv "$model_name/work/threed_input.nml" "$model_name/work/input.nml"
+      ;;
+    oned)
+      rm -r "$model_name"/threed_model_mod.f90 "$model_name"/work/threed_input.nml
+      mv "$model_name/oned_model_mod.f90" "$model_name/model_mod.f90"
+      mv "$model_name/work/oned_input.nml" "$model_name/work/input.nml"
+      ;;
+    *) # default is a threed_sphere template. As other location templates added, they can be added to case
+      rm -r "$model_name"/oned_model_mod.f90 "$model_name"/work/oned_input.nml
+      mv "$model_name/threed_model_mod.f90" "$model_name/model_mod.f90"
+      mv "$model_name/work/threed_input.nml" "$model_name/work/input.nml"
+      ;;
+  esac
+  echo -e "$model_name created successfully!\nTo get started,\n\tcd $model_name/work"
 fi
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
