@@ -1665,7 +1665,7 @@ write(msgstring,*) 'Creating output file ', trim(filename)
 call error_handler(E_ALLMSG, routine, msgstring)
 
 ! What file options do you want?
-create_mode = ior(NF90_CLOBBER, NF90_CLASSIC_MODEL)
+create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
 ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
 
