@@ -127,7 +127,6 @@ public :: add_domain,                 &
           state_structure_info,       &
           hyperslice_domain,          &
           has_unlimited_dim
-  
 
 ! diagnostic files
 !>@todo FIXME these routines are deprecated because we are no supporting 'diagnostic' 
@@ -163,7 +162,7 @@ type io_information
    ! dimension information, including unlimited dimensions
    integer :: io_numdims  = 0
    integer, dimension(NF90_MAX_VAR_DIMS) :: io_dimIds
-   integer,                      dimension(NF90_MAX_VAR_DIMS) :: dimlens
+   integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
    
    ! update information
    logical :: update = .true. ! default to update variables
@@ -243,7 +242,7 @@ type domain_type
    ! string identifying the manner in which the domain was created
    ! 'blank', 'file', or 'spec'
    character(len=6) :: method = 'none'
-
+   
 end type domain_type
 
 !-------------------------------------------------------------------------------
@@ -631,7 +630,6 @@ do ivar = 1, num_vars
    else
       domain%variable(ivar)%numdims = num_dims
    endif
-
 
    ! member is not a spatial domain but could be included in a single file
    do jdim = 1, num_dims
