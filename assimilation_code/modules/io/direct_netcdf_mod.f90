@@ -1578,30 +1578,30 @@ do i = start_var, end_var
       endif
      
       ! number of dimensions and length of each variable
+      num_dims = get_io_num_dims(domain, i)
+      allocate(counts(num_dims))
+      allocate(slice_start(num_dims))
+      slice_start(:) = 1 ! default to read all dimensions starting at 1
 
       if (has_unlimited_dim(domain)) then
 
-         num_dims = get_io_num_dims(domain, i)
-         allocate(counts(num_dims))
-         allocate(slice_start(num_dims))
-         slice_start(:) = 1 ! default to read all dimensions start at 1
          counts(num_dims) = 1 ! one slice of unlimited dimesion
-         counts(1:num_dims-1) = get_dim_lengths(domain, i)
+         counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i)
 
-         ! write the latest time slice - hack to get started with tiegcm
+         ! write the latest time slice - HK hack to get started with tiegcm
          ! not sure if it will always be the last time slice
          ret = nf90_inquire(ncid, unlimitedDimID=unlim_dimID)
          call nc_check(ret, 'write_variables: nf90_inquire', 'unlimitedDimID')
-         ret = nf90_inquire_dimension(ncid, unlim_dimID, len=slice_start(num_dims))
-         call nc_check(ret, 'write_variables: nf90_inquiredimension', 'unlimitedDim length')
-         if (slice_start(num_dims) == 0) slice_start(num_dims) = 1 ! newly created file
+         if (unlim_dimID /= -1) then ! unlimited dimension exists
+            ret = nf90_inquire_dimension(ncid, unlim_dimID, len=slice_start(num_dims))
+            call nc_check(ret, 'write_variables: nf90_inquire dimension', 'unlimitedDim length')
+            if (slice_start(num_dims) == 0) slice_start(num_dims) = 1 ! newly created file
+         else  ! file does not have an unlimited dimension because it was created by DART
+            slice_start(num_dims) = 1
+         endif
 
       else
 
-         num_dims = get_io_num_dims(domain, i)
-         allocate(counts(num_dims))
-         allocate(slice_start(num_dims))
-         slice_start(:) = 1 ! default to read all dimensions start at 1
          counts(:) = get_dim_lengths(domain, i)
       endif
 
