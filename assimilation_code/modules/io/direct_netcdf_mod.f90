@@ -851,13 +851,13 @@ do i = start_var, end_var
    var_size = get_variable_size(domain, i)
    iend = istart + var_size - 1
 
-   ! number of dimensions and length of each
+   ! number of dimensions and length the variable
+   num_dims = get_io_num_dims(domain, i)
+   allocate(counts(num_dims))
+   allocate(slice_start(num_dims))
 
    if (has_unlimited_dim(domain)) then
 
-      num_dims = get_io_num_dims(domain, i)
-      allocate(counts(num_dims))
-      allocate(slice_start(num_dims))
       slice_start(:) = 1 ! default to read all dimensions start at 1
       counts(num_dims) = 1 ! one slice of unlimited dimesion
       counts(1:num_dims-1) = get_dim_lengths(domain, i) ! the state
@@ -871,9 +871,6 @@ do i = start_var, end_var
 
    else
 
-      num_dims = get_io_num_dims(domain, i)
-      allocate(counts(num_dims))
-      allocate(slice_start(num_dims))
       slice_start(:) = 1 ! default to read all dimensions start at 1
       counts(:) = get_dim_lengths(domain, i) ! the state
    endif
