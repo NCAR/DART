@@ -27,6 +27,7 @@ The changes are now listed with the most recent at the top.
 - Fixes DART_LAB prior and posterior rank histogram calculation.
 
 **July 14 2022 :: Performance improvement - removal of redundant caching. Tag: v10.0.3**
+
 - Reduces the runtime by removing redundant caching in the get_close_obs_cached and 
   get_close_state_cached subroutines in assim_tools_mod.f90
 
