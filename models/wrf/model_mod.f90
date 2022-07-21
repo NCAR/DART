@@ -3824,16 +3824,11 @@ if (ret /= NF90_NOERR) then
                  'nc_write_model_atts','def_dim domain')
 endif
 
-!>@todo FIXME we shouldn't need domain anymore because this
-!> routine is called once per domain.
 
 !>@todo FIXME all the variables below should have Time as
-!> the first dimension.  they shouldn't have _d0X in their
-!> names.
+!> the first dimension.
 
-!do id=1,num_domains
    id = dom_id
-!   write( idom , '(I1)') dom_id
    call nc_check(nf90_def_dim(ncid=ncid, name='west_east', &
                  len = wrf%dom(id)%we,  dimid = weDimID), &
                  'nc_write_model_atts','def_dim west_east')
@@ -3855,7 +3850,6 @@ endif
    call nc_check(nf90_def_dim(ncid=ncid, name='soil_layers_stag',  &
                  len = wrf%dom(id)%sls, dimid = slSDimID), &
                  'nc_write_model_atts','def_dim soil_layers_stag')
-!enddo
 
 !-----------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
