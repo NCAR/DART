@@ -312,10 +312,26 @@ of the state variables then doing it on demand is more efficient.
 The options here are namelist selectable at runtime and the impact
 on total runtime can be easily measured and compared.
 
-Reuse code when possible
-------------------------
+New model automation and code reuse
+-----------------------------------
 
-The ``models/template`` directory has files that can be used to start
-porting code to support a new model, but we also recommend looking at
-the existing supported models and reusing code from them if possible.
-Models with similar grid types or vertical coordiates are good candidates.
+Adding a new model can be done with the script ``models/new_model.sh``.
+Start by entering ``./new_model.sh``, then the desired model name and
+location module separated by spaces. This will create a template of all the
+necessary files and components that are needed for a model.
+
+Templates are chosen based on location module input. The currently supported
+location templates are for 3D and 1D modules, with the possibility for more
+in the future. At the moment, ``threed_sphere``, ``threed_cartesian``, and
+``oned``  locations compile with the script's selections. If the location is
+not listed here, the script will default to 3D as it still provides the
+foundation for a model that can be developed further.
+
+The ``input.nml`` file found in the new model directory is where
+documentation can be added in the future.
+
+The ``models/template`` directory has the templates and extra files that can
+be used to start porting code to support a new model, but we also recommend
+looking at the existing supported models and reusing code from them if
+possible. Models with similar grid types or vertical coordinates are good
+candidates.
