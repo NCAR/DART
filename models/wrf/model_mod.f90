@@ -3748,12 +3748,12 @@ end subroutine get_wrf_horizontal_location
 !***********************************************************************
 
 
-subroutine nc_write_model_atts( ncid, dom_id ) 
+subroutine nc_write_model_atts( ncid, id ) 
 !-----------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 
 integer, intent(in) :: ncid      ! netCDF file identifier
-integer, intent(in) :: dom_id
+integer, intent(in) :: id
 
 logical, parameter :: write_precip = .false.
 
@@ -3777,7 +3777,7 @@ integer :: TimeDimID
 !integer, dimension(num_domains) :: MapFacMVarID, MapFacUVarID, MapFacVVarID
 
 integer :: var_id
-integer :: i, id, ret, tmp
+integer :: i, ret, tmp
 
 character(len=129) :: title
 character(len=32) :: context = 'nc_write_model_atts'
@@ -3828,28 +3828,27 @@ endif
 !>@todo FIXME all the variables below should have Time as
 !> the first dimension.
 
-   id = dom_id
-   call nc_check(nf90_def_dim(ncid=ncid, name='west_east', &
-                 len = wrf%dom(id)%we,  dimid = weDimID), &
-                 'nc_write_model_atts','def_dim west_east')
-   call nc_check(nf90_def_dim(ncid=ncid, name='west_east_stag',   &
-                 len = wrf%dom(id)%wes, dimid = weStagDimID), &
-                 'nc_write_model_atts','def_dim west_east_stag')
-   call nc_check(nf90_def_dim(ncid=ncid, name='south_north',      &
-                 len = wrf%dom(id)%sn,  dimid = snDimID), &
-                 'nc_write_model_atts','def_dim south_north')
-   call nc_check(nf90_def_dim(ncid=ncid, name='south_north_stag', &
-                 len = wrf%dom(id)%sns, dimid = snStagDimID), &
-                 'nc_write_model_atts','def_dim south_north_stag')
-   call nc_check(nf90_def_dim(ncid=ncid, name='bottom_top',       &
-                 len = wrf%dom(id)%bt,  dimid = btDimID), &
-                 'nc_write_model_atts','def_dim bottom_top')
-   call nc_check(nf90_def_dim(ncid=ncid, name='bottom_top_stag',  &
-                 len = wrf%dom(id)%bts, dimid = btStagDimID), &
-                 'nc_write_model_atts','def_dim bottom_top_stag')
-   call nc_check(nf90_def_dim(ncid=ncid, name='soil_layers_stag',  &
-                 len = wrf%dom(id)%sls, dimid = slSDimID), &
-                 'nc_write_model_atts','def_dim soil_layers_stag')
+call nc_check(nf90_def_dim(ncid=ncid, name='west_east', &
+              len = wrf%dom(id)%we,  dimid = weDimID), &
+              'nc_write_model_atts','def_dim west_east')
+call nc_check(nf90_def_dim(ncid=ncid, name='west_east_stag',   &
+              len = wrf%dom(id)%wes, dimid = weStagDimID), &
+              'nc_write_model_atts','def_dim west_east_stag')
+call nc_check(nf90_def_dim(ncid=ncid, name='south_north',      &
+              len = wrf%dom(id)%sn,  dimid = snDimID), &
+              'nc_write_model_atts','def_dim south_north')
+call nc_check(nf90_def_dim(ncid=ncid, name='south_north_stag', &
+              len = wrf%dom(id)%sns, dimid = snStagDimID), &
+              'nc_write_model_atts','def_dim south_north_stag')
+call nc_check(nf90_def_dim(ncid=ncid, name='bottom_top',       &
+              len = wrf%dom(id)%bt,  dimid = btDimID), &
+              'nc_write_model_atts','def_dim bottom_top')
+call nc_check(nf90_def_dim(ncid=ncid, name='bottom_top_stag',  &
+              len = wrf%dom(id)%bts, dimid = btStagDimID), &
+              'nc_write_model_atts','def_dim bottom_top_stag')
+call nc_check(nf90_def_dim(ncid=ncid, name='soil_layers_stag',  &
+              len = wrf%dom(id)%sls, dimid = slSDimID), &
+              'nc_write_model_atts','def_dim soil_layers_stag')
 
 !-----------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
@@ -3990,7 +3989,7 @@ call nc_check(nf90_put_att(ncid, POLARVarID, 'units', &
 
 
 
-write( idom , '(I1)') dom_id
+write( idom , '(I1)') id
 
 call nc_check(nf90_def_var(ncid, name='DN', xtype=nf90_real, &
                  dimids= btDimID, varid=DNVarID), &
@@ -4283,7 +4282,7 @@ call nc_check(nf90_put_var(ncid,  MAP_PROJVarID, wrf%dom(id)%map_proj), &
               'nc_write_model_atts','put_var map_proj')
 
 !nc -- convert internally logical boundary condition variables into integers before filling
-if ( wrf%dom(dom_id)%periodic_x ) then
+if ( wrf%dom(id)%periodic_x ) then
    tmp = 1
 else
    tmp = 0
@@ -4291,7 +4290,7 @@ endif
 call nc_check(nf90_put_var(ncid, PERIODIC_XVarID, tmp ), &
               'nc_write_model_atts','put_var PERIODIC_XVarID')
 
-if ( wrf%dom(dom_id)%polar ) then
+if ( wrf%dom(id)%polar ) then
    tmp = 1
 else
    tmp = 0
