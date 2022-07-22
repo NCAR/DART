@@ -3760,7 +3760,6 @@ logical, parameter :: write_precip = .false.
 integer :: weDimID, weStagDimID, snDimID, snStagDimID, &
      btDimID, btStagDimID, slSDimID
 
-integer :: MemberDimID, DomDimID
 integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID, STAND_LONVarID
 integer :: CEN_LATVarID, CEN_LONVarID, MAP_PROJVarID
 integer :: PERIODIC_XVarID, POLARVarID
@@ -3860,7 +3859,7 @@ call nc_check(nf90_def_dim(ncid=ncid, name='soil_layers_stag',  &
 !-----------------------------------------------------------------
 
 call nc_check(nf90_def_var(ncid, name='DX', xtype=nf90_real, &
-              dimids= DomDimID, varid=DXVarID), &
+               varid=DXVarID), &
               'nc_write_model_atts','def_var DX')
 call nc_check(nf90_put_att(ncid, DXVarID, 'long_name', 'X HORIZONTAL RESOLUTION'), &
               'nc_write_model_atts','put_att DX long_name')
@@ -3870,7 +3869,7 @@ call nc_check(nf90_put_att(ncid, DXVarID, 'units', 'm'), &
               'nc_write_model_atts','put_att DX units')
 
 call nc_check(nf90_def_var(ncid, name='DY', xtype=nf90_real, &
-              dimids= DomDimID, varid=DYVarID), &
+               varid=DYVarID), &
               'nc_write_model_atts','def_var DY')
 call nc_check(nf90_put_att(ncid, DYVarID, 'long_name', 'Y HORIZONTAL RESOLUTION'), &
               'nc_write_model_atts','put_att DY long_name')
@@ -3880,7 +3879,7 @@ call nc_check(nf90_put_att(ncid, DYVarID, 'units', 'm'), &
               'nc_write_model_atts','put_att DY units')
 
 call nc_check(nf90_def_var(ncid, name='TRUELAT1', xtype=nf90_real, &
-              dimids= DomDimID, varid=TRUELAT1VarID), &
+               varid=TRUELAT1VarID), &
               'nc_write_model_atts','def_var TRUELAT1')
 call nc_check(nf90_put_att(ncid, TRUELAT1VarID, 'long_name', &
               'first standard parallel'), &
@@ -3893,7 +3892,7 @@ call nc_check(nf90_put_att(ncid, TRUELAT1VarID, 'units', &
               'nc_write_model_atts','put_att TRUELAT1 units')
 
 call nc_check(nf90_def_var(ncid, name='TRUELAT2', xtype=nf90_real, &
-              dimids= DomDimID, varid=TRUELAT2VarID), &
+               varid=TRUELAT2VarID), &
               'nc_write_model_atts','def_var TRUELAT2')
 call nc_check(nf90_put_att(ncid, TRUELAT2VarID, 'long_name', &
               'second standard parallel'), &
@@ -3906,7 +3905,7 @@ call nc_check(nf90_put_att(ncid, TRUELAT2VarID, 'units', &
               'nc_write_model_atts','put_att TRUELAT2 units')
 
 call nc_check(nf90_def_var(ncid, name='STAND_LON', xtype=nf90_real, &
-              dimids= DomDimID, varid=STAND_LONVarID), &
+               varid=STAND_LONVarID), &
               'nc_write_model_atts','def_var STAND_LON')
 call nc_check(nf90_put_att(ncid, STAND_LONVarID, 'long_name', &
               'standard longitude'), &
@@ -3919,7 +3918,7 @@ call nc_check(nf90_put_att(ncid, STAND_LONVarID, 'units', &
               'nc_write_model_atts','put_att STAND_LON units')
 
 call nc_check(nf90_def_var(ncid, name='CEN_LAT', xtype=nf90_real, &
-              dimids= DomDimID, varid=CEN_LATVarID), &
+               varid=CEN_LATVarID), &
               'nc_write_model_atts','def_var CEN_LAT')
 call nc_check(nf90_put_att(ncid, CEN_LATVarID, 'long_name', &
               'center latitude'), &
@@ -3932,7 +3931,7 @@ call nc_check(nf90_put_att(ncid, CEN_LATVarID, 'units', &
               'nc_write_model_atts','put_att CEN_LAT units')
 
 call nc_check(nf90_def_var(ncid, name='CEN_LON', xtype=nf90_real, &
-              dimids= DomDimID, varid=CEN_LONVarID), &
+               varid=CEN_LONVarID), &
               'nc_write_model_atts','def_var CEN_LON')
 call nc_check(nf90_put_att(ncid, CEN_LONVarID, 'long_name', &
               'central longitude'), &
@@ -3945,7 +3944,7 @@ call nc_check(nf90_put_att(ncid, CEN_LONVarID, 'units', &
               'nc_write_model_atts','put_att CEN_LON units')
 
 call nc_check(nf90_def_var(ncid, name='MAP_PROJ', xtype=nf90_real, &
-              dimids= DomDimID, varid=MAP_PROJVarID), &
+               varid=MAP_PROJVarID), &
               'nc_write_model_atts','def_var MAP_PROJ')
 call nc_check(nf90_put_att(ncid, MAP_PROJVarID, 'long_name', &
               'domain map projection'), &
@@ -3962,7 +3961,7 @@ call nc_check(nf90_put_att(ncid, MAP_PROJVarID, 'units', &
 !        carried internally as logicals, they will first need to be 
 !        converted back to integers.
 call nc_check(nf90_def_var(ncid, name='PERIODIC_X', xtype=nf90_int, &
-              dimids= DomDimID, varid=PERIODIC_XVarID), &
+               varid=PERIODIC_XVarID), &
               'nc_write_model_atts','def_var PERIODIC_X')
 call nc_check(nf90_put_att(ncid, PERIODIC_XVarID, 'long_name', &
               'Longitudinal periodic b.c. flag'), &
@@ -3975,7 +3974,7 @@ call nc_check(nf90_put_att(ncid, PERIODIC_XVarID, 'units', &
               'nc_write_model_atts','put_att PERIODIC_X units')
 
 call nc_check(nf90_def_var(ncid, name='POLAR', xtype=nf90_int, &
-              dimids= DomDimID, varid=POLARVarID), &
+               varid=POLARVarID), &
               'nc_write_model_atts','def_var POLAR')
 call nc_check(nf90_put_att(ncid, POLARVarID, 'long_name', &
               'Polar periodic b.c. flag'), &
