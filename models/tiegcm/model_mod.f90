@@ -154,12 +154,12 @@ integer                               :: time_step_days
 type(time_type)                       :: time_step
 
 ! Codes for interpreting the columns of the variable_table
-integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
-integer, parameter :: VT_KINDINDX     = 2 ! ... DART kind
-integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
-integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
-integer, parameter :: VT_ORIGININDX   = 5 ! ... file of origin
-integer, parameter :: VT_STATEINDX    = 6 ! ... update (state) or not
+integer, parameter :: VT_VARNAMEINDX  = 1 ! variable name
+integer, parameter :: VT_KINDINDX     = 2 ! DART quantity
+integer, parameter :: VT_MINVALINDX   = 3 ! minimum value if any
+integer, parameter :: VT_MAXVALINDX   = 4 ! maximum value if any
+integer, parameter :: VT_ORIGININDX   = 5 ! file of origin
+integer, parameter :: VT_STATEINDX    = 6 ! update (state) or not
 
 character(len=obstypelength) :: variable_table(MAX_NUM_VARIABLES, MAX_NUM_COLUMNS)
 
@@ -183,10 +183,10 @@ real(r8)  :: delta_lat      = MISSING_R8
 integer   :: zero_lon_index = MISSING_I
 
 
-! Obs locations are expected to be given in height [m],
+! Obs locations are expected to be given in height [m] or level,
 ! and so vertical localization coordinate is *always* height.
 ! Note that gravity adjusted geopotential height (ZG) is read in
-! "tiegcm_s.nc". ZG is 'cm', dart is mks(HK mks?))
+! "tiegcm_s.nc". ZG is 'cm', dart is mks
 integer               :: ivarZG
 
 character(len=512)    :: string1, string2, string3
@@ -222,7 +222,7 @@ if (do_output()) then
    write(logfileunit,*)'static_init_model: debug level is ',debug
 endif
 
-! Read in TIEGCM grid definition TIEGCM restart file
+! Read in TIEGCM grid definition from TIEGCM restart file
 call read_TIEGCM_definition(tiegcm_restart_file_name)
 
 if ( estimate_f10_7 ) then
@@ -329,15 +329,16 @@ call compute_bracketing_lon_indices(lon, lon_below, lon_above, lon_fract)
 ! pressure is static data on plevs/pilevs
 if ( iqty == QTY_PRESSURE) then
    if (which_vert == VERTISLEVEL) then
-      ! Some variables need plevs, some need pilevs
-      ! We only need the height (aka level)
-      ! the obs_def_upper_atm_mod.f90:get_expected_O_N2_ratio routines queries
-      ! for the pressure at the model levels - EXACTLY - so ...
-      ! FIXME ... at present ... the only time model_interpolate
-      ! gets called with QTY_PRESSURE is to calculate density, which
-      ! requires other variables that only live on the midpoints.
-      ! I cannot figure out how to generically decide when to
-      ! use plevs vs. pilevs
+      ! @todo from Lanai code:
+      !   Some variables need plevs, some need pilevs
+      !   We only need the height (aka level)
+      !   the obs_def_upper_atm_mod.f90:get_expected_O_N2_ratio routines queries
+      !   for the pressure at the model levels - EXACTLY - so ...
+      !   FIXME ... at present ... the only time model_interpolate
+      !   gets called with QTY_PRESSURE is to calculate density, which
+      !   requires other variables that only live on the midpoints.
+      !   I cannot figure out how to generically decide when to
+      !   use plevs vs. pilevs
 
       ! Check to make sure vertical level is possible.
       if ((level < 1) .or. (level > nlev)) then
@@ -349,15 +350,10 @@ if ( iqty == QTY_PRESSURE) then
       endif
    elseif (which_vert == VERTISHEIGHT) then
 
-      ! If PRESSURE; calculate the pressure from several variables. HK I don't understand this.
-
-
-      ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
-      ! At present, vert_interp will simply fail because height is a negative number.
-      ! HK what are you supposed to do for pressure with VERTISUNDEF? level 1?
-
-      ! HK pressure is not in the state so do not call get_state.
-      call error_handler(E_ERR, 'model_interpolate', 'vert is height for pressure interpolate')
+      ! @todo from Lanai code:
+      !   FIXME ... is it possible to try to get a pressure with which_vert == undefined
+      !   At present, vert_interp will simply fail because height is a negative number.
+      !   @todo HK what are you supposed to do for pressure with VERTISUNDEF? level 1?
 
       call vert_interp(state_handle, ens_size, dom_id, var_id, lon_below, lat_below, height, iqty, val11, istatus)
       if (any(istatus /= 0)) return  ! bail at the first failure
@@ -379,7 +375,7 @@ if ( iqty == QTY_PRESSURE) then
 endif ! end of QTY_PRESSURE
 
 
-if ( iqty == QTY_VERTICAL_TEC ) then !extrapolate vtec
+if ( iqty == QTY_VERTICAL_TEC ) then ! extrapolate vtec
 
    call extrapolate_vtec(state_handle, ens_size, lon_below, lat_below, val11)
    call extrapolate_vtec(state_handle, ens_size, lon_below, lat_above, val11)
@@ -499,7 +495,7 @@ select case (trim(dim_name))
       location  = set_location(lons(lon_index), lats(lat_index), levs(lev_index), VERTISLEVEL)
    case default
     call error_handler(E_ERR, 'get_state_meta_data', 'expecting ilev or ilat dimension')
-    ! HK TODO 2D variables.
+    ! HK @todo 2D variables.
 end select
 
 end subroutine get_state_meta_data
@@ -665,7 +661,7 @@ end subroutine get_close_state
 !-------------------------------------------------------------------------------
 
 subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
+                                which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
 integer,             intent(in)    :: num
@@ -673,7 +669,7 @@ type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer,             intent(in)    :: loc_types(:)
 integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
+integer,             intent(out)   :: istatus(:)
 
 integer  :: current_vert_type, i
 real(r8) :: height(1)
@@ -682,7 +678,7 @@ integer  :: local_status(1)
 character(len=*), parameter :: routine = 'convert_vertical_obs'
 
 if ( which_vert == VERTISHEIGHT .or. which_vert == VERTISUNDEF) then
-  status(:) = 0
+  istatus(:) = 0
   return
 endif
 
@@ -690,16 +686,14 @@ do i = 1, num
    current_vert_type = nint(query_location(locs(i)))
    if (( current_vert_type == which_vert ) .or. &
        ( current_vert_type == VERTISUNDEF)) then
-      status(i) = 0
+      istatus(i) = 0
       cycle
    endif
 
   call model_interpolate(state_handle, 1, locs(i), QTY_GEOMETRIC_HEIGHT, height, local_status )
   
-  if (local_status(1) == 0) then
-     call set_vertical(locs(i), height(1), VERTISHEIGHT)
-  endif
-  status(i) = local_status(1)
+  if (local_status(1) == 0) call set_vertical(locs(i), height(1), VERTISHEIGHT)
+  istatus(i) = local_status(1)
 
 enddo
 
@@ -1256,7 +1250,7 @@ end subroutine extrapolate_vtec
 subroutine vert_interp(state_handle, n, dom_id, var_id, lon_index, lat_index, height, iqty, &
                        val, istatus)
 ! returns the value at an arbitrary height on an existing horizontal grid location.
-! istatus == 0 is a 'good' return code.
+! istatus == 0 is success.
 
 type(ensemble_type), intent(in) :: state_handle
 integer,          intent(in)  :: n ! ensemble_size
@@ -1441,7 +1435,7 @@ found = .false.
    frac_lev(:) = (zgrid(:) - height)/delta_z(:)
 
 
-   if (is_pressure) then ! get fom plevs (pilevs?) array TODO Lanai is always plves
+   if (is_pressure) then ! get fom plevs (pilevs?) array @todo HK Lanai is always plves
 
       val_top(:)    = plevs(lev_top(:))     !pressure at midpoint [Pa]
       val_bottom(:) = plevs(lev_bottom(:))  !pressure at midpoint [Pa]
@@ -1565,7 +1559,7 @@ found = .false.
       frac_lev = (zgrid_upper - height)/delta_z
    endwhere
 
-if (is_pressure) then ! get fom plevs (pilevs?) array TODO Lanai is always plves
+if (is_pressure) then ! get fom plevs (pilevs?) array @todo HK Lanai is always plves
 
    val_top(:)    = plevs(lev_top(:))     !pressure at midpoint [Pa]
    val_bottom(:) = plevs(lev_bottom(:))  !pressure at midpoint [Pa]
