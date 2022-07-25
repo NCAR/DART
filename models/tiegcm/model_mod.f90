@@ -77,8 +77,9 @@ use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute, &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
                                  nc_define_dimension, nc_end_define_mode, &
                                  nc_put_variable,nc_add_attribute_to_variable, &
-                                 nc_define_real_variable, nc_define_character_variable, &
-                                 nc_check
+                                 nc_define_real_variable, &
+                                 nc_check, nc_open_file_readonly, nc_get_dimension_size, &
+                                 nc_close_file, nc_get_variable
 
 use dart_time_io_mod,     only : write_model_time
 
@@ -758,14 +759,11 @@ end subroutine convert_vertical_state
 
 !-------------------------------------------------------------------------------
 
-function read_model_time(filename, ncfileid, lasttime)
-! Gets the latest time in the netCDF file.
+function read_model_time(filename)
 character(len=*),  intent(in) :: filename
-integer, optional, intent(in) :: ncfileid
-integer, optional, intent(in) :: lasttime
 type(time_type) :: read_model_time
 
-integer :: ncid, TimeDimID, time_dimlen, DimID, dimlen, VarID
+integer :: ncid, time_dimlen, dimlen
 
 integer,  parameter         :: nmtime = 3
 integer,  dimension(nmtime) :: mtime  ! day, hour, minute
@@ -773,29 +771,12 @@ integer                     :: year, doy, utsec
 integer, allocatable, dimension(:,:) :: mtimetmp
 integer, allocatable, dimension(:)   :: yeartmp
 
-if ( present(ncfileid) ) then
-   ncid = ncfileid
-else
-   call nc_check(nf90_open(filename, NF90_NOWRITE, ncid), &
-              'read_model_time','open '//trim(filename))
-endif
+character(len=*), parameter :: routine = 'read_model_time'
 
-call nc_check(nf90_inq_dimid(ncid, 'time', TimeDimID), &
-        'read_model_time', 'inquire id of time')
-call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=time_dimlen ), &
-        'read_model_time', 'inquire_dimension time')
-call nc_check(nf90_inq_dimid(ncid, 'mtimedim', DimID), &
-        'read_model_time', 'inq_dimid mtimedim')
-call nc_check(nf90_inquire_dimension(ncid,     DimID, len=dimlen), &
-        'read_model_time', 'inquire_dimension mtimedim')
+ncid = nc_open_file_readonly(filename, routine)
 
-if (present(lasttime)) then
-   if (lasttime /= time_dimlen) then
-      write(string1, *) trim(filename), ' last time index is ', &
-                        time_dimlen, ' desired ', lasttime
-      call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
-   endif
-endif
+time_dimlen = nc_get_dimension_size(ncid, 'time', routine)
+dimlen = nc_get_dimension_size(ncid, 'mtimedim', routine)
 
 if (dimlen /= nmtime) then
    write(string1, *) trim(filename), ' mtimedim = ',dimlen, ' DART expects ', nmtime
@@ -804,15 +785,8 @@ endif
 
 allocate(mtimetmp(dimlen, time_dimlen), yeartmp(time_dimlen))
 
-!... get mtime
-call nc_check(nf90_inq_varid(ncid, 'mtime', VarID), &
-        'read_model_time', 'inquire id of time')
-call nc_check(nf90_get_var(ncid, VarID, values=mtimetmp), &
-        'read_model_time', 'get_var mtime')
-
-!... get year
-call nc_check(nf90_inq_varid(ncid, 'year', VarID), 'read_model_time', 'inq_varid year')
-call nc_check(nf90_get_var(ncid, VarID, values=yeartmp), 'read_model_time', 'get_var year')
+call nc_get_variable(ncid, 'mtime', mtimetmp, routine)
+call nc_get_variable(ncid, 'year', yeartmp, routine)
 
 ! pick off the latest/last
 mtime = mtimetmp(:,time_dimlen)
@@ -831,9 +805,7 @@ if (do_output()) then
    call print_time(read_model_time, str=trim(filename)//':read_model_time: time ')
 endif
 
-if ( .not. present(ncfileid) ) then
-   call nc_check(nf90_close(ncid), 'read_model_time', 'close '//trim(filename))
-endif
+call nc_close_file(ncid, routine, filename)
 
 end function read_model_time
 
