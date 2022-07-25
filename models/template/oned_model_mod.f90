@@ -382,8 +382,3 @@ end subroutine nc_write_model_atts
 !===================================================================
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
