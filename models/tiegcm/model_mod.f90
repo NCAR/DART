@@ -815,7 +815,7 @@ end function read_model_time
 !===============================================================================
 
 subroutine read_TIEGCM_definition(file_name)
-! Read TIEGCM grid definition and Geopotential from a tiegcm restart file
+! Read TIEGCM grid definition from a tiegcm restart file
 ! fills metadata storage variables:
 ! lons(:), nlon
 ! lats(:), nlat
@@ -835,19 +835,6 @@ character(len=*), parameter :: routine = 'read_TIEGCM_definition'
 call error_handler(E_MSG,routine,'reading restart ['//trim(file_name)//']')
 
 ncid = nc_open_file_readonly(file_name, routine)
-
-! Make sure time is the unlimited dimension
-
-call nc_check(nf90_inquire(ncid, unlimitedDimId = TimeDimID), &
-       'read_TIEGCM_definition', 'inquire id of unlimited dimension time')
-call nc_check(nf90_inq_dimid(ncid, 'time', DimID), 'read_TIEGCM_definition', &
-                  'inq_dimid time')
-
-if( TimeDimID /= DimID ) then
-   write(string1,*) trim(file_name),' does not have the "time" dimension as unlimited.'
-   write(string2,*) 'This is a fundamental requirement for DART/TIEGCM'
-   call error_handler(E_ERR,'read_TIEGCM_definition',string1,source,revision,revdate)
-endif
 
 ! longitude - TIEGCM uses values +/- 180, DART uses values [0,360]
 nlon = nc_get_dimension_size(ncid, 'lon', routine)
