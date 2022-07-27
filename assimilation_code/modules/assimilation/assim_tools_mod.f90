@@ -327,6 +327,7 @@ logical,                     intent(in)    :: inflate_only
 ! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
+real(r8) :: obs_post(ens_size)
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
 real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
@@ -377,6 +378,7 @@ logical :: local_obs_inflate
 ! Storage for normal probit conversion, keeps prior mean and sd for all state ensemble members
 type(dist_param_type) :: state_dist_params(ens_handle%my_num_vars)
 type(dist_param_type) :: obs_dist_params(obs_ens_handle%my_num_vars)
+type(dist_param_type) :: temp_dist_params
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -505,7 +507,7 @@ end do
 
 ! Convert all my state variables to appropriate probit space
 call convert_all_to_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, my_state_kind, &
-   state_dist_params, ens_handle%copies)
+   state_dist_params, ens_handle%copies, .false.)
 
 !!!elseif(PRIOR_STATE_PDF_TYPE == 2) then
    !!!! Rank histogram test
@@ -547,7 +549,7 @@ endif
 ! CAN WE DO THE ADAPTIVE INFLATION ENTIRELY IN PROBIT SPACE TO MAKE IT DISTRIBUTION INDEPENDENT????
 ! WOULD NEED AN OBSERVATION ERROR VARIANCE IN PROBIT SPACE SOMEHOW. IS THAT POSSIBLE???
 call convert_all_to_probit(ens_size, my_num_obs, obs_ens_handle%copies, my_obs_kind, &
-   obs_dist_params, obs_ens_handle%copies)
+   obs_dist_params, obs_ens_handle%copies, .false.)
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -639,7 +641,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_VAR_END, owners_index)
 
          ! If QC is okay, convert this observation ensemble from probit to regular space
-         call convert_from_probit(ens_size, 1, obs_ens_handle%copies(:, owners_index) , &
+         call convert_from_probit(ens_size, obs_ens_handle%copies(:, owners_index) , &
             my_obs_kind(owners_index), obs_dist_params(owners_index), &
             obs_ens_handle%copies(:, owners_index))
 
@@ -683,11 +685,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
          obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
          my_inflate_sd, net_a(group))
+      obs_post(grp_bot:grp_top) = obs_prior(grp_bot:grp_top) + obs_inc(grp_bot:grp_top)
 
       ! Convert both the prior and posterior to probit space (efficiency for prior???)
       ! Running probit space with groups needs to be studied more carefully
-      !!!call convert_to_probit(grp_size, 1, obs_prior_array
-
+      !Make sure that base_obs_kind is correct
+      call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), base_obs_kind, &
+         temp_dist_params, obs_prior(grp_bot:grp_top), .false.)
+      call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), base_obs_kind, &
+         temp_dist_params, obs_post(grp_bot:grp_top), .true.)
+      ! Recompute obs_inc in probit space
+      obs_inc(grp_bot:grp_top) = obs_post(grp_bot:grp_top) - obs_prior(grp_bot:grp_top)
+         
       ! Also compute prior mean and variance of obs for efficiency here
       obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
       obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &

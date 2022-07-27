@@ -24,7 +24,7 @@ contains
 
 !------------------------------------------------------------------------
 
-subroutine convert_all_to_probit(ens_size, num_vars, state_ens, var_kind, p, probit_ens)
+subroutine convert_all_to_probit(ens_size, num_vars, state_ens, var_kind, p, probit_ens, use_input_p)
 
 integer, intent(in)                  :: ens_size
 integer, intent(in)                  :: num_vars
@@ -32,6 +32,7 @@ real(r8), intent(in)                 :: state_ens(:, :)
 type(dist_param_type), intent(inout) :: p(num_vars)
 integer, intent(in)                  :: var_kind(num_vars)
 real(r8), intent(out)                :: probit_ens(:, :)
+logical, intent(in)                  :: use_input_p
 
 ! Note that the input and output arrays may have extra copies (first subscript). Passing sections of a
 ! leading index could be inefficient for time and storage, so avoiding that for now.
@@ -39,21 +40,22 @@ real(r8), intent(out)                :: probit_ens(:, :)
 integer  :: i
 
 do i = 1, num_vars
-   call convert_to_probit(ens_size, num_vars, state_ens(1:ens_size, :), var_kind(i), p(i), probit_ens(1:ens_size, :))
+   call convert_to_probit(ens_size, state_ens(1:ens_size, i), var_kind(i), p(i), probit_ens(1:ens_size, i), &
+      use_input_p)
 end do
 
 end subroutine convert_all_to_probit
 
 !------------------------------------------------------------------------
 
-subroutine convert_to_probit(ens_size, num_vars, state_ens, var_kind, p, probit_ens)
+subroutine convert_to_probit(ens_size, state_ens, var_kind, p, probit_ens, use_input_p)
 
 integer, intent(in)                  :: ens_size
-integer, intent(in)                  :: num_vars
 real(r8), intent(in)                 :: state_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 integer, intent(in)                  :: var_kind
 real(r8), intent(out)                :: probit_ens(ens_size)
+logical, intent(in)                  :: use_input_p
 
 ! Note that the input and output arrays may have extra copies (first subscript). Passing sections of a
 ! leading index could be inefficient for time and storage, so avoiding that for now.
@@ -61,15 +63,23 @@ real(r8), intent(out)                :: probit_ens(ens_size)
 real(r8) :: mean, sd
 
 ! Initial test is just a bogus thing for normals which require two parameters, mean and sd
-mean = sum(state_ens) / ens_size
-sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
+if(use_input_p) then
+   mean = p%params(1)
+   sd   = p%params(2)
+else
+   mean = sum(state_ens) / ens_size
+   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
+endif
+
 ! Do the probit transform for the normal
 probit_ens = (state_ens - mean) / sd
 
 ! Store these for the inversion
-allocate(p%params(2))
-p%params(1) = mean
-p%params(2) = sd
+if(.not. use_input_p) then
+   if(.not. allocated(p%params)) allocate(p%params(2))
+   p%params(1) = mean
+   p%params(2) = sd
+endif
 
 end subroutine convert_to_probit
 
@@ -88,17 +98,16 @@ real(r8), intent(out)                :: state_ens(:, :)
 integer  :: i
 
 do i = 1, num_vars
-   call convert_from_probit(ens_size, 1, probit_ens(1:ens_size, i), var_kind(i), p(i), state_ens(1:ens_size, i))
+   call convert_from_probit(ens_size, probit_ens(1:ens_size, i), var_kind(i), p(i), state_ens(1:ens_size, i))
 end do
 
 end subroutine convert_all_from_probit
 
 !------------------------------------------------------------------------
 
-subroutine convert_from_probit(ens_size, num_vars, probit_ens, var_kind, p, state_ens)
+subroutine convert_from_probit(ens_size, probit_ens, var_kind, p, state_ens)
 
 integer, intent(in)                  :: ens_size
-integer, intent(in)                  :: num_vars
 real(r8), intent(in)                 :: probit_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 integer, intent(in)                  :: var_kind
