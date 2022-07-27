@@ -22,7 +22,7 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**July 27 2022 :: Bug-fix for WRF model_mod nc_model_atts. Tag: v10.0.5**
+**July 27 2022 :: Bug-fix for WRF model_mod nc_write_model_atts. Tag: v10.0.5**
 
 - Removes obsolete domain dimension from nc_write_model_atts for WRF model_mod.
   This code was left over from when multiple domains could be written to a single 
