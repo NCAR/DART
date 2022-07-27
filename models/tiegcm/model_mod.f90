@@ -36,7 +36,7 @@ use     location_mod, only : location_type,                                     
                              VERTISPRESSURE, VERTISHEIGHT, VERTISLEVEL,             &
                              vertical_localization_on, set_vertical
 
-use    utilities_mod, only : file_exist, open_file, close_file, logfileunit,        &
+use    utilities_mod, only : open_file, close_file, logfileunit,                    &
                              error_handler, E_ERR, E_MSG, E_WARN, nmlfileunit,      &
                              do_output, find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, register_module,             &
@@ -827,18 +827,14 @@ subroutine read_TIEGCM_definition(file_name)
 ! Sets the grid specs
 
 character(len=*), intent(in) :: file_name
-integer  :: ncid, VarID, DimID, TimeDimID
+integer  :: ncid, DimID, TimeDimID
 real(r8) :: p0
 
-if( .not. file_exist(file_name)) then
-   write(string1,*) trim(file_name),' not available.'
-   call error_handler(E_ERR,'read_TIEGCM_definition',string1,source,revision,revdate)
-endif
+character(len=*), parameter :: routine = 'read_TIEGCM_definition'
 
-call error_handler(E_MSG,'read_TIEGCM_definition:','reading restart ['//trim(file_name)//']')
+call error_handler(E_MSG,routine,'reading restart ['//trim(file_name)//']')
 
-call nc_check(nf90_open(file_name, NF90_NOWRITE, ncid), &
-       'read_TIEGCM_definition','open '//trim(file_name))
+ncid = nc_open_file_readonly(file_name, routine)
 
 ! Make sure time is the unlimited dimension
 
@@ -854,67 +850,34 @@ if( TimeDimID /= DimID ) then
 endif
 
 ! longitude - TIEGCM uses values +/- 180, DART uses values [0,360]
-
-call nc_check(nf90_inq_dimid(ncid, 'lon', DimID), 'read_TIEGCM_definition', &
-                  'inq_dimid lon')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlon), 'read_TIEGCM_definition', &
-                  'inquire_dimension lon')
+nlon = nc_get_dimension_size(ncid, 'lon', routine)
 allocate(lons(nlon))
-call nc_check(nf90_inq_varid(ncid, 'lon', VarID), 'read_TIEGCM_definition', &
-                  'inq_varid lon')
-call nc_check(nf90_get_var(ncid, VarID, values=lons), 'read_TIEGCM_definition', &
-                  'get_var lon')
-
+call nc_get_variable(ncid, 'lon', lons, routine)
 where (lons < 0.0_r8) lons = lons + 360.0_r8
 
 ! latitiude
-
-call nc_check(nf90_inq_dimid(ncid, 'lat', DimID), 'read_TIEGCM_definition', &
-                  'inq_dimid lat')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nlat), 'read_TIEGCM_definition', &
-                  'inquire_dimension lat')
+nlat = nc_get_dimension_size(ncid, 'lat', routine)
 allocate(lats(nlat))
-call nc_check(nf90_inq_varid(ncid, 'lat', VarID), 'read_TIEGCM_definition', &
-                  'inq_varid lat')
-call nc_check(nf90_get_var(ncid, VarID, values=lats), 'read_TIEGCM_definition', &
-                  'get_var lat')
+call nc_get_variable(ncid, 'lat', lats, routine)
 
 ! pressure
-
-call nc_check(nf90_inq_varid(ncid, 'p0', VarID), 'read_TIEGCM_definition', &
-                  'inq_varid p0')
-call nc_check(nf90_get_var(ncid, VarID, values=p0), 'read_TIEGCM_definition', &
-                  'get_var p0')
-
+call nc_get_variable(ncid, 'p0', p0, routine)
 TIEGCM_reference_pressure = p0
 
-call nc_check(nf90_inq_dimid(ncid, 'lev', DimID), 'read_TIEGCM_definition', &
-                  'inq_dimid lev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=all_nlev), 'read_TIEGCM_definition', &
-                  'inquire_dimension lev')
+! level
+all_nlev = nc_get_dimension_size(ncid, 'lev', routine)
 ! top level is not viable. The lower boundary condition is stored in the top level
 nlev = all_nlev - 1
-
 allocate(all_levs(all_nlev),levs(nlev), plevs(nlev))
-
-call nc_check(nf90_inq_varid(ncid, 'lev', VarID), 'read_TIEGCM_definition', &
-                  'inq_varid lev')
-call nc_check(nf90_get_var(ncid, VarID, values=all_levs), 'read_TIEGCM_definition', &
-                  'get_var lev')
+call nc_get_variable(ncid, 'lev', all_levs, routine)
 
 levs=all_levs(1:nlev)
 plevs = p0 * exp(-levs) * 100.0_r8 ![Pa] = 100* [millibars] = 100* [hPa]
 
-call nc_check(nf90_inq_dimid(ncid, 'ilev', DimID), 'read_TIEGCM_definition', &
-                  'inq_dimid ilev')
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nilev), 'read_TIEGCM_definition', &
-                  'inquire_dimension ilev')
+! ilevel
+nilev = nc_get_dimension_size(ncid, 'ilev', routine)
 allocate(ilevs(nilev), pilevs(nilev))
-
-call nc_check(nf90_inq_varid(ncid, 'ilev', VarID), 'read_TIEGCM_definition', &
-                  'inq_varid ilev')
-call nc_check(nf90_get_var(ncid, VarID, values=ilevs), 'read_TIEGCM_definition', &
-                  'get_var ilev')
+call nc_get_variable(ncid, 'ilev', ilevs, routine)
 
 pilevs = p0 * exp(-ilevs) * 100.0_r8 ! [Pa] = 100* [millibars] = 100* [hPa]
 
