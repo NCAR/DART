@@ -1307,9 +1307,6 @@ real(r8) :: val_top(n), val_bottom(n)
 integer(i8)  :: indx_top(n), indx_bottom(n) ! state vector indice
 
 istatus    = 1
-frac_lev   = MISSING_R8
-lev_top    = -1
-lev_bottom = -1
 found = .false.
 
    zgrid_bottom(:) = get_state(get_dart_vector_index(lon_index,lat_index,1, &
@@ -1399,21 +1396,19 @@ integer,  intent(in)  :: dom_id, var_id
 real(r8), intent(out) :: val(n)  ! interpolated value
 integer,  intent(out) :: istatus(n)
 
-integer :: lev_bottom(n)
-integer :: lev_top(n)
+integer :: lev(n), lev_minus_one(n), lev_plus_one(n)
 real(r8) :: frac_lev(n)
 
 integer  :: k, i
 real(r8) :: delta_z(n)
-real(r8) :: zgrid_upper(n), zgrid_lower(n)
-integer(i8)  :: indx_top(n), indx_bottom(n) ! state vector indices
+real(r8) :: zgrid_upper(n), zgrid_lower(n) ! ZG on midpoints
+real(r8) :: z_k(n), z_k_minus_one(n), z_k_plus_one(n)  ! ZG on ilves
+integer(i8)  :: indx_top(n), indx_bottom(n) ! state vector indices for qty
+integer(i8)  :: indx(n), indx_minus_one(n), indx_plus_one(n) ! state vector indices for ZG
 logical  :: found(n) ! track which ensemble members have been located
 real(r8) :: val_top(n), val_bottom(n)
 
 istatus    = 1
-frac_lev   = MISSING_R8
-lev_top    = -1
-lev_bottom = -1
 found = .false.
 
    ! Variable is on level midpoints, not ilevels.
@@ -1457,44 +1452,50 @@ found = .false.
          if (found(i)) cycle
          if (height <= zgrid_upper(i)) then
             found(i) = .true.
-            lev_top(i)    = k
-            lev_bottom(i) = lev_top(i) - 1
+            lev(i) = k
+            lev_minus_one(i) = lev(i) - 1
+            lev_plus_one(i) = lev(i) + 1
             if (all(found)) exit h_loop_midpoint
          endif
       enddo
 
    enddo h_loop_midpoint
 
-   zgrid_lower(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,k-1, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8)     +  &
-                      (get_state(get_dart_vector_index(lon_index,lat_index,k, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8) ) / 2.0_r8
+   do i = 1, n
+     indx(i) = get_dart_vector_index(lon_index,lat_index,lev(i), domain_id(SECONDARY_DOM), ivarZG)
+     indx_minus_one(i) = get_dart_vector_index(lon_index,lat_index,lev_minus_one(i), domain_id(SECONDARY_DOM), ivarZG)
+     indx_plus_one(i) = get_dart_vector_index(lon_index,lat_index,lev_plus_one(i), domain_id(SECONDARY_DOM), ivarZG)
+   enddo
+
+   call get_state_array(z_k(:),indx(:), state_handle)
+   call get_state_array(z_k_minus_one, indx_minus_one(:), state_handle)  
+   call get_state_array(z_k_plus_one, indx_plus_one(:), state_handle)
 
 
-   zgrid_upper(:) = ( (get_state(get_dart_vector_index(lon_index,lat_index,k, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8)     +  &
-                      (get_state(get_dart_vector_index(lon_index,lat_index,k+1, &
-                         domain_id(SECONDARY_DOM), ivarZG), state_handle)/100.0_r8) ) / 2.0_r8
-
-   delta_z(:) = zgrid_upper(:) - zgrid_lower(:)
+   !lower midpoint   
+   zgrid_lower(:) = ( z_k(:) + z_k_minus_one ) / 2.0_r8 / 100.0_r8
+   
+   ! upper midpoint
+   zgrid_upper(:) = ( z_k(:) + z_k_plus_one ) / 2.0_r8 / 100.0_r8
 
    where (zgrid_upper == zgrid_lower)  ! avoid divide by zero
       frac_lev = 0
    elsewhere
+      delta_z(:) = zgrid_upper(:) - zgrid_lower(:)
       frac_lev = (zgrid_upper - height)/delta_z
    endwhere
 
-if (is_pressure) then ! get fom plevs (pilevs?) array @todo HK Lanai is always plves
+if (is_pressure) then ! get fom plevs 
 
-   val_top(:)    = plevs(lev_top(:))     !pressure at midpoint [Pa]
-   val_bottom(:) = plevs(lev_bottom(:))  !pressure at midpoint [Pa]
+   val_top(:)    = plevs(lev(:))     !pressure at midpoint [Pa]
+   val_bottom(:) = plevs(lev_minus_one(:))  !pressure at midpoint [Pa]
    val(:)        = exp(frac_lev(:) * log(val_bottom(:)) + (1.0 - frac_lev(:)) * log(val_top(:)))
 
 else ! get from state vector
 
    do i = 1, n
-     indx_top(i) = get_dart_vector_index(lon_index,lat_index,lev_top(i), dom_id, var_id)
-     indx_bottom(i) = get_dart_vector_index(lon_index,lat_index,lev_bottom(i), dom_id, var_id)
+     indx_top(i) = get_dart_vector_index(lon_index,lat_index,lev(i), dom_id, var_id)
+     indx_bottom(i) = get_dart_vector_index(lon_index,lat_index,lev_minus_one(i), dom_id, var_id)
    enddo
 
    call get_state_array(val_top, indx_top(:), state_handle)
