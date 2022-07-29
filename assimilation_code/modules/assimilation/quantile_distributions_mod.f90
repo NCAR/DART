@@ -39,19 +39,24 @@ subroutine convert_all_to_probit(ens_size, num_vars, state_ens, var_kind, p, pro
 integer, intent(in)                  :: ens_size
 integer, intent(in)                  :: num_vars
 real(r8), intent(in)                 :: state_ens(:, :)
-type(dist_param_type), intent(inout) :: p(num_vars)
 integer, intent(in)                  :: var_kind(num_vars)
+type(dist_param_type), intent(inout) :: p(num_vars)
 real(r8), intent(out)                :: probit_ens(:, :)
 logical, intent(in)                  :: use_input_p
+
+! NOTE THAT WILL MAKE HELEN CRAZY: THIS WORKS WITH THE INPUT CALLING ARGUMENTS FOR STATE_ENS AND
+! PROBIT_ENS BEING THE SAME. A TEMP IS USED TO AVOID OVERWRITING ISSUES. IS THIS YUCKY?
 
 ! Note that the input and output arrays may have extra copies (first subscript). Passing sections of a
 ! leading index could be inefficient for time and storage, so avoiding that for now.
 
 integer  :: i
+real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars
-   call convert_to_probit(ens_size, state_ens(1:ens_size, i), var_kind(i), p(i), probit_ens(1:ens_size, i), &
+   call convert_to_probit(ens_size, state_ens(1:ens_size, i), var_kind(i), p(i), temp_ens, &
       use_input_p)
+   probit_ens(1:ens_size, i) = temp_ens
 end do
 
 end subroutine convert_all_to_probit
@@ -62,8 +67,8 @@ subroutine convert_to_probit(ens_size, state_ens, var_kind, p, probit_ens, use_i
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
-type(dist_param_type), intent(inout) :: p
 integer, intent(in)                  :: var_kind
+type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
 
@@ -74,6 +79,7 @@ elseif(var_kind == 99) then
    call to_probit_bounded_normal_rhf(ens_size, state_ens, var_kind, p, probit_ens, use_input_p)
 else
    write(*, *) 'Illegal var_kind in convert_to_probit', var_kind
+   stop
 endif
 
 end subroutine convert_to_probit
@@ -143,21 +149,23 @@ real(r8), save :: dist_for_unit_sd
 real(r8) :: mean, sd, base_prob, bound_quantile
 
 if(use_input_p) then
+   write(*, *) 'The use_input_p section has been turned off for testing'
+   stop
    ! Using an existing ensemble for the RHF points
 
    ! Get variables out of the parameter storage for clarity
-   bounded_below = p%params(1) > 0.5_r8
-   bounded_above = p%params(2) > 0.5_r8
-   lower_bound = p%params(3)
-   upper_bound = p%params(4)
-   do_uniform_tail_left = p%params(5) > 0.5_r8
-   do_uniform_tail_right = p%params(6) > 0.5_r8
-   tail_amp_left = p%params(7)
-   tail_amp_right = p%params(8)
-   tail_mean_left = p%params(9)
-   tail_mean_right = p%params(10)
-   tail_sd_left = p%params(11)
-   tail_sd_right = p%params(12)
+   bounded_below = p%params(ens_size + 1) > 0.5_r8
+   bounded_above = p%params(ens_size + 2) > 0.5_r8
+   lower_bound = p%params(ens_size + 3)
+   upper_bound = p%params(ens_size + 4)
+   do_uniform_tail_left = p%params(ens_size + 5) > 0.5_r8
+   do_uniform_tail_right = p%params(ens_size + 6) > 0.5_r8
+   tail_amp_left = p%params(ens_size + 7)
+   tail_amp_right = p%params(ens_size + 8)
+   tail_mean_left = p%params(ens_size + 9)
+   tail_mean_right = p%params(ens_size + 10)
+   tail_sd_left = p%params(ens_size + 11)
+   tail_sd_right = p%params(ens_size + 12)
 
    ! This can be done vastly more efficiently with either binary searches or by first sorting the
    ! incoming state_ens so that the lower bound for starting the search is updated with each ensemble member
@@ -222,20 +230,28 @@ else
    ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
    call index_sort(state_ens, ens_index, ens_size)
    do i = 1, ens_size
+      indx = ens_index(i)
       quantile = (i * 1.0_r8) / (ens_size + 1.0_r8)
       ! Probit is just the inverse of the standard normal CDF
-      call norm_inv(quantile, probit_ens(i))
+      call norm_inv(quantile, probit_ens(indx))
    end do 
 
-! For RHF, the required data for inversion is the original ensemble values
-! Having them in sorted order is useful for subsequent inversion
-! It is also useful to store additional information regarding the continuous pdf representation of the tails
-! This includes whether the bounds are defined, the values of the bounds, whether a uniform is used in the outer
-! bounded bin, the amplitude of the outer continuous normal pdf, the mean of the outer continous
-! normal pdf, and the standard deviation of the
-! outer continous. 
+   ! For RHF, the required data for inversion is the original ensemble values
+   ! Having them in sorted order is useful for subsequent inversion
+   ! It is also useful to store additional information regarding the continuous pdf representation of the tails
+   ! This includes whether the bounds are defined, the values of the bounds, whether a uniform is used in the outer
+   ! bounded bin, the amplitude of the outer continuous normal pdf, the mean of the outer continous
+   ! normal pdf, and the standard deviation of the
+   ! outer continous. 
    ! Do we really want to allow this? Better to deallocate and reallocate?
-   if(.not. allocated(p%params)) allocate(p%params(ens_size + 2*6))
+   if(.not. allocated(p%params)) then
+      allocate(p%params(ens_size + 2*6))
+      !!!allocate(p%params(ens_size + 100))
+   else
+      ! SHouldn't happen; put this in for testing
+      write(*, *) 'params already allocated in to_probit_bounded_normal_rhf'
+      stop
+   endif
    p%params(1:ens_size) = state_ens(ens_index)
 
    ! Compute the description of the tail continous pdf; 
@@ -299,6 +315,8 @@ else
    tail_amp_right = 1.0_r8
 
    ! DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE ARE VERY CLOSE/SAME
+   ! Default: not close
+   do_uniform_tail_left = .false.
    base_prob = 1.0_r8 / (ens_size + 1.0_r8)
    if(bounded_below) then
       ! Compute the CDF at the bounds
@@ -306,19 +324,17 @@ else
       if(abs(base_prob - bound_quantile) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_left = .true.
-      else
-         do_uniform_tail_left = .false.
       endif
    endif
    
+   ! Default: not close
+   do_uniform_tail_right = .false.
    if(bounded_above) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
       if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
-      else
-         do_uniform_tail_right = .false.
       endif
    endif
 
@@ -356,9 +372,11 @@ real(r8), intent(out)                :: state_ens(:, :)
 
 ! Convert back to the orig
 integer  :: i
+real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars
-   call convert_from_probit(ens_size, probit_ens(1:ens_size, i), var_kind(i), p(i), state_ens(1:ens_size, i))
+   call convert_from_probit(ens_size, probit_ens(1:ens_size, i), var_kind(i), p(i), temp_ens)
+   state_ens(1:ens_size, i) = temp_ens
 end do
 
 end subroutine convert_all_from_probit
@@ -381,6 +399,7 @@ elseif(var_kind == 99) then
    call from_probit_bounded_normal_rhf(ens_size, probit_ens, var_kind, p, state_ens)
 else
    write(*, *) 'Illegal var_kind in convert_from_probit ', var_kind
+   stop
 endif
 
 
@@ -424,18 +443,18 @@ real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
 ! Get variables out of the parameter storage for clarity
-bounded_below = p%params(1) > 0.5_r8
-bounded_above = p%params(2) > 0.5_r8
-lower_bound = p%params(3)
-upper_bound = p%params(4)
-do_uniform_tail_left = p%params(5) > 0.5_r8
-do_uniform_tail_right = p%params(6) > 0.5_r8
-tail_amp_left = p%params(7)
-tail_amp_right = p%params(8)
-tail_mean_left = p%params(9)
-tail_mean_right = p%params(10)
-tail_sd_left = p%params(11)
-tail_sd_right = p%params(12)
+bounded_below = p%params(ens_size + 1) > 0.5_r8
+bounded_above = p%params(ens_size + 2) > 0.5_r8
+lower_bound = p%params(ens_size + 3)
+upper_bound = p%params(ens_size + 4)
+do_uniform_tail_left = p%params(ens_size + 5) > 0.5_r8
+do_uniform_tail_right = p%params(ens_size + 6) > 0.5_r8
+tail_amp_left = p%params(ens_size + 7)
+tail_amp_right = p%params(ens_size + 8)
+tail_mean_left = p%params(ens_size + 9)
+tail_mean_right = p%params(ens_size + 10)
+tail_sd_left = p%params(ens_size + 11)
+tail_sd_right = p%params(ens_size + 12)
 
 ! Convert each probit ensemble member back to physical space
 do i = 1, ens_size
@@ -447,6 +466,12 @@ do i = 1, ens_size
    ! Finding which region this quantile is in is trivial
    region = floor(quantile * (ens_size + 1.0_r8))
    ! Careful about numerical issues moving outside of region [0 ens_size]
+   if(region < 0 .or. region > ens_size) then
+      ! Extreme error check
+      write(*, *) 'bad region ', region
+      stop
+   endif
+
    if(region > ens_size) region = ens_size
 
    if(region == 0) then

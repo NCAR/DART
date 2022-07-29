@@ -16,7 +16,7 @@ use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_o
                                  find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-use       sort_mod,       only : index_sort 
+use       sort_mod,       only : index_sort, sort
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -506,25 +506,25 @@ do i = 1, ens_handle%my_num_vars
 end do
 
 ! Convert all my state variables to appropriate probit space
+! Temporary distinction between state and obs kinds
+write(*, *) '----'
+do i = 1, ens_size
+   do j = 1, ens_handle%my_num_vars
+      write(41, *) ens_handle%copies(i, j)
+   end do
+end do
+my_state_kind = 99 
 call convert_all_to_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, my_state_kind, &
    state_dist_params, ens_handle%copies, .false.)
-
-!!!elseif(PRIOR_STATE_PDF_TYPE == 2) then
-   !!!! Rank histogram test
-   !!!! Need to store the original ensemble members for inverting at the end
-   !!!rhf_state_ens = ens_handle%copies(1:ens_size, 1:ens_handle%my_num_vars)
-   !!!! Now get quantile priors which are the rhf equipartition
-   !!!do i = 1, ens_size
-      !!!ens_handle%copies(i, 1:ens_handle%my_num_vars) = 1.0_r8 / (ens_size + 1.0_r8)
-   !!!end do
-   !!!! Now need to do probit transform on these quantiles
-   !!!do i = 1, ens_size
-      !!!do j = 1, ens_handle%my_num_vars
-         !!!call norm_inv(ens_handle%copies(i, j), temp)
-         !!!ens_handle%copies(i, j) = temp
-      !!!end do
-   !!!end do
-!!!endif
+!!!call convert_all_from_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
+   !!!my_state_kind, state_dist_params, ens_handle%copies)
+my_state_kind = 0 
+write(*, *) ',,,,,,,,,,,,,,,,,,,,,,'
+do i = 1, ens_size
+   do j = 1, ens_handle%my_num_vars
+      write(42, *) ens_handle%copies(i, j)
+   end do
+end do
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
@@ -548,6 +548,7 @@ endif
 ! Have gotten the mean and variance from original ensembles, can convert to probit
 ! CAN WE DO THE ADAPTIVE INFLATION ENTIRELY IN PROBIT SPACE TO MAKE IT DISTRIBUTION INDEPENDENT????
 ! WOULD NEED AN OBSERVATION ERROR VARIANCE IN PROBIT SPACE SOMEHOW. IS THAT POSSIBLE???
+my_obs_kind = 0
 call convert_all_to_probit(ens_size, my_num_obs, obs_ens_handle%copies, my_obs_kind, &
    obs_dist_params, obs_ens_handle%copies, .false.)
 
@@ -641,6 +642,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_VAR_END, owners_index)
 
          ! If QC is okay, convert this observation ensemble from probit to regular space
+         my_obs_kind(owners_index) = 0
          call convert_from_probit(ens_size, obs_ens_handle%copies(:, owners_index) , &
             my_obs_kind(owners_index), obs_dist_params(owners_index), &
             obs_ens_handle%copies(:, owners_index))
@@ -690,6 +692,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Convert both the prior and posterior to probit space (efficiency for prior???)
       ! Running probit space with groups needs to be studied more carefully
       !Make sure that base_obs_kind is correct
+      base_obs_kind = 0
       call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), base_obs_kind, &
          temp_dist_params, obs_prior(grp_bot:grp_top), .false.)
       call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), base_obs_kind, &
@@ -805,16 +808,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 end do SEQUENTIAL_OBS
 
 ! Do the inverse probit transform for state variables
+my_state_kind = 99 
 call convert_all_from_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
    my_state_kind, state_dist_params, ens_handle%copies)
-!!!elseif(PRIOR_STATE_PDF_TYPE == 2) then
-   !!!! Invert the probit (norm cdf)
-   !!!do i = 1, ens_size
-      !!!do j = 1, ens_handle%my_num_vars
-         !!!ens_handle%copies(i, j) = norm_cdf(ens_handle%copies(i, j), 0.0_r8, 1.0_r8)
-      !!!end do
-   !!!end do
-   !!!! Now invert the rank histogram with the ORIGINAL ensemble members
+my_state_kind = 0 
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then
