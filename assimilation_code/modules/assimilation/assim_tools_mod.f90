@@ -327,7 +327,7 @@ logical,                     intent(in)    :: inflate_only
 ! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
-real(r8) :: obs_post(ens_size)
+real(r8) :: obs_post(ens_size), probit_obs_prior(ens_size), probit_obs_post(ens_size)
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
 real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
@@ -680,15 +680,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Convert both the prior and posterior to probit space (efficiency for prior???)
       ! Running probit space with groups needs to be studied more carefully
       !Make sure that base_obs_kind is correct
-      base_obs_kind = 0
+      base_obs_kind = 99 
       call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), base_obs_kind, &
-         temp_dist_params, obs_prior(grp_bot:grp_top), .false.)
+         temp_dist_params, probit_obs_prior(grp_bot:grp_top), .false.)
       call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), base_obs_kind, &
-         temp_dist_params, obs_post(grp_bot:grp_top), .true.)
+         temp_dist_params, probit_obs_post(grp_bot:grp_top), .true.)
       base_obs_kind = 0
+      ! Copy back into original storage
+      obs_prior(grp_bot:grp_top) = probit_obs_prior(grp_bot:grp_top)
+      obs_post(grp_bot:grp_top) = probit_obs_post(grp_bot:grp_top)
       ! Recompute obs_inc in probit space
       obs_inc(grp_bot:grp_top) = obs_post(grp_bot:grp_top) - obs_prior(grp_bot:grp_top)
-         
+
       ! Also compute prior mean and variance of obs for efficiency here
       obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
       obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
