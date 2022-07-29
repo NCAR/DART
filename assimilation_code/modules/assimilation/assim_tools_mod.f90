@@ -507,24 +507,10 @@ end do
 
 ! Convert all my state variables to appropriate probit space
 ! Temporary distinction between state and obs kinds
-write(*, *) '----'
-do i = 1, ens_size
-   do j = 1, ens_handle%my_num_vars
-      write(41, *) ens_handle%copies(i, j)
-   end do
-end do
 my_state_kind = 99 
 call convert_all_to_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, my_state_kind, &
    state_dist_params, ens_handle%copies, .false.)
-!!!call convert_all_from_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
-   !!!my_state_kind, state_dist_params, ens_handle%copies)
 my_state_kind = 0 
-write(*, *) ',,,,,,,,,,,,,,,,,,,,,,'
-do i = 1, ens_size
-   do j = 1, ens_handle%my_num_vars
-      write(42, *) ens_handle%copies(i, j)
-   end do
-end do
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
@@ -548,9 +534,10 @@ endif
 ! Have gotten the mean and variance from original ensembles, can convert to probit
 ! CAN WE DO THE ADAPTIVE INFLATION ENTIRELY IN PROBIT SPACE TO MAKE IT DISTRIBUTION INDEPENDENT????
 ! WOULD NEED AN OBSERVATION ERROR VARIANCE IN PROBIT SPACE SOMEHOW. IS THAT POSSIBLE???
-my_obs_kind = 0
+my_obs_kind = 99 
 call convert_all_to_probit(ens_size, my_num_obs, obs_ens_handle%copies, my_obs_kind, &
    obs_dist_params, obs_ens_handle%copies, .false.)
+my_obs_kind = 0 
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -642,10 +629,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_VAR_END, owners_index)
 
          ! If QC is okay, convert this observation ensemble from probit to regular space
-         my_obs_kind(owners_index) = 0
-         call convert_from_probit(ens_size, obs_ens_handle%copies(:, owners_index) , &
+         my_obs_kind(owners_index) = 99 
+         call convert_from_probit(ens_size, obs_ens_handle%copies(1:ens_size, owners_index) , &
             my_obs_kind(owners_index), obs_dist_params(owners_index), &
-            obs_ens_handle%copies(:, owners_index))
+            obs_ens_handle%copies(1:ens_size, owners_index))
+         my_obs_kind(owners_index) = 0 
 
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
       endif IF_QC_IS_OKAY
@@ -697,6 +685,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          temp_dist_params, obs_prior(grp_bot:grp_top), .false.)
       call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), base_obs_kind, &
          temp_dist_params, obs_post(grp_bot:grp_top), .true.)
+      base_obs_kind = 0
       ! Recompute obs_inc in probit space
       obs_inc(grp_bot:grp_top) = obs_post(grp_bot:grp_top) - obs_prior(grp_bot:grp_top)
          

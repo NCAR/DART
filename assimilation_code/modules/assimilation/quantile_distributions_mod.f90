@@ -149,8 +149,6 @@ real(r8), save :: dist_for_unit_sd
 real(r8) :: mean, sd, base_prob, bound_quantile
 
 if(use_input_p) then
-   write(*, *) 'The use_input_p section has been turned off for testing'
-   stop
    ! Using an existing ensemble for the RHF points
 
    ! Get variables out of the parameter storage for clarity
@@ -209,7 +207,7 @@ if(use_input_p) then
          ! In an interior bin
          do j = 1, ens_size - 1
             if(x <= p%params(j+1)) then
-               quantile = j / (ens_size + 1.0_r8) + &
+               quantile = (j * 1.0_r8) / (ens_size + 1.0_r8) + &
                   ((x - p%params(j)) / (p%params(j+1) - p%params(j))) * (1.0_r8 / (ens_size + 1.0_r8))
                exit
             endif
@@ -243,15 +241,9 @@ else
    ! bounded bin, the amplitude of the outer continuous normal pdf, the mean of the outer continous
    ! normal pdf, and the standard deviation of the
    ! outer continous. 
-   ! Do we really want to allow this? Better to deallocate and reallocate?
-   if(.not. allocated(p%params)) then
-      allocate(p%params(ens_size + 2*6))
-      !!!allocate(p%params(ens_size + 100))
-   else
-      ! SHouldn't happen; put this in for testing
-      write(*, *) 'params already allocated in to_probit_bounded_normal_rhf'
-      stop
-   endif
+
+   if(allocated(p%params)) deallocate(p%params)
+   allocate(p%params(ens_size + 2*6))
    p%params(1:ens_size) = state_ens(ens_index)
 
    ! Compute the description of the tail continous pdf; 
@@ -468,11 +460,14 @@ do i = 1, ens_size
    ! Careful about numerical issues moving outside of region [0 ens_size]
    if(region < 0 .or. region > ens_size) then
       ! Extreme error check
+      ! Diagnostic check. If values barely below 0 or above ens_size, can get rid of this
+      ! and keep the following if's that clean up
       write(*, *) 'bad region ', region
       stop
    endif
 
    if(region > ens_size) region = ens_size
+   if(region < 0) region = 0
 
    if(region == 0) then
       ! Lower tail
