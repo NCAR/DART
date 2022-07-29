@@ -1353,9 +1353,12 @@ found = .false.
 
    call get_state_array(z2(:), indx_bottom(:), state_handle)
 
-   delta_z(:) = zgrid(:) - z2(:)
-   frac_lev(:) = (zgrid(:) - height)/delta_z(:)
-
+   where (zgrid == z2)  ! avoid divide by zero
+      frac_lev = 0
+   elsewhere
+      delta_z(:) = (zgrid(:) - z2(:))/100.0_r8
+      frac_lev = (zgrid/100.0_r8 - height)/delta_z
+   endwhere
 
    if (is_pressure) then ! get fom plevs (pilevs?) array @todo HK Lanai is always plves
 
