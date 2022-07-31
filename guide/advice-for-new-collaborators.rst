@@ -315,7 +315,7 @@ on total runtime can be easily measured and compared.
 New model automation and code reuse
 -----------------------------------
 
-Adding a new model can be done with the script ``models/new_model.sh``.
+Adding a new model can be done with the script ``models/new_model``.
 Start by entering ``./new_model.sh``, then the desired model name and
 location module separated by spaces. This will create a template of all the
 necessary files and components that are needed for a model.
