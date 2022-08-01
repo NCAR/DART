@@ -53,7 +53,7 @@
 !
 ! The units for all observations with a quantity of QTY_RADANCE are as
 ! described in the RTTOV v12 user guide V1.3 (p54): "mW/cm-1/sr/sq.m"
-! Doc ID: NWPSAF-MO-UD-037, Date: 05/03/2019QTY_O3
+! Doc ID: NWPSAF-MO-UD-037, Date: 05/03/2019
 !
 ! The observation converters are responsible for providing these 
 ! observations with the correct units.
