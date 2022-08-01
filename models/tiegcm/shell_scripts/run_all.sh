@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# To check exit code for each arry job 
-# qhist -j 2667681 -l
+# Submits num_cyles of a tiegcm ensemble run. 
+#   assimilation each cycle
+#
+# run5.0.pbs is an array job
+#  To check exit code for each arry job 
+#  qhist -j JOB_ID -l
 
 
 num_cycles=25

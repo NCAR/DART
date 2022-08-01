@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#PBS -A P86850054
+#PBS -A XXXXXXX
 #PBS -N filter_run
 #PBS -l walltime=00:10:00
 #PBS -q regular

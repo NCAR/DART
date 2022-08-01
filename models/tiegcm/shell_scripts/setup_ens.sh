@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Set up directories for an ensemble of tiegcm runs
 
 ens_size=5
 
