@@ -1351,9 +1351,10 @@ found = .false.
    call get_state_array(z2(:), indx_bottom(:), state_handle)
 
    where (zgrid == z2)  ! avoid divide by zero
-      frac_lev = 0
+      frac_lev = 0.0_r8
+      delta_z = 0.0_r8
    elsewhere
-      delta_z(:) = (zgrid(:) - z2(:))/100.0_r8
+      delta_z = (zgrid - z2)/100.0_r8
       frac_lev = (zgrid/100.0_r8 - height)/delta_z
    endwhere
 
@@ -1479,9 +1480,10 @@ found = .false.
    zgrid_upper(:) = ( z_k(:) + z_k_plus_one ) / 2.0_r8 / 100.0_r8
 
    where (zgrid_upper == zgrid_lower)  ! avoid divide by zero
-      frac_lev = 0
+      frac_lev = 0.0_r8
+      delta_z = 0.0_r8
    elsewhere
-      delta_z(:) = zgrid_upper(:) - zgrid_lower(:)
+      delta_z = zgrid_upper - zgrid_lower
       frac_lev = (zgrid_upper - height)/delta_z
    endwhere
 
