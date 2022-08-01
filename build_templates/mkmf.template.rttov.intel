@@ -127,13 +127,15 @@ LD = ifort
 # HDFEOS5 = $(NETCDF)
 # RTTOV = ~/research/satellite/rttov
 
+RTTOV_VERSION = 12
+
 HDFEOS5 = /glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5
 
 # You will likely not need to modify below this line
 
-RTLIBS = -lrttov13_wrapper    -lrttov13_mw_scatt -lrttov13_brdf_atlas \
-         -lrttov13_emis_atlas -lrttov13_other    -lrttov13_parallel \
-         -lrttov13_coef_io    -lrttov13_hdf      -lrttov13_main 
+RTLIBS = -lrttov$(RTTOV_VERSION)_wrapper    -lrttov$(RTTOV_VERSION)_mw_scatt -lrttov$(RTTOV_VERSION)_brdf_atlas \
+         -lrttov$(RTTOV_VERSION)_emis_atlas -lrttov$(RTTOV_VERSION)_other    -lrttov$(RTTOV_VERSION)_parallel \
+         -lrttov$(RTTOV_VERSION)_coef_io    -lrttov$(RTTOV_VERSION)_hdf      -lrttov$(RTTOV_VERSION)_main 
 
 INCS = -I$(NETCDF)/include -I$(HDFEOS5)/include -I$(RTTOV)/include -I$(RTTOV)/mod
 
