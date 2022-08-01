@@ -692,7 +692,7 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
    wrf%dom(id)%type_v      = get_type_ind_from_type_string(id,'V')
    wrf%dom(id)%type_w      = get_type_ind_from_type_string(id,'W')
-   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'T')
+   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'THM')
    wrf%dom(id)%type_gz     = get_type_ind_from_type_string(id,'PH')
    wrf%dom(id)%type_qv     = get_type_ind_from_type_string(id,'QVAPOR')
    wrf%dom(id)%type_qr     = get_type_ind_from_type_string(id,'QRAIN')
@@ -6687,10 +6687,10 @@ function boundsCheck ( ind, periodic, id, dim, type )
      !   staggering because the ZNU and ZNW grids allow different index ranges
      if ( wrf%dom(id)%var_size(dim,type) == wrf%dom(id)%bts ) then
         ! W vertical grid allows [1 bts)
-        if ( ind >= 1 .and. ind < wrf%dom(id)%bts ) boundsCheck = .true.
+        if ( ind >= 1 .and. ind <= wrf%dom(id)%bts ) boundsCheck = .true.
      else
         ! M vertical grid allows [1 bt)
-        if ( ind >= 1 .and. ind < wrf%dom(id)%bt ) boundsCheck = .true.
+        if ( ind >= 1 .and. ind <= wrf%dom(id)%bt ) boundsCheck = .true.
      endif
   
   else
@@ -7391,7 +7391,7 @@ default_table(:,row) = (/ 'PH                        ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'T                         ', &
+default_table(:,row) = (/ 'THM                       ', &
                           'QTY_POTENTIAL_TEMPERATURE ', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &
