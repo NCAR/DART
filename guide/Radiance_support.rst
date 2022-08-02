@@ -64,6 +64,10 @@ clouds, trace gases, and aerosols) that can be specified. See the
 obs_def_rttov_mod.html page in the observations/forward_operators
 directory for a complete list of values.
 
+Support for RTTOV v13 has been added to DART by Lukas Kugler.
+Use obs_def_rttov13_mod.f90 to compile DART with RTTOV v13.
+
+
 Setting up DART+RTTOV
 ---------------------
 
