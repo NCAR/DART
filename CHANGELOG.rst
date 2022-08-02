@@ -22,7 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 27 2022 :: Bug-fix for WRF model_mod nc_write_model_atts. Tag: v10.0.5**
+
+- Removes obsolete domain dimension from nc_write_model_atts for WRF model_mod.
+  This code was left over from when multiple domains could be written to a single 
+  NetCDF file in DART.
+
+**July 21 2022 :: Bug-fixes for DART_LAB rank histograms and get_close caching. Tag: v10.0.4**
+
+- Fixes DART_LAB prior and posterior rank histogram calculation.
+- Fix for intent(inout) for get_close_X_caching routines.
+- Obsolete GitHub workflow removed.
+
 **July 14 2022 :: Performance improvement - removal of redundant caching. Tag: v10.0.3**
+
 - Reduces the runtime by removing redundant caching in the get_close_obs_cached and 
   get_close_state_cached subroutines in assim_tools_mod.f90
 

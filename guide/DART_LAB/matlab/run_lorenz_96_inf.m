@@ -1318,7 +1318,7 @@ fclose(logfileid);
             temp_rank(:, 2) = 0;
             
             % Compute the prior rank histograms
-            for i = 1:handles.ens_size
+            for i = 1:handles.model_size
                 ens_rank = get_ens_rank(squeeze(handles.prior(new_time, i, :)), ...
                     squeeze(new_truth(i)));
                 handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
@@ -1455,7 +1455,7 @@ fclose(logfileid);
             temp_rank(:, 2) = 0;
             
             % Compute the posterior rank histograms
-            for i = 1:handles.ens_size
+            for i = 1:handles.model_size
                 ens_rank = get_ens_rank(squeeze(handles.posterior(time, i, :)), ...
                     squeeze(handles.true_state(time, i)));
                 handles.posterior_rank(ens_rank) = handles.posterior_rank(ens_rank) + 1;
