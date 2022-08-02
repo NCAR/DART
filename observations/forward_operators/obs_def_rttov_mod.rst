@@ -1,3 +1,5 @@
+.. _obs_def_rttov_mod:
+
 MODULE ``obs_def_rttov_mod``
 ============================
 
