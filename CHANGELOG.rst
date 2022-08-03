@@ -27,6 +27,7 @@ The changes are now listed with the most recent at the top.
 - TIEGCM model_mod updated to Manhattan
 - Added hyperslice subroutine to state_structure_mod to read only part of a
   netcdf variable into the state.
+- Replaced stub get_expected_vtec with COMMON_CODE.
 
 **August 2 2022 :: RTTOV v13. Tag v10.1.0**
 
