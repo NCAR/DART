@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+#PBS -A XXXXXXX
+#PBS -J 1-5
+#PBS -N tiegcm2.0
+#PBS -j oe
+#PBS -k eod
+#PBS -q regular
+#PBS -l walltime=00:20:00
+##PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -l select=1:ncpus=32:mpiprocs=32:ompthreads=1
+
+export TMPDIR=/glade/scratch/${USER}/temp
+mkdir -p /glade/scratch/${USER}
+#
+export TGCMDATA=/glade/scratch/${USER}/DART/TIEGCM/DATA/tiegcm_res2.5_data
+export MP_LABELIO=YES
+export MP_SHARED_MEMORY=yes
+#
+mem="mem"$(printf "%02d" $PBS_ARRAY_INDEX)
+cd $mem
+
+JOBID=`echo ${PBS_JOBID} | cut -d'.' -f1 | cut -d'[' -f1` 
+
+# overwrite F10_7 with value from dart state
+if [ -f out_params.nc ]; then 
+   echo "Using F10.7 from out_params.nc"
+  ./writef10_7.py $(ncdump out_params.nc  | grep 'f10_7 =' | cut -d " " -f 4)
+fi
+
+# Execute:
+ mpiexec_mpt ./tiegcm.exe tiegcm_res2.5.inp &> tiegcm_res2.5_${JOBID}.out
+#
+# Save stdout:
+/glade/scratch/${USER}/DART/TIEGCM/tiegcm2.0/tiegcm2.0/scripts/rmbinchars tiegcm_res2.5_${JOBID}.out # remove any non-ascii chars in stdout file
+/glade/scratch/${USER}/DART/TIEGCM/tiegcm2.0/tiegcm2.0/scripts/mklogs tiegcm_res2.5_${JOBID}.out     # break stdout into per-task log files
+#
+# Make tar file of task log files:
+tar -cf /glade/scratch/${USER}/DART/TIEGCM/tiegcm2.0/tiegcm_res2.5_${JOBID}.out.tar *task*.out 
+rm *task*.out
+
+# increment the start,stop in tiegcm_res2.5.inp
+./overwrite.py
