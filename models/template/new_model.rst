@@ -1,6 +1,5 @@
-==============
-template_model
-===============
+model name
+==========
 
 .. attention::
     Add your model documentation here.
