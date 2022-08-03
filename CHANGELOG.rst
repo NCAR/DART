@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 3 2022 :: TIEGCM. Tag v10.2.0**
+
+- TIEGCM model_mod updated to Manhattan
+- Added hyperslice subroutine to state_structure_mod to read only part of a
+  netcdf variable into the state.
+
 **August 2 2022 :: RTTOV v13. Tag v10.1.0**
 
 - Support for RTTOV v13
