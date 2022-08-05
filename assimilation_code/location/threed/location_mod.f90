@@ -26,7 +26,7 @@ public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
-          get_close_type, get_close_init, get_close, get_close_destroy, &
+          get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
           operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
           set_vertical, is_vertical, get_vertical_localization_coord, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state
@@ -450,6 +450,40 @@ end subroutine get_close_destroy
 
 !----------------------------------------------------------------------------
 
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ens_handle)
+
+end subroutine get_close_state
+
+!----------------------------------------------------------------------------
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, ens_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ens_handle)
+
+end subroutine get_close_obs
+
+
+!----------------------------------------------------------------------------
 subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
                      num_close, close_ind, dist, ensemble_handle)
 
