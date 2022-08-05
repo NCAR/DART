@@ -72,10 +72,10 @@ type(time_type) :: assimilation_time_step
 ! Example Namelist
 ! Use the namelist for options to be set at runtime.
 character(len=256) :: template_file = 'model_restart.nc'
-integer  :: assimilation_time_step_days      = 0 
-integer  :: assimilation_time_step_seconds   = 3600
+integer  :: time_step_days      = 0
+integer  :: time_step_seconds   = 3600
 
-namelist /model_nml/ template_file, assimilation_time_step_days, assimilation_time_step_seconds
+namelist /model_nml/ template_file, time_step_days, time_step_seconds
 
 contains
 
@@ -108,8 +108,8 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 ! window.  All observations within +/- 1/2 this interval from the current
 ! model time will be assimilated. If this is not settable at runtime 
 ! feel free to hardcode it and remove from the namelist.
-assimilation_time_step = set_time(assimilation_time_step_seconds, &
-                                  assimilation_time_step_days)
+assimilation_time_step = set_time(time_step_seconds, &
+                                  time_step_days)
 
 
 ! Define which variables are in the model state
