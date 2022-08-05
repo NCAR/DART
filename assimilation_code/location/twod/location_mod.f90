@@ -8,9 +8,11 @@ module location_mod
 ! The internal representation of the location is currently implemented
 ! as (x, y) from 0.0 to 1.0 in both dimensions.
 
-use      types_mod, only : r8, MISSING_R8
+use      types_mod, only : r8, MISSING_R8, i8
 use  utilities_mod, only : error_handler, E_ERR, ascii_file_format
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use default_location_mod, only : has_vertical_choice
+use ensemble_manager_mod, only : ensemble_type
 
 implicit none
 private
@@ -23,7 +25,9 @@ public :: location_type, get_location, set_location, &
           operator(==), operator(/=), get_dist, get_close_obs_destroy, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
           vert_is_surface, has_vertical_localization, &
-          set_vert, get_vert, set_which_vert
+          set_vert, get_vert, set_which_vert, has_vertical_choice, &
+          LocationStorageOrder, LocationUnits, get_close_state, &
+          convert_vertical_obs, convert_vertical_state
 
 character(len=*), parameter :: source = 'twod/location_mod.f90'
 
@@ -46,6 +50,8 @@ logical, save :: module_initialized = .false.
 integer,              parameter :: LocationDims = 2
 character(len = 129), parameter :: LocationName = "loc2D"
 character(len = 129), parameter :: LocationLName = "twod cyclic locations: x, y"
+character(len = 129), parameter :: LocationStorageOrder = "x, y"
+character(len = 129), parameter :: LocationUnits = " "
 
 character(len = 129) :: errstring
 
@@ -448,8 +454,7 @@ gc%maxdist = maxdist
 end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
+subroutine get_close(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
    num_close, close_ind, dist)
 
 ! Default version with no smarts; no need to be smart in 1D
@@ -485,7 +490,42 @@ do i = 1, gc%num
    endif
 end do
 
+end subroutine get_close
+
+!---------------------------------------------------------------------------
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, ens_handle)
+
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist)
+
 end subroutine get_close_obs
+
+!---------------------------------------------------------------------------
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist)
+
+end subroutine get_close_state
 
 !---------------------------------------------------------------------------
 
@@ -636,6 +676,39 @@ integer,                intent(in) :: which_vert !< vertical coordinate type
 
 
 end subroutine set_which_vert
+
+!--------------------------------------------------------------------
+
+subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:), loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
+
+status(:) = 0
+
+end subroutine convert_vertical_obs
+
+!--------------------------------------------------------------------
+
+subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+istatus = 0
+
+end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 ! end of location/twod/location_mod.f90
