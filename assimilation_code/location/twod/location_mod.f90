@@ -11,7 +11,9 @@ module location_mod
 use      types_mod, only : r8, MISSING_R8, i8
 use  utilities_mod, only : error_handler, E_ERR, ascii_file_format
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
-use default_location_mod, only : has_vertical_choice
+use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
+                                 get_vertical_localization_coord, &
+                                 set_vertical_localization_coord
 use ensemble_manager_mod, only : ensemble_type
 
 implicit none
@@ -20,14 +22,14 @@ private
 public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
-          LocationDims, LocationName, LocationLName, get_close_obs, &
-          get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
-          vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization, &
+          LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
+          get_close_obs, get_close_maxdist_init, get_close_init, get_close_type, &
+          operator(==), operator(/=), get_dist, get_close_destroy, &
+          is_vertical, set_vertical, vertical_localization_on, &
           set_vert, get_vert, set_which_vert, has_vertical_choice, &
-          LocationStorageOrder, LocationUnits, get_close_state, &
-          convert_vertical_obs, convert_vertical_state
+          get_close_state, &
+          convert_vertical_obs, convert_vertical_state, get_vertical_localization_coord, &
+          set_vertical_localization_coord
 
 character(len=*), parameter :: source = 'twod/location_mod.f90'
 
@@ -418,27 +420,36 @@ endif
 end subroutine interactive_location
 
 !----------------------------------------------------------------------------
+! Initializes get_close accelerator - unused in this location module
 
-subroutine get_close_obs_init(gc, num, obs)
- 
-! Initializes part of get_close accelerator that depends on the particular obs
+subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
-type(location_type),  intent(in)    :: obs(num)
+real(r8),             intent(in)    :: maxdist
+type(location_type),  intent(in)    :: locs(:)
+real(r8), intent(in), optional      :: maxdist_list(:)
 
-! Set the value of num_obs in the structure
+! Set the maximum localization distance
+gc%maxdist = maxdist
+
+! Save the value of num_locs
 gc%num = num
 
-end subroutine get_close_obs_init
+if (present(maxdist_list)) then
+   write(errstring,*)'twod locations does not support different cutoff distances by type'
+   call error_handler(E_ERR, 'get_close_init', errstring, source)
+endif
+
+end subroutine get_close_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs_destroy(gc)
+subroutine get_close_destroy(gc)
 
 type(get_close_type), intent(inout) :: gc
 
-end subroutine get_close_obs_destroy
+end subroutine get_close_destroy
 
 !----------------------------------------------------------------------------
 
@@ -568,70 +579,32 @@ end function is_location_in_region
 !         common code that sometimes needs vertical info.
 !----------------------------------------------------------------------------
 
-function vert_is_undef(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_undef
-type(location_type), intent(in)  :: loc
-
-vert_is_undef = .false.
-
-end function vert_is_undef
-
+!----------------------------------------------------------------------------
+! stubs - here only because they have a location type as one of the arguments
 !----------------------------------------------------------------------------
 
-function vert_is_surface(loc)
- 
-! Stub, always returns false.
+function is_vertical(loc, which_vert)
 
-logical                          :: vert_is_surface
+logical                          :: is_vertical
 type(location_type), intent(in)  :: loc
+character(len=*),    intent(in)  :: which_vert
 
-vert_is_surface = .false.
+is_vertical = .false.
 
-end function vert_is_surface
+end function is_vertical
 
-!----------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
-function vert_is_pressure(loc)
- 
-! Stub, always returns false.
+subroutine set_vertical(loc, vloc, which_vert)
 
-logical                          :: vert_is_pressure
-type(location_type), intent(in)  :: loc
+type(location_type), intent(inout) :: loc
+real(r8), optional,  intent(in)    :: vloc
+integer,  optional,  intent(in)    :: which_vert
 
-vert_is_pressure = .false.
 
-end function vert_is_pressure
+end subroutine set_vertical
 
-!----------------------------------------------------------------------------
-
-function vert_is_height(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_height
-type(location_type), intent(in)  :: loc
-
-vert_is_height = .false.
-
-end function vert_is_height
-
-!----------------------------------------------------------------------------
-
-function vert_is_level(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_level
-type(location_type), intent(in)  :: loc
-
-vert_is_level = .false.
-
-end function vert_is_level
-
-!---------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 function has_vertical_localization()
  
