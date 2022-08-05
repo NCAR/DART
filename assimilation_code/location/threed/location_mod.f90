@@ -6,7 +6,7 @@ module location_mod
 
 ! Implements location interfaces for a three dimensional cyclic region.
 ! The internal representation of the location is currently implemented
-! as (x, y) from 0.0 to 1.0 in both dimensions.
+! as (x, y, z) from 0.0 to 1.0 in all dimensions.
 !
 ! If you are looking for a geophysical locations module, look at either
 ! the threed_sphere or threed_cartesian versions of this file.
@@ -17,7 +17,9 @@ use       random_seq_mod, only : random_seq_type, init_random_seq, random_unifor
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
-                                 set_vertical_localization_coord
+                                 set_vertical_localization_coord, &
+                                 is_vertical, set_vertical, &
+                                 convert_vertical_obs, convert_vertical_state
 
 implicit none
 private
@@ -26,7 +28,7 @@ public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
-          get_close_type, get_close_init, get_close, get_close_destroy, &
+          get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
           operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
           set_vertical, is_vertical, get_vertical_localization_coord, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state
@@ -49,14 +51,14 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 
-integer,              parameter :: LocationDims = 3
-character(len = 129), parameter :: LocationName = "loc3D"
-character(len = 129), parameter :: LocationLName = "threed cyclic locations: x, y, z"
-character(len = 129), parameter :: LocationStorageOrder = "X Y Z"
-character(len = 129), parameter :: LocationUnits = "none none none"
+integer,          parameter :: LocationDims = 3
+character(len=*), parameter :: LocationName = "loc3D"
+character(len=*), parameter :: LocationLName = "threed cyclic locations: x, y, z"
+character(len=*), parameter :: LocationStorageOrder = "X Y Z"
+character(len=*), parameter :: LocationUnits = "none none none"
 
 
-character(len = 129) :: errstring
+character(len = 512) :: errstring
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
@@ -109,7 +111,7 @@ end function get_dist
 
 function loc_eq(loc1,loc2)
  
-! interface operator used to compare two locations.
+! Interface operator used to compare two locations.
 ! Returns true only if all components are 'the same' to within machine
 ! precision.
 
@@ -132,7 +134,7 @@ end function loc_eq
 
 function loc_ne(loc1,loc2)
  
-! interface operator used to compare two locations.
+! Interface operator used to compare two locations.
 ! Returns true if locations are not identical to machine precision.
 
 type(location_type), intent(in) :: loc1, loc2
@@ -218,7 +220,7 @@ end function set_location_array
 
 function set_location_missing()
 
-! fill in the contents to a known value.
+! Initialize a location type to indicate the contents are unset.
 
 type (location_type) :: set_location_missing
 
@@ -235,7 +237,6 @@ end function set_location_missing
 function query_location(loc,attr)
  
 ! Returns the value of the attribute
-!
 
 type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
@@ -269,7 +270,7 @@ end function query_location
 
 subroutine write_location(locfile, loc, fform, charstring)
  
-! Writes a 3D location to the file.
+! Writes a location to a file.
 ! additional functionality: if optional argument charstring is specified,
 ! it must be long enough to hold the string, and the location information is
 ! written into it instead of to a file.  fform must be ascii (which is the
@@ -309,8 +310,7 @@ if (.not. ascii_file_format(fform)) then
       'Cannot use string buffer with binary format', source)
 endif
 
-! format the location to be more human-friendly; which in
-! this case doesn't change the value.
+! format the location to be more human-friendly
 
 ! this must be the sum of the formats below.
 charlength = 38
@@ -329,12 +329,12 @@ end subroutine write_location
 
 function read_location(locfile, fform)
  
-! Reads a 3D location from locfile that was written by write_location. 
+! Reads a location from a file that was written by write_location. 
 ! See write_location for additional discussion.
 
 integer, intent(in)                      :: locfile
-type(location_type)                      :: read_location
 character(len = *), intent(in), optional :: fform
+type(location_type)                      :: read_location
 
 character(len=5) :: header
 
@@ -418,6 +418,7 @@ location%z = v(3)
 end subroutine interactive_location
 
 !----------------------------------------------------------------------------
+! Initializes get_close accelerator - unused in this location module
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
  
@@ -450,6 +451,41 @@ end subroutine get_close_destroy
 
 !----------------------------------------------------------------------------
 
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:) 
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ensemble_handle)
+
+end subroutine get_close_obs
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:) 
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ensemble_handle)
+
+end subroutine get_close_state
+
+!----------------------------------------------------------------------------
+
 subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
                      num_close, close_ind, dist, ensemble_handle)
 
@@ -465,7 +501,7 @@ real(r8) :: this_dist
 
 ! the list of locations in the locs() argument must be the same
 ! as the list of locations passed into get_close_init(), so
-! gc%num and size(locs) better be the same.   if the list changes,
+! gc%num and size(locs) better be the same.   if the list changes
 ! you have to destroy the old gc and init a new one.
 if (size(locs) /= gc%num) then
    write(errstring,*)'locs() array must match one passed to get_close_init()'
@@ -523,64 +559,6 @@ is_location_in_region = .true.
 
 end function is_location_in_region
 
-!----------------------------------------------------------------------------
-! stubs - here only because they have a location type as one of the arguments
-!----------------------------------------------------------------------------
-
-function is_vertical(loc, which_vert)
-
-logical                          :: is_vertical
-type(location_type), intent(in)  :: loc
-character(len=*),    intent(in)  :: which_vert
-
-is_vertical = .false.
-
-end function is_vertical
-
-!--------------------------------------------------------------------
-
-subroutine set_vertical(loc, vloc, which_vert)
-
-type(location_type), intent(inout) :: loc
-real(r8), optional,  intent(in)    :: vloc
-integer,  optional,  intent(in)    :: which_vert
-
-
-end subroutine set_vertical
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer,             intent(in)    :: loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-status(:) = 0
-
-end subroutine convert_vertical_obs
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
-                                  which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status
-
-status = 0
-
-end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 ! end of location/threed/location_mod.f90

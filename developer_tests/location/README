@@ -2,7 +2,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
 The core algorithms of DART work with many different models
 which have a variety of coordinate systems.  This directory
@@ -47,14 +46,33 @@ Possible ideas are a non-periodic version of the 1d, 2d
 cartesian versions.  Email 'dart@ucar.edu' if you have a different 
 coordinate scheme which we might want to support.
 
-testing:
+Required interfaces:
+
+   location_type
+
+   get_location, set_location, set_location_missing, is_location_in_region
+
+   write_location, read_location, interactive_location, query_location
+
+   LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits
+
+   get_close_type
+
+   get_close_init, get_close_obs, get_close_state, get_maxdist, get_dist, get_close_destroy
+
+   operator(==), operator(/=), 
+
+   has_vertical_choice, set_vertical, is_vertical, 
+
+   vertical_localization_on, get_vertical_localization_coord, set_vertical_localization_coord, 
+
+   convert_vertical_obs, convert_vertical_state
+
+
+Testing:
 
 The testall.csh script will cd into each of the locations
 module directories and build and run a simple testcase to
 verify the distance calculations and the read/write options
 are working.  
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

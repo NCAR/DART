@@ -57,19 +57,19 @@ use mpi
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
 ! !#ifdef __NAG__
 ! use F90_unix_proc, only : sleep, system, exit
- !! block for NAG compiler
- !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
- !    INTEGER,INTENT(IN) :: SECONDS
- !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
- !
- !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
- !    CHARACTER*(*),INTENT(IN) :: STRING
- !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
- !
- !!also used in exit_all outside this module
- !  SUBROUTINE EXIT(STATUS)
- !    INTEGER,OPTIONAL :: STATUS
- !! end block
+!! block for NAG compiler
+!  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
+!    INTEGER,INTENT(IN) :: SECONDS
+!    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
+!
+!  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
+!    CHARACTER*(*),INTENT(IN) :: STRING
+!    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
+!
+!!also used in exit_all outside this module
+!  SUBROUTINE EXIT(STATUS)
+!    INTEGER,OPTIONAL :: STATUS
+!! end block
 !  !#endif
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 

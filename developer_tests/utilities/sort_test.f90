@@ -16,7 +16,7 @@ use types_mod,         only : r8, digits12
 
 use utilities_mod,     only : error_handler, E_MSG, E_ERR, initialize_utilities, finalize_utilities
 
-use sort_mod,          only : sort, index_sort, insertion_sort, index_insertion_sort
+use sort_mod,          only : sort, index_sort, insertion_sort, index_insertion_sort, index_insertion_sort_orig
 
 use random_seq_mod,    only: random_seq_type, init_random_seq, random_gaussian
 
@@ -45,23 +45,16 @@ real(r8), parameter :: BASEVAL = 2500.0_r8
 real(r8), parameter :: STDDEV  = 500.0_r8
 
 real(r8) :: base_real_array(MAXSIZE)
-integer  :: base_int_array(MAXSIZE)
 
-! real and integer arrays of 'm' (maxsize), 's' (smaller)
+! real arrays of 'm' (maxsize), 's' (smaller)
 ! and 't' (tiny) for sorting and timing.
 real(r8) :: mr_array1(MAXSIZE), mr_array2(MAXSIZE)
 real(r8) :: sr_array1(SMALLER), sr_array2(SMALLER)
 real(r8) :: sr1array1(SMALLE1), sr1array2(SMALLE1)
 real(r8) :: sr2array1(SMALLE2), sr2array2(SMALLE2)
 real(r8) :: tr_array1(TINY),    tr_array2(TINY)
-integer  :: mi_array1(MAXSIZE), mi_array2(MAXSIZE)
-integer  :: si_array1(SMALLER), si_array2(SMALLER)
-integer  :: si1array1(SMALLE1), si1array2(SMALLE1)
-integer  :: si2array1(SMALLE2), si2array2(SMALLE2)
-integer  :: ti_array1(TINY),    ti_array2(TINY)
 
-integer  :: i, itmp
-real(r8) :: tmp
+integer  :: i
 character(len=64) :: content_type
 
 character(len=*), parameter :: routine = 'sort_test'
@@ -86,37 +79,21 @@ do i=1, MAXSIZE
    base_real_array(i) = random_gaussian(seq, BASEVAL, STDDEV)
 enddo
 
-base_int_array(:) = floor(base_real_array(:))
 
 mr_array1(:) = base_real_array(:)
-mi_array1(:) = floor(mr_array1(:))
-
 sr_array1(:) = base_real_array(1:SMALLER)
-si_array1(:) = floor(sr_array1(:))
-
 sr1array1(:) = base_real_array(1:SMALLE1)
-si1array1(:) = floor(sr1array1(:))
-
 sr2array1(:) = base_real_array(1:SMALLE2)
-si2array1(:) = floor(sr2array1(:))
-
 tr_array1(:) = base_real_array(1:TINY)
-ti_array1(:) = floor(tr_array1(:))
 
 
 content_type = "random"
 
-call do_each_real_type(mr_array1, MAXSIZE, content_type)
-call do_each_real_type(sr_array1, SMALLER, content_type)
-call do_each_real_type(sr1array1, SMALLE1, content_type)
-call do_each_real_type(sr2array1, SMALLE2, content_type)
-call do_each_real_type(tr_array1, TINY, content_type)
-
-call do_each_int_type (mi_array1, MAXSIZE, content_type)
-call do_each_int_type (si_array1, SMALLER, content_type)
-call do_each_int_type (si1array1, SMALLE1, content_type)
-call do_each_int_type (si2array1, SMALLE2, content_type)
-call do_each_int_type (ti_array1, TINY, content_type)
+call run_tests(mr_array1, MAXSIZE, content_type)
+call run_tests(sr_array1, SMALLER, content_type)
+call run_tests(sr1array1, SMALLE1, content_type)
+call run_tests(sr2array1, SMALLE2, content_type)
+call run_tests(tr_array1, TINY,    content_type)
 
 
 content_type = "inverted"
@@ -126,58 +103,36 @@ do i=1, MAXSIZE
    mr_array2(i) = mr_array1(MAXSIZE - i + 1)
 enddo
 
-mi_array2(:) = floor(mr_array2(:))
-
 sr_array2(:) = mr_array2(1:SMALLER)
-si_array2(:) = floor(sr_array2(:))
-
 sr1array2(:) = mr_array2(1:SMALLE1)
-si1array2(:) = floor(sr1array2(:))
-
 sr2array2(:) = mr_array2(1:SMALLE2)
-si2array2(:) = floor(sr2array2(:))
-
 tr_array2(:) = mr_array2(1:TINY)
-ti_array2(:) = floor(tr_array2(:))
 
 
-call do_each_real_type(mr_array2, MAXSIZE, content_type)
-call do_each_real_type(sr_array2, SMALLER, content_type)
-call do_each_real_type(sr1array2, SMALLE1, content_type)
-call do_each_real_type(sr2array2, SMALLE2, content_type)
-call do_each_real_type(tr_array2, TINY, content_type)
-
-call do_each_int_type (mi_array2, MAXSIZE, content_type)
-call do_each_int_type (si_array2, SMALLER, content_type)
-call do_each_int_type (si1array2, SMALLE1, content_type)
-call do_each_int_type (si2array2, SMALLE2, content_type)
-call do_each_int_type (ti_array2, TINY, content_type)
+call run_tests(mr_array2, MAXSIZE, content_type)
+call run_tests(sr_array2, SMALLER, content_type)
+call run_tests(sr1array2, SMALLE1, content_type)
+call run_tests(sr2array2, SMALLE2, content_type)
+call run_tests(tr_array2, TINY,    content_type)
 
 
 content_type = "almost sorted"
 
 ! almost sorted order arrays
 mr_array2(:) = mr_array1(:)
-mi_array2(:) = floor(mr_array2(:))
 
-call reorder_pair(mr_array2, mi_array2)
-call reorder_pair(sr_array2, si_array2)
-call reorder_pair(sr1array2, si1array2)
-call reorder_pair(sr2array2, si2array2)
-call reorder_pair(tr_array2, ti_array2)
+call reorder_pairs(mr_array2)
+call reorder_pairs(sr_array2)
+call reorder_pairs(sr1array2)
+call reorder_pairs(sr2array2)
+call reorder_pairs(tr_array2)
 
 
-call do_each_real_type(mr_array2, MAXSIZE, content_type)
-call do_each_real_type(sr_array2, SMALLER, content_type)
-call do_each_real_type(sr1array2, SMALLE1, content_type)
-call do_each_real_type(sr2array2, SMALLE2, content_type)
-call do_each_real_type(tr_array2, TINY, content_type)
-
-call do_each_int_type (mi_array2, MAXSIZE, content_type)
-call do_each_int_type (si_array2, SMALLER, content_type)
-call do_each_int_type (si1array2, SMALLE1, content_type)
-call do_each_int_type (si2array2, SMALLE2, content_type)
-call do_each_int_type (ti_array2, TINY, content_type)
+call run_tests(mr_array2, MAXSIZE, content_type)
+call run_tests(sr_array2, SMALLER, content_type)
+call run_tests(sr1array2, SMALLE1, content_type)
+call run_tests(sr2array2, SMALLE2, content_type)
+call run_tests(tr_array2, TINY,    content_type)
 
 
 write(*,*) 'end of test'
@@ -191,6 +146,28 @@ contains
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
 
+subroutine run_tests(a1, s1, content_type)
+
+integer, intent(in) :: s1
+real(r8), intent(in) :: a1(s1)
+character(len=*), intent(in) :: content_type
+
+integer :: a2(s1)
+
+call do_each_real_type(a1, s1, content_type)
+call do_each_real_type(a1, s1, content_type)
+call do_each_real_type(a1, s1, content_type)
+
+a2 = floor(a1)
+
+call do_each_int_type(a2, s1, content_type)
+call do_each_int_type(a2, s1, content_type)
+call do_each_int_type(a2, s1, content_type)
+
+end subroutine run_tests
+
+!-------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! here is where templated functions would be nice.
 
 subroutine do_each_real_type(array, asize, label)
@@ -200,7 +177,7 @@ subroutine do_each_real_type(array, asize, label)
  
 real(digits12) :: b, inc
 real(r8) :: array1(asize), sorted1(asize)
-integer :: indirect1(asize)
+integer :: indirect1(asize), indirect2(asize)
 
 
 call start_mpi_timer(b)
@@ -216,18 +193,44 @@ call print_time(inc, label, 'index sort, real ', asize)
 call validate_indx(array, indirect1, asize)
 
 array1 = array
+indirect2 = indirect1
 
 call start_mpi_timer(b)
 call insertion_sort(array1)
 inc = read_mpi_timer(b)
-call print_time(inc, label, 'insertion sort, real', asize)
+call print_time(inc, label, 'ins sort, real', asize)
 call validate(array1, asize)
 
+! use the sorted index (indirect1) from above with the 
+! fully sorted data array (sorted1) for timing the 
+! index_insertion_sort.
+
 call start_mpi_timer(b)
-call index_insertion_sort(array, indirect1, asize)
+call index_insertion_sort(sorted1, indirect1, asize)
 inc = read_mpi_timer(b)
-call print_time(inc, label, 'index insertion sort, real', asize)
-call validate_indx(array, indirect1, asize)
+call print_time(inc, label, 'index ins sort, real', asize)
+call validate_indx(sorted1, indirect1, asize)
+
+indirect1 = indirect2
+
+call start_mpi_timer(b)
+call index_insertion_sort_orig(sorted1, indirect1, asize)
+inc = read_mpi_timer(b)
+call print_time(inc, label, 'index ins sort, real, orig', asize)
+call validate_indx(sorted1, indirect1, asize)
+
+call start_mpi_timer(b)
+call index_insertion_sort(sorted1, indirect1, asize, .true.)
+inc = read_mpi_timer(b)
+call print_time(inc, label, 'index ins sort, real, init', asize)
+call validate_indx(sorted1, indirect1, asize)
+
+indirect1(1) = -1
+call start_mpi_timer(b)
+call index_insertion_sort_orig(sorted1, indirect1, asize)
+inc = read_mpi_timer(b)
+call print_time(inc, label, 'index ins sort, real, orig, init', asize)
+call validate_indx(sorted1, indirect1, asize)
 
 print *, ''
 
@@ -262,14 +265,18 @@ array1 = array
 call start_mpi_timer(b)
 call insertion_sort(array1)
 inc = read_mpi_timer(b)
-call print_time(inc, label, 'insertion sort, integer', asize)
+call print_time(inc, label, 'ins sort, integer', asize)
 call ivalidate(array1, asize)
 
+! use the sorted index (indirect1) from above with the 
+! fully sorted data array (sorted1) for timing the 
+! index_insertion_sort.
+
 call start_mpi_timer(b)
-call index_insertion_sort(array, indirect1, asize)
+call index_insertion_sort(sorted1, indirect1, asize)
 inc = read_mpi_timer(b)
-call print_time(inc, label, 'index insertion sort, integer', asize)
-call ivalidate_indx(array, indirect1, asize)
+call print_time(inc, label, 'index ins sort, integer', asize)
+call ivalidate_indx(sorted1, indirect1, asize)
 
 print *, ''
 
@@ -351,30 +358,32 @@ end subroutine ivalidate_indx
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
 
-! swap the values at about index N*1/3 with the value at about N*2/3
+! swap three pairs of values:
+!   at about index N*1/3  with the value at about N*2/3
+!   at about index N*1/4  with the value at about N*2/4
+!   at about index N*1/10 with the value at about N*2/10
 
-subroutine reorder_pair(rarray, iarray)
+subroutine reorder_pairs(rarray)
  real(r8), intent(inout) :: rarray(:)
- integer,  intent(inout) :: iarray(:)
 
-integer :: j
+integer :: i, j, k, indx(3)
 
 real(r8) :: rtmp
-integer  :: itmp
 
-j = size(rarray) / 3
+indx(1) = 3
+indx(2) = 4
+indx(3) = 10
 
-rtmp        = rarray(j)
-rarray(j)   = rarray(j*2)
-rarray(j*2) = rtmp
+do i=1, 3
+   j = size(rarray) / indx(i)
+   k = j * 2
 
-j = size(iarray) / 3
+   rtmp      = rarray(j)
+   rarray(j) = rarray(k)
+   rarray(k) = rtmp
+enddo
 
-itmp        = iarray(j)
-iarray(j)   = iarray(j*2)
-iarray(j*2) = itmp
-
-end subroutine reorder_pair
+end subroutine reorder_pairs
 
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
@@ -389,7 +398,7 @@ real(digits12) :: mt, t
 mt = timespan / 1000.0_digits12
 t = timespan
 
-write(*, '(A16,A32,I8,A,2(F22.5,A))') trim(label1), trim(label2)//' ', asize, ' items ', mt, ' msec total, ', t/real(asize,digits12), ' usec/item'
+write(*, '(A16,A34,I8,A,2(F22.5,A))') trim(label1)//';', trim(label2)//'; ', asize, ' items; ', mt, ' msec total; ', t/real(asize,digits12), ' usec/item'
 
 end subroutine print_time
 

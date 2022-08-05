@@ -19,7 +19,9 @@ use mpi_utilities_mod, only : my_task_id, task_count
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
-                                 set_vertical_localization_coord
+                                 set_vertical_localization_coord, &
+                                 is_vertical, set_vertical, &
+                                 convert_vertical_obs, convert_vertical_state
 
 
 implicit none
@@ -37,12 +39,12 @@ public :: location_type, get_location, set_location, &
 
 character(len=*), parameter :: source = 'threed_cartesian/location_mod.f90'
 
-integer,              parameter :: LocationDims = 3
-character(len = 129), parameter :: LocationName = "loc3Dcartesian"
-character(len = 129), parameter :: LocationLName = &
-                                   "threed cartesian locations: x, y, z"
-character(len = 129), parameter :: LocationStorageOrder = "X Y Z"
-character(len = 129), parameter :: LocationUnits = "none none none"
+integer,          parameter :: LocationDims = 3
+character(len=*), parameter :: LocationName = "loc3Dcartesian"
+character(len=*), parameter :: LocationLName = &
+                               "threed cartesian locations: x, y, z"
+character(len=*), parameter :: LocationStorageOrder = "X Y Z"
+character(len=*), parameter :: LocationUnits = "none none none"
 
 type location_type
    private
@@ -1841,63 +1843,6 @@ endif
 
 end subroutine exhaustive_report
 
-!----------------------------------------------------------------------------
-! stubs - here only because they have a location type as one of the arguments
-!----------------------------------------------------------------------------
-
-function is_vertical(loc, which_vert)
-
-logical                          :: is_vertical
-type(location_type), intent(in)  :: loc
-character(len=*),    intent(in)  :: which_vert
-
-is_vertical = .false.
-
-end function is_vertical
-
-!--------------------------------------------------------------------
-
-subroutine set_vertical(loc, vloc, which_vert)
-
-type(location_type), intent(inout) :: loc
-real(r8), optional,  intent(in)    :: vloc
-integer,  optional,  intent(in)    :: which_vert
-
-
-end subroutine set_vertical
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_obs(ens_handle, num, locs, loc_kinds, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_kinds(:), loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-status(:) = 0
-
-end subroutine convert_vertical_obs
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_state(ens_handle, num, locs, loc_kinds, loc_indx, &
-                                  which_vert, istatus)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_kinds(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: istatus
-
-istatus = 0
-
-end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 ! end of location/threed_cartesian/location_mod.f90

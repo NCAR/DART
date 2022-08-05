@@ -4,17 +4,19 @@
 
 module location_mod
 
-! Implements location interfaces for a one dimensional periodic domain. Initial 
-! implementation has domain 'longitude' running from 0 to 1. May want to investigate
-! allowing an arbitrary real domain size at some point.
+! Implements location interfaces for a one dimensional periodic domain.
+! Valid locations run from 0 to 1.
 
 use            types_mod, only : r8, MISSING_R8, i8
 use        utilities_mod, only : error_handler, E_ERR, ascii_file_format
 use       random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use ensemble_manager_mod, only : ensemble_type
+use    location_type_mod, only : location_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
-                                 set_vertical_localization_coord
+                                 set_vertical_localization_coord, &
+                                 is_vertical, set_vertical, &
+                                 convert_vertical_obs, convert_vertical_state
 
 implicit none
 private
@@ -30,11 +32,6 @@ public :: location_type, get_location, set_location, &
 
 character(len=*), parameter :: source = 'oned/location_mod.f90'
 
-type location_type
-   private
-   real(r8) :: x
-end type location_type
-
 ! Needed as stub but not used in this low-order model
 type get_close_type
    private
@@ -46,13 +43,13 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 
-integer,             parameter :: LocationDims = 1
-character(len = 64), parameter :: LocationName = "loc1d"
-character(len = 64), parameter :: LocationLName = "location on unit circle"
-character(len = 64), parameter :: LocationStorageOrder = "X"
-character(len = 64), parameter :: LocationUnits = "none"
+integer,          parameter :: LocationDims = 1
+character(len=*), parameter :: LocationName = "loc1d"
+character(len=*), parameter :: LocationLName = "location on unit circle"
+character(len=*), parameter :: LocationStorageOrder = "X"
+character(len=*), parameter :: LocationUnits = "none"
 
-character(len = 256) :: errstring
+character(len = 512) :: errstring
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
@@ -261,7 +258,6 @@ if (.not. writebuf) then
    if (ascii_file_format(fform)) then
       write(locfile, '(''loc1d'')' ) 
       write(locfile, 10) loc%x
-      !write(locfile, *) loc%x  ! old
    else
       write(locfile) loc%x
    endif
@@ -508,65 +504,6 @@ if ((minl%x >= maxl%x) .and. ((loc%x < minl%x) .and. (loc%x > maxl%x))) return
 is_location_in_region = .true.
 
 end function is_location_in_region
-
-!----------------------------------------------------------------------------
-! stubs - here only because they have a location type as one of the arguments
-!----------------------------------------------------------------------------
-
-function is_vertical(loc, which_vert)
-
-logical                          :: is_vertical
-type(location_type), intent(in)  :: loc
-character(len=*),    intent(in)  :: which_vert
-
-is_vertical = .false.
-
-end function is_vertical
-
-!--------------------------------------------------------------------
-
-subroutine set_vertical(loc, vloc, which_vert)
-
-type(location_type), intent(inout) :: loc
-real(r8), optional,  intent(in)    :: vloc
-integer,  optional,  intent(in)    :: which_vert
-
-
-end subroutine set_vertical
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer,             intent(in)    :: loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-status(:) = 0
-
-end subroutine convert_vertical_obs
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
-                                  which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status
-
-status = 0
-
-end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 ! end of location/oned/location_mod.f90

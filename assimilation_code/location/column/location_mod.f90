@@ -9,6 +9,7 @@ module location_mod
 use            types_mod, only : i8, r8, MISSING_R8, MISSING_I
 use ensemble_manager_mod, only : ensemble_type
 use        utilities_mod, only : error_handler, E_ERR, ascii_file_format
+use default_location_mod, only : convert_vertical_obs, convert_vertical_state
 
 implicit none
 private
@@ -53,14 +54,14 @@ integer :: location_vertical_localization_coord = 0
 
 logical, save :: module_initialized = .false.
 
-integer,             parameter :: LocationDims = 1
-character(len = 64), parameter :: LocationName = "loc1Dcolumn"
-character(len = 64), parameter :: LocationLName = "one-dimensional column"
-character(len = 64), parameter :: LocationStorageOrder = "Vertical"
-character(len = 64), parameter :: LocationUnits = "which_vert"
+integer,          parameter :: LocationDims = 1
+character(len=*), parameter :: LocationName = "loc1Dcolumn"
+character(len=*), parameter :: LocationLName = "one-dimensional column"
+character(len=*), parameter :: LocationStorageOrder = "Vertical"
+character(len=*), parameter :: LocationUnits = "which_vert"
 
 
-character(len = 129) :: errstring
+character(len = 512) :: errstring
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
@@ -420,14 +421,6 @@ end subroutine interactive_location
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_destroy(gc)
-
-type(get_close_type), intent(inout) :: gc
-
-end subroutine get_close_destroy
-
-!----------------------------------------------------------------------------
-
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
@@ -441,6 +434,14 @@ gc%num = num
 gc%maxdist = maxdist
 
 end subroutine get_close_init
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_destroy(gc)
+
+type(get_close_type), intent(inout) :: gc
+
+end subroutine get_close_destroy
 
 !----------------------------------------------------------------------------
 
@@ -507,7 +508,16 @@ type(ensemble_type), optional, intent(in)  :: ens_handle
 integer :: i
 real(r8) :: this_dist
 
-! Return list of locs that are within maxdist and their distances
+! the list of locations in the locs() argument must be the same
+! as the list of locations passed into get_close_init(), so
+! gc%num and size(locs) better be the same.   if the list changes,
+! you have to destroy the old gc and init a new one.
+if (size(locs) /= gc%num) then
+   write(errstring,*)'locs() array must match one passed to get_close_init()'
+   call error_handler(E_ERR, 'get_close', errstring, source)
+endif
+
+! Return list of obs that are within maxdist and their distances
 num_close = 0
 do i = 1, gc%num
    this_dist = get_dist(base_loc, locs(i), base_type, loc_qtys(i))
@@ -533,13 +543,12 @@ get_maxdist = gc%maxdist
 end function get_maxdist
 
 !----------------------------------------------------------------------------
+!> Returns true if the given location is between the other two.
 
 function is_location_in_region(loc, minl, maxl)
  
-! Returns true if the given location is between the other two.
-
-logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
+logical                          :: is_location_in_region
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -652,39 +661,6 @@ if (present(vloc)) loc%vloc = vloc
 if (present(which_vert)) loc%which_vert = which_vert
 
 end subroutine set_vertical
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:), loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-status(:) = 0
-
-end subroutine convert_vertical_obs
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
-                                  which_vert, istatus)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: istatus
-
-istatus = 0
-
-end subroutine convert_vertical_state
 
 
 !----------------------------------------------------------------------------

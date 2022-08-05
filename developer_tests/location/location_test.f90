@@ -1,12 +1,10 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program location_test
 
-! Simple test program to exercise annulus location module.
+! Simple test program to exercise location module interfaces.
 
 use     types_mod, only : r8
 use utilities_mod, only : open_file, close_file, initialize_utilities, &
@@ -14,12 +12,6 @@ use utilities_mod, only : open_file, close_file, initialize_utilities, &
 use  location_mod
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 type(location_type) :: loc0(6), loc1, loc2, loc3, loc4, locA(7), locB(5)
 integer             :: iunit, iunit1, iunit2, i
@@ -175,8 +167,3 @@ call finalize_utilities()
 
 end program location_test
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

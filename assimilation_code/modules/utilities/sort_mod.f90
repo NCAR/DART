@@ -33,6 +33,7 @@ private
 
 ! for now, let code indicate what sort they want. 
 public :: sort, index_sort, insertion_sort, index_insertion_sort
+public :: index_insertion_sort_orig   ! for testing only
 !public :: simple_sort, simple_index_sort  
 
 logical, save :: module_initialized = .false.
@@ -72,6 +73,11 @@ interface index_insertion_sort
    module procedure index_insertion_sort_real
    module procedure index_insertion_sort_int
 end interface index_insertion_sort
+
+interface index_insertion_sort_orig
+   module procedure index_insertion_sort_real_orig
+   module procedure index_insertion_sort_int_orig
+end interface index_insertion_sort_orig
 
 interface simple_index_sort
    module procedure simple_index_sort_real
@@ -672,19 +678,25 @@ end subroutine insertion_sort_int
 
 !-------------------------------------------------------------------------
 ! index version for real(r8) data.
+! this version requires the indx array to be initialized before calling.
 
-subroutine index_insertion_sort_real(x, indx, num)
+subroutine index_insertion_sort_real(x, indx, num, init_indx)
 
 integer,  intent(in) :: num
-integer, intent(out) :: indx(num)
+integer, intent(inout) :: indx(num)
 real(r8), intent(in) :: x(num)
+logical, intent(in), optional :: init_indx
 
 integer :: i, j, v_indx
 real(r8) :: v
 
-do i=1, num
-   indx(i) = i
-enddo
+if (present(init_indx)) then
+   if (init_indx) then
+      do i=1, num
+         indx(i) = i
+      enddo
+   endif
+endif
 
 i = 2
 do while (i <= num)
@@ -704,19 +716,25 @@ end subroutine index_insertion_sort_real
 
 !-------------------------------------------------------------------------
 ! index version for integer data.
+! this version requires the indx array to be initialized before calling.
 
-subroutine index_insertion_sort_int(x, indx, num)
+subroutine index_insertion_sort_int(x, indx, num, init_indx)
 
 integer, intent(in)  :: num
-integer, intent(out) :: indx(num)
+integer, intent(inout) :: indx(num)
 integer, intent(in)  :: x(num)
+logical, intent(in), optional :: init_indx
 
 integer :: i, j, v_indx
 integer :: v
 
-do i=1, num
-   indx(i) = i
-enddo
+if (present(init_indx)) then
+   if (init_indx) then
+      do i=1, num
+         indx(i) = i
+      enddo
+   endif
+endif
 
 i = 2
 do while (i <= num)
@@ -733,6 +751,76 @@ do while (i <= num)
 end do
 
 end subroutine index_insertion_sort_int
+
+!-------------------------------------------------------------------------
+! index version for real(r8) data.
+! this version requires the indx array to be initialized before calling.
+
+subroutine index_insertion_sort_real_orig(x, indx, num)
+
+integer,  intent(in) :: num
+integer, intent(inout) :: indx(num)
+real(r8), intent(in) :: x(num)
+
+integer :: i, j, v_indx
+real(r8) :: v
+
+if (indx(1) < 0) then
+   do i=1, num
+      indx(i) = i
+   enddo
+endif
+
+i = 2
+do while (i <= num)
+   v = x(indx(i))
+   v_indx = indx(i)
+   j = i - 1 
+   do while (j >= 1)
+      if (x(indx(j)) <= v) exit
+      indx(j+1) = indx(j)
+      j = j - 1
+   end do
+   indx(j + 1) = v_indx
+   i = i + 1
+end do
+
+end subroutine index_insertion_sort_real_orig
+
+!-------------------------------------------------------------------------
+! index version for integer data.
+! this version requires the indx array to be initialized before calling.
+
+subroutine index_insertion_sort_int_orig(x, indx, num)
+
+integer, intent(in)  :: num
+integer, intent(inout) :: indx(num)
+integer, intent(in)  :: x(num)
+
+integer :: i, j, v_indx
+integer :: v
+
+if (indx(1) < 0) then
+   do i=1, num
+      indx(i) = i
+   enddo
+endif
+
+i = 2
+do while (i <= num)
+  v = x(indx(i))
+  v_indx = indx(i)
+  j = i - 1 
+  do while (j >= 1)
+     if (x(indx(j)) <= v) exit
+     indx(j+1) = indx(j)
+     j = j - 1
+  end do
+  indx(j + 1) = v_indx
+  i = i + 1
+end do
+
+end subroutine index_insertion_sort_int_orig
 
 !-------------------------------------------------------------------------
 !-------------------------------------------------------------------------

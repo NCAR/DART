@@ -1,11 +1,11 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
-   single_file_in             = .true.
-   input_state_files          = "perfect_input.nc"
+   single_file_in             = .false.
+   input_state_files          = "perfect_single.nc"
 
    write_output_state_to_file = .true.,
-   single_file_out            = .true.
-   output_state_files         = "perfect_output.nc"
+   single_file_out            = .false.
+   output_state_files         = "perfect_output2.nc"
    output_interval            = 1,
 
    async                      = 0,
@@ -14,11 +14,11 @@
    obs_seq_in_file_name       = "obs_seq.in",
    obs_seq_out_file_name      = "obs_seq.out",
    init_time_days             = 0,
-   init_time_seconds          = 0,
-   first_obs_days             = -1,
-   first_obs_seconds          = -1,
-   last_obs_days              = -1,
-   last_obs_seconds           = -1,
+   init_time_seconds          = 3600,
+   first_obs_days             = 0,
+   first_obs_seconds          = 3600,
+   last_obs_days              = 0,
+   last_obs_seconds           = 3600,
 
    trace_execution            = .false.,
    output_timestamps          = .false.,
@@ -29,14 +29,14 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = ''
-   input_state_file_list        = 'filter_input_list.txt'
+   input_state_files            = 'perfect_output2.nc'
+   input_state_file_list        = ''
 
-   stages_to_write  = 'preassim', 'analysis', 'output'
+   stages_to_write              = 'output'
 
    single_file_out              = .true.,
-   output_state_files           = ''
-   output_state_file_list       = 'filter_output_list.txt'
+   output_state_files           = 'filter_output.nc'
+   output_state_file_list       = ''
    output_interval              = 1,
    output_members               = .true.
    num_output_state_members     = 20,
@@ -45,7 +45,7 @@
 
    ens_size                     = 20,
    num_groups                   = 1,
-   perturb_from_single_instance = .false.,
+   perturb_from_single_instance = .true.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 
@@ -222,7 +222,7 @@
    /
 
 &model_mod_check_nml
-  input_state_files     = 'perfect_input.nc'
+  input_state_files     = 'perfect_single.nc'
   output_state_files    = 'mmc_output.nc'
   num_ens               = 1
   single_file           = .false.

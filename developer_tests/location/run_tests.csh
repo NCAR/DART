@@ -81,6 +81,28 @@ foreach i ( $LOCLIST )
        echo "End of successful run of location module $i"
      endif
 
+   \rm -rf Makefile
+   ./mkmf_location_test2 > $LOGDIR/buildlog.$i.out
+   ( make >> $LOGDIR/buildlog.$i.out ) || set FAILURE = 1
+
+   echo
+   echo
+   if ( $FAILURE ) then
+     echo "ERROR - unsuccessful build of location module $i at "`date`
+   else
+     echo "Build of location module $i complete"
+     echo
+     echo
+   else
+
+     ( ./location_test2 < test.in > $LOGDIR/runlog.$i.out ) || set FAILURE = 1
+
+     if ( $FAILURE ) then
+       echo "ERROR - unsuccessful run of location module $i tests at "`date`
+     else
+       echo "End of successful run of location module $i"
+     endif
+
      \rm -f *.o *.mod input.nml*_default dart_log.* \
             Makefile location_test_file* location_test
 

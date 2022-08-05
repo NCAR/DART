@@ -30,6 +30,7 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
 use mpi_utilities_mod, only : my_task_id, task_count
 use ensemble_manager_mod, only : ensemble_type
+use default_location_mod, only : convert_vertical_obs, convert_vertical_state
 
 implicit none
 private
@@ -1101,39 +1102,6 @@ if (present(vloc)) loc%vloc = vloc
 if (present(which_vert)) loc%which_vert = which_vert
 
 end subroutine set_vertical
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:), loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-status(:) = 0
-
-end subroutine convert_vertical_obs
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
-                                  which_vert, istatus)
-
-type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: istatus
-
-istatus = 0
-
-end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 !----------------------------------------------------------------------------

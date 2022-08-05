@@ -12,13 +12,17 @@ module location_mod
 ! and the vertical coordinate is zero at the bottom of the annulus.
 !
 
-use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
+use      types_mod, only : r8, i8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            find_namelist_in_file, check_namelist_read, &
                            do_output, do_nml_file, do_nml_term, nmlfileunit, &
                            open_file, close_file, is_longitude_between
 use ensemble_manager_mod, only : ensemble_type
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use default_location_mod, only: set_vertical_localization_coordinate,  &
+                                get_vertical_localization_coordinate,  &
+                                convert_vertical_obs, convert_vertical_state
+
 
 implicit none
 private
@@ -27,10 +31,10 @@ public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
-          get_close_type, get_close_init, get_close, get_close_destroy, &
-          operator(==), operator(/=), get_dist, &
-          vertical_localization_on, is_vertical, set_vertical, &
-          get_vertical_localization_coordinate, set_vertical_localization_coordinate, &
+          get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
+          operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
+          set_vertical, is_vertical, get_vertical_localization_coord, get_close, &
+          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
           VERTISSURFACE, VERTISLEVEL, VERTISHEIGHT
 
 character(len=*), parameter :: source = 'annulus/location_mod.f90'
@@ -74,7 +78,7 @@ real(r8) :: max_radius = 100000.0_r8
 ! in various places in the code.  none of that is there at this point.
 namelist /location_nml/ min_radius, max_radius
 
-character(len = 129) :: errstring
+character(len = 512) :: errstring
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
@@ -583,6 +587,49 @@ type(get_close_type), intent(inout) :: gc
 end subroutine get_close_destroy
 
 !----------------------------------------------------------------------------
+
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, ens_handle)
+
+! The specific type of the base observation, plus the generic kinds list
+! for either the state or obs lists are available if a more sophisticated
+! distance computation is needed.
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(inout) :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ens_handle)
+
+end subroutine get_close_obs
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+
+! The specific type of the base observation, plus the generic kinds list
+! for either the state or obs lists are available if a more sophisticated
+! distance computation is needed.
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(inout)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ens_handle)
+
+end subroutine get_close_state
+
+!----------------------------------------------------------------------------
 !> Return how many locations are closer than cutoff distance, along with a
 !> count, and the actual distances if requested.  The base type, the
 !> loc_quantity and the ensemble_handle are unused here but are available
@@ -613,7 +660,7 @@ endif
 ! Return list of obs that are within maxdist and their distances
 num_close = 0
 do i = 1, gc%num
-   this_dist = get_dist(base_loc, locs(i), base_type, loc_quantities(i))
+   this_dist = get_dist(base_loc, locs(i), base_type, loc_qtys(i))
    if(this_dist <= gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
@@ -673,7 +720,7 @@ logical :: has_vertical_choice
 
 if ( .not. module_initialized ) call initialize_module
 
-has_vertical_choice = .false.
+has_vertical_choice = .true.
 
 end function has_vertical_choice
 
@@ -702,7 +749,7 @@ end function is_vertical
 
 !---------------------------------------------------------------------------
 !> Always returns false since this type of location doesn't 
-!> currently support vertical localization.
+!> currently support vertical localization - but it could.
 
 function vertical_localization_on()
  
@@ -730,26 +777,6 @@ if (present(vloc)) loc%vloc = vloc
 if (present(which_vert)) loc%which_vert = which_vert
 
 end subroutine set_vertical
-
-!---------------------------------------------------------------------------
-
-subroutine set_vertical_localization_coordinate()
- 
-! does nothing in this module
-
-end subroutine set_vertical_localization_coordinate
-
-!---------------------------------------------------------------------------
-
-function get_vertical_localization_coordinate()
- 
-integer :: get_vertical_localization_coordinate
-
-! does nothing in this module - error to call?
-! set it to an undefined value.
-get_vertical_localization_coordinate = 0
-
-end function get_vertical_localization_coordinate
 
 
 !----------------------------------------------------------------------------

@@ -2,36 +2,78 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 module model_mod
 
 ! This is a non-divergent barotropic model on the sphere.
 ! use the 2d sphere locations mod to compile
 
-use    types_mod, only : r8
-use location_mod, only : location_type, set_location, get_location
+use    types_mod, only : r8, i8
 use obs_kind_mod, only : QTY_VERTICAL_VORTICITY
 
 ! FIXME: we don't have these in the repos
-use transforms_mod
-use ncd_file_mod
+!use transforms_mod
+!use ncd_file_mod
+
+use time_manager_mod,      only : time_type, set_time
+
+use location_mod,          only : location_type, set_location, get_location,  &
+                                  get_close_obs, get_close_state,             &
+                                  convert_vertical_obs, convert_vertical_state
+
+use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    &
+                                  nmlfileunit, find_namelist_in_file,           &
+                                  check_namelist_read, E_MSG, E_ERR, error_handler
+
+use location_io_mod,      only :  nc_write_location_atts, nc_write_location
+
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_end_define_mode
+
+use ensemble_manager_mod,  only : ensemble_type
+
+use distributed_state_mod, only : get_state
+
+use state_structure_mod,   only : add_domain
+
+use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars, &
+                                  init_time
+
+use dart_time_io_mod,      only : read_model_time, write_model_time
 
 implicit none
 private
 
-public :: init_model, get_model_size, lat_max, num_lon, init_conditions, & 
-   adv_1step, advance, &
-   barot_to_dp, dp_to_barot, delta_t, &
-   dp_to_grid, lon, lat, get_state_meta_data, diag_output_index, &
-   num_fourier, num_spherical, model_output, trans_spherical_to_grid, &
-   grid_to_dp
+! these routines must be public and you cannot change the
+! arguments because they will be called *from* other DART code.
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+!> required routines with code in this module
+public :: get_model_size, &
+          get_state_meta_data,  &
+          model_interpolate, &
+          shortest_time_between_assimilations, &
+          static_init_model, &
+          init_conditions,    &
+          adv_1step, &
+          nc_write_model_atts
+
+!> required routines where code is in other modules
+public :: pert_model_copies, &
+          nc_write_model_vars, &
+          init_time, &
+          get_close_obs, &
+          get_close_state, &
+          end_model, &
+          convert_vertical_obs, &
+          convert_vertical_state, &
+          read_model_time, &
+          write_model_time
+
+public ::  lat_max, num_lon, advance, barot_to_dp, dp_to_barot, delta_t, &
+   dp_to_grid, lon, lat, diag_output_index, num_fourier, num_spherical, model_output, &
+   trans_spherical_to_grid, grid_to_dp
+
 
 ! Truncation for T42 follows:
 ! Reduced grid
@@ -718,8 +760,3 @@ end subroutine filter
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -11,10 +11,16 @@ module location_mod
 ! representation is longitude in degrees from 0 to 360 and latitude 
 ! from -90 to 90 for consistency with most applications in the field.
 
-use      types_mod, only : r8, DEG2RAD, RAD2DEG, PI, MISSING_R8
+use      types_mod, only : r8, DEG2RAD, RAD2DEG, PI, MISSING_R8, i8
 use  utilities_mod, only : error_handler, E_ERR, &
                            ascii_file_format, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use ensemble_manager_mod, only : ensemble_type
+use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
+                                 get_vertical_localization_coord, &
+                                 set_vertical_localization_coord, &
+                                 is_vertical, set_vertical, &
+                                 convert_vertical_obs, convert_vertical_state
 
 implicit none
 private
@@ -22,12 +28,11 @@ private
 public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
-          LocationDims, LocationName, LocationLName, get_close_obs, &
-          get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
-          vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization, &
-          set_vert, get_vert, set_which_vert
+          LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
+          get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
+          operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
+          set_vertical, is_vertical, get_vertical_localization_coord, &
+          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state
 
 character(len=*), parameter :: source = 'twod_sphere/location_mod.f90'
 
@@ -47,12 +52,14 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 
-integer,              parameter :: LocationDims = 2
-character(len = 129), parameter :: LocationName = "loc2Dsphere"
-character(len = 129), parameter :: LocationLName = &
-                                   "twod sphere locations: lon, lat"
+integer,          parameter :: LocationDims = 2
+character(len=*), parameter :: LocationName = "loc2Dsphere"
+character(len=*), parameter :: LocationLName = &
+                                 "twod sphere locations: lon, lat"
+character(len=*), parameter :: LocationStorageOrder = "X Y"
+character(len=*), parameter :: LocationUnits = "degrees degrees"
 
-character(len = 129) :: errstring
+character(len = 512) :: errstring
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
@@ -282,7 +289,6 @@ if (.not. writebuf) then
    if (ascii_file_format(fform)) then
       write(locfile, '(''loc2s'')' )
       write(locfile, 10) loc%lon, loc%lat
-      !write(locfile, *) loc%lon, loc%lat
    else
       write(locfile) loc%lon, loc%lat
    endif
@@ -402,71 +408,100 @@ end if
 end subroutine interactive_location
 
 !----------------------------------------------------------------------------
+! Initializes get_close accelerator - unused in this location module
 
-subroutine get_close_obs_init(gc, num, obs)
- 
-! Initializes part of get_close accelerator that depends on the particular obs
+subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
-type(location_type),  intent(in)    :: obs(num)
-
-! Set the value of num_obs in the structure
-gc%num = num
-
-end subroutine get_close_obs_init
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_obs_destroy(gc)
-
-type(get_close_type), intent(inout) :: gc
-
-end subroutine get_close_obs_destroy
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
-
-type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
+type(location_type),  intent(in)    :: locs(:)
 real(r8), intent(in), optional      :: maxdist_list(:)
 
-! Set the maximum distance in the structure
+! Set the maximum localization distance
 gc%maxdist = maxdist
 
-end subroutine get_close_maxdist_init
+! Save the value of num_locs
+gc%num = num
+
+if (present(maxdist_list)) then
+   write(errstring,*)'twod_sphere locations does not support different cutoff distances by type'
+   call error_handler(E_ERR, 'get_close_init', errstring, source)
+endif
+
+end subroutine get_close_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
-   num_close, close_ind, dist)
+subroutine get_close_destroy(gc)
 
-! Default version with no smarts.
-! Kinds are available here if one wanted to do more refined distances.
+type(get_close_type), intent(inout) :: gc
 
-type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_obs_loc, obs(:)
-integer,              intent(in)  :: base_obs_type, obs_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8), optional,   intent(out) :: dist(:)
+end subroutine get_close_destroy
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:) 
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ensemble_handle)
+
+end subroutine get_close_obs
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:) 
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ensemble_handle)
+
+end subroutine get_close_state
+
+!----------------------------------------------------------------------------
+
+subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
+                     num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
 integer :: i
 real(r8) :: this_dist
 
-! the list of locations in the obs() argument must be the same
-! as the list of locations passed into get_close_obs_init(), so
-! gc%num and size(obs) better be the same.   if the list changes,
+! the list of locations in the locs() argument must be the same
+! as the list of locations passed into get_close_init(), so
+! gc%num and size(locs) better be the same.   if the list changes
 ! you have to destroy the old gc and init a new one.
-if (size(obs) /= gc%num) then
-   write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source)
+if (size(locs) /= gc%num) then
+   write(errstring,*)'locs() array must match one passed to get_close_init()'
+   call error_handler(E_ERR, 'get_close', errstring, source)
 endif
 
 ! Return list of obs that are within maxdist and their distances
 num_close = 0
 do i = 1, gc%num
-   this_dist = get_dist(base_obs_loc, obs(i), base_obs_type, obs_kind(i))
+   this_dist = get_dist(base_loc, locs(i), base_type, loc_qtys(i))
    if(this_dist <= gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
@@ -475,7 +510,7 @@ do i = 1, gc%num
    endif
 end do
 
-end subroutine get_close_obs
+end subroutine get_close
 
 !---------------------------------------------------------------------------
 
@@ -514,119 +549,6 @@ is_location_in_region = .true.
 
 end function is_location_in_region
 
-!----------------------------------------------------------------------------
-! stubs - always say no, but allow this code to be compiled with
-!         common code that sometimes needs vertical info.
-!----------------------------------------------------------------------------
-
-function vert_is_undef(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_undef
-type(location_type), intent(in)  :: loc
-
-vert_is_undef = .false.
-
-end function vert_is_undef
-
-!----------------------------------------------------------------------------
-
-function vert_is_surface(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_surface
-type(location_type), intent(in)  :: loc
-
-vert_is_surface = .false.
-
-end function vert_is_surface
-
-!----------------------------------------------------------------------------
-
-function vert_is_pressure(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_pressure
-type(location_type), intent(in)  :: loc
-
-vert_is_pressure = .false.
-
-end function vert_is_pressure
-
-!----------------------------------------------------------------------------
-
-function vert_is_height(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_height
-type(location_type), intent(in)  :: loc
-
-vert_is_height = .false.
-
-end function vert_is_height
-
-!----------------------------------------------------------------------------
-
-function vert_is_level(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_level
-type(location_type), intent(in)  :: loc
-
-vert_is_level = .false.
-
-end function vert_is_level
-
-!---------------------------------------------------------------------------
-
-function has_vertical_localization()
- 
-! Always returns false since this type of location doesn't support
-! vertical localization.
-
-logical :: has_vertical_localization
-
-if ( .not. module_initialized ) call initialize_module
-
-has_vertical_localization = .false.
-
-end function has_vertical_localization
-
-!--------------------------------------------------------------------
-!> dummy routine for models that don't have a vertical location
-function get_vert(loc)
-
-type(location_type), intent(in) :: loc
-real(r8) :: get_vert
-
-get_vert = 1 ! any old value
-
-end function get_vert
-
-!--------------------------------------------------------------------
-!> dummy routine for models that don't have a vertical location
-subroutine set_vert(loc, vloc)
-
-type(location_type), intent(inout) :: loc
-real(r8), intent(in) :: vloc
-
-
-end subroutine set_vert
-
-!----------------------------------------------------------------------------
-!> set the which vert
-subroutine set_which_vert(loc, which_vert)
-
-type(location_type), intent(inout) :: loc
-integer,                intent(in) :: which_vert !< vertical coordinate type
-
-
-end subroutine set_which_vert
 
 !----------------------------------------------------------------------------
 ! end of location/twod_sphere/location_mod.f90
