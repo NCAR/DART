@@ -458,16 +458,9 @@ do i = 1, ens_size
    ! Finding which region this quantile is in is trivial
    region = floor(quantile * (ens_size + 1.0_r8))
    ! Careful about numerical issues moving outside of region [0 ens_size]
-   if(region < 0 .or. region > ens_size) then
-      ! Extreme error check
-      ! Diagnostic check. If values barely below 0 or above ens_size, can get rid of this
-      ! and keep the following if's that clean up
-      write(*, *) 'bad region ', region
-      stop
-   endif
-
-   if(region > ens_size) region = ens_size
    if(region < 0) region = 0
+   ! This behavior has been documented 
+   if(region > ens_size) region = ens_size
 
    if(region == 0) then
       ! Lower tail
@@ -585,21 +578,30 @@ end subroutine weighted_norm_inv
 
 !------------------------------------------------------------------------
 
-subroutine norm_inv(p, x)
+subroutine norm_inv(p_in, x)
 
-real(r8), intent(in)  :: p
+real(r8), intent(in)  :: p_in
 real(r8), intent(out) :: x
 
 ! normal inverse
 ! translate from http://home.online.no/~pjacklam/notes/invnorm
 ! a routine written by john herrero
 
+real(r8) :: p
 real(r8) :: p_low,p_high
 real(r8) :: a1,a2,a3,a4,a5,a6
 real(r8) :: b1,b2,b3,b4,b5
 real(r8) :: c1,c2,c3,c4,c5,c6
 real(r8) :: d1,d2,d3,d4
 real(r8) :: q,r
+
+! Truncate out of range quantiles, converts them to smallest positive number or largest number <1
+! This solution is stable, but may lead to underflows being thrown. May want to 
+! think of a better solution. 
+p = p_in
+if(p <= 0.0_r8) p = tiny(p_in)
+if(p >= 1.0_r8) p = nearest(1.0_r8, -1.0_r8)
+
 a1 = -39.69683028665376_digits12
 a2 =  220.9460984245205_digits12
 a3 = -275.9285104469687_digits12
