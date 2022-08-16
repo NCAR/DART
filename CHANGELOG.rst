@@ -22,6 +22,19 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 3 2022 :: TIEGCM. Tag v10.2.0**
+
+- TIEGCM model_mod updated to Manhattan
+- Added hyperslice subroutine to state_structure_mod to read only part of a
+  netcdf variable into the state.
+- Replaced stub get_expected_vtec with COMMON_CODE.
+
+**August 2 2022 :: RTTOV v13. Tag v10.1.0**
+
+- Support for RTTOV v13
+
+*Contributed by Lukas Kugler*
+
 **July 27 2022 :: Bug-fix for WRF model_mod nc_write_model_atts. Tag: v10.0.5**
 
 - Removes obsolete domain dimension from nc_write_model_atts for WRF model_mod.

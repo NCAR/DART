@@ -1,3 +1,5 @@
+.. _obs_def_rttov_mod:
+
 MODULE ``obs_def_rttov_mod``
 ============================
 
@@ -8,8 +10,11 @@ DART RTTOV observation module, including the observation operators for the two p
 RTTOV-observation types -- visible/infrared radiances and microwave 
 radiances/brightness temperatures.
 
-This module acts as a pass-through for RTTOV version 12.3. For more information, 
+The obs_def_rttov_mod.f90 module acts as a pass-through for RTTOV version 12.3. For more information,
 see `the RTTOV site <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
+
+For RTTOV v13 use the obs_def_rttov13_mod.f90 module contributed by Lukas Kugler
+of the University of Vienna.
 
 DART supports both RTTOV-direct for visible/infrared/microwave as well as RTTOV-scatt 
 for microwave computations. The code, in principle, supports all features of version 12.3 
