@@ -385,7 +385,8 @@ real(4), allocatable :: dic_f(:), dop_f(:), don_f(:), fet_f(:)
 real(4), allocatable :: eta_f(:), chl_f(:)
 
 ! Dimensions
-real(4)            :: xg(2000), xc(2000), yg(2000), yc(2000)
+!real(4)            :: xg(2000), xc(2000), yg(2000), yc(2000)
+real(4)            :: xg(500), xc(500), yg(500), yc(500)
 real(4)            :: zc(50)
 logical            :: fill_var
 integer            :: ul
