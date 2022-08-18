@@ -35,6 +35,7 @@ dart_to_mit
 mit_to_dart
 create_ocean_obs
 dart_nc_reduce
+dart_nc_expand
 )
 
 arguments "$@"
