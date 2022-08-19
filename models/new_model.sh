@@ -22,9 +22,9 @@ fi
 
 mkdir -p "$model_name/work"
 cp "template/new_model.rst" "$model_name/readme.rst"
-sed -i '' "s;template_model;$model_name;" "$model_name/readme.rst"
+sed -i '' -e "s;template_model;$model_name;" "$model_name/readme.rst" 2>/dev/null
 cp "template/work/quickbuild.sh" "$model_name/work/quickbuild.sh"
-sed -i '' -e  "s;template_model;$model_name;" -e "s;template_location;$location_mod;" "$model_name/work/quickbuild.sh"
+sed -i '' -e  "s;template_model;$model_name;" -e "s;template_location;$location_mod;" "$model_name/work/quickbuild.sh" 2>/dev/null
 
 case $location_mod in
   threed | threed_cartesian | threed_sphere) # threed does not compile, but is a good framework
