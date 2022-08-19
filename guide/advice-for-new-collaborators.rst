@@ -348,9 +348,6 @@ Templates are chosen based on location module input. The currently supported
 location templates are for 3D and 1D modules, with the possibility for more
 in the future. At the moment, ``threed_sphere``, ``threed_cartesian``, and
 ``oned``  will produce model_mod.f90 code that compile will sucessfully with ``./quickbuild.sh``.
-If the location is not listed here, the script will default to 3D as it still provides the
-foundation for a model_mod.f90 that can be developed further.
-
 
 We recommend looking at the existing supported models and reusing code from them if
 possible. Models with similar grid types or vertical coordinates are good
