@@ -3,9 +3,9 @@ program nc_reduce
 use netcdf_utilities_mod, only : nc_get_variable, nc_define_dimension, nc_define_real_variable, &
                                  nc_put_variable, nc_check, nc_open_file_readonly, &
                                  nc_open_file_readwrite, nc_close_file, nc_create_file, &
-                                 nc_get_variable_size
+                                 nc_get_variable_size, nc_define_double_variable
 
-use types_mod,            only : r4
+use types_mod,            only : r4, r8
 
 use utilities_mod,        only : initialize_utilities, finalize_utilities
 
@@ -13,7 +13,7 @@ use netcdf
 
 implicit none
 
-integer            :: ncid, ret, new_ncid, ncid_comp
+integer            :: ncid, new_ncid, ncid_comp
 character(len=NF90_MAX_NAME) :: new_name
 
 
@@ -33,7 +33,7 @@ real(r4), allocatable :: eta_f(:), chl_f(:)
 
 ! Dimensions
 real(r4)            :: xg(hgrid), xc(hgrid), yg(hgrid), yc(hgrid)
-real(r4)            :: zc(vgrid)
+real(r8)            :: zc(vgrid) ! ZC is double
 integer            :: i,j,k   ! loop counter
 integer            :: ct_3d, ct_2d, dimarr_3d_ct, dimarr_2d_ct
 integer            :: psalsize(ndim_3d), ptmpsize(ndim_3d), uvelsize(ndim_3d)
@@ -118,9 +118,8 @@ call nc_get_variable(ncid, 'CHL', chl)
 
 ! counts are from the compressed file
 ncid_comp = nc_open_file_readonly('output_mem01.nc')
-call nc_get_variable_size(ncid_comp, 'psal_f', ct_3d)
-call nc_get_variable_size(ncid_comp, 'chl_f', ct_2d)
-
+call nc_get_variable_size(ncid_comp, 'PSAL', ct_3d)
+call nc_get_variable_size(ncid_comp, 'CHL', ct_2d)
 
 allocate(psal_f(ct_3d))
 allocate(ptmp_f(ct_3d))
@@ -137,6 +136,22 @@ allocate(don_f(ct_3d))
 allocate(fet_f(ct_3d))
 allocate(chl_f(ct_2d))
 allocate(eta_f(ct_2d))
+
+call nc_get_variable(ncid_comp, 'PSAL', psal_f)
+call nc_get_variable(ncid_comp, 'PTMP', ptmp_f)
+call nc_get_variable(ncid_comp, 'UVEL', uvel_f)
+call nc_get_variable(ncid_comp, 'VVEL', vvel_f)
+call nc_get_variable(ncid_comp, 'NO3',   no3_f)
+call nc_get_variable(ncid_comp, 'PO4',   po4_f)
+call nc_get_variable(ncid_comp, 'O2',     o2_f)
+call nc_get_variable(ncid_comp, 'PHY',   phy_f)
+call nc_get_variable(ncid_comp, 'ALK',   alk_f)
+call nc_get_variable(ncid_comp, 'DIC',   dic_f)
+call nc_get_variable(ncid_comp, 'DOP',   dop_f)
+call nc_get_variable(ncid_comp, 'DON',   don_f)
+call nc_get_variable(ncid_comp, 'FET',   fet_f)
+call nc_get_variable(ncid_comp, 'ETA',   eta_f)
+call nc_get_variable(ncid_comp, 'CHL',   chl_f)
 
 
 dimarr_3d_ct = 1
@@ -190,8 +205,8 @@ call nc_define_dimension(new_ncid, 'ZC', vgrid)
 ! Put all the (new) variables in
 call nc_define_real_variable(new_ncid, 'PSAL', (/'XC','YC','ZC'/))
 call nc_define_real_variable(new_ncid, 'PTMP', (/'XC','YC','ZC'/))
-call nc_define_real_variable(new_ncid, 'UVEL', (/'XC','YC','ZC'/))
-call nc_define_real_variable(new_ncid, 'VVEL', (/'XG','YC','ZC'/))
+call nc_define_real_variable(new_ncid, 'UVEL', (/'XG','YC','ZC'/))
+call nc_define_real_variable(new_ncid, 'VVEL', (/'XC','YG','ZC'/))
 call nc_define_real_variable(new_ncid, 'ETA',  (/'XC','YC'/))
 call nc_define_real_variable(new_ncid, 'NO3',  (/'XC','YC','ZC'/))
 call nc_define_real_variable(new_ncid, 'PO4',  (/'XC','YC','ZC'/))
@@ -203,6 +218,13 @@ call nc_define_real_variable(new_ncid, 'DOP',  (/'XC','YC','ZC'/))
 call nc_define_real_variable(new_ncid, 'DON',  (/'XC','YC','ZC'/))
 call nc_define_real_variable(new_ncid, 'FET',  (/'XC','YC','ZC'/))
 call nc_define_real_variable(new_ncid, 'CHL',  (/'XC','YC'/))
+
+
+call nc_define_real_variable(new_ncid, 'XC','XC')
+call nc_define_real_variable(new_ncid, 'XG','XG')
+call nc_define_real_variable(new_ncid, 'YC','YC')
+call nc_define_real_variable(new_ncid, 'YG','YG')
+call nc_define_double_variable(new_ncid, 'ZC','ZC')
 
 ! Close the file
 call nc_close_file(new_ncid)
