@@ -11,7 +11,7 @@ module model_mod
 ! are not required for minimal implementation (see the discussion of each
 ! interface and look for NULL INTERFACE). 
 
-use types_mod,             only : r8, i8, i4
+use types_mod,             only : r8, i8, i4, MISSING_R8
 
 use time_manager_mod,      only : time_type, set_time
 
@@ -37,8 +37,7 @@ use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain
 
-use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars, &
-                                  init_time
+use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars
 
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
@@ -54,13 +53,16 @@ public :: get_model_size,       &
           shortest_time_between_assimilations, &
           static_init_model,    &
           init_conditions,      &
+          init_time,            &
           adv_1step,            &
           nc_write_model_atts
 
-! public but in another module
+! required by DART but passed through from another module. 
+! To write model specific versions of these routines
+! remove the routine from  use statement above and add your code to
+! this the file.
 public :: pert_model_copies,      &
           nc_write_model_vars,    &
-          init_time,              &
           get_close_obs,          &
           get_close_state,        &
           end_model,              &
@@ -70,11 +72,7 @@ public :: pert_model_copies,      &
           write_model_time
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
+character(len=256), parameter :: source   = "new_model.f90"
 
 type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
 
@@ -84,14 +82,52 @@ type(time_type) :: time_step
 ! EXAMPLE: perhaps a namelist here for anything you want to/can set at runtime.
 ! this is optional!  only add things which can be changed at runtime.
 integer(i8) :: model_size = 40
-real(r8)    :: forcing    = 8.00_r8
-real(r8)    :: delta_t    = 0.05_r8
 integer     :: time_step_days = 0
 integer     :: time_step_seconds = 3600
 
-namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_seconds
+namelist /model_nml/ model_size, time_step_days, time_step_seconds
 
 contains
+
+
+!------------------------------------------------------------------
+!
+! Called to do one time initialization of the model. As examples,
+! might define information about the model size or model timestep.
+! In models that require pre-computed static data, for instance
+! spherical harmonic weights, these would also be computed here.
+! Can be a NULL INTERFACE for the simplest models.
+
+subroutine static_init_model()
+
+real(r8) :: x_loc
+integer  :: i, dom_id
+
+! Do any initial setup needed, including reading the namelist values
+call initialize()
+
+! Create storage for locations
+allocate(state_loc(model_size))
+
+! Define the locations of the model state variables
+! Example location following lorenz_96
+do i = 1, model_size
+   x_loc = (i - 1.0_r8) / model_size
+   state_loc(i) =  set_location(x_loc)
+end do
+
+! This time is both the minimum time you can ask the model to advance
+! (for models that can be advanced by filter) and it sets the assimilation
+! window.  All observations within +/- 1/2 this interval from the current
+! model time will be assimilated. If this isn't settable at runtime 
+! feel free to hardcode it and not add it to a namelist.
+time_step = set_time(time_step_seconds, time_step_days)
+
+! Tell the DART I/O routines how large the model data is so they
+! can read/write it.
+dom_id = add_domain(model_size)
+
+end subroutine static_init_model
 
 !------------------------------------------------------------------
 ! Does a single timestep advance of the model. The input value of
@@ -115,80 +151,6 @@ type(time_type), intent(in)    :: time
 end subroutine adv_1step
 
 
-
-!------------------------------------------------------------------
-! Computes the time tendency of the model given current state
-
-subroutine comp_dt(x, dt)
-
-real(r8), intent(in)  ::  x(:)
-real(r8), intent(out) :: dt(:)
-
-integer :: j, jp1, jm1, jm2, ms
-
-! avoid compiler bugs with long integers
-! being used as loop indices.
-ms = model_size
-do j = 1, ms
-   jp1 = j + 1
-   if(jp1 > ms) jp1 = 1
-   jm2 = j - 2
-   if(jm2 < 1) jm2 = ms + jm2
-   jm1 = j - 1
-   if(jm1 < 1) jm1 = ms
-   
-   dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
-end do
-
-end subroutine comp_dt
-
-
-
-!------------------------------------------------------------------
-!
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
-! Can be a NULL INTERFACE for the simplest models.
-
-subroutine static_init_model()
-
-real(r8) :: x_loc
-integer  :: i, dom_id
-!integer  :: iunit, io
-
-! Do any initial setup needed, including reading the namelist values
-call initialize()
-
-! Create storage for locations
-allocate(state_loc(model_size))
-
-! Define the locations of the model state variables
-! naturally, this can be done VERY differently for more complicated models.
-! set_location() is different for 1D vs. 3D models, not surprisingly.
-do i = 1, model_size
-   x_loc = (i - 1.0_r8) / model_size
-   ! must do one of these:
-   state_loc(i) =  set_location(x_loc)
-   !state_loc(i) =  set_location(x_loc,y_loc,v_loc,v_type)
-end do
-
-! This time is both the minimum time you can ask the model to advance
-! (for models that can be advanced by filter) and it sets the assimilation
-! window.  All observations within +/- 1/2 this interval from the current
-! model time will be assimilated. If this isn't settable at runtime 
-! feel free to hardcode it and not add it to a namelist.
-time_step = set_time(time_step_seconds, time_step_days)
-
-! Tell the DART I/O routines how large the model data is so they
-! can read/write it.
-dom_id = add_domain(model_size)
-
-end subroutine static_init_model
-
-
-
 !------------------------------------------------------------------
 ! Returns a model state vector, x, that is some sort of appropriate
 ! initial condition for starting up a long integration of the model.
@@ -202,11 +164,27 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
-x    = forcing
-x(1) = 1.001_r8 * forcing
+x = MISSING_R8
 
 end subroutine init_conditions
 
+!------------------------------------------------------------------
+! Companion interface to init_conditions. Returns a time that is somehow 
+! appropriate for starting up a long integration of the model.
+! At present, this is only used if the namelist parameter 
+! start_from_restart is set to .false. in the program perfect_model_obs.
+! If this option is not to be used in perfect_model_obs, or if no 
+! synthetic data experiments using perfect_model_obs are planned, 
+! this can be a NULL INTERFACE.
+
+subroutine init_time(time)
+
+type(time_type), intent(out) :: time
+
+! for now, just set to 0
+time = set_time(0,0)
+
+end subroutine init_time
 
 
 !------------------------------------------------------------------
@@ -240,58 +218,37 @@ end function shortest_time_between_assimilations
 
 
 !------------------------------------------------------------------
-! Given a state handle, a location, and a model state variable type,
+! Given a state handle, a location, and a model state variable quantity,
 ! interpolates the state variable fields to that location and returns
 ! the values in expected_obs. The istatus variables should be returned as
 ! 0 unless there is some problem in computing the interpolation in
 ! which case an alternate value should be returned. The itype variable
-! is a model specific integer that specifies the kind of field (for
+! is an integer that specifies the quantity of field (for
 ! instance temperature, zonal wind component, etc.). In low order
 ! models that have no notion of types of variables this argument can
 ! be ignored. For applications in which only perfect model experiments
 ! with identity observations (i.e. only the value of a particular
 ! state variable is observed), this can be a NULL INTERFACE.
 
-subroutine model_interpolate(state_handle, ens_size, location, itype, expected_obs, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, iqty, expected_obs, istatus)
 
 type(ensemble_type),  intent(in) :: state_handle
 integer,              intent(in) :: ens_size
 type(location_type),  intent(in) :: location
-integer,              intent(in) :: itype
-real(r8),            intent(out) :: expected_obs(ens_size) !< array of interpolated
+integer,              intent(in) :: iqty
+real(r8),            intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,             intent(out) :: istatus(ens_size)
 
-integer(i8) :: lower_index, upper_index
-real(r8) :: lctn, lctnfrac
-real(r8) :: x_lower(ens_size) !< the lower piece of state vector
-real(r8) :: x_upper(ens_size) !< the upper piece of state vector
+! This should be the result of the interpolation of a
+! given quantity (iqty) of variable at the given location.
+expected_obs(:) = MISSING_R8
 
-! All forward operators supported
-istatus(:) = 0
-
-! Convert location to real
-lctn = get_location(location)
-! Multiply by model size assuming domain is [0, 1] cyclic
-lctn = model_size * lctn
-
-lower_index = int(lctn) + 1
-upper_index = lower_index + 1
-if(lower_index > model_size) lower_index = lower_index - model_size
-if(upper_index > model_size) upper_index = upper_index - model_size
-
-lctnfrac = lctn - int(lctn)
-
-! Grab the correct pieces of state vector
-
-! Lower value
-x_lower(:) = get_state(lower_index, state_handle)
-
-! Upper value
-x_upper(:) = get_state(upper_index, state_handle)
-
-! calculate the obs value
-
-expected_obs(:) = (1.0_r8 - lctnfrac) * x_lower(:) + lctnfrac * x_upper(:)
+! The return code for successful return should be 0. 
+! Any positive number is an error.
+! Negative values are reserved for use by the DART framework.
+! Using distinct positive values for different types of errors can be
+! useful in diagnosing problems.
+istatus(:) = 1
 
 end subroutine model_interpolate
 
@@ -299,21 +256,21 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 ! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
+! associated location. A second intent(out) optional argument quantity
+! (qty) can be returned if the model has more than one type of field
+! (for instance temperature and zonal wind component). This interface is
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, qty_type)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: var_type
+integer,             intent(out), optional :: qty_type
 
 ! these should be set to the actual location and state quantity
 location = state_loc(index_in)
-if (present(var_type)) var_type = QTY_STATE_VARIABLE 
+if (present(qty_type)) qty_type = QTY_STATE_VARIABLE 
 
 end subroutine get_state_meta_data
 
@@ -328,7 +285,7 @@ subroutine initialize()
 integer :: iunit, io
 
 ! Print module information
-call register_module(source, revision, revdate)
+call register_module(source)
 
 ! Read the namelist 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -361,12 +318,8 @@ call nc_begin_define_mode(ncid)
 call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
-call nc_add_global_attribute(ncid, "model_revision", revision )
-call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
 call nc_add_global_attribute(ncid, "model", "template")
-call nc_add_global_attribute(ncid, "model_forcing", forcing )
-call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 
 call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)
