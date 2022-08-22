@@ -3,9 +3,9 @@ program nc_reduce
 use netcdf_utilities_mod, only : nc_get_variable, nc_define_dimension, nc_define_real_variable, &
                                  nc_put_variable, nc_check, nc_open_file_readonly, &
                                  nc_open_file_readwrite, nc_close_file, nc_create_file, &
-                                 nc_get_variable_size
+                                 nc_get_variable_size, nc_define_double_variable
 
-use types_mod,            only : r4
+use types_mod,            only : r4, r8
 
 use utilities_mod,        only : initialize_utilities, finalize_utilities
 
@@ -31,7 +31,7 @@ real(r4), allocatable :: eta_f(:), chl_f(:)
 ! Dimensions
 !real(r4)            :: xg(2000), xc(2000), yg(2000), yc(2000)
 real(r4)            :: xg(500), xc(500), yg(500), yc(500)
-real(r4)            :: zc(50)
+real(r8)            :: zc(50)
 integer            :: i,j,k   ! loop counter
 integer            :: ct_3d, ct_2d, dimarr_3d_ct, dimarr_2d_ct
 integer            :: psalsize(ndim_3d), ptmpsize(ndim_3d), uvelsize(ndim_3d)
@@ -253,7 +253,7 @@ call nc_define_real_variable(new_ncid, 'XC_3D', 'useful_info_3d')
 call nc_define_real_variable(new_ncid, 'XC_2D', 'useful_info_2d')
 call nc_define_real_variable(new_ncid, 'YC_3D', 'useful_info_3d')
 call nc_define_real_variable(new_ncid, 'YC_2D', 'useful_info_2d')
-call nc_define_real_variable(new_ncid, 'ZC_3D', 'useful_info_3d')
+call nc_define_double_variable(new_ncid, 'ZC_3D', 'useful_info_3d')
 
 ! Close the file
 call nc_close_file(new_ncid)
