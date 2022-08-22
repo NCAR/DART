@@ -2415,7 +2415,7 @@ integer                       :: nc_create_file
 character(len=*), parameter :: routine = 'nc_create_file'
 integer :: ret, ncid, oldmode
 
-ret = nf90_create(filename, NF90_CLOBBER, ncid)
+ret = nf90_create(filename, ior(NF90_CLOBBER,NF90_64BIT_OFFSET), ncid)
 call nc_check(ret, routine, 'create '//trim(filename)//' read/write', context)
 
 call add_fh_to_list(ncid, filename)

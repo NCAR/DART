@@ -416,7 +416,7 @@ call get_model_variable_indices(iloc, ix, iy, iz, &
                                    kind_index=qty_index, &
                                    kind_string=qty_string)
 
-write(string1,'("index ",i11," is i,j,k",3(1x,i4)," and is in domain ",i2)') &
+write(string1,'("index ",i11," is i,j,k",3(1x,i10)," and is in domain ",i2)') &
                   iloc, ix, iy, iz, dom_id
 write(string2,'("is quantity ", I4,", ",A)') var_type, trim(qty_string)//' at location'
 call write_location(0,loc,charstring=string3)
