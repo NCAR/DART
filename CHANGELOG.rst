@@ -22,6 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 19 2022 :: Automated setup of new model interfaces. Tag: v10.3.0**
+
+- Automated initial setup of new model interfaces to aid users developing
+  model_mod code and documentation.
+
+*contributed by Benjamin Gunn*
+
+**August 18 2022 :: Bug-fixes for obs_utilities build and mpas_atm. Tag: v10.2.1**
+
+- obs_utilities_mod no longer included by default for model/work builds because
+  these utilities are for threed_sphere and threed_cartesian location_mods only.
+- mpas_atm model_mod check for required quantities changed to handle multiple 
+  variables of the same quantity. 
+
 **August 3 2022 :: TIEGCM. Tag v10.2.0**
 
 - TIEGCM model_mod updated to Manhattan
