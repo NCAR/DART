@@ -681,6 +681,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Running probit space with groups needs to be studied more carefully
       !Make sure that base_obs_kind is correct
       base_obs_kind = 99 
+      ! EFFICIENCY NOTE: FOR RHF, THE OBS_INCREMENT HAS TO DO A SORT
+      ! THE POSTERIOR WOULD HAVE THE SAME RANK STATISTICS, SO THIS SORT WOULD BE THE SAME
+      ! THE SECOND CONVERT_TO_PROBIT CAN BE MUCH MORE EFFICIENT USING A SORT
+      ! SHOULD FIGURE OUT A WAY TO PASS THE SORT ORDER
       call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), base_obs_kind, &
          temp_dist_params, probit_obs_prior(grp_bot:grp_top), .false.)
       call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), base_obs_kind, &
