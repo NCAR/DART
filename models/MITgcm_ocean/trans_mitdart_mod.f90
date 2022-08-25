@@ -20,9 +20,13 @@ character(len=1024) :: msgstring
 integer             :: io, iunit
 
 logical             :: do_bgc        = .false.
-logical             :: log_transform = .false. 
+logical             :: log_transform = .false.
+logical             :: compress      = .false.
+! set compress = .true. remove missing values from state
 
-namelist /trans_mitdart_nml/ do_bgc, log_transform
+namelist /trans_mitdart_nml/ do_bgc, log_transform, compress
+
+real(r4), parameter :: FVAL=-999.0_r4 ! may put this as a namelist option
 
 !------------------------------------------------------------------
 !
@@ -74,6 +78,22 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+
+
+! 3D variables, 3 grids:
+!
+! XC, YC, ZC  1  PSAL, PTMP, NO3, PO4, O2, PHY, ALK, DIC, DOP, DON, FET
+! XC, YC, ZG  2  UVEL
+! XC, YG, ZC  3  VVEL
+! XC, YG, ZG  4
+! XG, YG, ZC  5
+! XG, YC, ZG  6
+! XG, YG, ZC  7
+! XG, YG, ZG  8
+
+! 2D variables, 1 grid:
+!
+! YC, XC  ETA, CHL
 
 private
 
@@ -215,6 +235,9 @@ integer  :: ncid, iunit
 ! for the dimensions and coordinate variables
 integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
+integer :: comp2ID, comp3ID ! compressed dim
+integer :: all_dimids(7) ! store the 8 dimension ids
+
 
 ! for the prognostic variables
 integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID
@@ -226,11 +249,11 @@ integer :: chl_varid
 
 real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
 
-real(r4) :: FVAL
+
 
 if (.not. module_initialized) call static_init_trans
 
-FVAL=-999.0_r4
+
 
 allocate(data_3d(Nx,Ny,Nz))
 allocate(data_2d(Nx,Ny))
@@ -238,13 +261,19 @@ allocate(data_2d(Nx,Ny))
 call check(nf90_create(path="OUTPUT.nc",cmode=or(nf90_clobber,nf90_64bit_offset),ncid=ncid))
 
 ! Define the new dimensions IDs
-   
-call check(nf90_def_dim(ncid=ncid, name="XG", len = Nx, dimid = XGDimID))
+
 call check(nf90_def_dim(ncid=ncid, name="XC", len = Nx, dimid = XCDimID))
-call check(nf90_def_dim(ncid=ncid, name="YG", len = Ny, dimid = YGDimID))
 call check(nf90_def_dim(ncid=ncid, name="YC", len = Ny, dimid = YCDimID))
 call check(nf90_def_dim(ncid=ncid, name="ZC", len = Nz, dimid = ZCDimID))
-   
+
+call check(nf90_def_dim(ncid=ncid, name="XG", len = Nx, dimid = XGDimID))
+call check(nf90_def_dim(ncid=ncid, name="YG", len = Ny, dimid = YGDimID))
+
+call check(nf90_def_dim(ncid=ncid, name="comp2d", len = Nz, dimid = comp2ID))
+call check(nf90_def_dim(ncid=ncid, name="comp3d", len = Nz, dimid = comp3ID))
+
+all_dimids = (/XCDimID, YCDimID, ZCDimID, XGDimID, YGDimID, comp2ID, comp3ID/)
+
 ! Create the (empty) Coordinate Variables and the Attributes
 
 ! U Grid Longitudes
@@ -290,142 +319,68 @@ call check(nf90_put_att(ncid, ZCVarID, "point_spacing", "uneven"))
 call check(nf90_put_att(ncid, ZCVarID, "axis", "Z"))
 call check(nf90_put_att(ncid, ZCVarID, "standard_name", "depth"))
 
+! The size of these variables will depend on the compression
 
 ! Create the (empty) Prognostic Variables and the Attributes
 
-call check(nf90_def_var(ncid=ncid, name="PSAL", xtype=nf90_real, &
-     dimids = (/XCDimID,YCDimID,ZCDimID/),varid=SVarID))
-call check(nf90_put_att(ncid, SVarID, "long_name", "potential salinity"))
-call check(nf90_put_att(ncid, SVarID, "missing_value", FVAL))
-call check(nf90_put_att(ncid, SVarID, "_FillValue", FVAL))
-call check(nf90_put_att(ncid, SVarID, "units", "psu"))
-call check(nf90_put_att(ncid, SVarID, "units_long_name", "practical salinity units"))
+SVarID = define_variable(ncid,"PSAL", nf90_real, all_dimids)
+call add_attributes_to_variable(ncid, SVarID, "potential salinity", "psu", "practical salinity units")
 
-call check(nf90_def_var(ncid=ncid, name="PTMP", xtype=nf90_real, &
-     dimids=(/XCDimID,YCDimID,ZCDimID/),varid=TVarID))
-call check(nf90_put_att(ncid, TVarID, "long_name", "Potential Temperature"))
-call check(nf90_put_att(ncid, TVarID, "missing_value", FVAL))
-call check(nf90_put_att(ncid, TVarID, "_FillValue", FVAL))
-call check(nf90_put_att(ncid, TVarID, "units", "C"))
-call check(nf90_put_att(ncid, TVarID, "units_long_name", "degrees celsius"))
+TVarID = define_variable(ncid,"PTMP", nf90_real, all_dimids)
+call add_attributes_to_variable(ncid, TVarID, "Potential Temperature", "C", "degrees celsius")
 
-call check(nf90_def_var(ncid=ncid, name="UVEL", xtype=nf90_real, &
-     dimids=(/XGDimID,YCDimID,ZCDimID/),varid=UVarID))
-call check(nf90_put_att(ncid, UVarID, "long_name", "Zonal Velocity"))
-call check(nf90_put_att(ncid, UVarID, "mssing_value", FVAL))
-call check(nf90_put_att(ncid, UVarID, "_FillValue", FVAL))
-call check(nf90_put_att(ncid, UVarID, "units", "m/s"))
-call check(nf90_put_att(ncid, UVarID, "units_long_name", "meters per second"))
+UVarID = define_variable(ncid,"UVEL", nf90_real, all_dimids)
+call add_attributes_to_variable(ncid, UVarID, "Zonal Velocity", "m/s", "meters per second")
 
-call check(nf90_def_var(ncid=ncid, name="VVEL", xtype=nf90_real, &
-     dimids=(/XCDimID,YGDimID,ZCDimID/),varid=VVarID))
-call check(nf90_put_att(ncid, VVarID, "long_name", "Meridional Velocity"))
-call check(nf90_put_att(ncid, VVarID, "missing_value", FVAL))
-call check(nf90_put_att(ncid, VVarID, "_FillValue", FVAL))
-call check(nf90_put_att(ncid, VVarID, "units", "m/s"))
-call check(nf90_put_att(ncid, VVarID, "units_long_name", "meters per second"))
+VVarID = define_variable(ncid,"VVEL", nf90_real, all_dimids)
+call add_attributes_to_variable(ncid, VVarID, "Meridional Velocity", "m/s", "meters per second")
 
-call check(nf90_def_var(ncid=ncid, name="ETA", xtype=nf90_real, &
-     dimids=(/XCDimID,YCDimID/),varid=EtaVarID))
-call check(nf90_put_att(ncid, EtaVarID, "long_name", "sea surface height"))
-call check(nf90_put_att(ncid, EtaVarID, "missing_value", FVAL))
-call check(nf90_put_att(ncid, EtaVarID, "_FillValue", FVAL))
-call check(nf90_put_att(ncid, EtaVarID, "units", "m"))
-call check(nf90_put_att(ncid, EtaVarID, "units_long_name", "meters"))
+EtaVarID = define_variable_2d(ncid,"ETA", nf90_real, all_dimids)
+call add_attributes_to_variable(ncid, EtaVarID, "sea surface height", "m", "meters")
 
 !> Add BLING data:
 
 if (do_bgc) then 
    ! 1. BLING tracer: nitrate NO3
-   call check(nf90_def_var(ncid=ncid, name="NO3", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=no3_varid))
-   call check(nf90_put_att(ncid, no3_varid, "long_name"      , "Nitrate"))
-   call check(nf90_put_att(ncid, no3_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, no3_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, no3_varid, "units"          , "mol N/m3"))
-   call check(nf90_put_att(ncid, no3_varid, "units_long_name", "moles Nitrogen per cubic meters"))
-   
+   no3_varid = define_variable(ncid,"NO3", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, no3_varid, "Nitrate", "mol N/m3", "moles Nitrogen per cubic meters")
+     
    ! 2. BLING tracer: phosphate PO4
-   call check(nf90_def_var(ncid=ncid, name="PO4", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=po4_varid))
-   call check(nf90_put_att(ncid, po4_varid, "long_name"      , "Phosphate"))
-   call check(nf90_put_att(ncid, po4_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, po4_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, po4_varid, "units"          , "mol P/m3"))
-   call check(nf90_put_att(ncid, po4_varid, "units_long_name", "moles Phosphorus per cubic meters"))
-   
+   po4_varid = define_variable(ncid,"PO4", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, po4_varid, "Phosphate", "mol P/m3", "moles Phosphorus per cubic meters")
+  
    ! 3. BLING tracer: oxygen O2
-   call check(nf90_def_var(ncid=ncid, name="O2", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=o2_varid))
-   call check(nf90_put_att(ncid, o2_varid, "long_name"      , "Dissolved Oxygen"))
-   call check(nf90_put_att(ncid, o2_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, o2_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, o2_varid, "units"          , "mol O/m3"))
-   call check(nf90_put_att(ncid, o2_varid, "units_long_name", "moles Oxygen per cubic meters"))
-   
+   o2_varid = define_variable(ncid,"O2", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, o2_varid, "Dissolved Oxygen", "mol O/m3", "moles Oxygen per cubic meters")
+  
    ! 4. BLING tracer: phytoplankton PHY
-   call check(nf90_def_var(ncid=ncid, name="PHY", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=phy_varid))
-   call check(nf90_put_att(ncid, phy_varid, "long_name"      , "Phytoplankton Biomass"))
-   call check(nf90_put_att(ncid, phy_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, phy_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, phy_varid, "units"          , "mol C/m3"))
-   call check(nf90_put_att(ncid, phy_varid, "units_long_name", "moles Carbon per cubic meters"))
+   phy_varid = define_variable(ncid,"PHY", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, phy_varid, "Phytoplankton Biomass", "mol C/m3", "moles Carbon per cubic meters")
    
    ! 5. BLING tracer: alkalinity ALK
-   call check(nf90_def_var(ncid=ncid, name="ALK", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=alk_varid))
-   call check(nf90_put_att(ncid, alk_varid, "long_name"      , "Alkalinity"))
-   call check(nf90_put_att(ncid, alk_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, alk_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, alk_varid, "units"          , "mol eq/m3"))
-   call check(nf90_put_att(ncid, alk_varid, "units_long_name", "moles equivalent per cubic meters"))
-   
+   alk_varid = define_variable(ncid,"ALK", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, alk_varid, "Alkalinity", "mol eq/m3", "moles equivalent per cubic meters")
+
    ! 6. BLING tracer: dissolved inorganic carbon DIC
-   call check(nf90_def_var(ncid=ncid, name="DIC", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=dic_varid))
-   call check(nf90_put_att(ncid, dic_varid, "long_name"      , "Dissolved Inorganic Carbon"))
-   call check(nf90_put_att(ncid, dic_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, dic_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, dic_varid, "units"          , "mol C/m3"))
-   call check(nf90_put_att(ncid, dic_varid, "units_long_name", "moles Carbon per cubic meters"))
-   
-   ! 7. BLING tracer: dissolved organic phosphorus DOP
-   call check(nf90_def_var(ncid=ncid, name="DOP", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=dop_varid))
-   call check(nf90_put_att(ncid, dop_varid, "long_name"      , "Dissolved Organic Phosphorus"))
-   call check(nf90_put_att(ncid, dop_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, dop_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, dop_varid, "units"          , "mol P/m3"))
-   call check(nf90_put_att(ncid, dop_varid, "units_long_name", "moles Phosphorus per cubic meters"))
+   dic_varid = define_variable(ncid,"DIC", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, dic_varid, "Dissolved Inorganic Carbon", "mol C/m3", "moles Carbon per cubic meters")
+
+      ! 7. BLING tracer: dissolved organic phosphorus DOP
+   dop_varid = define_variable(ncid,"DOP", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, dop_varid, "Dissolved Organic Phosphorus", "mol P/m3", "moles Phosphorus per cubic meters")
    
    ! 8. BLING tracer: dissolved organic nitrogen DON
-   call check(nf90_def_var(ncid=ncid, name="DON", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=don_varid))
-   call check(nf90_put_att(ncid, don_varid, "long_name"      , "Dissolved Organic Nitrogen"))
-   call check(nf90_put_att(ncid, don_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, don_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, don_varid, "units"          , "mol N/m3"))
-   call check(nf90_put_att(ncid, don_varid, "units_long_name", "moles Nitrogen per cubic meters"))
+   don_varid = define_variable(ncid,"DON", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, don_varid, "Dissolved Organic Nitrogen", "mol N/m3", "moles Nitrogen per cubic meters")
    
    ! 9. BLING tracer: dissolved inorganic iron FET
-   call check(nf90_def_var(ncid=ncid, name="FET", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID,ZCDimID/),varid=fet_varid))
-   call check(nf90_put_att(ncid, fet_varid, "long_name"      , "Dissolved Inorganic Iron"))
-   call check(nf90_put_att(ncid, fet_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, fet_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, fet_varid, "units"          , "mol Fe/m3"))
-   call check(nf90_put_att(ncid, fet_varid, "units_long_name", "moles Iron per cubic meters"))
-   
+   fet_varid = define_variable(ncid,"FET", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, fet_varid, "Dissolved Inorganic Iron", "mol Fe/m3", "moles Iron per cubic meters")
+    
    ! 10. BLING tracer: Surface Chlorophyl CHL
-   call check(nf90_def_var(ncid=ncid, name="CHL", xtype=nf90_real, &
-        dimids=(/XCDimID,YCDimID/),varid=chl_varid))
-   call check(nf90_put_att(ncid, chl_varid, "long_name"      , "Surface Chlorophyll"))
-   call check(nf90_put_att(ncid, chl_varid, "missing_value"  , FVAL))
-   call check(nf90_put_att(ncid, chl_varid, "_FillValue"     , FVAL))
-   call check(nf90_put_att(ncid, chl_varid, "units"          , "mg/m3"))
-   call check(nf90_put_att(ncid, chl_varid, "units_long_name", "milligram per cubic meters"))
-endif   
+   chl_varid = define_variable(ncid,"CHL", nf90_real, all_dimids)
+   call add_attributes_to_variable(ncid, chl_varid, "Surface Chlorophyll", "mg/m3", "milligram per cubic meters" )
+endif
 
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -447,35 +402,35 @@ open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,SVarID,data_3d,start=(/1,1,1/)))
+call check(nf90_put_var(ncid,SVarID,data_3d))
 
 open(iunit, file='PTMP.data', form='UNFORMATTED', status='OLD', &
             access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,TVarID,data_3d,start=(/1,1,1/)))
+call check(nf90_put_var(ncid,TVarID,data_3d))
 
 open(iunit, file='UVEL.data', form='UNFORMATTED', status='OLD', &
             access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,UVarID,data_3d,start=(/1,1,1/)))
+call check(nf90_put_var(ncid,UVarID,data_3d))
 
 open(iunit, file='VVEL.data', form='UNFORMATTED', status='OLD', &
             access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_3d
 close(iunit)
 where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,VVarID,data_3d,start=(/1,1,1/)))
+call check(nf90_put_var(ncid,VVarID,data_3d))
  
 open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
             access='DIRECT', recl=recl2d,  convert='BIG_ENDIAN')
 read(iunit,rec=1)data_2d
 close(iunit)
 where (data_2d == 0.0_r4) data_2d = FVAL
-call check(nf90_put_var(ncid,EtaVarID,data_2d,start=(/1,1/)))
+call check(nf90_put_var(ncid,EtaVarID,data_2d))
 
 if (do_bgc) then 
    open(iunit, file='NO3.data', form='UNFORMATTED', status='OLD', &
@@ -483,63 +438,63 @@ if (do_bgc) then
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,no3_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,no3_varid,data_3d))
    
    open(iunit, file='PO4.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,po4_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,po4_varid,data_3d))
    
    open(iunit, file='O2.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,o2_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,o2_varid,data_3d))
    
    open(iunit, file='PHY.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,phy_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,phy_varid,data_3d))
    
    open(iunit, file='ALK.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,alk_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,alk_varid,data_3d))
    
    open(iunit, file='DIC.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,dic_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,dic_varid,data_3d))
    
    open(iunit, file='DOP.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,dop_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,dop_varid,data_3d))
    
    open(iunit, file='DON.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,don_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,don_varid,data_3d))
    
    open(iunit, file='FET.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
    read(iunit,rec=1)data_3d
    close(iunit)
    call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,fet_varid,data_3d,start=(/1,1,1/)))
+   call check(nf90_put_var(ncid,fet_varid,data_3d))
    
    open(iunit, file='CHL.data', form='UNFORMATTED', status='OLD', &
                access='DIRECT', recl=recl2d,  convert='BIG_ENDIAN')
@@ -550,7 +505,7 @@ if (do_bgc) then
    elsewhere
        data_2d = log10(data_2d)
    endwhere 
-   call check(nf90_put_var(ncid,chl_varid,data_2d,start=(/1,1/)))
+   call check(nf90_put_var(ncid,chl_varid,data_2d))
 endif
 
 call check(nf90_close(ncid))
@@ -742,6 +697,86 @@ end if
 
 end subroutine check
 
+!===============================================================================
+! 3D variable
+function define_variable(ncid, name, nc_type, all_dimids) result(varid)
+
+integer, intent(in)          :: ncid
+character(len=*), intent(in) :: name  ! variable name
+integer, intent(in)          :: nc_type
+integer, intent(in)          :: all_dimids(7) ! possible dimension ids
+integer                      :: varid ! netcdf variable id
+
+integer ::  dimids(3)
+
+if (compress) then
+   call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
+        dimids=all_dimids(6),varid=varid))
+else
+
+   dimids = which_dims(name, all_dimids)
+   call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
+        dimids=dimids, varid=varid))
+endif
+
+end function define_variable
+
+!------------------------------------------------------------------
+! For the non-compressed variables, X,Y,Z dimesnions vary
+! depending on the variable
+function which_dims(name, all_dimids) result(dimids)
+
+character(len=*), intent(in) :: name  ! variable name
+integer,          intent(in) :: all_dimids(7)
+integer                      :: dimids(3)
+! 3D variables, 3 grids:
+! XC, YC, ZC  1  PSAL, PTMP, NO3, PO4, O2, PHY, ALK, DIC, DOP, DON, FET
+! XG, YC, ZC  2  UVEL
+! XC, YG, ZC  3  VVEL
+
+if (name=='UVEL') dimids = (/all_dimids(4),all_dimids(2),all_dimids(3)/); return
+if (name=='VVEL') dimids = (/all_dimids(1),all_dimids(5),all_dimids(3)/); return
+
+dimids = (/all_dimids(1),all_dimids(2),all_dimids(3)/)
+
+end function
+
+!------------------------------------------------------------------
+! 2D variable
+function define_variable_2d(ncid, name, nc_type, all_dimids) result(varid)
+
+integer, intent(in)          :: ncid
+character(len=*), intent(in) :: name  ! variable name
+integer, intent(in)          :: nc_type
+integer, intent(in)          :: all_dimids(7)
+integer                      :: varid ! netcdf variable id
+
+! 2D variables, 1 grid:
+! YC, XC 1 ETA, CHL
+
+if (compress) then
+   call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
+        dimids = (/all_dimids(7)/),varid=varid))
+else
+   call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
+        dimids = (/all_dimids(1),all_dimids(2)/),varid=varid))
+endif
+
+end function define_variable_2d
+
+!------------------------------------------------------------------
+subroutine add_attributes_to_variable(ncid, varid, long_name, units, units_long_name)
+
+integer,          intent(in) :: ncid, varid ! which file, which variable
+character(len=*), intent(in) :: long_name, units, units_long_name
+
+call check(nf90_put_att(ncid, varid, "long_name"      , long_name))
+call check(nf90_put_att(ncid, varid, "missing_value"  , FVAL))
+call check(nf90_put_att(ncid, varid, "_FillValue"     , FVAL))
+call check(nf90_put_att(ncid, varid, "units"          , units))
+call check(nf90_put_att(ncid, varid, "units_long_name", units_long_name))
+
+end subroutine
 
 !===============================================================================
 !> Check the tracer variables after reading from the binaries
