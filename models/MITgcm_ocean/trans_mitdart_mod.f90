@@ -43,11 +43,7 @@ integer, parameter :: max_ny = 2048
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
-!-- record lengths for reading/writing binary files
-integer :: recl3d
-integer :: recl2d
-
-!--   Gridding parameters variable declarations 
+!--   Gridding parameters variable declarations
 logical :: usingCartesianGrid, usingCylindricalGrid, &
            usingSphericalPolarGrid, usingCurvilinearGrid, &
            deepAtmosphere
@@ -85,11 +81,6 @@ real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 ! XC, YC, ZC  1  PSAL, PTMP, NO3, PO4, O2, PHY, ALK, DIC, DOP, DON, FET
 ! XC, YC, ZG  2  UVEL
 ! XC, YG, ZC  3  VVEL
-! XC, YG, ZG  4
-! XG, YG, ZC  5
-! XG, YC, ZG  6
-! XG, YG, ZC  7
-! XG, YG, ZG  8
 
 ! 2D variables, 1 grid:
 !
@@ -119,7 +110,6 @@ module_initialized = .true.
 call find_namelist_in_file('input.nml', 'trans_mitdart_nml', iunit)
 read(iunit, nml = trans_mitdart_nml, iostat = io)
 call check_namelist_read(iunit, io, 'trans_mitdart_nml')
-
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -212,17 +202,6 @@ do i=2, Nz
  ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
 
-! set record lengths
-recl3d = Nx*Ny*Nz*4
-recl2d = Nx*Ny*4
-
-! MEG Better have that as inout namelist parameter
-! Are we also doing bgc on top of physics?
-! If we found nitrate then the rest of the binaries (for the 
-! remaining 9 variables) should be also there.
-! TODO may also enhance this functionality
-! if (file_exist('NO3.data')) do_bgc = .true.
-
 end subroutine static_init_trans
 
 !------------------------------------------------------------------
@@ -230,7 +209,8 @@ end subroutine static_init_trans
 
 subroutine mit2dart()
 
-integer  :: ncid, iunit
+integer  :: ncid
+integer  :: dsize3, dsize2 ! size of 3d,2d variable
 
 ! for the dimensions and coordinate variables
 integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
@@ -247,16 +227,7 @@ integer :: dic_varid, dop_varid, don_varid, fet_varid
 ! diagnostic variable
 integer :: chl_varid  
 
-real(r4), allocatable :: data_3d(:,:,:), data_2d(:,:)
-
-
-
 if (.not. module_initialized) call static_init_trans
-
-
-
-allocate(data_3d(Nx,Ny,Nz))
-allocate(data_2d(Nx,Ny))
 
 call check(nf90_create(path="OUTPUT.nc",cmode=or(nf90_clobber,nf90_64bit_offset),ncid=ncid))
 
@@ -338,7 +309,7 @@ call add_attributes_to_variable(ncid, VVarID, "Meridional Velocity", "m/s", "met
 EtaVarID = define_variable_2d(ncid,"ETA", nf90_real, all_dimids)
 call add_attributes_to_variable(ncid, EtaVarID, "sea surface height", "m", "meters")
 
-!> Add BLING data:
+! Create the BLING netcdf variables:
 
 if (do_bgc) then 
    ! 1. BLING tracer: nitrate NO3
@@ -395,123 +366,29 @@ call check(nf90_put_var(ncid, YCVarID, YC ))
 call check(nf90_put_var(ncid, ZCVarID, ZC ))
 
 ! Fill the data
+dsize3 = Nx*Ny*Nz
+dsize2 = Nx*Ny
 
-iunit = get_unit()
-open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-read(iunit,rec=1)data_3d
-close(iunit)
-where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,SVarID,data_3d))
+! Fill the netcdf variables
+call from_mit_to_netcdf('PSAL.data', ncid, SVarID, dsize3)
+call from_mit_to_netcdf('PTMP.data', ncid, TVarID, dsize3)
+call from_mit_to_netcdf('UVEL.data', ncid, UVarID, dsize3)
+call from_mit_to_netcdf('VVEL.data', ncid, VVarID, dsize3)
+call from_mit_to_netcdf('ETA.data', ncid, EtaVarID, dsize2)
 
-open(iunit, file='PTMP.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
-read(iunit,rec=1)data_3d
-close(iunit)
-where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,TVarID,data_3d))
-
-open(iunit, file='UVEL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
-read(iunit,rec=1)data_3d
-close(iunit)
-where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,UVarID,data_3d))
-
-open(iunit, file='VVEL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl3d,  convert='BIG_ENDIAN')
-read(iunit,rec=1)data_3d
-close(iunit)
-where (data_3d == 0.0_r4) data_3d = FVAL
-call check(nf90_put_var(ncid,VVarID,data_3d))
- 
-open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl2d,  convert='BIG_ENDIAN')
-read(iunit,rec=1)data_2d
-close(iunit)
-where (data_2d == 0.0_r4) data_2d = FVAL
-call check(nf90_put_var(ncid,EtaVarID,data_2d))
-
-if (do_bgc) then 
-   open(iunit, file='NO3.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,no3_varid,data_3d))
-   
-   open(iunit, file='PO4.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,po4_varid,data_3d))
-   
-   open(iunit, file='O2.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,o2_varid,data_3d))
-   
-   open(iunit, file='PHY.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,phy_varid,data_3d))
-   
-   open(iunit, file='ALK.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,alk_varid,data_3d))
-   
-   open(iunit, file='DIC.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,dic_varid,data_3d))
-   
-   open(iunit, file='DOP.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,dop_varid,data_3d))
-   
-   open(iunit, file='DON.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,don_varid,data_3d))
-   
-   open(iunit, file='FET.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_3d
-   close(iunit)
-   call fill_var_md(data_3d, FVAL)
-   call check(nf90_put_var(ncid,fet_varid,data_3d))
-   
-   open(iunit, file='CHL.data', form='UNFORMATTED', status='OLD', &
-               access='DIRECT', recl=recl2d,  convert='BIG_ENDIAN')
-   read(iunit,rec=1)data_2d
-   close(iunit)
-   where (data_2d == 0.0_r4) 
-       data_2d = FVAL
-   elsewhere
-       data_2d = log10(data_2d)
-   endwhere 
-   call check(nf90_put_var(ncid,chl_varid,data_2d))
+if (do_bgc) then
+   call from_mit_to_netcdf_tracer('NO3.data', ncid, no3_varid, dsize3)
+   call from_mit_to_netcdf_tracer('PO4.data', ncid, po4_varid, dsize3)
+   call from_mit_to_netcdf_tracer('O2.data', ncid, o2_varid, dsize3)
+   call from_mit_to_netcdf_tracer('PHY.data', ncid, phy_varid, dsize3)
+   call from_mit_to_netcdf_tracer('ALK.data', ncid, alk_varid, dsize3)
+   call from_mit_to_netcdf_tracer('DIC.data', ncid, dic_varid, dsize3)
+   call from_mit_to_netcdf_tracer('DON.data', ncid, don_varid, dsize3)
+   call from_mit_to_netcdf_tracer('FET.data', ncid, fet_varid, dsize3)
+   call from_mit_to_netcdf_tracer('FET.data', ncid, fet_varid, dsize2)
 endif
 
 call check(nf90_close(ncid))
-
-deallocate(data_3d)
-deallocate(data_2d)
 
 end subroutine mit2dart
 
@@ -520,165 +397,38 @@ end subroutine mit2dart
 
 subroutine dart2mit()
 
-integer :: ncid, varid, iunit
-real(r4), allocatable :: data_3d(:,:,:),data_2d(:,:)
-real(r4) :: FVAL
-
-allocate(data_3d(Nx,Ny,Nz))
-allocate(data_2d(Nx,Ny))
+integer :: ncid, iunit
+integer  :: dsize3, dsize2 ! size of 3d,2d variable
 
 if (.not. module_initialized) call static_init_trans
+
+dsize3 = Nx*Ny*Nz
+dsize2 = Nx*Ny
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
 
 !Fill the data
-call check( NF90_INQ_VARID(ncid,'PSAL',varid) )
-call check( NF90_GET_VAR(ncid,varid,data_3d))
-call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
-where (data_3d == FVAL) data_3d = 0.0_r4
+call from_netcdf_to_mit(ncid, 'PSAL', dsize3)
+call from_netcdf_to_mit(ncid, 'PTMP', dsize3)
+call from_netcdf_to_mit(ncid, 'UVEL', dsize3)
+call from_netcdf_to_mit(ncid, 'VVEL', dsize3)
+call from_netcdf_to_mit(ncid, 'ETA', dsize2)
 
-open(iunit, file='PSAL.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-write(iunit,rec=1)data_3d
-close(iunit)
 
-call check( NF90_INQ_VARID(ncid,'PTMP',varid) )
-call check( NF90_GET_VAR(ncid,varid,data_3d))
-call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
-where (data_3d == FVAL) data_3d = 0.0_r4
-
-open(iunit, file='PTMP.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-write(iunit,rec=1)data_3d
-close(iunit)
-
-call check( NF90_INQ_VARID(ncid,'UVEL',varid) )
-call check( NF90_GET_VAR(ncid,varid,data_3d))
-call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
-where (data_3d == FVAL) data_3d = 0.0_r4
-
-open(iunit, file='UVEL.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-write(iunit,rec=1)data_3d
-close(iunit)
-
-call check( NF90_INQ_VARID(ncid,'VVEL',varid) )
-call check( NF90_GET_VAR(ncid,varid,data_3d))
-call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
-where (data_3d == FVAL) data_3d = 0.0_r4
-
-open(iunit, file='VVEL.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-write(iunit,rec=1)data_3d
-close(iunit)
-
-call check( NF90_INQ_VARID(ncid,'ETA',varid) )
-call check( NF90_GET_VAR(ncid,varid,data_2d))
-call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))        
-where (data_2d == FVAL) data_2d = 0.0_r4
-
-open(iunit, file='ETA.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
-write(iunit,rec=1)data_2d
-close(iunit)
-
-if (do_bgc) then 
-   call check( NF90_INQ_VARID(ncid,'NO3',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='NO3.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'PO4',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='PO4.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'O2',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='O2.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'PHY',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='PHY.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'ALK',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='ALK.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'DIC',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='DIC.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'DOP',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='DOP.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'DON',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='DON.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
-   
-   call check( NF90_INQ_VARID(ncid,'FET',varid) )
-   call check( NF90_GET_VAR(ncid,varid,data_3d))
-   call check( nf90_get_att(ncid,varid,"_FillValue",FVAL))
-   call fill_var_dm(data_3d, FVAL)
- 
-   open(iunit, file='FET.data', form="UNFORMATTED", status='UNKNOWN', &
-               access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
-   write(iunit,rec=1)data_3d
-   close(iunit)
+if (do_bgc) then
+   call from_netcdf_to_mit_tracer(ncid, 'NO3', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'PO4', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'O2', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'PHY', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'ALK', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'DIC', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'DOP', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'DON', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'FET', dsize3)
 endif
 
 call check( NF90_CLOSE(ncid) )
-
-deallocate(data_3d)
-deallocate(data_2d)
 
 end subroutine dart2mit
 
@@ -713,7 +463,6 @@ if (compress) then
    call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
         dimids=all_dimids(6),varid=varid))
 else
-
    dimids = which_dims(name, all_dimids)
    call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
         dimids=dimids, varid=varid))
@@ -778,58 +527,142 @@ call check(nf90_put_att(ncid, varid, "units_long_name", units_long_name))
 
 end subroutine
 
-!===============================================================================
-!> Check the tracer variables after reading from the binaries
-!> Make sure they are non-negative
-!> Do the transform if requested
-!> md: mit2dart; dm: dart2mit
+!------------------------------------------------------------------
+subroutine from_mit_to_netcdf(mitfile, ncid, varid, datasize)
 
-subroutine fill_var_md(var, fillval)
+character(len=*), intent(in) :: mitfile
+integer,          intent(in) :: ncid, varid ! which file, which variable
+integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
 
-real(r4), intent(inout) :: var(:, :, :)
-real(r4), intent(in)    :: fillval
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var_data(datasize)
 
+recl = datasize*4
+iunit = get_unit()
+! HK are the mit files big endian by default?
+open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+read(iunit,rec=1) var_data
+close(iunit)
+
+where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
+
+call check(nf90_put_var(ncid,varid,var_data))
+
+end subroutine from_mit_to_netcdf
+
+!------------------------------------------------------------------
+subroutine from_mit_to_netcdf_tracer(mitfile, ncid, varid, datasize)
+
+character(len=*), intent(in) :: mitfile
+integer,          intent(in) :: ncid, varid ! which file, which variable
+integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
+
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var(datasize)
 real(r4) :: low_conc
-
-if (.not. module_initialized) call static_init_trans
 
 low_conc = 1.0e-12
 
-! Make sure the tracer concentration is positive 
+recl = datasize*4
+iunit = get_unit()
+! HK are the mit files big endian by default?
+open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+read(iunit,rec=1) var
+close(iunit)
+
+! CHL is treated differently
+if (mitfile=='CHL.data') then
+   where (var == 0.0_r4)
+       var = FVAL
+   elsewhere
+       var = log10(var)
+   endwhere
+   call check(nf90_put_var(ncid,varid,var))
+   return
+endif
+
+! Make sure the tracer concentration is positive
 where(var < 0.0_r4) var = low_conc
 
 if (log_transform) then
    where (var == 0.0_r4)
-       var = fillval
+       var = FVAL
    elsewhere
        var = log(var)
    endwhere
 else
-   where (var == 0.0_r4) var = fillval
+   where (var == 0.0_r4) var = FVAL
 endif
 
-end subroutine
+call check(nf90_put_var(ncid,varid,var))
+
+end subroutine from_mit_to_netcdf_tracer
 
 !------------------------------------------------------------------
+subroutine from_netcdf_to_mit(ncid, name, datasize)
 
-subroutine fill_var_dm(var, fillval)
+integer,          intent(in) :: ncid ! which file,
+character(len=*), intent(in) :: name ! which variable
+integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
 
-real(r4), intent(inout) :: var(:, :, :)
-real(r4), intent(in)    :: fillval
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var(datasize)
+integer  :: varid
+real(r4) :: local_fval
 
-if (.not. module_initialized) call static_init_trans
+recl = datasize*4
 
+call check( NF90_INQ_VARID(ncid,name,varid) )
+call check( NF90_GET_VAR(ncid,varid,var))
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+where (var == local_fval) var = 0.0_r4
+
+open(iunit, file=trim('name')//'.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+write(iunit,rec=1)var
+close(iunit)
+
+end subroutine from_netcdf_to_mit
+
+!------------------------------------------------------------------
+subroutine from_netcdf_to_mit_tracer(ncid, name, datasize)
+
+integer,          intent(in) :: ncid ! which file,
+character(len=*), intent(in) :: name ! which variable
+integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
+
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var(datasize)
+integer  :: varid
+real(r4) :: local_fval
+
+recl = datasize*4
+
+call check( NF90_INQ_VARID(ncid,name,varid) )
+call check( NF90_GET_VAR(ncid,varid,var))
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 if (log_transform) then
-   where (var == fillval)
+   where (var == local_fval)
        var = 0.0_r4
    elsewhere
        var = exp(var)
    endwhere
 else
-   where (var == fillval) var = 0.0_r4
+   where (var == local_fval) var = 0.0_r4
 endif
 
-end subroutine
+open(iunit, file=trim('name')//'.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+write(iunit,rec=1)var
+close(iunit)
+
+end subroutine from_netcdf_to_mit_tracer
 
 !------------------------------------------------------------------
 
