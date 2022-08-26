@@ -639,11 +639,20 @@ real(r4) :: local_fval
 recl = datasize*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
-call check( NF90_GET_VAR(ncid,varid,var))
+if (compress) then
+  call check(nf90_get_var(ncid,varid,var))
+else
+  if (datasize==Nx*Ny) then !2d 
+    call check(nf90_get_var(ncid,varid,var,start=(/1,1/), count=(/Nx,Ny/) ))
+  else !3D 
+    call check(nf90_get_var(ncid,varid,var,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
+  endif
+endif
+
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 where (var == local_fval) var = 0.0_r4
 
-open(iunit, file=trim('name')//'.data', form="UNFORMATTED", status='UNKNOWN', &
+open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
 close(iunit)
@@ -666,7 +675,15 @@ real(r4) :: local_fval
 recl = datasize*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
-call check( NF90_GET_VAR(ncid,varid,var))
+if (compress) then
+  call check(nf90_get_var(ncid,varid,var))
+else
+  if (datasize==Nx*Ny) then !2d 
+    call check(nf90_get_var(ncid,varid,var,start=(/1,1/), count=(/Nx,Ny/) ))
+  else !3D 
+    call check(nf90_get_var(ncid,varid,var,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
+  endif
+endif
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 if (log_transform) then
    where (var == local_fval)
@@ -678,7 +695,7 @@ else
    where (var == local_fval) var = 0.0_r4
 endif
 
-open(iunit, file=trim('name')//'.data', form="UNFORMATTED", status='UNKNOWN', &
+open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
 close(iunit)
