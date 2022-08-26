@@ -217,7 +217,7 @@ integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 integer :: comp2ID, comp3ID ! compressed dim
 integer :: all_dimids(7) ! store the 8 dimension ids
-
+integer :: ncomp2, ncomp3 ! length of compressed dim
 
 ! for the prognostic variables
 integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID
@@ -240,8 +240,14 @@ call check(nf90_def_dim(ncid=ncid, name="ZC", len = Nz, dimid = ZCDimID))
 call check(nf90_def_dim(ncid=ncid, name="XG", len = Nx, dimid = XGDimID))
 call check(nf90_def_dim(ncid=ncid, name="YG", len = Ny, dimid = YGDimID))
 
-call check(nf90_def_dim(ncid=ncid, name="comp2d", len = Nz, dimid = comp2ID))
-call check(nf90_def_dim(ncid=ncid, name="comp3d", len = Nz, dimid = comp3ID))
+if (compress) then
+   ncomp2 = get_compressed_size_2d()
+   ncomp3 = get_compressed_size_3d()
+endif
+
+
+call check(nf90_def_dim(ncid=ncid, name="comp2d", len = ncomp2, dimid = comp2ID))
+call check(nf90_def_dim(ncid=ncid, name="comp3d", len = ncomp3, dimid = comp3ID))
 
 all_dimids = (/XCDimID, YCDimID, ZCDimID, XGDimID, YGDimID, comp2ID, comp3ID/)
 
@@ -702,6 +708,67 @@ close(iunit)
 
 end subroutine from_netcdf_to_mit_tracer
 
+!------------------------------------------------------------------
+! Assumes all 3D variables are masked in the 
+! same location
+function get_compressed_size_3d() result(ncomp3)
+
+integer  :: ncomp3
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var3d(NX,NY,NZ)
+integer  :: i,j,k
+
+iunit = get_unit()
+open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=Nx*Ny*Nz, convert='BIG_ENDIAN')
+read(iunit,rec=1) ncomp3
+close(iunit)
+
+ncomp3 = 0
+
+! Get compressed size
+do i=1,NX
+   do j=1,NY
+      do k=1,NZ
+         if (var3d(i,j,k) /= -999.) then !HK also NaN?
+           ncomp3 = ncomp3 + 1
+         endif
+      enddo
+   enddo
+enddo
+
+end function get_compressed_size_3d
+
+!------------------------------------------------------------------
+! Assumes all 3D variables are masked in the 
+! same location
+function get_compressed_size_2d() result(ncomp2)
+
+integer  :: ncomp2
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var2d(NX,NY)
+integer  :: i,j
+
+iunit = get_unit()
+open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=Nx*Ny*4, convert='BIG_ENDIAN')
+read(iunit,rec=1) var2d
+close(iunit)
+
+ncomp2 = 0
+
+! Get compressed size
+do i=1,NX
+   do j=1,NY
+      if (var2d(i,j) /= -999.) then !HK also NaN?
+        ncomp2 = ncomp2 + 1
+      endif
+   enddo
+enddo
+
+end function get_compressed_size_2d
 !------------------------------------------------------------------
 
 end module trans_mitdart_mod
