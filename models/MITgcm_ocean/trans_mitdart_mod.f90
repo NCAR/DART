@@ -483,8 +483,14 @@ integer                      :: dimids(3)
 ! XG, YC, ZC  2  UVEL
 ! XC, YG, ZC  3  VVEL
 
-if (name=='UVEL') dimids = (/all_dimids(4),all_dimids(2),all_dimids(3)/); return
-if (name=='VVEL') dimids = (/all_dimids(1),all_dimids(5),all_dimids(3)/); return
+if (name=='UVEL') then
+   dimids = (/all_dimids(4),all_dimids(2),all_dimids(3)/)
+   return
+endif
+if (name=='VVEL') then
+   dimids = (/all_dimids(1),all_dimids(5),all_dimids(3)/)
+   return
+endif
 
 dimids = (/all_dimids(1),all_dimids(2),all_dimids(3)/)
 
