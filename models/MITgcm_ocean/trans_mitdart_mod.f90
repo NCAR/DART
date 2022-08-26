@@ -349,7 +349,7 @@ if (do_bgc) then
    call add_attributes_to_variable(ncid, fet_varid, "Dissolved Inorganic Iron", "mol Fe/m3", "moles Iron per cubic meters")
     
    ! 10. BLING tracer: Surface Chlorophyl CHL
-   chl_varid = define_variable(ncid,"CHL", nf90_real, all_dimids)
+   chl_varid = define_variable_2d(ncid,"CHL", nf90_real, all_dimids)
    call add_attributes_to_variable(ncid, chl_varid, "Surface Chlorophyll", "mg/m3", "milligram per cubic meters" )
 endif
 
@@ -383,9 +383,10 @@ if (do_bgc) then
    call from_mit_to_netcdf_tracer('PHY.data', ncid, phy_varid, dsize3)
    call from_mit_to_netcdf_tracer('ALK.data', ncid, alk_varid, dsize3)
    call from_mit_to_netcdf_tracer('DIC.data', ncid, dic_varid, dsize3)
+   call from_mit_to_netcdf_tracer('DOP.data', ncid, dop_varid, dsize3)
    call from_mit_to_netcdf_tracer('DON.data', ncid, don_varid, dsize3)
    call from_mit_to_netcdf_tracer('FET.data', ncid, fet_varid, dsize3)
-   call from_mit_to_netcdf_tracer('FET.data', ncid, fet_varid, dsize2)
+   call from_mit_to_netcdf_tracer('CHL.data', ncid, chl_varid, dsize2)
 endif
 
 call check(nf90_close(ncid))
@@ -554,7 +555,15 @@ close(iunit)
 
 where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
 
-call check(nf90_put_var(ncid,varid,var_data))
+if (compress) then
+  call check(nf90_put_var(ncid,varid,var_data))
+else
+  if (datasize==Nx*Ny) then !2d
+    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1/), count=(/Nx,Ny/) ))
+  else !3D
+    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
+  endif
+endif
 
 end subroutine from_mit_to_netcdf
 
@@ -567,7 +576,7 @@ integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
 
 integer  :: iunit
 integer  :: recl ! datasize*4
-real(r4) :: var(datasize)
+real(r4) :: var_data(datasize)
 real(r4) :: low_conc
 
 low_conc = 1.0e-12
@@ -577,34 +586,40 @@ iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
-read(iunit,rec=1) var
+read(iunit,rec=1) var_data
 close(iunit)
 
 ! CHL is treated differently
 if (mitfile=='CHL.data') then
-   where (var == 0.0_r4)
-       var = FVAL
+   where (var_data == 0.0_r4)
+       var_data = FVAL
    elsewhere
-       var = log10(var)
-   endwhere
-   call check(nf90_put_var(ncid,varid,var))
-   return
-endif
-
-! Make sure the tracer concentration is positive
-where(var < 0.0_r4) var = low_conc
-
-if (log_transform) then
-   where (var == 0.0_r4)
-       var = FVAL
-   elsewhere
-       var = log(var)
+       var_data = log10(var_data)
    endwhere
 else
-   where (var == 0.0_r4) var = FVAL
+   ! Make sure the tracer concentration is positive
+   where(var_data < 0.0_r4) var_data = low_conc
+   
+   if (log_transform) then
+      where (var_data == 0.0_r4)
+          var_data = FVAL
+      elsewhere
+          var_data = log(var_data)
+      endwhere
+   else
+      where (var_data == 0.0_r4) var_data = FVAL
+   endif
 endif
 
-call check(nf90_put_var(ncid,varid,var))
+if (compress) then
+  call check(nf90_put_var(ncid,varid,var_data))
+else
+  if (datasize==Nx*Ny) then !2d 
+    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1/), count=(/Nx,Ny/) ))
+  else !3D 
+    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
+  endif
+endif
 
 end subroutine from_mit_to_netcdf_tracer
 
