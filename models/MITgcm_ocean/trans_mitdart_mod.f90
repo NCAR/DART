@@ -71,10 +71,11 @@ NAMELIST /PARM04/ &
 ! standard MITgcm namelist and filled in here.
 
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
+integer :: ncomp2, ncomp3         ! length of compressed dim
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
-
+real(r8), allocatable :: XC_comp(:), XG_comp(:), YC_comp(:), YG_comp(:), ZC_comp(:), ZG_comp(:)
 
 ! 3D variables, 3 grids:
 !
@@ -217,7 +218,6 @@ integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 integer :: comp2ID, comp3ID ! compressed dim
 integer :: all_dimids(7) ! store the 8 dimension ids
-integer :: ncomp2, ncomp3 ! length of compressed dim
 
 ! for the prognostic variables
 integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID
@@ -243,11 +243,9 @@ call check(nf90_def_dim(ncid=ncid, name="YG", len = Ny, dimid = YGDimID))
 if (compress) then
    ncomp2 = get_compressed_size_2d()
    ncomp3 = get_compressed_size_3d()
+   call check(nf90_def_dim(ncid=ncid, name="comp2d", len = ncomp2, dimid = comp2ID))
+   call check(nf90_def_dim(ncid=ncid, name="comp3d", len = ncomp3, dimid = comp3ID))
 endif
-
-
-call check(nf90_def_dim(ncid=ncid, name="comp2d", len = ncomp2, dimid = comp2ID))
-call check(nf90_def_dim(ncid=ncid, name="comp3d", len = ncomp3, dimid = comp3ID))
 
 all_dimids = (/XCDimID, YCDimID, ZCDimID, XGDimID, YGDimID, comp2ID, comp3ID/)
 
@@ -371,7 +369,11 @@ call check(nf90_put_var(ncid, YGVarID, YG ))
 call check(nf90_put_var(ncid, YCVarID, YC ))
 call check(nf90_put_var(ncid, ZCVarID, ZC ))
 
-! Fill the data
+if (compress) then
+   call check(nf90_put_var(ncid, comp2ID, XG_comp))
+   call check(nf90_put_var(ncid, comp2ID, XC_comp))
+endif
+
 dsize3 = Nx*Ny*Nz
 dsize2 = Nx*Ny
 
@@ -468,7 +470,7 @@ integer ::  dimids(3)
 
 if (compress) then
    call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
-        dimids=all_dimids(6),varid=varid))
+        dimids=all_dimids(7),varid=varid))
 else
    dimids = which_dims(name, all_dimids)
    call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
@@ -518,7 +520,7 @@ integer                      :: varid ! netcdf variable id
 
 if (compress) then
    call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
-        dimids = (/all_dimids(7)/),varid=varid))
+        dimids = (/all_dimids(6)/),varid=varid))
 else
    call check(nf90_def_var(ncid=ncid, name=name, xtype=nc_type, &
         dimids = (/all_dimids(1),all_dimids(2)/),varid=varid))
@@ -562,7 +564,7 @@ close(iunit)
 where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
 
 if (compress) then
-  call check(nf90_put_var(ncid,varid,var_data))
+  call write_compressed(var_data, datasize)
 else
   if (datasize==Nx*Ny) then !2d
     call check(nf90_put_var(ncid,varid,var_data,start=(/1,1/), count=(/Nx,Ny/) ))
@@ -769,7 +771,30 @@ do i=1,NX
 enddo
 
 end function get_compressed_size_2d
+
 !------------------------------------------------------------------
+subroutine write_compressed_2d(var_data)
+
+real(r4), intent(in) :: var_data(Nx,Ny)
+
+real(r4) :: comp_var(ncomp2)
+
+
+
+
+end subroutine write_compressed
+
+!------------------------------------------------------------------
+subroutine write_compressed_3d(var_data)
+
+real(r4), intent(in) :: var_data(Nx,Ny,Nz)
+
+real(r4) :: comp_var(ncomp)
+
+
+
+
+end subroutine write_compressed
 
 end module trans_mitdart_mod
 
