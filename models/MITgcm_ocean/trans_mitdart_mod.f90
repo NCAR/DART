@@ -91,6 +91,16 @@ private
 
 public :: static_init_trans, mit2dart, dart2mit
 
+interface write_compressed
+   module procedure write_compressed_2d
+   module procedure write_compressed_3d
+end interface write_compressed
+
+interface read_compressed
+   module procedure read_compressed_2d
+   module procedure read_compressed_3d
+end interface read_compressed
+
 contains
 
 !==================================================================
@@ -211,13 +221,13 @@ end subroutine static_init_trans
 subroutine mit2dart()
 
 integer  :: ncid
-integer  :: dsize3, dsize2 ! size of 3d,2d variable
 
 ! for the dimensions and coordinate variables
 integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 integer :: comp2ID, comp3ID ! compressed dim
-integer :: all_dimids(7) ! store the 8 dimension ids
+integer :: XGcompVarID, XCcompVarID, YGcompVarID, YCcompVarID, ZGcompVarID, ZCcompVarID
+integer :: all_dimids(7) ! store the 7 dimension ids that are used
 
 ! for the prognostic variables
 integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID
@@ -294,6 +304,15 @@ call check(nf90_put_att(ncid, ZCVarID, "point_spacing", "uneven"))
 call check(nf90_put_att(ncid, ZCVarID, "axis", "Z"))
 call check(nf90_put_att(ncid, ZCVarID, "standard_name", "depth"))
 
+! Compressed grid variables
+if (compress) then
+   call check(nf90_def_var(ncid,name="XGcomp",xtype=nf90_real,dimids=comp3ID,varid=XGcompVarID))
+   call check(nf90_def_var(ncid,name="XCcomp",xtype=nf90_real,dimids=comp3ID,varid=XCcompVarID))
+   call check(nf90_def_var(ncid,name="YGcomp",xtype=nf90_real,dimids=comp3ID,varid=YGcompVarID))
+   call check(nf90_def_var(ncid,name="YCcomp",xtype=nf90_real,dimids=comp3ID,varid=YCcompVarID))
+   call check(nf90_def_var(ncid,name="ZCcomp",xtype=nf90_double,dimids=comp3ID,varid=ZCcompVarID))
+endif
+
 ! The size of these variables will depend on the compression
 
 ! Create the (empty) Prognostic Variables and the Attributes
@@ -369,32 +388,33 @@ call check(nf90_put_var(ncid, YGVarID, YG ))
 call check(nf90_put_var(ncid, YCVarID, YC ))
 call check(nf90_put_var(ncid, ZCVarID, ZC ))
 
-if (compress) then
-   call check(nf90_put_var(ncid, comp2ID, XG_comp))
-   call check(nf90_put_var(ncid, comp2ID, XC_comp))
-endif
-
-dsize3 = Nx*Ny*Nz
-dsize2 = Nx*Ny
-
 ! Fill the netcdf variables
-call from_mit_to_netcdf('PSAL.data', ncid, SVarID, dsize3)
-call from_mit_to_netcdf('PTMP.data', ncid, TVarID, dsize3)
-call from_mit_to_netcdf('UVEL.data', ncid, UVarID, dsize3)
-call from_mit_to_netcdf('VVEL.data', ncid, VVarID, dsize3)
-call from_mit_to_netcdf('ETA.data', ncid, EtaVarID, dsize2)
+call from_mit_to_netcdf_3d('PSAL.data', ncid, SVarID)
+call from_mit_to_netcdf_3d('PTMP.data', ncid, TVarID)
+call from_mit_to_netcdf_3d('UVEL.data', ncid, UVarID)
+call from_mit_to_netcdf_3d('VVEL.data', ncid, VVarID)
+call from_mit_to_netcdf_2d('ETA.data', ncid, EtaVarID)
 
 if (do_bgc) then
-   call from_mit_to_netcdf_tracer('NO3.data', ncid, no3_varid, dsize3)
-   call from_mit_to_netcdf_tracer('PO4.data', ncid, po4_varid, dsize3)
-   call from_mit_to_netcdf_tracer('O2.data', ncid, o2_varid, dsize3)
-   call from_mit_to_netcdf_tracer('PHY.data', ncid, phy_varid, dsize3)
-   call from_mit_to_netcdf_tracer('ALK.data', ncid, alk_varid, dsize3)
-   call from_mit_to_netcdf_tracer('DIC.data', ncid, dic_varid, dsize3)
-   call from_mit_to_netcdf_tracer('DOP.data', ncid, dop_varid, dsize3)
-   call from_mit_to_netcdf_tracer('DON.data', ncid, don_varid, dsize3)
-   call from_mit_to_netcdf_tracer('FET.data', ncid, fet_varid, dsize3)
-   call from_mit_to_netcdf_tracer('CHL.data', ncid, chl_varid, dsize2)
+   call from_mit_to_netcdf_tracer_3d('NO3.data', ncid, no3_varid)
+   call from_mit_to_netcdf_tracer_3d('PO4.data', ncid, po4_varid)
+   call from_mit_to_netcdf_tracer_3d('O2.data', ncid, o2_varid)
+   call from_mit_to_netcdf_tracer_3d('PHY.data', ncid, phy_varid)
+   call from_mit_to_netcdf_tracer_3d('ALK.data', ncid, alk_varid)
+   call from_mit_to_netcdf_tracer_3d('DIC.data', ncid, dic_varid)
+   call from_mit_to_netcdf_tracer_3d('DOP.data', ncid, dop_varid)
+   call from_mit_to_netcdf_tracer_3d('DON.data', ncid, don_varid)
+   call from_mit_to_netcdf_tracer_3d('FET.data', ncid, fet_varid)
+   call from_mit_to_netcdf_tracer_2d('CHL.data', ncid, chl_varid)
+endif
+
+if (compress) then
+   call fill_comp_coord()
+   call check(nf90_put_var(ncid, comp3ID, XG_comp))
+   call check(nf90_put_var(ncid, comp3ID, XC_comp))
+   call check(nf90_put_var(ncid, YGVarID, YG_comp))
+   call check(nf90_put_var(ncid, YCVarID, YC_comp))
+   call check(nf90_put_var(ncid, ZCVarID, ZC_comp))
 endif
 
 call check(nf90_close(ncid))
@@ -407,34 +427,30 @@ end subroutine mit2dart
 subroutine dart2mit()
 
 integer :: ncid, iunit
-integer  :: dsize3, dsize2 ! size of 3d,2d variable
 
 if (.not. module_initialized) call static_init_trans
-
-dsize3 = Nx*Ny*Nz
-dsize2 = Nx*Ny
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
 
 !Fill the data
-call from_netcdf_to_mit(ncid, 'PSAL', dsize3)
-call from_netcdf_to_mit(ncid, 'PTMP', dsize3)
-call from_netcdf_to_mit(ncid, 'UVEL', dsize3)
-call from_netcdf_to_mit(ncid, 'VVEL', dsize3)
-call from_netcdf_to_mit(ncid, 'ETA', dsize2)
+call from_netcdf_to_mit_3d(ncid, 'PSAL')
+call from_netcdf_to_mit_3d(ncid, 'PTMP')
+call from_netcdf_to_mit_3d(ncid, 'UVEL')
+call from_netcdf_to_mit_3d(ncid, 'VVEL')
+call from_netcdf_to_mit_2d(ncid, 'ETA')
 
 
 if (do_bgc) then
-   call from_netcdf_to_mit_tracer(ncid, 'NO3', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'PO4', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'O2', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'PHY', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'ALK', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'DIC', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'DOP', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'DON', dsize3)
-   call from_netcdf_to_mit_tracer(ncid, 'FET', dsize3)
+   call from_netcdf_to_mit_tracer(ncid, 'NO3')
+   call from_netcdf_to_mit_tracer(ncid, 'PO4')
+   call from_netcdf_to_mit_tracer(ncid, 'O2')
+   call from_netcdf_to_mit_tracer(ncid, 'PHY')
+   call from_netcdf_to_mit_tracer(ncid, 'ALK')
+   call from_netcdf_to_mit_tracer(ncid, 'DIC')
+   call from_netcdf_to_mit_tracer(ncid, 'DOP')
+   call from_netcdf_to_mit_tracer(ncid, 'DON')
+   call from_netcdf_to_mit_tracer(ncid, 'FET')
 endif
 
 call check( NF90_CLOSE(ncid) )
@@ -543,17 +559,16 @@ call check(nf90_put_att(ncid, varid, "units_long_name", units_long_name))
 end subroutine
 
 !------------------------------------------------------------------
-subroutine from_mit_to_netcdf(mitfile, ncid, varid, datasize)
+subroutine from_mit_to_netcdf_3d(mitfile, ncid, varid)
 
 character(len=*), intent(in) :: mitfile
 integer,          intent(in) :: ncid, varid ! which file, which variable
-integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
 
 integer  :: iunit
 integer  :: recl ! datasize*4
-real(r4) :: var_data(datasize)
+real(r4) :: var_data(Nx,Ny,Nz)
 
-recl = datasize*4
+recl = Nx*Ny*Ny*4
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
@@ -564,32 +579,56 @@ close(iunit)
 where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
 
 if (compress) then
-  call write_compressed(var_data, datasize)
+  call write_compressed(ncid, varid, var_data)
 else
-  if (datasize==Nx*Ny) then !2d
-    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1/), count=(/Nx,Ny/) ))
-  else !3D
-    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
-  endif
+  call check(nf90_put_var(ncid,varid,var_data))
 endif
 
-end subroutine from_mit_to_netcdf
+end subroutine from_mit_to_netcdf_3d
 
 !------------------------------------------------------------------
-subroutine from_mit_to_netcdf_tracer(mitfile, ncid, varid, datasize)
+subroutine from_mit_to_netcdf_2d(mitfile, ncid, varid)
 
 character(len=*), intent(in) :: mitfile
 integer,          intent(in) :: ncid, varid ! which file, which variable
-integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
 
 integer  :: iunit
 integer  :: recl ! datasize*4
-real(r4) :: var_data(datasize)
+real(r4) :: var_data(Nx,Ny)
+
+recl = Nx*Ny*4
+iunit = get_unit()
+! HK are the mit files big endian by default?
+open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+read(iunit,rec=1) var_data
+close(iunit)
+
+where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
+
+if (compress) then
+  call write_compressed(ncid, varid, var_data)
+else
+  call check(nf90_put_var(ncid,varid,var_data))
+endif
+
+end subroutine from_mit_to_netcdf_2d
+
+
+!------------------------------------------------------------------
+subroutine from_mit_to_netcdf_tracer_3d(mitfile, ncid, varid)
+
+character(len=*), intent(in) :: mitfile
+integer,          intent(in) :: ncid, varid ! which file, which variable
+
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var_data(Nx,Ny,Nz)
 real(r4) :: low_conc
 
 low_conc = 1.0e-12
 
-recl = datasize*4
+recl = Nx*Ny*Nz*4
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
@@ -620,41 +659,83 @@ else
 endif
 
 if (compress) then
-  call check(nf90_put_var(ncid,varid,var_data))
+   call write_compressed(ncid, varid, var_data)
 else
-  if (datasize==Nx*Ny) then !2d 
-    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1/), count=(/Nx,Ny/) ))
-  else !3D 
-    call check(nf90_put_var(ncid,varid,var_data,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
-  endif
+   call check(nf90_put_var(ncid,varid,var_data))
 endif
 
-end subroutine from_mit_to_netcdf_tracer
+end subroutine from_mit_to_netcdf_tracer_3d
 
 !------------------------------------------------------------------
-subroutine from_netcdf_to_mit(ncid, name, datasize)
+subroutine from_mit_to_netcdf_tracer_2d(mitfile, ncid, varid)
 
-integer,          intent(in) :: ncid ! which file,
-character(len=*), intent(in) :: name ! which variable
-integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
+character(len=*), intent(in) :: mitfile
+integer,          intent(in) :: ncid, varid ! which file, which variable
 
 integer  :: iunit
 integer  :: recl ! datasize*4
-real(r4) :: var(datasize)
+real(r4) :: var_data(Nx,Ny)
+real(r4) :: low_conc
+
+low_conc = 1.0e-12
+
+recl = Nx*Ny*Nz*4
+iunit = get_unit()
+! HK are the mit files big endian by default?
+open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+read(iunit,rec=1) var_data
+close(iunit)
+
+! CHL is treated differently
+if (mitfile=='CHL.data') then
+   where (var_data == 0.0_r4)
+       var_data = FVAL
+   elsewhere
+       var_data = log10(var_data)
+   endwhere
+else
+   ! Make sure the tracer concentration is positive
+   where(var_data < 0.0_r4) var_data = low_conc
+   
+   if (log_transform) then
+      where (var_data == 0.0_r4)
+          var_data = FVAL
+      elsewhere
+          var_data = log(var_data)
+      endwhere
+   else
+      where (var_data == 0.0_r4) var_data = FVAL
+   endif
+endif
+
+if (compress) then
+   call write_compressed(ncid, varid, var_data)
+else
+   call check(nf90_put_var(ncid,varid,var_data))
+endif
+
+end subroutine from_mit_to_netcdf_tracer_2d
+
+!------------------------------------------------------------------
+subroutine from_netcdf_to_mit_2d(ncid, name)
+
+integer,          intent(in) :: ncid ! which file,
+character(len=*), intent(in) :: name ! which variable
+
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var(Nx,Ny)
 integer  :: varid
 real(r4) :: local_fval
 
-recl = datasize*4
+recl = Nx*Ny*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 if (compress) then
-  call check(nf90_get_var(ncid,varid,var))
+   call read_compressed(ncid, varid, var)
 else
-  if (datasize==Nx*Ny) then !2d 
-    call check(nf90_get_var(ncid,varid,var,start=(/1,1/), count=(/Nx,Ny/) ))
-  else !3D 
-    call check(nf90_get_var(ncid,varid,var,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
-  endif
+   call check(nf90_get_var(ncid,varid,var))
 endif
 
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -665,33 +746,61 @@ open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
 write(iunit,rec=1)var
 close(iunit)
 
-end subroutine from_netcdf_to_mit
+end subroutine from_netcdf_to_mit_2d
 
 !------------------------------------------------------------------
-subroutine from_netcdf_to_mit_tracer(ncid, name, datasize)
+subroutine from_netcdf_to_mit_3d(ncid, name)
 
 integer,          intent(in) :: ncid ! which file,
 character(len=*), intent(in) :: name ! which variable
-integer,          intent(in) :: datasize ! Nx*Ny*Nz, or Nx*Ny
 
 integer  :: iunit
 integer  :: recl ! datasize*4
-real(r4) :: var(datasize)
+real(r4) :: var(Nx,Ny,Nz)
 integer  :: varid
 real(r4) :: local_fval
 
-recl = datasize*4
+recl = Nx*Ny*Nz*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 if (compress) then
-  call check(nf90_get_var(ncid,varid,var))
+   call read_compressed(ncid, varid, var)
 else
-  if (datasize==Nx*Ny) then !2d 
-    call check(nf90_get_var(ncid,varid,var,start=(/1,1/), count=(/Nx,Ny/) ))
-  else !3D 
-    call check(nf90_get_var(ncid,varid,var,start=(/1,1,1/), count=(/Nx,Ny,Nz/) ))
-  endif
+   call check(nf90_get_var(ncid,varid,var))
 endif
+
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+where (var == local_fval) var = 0.0_r4
+
+open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+write(iunit,rec=1)var
+close(iunit)
+
+end subroutine from_netcdf_to_mit_3d
+
+
+!------------------------------------------------------------------
+subroutine from_netcdf_to_mit_tracer(ncid, name)
+
+integer,          intent(in) :: ncid ! which file,
+character(len=*), intent(in) :: name ! which variable
+
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var(Nx,Ny,Nz)
+integer  :: varid
+real(r4) :: local_fval
+
+recl = Nx*Ny*Nz*4
+
+call check( NF90_INQ_VARID(ncid,name,varid) )
+if (compress) then
+   call read_compressed(ncid, varid, var)
+else
+  call check(nf90_get_var(ncid,varid,var))
+endif
+
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 if (log_transform) then
    where (var == local_fval)
@@ -773,28 +882,100 @@ enddo
 end function get_compressed_size_2d
 
 !------------------------------------------------------------------
-subroutine write_compressed_2d(var_data)
+subroutine write_compressed_2d(ncid, varid, var_data)
 
+integer,  intent(in) :: ncid, varid
 real(r4), intent(in) :: var_data(Nx,Ny)
 
 real(r4) :: comp_var(ncomp2)
+integer  :: n
+integer  :: i,j ! loop variables
 
+n = 1
+do i = 1, NX
+   do j = 1, NY
+      if (var_data(i,j) /= -999.) then !HK check for nans?
+         comp_var(n) = var_data(i,j)
+         n = n + 1
+      endif
+   enddo
+enddo
 
+call check(nf90_put_var(ncid,varid,comp_var))
 
-
-end subroutine write_compressed
+end subroutine write_compressed_2d
 
 !------------------------------------------------------------------
-subroutine write_compressed_3d(var_data)
+subroutine write_compressed_3d(ncid, varid, var_data)
 
+integer,  intent(in) :: ncid, varid
 real(r4), intent(in) :: var_data(Nx,Ny,Nz)
 
-real(r4) :: comp_var(ncomp)
+real(r4) :: comp_var(ncomp3)
+integer  :: n
+integer  :: i,j,k ! loop variables
+
+n = 1
+do i = 1, NX
+   do j = 1, NY
+      do k = 1 , NZ
+         if (var_data(i,j,k) /= -999.) then !HK check for nans?
+            comp_var(n) = var_data(i,j,k)
+            n = n + 1
+         endif
+      enddo
+   enddo
+enddo
+
+call check(nf90_put_var(ncid,varid,comp_var))
+
+end subroutine write_compressed_3d
+
+!------------------------------------------------------------------
+subroutine read_compressed_2d(ncid, varid, var)
+
+integer,  intent(in)  :: ncid, varid
+real(r4), intent(out) :: var(NX,NY)
+
+real(r4) :: comp_var(ncomp2)
+integer  :: n
+integer  :: i,j,k ! loop variables
+
+call check(nf90_get_var(ncid,varid,comp_var))
+
+! Need to read in compressed dimensions
+n = 1
+
+var(i,j) = comp_var(n)
+
+end subroutine read_compressed_2d
+
+!------------------------------------------------------------------
+subroutine read_compressed_3d(ncid, varid, var)
+
+integer,  intent(in)  :: ncid, varid
+real(r4), intent(out) :: var(NX,NY,NZ)
+
+real(r4) :: comp_var(ncomp3)
+integer  :: n
+integer  :: i,j,k ! loop variables
+
+call check(nf90_get_var(ncid,varid,comp_var))
+
+! Need to read in compressed dimensions
+n = 1
+
+var(i,j,k) = comp_var(n)
+
+end subroutine read_compressed_3d
+!------------------------------------------------------------------
+
+subroutine fill_comp_coord()
 
 
 
+end subroutine fill_comp_coord
 
-end subroutine write_compressed
 
 end module trans_mitdart_mod
 
