@@ -551,7 +551,7 @@ call nc_get_variable(shape_file_id, 'ZC_3D', ZC_sq)
 
 ! EL: tentative solution of XG values
 do i=1, xcsqsize
-	XG_sq(i) = XC_sq(i) - 0.5*delX(1)
+	XG_sq(i) = XC_sq(i) - 0.5*delX(1) ! HK should this be delX(i)?
 	YG_sq(i) = YC_sq(i) - 0.5*delY(1)
 enddo
 
