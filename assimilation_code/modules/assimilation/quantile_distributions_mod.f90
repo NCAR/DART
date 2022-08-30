@@ -74,7 +74,9 @@ logical, intent(in)                  :: use_input_p
 
 if(var_kind == 0) then
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
-elseif(var_kind == 99) then
+! For these tests, var_kind is 1 for state variables indicating no bounds (L96 vars)
+! and 2 for the observed variable being a square
+elseif(var_kind == 1 .or. var_kind == 2) then
    ! Need to pass var_kind because different kinds could have different bounds
    call to_probit_bounded_normal_rhf(ens_size, state_ens, var_kind, p, probit_ens, use_input_p)
 else
@@ -219,10 +221,15 @@ if(use_input_p) then
 else
    ! No pre-existing distribution, create one
    ! Bounds need to come from somewhere but hard-code here for developmentA
-   lower_bound = 0
-   upper_bound = 1
+   ! For experimentation with square observations, need a zero lower bound
+   lower_bound = -99999_r8
+   upper_bound = 99999_r8
    bounded_below = .false.
    bounded_above = .false.
+   if(var_kind == 2) then
+      lower_bound = -0.05_r8
+      bounded_below = .true.
+   endif
 
    ! Need to sort. For now, don't worry about efficiency, but may need to somehow pass previous
    ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
@@ -316,6 +323,11 @@ else
       if(abs(base_prob - bound_quantile) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_left = .true.
+write(*, *) 'uniform tail'
+stop
+      else
+         ! Compute the left tail amplitude
+         tail_amp_left = base_prob / (base_prob - bound_quantile); 
       endif
    endif
    
@@ -387,7 +399,8 @@ real(r8), intent(out)                :: state_ens(ens_size)
 
 if(var_kind == 0) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
-elseif(var_kind == 99) then
+elseif(var_kind == 1 .or. var_kind == 2) then
+   ! 1 for state space unbounded rhf, 2 for state space bounded nonnegative rhf
    call from_probit_bounded_normal_rhf(ens_size, probit_ens, var_kind, p, state_ens)
 else
    write(*, *) 'Illegal var_kind in convert_from_probit ', var_kind
@@ -466,15 +479,15 @@ do i = 1, ens_size
       ! Lower tail
       if(do_uniform_tail_left) then
          ! Lower tail uniform
-         lower_state = lower_bound
          upper_state = p%params(1)
-         state_ens(i) = lower_state + &
-            (quantile / (ens_size + 1.0_r8)) * (upper_state - lower_state)
+! NOTE: NEED TO BE CAREFUL OF THE DENOMINATOR HERE AND ON THE PLUS SIDE
+         state_ens(i) = lower_bound + &
+            (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
       else
          ! Lower tail is (bounded) normal
          ! What is the value of the weighted normal at the smallest ensemble member
          mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
-         delta_q = 1.0 / (ens_size + 1.0_r8) - quantile
+         delta_q = 1.0_r8 / (ens_size + 1.0_r8) - quantile
          target_mass = mass - delta_q
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
       endif
