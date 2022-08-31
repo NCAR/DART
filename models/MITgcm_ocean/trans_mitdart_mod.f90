@@ -28,6 +28,7 @@ logical             :: compress      = .false.
 namelist /trans_mitdart_nml/ do_bgc, log_transform, compress
 
 real(r4), parameter :: FVAL=-999.0_r4 ! may put this as a namelist option
+real(r4), parameter :: binary_fill=0.0_r4
 
 !------------------------------------------------------------------
 !
@@ -77,7 +78,7 @@ integer :: ncomp2=-1, ncomp3=-1         ! length of compressed dim
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 real(r8), allocatable :: XCcomp(:), XGcomp(:), YCcomp(:), YGcomp(:), ZCcomp(:), ZGcomp(:)
-real(r8), allocatable :: Xcomp_ind(:), Ycomp_ind(:), Zcomp_ind(:) !HK are the staggered grids compressed the same?
+integer, allocatable :: Xcomp_ind(:), Ycomp_ind(:), Zcomp_ind(:) !HK are the staggered grids compressed the same?
 
 ! 3D variables, 3 grids:
 !
@@ -314,9 +315,9 @@ if (compress) then
    call check(nf90_def_var(ncid,name="YGcomp",xtype=nf90_real,dimids=comp3ID,varid=YGcompVarID))
    call check(nf90_def_var(ncid,name="YCcomp",xtype=nf90_real,dimids=comp3ID,varid=YCcompVarID))
    call check(nf90_def_var(ncid,name="ZCcomp",xtype=nf90_double,dimids=comp3ID,varid=ZCcompVarID))
-   call check(nf90_def_var(ncid,name="Xcomp_ind",xtype=nf90_real,dimids=comp3ID,varid=XindID))
-   call check(nf90_def_var(ncid,name="Ycomp_ind",xtype=nf90_real,dimids=comp3ID,varid=YindID))
-   call check(nf90_def_var(ncid,name="Zcomp_ind",xtype=nf90_real,dimids=comp3ID,varid=ZindID))
+   call check(nf90_def_var(ncid,name="Xcomp_ind",xtype=nf90_int,dimids=comp3ID,varid=XindID))
+   call check(nf90_def_var(ncid,name="Ycomp_ind",xtype=nf90_int,dimids=comp3ID,varid=YindID))
+   call check(nf90_def_var(ncid,name="Zcomp_ind",xtype=nf90_int,dimids=comp3ID,varid=ZindID))
 endif
 
 ! The size of these variables will depend on the compression
@@ -872,7 +873,7 @@ ncomp3 = 0
 do i=1,NX
    do j=1,NY
       do k=1,NZ
-         if (var3d(i,j,k) /= -999.) then !HK also NaN?
+         if (var3d(i,j,k) /= binary_fill) then !HK also NaN?
            ncomp3 = ncomp3 + 1
          endif
       enddo
@@ -903,7 +904,7 @@ ncomp2 = 0
 ! Get compressed size
 do i=1,NX
    do j=1,NY
-      if (var2d(i,j) /= -999.) then !HK also NaN?
+      if (var2d(i,j) /= binary_fill) then !HK also NaN?
         ncomp2 = ncomp2 + 1
       endif
    enddo
@@ -930,7 +931,7 @@ n = 1
 do i=1,NX
    do j=1,NY
       do k=1,NZ
-         if (var3d(i,j,k) /= -999.) then !HK also NaN?
+         if (var3d(i,j,k) /= binary_fill) then !HK also NaN?
             XCcomp(n) = XC(i)
             YCcomp(n) = YC(j)
             ZCcomp(n) = ZC(k)
@@ -963,7 +964,7 @@ integer  :: i,j ! loop variables
 n = 1
 do i = 1, NX
    do j = 1, NY
-      if (var_data(i,j) /= -999.) then !HK check for nans?
+      if (var_data(i,j) /= binary_fill) then !HK check for nans?
          comp_var(n) = var_data(i,j)
          n = n + 1
       endif
@@ -988,7 +989,7 @@ n = 1
 do i = 1, NX
    do j = 1, NY
       do k = 1 , NZ
-         if (var_data(i,j,k) /= -999.) then !HK check for nans?
+         if (var_data(i,j,k) /= binary_fill) then !HK check for nans?
             comp_var(n) = var_data(i,j,k)
             n = n + 1
          endif
