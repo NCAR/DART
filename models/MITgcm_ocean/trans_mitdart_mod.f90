@@ -9,6 +9,7 @@ use types_mod,     only: r4, r8
 use utilities_mod, only: initialize_utilities, register_module, &
                          get_unit, find_namelist_in_file, file_exist, &
                          check_namelist_read
+use netcdf_utilities_mod, only : nc_get_variable
 use netcdf
 
 implicit none
@@ -71,11 +72,12 @@ NAMELIST /PARM04/ &
 ! standard MITgcm namelist and filled in here.
 
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
-integer :: ncomp2, ncomp3         ! length of compressed dim
+integer :: ncomp2=-1, ncomp3=-1         ! length of compressed dim
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
-real(r8), allocatable :: XC_comp(:), XG_comp(:), YC_comp(:), YG_comp(:), ZC_comp(:), ZG_comp(:)
+real(r8), allocatable :: XCcomp(:), XGcomp(:), YCcomp(:), YGcomp(:), ZCcomp(:), ZGcomp(:)
+real(r8), allocatable :: Xcomp_ind(:), Ycomp_ind(:), Zcomp_ind(:) !HK are the staggered grids compressed the same?
 
 ! 3D variables, 3 grids:
 !
@@ -227,6 +229,7 @@ integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 integer :: comp2ID, comp3ID ! compressed dim
 integer :: XGcompVarID, XCcompVarID, YGcompVarID, YCcompVarID, ZGcompVarID, ZCcompVarID
+integer :: XindID, YindID, ZindID
 integer :: all_dimids(7) ! store the 7 dimension ids that are used
 
 ! for the prognostic variables
@@ -311,6 +314,9 @@ if (compress) then
    call check(nf90_def_var(ncid,name="YGcomp",xtype=nf90_real,dimids=comp3ID,varid=YGcompVarID))
    call check(nf90_def_var(ncid,name="YCcomp",xtype=nf90_real,dimids=comp3ID,varid=YCcompVarID))
    call check(nf90_def_var(ncid,name="ZCcomp",xtype=nf90_double,dimids=comp3ID,varid=ZCcompVarID))
+   call check(nf90_def_var(ncid,name="Xcomp_ind",xtype=nf90_real,dimids=comp3ID,varid=XindID))
+   call check(nf90_def_var(ncid,name="Ycomp_ind",xtype=nf90_real,dimids=comp3ID,varid=YindID))
+   call check(nf90_def_var(ncid,name="Zcomp_ind",xtype=nf90_real,dimids=comp3ID,varid=ZindID))
 endif
 
 ! The size of these variables will depend on the compression
@@ -388,6 +394,27 @@ call check(nf90_put_var(ncid, YGVarID, YG ))
 call check(nf90_put_var(ncid, YCVarID, YC ))
 call check(nf90_put_var(ncid, ZCVarID, ZC ))
 
+if (compress) then
+   allocate(XCcomp(ncomp3))
+   allocate(XGcomp(ncomp3))
+   allocate(YCcomp(ncomp3))
+   allocate(YGcomp(ncomp3))
+   allocate(ZCcomp(ncomp3))
+   allocate(ZGcomp(ncomp3))
+   allocate(Xcomp_ind(ncomp3))
+   allocate(Ycomp_ind(ncomp3))
+   allocate(Zcomp_ind(ncomp3))
+   call fill_compressed_coords()
+   call check(nf90_put_var(ncid, XGcompVarID, XGcomp ))
+   call check(nf90_put_var(ncid, XCcompVarID, XCcomp ))
+   call check(nf90_put_var(ncid, YGcompVarID, YGcomp ))
+   call check(nf90_put_var(ncid, YCcompVarID, YCcomp ))
+   call check(nf90_put_var(ncid, ZCcompVarID, ZCcomp ))
+   call check(nf90_put_var(ncid, ZCcompVarID, Xcomp_ind ))
+   call check(nf90_put_var(ncid, ZCcompVarID, Ycomp_ind ))
+   call check(nf90_put_var(ncid, ZCcompVarID, Zcomp_ind ))
+endif
+
 ! Fill the netcdf variables
 call from_mit_to_netcdf_3d('PSAL.data', ncid, SVarID)
 call from_mit_to_netcdf_3d('PTMP.data', ncid, TVarID)
@@ -408,15 +435,6 @@ if (do_bgc) then
    call from_mit_to_netcdf_tracer_2d('CHL.data', ncid, chl_varid)
 endif
 
-if (compress) then
-   call fill_comp_coord()
-   call check(nf90_put_var(ncid, comp3ID, XG_comp))
-   call check(nf90_put_var(ncid, comp3ID, XC_comp))
-   call check(nf90_put_var(ncid, YGVarID, YG_comp))
-   call check(nf90_put_var(ncid, YCVarID, YC_comp))
-   call check(nf90_put_var(ncid, ZCVarID, ZC_comp))
-endif
-
 call check(nf90_close(ncid))
 
 end subroutine mit2dart
@@ -432,6 +450,15 @@ if (.not. module_initialized) call static_init_trans
 
 iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
+
+if (compress) then
+   allocate(Xcomp_ind(ncomp3))
+   allocate(Ycomp_ind(ncomp3))
+   allocate(Zcomp_ind(ncomp3))
+   call nc_get_variable(ncid, 'Xcomp_ind', Xcomp_ind)
+   call nc_get_variable(ncid, 'Ycomp_ind', Ycomp_ind)
+   call nc_get_variable(ncid, 'Zcomp_ind', Zcomp_ind)
+endif
 
 !Fill the data
 call from_netcdf_to_mit_3d(ncid, 'PSAL')
@@ -454,6 +481,8 @@ if (do_bgc) then
 endif
 
 call check( NF90_CLOSE(ncid) )
+
+deallocate(Xcomp_ind, Ycomp_ind, Zcomp_ind)
 
 end subroutine dart2mit
 
@@ -736,10 +765,11 @@ if (compress) then
    call read_compressed(ncid, varid, var)
 else
    call check(nf90_get_var(ncid,varid,var))
+   call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+   where (var == local_fval) var = 0.0_r4
 endif
 
-call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
-where (var == local_fval) var = 0.0_r4
+
 
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
@@ -833,7 +863,7 @@ integer  :: i,j,k
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
             access='DIRECT', recl=Nx*Ny*Nz, convert='BIG_ENDIAN')
-read(iunit,rec=1) ncomp3
+read(iunit,rec=1) var3d
 close(iunit)
 
 ncomp3 = 0
@@ -880,6 +910,45 @@ do i=1,NX
 enddo
 
 end function get_compressed_size_2d
+
+!------------------------------------------------------------------
+subroutine fill_compressed_coords()
+
+!XG,etc read from PARAM04 in static_init_trans
+real(r4) :: var3d(NX,NY,NZ)
+real(r4) :: var2d(NX,NY)
+integer :: n, i, j, k
+
+iunit = get_unit()
+open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
+            access='DIRECT', recl=Nx*Ny*Nz, convert='BIG_ENDIAN')
+read(iunit,rec=1) var3d
+close(iunit)
+
+n = 1
+
+do i=1,NX
+   do j=1,NY
+      do k=1,NZ
+         if (var3d(i,j,k) /= -999.) then !HK also NaN?
+            XCcomp(n) = XC(i)
+            YCcomp(n) = YC(j)
+            ZCcomp(n) = ZC(k)
+            XGcomp(n) = XG(i)
+            YGcomp(n) = YG(j)
+            ZGcomp(n) = ZG(k)
+
+            Xcomp_ind(n) = i  ! Assuming grids are compressed the same
+            Ycomp_ind(n) = j
+            Zcomp_ind(n) = k
+
+            n = n + 1
+         endif
+      enddo
+   enddo
+enddo
+
+end subroutine fill_compressed_coords
 
 !------------------------------------------------------------------
 subroutine write_compressed_2d(ncid, varid, var_data)
@@ -938,15 +1007,19 @@ integer,  intent(in)  :: ncid, varid
 real(r4), intent(out) :: var(NX,NY)
 
 real(r4) :: comp_var(ncomp2)
-integer  :: n
-integer  :: i,j,k ! loop variables
+integer  :: n ! loop variable
+integer  :: i,j ! x,y
+
+! initialize var to 0
+var(:,:) = 0.0_r4
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
-! Need to read in compressed dimensions
-n = 1
-
-var(i,j) = comp_var(n)
+do n = 1, ncomp2
+   i = Xcomp_ind(n)
+   j = Ycomp_ind(n)
+   var(i,j) = comp_var(n)
+enddo
 
 end subroutine read_compressed_2d
 
@@ -957,25 +1030,22 @@ integer,  intent(in)  :: ncid, varid
 real(r4), intent(out) :: var(NX,NY,NZ)
 
 real(r4) :: comp_var(ncomp3)
-integer  :: n
-integer  :: i,j,k ! loop variables
+integer  :: n ! loop variable
+integer  :: i,j,k ! x,y,k
+
+! initialize var to 0
+var(:,:,:) = 0.0_r4
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
-! Need to read in compressed dimensions
-n = 1
-
-var(i,j,k) = comp_var(n)
+do n = 1, ncomp2
+   i = Xcomp_ind(n)
+   j = Ycomp_ind(n)
+   k = Zcomp_ind(n)
+   var(i,j,k) = comp_var(n)
+enddo
 
 end subroutine read_compressed_3d
-!------------------------------------------------------------------
-
-subroutine fill_comp_coord()
-
-
-
-end subroutine fill_comp_coord
-
 
 end module trans_mitdart_mod
 
