@@ -259,6 +259,9 @@ if (compress) then
    ncomp3 = get_compressed_size_3d()
    call check(nf90_def_dim(ncid=ncid, name="comp2d", len = ncomp2, dimid = comp2ID))
    call check(nf90_def_dim(ncid=ncid, name="comp3d", len = ncomp3, dimid = comp3ID))
+else
+  comp2ID = -1
+  comp3ID = -1
 endif
 
 all_dimids = (/XCDimID, YCDimID, ZCDimID, XGDimID, YGDimID, comp2ID, comp3ID/)
@@ -445,11 +448,10 @@ end subroutine mit2dart
 
 subroutine dart2mit()
 
-integer :: ncid, iunit
+integer :: ncid
 
 if (.not. module_initialized) call static_init_trans
 
-iunit = get_unit()
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
 
 if (compress) then
@@ -483,7 +485,7 @@ endif
 
 call check( NF90_CLOSE(ncid) )
 
-deallocate(Xcomp_ind, Ycomp_ind, Zcomp_ind)
+if (compress) deallocate(Xcomp_ind, Ycomp_ind, Zcomp_ind)
 
 end subroutine dart2mit
 
@@ -606,7 +608,7 @@ open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
 read(iunit,rec=1) var_data
 close(iunit)
 
-where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
+where (var_data == binary_fill) var_data = FVAL !HK do we also need a check for nans here?
 
 if (compress) then
   call write_compressed(ncid, varid, var_data)
@@ -634,7 +636,7 @@ open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
 read(iunit,rec=1) var_data
 close(iunit)
 
-where (var_data == 0.0_r4) var_data = FVAL !HK do we also need a check for nans here?
+where (var_data == binary_fill) var_data = FVAL !HK do we also need a check for nans here?
 
 if (compress) then
   call write_compressed(ncid, varid, var_data)
@@ -668,23 +670,23 @@ close(iunit)
 
 ! CHL is treated differently
 if (mitfile=='CHL.data') then
-   where (var_data == 0.0_r4)
+   where (var_data == binary_fill)
        var_data = FVAL
    elsewhere
        var_data = log10(var_data)
    endwhere
 else
    ! Make sure the tracer concentration is positive
-   where(var_data < 0.0_r4) var_data = low_conc
+   where(var_data < binary_fill) var_data = low_conc
    
    if (log_transform) then
-      where (var_data == 0.0_r4)
+      where (var_data == binary_fill)
           var_data = FVAL
       elsewhere
           var_data = log(var_data)
       endwhere
    else
-      where (var_data == 0.0_r4) var_data = FVAL
+      where (var_data == binary_fill) var_data = FVAL
    endif
 endif
 
@@ -719,14 +721,14 @@ close(iunit)
 
 ! CHL is treated differently
 if (mitfile=='CHL.data') then
-   where (var_data == 0.0_r4)
+   where (var_data == binary_fill)
        var_data = FVAL
    elsewhere
        var_data = log10(var_data)
    endwhere
 else
    ! Make sure the tracer concentration is positive
-   where(var_data < 0.0_r4) var_data = low_conc
+   where(var_data < binary_fill) var_data = low_conc
    
    if (log_transform) then
       where (var_data == 0.0_r4)
@@ -735,7 +737,7 @@ else
           var_data = log(var_data)
       endwhere
    else
-      where (var_data == 0.0_r4) var_data = FVAL
+      where (var_data == binary_fill) var_data = FVAL
    endif
 endif
 
@@ -770,8 +772,7 @@ else
    where (var == local_fval) var = 0.0_r4
 endif
 
-
-
+iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
@@ -801,8 +802,9 @@ else
 endif
 
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
-where (var == local_fval) var = 0.0_r4
+where (var == local_fval) var = binary_fill
 
+iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
@@ -835,14 +837,15 @@ endif
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 if (log_transform) then
    where (var == local_fval)
-       var = 0.0_r4
+       var = binary_fill
    elsewhere
        var = exp(var)
    endwhere
 else
-   where (var == local_fval) var = 0.0_r4
+   where (var == local_fval) var = binary_fill
 endif
 
+iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
             access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
@@ -1011,8 +1014,8 @@ real(r4) :: comp_var(ncomp2)
 integer  :: n ! loop variable
 integer  :: i,j ! x,y
 
-! initialize var to 0
-var(:,:) = 0.0_r4
+! initialize var to binary file fill value
+var(:,:) = binary_fill
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
@@ -1034,8 +1037,8 @@ real(r4) :: comp_var(ncomp3)
 integer  :: n ! loop variable
 integer  :: i,j,k ! x,y,k
 
-! initialize var to 0
-var(:,:,:) = 0.0_r4
+! initialize var to binary file fill value
+var(:,:,:) = binary_fill
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
