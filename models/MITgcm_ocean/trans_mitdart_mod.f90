@@ -1015,17 +1015,23 @@ real(r4), intent(out) :: var(NX,NY)
 
 real(r4) :: comp_var(ncomp2)
 integer  :: n ! loop variable
-integer  :: i,j ! x,y
+integer  :: i,j,k ! x,y,z
+integer  :: c
 
 ! initialize var to binary file fill value
 var(:,:) = binary_fill
+c = 1
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
-do n = 1, ncomp2
+do n = 1, ncomp3
    i = Xcomp_ind(n)
    j = Ycomp_ind(n)
-   var(i,j) = comp_var(n)
+   k = Zcomp_ind(n)
+   if (k == 1 ) then
+     var(i,j) = comp_var(c)
+     c = c + 1
+   endif
 enddo
 
 end subroutine read_compressed_2d
