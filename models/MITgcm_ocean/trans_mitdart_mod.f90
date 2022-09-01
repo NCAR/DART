@@ -9,7 +9,7 @@ use types_mod,     only: r4, r8
 use utilities_mod, only: initialize_utilities, register_module, &
                          get_unit, find_namelist_in_file, file_exist, &
                          check_namelist_read
-use netcdf_utilities_mod, only : nc_get_variable
+use netcdf_utilities_mod, only : nc_get_variable, nc_get_dimension_size
 use netcdf
 
 implicit none
@@ -414,9 +414,9 @@ if (compress) then
    call check(nf90_put_var(ncid, YGcompVarID, YGcomp ))
    call check(nf90_put_var(ncid, YCcompVarID, YCcomp ))
    call check(nf90_put_var(ncid, ZCcompVarID, ZCcomp ))
-   call check(nf90_put_var(ncid, ZCcompVarID, Xcomp_ind ))
-   call check(nf90_put_var(ncid, ZCcompVarID, Ycomp_ind ))
-   call check(nf90_put_var(ncid, ZCcompVarID, Zcomp_ind ))
+   call check(nf90_put_var(ncid, XindID, Xcomp_ind ))
+   call check(nf90_put_var(ncid, YindID, Ycomp_ind ))
+   call check(nf90_put_var(ncid, ZindID, Zcomp_ind ))
 endif
 
 ! Fill the netcdf variables
@@ -455,6 +455,8 @@ if (.not. module_initialized) call static_init_trans
 call check(nf90_open("INPUT.nc",NF90_NOWRITE,ncid))
 
 if (compress) then
+   ncomp3 = nc_get_dimension_size(ncid,'comp3d')
+   ncomp2 = nc_get_dimension_size(ncid,'comp2d')
    allocate(Xcomp_ind(ncomp3))
    allocate(Ycomp_ind(ncomp3))
    allocate(Zcomp_ind(ncomp3))
@@ -802,6 +804,7 @@ else
 endif
 
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+
 where (var == local_fval) var = binary_fill
 
 iunit = get_unit()
@@ -856,9 +859,9 @@ end subroutine from_netcdf_to_mit_tracer
 !------------------------------------------------------------------
 ! Assumes all 3D variables are masked in the 
 ! same location
-function get_compressed_size_3d() result(ncomp3)
+function get_compressed_size_3d() result(n3)
 
-integer  :: ncomp3
+integer  :: n3
 integer  :: iunit
 integer  :: recl ! datasize*4
 real(r4) :: var3d(NX,NY,NZ)
@@ -870,14 +873,14 @@ open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
 read(iunit,rec=1) var3d
 close(iunit)
 
-ncomp3 = 0
+n3 = 0
 
 ! Get compressed size
 do i=1,NX
    do j=1,NY
       do k=1,NZ
          if (var3d(i,j,k) /= binary_fill) then !HK also NaN?
-           ncomp3 = ncomp3 + 1
+           n3 = n3 + 1
          endif
       enddo
    enddo
@@ -888,9 +891,9 @@ end function get_compressed_size_3d
 !------------------------------------------------------------------
 ! Assumes all 3D variables are masked in the 
 ! same location
-function get_compressed_size_2d() result(ncomp2)
+function get_compressed_size_2d() result(n2)
 
-integer  :: ncomp2
+integer  :: n2
 integer  :: iunit
 integer  :: recl ! datasize*4
 real(r4) :: var2d(NX,NY)
@@ -902,13 +905,13 @@ open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
 read(iunit,rec=1) var2d
 close(iunit)
 
-ncomp2 = 0
+n2 = 0
 
 ! Get compressed size
 do i=1,NX
    do j=1,NY
       if (var2d(i,j) /= binary_fill) then !HK also NaN?
-        ncomp2 = ncomp2 + 1
+        n2 = n2 + 1
       endif
    enddo
 enddo
@@ -967,7 +970,7 @@ integer  :: i,j ! loop variables
 n = 1
 do i = 1, NX
    do j = 1, NY
-      if (var_data(i,j) /= binary_fill) then !HK check for nans?
+      if (var_data(i,j) /= FVAL) then
          comp_var(n) = var_data(i,j)
          n = n + 1
       endif
@@ -992,7 +995,7 @@ n = 1
 do i = 1, NX
    do j = 1, NY
       do k = 1 , NZ
-         if (var_data(i,j,k) /= binary_fill) then !HK check for nans?
+         if (var_data(i,j,k) /= FVAL) then
             comp_var(n) = var_data(i,j,k)
             n = n + 1
          endif
@@ -1042,7 +1045,7 @@ var(:,:,:) = binary_fill
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
-do n = 1, ncomp2
+do n = 1, ncomp3
    i = Xcomp_ind(n)
    j = Ycomp_ind(n)
    k = Zcomp_ind(n)
