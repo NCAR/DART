@@ -766,11 +766,14 @@ real(r4) :: local_fval
 recl = Nx*Ny*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+! initialize var to netcdf fill value
+var(:,:) = local_fval
+
 if (compress) then
    call read_compressed(ncid, varid, var)
 else
    call check(nf90_get_var(ncid,varid,var))
-   call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
    where (var == local_fval) var = 0.0_r4
 endif
 
@@ -797,13 +800,15 @@ real(r4) :: local_fval
 recl = Nx*Ny*Nz*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+! initialize var to netcdf fill value
+var(:,:,:) = local_fval
+
 if (compress) then
    call read_compressed(ncid, varid, var)
 else
    call check(nf90_get_var(ncid,varid,var))
 endif
-
-call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 
 where (var == local_fval) var = binary_fill
 
@@ -831,13 +836,16 @@ real(r4) :: local_fval
 recl = Nx*Ny*Nz*4
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+! initialize var to netcdf fill value
+var(:,:,:) = local_fval
+
 if (compress) then
    call read_compressed(ncid, varid, var)
 else
   call check(nf90_get_var(ncid,varid,var))
 endif
 
-call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 if (log_transform) then
    where (var == local_fval)
        var = binary_fill
@@ -1011,15 +1019,13 @@ end subroutine write_compressed_3d
 subroutine read_compressed_2d(ncid, varid, var)
 
 integer,  intent(in)  :: ncid, varid
-real(r4), intent(out) :: var(NX,NY)
+real(r4), intent(inout) :: var(NX,NY)
 
 real(r4) :: comp_var(ncomp2)
 integer  :: n ! loop variable
 integer  :: i,j,k ! x,y,z
 integer  :: c
 
-! initialize var to binary file fill value
-var(:,:) = binary_fill
 c = 1
 
 call check(nf90_get_var(ncid,varid,comp_var))
@@ -1040,14 +1046,11 @@ end subroutine read_compressed_2d
 subroutine read_compressed_3d(ncid, varid, var)
 
 integer,  intent(in)  :: ncid, varid
-real(r4), intent(out) :: var(NX,NY,NZ)
+real(r4), intent(inout) :: var(NX,NY,NZ)
 
 real(r4) :: comp_var(ncomp3)
 integer  :: n ! loop variable
 integer  :: i,j,k ! x,y,k
-
-! initialize var to binary file fill value
-var(:,:,:) = binary_fill
 
 call check(nf90_get_var(ncid,varid,comp_var))
 
