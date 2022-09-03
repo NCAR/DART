@@ -993,7 +993,7 @@ else
       if(USE_BOUNDED_RHF_OBS_PRIOR) then
          is_bounded(1) = .true.
          is_bounded(2) = .false.
-         bound = (/-0.05_r8, -99999.0_r8/)
+         bound = (/0.0_r8, -99999.0_r8/)
       else
          is_bounded = .false.
          bound = (/-99999.0_r8, -99999.0_r8/)
@@ -1176,10 +1176,8 @@ call ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_
    sort_post, is_bounded, bound)
 
 ! These are increments for sorted ensemble; convert to increments for unsorted
-write(34, *) '____________________'
 do i = 1, ens_size
    obs_inc(sort_ind(i)) = sort_post(i) - ens(sort_ind(i))
-   write(34, *) i, ens(sort_ind(i)), sort_post(i), sort_ens_like(i)
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
@@ -1260,7 +1258,6 @@ if(is_bounded(1)) then
    ! Do in two ifs in case the bound is not defined
    if(sort_ens(1) < bound(1)) then
       msgstring = 'Ensemble member less than lower bound'
-write(*, *) 'sort_ens ', sort_ens
       call error_handler(E_ERR, 'ens_increment_bounded_norm_rhf', msgstring, source)
    endif
 endif

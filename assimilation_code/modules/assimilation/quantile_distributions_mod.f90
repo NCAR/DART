@@ -144,7 +144,8 @@ real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
 ! Parameter to control switch to uniform approximation for normal tail
-real(r8), parameter :: uniform_threshold = 1e-5_r8
+!real(r8), parameter :: uniform_threshold = 0.0e-8_r8
+real(r8), parameter :: uniform_threshold = 0.01_r8
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
@@ -227,7 +228,7 @@ else
    bounded_below = .false.
    bounded_above = .false.
    if(var_kind == 2) then
-      lower_bound = -0.05_r8
+      lower_bound = 0.0_r8
       bounded_below = .true.
    endif
 
@@ -320,11 +321,9 @@ else
    if(bounded_below) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(lower_bound, tail_mean_left, sd)
-      if(abs(base_prob - bound_quantile) < uniform_threshold) then
+      if(abs(base_prob - bound_quantile) < uniform_threshold * sd) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_left = .true.
-write(*, *) 'uniform tail'
-stop
       else
          ! Compute the left tail amplitude
          tail_amp_left = base_prob / (base_prob - bound_quantile); 
@@ -336,7 +335,7 @@ stop
    if(bounded_above) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
-      if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold) then
+      if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold * sd) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
       endif
@@ -484,11 +483,10 @@ do i = 1, ens_size
          state_ens(i) = lower_bound + &
             (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
       else
-         ! Lower tail is (bounded) normal
-         ! What is the value of the weighted normal at the smallest ensemble member
-         mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
-         delta_q = 1.0_r8 / (ens_size + 1.0_r8) - quantile
-         target_mass = mass - delta_q
+         ! Lower tail is (bounded) normal, work in from the bottom
+         ! This is almost identical to before, but still doesn't solve the bounds violation problem
+         mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+         target_mass = mass + quantile
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
       endif
 
