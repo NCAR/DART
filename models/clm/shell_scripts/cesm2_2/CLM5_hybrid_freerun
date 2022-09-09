@@ -265,18 +265,21 @@ endif
 
 @ inst = 1
 while ( $inst <= $num_instances )
-
-   set inst_string = `printf %04d $inst`
-
+   
+   if ($num_instances ==1) then
+      set inst_string = '' 
+   else
+      set inst_string = `printf _%04d $inst`
+   endif
    # ===========================================================================
-   set fname = "user_nl_datm_${inst_string}"
+   set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
    # DATM namelist
 
-   set FILE1 = datm.streams.txt.CPLHISTForcing.Solar_${inst_string}
-   set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr_${inst_string}
-   set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr_${inst_string}
-   set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux_${inst_string}
+   set FILE1 = datm.streams.txt.CPLHISTForcing.Solar${inst_string}
+   set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr${inst_string}
+   set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr${inst_string}
+   set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux${inst_string}
    set DOMAINFILE = '/glade/p/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
 
    echo "domainfile = '${DOMAINFILE}'" >> ${fname}
@@ -284,7 +287,7 @@ while ( $inst <= $num_instances )
    echo "          '$FILE2 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
    echo "          '$FILE3 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
    echo "          '$FILE4 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
-   echo "          'datm.streams.txt.presaero.clim_2000_${inst_string} 2000 2000 2000'" >> ${fname}
+   echo "          'datm.streams.txt.presaero.clim_2000${inst_string} 2000 2000 2000'" >> ${fname}
    echo "vectors  = 'u:v' "     >> ${fname}
    echo "mapmask  = 'nomask', " >> ${fname}
    echo "           'nomask', " >> ${fname}
@@ -302,15 +305,23 @@ while ( $inst <= $num_instances )
    ${COPY} ${SOURCEDIR}/${STREAMFILE_STATE3HR}      user_${FILE3} || exit 5
    ${COPY} ${SOURCEDIR}/${STREAMFILE_NONSOLARFLUX}  user_${FILE4} || exit 5
 
+ 
+   if ($num_instances == 1) then
+   foreach FNAME ( user_datm.streams.txt* )
+      echo "modifying $FNAME"
+      sed s/NINST/0001/g $FNAME >! temp
+      sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+   else
    foreach FNAME ( user_datm.streams.txt*${inst_string} )
       echo "modifying $FNAME"
       sed s/NINST/${inst_string}/g $FNAME >! temp
       sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
    end
+   endif
    ${REMOVE} temp
 
    # ===========================================================================
-   set fname = "user_nl_clm_${inst_string}"
+   set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
 
    # This is the opportunity to output additional items at your own discretion.
@@ -334,14 +345,14 @@ while ( $inst <= $num_instances )
 
 
    # ===========================================================================
-   set fname = "user_nl_mosart_${inst_string}"
+   set fname = "user_nl_mosart${inst_string}"
    # ===========================================================================
 
    # We are explicitly constructing the 'finidat_rtm' to match what is getting
    # staged by the 'stage_cesm_files' script
    # If this file is not available or you do not want stage this file set finidat_rtm = ' '.
 
-   echo "finidat_rtm = '"${refcase}.mosart_${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
+   echo "finidat_rtm = '"${refcase}.mosart${inst_string}.r.${reftimestamp}.nc"'" >> ${fname}
 
 @ inst ++
 end
@@ -439,8 +450,12 @@ if ( \${CONTINUE_RUN} == TRUE ) then
       @ inst=1
       while (\$inst <= $num_instances)
 
-         set inst_string = \`printf _%04d \$inst\`
-
+         if ( \$num_instances == 1)
+	   set inst_string = ''
+	 else
+           set inst_string = \`printf _%04d \$inst\`
+         endif
+	 
          echo "\${CASE}.cpl\${inst_string}.r.\${restart_time}.nc"    >! rpointer.drv\${inst_string}
          echo "\${CASE}.clm2\${inst_string}.r.\${restart_time}.nc"   >! rpointer.lnd\${inst_string}
          echo "\${CASE}.datm\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
@@ -469,8 +484,12 @@ else     # CONTINUE_RUN == FALSE
 
    @ inst=1
    while (\$inst <= $num_instances)
-
-      set inst_string = \`printf _%04d \$inst\`
+      
+      if ( \$num_instances == 1 )
+        set inst_string = ''
+      else	
+        set inst_string = \`printf _%04d \$inst\`
+      endif
 
       echo "Staging initial files for instance \$inst of $num_instances"
 
