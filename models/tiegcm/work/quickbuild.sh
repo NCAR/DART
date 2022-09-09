@@ -7,35 +7,37 @@
 main() {
 
 export DART=$(git rev-parse --show-toplevel)
-source "$DART"/build_templates/buildconvfunctions.sh
+source "$DART"/build_templates/buildfunctions.sh
 
-CONVERTER=var
+MODEL=tiegcm
 LOCATION=threed_sphere
-EXTRA="$DART/models/wrf/model_mod.f90 \
-       $DART/models/wrf/module_map_utils.f90 \
-       $DART/observations/obs_converters/var/3DVAR_OBSPROC"
-
 
 programs=(
-gts_to_dart
-littler_tf_dart
-rad_3dvar_to_dart
-obs_sequence_tool
-advance_time
+filter
+model_mod_check
+perfect_model_obs
 )
 
-# build arguments
+serial_programs=(
+create_fixed_network_seq
+create_obs_sequence
+obs_diag
+obs_seq_to_netcdf
+)
+
 arguments "$@"
 
 # clean the directory
 \rm -f -- *.o *.mod Makefile .cppdefs
 
+# build any NetCDF files from .cdl files
+cdl_to_netcdf
+
 # build and run preprocess before making any other DART executables
 buildpreprocess
 
-# build 
-buildconv
-
+# build DART
+buildit
 
 # clean up
 \rm -f -- *.o *.mod

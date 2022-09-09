@@ -54,7 +54,8 @@ use state_structure_mod,  only : get_num_domains, &
                                  get_scale_factor, &
                                  get_has_missing_value, &
                                  get_has_FillValue, &
-                                 do_io_update
+                                 do_io_update, &
+                                 get_io_dim_length
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
 
@@ -593,9 +594,9 @@ do i = 1, get_num_variables(dom)
       endif
 
       ! check that the dimension lengths are the same
-      if (get_dim_length(dom,i,j) /= length(j)) then
+      if (get_io_dim_length(dom,i,j) /= length(j)) then
          write(msgstring,*) 'dimension ', trim(name(j)), "'s length ", &
-                            get_dim_length(dom,i,j), ' in state does not match', &
+                            get_io_dim_length(dom,i,j), ' in state does not match', &
                             ' dimension length ', length(j), ' in ', trim(netcdf_filename)
          call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
       endif

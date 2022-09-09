@@ -1,0 +1,10 @@
+netcdf f10_7 {   // example f10.7 netcdf file for DART
+dimensions:
+        parameter = 1 ;
+variables:
+        double f10_7(parameter) ;
+// global attributes
+        :title = "example f10.7 netcdf file for DART" ;
+data:
+ f10_7 = 70;
+}
