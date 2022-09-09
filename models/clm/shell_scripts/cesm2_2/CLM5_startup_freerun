@@ -97,6 +97,15 @@ ${REMOVE} ${rundir}
 
 echo " Starting create_newcase ..."
 
+if ($num_instances == 1) then
+${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
+                                         --mach ${machine} \
+                                         --compset ${compset} \
+                                         --case ${caseroot} \
+                                         --project ${project} \
+                                         --run-unsupported || exit 2
+else
+
 ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --mach ${machine} \
                                          --compset ${compset} \
@@ -105,6 +114,9 @@ ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --run-unsupported \
                                          --ninst ${num_instances} \
                                          --multi-driver || exit 2
+
+endif
+
 
 # ==============================================================================
 # Preserve a copy of this script and the parameter file as it was run.
