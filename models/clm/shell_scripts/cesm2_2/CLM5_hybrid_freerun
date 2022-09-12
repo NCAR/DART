@@ -51,7 +51,7 @@ setenv run_startdate ${startdate}
 
 # (possibly) override some values from DART_params.csh
 setenv stop_option nmonths
-setenv stop_n 12
+setenv stop_n 1
 setenv rest_n 1
 setenv resubmit 0
 
@@ -89,7 +89,7 @@ ${REMOVE} ${rundir}
 
 echo " Starting create_newcase ..."
 
-if ($num_instances == 1) then
+if (${num_instances} == 1) then
 ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --mach ${machine} \
                                          --compset ${compset} \
@@ -266,10 +266,11 @@ endif
 @ inst = 1
 while ( $inst <= $num_instances )
    
-   if ($num_instances ==1) then
+   if (${num_instances} == 1) then
       set inst_string = '' 
    else
       set inst_string = `printf _%04d $inst`
+      set inst_string2 = `printf %04d $inst`
    endif
    # ===========================================================================
    set fname = "user_nl_datm${inst_string}"
@@ -306,17 +307,18 @@ while ( $inst <= $num_instances )
    ${COPY} ${SOURCEDIR}/${STREAMFILE_NONSOLARFLUX}  user_${FILE4} || exit 5
 
  
-   if ($num_instances == 1) then
-   foreach FNAME ( user_datm.streams.txt* )
-      echo "modifying $FNAME"
-      sed s/NINST/0001/g $FNAME >! temp
-      sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+   if (${num_instances} == 1) then
+     foreach FNAME ( user_datm.streams.txt* )
+        echo "modifying $FNAME"
+        sed s/NINST/0001/g $FNAME >! temp
+        sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+     end
    else
-   foreach FNAME ( user_datm.streams.txt*${inst_string} )
-      echo "modifying $FNAME"
-      sed s/NINST/${inst_string}/g $FNAME >! temp
-      sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
-   end
+     foreach FNAME ( user_datm.streams.txt*${inst_string} )
+        echo "modifying $FNAME"
+        sed s/NINST/${inst_string2}/g $FNAME >! temp
+        sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+     end
    endif
    ${REMOVE} temp
 
@@ -404,9 +406,10 @@ else
   echo 'so files for the initial step of this experiment will be restaged.'
   echo "Date to reset files to is: ${init_time}"
 endif
-echo ''
+
 
 if ( \${CONTINUE_RUN} == TRUE ) then
+
 
    #----------------------------------------------------------------------
    # This block copies over a set of restart files from any previous step of
@@ -450,7 +453,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
       @ inst=1
       while (\$inst <= $num_instances)
 
-         if ( \$num_instances == 1)
+         if ( \${num_instances} == 1) then
 	   set inst_string = ''
 	 else
            set inst_string = \`printf _%04d \$inst\`
@@ -475,6 +478,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
 
 else     # CONTINUE_RUN == FALSE
 
+
    #----------------------------------------------------------------------
    # This block links the right files to rerun the initial (very first)
    # step of an experiment.  The names and locations are set during the
@@ -484,17 +488,21 @@ else     # CONTINUE_RUN == FALSE
 
    @ inst=1
    while (\$inst <= $num_instances)
-      
-      if ( \$num_instances == 1 )
-        set inst_string = ''
-      else	
-        set inst_string = \`printf _%04d \$inst\`
+     
+      if ( \${num_instances} == 1) then
+         set inst_string = \`printf _%04d \$inst\`   
+         set inst_string2 = ''
+      else
+         set inst_string = \`printf _%04d \$inst\`
+         set inst_string2 = \`printf _%04d \$inst\`
       endif
+
 
       echo "Staging initial files for instance \$inst of $num_instances"
 
       if ( -e    ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc ) then
-         ${LINK} ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc .
+         ${LINK} ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc \
+                             ${refcase}.clm2\${inst_string2}.r.${init_time}.nc
       else
          echo "ERROR: ${stagedir}/${refcase}.clm2\${inst_string}.r.${init_time}.nc does not exist."
          echo "       Check your 'reftimestamp' setting, or maybe your 'stagedir' or 'refcase' or ..."
@@ -502,7 +510,8 @@ else     # CONTINUE_RUN == FALSE
       endif
 
       if ( -e    ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc ) then
-         ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
+         ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc \
+                             ${refcase}.mosart\${inst_string2}.r.${init_time}.nc
       else
          echo "WARNING: ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc does not exist."
          echo "       Check your 'reftimestamp' setting, or maybe your 'stagedir' or 'refcase' or ..."
