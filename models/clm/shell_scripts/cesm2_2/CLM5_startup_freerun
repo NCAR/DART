@@ -57,7 +57,7 @@ setenv run_startdate ${startdate}
 
 # override some values from DART_params.csh
 setenv stop_option nmonths
-setenv stop_n 1
+setenv stop_n 12
 setenv rest_n 1
 setenv resubmit 0
 

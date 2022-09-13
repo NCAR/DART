@@ -51,7 +51,7 @@ setenv run_startdate ${startdate}
 
 # (possibly) override some values from DART_params.csh
 setenv stop_option nmonths
-setenv stop_n 1
+setenv stop_n 12
 setenv rest_n 1
 setenv resubmit 0
 
@@ -406,10 +406,9 @@ else
   echo 'so files for the initial step of this experiment will be restaged.'
   echo "Date to reset files to is: ${init_time}"
 endif
-
+echo ''
 
 if ( \${CONTINUE_RUN} == TRUE ) then
-
 
    #----------------------------------------------------------------------
    # This block copies over a set of restart files from any previous step of
@@ -477,7 +476,6 @@ if ( \${CONTINUE_RUN} == TRUE ) then
    echo "All files reset to rerun experiment step for time " \$restart_time
 
 else     # CONTINUE_RUN == FALSE
-
 
    #----------------------------------------------------------------------
    # This block links the right files to rerun the initial (very first)
