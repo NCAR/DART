@@ -57,7 +57,7 @@ setenv run_startdate ${startdate}
 
 # override some values from DART_params.csh
 setenv stop_option nmonths
-setenv stop_n 12
+setenv stop_n 1
 setenv rest_n 1
 setenv resubmit 0
 
@@ -97,7 +97,7 @@ ${REMOVE} ${rundir}
 
 echo " Starting create_newcase ..."
 
-if ($num_instances == 1) then
+if (${num_instances} == 1) then
 ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          --mach ${machine} \
                                          --compset ${compset} \
@@ -256,17 +256,21 @@ endif
 @ inst = 1
 while ( $inst <= $num_instances )
 
-   set inst_string = `printf %04d $inst`
-
+   if (${num_instances} == 1) then
+      set inst_string = '' 
+   else
+      set inst_string = `printf _%04d $inst`
+      set inst_string2 = `printf %04d $inst`
+   endif
    # ===========================================================================
-   set fname = "user_nl_datm_${inst_string}"
+   set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
    # DATM namelist
 
-   set FILE1 = datm.streams.txt.CPLHISTForcing.Solar_${inst_string}
-   set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr_${inst_string}
-   set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr_${inst_string}
-   set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux_${inst_string}
+   set FILE1 = datm.streams.txt.CPLHISTForcing.Solar${inst_string}
+   set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr${inst_string}
+   set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr${inst_string}
+   set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux${inst_string}
    set DOMAINFILE = '/glade/p/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
 
    echo "domainfile = '${DOMAINFILE}'" >> ${fname}
@@ -274,7 +278,7 @@ while ( $inst <= $num_instances )
    echo "          '$FILE2 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
    echo "          '$FILE3 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
    echo "          '$FILE4 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
-   echo "          'datm.streams.txt.presaero.clim_2000_${inst_string} 2000 2000 2000'" >> ${fname}
+   echo "          'datm.streams.txt.presaero.clim_2000${inst_string} 2000 2000 2000'" >> ${fname}
    echo "vectors  = 'u:v' "     >> ${fname}
    echo "mapmask  = 'nomask', " >> ${fname}
    echo "           'nomask', " >> ${fname}
@@ -292,15 +296,24 @@ while ( $inst <= $num_instances )
    ${COPY} ${SOURCEDIR}/${STREAMFILE_STATE3HR}      user_${FILE3} || exit 5
    ${COPY} ${SOURCEDIR}/${STREAMFILE_NONSOLARFLUX}  user_${FILE4} || exit 5
 
+ 
+   if (${num_instances} == 1) then
+     foreach FNAME ( user_datm.streams.txt* )
+        echo "modifying $FNAME"
+        sed s/NINST/0001/g $FNAME >! temp
+        sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+     end
+   else
    foreach FNAME ( user_datm.streams.txt*${inst_string} )
       echo "modifying $FNAME"
-      sed s/NINST/${inst_string}/g $FNAME >! temp
+        sed s/NINST/${inst_string2}/g $FNAME >! temp
       sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
    end
+   endif
    ${REMOVE} temp
 
    # ===========================================================================
-   set fname = "user_nl_clm_${inst_string}"
+   set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
 
    # This is the opportunity to output additional items at your own discretion.
