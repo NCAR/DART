@@ -209,7 +209,7 @@ set  nonomatch       # suppress "rm" warnings if wildcard does not match anythin
 
 set  MOVE = 'mv -v'
 set  COPY = 'cp -v --preserve=timestamps'
-set  LINK = 'ln -vs'
+set  LINK = 'ln -vfs'
 set  REMOVE = 'rm -rf' 
 
 exit 0
