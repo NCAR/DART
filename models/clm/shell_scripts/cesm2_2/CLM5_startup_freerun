@@ -306,7 +306,7 @@ while ( $inst <= $num_instances )
    else
    foreach FNAME ( user_datm.streams.txt*${inst_string} )
       echo "modifying $FNAME"
-        sed s/NINST/${inst_string2}/g $FNAME >! temp
+      sed s/NINST/${inst_string2}/g $FNAME >! temp
       sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
    end
    endif
