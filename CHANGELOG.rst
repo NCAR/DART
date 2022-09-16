@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 14 2022 :: Bug-fix for POP shell scripts. Tag: v10.3.1**
+
+- Fixes bug in POP CESM2.1 shell scripts in which inflation files were not
+  being propagated properly due to link destination already existing.
+
 **August 19 2022 :: Automated setup of new model interfaces. Tag: v10.3.0**
 
 - Automated initial setup of new model interfaces to aid users developing
