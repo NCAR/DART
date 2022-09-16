@@ -733,7 +733,7 @@ else
    where(var_data < binary_fill) var_data = low_conc
    
    if (log_transform) then
-      where (var_data == 0.0_r4)
+      where (var_data == binary_fill)
           var_data = FVAL
       elsewhere
           var_data = log(var_data)
@@ -774,8 +774,9 @@ if (compress) then
    call read_compressed(ncid, varid, var)
 else
    call check(nf90_get_var(ncid,varid,var))
-   where (var == local_fval) var = 0.0_r4
 endif
+
+where (var == local_fval) var = binary_fill
 
 iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
@@ -875,9 +876,11 @@ integer  :: recl ! datasize*4
 real(r4) :: var3d(NX,NY,NZ)
 integer  :: i,j,k
 
+recl = Nx*Ny*Nz*4
+
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 read(iunit,rec=1) var3d
 close(iunit)
 
@@ -907,9 +910,11 @@ integer  :: recl ! datasize*4
 real(r4) :: var2d(NX,NY)
 integer  :: i,j
 
+recl = Nx*Ny*4
+
 iunit = get_unit()
 open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=Nx*Ny*4, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
 read(iunit,rec=1) var2d
 close(iunit)
 
@@ -936,7 +941,7 @@ integer :: n, i, j, k
 
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=Nx*Ny*Nz, convert='BIG_ENDIAN')
+            access='DIRECT', recl=Nx*Ny*Nz*4, convert='BIG_ENDIAN')
 read(iunit,rec=1) var3d
 close(iunit)
 
