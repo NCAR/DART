@@ -22,7 +22,7 @@ DART is often used for the following types of projects:
 
 - Learning about Data Assimilation (DA)
 - Using DART with an existing model and supported observations
-- **Adding a DART interface to a new model**
+- `Adding a DART interface to a new model`_
 - Using new observations with DART in an existing model
 - Using both a new model and new observations with DART
 - Using DART to teach DA
@@ -312,10 +312,43 @@ of the state variables then doing it on demand is more efficient.
 The options here are namelist selectable at runtime and the impact
 on total runtime can be easily measured and compared.
 
-Reuse code when possible
-------------------------
+Adding a DART interface to a new model
+--------------------------------------
 
-The ``models/template`` directory has files that can be used to start
-porting code to support a new model, but we also recommend looking at
-the existing supported models and reusing code from them if possible.
-Models with similar grid types or vertical coordiates are good candidates.
+DART provides a script ``new_model.sh`` which will create the necessary files
+for a new model interface.
+Enter ``./new_model.sh``, then the desired model name and location module separated
+by spaces. This will create the necessary files to get started.
+
+For example to create a model interface for a model called BOUMME which uses
+the 3D sphere location module:
+
+.. code-block::  text
+
+   cd models
+   ./new_model.sh BOUMME threed_sphere
+
+This will create an BOUMME model directory with the following files:
+
+.. code-block:: text
+
+     BOUMME/
+     ├── model_mod.f90
+     ├── readme.rst
+     └── work
+         ├── input.nml
+         └── quickbuild.sh
+
+- ``model_mod.f90`` is where to add the :doc:`required model_mod routines<required-model-mod-routines>`.
+- ``readme.rst``  is a stub to add documenation for your model interface.  
+- ``quickbuild.sh`` is used to compile DART for your model.
+
+
+Templates are chosen based on location module input. The currently supported
+location templates are for 3D and 1D modules, with the possibility for more
+in the future. At the moment, ``threed_sphere``, ``threed_cartesian``, and
+``oned``  will produce model_mod.f90 code that compile will sucessfully with ``./quickbuild.sh``.
+
+We recommend looking at the existing supported models and reusing code from them if
+possible. Models with similar grid types or vertical coordinates are good
+candidates.
