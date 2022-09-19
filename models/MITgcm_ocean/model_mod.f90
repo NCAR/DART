@@ -291,7 +291,7 @@ namelist /model_nml/ assimilation_period_days,     &
                      assimilation_period_seconds,  &
                      model_perturbation_amplitude, &
                      model_shape_file,             &
-                     mitgcm_variables 
+                     mitgcm_variables
 
 logical :: go_to_dart    = .false.
 logical :: do_bgc        = .false.
@@ -527,7 +527,7 @@ if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 
 call parse_variable_input(mitgcm_variables, model_shape_file, nvars, &
-                var_names, quantity_list, clamp_vals, update_list)
+                      var_names, quantity_list, clamp_vals, update_list)
 
 domain_id = add_domain(model_shape_file, nvars, &
                     var_names, quantity_list, clamp_vals, update_list )
@@ -1051,7 +1051,7 @@ integer,             intent(in)  :: lon_index, lat_index, level
 integer,             intent(in)  :: var_id ! state variable
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-logical,             intent(out) :: masked                       
+logical,             intent(out) :: masked
 real(r8)                         :: get_val(ens_size)
 
 integer(i8) :: state_index
@@ -1062,9 +1062,9 @@ if ( .not. module_initialized ) call static_init_model
 state_index = get_dart_vector_index_new(lon_index, lat_index, level, domain_id, var_id)
 
 if (state_index .ne. -1) then
-	get_val = get_state(state_index,state_handle)
+   get_val = get_state(state_index,state_handle)
 else
-	masked = .true. 
+   masked = .true. 
 endif
 
 ! Masked returns false if the value is masked
