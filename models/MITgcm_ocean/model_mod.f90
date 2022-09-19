@@ -260,7 +260,8 @@ integer :: comp3d=-1 ! size of commpressed variables
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
-real(r4), allocatable :: XC_sq(:), YC_sq(:), XG_sq(:), YG_sq(:), ZC_sq(:)
+real(r4), allocatable :: XC_sq(:), YC_sq(:), XG_sq(:), YG_sq(:)
+real(r8), allocatable :: ZC_sq(:)
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -989,18 +990,19 @@ function get_compressed_dart_vector_index(iloc, jloc, kloc, dom_id, var_id)
 integer, intent(in) :: iloc, jloc, kloc
 integer, intent(in) :: dom_id, var_id
 integer(i8)         :: get_compressed_dart_vector_index
-real(r4)            :: lon_var, lat_var, depth_var   ! The target lat, lon, depth values
+
+real(r4)            :: lon, lat
+real(r8)            :: depth
 integer             :: i    ! loop counter
 logical             :: lon_found, lat_found, depth_found
-integer             :: ct
 
 integer(i8) :: offset
 
 offset = get_index_start(dom_id, var_id)
 
-lon_var = XC(iloc) !lon
-lat_var = YC(jloc) !lat
-depth_var = ZC(kloc) !depth
+lon = XC(iloc)   !lon
+lat = YC(jloc)   !lat
+depth = ZC(kloc) !depth
 
 get_compressed_dart_vector_index = -1
 
@@ -1011,13 +1013,13 @@ do i=1, comp3d
 	lat_found = .false.
 	depth_found = .false.
 	! If we find the value
-	if ( XC_sq(i) == lon_var ) then
+	if ( XC_sq(i) == lon ) then
 		lon_found = .true.
 	endif
-	if ( YC_sq(i) == lat_var ) then
+	if ( YC_sq(i) == lat ) then
 		lat_found = .true.
 	endif
-	if ( ZC_sq(i) == depth_var ) then
+	if ( ZC_sq(i) == depth ) then
 		depth_found = .true.
 	endif
 	
@@ -1151,7 +1153,7 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
-real(r4) :: lat, lon, depth
+real(r8) :: lat, lon, depth
 integer  :: iloc, jloc, kloc
 
 if ( .not. module_initialized ) call static_init_model
@@ -1181,8 +1183,7 @@ endif
 if (qty == QTY_SEA_SURFACE_HEIGHT .or. &
     qty == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
 
-!HK what is the real,r8 here for? checking for equality?
-location = set_location(real(lon, r8), real(lat, r8), real(depth, r8), VERTISHEIGHT)
+location = set_location(lon, lat, depth, VERTISHEIGHT)
 
 end subroutine get_state_meta_data
 
