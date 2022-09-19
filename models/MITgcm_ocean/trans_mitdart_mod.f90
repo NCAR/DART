@@ -936,7 +936,6 @@ subroutine fill_compressed_coords()
 
 !XG,etc read from PARAM04 in static_init_trans
 real(r4) :: var3d(NX,NY,NZ)
-real(r4) :: var2d(NX,NY)
 integer :: n, i, j, k
 
 iunit = get_unit()

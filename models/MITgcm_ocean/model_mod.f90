@@ -57,7 +57,7 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_io_clamping_minval
                                   
 use netcdf_utilities_mod,  only : nc_open_file_readonly, nc_get_variable, & 
-                                  nc_get_variable_size
+                                  nc_get_dimension_size, nc_close_file
 
 use netcdf
 
@@ -256,12 +256,11 @@ integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf f
 ! standard MITgcm namelist and filled in here.
 
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
+integer :: comp3d=-1 ! size of commpressed variables
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 real(r4), allocatable :: XC_sq(:), YC_sq(:), XG_sq(:), YG_sq(:), ZC_sq(:)
-integer               :: xcsqsize, ycsqsize, zcsqsize
-integer               :: shape_file_id
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -281,7 +280,6 @@ integer, parameter :: MAX_STATE_VARIABLES = 20
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
 
-
 character(len=256) :: model_shape_file = ' '
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
@@ -296,8 +294,9 @@ namelist /model_nml/ assimilation_period_days,     &
 logical :: go_to_dart    = .false.
 logical :: do_bgc        = .false.
 logical :: log_transform = .false.
+logical :: compress = .false.
 
-namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform
+namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform, compress
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -331,6 +330,7 @@ logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
 
 integer :: i, iunit, io
 integer :: ss, dd
+integer :: ncid ! for reading compressed coordinates
 
 ! The Plan:
 !
@@ -531,30 +531,29 @@ call parse_variable_input(mitgcm_variables, model_shape_file, nvars, &
 
 domain_id = add_domain(model_shape_file, nvars, &
                     var_names, quantity_list, clamp_vals, update_list )
-! Open the file
-shape_file_id = nc_open_file_readonly(model_shape_file)
-! Get the size
-call nc_get_variable_size(shape_file_id, 'XC_3D', xcsqsize)
-call nc_get_variable_size(shape_file_id, 'YC_3D', ycsqsize)
-call nc_get_variable_size(shape_file_id, 'ZC_3D', zcsqsize)
 
-! Allocate the variable and get the values
-allocate(xc_sq(xcsqsize))
-allocate(yc_sq(ycsqsize))
-allocate(zc_sq(zcsqsize))
-allocate(xg_sq(xcsqsize))
-allocate(yg_sq(ycsqsize))
+if (compress) then ! read in compressed coordinates
 
-call nc_get_variable(shape_file_id, 'XC_3D', XC_sq)
-call nc_get_variable(shape_file_id, 'YC_3D', YC_sq)
-call nc_get_variable(shape_file_id, 'ZC_3D', ZC_sq)
+   ncid = nc_open_file_readonly(model_shape_file)
+   comp3d = nc_get_dimension_size(ncid, 'comp3d', 'static_init_model', model_shape_file)
 
-! EL: tentative solution of XG values
-do i=1, xcsqsize
-	XG_sq(i) = XC_sq(i) - 0.5*delX(1) ! HK should this be delX(i)?
-	YG_sq(i) = YC_sq(i) - 0.5*delY(1)
-enddo
+   allocate(XC_sq(comp3d))
+   allocate(YC_sq(comp3d))
+   allocate(ZC_sq(comp3d))  ! ZC is r8
 
+   allocate(XG_sq(comp3d))
+   allocate(YG_sq(comp3d))
+
+   call nc_get_variable(ncid, 'XCcomp', XC_sq)
+   call nc_get_variable(ncid, 'YCcomp', YC_sq)
+   call nc_get_variable(ncid, 'ZCcomp', ZC_sq)
+
+   call nc_get_variable(ncid, 'XGcomp', XG_sq)
+   call nc_get_variable(ncid, 'YGcomp', YG_sq)
+
+   call nc_close_file(ncid)
+
+endif
 
 model_size = get_domain_size(domain_id)
 
@@ -981,66 +980,55 @@ endif
 end function lon_dist
 
 
-function get_dart_vector_index_new(iloc, jloc, kloc, dom_id, var_id)
+function get_compressed_dart_vector_index(iloc, jloc, kloc, dom_id, var_id)
+!=======================================================================
+!
+
+! returns the dart vector index for the compressed state
 
 integer, intent(in) :: iloc, jloc, kloc
 integer, intent(in) :: dom_id, var_id
-integer(i8)         :: get_dart_vector_index_new
-real(r4)            :: x_var, y_var, z_var   ! The target lat, lon, level values
+integer(i8)         :: get_compressed_dart_vector_index
+real(r4)            :: lon_var, lat_var, depth_var   ! The target lat, lon, depth values
 integer             :: i    ! loop counter
-logical             :: x_close, y_close, z_close
+logical             :: lon_found, lat_found, depth_found
 integer             :: ct
 
-! integer :: ndims
 integer(i8) :: offset
-! integer :: dsize(NF90_MAX_VAR_DIMS)
 
-! Step 1
 offset = get_index_start(dom_id, var_id)
 
-! Step 2
-x_var = XC(iloc)
-y_var = YC(jloc)
-z_var = ZC(kloc)
+lon_var = XC(iloc) !lon
+lat_var = YC(jloc) !lat
+depth_var = ZC(kloc) !depth
 
-! Set the default value to be -1
-get_dart_vector_index_new = -1
-! Step 3, 4
-do i=1, xcsqsize
-	x_close = .FALSE.
-	y_close = .FALSE. 
-	z_close = .FALSE.
+get_compressed_dart_vector_index = -1
+
+! Find the index in the compressed state
+! HK you could read in {X,Y,Z}comp_ind if you did not want to do this search
+do i=1, comp3d
+	lon_found = .false.
+	lat_found = .false.
+	depth_found = .false.
 	! If we find the value
-	if ( XC_sq(i) .eq. x_var ) then
-		x_close = .TRUE. 
+	if ( XC_sq(i) == lon_var ) then
+		lon_found = .true.
 	endif
-	if ( YC_sq(i) .eq. y_var ) then
-		y_close = .TRUE. 
+	if ( YC_sq(i) == lat_var ) then
+		lat_found = .true.
+	endif
+	if ( ZC_sq(i) == depth_var ) then
+		depth_found = .true.
 	endif
 	
-	if ( ZC_sq(i) .eq. z_var ) then
-		z_close = .TRUE. 
-	endif
-	
-	if (x_close .and. y_close .and. z_close )then
-		get_dart_vector_index_new = offset + i - 1
+	if (lon_found .and. lat_found .and. depth_found )then
+		get_compressed_dart_vector_index = offset + i - 1
 		exit
 	endif
 enddo
 
-end function get_dart_vector_index_new
+end function get_compressed_dart_vector_index
 
-!> The iloc, jloc, and kloc here are the grid indices
-!> For example, it might be (1000,1000,50)
-!> For the original case, the approach was to find the offset (i.e. where the specific
-!> variable starts in the state vector, then add number of values in dimensions to the offset
-!> to get the values. 
-
-!> NEW APPROACH: 
-!> 1. still need to find offset
-!> 2. Need to find XC(iloc), YC(jloc), ZC(kloc) 
-!> 3. Start searching for the values above in XC_sq, YC_sq, ZC_sq (long arrays)
-!> 4. return the value and add offset, that should be it.   
 
 function get_val(lon_index, lat_index, level, var_id, state_handle,ens_size, masked)
 !=======================================================================
@@ -1059,30 +1047,27 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-state_index = get_dart_vector_index_new(lon_index, lat_index, level, domain_id, var_id)
+if (compress) then
 
-if (state_index .ne. -1) then
-   get_val = get_state(state_index,state_handle)
+   state_index = get_compressed_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
+
+   if (state_index .ne. -1) then
+      get_val = get_state(state_index,state_handle)
+   else
+      masked = .true.
+   endif
+
 else
-   masked = .true. 
+
+   state_index = get_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
+   get_val = get_state(state_index,state_handle)
+
+   masked = .false.
+   do i=1,ens_size  ! HK this is checking the whole ensemble, can you have different masks for each ensemble member?
+       if(get_val(i) == FVAL) masked = .true.
+   enddo
+
 endif
-
-! Masked returns false if the value is masked
-! A grid variable is assumed to be masked if its value is FVAL. 
-! Just to maintain legacy, we also assume that A grid variable is assumed 
-! to be masked if its value is exactly 0.
-! See discussion in lat_lon_interpolate.
-
-! MEG CAUTION: THE ABOVE STATEMENT IS INCORRECT
-! trans_mitdart already looks for 0.0 and makes them FVAL
-! So, in the condition below we don't need to check for zeros
-! The only mask is FVAL
-
-! No need to search for fill values now. Default get_state_vector_index_new is -1
-! do i=1,ens_size
-! !   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
-!     if(get_val(i) == FVAL) masked = .true.
-! enddo
 
 end function get_val
 
@@ -1173,19 +1158,30 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, iloc, jloc, kloc, kind_index = qty)
 
-! The new array is 1-D
+if (compress) then ! all variables ae 1D
+   lon   = XC_sq(iloc)
+   lat   = YC_sq(iloc)
+   depth = ZC_sq(iloc)
+   ! Acounting for variables those on staggered grids
+   if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG_sq(iloc)
+   if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG_sq(iloc)
+else
 
-lon   = XC_sq(iloc)
-lat   = YC_sq(iloc)
-depth = ZC_sq(iloc)
+   lon   = XC(iloc)
+   lat   = YC(jloc)
+   depth = ZC(kloc)
 
-! Acounting for surface variables and those on staggered grids
+   ! Acounting for variables those on staggered grids
+   if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
+   if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)
+
+endif
+
 ! MEG: check chl's depth here
 if (qty == QTY_SEA_SURFACE_HEIGHT .or. &
     qty == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
-if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG_sq(iloc)
-if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG_sq(iloc)  
 
+!HK what is the real,r8 here for? checking for equality?
 location = set_location(real(lon, r8), real(lat, r8), real(depth, r8), VERTISHEIGHT)
 
 end subroutine get_state_meta_data
