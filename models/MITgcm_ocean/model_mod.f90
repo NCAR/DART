@@ -1390,6 +1390,8 @@ end subroutine nc_write_model_atts
 !------------------------------------------------------------------
 ! Create an ensemble of states from a single state.
 
+! Note if you perturb a compressed state, this will not be bitwise
+! with perturbing a non-compressed state.
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
