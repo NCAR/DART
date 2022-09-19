@@ -22,6 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 16 2022 :: Bug-fix for CLM shell scripts. Tag: v10.3.2**
+
+- Fixes dtlimit bug in cesm2.2 CLM shell scripts.  Loads all CAM
+  reanalysis files within datm data stream file regardless if it
+  is single year or multi-year run.
+- Fixes single instance bug in cems2.2 CLM shell scripts. Allows
+  for freerun scripts to generate single instance simulations.
+
 **September 14 2022 :: Bug-fix for POP shell scripts. Tag: v10.3.1**
 
 - Fixes bug in POP CESM2.1 shell scripts in which inflation files were not
