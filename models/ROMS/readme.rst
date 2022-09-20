@@ -49,7 +49,18 @@ The DART forward operators require interpolation from the ROMS terrain-following
 and horizontally curvilinear orthogonal coordinates to the observation location.
 Please contact us for more information about this interpolation.
 
-A Note About Filenames
+Generating an initial ensemble
+------------------------------
+
+The ROMS interface provides the ability to create an ensemble of initial ROMS
+history files from an initial file by using the
+:doc:`/assimilation_code/programs/perturb_single_instance/perturb_single_instance`.
+You can specify an ensemble of any size in the ``perturb_single_instance``
+namelist in ``input.nml`` and this program will randomly perturb the 
+temperature and salinity fields of an initial ROMS history file to generate 
+the ensemble.
+
+A note about filenames
 ----------------------
 
 During the course of an experiment, many files are created. To make them unique,
