@@ -34,7 +34,7 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI, &
                              MISSING_I, MISSING_R4, MISSING_R8, i4, i8, &
-                             vtablenamelength
+                             vtablenamelength, MAX_NUM_DOMS, MAX_FILES
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              print_time, print_date,                            &
@@ -86,8 +86,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, n
 use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
                                   nc_write_location
 
-use default_model_mod,     only : pert_model_copies, nc_write_model_vars, init_conditions, &
-                                  init_time, adv_1step
+use default_model_mod,     only : nc_write_model_vars, init_conditions, init_time, &
+                                  adv_1step
 
 use typesizes
 use netcdf
@@ -152,6 +152,12 @@ logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
+integer               :: ens_size                       = 3
+character(len=256)    :: input_files(MAX_FILES)         = 'roms_input.nc'
+character(len=256)    :: output_file_list(MAX_NUM_DOMS) = ''
+character(len=256)    :: output_files(MAX_FILES)        = ''
+real(r8)              :: perturbation_amplitude         = 0.2
+
 namelist /model_nml/  &
    assimilation_period_days,    &
    assimilation_period_seconds, &
@@ -159,6 +165,14 @@ namelist /model_nml/  &
    vert_localization_coord,     &
    debug,                       &
    variables
+
+namelist /perturb_single_instance_nml/ &
+     ens_size,                         &
+     input_files,                      &
+     output_files,                     &
+     output_file_list,                 &
+     perturbation_amplitude
+
 
 integer :: nfields   ! This is the number of variables in the DART state vector.
 
@@ -673,6 +687,46 @@ call nc_synchronize_file(ncid)
 
 
 end subroutine nc_write_model_atts
+
+
+subroutine pert_model_copies(state_ens_handle, ens_size, perturbation_amplitude, interf_provided)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: perturbation_amplitude
+logical,             intent(out)   :: interf_provided
+
+integer     :: var_type
+integer     :: j,i 
+integer(i8) :: dart_index
+type(location_type) :: location
+
+! Storage for a random sequence for perturbing a single initial state
+type(random_seq_type) :: random_seq
+
+if ( .not. module_initialized ) call static_init_model
+
+interf_provided = .true.
+
+! Initialize random number sequence
+call init_random_seq(random_seq, my_task_id())
+
+! only perturb the actual ocean cells; leave the land and
+! ocean floor values alone.
+do i=1,state_ens_handle%my_num_vars
+   dart_index = state_ens_handle%my_vars(i)
+   call get_state_meta_data(dart_index, location, var_type)
+   do j=1, ens_size
+      if (var_type == QTY_TEMPERATURE .or. var_type == QTY_SALINITY) then
+         state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+            state_ens_handle%copies(j,i), &
+            perturbation_amplitude)
+
+      endif
+   enddo
+enddo
+
+end subroutine pert_model_copies
 
 !-----------------------------------------------------------------------
 !> writes the time of the current state and (optionally) the time
