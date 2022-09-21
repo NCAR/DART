@@ -12,8 +12,7 @@ They are named according to their dynamical core ("dycore").
 As of 2021 these include Finite Volume Community Atmosphere Model (CAM-FV), 
 Spectral Element (CAM-SE), and MPAS.
 The DART system has supported data assimilation into CAM-FV continuously for many years.
-It has also provided an interface to CAM-SE on an as-needed basis,
-but we expect to make that a continuously supported interface in 2021.
+An interface to CAM-SE was added to DART in 2022.
 An interface to MPAS is being developed (contact us about the current status).
 
 .. |CAM6_Rean| replace:: 1 degree reanalysis wiki
