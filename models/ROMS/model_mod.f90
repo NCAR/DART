@@ -34,7 +34,7 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI, &
                              MISSING_I, MISSING_R4, MISSING_R8, i4, i8, &
-                             vtablenamelength, MAX_NUM_DOMS, MAX_FILES
+                             vtablenamelength
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              print_time, print_date,                            &
