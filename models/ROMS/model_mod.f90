@@ -697,19 +697,18 @@ interf_provided = .true.
 ! Initialize random number sequence
 call init_random_seq(random_seq, my_task_id())
 
-! only perturb the actual ocean cells; leave the land and
-! ocean floor values alone.
+! Perturb the salinity and temperature fields
+
 do i=1,state_ens_handle%my_num_vars
    dart_index = state_ens_handle%my_vars(i)
    call get_state_meta_data(dart_index, location, var_type)
-   do j=1, ens_size
-      if (var_type == QTY_TEMPERATURE .or. var_type == QTY_SALINITY) then
+   if (var_type == QTY_TEMPERATURE .or. var_type == QTY_SALINITY) then
+      do j=1, ens_size
          state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
             state_ens_handle%copies(j,i), &
             perturbation_amplitude)
-
-      endif
-   enddo
+      enddo
+   endif
 enddo
 
 end subroutine pert_model_copies
