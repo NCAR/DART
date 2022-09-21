@@ -833,6 +833,18 @@ of the following parameters in either the setup script or input.nml.
 
       inf_damping           = 0.6,                   0,
 
+CAM-SE
+------
+
+DART requires more information than what is avaiable the default output files from CAM-SE. 
+Set the following options in the CESM ``user_nl_cam`` namelist to have CESM generate
+the files required for DART.
+
+    .. code-block:: text
+
+       inithist               = 'ENDOFRUN' 
+       se_write_all_corners = .true.
+
 
 .. Files
    -----
