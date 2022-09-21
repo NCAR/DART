@@ -166,14 +166,6 @@ namelist /model_nml/  &
    debug,                       &
    variables
 
-namelist /perturb_single_instance_nml/ &
-     ens_size,                         &
-     input_files,                      &
-     output_files,                     &
-     output_file_list,                 &
-     perturbation_amplitude
-
-
 integer :: nfields   ! This is the number of variables in the DART state vector.
 
 integer :: domain_id ! global variable for state_structure_mod routines
