@@ -22,7 +22,7 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**September 20 2022 :: Feature request for ROMS model_mod for Tag: v10.3.3**
+**September 21 2022 :: ROMS model_mod perturbation routine Tag: v10.4.0**
 
 - Adds a pert_model_copies subroutine to the ROMS model_mod to enable proper 
   functioning of perturb_single_instance for ROMS.
