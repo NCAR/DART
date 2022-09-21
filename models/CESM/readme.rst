@@ -201,7 +201,7 @@ $DART/models/{cesm components} organization
    PATHNAMES                         NOTES
    ================================= =======================================================================================
    \                        
-   $DART/models/**cam-fv**/          An interface for the CAM-FV dynamical core (CAM-SE is available in $DART/models/cam-fv)
+   $DART/models/**cam-fv**/          An interface for the CAM-FV dynamical core (CAM-SE is available in $DART/models/cam-se)
    ...model_mod.\*                   The fortran interface between CAM-FV and DART
    ...work/                          Build DART executables (filter, ...) here before running setup\_\*
    ...shell_scripts/                 Setup and support scripts
