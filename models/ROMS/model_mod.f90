@@ -152,12 +152,6 @@ logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
-integer               :: ens_size                       = 3
-character(len=256)    :: input_files(MAX_FILES)         = 'roms_input.nc'
-character(len=256)    :: output_file_list(MAX_NUM_DOMS) = ''
-character(len=256)    :: output_files(MAX_FILES)        = ''
-real(r8)              :: perturbation_amplitude         = 0.2
-
 namelist /model_nml/  &
    assimilation_period_days,    &
    assimilation_period_seconds, &
