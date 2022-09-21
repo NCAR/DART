@@ -836,7 +836,7 @@ of the following parameters in either the setup script or input.nml.
 CAM-SE
 ------
 
-DART requires more information than what is avaiable the default output files from CAM-SE. 
+DART requires more information than what is available in the default output files from CAM-SE.
 Set the following options in the CESM ``user_nl_cam`` namelist to have CESM generate
 the files required for DART.
 
