@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 22 2022 :: Bug-fix for pertub_single_instance. Tag v10.5.1**
+
+- Program perturb_single_instance was running without perturbing when
+  interf_provided = .false. (silent fail).
+  Model specific pert_model_copies is now required to run perturb_single_instance
+
 **September 22 2022 :: CAM-SE. Tag: v10.5.0**
 
 - CAM-SE interface for Manhattan
