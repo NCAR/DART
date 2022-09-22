@@ -97,3 +97,12 @@
    debug                       = .true.
   /
 
+&seaicedata_to_obs_netcdf_nml
+   year              = 2019
+   doy               = 1
+   data_type         = 11
+   seaice_input_file = '/glade/scratch/mollyw/external_data/IS2_reduced/freeboard/IS2_fb_2019.01.01.nc'
+   obs_out_file      = 'obs_seq.2019-01-01'
+   itd_ob            = .false.
+   debug             = .true.
+   /
