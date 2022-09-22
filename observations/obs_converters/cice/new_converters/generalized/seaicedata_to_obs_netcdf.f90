@@ -74,7 +74,7 @@ logical  :: itd_ob = .false. ! set to .true. if observation has ITD dimension
 logical  :: debug = .false.  ! set to .true. to print info
 
 namelist /seaicedata_to_obs_netcdf_nml/  year, doy, data_type, seaice_input_file, &
-                                         obs_out_file, maskfile, itd_ob, &
+                                         obs_out_file, itd_ob, &
                                          debug
 
 ! ------------------------
@@ -195,7 +195,7 @@ do t = 1, len_time
       if ( lat(t) >  90.0_r8 .or. lat(t) <   40.0_r8 ) cycle 
       if ( lon(t) <   0.0_r8 .or. lon(t) >  360.0_r8 ) cycle 
       
-      ! If the mask or data values are outside acceptable bounds, skip them.
+      ! If the:wq data values are outside acceptable bounds, skip them.
       if ( seaice_data(t, k) < 0.00_r8 .or.  seaice_data(t, k) > 25.0_r8) cycle
       if (seaice_error(t, k) < 0.00_r8 ) cycle
 
