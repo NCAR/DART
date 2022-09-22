@@ -192,12 +192,12 @@ do t = 1, len_time
       if (debug) print *, 'start of main loop, ', iacc, ialo
       
       !! check the lat/lon values to see if they are ok
-      if ( lat(t) >  90.0_r8 .or. lat(t) <   40.0_r8 ) cycle acrossloop
-      if ( lon(t) <   0.0_r8 .or. lon(t) >  360.0_r8 ) cycle acrossloop
+      if ( lat(t) >  90.0_r8 .or. lat(t) <   40.0_r8 ) cycle 
+      if ( lon(t) <   0.0_r8 .or. lon(t) >  360.0_r8 ) cycle 
       
       ! If the mask or data values are outside acceptable bounds, skip them.
-      if ( seaice_data(t, k) < 0.00_r8 .or.  seaice_data(t, k) > 25.0_r8) cycle acrossloop
-      if (seaice_error(t, k) < 0.00_r8 ) cycle acrossloop
+      if ( seaice_data(t, k) < 0.00_r8 .or.  seaice_data(t, k) > 25.0_r8) cycle
+      if (seaice_error(t, k) < 0.00_r8 ) cycle
 
       ! assign latitude, longitude, category, and error of okay values
       thislat = lat(t)
