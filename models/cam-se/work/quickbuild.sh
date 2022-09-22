@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=cam-fv
+MODEL=cam-se
 LOCATION=threed_sphere
 EXTRA=$DART/models/cam-common-code
 
@@ -30,6 +30,7 @@ create_obs_sequence
 fill_inflation_restart
 obs_common_subset
 obs_diag
+obs_impact_tool
 obs_selection
 obs_seq_coverage
 obs_seq_to_netcdf

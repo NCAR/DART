@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 22 2022 :: CAM-SE. Tag: v10.5.0**
+
+- CAM-SE interface for Manhattan
+- Shared code for CAM-SE and CAM-FV model_mods in cam-common-code
+
 **September 21 2022 :: ROMS model_mod perturbation routine Tag: v10.4.0**
 
 - Adds a pert_model_copies subroutine to the ROMS model_mod to enable proper 
