@@ -215,8 +215,8 @@ end do
 
 ! if we added any obs to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
-   if (debug) print *, 'writing obs_seq for ', time_obs, ', obs_count = ', get_num_obs(obs_seq)
-   ! if (debug) print *, 'obs_count = ', get_num_obs(obs_seq)
+   ! if (debug) print *, 'writing obs_seq for ', time_obs, ', obs_count = ', get_num_obs(obs_seq)
+   if (debug) print *, 'obs_count = ', get_num_obs(obs_seq)
    call write_obs_seq(obs_seq, obs_out_file)
 endif
    
