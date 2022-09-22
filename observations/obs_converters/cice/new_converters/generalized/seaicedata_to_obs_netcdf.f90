@@ -158,35 +158,34 @@ max_obs    = len_time*catdim
 num_copies = 1
 num_qc     = 1
 
+! all obs in a single file are the same time.
+comp_day0 = set_date(year, 1, 1, 0, 0, 0)
+time_obs = comp_day0 + set_time(0, doy)
+
+! extract time of observation into gregorian day, sec.
+call get_time(time_obs, osec, oday)
+! call the initialization code, and initialize two empty observation types
+call static_init_obs_sequence()
+call init_obs(obs,      num_copies, num_qc)
+call init_obs(prev_obs, num_copies, num_qc)
+first_obs = .true.
+   
+! create a new, empty obs_seq file.  you must give a max limit
+! on number of obs.  increase the size if too small.
+call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
+
+! the first one needs to contain the string 'observation' and the
+! second needs the string 'QC'.
+call set_copy_meta_data(obs_seq, 1, 'observation')
+call set_qc_meta_data(obs_seq, 1, 'Data QC')
+
+! we have to pick an error range.  since this is a seaice cover fraction
+! observation, the valid values should go from 0 to 1.0, so pick 0.1 for now.
+qc = 0.0_r8     ! we will reject anything with a bad qc
+   
+! move through the observations and create a DART 3d observation if they pass
+! quality control checks 
 do t = 1, len_time
-
-   ! all obs in a single file are the same time.
-   comp_day0 = set_date(year, 1, 1, 0, 0, 0)
-   time_obs = comp_day0 + set_time(0, doy)
-
-   ! extract time of observation into gregorian day, sec.
-   call get_time(time_obs, osec, oday)
-   ! call the initialization code, and initialize two empty observation types
-   call static_init_obs_sequence()
-   call init_obs(obs,      num_copies, num_qc)
-   call init_obs(prev_obs, num_copies, num_qc)
-   first_obs = .true.
-
-   ! create a new, empty obs_seq file.  you must give a max limit
-   ! on number of obs.  increase the size if too small.
-   call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
-
-   ! the first one needs to contain the string 'observation' and the
-      ! second needs the string 'QC'.
-   call set_copy_meta_data(obs_seq, 1, 'observation')
-   call set_qc_meta_data(obs_seq, 1, 'Data QC')
-
-   ! we have to pick an error range.  since this is a seaice cover fraction
-   ! observation, the valid values should go from 0 to 1.0, so pick 0.1 for now.
-   qc = 0.0_r8     ! we will reject anything with a bad qc
-
-   ! move through the observations and create a DART 3d observation if they pass
-   ! quality control checks 
    do k = 1, catdim
       
       if (debug) print *, 'start of main loop, ', iacc, ialo
@@ -212,24 +211,15 @@ do t = 1, len_time
 
       if (debug) print *, 'added ', obs_name, ' obs to output seq'
    end do
+end do
 
-
-   ! if we added any obs to the sequence, write it out to a file now.
-   if ( get_num_obs(obs_seq) > 0 ) then
-   !   if (debug) print *, 'writing obs_seq for ', time_obs, ', obs_count = ', get_num_obs(obs_seq)
-      if (debug) print *, 'obs_count = ', get_num_obs(obs_seq)
-      call write_obs_seq(obs_seq, obs_out_file)
-   endif
-
-   ! adjust time to move through next timestep
-   doy = doy + 1
-   if (doy > 365) then
-      doy = 1
-      year = year + 1
-   end if
-
-enddo 
-
+! if we added any obs to the sequence, write it out to a file now.
+if ( get_num_obs(obs_seq) > 0 ) then
+   if (debug) print *, 'writing obs_seq for ', time_obs, ', obs_count = ', get_num_obs(obs_seq)
+   ! if (debug) print *, 'obs_count = ', get_num_obs(obs_seq)
+   call write_obs_seq(obs_seq, obs_out_file)
+endif
+   
 ! release allocated arrays 
 deallocate(seaice_data, seaice_error, lon, lat)
 
