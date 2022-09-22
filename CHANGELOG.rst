@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 21 2022 :: ROMS model_mod perturbation routine Tag: v10.4.0**
+
+- Adds a pert_model_copies subroutine to the ROMS model_mod to enable proper 
+  functioning of perturb_single_instance for ROMS.
+- Updates ROMS documentation with an explanation of how to generate an initial
+  ensemble of history files.
+
 **September 16 2022 :: Bug-fix for CLM shell scripts. Tag: v10.3.2**
 
 - Fixes dtlimit bug in cesm2.2 CLM shell scripts.  Loads all CAM
