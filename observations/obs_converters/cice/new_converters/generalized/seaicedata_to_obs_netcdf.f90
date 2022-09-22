@@ -45,11 +45,10 @@ implicit none
 
 character(len=*), parameter :: routine = 'seaicedata_to_obs_netcdf'
 
-integer :: n, i, j, k, t, oday, osec, rcio, iunit, otype, io
+integer :: n, k, t, oday, osec, rcio, iunit, otype, io
 integer :: num_copies, num_qc, max_obs, iacc, ialo, ncid, varid, data_type_int
 integer :: axdim, aydim, catdim, len_time
 integer :: along_base, across_base
-real(r8), allocatable :: tmask(:,:) ! float tmask:comment = "0 = land, 1 = ocean" ;
 character(len=128) :: varname, obs_name
 
 logical  :: file_exist, first_obs
@@ -57,9 +56,9 @@ logical  :: file_exist, first_obs
 real(r8) :: temp, qc, wdir, wspeed, werr, thiserr
 real(r8) :: uwnd, uerr, vwnd, verr
 real(r8) :: dlon, dlat, thislon, thislat, thiscat
-real(r8), allocatable :: lat(:,:,:), lon(:,:,:)
-real(r8), allocatable :: seaice_error(:,:,:,:)
-real(r8), allocatable :: seaice_data(:,:,:,:)
+real(r8), allocatable :: lat(:), lon(:)
+real(r8), allocatable :: seaice_error(:,:)
+real(r8), allocatable :: seaice_data(:,:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -71,7 +70,6 @@ integer  :: doy       = 1    ! October 14th
 integer  :: data_type = 12   ! integer index of desired data type, SIC by default
 character(len=256) :: seaice_input_file = 'seaicedata.input'
 character(len=256) :: obs_out_file      = 'obs_seq.out'
-character(len=256) :: maskfile          = 'cice_hist.nc'
 logical  :: itd_ob = .false. ! set to .true. if observation has ITD dimension
 logical  :: debug = .false.  ! set to .true. to print info
 
@@ -97,8 +95,6 @@ ncid = nc_open_file_readonly(seaice_input_file, routine)
 
 ! get dims along and across the swath path
 call getdimlen(ncid, 'time', len_time)
-call getdimlen(ncid, 'time',    axdim)
-call getdimlen(ncid, 'time',    aydim)
 if (itd_ob) then 
    call getdimlen(ncid, 'nc', catdim)
 else 
@@ -107,11 +103,11 @@ endif
 
 ! remember that when you ncdump the netcdf file, the dimensions are
 ! listed in C order.  when you allocate them for fortran, reverse the order.
-allocate( seaice_data(len_time, axdim, aydim, catdim))
-allocate(seaice_error(len_time, axdim, aydim, catdim))
-allocate(         lat(len_time, axdim, aydim))
-allocate(         lon(len_time, axdim, aydim))
-allocate(       tmask(axdim, aydim))
+allocate(         lat(len_time))
+allocate(         lon(len_time))
+allocate( seaice_data(len_time, catdim))
+allocate(seaice_error(len_time, catdim))
+
 
 
 ! get string name type of observation
@@ -147,18 +143,6 @@ call nc_check(io, routine, 'nf90_get_var "'//trim(varname)//'"')
 ! close file
 call nc_close_file(ncid, routine, 'data file')
 
-! read in ocean/land mask from a different file.
-ncid = nc_open_file_readonly(maskfile, routine)
-
-varname = 'tmask'
-io = nf90_inq_varid(ncid, varname, varid)
-call nc_check(io, routine, 'nf90_inq_varid "'//trim(varname)//'"')
-io = nf90_get_var(ncid, varid, tmask)
-call nc_check(io, routine, 'nf90_get_var "'//trim(varname)//'"')
-
-! close mask file
-call nc_close_file(ncid, routine, 'mask file')
-
 ! convert -180/180 to 0/360
 where (lon < 0.0_r8) lon = lon + 360.0_r8
 
@@ -170,7 +154,7 @@ call set_calendar_type(GREGORIAN)
 ! each observation in this series will have a single observation value
 ! and a quality control flag.  the max possible number of obs needs to
 ! be specified but it will only write out the actual number created.
-max_obs    = axdim*aydim*catdim
+max_obs    = len_time*catdim
 num_copies = 1
 num_qc     = 1
 
@@ -203,36 +187,32 @@ do t = 1, len_time
 
    ! move through the observations and create a DART 3d observation if they pass
    ! quality control checks 
-   alongloop:  do j = 1, aydim
-      acrossloop: do i = 1, axdim
-         do k = 1, catdim
-
-            if (debug) print *, 'start of main loop, ', iacc, ialo
-
-            !! check the lat/lon values to see if they are ok
-            if ( lat(t,i,j) >  90.0_r8 .or. lat(t,i,j) <   40.0_r8 ) cycle acrossloop
-            if ( lon(t,i,j) <   0.0_r8 .or. lon(t,i,j) >  360.0_r8 ) cycle acrossloop
+   do k = 1, catdim
       
-            ! If the mask or data values are outside acceptable bounds, skip them.
-            if (   tmask(i,j) <  0.5_r8) cycle acrossloop  !do not convert if it's a land grid
-            if ( seaice_data(t,i,j,k) < 0.00_r8 .or.  seaice_data(t,i,j,k) > 25.0_r8) cycle acrossloop
-            if (seaice_error(t,i,j,k) < 0.00_r8 ) cycle acrossloop
+      if (debug) print *, 'start of main loop, ', iacc, ialo
+      
+      !! check the lat/lon values to see if they are ok
+      if ( lat(t) >  90.0_r8 .or. lat(t) <   40.0_r8 ) cycle acrossloop
+      if ( lon(t) <   0.0_r8 .or. lon(t) >  360.0_r8 ) cycle acrossloop
+      
+      ! If the mask or data values are outside acceptable bounds, skip them.
+      if ( seaice_data(t, k) < 0.00_r8 .or.  seaice_data(t, k) > 25.0_r8) cycle acrossloop
+      if (seaice_error(t, k) < 0.00_r8 ) cycle acrossloop
 
-            ! assign latitude, longitude, category, and error of okay values
-            thislat = lat(t,i,j)
-            thislon = lon(t,i,j)
-            thiscat = k - 1 
-            thiserr = seaice_error(t,i,j,k)     
+      ! assign latitude, longitude, category, and error of okay values
+      thislat = lat(t)
+      thislon = lon(t)
+      thiscat = k - 1 
+      thiserr = seaice_error(t, k)     
 
-            ! make an obs derived type, and then add it to the sequence
-            call create_3d_obs(thislat, thislon, thiscat, VERTISSURFACE, seaice_data(t,i,j,k), &
-                               data_type, thiserr, oday, osec, qc, obs)
-            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+      ! make an obs derived type, and then add it to the sequence
+      call create_3d_obs(thislat, thislon, thiscat, VERTISSURFACE, seaice_data(t, k), &
+                         data_type, thiserr, oday, osec, qc, obs)
+      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
-            if (debug) print *, 'added ', obs_name, ' obs to output seq'
-         end do
-      end do acrossloop
-   end do alongloop
+      if (debug) print *, 'added ', obs_name, ' obs to output seq'
+   end do
+
 
    ! if we added any obs to the sequence, write it out to a file now.
    if ( get_num_obs(obs_seq) > 0 ) then
@@ -251,7 +231,7 @@ do t = 1, len_time
 enddo 
 
 ! release allocated arrays 
-deallocate(seaice_data, seaice_error, lon, lat, tmask)
+deallocate(seaice_data, seaice_error, lon, lat)
 
 ! end of main program
 call finalize_utilities()

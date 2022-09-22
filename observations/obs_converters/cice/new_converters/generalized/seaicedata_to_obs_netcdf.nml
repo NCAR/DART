@@ -5,7 +5,6 @@
    data_type         = 12
    seaice_input_file = 'seaicedata.input'
    obs_out_file      = 'obs_seq.out'
-   maskfile          = 'cice_hist.nc'
    itd_ob            = .false.
    debug             = .false.
    /
