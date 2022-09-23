@@ -1009,24 +1009,24 @@ get_compressed_dart_vector_index = -1
 ! Find the index in the compressed state
 ! HK you could read in {X,Y,Z}comp_ind if you did not want to do this search
 do i=1, comp3d
-	lon_found = .false.
-	lat_found = .false.
-	depth_found = .false.
-	! If we find the value
-	if ( XC_sq(i) == lon ) then
-		lon_found = .true.
-	endif
-	if ( YC_sq(i) == lat ) then
-		lat_found = .true.
-	endif
-	if ( ZC_sq(i) == depth ) then
-		depth_found = .true.
-	endif
-	
-	if (lon_found .and. lat_found .and. depth_found )then
-		get_compressed_dart_vector_index = offset + i - 1
-		exit
-	endif
+   lon_found = .false.
+   lat_found = .false.
+   depth_found = .false.
+
+   if ( XC_sq(i) == lon ) then
+      lon_found = .true.
+   endif
+   if ( YC_sq(i) == lat ) then
+      lat_found = .true.
+   endif
+   if ( ZC_sq(i) == depth ) then
+      depth_found = .true.
+   endif
+   
+   if (lon_found .and. lat_found .and. depth_found )then
+      get_compressed_dart_vector_index = offset + i - 1
+      exit
+   endif
 enddo
 
 end function get_compressed_dart_vector_index
