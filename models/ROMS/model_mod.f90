@@ -86,8 +86,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, n
 use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
                                   nc_write_location
 
-use default_model_mod,     only : pert_model_copies, nc_write_model_vars, init_conditions, &
-                                  init_time, adv_1step
+use default_model_mod,     only : nc_write_model_vars, init_conditions, init_time, &
+                                  adv_1step
 
 use typesizes
 use netcdf
@@ -673,6 +673,45 @@ call nc_synchronize_file(ncid)
 
 
 end subroutine nc_write_model_atts
+
+
+subroutine pert_model_copies(state_ens_handle, ens_size, perturbation_amplitude, interf_provided)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: perturbation_amplitude
+logical,             intent(out)   :: interf_provided
+
+integer     :: var_type
+integer     :: j,i 
+integer(i8) :: dart_index
+type(location_type) :: location
+
+! Storage for a random sequence for perturbing a single initial state
+type(random_seq_type) :: random_seq
+
+if ( .not. module_initialized ) call static_init_model
+
+interf_provided = .true.
+
+! Initialize random number sequence
+call init_random_seq(random_seq, my_task_id())
+
+! Perturb the salinity and temperature fields
+
+do i=1,state_ens_handle%my_num_vars
+   dart_index = state_ens_handle%my_vars(i)
+   call get_state_meta_data(dart_index, location, var_type)
+   if (var_type == QTY_TEMPERATURE .or. var_type == QTY_SALINITY) then
+      do j=1, ens_size
+         state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+            state_ens_handle%copies(j,i), &
+            perturbation_amplitude)
+      enddo
+   endif
+enddo
+
+end subroutine pert_model_copies
 
 !-----------------------------------------------------------------------
 !> writes the time of the current state and (optionally) the time
