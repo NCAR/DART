@@ -1049,6 +1049,8 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
+masked = .false.
+
 if (compress) then
 
    state_index = get_compressed_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
@@ -1064,7 +1066,6 @@ else
    state_index = get_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
    get_val = get_state(state_index,state_handle)
 
-   masked = .false.
    do i=1,ens_size  ! HK this is checking the whole ensemble, can you have different masks for each ensemble member?
        if(get_val(i) == FVAL) masked = .true.
    enddo
