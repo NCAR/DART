@@ -54,7 +54,7 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_index_start, get_index_end, &
                                   get_dart_vector_index, get_num_variables, &
                                   get_domain_size, &
-                                  get_io_clamping_minval
+                                  get_io_clamping_minval, get_kind_index
                                   
 use netcdf_utilities_mod,  only : nc_open_file_readonly, nc_get_variable, & 
                                   nc_get_dimension_size, nc_close_file
@@ -995,6 +995,7 @@ real(r4)            :: lon, lat
 real(r8)            :: depth
 integer             :: i    ! loop counter
 logical             :: lon_found, lat_found, depth_found
+integer             :: qty
 
 integer(i8) :: offset
 
@@ -1003,6 +1004,12 @@ offset = get_index_start(dom_id, var_id)
 lon = XC(iloc)   !lon
 lat = YC(jloc)   !lat
 depth = ZC(kloc) !depth
+
+qty = get_kind_index(dom_id, var_id)
+if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
+if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)
+
+if (qty == QTY_SEA_SURFACE_HEIGHT .or. qty == QTY_SURFACE_CHLOROPHYLL ) depth = ZC(1)
 
 get_compressed_dart_vector_index = -1
 
@@ -1013,12 +1020,26 @@ do i=1, comp3d
    lat_found = .false.
    depth_found = .false.
 
-   if ( XC_sq(i) == lon ) then
-      lon_found = .true.
+   if (qty == QTY_U_CURRENT_COMPONENT) then
+      if ( XG_sq(i) == lon ) then
+         lon_found = .true.
+      endif
+   else
+      if ( XC_sq(i) == lon ) then
+         lon_found = .true.
+      endif
    endif
-   if ( YC_sq(i) == lat ) then
-      lat_found = .true.
+
+   if (qty == QTY_V_CURRENT_COMPONENT) then
+      if (YG_sq(i) == lat) then
+         lat_found = .true.
+      endif
+   else
+      if ( YC_sq(i) == lat ) then
+         lat_found = .true.
+      endif
    endif
+
    if ( ZC_sq(i) == depth ) then
       depth_found = .true.
    endif
