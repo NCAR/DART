@@ -352,7 +352,7 @@ running on an NCAR superscomputer.
    CHAMP GPS radio occultation data.
 
    Summary of workflow:  
-   1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
+   1) cd to the ../work directory and run ./quickbuild.sh to compile everything.  
    2) Edit ./gpsro_to_obsseq.csh once to set the directory where the DART
        code is installed, and your CDAAC web site user name and password.
    3) Edit ./convert_many_gpsro.csh to set the days of data to download/convert/remove.
@@ -361,13 +361,13 @@ running on an NCAR superscomputer.
 
    More details:
 
-   1) quickbuild.csh:
+   1) quickbuild.sh:
 
    Make sure your $DART/mkmf/mkmf.template is one that matches the
    platform and compiler for your system.  It should be the same as
    how you have it set to build the other DART executables.
 
-   Run quickbuild.csh and it should compile all the executables needed
+   Run quickbuild.sh and it should compile all the executables needed
    to do the GPS conversion into DART obs_sequence files.
 
 
@@ -409,7 +409,7 @@ running on an NCAR superscomputer.
 
 ::
 
-   0) run quickbuild.csh as described above
+   0) run quickbuild.sh as described above
 
    1) iono_to_obsseq.csh
 

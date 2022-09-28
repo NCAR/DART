@@ -11,14 +11,24 @@ This is the DART interface to the
 `CESM2 Community Land Model. <https://www.cesm.ucar.edu/models/cesm2/land/>`__
 Specifically, CESM **release-cesm2.2.0** using CLM **release-cesm2.2.01**
 
-It is **strongly** recommended that you become familiar with running a multi-instance 
-experiment in CESM **before** you try to run DART/CLM. The DART/CLM facility uses 
-language and concepts that should be familiar to CESM users. The DART/CLM capability 
+This document is most useful if the user has a prior understanding of running CESM
+and also running CLM-DART.  For this reason **we strongly recommend the following
+two steps be completed before reviewing this document**:
+
+**First**, we  recommend that you become familiar with running a single or multi-instance 
+experiment in CESM (i.e. a CLM 'free' run) before you try to run CLM-DART. The CLM-DART
+software uses language and concepts that should be familiar to CESM users. The CLM-DART capability 
 is entirely dependent on the multi-instance capability of CESM, first supported in 
 its entirety in CESM1.1.1.  Consequently, this version or newer is required to run 
 CLM/DART. The 
 `CTSM Documentation <https://escomp.github.io/ctsm-docs/versions/master/html/index.html>`__
 has reference material for CLM.
+
+**Second**, we recommend the user complete the :doc:`CLM5-DART Tutorial. <tutorial/README>` 
+This tutorial provides the user with 13 steps of hands-on experience for downloading, compiling, editing,
+executing,and diagnosing a simple CLM5-DART assimilation run. It will provide users with
+skills to modify the CLM-DART scripts for their own research applications.
+
   
 DART uses the multi-instance capability of CESM, which means that DART is not 
 responsible for advancing the model.  This GREATLY simplifies the traditional DART 
@@ -714,24 +724,18 @@ Future plans:
 1. Implement a lookup table that relates the observation location to a dominant PFT or COLUMN
    so the *model_interpolate* code can average quantities from similar PFTs or COLUMNs instead
    of everything in the entire grid cell.
-2. Implement a robust update_snow() routine that takes the modified SWE and 
-   repartitions it into the respective snow layers in a manner that works with both 
-   CLM4.5 and CLM5. This may mean modifying the clm_variables list to contain 
-   SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may not be in the UPDATE list.
-3. Implement a fast way to get the quantities needed for the calculation of 
+2. Implement a fast way to get the quantities needed for the calculation of 
    radiative transfer models - needs a whole column of CLM variables, redundant if 
    multiple frequencies are used.
-4. Figure out what to do when one or more of the ensemble members does not have 
+3. Figure out what to do when one or more of the ensemble members does not have 
    snow/leaves/etc. when the observation indicates there should be. Ditto for removing 
    snow/leaves/etc. when the observation indicates otherwise.
-5. Right now, the soil moisture observation operator is used by the COSMOS code to 
+4. Right now, the soil moisture observation operator is used by the COSMOS code to 
    calculate the expected neutron intensity counts. This is the right idea, however, 
    the COSMOS forward operator uses m3/m3 and the CLM units are kg/m2. I have not 
    checked to see if they are, in fact, identical. This brings up a bigger issue in 
    that the soil moisture observation operator would also be used to calculate whatever 
    a TDT probe or ??? would measure. What units are they in? Can one operator support both?
-6. One of the ``CESM_DART_config`` *stage* scripts should reset the inflation pointer 
-   files based on the restart date?
 
 
 

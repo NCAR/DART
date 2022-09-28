@@ -22,6 +22,147 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 23 2022 :: Bug-fix for pertub_single_instance. Tag v10.5.1**
+
+- Program perturb_single_instance was running without perturbing when
+  interf_provided = .false. (silent fail).
+  Model specific pert_model_copies is now required to run perturb_single_instance
+
+**September 22 2022 :: CAM-SE. Tag: v10.5.0**
+
+- CAM-SE interface for Manhattan
+- Shared code for CAM-SE and CAM-FV model_mods in cam-common-code
+
+**September 21 2022 :: ROMS model_mod perturbation routine Tag: v10.4.0**
+
+- Adds a pert_model_copies subroutine to the ROMS model_mod to enable proper 
+  functioning of perturb_single_instance for ROMS.
+- Updates ROMS documentation with an explanation of how to generate an initial
+  ensemble of history files.
+
+**September 16 2022 :: Bug-fix for CLM shell scripts. Tag: v10.3.2**
+
+- Fixes dtlimit bug in cesm2.2 CLM shell scripts.  Loads all CAM
+  reanalysis files within datm data stream file regardless if it
+  is single year or multi-year run.
+- Fixes single instance bug in cems2.2 CLM shell scripts. Allows
+  for freerun scripts to generate single instance simulations.
+
+**September 14 2022 :: Bug-fix for POP shell scripts. Tag: v10.3.1**
+
+- Fixes bug in POP CESM2.1 shell scripts in which inflation files were not
+  being propagated properly due to link destination already existing.
+
+**August 19 2022 :: Automated setup of new model interfaces. Tag: v10.3.0**
+
+- Automated initial setup of new model interfaces to aid users developing
+  model_mod code and documentation.
+
+*contributed by Benjamin Gunn*
+
+**August 18 2022 :: Bug-fixes for obs_utilities build and mpas_atm. Tag: v10.2.1**
+
+- obs_utilities_mod no longer included by default for model/work builds because
+  these utilities are for threed_sphere and threed_cartesian location_mods only.
+- mpas_atm model_mod check for required quantities changed to handle multiple 
+  variables of the same quantity. 
+
+**August 3 2022 :: TIEGCM. Tag v10.2.0**
+
+- TIEGCM model_mod updated to Manhattan
+- Added hyperslice subroutine to state_structure_mod to read only part of a
+  netcdf variable into the state.
+- Replaced stub get_expected_vtec with COMMON_CODE.
+
+**August 2 2022 :: RTTOV v13. Tag v10.1.0**
+
+- Support for RTTOV v13
+
+*Contributed by Lukas Kugler*
+
+**July 27 2022 :: Bug-fix for WRF model_mod nc_write_model_atts. Tag: v10.0.5**
+
+- Removes obsolete domain dimension from nc_write_model_atts for WRF model_mod.
+  This code was left over from when multiple domains could be written to a single 
+  NetCDF file in DART.
+
+**July 21 2022 :: Bug-fixes for DART_LAB rank histograms and get_close caching. Tag: v10.0.4**
+
+- Fixes DART_LAB prior and posterior rank histogram calculation.
+- Fix for intent(inout) for get_close_X_caching routines.
+- Obsolete GitHub workflow removed.
+
+**July 14 2022 :: Performance improvement - removal of redundant caching. Tag: v10.0.3**
+
+- Reduces the runtime by removing redundant caching in the get_close_obs_cached and 
+  get_close_state_cached subroutines in assim_tools_mod.f90
+
+**June 24 2022 :: Bug-fixes for MITgcm_ocean and Var obs converter. Tag: v10.0.2**
+
+- MITgcm_ocean pert_model_copies routine fixed to use the correct variable clamping
+  value and indices for each element of the copies array. 
+- Var obs converter quicklbuild.sh fixed to correctly locate the required 
+  3DVAR_OBSPROC code.
+- Documentation for Var obs converter updated with information for where to 
+  get the latest WRF 3DVAR_OBSPROC code.
+
+
+**June 2 2022 :: Bug-fixes for ps_rand_local in the Bgrid Model. Tag: v10.0.1**
+
+- performs the missing call for initialize_utilities() 
+- fixes improper formatting when writing into ps_rand.out
+
+
+**May 24 2022 :: New build tools for DART. Tag: v10.0.0**
+
+- mkmf\_ and path_names\_ files replaced with buildfunctions to collect source code.
+- quickbuild.csh replaced with quickbuild.sh
+- developer_tests/build_everything for simultaneous runs of every quickbuild.sh 
+- Several build/compilation related bug fixes
+
+
+**May 23 2022 :: Bug-fix for RTPS inflation flavor. Tag: v9.16.4**
+
+- Order of operations changed to avoid inadvertent changes to ens 
+  when using RTPS.
+
+**May 16 2022 :: Installation documentation update. Tag: v9.16.3**
+
+- Improved installation documentation.
+
+**April 5 2022 :: Bug-fix for NetCDF variables with NaN attributes. Tag: v9.16.2**
+
+- Fix for checking attributes of NetCDF variables that have a NaN as the missing or _FillValue.
+
+**April 1 2022 :: Per-obs-type localization for 3D Cartesian location_mod. Tag: v9.16.1**
+
+- Optional per-obs-type localization for 3D Cartesian location
+
+*Contributed by Jon Labriola for use with CM1*
+
+**March 31 2022 :: MiTgcm-ocean NBLING. Tag: v9.16.0**
+
+- MITgcm-ocean interface updated to Manhattan.
+- Support for NBLING (ocean biogeochemistry) for MITgcm-ocean.
+- New observation converter for ocean color.
+
+**March 22 2022 :: CLM5-DART Tutorial. Tag: v9.15.0**
+
+- New CLM5-DART tutorial providing new users with 13 steps
+  for download, setup, execution, and diagnosis of a simple 
+  global assimilation run.
+- Stage_cesm_files script corrected to re-stage prior inflation
+  files correctly and provide reproducibility
+
+
+**March 10 2022 :: Tracer advection model. Tag v9.14.0**
+
+- New model for tracer advection based on Lorenz_96 using a
+  Semi-Lagrangian scheme. 
+- Forward operator documentation updated to Manhattan
+
+*lorenz_96_tracer_advection contributed by Fairuz Ishraque (SIParCS)*
+
 **February 11 2022 :: Bug-fix for nag compiler. Tag v9.13.2**
 
 - Bug-fix for fixsystem preprocessing for NAG compiler

@@ -115,7 +115,7 @@ Time enters into the assimilation system in 3 places: the time of
 the state vector data (the current model time when this data was
 produced), the time of each observation, and the assimilation window
 length. The window length is set by the model-dependent routine
-``shortest_time_between_assimilations()``.  
+``shortest_time_between_assimilations()``.
 The internal timestepping of the model is unrelated to any of these times
 and is outside the scope of the assimilation system.
 
@@ -243,11 +243,11 @@ Converting a series of observations
 -----------------------------------
 
 If you are running a series of assimilation steps you may
-need a separate observation sequence (obs_seq) file per step.  
+need a separate observation sequence (obs_seq) file per step.
 The suggested process is to create the first few files by hand to check
-the resulting obs_seq files and then write scripts (python, shell) 
-to automate the creation of the remainder of the files.  
-The following are some of the considerations to take 
+the resulting obs_seq files and then write scripts (python, shell)
+to automate the creation of the remainder of the files.
+The following are some of the considerations to take
 into account when creating scripts for a series of obs_seq files.
 
 Looping in Time
@@ -273,11 +273,11 @@ accounting for leap days, etc.
 Observation conversion programs usually take one of two strategies
 for their input and output filenames.
 
-* Have fixed input and output filenames for the converter. 
+* Have fixed input and output filenames for the converter.
   Have the script make symbolic links from the actual filenames to the
   fixed names for the files for each conversion run.
 
-* Have a Fortran namelist variable that sets the input and output 
+* Have a Fortran namelist variable that sets the input and output
   filenames for the converter.  Have the script generate or edit the
   namelist file (e.g. with the `sed` stream editor) to set the actual
   filenames for each conversion run.
@@ -295,12 +295,12 @@ Multiple Observation Files
 It is common that an assimilation will want to use observations
 from different sources.  Generally it is easier to convert observations
 from each source separately and then merge them together with the
-``obs_sequence_tool``.  
+``obs_sequence_tool``.
 
-Creating filenames and directory names which follow a pattern 
-that can be generated with the ``advance_time`` program makes this easier to do.  
+Creating filenames and directory names which follow a pattern
+that can be generated with the ``advance_time`` program makes this easier to do.
 
-The ``obs_sequence_tool`` can read the input filenames from a separate ascii file. 
+The ``obs_sequence_tool`` can read the input filenames from a separate ascii file.
 This makes generating the filenames easy from a script; it can
 simply concatinate the input filenames echo'd to an ascii file and
 then run the obs_sequence_tool.  The output file can either be set
@@ -326,7 +326,7 @@ values, missing files, duplicated data, etc.  The list is as long as your
 imagination.  It can be very useful to write or adapt programs like ``obs_info``
 to print out the first and last obs times in a file, the count of each obs type, etc.
 Especially for observations which are close to the start/end of a month or year,
-it is easy to find truncated data files.  
+it is easy to find truncated data files.
 
 If converting a large number of files it is also common for computer system
 failures to occur at random times.  File systems fill up, batch jobs exit early,
@@ -385,6 +385,7 @@ converters) include:
 -  ``SIF``: :doc:`./SIF/SIF_to_obs_netcdf`
 -  ``SSEC``: :doc:`./SSEC/SSEC`
 -  ``SST``: :doc:`./SST/SST`
+-  ``ocean color``: :doc:`./ocean_color/README`
 -  ``SSUSI``: :doc:`./SSUSI/convert_f16_edr_dsk`
 -  ``WOD``: :doc:`./WOD/WOD`
 -  ``gnd_gps_vtec``: :doc:`./gnd_gps_vtec/README`
@@ -397,6 +398,7 @@ converters) include:
 -  ``text_GITM``: See ``./text_GITM``
 -  ``tpw``: :doc:`./tpw/tpw`
 -  ``Tropical Cyclones``: :doc:`./tropical_cyclone/tc_to_obs`
+-  ``3DVAR/4DVAR``: :doc:`./var/var`
 -  ``Var (little-r)``: :doc:`./var/littler_tf_dart`
 -  ``Var (radar)``: :doc:`./var/rad_3dvar_to_dart`
 
@@ -438,4 +440,3 @@ operators compute the observation values.
 Contact the `DART development group <mailto:dart@ucar.edu>`__ if you
 have observations in a different format that you want to convert. We can
 give you advice and pointers on how to approach writing the code.
-

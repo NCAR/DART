@@ -63,7 +63,9 @@ ensureTrailingSlash($opt_a) if $opt_a;
 my $nmlfile = "input.nml.${opt_p}_default";
 
 #some generic declarations
-my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word, $nml );
+my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word, $nml);
+#for collection default .nml files
+my( $nml_path, $nml_name, $nml_suffix);
 my @list;
 my @nml_list;
 #some constants
@@ -114,13 +116,23 @@ sub print_formatted_list{
 }
 
 #begin writing makefile
+
+die "ERROR: Environment variable DART must be set\n" unless defined $ENV{DART};
+
 open MAKEFILE, ">$opt_m" or die "\aERROR opening file $opt_m for writing: $!\n";
 printf MAKEFILE "# Makefile created by %s $version\n\n", basename($0);
 if ( $opt_t ) {
     open TEMPLATE, "<$opt_t" or die "\aERROR: could not read resource file $opt_t: $!\n" 
 }
 
-print  MAKEFILE "include $opt_t\n\n" if $opt_t; #include template if supplied
+
+if ( $opt_t ) {
+    print  MAKEFILE "include $opt_t\n\n" if $opt_t; #include template if supplied
+} else {
+    my $deftemp = $ENV{DART}."/build_templates/mkmf.template";
+    die "ERROR: $deftemp must exist\n" unless -e $deftemp; 
+    print  MAKEFILE "include $deftemp"
+}
 
 if ( $opt_c ) {
    if ( $Config{archname} eq "aix" ) {
@@ -147,7 +159,7 @@ print MAKEFILE "\n.DEFAULT:\n\t-touch \$@\n";
 #the at sign prevents the command from being echoed to the terminal.
 print MAKEFILE "all: fixsys $opt_p\n"; # first target should be program, so you can type just 'make'
 print MAKEFILE "fixsys: \n";
-print MAKEFILE "\t@ (cd ${opt_a}assimilation_code/modules/utilities\; ./fixsystem \$(FC) )\n" ;
+print MAKEFILE "\t@ (cd $ENV{DART}/assimilation_code/modules/utilities\; ./fixsystem \$(FC) )\n" ;
 #end change nsc 02aug2013
 
 #if cppdefs flag is present, look for changes in cppdefs
@@ -257,9 +269,6 @@ foreach $target ( @targets ) {
 		     $compile_cmd{$file} = $line;
 		     print "Special command for file $file: ($line)\n" if $opt_v;
 		  }
-#check for namelist files in the path and add it to the list
-                  $nml = "${path}${name}.nml";
-                  push @nml_list, $nml if -e $nml;
 	       }
 	    }
 	    close CMDFILE;
@@ -268,21 +277,6 @@ foreach $target ( @targets ) {
    }
 }
 
-#before proceeding, dump namelist file if any
-if ( @nml_list ) {
-  unlink $nmlfile if -e $nmlfile;
-  open NMLFILE, ">$nmlfile";
-  foreach ( @nml_list ) {
-    open THISNML, "$_";
-    while (<THISNML>) {
-      print NMLFILE;
-    }
-    close THISNML;
-  }
-  close NMLFILE;
-} else {
-print "Did not find any namelist files - not touching $nmlfile\n";
-}
 
 delete $source_of{''};
 my @dirs = keys %scanned;
@@ -344,6 +338,12 @@ sub scanfile_for_keywords {
    close FILE;
    $scanned{$file} = 1;
    print "   uses modules=$modules_used_by{$object}, and includes=$includes_in{$file}.\n" if $opt_d;
+
+#check for namelist files add it to the list
+   ($nml_name,$nml_path,$nml_suffix) = fileparse($file, @src_suffixes);
+   $nml = "${nml_path}${nml_name}.nml";
+   push @nml_list, $nml if -e $nml;
+
 }
 
 foreach $object ( @objects ) {
@@ -433,6 +433,23 @@ foreach $object ( @objects ) {
       }
    }
 }
+
+#before proceeding, dump namelist file if any
+if ( @nml_list ) {
+  unlink $nmlfile if -e $nmlfile;
+  open NMLFILE, ">$nmlfile";
+  foreach ( @nml_list ) {
+    open THISNML, "$_";
+    while (<THISNML>) {
+      print NMLFILE;
+    }
+    close THISNML;
+  }
+  close NMLFILE;
+} else {
+print "Did not find any namelist files - not touching $nmlfile\n";
+}
+
 
 #lines to facilitate creation of local copies of source from other directories
 #commented out because it makes make default rules kick in

@@ -19,7 +19,7 @@ scripts for running the code.
 The second is in the ascii_to_obs directory.  The program reads the
 intermediate text format and creates a DART obs_seq file format.
 It is structured like the other DART directories; cd into the 'work'
-subdirectory and run the 'quickbuild.csh' script.  It also contains
+subdirectory and run the 'quickbuild.sh' script.  It also contains
 some example scripts for running the code.  See create_real_obs.html
 for more documentation.
 

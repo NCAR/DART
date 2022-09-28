@@ -140,7 +140,7 @@ PROGRAMS
 The ``SMAP_L2_to_obs.f90`` file is the source
 for the converter program.
 To compile and test,
-go into the work subdirectory and run the ``quickbuild.csh``
+go into the work subdirectory and run the ``quickbuild.sh``
 script to build the converter and a couple of general purpose utilities.
 :doc:`../../../assimilation_code/programs/advance_time/advance_time`
 helps with calendar and time computations, and the

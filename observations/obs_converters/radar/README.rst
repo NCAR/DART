@@ -40,7 +40,7 @@ script:
 .. code-block::
 
    cd work
-   ./quickbuild.csh
+   ./quickbuild.sh
 
 Real radar observations
 ~~~~~~~~~~~~~~~~~~~~~~~

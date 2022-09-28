@@ -7,7 +7,7 @@
 program ps_rand_local
 
 use      types_mod, only : r8, PI
-use  utilities_mod, only : get_unit, error_handler, E_ERR
+use  utilities_mod, only : get_unit, error_handler, E_ERR, initialize_utilities
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use   location_mod, only : VERTISSURFACE
 
@@ -29,6 +29,9 @@ call init_random_seq(r)
 ! Set up constants
 num_sets =  1
 level    = -1
+
+! Initializer to allow for use of functions and subroutines from utilities_mod
+call initialize_utilities('ps_rand_local')
 
 ! Open an output file and write header info
 iunit = get_unit()
@@ -55,37 +58,37 @@ if(top_lat <= bot_lat .or. top_lon <= bot_lon) then
 endif
 
 ! Input number of obs
-write(iunit, *) num
+write(iunit, '(I5)') num
 ! No obs values or qc
-write(iunit, *) 0
-write(iunit, *) 0
+write(iunit, '(I1)') 0
+write(iunit, '(I1)') 0
 
 num_done = 0
 do while(num_done < num)
    ! There are more obs
-   write(iunit, *) 0
+   write(iunit, '(I1)') 0
 
    ! Kind is ps
-   write(iunit, *) 'RADIOSONDE_SURFACE_PRESSURE'
+   write(iunit, '(A)') 'RADIOSONDE_SURFACE_PRESSURE'
 
    ! Put this on model level -1
-   write(iunit, *) VERTISSURFACE
-   write(iunit, *) level
+   write(iunit, '(I2)') VERTISSURFACE
+   write(iunit, '(I2)') level
 
    ! Want randomly located in horizontal
-   write(iunit, *) -1
+   write(iunit, '(I2)') -1
 
    ! Input longitude and latitude bounds
-   write(iunit, *) bot_lon
-   write(iunit, *) top_lon
-   write(iunit, *) bot_lat
-   write(iunit, *) top_lat
+   write(iunit, '(F6.1)') bot_lon
+   write(iunit, '(F6.1)') top_lon
+   write(iunit, '(F6.1)') bot_lat
+   write(iunit, '(F6.1)') top_lat
 
    ! Time is 0 days and 0 seconds for create_obs_sequence base
    write(iunit, *) 0, 0
 
    ! Error variance
-   write(iunit, *) err_var
+   write(iunit, '(F5.1)') err_var
 
    num_done = num_done + 1
 

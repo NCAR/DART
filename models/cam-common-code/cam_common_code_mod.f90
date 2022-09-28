@@ -6,10 +6,10 @@ module cam_common_code_mod
 ! in code in some places where communication, especially of the namelist, made sharing code
 ! problematic.
 
-use          types_mod,     only : MISSING_R8, MISSING_I, r8, i8, DEG2RAD
+use          types_mod,     only : MISSING_R8, MISSING_I, r8, i8, DEG2RAD, vtablenamelength
 
 use      utilities_mod,     only : E_ERR, E_MSG,  error_handler, find_enclosing_indices, to_upper, &
-                                   array_dump, file_exist
+                                   array_dump, file_exist, string_to_logical, string_to_real
 
 use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_SURFACE_PRESSURE, QTY_PRESSURE, QTY_VERTLEVEL, &
                                    QTY_GEOMETRIC_HEIGHT, &
@@ -20,14 +20,27 @@ use          location_mod,  only : location_type, get_close_type, vertical_local
                                    VERTISUNDEF, VERTISPRESSURE, VERTISHEIGHT, VERTISLEVEL, VERTISSCALEHEIGHT, &
                                    VERTISSURFACE, set_vertical_localization_coord
 
-use    state_structure_mod, only : get_varid_from_kind, get_model_variable_indices
+use    state_structure_mod, only : get_varid_from_kind, get_model_variable_indices, add_domain
 
 use   ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars
 
 use   netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_get_variable, nc_get_variable_size, &
                                    nc_variable_exists
 
-use      time_manager_mod,  only : time_type, get_date, set_date
+use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, nc_create_file, &
+                                   nc_add_attribute_to_variable, &
+                                   nc_define_integer_variable, nc_define_double_variable, &
+                                   nc_define_real_variable, &
+                                   nc_define_real_scalar, &
+                                   nc_add_global_creation_time, &
+                                   nc_add_global_attribute, &
+                                   nc_define_dimension, nc_put_variable, &
+                                   nc_synchronize_file, nc_end_define_mode, &
+                                   nc_begin_define_mode, nc_open_file_readonly, &
+                                   nc_close_file, nc_variable_exists, nc_get_global_attribute, &
+                                   nc_get_dimension_size
+
+use      time_manager_mod,  only : time_type, get_date, set_date, set_time
 
 use   netcdf_utilities_mod, only : nc_begin_define_mode, nc_define_integer_variable, &
                                         nc_end_define_mode, nc_put_variable
@@ -41,18 +54,29 @@ private
 
 public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
           cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
-          common_pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
-          free_cam_grid, free_std_atm_tables, generic_height_to_pressure, get_cam_grid, &
-          gph2gmh, grid_data, height_to_level, init_damping_ramp_info, &
+          pert_model_copies, cuse_log_vertical_scale, discarding_high_obs, &
+          free_cam_grid, free_std_atm_tables, generic_height_to_pressure, &
+          gph2gmh, height_to_level, init_damping_ramp_info, &
           init_discard_high_obs, init_globals, init_sign_of_vert_units, &
           is_surface_field, obs_too_high, ok_to_interpolate, pressure_to_level, ramp_end, &
           read_model_time, ref_model_top_pressure, ref_nlevels, scale_height, &
           set_vert_localization, vert_interp, vertical_localization_type, write_model_time
 
+public :: nc_write_model_atts, grid_data, read_grid_info, set_cam_variable_info, &
+          MAX_STATE_VARIABLES, num_state_table_columns, common_initialized, &
+          MAX_PERT, shortest_time_between_assimilations, domain_id, &
+          ccustom_routine_to_generate_ensemble, &
+          cfields_to_perturb, &
+          cperturbation_amplitude, &
+          cassimilation_period_days, &
+          cassimilation_period_seconds, &
+          csuppress_grid_info_in_output
+
+
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = 'cam_common_code.f90'
+character(len=32 ), parameter :: revision = ''
+character(len=128), parameter :: revdate  = ''
 
 !> Metadata from the template netCDF file that describes 
 !> where the variable data is located and what size it is.
@@ -79,10 +103,29 @@ end type
 
 type(cam_grid) :: grid_data
 
+! this id allows us access to all of the state structure
+! info and is required for getting state variables.
+integer :: domain_id = -1
+
+integer, parameter :: MAX_STATE_VARIABLES = 100
+integer, parameter :: num_state_table_columns = 5
+! maximum number of fields you can list to be perturbed
+! to generate an ensemble if starting from a single state.
+integer, parameter :: MAX_PERT = 100
+
+
+logical :: common_initialized = .false. ! static_init_model sets this to true
+
 ! Value from namelist in model_mod CAM
 logical :: cuse_log_vertical_scale = .false.
 logical :: cno_normalization_of_scale_heights = .true.
 integer :: cdebug_level = 0
+logical            :: ccustom_routine_to_generate_ensemble = .true.
+character(len=32)  :: cfields_to_perturb(MAX_PERT) = ""
+real(r8)           :: cperturbation_amplitude(MAX_PERT) = 0.0_r8
+integer            :: cassimilation_period_days        = 0
+integer            :: cassimilation_period_seconds     = 21600
+logical            :: csuppress_grid_info_in_output = .false.
 
 ! Just a global storage for output strings
 character(len=512)  :: string1, string2, string3
@@ -129,6 +172,94 @@ real(r8), allocatable :: std_atm_pres_col(:)
 
 contains
 
+
+!-----------------------------------------------------------------------
+!>
+!> Fill the array of requested variables, dart kinds, possible min/max
+!> values and whether or not to update the field in the output file.
+!> Then calls 'add_domain()' to tell the DART code which variables to
+!> read into the state vector after this code returns.
+!>
+!>@param variable_array  the list of variables and kinds from model_mod_nml
+!>@param nfields         the number of variable/Quantity pairs specified
+
+subroutine set_cam_variable_info(cam_template_filename, variable_array)
+
+character(len=*), intent(in)  :: cam_template_filename
+character(len=*), intent(in)  :: variable_array(:)
+
+character(len=*), parameter :: routine = 'set_cam_variable_info:'
+
+integer :: i, nfields
+integer, parameter :: MAX_STRING_LEN = 128
+
+character(len=MAX_STRING_LEN) :: varname    ! column 1, NetCDF variable name
+character(len=MAX_STRING_LEN) :: dartstr    ! column 2, DART Quantity
+character(len=MAX_STRING_LEN) :: minvalstr  ! column 3, Clamp min val
+character(len=MAX_STRING_LEN) :: maxvalstr  ! column 4, Clamp max val
+character(len=MAX_STRING_LEN) :: updatestr  ! column 5, Update output or not
+
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
+logical  :: update_list(MAX_STATE_VARIABLES)   = .FALSE.
+integer  ::   kind_list(MAX_STATE_VARIABLES)   = MISSING_I
+real(r8) ::  clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+
+nfields = 0
+ParseVariables : do i = 1, MAX_STATE_VARIABLES
+
+   varname   = variable_array(num_state_table_columns*i-4)
+   dartstr   = variable_array(num_state_table_columns*i-3)
+   minvalstr = variable_array(num_state_table_columns*i-2)
+   maxvalstr = variable_array(num_state_table_columns*i-1)
+   updatestr = variable_array(num_state_table_columns*i  )
+
+   if ( varname == ' ' .and. dartstr == ' ' ) exit ParseVariables ! Found end of list.
+
+   if ( varname == ' ' .or.  dartstr == ' ' ) then
+      string1 = 'model_nml:model "state_variables" not fully specified'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   endif
+
+   ! Make sure DART kind is valid
+
+   if( get_index_for_quantity(dartstr) < 0 ) then
+      write(string1,'(3A)') 'there is no obs_kind "', trim(dartstr), '" in obs_kind_mod.f90'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   endif
+
+   call to_upper(minvalstr)
+   call to_upper(maxvalstr)
+   call to_upper(updatestr)
+
+   var_names(   i) = varname
+   kind_list(   i) = get_index_for_quantity(dartstr)
+   clamp_vals(i,1) = string_to_real(minvalstr)
+   clamp_vals(i,2) = string_to_real(maxvalstr)
+   update_list( i) = string_to_logical(updatestr, 'UPDATE')
+
+   nfields = nfields + 1
+
+enddo ParseVariables
+
+if (nfields == MAX_STATE_VARIABLES) then
+   write(string1,'(2A)') 'WARNING: There is a possibility you need to increase ', &
+                         'MAX_STATE_VARIABLES in the global variables in model_mod.f90'
+
+   write(string2,'(A,i4,A)') 'WARNING: you have specified at least ', nfields, &
+                             ' perhaps more'
+
+   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+endif
+
+! CAM only has a single domain (only a single grid, no nests or multiple grids)
+
+domain_id = add_domain(cam_template_filename, nfields, var_names, kind_list, &
+                       clamp_vals, update_list)
+
+end subroutine set_cam_variable_info
+
+
+
 !-----------------------------------------------------------------------
 !> Read the data from the various cam grid arrays 
 !>
@@ -140,9 +271,8 @@ contains
 !> into this category.
 !> 
 
-subroutine get_cam_grid(grid_file, grid)
+subroutine get_cam_grid(grid_file)
 character(len=*), intent(in)  :: grid_file
-type(cam_grid), intent(out) :: grid
 
 character(len=*), parameter :: routine = 'get_cam_grid:'
 
@@ -151,20 +281,20 @@ integer :: ncid
 ! put this in a subroutine that deals with the grid
 ncid = nc_open_file_readonly(grid_file, routine)
 
-call fill_cam_1d_array(ncid, 'lon',  grid%lon)
-call fill_cam_1d_array(ncid, 'lat',  grid%lat)
-call fill_cam_1d_array(ncid, 'lev',  grid%lev)
-call fill_cam_1d_array(ncid, 'ilev', grid%ilev) ! for staggered vertical grid
-call fill_cam_1d_array(ncid, 'slon', grid%slon)
-call fill_cam_1d_array(ncid, 'slat', grid%slat)
-call fill_cam_1d_array(ncid, 'gw',   grid%gw)   ! gauss weights
-call fill_cam_1d_array(ncid, 'hyai', grid%hyai)
-call fill_cam_1d_array(ncid, 'hybi', grid%hybi)
-call fill_cam_1d_array(ncid, 'hyam', grid%hyam)
-call fill_cam_1d_array(ncid, 'hybm', grid%hybm)
+call fill_cam_1d_array(ncid, 'lon',  grid_data%lon)
+call fill_cam_1d_array(ncid, 'lat',  grid_data%lat)
+call fill_cam_1d_array(ncid, 'lev',  grid_data%lev)
+call fill_cam_1d_array(ncid, 'ilev', grid_data%ilev) ! for staggered vertical grid
+call fill_cam_1d_array(ncid, 'slon', grid_data%slon)
+call fill_cam_1d_array(ncid, 'slat', grid_data%slat)
+call fill_cam_1d_array(ncid, 'gw',   grid_data%gw)   ! gauss weights
+call fill_cam_1d_array(ncid, 'hyai', grid_data%hyai)
+call fill_cam_1d_array(ncid, 'hybi', grid_data%hybi)
+call fill_cam_1d_array(ncid, 'hyam', grid_data%hyam)
+call fill_cam_1d_array(ncid, 'hybm', grid_data%hybm)
 
 ! P0 is a scalar with no dimensionality
-call fill_cam_0d_array(ncid, 'P0',   grid%P0)
+call fill_cam_0d_array(ncid, 'P0',   grid_data%P0)
 
 call nc_close_file(ncid, routine)
 
@@ -198,7 +328,7 @@ if(nc_variable_exists(ncid, varname)) then
 !SENote: this is the else statement to create something for the slon, slat, and gw fields that aren't used in SE CORE
 else
    allocate(grid_array%vals(1))
-   grid_array%nsize = 1
+   grid_array%nsize = -1 ! so you can test before writing
    grid_array%vals(1) = MISSING_R8
 endif
 
@@ -227,6 +357,171 @@ call free_cam_1d_array(grid%hybm)
 call free_cam_1d_array(grid%P0)
 
 end subroutine free_cam_grid
+
+
+
+
+!-----------------------------------------------------------------------
+!>
+!> Writes the model-specific attributes to a DART 'diagnostic' netCDF file.
+!> This includes coordinate variables and some metadata, but NOT the
+!> actual DART state.
+!>
+!> @param ncid    the netCDF handle of the DART diagnostic file opened by
+!>                assim_model_mod:init_diag_output
+
+subroutine nc_write_model_atts(ncid, dom_id)
+
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: dom_id    ! not used since there is only one domain
+
+!----------------------------------------------------------------------
+! local variables
+!----------------------------------------------------------------------
+
+character(len=*), parameter :: routine = 'nc_write_model_atts'
+
+!-------------------------------------------------------------------------------
+! Write Global Attributes
+!-------------------------------------------------------------------------------
+
+call nc_begin_define_mode(ncid, routine)
+
+call nc_add_global_creation_time(ncid, routine)
+
+call nc_add_global_attribute(ncid, "model_source", source, routine)
+call nc_add_global_attribute(ncid, "model_revision", revision, routine)
+call nc_add_global_attribute(ncid, "model_revdate", revdate, routine)
+
+call nc_add_global_attribute(ncid, "model", "CAM", routine)
+
+! this option is for users who want the smallest output
+! or diagnostic files - only the state vector data will
+! be written.   otherwise, if you want to plot this data
+! the rest of this routine writes out enough grid info
+! to make the output file look like the input.
+if (csuppress_grid_info_in_output) then
+   call nc_end_define_mode(ncid, routine)
+   return
+endif
+
+!----------------------------------------------------------------------------
+! Output the grid variables.
+!----------------------------------------------------------------------------
+! Define the new dimensions IDs
+!----------------------------------------------------------------------------
+
+call nc_define_dimension(ncid, 'lon',  grid_data%lon%nsize,  routine)
+call nc_define_dimension(ncid, 'lat',  grid_data%lat%nsize,  routine)
+call nc_define_dimension(ncid, 'lev',  grid_data%lev%nsize,  routine)
+call nc_define_dimension(ncid, 'ilev', grid_data%ilev%nsize, routine)
+call nc_define_dimension(ncid, 'hyam', grid_data%hyam%nsize, routine)
+call nc_define_dimension(ncid, 'hybm', grid_data%hybm%nsize, routine)
+call nc_define_dimension(ncid, 'hyai', grid_data%hyai%nsize, routine)
+call nc_define_dimension(ncid, 'hybi', grid_data%hybi%nsize, routine)
+
+! cam-fv only variables
+if(grid_data%slon%nsize > 0) call nc_define_dimension(ncid, 'slon', grid_data%slon%nsize, routine)
+if(grid_data%slat%nsize > 0) call nc_define_dimension(ncid, 'slat', grid_data%slat%nsize, routine)
+if(grid_data%gw%nsize > 0)   call nc_define_dimension(ncid, 'gw',   grid_data%gw%nsize,   routine)
+
+!----------------------------------------------------------------------------
+! Create the Coordinate Variables and the Attributes
+! The contents will be written in a later block of code.
+!----------------------------------------------------------------------------
+
+! U,V Grid Longitudes
+call nc_define_real_variable(     ncid, 'lon', (/ 'lon' /),                 routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'long_name', 'longitude',    routine)
+call nc_add_attribute_to_variable(ncid, 'lon', 'units',     'degrees_east', routine)
+
+! U,V Grid Latitudes
+call nc_define_real_variable(     ncid, 'lat', (/ 'lat' /),                  routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'long_name', 'latitude',      routine)
+call nc_add_attribute_to_variable(ncid, 'lat', 'units',     'degrees_north', routine)
+
+! Vertical Grid Latitudes
+call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /),                                                     routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'long_name',      'hybrid level at midpoints (1000*(A+B))',      routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'hPa',                                         routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'positive',       'down',                                        routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hybm p0: P0 ps: PS',               routine)
+
+
+call nc_define_real_variable(     ncid, 'ilev', (/ 'ilev' /),                                                    routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'long_name',      'hybrid level at interfaces (1000*(A+B))',     routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'hPa',                                         routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'positive',       'down',                                        routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'formula_terms',  'a: hyai b: hybi p0: P0 ps: PS',               routine)
+
+! Hybrid Coefficients
+call nc_define_real_variable(     ncid, 'hyam', (/ 'lev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hyam', 'long_name', 'hybrid A coefficient at layer midpoints', routine)
+
+call nc_define_real_variable(     ncid, 'hybm', (/ 'lev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hybm', 'long_name', 'hybrid B coefficient at layer midpoints', routine)
+
+
+call nc_define_real_variable(     ncid, 'hyai', (/ 'ilev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hyai', 'long_name', 'hybrid A coefficient at layer interfaces', routine)
+
+
+call nc_define_real_variable(     ncid, 'hybi', (/ 'ilev' /),                                            routine)
+call nc_add_attribute_to_variable(ncid, 'hybi', 'long_name', 'hybrid B coefficient at layer interfaces', routine)
+
+call nc_define_real_scalar(       ncid, 'P0', routine)
+call nc_add_attribute_to_variable(ncid, 'P0', 'long_name', 'reference pressure', routine)
+call nc_add_attribute_to_variable(ncid, 'P0', 'units',     'Pa',                 routine)
+
+! FV only variables
+if(grid_data%slon%nsize > 0) then
+   call nc_define_real_variable(     ncid, 'slon', (/ 'slon' /),                       routine)
+   call nc_add_attribute_to_variable(ncid, 'slon', 'long_name', 'staggered longitude', routine)
+   call nc_add_attribute_to_variable(ncid, 'slon', 'units',     'degrees_east',        routine)
+endif
+if(grid_data%slat%nsize > 0) then
+   call nc_define_real_variable(     ncid, 'slat', (/ 'slat' /),                      routine)
+   call nc_add_attribute_to_variable(ncid, 'slat', 'long_name', 'staggered latitude', routine)
+   call nc_add_attribute_to_variable(ncid, 'slat', 'units',     'degrees_north',      routine)
+endif
+if(grid_data%gw%nsize > 0) then
+   ! Gaussian Weights
+   call nc_define_real_variable(     ncid, 'gw', (/ 'lat' /),                  routine)
+   call nc_add_attribute_to_variable(ncid, 'gw', 'long_name', 'gauss weights', routine)
+endif
+
+! Finished with dimension/variable definitions, must end 'define' mode to fill.
+
+call nc_end_define_mode(ncid, routine)
+
+!----------------------------------------------------------------------------
+! Fill the coordinate variables
+!----------------------------------------------------------------------------
+
+
+
+call nc_put_variable(ncid, 'lon',  grid_data%lon%vals,  routine)
+call nc_put_variable(ncid, 'lat',  grid_data%lat%vals,  routine)
+call nc_put_variable(ncid, 'lev',  grid_data%lev%vals,  routine)
+call nc_put_variable(ncid, 'ilev', grid_data%ilev%vals, routine)
+call nc_put_variable(ncid, 'hyam', grid_data%hyam%vals, routine)
+call nc_put_variable(ncid, 'hybm', grid_data%hybm%vals, routine)
+call nc_put_variable(ncid, 'hyai', grid_data%hyai%vals, routine)
+call nc_put_variable(ncid, 'hybi', grid_data%hybi%vals, routine)
+call nc_put_variable(ncid, 'P0',   grid_data%P0%vals,   routine)
+
+!SENote: all the staggered stuff is gone for SE
+if(grid_data%slon%nsize > 0) call nc_put_variable(ncid, 'slon', grid_data%slon%vals, routine)
+if(grid_data%slat%nsize > 0) call nc_put_variable(ncid, 'slat', grid_data%slat%vals, routine)
+if(grid_data%gw%nsize > 0)   call nc_put_variable(ncid, 'gw',   grid_data%gw%vals,   routine)
+
+! flush any pending i/o to disk
+call nc_synchronize_file(ncid, routine)
+
+end subroutine nc_write_model_atts
+
 
 !-----------------------------------------------------------------------
 !>
@@ -321,10 +616,9 @@ end subroutine obs_too_high
 !> if it is a field in the state, return the variable id from
 !> the state structure.  if not in the state, varid will return -1
 
-subroutine ok_to_interpolate(obs_qty, varid, domain_id, my_status)
+subroutine ok_to_interpolate(obs_qty, varid, my_status)
 integer, intent(in)  :: obs_qty
 integer, intent(out) :: varid
-integer, intent(in)  :: domain_id
 integer, intent(out) :: my_status
 
 ! See if the state contains the obs quantity 
@@ -808,16 +1102,11 @@ end function read_model_time
 !> this routine will be called.  the pert_amp will be ignored, and the
 !> given list of quantities will be perturbed by the given amplitude
 !> (which can be different for each field) to generate an ensemble.
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-subroutine common_pert_model_copies(state_ens_handle, ens_size, MAX_PERT, &
-   custom_routine_to_generate_ensemble, fields_to_perturb, perturbation_amplitude, &
-   interf_provided)
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,             intent(in)    :: ens_size
-integer,             intent(in)    :: MAX_PERT
-logical,             intent(in)    :: custom_routine_to_generate_ensemble
-character(len=32),   intent(in)    :: fields_to_perturb(MAX_PERT)
-real(r8),            intent(in)    :: perturbation_amplitude(MAX_PERT)
+real(r8),            intent(in)    :: pert_amp   ! ignored in this version
 logical,             intent(out)   :: interf_provided
 
 type(random_seq_type) :: seq
@@ -831,12 +1120,14 @@ integer(i8), allocatable :: my_vars(:)
 logical,  allocatable :: do_these_qtys(:)
 real(r8), allocatable :: perturb_by(:)
 
-character(len=*), parameter :: routine = 'common_pert_model_copies:'
+character(len=*), parameter :: routine = 'pert_model_copies'
+
+if (.not. common_initialized) call error_handler(E_ERR, 'routine', 'static_init_model not called')
 
 ! set by namelist to select using the default routine in filter
 ! (adds the same noise to all parts of the state vector)
 ! or the code here that lets you specify which fields get perturbed.
-if (custom_routine_to_generate_ensemble) then
+if (ccustom_routine_to_generate_ensemble) then
    interf_provided = .true.
 else
    interf_provided = .false.
@@ -855,17 +1146,17 @@ perturb_by(:)    = 0.0_r8
 ! this loop is over the number of field names/perturb values
 ! in the namelist.  it quits when it finds a blank field name.
 do i=1, MAX_PERT
-   if (fields_to_perturb(i) == '') exit
+   if (cfields_to_perturb(i) == '') exit
 
-   myqty = get_index_for_quantity(fields_to_perturb(i))
+   myqty = get_index_for_quantity(cfields_to_perturb(i))
    if (myqty < 0) then
       string1 = 'unrecognized quantity name in "fields_to_perturb" list: ' // &
-                trim(fields_to_perturb(i))
+                trim(cfields_to_perturb(i))
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
    endif
 
    do_these_qtys(myqty) = .true.
-   perturb_by(myqty)    = perturbation_amplitude(i)
+   perturb_by(myqty)    = cperturbation_amplitude(i)
 enddo
 
 ! get the global index numbers of the part of the state that 
@@ -896,7 +1187,33 @@ enddo
 deallocate(my_vars)
 deallocate(do_these_qtys, perturb_by)
 
-end subroutine common_pert_model_copies
+end subroutine pert_model_copies
+
+!-----------------------------------------------------------------------
+!>
+!> Set the desired minimum model advance time. This is generally NOT the
+!> dynamical timestep of the model, but rather the shortest forecast length
+!> you are willing to make. This impacts how frequently the observations
+!> may be assimilated.
+!>
+!>
+
+function shortest_time_between_assimilations()
+
+character(len=*), parameter :: routine = 'shortest_time_between_assimilations:'
+
+type(time_type) :: shortest_time_between_assimilations
+
+if (.not. common_initialized) call error_handler(E_ERR, 'routine', 'static_init_model not called')
+
+shortest_time_between_assimilations = set_time(cassimilation_period_seconds, &
+                                               cassimilation_period_days)
+
+write(string1,*)'assimilation period is ',cassimilation_period_days,   ' days ', &
+                                          cassimilation_period_seconds,' seconds'
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
+
+end function shortest_time_between_assimilations
 
 
 !--------------------------------------------------------------------
@@ -1874,6 +2191,18 @@ std_atm_hgt_col(201) =    0.0_r8  ;  std_atm_pres_col(201) = 1.013E+05_r8
 std_atm_hgt_col(:) = std_atm_hgt_col(:) * 1000.0_r8
 
 end subroutine load_high_top_table
+
+!-----------------------------------------------------------------------
+!> Read in the grid information from the given CAM restart file.
+!> Note that none of the data will be used from this file; just the
+!> grid size and locations.
+subroutine read_grid_info(grid_file)
+character(len=*), intent(in)  :: grid_file  ! cam template file
+
+! Get the grid info plus additional non-state arrays
+call get_cam_grid(grid_file)
+
+end subroutine read_grid_info
 
 !========================================================================
 

@@ -81,7 +81,7 @@ clear MyInfo mynames myname ifield
 
 switch lower(pinfo.model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_96_tracer_advection' ...
 	 'forced_lorenz_96','lorenz_04','ikeda','simple_advection', 'null'}
 
       varid          = SetVariableID(pinfo);

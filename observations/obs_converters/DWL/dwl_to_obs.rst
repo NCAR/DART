@@ -37,13 +37,13 @@ The ``dwl_to_obs.f90`` file is the source for the main converter program. There 
 directory. The converter reads each text line into a character buffer and then reads from that buffer to parse up the
 data items.
 
-To compile and test, go into the work subdirectory and run the ``quickbuild.csh`` script to build the converter and a
+To compile and test, go into the work subdirectory and run the ``quickbuild.sh`` script to build the converter and a
 couple of general purpose utilities. ``advance_time`` helps with calendar and time computations, and the
 ``obs_sequence_tool`` manipulates DART observation files once they have been created.
 
 The observation types are defined in ``DART/obs_def/obs_def_dwl_mod.f90``. That filename must be added to the
 ``input.nml`` namelist file, to the &preprocess_nml namelist, the 'input_files' variable before compiling any program
-that uses these observation types. Multiple files can be listed. Then run quickbuild.csh again. It remakes the table of
+that uses these observation types. Multiple files can be listed. Then run quickbuild.sh again. It remakes the table of
 supported observation types before trying to recompile the source code.
 
 An example script for converting batches of files is in the ``shell_scripts`` directory. It will need customization

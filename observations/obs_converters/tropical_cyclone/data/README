@@ -14,7 +14,7 @@ converter code may need the read format section changed for your use.
 This converter must be compiled with obs_def_vortex_mod.f90 in the
 &preprocess_nml :: input_files namelist.
 
-Run the quickbuild.csh script in the ../work directory to build
+Run the quickbuild.sh script in the ../work directory to build
 the converter.
 
 The other data file, bal012013.dat, is an example of one of the

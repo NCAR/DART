@@ -16,7 +16,7 @@ For my own sanity here is the story on the scripts here:
 
 multi_parallel.batch - new script that should be able to convert N days
   at a time.  requires advance_time in this directory, thus the new
-  quickbuild.csh and mkmf files for the first time.
+  quickbuild.sh and mkmf files for the first time.
 
 run_one_prepbufr.csh - wrapper script that makes a unique directory for
   each day and does the conversion there.  intended to be called by the
@@ -39,7 +39,7 @@ distribution code.  you cd up one directory and run './install.sh' to
 build the bufr lib and the executables needed.  they all end up in
 the 'exe' subdir with an extension of .x
 
-the quickbuild.csh script builds advance_time now, and is also needed.
+the quickbuild.sh script builds advance_time now, and is also needed.
 
 # <next few lines under version control, do not edit>
 # $URL$

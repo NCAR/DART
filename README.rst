@@ -71,7 +71,7 @@ The documentation is partitioned into three parts:
 Manhattan Release
 -----------------
 
-DART releases are named based on the major version number.   The current version, 9.x.x,  is the Manhattan release. 
+The current version of DART is the Manhattan release. 
 Email dart@ucar.edu for advice if you are interested in a model which has not been converted from the previous Lanai release.
 
 
@@ -94,12 +94,12 @@ it out and set $NETCDF in your environment. *This NetCDF library must have been
 compiled with the same compiler that you use to compile DART and must include
 the F90 interfaces.*
 
-Go into ``models/lorenz_63/work`` and run *quickbuild.csh*.
+Go into ``models/lorenz_63/work`` and run *quickbuild.sh nompi*.
 
 .. code-block::
 
    $ cd models/lorenz_63/work
-   $ ./quickbuild.csh
+   $ ./quickbuild.sh nompi
 
 If it compiles, run this series of commands to do a very basic test:
 
@@ -116,7 +116,7 @@ and doesn’t grow unbounded) you have successfully installed DART and completed
 your first assimilation with it.
 
 If you are planning to run one of the larger models and want to use the Lorenz
-63 model as a test, run ``./quickbuild.csh -mpi``. It will build filter and any
+63 model as a test, run ``./quickbuild.sh``. It will build filter and any
 other MPI-capable executables with MPI.
 
 .. important::
@@ -246,6 +246,7 @@ References
    :caption: Run DART with your model
 
    guide/advice-for-new-collaborators
+   DART build system <guide/quickbuild.rst>
    guide/assimilation-complex-model
    guide/mpi_intro
    guide/filters
@@ -319,6 +320,7 @@ References
    observations/obs_converters/gnd_gps_vtec/README
    observations/obs_converters/gps/gps
    observations/obs_converters/ok_mesonet/ok_mesonet
+   observations/obs_converters/ocean_color/README
    observations/obs_converters/quikscat/QuikSCAT
    observations/obs_converters/even_sphere/README
    observations/obs_converters/obs_error/README
@@ -351,10 +353,9 @@ References
    theory/readme
    theory/conditional-probability-bayes-theorem
    guide/DART_LAB/DART_LAB
+   CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
-
-.. toctree::
-   :maxdepth: 2
+   
 .. toctree::
    :maxdepth: 2
    :caption: Models
@@ -390,6 +391,7 @@ References
    models/lorenz_84/readme
    models/lorenz_96/readme
    models/lorenz_96_2scale/readme
+   models/lorenz_96_tracer_advection/readme
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
    models/mpas_atm/readme
@@ -521,7 +523,6 @@ References
    :maxdepth: 2
    :caption: Misc
    
-   Release Notes <guide/Manhattan_release>
    models/CESM/doc/setup_guidelines
 
    
@@ -529,19 +530,10 @@ References
    :caption: non-compiling models
    :hidden:
          
-   models/MITgcm_ocean/trans_pv_sv
    models/MITgcm_ocean/create_ocean_obs
-   models/MITgcm_ocean/trans_sv_pv
    models/NCOMMAS/dart_to_ncommas
    models/NCOMMAS/ncommas_to_dart
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Build templates
-   :hidden:
-
-   build_templates/mkmf
 
 .. toctree::
    :maxdepth: 2

@@ -17,7 +17,7 @@ Instructions
 ------------
 
 -  Go to DART/observations/NCEP/ascii_to_obs/work
--  Use ``quickbuild.csh`` to compile all executable programs in the directory. To rebuild just one program:
+-  Use ``quickbuild.sh`` to compile all executable programs in the directory. To rebuild just one program:
 
    -  Use ``mkmf_create_real_obs`` to generate the makefile to compile ``create_real_obs.f90``.
    -  Type ``make`` to get the executable.

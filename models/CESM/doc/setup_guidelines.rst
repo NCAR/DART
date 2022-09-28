@@ -51,7 +51,7 @@ Some of the steps can be skipped if you have a suitable replacement, as noted.
     first assimilation cycle.   That may include creating spread in the initial ensemble by perturbing it.
     Input.nml will be copied to the $CASEROOT directory and used by assimilate.csh.
     That copy can be modified for whichever cycles will be run next.
-#.  Build the DART executables using quickbuild.csh.
+#.  Build the DART executables using quickbuild.sh.
 #.  Follow the directions in CESM/shell_scripts/\*setup\* to set up the CESM case and integrate DART into it.
     The DART team recommends a tiny ensemble to start with, to more quickly test whether everything is in order.
 #.  Choose a start date for your assimilation. Choosing/creating the initial ensemble is a complicated issue.

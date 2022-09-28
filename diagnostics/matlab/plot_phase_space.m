@@ -159,7 +159,7 @@ switch lower(pinfo.model)
                      'ens_mem' , ens_mem  , ...
                      'ltype'   , ltype   );
 
-   case {'simple_advection'}
+   case {'simple_advection','lorenz_96_tracer_advection'}
 
       if (ishold), clear var1 var2 var3 ens_mem ltype; end
 
