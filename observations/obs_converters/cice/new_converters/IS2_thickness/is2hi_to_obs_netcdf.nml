@@ -1,9 +1,0 @@
-
-&is2hi_to_obs_netcdf_nml
-   year              = 2018
-   doy               = 287
-   terr              = 0.10
-   seaice_input_file = 'is2data.input'
-   obs_out_file      = 'obs_seq.out'
-   debug             = .false.
-   /

@@ -1,0 +1,10 @@
+
+&seaicedata_to_obs_netcdf_nml
+   year              = 2000
+   doy               = 1
+   data_type         = 12
+   seaice_input_file = 'seaicedata.input'
+   obs_out_file      = 'obs_seq.out'
+   itd_ob            = .false.
+   debug             = .false.
+   /
