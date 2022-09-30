@@ -101,7 +101,7 @@ real(r8), allocatable :: vice(:,:)
 real(r8), allocatable :: r_snw(:,:)
 
 !Temporary variables
-!real(r8), allocatable :: aice_temp(:,:)
+real(r8), allocatable :: aice_temp(:,:)
 real(r8), allocatable :: vice_temp(:,:)
 !real(r8), allocatable :: vsno_temp(:,:)
 !real(r8), allocatable :: increment_aice(:,:)
@@ -496,9 +496,9 @@ END SELECT
      !aicen*hicen_original
      !===============================================================
      
-     aicen   = max(0.0_r8,aicen)   ! concentrations must be non-negative
-     !vicen   = max(0.0_r8,vicen)   ! same for volumes 
-     vsnon   = max(0.0_r8,vsnon)
+     !aicen   = max(0.0_r8,aicen)   ! postponed
+     !vicen   = max(0.0_r8,vicen)   ! postponed 
+     vsnon   = max(0.0_r8,vsnon)   ! snow volume must be non-negative
      sice001 = max(0.0_r8,sice001) ! same for salinities 
      sice002 = max(0.0_r8,sice002)
      sice003 = max(0.0_r8,sice003)
@@ -518,7 +518,7 @@ END SELECT
      qsno001 = min(0.0_r8,qsno001)
      qsno002 = min(0.0_r8,qsno002)
      qsno003 = min(0.0_r8,qsno003)
-     aicen   = min(1.0_r8,aicen)    ! concentrations must not exceed 1 
+     !aicen   = min(1.0_r8,aicen)    ! concentrations must not exceed 1     ! BITZ does this need to be here
      Tsfcn   = min(Tsmelt,Tsfcn)    ! ice/sno surface must not exceed melting
 
      if (r_snw_name /= 'none') then
@@ -527,26 +527,36 @@ END SELECT
        r_snw   = max(rsnw_min,r_snw)
      end if
 
-     ! calculate vice, which might be negative at this point
+     ! calculate vice,aice which might be negative at this point
      vice = vicen(:,:,1)
+     aice = aicen(:,:,1)
      do n = 2, Ncat  
        vice = vice+vicen(:,:,n)
+       aice = aice+aicen(:,:,n)
      end do
 
-     ! set negative vicen to zero
+     ! set negative vicen,aicen to zero, dont let aicen>1
      vicen   = max(0.0_r8,vicen)
+     aicen   = max(0.0_r8,aicen)
+!     where(aicen==0.0_r8) vicen=0.0_r8  ! BITZ 
+!     where(vicen==0.0_r8) aicen=0.0_r8  ! BITZ try to deal with this at line 657ish
+     aicen   = min(1.0_r8,aicen)    ! BITZ is this okay here
 
-     ! reclaculate vice, now it should be non-negative
+     ! reclaculate vice,aice now should be non-negative
      vice_temp = vicen(:,:,1)
+     aice_temp = aicen(:,:,1)
      do n = 2, Ncat
         vice_temp = vice_temp + vicen(:,:,n)
+        aice_temp = aice_temp + aicen(:,:,n)
      end do
 
-     ! if vice <0, then set every category to 0
+     ! if vice <0 or aice< then set every category to 0  BITZ may rethink later
      do j = 1, Ny
         do i = 1, Nx
-           if (vice(i,j)<0._r8) then
+           if ((vice(i,j)<0._r8) .or. (aice(i,j)<0._r8)) then
               vicen(i,j,:) = 0._r8
+              vsnon(i,j,:) = 0._r8
+              aicen(i,j,:) = 0._r8
            end if
         end do
      end do
@@ -563,13 +573,16 @@ END SELECT
      !write(*,*)'aicen/aice_temp',aicen(i,j,n)/aice_temp(i,j)
      !write(*,*)'aicen - delta*ratio:',aicen(i,j,n) -(aice_temp(i,j)-aice(i,j))*aicen(i,j,n)/aice_temp(i,j)
    
-     ! move the negative values and 'melt' ice to conserve volume
+     ! after removing the negative values, 'melt' ice to conserve volume or squeeze area
      do n=1, Ncat
        do j=1, Ny
           do i=1, Nx
              if (vice_temp(i,j) > 0._r8 .and. vice(i,j)>0._r8) then
-                vicen(i,j,n) = vicen(i,j,n) - (vice_temp(i,j)-vice(i,j))*vicen(i,j,n)/vice_temp(i,j)
+                vicen(i,j,n) = vicen(i,j,n)*(1.0_r8 - (vice_temp(i,j)-vice(i,j))/vice_temp(i,j))
              end if  
+             if (aice_temp(i,j) > 0._r8 .and. aice(i,j)>0._r8) then  
+                aicen(i,j,:) = aicen(i,j,:)*(1.0_r8 - (aice_temp(i,j)-aice(i,j))/aice_temp(i,j))
+             endif  
           end do
        end do
      end do
@@ -578,7 +591,7 @@ END SELECT
      !j = 372
      !n = 2
      !write(*,*)'after moving negative values:',aicen(i,j,n)
-     ! now squeeze aicen 
+     ! now squeeze aicen   BITZ do it later
 
      !do j = 1, Ny
      !  do i = 1, Nx
@@ -591,28 +604,30 @@ END SELECT
 
      ! update aicen
      ! set 0 values to very negative to do thickness calculation
-     where(vicen_original==0) vicen_original = -999
+!     where(aicen_original==0) aicen_original = -999  ! CMB needs to be aicen to prevent divide by zero 
+     ! verified that this made no difference from Mollys code on 2/8/2022
      
      ! calculate thickness per category
-     do n=1,Ncat
-        do j=1,Ny
-           do i=1,Nx
-              hicen_original(i,j,n) = vicen_original(i,j,n)/aicen_original(i,j,n)
-              hsnon_original(i,j,n) = vsnon_original(i,j,n)/aicen_original(i,j,n)
-           end do
-        end do
-     end do
+!     do n=1,Ncat
+!        do j=1,Ny
+!           do i=1,Nx
+!              hicen_original(i,j,n) = vicen_original(i,j,n)/aicen_original(i,j,n)
+!              hsnon_original(i,j,n) = vsnon_original(i,j,n)/aicen_original(i,j,n)
+!           end do
+!        end do
+!     end do
      
      ! remove negative values of ice thickness
-     where(hicen_original<0)  hicen_original = 0.0_r8
-     where(hsnon_original<0)  hsnon_original = 0.0_r8
+     ! note that this forces aicen=0 when vicen_original=0, though vicen may be >0
+!     where(hicen_original<0)  hicen_original = 0.0_r8
+!     where(hsnon_original<0)  hsnon_original = 0.0_r8
 
-     ! reassign zero volume 
-     where(vicen_original==-999) vicen_original=0.0_r8
+     ! reassign zero value 
+!     where(aicen_original==-999) aicen_original=0.0_r8   ! CMB needs to be aicen 
      
      ! calculate aicen from vicen and original ice thickness
-     where(hicen_original==0._r8) aicen = 0.0_r8
-     where(hicen_original/=0._r8) aicen  = vicen/hicen_original
+!     where(hicen_original==0._r8) aicen = 0.0_r8
+!     where(hicen_original/=0._r8) aicen  = vicen/hicen_original
 
      ! address aicen cases where volume is zero or the update 'grows' ice
      ! calculate thickness category midpoints 
@@ -631,40 +646,20 @@ END SELECT
      end do
 
      ! finish aicen update for special cases 
+     where(aicen==0.0_r8) vicen=0.0_r8  
      do n = 1, Ncat
         do j = 1, Ny 
            do i = 1, Nx
 
-               if (vicen(i,j,n)==0._r8 ) then
-                  aicen(i,j,n)  = 0._r8
-               end if
-
-               if (vicen(i,j,n)>0._r8 .and. vicen_original(i,j,n)==0._r8) then
-                  ! require ice area for thickness = category boundary midpoint
-                  aicen(i,j,n) =  vicen(i,j,n) / hcat_midpoint(n)
+               if (aicen(i,j,n)>0._r8 .and. aicen_original(i,j,n)==0._r8) then
+!                  ! require ice volume if there is area, use thickness of bin midpoint if no volume
+                  if (vicen(i,j,n)==0._r8)  vicen(i,j,n) =  aicen(i,j,n) * hcat_midpoint(n)
                end if 
 
            end do
         end do
      end do
 
-     ! squeeze this new area to be 1 or less
-     aice = aicen(:,:,1)
-     do n = 2, Ncat  
-        aice = aice+aicen(:,:,n)
-     end do
-     
-     do j = 1, Ny
-        do i = 1, Nx
-           if (aice(i,j) > 1.0_r8) then
-              squeeze        = 1.0_r8 / aice(i,j)
-              aicen(i,j,:)   = aicen(i,j,:)*squeeze
-           end if
-        end do
-     end do
-
-     ! calculate snow volume using squeezed area
-     vsnon = aicen * hsnon_original
 
      ! tidy up other restart variables according to vicen special cases 
      do n = 1, Ncat
@@ -672,6 +667,7 @@ END SELECT
            do i = 1, Nx
             
               if (vicen(i,j,n)==0._r8 ) then
+                 aicen(i,j,n) = 0._r8
                  sice001(i,j,n) = 0._r8
                  sice002(i,j,n) = 0._r8
                  sice003(i,j,n) = 0._r8
@@ -699,6 +695,9 @@ END SELECT
                end if
 
               if (vicen(i,j,n)>0._r8 .and. vicen_original(i,j,n)==0._r8) then
+
+               ! require ice area if there is volume, use thickness of bin midpoint if no area 
+                 if (aicen(i,j,n)==0._r8)  aicen(i,j,n) =  vicen(i,j,n) / hcat_midpoint(n)
 
                ! allow no snow volume or enthalpy
                  vsnon(i,j,n) = 0._r8
@@ -734,6 +733,23 @@ END SELECT
         end do
       end do
 
+     ! finally ensure area is 1 or less
+     aice = aicen(:,:,1)
+     do n = 2, Ncat  
+        aice = aice+aicen(:,:,n)
+     end do
+     
+     do j = 1, Ny
+        do i = 1, Nx
+           if (aice(i,j) > 1.0_r8) then
+              squeeze        = 1.0_r8 / aice(i,j)
+              aicen(i,j,:)   = aicen(i,j,:)*squeeze
+           end if
+        end do
+     end do
+
+     ! calculate snow volume using squeezed area   BITZ LETS NOT DO THIS EVENTUALLY
+     vsnon = aicen * hsnon_original
     
    !for testing make something to fix
    !  aicen(10,10,1)=1.1
