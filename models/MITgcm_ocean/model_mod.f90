@@ -998,6 +998,7 @@ logical             :: lon_found, lat_found, depth_found
 integer             :: qty
 
 integer(i8) :: offset
+logical :: is_2d
 
 offset = get_index_start(dom_id, var_id)
 
@@ -1009,7 +1010,12 @@ qty = get_kind_index(dom_id, var_id)
 if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
 if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)
 
-if (qty == QTY_SEA_SURFACE_HEIGHT .or. qty == QTY_SURFACE_CHLOROPHYLL ) depth = ZC(1)
+is_2d = .false.
+
+if (qty == QTY_SEA_SURFACE_HEIGHT .or. qty == QTY_SURFACE_CHLOROPHYLL ) then
+   depth = ZC(1)
+   is_2d = .true.
+endif
 
 get_compressed_dart_vector_index = -1
 
@@ -1043,10 +1049,10 @@ do i=1, comp3d
    if ( ZC_sq(i) == depth ) then
       depth_found = .true.
    endif
-   
+ 
    if (lon_found .and. lat_found .and. depth_found )then
       get_compressed_dart_vector_index = offset + i - 1
-      exit
+      return
    endif
 enddo
 

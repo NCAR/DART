@@ -946,9 +946,9 @@ close(iunit)
 
 n = 1
 
-do i=1,NX
-   do j=1,NY
-      do k=1,NZ
+do k=1,NZ  ! k first so 2d is first
+   do i=1,NX
+       do j=1,NY
          if (var3d(i,j,k) /= binary_fill) then !HK also NaN?
             XCcomp(n) = XC(i)
             YCcomp(n) = YC(j)
@@ -1004,9 +1004,9 @@ integer  :: n
 integer  :: i,j,k ! loop variables
 
 n = 1
-do i = 1, NX
-   do j = 1, NY
-      do k = 1 , NZ
+do k = 1 , NZ !k first so 2d is first
+   do i = 1, NX
+      do j = 1, NY
          if (var_data(i,j,k) /= FVAL) then
             comp_var(n) = var_data(i,j,k)
             n = n + 1
