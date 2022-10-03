@@ -34,6 +34,7 @@ model_serial_programs=(
 dart_to_mit
 mit_to_dart
 create_ocean_obs
+expand_netcdf
 )
 
 arguments "$@"
