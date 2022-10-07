@@ -45,6 +45,10 @@ integer, parameter :: max_ny = 2048
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
+!-- record lengths for reading/writing binary files
+integer :: recl3d
+integer :: recl2d
+
 !--   Gridding parameters variable declarations
 logical :: usingCartesianGrid, usingCylindricalGrid, &
            usingSphericalPolarGrid, usingCurvilinearGrid, &
@@ -215,6 +219,10 @@ do i=2, Nz
  ZG(i) = ZG(i-1) - delZ(i-1)
  ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
+
+! set record lengths
+recl3d = Nx*Ny*Nz*4
+recl2d = Nx*Ny*4
 
 end subroutine static_init_trans
 
@@ -630,7 +638,7 @@ integer  :: iunit
 integer  :: recl ! datasize*4
 real(r4) :: var_data(Nx,Ny)
 
-recl = Nx*Ny*4
+recl = recl2d
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
@@ -662,7 +670,7 @@ real(r4) :: low_conc
 
 low_conc = 1.0e-12
 
-recl = Nx*Ny*Nz*4
+recl = recl3d
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
@@ -713,7 +721,7 @@ real(r4) :: low_conc
 
 low_conc = 1.0e-12
 
-recl = Nx*Ny*Nz*4
+recl = recl3d
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
@@ -763,7 +771,7 @@ real(r4) :: var(Nx,Ny)
 integer  :: varid
 real(r4) :: local_fval
 
-recl = Nx*Ny*4
+recl = recl2d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -798,7 +806,7 @@ real(r4) :: var(Nx,Ny,Nz)
 integer  :: varid
 real(r4) :: local_fval
 
-recl = Nx*Ny*Nz*4
+recl = recl3d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -834,7 +842,7 @@ real(r4) :: var(Nx,Ny,Nz)
 integer  :: varid
 real(r4) :: local_fval
 
-recl = Nx*Ny*Nz*4
+recl = recl3d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -876,7 +884,7 @@ integer  :: recl ! datasize*4
 real(r4) :: var3d(NX,NY,NZ)
 integer  :: i,j,k
 
-recl = Nx*Ny*Nz*4
+recl = recl3d
 
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
@@ -910,7 +918,7 @@ integer  :: recl ! datasize*4
 real(r4) :: var2d(NX,NY)
 integer  :: i,j
 
-recl = Nx*Ny*4
+recl = recl2d
 
 iunit = get_unit()
 open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
