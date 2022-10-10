@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program create_ocean_obs
 
@@ -12,13 +10,17 @@ program create_ocean_obs
 ! redefined to occur at NOON on the day they were observed.
 
 use         types_mod, only : r8, deg2rad, PI
+
 use  obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                               static_init_obs_sequence, destroy_obs_sequence 
+
 use dart_MITocean_mod, only : real_obs_sequence
+
 use     utilities_mod, only : initialize_utilities, register_module, &
                               do_output, logfileunit, &
                               error_handler, finalize_utilities, E_ERR, E_MSG, &
                               find_namelist_in_file, check_namelist_read
+
 use  time_manager_mod, only : time_type, set_date, set_time, print_date, &
                               operator(+), set_calendar_type, GREGORIAN
   
@@ -26,10 +28,9 @@ use  time_manager_mod, only : time_type, set_date, set_time, print_date, &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'create_ocean_obs.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 type(obs_sequence_type) :: seq
 
@@ -42,8 +43,8 @@ type(time_type) :: time1, timeN
         
 integer :: year = 1996, month = 1, day = 1, tot_days = 31
 integer :: max_num = 800000
-character(len = 129) :: fname = 'raw_ocean_obs.txt'
-character(len = 129) :: output_name = 'raw_ocean_obs_seq.out'
+character(len=256) :: fname = 'raw_ocean_obs.txt'
+character(len=256) :: output_name = 'raw_ocean_obs_seq.out'
 logical :: hfradar = .false.
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
@@ -95,8 +96,3 @@ call finalize_utilities()
 
 end program create_ocean_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

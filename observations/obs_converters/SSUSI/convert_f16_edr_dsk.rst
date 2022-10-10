@@ -50,7 +50,7 @@ Programs
 --------
 
 ``DART/observations/SSUSI/convert_f16_edr_dsk.f90`` will extract ON2 data from the distribution files and create DART
-observation sequence (obs_seq) files. Build it in the ``SSUSI/work`` directory by running the ``./quickbuild.csh``
+observation sequence (obs_seq) files. Build it in the ``SSUSI/work`` directory by running the ``./quickbuild.sh``
 script located there. In addition to the converters, the ``advance_time`` and ``obs_sequence_tool`` utilities will be
 built.
 

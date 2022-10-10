@@ -16,7 +16,7 @@ and change location/oned/* to location/threed_sphere/*
 edit all the work/path_names_* files and change models/template/xxx
 to use the name of the directory for your model.
 
-try ./quickbuild.csh and everything should compile at this point.
+try ./quickbuild.sh and everything should compile at this point.
 
 the required subroutines are these:
 public :: get_model_size,         &

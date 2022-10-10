@@ -100,6 +100,10 @@ ftest_mpi: fixsys ftest_mpi.f90
 ftest_sendrecv: ftest_sendrecv.f90 types_mod.o utilities_mod.o time_manager_mod.o mpi_utilities_mod.o
 	$(MPIFC) ftest_sendrecv.f90 types_mod.o utilities_mod.o time_manager_mod.o mpi_utilities_mod.o $(LDFLAGS) -o ftest_sendrecv
 
+# f90 test program for large messages (greater than 2^31-1 elements)
+ftest_sendrecv_big: ftest_sendrecv_big.f90 types_mod.o utilities_mod.o time_manager_mod.o mpi_utilities_mod.o
+	$(MPIFC) ftest_sendrecv_big.f90 types_mod.o utilities_mod.o time_manager_mod.o mpi_utilities_mod.o $(LDFLAGS) -o ftest_sendrecv_big 
+
 # test of MPI one-sided communication
 ftest_onesided: ftest_onesided.f90 
 	$(MPIFC) ftest_onesided.f90 $(LDFLAGS) -o ftest_onesided

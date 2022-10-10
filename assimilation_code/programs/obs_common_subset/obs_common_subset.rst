@@ -181,7 +181,7 @@ input list. The other important choice when building the tool is to include a co
 low-order models, the ``oned`` module should be used; for real-world observations, the ``threed_sphere`` module should
 be used.
 
-Generally the directories where executables are built will include a "quickbuild.csh" script which will build and run
+Generally the directories where executables are built will include a "quickbuild.sh" script which will build and run
 preprocess and then build the rest of the executables. The "input.nml" namelists will need to be edited to include all
 the required observation types first.
 

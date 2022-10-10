@@ -1,0 +1,10 @@
+
+&dart_to_clm_nml
+   dart_to_clm_input_file  = 'dart_posterior.nc'
+   dart_to_clm_output_file = 'clm_restart.nc'
+   repartition_swe         = 0
+   repartition_vhist_file = 'clm_vector_history.nc'
+   repartition_analysis_file = 'dart_posterior_vector.nc'
+   verbose                 = 0
+   /
+

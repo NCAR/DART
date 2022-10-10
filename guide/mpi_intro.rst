@@ -49,10 +49,9 @@ using MPI and running in parallel is simply an additional option.) To build a pa
 program, the 'mkmf_filter' command needs to be called with the '-mpi' option to generate a Makefile which compiles
 with the MPI scripts instead of the Fortran compiler.
 
-See the ``quickbuild.csh`` script in each ``$DART/models/*/work`` directory for the commands that need to be edited to
-enable the MPI utilities. You will also need to edit the ``$DART/mkmf/mkmf.template`` file to call the proper version
+Run ``quickbuild.sh`` will build DART with MPI. You will also need to edit the ``$DART/mkmf/mkmf.template`` file to call the proper version
 of the MPI compile script if it does not have the default name, is not in a standard location on the system, or needs
-additional options set to select between multiple Fortran compilers.
+additional options set to select between multiple Fortran compilers. To build without mpi, use ``quickbuild.sh nompi``.
 
 MPI programs generally need to be started with a shell script called 'mpirun' or 'mpiexec', but they also interact
 with any batch control system that might be installed on the cluster or parallel system. Parallel systems with

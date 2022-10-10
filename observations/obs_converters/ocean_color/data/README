@@ -1,0 +1,43 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This is an example data file. It can be used as an input file
+for the satellite chlorophyll (CHL) obs converter. The file 
+contains raw CHL data that was downloaded using the script:
+$DART/observations/obs_converters/ocean_color/shell_scripts/get_ocdata.sh
+
+get_ocdata.sh downloads the data from the NASA ocean color 
+webpage and modifies it. The modifications are minimal:
+- Add a time dimension with the necessary attributes for 
+the converter
+- Crops the data into the requested domain (for instance, 
+the Red Sea)
+- It also runs the converter 
+You can download as much data as you want by specifying 
+a date range on top of the get_ocdata.sh script. 
+
+There are two main sources for CHL data: 
+[1] MODIS/AQUA: up to 2011
+[2] VIIRS/SNNP: beond 2011 until present
+
+An example data file looks like this:
+
+``V2020350.L3m_DAY_SNPP_CHL_chlor_a_4km.nc``
+
+where, 
+- V      : letter representing either instrument (A/V)
+- 2020350: $year$days; i.e., 350 into 2020 (Dec 15, 2020)
+- L3m    : Mapping
+- DAY    : Frequency
+- SNPP   : intrument
+- CHL    : variable
+- chlor_a: obs name
+- 4km    : resolution 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

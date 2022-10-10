@@ -41,7 +41,7 @@ only support identity forward observation operators.
 
 All of the build scripts in DART remove the existing ``obs_kind_mod.f90`` file and regenerate it using the
 ``preprocess`` program. Do not add new quantities to ``obs_kind_mod.f90``, because these changes will not be kept when
-you run *quickbuild.csh*.
+you run *quickbuild.sh*.
 
 Adding additional quantities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

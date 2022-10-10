@@ -14,11 +14,6 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-  interface
-     integer function iargc()
-     end function iargc
-  end interface
-
   integer :: ccyy, mm, dd, hh, dh
 
   integer :: nargum, i, n, sign

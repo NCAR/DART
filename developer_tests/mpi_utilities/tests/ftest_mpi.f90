@@ -16,13 +16,15 @@ program ftest_mpi
 
 use mpi
 
-! the NAG compiler needs these special definitions enabled
+! the NAG compiler needs these special definitions enabled.
 ! the 'fixsystem' script in the assimilation_code/modules/utilities dir
 ! should fix this for you.  please leave the BLOCK comment lines unchanged.
 
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
 ! !#ifdef __NAG__
+!
 ! use F90_unix_proc, only : sleep, system, exit
+!
 ! !! these are the calling sequences for NAG compiler
 ! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
 ! !    INTEGER,INTENT(IN) :: SECONDS
@@ -36,7 +38,8 @@ use mpi
 ! !  SUBROUTINE EXIT(STATUS)
 ! !    INTEGER,OPTIONAL :: STATUS
 ! !! end block
-!  !#endif
+!
+! !#endif
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 
 implicit none

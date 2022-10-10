@@ -35,7 +35,7 @@ Programs
 --------
 
 The programs in the ``DART/observations/MADIS/`` directory extract data from the distribution files and create DART
-observation sequence (obs_seq) files. Build them in the ``work`` directory by running the ``./quickbuild.csh`` script.
+observation sequence (obs_seq) files. Build them in the ``work`` directory by running the ``./quickbuild.sh`` script.
 In addition to the converters, the ``advance_time`` and ``obs_sequence_tool`` utilities will be built.
 
 There are currently converters for these data types:

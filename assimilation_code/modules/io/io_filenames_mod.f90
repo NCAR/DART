@@ -53,7 +53,9 @@ use state_structure_mod,  only : get_num_domains, &
                                  get_add_offset, &
                                  get_scale_factor, &
                                  get_has_missing_value, &
-                                 do_io_update
+                                 get_has_FillValue, &
+                                 do_io_update, &
+                                 get_io_dim_length
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
 
@@ -592,9 +594,9 @@ do i = 1, get_num_variables(dom)
       endif
 
       ! check that the dimension lengths are the same
-      if (get_dim_length(dom,i,j) /= length(j)) then
+      if (get_io_dim_length(dom,i,j) /= length(j)) then
          write(msgstring,*) 'dimension ', trim(name(j)), "'s length ", &
-                            get_dim_length(dom,i,j), ' in state does not match', &
+                            get_io_dim_length(dom,i,j), ' in state does not match', &
                             ' dimension length ', length(j), ' in ', trim(netcdf_filename)
          call error_handler(E_ERR, 'check_correct_variables', msgstring, source)
       endif
@@ -632,24 +634,39 @@ call check_attributes_name(ncFile, filename, ncVarId, 'short_name', get_short_na
 if ( get_has_missing_value(domid, varid) ) then
    select case (get_xtype(domid,varid))
       case (NF90_INT)
-         call get_FillValue(domid, varid, spvalINT)
-         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
          call get_missing_value(domid, varid, spvalINT)
          call check_attribute_value_int(ncFile, filename, ncVarID, 'missing_value', spvalINT)
 
       case (NF90_FLOAT)
-         call get_FillValue(domid, varid, spvalR4)
-         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
          call get_missing_value(domid, varid, spvalR4)
          call check_attribute_value_r4(ncFile, filename, ncVarID, 'missing_value', spvalR4)
 
       case (NF90_DOUBLE)
-         call get_FillValue(domid, varid, spvalR8)
-         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
          call get_missing_value(domid, varid, spvalR8)
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
 
       case default
+         !>@todo FIXME report the variable with the unsupported xtype
+         call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
+   end select
+endif
+
+if ( get_has_FillValue(   domid, varid) ) then
+   select case (get_xtype(domid, varid))
+      case (NF90_INT)
+         call get_FillValue(domid, varid, spvalINT)
+         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
+
+      case (NF90_FLOAT)
+         call get_FillValue(domid, varid, spvalR4)
+         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
+
+      case (NF90_DOUBLE)
+         call get_FillValue(domid, varid, spvalR8)
+         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
+
+      case default
+         !>@todo FIXME report the variable with the unsupported xtype
          call error_handler(E_ERR, 'check_attributes', 'unknown xtype', source)
    end select
 endif
@@ -701,6 +718,9 @@ real(r4),         intent(in) :: spvalR4
 real(r4) :: ret_spvalR4
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
+   if (ret_spvalR4 /= ret_spvalR4) then 
+      return
+   endif
    if (spvalR4 /= ret_spvalR4) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
@@ -726,6 +746,9 @@ real(r8),         intent(in) :: spvalR8
 real(r8) :: ret_spvalR8
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
+   if (ret_spvalR8 /= ret_spvalR8) then
+      return
+   endif
    if (spvalR8 /= ret_spvalR8) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)

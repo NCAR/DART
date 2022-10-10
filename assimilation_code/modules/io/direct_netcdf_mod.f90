@@ -81,7 +81,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_sum_variables_below, get_dim_length, &
                                  get_variable_name, get_io_clamping_maxval,   &
                                  get_io_clamping_minval, do_io_clamping,         &
-                                 get_io_num_dims, get_io_dim_lengths,            &
+                                 get_io_num_dims, get_dim_lengths,            &
                                  get_variable_size, get_io_num_unique_dims,   &
                                  get_io_unique_dim_name, get_dim_name,        &
                                  get_io_unique_dim_length, get_scale_factor, &
@@ -89,9 +89,11 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_units, get_long_name, get_short_name, &
                                  get_has_missing_value, get_FillValue, &
                                  get_missing_value, get_add_offset, get_xtype, &
+                                 get_has_FillValue, &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
-                                 end_diagnostic_structure
+                                 end_diagnostic_structure, &
+                                 has_unlimited_dim
 
 use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  stage_metadata_type, get_file_description, &
@@ -166,7 +168,7 @@ subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, rea
 type(ensemble_type),       intent(inout) :: state_ens_handle !< Ensemble handle
 type(stage_metadata_type), intent(in)    :: name_handle      !< Name handle
 integer,                   intent(in)    :: domain           !< Which domain to read
-integer,                   intent(inout) :: dart_index       !< This is for multiple domains
+integer(i8),               intent(inout) :: dart_index       !< This is for multiple domains
 logical,                   intent(in)    :: read_single_vars !< Read one variable at a time
 
 if (task_count() == 1) then
@@ -188,7 +190,7 @@ subroutine transpose_write(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_single_vars !< write one variable at a time
 logical,                   intent(in)    :: write_single_precision
 
@@ -484,10 +486,11 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_start_point
 
 integer :: icopy, ivar, domain  
-integer :: ens_size, extra_size, time_size, var_size, elm_count, ndims
+integer :: ens_size, extra_size, time_size, ndims
 integer :: my_pe, recv_pe, recv_start, recv_end, start_rank
-integer :: start_pos, end_pos, send_start, send_end, start_point
+integer :: send_start, send_end
 logical :: do_perturb, is_sender, is_receiver, is_extra_copy
+integer(i8) :: var_size, elm_count, start_pos, end_pos, start_point
 
 real(r8), allocatable :: var_block(:)
 
@@ -821,10 +824,7 @@ end subroutine write_augmented_state
 
 !-------------------------------------------------------------------------------
 !> Read in variables from start_var to end_var
-!>@todo FIXME: At the moment, this code is assuming that the variables in the state start
-!> at (1,1,1) and that the whole variable is read. This is not the case for
-!> TIEGCM and CLM. 
-
+!> Read the latest time slice in the file
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
 
 integer,  intent(in)    :: ncfile_in
@@ -834,11 +834,12 @@ integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain
 
 integer :: i
-integer :: istart, iend
-integer :: var_size
-integer, allocatable :: dims(:)
-integer :: ret, var_id
-
+integer(i8) :: istart, iend
+integer(i8) :: var_size
+integer :: num_dims
+integer, allocatable :: counts(:)
+integer, allocatable :: slice_start(:) ! slice of variable
+integer :: ret, var_id, unlim_dimID
 logical :: missing_possible
 
 missing_possible = get_missing_ok_status()
@@ -850,22 +851,41 @@ do i = start_var, end_var
    var_size = get_variable_size(domain, i)
    iend = istart + var_size - 1
 
-   ! number of dimensions and length of each
-   allocate(dims(get_io_num_dims(domain, i)))
+   ! number of dimensions and length the variable
+   num_dims = get_io_num_dims(domain, i)
+   allocate(counts(num_dims))
+   allocate(slice_start(num_dims))
 
-   dims = get_io_dim_lengths(domain, i)
+   if (has_unlimited_dim(domain)) then
+
+      slice_start(:) = 1 ! default to read all dimensions start at 1
+      counts(num_dims) = 1 ! one slice of unlimited dimesion
+      counts(1:num_dims-1) = get_dim_lengths(domain, i) ! the state
+      
+      ! read latest time slice - hack to get started with tiegcm
+      ! not sure if it will always be the last time slice
+      ret = nf90_inquire(ncfile_in, unlimitedDimID=unlim_dimID)
+      call nc_check(ret, 'read_variables: nf90_inquire', 'unlimitedDimID')
+      ret = nf90_inquire_dimension(ncfile_in, unlim_dimID, len=slice_start(num_dims))
+      call nc_check(ret, 'read_variables: nf90_inquiredimension', 'unlimitedDim length')
+
+   else
+
+      slice_start(:) = 1 ! default to read all dimensions start at 1
+      counts(:) = get_dim_lengths(domain, i) ! the state
+   endif
 
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
-   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
+   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=counts, start=slice_start)
    call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
 
    if (missing_possible) call set_dart_missing_value(var_block(istart:iend), domain, i)
 
    istart = istart + var_size
 
-   deallocate(dims)
+   deallocate(counts, slice_start)
 
 enddo
 
@@ -885,14 +905,15 @@ subroutine read_transpose_single_task(state_ens_handle, name_handle, domain, dar
 type(ensemble_type),      intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)   :: name_handle
 integer,                   intent(in)   :: domain
-integer,                  intent(inout) :: dart_index !< This is for multiple domains
+integer(i8),              intent(inout) :: dart_index !< This is for multiple domains
 
 real(r8), allocatable :: vector(:)
 
 integer :: ncfile !< netcdf input file identifier
 character(len=256) :: netcdf_filename
 
-integer :: block_size , istart, iend , copy , start_var
+integer(i8) :: block_size, istart, iend
+integer :: copy , start_var
 
 istart     = dart_index ! position in state_ens_handle%vars
 block_size = 0
@@ -946,7 +967,7 @@ subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_single_precision
 
 ! netcdf variables
@@ -955,7 +976,8 @@ character(len=256) :: netcdf_filename_out
 
 real(r8), allocatable :: vector(:)
 
-integer :: block_size , istart, iend , copy , start_var, end_var
+integer(i8) :: block_size , istart, iend
+integer :: copy , start_var, end_var
 integer :: time_owner, time_owner_index
 logical :: clamp_vars, force_copy
 type(time_type) :: dart_time
@@ -1052,7 +1074,7 @@ subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index !< This is for multiple domains
+integer(i8),               intent(inout) :: dart_index !< This is for multiple domains
 logical,                   intent(in)    :: read_var_by_var !< Read one variable at a time 
 
 integer :: start_var, end_var   !< start/end variables in a read block
@@ -1060,15 +1082,15 @@ integer :: start_rank           !< starting rank containg variable of interest
 integer :: recv_start, recv_end !< start/end variables for receives
 integer :: send_start, send_end !< start/end variables for sends
 integer :: recv_pe, sending_pe  !< PEs sending and receiving data
-integer :: elm_count            !< number of elements to send
-integer :: block_size           !< number of state elements in a block
-integer :: istart, iend         !< position in state vector copies array
+integer(i8) :: elm_count        !< number of elements to send
+integer(i8) :: block_size       !< number of state elements in a block
+integer(i8) :: istart, iend     !< position in state vector copies array
 integer :: ens_size             !< ensemble size
 integer :: my_pe                !< task or pe?
 integer :: ensemble_member      !< the ensmeble_member you are receiving.
 integer :: my_copy              !< which copy a pe is reading, from 1 to ens_handle%num_copies
 integer :: c                    !< copies_read loop index
-integer :: start_point
+integer(i8) :: start_point
 integer :: copies_read
 integer :: num_state_variables
 integer :: dummy_loop
@@ -1234,19 +1256,19 @@ subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, &
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
-integer,                   intent(inout) :: dart_index
+integer(i8),               intent(inout) :: dart_index
 logical,                   intent(in)    :: write_var_by_var !< Write a single variable, one at a time
 logical,                   intent(in)    :: write_single_precision
 
-integer :: i
+integer(i8) :: i
 integer :: start_var, end_var !< start/end variables in a read block
 integer :: my_pe !< task or pe?
 integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
-integer :: block_size !< number of variables in a block
-integer :: elm_count !< number of elements to send
-integer :: istart!< position in state_ens_handle%copies
-integer :: iend
+integer(i8) :: block_size !< number of variables in a block
+integer(i8) :: elm_count !< number of elements to send
+integer(i8) :: istart!< position in state_ens_handle%copies
+integer(i8) :: iend
 integer :: ens_size !< ensemble size
 integer :: start_rank
 integer :: recv_start, recv_end
@@ -1517,9 +1539,11 @@ integer,  intent(in)    :: domain
 logical,  intent(in)    :: do_file_clamping
 logical,  intent(in)    :: force_copy
 
-integer :: istart, iend
-integer :: i, ret, var_id, var_size
-integer, allocatable :: dims(:)
+integer(i8) :: istart, iend, var_size
+integer :: i, ret, var_id, unlim_dimID
+integer :: num_dims
+integer, allocatable :: counts(:)
+integer, allocatable :: slice_start(:) ! slice of variable
 
 logical :: missing_possible
 
@@ -1550,20 +1574,44 @@ do i = start_var, end_var
          call clamp_variable(domain, i, var_block(istart:iend))
       endif
      
-      ! number of dimensions and length of each
-      allocate(dims(get_io_num_dims(domain, i)))
+      ! number of dimensions and length of each variable
+      num_dims = get_io_num_dims(domain, i)
+      allocate(counts(num_dims))
+      allocate(slice_start(num_dims))
+      slice_start(:) = 1 ! default to read all dimensions starting at 1
 
-      dims = get_io_dim_lengths(domain, i)
+      if (has_unlimited_dim(domain)) then
+
+         counts(num_dims) = 1 ! one slice of unlimited dimesion
+         counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i)
+
+         ! write the latest time slice - HK hack to get started with tiegcm
+         ! not sure if it will always be the last time slice
+         ret = nf90_inquire(ncid, unlimitedDimID=unlim_dimID)
+         call nc_check(ret, 'write_variables: nf90_inquire', 'unlimitedDimID')
+         if (unlim_dimID /= -1) then ! unlimited dimension exists
+            ret = nf90_inquire_dimension(ncid, unlim_dimID, len=slice_start(num_dims))
+            call nc_check(ret, 'write_variables: nf90_inquire dimension', 'unlimitedDim length')
+            if (slice_start(num_dims) == 0) slice_start(num_dims) = 1 ! newly created file
+         else  ! file does not have an unlimited dimension because it was created by DART
+            slice_start(num_dims) = 1
+         endif
+
+      else
+
+         counts(:) = get_dim_lengths(domain, i)
+      endif
+
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
       call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
       if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
 
-      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
+      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=counts, start=slice_start)
       call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
 
-      deallocate(dims)
+      deallocate(counts, slice_start)
    endif
 
    istart = istart + var_size
@@ -1645,6 +1693,7 @@ do i = 1, get_io_num_unique_dims(dom_id)
                        get_io_unique_dim_length(dom_id, i), new_dimid)
    endif
    !>@todo if we already have a unique names we can take this test out
+   !HK no you can not, because nc_write_model_atts can create dimemsions.
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
       call nc_check(ret, routine, &
               'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))
@@ -1722,7 +1771,8 @@ if ( get_short_name(domid, varid) /= ' ' ) then
 endif
 
 ! check to see if template file has missing value attributes
-if ( get_has_missing_value(domid, varid) ) then
+if ( get_has_missing_value(domid, varid) .or. &
+     get_has_FillValue(    domid, varid) ) then
    select case ( get_xtype(domid, varid) )
       case ( NF90_INT )
          call nc_write_missing_value_int(ncFileID, filename, ncVarID, domid, varid)
@@ -2038,9 +2088,9 @@ subroutine send_to_waiting_task(state_ens_handle, recv_pe, start, elm_count, blo
 
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
-integer,             intent(in) :: start ! start in variable block on sender.
-integer,             intent(in) :: elm_count ! how many elements
-integer,             intent(in) :: block_size ! size of info on sender - the receiver only
+integer(i8),         intent(in) :: start ! start in variable block on sender.
+integer(i8),         intent(in) :: elm_count ! how many elements
+integer(i8),         intent(in) :: block_size ! size of info on sender - the receiver only
                                               ! gets part of this.
 real(r8),            intent(in) :: variable_block(block_size) ! variable info
 
@@ -2082,8 +2132,8 @@ subroutine send_variables_to_write(state_ens_handle, recv_pe, &
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
 integer,             intent(in) :: ensemble_member
-integer,             intent(in) :: start  ! start in copies array on sender.
-integer,             intent(in) :: finish ! end in copies array on sender
+integer(i8),         intent(in) :: start  ! start in copies array on sender.
+integer(i8),         intent(in) :: finish ! end in copies array on sender
 
 real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
@@ -2120,8 +2170,8 @@ subroutine wait_to_receive(state_ens_handle, recv_pe, &
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,             intent(in)    :: recv_pe ! receiving pe
 integer,             intent(in)    :: ensemble_member
-integer,             intent(in)    :: start  ! start in copies array on sender.
-integer,             intent(in)    :: finish ! end in copies array on sender
+integer(i8),         intent(in)    :: start  ! start in copies array on sender.
+integer(i8),         intent(in)    :: finish ! end in copies array on sender
 
 real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
@@ -2157,9 +2207,9 @@ subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, &
 
 type(ensemble_type), intent(in)    :: state_ens_handle
 integer,             intent(in)    :: sending_pe !! sending_pe
-integer,             intent(in)    :: start      !! start in vars array on receiver.
-integer,             intent(in)    :: elm_count  !! how many elements
-integer,             intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
+integer(i8),         intent(in)    :: start      !! start in vars array on receiver.
+integer(i8),         intent(in)    :: elm_count  !! how many elements
+integer(i8),         intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
 real(r8),            intent(inout) :: variable_block(block_size) !! variable info
 
 real(r8), allocatable :: buffer(:) !! for making send array contiguous
@@ -2195,7 +2245,7 @@ integer,                intent(in) :: timeindex
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
-integer :: istart, iend
+integer(i8) :: istart, iend
 integer :: ivar, jdim
 integer :: ndims
 integer :: ret ! netcdf return code
@@ -2946,9 +2996,9 @@ function num_elements_on_pe(pe, start_rank, block_size) result(elm_count)
 
 integer, intent(in) :: pe
 integer, intent(in) :: start_rank
-integer, intent(in) :: block_size
+integer(i8), intent(in) :: block_size
 
-integer :: elm_count, remainder
+integer(i8) :: elm_count, remainder
 
 elm_count = block_size/task_count()
 remainder = mod(block_size, task_count())
@@ -3030,6 +3080,22 @@ if ( get_has_missing_value(domain, variable) ) then
 
 endif
 
+if ( get_has_FillValue(domain, variable) ) then
+
+   select case ( get_xtype(domain, variable) )
+      case ( NF90_INT )
+         call get_FillValue(domain, variable, model_missing_valueINT)
+         where(array == model_missing_valueINT) array = MISSING_R8
+      case ( NF90_FLOAT )
+         call get_FillValue(domain, variable, model_missing_valueR4)
+         where(array == model_missing_valueR4) array = MISSING_R8
+      case ( NF90_DOUBLE )
+         call get_FillValue(domain, variable, model_missing_valueR8)
+         where(array == model_missing_valueR8) array = MISSING_R8
+   end select
+
+endif
+
 end subroutine set_dart_missing_value
 
 !--------------------------------------------------------
@@ -3059,6 +3125,22 @@ if ( get_has_missing_value(domain, variable) ) then
       case ( NF90_DOUBLE )
          call get_missing_value(domain, variable, model_missing_valueR8)
          where(array == MISSING_R8) array = model_missing_valueR8
+   end select
+
+endif
+
+if ( get_has_FillValue(domain, variable) ) then
+
+   select case ( get_xtype(domain, variable) )
+      case ( NF90_INT )
+         call get_FillValue(domain, variable, model_missing_valueINT)
+         where(array == MISSING_R8)   array = model_missing_valueINT
+      case ( NF90_FLOAT )
+         call get_FillValue(domain, variable, model_missing_valueR4)
+         where(array == MISSING_R8)   array = model_missing_valueR4
+      case ( NF90_DOUBLE )
+         call get_FillValue(domain, variable, model_missing_valueR8)
+         where(array == MISSING_R8)   array = model_missing_valueR8
    end select
 
 endif

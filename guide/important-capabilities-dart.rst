@@ -33,7 +33,7 @@ FESOM        Manhattan      NOAH-MP          Manhattan
 WRF-Hydro    Manhattan      GCCOM            Lanai
 LMDZ         Lanai          MITgcm_ocean     Lanai
 NAAPS        Lanai          AM2              Lanai
-CAM-SE       Lanai          CLM              Lanai
+CAM-SE       Manhattan      CLM              Manhattan
 COAMPS       Lanai          COSMO            Lanai
 Dynamo       Lanai          GITM             Lanai
 Ikeda        Lanai          JULES            Lanai

@@ -244,14 +244,14 @@ Programs
   example code reads each text line into a character buffer and then reads from that buffer to parse up the data items.
 | FIXME Explain the 10% for the obs error for FPAR and question the LAIStddev ...
 
-To compile and test, go into the work subdirectory and run the ``quickbuild.csh`` script to build the converter and a
+To compile and test, go into the work subdirectory and run the ``quickbuild.sh`` script to build the converter and a
 couple of general purpose utilities. ``advance_time`` helps with calendar and time computations, and the
 ``obs_sequence_tool`` manipulates DART observation files once they have been created.
 
 To change the observation types, look in the ``DART/obs_def`` directory. If you can find an obs_def_XXX_mod.f90 file
 with an appropriate set of observation types, change the 'use' lines in the converter source to include those types.
 Then add that filename in the ``input.nml`` namelist file to the &preprocess_nml namelist, the 'input_files' variable.
-Multiple files can be listed. Then run quickbuild.csh again. It remakes the table of supported observation types before
+Multiple files can be listed. Then run quickbuild.sh again. It remakes the table of supported observation types before
 trying to recompile the source code.
 
 An example script for converting batches of files is in the ``shell_scripts`` directory. A tiny example data file is in

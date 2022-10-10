@@ -1,12 +1,6 @@
 PROGRAM ``create_ocean_obs``
 ============================
 
-.. attention::
-
-   ``MITgcm_ocean`` works with versions of DART *before* Manhattan (9.x.x) and has yet to be updated. If you are interested in
-   using ``MITgcm_ocean`` with more recent versions of DART, contact DAReS staff to assess the feasibility of an update.
-   Until that time, you should consider this documentation as out-of-date.
-
 
 ``create_ocean_obs`` is responsible for converting an interim ASCII file of ocean observations into a DART observation
 sequence file. The interim ASCII file is a simple 'whitespace separated' table where each row is an observation and each

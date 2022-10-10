@@ -282,7 +282,59 @@ switch lower(pinfo.model)
          title({string1,string2},'interpreter','none','fontweight','bold')
          xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
          ylabel('Total Error')
+      end
+      
+      
+   case {'lorenz_96_tracer_advection'}
 
+      varlist = {'state_variable','tracer_concentration','source'};
+
+      for ivar = 1:length(varlist)
+
+         % Get the appropriate netcdf variables
+
+         truth  = get_hyperslab('fname', pinfo.truth_file, ...
+                   'varname', varlist{ivar}, ...
+                   'permute', 'T', ...
+                   'squeeze', 'T', ...
+                   'tindex1', pinfo.truth_time(1), ...
+                   'tcount', pinfo.truth_time(2));
+
+         varname = sprintf('%s_mean',varlist{ivar});
+         ens    = get_hyperslab('fname', pinfo.diagn_file, ...
+                   'varname', varname, ...
+                   'permute', 'T', ...
+                   'tindex1', pinfo.diagn_time(1), ...
+                   'tcount', pinfo.diagn_time(2));
+
+         varname = sprintf('%s_sd',varlist{ivar});
+         spread = get_hyperslab('fname', pinfo.diagn_file, ...
+                   'varname', varname, ...
+                   'permute', 'T', ...
+                   'tindex1', pinfo.diagn_time(1), ...
+                   'tcount', pinfo.diagn_time(2));
+               
+         [~,num_vars] = size(spread);
+
+         % Also need to compute the spread; zero truth for this and
+         % compute distance from 0
+         err        = total_err(truth, ens);
+         err_spread = total_err(zeros(size(spread)), spread);
+         errTotal   = sum(err)/pinfo.time_series_length;
+         spreadTotal= sum(err_spread)/pinfo.time_series_length;
+         string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+         string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
+
+         figure(ivar); clf(ivar);
+         plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r','LineWidth',figdata.linewidth);
+         set(gca,'FontSize',figdata.fontsize)
+         legend(string1,string2,'Location','NorthEast','FontSize',figdata.fontsize)
+         legend boxoff
+         string1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
+         string2 = sprintf('''%s'' %s', varlist{ivar}, pinfo.diagn_file);
+         title({string1,string2},'interpreter','none','fontweight','bold')
+         xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
+         ylabel('Total Error')
       end
 
    case 'fms_bgrid'

@@ -80,8 +80,8 @@ use *get_state* outside these routines you will get and error.
 
 The Remote Memory Access programming model DART employs uses mpi_windows.
 There are 2 ways to compile window mods for mpi and non-mpi filter.
-This is taken care of automatically when you run quickbuild.csh or an 
-``mkmf_*`` with -mpi or -nompi. However, if you use mpi, there is a choice 
+This is taken care of automatically when you run quickbuild.sh.
+However, if you use mpi, there is a choice
 of mpi_window mods:
 
 -  cray_win_mod.f90
@@ -93,5 +93,12 @@ of mpi_window mods:
 | MPI_ALLOC_MEM uses cray pointers, thus we have supplied a window module that uses cray pointers. However,
   no_cray_win_mod.f90 is the default since some versions of gfortran (4.9.0) do not support cray pointers. These
   different modules will go away when we swap to MPI 3.
+
+To change to cray_win_mod.f90 edit DART/build-system/buildfunctions.sh
+
+.. code-block::
+
+   windowsrc=cray_win
+
 
 .. |image1| image:: Graphs/window.gv.svg

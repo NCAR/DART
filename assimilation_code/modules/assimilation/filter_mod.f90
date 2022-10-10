@@ -29,7 +29,7 @@ use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), o
                                   operator(-), print_time
 
 use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,                         &
-                                  logfileunit, nmlfileunit, timestamp, get_value_from_string, &
+                                  logfileunit, nmlfileunit, timestamp,                        &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
                                   set_multiple_filename_lists, find_textfile_dims
@@ -237,11 +237,8 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! The inflation algorithm variables are defined in adaptive_inflate_mod.
 ! We use the integer parameters for PRIOR_INF and POSTERIOR_INF from 
 ! adaptive_inflate_mod to index these 'length 2' arrays.
-! To support more flexible methods of specifying the inflation algorithm,
-! inf_flavor must be a character string whose value is converted to an
-! integer to be backward compatible. 
 
-character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
+integer  :: inf_flavor(2)                  = 0
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
@@ -310,9 +307,6 @@ namelist /filter_nml/ async,     &
    write_all_stages_at_end,      &
    write_obs_every_cycle,        & 
    allow_missing_clm
-
-
-integer :: inflation_flavor(2)
 
 !----------------------------------------------------------------
 
@@ -401,18 +395,13 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
-! inf_flavor from the namelist is now a character string.  
-! the inflation-related subroutines require an integer so the
-! variable inflation_flavor is added and is type integer.
-inflation_flavor = set_inflation_flavor(inf_flavor)
-
-call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
+call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, &
-                           inflation_flavor(PRIOR_INF), &
+                           inf_flavor(PRIOR_INF), &
                            inf_initial_from_restart(PRIOR_INF), & 
                            inf_sd_initial_from_restart(PRIOR_INF), &
                            output_inflation, &
@@ -427,7 +416,7 @@ call adaptive_inflate_init(prior_inflate, &
                            allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, &
-                           inflation_flavor(POSTERIOR_INF), &
+                           inf_flavor(POSTERIOR_INF), &
                            inf_initial_from_restart(POSTERIOR_INF), &
                            inf_sd_initial_from_restart(POSTERIOR_INF), &
                            output_inflation, &
@@ -442,13 +431,13 @@ call adaptive_inflate_init(post_inflate, &
                            allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inflation_flavor(PRIOR_INF) > NO_INFLATION .and. &
+   if (inf_flavor(PRIOR_INF) > NO_INFLATION .and. &
             inf_damping(PRIOR_INF) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', &
                                       inf_damping(PRIOR_INF), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inflation_flavor(POSTERIOR_INF) > NO_INFLATION .and. &
+   if (inf_flavor(POSTERIOR_INF) > NO_INFLATION .and. &
             inf_damping(POSTERIOR_INF) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', &
                                       inf_damping(POSTERIOR_INF), ' will be used'
@@ -2394,7 +2383,7 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; must save the prior ensemble spread in a different copy
-if ( inflation_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
+if ( inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif
 
@@ -2761,50 +2750,6 @@ if (output_inflation) then
 endif
 
 end subroutine set_copies
-
-
-!-------------------------------------------------------------------------------
-!> The infl_flavor namelist is a string, and specifies the inflation algorithm.
-!> The character string can either be the name associated with the type of inflation
-!> or the integer associated with the type of inflation. The string names of the
-!> inflation algorithms is based on what is declared in the adaptive_inflate_mod.f90
-!> which is repeated here for reference. 
-!>
-!> NO_INFLATION               = 0
-!> OBS_INFLATION              = 1    observation-space inflation (deprecated)
-!> VARYING_SS_INFLATION       = 2    spatially-varying state-space inflation
-!> SINGLE_SS_INFLATION        = 3    spatially-constant state-space inflation
-!> RELAXATION_TO_PRIOR_SPREAD = 4    (available only with posterior inflation)
-!> ENHANCED_SS_INFLATION      = 5    Inverse Gamma version of VARYING_SS_INFLATION
-
-function set_inflation_flavor(flavor_string) result(flavors)
-
-character(len=*), intent(in)  :: flavor_string(2)
-integer                       :: flavors(2)
-
-integer :: int_options(7) = (/ NO_INFLATION,               &
-                               OBS_INFLATION,              &
-                               VARYING_SS_INFLATION,       &
-                               SINGLE_SS_INFLATION,        &
-                               RELAXATION_TO_PRIOR_SPREAD, &
-                               RELAXATION_TO_PRIOR_SPREAD, &
-                               ENHANCED_SS_INFLATION       /)
-
-character(len=32) :: string_options(7) = (/ 'NO_INFLATION              ',&
-                                            'OBS_INFLATION             ',&
-                                            'VARYING_SS_INFLATION      ',&
-                                            'SINGLE_SS_INFLATION       ',&
-                                            'RELAXATION_TO_PRIOR_SPREAD',&
-                                            'RTPS                      ',&
-                                            'ENHANCED_SS_INFLATION     ' /)
-
-flavors(PRIOR_INF)     = get_value_from_string(flavor_string(PRIOR_INF),     &
-                          int_options, string_options, 'input_nml:inf_flavor(1)')
-flavors(POSTERIOR_INF) = get_value_from_string(flavor_string(POSTERIOR_INF), &
-                          int_options, string_options, 'input_nml:inf_flavor(2)')
-
-end function set_inflation_flavor
-
 
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT

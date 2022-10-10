@@ -40,14 +40,14 @@ example data file. Given the variety of formatting details in different files, y
 "read" statement to match your data format. There is a 'select case' section which is intended to let you add more
 formats and select them at runtime via namelist.
 
-To compile and test, go into the work subdirectory and run the ``quickbuild.csh`` script to build the converter and a
+To compile and test, go into the work subdirectory and run the ``quickbuild.sh`` script to build the converter and a
 couple of general purpose utilities. ``advance_time`` helps with calendar and time computations, and the
 ``obs_sequence_tool`` manipulates DART observation files once they have been created.
 
 This converter creates observation types defined in the ``DART/observations/forward_operators/obs_def_vortex_mod.f90``
 file. This file must be listed in the ``input.nml`` namelist file, in the ``&preprocess_nml`` namelist, in the
 'input_files' variable, for any programs which are going to process these observations. If you have to change the
-``&preprocess_nml`` namelist you will have to run ``quickbuild.csh`` again to build and execute the ``preprocess``
+``&preprocess_nml`` namelist you will have to run ``quickbuild.sh`` again to build and execute the ``preprocess``
 program before compiling other executables. It remakes the table of supported observation types before trying to
 recompile other source code.
 
@@ -108,7 +108,7 @@ namelist.
    |                          |                     | your assimilation results.) Use with care.  You can concatenate multiple        |
    |                          |                     | obs sequence files as a postprocessing step with the                            |
    |                          |                     | :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`  |
-   |                          |                     | which comes with DART and is built by the quickbuild.csh script in              |
+   |                          |                     | which comes with DART and is built by the quickbuild.sh script in               |
    |                          |                     | the TC converter work directory.                                                |
    +--------------------------+---------------------+---------------------------------------------------------------------------------+
    | debug                    | logical             | Set to .true. to print out more details during the conversion process.          |

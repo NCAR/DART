@@ -87,13 +87,13 @@ LD = pgf90
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O -Mbackslash $(INCS)
+FFLAGS  = -O -Mbackslash -Kieee $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this for flags:
 # FFLAGS = -g -gopt -Mbounds -Mchkfpstk -Mchkptr -Mchkstk -Mpgicoff  \
 #         -Mdclchk -Meh_frame -traceback -Minform=inform \
-#         -Mflushz -Ktrap=fp -pc 64 -Mbackslash $(INCS)
+#         -Mflushz -Ktrap=fp -pc 64 -Mbackslash -Kieee $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$
