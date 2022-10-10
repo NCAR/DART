@@ -120,6 +120,7 @@ wod_to_obs
 cice_to_obs
 modis_ist_to_obs_netcdf
 seaice_aggre_to_obs_netcdf
+seaicedata_to_obs_netcdf
 gnd_gps_vtec_text_to_obs
 create_obs_radar_sequence
 snow_to_obs
