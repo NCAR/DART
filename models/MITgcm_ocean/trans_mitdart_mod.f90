@@ -24,6 +24,8 @@ logical             :: do_bgc        = .false.
 logical             :: log_transform = .false.
 logical             :: compress      = .false.
 ! set compress = .true. remove missing values from state
+logical             :: output_chl_data = .false.
+! CHL.data is not written to mit .data files by default
 
 namelist /trans_mitdart_nml/ do_bgc, log_transform, compress
 
@@ -491,6 +493,7 @@ if (do_bgc) then
    call from_netcdf_to_mit_tracer(ncid, 'DOP')
    call from_netcdf_to_mit_tracer(ncid, 'DON')
    call from_netcdf_to_mit_tracer(ncid, 'FET')
+   if (output_chl_data) call from_netcdf_to_mit_tracer_chl(ncid, 'CHL')
 endif
 
 call check( NF90_CLOSE(ncid) )
@@ -678,7 +681,7 @@ open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
 read(iunit,rec=1) var_data
 close(iunit)
 
-! CHL is treated differently
+! CHL is treated differently - HK CHL is 2d so you will not enter this
 if (mitfile=='CHL.data') then
    where (var_data == binary_fill)
        var_data = FVAL
@@ -833,7 +836,7 @@ end subroutine from_netcdf_to_mit_3d
 !------------------------------------------------------------------
 subroutine from_netcdf_to_mit_tracer(ncid, name)
 
-integer,          intent(in) :: ncid ! which file,
+integer,          intent(in) :: ncid ! which file
 character(len=*), intent(in) :: name ! which variable
 
 integer  :: iunit
@@ -872,6 +875,47 @@ write(iunit,rec=1)var
 close(iunit)
 
 end subroutine from_netcdf_to_mit_tracer
+
+!------------------------------------------------------------------
+subroutine from_netcdf_to_mit_tracer_chl(ncid, name)
+
+integer,          intent(in) :: ncid ! which file
+character(len=*), intent(in) :: name ! which variable
+
+integer  :: iunit
+integer  :: recl ! datasize*4
+real(r4) :: var(Nx,Ny)
+integer  :: varid
+real(r4) :: local_fval
+
+recl = recl2d
+
+call check( NF90_INQ_VARID(ncid,name,varid) )
+call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
+! initialize var to netcdf fill value
+var(:,:) = local_fval
+
+if (compress) then
+   call read_compressed(ncid, varid, var)
+else
+  call check(nf90_get_var(ncid,varid,var))
+endif
+
+where (var == local_fval)
+    var = binary_fill
+elsewhere
+    var = 10**(var)
+endwhere
+
+
+iunit = get_unit()
+open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+write(iunit,rec=1)var
+close(iunit)
+
+end subroutine from_netcdf_to_mit_tracer_chl
+
 
 !------------------------------------------------------------------
 ! Assumes all 3D variables are masked in the 
