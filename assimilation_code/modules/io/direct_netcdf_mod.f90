@@ -855,6 +855,7 @@ do i = start_var, end_var
    num_dims = get_io_num_dims(domain, i)
    allocate(counts(num_dims))
    allocate(slice_start(num_dims))
+   counts(:) = 1
 
    slice_start(:) = 1 ! default to read all dimensions start at 1
 
@@ -878,7 +879,7 @@ do i = start_var, end_var
 
    else
 
-      counts(:) = get_dim_lengths(domain, i) ! the state
+      counts(1:get_num_dims(domain,i)) = get_dim_lengths(domain, i) ! the state
    endif
 
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
@@ -1585,6 +1586,7 @@ do i = start_var, end_var
       allocate(counts(num_dims))
       allocate(slice_start(num_dims))
       slice_start(:) = 1 ! default to read all dimensions starting at 1
+      counts(:) = 1
 
       if (has_unlimited_dim(domain)) then
 
@@ -1605,8 +1607,9 @@ do i = start_var, end_var
 
       else
 
-         counts(:) = get_dim_lengths(domain, i)
+         counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i)
       endif
+
 
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
