@@ -1,0 +1,176 @@
+
+ --------------------------------------
+ Starting ... at YYYY MM DD HH MM SS = 
+                 2022 10 12 17 16 18
+ Program Filter
+ --------------------------------------
+
+  set_nml_output Echo NML values to log file only
+ PE 0: initialize_mpi_utilities:  Running with           72  MPI processes.
+ PE 0: static_init_model  assimilation window is            0  days        21600  seconds
+ 
+ Assimilate_these_obs_types:
+    RADIOSONDE_TEMPERATURE
+    RADIOSONDE_SPECIFIC_HUMIDITY
+    RADIOSONDE_U_WIND_COMPONENT
+    RADIOSONDE_V_WIND_COMPONENT
+    ACARS_TEMPERATURE
+    ACARS_U_WIND_COMPONENT
+    ACARS_V_WIND_COMPONENT
+    AIRCRAFT_U_WIND_COMPONENT
+    AIRCRAFT_V_WIND_COMPONENT
+    AIRCRAFT_TEMPERATURE
+    SAT_U_WIND_COMPONENT
+    SAT_V_WIND_COMPONENT
+    LAND_SFC_ALTIMETER
+    METAR_ALTIMETER
+    MARINE_SFC_U_WIND_COMPONENT
+    MARINE_SFC_V_WIND_COMPONENT
+    MARINE_SFC_ALTIMETER
+    MARINE_SFC_TEMPERATURE
+    GPSRO_REFRACTIVITY
+    AIRS_TEMPERATURE
+    AIRS_SPECIFIC_HUMIDITY
+    LAND_SFC_U_WIND_COMPONENT
+    LAND_SFC_V_WIND_COMPONENT
+    LAND_SFC_TEMPERATURE
+    METAR_TEMPERATURE_2_METER
+    METAR_U_10_METER_WIND
+    METAR_V_10_METER_WIND
+ Evaluate_these_obs_types:
+    RADIOSONDE_RELATIVE_HUMIDITY
+    MARINE_SFC_RELATIVE_HUMIDITY
+    LAND_SFC_RELATIVE_HUMIDITY
+    MARINE_SFC_SPECIFIC_HUMIDITY
+    LAND_SFC_SPECIFIC_HUMIDITY
+    METAR_SPECIFIC_HUMIDITY_2_METER
+    MARINE_SFC_DEWPOINT
+    LAND_SFC_DEWPOINT
+    METAR_DEWPOINT_2_METER
+ Use the precomputed Prior Forward Operators for these obs types:
+    none
+ 
+ PE 0: set_global_grid MPAS running in global mode
+ PE 0: static_init_model  edge normal winds (u) in MPAS file will be updated based on the difference
+ PE 0: static_init_model ...  between the original U/V reconstructed winds and the updated values
+ PE 0: static_init_model ...  because use_increment_for_u_update is True
+ PE 0: location_mod: using code with optimized cutoffs
+ PE 0: location_mod: Including vertical separation when computing distances:
+ PE 0: location_mod:        # pascals ~ 1 horiz radian:      250000.00000
+ PE 0: location_mod:         # meters ~ 1 horiz radian:       30000.00000
+ PE 0: location_mod:   # model levels ~ 1 horiz radian:          20.00000
+ PE 0: location_mod:  # scale heights ~ 1 horiz radian:           1.50000
+ PE 0: quality_control_mod: Will reject obs with Data QC larger than    3
+ PE 0: quality_control_mod: Will reject obs values more than    3.000000 sigma from mean
+ PE 0: assim_tools_init: Selected filter type is Ensemble Adjustment Kalman Filter (EAKF)
+ PE 0: assim_tools_init: The cutoff namelist value is           0.160000
+ PE 0: assim_tools_init: ... cutoff is the localization half-width parameter,
+ PE 0: assim_tools_init: ... so the effective localization radius is           0.320000
+ PE 0: assim_tools_init: Using adaptive localization, threshold       1600 obs
+ PE 0: assim_tools_init: Writing localization diagnostics to file:
+ PE 0: assim_tools_init: localization_diagnostics
+ PE 0: assim_tools_init: Using Sampling Error Correction
+ PE 0: assim_tools_init: Distributing one copy of the ensemble mean across all tasks
+ PE 0: assim_tools_init: ... uses less memory per task but may run slower if doing vertical
+ PE 0: assim_tools_init: ... coordinate conversion; controlled by namelist item "distribute_mean"
+ PE 0: assim_tools_init: Doing vertical localization, vertical coordinate conversion may be required
+ PE 0: assim_tools_init: ... Converting all state vector verticals only as needed.
+ PE 0: assim_tools_init: ... Converting all observation verticals to localization coordinate first.
+ PE 0:  filter trace: Filter start
+ Filter start TIME: 2022/10/12 17:16:20
+ PE 0: filter_main: running with an ensemble size of     5
+ PE 0:  filter trace: Before initializing inflation
+ PE 0: filter_main: Prior inflation damping of     0.900000 will be used
+ PE 0:  filter trace: After  initializing inflation
+ PE 0: parse_stages_to_write:  filter will write stage : input
+ PE 0: parse_stages_to_write:  filter will write stage : output
+ PE 0:  filter trace: Before setting up space for observations
+ Before setting up space for observations TIME: 2022/10/12 17:16:20
+
+ --------------------------------------
+ Starting ... at YYYY MM DD HH MM SS = 
+                 2022 10 12 17 18  2
+ Program Filter
+ --------------------------------------
+
+  set_nml_output Echo NML values to log file only
+ PE 0: initialize_mpi_utilities:  Running with           72  MPI processes.
+ PE 0: static_init_model  assimilation window is            0  days        21600  seconds
+ 
+ Assimilate_these_obs_types:
+    RADIOSONDE_TEMPERATURE
+    RADIOSONDE_SPECIFIC_HUMIDITY
+    RADIOSONDE_U_WIND_COMPONENT
+    RADIOSONDE_V_WIND_COMPONENT
+    ACARS_TEMPERATURE
+    ACARS_U_WIND_COMPONENT
+    ACARS_V_WIND_COMPONENT
+    AIRCRAFT_U_WIND_COMPONENT
+    AIRCRAFT_V_WIND_COMPONENT
+    AIRCRAFT_TEMPERATURE
+    SAT_U_WIND_COMPONENT
+    SAT_V_WIND_COMPONENT
+    LAND_SFC_ALTIMETER
+    METAR_ALTIMETER
+    MARINE_SFC_U_WIND_COMPONENT
+    MARINE_SFC_V_WIND_COMPONENT
+    MARINE_SFC_ALTIMETER
+    MARINE_SFC_TEMPERATURE
+    GPSRO_REFRACTIVITY
+    AIRS_TEMPERATURE
+    AIRS_SPECIFIC_HUMIDITY
+    LAND_SFC_U_WIND_COMPONENT
+    LAND_SFC_V_WIND_COMPONENT
+    LAND_SFC_TEMPERATURE
+    METAR_TEMPERATURE_2_METER
+    METAR_U_10_METER_WIND
+    METAR_V_10_METER_WIND
+ Evaluate_these_obs_types:
+    RADIOSONDE_RELATIVE_HUMIDITY
+    MARINE_SFC_RELATIVE_HUMIDITY
+    LAND_SFC_RELATIVE_HUMIDITY
+    MARINE_SFC_SPECIFIC_HUMIDITY
+    LAND_SFC_SPECIFIC_HUMIDITY
+    METAR_SPECIFIC_HUMIDITY_2_METER
+    MARINE_SFC_DEWPOINT
+    LAND_SFC_DEWPOINT
+    METAR_DEWPOINT_2_METER
+ Use the precomputed Prior Forward Operators for these obs types:
+    none
+ 
+ PE 0: set_global_grid MPAS running in global mode
+ PE 0: static_init_model  edge normal winds (u) in MPAS file will be updated based on the difference
+ PE 0: static_init_model ...  between the original U/V reconstructed winds and the updated values
+ PE 0: static_init_model ...  because use_increment_for_u_update is True
+ PE 0: location_mod: using code with optimized cutoffs
+ PE 0: location_mod: Including vertical separation when computing distances:
+ PE 0: location_mod:        # pascals ~ 1 horiz radian:      250000.00000
+ PE 0: location_mod:         # meters ~ 1 horiz radian:       30000.00000
+ PE 0: location_mod:   # model levels ~ 1 horiz radian:          20.00000
+ PE 0: location_mod:  # scale heights ~ 1 horiz radian:           1.50000
+ PE 0: quality_control_mod: Will reject obs with Data QC larger than    3
+ PE 0: quality_control_mod: Will reject obs values more than    3.000000 sigma from mean
+ PE 0: assim_tools_init: Selected filter type is Ensemble Adjustment Kalman Filter (EAKF)
+ PE 0: assim_tools_init: The cutoff namelist value is           0.160000
+ PE 0: assim_tools_init: ... cutoff is the localization half-width parameter,
+ PE 0: assim_tools_init: ... so the effective localization radius is           0.320000
+ PE 0: assim_tools_init: Using adaptive localization, threshold       1600 obs
+ PE 0: assim_tools_init: Writing localization diagnostics to file:
+ PE 0: assim_tools_init: localization_diagnostics
+ PE 0: assim_tools_init: Using Sampling Error Correction
+ PE 0: assim_tools_init: Distributing one copy of the ensemble mean across all tasks
+ PE 0: assim_tools_init: ... uses less memory per task but may run slower if doing vertical
+ PE 0: assim_tools_init: ... coordinate conversion; controlled by namelist item "distribute_mean"
+ PE 0: assim_tools_init: Doing vertical localization, vertical coordinate conversion may be required
+ PE 0: assim_tools_init: ... Converting all state vector verticals only as needed.
+ PE 0: assim_tools_init: ... Converting all observation verticals to localization coordinate first.
+ PE 0:  filter trace: Filter start
+ Filter start TIME: 2022/10/12 17:18:04
+ PE 0: filter_main: running with an ensemble size of     5
+ PE 0:  filter trace: Before initializing inflation
+ PE 0: filter_main: Prior inflation damping of     0.900000 will be used
+ PE 0:  filter trace: After  initializing inflation
+ PE 0: parse_stages_to_write:  filter will write stage : input
+ PE 0: parse_stages_to_write:  filter will write stage : output
+ PE 0:  filter trace: Before setting up space for observations
+ Before setting up space for observations TIME: 2022/10/12 17:18:04
