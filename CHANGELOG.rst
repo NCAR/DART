@@ -22,6 +22,18 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**October 13 2022 :: Bug-fix for read variables. Tag v10.5.3**
+
+- Per-file check for unlimited dimension before variable read. Netcdf 
+  dimension counts adjusted accordingly. Fixes problems when reading from 
+  DART created netcdf files, for example, from fill_inflation_restart
+- Bug-fix for verbose printing of state_structure info
+
+**October 10 2022 :: Bug-fix for obs_converter builds. Tag v10.5.2**
+
+- Bug fix for converter builds using the template model_mod.f90
+- Performance fix for MPAS_ATM
+
 **September 23 2022 :: Bug-fix for pertub_single_instance. Tag v10.5.1**
 
 - Program perturb_single_instance was running without perturbing when
