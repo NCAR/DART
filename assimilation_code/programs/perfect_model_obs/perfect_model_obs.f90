@@ -108,6 +108,10 @@ character(len=256) :: input_state_files(MAX_NUM_DOMS)  = '',               &
                       obs_seq_out_file_name           = 'obs_seq.out',     &
                       adv_ens_command                 = './advance_model.csh'
 
+! Turn on bounded normal observation error if true. Only used for the paper case 
+! with bounded square observations.
+logical :: DO_BOUNDED_NORMAL_OBS_ERROR = .false.
+
 namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_to_file, &
                                  init_time_days, init_time_seconds, async,          &
                                  first_obs_days, first_obs_seconds,                 &
@@ -118,7 +122,8 @@ namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
                                  input_state_files, output_state_files,             &
-                                 single_file_in, single_file_out, distributed_state
+                                 single_file_in, single_file_out, distributed_state,&
+                                 DO_BOUNDED_NORMAL_OBS_ERROR
 
 !------------------------------------------------------------------------------
 
@@ -544,8 +549,21 @@ AdvanceTime: do
          ! If observation is not being evaluated or assimilated, skip it
          ! Ends up setting a 1000 qc field so observation is not used again.
          if( qc_ens_handle%vars(i, 1) == 0 ) then
-            obs_value(1) = random_gaussian(random_seq, true_obs(1), &
-               sqrt(get_obs_def_error_variance(obs_def)))
+            ! Added in for paper, capability to do a bounded normal error
+            if(DO_BOUNDED_NORMAL_OBS_ERROR) then
+               write(*, *) 'perfect-model-obs doing bounded normal errors'
+               
+               ! Generate truncated normal observation
+               obs_value(1) = -99.0_r8
+               do while(obs_value(1) <= 0.0_r8)
+                  obs_value(1) = random_gaussian(random_seq, true_obs(1), &
+                     sqrt(get_obs_def_error_variance(obs_def)))
+               end do
+            
+            else
+               obs_value(1) = random_gaussian(random_seq, true_obs(1), &
+                  sqrt(get_obs_def_error_variance(obs_def)))
+            endif
 
             ! FIX ME SPINT: if the foward operater passed can we directly set the
             ! qc status?

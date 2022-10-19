@@ -145,7 +145,7 @@ real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
 ! Parameter to control switch to uniform approximation for normal tail
 !real(r8), parameter :: uniform_threshold = 0.0e-8_r8
-real(r8), parameter :: uniform_threshold = 0.01_r8
+real(r8), parameter :: uniform_threshold = 0.1_r8
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
