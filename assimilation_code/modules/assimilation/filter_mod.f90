@@ -35,7 +35,7 @@ use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,           
                                   set_multiple_filename_lists, find_textfile_dims
 
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
-                                  end_assim_model,  pert_model_copies
+                                  end_assim_model,  pert_model_copies, get_state_meta_data
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
@@ -50,7 +50,7 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
-                                  print_ens_handle
+                                  print_ens_handle, get_my_vars
 
 use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -91,6 +91,11 @@ use state_structure_mod,   only : get_num_domains
 use forward_operator_mod,  only : get_obs_ens_distrib_state
 
 use quality_control_mod,   only : initialize_qc
+
+use location_mod,          only : location_type
+
+use quantile_distributions_mod, only : dist_param_type, convert_to_probit, &
+                                       convert_from_probit
 
 !------------------------------------------------------------------------------
 
@@ -1614,6 +1619,11 @@ type(adaptive_inflate_type), intent(inout) :: inflate
 integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
+type(location_type) :: my_state_loc
+integer :: my_state_kind
+integer(i8) :: my_state_indx(ens_handle%my_num_vars)
+type(dist_param_type) :: dist_params
+real(r8) :: probit_ens(ens_size), probit_ens_mean
 
 ! Assumes that the ensemble is copy complete
 call prepare_to_update_copies(ens_handle)
@@ -1645,9 +1655,30 @@ do group = 1, num_groups
          call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source)
       endif 
    else 
+
+      ! This is an initial test of doing inflation in probit space
+      ! Note that this is not yet ready to work with adaptive inflation or RTPS
+      ! Probably also shouldn't be used with groups for now although it is coded to do so
+      call get_my_vars(ens_handle, my_state_indx)
       do j = 1, ens_handle%my_num_vars
-         call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
-            ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
+         ! First two lines are original code in this loop
+         !!!call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
+            !!!ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
+
+         call get_state_meta_data(my_state_indx(j), my_state_loc, my_state_kind)    
+! Force the use of an unbounded BNRHF
+my_state_kind = 1
+         ! Transform to probit space
+         call convert_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
+            my_state_kind, dist_params, probit_ens(1:grp_size), .false.)
+         ! Compute the ensemble mean in transformed space???
+         probit_ens_mean = sum(probit_ens(1:grp_size)) / grp_size
+         ! Inflate in probit space
+         call inflate_ens(inflate, probit_ens(1:grp_size), probit_ens_mean, &
+            ens_handle%copies(inflate_copy, j))
+         ! Transform back from probit space
+         call convert_from_probit(grp_size, probit_ens(1:grp_size), my_state_kind, &
+            dist_params, ens_handle%copies(grp_bot:grp_top, j))
       end do
    endif
 end do
