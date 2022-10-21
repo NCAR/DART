@@ -1812,6 +1812,7 @@ write(*,*)
 
 200 format(4x,i2,', length = ',I8,', name = "',A,'"')
 201 format(4x,i2,':         ',2x,'  length = ',I8,', name = "',A,'"')
+202 format(4x,i2,':         ',2x,'  ID = ',I8,', length = ',I8,', name = "',A,'"')
 
 ! report on each variable in this domain
 
@@ -1848,7 +1849,7 @@ do ivar = 1, num_vars
    array_lengths(1:num_dims) = get_io_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,200) jdim, array_ids(jdim), array_lengths(jdim), trim(dim_name)
+       write(*,202) jdim, array_ids(jdim), array_lengths(jdim), trim(dim_name)
    enddo
 
    if ( state%domain(dom_id)%info_file /= 'NULL' ) then
