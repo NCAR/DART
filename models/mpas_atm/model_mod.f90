@@ -3051,7 +3051,7 @@ integer,             intent(in) :: ncid !< netcdf file handle
 type(time_type),     intent(in) :: dart_time
 
 integer :: year, month, day, hour, minute, second
-character(len=19) :: timestring
+character(len=64) :: timestring = ''
 character(len=*), parameter :: routine = 'write_model_time_restart'
 
 call get_date(dart_time, year, month, day, hour, minute, second)
@@ -3078,7 +3078,7 @@ call nc_end_define_mode(ncid)
 
 endif
 
-call nc_put_variable(ncid, 'xtime', timestring, routine)
+call nc_put_variable(ncid, 'xtime', trim(timestring), routine)
 
 end subroutine write_model_time_restart
 

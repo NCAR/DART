@@ -480,7 +480,7 @@ perfectly clear, they are not 'state'.
    $ ncdump -h mpas_init.nc
    netcdf mpas_analysis {
    dimensions:
-            StrLen = 19 ;
+            StrLen = 64 ;
             Time = UNLIMITED ; // (1 currently)
             nCells = 10242 ;                                  available in DART
             nEdges = 30720 ;                                  available in DART
