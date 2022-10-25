@@ -16,11 +16,15 @@ use utilities_mod, only : E_ERR, error_handler
 implicit none
 private
 
+integer, parameter :: NORMAL_PRIOR = 1
+integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
+
 public :: norm_cdf, norm_inv, weighted_norm_inv, convert_to_probit, convert_from_probit, dist_param_type, &
-   convert_all_to_probit, convert_all_from_probit
+   convert_all_to_probit, convert_all_from_probit, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
 
 
 type dist_param_type
+   integer               :: prior_distribution_type
    real(r8), allocatable :: params(:)
 end type
 
@@ -34,15 +38,19 @@ contains
 
 !------------------------------------------------------------------------
 
-subroutine convert_all_to_probit(ens_size, num_vars, state_ens, var_kind, p, probit_ens, use_input_p)
+subroutine convert_all_to_probit(ens_size, num_vars, state_ens, prior_distribution_type, &
+   p, probit_ens, use_input_p, bounded, bounds)
 
 integer, intent(in)                  :: ens_size
 integer, intent(in)                  :: num_vars
 real(r8), intent(in)                 :: state_ens(:, :)
-integer, intent(in)                  :: var_kind(num_vars)
+integer, intent(in)                  :: prior_distribution_type(num_vars)
 type(dist_param_type), intent(inout) :: p(num_vars)
 real(r8), intent(out)                :: probit_ens(:, :)
 logical, intent(in)                  :: use_input_p
+logical, intent(in)                  :: bounded(2)
+real(r8), intent(in)                 :: bounds(2)
+
 
 ! NOTE THAT WILL MAKE HELEN CRAZY: THIS WORKS WITH THE INPUT CALLING ARGUMENTS FOR STATE_ENS AND
 ! PROBIT_ENS BEING THE SAME. A TEMP IS USED TO AVOID OVERWRITING ISSUES. IS THIS YUCKY?
@@ -50,12 +58,15 @@ logical, intent(in)                  :: use_input_p
 ! Note that the input and output arrays may have extra copies (first subscript). Passing sections of a
 ! leading index could be inefficient for time and storage, so avoiding that for now.
 
+! Assumes that the bounds are the same for any variables that are BNRH for now
+! The bounds variables are not used for the normal case or the case where the input p is used
+
 integer  :: i
 real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars
-   call convert_to_probit(ens_size, state_ens(1:ens_size, i), var_kind(i), p(i), temp_ens, &
-      use_input_p)
+   call convert_to_probit(ens_size, state_ens(1:ens_size, i), prior_distribution_type(i), &
+      p(i), temp_ens, use_input_p, bounded, bounds)
    probit_ens(1:ens_size, i) = temp_ens
 end do
 
@@ -63,24 +74,28 @@ end subroutine convert_all_to_probit
 
 !------------------------------------------------------------------------
 
-subroutine convert_to_probit(ens_size, state_ens, var_kind, p, probit_ens, use_input_p)
+subroutine convert_to_probit(ens_size, state_ens, prior_distribution_type, p, &
+   probit_ens, use_input_p, bounded, bounds)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
-integer, intent(in)                  :: var_kind
+integer, intent(in)                  :: prior_distribution_type
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
+logical, intent(in)                  :: bounded(2)
+real(r8), intent(in)                 :: bounds(2)
 
-if(var_kind == 0) then
+! Set the type of the distribution in the parameters defined type
+p%prior_distribution_type = prior_distribution_type
+
+if(p%prior_distribution_type == NORMAL_PRIOR) then 
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
-! For these tests, var_kind is 1 for state variables indicating no bounds (L96 vars)
-! and 2 for the observed variable being a square
-elseif(var_kind == 1 .or. var_kind == 2) then
-   ! Need to pass var_kind because different kinds could have different bounds
-   call to_probit_bounded_normal_rhf(ens_size, state_ens, var_kind, p, probit_ens, use_input_p)
+elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
+   call to_probit_bounded_normal_rhf(ens_size, state_ens, p, probit_ens, &
+      use_input_p, bounded, bounds)
 else
-   write(*, *) 'Illegal var_kind in convert_to_probit', var_kind
+   write(*, *) 'Illegal distribution in convert_to_probit', p%prior_distribution_type
    stop
 endif
 
@@ -99,30 +114,31 @@ logical, intent(in)                  :: use_input_p
 ! Probit transform for nomal. This is just a test since this can be skipped for normals.
 real(r8) :: mean, sd
 
-! Initial test is just a bogus thing for normals which require two parameters, mean and sd
+! Don't need to do anything for normal, but keep code below to show what it could look like
+probit_ens = state_ens
+return
+
+! Get parameters
 if(use_input_p) then
    mean = p%params(1)
    sd   = p%params(2)
 else
    mean = sum(state_ens) / ens_size
    sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
-endif
-
-! Do the probit transform for the normal
-probit_ens = (state_ens - mean) / sd
-
-! Store these for the inversion
-if(.not. use_input_p) then
    if(.not. allocated(p%params)) allocate(p%params(2))
    p%params(1) = mean
    p%params(2) = sd
 endif
 
+! Do the probit transform for the normal
+probit_ens = (state_ens - mean) / sd
+
 end subroutine to_probit_normal
 
 !------------------------------------------------------------------------
 
-subroutine to_probit_bounded_normal_rhf(ens_size, state_ens, var_kind, p, probit_ens, use_input_p)
+subroutine to_probit_bounded_normal_rhf(ens_size, state_ens, p, probit_ens, &
+   use_input_p, bounded, bounds)
 
 ! Note that this is just for transforming back and forth, not for doing the RHF observation update
 ! This means that we know a prior that the quantiles associated with the initial ensemble are
@@ -130,12 +146,14 @@ subroutine to_probit_bounded_normal_rhf(ens_size, state_ens, var_kind, p, probit
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
-integer, intent(in)                  :: var_kind
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
+logical, intent(in)                  :: bounded(2)
+real(r8), intent(in)                 :: bounds(2)
 
-! Probit transform for bounded normal rhf. Need to know the bounds for a given 
+!NOTE GET RID OF RHF FOR RH
+! Probit transform for bounded normal rh.
 integer  :: i, j, indx
 integer  :: ens_index(ens_size)
 real(r8) :: x, quantile
@@ -221,16 +239,10 @@ if(use_input_p) then
    end do
 else
    ! No pre-existing distribution, create one
-   ! Bounds need to come from somewhere but hard-code here for developmentA
-   ! For experimentation with square observations, need a zero lower bound
-   lower_bound = -99999_r8
-   upper_bound = 99999_r8
-   bounded_below = .false.
-   bounded_above = .false.
-   if(var_kind == 2) then
-      lower_bound = 0.0_r8
-      bounded_below = .true.
-   endif
+   lower_bound = bounds(1)
+   upper_bound = bounds(2)
+   bounded_below = bounded(1)
+   bounded_above = bounded(2)
 
    ! Need to sort. For now, don't worry about efficiency, but may need to somehow pass previous
    ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
@@ -364,13 +376,12 @@ end subroutine to_probit_bounded_normal_rhf
 
 !------------------------------------------------------------------------
 
-subroutine convert_all_from_probit(ens_size, num_vars, probit_ens, var_kind, p, state_ens)
+subroutine convert_all_from_probit(ens_size, num_vars, probit_ens, p, state_ens)
 
 integer, intent(in)                  :: ens_size
 integer, intent(in)                  :: num_vars
 real(r8), intent(in)                 :: probit_ens(:, :)
 type(dist_param_type), intent(inout) :: p(num_vars)
-integer, intent(in)                  :: var_kind(num_vars)
 real(r8), intent(out)                :: state_ens(:, :)
 
 ! Convert back to the orig
@@ -378,7 +389,7 @@ integer  :: i
 real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars
-   call convert_from_probit(ens_size, probit_ens(1:ens_size, i), var_kind(i), p(i), temp_ens)
+   call convert_from_probit(ens_size, probit_ens(1:ens_size, i), p(i), temp_ens)
    state_ens(1:ens_size, i) = temp_ens
 end do
 
@@ -386,23 +397,21 @@ end subroutine convert_all_from_probit
 
 !------------------------------------------------------------------------
 
-subroutine convert_from_probit(ens_size, probit_ens, var_kind, p, state_ens)
+subroutine convert_from_probit(ens_size, probit_ens, p, state_ens)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: probit_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
-integer, intent(in)                  :: var_kind
 real(r8), intent(out)                :: state_ens(ens_size)
 
 ! Convert back to the orig
 
-if(var_kind == 0) then
+if(p%prior_distribution_type == NORMAL_PRIOR) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
-elseif(var_kind == 1 .or. var_kind == 2) then
-   ! 1 for state space unbounded rhf, 2 for state space bounded nonnegative rhf
-   call from_probit_bounded_normal_rhf(ens_size, probit_ens, var_kind, p, state_ens)
+elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
+   call from_probit_bounded_normal_rhf(ens_size, probit_ens, p, state_ens)
 else
-   write(*, *) 'Illegal var_kind in convert_from_probit ', var_kind
+   write(*, *) 'Illegal distribution in convert_from_probit ', p%prior_distribution_type
    stop
 endif
 
@@ -421,10 +430,15 @@ real(r8), intent(out)                :: state_ens(ens_size)
 ! Convert back to the orig
 real(r8) :: mean, sd
 
+! Don't do anything for normal
+state_ens = probit_ens
+return
+
 mean = p%params(1)
 sd   = p%params(2)
 state_ens = probit_ens * sd + mean
 
+! Probably should do an explicit clearing of this storage
 ! Free the storage
 deallocate(p%params)
 
@@ -432,11 +446,10 @@ end subroutine from_probit_normal
 
 !------------------------------------------------------------------------
 
-subroutine from_probit_bounded_normal_rhf(ens_size, probit_ens, var_kind, p, state_ens)
+subroutine from_probit_bounded_normal_rhf(ens_size, probit_ens, p, state_ens)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: probit_ens(ens_size)
-integer, intent(in)                  :: var_kind
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
@@ -517,6 +530,7 @@ do i = 1, ens_size
 
 end do
 
+! Probably do this explicitly 
 ! Free the storage
 deallocate(p%params)
 

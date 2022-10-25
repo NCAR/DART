@@ -73,7 +73,8 @@ use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, convert_from_probit, &
                                        convert_all_to_probit, convert_all_from_probit, &
-                                       norm_cdf, norm_inv, weighted_norm_inv
+                                       norm_cdf, norm_inv, weighted_norm_inv, &
+                                       NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
 
 implicit none
 private
@@ -385,7 +386,11 @@ logical :: local_obs_inflate
 ! Storage for normal probit conversion, keeps prior mean and sd for all state ensemble members
 type(dist_param_type) :: state_dist_params(ens_handle%my_num_vars)
 type(dist_param_type) :: obs_dist_params(obs_ens_handle%my_num_vars)
+integer :: state_dist_type(ens_handle%my_num_vars)
+integer :: obs_dist_type(obs_ens_handle%my_num_vars)
 type(dist_param_type) :: temp_dist_params
+logical  :: bounded(2)
+real(r8) :: bounds(2)
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -513,10 +518,11 @@ do i = 1, ens_handle%my_num_vars
 end do
 
 ! Convert all my state variables to appropriate probit space
-! Temporary distinction between state and obs kinds
-my_state_kind = 1 
-call convert_all_to_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, my_state_kind, &
-   state_dist_params, ens_handle%copies, .false.)
+! Need to specify what kind of prior to use for each
+state_dist_type = BOUNDED_NORMAL_RH_PRIOR
+bounded = .false.
+call convert_all_to_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
+   state_dist_type, state_dist_params, ens_handle%copies, .false., bounded, bounds)
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
@@ -537,12 +543,14 @@ if(local_ss_inflate) then
    end do
 endif
 
-! Have gotten the mean and variance from original ensembles, can convert to probit
+! Have gotten the mean and variance from original ensembles, can convert all my obs to probit
 ! CAN WE DO THE ADAPTIVE INFLATION ENTIRELY IN PROBIT SPACE TO MAKE IT DISTRIBUTION INDEPENDENT????
 ! WOULD NEED AN OBSERVATION ERROR VARIANCE IN PROBIT SPACE SOMEHOW. IS THAT POSSIBLE???
-my_obs_kind = 1 
-call convert_all_to_probit(ens_size, my_num_obs, obs_ens_handle%copies, my_obs_kind, &
-   obs_dist_params, obs_ens_handle%copies, .false.)
+obs_dist_type = BOUNDED_NORMAL_RH_PRIOR
+bounded(1) = .true.;   bounded(2) = .false.
+bounds(1)  = 0.0_r8
+call convert_all_to_probit(ens_size, my_num_obs, obs_ens_handle%copies, obs_dist_type, &
+   obs_dist_params, obs_ens_handle%copies, .false., bounded, bounds)
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -634,10 +642,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_VAR_END, owners_index)
 
          ! If QC is okay, convert this observation ensemble from probit to regular space
-         my_obs_kind(owners_index) = 1 
          call convert_from_probit(ens_size, obs_ens_handle%copies(1:ens_size, owners_index) , &
-            my_obs_kind(owners_index), obs_dist_params(owners_index), &
-            obs_ens_handle%copies(1:ens_size, owners_index))
+            obs_dist_params(owners_index), obs_ens_handle%copies(1:ens_size, owners_index))
 
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
       endif IF_QC_IS_OKAY
@@ -683,16 +689,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! Convert both the prior and posterior to probit space (efficiency for prior???)
       ! Running probit space with groups needs to be studied more carefully
-      !Make sure that base_obs_kind is correct
-      base_obs_kind = 1 
       ! EFFICIENCY NOTE: FOR RHF, THE OBS_INCREMENT HAS TO DO A SORT
       ! THE POSTERIOR WOULD HAVE THE SAME RANK STATISTICS, SO THIS SORT WOULD BE THE SAME
       ! THE SECOND CONVERT_TO_PROBIT CAN BE MUCH MORE EFFICIENT USING A SORT
       ! SHOULD FIGURE OUT A WAY TO PASS THE SORT ORDER
-      call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), base_obs_kind, &
-         temp_dist_params, probit_obs_prior(grp_bot:grp_top), .false.)
-      call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), base_obs_kind, &
-         temp_dist_params, probit_obs_post(grp_bot:grp_top), .true.)
+      ! NOTE 2: THIS CONVERSION IS USING THE INFO FROM THE CURRENT (UPDATED) PRIOR ENSEMBLE. THIS
+      ! IS GENERALLY GOING TO BE A DIFFERENT PROBIT TRANSFORMED ENSEMBLE THAN THE ONE THAT WAS JUST
+      ! CONVERTED FROM PROBIT SPACE BY THE PROCESS THAT OWNS THIS OBSERVATION. 
+      obs_dist_type(1) = BOUNDED_NORMAL_RH_PRIOR 
+      bounded(1) = .true.;   bounded(2) = .false.
+      bounds(1)  = 0.0_r8
+      call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), obs_dist_type(1), &
+         temp_dist_params, probit_obs_prior(grp_bot:grp_top), .false., bounded, bounds)
+      call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), obs_dist_type(1), &
+         temp_dist_params, probit_obs_post(grp_bot:grp_top), .true., bounded, bounds)
       ! Copy back into original storage
       obs_prior(grp_bot:grp_top) = probit_obs_prior(grp_bot:grp_top)
       obs_post(grp_bot:grp_top) = probit_obs_post(grp_bot:grp_top)
@@ -807,9 +817,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 end do SEQUENTIAL_OBS
 
 ! Do the inverse probit transform for state variables
-my_state_kind = 1 
 call convert_all_from_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
-   my_state_kind, state_dist_params, ens_handle%copies)
+   state_dist_params, ens_handle%copies)
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then
