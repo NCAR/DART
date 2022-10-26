@@ -350,6 +350,10 @@ else
       if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold * sd) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
+      else
+         ! Compute the right tail amplitude
+         write(*, *) 'Upper bound not completed yet in quantile...'
+         stop
       endif
    endif
 
@@ -405,7 +409,6 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
 ! Convert back to the orig
-
 if(p%prior_distribution_type == NORMAL_PRIOR) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
@@ -473,6 +476,8 @@ tail_mean_right = p%params(ens_size + 10)
 tail_sd_left = p%params(ens_size + 11)
 tail_sd_right = p%params(ens_size + 12)
 
+write(*, *) 'bounded ', bounded_below, bounded_above, lower_bound, upper_bound
+
 ! Convert each probit ensemble member back to physical space
 do i = 1, ens_size
    ! First, invert the probit to get a quantile
@@ -489,7 +494,7 @@ do i = 1, ens_size
 
    if(region == 0) then
       ! Lower tail
-      if(do_uniform_tail_left) then
+      if(bounded_below .and. do_uniform_tail_left) then
          ! Lower tail uniform
          upper_state = p%params(1)
 ! NOTE: NEED TO BE CAREFUL OF THE DENOMINATOR HERE AND ON THE PLUS SIDE
@@ -497,8 +502,13 @@ do i = 1, ens_size
             (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
       else
          ! Lower tail is (bounded) normal, work in from the bottom
-         ! This is almost identical to before, but still doesn't solve the bounds violation problem
-         mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+         if(bounded_below) then
+            ! How much of the mass of the tail normal is below the lower bound
+            mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+         else
+            ! There is no lower bound, so no mass below it
+            mass = 0.0_r8
+         endif
          target_mass = mass + quantile
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
       endif
@@ -552,8 +562,15 @@ real(digits12) :: x, p, b1, b2, b3, b4, b5, t, density, nx
 ! Convert to a standard normal
 nx = (x_in - mean) / sd
 
-x = abs(nx)
+if(nx < 0.0_digits12) then
+   norm_cdf = 0.5_digits12 * erfc(-nx / sqrt(2.0_digits12))
+else
+   norm_cdf = 0.5_digits12 * (1.0_digits12 + erf(nx / sqrt(2.0_digits12)))
+endif
+return
 
+! Old version left for now
+x = abs(nx)
 
 ! Use formula from Abramowitz and Stegun to approximate
 p = 0.2316419_digits12
