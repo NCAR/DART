@@ -3052,9 +3052,9 @@ type(time_type),     intent(in) :: dart_time
 
 integer :: year, month, day, hour, minute, second
 character(len=64) :: timestring
-timestring = ''
 character(len=*), parameter :: routine = 'write_model_time_restart'
 
+timestring = ''
 call get_date(dart_time, year, month, day, hour, minute, second)
 call set_wrf_date(timestring, year, month, day, hour, minute, second)
 
