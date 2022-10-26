@@ -3079,7 +3079,7 @@ call nc_end_define_mode(ncid)
 
 endif
 
-call nc_put_variable(ncid, 'xtime', trim(timestring), routine)
+call nc_put_variable(ncid, 'xtime', timestring, routine)
 
 end subroutine write_model_time_restart
 
