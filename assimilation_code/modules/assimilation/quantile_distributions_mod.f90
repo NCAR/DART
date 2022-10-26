@@ -352,8 +352,7 @@ else
          do_uniform_tail_right = .true.
       else
          ! Compute the right tail amplitude
-         write(*, *) 'Upper bound not completed yet in quantile...'
-         stop
+         tail_amp_right = base_prob / (base_prob - (1.0_r8 - bound_quantile))
       endif
    endif
 
@@ -457,7 +456,7 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
 integer :: i, region
-real(r8) :: quantile, target_mass, delta_q, mass, lower_state, upper_state, lower_q, upper_q
+real(r8) :: quantile, target_mass, mass, lower_state, upper_state, lower_q, upper_q
 logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_right
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
@@ -475,8 +474,6 @@ tail_mean_left = p%params(ens_size + 9)
 tail_mean_right = p%params(ens_size + 10)
 tail_sd_left = p%params(ens_size + 11)
 tail_sd_right = p%params(ens_size + 12)
-
-write(*, *) 'bounded ', bounded_below, bounded_above, lower_bound, upper_bound
 
 ! Convert each probit ensemble member back to physical space
 do i = 1, ens_size
@@ -502,20 +499,15 @@ do i = 1, ens_size
             (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
       else
          ! Lower tail is (bounded) normal, work in from the bottom
-         if(bounded_below) then
-            ! How much of the mass of the tail normal is below the lower bound
-            mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
-         else
-            ! There is no lower bound, so no mass below it
-            mass = 0.0_r8
-         endif
-         target_mass = mass + quantile
+         ! Value of weighted normal at smallest member
+         mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
+         target_mass = mass - (1.0_r8 / (ens_size + 1.0_r8) - quantile)
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
       endif
 
    elseif(region == ens_size) then
       ! Upper tail
-      if(do_uniform_tail_right) then
+      if(bounded_above .and. do_uniform_tail_right) then
          ! Upper tail is uniform
          lower_state = p%params(ens_size)
          upper_state = upper_bound
@@ -525,8 +517,8 @@ do i = 1, ens_size
          ! Upper tail is (bounded) normal
          ! Value of weighted normal at largest ensemble member
          mass = tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)
-         delta_q = quantile - ens_size / (ens_size + 1.0_r8)
-         target_mass = mass + delta_q
+         ! How much mass we need past the last ensemble member which has N/(N+1) quantile
+         target_mass = mass + quantile - (ens_size / (ens_size + 1.0_r8))
          call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, state_ens(i))
       endif
          
@@ -537,7 +529,6 @@ do i = 1, ens_size
       state_ens(i) = p%params(region) + &
           ((quantile - lower_q) / (upper_q - lower_q)) * (p%params(region + 1) - p%params(region))
    endif
-
 end do
 
 ! Probably do this explicitly 
