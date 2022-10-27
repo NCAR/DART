@@ -325,9 +325,6 @@ endif
 
 call trace_message('After reading in ensemble restart file')
 
-! Create window for forward operators
-call create_state_window(ens_handle)
-
 !>@todo FIXME this block must be supported in the single file loop with time dimension
 call trace_message('Before initializing output diagnostic file')
 state_meta(1) = 'true state'
@@ -480,6 +477,9 @@ AdvanceTime: do
    write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
    call trace_message(msgstring, 'perfect_model_obs:', -1)
 
+   ! Set up access to the state
+   call create_state_window(ens_handle)
+
    ! Compute the forward observation operator for each observation in set
    do j = 1, fwd_op_ens_handle%my_num_vars
 
@@ -575,6 +575,8 @@ AdvanceTime: do
 
    endif
 
+   ! End access to the state
+   call free_state_window(ens_handle)
 
    ! Deallocate the keys storage
    deallocate(keys)
@@ -612,9 +614,6 @@ endif
 
 call trace_message('After  writing state restart file if requested')
 call trace_message('Before ensemble and obs memory cleanup')
-
-! Close the windows
-call free_state_window(ens_handle)
 
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
