@@ -162,8 +162,10 @@ real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
 ! Parameter to control switch to uniform approximation for normal tail
-!real(r8), parameter :: uniform_threshold = 0.0e-8_r8
-real(r8), parameter :: uniform_threshold = 0.1_r8
+! This defines how many quantiles the bound is from the outermost ensemble member
+! If closer than this, can get into precision error problems with F(F-1(X)) on tails
+! Can also get other precision problems with the amplitude for the normal in the bounded region
+real(r8), parameter :: uniform_threshold = 0.01_r8
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
@@ -333,7 +335,7 @@ else
    if(bounded_below) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(lower_bound, tail_mean_left, sd)
-      if(abs(base_prob - bound_quantile) < uniform_threshold * sd) then
+      if(abs(base_prob - bound_quantile) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_left = .true.
       else
@@ -347,7 +349,7 @@ else
    if(bounded_above) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
-      if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold * sd) then
+      if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
       else
@@ -461,6 +463,8 @@ logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
+real(r8) :: bound_inv, correction
+
 ! Get variables out of the parameter storage for clarity
 bounded_below = p%params(ens_size + 1) > 0.5_r8
 bounded_above = p%params(ens_size + 2) > 0.5_r8
@@ -497,12 +501,32 @@ do i = 1, ens_size
 ! NOTE: NEED TO BE CAREFUL OF THE DENOMINATOR HERE AND ON THE PLUS SIDE
          state_ens(i) = lower_bound + &
             (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
+      !!!elseif(.not. bounded_below) then
       else
          ! Lower tail is (bounded) normal, work in from the bottom
          ! Value of weighted normal at smallest member
          mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
          target_mass = mass - (1.0_r8 / (ens_size + 1.0_r8) - quantile)
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
+
+!------------------- The following block can prevent any risk of getting below bounds
+!                    results, but is expensive and may be unneeded with thresholds in general
+!                    Code is left here, along with elseif 8 lines above in case this becomes an issue.
+!                    A similar block would be needed for the upper bounds. Note that there is also
+!                    a risk of destroying the sorted order by doing this and that might require further
+!                    subtlety
+!      elseif(bounded_below .and. .not. do_uniform_tail_left) then
+!         ! Work in from the edge??? Have to watch for sorting problems???
+!         ! Find mass at the lower bound
+!         mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+!         ! If the inverse for the boundary gives something less than the bound have to fix it
+!         call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, mass, bound_inv)
+!         correction = abs(min(0.0_r8, bound_inv))
+!         target_mass = mass + quantile
+!         call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
+!         state_ens(i) = state_ens(i) + correction
+!------------------- End unused block -------------------------------
+       
       endif
 
    elseif(region == ens_size) then
