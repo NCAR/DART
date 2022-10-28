@@ -79,7 +79,6 @@ integer  :: async              = 0
 logical  :: trace_execution    = .false.
 logical  :: output_timestamps  = .false.
 logical  :: silence            = .false.
-logical  :: distributed_state  = .true.
 
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -118,7 +117,7 @@ namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
                                  input_state_files, output_state_files,             &
-                                 single_file_in, single_file_out, distributed_state
+                                 single_file_in, single_file_out
 
 !------------------------------------------------------------------------------
 
@@ -244,11 +243,7 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
 call trace_message('Before reading in ensemble restart file')
-if(distributed_state) then
-   call init_ensemble_manager(ens_handle, ens_size, model_size)
-else
-   call init_ensemble_manager(ens_handle, ens_size, model_size, transpose_type_in = 2)
-endif
+call init_ensemble_manager(ens_handle, ens_size, model_size)
 
 call set_num_extra_copies(ens_handle, 0)
 
