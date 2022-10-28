@@ -30,7 +30,6 @@ namelist.
       write_output_state_to_file = .false.,
       output_interval            = 1,
 
-      distributed_state          = .false.,
       async                      = 0,
       adv_ens_command            = "./advance_model.csh",
       tasks_per_model_advance    = 1,
@@ -86,15 +85,6 @@ namelist.
    | output_interval                       | integer                               | Output state and observation          |
    |                                       |                                       | diagnostics every nth assimilation    |
    |                                       |                                       | time, n is output_interval.           |
-   +---------------------------------------+---------------------------------------+---------------------------------------+
-   | distributed_state                     | logical                               | True means the ensemble data is       |
-   |                                       |                                       | distributed across all tasks as it is |
-   |                                       |                                       | read in, so a single task never has   |
-   |                                       |                                       | to have enough memory to store the    |
-   |                                       |                                       | data for an ensemble member. Large    |
-   |                                       |                                       | models should always set this to      |
-   |                                       |                                       | .true., while for small models it may |
-   |                                       |                                       | be faster to set this to .false.      |
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | async                                 | integer                               | Controls method for advancing model:  |
    |                                       |                                       |                                       |
