@@ -25,7 +25,6 @@
    print_every_nth_obs        = -1
    output_forward_op_errors   = .false.
    silence                    = .false.
-   distributed_state          = .true.
   /
 
 &filter_nml
