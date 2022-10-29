@@ -19,22 +19,69 @@ private
 integer, parameter :: NORMAL_PRIOR = 1
 integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
 
-public :: norm_cdf, norm_inv, weighted_norm_inv, convert_to_probit, convert_from_probit, dist_param_type, &
-   convert_all_to_probit, convert_all_from_probit, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
-
+public :: norm_cdf, norm_inv, weighted_norm_inv, convert_to_probit, &
+   convert_from_probit, dist_param_type, convert_all_to_probit, &
+   convert_all_from_probit, probit_dist_info, &
+   NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
 
 type dist_param_type
    integer               :: prior_distribution_type
    real(r8), allocatable :: params(:)
 end type
 
-! Saves the ensemble size used in the previous call of obs_inc_bounded_norm_rhf
-integer :: bounded_norm_rhf_ens_size = -99
+! Saves the ensemble size used in the previous call of obs_inc_bounded_norm_rh
+integer :: bounded_norm_rh_ens_size = -99
 
 character(len=512)     :: msgstring
 character(len=*), parameter :: source = 'quantile_distributions_mod.f90'
 
 contains
+
+!------------------------------------------------------------------------
+
+subroutine probit_dist_info(kind, is_state, is_inflation, dist_type, &
+   bounded, bounds)
+
+! Computes the details of the probit transform for initial experiments
+! with Molly 
+
+integer,  intent(in)  :: kind
+logical,  intent(in)  :: is_state      ! True for state variable, false for obs
+logical,  intent(in)  :: is_inflation  ! True for inflation transform
+integer,  intent(out) :: dist_type
+logical,  intent(out) :: bounded(2)
+real(r8), intent(out) :: bounds(2)
+
+! Have input information about the kind of the state or observation being transformed
+! along with additional logical info that indicates whether this is an observation
+! or state variable and about whether the transformation is being done for inflation
+! or for regress. 
+! Need to select the appropriate transform. At present, options are NORMAL_PRIOR
+! which does nothing or BOUNDED_NORMAL_RH_PRIOR. 
+! If the BNRH is selected then information about the bounds must also be set.
+! The two dimensional logical array 'bounded' is set to false for no bounds and true
+! for bounded. the first element of the array is for the lower bound, the second for the upper.
+! If bounded is chosen, the corresponding bound value(s) must be set in the two dimensional 
+! real array 'bounds'.
+! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
+! would be:
+! bounded(1) = .true.;  bounded(2) = .true.
+! bounds(1)  = 0.0_r8;  bounds(2)  = 1.0_r8
+
+! This logic is consistent with Quantile Regression paper square experiments
+if(is_inflation) then 
+   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   bounded = .false.
+elseif(is_state) then
+   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   bounded = .false.
+else
+   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   bounded(1) = .true.;    bounded(2) = .false.
+   bounds(1)  = 0.0_r8
+endif
+
+end subroutine probit_dist_info
 
 !------------------------------------------------------------------------
 
@@ -92,7 +139,7 @@ p%prior_distribution_type = prior_distribution_type
 if(p%prior_distribution_type == NORMAL_PRIOR) then 
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
-   call to_probit_bounded_normal_rhf(ens_size, state_ens, p, probit_ens, &
+   call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded, bounds)
 else
    write(*, *) 'Illegal distribution in convert_to_probit', p%prior_distribution_type
@@ -137,7 +184,7 @@ end subroutine to_probit_normal
 
 !------------------------------------------------------------------------
 
-subroutine to_probit_bounded_normal_rhf(ens_size, state_ens, p, probit_ens, &
+subroutine to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
    use_input_p, bounded, bounds)
 
 ! Note that this is just for transforming back and forth, not for doing the RHF observation update
@@ -152,7 +199,6 @@ logical, intent(in)                  :: use_input_p
 logical, intent(in)                  :: bounded(2)
 real(r8), intent(in)                 :: bounds(2)
 
-!NOTE GET RID OF RHF FOR RH
 ! Probit transform for bounded normal rh.
 integer  :: i, j, indx
 integer  :: ens_index(ens_size)
@@ -172,7 +218,7 @@ real(r8), save :: dist_for_unit_sd
 real(r8) :: mean, sd, base_prob, bound_quantile
 
 if(use_input_p) then
-   ! Using an existing ensemble for the RHF points
+   ! Using an existing ensemble for the RH points
 
    ! Get variables out of the parameter storage for clarity
    bounded_below = p%params(ens_size + 1) > 0.5_r8
@@ -198,7 +244,7 @@ if(use_input_p) then
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_below .and. x < lower_bound) then
             msgstring = 'Ensemble member less than lower bound first check'
-            call error_handler(E_ERR, 'to_probit_bounded_normal_rhf', msgstring, source)
+            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
          endif
 
          if(do_uniform_tail_left) then
@@ -214,7 +260,7 @@ if(use_input_p) then
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_above .and. x > upper_bound) then
             msgstring = 'Ensemble member greater than upper bound first check'
-            call error_handler(E_ERR, 'to_probit_bounded_normal_rhf', msgstring, source)
+            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
          endif
 
          if(do_uniform_tail_right) then
@@ -256,7 +302,7 @@ else
       call norm_inv(quantile, probit_ens(indx))
    end do 
 
-   ! For RHF, the required data for inversion is the original ensemble values
+   ! For BNRH, the required data for inversion is the original ensemble values
    ! Having them in sorted order is useful for subsequent inversion
    ! It is also useful to store additional information regarding the continuous pdf representation of the tails
    ! This includes whether the bounds are defined, the values of the bounds, whether a uniform is used in the outer
@@ -290,12 +336,12 @@ else
 
    ! For unit normal, find distance from mean to where cdf is 1/(ens_size+1).
    ! Saved to avoid redundant computation for repeated calls with same ensemble size
-   if(bounded_norm_rhf_ens_size /= ens_size) then
+   if(bounded_norm_rh_ens_size /= ens_size) then
       call norm_inv(1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
       ! This will be negative, want it to be a distance so make it positive
       dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
       ! Keep a record of the ensemble size used to compute dist_for_unit_sd
-      bounded_norm_rhf_ens_size = ens_size
+      bounded_norm_rh_ens_size = ens_size
    endif
    
    ! Fail if lower bound is larger than smallest ensemble member 
@@ -303,7 +349,7 @@ else
       ! Do in two ifs in case the bound is not defined
       if(p%params(1) < lower_bound) then
          msgstring = 'Ensemble member less than lower bound'
-         call error_handler(E_ERR, 'to_probit_bounded_normal_rhf', msgstring, source)
+         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
       endif
    endif
    
@@ -311,7 +357,7 @@ else
    if(bounded_above) then
       if(p%params(ens_size) > upper_bound) then
          msgstring = 'Ensemble member greater than upper bound'
-         call error_handler(E_ERR, 'to_probit_bounded_normal_rhf', msgstring, source)
+         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
       endif
    endif
 
@@ -377,7 +423,7 @@ else
    p%params(ens_size + 12) = sd
 endif
 
-end subroutine to_probit_bounded_normal_rhf
+end subroutine to_probit_bounded_normal_rh
 
 !------------------------------------------------------------------------
 
@@ -413,7 +459,7 @@ real(r8), intent(out)                :: state_ens(ens_size)
 if(p%prior_distribution_type == NORMAL_PRIOR) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
-   call from_probit_bounded_normal_rhf(ens_size, probit_ens, p, state_ens)
+   call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
 else
    write(*, *) 'Illegal distribution in convert_from_probit ', p%prior_distribution_type
    stop
@@ -450,7 +496,7 @@ end subroutine from_probit_normal
 
 !------------------------------------------------------------------------
 
-subroutine from_probit_bounded_normal_rhf(ens_size, probit_ens, p, state_ens)
+subroutine from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: probit_ens(ens_size)
@@ -485,7 +531,7 @@ do i = 1, ens_size
    ! NOTE: Since we're doing this a ton, may want to have a call specifically for the probit inverse
    quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
 
-   ! Can assume that the quantiles of the original ensemble for the RHF are uniform
+   ! Can assume that the quantiles of the original ensemble for the BNRH are uniform
    ! Finding which region this quantile is in is trivial
    region = floor(quantile * (ens_size + 1.0_r8))
    ! Careful about numerical issues moving outside of region [0 ens_size]
@@ -559,7 +605,7 @@ end do
 ! Free the storage
 deallocate(p%params)
 
-end subroutine from_probit_bounded_normal_rhf
+end subroutine from_probit_bounded_normal_rh
 
 !------------------------------------------------------------------------
 

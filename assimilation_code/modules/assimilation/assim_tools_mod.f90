@@ -73,7 +73,7 @@ use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, convert_from_probit, &
                                        convert_all_to_probit, convert_all_from_probit, &
-                                       norm_cdf, norm_inv, weighted_norm_inv, &
+                                       norm_cdf, norm_inv, weighted_norm_inv, probit_dist_info, &
                                        NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
 
 implicit none
@@ -386,11 +386,10 @@ logical :: local_obs_inflate
 ! Storage for normal probit conversion, keeps prior mean and sd for all state ensemble members
 type(dist_param_type) :: state_dist_params(ens_handle%my_num_vars)
 type(dist_param_type) :: obs_dist_params(obs_ens_handle%my_num_vars)
-integer :: state_dist_type(ens_handle%my_num_vars)
-integer :: obs_dist_type(obs_ens_handle%my_num_vars)
+integer :: state_dist_type, obs_dist_type
 type(dist_param_type) :: temp_dist_params
 logical  :: bounded(2)
-real(r8) :: bounds(2)
+real(r8) :: bounds(2), probit_ens(ens_size)
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -515,35 +514,15 @@ call get_my_vars(ens_handle, my_state_indx)
 ! Get the location and kind of all my state variables
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
+
+   ! Need to specify what kind of prior to use for each
+   call probit_dist_info(my_state_kind(i), .true., .false., state_dist_type, bounded, bounds)
+
+   ! Convert all my state variables to appropriate probit space
+   call convert_to_probit(ens_size, ens_handle%copies(1:ens_size, i), state_dist_type, &
+      state_dist_params(i), probit_ens, .false., bounded, bounds)
+   ens_handle%copies(1:ens_size, i) = probit_ens
 end do
-
-! Convert all my state variables to appropriate probit space
-! Need to specify what kind of prior to use for each
-
-!------------- Temporary control of state variable transformation for Molly ---------------
-! At this point, we know the kind of the state variables being transformed
-! for regression (my_state_kind(i), i = 1, ens_handle%my_num_vars). 
-! From this information, we must select the space for the regression for each state var.
-! For now, that means standard (NORMAL_PRIOR) or a bounded normal rank histogram
-! (BOUNDED_NOMRAL_RH_PRIOR). The array state_dist_type contains this information for each
-! state variable. If the BNRH is selected for a state variable, then information about the 
-! bounds is also required. At present, it is assumed that all BNRH state variables have the
-! same bounds. This is probably insufficient for application in ICEPACK so we will have to 
-! find a way to extend that. 
-! The two dimensional logical array 'bounded' is set to false for no bounds and true
-! for bounded. the first element of the array is for the lower bound, the second for the upper.
-! If bounded is chosen, the corresponding bound value(s) must be set in the two dimensional 
-! real array 'bounds'.
-! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
-! would be:
-! bounded(1) = .true.;  bounded(2) = .true.
-! bounds(1)  = 0.0_r8;  bounds(2)  = 1.0_r8
-
-state_dist_type = BOUNDED_NORMAL_RH_PRIOR
-bounded = .false.
-!-------------------------------------------------------------------------------------------
-call convert_all_to_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
-   state_dist_type, state_dist_params, ens_handle%copies, .false., bounded, bounds)
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
@@ -568,18 +547,15 @@ endif
 ! CAN WE DO THE ADAPTIVE INFLATION ENTIRELY IN PROBIT SPACE TO MAKE IT DISTRIBUTION INDEPENDENT????
 ! WOULD NEED AN OBSERVATION ERROR VARIANCE IN PROBIT SPACE SOMEHOW. IS THAT POSSIBLE???
 
-!------------- Temporary control of obs variable transformation for Molly ---------------
-! At this point, we know the kind of the observation (extended state) variables being transformed
-! for regression (my_obs_kind(i), i = 1, obs_ens_handle%my_num_vars). 
-! Control for the prior observation variables is the same as for the state variables above
+do i = 1, my_num_obs
+   ! Need to specify what kind of prior to use for each
+   call probit_dist_info(my_obs_kind(i), .false., .false., obs_dist_type, bounded, bounds)
 
-obs_dist_type = BOUNDED_NORMAL_RH_PRIOR
-bounded(1) = .true.;   bounded(2) = .false.
-bounds(1)  = 0.0_r8
-!----------------------------------------------------------------------------------------
-
-call convert_all_to_probit(ens_size, my_num_obs, obs_ens_handle%copies, obs_dist_type, &
-   obs_dist_params, obs_ens_handle%copies, .false., bounded, bounds)
+   ! Convert all my obs (extended state) variables to appropriate probit space
+   call convert_to_probit(ens_size, obs_ens_handle%copies(1:ens_size, i), obs_dist_type, &
+      obs_dist_params(i), probit_ens, .false., bounded, bounds)
+   obs_ens_handle%copies(1:ens_size, i) = probit_ens
+end do
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
@@ -726,20 +702,15 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! IS GENERALLY GOING TO BE A DIFFERENT PROBIT TRANSFORMED ENSEMBLE THAN THE ONE THAT WAS JUST
       ! CONVERTED FROM PROBIT SPACE BY THE PROCESS THAT OWNS THIS OBSERVATION. 
 
-      !------------- Temporary control of obs variable transformation for Molly ---------------
-      ! This is the tranformation for the single observation variable currently being assimilated.
-      ! For now, should use the same type of transform that was used when this observation (it
-      ! has index i in loop) was converted with all of the prior obs. 
-      ! 
-      obs_dist_type(i) = BOUNDED_NORMAL_RH_PRIOR 
-      bounded(1) = .true.;   bounded(2) = .false.
-      bounds(1)  = 0.0_r8
-      !-----------------------------------------------------------------------------------------
+      ! Need to specify what kind of prior to use for each
+      call probit_dist_info(my_obs_kind(i), .false., .false., obs_dist_type, bounded, bounds)
 
-      call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), obs_dist_type(i), &
+      ! Convert the prior and posterior for this observation to probit space
+      call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), obs_dist_type, &
          temp_dist_params, probit_obs_prior(grp_bot:grp_top), .false., bounded, bounds)
-      call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), obs_dist_type(i), &
+      call convert_to_probit(grp_size, obs_post(grp_bot:grp_top), obs_dist_type, &
          temp_dist_params, probit_obs_post(grp_bot:grp_top), .true., bounded, bounds)
+
       ! Copy back into original storage
       obs_prior(grp_bot:grp_top) = probit_obs_prior(grp_bot:grp_top)
       obs_post(grp_bot:grp_top) = probit_obs_post(grp_bot:grp_top)

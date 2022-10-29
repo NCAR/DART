@@ -95,7 +95,8 @@ use quality_control_mod,   only : initialize_qc
 use location_mod,          only : location_type
 
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, &
-                            convert_from_probit, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+                            convert_from_probit, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, &
+                            probit_dist_info
 
 !------------------------------------------------------------------------------
 
@@ -1626,6 +1627,7 @@ type(dist_param_type) :: dist_params
 real(r8) :: probit_ens(ens_size), probit_ens_mean
 logical  :: bounded(2)
 real(r8) :: bounds(2)
+integer  :: dist_type
 
 ! Assumes that the ensemble is copy complete
 call prepare_to_update_copies(ens_handle)
@@ -1663,34 +1665,12 @@ do group = 1, num_groups
       ! Probably also shouldn't be used with groups for now although it is coded to do so
       call get_my_vars(ens_handle, my_state_indx)
       do j = 1, ens_handle%my_num_vars
-         ! First two lines are original code in this loop
-         !!!call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
-            !!!ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
-
          call get_state_meta_data(my_state_indx(j), my_state_loc, my_state_kind)    
 
-         !------------------------------ Temporary control of inflation for Molly ---------------
-         ! At this point, we know the kind (my_state_kind) of the variable being inflated
-         ! From this information, we must select the space for the inflation.
-         ! For now, that means standard (NORMAL_PRIOR) or a bounded normal rank histogram
-         ! (BOUNDED_NOMRAL_RH_PRIOR). This is hard-coded here as the third argument to subroutine
-         ! convert_to_probit. If the BNRH is selected, then information about the bounds is also
-         ! required. The two dimensional logical array 'bounded' is set to false for no bounds and true
-         ! for bounded. the first element of the array is for the lower bound, the second for the upper.
-         ! If bounded is chosen, the corresponding bound value(s) must be set in the two dimensional 
-         ! real array 'bounds'.
-         ! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
-         ! would be:
-         ! bounded(1) = .true.;  bounded(2) = .true.
-         ! bounds(1)  = 0.0_r8;  bounds(2)  = 1.0_r8
-
-         ! Transform to probit space; use an unbounded BNRH
-         bounded = .false.
+         ! Need to specify what kind of prior to use for each
+         call probit_dist_info(my_state_kind, .true., .true., dist_type, bounded, bounds)
          call convert_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
-            BOUNDED_NORMAL_RH_PRIOR, dist_params, &
-            probit_ens(1:grp_size), .false., bounded, bounds)
-         !---------------------------------------------------------------------------------------
-
+            dist_type, dist_params, probit_ens(1:grp_size), .false., bounded, bounds)
 
          ! Compute the ensemble mean in transformed space
          probit_ens_mean = sum(probit_ens(1:grp_size)) / grp_size
