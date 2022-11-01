@@ -23,8 +23,10 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  delete_seq_tail, destroy_obs, destroy_obs_sequence
                                  
 
-use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
+use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
+                                 get_obs_def_type_of_obs
 use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
+use    obs_kind_mod, only : get_quantity_for_type_of_obs
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  get_initial_condition
    
@@ -177,6 +179,10 @@ type(file_info_type) :: file_info_true
 
 character(len=256), allocatable :: input_filelist(:), output_filelist(:), true_state_filelist(:)
 integer :: nfilesin, nfilesout
+
+! Storage for bounded error 
+logical :: bounded(2)
+real(r8) :: bounds(2), error_variance
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -549,20 +555,36 @@ AdvanceTime: do
          ! If observation is not being evaluated or assimilated, skip it
          ! Ends up setting a 1000 qc field so observation is not used again.
          if( qc_ens_handle%vars(i, 1) == 0 ) then
-            ! Added in for paper, capability to do a bounded normal error
-            if(DO_BOUNDED_NORMAL_OBS_ERROR) then
-               write(*, *) 'perfect-model-obs doing bounded normal errors'
-               
-               ! Generate truncated normal observation
-               obs_value(1) = -99.0_r8
-               do while(obs_value(1) <= 0.0_r8)
+
+            ! Get the information for generating error sample for this observation
+            call obs_error_info(obs_def, error_variance, bounded, bounds)
+
+            ! Capability to do a bounded normal error
+            if(bounded(1) .and. bounded(2)) then
+               ! Bounds on both sides
+               obs_value(1) = bounds(1) - 1.0_r8
+               do while(obs_value(1) < bounds(1) .or. obs_value(1) > bounds(2))
                   obs_value(1) = random_gaussian(random_seq, true_obs(1), &
-                     sqrt(get_obs_def_error_variance(obs_def)))
+                     sqrt(error_variance))
                end do
-            
+            elseif(bounded(1) .and. .not. bounded(2)) then
+               ! Bound on lower side
+               obs_value(1) = bounds(1) - 1.0_r8
+               do while(obs_value(1) < bounds(1))
+                  obs_value(1) = random_gaussian(random_seq, true_obs(1), &
+                     sqrt(error_variance))
+               end do
+            elseif(.not. bounded(1) .and. bounded(2)) then
+               ! Bound on upper side
+               obs_value(1) = bounds(2) + 1.0_r8
+               do while(obs_value(1) > bounds(1))
+                  obs_value(1) = random_gaussian(random_seq, true_obs(1), &
+                     sqrt(error_variance))
+               end do
             else
+            ! No bounds, regular old normal distribution
                obs_value(1) = random_gaussian(random_seq, true_obs(1), &
-                  sqrt(get_obs_def_error_variance(obs_def)))
+                  sqrt(error_variance))
             endif
 
             ! FIX ME SPINT: if the foward operater passed can we directly set the
@@ -812,6 +834,33 @@ do i = 1, nfiles
 enddo
 
 end subroutine parse_filenames
+
+
+!-------------------------------------------------------------------------
+subroutine obs_error_info(obs_def, error_variance, bounded, bounds)
+
+! Computes information needed to compute error sample for this observation
+type(obs_def_type), intent(in)  :: obs_def
+real(r8),           intent(out) :: error_variance
+logical,            intent(out) :: bounded(2)
+real(r8),           intent(out) :: bounds(2)
+
+integer :: obs_type, obs_kind
+
+! Get the kind of the observation
+obs_type = get_obs_def_type_of_obs(obs_def)
+obs_kind = get_quantity_for_type_of_obs(obs_type)
+
+! Get the default error variance
+error_variance = get_obs_def_error_variance(obs_def)
+
+! Do some computation with the obs_kind
+! Example for square observation
+bounded(1) = .true.;     bounded(2) = .false.
+bounds(1) = 0.0_r8; 
+
+end subroutine obs_error_info
+
 
 
 end program perfect_model_obs

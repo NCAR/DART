@@ -957,7 +957,7 @@ endif
 ! This is not an extensible mechanism for doing this as the number of 
 ! obs increments distributions and associated information goes up
 call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-   sort_obs_inc, spread_restoration, bounded, bounds, USE_BOUNDED_RHF_OBS_PRIOR)
+   sort_obs_inc, spread_restoration, bounded, bounds)
 
 ! The first three options in the next if block of code may be inappropriate for 
 ! some more general filters; need to revisit
@@ -1060,7 +1060,7 @@ end subroutine obs_increment
 
 
 subroutine obs_inc_info(obs_kind, l_filter_kind, l_rectangular_quadrature, l_gaussian_likelihood_tails, &
-   l_sort_obs_inc, l_spread_restoration, l_bounded, l_bounds, l_USE_BOUNDED_RHF_OBS_PRIOR)
+   l_sort_obs_inc, l_spread_restoration, l_bounded, l_bounds)
 !========================================================================
 
 integer,  intent(in)  :: obs_kind
@@ -1070,7 +1070,6 @@ logical,  intent(out) :: l_sort_obs_inc
 logical,  intent(out) :: l_spread_restoration
 logical,  intent(out) :: l_bounded(2)
 real(r8), intent(out) :: l_bounds(2)
-logical,  intent(out) :: l_USE_BOUNDED_RHF_OBS_PRIOR
 
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
@@ -1080,7 +1079,6 @@ l_sort_obs_inc = .false.
 l_spread_restoration = .false.
 l_bounded(1) = .true.;   l_bounded(2) = .false.
 l_bounds(1) = 0.0_r8;   
-l_USE_BOUNDED_RHF_OBS_PRIOR = .true.
 
 ! Only need to set these two for options on old RHF implementation
 ! l_rectangular_quadrature = .true.
