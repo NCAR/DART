@@ -688,7 +688,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    do group = 1, num_groups
       grp_bot = grp_beg(group); grp_top = grp_end(group)
       call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-         obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
+         obs_err_var, base_obs_kind, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
          my_inflate_sd, net_a(group))
       obs_post(grp_bot:grp_top) = obs_prior(grp_bot:grp_top) + obs_inc(grp_bot:grp_top)
 
@@ -896,7 +896,7 @@ end subroutine filter_assim
 
 !-------------------------------------------------------------
 
-subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
+subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_kind, obs_inc, &
    inflate, my_cov_inflate, my_cov_inflate_sd, net_a)
 
 ! Given the ensemble prior for an observation, the observation, and
@@ -905,6 +905,7 @@ subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
 
 integer,                     intent(in)    :: ens_size
 real(r8),                    intent(in)    :: ens_in(ens_size), obs, obs_var
+integer,                     intent(in)    :: obs_kind
 real(r8),                    intent(out)   :: obs_inc(ens_size)
 type(adaptive_inflate_type), intent(inout) :: inflate
 real(r8),                    intent(inout) :: my_cov_inflate, my_cov_inflate_sd
@@ -918,8 +919,8 @@ real(r8) :: rel_weights(ens_size)
 
 ! Declarations for bounded rank histogram filter
 real(r8) :: likelihood(ens_size)
-logical  :: is_bounded(2)
-real(r8) :: bound(2), like_sum
+logical  :: bounded(2)
+real(r8) :: bounds(2), like_sum
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
@@ -951,6 +952,15 @@ if(do_obs_inflate(inflate)) then
       prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
 
+! The filter_kind can no longer be determined by a single namelist setting
+! Implications for sorting increments and for spread restoration need to be examined
+! This is not an extensible mechanism for doing this as the number of 
+! obs increments distributions and associated information goes up
+call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
+   sort_obs_inc, spread_restoration, bounded, bounds, USE_BOUNDED_RHF_OBS_PRIOR)
+
+! The first three options in the next if block of code may be inappropriate for 
+! some more general filters; need to revisit
 ! If obs_var == 0, delta function.  The mean becomes obs value with no spread.
 ! If prior_var == 0, obs has no effect.  The increments are 0.
 ! If both obs_var and prior_var == 0 there is no right thing to do, so Stop.
@@ -1000,20 +1010,9 @@ else
    !--------------------------------------------------------------------------
    else if(filter_kind == 101) then
 
-      ! Use a Bounded normal RHF prior
-      ! This should be set to true for QCEF paper case with square obs
-      if(USE_BOUNDED_RHF_OBS_PRIOR) then
-         is_bounded(1) = .true.
-         is_bounded(2) = .false.
-         bound = (/0.0_r8, -99999.0_r8/)
-      else
-         is_bounded = .false.
-         bound = (/-99999.0_r8, -99999.0_r8/)
-      endif
-
-      ! Test bounded normal likelihood; Could use an arbitrary likelihood
+      ! Use bounded normal likelihood; Could use an arbitrary likelihood
       do i = 1, ens_size
-         likelihood(i) = get_truncated_normal_like(ens(i), obs, obs_var, is_bounded, bound)
+         likelihood(i) = get_truncated_normal_like(ens(i), obs, obs_var, bounded, bounds)
       end do
 
       ! Normalize the likelihood here
@@ -1027,7 +1026,7 @@ else
       endif
 
       call obs_increment_bounded_norm_rhf(ens, likelihood, ens_size, prior_var, &
-         obs_inc, is_bounded, bound)
+         obs_inc, bounded, bounds)
    !--------------------------------------------------------------------------
    else
       call error_handler(E_ERR,'obs_increment', &
@@ -1057,6 +1056,37 @@ endif
 if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
 
 end subroutine obs_increment
+
+
+
+subroutine obs_inc_info(obs_kind, l_filter_kind, l_rectangular_quadrature, l_gaussian_likelihood_tails, &
+   l_sort_obs_inc, l_spread_restoration, l_bounded, l_bounds, l_USE_BOUNDED_RHF_OBS_PRIOR)
+!========================================================================
+
+integer,  intent(in)  :: obs_kind
+integer,  intent(out) :: l_filter_kind
+logical,  intent(out) :: l_rectangular_quadrature, l_gaussian_likelihood_tails
+logical,  intent(out) :: l_sort_obs_inc
+logical,  intent(out) :: l_spread_restoration
+logical,  intent(out) :: l_bounded(2)
+real(r8), intent(out) :: l_bounds(2)
+logical,  intent(out) :: l_USE_BOUNDED_RHF_OBS_PRIOR
+
+! Temporary approach for setting the details of how to assimilate this observation
+! This example is designed to reproduce the squared forward operator results from paper
+
+l_filter_kind = 101
+l_sort_obs_inc = .false.
+l_spread_restoration = .false.
+l_bounded(1) = .true.;   l_bounded(2) = .false.
+l_bounds(1) = 0.0_r8;   
+l_USE_BOUNDED_RHF_OBS_PRIOR = .true.
+
+! Only need to set these two for options on old RHF implementation
+! l_rectangular_quadrature = .true.
+! l_gaussian_likelihood_tails = .false.
+
+end subroutine obs_inc_info
 
 
 
