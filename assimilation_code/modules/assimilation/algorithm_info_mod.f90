@@ -9,6 +9,11 @@ use types_mod, only : r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs
 
+! Get the QTY definitions that are needed (aka kind)
+use obs_kind_mod, only : QTY_STATE_VARIABLE, QTY_STATE_VAR_POWER, QTY_TRACER_CONCENTRATION, &
+                        QTY_TRACER_SOURCE
+! NOTE: Sadly, the QTY itself is not sufficient for the POWER because there is additional metadata
+
 implicit none
 private
 
@@ -44,14 +49,25 @@ integer :: obs_type, obs_kind
 obs_type = get_obs_def_type_of_obs(obs_def)
 obs_kind = get_quantity_for_type_of_obs(obs_type)
 
-write(*, *) 'obs_error_info type and kind ', obs_type, obs_kind
-
 ! Get the default error variance
 error_variance = get_obs_def_error_variance(obs_def)
 
-! Do some computation with the obs_kind
-bounded(1) = .false.;     bounded(2) = .false.
-bounds(1) = 0.0_r8;
+! Set the observation error details for each type of quantity
+if(obs_kind == QTY_STATE_VARIABLE) then
+   bounded = .false.
+elseif(obs_kind == QTY_STATE_VAR_POWER) then
+   bounded(1) = .true.;     bounded(2) = .false.
+   bounds(1) = 0.0_r8;
+elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
+   bounded(1) = .true.;     bounded(2) = .false.
+   bounds(1) = 0.0_r8;
+elseif(obs_kind == QTY_TRACER_SOURCE) then
+   bounded(1) = .true.;     bounded(2) = .false.
+   bounds(1) = 0.0_r8;
+else
+   write(*, *) 'Illegal obs_kind in obs_error_info'
+   stop
+endif
 
 end subroutine obs_error_info
 
@@ -88,17 +104,72 @@ real(r8), intent(out) :: bounds(2)
 ! bounded(1) = .true.;  bounded(2) = .true.
 ! bounds(1)  = 0.0_r8;  bounds(2)  = 1.0_r8
 
-! This logic is consistent with Quantile Regression paper square experiments
+! In the long run, may not have to have separate controls for each of the input possibilities
+! However, for now these are things that need to be explored for science understanding
+
 if(is_inflation) then
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
-   bounded = .false.
+   ! Case for inflation transformation
+   if(kind == QTY_STATE_VARIABLE) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded = .false.
+   elseif(kind == QTY_STATE_VAR_POWER) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   elseif(kind == QTY_TRACER_CONCENTRATION) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   elseif(kind == QTY_TRACER_SOURCE) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   else
+      write(*, *) 'Illegal kind in obs_error_info'
+      stop
+   endif
 elseif(is_state) then
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
-   bounded = .false.
+   ! Case for state variable priors
+   if(kind == QTY_STATE_VARIABLE) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded = .false.
+   elseif(kind == QTY_STATE_VAR_POWER) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   elseif(kind == QTY_TRACER_CONCENTRATION) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   elseif(kind == QTY_TRACER_SOURCE) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   else
+      write(*, *) 'Illegal kind in obs_error_info'
+      stop
+   endif
 else
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
-   bounded(1) = .true.;    bounded(2) = .false.
-   bounds(1)  = 0.0_r8
+   ! This case is for observation (extended state) priors
+   if(kind == QTY_STATE_VARIABLE) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded = .false.
+   elseif(kind == QTY_STATE_VAR_POWER) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   elseif(kind == QTY_TRACER_CONCENTRATION) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   elseif(kind == QTY_TRACER_SOURCE) then
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      bounded(1) = .true.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;
+   else
+      write(*, *) 'Illegal kind in obs_error_info'
+      stop
+   endif
 endif
 
 end subroutine probit_dist_info
@@ -120,11 +191,32 @@ real(r8), intent(out) :: bounds(2)
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
+! Set the observation increment details for each type of quantity
+if(obs_kind == QTY_STATE_VARIABLE) then
+   filter_kind = 101
+   bounded = .false.
+elseif(obs_kind == QTY_STATE_VAR_POWER) then
+   filter_kind = 101
+   bounded(1) = .true.;     bounded(2) = .false.
+   bounds(1) = 0.0_r8;
+elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
+   filter_kind = 101
+   bounded(1) = .true.;     bounded(2) = .false.
+   bounds(1) = 0.0_r8;
+elseif(obs_kind == QTY_TRACER_SOURCE) then
+   filter_kind = 101
+   bounded(1) = .true.;     bounded(2) = .false.
+   bounds(1) = 0.0_r8;
+else
+   write(*, *) 'Illegal obs_kind in obs_error_info'
+   stop
+endif
+
 filter_kind = 101
+
+! Default settings for now for Icepack and tracer model tests
 sort_obs_inc = .false.
 spread_restoration = .false.
-bounded(1) = .true.;   bounded(2) = .false.
-bounds(1) = 0.0_r8;
 
 ! Only need to set these two for options on old RHF implementation
 ! rectangular_quadrature = .true.
