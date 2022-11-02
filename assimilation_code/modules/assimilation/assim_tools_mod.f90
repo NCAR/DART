@@ -73,8 +73,10 @@ use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, convert_from_probit, &
                                        convert_all_to_probit, convert_all_from_probit, &
-                                       norm_cdf, norm_inv, weighted_norm_inv, probit_dist_info, &
-                                       NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+                                       norm_cdf, norm_inv, weighted_norm_inv
+
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, &
+                               NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
 
 implicit none
 private
@@ -1056,35 +1058,6 @@ endif
 if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
 
 end subroutine obs_increment
-
-
-
-subroutine obs_inc_info(obs_kind, l_filter_kind, l_rectangular_quadrature, l_gaussian_likelihood_tails, &
-   l_sort_obs_inc, l_spread_restoration, l_bounded, l_bounds)
-!========================================================================
-
-integer,  intent(in)  :: obs_kind
-integer,  intent(out) :: l_filter_kind
-logical,  intent(out) :: l_rectangular_quadrature, l_gaussian_likelihood_tails
-logical,  intent(out) :: l_sort_obs_inc
-logical,  intent(out) :: l_spread_restoration
-logical,  intent(out) :: l_bounded(2)
-real(r8), intent(out) :: l_bounds(2)
-
-! Temporary approach for setting the details of how to assimilate this observation
-! This example is designed to reproduce the squared forward operator results from paper
-
-l_filter_kind = 101
-l_sort_obs_inc = .false.
-l_spread_restoration = .false.
-l_bounded(1) = .true.;   l_bounded(2) = .false.
-l_bounds(1) = 0.0_r8;   
-
-! Only need to set these two for options on old RHF implementation
-! l_rectangular_quadrature = .true.
-! l_gaussian_likelihood_tails = .false.
-
-end subroutine obs_inc_info
 
 
 

@@ -95,8 +95,9 @@ use quality_control_mod,   only : initialize_qc
 use location_mod,          only : location_type
 
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, &
-                            convert_from_probit, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, &
-                            probit_dist_info
+                            convert_from_probit
+
+use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
 
 !------------------------------------------------------------------------------
 

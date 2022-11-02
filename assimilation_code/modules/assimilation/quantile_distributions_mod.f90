@@ -13,16 +13,15 @@ use sort_mod,  only : sort, index_sort
 
 use utilities_mod, only : E_ERR, error_handler
 
+use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+
 implicit none
 private
 
-integer, parameter :: NORMAL_PRIOR = 1
-integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
 
 public :: norm_cdf, norm_inv, weighted_norm_inv, convert_to_probit, &
    convert_from_probit, dist_param_type, convert_all_to_probit, &
-   convert_all_from_probit, probit_dist_info, &
-   NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+   convert_all_from_probit
 
 type dist_param_type
    integer               :: prior_distribution_type
@@ -36,52 +35,6 @@ character(len=512)     :: msgstring
 character(len=*), parameter :: source = 'quantile_distributions_mod.f90'
 
 contains
-
-!------------------------------------------------------------------------
-
-subroutine probit_dist_info(kind, is_state, is_inflation, dist_type, &
-   bounded, bounds)
-
-! Computes the details of the probit transform for initial experiments
-! with Molly 
-
-integer,  intent(in)  :: kind
-logical,  intent(in)  :: is_state      ! True for state variable, false for obs
-logical,  intent(in)  :: is_inflation  ! True for inflation transform
-integer,  intent(out) :: dist_type
-logical,  intent(out) :: bounded(2)
-real(r8), intent(out) :: bounds(2)
-
-! Have input information about the kind of the state or observation being transformed
-! along with additional logical info that indicates whether this is an observation
-! or state variable and about whether the transformation is being done for inflation
-! or for regress. 
-! Need to select the appropriate transform. At present, options are NORMAL_PRIOR
-! which does nothing or BOUNDED_NORMAL_RH_PRIOR. 
-! If the BNRH is selected then information about the bounds must also be set.
-! The two dimensional logical array 'bounded' is set to false for no bounds and true
-! for bounded. the first element of the array is for the lower bound, the second for the upper.
-! If bounded is chosen, the corresponding bound value(s) must be set in the two dimensional 
-! real array 'bounds'.
-! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
-! would be:
-! bounded(1) = .true.;  bounded(2) = .true.
-! bounds(1)  = 0.0_r8;  bounds(2)  = 1.0_r8
-
-! This logic is consistent with Quantile Regression paper square experiments
-if(is_inflation) then 
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
-   bounded = .false.
-elseif(is_state) then
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
-   bounded = .false.
-else
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
-   bounded(1) = .true.;    bounded(2) = .false.
-   bounds(1)  = 0.0_r8
-endif
-
-end subroutine probit_dist_info
 
 !------------------------------------------------------------------------
 

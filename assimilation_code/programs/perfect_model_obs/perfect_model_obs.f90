@@ -63,6 +63,8 @@ use forward_operator_mod, only : get_expected_obs_distrib_state
 
 use mpi_utilities_mod,    only : my_task_id
 
+use algorithm_info_mod,   only : obs_error_info
+
 implicit none
 
 character(len=*), parameter :: source = 'perfect_model_obs.f90'
@@ -834,33 +836,6 @@ do i = 1, nfiles
 enddo
 
 end subroutine parse_filenames
-
-
-!-------------------------------------------------------------------------
-subroutine obs_error_info(obs_def, error_variance, bounded, bounds)
-
-! Computes information needed to compute error sample for this observation
-type(obs_def_type), intent(in)  :: obs_def
-real(r8),           intent(out) :: error_variance
-logical,            intent(out) :: bounded(2)
-real(r8),           intent(out) :: bounds(2)
-
-integer :: obs_type, obs_kind
-
-! Get the kind of the observation
-obs_type = get_obs_def_type_of_obs(obs_def)
-obs_kind = get_quantity_for_type_of_obs(obs_type)
-
-! Get the default error variance
-error_variance = get_obs_def_error_variance(obs_def)
-
-! Do some computation with the obs_kind
-! Example for square observation
-bounded(1) = .true.;     bounded(2) = .false.
-bounds(1) = 0.0_r8; 
-
-end subroutine obs_error_info
-
 
 
 end program perfect_model_obs
