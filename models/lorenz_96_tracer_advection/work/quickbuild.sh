@@ -10,7 +10,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=lorenz_96
+MODEL=lorenz_96_tracer_advection
 LOCATION=oned
 
 

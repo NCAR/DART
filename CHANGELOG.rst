@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 3 2022 :: Bug-fix release. Tag v10.5.4**
+
+- Perfect_model_obs (pmo) fixed for running with MPI and advancing the
+  model inside pmo.
+- MPAS_ATM xtime string padded with blanks for easier bitwise comparison.
+- lorenz_96_tracer_advection quickbuild.sh fixed.
+
 **October 13 2022 :: Bug-fix for read variables. Tag v10.5.3**
 
 - Per-file check for unlimited dimension before variable read. Netcdf 
