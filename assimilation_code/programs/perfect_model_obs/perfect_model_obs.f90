@@ -79,7 +79,6 @@ integer  :: async              = 0
 logical  :: trace_execution    = .false.
 logical  :: output_timestamps  = .false.
 logical  :: silence            = .false.
-logical  :: distributed_state  = .true.
 
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -118,7 +117,7 @@ namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
                                  input_state_files, output_state_files,             &
-                                 single_file_in, single_file_out, distributed_state
+                                 single_file_in, single_file_out
 
 !------------------------------------------------------------------------------
 
@@ -244,11 +243,7 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
 call trace_message('Before reading in ensemble restart file')
-if(distributed_state) then
-   call init_ensemble_manager(ens_handle, ens_size, model_size)
-else
-   call init_ensemble_manager(ens_handle, ens_size, model_size, transpose_type_in = 2)
-endif
+call init_ensemble_manager(ens_handle, ens_size, model_size)
 
 call set_num_extra_copies(ens_handle, 0)
 
@@ -324,9 +319,6 @@ if (my_task_id() == 0) then
 endif
 
 call trace_message('After reading in ensemble restart file')
-
-! Create window for forward operators
-call create_state_window(ens_handle)
 
 !>@todo FIXME this block must be supported in the single file loop with time dimension
 call trace_message('Before initializing output diagnostic file')
@@ -480,6 +472,9 @@ AdvanceTime: do
    write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
    call trace_message(msgstring, 'perfect_model_obs:', -1)
 
+   ! Set up access to the state
+   call create_state_window(ens_handle)
+
    ! Compute the forward observation operator for each observation in set
    do j = 1, fwd_op_ens_handle%my_num_vars
 
@@ -575,6 +570,8 @@ AdvanceTime: do
 
    endif
 
+   ! End access to the state
+   call free_state_window(ens_handle)
 
    ! Deallocate the keys storage
    deallocate(keys)
@@ -612,9 +609,6 @@ endif
 
 call trace_message('After  writing state restart file if requested')
 call trace_message('Before ensemble and obs memory cleanup')
-
-! Close the windows
-call free_state_window(ens_handle)
 
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
