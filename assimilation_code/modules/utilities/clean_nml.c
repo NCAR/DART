@@ -58,26 +58,29 @@
  * output at the end - kinda a pain since it removes them from
  * the namelist they were about.  but it does preserve them.
  * it also calls tolower() so all text is lower case.
- * i don't remember if i put in support yet for:
- *  &namelist name=value / 
- * (start, val, stop all on the same line) which is technically legal.
  *
- * things this should do:
+ * i have not yet put in support yet for:
+ *  &namelist name=value / 
+ * (start, val, stop all on the same line) which is technically legal
+ * but in practice is hardly ever used..
+ *
+ * other things this could do:
  *
  * - find and handle duplicate namelists; either complain, compare
  * and output a single copy of duplicates if they have identical
  * contents, or output them all.
  *
- * - give an option to sort the items inside each namelist, for
- * use in comparing two different namelists to see if the values
- * are the same or not.
+ * - give an option to sort the values inside a namelist array item, 
+ * for use in comparing two different namelists to see if the values
+ * are the same or not.  must be careful because this breaks things
+ * if the order of the values in the item are significant.
  *
  * - an option to preserve comments near the namelist they were
  * read in from.  one wrinkle - it's possible to have comments
  * before or after a namelist; there's no unambiguous way to
  * know which namelist they should stay associated with.
  * 
- * - rearrange the code so the arrays reallocate themselves
+ * - rearrange the code so the array limits reallocate themselves
  * if they're too small.  right now they are a fixed size
  * allocated at the start of run time.
  *
