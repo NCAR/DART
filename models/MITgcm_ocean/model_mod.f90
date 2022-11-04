@@ -97,8 +97,6 @@ character(len=*), parameter :: source = 'MITgcm_ocean/model_mod.f90'
 character(len=512) :: string1, string2, string3
 logical, save      :: module_initialized = .false.
 
-! Storage for a random sequence for perturbing a single initial state
-type(random_seq_type) :: random_seq
 
 !------------------------------------------------------------------
 !
@@ -1304,9 +1302,11 @@ integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: pert_amp
 logical,             intent(out)   :: interf_provided
 
-integer  :: i, ivar
-integer  :: copy, start_ind, end_ind
+integer  :: ivar
+integer  :: copy
+integer  :: i
 real(r8) :: pertval, clamp_min_val 
+integer  :: iloc, jloc, kloc ! not used, but required for get_model_variable_indices
 
 type(random_seq_type) :: random_seq
 
@@ -1315,33 +1315,28 @@ if ( .not. module_initialized ) call static_init_model
 interf_provided = .true.
 
 call init_random_seq(random_seq, my_task_id())
+ 
+INDICES : do i = 1, state_ens_handle%my_num_vars
 
-VARIABLES : do ivar = 1, get_num_variables(domain_id)
-
-   start_ind = get_index_start(domain_id, ivar)
-   end_ind   = get_index_end(  domain_id, ivar)
-
+   call get_model_variable_indices(state_ens_handle%my_vars(i), iloc, jloc, kloc, ivar)
    clamp_min_val = get_io_clamping_minval(domain_id, ivar)
 
-   INDICES : do i = start_ind, end_ind
-      MEMBERS : do copy = 1, ens_size
+   MEMBERS : do copy = 1, ens_size
 
-         ! Only perturb the actual ocean cells;
-         ! Leave the land and ocean floor values alone.
-         if( state_ens_handle%copies(copy, i) == FVAL ) cycle MEMBERS
+      ! Only perturb the actual ocean cells;
+      ! Leave the land and ocean floor values alone.
+      if( state_ens_handle%copies(copy, i) == FVAL ) cycle MEMBERS
 
-         pertval = random_gaussian(random_seq, state_ens_handle%copies(copy, i), &
-                                         model_perturbation_amplitude)
+      pertval = random_gaussian(random_seq, state_ens_handle%copies(copy, i), &
+                                      model_perturbation_amplitude)
 
-         ! Clamping: Samples obtained from truncated Gaussian dist. 
-         if (.not. log_transform) pertval = max(clamp_min_val, pertval)
+      ! Clamping: Samples obtained from truncated Gaussian dist. 
+      if (.not. log_transform) pertval = max(clamp_min_val, pertval)
 
-         state_ens_handle%copies(copy, i) = pertval
+      state_ens_handle%copies(copy, i) = pertval
 
-      enddo MEMBERS
-   enddo INDICES
-
-enddo VARIABLES
+   enddo MEMBERS
+enddo INDICES
 
 end subroutine pert_model_copies
 
@@ -1361,12 +1356,12 @@ if ( .not. module_initialized ) call static_init_model
 
 read_model_time = model_time
 
-!if (do_output() .and. debug > 0 .and. present(last_time)) then
+if (do_output()) then
    call print_time(read_model_time, str='MITgcm_ocean time is ',iunit=logfileunit)
    call print_time(read_model_time, str='MITgcm_ocean time is ')
    call print_date(read_model_time, str='MITgcm_ocean date is ',iunit=logfileunit)
    call print_date(read_model_time, str='MITgcm_ocean date is ')
-!endif
+endif
 
 end function read_model_time
 

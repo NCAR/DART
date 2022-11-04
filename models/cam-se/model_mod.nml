@@ -1,0 +1,46 @@
+
+# options for vertical localization:  'PRESSURE', 'HEIGHT', 'SCALEHEIGHT', 'LEVEL'
+# options for vertical interpolation (use_log_vertical_scale) = .false., .true.
+#
+# model top related items (no_obs_assim_above_level, model_damping_ends_at_level)
+# are now specified in model level numbers.  the top level is 1 and increases
+# going down towards the surface.
+#
+# examples of state_variables, 5 columns per field:
+#
+#   netcdf varname, dart quantity, min allowed value, max allowed value, (no)update this var
+#
+#   state_variables = 'T', 'QTY_TEMPERATURE',                'NA', 'NA', 'UPDATE'
+#                     'U','QTY_U_WIND_COMPONENT',           'NA', 'NA', 'UPDATE'
+#                     'V','QTY_V_WIND_COMPONENT',           'NA', 'NA', 'UPDATE'
+#                     'Q', 'QTY_SPECIFIC_HUMIDITY',          'NA', 'NA', 'UPDATE'
+#                     'CLDLIQ','QTY_CLOUD_LIQUID_WATER',     'NA', 'NA', 'UPDATE'
+#                     'CLDICE','QTY_CLOUD_ICE',              'NA', 'NA', 'UPDATE'
+#                     'PS','QTY_SURFACE_PRESURE',            'NA', 'NA', 'UPDATE'
+#                     'O', 'QTY_ATOMIC_OXYGEN_MIXING_RATIO', 'NA', 'NA', 'UPDATE'
+#                     'O2','QTY_MOLEC_OXYGEN_MIXING_RATIO',  'NA', 'NA', 'UPDATE'
+#                     'H', 'QTY_ATOMIC_H_MIXING_RATIO',      'NA', 'NA', 'UPDATE'
+#                     'Op','QTY_ION_O_MIXING_RATIO',         'NA', 'NA', 'UPDATE'
+
+&model_nml
+   dry_mass_vertical_coordinate    = .true.
+   precise_dry_mass_get_close      = .false.
+   cam_template_filename           = 'caminput.nc'
+   cam_phis_filename               = 'cam_phis.nc'
+   homme_map_file                  = 'SEMapping.nc'
+   cs_grid_file                    = 'SEMapping_cs_grid.nc'
+   vertical_localization_coord     = 'PRESSURE'
+   use_log_vertical_scale          = .false.
+   assimilation_period_days        = 0
+   assimilation_period_seconds     = 21600
+   no_obs_assim_above_level        = -1
+   model_damping_ends_at_level     = -1
+   debug_level                     = 0
+   suppress_grid_info_in_output    = .false.
+   custom_routine_to_generate_ensemble = .true.
+   fields_to_perturb               = ""
+   perturbation_amplitude          = 0.0_r8
+   using_chemistry                 = .false.
+   no_normalization_of_scale_heights = .true.
+/
+

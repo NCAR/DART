@@ -131,7 +131,7 @@ use state_structure_mod, only :  add_domain, get_model_variable_indices, &
                                  state_structure_info, get_index_start, get_index_end, &
                                  get_num_variables, get_domain_size, get_varid_from_varname, &
                                  get_variable_name, get_num_dims, get_dim_lengths, &
-                                 get_dart_vector_index, get_varid_from_kind
+                                 get_dart_vector_index, get_num_varids_from_kind
 
 
 implicit none
@@ -923,12 +923,12 @@ endif
 ! basically we cannot do much without having at least these
 ! three fields in the state vector.  refuse to go further
 ! if these are not present:
-!print *, get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
-!print *, get_varid_from_kind(anl_domid, QTY_DENSITY) 
-!print *, get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) 
-if ((get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
-    (get_varid_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
-    (get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
+!print *, get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+!print *, get_num_varids_from_kind(anl_domid, QTY_DENSITY)
+!print *, get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
+if ((get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
+    (get_num_varids_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
+    (get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
    write(string1, *) 'State vector is missing one or more of the following fields:'
    write(string2, *) 'Potential Temperature (theta), Density (rho), Vapor Mixing Ratio (qv).'
    write(string3, *) 'Cannot convert between height/pressure nor compute sensible temps.'
@@ -1876,8 +1876,6 @@ hor_dist = 1.0e9_r8
 ! Initialize variables to missing status
 
 num_close = 0
-close_ind = -99
-if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
 istatus1  = 0
 istatus2  = 0
 
@@ -1991,8 +1989,6 @@ hor_dist = 1.0e9_r8
 ! Initialize variables to missing status
 
 num_close = 0
-close_ind = -99
-if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
 istatus1  = 0
 istatus2  = 0
 
@@ -3058,6 +3054,7 @@ integer :: year, month, day, hour, minute, second
 character(len=64) :: timestring
 character(len=*), parameter :: routine = 'write_model_time_restart'
 
+timestring = ''
 call get_date(dart_time, year, month, day, hour, minute, second)
 call set_wrf_date(timestring, year, month, day, hour, minute, second)
 

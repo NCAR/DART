@@ -17,11 +17,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'DART'
-copyright = '2021, University Corporation for Atmospheric Research'
+copyright = '2022, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '10.0.1'
+release = '10.5.4'
 master_doc = 'README'
 
 # -- General configuration ---------------------------------------------------
@@ -46,7 +46,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
         'guide/history/hawaii_release.rst',
         'guide/history/Guam_release.rst',
         'guide/history/Fiji_release.rst',
-        'guide/Lanai_diffs_from_Kodiak.rst',   
+        'guide/Lanai_diffs_from_Kodiak.rst',
         'guide/history/Jamaica_diffs_from_I.rst',
         'guide/history/pre_j_release.rst',
         'guide/history/PostI_diffs_from_I.rst',
@@ -57,9 +57,9 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
         'guide/bitwise_considerations.rst',
         'guide/rma.rst',
         'guide/vertical_conversion.rst',
-        'guide/boilerplate/boilerplate.rst',    
-        'guide/boilerplate/template.rst'     
-        
+        'guide/boilerplate/boilerplate.rst',
+        'guide/boilerplate/template.rst'
+
 ]
 
 

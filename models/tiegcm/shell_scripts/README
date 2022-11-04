@@ -1,0 +1,19 @@
+shell scripts for testing cycling on the NCAR machine Cheyenne
+
+setup_ens.sh - Set up directories for an ensemble of tiegcm runs  ./setup_ens.sh
+
+run_all_no_assim.sh - Cycles tiegcm with no assimilation ./run_all_no_assim.sh
+run_all.sh  - Cycles tiegcm with assimilation  ./run_all.sh
+ 
+PBS scripts:
+run2.5.pbs - PBS job array script for submitting 2.5 degree tiegcm
+run5.0.pbs - PBS job array script for submitting 5.0 degree tiegcm
+submit_filter.pbs - PBS script for submitting filter. Assumes assim directory has been setup. 
+
+Directories:
+mem.setup  - skeleton directory used by setup_ens.sh
+   tiegcm_res5.0.inp - tiegcm input for 5.0 degree resulution
+   tiegcm_res2.5.inp - tiegcm input for 2.5 degree resolution
+   writef10_7.py - read f10.7 from DART netcdf file and write to tiegcm.inp
+   overwrite.py - increment day in tiegcm.inp
+assim - create this directory with input.nml, filter and any other files you need for your assimilation

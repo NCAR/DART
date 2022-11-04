@@ -197,11 +197,11 @@ $DART/models/{cesm components} organization
 
 .. container:: keepspace
 
-   ================================= ==================================================================================
+   ================================= =======================================================================================
    PATHNAMES                         NOTES
-   ================================= ==================================================================================
+   ================================= =======================================================================================
    \                        
-   $DART/models/**cam-fv**/          An interface for the CAM-FV dynamical core (CAM-SE will be available in 2021)
+   $DART/models/**cam-fv**/          An interface for the CAM-FV dynamical core (CAM-SE is available in $DART/models/cam-se)
    ...model_mod.\*                   The fortran interface between CAM-FV and DART
    ...work/                          Build DART executables (filter, ...) here before running setup\_\*
    ...shell_scripts/                 Setup and support scripts
@@ -242,7 +242,7 @@ $DART/models/{cesm components} organization
    ......run_perfect_model_obs.csh   Script to run a perfect model observation job.
          ...
    \
-   ================================= ==================================================================================
+   ================================= =======================================================================================
 
 .. warning::
    Experience on a variety of machines has shown that it is a very good idea
