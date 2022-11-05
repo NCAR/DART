@@ -172,8 +172,16 @@ real(r8) :: mean, sd, base_prob, bound_quantile
 
 if(use_input_p) then
    ! Using an existing ensemble for the RH points
+   tail_sd_left = p%params(ens_size + 11)
+   
+   ! Don't know what to do if sd of original ensemble is 0 (or small, work on this later)
+   if(tail_sd_left <= 0.0_r8) then
+      ! Just return the original ensemble
+      probit_ens = state_ens 
+      return
+   endif
 
-   ! Get variables out of the parameter storage for clarity
+   ! Get rest of variables out of the parameter storage for clarity
    bounded_below = p%params(ens_size + 1) > 0.5_r8
    bounded_above = p%params(ens_size + 2) > 0.5_r8
    lower_bound = p%params(ens_size + 3)
@@ -184,7 +192,6 @@ if(use_input_p) then
    tail_amp_right = p%params(ens_size + 8)
    tail_mean_left = p%params(ens_size + 9)
    tail_mean_right = p%params(ens_size + 10)
-   tail_sd_left = p%params(ens_size + 11)
    tail_sd_right = p%params(ens_size + 12)
 
    ! This can be done vastly more efficiently with either binary searches or by first sorting the
@@ -239,7 +246,25 @@ if(use_input_p) then
       call norm_inv(quantile, probit_ens(i))
    end do
 else
+
+   ! Take care of space for the transform data structure
+   if(allocated(p%params)) deallocate(p%params)
+   allocate(p%params(ens_size + 2*6))
+
    ! No pre-existing distribution, create one
+   mean = sum(state_ens) / ens_size
+   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
+   
+   ! Don't know what to do if sd is 0 (or small, work on this later)
+   if(sd <= 0.0_r8) then
+      ! Store this info in the left_tail_sd (parameter 11 in structure) for possible subsequent call use
+      p%params(ens_size + 11) = sd
+      ! Just return the original ensemble
+      probit_ens = state_ens 
+      return
+   endif
+
+   ! Clarity of use for bounds
    lower_bound = bounds(1)
    upper_bound = bounds(2)
    bounded_below = bounded(1)
@@ -262,9 +287,6 @@ else
    ! bounded bin, the amplitude of the outer continuous normal pdf, the mean of the outer continous
    ! normal pdf, and the standard deviation of the
    ! outer continous. 
-
-   if(allocated(p%params)) deallocate(p%params)
-   allocate(p%params(ens_size + 2*6))
    p%params(1:ens_size) = state_ens(ens_index)
 
    ! Compute the description of the tail continous pdf; 
@@ -314,9 +336,6 @@ else
       endif
    endif
 
-   ! Standard deviation of prior tails is prior ensemble standard deviation
-   mean = sum(state_ens) / ens_size
-   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
    ! Find a mean so that 1 / (ens_size + 1) probability is in outer regions
    tail_mean_left = p%params(1) + dist_for_unit_sd * sd
    tail_mean_right = p%params(ens_size) - dist_for_unit_sd * sd
@@ -372,6 +391,7 @@ else
    p%params(ens_size + 8) = tail_amp_right
    p%params(ens_size + 9) = tail_mean_left
    p%params(ens_size + 10) = tail_mean_right
+   ! Standard deviation of prior tails is prior ensemble standard deviation
    p%params(ens_size + 11) = sd
    p%params(ens_size + 12) = sd
 endif
@@ -464,6 +484,15 @@ real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
 real(r8) :: bound_inv, correction
 
+! Don't know what to do if original ensemble had all members the same (or nearly so???)
+tail_sd_left = p%params(ens_size + 11)
+if(tail_sd_left <= 0.0_r8) then
+   state_ens = probit_ens
+   ! Free the storage; Should do this explicitly?
+   deallocate(p%params)
+   return
+endif
+
 ! Get variables out of the parameter storage for clarity
 bounded_below = p%params(ens_size + 1) > 0.5_r8
 bounded_above = p%params(ens_size + 2) > 0.5_r8
@@ -475,7 +504,6 @@ tail_amp_left = p%params(ens_size + 7)
 tail_amp_right = p%params(ens_size + 8)
 tail_mean_left = p%params(ens_size + 9)
 tail_mean_right = p%params(ens_size + 10)
-tail_sd_left = p%params(ens_size + 11)
 tail_sd_right = p%params(ens_size + 12)
 
 ! Convert each probit ensemble member back to physical space
