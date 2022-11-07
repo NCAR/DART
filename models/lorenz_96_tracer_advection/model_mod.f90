@@ -459,6 +459,7 @@ integer :: i,j, num_my_grid_points
 integer(i8), allocatable :: my_grid_points(:)
 type(location_type) :: location
 integer :: var_type
+real(r8) :: temp
 
 interf_provided = .true.
 
@@ -481,10 +482,24 @@ do i=1,num_my_grid_points
         do j=1,ens_size
             state_ens_handle%copies(j, i) = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
         end do
+    elseif(var_type == QTY_TRACER_CONCENTRATION) then
+        do j=1,ens_size
+            ! Could use info calls to do this better; but quick fix for now
+            temp = -99_r8
+            do while(temp <= 0)
+               temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
+            end do
+            state_ens_handle%copies(j, i) = temp
+        end do
     !Perturbing all source grid points
     else if (var_type == QTY_TRACER_SOURCE) then
         do j=1,ens_size
-         state_ens_handle%copies(j, i) = state_ens_handle%copies(j, i) + random_gaussian(random_seq, 0.00_r8, 50.00_r8)
+           ! Could use info calls to do this better; but quick fix for now
+           temp = -99_r8
+           do while(temp <= 0)
+              temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), 0.01_r8)
+           end do
+           state_ens_handle%copies(j, i) = temp
         end do
     end if
 end do
