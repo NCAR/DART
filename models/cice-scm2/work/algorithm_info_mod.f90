@@ -208,7 +208,7 @@ elseif(obs_kind == QTY_SEAICE_AGREG_FREEBOARD) then
    bounded(1) = .true.;     bounded(2) = .false.
    bounds(1) = 0.0_r8;
 else
-   write(*, *) 'Illegal obs_kind in obs_error_info'
+   write(*, *) 'Illegal obs_kind in obs_inc_info'
    stop
 endif
 
