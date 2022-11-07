@@ -16,9 +16,11 @@ Rather, the DART team hopes to provide the tools necessary for
 researchers to investigate the relevant issues with multiple models and
 data assimilation methodologies.
 
-DART supports RTTOV version 12.3. Both RTTOV-direct for
-visible/infrared/microwave without scattering as well as RTTOV-scatt for
-microwave computations with full scattering are supported. DART supports
+DART supports RTTOV version 12.3. Support for RTTOV v13 has been added to
+DART by Lukas Kugler. Use obs_def_rttov13_mod.f90 to compile DART with RTTOV v13.
+
+Both RTTOV-direct for visible/infrared/microwave without scattering as well as RTTOV-scatt for
+microwave computations with full scattering are supported for v12.3. DART supports
 all features of RTTOV 12.3 as a pass-through from the models to RTTOV.
 This includes aerosols, trace gases, clouds, and atmospheric variables.
 It also includes directly specifying scattering properties.
@@ -60,9 +62,9 @@ temperature in theory could be interpolated based on skin temperature
 and the lowest-level model temperature.
 
 Beyond these fields, there are many other optional fields (such as
-clouds, trace gases, and aerosols) that can be specified. See the
-obs_def_rttov_mod.html page in the observations/forward_operators
-directory for a complete list of values.
+clouds, trace gases, and aerosols) that can be specified. See
+:ref:`obs_def_rttov_mod` for a complete list of values.
+
 
 Setting up DART+RTTOV
 ---------------------
@@ -96,7 +98,7 @@ if you are not using gfortran.
 
 There are many namelist options available through input.nml that control
 the run-time behavior of the RTTOV model. These are documented in
-obs_def_rttov_mod.html in the observations/forward_operators directory.
+:ref:`obs_def_rttov_mod`.
 
 To get RTTOV to work with your model, you will need to follow these
 steps:
@@ -106,7 +108,7 @@ steps:
    include directories
 3. Go into the models//work directory for your model of choice
 4. Add your observation types (which are listed in
-   obs_def_rttov_mod.html/f90) to the input.nml namelist (assimilate\_ /
+   obs_def_rttov_mod.f90) to the input.nml namelist (assimilate\_ /
    evaluate_these_obs_types)
 5. Include observations/forward_operators/obs_def_rttov_mod.f90 in the
    input_files section under &preprocess
