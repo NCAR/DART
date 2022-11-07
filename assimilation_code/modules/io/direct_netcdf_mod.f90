@@ -81,7 +81,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_sum_variables_below, get_dim_length, &
                                  get_variable_name, get_io_clamping_maxval,   &
                                  get_io_clamping_minval, do_io_clamping,         &
-                                 get_io_num_dims, get_io_dim_lengths,            &
+                                 get_io_num_dims, get_dim_lengths,            &
                                  get_variable_size, get_io_num_unique_dims,   &
                                  get_io_unique_dim_name, get_dim_name,        &
                                  get_io_unique_dim_length, get_scale_factor, &
@@ -92,7 +92,8 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_has_FillValue, &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
-                                 end_diagnostic_structure
+                                 end_diagnostic_structure, &
+                                 has_unlimited_dim
 
 use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  stage_metadata_type, get_file_description, &
@@ -823,10 +824,7 @@ end subroutine write_augmented_state
 
 !-------------------------------------------------------------------------------
 !> Read in variables from start_var to end_var
-!>@todo FIXME: At the moment, this code is assuming that the variables in the state start
-!> at (1,1,1) and that the whole variable is read. This is not the case for
-!> TIEGCM and CLM. 
-
+!> Read the latest time slice in the file
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
 
 integer,  intent(in)    :: ncfile_in
@@ -838,9 +836,10 @@ integer,  intent(in)    :: domain
 integer :: i
 integer(i8) :: istart, iend
 integer(i8) :: var_size
-integer, allocatable :: dims(:)
-integer :: ret, var_id
-
+integer :: num_dims
+integer, allocatable :: counts(:)
+integer, allocatable :: slice_start(:) ! slice of variable
+integer :: ret, var_id, unlim_dimID
 logical :: missing_possible
 
 missing_possible = get_missing_ok_status()
@@ -852,22 +851,48 @@ do i = start_var, end_var
    var_size = get_variable_size(domain, i)
    iend = istart + var_size - 1
 
-   ! number of dimensions and length of each
-   allocate(dims(get_io_num_dims(domain, i)))
+   ! number of dimensions and length the variable
+   num_dims = get_io_num_dims(domain, i)
+   allocate(counts(num_dims))
+   allocate(slice_start(num_dims))
+   counts(:) = 1
 
-   dims = get_io_dim_lengths(domain, i)
+   slice_start(:) = 1 ! default to read all dimensions start at 1
+
+   if (has_unlimited_dim(domain)) then
+
+      counts(num_dims) = 1 ! one slice of unlimited dimesion
+      counts(1:num_dims-1) = get_dim_lengths(domain, i) ! the state
+      
+      ! read latest time slice - hack to get started with tiegcm
+      ! not sure if it will always be the last time slice
+      ret = nf90_inquire(ncfile_in, unlimitedDimID=unlim_dimID)
+      call nc_check(ret, 'read_variables: nf90_inquire', 'unlimitedDimID')
+
+      if (unlim_dimID /= -1) then ! unlimited dimension exists
+         ret = nf90_inquire_dimension(ncfile_in, unlim_dimID, len=slice_start(num_dims))
+         call nc_check(ret, 'read_variables: nf90_inquire_dimension', 'unlimitedDim length')
+         if (slice_start(num_dims) == 0) slice_start(num_dims) = 1 ! newly created file
+      else  ! file does not have an unlimited dimension because it was created by DART
+          slice_start(num_dims) = 1
+      endif
+
+   else
+
+      counts(1:get_num_dims(domain,i)) = get_dim_lengths(domain, i) ! the state
+   endif
 
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
-   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
+   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=counts, start=slice_start)
    call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
 
    if (missing_possible) call set_dart_missing_value(var_block(istart:iend), domain, i)
 
    istart = istart + var_size
 
-   deallocate(dims)
+   deallocate(counts, slice_start)
 
 enddo
 
@@ -1522,8 +1547,10 @@ logical,  intent(in)    :: do_file_clamping
 logical,  intent(in)    :: force_copy
 
 integer(i8) :: istart, iend, var_size
-integer :: i, ret, var_id
-integer, allocatable :: dims(:)
+integer :: i, ret, var_id, unlim_dimID
+integer :: num_dims
+integer, allocatable :: counts(:)
+integer, allocatable :: slice_start(:) ! slice of variable
 
 logical :: missing_possible
 
@@ -1554,20 +1581,46 @@ do i = start_var, end_var
          call clamp_variable(domain, i, var_block(istart:iend))
       endif
      
-      ! number of dimensions and length of each
-      allocate(dims(get_io_num_dims(domain, i)))
+      ! number of dimensions and length of each variable
+      num_dims = get_io_num_dims(domain, i)
+      allocate(counts(num_dims))
+      allocate(slice_start(num_dims))
+      slice_start(:) = 1 ! default to read all dimensions starting at 1
+      counts(:) = 1
 
-      dims = get_io_dim_lengths(domain, i)
+      if (has_unlimited_dim(domain)) then
+
+         counts(num_dims) = 1 ! one slice of unlimited dimesion
+         counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i)
+
+         ! write the latest time slice - HK hack to get started with tiegcm
+         ! not sure if it will always be the last time slice
+         ret = nf90_inquire(ncid, unlimitedDimID=unlim_dimID)
+         call nc_check(ret, 'write_variables: nf90_inquire', 'unlimitedDimID')
+         if (unlim_dimID /= -1) then ! unlimited dimension exists
+            ret = nf90_inquire_dimension(ncid, unlim_dimID, len=slice_start(num_dims))
+            call nc_check(ret, 'write_variables: nf90_inquire dimension', 'unlimitedDim length')
+            if (slice_start(num_dims) == 0) slice_start(num_dims) = 1 ! newly created file
+         else  ! file does not have an unlimited dimension because it was created by DART
+            slice_start(num_dims) = 1
+         endif
+
+      else
+
+         counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i)
+      endif
+
+
 !>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
       call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
       if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
 
-      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
+      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=counts, start=slice_start)
       call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
 
-      deallocate(dims)
+      deallocate(counts, slice_start)
    endif
 
    istart = istart + var_size
@@ -1649,6 +1702,7 @@ do i = 1, get_io_num_unique_dims(dom_id)
                        get_io_unique_dim_length(dom_id, i), new_dimid)
    endif
    !>@todo if we already have a unique names we can take this test out
+   !HK no you can not, because nc_write_model_atts can create dimemsions.
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
       call nc_check(ret, routine, &
               'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))

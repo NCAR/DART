@@ -2902,8 +2902,9 @@ subroutine get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type, &
 type(get_close_type),          intent(in)  :: gc_obs
 type(location_type),           intent(inout) :: base_obs_loc, my_obs_loc(:)
 integer,                       intent(in)  :: base_obs_type, my_obs_kind(:), my_obs_type(:)
-integer,                       intent(out) :: num_close_obs, close_obs_ind(:)
-real(r8),                      intent(out) :: close_obs_dist(:)
+integer,                       intent(out) :: num_close_obs
+integer,                       intent(inout) :: close_obs_ind(:)
+real(r8),                      intent(inout) :: close_obs_dist(:)
 type(ensemble_type),           intent(in)  :: ens_handle
 type(location_type), intent(inout) :: last_base_obs_loc
 integer, intent(inout) :: last_num_close_obs
@@ -2944,8 +2945,9 @@ type(get_close_type),          intent(in)    :: gc_state
 type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
 integer,                       intent(in)    :: base_obs_type, my_state_kind(:)
 integer(i8),                   intent(in)    :: my_state_indx(:)
-integer,                       intent(out)   :: num_close_states, close_state_ind(:)
-real(r8),                      intent(out)   :: close_state_dist(:)
+integer,                       intent(out)   :: num_close_states
+integer,                       intent(inout) :: close_state_ind(:)
+real(r8),                      intent(inout) :: close_state_dist(:)
 type(ensemble_type),           intent(in)    :: ens_handle
 type(location_type), intent(inout) :: last_base_states_loc
 integer, intent(inout) :: last_num_close_states

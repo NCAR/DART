@@ -224,20 +224,12 @@ endif
 ./xmlchange INFO_DBUG=0
 
 # ==============================================================================
-# If the experiment only spans one year, copy a stream template for a single year
-# otherwise, use 'all' the years.
+# Use the stream template that has all CAM reanalysis years available.
 
-if (${stream_year_first} == ${stream_year_last}) then
-   set STREAMFILE_SOLAR        = datm.streams.txt.CPLHISTForcing.Solar_single_year
-   set STREAMFILE_STATE1HR     = datm.streams.txt.CPLHISTForcing.State1hr_single_year
-   set STREAMFILE_STATE3HR     = datm.streams.txt.CPLHISTForcing.State3hr_single_year
-   set STREAMFILE_NONSOLARFLUX = datm.streams.txt.CPLHISTForcing.nonSolarFlux_single_year
-else
    set STREAMFILE_SOLAR        = datm.streams.txt.CPLHISTForcing.Solar_complete
    set STREAMFILE_STATE1HR     = datm.streams.txt.CPLHISTForcing.State1hr_complete
    set STREAMFILE_STATE3HR     = datm.streams.txt.CPLHISTForcing.State3hr_complete
    set STREAMFILE_NONSOLARFLUX = datm.streams.txt.CPLHISTForcing.nonSolarFlux_complete
-endif
 
 # ==============================================================================
 # Modify namelist templates for each instance.
@@ -285,9 +277,6 @@ while ( $inst <= $num_instances )
    echo "           'linear', " >> ${fname}
    echo "           'linear', " >> ${fname}
    echo "           'nearest' " >> ${fname}
-   if ($startdate == 2011-01-01) then
-      echo "dtlimit = 1.0e30"   >> ${fname}
-   endif
 
    # Create stream files for each ensemble member
    set SOURCEDIR = ${dartroot}/models/clm/shell_scripts/cesm2_2
