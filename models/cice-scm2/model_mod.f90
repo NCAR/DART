@@ -13,7 +13,7 @@ module model_mod
 ! interface and look for NULL INTERFACE). 
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r8, i8, MISSING_R8, metadatalength
+use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength
 use time_manager_mod, only : time_type, set_time, set_time_missing,set_calendar_type,get_time, &
                              set_date, get_date
 use     location_mod, only : location_type, get_close_type, &
@@ -607,7 +607,7 @@ logical  :: masked
 integer  :: quad_status
 integer  :: e, iterations, Niterations
 integer :: next_offset
-integer :: state_index
+integer(i8) :: state_index
 if ( .not. module_initialized ) call static_init_model
 
 istatus = 0
@@ -634,7 +634,7 @@ do iterations = 1, Niterations
    ! in future versions of dart.)
    !next_offset = offset + (iterations-1)*Nx 
    !print*,'offset',offset
-   state_index = get_dart_vector_index(grid_oi,offset,1, domain_id, e)
+   state_index = get_dart_vector_index(grid_oi,int(offset,i4),1, domain_id, e)
    work_expected_obs = get_state(state_index,state_handle)
    !if(masked) then
    !   istatus = 3
