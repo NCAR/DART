@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 8 2022 :: Improved clean_nml and CLM quickbuild.sh. Tag v10.5.5**
+
+- clean_nml tool for comparing input.nmls given optional arguments to 
+  keep the original order of nmls and/or entries, and optionally keep 
+  namelist comments.   
+- fill_inflation_restart now a default build for CLM.
+
 **November 3 2022 :: Bug-fix release. Tag v10.5.4**
 
 - Perfect_model_obs (pmo) fixed for running with MPI and advancing the
