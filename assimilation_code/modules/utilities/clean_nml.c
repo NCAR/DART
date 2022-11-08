@@ -12,7 +12,7 @@
  * files which have diverged in order of namelists inside the file,
  * formatting, etc.
  *
- * usage: [ -no_sort_nmls ] [ -no_sort_entries ] [ -no_remove_comments]
+ * usage: [ -no_sort_nmls ] [ -no_sort_entries ] [ -no_remove_comments]  < stdin > stdout
  * 
  * the default is to sort all namelists by name, then sort
  * the contents of each list, and remove all comments lines
