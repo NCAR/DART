@@ -292,6 +292,15 @@ endif
 
 is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on())
 
+! this option is deprecated and will be removed in some future release.
+if (.not. convert_all_obs_verticals_first) then
+   call error_handler(E_ERR,'assim_tools_init:', &
+                      'namelist item "convert_all_obs_verticals_first" is deprecated and will be removed in a future release', &
+                      source, &
+                      text2='it must have a value of .true. or be removed from the &assim_tools_nml namelist')
+   
+endif
+
 call log_namelist_selections(num_special_cutoff, cache_override)
 
 end subroutine assim_tools_init
