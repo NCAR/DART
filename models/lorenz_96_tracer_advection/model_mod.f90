@@ -87,15 +87,15 @@ namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_sec
 
 ! Tracer parameters
 ! mean velocity
-real(r8) :: mean_velocity = 25.00_r8
+real(r8) :: mean_velocity = 0.00_r8
 ! velocity normalization
-real(r8) :: pert_velocity_multiplier = 5.00_r8
+real(r8) :: pert_velocity_multiplier = 4.00_r8
 ! diffusion everywhere
 real(r8) :: diffusion_coef = 0.00_r8
-! amount injected per unit time
+! Amount injected per unit time; This is not currently implemented
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
-real(r8) :: e_folding = 1.00_r8
+real(r8) :: e_folding = 0.05_r8
 ! number state variable quantities
 integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE
 
@@ -139,7 +139,7 @@ q = x(grid_size + 1 :2*grid_size)  ! QTY_TRACER_CONCENTRATION
 ! Doing an upstream semi-lagrangian advection for q for each grid point
 do i = 1, grid_size
     ! Get the target point
-    velocity = mean_velocity + x(i)*pert_velocity_multiplier
+    velocity = (mean_velocity + x(i))*pert_velocity_multiplier
     target_loc = i - velocity*delta_t
     ! Get the bounding grid point
     low = floor(target_loc)
@@ -497,7 +497,8 @@ do i=1,num_my_grid_points
            ! Could use info calls to do this better; but quick fix for now
            temp = -99_r8
            do while(temp <= 0)
-              temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), 0.01_r8)
+              temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), &
+                 state_ens_handle%copies(j, i) * 0.10_r8 + 0.01_r8)
            end do
            state_ens_handle%copies(j, i) = temp
         end do
@@ -532,6 +533,10 @@ call nc_add_global_attribute(ncid, "model_forcing", forcing )
 call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 call nc_add_global_attribute(ncid, "source_rate", source_rate)
 call nc_add_global_attribute(ncid, "exponential_sink_folding", e_folding)
+call nc_add_global_attribute(ncid, "mean_velocity", mean_velocity)
+call nc_add_global_attribute(ncid, "pert_velocity_multiplier", pert_velocity_multiplier)
+call nc_add_global_attribute(ncid, "diffusion_coef", diffusion_coef)
+
 
 call nc_write_location_atts(ncid, grid_size)
 call nc_end_define_mode(ncid)

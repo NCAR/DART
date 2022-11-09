@@ -704,8 +704,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! IS GENERALLY GOING TO BE A DIFFERENT PROBIT TRANSFORMED ENSEMBLE THAN THE ONE THAT WAS JUST
       ! CONVERTED FROM PROBIT SPACE BY THE PROCESS THAT OWNS THIS OBSERVATION. 
 
-      ! Need to specify what kind of prior to use for each
-      call probit_dist_info(my_obs_kind(i), .false., .false., obs_dist_type, bounded, bounds)
+      ! Need to specify what kind of prior to use for obs being assimilated
+      call probit_dist_info(base_obs_kind, .false., .false., obs_dist_type, bounded, bounds)
 
       ! Convert the prior and posterior for this observation to probit space
       call convert_to_probit(grp_size, obs_prior(grp_bot:grp_top), obs_dist_type, &
