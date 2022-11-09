@@ -139,8 +139,7 @@ local misc="$DART/models/utilities/ \
             $DART//observations/forward_operators/obs_def_utilities_mod.f90 \
             $DART/assimilation_code/modules/observations/obs_kind_mod.f90 \
             $DART/assimilation_code/modules/observations/obs_sequence_mod.f90 \
-            $DART/assimilation_code/modules/observations/forward_operator_mod.f90 \
-            $DART/observations/obs_converters/utilities/obs_utilities_mod.f90"
+            $DART/assimilation_code/modules/observations/forward_operator_mod.f90"
 
 # The quantity_mod.f90 files are in assimilation_code/modules/observations
 # so adding individual files from assimilation_code/modules/observations

@@ -88,6 +88,7 @@ create_ocean_obs
 gitm_blocks_to_netcdf
 gitm_to_netcdf
 netcdf_to_gitm_blocks
+streamflow_obs_diag
 
 # Observation converter exectutables
 convert_aviso

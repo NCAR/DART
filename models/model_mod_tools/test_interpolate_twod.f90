@@ -96,7 +96,7 @@ integer :: test_interpolate_range
 character(len=*), parameter :: routine = 'test_interpolate_range'
 
 real(r8), allocatable :: X(:), Y(:)
-real(r8), allocatable :: field(:,:)
+real(r8), allocatable :: field(:,:,:)
 integer,  allocatable :: all_ios_out(:,:)
 integer               :: nx, ny
 integer               :: i, j, nfailed
@@ -145,7 +145,7 @@ do i = 1, nx
       Y(j) = interp_test_yrange(1) + real(j-1,r8) * interp_test_dy
       loc  = set_location(X(i), Y(j))
 
-      call model_interpolate(ens_handle, ens_size, loc, mykindindex, field(i,j,:), ios_out)
+      call model_interpolate(ens_handle, ens_size, loc, quantity_index, field(i,j,:), ios_out)
 
       call verify_consistent_istatus(ens_size, field(i,j,:), ios_out)
 

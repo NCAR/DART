@@ -22,6 +22,77 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 8 2022 :: Improved clean_nml and CLM quickbuild.sh. Tag v10.5.5**
+
+- clean_nml tool for comparing input.nmls given optional arguments to 
+  keep the original order of nmls and/or entries, and optionally keep 
+  namelist comments.   
+- fill_inflation_restart now a default build for CLM.
+
+**November 3 2022 :: Bug-fix release. Tag v10.5.4**
+
+- Perfect_model_obs (pmo) fixed for running with MPI and advancing the
+  model inside pmo.
+- MPAS_ATM xtime string padded with blanks for easier bitwise comparison.
+- lorenz_96_tracer_advection quickbuild.sh fixed.
+
+**October 13 2022 :: Bug-fix for read variables. Tag v10.5.3**
+
+- Per-file check for unlimited dimension before variable read. Netcdf 
+  dimension counts adjusted accordingly. Fixes problems when reading from 
+  DART created netcdf files, for example, from fill_inflation_restart
+- Bug-fix for verbose printing of state_structure info
+
+**October 10 2022 :: Bug-fix for obs_converter builds. Tag v10.5.2**
+
+- Bug fix for converter builds using the template model_mod.f90
+- Performance fix for MPAS_ATM
+
+**September 23 2022 :: Bug-fix for pertub_single_instance. Tag v10.5.1**
+
+- Program perturb_single_instance was running without perturbing when
+  interf_provided = .false. (silent fail).
+  Model specific pert_model_copies is now required to run perturb_single_instance
+
+**September 22 2022 :: CAM-SE. Tag: v10.5.0**
+
+- CAM-SE interface for Manhattan
+- Shared code for CAM-SE and CAM-FV model_mods in cam-common-code
+
+**September 21 2022 :: ROMS model_mod perturbation routine Tag: v10.4.0**
+
+- Adds a pert_model_copies subroutine to the ROMS model_mod to enable proper 
+  functioning of perturb_single_instance for ROMS.
+- Updates ROMS documentation with an explanation of how to generate an initial
+  ensemble of history files.
+
+**September 16 2022 :: Bug-fix for CLM shell scripts. Tag: v10.3.2**
+
+- Fixes dtlimit bug in cesm2.2 CLM shell scripts.  Loads all CAM
+  reanalysis files within datm data stream file regardless if it
+  is single year or multi-year run.
+- Fixes single instance bug in cems2.2 CLM shell scripts. Allows
+  for freerun scripts to generate single instance simulations.
+
+**September 14 2022 :: Bug-fix for POP shell scripts. Tag: v10.3.1**
+
+- Fixes bug in POP CESM2.1 shell scripts in which inflation files were not
+  being propagated properly due to link destination already existing.
+
+**August 19 2022 :: Automated setup of new model interfaces. Tag: v10.3.0**
+
+- Automated initial setup of new model interfaces to aid users developing
+  model_mod code and documentation.
+
+*contributed by Benjamin Gunn*
+
+**August 18 2022 :: Bug-fixes for obs_utilities build and mpas_atm. Tag: v10.2.1**
+
+- obs_utilities_mod no longer included by default for model/work builds because
+  these utilities are for threed_sphere and threed_cartesian location_mods only.
+- mpas_atm model_mod check for required quantities changed to handle multiple 
+  variables of the same quantity. 
+
 **August 3 2022 :: TIEGCM. Tag v10.2.0**
 
 - TIEGCM model_mod updated to Manhattan
