@@ -212,8 +212,6 @@ else
    stop
 endif
 
-filter_kind = 101
-
 ! Default settings for now for Icepack and tracer model tests
 sort_obs_inc = .false.
 spread_restoration = .false.

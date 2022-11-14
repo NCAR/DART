@@ -89,13 +89,13 @@ namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_sec
 ! mean velocity
 real(r8) :: mean_velocity = 0.00_r8
 ! velocity normalization
-real(r8) :: pert_velocity_multiplier = 4.00_r8
+real(r8) :: pert_velocity_multiplier = 5.00_r8
 ! diffusion everywhere
 real(r8) :: diffusion_coef = 0.00_r8
 ! Amount injected per unit time; This is not currently implemented
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
-real(r8) :: e_folding = 0.05_r8
+real(r8) :: e_folding = 0.25_r8
 ! number state variable quantities
 integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE
 
@@ -498,7 +498,9 @@ do i=1,num_my_grid_points
            temp = -99_r8
            do while(temp <= 0)
               temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), &
-                 state_ens_handle%copies(j, i) * 0.10_r8 + 0.01_r8)
+                 100.0_r8 + 0.01_r8)
+                 !!!state_ens_handle%copies(j, i) * 0.10_r8 + 0.01_r8)
+                 !!!state_ens_handle%copies(j, i) * 0.01_r8 + 0.01_r8)
            end do
            state_ens_handle%copies(j, i) = temp
         end do
