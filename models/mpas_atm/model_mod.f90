@@ -211,7 +211,7 @@ integer, parameter :: TIMELEN = 19
 ! Real (physical) constants as defined exactly in MPAS.
 ! redefined here for consistency with the model (MPAS/src/framework/mpas_constants.F).
 real(r8), parameter :: rgas = 287.0_r8  ! = R_d (Gas constant for dry air [J kg-1 K-1])
-real(r8), parameter :: rv = 461.6_r8    ! = R_d (Gas constant for dry air [J kg-1 K-1])
+real(r8), parameter :: rv = 461.6_r8    ! = R_v (Gas constant for water varpor [J kg-1 K-1])
 real(r8), parameter :: cp = 7.*rgas/2.  ! = 1004.5
 real(r8), parameter :: cv = cp-rgas     ! = 717.5
 real(r8), parameter :: p0 = 100000.0_r8
