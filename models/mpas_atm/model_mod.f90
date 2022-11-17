@@ -209,11 +209,11 @@ logical, save :: module_initialized = .false.
 integer, parameter :: TIMELEN = 19
 
 ! Real (physical) constants as defined exactly in MPAS.
-! redefined here for consistency with the model.
-real(r8), parameter :: rgas = 287.0_r8
-real(r8), parameter :: rv = 461.6_r8
-real(r8), parameter :: cp = 1003.0_r8
-real(r8), parameter :: cv = 716.0_r8
+! redefined here for consistency with the model (MPAS/src/framework/mpas_constants.F).
+real(r8), parameter :: rgas = 287.0_r8  ! = R_d (Gas constant for dry air [J kg-1 K-1])
+real(r8), parameter :: rv = 461.6_r8    ! = R_d (Gas constant for dry air [J kg-1 K-1])
+real(r8), parameter :: cp = 7.*rgas/2.  ! = 1004.5
+real(r8), parameter :: cv = cp-rgas     ! = 717.5
 real(r8), parameter :: p0 = 100000.0_r8
 real(r8), parameter :: rcv = rgas/(cp-rgas)
 real(r8), parameter :: rvord = rv/rgas           ! = 1.6083623693379792
@@ -7430,7 +7430,7 @@ function theta_to_tk (ens_size, theta, rho, qv, istatus)
 
 integer,                       intent(in)  :: ens_size
 real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
-real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
+real(r8), dimension(ens_size), intent(in)  :: rho      ! dry air density [kg/m3]
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
 integer,  dimension(ens_size), intent(inout) :: istatus
 real(r8), dimension(ens_size) :: theta_to_tk          ! sensible temperature [K]
@@ -7458,7 +7458,7 @@ if ( debug > 0 .and. do_output()) then
 endif
 where (istatus == 0)
 
-   theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
+   theta_m = (1.0_r8 + rvord * qv_nonzero)*theta
    
    where (theta_m > 0.0_r8 .and. rho > 0.0_r8)  ! Check if all the input are positive
 
@@ -7508,7 +7508,7 @@ tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus)
 
 where (istatus == 0)       ! We only take non-missing tk here
    ! Soyoung (Nov-2022): The last term is added for full pressure P = (rho_d*R_d + rho_v*R_v)*tk
-   pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv_nonzero + rvordm1 * qv_nonzero**2)
+   pressure = rho * rgas * tk * (1.0_r8 + rvord * qv_nonzero + rvordm1 * qv_nonzero**2)
 end where
 
 if ( debug > 1 ) then
