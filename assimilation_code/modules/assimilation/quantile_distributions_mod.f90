@@ -199,7 +199,7 @@ if(use_input_p) then
    do i = 1, ens_size
       ! Figure out which bin it is in
       x = state_ens(i)
-      if(x < p%params(1)) then
+      if(x <= p%params(1)) then
          ! In the left tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_below .and. x < lower_bound) then
