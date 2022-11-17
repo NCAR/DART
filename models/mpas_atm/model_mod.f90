@@ -216,7 +216,8 @@ real(r8), parameter :: cp = 1003.0_r8
 real(r8), parameter :: cv = 716.0_r8
 real(r8), parameter :: p0 = 100000.0_r8
 real(r8), parameter :: rcv = rgas/(cp-rgas)
-real(r8), parameter :: rvord = rv/rgas    
+real(r8), parameter :: rvord = rv/rgas           ! = 1.6083623693379792
+real(r8), parameter :: rvordm1 = rv/rgas-1.0_r8  ! = 0.6083623693379792
 
 ! earth radius; needed to convert lat/lon to x,y,z cartesian coords.
 ! for the highest accuracy this should match what the model uses.
