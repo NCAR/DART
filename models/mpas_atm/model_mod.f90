@@ -1876,8 +1876,6 @@ hor_dist = 1.0e9_r8
 ! Initialize variables to missing status
 
 num_close = 0
-close_ind = -99
-if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
 istatus1  = 0
 istatus2  = 0
 
@@ -1991,8 +1989,6 @@ hor_dist = 1.0e9_r8
 ! Initialize variables to missing status
 
 num_close = 0
-close_ind = -99
-if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
 istatus1  = 0
 istatus2  = 0
 
@@ -3058,6 +3054,7 @@ integer :: year, month, day, hour, minute, second
 character(len=64) :: timestring
 character(len=*), parameter :: routine = 'write_model_time_restart'
 
+timestring = ''
 call get_date(dart_time, year, month, day, hour, minute, second)
 call set_wrf_date(timestring, year, month, day, hour, minute, second)
 

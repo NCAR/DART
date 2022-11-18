@@ -136,6 +136,9 @@ public :: nc_write_model_vars,           &
           init_time,                     &
           init_conditions
 
+! public routine for utility program
+public :: obs_too_high
+
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'cam-fv/model_mod.f90'
 character(len=*), parameter :: revision = ''

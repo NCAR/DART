@@ -637,3 +637,11 @@
    debug = 0
    /
 
+&camdart_obs_preprocessor_nml
+   filename_in  = 'obs_seq.out'
+   filename_out = 'obs_seq.nohighobs'
+   verbose      = .false.
+   calendar     = 'Gregorian'
+   print_every  = 5000
+   /
+
