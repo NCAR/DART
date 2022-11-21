@@ -13,7 +13,7 @@
 !> the observations to be in temporal order, so the output observations
 !> may have a different observation index number than in the input file.
 
-program camdart_obs_preprocessor
+program cam_dart_obs_preprocessor
 
 use        types_mod, only : r4, r8, missing_r8, metadatalength
 
@@ -57,7 +57,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
 
 implicit none
 
-character(len=*), parameter :: source = 'camdart_obs_preprocessor.f90'
+character(len=*), parameter :: source = 'cam_dart_obs_preprocessor.f90'
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
@@ -90,7 +90,7 @@ logical              :: verbose      = .false.
 character(len=32)    :: calendar     = 'Gregorian'
 integer              :: print_every  = 5000
 
-namelist /camdart_obs_preprocessor_nml/ &
+namelist /cam_dart_obs_preprocessor_nml/ &
          filename_in, filename_out, &
          verbose, calendar, print_every
 
@@ -104,13 +104,13 @@ namelist /camdart_obs_preprocessor_nml/ &
 call setup()
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "camdart_obs_preprocessor_nml", iunit)
-read(iunit, nml = camdart_obs_preprocessor_nml, iostat = io)
-call check_namelist_read(iunit, io, "camdart_obs_preprocessor_nml")
+call find_namelist_in_file("input.nml", "cam_dart_obs_preprocessor_nml", iunit)
+read(iunit, nml = cam_dart_obs_preprocessor_nml, iostat = io)
+call check_namelist_read(iunit, io, "cam_dart_obs_preprocessor_nml")
 
 ! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=camdart_obs_preprocessor_nml)
-if (do_nml_term()) write(     *     , nml=camdart_obs_preprocessor_nml)
+if (do_nml_file()) write(nmlfileunit, nml=cam_dart_obs_preprocessor_nml)
+if (do_nml_term()) write(     *     , nml=cam_dart_obs_preprocessor_nml)
 
 ! the default is a gregorian calendar.  if you are using a different type
 ! set it in the namelist.  this only controls how it prints out the first
@@ -316,5 +316,5 @@ end subroutine shutdown
 
 !---------------------------------------------------------------------
 
-end program camdart_obs_preprocessor
+end program cam_dart_obs_preprocessor
 

@@ -1,4 +1,4 @@
-program ``camdart_obs_preprocessor``
+program ``cam_dart_obs_preprocessor``
 ====================
 
 Overview
@@ -31,7 +31,7 @@ namelist.
 ::
 
 
-   &camdart_obs_preprocessor_nml
+   &cam_dart_obs_preprocessor_nml
       filename_in  = 'obs_seq.out'
       filename_out = 'obs_seq.nohighobs'
       verbose      = .true.
@@ -96,7 +96,7 @@ Files
 ========= ============================================
 filename  purpose
 ========= ============================================
-input.nml to read the &camdart_obs_preprocess namelist
+input.nml to read the &cam_dart_obs_preprocess namelist
 ========= ============================================
 
 References
