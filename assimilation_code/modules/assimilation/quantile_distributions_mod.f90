@@ -13,15 +13,19 @@ use sort_mod,  only : sort, index_sort
 
 use utilities_mod, only : E_ERR, error_handler
 
-use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, &
+                               GAMMA_PRIOR
+
+use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
+
+use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf
 
 implicit none
 private
 
 
-public :: norm_cdf, norm_inv, weighted_norm_inv, convert_to_probit, &
-   convert_from_probit, dist_param_type, convert_all_to_probit, &
-   convert_all_from_probit
+public :: convert_to_probit, convert_from_probit, convert_all_to_probit, &
+   convert_all_from_probit, dist_param_type
 
 type dist_param_type
    integer               :: prior_distribution_type
@@ -91,12 +95,14 @@ p%prior_distribution_type = prior_distribution_type
 
 if(p%prior_distribution_type == NORMAL_PRIOR) then 
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
+elseif(p%prior_distribution_type == GAMMA_PRIOR) then 
+   call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded, bounds)
 else
-   write(*, *) 'Illegal distribution in convert_to_probit', p%prior_distribution_type
-   stop
+   write(msgstring, *) 'Illegal distribution type', p%prior_distribution_type
+   call error_handler(E_ERR, 'convert_to_probit', msgstring, source)
 endif
 
 end subroutine convert_to_probit
@@ -111,7 +117,7 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
 
-! Probit transform for nomal. This is just a test since this can be skipped for normals.
+! Probit transform for normal. This is just a test since this can be skipped for normals.
 real(r8) :: mean, sd
 
 ! Don't need to do anything for normal, but keep code below to show what it could look like
@@ -134,6 +140,46 @@ endif
 probit_ens = (state_ens - mean) / sd
 
 end subroutine to_probit_normal
+
+!------------------------------------------------------------------------
+
+subroutine to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: state_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: probit_ens(ens_size)
+logical, intent(in)                  :: use_input_p
+
+! Probit transform for gamma.
+real(r8) :: mean, sd, variance, shape, scale, quantile
+integer  :: i
+
+! Get parameters
+! Representing gamma in terms of shape and scale. 
+if(use_input_p) then
+   shape = p%params(1)
+   scale = p%params(2)
+else
+   mean = sum(state_ens) / ens_size
+   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
+   variance = sd**2
+   ! Get shape and scale
+   shape = mean**2 / variance
+   scale = variance / mean
+   if(.not. allocated(p%params)) allocate(p%params(2))
+   p%params(1) = shape
+   p%params(2) = scale
+endif
+
+do i = 1, ens_size
+   ! First, convert the ensemble member to quantile
+   quantile = gamma_cdf(state_ens(i), shape, scale)
+   ! Convert to probit space 
+   call norm_inv(quantile, probit_ens(i))
+end do
+
+end subroutine to_probit_gamma
 
 !------------------------------------------------------------------------
 
@@ -431,10 +477,13 @@ real(r8), intent(out)                :: state_ens(ens_size)
 ! Convert back to the orig
 if(p%prior_distribution_type == NORMAL_PRIOR) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
+elseif(p%prior_distribution_type == GAMMA_PRIOR) then
+   call from_probit_gamma(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
 else
-   write(*, *) 'Illegal distribution in convert_from_probit ', p%prior_distribution_type
+   write(msgstring, *) 'Illegal distribution type', p%prior_distribution_type
+   call error_handler(E_ERR, 'convert_from_probit', msgstring, source)
    stop
 endif
 
@@ -466,6 +515,36 @@ state_ens = probit_ens * sd + mean
 deallocate(p%params)
 
 end subroutine from_probit_normal
+
+!------------------------------------------------------------------------
+
+subroutine from_probit_gamma(ens_size, probit_ens, p, state_ens)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: probit_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: state_ens(ens_size)
+
+! Convert back to the orig
+real(r8) :: shape, scale, quantile
+integer  :: i
+
+! Shape and scale are the distribution parameters
+shape = p%params(1)
+scale   = p%params(2)
+
+do i = 1, ens_size
+   ! First, invert the probit to get a quantile
+   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! Invert the gamma quantiles to get physical space
+   state_ens(i) = inv_gamma_cdf(quantile, shape, scale)
+end do
+
+! Probably should do an explicit clearing of this storage
+! Free the storage
+deallocate(p%params)
+
+end subroutine from_probit_gamma
 
 !------------------------------------------------------------------------
 
@@ -589,145 +668,5 @@ deallocate(p%params)
 end subroutine from_probit_bounded_normal_rh
 
 !------------------------------------------------------------------------
-
-function norm_cdf(x_in, mean, sd)
-
-! Approximate cumulative distribution function for normal
-! with mean and sd evaluated at point x_in
-! Only works for x>= 0.
-
-real(r8)             :: norm_cdf
-real(r8), intent(in) :: x_in, mean, sd
-
-real(digits12) :: x, p, b1, b2, b3, b4, b5, t, density, nx
-
-! Convert to a standard normal
-nx = (x_in - mean) / sd
-
-if(nx < 0.0_digits12) then
-   norm_cdf = 0.5_digits12 * erfc(-nx / sqrt(2.0_digits12))
-else
-   norm_cdf = 0.5_digits12 * (1.0_digits12 + erf(nx / sqrt(2.0_digits12)))
-endif
-return
-
-! Old version left for now
-x = abs(nx)
-
-! Use formula from Abramowitz and Stegun to approximate
-p = 0.2316419_digits12
-b1 = 0.319381530_digits12
-b2 = -0.356563782_digits12
-b3 = 1.781477937_digits12
-b4 = -1.821255978_digits12
-b5 = 1.330274429_digits12
-
-t = 1.0_digits12 / (1.0_digits12 + p * x)
-
-density = (1.0_digits12 / sqrt(2.0_digits12 * PI)) * exp(-x*x / 2.0_digits12)
-
-norm_cdf = 1.0_digits12 - density * &
-   ((((b5 * t + b4) * t + b3) * t + b2) * t + b1) * t
-
-if(nx < 0.0_digits12) norm_cdf = 1.0_digits12 - norm_cdf
-
-!write(*, *) 'cdf is ', norm_cdf
-
-end function norm_cdf
-
-!------------------------------------------------------------------------
-
-subroutine weighted_norm_inv(alpha, mean, sd, p, x)
-
-! Find the value of x for which the cdf of a N(mean, sd) multiplied times
-! alpha has value p.
-
-real(r8), intent(in)  :: alpha, mean, sd, p
-real(r8), intent(out) :: x
-
-real(r8) :: np
-
-! Can search in a standard normal, then multiply by sd at end and add mean
-! Divide p by alpha to get the right place for weighted normal
-np = p / alpha
-
-! Find spot in standard normal
-call norm_inv(np, x)
-
-! Add in the mean and normalize by sd
-x = mean + x * sd
-
-end subroutine weighted_norm_inv
-
-
-!------------------------------------------------------------------------
-
-subroutine norm_inv(p_in, x)
-
-real(r8), intent(in)  :: p_in
-real(r8), intent(out) :: x
-
-! normal inverse
-! translate from http://home.online.no/~pjacklam/notes/invnorm
-! a routine written by john herrero
-
-real(r8) :: p
-real(r8) :: p_low,p_high
-real(r8) :: a1,a2,a3,a4,a5,a6
-real(r8) :: b1,b2,b3,b4,b5
-real(r8) :: c1,c2,c3,c4,c5,c6
-real(r8) :: d1,d2,d3,d4
-real(r8) :: q,r
-
-! Truncate out of range quantiles, converts them to smallest positive number or largest number <1
-! This solution is stable, but may lead to underflows being thrown. May want to 
-! think of a better solution. 
-p = p_in
-if(p <= 0.0_r8) p = tiny(p_in)
-if(p >= 1.0_r8) p = nearest(1.0_r8, -1.0_r8)
-
-a1 = -39.69683028665376_digits12
-a2 =  220.9460984245205_digits12
-a3 = -275.9285104469687_digits12
-a4 =  138.357751867269_digits12
-a5 = -30.66479806614716_digits12
-a6 =  2.506628277459239_digits12
-b1 = -54.4760987982241_digits12
-b2 =  161.5858368580409_digits12
-b3 = -155.6989798598866_digits12
-b4 =  66.80131188771972_digits12
-b5 = -13.28068155288572_digits12
-c1 = -0.007784894002430293_digits12
-c2 = -0.3223964580411365_digits12
-c3 = -2.400758277161838_digits12
-c4 = -2.549732539343734_digits12
-c5 =  4.374664141464968_digits12
-c6 =  2.938163982698783_digits12
-d1 =  0.007784695709041462_digits12
-d2 =  0.3224671290700398_digits12
-d3 =  2.445134137142996_digits12
-d4 =  3.754408661907416_digits12
-p_low  = 0.02425_digits12
-p_high = 1_digits12 - p_low
-! Split into an inner and two outer regions which have separate fits
-if(p < p_low) then
-   q = sqrt(-2.0_digits12 * log(p))
-   x = (((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
-      ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
-else if(p > p_high) then
-   q = sqrt(-2.0_digits12 * log(1.0_digits12 - p))
-   x = -(((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
-      ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
-else
-   q = p - 0.5_digits12
-   r = q*q
-   x = (((((a1*r + a2)*r + a3)*r + a4)*r + a5)*r + a6)*q / &
-      (((((b1*r + b2)*r + b3)*r + b4)*r + b5)*r + 1.0_digits12)
-endif
-
-end subroutine norm_inv
-
-!------------------------------------------------------------------------
-
 
 end module quantile_distributions_mod

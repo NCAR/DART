@@ -72,8 +72,9 @@ use distributed_state_mod, only : create_mean_window, free_mean_window
 use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, convert_from_probit, &
-                                       convert_all_to_probit, convert_all_from_probit, &
-                                       norm_cdf, norm_inv, weighted_norm_inv
+                                       convert_all_to_probit, convert_all_from_probit
+
+use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
 use algorithm_info_mod, only : probit_dist_info, obs_inc_info, &
                                NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
