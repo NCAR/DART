@@ -38,7 +38,7 @@ obs_sequence_tool
 )
 
 model_serial_programs=(
-camdart_obs_preprocessor
+cam_dart_obs_preprocessor.nml
 column_rand
 )
 
