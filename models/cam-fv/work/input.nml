@@ -637,7 +637,7 @@
    debug = 0
    /
 
-&cam_dart_obs_preprocessor.nml_nml
+&cam_dart_obs_preprocessor_nml
    filename_in  = 'obs_seq.out'
    filename_out = 'obs_seq.nohighobs'
    verbose      = .false.

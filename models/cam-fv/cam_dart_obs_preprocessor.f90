@@ -70,7 +70,7 @@ integer                 :: num_inserted, iunit, io, j
 integer                 :: max_num_obs, file_id
 character(len=129)      :: read_format
 logical                 :: pre_I_format
-character(len=512)      :: msgstring, msgstring1
+character(len=512)      :: msgstring, msgstring1, msgstring2
 
 character(len=metadatalength) :: meta_data
 
@@ -220,7 +220,7 @@ if ( get_first_obs(seq_in, obs_in) )  then
       which_vert = int(query_location(obs_loc, "which_vert"))
 
       call obs_too_high(vert_value, which_vert, too_high)
-      if (verbose) print *, 'vert_value = ', vert_value, ' which_vert = ', which_vert, ' too_high = ', too_high
+      if (verbose) print *, '   vert_value = ', vert_value, ' which_vert = ', which_vert, ' too_high = ', too_high
 
       if (too_high == 0) then
 
@@ -257,21 +257,22 @@ else
    call error_handler(E_MSG,'main', msgstring,source)
 endif
 
-if (.not. verbose) then
-   print*, '---------  Obs seqs '
-   print*, 'Number of obs input sequence    :         ', size_seq_in
-   print*, 'Number of obs copied to output  :         ', num_inserted
-   print*, '---------------------------------------------------------'
+write(msgstring ,*) '---------  Obs seqs '
+write(msgstring1,*) 'Number of obs input sequence    :         ', size_seq_in
+write(msgstring2,*) 'Number of obs copied to output  :         ', num_inserted
+call error_handler(E_MSG,'main',msgstring,source, text2=msgstring1, text3=msgstring2)
+call error_handler(E_MSG,'main','---------------------------------------------------------',source)
+ 
+if (num_inserted == 0) then
+   write(msgstring ,*) 'WARNING: no obs will be written to ', trim(filename_out)
+   call error_handler(E_MSG,'main',msgstring,source)
+else
+   write(msgstring, *) 'Starting to write output sequence file ', trim(filename_out)
+   call error_handler(E_MSG,'main',msgstring,source)
+
+   call print_obs_seq_summary(seq_out, filename_out)
+   call write_obs_seq(seq_out, filename_out)
 endif
-
-write(msgstring, *) 'Starting to process output sequence file ', &
-                            trim(filename_out)
-call error_handler(E_MSG,'main',msgstring,source)
-
-print*, 'Number of obs in the output seq file :', get_num_key_range(seq_out)
-
-call print_obs_seq_summary(seq_out, filename_out)
-call write_obs_seq(seq_out, filename_out)
 
 ! clean up
 
