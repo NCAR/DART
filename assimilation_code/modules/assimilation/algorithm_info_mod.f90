@@ -19,9 +19,10 @@ private
 
 integer, parameter :: NORMAL_PRIOR = 1
 integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
+integer, parameter :: GAMMA_PRIOR = 3
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+          NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
