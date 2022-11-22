@@ -19,7 +19,7 @@ use        types_mod, only : r4, r8, missing_r8, metadatalength
 
 use    utilities_mod, only : initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
-                             error_handler, E_ERR, E_MSG, nmlfileunit,         &
+                             error_handler, E_ERR, E_WARN, E_MSG, nmlfileunit, &
                              do_nml_file, do_nml_term,                         &
                              open_file, close_file, finalize_utilities
 
@@ -253,8 +253,8 @@ if ( get_first_obs(seq_in, obs_in) )  then
    enddo ObsLoop
 
 else
-   write(msgstring, *)'no first observation in ',trim(filename_in)
-   call error_handler(E_MSG,'main', msgstring,source)
+   write(msgstring, *)'No first observation in ',trim(filename_in)
+   call error_handler(E_WARN,'main', msgstring,source)
 endif
 
 write(msgstring ,*) '---------  Obs seqs '
@@ -264,8 +264,8 @@ call error_handler(E_MSG,'main',msgstring,source, text2=msgstring1, text3=msgstr
 call error_handler(E_MSG,'main','---------------------------------------------------------',source)
  
 if (num_inserted == 0) then
-   write(msgstring ,*) 'WARNING: no obs will be written to ', trim(filename_out)
-   call error_handler(E_MSG,'main',msgstring,source)
+   write(msgstring ,*) 'No obs will be written to ', trim(filename_out)
+   call error_handler(E_WARN,'main',msgstring,source)
 else
    write(msgstring, *) 'Starting to write output sequence file ', trim(filename_out)
    call error_handler(E_MSG,'main',msgstring,source)
