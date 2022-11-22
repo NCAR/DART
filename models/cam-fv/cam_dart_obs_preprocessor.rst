@@ -93,11 +93,23 @@ input.nml file and then run quickbuild.sh.
 Files
 -----
 
-========= ============================================
-filename  purpose
-========= ============================================
-input.nml to read the &cam_dart_obs_preprocess namelist
-========= ============================================
+.. container::
+
+   +---------------+-------------------------------------------------------------+
+   | Filename      | Purpose                                                     |
+   +===============+=============================================================+
+   | input.nml     | to read the &cam_dart_obs_preprocess namelist               |
+   +---------------+-------------------------------------------------------------+
+   | caminput.nml  | (or the name in model_mod_nml:cam_template_filename)        |
+   +---------------+-------------------------------------------------------------+
+   |               | File required by static_init_model to run the program.      |
+   +---------------+-------------------------------------------------------------+
+   | cam_phis.nc   | (or the name inmodel_mod_nml:cam_phis_filename)             |
+   +---------------+-------------------------------------------------------------+
+   |               | File required by static_init_model to run the program.      |
+   +---------------+-------------------------------------------------------------+
+
+|
 
 References
 ----------
@@ -109,12 +121,17 @@ Error codes and conditions
 
 .. container:: errors
 
-   ======== ======= =======
-   Routine  Message Comment
-   ======== ======= =======
-   camobs_dart_preprocess         
-   camobs_dart_preprocess         
-   ======== ======= =======
+   +---------------------------+------------------------------------+-------------------------------------------------------+
+   | Routine                   | Message                            | Comment                                               |
+   +===========================+====================================+=======================================================+
+   | cam_obs_dart_preprocess   | No obs in input sequence file      | Number of reported obs is 0a                          |
+   +---------------------------+------------------------------------+-------------------------------------------------------+
+   | cam_obs_dart_preprocess   | no first observation in {file}     | Unable to find the first observation in the filea     |
+   +---------------------------+------------------------------------+-------------------------------------------------------+
+   | cam_obs_dart_preprocess   | No obs will be written to {file}   | All obs were excluded; file_out will not be writtena  |
+   +---------------------------+------------------------------------+-------------------------------------------------------+
+
+|
 
 Future plans
 ------------
