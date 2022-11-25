@@ -14,11 +14,13 @@ use sort_mod,  only : sort, index_sort
 use utilities_mod, only : E_ERR, error_handler
 
 use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, &
-                               GAMMA_PRIOR
+                               GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR
 
 use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf
+
+use beta_distribution_mod,  only : beta_cdf,  inv_beta_cdf
 
 implicit none
 private
@@ -95,8 +97,12 @@ p%prior_distribution_type = prior_distribution_type
 
 if(p%prior_distribution_type == NORMAL_PRIOR) then 
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
+elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then 
+   call to_probit_log_normal(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%prior_distribution_type == GAMMA_PRIOR) then 
    call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
+elseif(p%prior_distribution_type == BETA_PRIOR) then 
+   call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded, bounds)
@@ -120,26 +126,30 @@ logical, intent(in)                  :: use_input_p
 ! Probit transform for normal. This is just a test since this can be skipped for normals.
 real(r8) :: mean, sd
 
-! Don't need to do anything for normal, but keep code below to show what it could look like
+! Don't need to do anything for normal
 probit_ens = state_ens
-return
-
-! Get parameters
-if(use_input_p) then
-   mean = p%params(1)
-   sd   = p%params(2)
-else
-   mean = sum(state_ens) / ens_size
-   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
-   if(.not. allocated(p%params)) allocate(p%params(2))
-   p%params(1) = mean
-   p%params(2) = sd
-endif
-
-! Do the probit transform for the normal
-probit_ens = (state_ens - mean) / sd
 
 end subroutine to_probit_normal
+
+!------------------------------------------------------------------------
+
+subroutine to_probit_log_normal(ens_size, state_ens, p, probit_ens, use_input_p)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: state_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: probit_ens(ens_size)
+logical, intent(in)                  :: use_input_p
+
+! Probit transform for normal. This is just a test since this can be skipped for normals.
+real(r8) :: mean, sd
+
+! Taking the logarithm leads directly to a normal distribution
+! This normal may not be standard normal, but needs no further adjustment like 
+! the regular normal
+probit_ens = log(state_ens)
+
+end subroutine to_probit_log_normal
 
 !------------------------------------------------------------------------
 
@@ -180,6 +190,46 @@ do i = 1, ens_size
 end do
 
 end subroutine to_probit_gamma
+
+!------------------------------------------------------------------------
+
+subroutine to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: state_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: probit_ens(ens_size)
+logical, intent(in)                  :: use_input_p
+
+! Probit transform for beta.
+real(r8) :: mean, sd, variance, alpha, beta, quantile
+integer  :: i
+
+! Get parameters
+! Representing beta in terms of alpha and beta
+if(use_input_p) then
+   alpha = p%params(1)
+   beta  = p%params(2)
+else
+   mean = sum(state_ens) / ens_size
+   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
+   variance = sd**2
+   ! Get alpha and beta
+   alpha = mean**2 * (1.0_r8 - mean) / variance - mean
+   beta  = alpha * (1.0_r8 / mean - 1.0_r8)
+   if(.not. allocated(p%params)) allocate(p%params(2))
+   p%params(1) = alpha
+   p%params(2) = beta
+endif
+
+do i = 1, ens_size
+   ! First, convert the ensemble member to quantile
+   quantile = beta_cdf(state_ens(i), alpha, beta)
+   ! Convert to probit space 
+   call norm_inv(quantile, probit_ens(i))
+end do
+
+end subroutine to_probit_beta
 
 !------------------------------------------------------------------------
 
@@ -477,8 +527,12 @@ real(r8), intent(out)                :: state_ens(ens_size)
 ! Convert back to the orig
 if(p%prior_distribution_type == NORMAL_PRIOR) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
+elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then
+   call from_probit_log_normal(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == GAMMA_PRIOR) then
    call from_probit_gamma(ens_size, probit_ens, p, state_ens)
+elseif(p%prior_distribution_type == BETA_PRIOR) then
+   call from_probit_beta(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
 else
@@ -504,17 +558,26 @@ real(r8) :: mean, sd
 
 ! Don't do anything for normal
 state_ens = probit_ens
-return
-
-mean = p%params(1)
-sd   = p%params(2)
-state_ens = probit_ens * sd + mean
-
-! Probably should do an explicit clearing of this storage
-! Free the storage
-deallocate(p%params)
 
 end subroutine from_probit_normal
+
+
+!------------------------------------------------------------------------
+
+subroutine from_probit_log_normal(ens_size, probit_ens, p, state_ens)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: probit_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: state_ens(ens_size)
+
+! Convert back to the orig
+real(r8) :: mean, sd
+
+! Take the inverse of the log to get back to original space
+state_ens = exp(probit_ens)
+
+end subroutine from_probit_log_normal
 
 !------------------------------------------------------------------------
 
@@ -545,6 +608,36 @@ end do
 deallocate(p%params)
 
 end subroutine from_probit_gamma
+
+!------------------------------------------------------------------------
+
+subroutine from_probit_beta(ens_size, probit_ens, p, state_ens)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: probit_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: state_ens(ens_size)
+
+! Convert back to the orig
+real(r8) :: alpha, beta, quantile
+integer  :: i
+
+! Shape and scale are the distribution parameters
+alpha = p%params(1)
+beta  = p%params(2)
+
+do i = 1, ens_size
+   ! First, invert the probit to get a quantile
+   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! Invert the beta quantiles to get physical space
+   state_ens(i) = inv_beta_cdf(quantile, alpha, beta)
+end do
+
+! Probably should do an explicit clearing of this storage
+! Free the storage
+deallocate(p%params)
+
+end subroutine from_probit_beta
 
 !------------------------------------------------------------------------
 

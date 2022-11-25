@@ -58,10 +58,10 @@ end subroutine test_gamma
 
 !-----------------------------------------------------------------------
 
-function inv_gamma_cdf(q, shape, scale)
+function inv_gamma_cdf(quantile, shape, scale)
 
 real(r8)             :: inv_gamma_cdf
-real(r8), intent(in) :: q
+real(r8), intent(in) :: quantile
 real(r8), intent(in) :: shape
 real(r8), intent(in) :: scale
 
@@ -70,21 +70,24 @@ real(r8), intent(in) :: scale
 
 ! This version uses a Newton method using the fact that the PDF is the derivative of the CDF
 
-real(r8) :: x_guess, old_x_guess, q_guess, dq_dx, del_x, q_err, q_err_new, q_new, x_new
-real(r8) :: mn, sd
-integer  :: i, j
-
 ! Limit on the total iterations; There is no deep thought behind this choice
 integer, parameter :: max_iterations = 100
 ! Limit on number of times to halve the increment; again, no deep thought
-integer, parameter :: max_half_iterations = 10
+integer, parameter :: max_half_iterations = 25
+
+real(r8) :: mn, sd
+real(r8) :: reltol, dq_dx
+real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old
+integer  :: iter, j
 
 ! Unclear what error tolerance is needed for DA applications; 
 ! A smaller value seems to be possible but leads to more iterations
 real(r8), parameter :: xtol = 1.0e-12_r8
 
+!write(*, *) 'inv_gamma_cdf ', quantile, shape, scale
+
 ! Do a special test for exactly 0
-if(q == 0.0_r8) then
+if(quantile == 0.0_r8) then
    inv_gamma_cdf = 0.0_r8
    return
 endif
@@ -93,51 +96,56 @@ endif
 ! For starters, take the mean for this shape and scale
 sd = sqrt(shape * scale**2)
 mn = shape * scale
-x_guess = mn + (q - 0.5_r8) * 6.0_r8 * sd
+! Could use info about sd to further refine mean and reduce iterations
+x_guess = mn
 
-! If the guess is below zero, just default back to the mean
-if(x_guess < 0.0_r8) x_guess = mn
-old_x_guess = x_guess
+! Make sure that the guess isn't too close to 0 where things can get ugly
+reltol = (EPSILON(x_guess))**(3./4.)
+! Use information from quantile to refine first guess
+x_guess = max(reltol, x_guess) 
 
-do i = 1, max_iterations
-   old_x_guess = x_guess
-   q_guess = gamma_cdf(x_guess, shape, scale)
+! Evaluate the cdf
+q_guess = gamma_cdf(x_guess, shape, scale)
+
+del_q = q_guess - quantile
+
+! Iterations of the Newton method to approximate the root
+do iter = 1, max_iterations
+   ! The PDF is the derivative of the CDF
    dq_dx = gamma_pdf(x_guess, shape, scale)
-   q_err = q - q_guess
-   del_x = q_err / dq_dx
-   x_new = x_guess + del_x
+   ! Linear approximation for how far to move in x
+   del_x = del_q / dq_dx
 
+   ! Avoid moving too much of the fraction towards the bound at 0 
+   ! because of potential instability there. The factor of 10.0 here is a magic number
+   x_new = max(x_guess/10.0_r8, x_guess-del_x)
+
+   ! Look for convergence; If the change in x is smaller than approximate precision 
+   if (abs(del_x) <= reltol*x_guess) then
+      inv_gamma_cdf= x_new
+      return
+   endif
+     
+   ! If we've gone too far, the new error will be bigger than the old; 
+   ! Repeatedly half the distance until this is rectified 
+   del_q_old = del_q
    q_new = gamma_cdf(x_new, shape, scale)
-   q_err_new = q_new - q
-
    do j = 1, max_half_iterations
-      if(abs(q_err_new) > abs(q_err)) then
-         del_x = del_x / 2.0_r8
-         x_new = x_guess + del_x
-         q_new = gamma_cdf(x_new, shape, scale)
-         q_err_new = q_new - q
-      else
-         ! Inefficient to be in the loop for this
-         exit
+      del_q = q_new - quantile
+      if (abs(del_q) < abs(del_q_old)) then
+         EXIT
       endif
+      x_new = (x_guess + x_new)/2.0_r8
+      q_new = gamma_cdf(x_new, shape, scale)
    end do
 
    x_guess = x_new
-  
-   ! Check for stopping criterion
-   if(abs(old_x_guess - x_guess) <= xtol) then
-      inv_gamma_cdf = x_guess
-      return
-   else
-      old_x_guess = x_guess
-   endif 
-
-enddo
+end do
+!!!inv_gamma_cdf = x_new
 
 ! Fell off the end, should be an error return eventually?
 errstring = 'Failed to converge '
 call error_handler(E_ERR, 'inv_gamma_cdf', errstring, source)
-stop
 
 end function inv_gamma_cdf
 
@@ -156,8 +164,6 @@ real(r8), intent(in) :: x, shape, scale
 ! All inputs must be nonnegative
 if(x < 0.0_r8 .or. shape < 0.0_r8 .or. scale < 0.0_r8) then
    gamma_pdf = -99.9_r8
-elseif(x == 0.0_r8) then
-   gamma_pdf = 0.0_r8
 else
    gamma_pdf = x**(shape - 1.0_r8) * exp(-x / scale) / &
       (gamma(shape) * scale**shape)
@@ -180,6 +186,8 @@ real(r8), intent(in) :: x, shape, scale
 ! All inputs must be nonnegative
 if(x < 0.0_r8 .or. shape < 0.0_r8 .or. scale < 0.0_r8) then
    gamma_cdf = -99.9_r8
+elseif(x == 0.0_r8) then
+   gamma_cdf = 0.0_r8 
 else
    ! Use definition as incomplete gamma ratio to gamma
    gamma_cdf = gammad(x / scale, shape)

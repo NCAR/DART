@@ -20,9 +20,11 @@ private
 integer, parameter :: NORMAL_PRIOR = 1
 integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
 integer, parameter :: GAMMA_PRIOR = 3
+integer, parameter :: BETA_PRIOR = 4
+integer, parameter :: LOG_NORMAL_PRIOR = 5
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR
+          NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
@@ -118,7 +120,7 @@ if(is_inflation) then
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = GAMMA_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_SOURCE) then
@@ -139,7 +141,7 @@ elseif(is_state) then
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = GAMMA_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_SOURCE) then
@@ -160,7 +162,7 @@ else
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = GAMMA_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_SOURCE) then
