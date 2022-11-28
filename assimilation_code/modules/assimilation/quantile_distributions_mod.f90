@@ -14,7 +14,7 @@ use sort_mod,  only : sort, index_sort
 use utilities_mod, only : E_ERR, error_handler
 
 use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, &
-                               GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR
+                               GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, UNIFORM_PRIOR
 
 use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
@@ -99,6 +99,8 @@ if(p%prior_distribution_type == NORMAL_PRIOR) then
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then 
    call to_probit_log_normal(ens_size, state_ens, p, probit_ens, use_input_p)
+elseif(p%prior_distribution_type == UNIFORM_PRIOR) then 
+   call to_probit_uniform(ens_size, state_ens, p, probit_ens, use_input_p, bounds)
 elseif(p%prior_distribution_type == GAMMA_PRIOR) then 
    call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%prior_distribution_type == BETA_PRIOR) then 
@@ -123,9 +125,6 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
 
-! Probit transform for normal. This is just a test since this can be skipped for normals.
-real(r8) :: mean, sd
-
 ! Don't need to do anything for normal
 probit_ens = state_ens
 
@@ -141,15 +140,47 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
 
-! Probit transform for normal. This is just a test since this can be skipped for normals.
-real(r8) :: mean, sd
-
 ! Taking the logarithm leads directly to a normal distribution
 ! This normal may not be standard normal, but needs no further adjustment like 
 ! the regular normal
 probit_ens = log(state_ens)
 
 end subroutine to_probit_log_normal
+
+!------------------------------------------------------------------------
+
+subroutine to_probit_uniform(ens_size, state_ens, p, probit_ens, use_input_p, bounds)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: state_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: probit_ens(ens_size)
+logical, intent(in)                  :: use_input_p
+real(r8), intent(in)                 :: bounds(2)
+
+real(r8) :: lower_bound, upper_bound, range, quantile
+integer :: i
+
+if(use_input_p) then
+   lower_bound = p%params(1)
+   upper_bound = p%params(2)
+else
+   lower_bound = bounds(1)
+   upper_bound = bounds(2)   
+   if(.not. allocated(p%params)) allocate(p%params(2))
+   p%params(1) = lower_bound
+   p%params(2) = upper_bound
+endif
+
+range = upper_bound - lower_bound
+do i = 1, ens_size
+   ! Convert to quantile; U(lower_bound, upper_bound) to U(0, 1)
+   quantile = (state_ens(i) - lower_bound) / range
+   ! Convert to probit space 
+   call norm_inv(quantile, probit_ens(i))
+end do
+
+end subroutine to_probit_uniform
 
 !------------------------------------------------------------------------
 
@@ -529,6 +560,8 @@ if(p%prior_distribution_type == NORMAL_PRIOR) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then
    call from_probit_log_normal(ens_size, probit_ens, p, state_ens)
+elseif(p%prior_distribution_type == UNIFORM_PRIOR) then
+   call from_probit_uniform(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == GAMMA_PRIOR) then
    call from_probit_gamma(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == BETA_PRIOR) then
@@ -553,9 +586,6 @@ real(r8), intent(in)                 :: probit_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
-! Convert back to the orig
-real(r8) :: mean, sd
-
 ! Don't do anything for normal
 state_ens = probit_ens
 
@@ -571,13 +601,39 @@ real(r8), intent(in)                 :: probit_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
-! Convert back to the orig
-real(r8) :: mean, sd
-
 ! Take the inverse of the log to get back to original space
 state_ens = exp(probit_ens)
 
 end subroutine from_probit_log_normal
+
+!------------------------------------------------------------------------
+
+subroutine from_probit_uniform(ens_size, probit_ens, p, state_ens)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: probit_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: state_ens(ens_size)
+
+real(r8) :: lower_bound, upper_bound, quantile
+integer :: i
+
+! Bounds are the parameters
+lower_bound = p%params(1)
+upper_bound = p%params(2)
+
+do i = 1, ens_size
+   ! First, invert the probit to get a quantile
+   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! Convert from U(0, 1) to U(lower_bound, upper_bound)
+   state_ens(i) = lower_bound + quantile * (upper_bound - lower_bound)
+end do
+
+! Probably should do an explicit clearing of this storage
+! Free the storage
+deallocate(p%params)
+
+end subroutine from_probit_uniform
 
 !------------------------------------------------------------------------
 

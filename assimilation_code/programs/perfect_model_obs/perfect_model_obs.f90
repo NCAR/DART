@@ -111,10 +111,6 @@ character(len=256) :: input_state_files(MAX_NUM_DOMS)  = '',               &
                       obs_seq_out_file_name           = 'obs_seq.out',     &
                       adv_ens_command                 = './advance_model.csh'
 
-! Turn on bounded normal observation error if true. Only used for the paper case 
-! with bounded square observations.
-logical :: DO_BOUNDED_NORMAL_OBS_ERROR = .false.
-
 namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_to_file, &
                                  init_time_days, init_time_seconds, async,          &
                                  first_obs_days, first_obs_seconds,                 &
