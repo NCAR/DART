@@ -41,7 +41,6 @@ runs:
       run: |
         cd build_templates
         cp mkmf.template.gfortran mkmf.template
-        echo "NETCDF = /usr/" >> mkmf.template
         echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
       shell: bash
     # Steps to compile and build model
