@@ -786,15 +786,6 @@ if (status1 /= 0) then
    return
 endif
 
-! if we are avoiding assimilating obs above a given pressure, test here and return.
-if (discarding_high_obs) then
-   call obs_too_high(lon_lat_vert(3), which_vert, status1)
-   if (status1 /= 0) then
-      istatus(:) = status1
-      return
-   endif
-endif
-
 call get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
                    lon_lat_vert, which_vert, quad_vals, status_array)
 
@@ -1940,10 +1931,20 @@ integer,             intent(out)   :: my_status(:)
 
 character(len=*), parameter :: routine = 'convert_vertical_obs'
 
-integer :: current_vert_type, i
+integer  :: current_vert_type, i
+real(r8) :: lon_lat_vert(3)
 
 do i=1,num
+
    current_vert_type = nint(query_location(locs(i)))
+
+   ! if we are avoiding assimilating obs above a given level, test here and return.
+   if (discarding_high_obs) then
+      ! unpack the location type into lon, lat, vert and check the vert
+      lon_lat_vert = get_location(locs(i))
+      call obs_too_high(lon_lat_vert(3), current_vert_type, my_status(i))
+      if (my_status(i) /= 0) cycle
+   endif
 
    if (( current_vert_type == which_vert ) .or. &
        ( current_vert_type == VERTISUNDEF)) then
