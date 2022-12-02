@@ -185,16 +185,16 @@ real(r8) :: gamma_ratio
 if(alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
    beta_pdf = failed_value
 elseif(x < 0.0 .or. x > 1.0_r8) then
-   beta_pdf = -failed_value
+   beta_pdf = failed_value
 elseif(alpha == 1.0_r8 .and. x == 0.0_r8) then
    ! Tricky stuff for x = 0 or 1; 
     beta_pdf = beta
 elseif(beta == 1.0_r8 .and. x == 1.0_r8) then
     beta_pdf = alpha
 elseif(alpha < 1.0_r8 .and. x == 0.0_r8) then
-    beta_pdf = -failed_value
+    beta_pdf = failed_value
 elseif(beta < 1.0_r8 .and. x == 1.0_r8) then
-    beta_pdf = -failed_value
+    beta_pdf = failed_value
 else
     ! Use definition via gammas since this is a Fortran intrinsic
     gamma_ratio = gamma(alpha) * gamma(beta) / gamma(alpha + beta)

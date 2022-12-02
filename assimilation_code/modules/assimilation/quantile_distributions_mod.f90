@@ -37,7 +37,7 @@ end type
 ! Saves the ensemble size used in the previous call of obs_inc_bounded_norm_rh
 integer :: bounded_norm_rh_ens_size = -99
 
-character(len=512)     :: msgstring
+character(len=512)     :: errstring
 character(len=*), parameter :: source = 'quantile_distributions_mod.f90'
 
 contains
@@ -102,15 +102,15 @@ elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then
 elseif(p%prior_distribution_type == UNIFORM_PRIOR) then 
    call to_probit_uniform(ens_size, state_ens, p, probit_ens, use_input_p, bounds)
 elseif(p%prior_distribution_type == GAMMA_PRIOR) then 
-   call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
+   call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p, bounded, bounds)
 elseif(p%prior_distribution_type == BETA_PRIOR) then 
-   call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
+   call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p, bounded, bounds)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded, bounds)
 else
-   write(msgstring, *) 'Illegal distribution type', p%prior_distribution_type
-   call error_handler(E_ERR, 'convert_to_probit', msgstring, source)
+   write(errstring, *) 'Illegal distribution type', p%prior_distribution_type
+   call error_handler(E_ERR, 'convert_to_probit', errstring, source)
 endif
 
 end subroutine convert_to_probit
@@ -184,17 +184,26 @@ end subroutine to_probit_uniform
 
 !------------------------------------------------------------------------
 
-subroutine to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
+subroutine to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p, &
+   bounded, bounds)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
+logical, intent(in)                  :: bounded(2)
+real(r8), intent(in)                 :: bounds(2)
 
 ! Probit transform for gamma.
 real(r8) :: mean, sd, variance, shape, scale, quantile
 integer  :: i
+
+! In full generality, gamma must be bounded either below or above
+if(.not. (bounded(1) .neqv. bounded(2))) then
+   errstring = 'Gamma distribution requires either bounded above or below to be true'
+   call error_handler(E_ERR, 'to_probit_gamma', errstring, source)
+endif
 
 ! Get parameters
 ! Representing gamma in terms of shape and scale. 
@@ -224,38 +233,58 @@ end subroutine to_probit_gamma
 
 !------------------------------------------------------------------------
 
-subroutine to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
+subroutine to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p, &
+   bounded, bounds)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
+logical, intent(in)                  :: bounded(2)
+real(r8), intent(in)                 :: bounds(2)
 
 ! Probit transform for beta.
-real(r8) :: mean, sd, variance, alpha, beta, quantile
+real(r8) :: mean, sd, variance, alpha, beta, quantile, lower_bound, upper_bound
 integer  :: i
+
+! For now, check to make sure that distribution is bounded above and below
+if(.not. (bounded(1) .and. bounded(2))) then
+   errstring = 'Beta distribution requires bounded below and above to be true'
+   call error_handler(E_ERR, 'to_probit_beta', errstring, source)
+endif
 
 ! Get parameters
 ! Representing beta in terms of alpha and beta
 if(use_input_p) then
    alpha = p%params(1)
    beta  = p%params(2)
+   ! Bounds for translation and scaling
+   lower_bound = p%params(3)
+   upper_bound = p%params(4)
+   ! Translate and scale the ensemble so it is on [0 1], use the output probit_ens for temp storage
+   probit_ens = (state_ens - lower_bound) / (upper_bound - lower_bound)
 else
-   mean = sum(state_ens) / ens_size
-   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
+   if(.not. allocated(p%params)) allocate(p%params(4))
+   lower_bound = bounds(1)
+   upper_bound = bounds(2)
+   ! Translate and scale the ensemble so it is on [0 1], use the output probit_ens for temp storage
+   probit_ens = (state_ens - lower_bound) / (upper_bound - lower_bound)
+   mean = sum(probit_ens) / ens_size
+   sd  = sqrt(sum((probit_ens - mean)**2) / (ens_size - 1))
    variance = sd**2
    ! Get alpha and beta
    alpha = mean**2 * (1.0_r8 - mean) / variance - mean
    beta  = alpha * (1.0_r8 / mean - 1.0_r8)
-   if(.not. allocated(p%params)) allocate(p%params(2))
    p%params(1) = alpha
    p%params(2) = beta
+   p%params(3) = lower_bound
+   p%params(4) = upper_bound
 endif
 
 do i = 1, ens_size
    ! First, convert the ensemble member to quantile
-   quantile = beta_cdf(state_ens(i), alpha, beta)
+   quantile = beta_cdf(probit_ens(i), alpha, beta)
    ! Convert to probit space 
    call norm_inv(quantile, probit_ens(i))
 end do
@@ -330,8 +359,8 @@ if(use_input_p) then
          ! In the left tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_below .and. x < lower_bound) then
-            msgstring = 'Ensemble member less than lower bound first check'
-            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
+            errstring = 'Ensemble member less than lower bound first check'
+            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
          endif
 
          if(do_uniform_tail_left) then
@@ -346,8 +375,8 @@ if(use_input_p) then
          ! In the right tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_above .and. x > upper_bound) then
-            msgstring = 'Ensemble member greater than upper bound first check'
-            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
+            errstring = 'Ensemble member greater than upper bound first check'
+            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
          endif
 
          if(do_uniform_tail_right) then
@@ -450,16 +479,16 @@ else
    if(bounded_below) then
       ! Do in two ifs in case the bound is not defined
       if(p%params(1) < lower_bound) then
-         msgstring = 'Ensemble member less than lower bound'
-         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
+         errstring = 'Ensemble member less than lower bound'
+         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
       endif
    endif
    
    ! Fail if upper bound is smaller than the largest ensemble member 
    if(bounded_above) then
       if(p%params(ens_size) > upper_bound) then
-         msgstring = 'Ensemble member greater than upper bound'
-         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', msgstring, source)
+         errstring = 'Ensemble member greater than upper bound'
+         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
       endif
    endif
 
@@ -569,8 +598,8 @@ elseif(p%prior_distribution_type == BETA_PRIOR) then
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
 else
-   write(msgstring, *) 'Illegal distribution type', p%prior_distribution_type
-   call error_handler(E_ERR, 'convert_from_probit', msgstring, source)
+   write(errstring, *) 'Illegal distribution type', p%prior_distribution_type
+   call error_handler(E_ERR, 'convert_from_probit', errstring, source)
    stop
 endif
 
@@ -675,19 +704,24 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
 ! Convert back to the orig
-real(r8) :: alpha, beta, quantile
+real(r8) :: alpha, beta, quantile, lower_bound, upper_bound
 integer  :: i
 
 ! Shape and scale are the distribution parameters
 alpha = p%params(1)
 beta  = p%params(2)
+lower_bound = p%params(3)
+upper_bound = p%params(4)
 
 do i = 1, ens_size
    ! First, invert the probit to get a quantile
    quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
-   ! Invert the beta quantiles to get physical space
+   ! Invert the beta quantiles to get scaled physical space
    state_ens(i) = inv_beta_cdf(quantile, alpha, beta)
 end do
+
+! Unscale the physical space
+state_ens = state_ens * (upper_bound - lower_bound) + lower_bound
 
 ! Probably should do an explicit clearing of this storage
 ! Free the storage
