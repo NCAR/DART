@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 2 2022 :: Bug-fix cam-fv. Tag v10.5.6**
+
+- Fix for assimilate.csh purge of restart files when the interval for restart
+  saves is given as a string rather than an integer.
+- Fix for setting ptype when no_normalization_of_scale_heights = .false.
+
 **November 8 2022 :: Improved clean_nml and CLM quickbuild.sh. Tag v10.5.5**
 
 - clean_nml tool for comparing input.nmls given optional arguments to 
