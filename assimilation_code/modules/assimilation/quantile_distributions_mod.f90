@@ -353,12 +353,16 @@ if(use_input_p) then
    tail_mean_right = p%params(ens_size + 10)
    tail_sd_right = p%params(ens_size + 12)
 
+   ! Get the quantiles for each of the ensemble members in a RH distribution
+   call ens_quantiles(p%params(1:ens_size), ens_size, &
+      bounded_below, bounded_above, lower_bound, upper_bound, q)
+
    ! This can be done vastly more efficiently with either binary searches or by first sorting the
    ! incoming state_ens so that the lower bound for starting the search is updated with each ensemble member
    do i = 1, ens_size
       ! Figure out which bin it is in
       x = state_ens(i)
-      if(x <= p%params(1)) then
+      if(x < p%params(1)) then
          ! In the left tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_below .and. x < lower_bound) then
@@ -367,12 +371,16 @@ if(use_input_p) then
          endif
          if(do_uniform_tail_left) then
             ! Uniform approximation for left tail
+            ! The division here could be a concern. However, if p%params(1) == lower_bound, then
+            ! x cannot be < p%params(1).
             quantile = (x - lower_bound) / (p%params(1) - lower_bound) * (1.0_r8 / (ens_size + 1.0_r8))
          else
             ! It's a normal tail, bounded or not 
             quantile = tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left)
          endif
-
+      elseif(x == p%params(1)) then
+         ! This takes care of cases where there are multiple rh values at the bdry or at first ensemble
+         quantile = q(1)
       elseif(x > p%params(ens_size)) then
          ! In the right tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
@@ -383,6 +391,8 @@ if(use_input_p) then
 
          if(do_uniform_tail_right) then
             ! Uniform approximation for right tail
+            ! The division here could be a concern. However, if p%params(ens_size) == upper_bound, then
+            ! x cannot be > p%params(ens_size).
             quantile = (ens_size / ens_size + 1.0_r8) + &
                (x - p%params(ens_size)) / (upper_bound - p%params(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
          else
@@ -393,10 +403,12 @@ if(use_input_p) then
       else
          ! In an interior bin
          do j = 1, ens_size - 1
-            if(x <= p%params(j+1)) then
+            if(x < p%params(j+1)) then
                quantile = (j * 1.0_r8) / (ens_size + 1.0_r8) + &
                   ((x - p%params(j)) / (p%params(j+1) - p%params(j))) * (1.0_r8 / (ens_size + 1.0_r8))
                exit
+            elseif(x == p%params(j+1)) then
+               x = q(j+1)
             endif
          enddo
       endif
@@ -431,11 +443,11 @@ else
    ! Need to sort. For now, don't worry about efficiency, but may need to somehow pass previous
    ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
    call index_sort(state_ens, ens_index, ens_size)
+   p%params(1:ens_size) = state_ens(ens_index)
 
    ! Get the quantiles for each of the ensemble members in a RH distribution
-   call ens_quantiles(state_ens, ens_index, ens_size, &
+   call ens_quantiles(p%params(1:ens_size), ens_size, &
       bounded_below, bounded_above, lower_bound, upper_bound, q)
-
 
    ! Convert the quantiles to probit space
    do i = 1, ens_size
@@ -450,7 +462,6 @@ else
    ! bounded bin, the amplitude of the outer continuous normal pdf, the mean of the outer continous
    ! normal pdf, and the standard deviation of the
    ! outer continous. 
-   p%params(1:ens_size) = state_ens(ens_index)
 
    ! Compute the description of the tail continous pdf; 
    ! First two entries are 'logicals' 0 for false and 1 for true indicating if bounds are in use
@@ -859,29 +870,27 @@ end subroutine from_probit_bounded_normal_rh
 
 !------------------------------------------------------------------------
 
-subroutine ens_quantiles(ens, sort_indx, ens_size, bounded_below, bounded_above, &
+subroutine ens_quantiles(ens, ens_size, bounded_below, bounded_above, &
                          lower_bound, upper_bound, q)
 
-! Given an unsorted ensemble and a sorting index, return information about duplicate values
+! Given an ensemble, return information about duplicate values
 ! in the ensemble. 
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size)
-integer,  intent(in)  :: sort_indx(ens_size)
 logical,  intent(in)  :: bounded_below, bounded_above
 real(r8), intent(in)  :: lower_bound
 real(r8), intent(in)  :: upper_bound
 real(r8), intent(out) :: q(ens_size)
 
-integer :: i, j, lower_dups, indx, upper_dups, d_start, d_end, series_num
+integer :: i, j, lower_dups, upper_dups, d_start, d_end, series_num
 integer :: series_start(ens_size), series_end(ens_size), series_length(ens_size)
 
 ! Get number of ensemble members that are duplicates of the lower bound
 lower_dups = 0
 if(bounded_below) then
    do i = 1, ens_size
-      indx = sort_indx(i)
-      if(ens(indx) == lower_bound) then 
+      if(ens(i) == lower_bound) then 
          lower_dups = lower_dups + 1
       else
          exit
@@ -893,8 +902,7 @@ endif
 upper_dups = 0
 if(bounded_above) then
    do i = ens_size, 1, -1
-      indx = sort_indx(i)
-      if(ens(indx) == upper_bound) then 
+      if(ens(i) == upper_bound) then 
          upper_dups = upper_dups + 1
       else
          exit
@@ -913,7 +921,7 @@ series_num = 1
 series_start(series_num) = d_start
 series_length(series_num) = 1
 do i = d_start + 1, d_end
-   if(ens(sort_indx(i)) == ens(sort_indx(i - 1))) then
+   if(ens(i) == ens(i - 1)) then
       series_length(series_num) = series_length(series_num) + 1
    else
       series_end(series_num) = i-1
