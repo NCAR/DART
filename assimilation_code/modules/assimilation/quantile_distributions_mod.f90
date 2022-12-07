@@ -298,7 +298,10 @@ subroutine to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
 
 ! Note that this is just for transforming back and forth, not for doing the RHF observation update
 ! This means that we know a prior that the quantiles associated with the initial ensemble are
-! uniformly spaced which can be used to simplify converting
+! uniformly spaced which can be used to simplify converting.
+
+! How to handle identical ensemble members is an open question for now. This is also a problem
+! for ensemble members that are identical to one of the bounds. 
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
@@ -309,9 +312,9 @@ logical, intent(in)                  :: bounded(2)
 real(r8), intent(in)                 :: bounds(2)
 
 ! Probit transform for bounded normal rh.
-integer  :: i, j, indx
+integer  :: i, j, indx, low_num, up_num
 integer  :: ens_index(ens_size)
-real(r8) :: x, quantile
+real(r8) :: x, quantile, q(ens_size)
 logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_right
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
@@ -362,7 +365,6 @@ if(use_input_p) then
             errstring = 'Ensemble member less than lower bound first check'
             call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
          endif
-
          if(do_uniform_tail_left) then
             ! Uniform approximation for left tail
             quantile = (x - lower_bound) / (p%params(1) - lower_bound) * (1.0_r8 / (ens_size + 1.0_r8))
@@ -429,11 +431,16 @@ else
    ! Need to sort. For now, don't worry about efficiency, but may need to somehow pass previous
    ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
    call index_sort(state_ens, ens_index, ens_size)
+
+   ! Get the quantiles for each of the ensemble members in a RH distribution
+   call ens_quantiles(state_ens, ens_index, ens_size, &
+      bounded_below, bounded_above, lower_bound, upper_bound, q)
+
+
+   ! Convert the quantiles to probit space
    do i = 1, ens_size
       indx = ens_index(i)
-      quantile = (i * 1.0_r8) / (ens_size + 1.0_r8)
-      ! Probit is just the inverse of the standard normal CDF
-      call norm_inv(quantile, probit_ens(indx))
+      call norm_inv(q(i), probit_ens(indx))
    end do 
 
    ! For BNRH, the required data for inversion is the original ensemble values
@@ -849,6 +856,95 @@ end do
 deallocate(p%params)
 
 end subroutine from_probit_bounded_normal_rh
+
+!------------------------------------------------------------------------
+
+subroutine ens_quantiles(ens, sort_indx, ens_size, bounded_below, bounded_above, &
+                         lower_bound, upper_bound, q)
+
+! Given an unsorted ensemble and a sorting index, return information about duplicate values
+! in the ensemble. 
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size)
+integer,  intent(in)  :: sort_indx(ens_size)
+logical,  intent(in)  :: bounded_below, bounded_above
+real(r8), intent(in)  :: lower_bound
+real(r8), intent(in)  :: upper_bound
+real(r8), intent(out) :: q(ens_size)
+
+integer :: i, j, lower_dups, indx, upper_dups, d_start, d_end, series_num
+integer :: series_start(ens_size), series_end(ens_size), series_length(ens_size)
+
+! Get number of ensemble members that are duplicates of the lower bound
+lower_dups = 0
+if(bounded_below) then
+   do i = 1, ens_size
+      indx = sort_indx(i)
+      if(ens(indx) == lower_bound) then 
+         lower_dups = lower_dups + 1
+      else
+         exit
+      endif
+   end do
+endif
+
+! Get number of ensemble members that are duplicates of the upper bound
+upper_dups = 0
+if(bounded_above) then
+   do i = ens_size, 1, -1
+      indx = sort_indx(i)
+      if(ens(indx) == upper_bound) then 
+         upper_dups = upper_dups + 1
+      else
+         exit
+      endif
+   end do
+endif
+
+! If there are duplicate ensemble members away from the boundaries need to revise quantiles
+! Make sure not to count duplicates already handled at the boundaries
+! Outer loop determines if a series of duplicates starts at sorted index i
+d_start = lower_dups + 1 
+d_end   = ens_size - upper_dups
+
+! Get start, length, and end of each series of duplicates away from the bounds
+series_num = 1
+series_start(series_num) = d_start
+series_length(series_num) = 1
+do i = d_start + 1, d_end
+   if(ens(sort_indx(i)) == ens(sort_indx(i - 1))) then
+      series_length(series_num) = series_length(series_num) + 1
+   else
+      series_end(series_num) = i-1
+      series_num = series_num + 1
+      series_start(series_num) = i
+      series_length(series_num) = 1
+   endif
+end do
+
+! Off the end, finish up the last series
+series_end(series_num) = d_end
+
+! Now get the value of the quantile for the exact ensemble members
+! Start with the lower bound duplicates
+do i = 1, lower_dups
+   q(i) = lower_dups / (2.0_r8 * (ens_size + 1.0_r8))
+end do
+
+! Top bound duplicates next
+do i = ens_size - upper_dups + 1, ens_size
+   q(i) = upper_dups / (2.0_r8 * (ens_size + 1.0_r8))
+end do
+
+! Do the interior series
+do i = 1, series_num
+   do j = series_start(i), series_end(i)
+      q(j) = j / (ens_size + 1.0_r8) + (series_length(i) - 1.0_r8) / (2.0_r8 * (ens_size + 1.0_r8))
+   end do
+end do
+
+end subroutine ens_quantiles
 
 !------------------------------------------------------------------------
 
