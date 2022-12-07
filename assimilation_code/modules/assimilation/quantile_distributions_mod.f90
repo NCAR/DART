@@ -404,11 +404,14 @@ if(use_input_p) then
          ! In an interior bin
          do j = 1, ens_size - 1
             if(x < p%params(j+1)) then
+               ! The division here could be a concern. 
+               ! However, p%params(j)< x < p%params(j+1) so the two cannot be equal
                quantile = (j * 1.0_r8) / (ens_size + 1.0_r8) + &
                   ((x - p%params(j)) / (p%params(j+1) - p%params(j))) * (1.0_r8 / (ens_size + 1.0_r8))
                exit
             elseif(x == p%params(j+1)) then
                x = q(j+1)
+               exit
             endif
          enddo
       endif

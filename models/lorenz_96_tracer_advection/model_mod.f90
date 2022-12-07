@@ -96,6 +96,8 @@ real(r8) :: diffusion_coef = 0.00_r8
 real(r8) :: source_rate = 100.00_r8
 ! include an exponential sink
 real(r8) :: e_folding = 0.25_r8
+! Also include a fixed sink so tracer can get to 0
+real(r8) :: sink_rate = 0.1_r8
 ! number state variable quantities
 integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE
 
@@ -140,6 +142,12 @@ q = x(grid_size + 1 :2*grid_size)  ! QTY_TRACER_CONCENTRATION
 do i = 1, grid_size
     ! Get the target point
     velocity = (mean_velocity + x(i))*pert_velocity_multiplier
+
+    ! Bail out if the velocity number of grid points per dt exceeds the whole domain size
+    if(abs(velocity * delta_t) > grid_size) then
+      call error_handler(E_ERR, 'adv_1step', 'Lagrangian Velocity ridiculously large')
+    endif
+
     target_loc = i - velocity*delta_t
     ! Get the bounding grid point
     low = floor(target_loc)
@@ -184,7 +192,19 @@ q_new = x((2*grid_size)+1 : model_size)*delta_t + q_new
 ratio = exp((-1)*e_folding*delta_t)
 q_new = ratio*q_new
 
+
+! Add in an additional uniform sink so that stuff can get to zero for tests
+q_new = max(0.0_r8, q_new - sink_rate * delta_t)
+
+
 x(grid_size+1:2*(grid_size)) = q_new
+
+! Test of making this a fraction of saturation percentage
+! Concentration cannot be > 1 when all is said and done
+! There are challenges to be addressed with saturated sources and the loss of information
+!!!do i = grid_size+1, 2*grid_size
+   !!!x(i) = min(x(i), 1.0_r8)
+!!!end do
 
 ! RK4 solver for the lorenz-96 equations
 
@@ -299,7 +319,7 @@ real(r8), intent(out) :: x(:)
 x = 0
 x(1:grid_size) = 0.0_r8
 x(1) = 0.1_r8
-x(grid_size*2 + 1) = 100
+x(grid_size*2 + 1) = 5.0_r8
 
 end subroutine init_conditions
 
@@ -486,8 +506,10 @@ do i=1,num_my_grid_points
         do j=1,ens_size
             ! Could use info calls to do this better; but quick fix for now
             temp = -99_r8
-            do while(temp <= 0)
-               temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
+            !!!do while(temp <= 0.0_r8)
+            do while(temp <= 0.0_r8 .or. temp >= 1.0_r8)
+               !!!temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
+               temp = random_gaussian(random_seq, 0.5_r8, 0.5_r8)
             end do
             state_ens_handle%copies(j, i) = temp
         end do
@@ -496,11 +518,16 @@ do i=1,num_my_grid_points
         do j=1,ens_size
            ! Could use info calls to do this better; but quick fix for now
            temp = -99_r8
-           do while(temp <= 0)
-              temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), &
-                 100.0_r8 + 0.01_r8)
-                 !!!state_ens_handle%copies(j, i) * 0.10_r8 + 0.01_r8)
-                 !!!state_ens_handle%copies(j, i) * 0.01_r8 + 0.01_r8)
+           !!!do while(temp <= 0.0_r8)
+           do while(temp < 0.0_r8)
+              !!!temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), &
+                 !!!5.0_r8 + 0.01_r8)
+              !!!temp = random_gaussian(random_seq, 10.0_r8, 10.0_r8)
+              if(i == 81) then
+                 temp = 5.0_r8
+              else
+                 temp = 0.0_r8
+              endif
            end do
            state_ens_handle%copies(j, i) = temp
         end do
