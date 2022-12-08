@@ -129,7 +129,10 @@ custom initial conditions and observation sequence files for your own work.
   use the following links to download these files directly:
                       
   1. `CAM6 Reanalysis Meteorology <https://rda.ucar.edu/datasets/ds345.0/>`__,
-  Year 2011, ensemble members 1-5 only: ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x3h.2011.nc`` 
+  Year 2011, ensemble members 1-5 for three separate file types: 
+  ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x3h.2011.nc``
+  ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x1hi.2011.nc``
+  ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x1h.2011.nc`` 
   
   2. `Reference Case and Observations <https://www.image.ucar.edu/pub/DART/CESM/clmdart_tutorial/>`__ 
    
@@ -328,7 +331,7 @@ are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
 
 This example uses namelist setting that specifically loads ``obs_def`` and 
 ``obs_quantity`` commonly used for land DA, including models like CLM.
-Confirm the settings are as follows:
+Confirm the ``&preprocess_nml`` settings are as follows:
 
 ::
 
@@ -851,6 +854,8 @@ portion of the ``CLM5_setup_assimilation`` script so that it appears as follows:
 
 ::
 
+   ...
+   ...
    echo "hist_empty_htapes = .true."                                      >> ${fname}
    echo "hist_fincl1 = 'NEP','H2OSOI','TSOI','EFLX_LH_TOT','TLAI'"        >> ${fname}
    echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                 >> ${fname}
@@ -976,7 +981,10 @@ the ``&fill_inflation_restart_nml`` as follows:
 ::
 
  &filter_nml
-  
+
+   ...
+   ...
+   ...
    inf_flavor                  = 5,                       0
    inf_initial_from_restart    = .true.,                 .false.
    inf_sd_initial_from_restart = .true.,                 .false.
@@ -996,7 +1004,8 @@ the ``&fill_inflation_restart_nml`` as follows:
     write_prior_inf   = .true.
     prior_inf_mean    = 1.00
     prior_inf_sd      = 0.6
-
+    ...
+    ...
  
 +--------------------------------+---------------------------------------------------------------+
 | Inflation namelist             | Description                                                   |
@@ -1727,6 +1736,18 @@ scatterplot (left) and the 2d scatterplot (right). Click to enlarge. Note that t
 scatterplot compares the prior expected observations vs. the actual observations.
 The 1:1 fit for this plot is poor, but should be slightly improved if you
 compare the posterior observations vs. the actual observations.
+
+.. Note::
+
+ The matlab geographic scatterplot is rendered in 3D and can be converted into 2D
+ (as it appears on the github tutorial page) by using the 'Rotate 3D' option at the
+ top of the figure or through the menu bar as Tools > Rotate 3D. Use the cursor to 
+ rotate the map such that the vertical dimension is removed. In the case of the
+ MODIS LEAF AREA observation type no vertical value is specified as the vertical code = -2
+ which is 'undefined'.  Thus the ``-888888`` value for the ``vertical level`` acts as a 
+ missing  value that DART ignores, and has no impact on the assimilation. For more information about
+ specifying vertical heights in observations go 
+ :doc:`here. <../../../guide/creating-obs-seq-real>`  
 
 +-----------------------------------+-------------------------+
 | |link_obs1|                       | |link_obs3|             |
