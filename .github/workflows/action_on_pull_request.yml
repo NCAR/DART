@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} triggered workflow by a pull request update
 
 on:
   pull_request:
-    types: [ opened, reopened, synchronize ]
+    types: [ opened, reopened, synchronize, ready_for_review ]
 
 jobs:
   # Job 1
