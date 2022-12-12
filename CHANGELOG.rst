@@ -22,6 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 12 2022 :: Automated testing of pull requests**
+
+- GitHub actions for pull requests which checkout, compile and run a 
+  given model.  
+  Current workflow: lorenz_96 (mpi) and lorenz_63 (no mpi)
+
+*contributed by Anderson Chauphan*
+
 **December 2 2022 :: Bug-fix cam-fv. Tag v10.5.6**
 
 - Fix for assimilate.csh purge of restart files when the interval for restart
