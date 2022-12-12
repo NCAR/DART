@@ -393,11 +393,11 @@ if(use_input_p) then
             ! Uniform approximation for right tail
             ! The division here could be a concern. However, if p%params(ens_size) == upper_bound, then
             ! x cannot be > p%params(ens_size).
-            quantile = (ens_size / ens_size + 1.0_r8) + &
+            quantile = ens_size / (ens_size + 1.0_r8) + &
                (x - p%params(ens_size)) / (upper_bound - p%params(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
          else
             ! It's a normal tail, bounded or not. 
-            quantile = tail_amp_right * norm_cdf(x, tail_mean_right, tail_sd_right)
+            quantile = (1.0_r8 - tail_amp_right) + norm_cdf(x, tail_mean_right, tail_sd_right)
          endif
 
       else
@@ -410,7 +410,7 @@ if(use_input_p) then
                   ((x - p%params(j)) / (p%params(j+1) - p%params(j))) * (1.0_r8 / (ens_size + 1.0_r8))
                exit
             elseif(x == p%params(j+1)) then
-               x = q(j+1)
+               quantile = q(j+1)
                exit
             endif
          enddo
@@ -951,7 +951,7 @@ end do
 ! Do the interior series
 do i = 1, series_num
    do j = series_start(i), series_end(i)
-      q(j) = j / (ens_size + 1.0_r8) + (series_length(i) - 1.0_r8) / (2.0_r8 * (ens_size + 1.0_r8))
+      q(j) = series_start(i) / (ens_size + 1.0_r8) + (series_length(i) - 1.0_r8) / (2.0_r8 * (ens_size + 1.0_r8))
    end do
 end do
 

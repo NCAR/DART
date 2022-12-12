@@ -11,7 +11,7 @@ use utilities_mod, only : E_ERR, error_handler
 implicit none
 private
 
-public :: norm_cdf, norm_inv, weighted_norm_inv, test_normal
+public :: norm_cdf, norm_inv, weighted_norm_inv, test_normal, norm_inv_accurate
 
 character(len=512)        :: errstring
 character(len=*), parameter :: source = 'normal_distribution_mod.f90'
@@ -139,6 +139,13 @@ real(r8) :: c1,c2,c3,c4,c5,c6
 real(r8) :: d1,d2,d3,d4
 real(r8) :: q,r
 
+! Do a test for illegal values
+if(p_in < 0.0_r8 .or. p_in > 1.0_r8) then
+   ! Need an error message
+   errstring = 'Illegal Quantile input'
+   call error_handler(E_ERR, 'norm_inv', errstring, source)
+endif
+
 ! Truncate out of range quantiles, converts them to smallest positive number or largest number <1
 ! This solution is stable, but may lead to underflows being thrown. May want to 
 ! think of a better solution. 
@@ -217,6 +224,13 @@ real(r8) :: reltol, dq_dx
 real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old
 integer  :: iter, j
 
+! Do a test for illegal values
+if(quantile < 0.0_r8 .or. quantile > 1.0_r8) then
+   ! Need an error message
+   errstring = 'Illegal Quantile input'
+   call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
+endif
+
 ! Do a special test for exactly 0
 if(quantile == 0.0_r8) then
    ! Need an error message
@@ -251,7 +265,6 @@ do iter = 1, max_iterations
    ! Look for convergence; If the change in x is smaller than approximate precision 
    if (abs(del_x) <= reltol*abs(x_guess)) then
       x = x_new
-write(*, *) 'iter ', iter
       return
    endif
     
