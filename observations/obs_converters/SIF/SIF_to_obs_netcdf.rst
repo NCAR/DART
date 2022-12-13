@@ -30,7 +30,7 @@ Standard workflow:
 #. Make note of the SIF wavelength the data is centered upon. This information is 
    included in the SIF variable of netcdf file ``SIF_740_daily_corr``  
 #. Build the DART executables with support for land observations. This is done by running 
-   ``preprocess`` with ``obs_def_land_mod.f90`` in the list of ``input_files`` for 
+   ``quickbuild.sh`` with ``obs_def_land_mod.f90`` in the list of ``input_files`` for 
    ``preprocess_nml``.
 #. Provide basic information via the ``SIF_to_obs_netcdf_nml`` (e.g. verbose, wavelength)
 #. Convert single or multiple SIF netcdf data files using ``SIF_to_obs_netcdf``. Converting
@@ -192,18 +192,4 @@ C. Y. Chang, and Y. Sun. "A framework for harmonizing multiple satellite instrum
 to generate a long-term global high spatial-resolution solar-induced chlorophyll 
 fluorescence (SIF)." Remote Sensing of Environment 239 (2020): 
 111644.https://doi.org/10.1016/j.rse.2020.111644
-
-
-
-
-Programs
---------
-
-The ``SIF_to_obs_netcdf.f90`` file is the source for the main converter program.
-To compile and test, go into the work subdirectory and run ``mkmf_preprocess``, run
-the ``Makefile`` and finally run ``preprocess``.  Be sure that ``obs_def_land_mod.f90``
-is included as an input file within ``&preprocess_nml`` of the ``input.nml``.
-
-Next compile the observation converter by running ``mkmf_SIF_to_obs_netcdf``, run
-``Makefile``, and finally run ``SIF_to_obs_netcdf``. 
 
