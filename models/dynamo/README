@@ -69,25 +69,6 @@ The list of files attached:
 ./work/ens_time_series.ps  - Sample run output (ps version of ens time series)
 ./work/ens_time_series.pdf - Sample run output (pdf version of ens time series)
 
-./work/mkmf_dart_to_model
-./work/mkmf_dobsdx
-./work/mkmf_gau_param
-./work/mkmf_model_to_dart
-./work/mkmf_x_plus_delta
-./work/mkmf_create_fixed_network_seq
-./work/mkmf_perfect_model_obs
-./work/mkmf_filter
-
-./work/path_names_create_fixed_network_seq
-./work/path_names_dart_to_model
-./work/path_names_dobsdx
-./work/path_names_filter
-./work/path_names_gau_param
-./work/path_names_model_to_dart
-./work/path_names_perfect_model_obs
-./work/path_names_x_plus_delta
-
-
 
 # <next few lines under version control, do not edit>
 # $URL$
