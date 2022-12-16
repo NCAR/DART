@@ -26,7 +26,7 @@ my $error_variance = 0.1;        #better for Y
 my $max_obs = $nobs * $num_periods;
 
 # create a set def
-my $command = "mkmf_create_obs_sequence\n";
+my $command = "./quickbuild.sh create_obs_sequence\n";
 system "$command";
 copy "input.nml.create_obs_sequence_default", "input.nml";
 
@@ -45,13 +45,13 @@ print INFILE "-1\n";                       #done
 print INFILE "obs_seq_def.out\n";          #def file name
 close INFILE;
 
-$command = "create_obs_sequence < tmp\n";
+$command = "./create_obs_sequence < tmp\n";
 system "$command";
 unlink "tmp";
 
 # create an identity obs sequence
 # propagate through times
-my $command = "mkmf_create_fixed_network_seq\n";
+my $command = "git restore input.nml; ./quickbuild.sh create_fixed_network_seq\n";
 system "$command";
 copy "input.nml.create_fixed_network_seq_default", "input.nml";
 
@@ -64,32 +64,32 @@ print INFILE "$obs_period\n";                   #time between obs
 print INFILE "obs_seq.in\n";                    #output file
 close INFILE;
 
-$command = "create_fixed_network_seq < tmp \n";
+$command = "./create_fixed_network_seq < tmp \n";
 system "$command\n";
 unlink "tmp";
 
 # create the obs
-$command = "mkmf_perfect_model_obs";
+$command = "git restore input.nml; ./quickbuild.sh perfect_model_obs";
 system "$command\n";
 my $template = "input.nml.perfect_model_obs_default";
 open INFILE, $template;
 my $nlfile = "input.nml";
 open OUTFILE, ">$nlfile";
 while (<INFILE>) {
-  s/start_from_restart\s+=\s+.\w.+/start_from_restart = .true./;
-  s/output_restart\s+=\s+.\w.+/output_restart = .true./;
-  s/restart_in_file_name\s+=\s+"\w+"/restart_in_file_name = \"perfect_ics\"/;
-  s/restart_out_file_name\s+=\s+"\w+"/restart_out_file_name = \"perfect_restart\"/;
+  s/read_input_state_from_file\s+=\s+.\w.+/read_input_state_from_file = .true./;
+  s/write_output_state_to_file\s+=\s+.\w.+/write_output_state_to_file = .true./;
+  s/single_file_out\s+=\s+.\w.+/single_file_out = .true./;
+  s/input_state_files\s+=\s+""/input_state_files = \"perfect_input.nc\"/;
+  s/output_state_files\s+=\s+""/output_state_files = \"perfect_output.nc\"/;
   print OUTFILE;
 }
 close OUTFILE;
 close INFILE;
-
-my $command = "perfect_model_obs";
+my $command = "./perfect_model_obs";
 system "$command";
 
 #run the filter
-$command = "mkmf_filter";
+$command = "git restore input.nml; ./quickbuild.sh filter";
 system "$command\n";
 $template = "input.nml.filter_default";
 open INFILE, $template;
@@ -100,9 +100,12 @@ while (<INFILE>) {
   s/cutoff\s+=\s+\w+.\w+/cutoff = $cutoff/;
   s/cov_inflate\s+=\s+\w+.\w+/cov_inflate = $cov_inflate/;
   s/start_from_restart\s+=\s+.\w.+/start_from_restart = .true./;
+  s/single_file_in\s+=\s+.\w.+/single_file_in = .true./;
+  s/single_file_out\s+=\s+.\w.+/single_file_out = .true./;
+  s/perturb_from_single_instance\s+=\s+.\w.+/perturb_from_single_instance = .true../;
   s/output_restart\s+=\s+.\w.+/output_restart = .true./;
-  s/restart_in_file_name\s+=\s+"\w+"/restart_in_file_name = \"filter_ics\"/;
-  s/restart_out_file_name\s+=\s+"\w+"/restart_out_file_name = \"filter_restart\"/;
+  s/input_state_files\s+=\s+''/input_state_files = \"filter_input.nc\"/;
+  s/output_state_files\s+=\s+''/output_state_files = \"filter_output.nc\"/;
   s/num_output_state_members\s+=\s+\w+/num_output_state_members = $ensemble_size/;
   s/num_groups\s+=\s+\w+/num_groups = $num_groups/;
   print OUTFILE;
@@ -110,7 +113,7 @@ while (<INFILE>) {
 close OUTFILE;
 close INFILE;
 
-my $command = "filter";
+my $command = "./filter";
 system "$command";
 
 exit 0
