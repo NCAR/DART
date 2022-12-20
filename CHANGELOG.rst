@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 20 2022 :: Bug-fix for broken link in DART Tutorial. Tag v10.6.1**
+
+- Fixes a link within the documentation to a section describing how to
+  configure MATLAB's path to use DART MATLAB functions.
+
 **December 12 2022 :: Automated testing of pull requests**
 
 - GitHub actions for pull requests which checkout, compile and run a 
