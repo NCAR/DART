@@ -1746,12 +1746,9 @@ compare the posterior observations vs. the actual observations.
  The matlab geographic scatterplot is rendered in 3D and can be converted into 2D
  (as it appears below) by using the 'Rotate 3D' option at the
  top of the figure or through the menu bar as Tools > Rotate 3D. Use the cursor to 
- rotate the map such that the vertical dimension is removed. In the case of the
- MODIS LEAF AREA observation type no vertical value is specified as the vertical code = -2
- which is 'undefined'.  Thus the ``-888888`` value for the ``vertical level`` acts as a 
- missing  value that DART ignores, and has no impact on the assimilation. For more information about
- specifying vertical heights in observations go 
- :doc:`here. <../../../guide/creating-obs-seq-real>`  
+rotate the map such that the vertical dimension is removed.  For 3D observations with no vertical coordinate, such as MODIS LEAF AREA, DART sets ``VERTISUNDEF`` for the vertical coordinate and ``-888888`` as the vertical value.  During assimilation, DART ignores the missing vertical dimension for observations with ``VERTISUNDEF``. For more information about
+ specifying vertical coordinates for observations see 
+ :doc:`../../../guide/creating-obs-seq-real`.
 
 +-----------------------------------+-------------------------+
 | |link_obs1|                       | |link_obs3|             |
