@@ -35,10 +35,11 @@ understanding the :doc:`DART getting started <../../../README>` documentation.
 
 This CLM5-DART tutorial is based on a simple example in which we 
 describe how to:
- 1) set up the software
- 2) review concepts of assimilation 
- 3) provide a specific example of how CLM and DART interact
-    in an assimilation framework 
+
+
+1. set up the software
+2. review concepts of assimilation 
+3. provide a specific example of how CLM and DART interact in an assimilation framework 
 
 If you wish to move beyond this tutorial and address a unique/new
 research question be prepared to invest a significant amount of time to
@@ -129,10 +130,15 @@ custom initial conditions and observation sequence files for your own work.
   use the following links to download these files directly:
                       
   1. `CAM6 Reanalysis Meteorology <https://rda.ucar.edu/datasets/ds345.0/>`__,
-  Year 2011, ensemble members 1-5 only: ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x3h.2011.nc`` 
+     Year 2011, ensemble members 1-5 for three separate file types: 
+     ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x3h.2011.nc``
+     ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x1hi.2011.nc``
+     ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x1h.2011.nc`` 
   
-  2. `Reference Case and Observations <https://www.image.ucar.edu/pub/DART/CESM/clmdart_tutorial/>`__ 
-   
+  2. `Reference Case and Observations <https://www.image.ucar.edu/pub/DART/CESM/clmdart_tutorial/>`__,
+         
+     ``clm5_dart_tutorial_2022_03_01.tar.gz``
+
 
 Step 1: Download CLM5
 ---------------------
@@ -328,7 +334,7 @@ are contained in the ``&preprocess_nml`` namelist within the ``input.nml``.
 
 This example uses namelist setting that specifically loads ``obs_def`` and 
 ``obs_quantity`` commonly used for land DA, including models like CLM.
-Confirm the settings are as follows:
+Confirm the ``&preprocess_nml`` settings are as follows:
 
 ::
 
@@ -851,6 +857,8 @@ portion of the ``CLM5_setup_assimilation`` script so that it appears as follows:
 
 ::
 
+   ...
+   ...
    echo "hist_empty_htapes = .true."                                      >> ${fname}
    echo "hist_fincl1 = 'NEP','H2OSOI','TSOI','EFLX_LH_TOT','TLAI'"        >> ${fname}
    echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R','GPP'"                 >> ${fname}
@@ -976,7 +984,10 @@ the ``&fill_inflation_restart_nml`` as follows:
 ::
 
  &filter_nml
-  
+
+   ...
+   ...
+   ...
    inf_flavor                  = 5,                       0
    inf_initial_from_restart    = .true.,                 .false.
    inf_sd_initial_from_restart = .true.,                 .false.
@@ -996,7 +1007,8 @@ the ``&fill_inflation_restart_nml`` as follows:
     write_prior_inf   = .true.
     prior_inf_mean    = 1.00
     prior_inf_sd      = 0.6
-
+    ...
+    ...
  
 +--------------------------------+---------------------------------------------------------------+
 | Inflation namelist             | Description                                                   |
@@ -1080,6 +1092,7 @@ Confirm the input and output file list account for all 3 domains as:
     output_state_file_list   = 'restart_files.txt',
                                'history_files.txt',
                                'vector_files.txt'
+
 ::
 
  &fill_inflation_restart_nml
@@ -1727,6 +1740,18 @@ scatterplot (left) and the 2d scatterplot (right). Click to enlarge. Note that t
 scatterplot compares the prior expected observations vs. the actual observations.
 The 1:1 fit for this plot is poor, but should be slightly improved if you
 compare the posterior observations vs. the actual observations.
+
+.. Note::
+
+ The matlab geographic scatterplot is rendered in 3D and can be converted into 2D
+ (as it appears below) by using the 'Rotate 3D' option at the
+ top of the figure or through the menu bar as Tools > Rotate 3D. Use the cursor to
+ rotate the map such that the vertical dimension is removed.  For 3D observations with
+ no vertical coordinate, such as MODIS LEAF AREA, DART sets ``VERTISUNDEF`` for the
+ vertical coordinate and ``-888888`` as the vertical value.  During assimilation,
+ DART ignores the missing vertical dimension for observations with ``VERTISUNDEF``.
+ For more information about specifying vertical coordinates for observations see
+ :doc:`../../../guide/creating-obs-seq-real`.
 
 +-----------------------------------+-------------------------+
 | |link_obs1|                       | |link_obs3|             |
