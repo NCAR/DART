@@ -18,6 +18,11 @@ path to your DART installation:
    addpath('DART/diagnostics/matlab','-BEGIN')
    addpath('DART/guide/DART_LAB/matlab','-BEGIN')
 
+It is convenient to put these commands in your ``~/matlab/startup.m`` so they
+get run every time MATLAB starts up. You can use the example ``startup.m`` file
+located at ``DART/diagnostics/matlab/startup.m``. This example startup file
+contains instructions for using it.
+
 Summary of MATLAB functions
 ===========================
 
