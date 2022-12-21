@@ -5,12 +5,12 @@ Overview
 --------
 
 NASA's QuikSCAT mission is described in
-`http://winds.jpl.nasa.gov/missions/quikscat/ <http://winds.jpl.nasa.gov/missions/quikscat/index.cfm>`__. "QuikSCAT"
+`Quick Scatteromoeter <https://podaac.jpl.nasa.gov/QuikSCAT>`_. "QuikSCAT"
 refers to the satellite, "SeaWinds" refers to the instrument that provides near-surface wind speeds and directions over
 large bodies of water. QuikSCAT has an orbit of about 100 minutes, and the SeaWinds microwave radar covers a swath under
 the satellite. The swath is comprised of successive scans (or rows) and each scan has many wind-vector-cells (WVCs). For
 the purpose of this document, we will focus only the **Level 2B** product at 25km resolution. If you go to the official
-JPL data distribution site http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html , we are using the product labelled
+JPL data distribution site `podaac.jpl.nasa.gov <http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html>`_ , we are using the product labelled
 **L2B OWV 25km Swath**. Each orbit consists of (potentially) 76 WVCs in each of 1624 rows or scans. The azimuthal
 diversity of the radar returns affects the error characteristics of the retrieved wind speeds and directions, as does
 rain, interference of land in the radar footprint, and very low wind speeds. Hence, not all wind retrievals are created
@@ -34,7 +34,7 @@ orbit) in HDF format into the DART observation sequence file makes several assum
 Data sources
 ------------
 
-The NASA Jet Propulsion Laboratory (JPL) `data repository <http://winds.jpl.nasa.gov/imagesAnim/quikscat.cfm>`__ has a
+The NASA Jet Propulsion Laboratory (JPL) `data repository <https://podaac.jpl.nasa.gov/>`_ has a
 collection of animations and data sets from this instrument. In keeping with NASA tradition, these data are in HDF
 format (specifically, HDF4), so if you want to read these files directly, you will need to install the HDF4 libraries
 (which can be downloaded from http://www.hdfgroup.org/products/hdf4/)
@@ -76,17 +76,10 @@ particularly if you use the ASCII format. Using the binary format (i.e. *obs_seq
 .true.*) will result in observation sequence files that are about *half* the size of the ASCII format.
 
 Since there are about 14 QuikSCAT orbits per day, it may be useful to convert individual orbits to an observation
-sequence file and then concatenate multiple observation sequence files into one file per day. This may be trivially
-accomplished with the ``obs_sequence_tool`` program in any ``model/xxxx/work`` directory. Be sure to include the
-``'../../../obs_def/obs_def_QuikSCAT_mod.f90'`` string in ``input.nml&preprocess_nml:input_files`` when you run
-``preprocess``.
+sequence file and then concatenate multiple observation sequence files into one file per day. This can be
+accomplished with the :ref:`obs_sequence_tool<obs sequence tool>` program. To build the ``obs_sequence_tool``, 
+add ``obs_sequence_tool`` to the list of programs in ``quickbuid.sh``.
 
-Obs_to_table.f90, plot_wind_vectors.m
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``DART/diagnostics/threed_sphere/obs_to_table.f90`` is a potentially useful tool. You can run the observation sequence
-files through this filter to come up with a 'XYZ'-like file that can be readily plotted with
-``DART/diagnostics/matlab/plot_wind_vectors.m``.
 
 Namelist
 --------
