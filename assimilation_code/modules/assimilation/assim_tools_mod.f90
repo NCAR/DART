@@ -76,8 +76,8 @@ use quantile_distributions_mod, only : dist_param_type, convert_to_probit, conve
 
 use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, &
-                               NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info
+                               
 
 implicit none
 private
@@ -137,6 +137,7 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !  special_localization_obs_types -> Special treatment for the specified observation types
 !  special_localization_cutoffs   -> Different cutoff value for each specified obs type
 !
+logical  :: use_algorithm_info_mod          = .false.
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .false.
@@ -196,10 +197,8 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-! If true, observation space RHF prior is bounded below at 0
-logical :: USE_BOUNDED_RHF_OBS_PRIOR = .true.
-
-namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
+namelist / assim_tools_nml / use_algorithm_info_mod,                           &
+   filter_kind, cutoff, sort_obs_inc,                                      &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
@@ -207,8 +206,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    special_localization_obs_types, special_localization_cutoffs,           &
    distribute_mean, close_obs_caching,                                     &
    adjust_obs_impact, obs_impact_filename, allow_any_impact_values,        &
-   convert_all_state_verticals_first, convert_all_obs_verticals_first,     &
-   USE_BOUNDED_RHF_OBS_PRIOR
+   convert_all_state_verticals_first, convert_all_obs_verticals_first
 
 !============================================================================
 
@@ -955,12 +953,29 @@ if(do_obs_inflate(inflate)) then
       prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
 
-! The filter_kind can no longer be determined by a single namelist setting
-! Implications for sorting increments and for spread restoration need to be examined
+!--------------------------begin algorithm_info control block-----------------
+! More flexible abilities to control the observation space increments are 
+! available with this code block. It gets information about the increment method
+! for the current observation is use_algorithm_info_mod is set to true in the namelist.
 ! This is not an extensible mechanism for doing this as the number of 
 ! obs increments distributions and associated information goes up
-call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-   sort_obs_inc, spread_restoration, bounded, bounds)
+! Implications for sorting increments and for spread restoration need to be examined
+! further. 
+! Note that all but the first argument to obs_inc_info are intent(inout) so that if they
+! are not set in that routine they will remain with the namelist selected values.
+
+! Set default values for bounds information
+bounded = .false.;      bounds = 0.0_r8
+
+if(use_algorithm_info_mod) &
+   call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
+      sort_obs_inc, spread_restoration, bounded, bounds)
+
+! Could add logic to check on sort being true when not needed.
+! Could also add logic to limit the use of spread_restoration to EAKF. It will fail
+! in some ugly way right now.
+
+!----------------------------end algorithm_info control block-----------------
 
 ! The first three options in the next if block of code may be inappropriate for 
 ! some more general filters; need to revisit

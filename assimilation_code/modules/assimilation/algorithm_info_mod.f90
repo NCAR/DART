@@ -4,7 +4,7 @@
 
 module algorithm_info_mod
 
-use types_mod, only : r8
+use types_mod, only : r8, i8
 
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs
@@ -14,17 +14,31 @@ use obs_kind_mod, only : QTY_STATE_VARIABLE, QTY_STATE_VAR_POWER, QTY_TRACER_CON
                         QTY_TRACER_SOURCE
 ! NOTE: Sadly, the QTY itself is not sufficient for the POWER because there is additional metadata
 
+use assim_model_mod, only : get_state_meta_data
+use location_mod, only    : location_type
+
 implicit none
 private
 
-integer, parameter :: NORMAL_PRIOR = 1
+! Defining parameter strings for different observation space filters
+! For now, retaining backwards compatibility in assim_tools_mod requires using
+! these specific integer values and there is no point in using these in assim_tools.
+! That will change if backwards compatibility is removed in the future.
+integer, parameter :: EAKF               = 1
+integer, parameter :: ENKF               = 2
+integer, parameter :: UNBOUNDED_RHF      = 8
+integer, parameter :: BOUNDED_NORMAL_RHF = 101 
+
+! Defining parameter strings for different prior distributions that can be used for probit transform
+integer, parameter :: NORMAL_PRIOR            = 1
 integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
-integer, parameter :: GAMMA_PRIOR = 3
-integer, parameter :: BETA_PRIOR = 4
-integer, parameter :: LOG_NORMAL_PRIOR = 5
-integer, parameter :: UNIFORM_PRIOR = 6
+integer, parameter :: GAMMA_PRIOR             = 3
+integer, parameter :: BETA_PRIOR              = 4
+integer, parameter :: LOG_NORMAL_PRIOR        = 5
+integer, parameter :: UNIFORM_PRIOR           = 6
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
+          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, &
           NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, &
           UNIFORM_PRIOR
 
@@ -48,11 +62,19 @@ real(r8),           intent(out) :: error_variance
 logical,            intent(out) :: bounded(2)
 real(r8),           intent(out) :: bounds(2)
 
-integer :: obs_type, obs_kind
+integer     :: obs_type, obs_kind
+integer(i8) :: state_var_index
+type(location_type) :: temp_loc
 
 ! Get the kind of the observation
 obs_type = get_obs_def_type_of_obs(obs_def)
-obs_kind = get_quantity_for_type_of_obs(obs_type)
+! If it is negative, it is an identity obs
+if(obs_type < 0) then
+   state_var_index = -1 * obs_type
+   call get_state_meta_data(state_var_index, temp_loc, obs_kind)
+else
+   obs_kind = get_quantity_for_type_of_obs(obs_type)
+endif
 
 ! Get the default error variance
 error_variance = get_obs_def_error_variance(obs_def)
@@ -65,10 +87,10 @@ elseif(obs_kind == QTY_STATE_VAR_POWER) then
    bounds(1) = 0.0_r8;
 elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
    bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;
+   bounds(1) = 0.0_r8;      bounds(2) = 0.0_r8
 elseif(obs_kind == QTY_TRACER_SOURCE) then
    bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;
+   bounds(1) = 0.0_r8;       bounds(2) = 0.0_r8
 else
    write(*, *) 'Illegal obs_kind in obs_error_info'
    stop
@@ -122,13 +144,13 @@ if(is_inflation) then
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = GAMMA_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
+      bounds(1) = 0.0_r8;      bounds(2) = 0.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
+      bounds(1) = 0.0_r8;       bounds(2) = 0.0_r8
    else
       write(*, *) 'Illegal kind in obs_error_info'
       stop
@@ -143,13 +165,13 @@ elseif(is_state) then
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = GAMMA_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
+      bounds(1) = 0.0_r8;      bounds(2) = 0.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
+      bounds(1) = 0.0_r8;       bounds(2) = 0.0_r8
    else
       write(*, *) 'Illegal kind in obs_error_info'
       stop
@@ -164,13 +186,13 @@ else
       bounded(1) = .true.;     bounded(2) = .false.
       bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = GAMMA_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
+      bounds(1) = 0.0_r8;      bounds(2) = 0.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
+      bounds(1) = 0.0_r8;       bounds(2) = 0.0_r8
    else
       write(*, *) 'Illegal kind in obs_error_info'
       stop
@@ -186,32 +208,37 @@ subroutine obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_
    sort_obs_inc, spread_restoration, bounded, bounds)
 
 integer,  intent(in)  :: obs_kind
-integer,  intent(out) :: filter_kind
-logical,  intent(out) :: rectangular_quadrature, gaussian_likelihood_tails
-logical,  intent(out) :: sort_obs_inc
-logical,  intent(out) :: spread_restoration
-logical,  intent(out) :: bounded(2)
-real(r8), intent(out) :: bounds(2)
+integer,  intent(inout) :: filter_kind
+logical,  intent(inout) :: rectangular_quadrature, gaussian_likelihood_tails
+logical,  intent(inout) :: sort_obs_inc
+logical,  intent(inout) :: spread_restoration
+logical,  intent(inout) :: bounded(2)
+real(r8), intent(inout) :: bounds(2)
+
+! The information arguments are all intent (inout). This means that if they are not set
+! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
+! in that namelist, so default values are set in assim_tools_mod just before the call to here.
 
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
+
 ! Set the observation increment details for each type of quantity
 if(obs_kind == QTY_STATE_VARIABLE) then
-   filter_kind = 101
+   filter_kind = BOUNDED_NORMAL_RHF
    bounded = .false.
 elseif(obs_kind == QTY_STATE_VAR_POWER) then
-   filter_kind = 101
+   filter_kind = BOUNDED_NORMAL_RHF
    bounded(1) = .true.;     bounded(2) = .false.
    bounds(1) = 0.0_r8;
 elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
-   filter_kind = 101
+   filter_kind = BOUNDED_NORMAL_RHF
    bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;
+   bounds(1) = 0.0_r8;      bounds(2) = 0.0_r8
 elseif(obs_kind == QTY_TRACER_SOURCE) then
-   filter_kind = 101
+   filter_kind = BOUNDED_NORMAL_RHF
    bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;
+   bounds(1) = 0.0_r8;       bounds(2) = 0.0_r8
 else
    write(*, *) 'Illegal obs_kind in obs_error_info'
    stop
@@ -221,9 +248,9 @@ endif
 sort_obs_inc = .false.
 spread_restoration = .false.
 
-! Only need to set these two for options on old RHF implementation
-! rectangular_quadrature = .true.
-! gaussian_likelihood_tails = .false.
+! Only need to set these two for options the original RHF implementation
+!!!rectangular_quadrature = .true.
+!!!gaussian_likelihood_tails = .false.
 
 end subroutine obs_inc_info
 
