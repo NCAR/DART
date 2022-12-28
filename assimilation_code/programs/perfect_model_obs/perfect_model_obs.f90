@@ -77,6 +77,7 @@ integer            :: trace_level, timestamp_level
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
+logical  :: use_algorithm_info_mod     = .true.
 logical  :: read_input_state_from_file = .false.
 logical  :: write_output_state_to_file = .false.
 integer  :: async              = 0
@@ -111,7 +112,8 @@ character(len=256) :: input_state_files(MAX_NUM_DOMS)  = '',               &
                       obs_seq_out_file_name           = 'obs_seq.out',     &
                       adv_ens_command                 = './advance_model.csh'
 
-namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_to_file, &
+namelist /perfect_model_obs_nml/ use_algorithm_info_mod, read_input_state_from_file,& 
+                                 write_output_state_to_file,                        &
                                  init_time_days, init_time_seconds, async,          &
                                  first_obs_days, first_obs_seconds,                 &
                                  last_obs_days,  last_obs_seconds, output_interval, &
@@ -549,7 +551,13 @@ AdvanceTime: do
          if( qc_ens_handle%vars(i, 1) == 0 ) then
 
             ! Get the information for generating error sample for this observation
-            call obs_error_info(obs_def, error_variance, bounded, bounds)
+            if(use_algorithm_info_mod) then
+               call obs_error_info(obs_def, error_variance, bounded, bounds)
+            else
+               ! Default is unbounded with standard error_variance
+               error_variance = get_obs_def_error_variance(obs_def)
+               bounded = .false. ; bounds = 0.0_r8
+            endif
 
             ! Capability to do a bounded normal error
             if(bounded(1) .and. bounded(2)) then

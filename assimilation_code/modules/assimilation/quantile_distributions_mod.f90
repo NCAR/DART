@@ -796,11 +796,12 @@ do i = 1, ens_size
    quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
 
    ! Can assume that the quantiles of the original ensemble for the BNRH are uniform
+   ! Note that there are some implicit assumptions here about cases where the original 
+   ! ensemble had duplicate state members. 
    ! Finding which region this quantile is in is trivial
    region = floor(quantile * (ens_size + 1.0_r8))
    ! Careful about numerical issues moving outside of region [0 ens_size]
    if(region < 0) region = 0
-   ! This behavior has been documented 
    if(region > ens_size) region = ens_size
 
    if(region == 0) then
@@ -864,6 +865,25 @@ do i = 1, ens_size
           ((quantile - lower_q) / (upper_q - lower_q)) * (p%params(region + 1) - p%params(region))
    endif
 end do
+
+! Check for posterior violating bounds; This may not be needed after development testing
+if(bounded_below) then
+   do i = 1, ens_size
+      if(state_ens(i) < lower_bound) then
+         write(errstring, *) 'state_ens ', i, ' less than lower_bound ', state_ens(i)
+         call error_handler(E_ERR, 'from_probit_bounded_normal_rh', errstring, source)
+      endif
+   end do
+endif
+
+if(bounded_above) then
+   do i = 1, ens_size
+      if(state_ens(i) > upper_bound) then
+         write(errstring, *) 'state_ens ', i, ' greater than upper_bound ', state_ens(i)
+         call error_handler(E_ERR, 'from_probit_bounded_normal_rh', errstring, source)
+      endif
+   end do
+endif
 
 ! Probably do this explicitly 
 ! Free the storage

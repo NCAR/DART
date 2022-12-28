@@ -137,7 +137,7 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !  special_localization_obs_types -> Special treatment for the specified observation types
 !  special_localization_cutoffs   -> Different cutoff value for each specified obs type
 !
-logical  :: use_algorithm_info_mod          = .false.
+logical  :: use_algorithm_info_mod          = .true.
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .false.

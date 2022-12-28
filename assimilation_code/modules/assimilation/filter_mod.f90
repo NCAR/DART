@@ -97,7 +97,7 @@ use location_mod,          only : location_type
 use quantile_distributions_mod, only : dist_param_type, convert_to_probit, &
                             convert_from_probit
 
-use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR
+use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR
 
 !------------------------------------------------------------------------------
 
@@ -171,6 +171,7 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
+logical  :: use_algorithm_info_mod = .true.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -265,6 +266,7 @@ logical  :: allow_missing_clm = .false.
 
 
 namelist /filter_nml/ async,     &
+   use_algorithm_info_mod,       &
    adv_ens_command,              &
    ens_size,                     &
    tasks_per_model_advance,      &
@@ -1662,14 +1664,21 @@ do group = 1, num_groups
    else 
 
       ! This is an initial test of doing inflation in probit space
-      ! Note that this is not yet ready to work with adaptive inflation or RTPS
+      ! Note that this appears to work with adaptive inflation, but more research would be good
       ! Probably also shouldn't be used with groups for now although it is coded to do so
       call get_my_vars(ens_handle, my_state_indx)
       do j = 1, ens_handle%my_num_vars
          call get_state_meta_data(my_state_indx(j), my_state_loc, my_state_kind)    
 
          ! Need to specify what kind of prior to use for each
-         call probit_dist_info(my_state_kind, .true., .true., dist_type, bounded, bounds)
+         ! Use default of untransformed if use_algorithm_info_mod is not true
+         if(use_algorithm_info_mod) then
+            call probit_dist_info(my_state_kind, .true., .true., dist_type, bounded, bounds)
+         else
+            ! Default is just a normal which does nothing
+            dist_type = NORMAL_PRIOR
+            bounded = .false. ;  bounds = 0.0_r8
+         endif
          call convert_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
             dist_type, dist_params, probit_ens(1:grp_size), .false., bounded, bounds)
 
