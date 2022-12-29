@@ -77,6 +77,9 @@ use quantile_distributions_mod, only : dist_param_type, convert_to_probit, conve
 use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
 use algorithm_info_mod, only : probit_dist_info, obs_inc_info
+
+use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_shape_scale, &
+                                   gamma_gamma_prod
                                
 
 implicit none
@@ -1025,6 +1028,8 @@ else
       call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
    else if(filter_kind == 8) then
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
+   else if(filter_kind == 11) then
+      call obs_increment_gamma(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
    !--------------------------------------------------------------------------
    else if(filter_kind == 101) then
 
@@ -1074,6 +1079,48 @@ endif
 if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
 
 end subroutine obs_increment
+
+
+
+subroutine obs_increment_gamma(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
+!========================================================================
+!
+! Gamma version of obs increment. This demonstrates the updat
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), prior_mean, prior_var, obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: prior_shape, prior_scale, like_shape, like_scale, post_shape, post_scale
+real(r8) :: q(ens_size), post(ens_size)
+integer :: i
+
+! Compute the prior quantiles of each ensemble member in the prior gamma distribution
+call gamma_shape_scale(prior_mean, prior_var, prior_shape, prior_scale)
+do i = 1, ens_size
+   q(i) = gamma_cdf(ens(i), prior_shape, prior_scale) 
+end do
+
+! Compute the statistics of the continous posterior distribution
+call gamma_shape_scale(obs, obs_var, like_shape, like_scale)
+call gamma_gamma_prod(prior_shape, prior_scale, like_shape, like_scale, &
+   post_shape, post_scale)
+
+! Check for illegal values. This can occur if the distributions are getting too
+! concentrated towards the bound
+if(post_shape <= 0.0_r8) then
+   write(msgstring, *) 'Posterior gamma shape is negative ', post_shape
+   call error_handler(E_ERR, 'obs_increment_gamma', msgstring, source)
+endif
+
+! Now invert the quantiles with the posterior distribution
+do i = 1, ens_size
+   post(i) = inv_gamma_cdf(q(i), post_shape, post_scale)
+end do
+
+obs_inc = post - ens
+
+end subroutine obs_increment_gamma
 
 
 
@@ -3018,6 +3065,8 @@ select case (filter_kind)
    msgstring = 'Boxcar'
  case (8)
    msgstring = 'Rank Histogram Filter'
+ case (11)
+   msgstring = 'Gamma Filter'
  case (101)
    msgstring = 'Bounded Rank Histogram Filter'
  case default

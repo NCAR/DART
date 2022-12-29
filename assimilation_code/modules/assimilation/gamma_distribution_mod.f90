@@ -15,7 +15,8 @@ use random_seq_mod,          only : random_seq_type, random_uniform
 implicit none
 private
 
-public :: gamma_pdf, gamma_cdf, inv_gamma_cdf, random_gamma, test_gamma
+public :: gamma_pdf, gamma_cdf, inv_gamma_cdf, random_gamma, test_gamma, &
+          gamma_shape_scale, gamma_gamma_prod
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'gamma_distribution_mod.f90'
@@ -375,6 +376,33 @@ quantile = random_uniform(r)
 random_gamma = inv_gamma_cdf(quantile, rshape, rscale)
 
 end function random_gamma
+
+!---------------------------------------------------------------------------
+
+subroutine gamma_shape_scale(mean, variance, shape, scale)
+
+real(r8), intent(in)  :: mean, variance
+real(r8), intent(out) :: shape, scale
+
+shape = mean**2 / variance
+scale = variance / mean
+
+end subroutine gamma_shape_scale
+
+!---------------------------------------------------------------------------
+
+subroutine gamma_gamma_prod(prior_shape, prior_scale, like_shape, like_scale, &
+   post_shape, post_scale)
+
+real(r8), intent(in)  :: prior_shape, prior_scale, like_shape, like_scale
+real(r8), intent(out) :: post_shape, post_scale
+
+! Compute statistics of product of two gammas
+
+post_shape = prior_shape + like_shape - 1
+post_scale = prior_scale * like_scale / (prior_scale + like_scale)
+
+end subroutine gamma_gamma_prod
 
 !---------------------------------------------------------------------------
 

@@ -27,6 +27,7 @@ private
 integer, parameter :: EAKF               = 1
 integer, parameter :: ENKF               = 2
 integer, parameter :: UNBOUNDED_RHF      = 8
+integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
 ! Defining parameter strings for different prior distributions that can be used for probit transform
@@ -38,7 +39,7 @@ integer, parameter :: LOG_NORMAL_PRIOR        = 5
 integer, parameter :: UNIFORM_PRIOR           = 6
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, &
+          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
           NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, &
           UNIFORM_PRIOR
 
