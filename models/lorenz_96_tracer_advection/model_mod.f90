@@ -17,11 +17,11 @@ use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    
                                   nmlfileunit, find_namelist_in_file,           &
                                   check_namelist_read, E_ERR, error_handler
 
-use location_io_mod,      only :  nc_write_location_atts, nc_write_location
+use location_io_mod,       only :  nc_write_location_atts, nc_write_location
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
-                                 nc_add_global_creation_time, nc_begin_define_mode, &
-                                 nc_end_define_mode
+use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file,      &
+                                  nc_add_global_creation_time, nc_begin_define_mode, &
+                                  nc_end_define_mode
 
 use obs_kind_mod,          only : QTY_STATE_VARIABLE, QTY_TRACER_SOURCE, &
                                   QTY_TRACER_CONCENTRATION, get_name_for_quantity
@@ -34,7 +34,8 @@ use ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod,   only : add_domain, add_dimension_to_variable, finished_adding_domain, state_structure_info
+use state_structure_mod,   only : add_domain, add_dimension_to_variable, &
+                                  finished_adding_domain, state_structure_info
 
 use default_model_mod,     only : end_model, nc_write_model_vars, &
                                   init_time
@@ -48,25 +49,25 @@ private
 ! arguments because they will be called *from* other DART code.
 
 !> required routines with code in this module
-public :: get_model_size, &
-          get_state_meta_data,  &
-          model_interpolate, &
+public :: get_model_size,                      &
+          get_state_meta_data,                 &
+          model_interpolate,                   &
           shortest_time_between_assimilations, &
-          static_init_model, &
-          init_conditions,    &
-          adv_1step, &
+          static_init_model,                   &
+          init_conditions,                     &
+          adv_1step,                           &
           nc_write_model_atts
 
 !> required routines where code is in other modules
-public :: pert_model_copies, &
-          nc_write_model_vars, &
-          init_time, &
-          get_close_obs, &
-          get_close_state, &
-          end_model, &
-          convert_vertical_obs, &
+public :: pert_model_copies,      &
+          nc_write_model_vars,    &
+          init_time,              &
+          get_close_obs,          &
+          get_close_state,        &
+          end_model,              &
+          convert_vertical_obs,   &
           convert_vertical_state, &
-          read_model_time, &
+          read_model_time,        &
           write_model_time
 
 ! version controlled file description for error handling, do not edit
@@ -77,27 +78,37 @@ character(len=128), parameter :: revdate  = ""
 
 ! Namelist with default values
 
-integer(i8) :: model_size = 120
-real(r8)    :: forcing    = 8.00_r8
-real(r8)    :: delta_t    = 0.05_r8
-integer    :: time_step_days = 0
-integer    :: time_step_seconds = 3600
+integer(i8) :: model_size               = 120
+real(r8)    :: forcing                  = 8.00_r8
+real(r8)    :: delta_t                  = 0.05_r8
 
-namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_seconds
-
-! Tracer parameters
+! Tracer model parameters with default values
 ! mean velocity
-real(r8) :: mean_velocity = 0.00_r8
+real(r8)    :: mean_velocity            = 0.00_r8
 ! velocity normalization
-real(r8) :: pert_velocity_multiplier = 5.00_r8
+real(r8)    :: pert_velocity_multiplier = 5.00_r8
 ! diffusion everywhere
-real(r8) :: diffusion_coef = 0.00_r8
-! Amount injected per unit time; This is not currently implemented
-real(r8) :: source_rate = 100.00_r8
-! include an exponential sink
-real(r8) :: e_folding = 0.25_r8
+real(r8)    :: diffusion_coef           = 0.00_r8
+! include an exponential sink rate
+real(r8)    :: e_folding                = 0.25_r8
 ! Also include a fixed sink so tracer can get to 0
-real(r8) :: sink_rate = 0.1_r8
+real(r8)    :: sink_rate                = 0.1_r8
+! Tracer source model parameters
+! Amount injected per unit time; This is not currently implemented
+real(r8)    :: source_rate              = 100.00_r8
+real(r8)    :: point_tracer_source_rate = 5.0_r8
+
+! Allows having negative tracer values to test bounded above filter algorithms
+logical     :: positive_tracer          = .true.
+
+integer     :: time_step_days           = 0
+integer     :: time_step_seconds        = 3600
+
+namelist /model_nml/ model_size, forcing, delta_t, mean_velocity,         &
+                     pert_velocity_multiplier, diffusion_coef, e_folding, &
+                     sink_rate, source_rate, point_tracer_source_rate,    &
+                     positive_tracer, time_step_days, time_step_seconds
+
 ! number state variable quantities
 integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE
 
@@ -127,13 +138,11 @@ contains
 
 subroutine adv_1step(x, time)
 
-real(r8), intent(inout) :: x(:) ! for a grid_size = 40, model_size = 120: 
+real(r8), intent(inout)        :: x(:) ! for a grid_size = 40, model_size = 120: 
                             ! positions (1-40) tracer (41-80) and source (81-120)
-                            ! this is generalizable to any model size that is a
-                            ! multiple of 3
 type(time_type), intent(inout) :: time
 
-real(r8) :: velocity, target_loc, frac, ratio
+real(r8)    :: velocity, target_loc, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
 real(i8), dimension(grid_size) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
 
@@ -155,6 +164,7 @@ do i = 1, grid_size
     frac = target_loc - low
 
     ! Assume for now that we are not looking upstream for multiple revolutions
+    ! consistent with error failure above
 
     if (low < 1) then
       low = low + grid_size
@@ -181,30 +191,26 @@ do i = 1, grid_size
     if (up > grid_size) then
       up = up - grid_size
     end if
-    q_diff(i) = diffusion_coef * (q_new(down) + q_new(up) - 2*q_new(i))
+    ! Should be sure this is the right way to time normalize
+    q_diff(i) = diffusion_coef * delta_t * (q_new(down) + q_new(up) - 2*q_new(i))
 end do
 
 q_new = q_new + q_diff*delta_t
 
-! Add source following the source input
+! Add source 
 q_new = x((2*grid_size)+1 : model_size)*delta_t + q_new
 ! Add exponential sinks at every grid point
 ratio = exp((-1)*e_folding*delta_t)
 q_new = ratio*q_new
 
-
 ! Add in an additional uniform sink so that stuff can get to zero for tests
-q_new = max(0.0_r8, q_new - sink_rate * delta_t)
-
+if(positive_tracer) then
+   q_new = max(0.0_r8, q_new - sink_rate * delta_t)
+else
+   q_new = min(0.0_r8, q_new + sink_rate * delta_t)
+endif
 
 x(grid_size+1:2*(grid_size)) = q_new
-
-! Test of making this a fraction of saturation percentage
-! Concentration cannot be > 1 when all is said and done
-! There are challenges to be addressed with saturated sources and the loss of information
-!!!do i = grid_size+1, 2*grid_size
-   !!!x(i) = min(x(i), 1.0_r8)
-!!!end do
 
 ! RK4 solver for the lorenz-96 equations
 
@@ -316,10 +322,18 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
-x = 0
+
+! Set all variables, winds, tracer concentration, and source to 0
 x(1:grid_size) = 0.0_r8
+! Add a single perturbation to L96 state (winds) to generate evolution
 x(1) = 0.1_r8
-x(grid_size*2 + 1) = 5.0_r8
+! For these tests, single tracer source at the first grid point
+if(positive_tracer) then
+   x(grid_size*2 + 1) = point_tracer_source_rate
+else
+   ! Make it negative if testing negative tracers
+   x(grid_size*2 + 1) = -point_tracer_source_rate
+endif
 
 end subroutine init_conditions
 
@@ -459,7 +473,7 @@ call check_namelist_read(iunit, io, "model_nml")
 
 ! Output the namelist values if requested
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
-if (do_nml_term()) write(     *     , nml=model_nml)
+if (do_nml_term()) write(     *     , nml=            model_nml)
 
 end subroutine initialize
 
@@ -500,37 +514,16 @@ do i=1,num_my_grid_points
 
     if (var_type == QTY_STATE_VARIABLE) then
         do j=1,ens_size
-            state_ens_handle%copies(j, i) = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
+            state_ens_handle%copies(j, i) = random_gaussian(random_seq, &
+               state_ens_handle%copies(j, i), pert_amp)
         end do
     elseif(var_type == QTY_TRACER_CONCENTRATION) then
-        do j=1,ens_size
-            ! Could use info calls to do this better; but quick fix for now
-            temp = -99_r8
-            !!!do while(temp <= 0.0_r8)
-            do while(temp <= 0.0_r8 .or. temp >= 1.0_r8)
-               !!!temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), pert_amp)
-               temp = random_gaussian(random_seq, 0.5_r8, 0.5_r8)
-            end do
-            state_ens_handle%copies(j, i) = temp
-        end do
+        ! For now, can just let all ensemble members be identical
+        ! Spread will be generated by the chaotic flow field
     !Perturbing all source grid points
     else if (var_type == QTY_TRACER_SOURCE) then
-        do j=1,ens_size
-           ! Could use info calls to do this better; but quick fix for now
-           temp = -99_r8
-           !!!do while(temp <= 0.0_r8)
-           do while(temp < 0.0_r8)
-              !!!temp = random_gaussian(random_seq, state_ens_handle%copies(j, i), &
-                 !!!5.0_r8 + 0.01_r8)
-              !!!temp = random_gaussian(random_seq, 10.0_r8, 10.0_r8)
-              if(i == 81) then
-                 temp = 5.0_r8
-              else
-                 temp = 0.0_r8
-              endif
-           end do
-           state_ens_handle%copies(j, i) = temp
-        end do
+        ! For now, can just keep source constant so it will not evolve
+        ! Need to perturb to do source estimation
     end if
 end do
 
@@ -561,6 +554,7 @@ call nc_add_global_attribute(ncid, "model", "Lorenz_96_Tracer_Advection")
 call nc_add_global_attribute(ncid, "model_forcing", forcing )
 call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 call nc_add_global_attribute(ncid, "source_rate", source_rate)
+call nc_add_global_attribute(ncid, "sink_rate", sink_rate)
 call nc_add_global_attribute(ncid, "exponential_sink_folding", e_folding)
 call nc_add_global_attribute(ncid, "mean_velocity", mean_velocity)
 call nc_add_global_attribute(ncid, "pert_velocity_multiplier", pert_velocity_multiplier)
