@@ -83,9 +83,6 @@ error_variance = get_obs_def_error_variance(obs_def)
 ! Set the observation error details for each type of quantity
 if(obs_kind == QTY_STATE_VARIABLE) then
    bounded = .false.
-elseif(obs_kind == QTY_STATE_VAR_POWER) then
-   bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;
 elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
    bounded(1) = .true.;     bounded(2) = .false.
    bounds(1) = 0.0_r8;      bounds(2) = 0.0_r8
@@ -140,10 +137,6 @@ if(is_inflation) then
    if(kind == QTY_STATE_VARIABLE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded = .false.
-   elseif(kind == QTY_STATE_VAR_POWER) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
-      bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
@@ -161,10 +154,6 @@ elseif(is_state) then
    if(kind == QTY_STATE_VARIABLE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded = .false.
-   elseif(kind == QTY_STATE_VAR_POWER) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
-      bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
@@ -182,10 +171,6 @@ else
    if(kind == QTY_STATE_VARIABLE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded = .false.
-   elseif(kind == QTY_STATE_VAR_POWER) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
-      bounded(1) = .true.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;
    elseif(kind == QTY_TRACER_CONCENTRATION) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded(1) = .true.;     bounded(2) = .false.
@@ -228,10 +213,6 @@ real(r8), intent(inout) :: bounds(2)
 if(obs_kind == QTY_STATE_VARIABLE) then
    filter_kind = BOUNDED_NORMAL_RHF
    bounded = .false.
-elseif(obs_kind == QTY_STATE_VAR_POWER) then
-   filter_kind = BOUNDED_NORMAL_RHF
-   bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;
 elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
    filter_kind = BOUNDED_NORMAL_RHF
    bounded(1) = .true.;     bounded(2) = .false.
