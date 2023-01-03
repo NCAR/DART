@@ -10,8 +10,7 @@ prerequisite statistical concepts by reading
 
 The diagnostics in the tutorial use Matlab®. To learn how to configure your
 environment to use Matlab and the DART diagnostics, see the documentation for
-`Configuring Matlab® for netCDF & DART
-<http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#configure_matlab>`__.
+:doc:`/guide/matlab-observation-space`.
 
 - **Section  1:** `Filtering For a One Variable System                                                                         <../_static/slides/section_01.pdf>`__ 
 - **Section  2:** `The DART Directory Tree                                                                                     <../_static/slides/section_02.pdf>`__ 
