@@ -324,7 +324,8 @@ real(r8), intent(out) :: x(:)
 
 
 ! Set all variables, winds, tracer concentration, and source to 0
-x(1:grid_size) = 0.0_r8
+x(:) = 0.0_r8
+
 ! Add a single perturbation to L96 state (winds) to generate evolution
 x(1) = 0.1_r8
 ! For these tests, single tracer source at the first grid point
