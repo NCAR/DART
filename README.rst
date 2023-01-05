@@ -4,7 +4,8 @@ Welcome to the Data Assimilation Research Testbed
 .. warning::
 
   Pre-release version of DART: quantile conserving and probit transform tools
-  :ref:`tracer advection example<quantile tracer>`
+	
+  To get started, see the :ref:`tracer advection example<quantile tracer>`
 
 
 The Data Assimilation Research Testbed (DART) is an open-source, freely
