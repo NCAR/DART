@@ -1,3 +1,5 @@
+.. _Required model_mod routines:
+
 Required model_mod routines
 ===========================
 
