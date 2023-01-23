@@ -577,7 +577,7 @@ AdvanceTime: do
             elseif(.not. bounded(1) .and. bounded(2)) then
                ! Bound on upper side
                obs_value(1) = bounds(2) + 1.0_r8
-               do while(obs_value(1) > bounds(1))
+               do while(obs_value(1) > bounds(2))
                   obs_value(1) = random_gaussian(random_seq, true_obs(1), &
                      sqrt(error_variance))
                end do
