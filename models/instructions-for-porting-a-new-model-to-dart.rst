@@ -44,7 +44,7 @@ The DAReS team recommends that you look at the existing supported models and reu
 possible when you write the code required for DART. Models with similar grid types 
 or vertical coordinates are good candidates.
 
-There is often a sensible default implementation that can be used for each of these routines also. For
+There is often a sensible default implementation that can be used for each of these routines as well. For
 more information on what the default behavior for each routine is and how to use the default implementations,
 see :ref:`Required model_mod routines`.
 
