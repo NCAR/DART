@@ -13,8 +13,9 @@ use sort_mod,  only : sort, index_sort
 
 use utilities_mod, only : E_ERR, error_handler
 
-use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, &
+use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR,  &
                                GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, UNIFORM_PRIOR
+                               !!!PARTICLE_PRIOR
 
 use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
@@ -39,6 +40,9 @@ integer :: bounded_norm_rh_ens_size = -99
 
 character(len=512)     :: errstring
 character(len=*), parameter :: source = 'quantile_distributions_mod.f90'
+
+! Logical to fix bounds violations for bounded_normal_rh
+logical :: fix_bound_violations = .false.
 
 contains
 
@@ -108,6 +112,8 @@ elseif(p%prior_distribution_type == BETA_PRIOR) then
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded, bounds)
+!!!elseif(p%prior_distribution_type == PARTICLE_PRIOR) then
+   !!!call to_probit_particle(ens_size, state_ens, p, probit_ens, use_input_p, bounded, bounds)
 else
    write(errstring, *) 'Illegal distribution type', p%prior_distribution_type
    call error_handler(E_ERR, 'convert_to_probit', errstring, source)
@@ -362,21 +368,41 @@ if(use_input_p) then
    do i = 1, ens_size
       ! Figure out which bin it is in
       x = state_ens(i)
+
+      ! This block of the code is only applied for observation posteriors
+      ! Rare round-off issues with the bounded_normal RHF can lead to increments that produce posteriors
+      ! that can violate the bound by a tiny amount. The following statements can fix that. For now, they are 
+      ! turned off in the default code so that more egregious possible errors can be flagged below.
+      if(fix_bound_violations) then
+         if(bounded_below .and. x < lower_bound) x = lower_bound
+         if(bounded_above .and. x > upper_bound) x = upper_bound
+      endif
+
       if(x < p%params(1)) then
          ! In the left tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_below .and. x < lower_bound) then
-            errstring = 'Ensemble member less than lower bound first check'
+            write(errstring, *) 'Ensemble member less than lower bound first check(see code)', x, lower_bound
             call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
+            ! This error can occur due to roundoff in increment generation from bounded RHF
+            ! It may be safe to just set x to the value of the bound here. See fix_bound_violations above
          endif
+
          if(do_uniform_tail_left) then
             ! Uniform approximation for left tail
             ! The division here could be a concern. However, if p%params(1) == lower_bound, then
             ! x cannot be < p%params(1).
             quantile = (x - lower_bound) / (p%params(1) - lower_bound) * (1.0_r8 / (ens_size + 1.0_r8))
          else
-            ! It's a normal tail, bounded or not 
-            quantile = tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left)
+            ! It's a normal tail
+            if(bounded_below) then
+               quantile = tail_amp_left * (norm_cdf(x, tail_mean_left, tail_sd_left) - &
+                  norm_cdf(lower_bound, tail_mean_left, tail_sd_left))
+            else        ! Unbounded, tail normal goes all the way down to quantile 0
+               quantile = tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left)
+            endif
+            ! Make sure it doesn't sneak past the first ensemble member due to round-off
+            quantile = min(quantile, 1.0_r8 / (ens_size + 1.0_r8))
          endif
       elseif(x == p%params(1)) then
          ! This takes care of cases where there are multiple rh values at the bdry or at first ensemble
@@ -385,8 +411,10 @@ if(use_input_p) then
          ! In the right tail
          ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
          if(bounded_above .and. x > upper_bound) then
-            errstring = 'Ensemble member greater than upper bound first check'
+            write(errstring, *) 'Ensemble member greater than upper bound first check(see code)', x, upper_bound
             call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
+            ! This error can occur due to roundoff in increment generation from bounded RHF
+            ! It may be safe to just set x to the value of the bound here. See fix_bound_violations above
          endif
 
          if(do_uniform_tail_right) then
@@ -396,8 +424,12 @@ if(use_input_p) then
             quantile = ens_size / (ens_size + 1.0_r8) + &
                (x - p%params(ens_size)) / (upper_bound - p%params(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
          else
-            ! It's a normal tail, bounded or not. 
-            quantile = (1.0_r8 - tail_amp_right) + norm_cdf(x, tail_mean_right, tail_sd_right)
+            ! It's a normal tail
+            ! Want to avoid quantiles exceeding 1 due to numerical issues. Do fraction of the normal part
+               quantile = ens_size / (ens_size + 1.0_r8) + &
+                  tail_amp_right * (norm_cdf(x, tail_mean_right, tail_sd_right) - &
+                  norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) * (1.0_r8 / (ens_size + 1.0_r8))
+               quantile = min(quantile, 1.0_r8)
          endif
 
       else
@@ -577,6 +609,77 @@ end subroutine to_probit_bounded_normal_rh
 
 !------------------------------------------------------------------------
 
+subroutine to_probit_particle(ens_size, state_ens, p, probit_ens, &
+   use_input_p, bounded, bounds)
+
+! Doing a particle filter. Quantiles are (2i-1) / 2n 
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: state_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: probit_ens(ens_size)
+logical, intent(in)                  :: use_input_p
+logical, intent(in)                  :: bounded(2)
+real(r8), intent(in)                 :: bounds(2)
+
+integer  :: i, j, indx
+integer  :: ens_index(ens_size)
+real(r8) :: quantile
+
+! This should fail if any of the input states are not the same as one of the 
+! original ensemble states when use_input_p is false. 
+if(use_input_p) then
+   ! The particles are available from a previous call
+   ! The input member gets the same quantile as the corresponding member from the previous call
+   ! This can be done vastly more efficiently with either binary searches or by first sorting the
+   ! incoming state_ens so that the lower bound for starting the search is updated with each ensemble member
+    
+   do i = 1, ens_size
+      ! Loop through the previous ensemble members
+      quantile = -99_r8
+      do j = 1, ens_size
+         ! Is exact equivalence a problem here?
+         if(state_ens(i) == p%params(j)) then
+            quantile = 2*(j-1) / (2*ens_size)
+            exit
+         endif
+         ! Test failed to find a match
+         if(quantile < 0.0_r8) then
+            write(errstring, *) 'Unable to find prior for use_input_p', state_ens(i)
+            call error_handler(E_ERR, 'to_probit_particle', errstring, source)
+         endif
+         ! Do probit transform
+         call norm_inv(quantile, probit_ens(i))
+      end do
+   end do
+   
+else
+   ! Not using a pre-existing distribution
+   ! Take care of space for the transform data structure, just need to know sorted prior members
+   if(allocated(p%params)) deallocate(p%params)
+   allocate(p%params(ens_size))
+
+   ! For particle filter, the required data for inversion is the original ensemble values
+   ! Having them in sorted order is useful for subsequent inversion
+   call index_sort(state_ens, ens_index, ens_size)
+   p%params(1:ens_size) = state_ens(ens_index)
+
+   ! Get the quantiles for each of the ensemble members
+   do i = 1, ens_size
+      indx = ens_index(i)
+      ! The quantiles for a particle filter are just 2(i-1) / 2n
+      quantile = 2*(indx - 1) / (2 * ens_size) 
+
+      ! Convert the quantiles to probit space
+      call norm_inv(quantile, probit_ens(indx))
+   end do 
+
+endif
+
+end subroutine to_probit_particle
+
+!------------------------------------------------------------------------
+
 subroutine convert_all_from_probit(ens_size, num_vars, probit_ens, p, state_ens)
 
 integer, intent(in)                  :: ens_size
@@ -618,6 +721,8 @@ elseif(p%prior_distribution_type == BETA_PRIOR) then
    call from_probit_beta(ens_size, probit_ens, p, state_ens)
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
+!!!elseif(p%prior_distribution_type == PARTICLE_PRIOR) then
+   !!!call from_probit_particle(ens_size, probit_ens, p, state_ens)
 else
    write(errstring, *) 'Illegal distribution type', p%prior_distribution_type
    call error_handler(E_ERR, 'convert_from_probit', errstring, source)
@@ -765,7 +870,7 @@ logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
-real(r8) :: bound_inv, correction
+real(r8) :: fract, lower_mass, upper_mass
 
 ! Don't know what to do if original ensemble had all members the same (or nearly so???)
 tail_sd_left = p%params(ens_size + 11)
@@ -814,30 +919,20 @@ do i = 1, ens_size
             (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
       !!!elseif(.not. bounded_below) then
       else
-         ! Lower tail is (bounded) normal, work in from the bottom
-         ! Value of weighted normal at smallest member
-         mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
-         target_mass = mass - (1.0_r8 / (ens_size + 1.0_r8) - quantile)
+         ! Find the mass at the lower bound (which could be unbounded)
+         if(bounded_below) then
+            lower_mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+         else
+            lower_mass = 0.0_r8
+         endif
+         ! Find the mass at the upper bound (ensemble member 1)
+         upper_mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
+         ! What fraction of this mass difference should we go?
+         fract = quantile / (1.0_r8 / (ens_size + 1.0_r8))
+         target_mass = lower_mass + fract * (upper_mass - lower_mass)
+!!!write(*, *) 'first weighted normal call '
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
-
-!------------------- The following block can prevent any risk of getting below bounds
-!                    results, but is expensive and may be unneeded with thresholds in general
-!                    Code is left here, along with elseif 8 lines above in case this becomes an issue.
-!                    A similar block would be needed for the upper bounds. Note that there is also
-!                    a risk of destroying the sorted order by doing this and that might require further
-!                    subtlety
-!      elseif(bounded_below .and. .not. do_uniform_tail_left) then
-!         ! Work in from the edge??? Have to watch for sorting problems???
-!         ! Find mass at the lower bound
-!         mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
-!         ! If the inverse for the boundary gives something less than the bound have to fix it
-!         call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, mass, bound_inv)
-!         correction = abs(min(0.0_r8, bound_inv))
-!         target_mass = mass + quantile
-!         call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
-!         state_ens(i) = state_ens(i) + correction
-!------------------- End unused block -------------------------------
-       
+!!!write(*, *) 'back from first weighted normal call '
       endif
 
    elseif(region == ens_size) then
@@ -850,11 +945,20 @@ do i = 1, ens_size
             (quantile - (ens_size / (ens_size + 1.0_r8))) * (upper_state - lower_state)
       else
          ! Upper tail is (bounded) normal
-         ! Value of weighted normal at largest ensemble member
-         mass = tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)
-         ! How much mass we need past the last ensemble member which has N/(N+1) quantile
-         target_mass = mass + quantile - (ens_size / (ens_size + 1.0_r8))
+         ! Find the mass at the upper bound (which could be unbounded)
+         if(bounded_above) then
+            upper_mass = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
+         else
+            upper_mass = 1.0_r8
+         endif
+         ! Find the mass at the lower bound (ensemble member n)
+         lower_mass = tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)
+         ! What fraction of the last interval do we need to move
+         fract = (quantile - ens_size / (ens_size + 1.0_r8)) / (1.0_r8 / (ens_size + 1.0_r8))
+         target_mass = lower_mass + fract * (upper_mass - lower_mass)
+!!!write(*, *) 'first weighted normal call '
          call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, state_ens(i))
+!!!write(*, *) 'back from first weighted normal call '
       endif
          
    else
@@ -890,6 +994,36 @@ endif
 deallocate(p%params)
 
 end subroutine from_probit_bounded_normal_rh
+
+!------------------------------------------------------------------------
+
+subroutine from_probit_particle(ens_size, probit_ens, p, state_ens)
+
+integer, intent(in)                  :: ens_size
+real(r8), intent(in)                 :: probit_ens(ens_size)
+type(dist_param_type), intent(inout) :: p
+real(r8), intent(out)                :: state_ens(ens_size)
+
+integer :: i, indx
+real(r8) :: quantile
+
+do i = 1, ens_size
+   ! First invert the probit transform to tg
+   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+
+   ! Invert the quantile for a particle prior
+   ! There is a prior ensemble member associated with each 1/ens_size fraction of the quantile 
+   ! range
+   indx = floor(quantile * ens_size) + 1
+   if(indx <= 0) indx = 1
+   state_ens(i) = p%params(indx)
+end do
+
+! Probably do this explicitly 
+! Free the storage
+deallocate(p%params)
+
+end subroutine from_probit_particle
 
 !------------------------------------------------------------------------
 
