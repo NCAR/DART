@@ -33,8 +33,8 @@ Everything on this "possible goals" list except adding support for a new model
 can generally be done by a single user with minimal help from the DART team.
 Therefore this discussion focuses only on adding a new model to DART.
 
-Should I consider using DART?
------------------------------
+Should I consider using DART with my model?
+-------------------------------------------
 
 DART is an ensemble-based DA system. It makes multiple runs of a model with
 slightly different inputs and uses the statistical distribution of the results
