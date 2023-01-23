@@ -356,6 +356,24 @@ if ($#log_list >= 3) then
    set sec_o_day   = $RM_DATE_PARTS[4]
    set day_time    = ${day_o_month}-${sec_o_day}
 
+   # Decide whether to purge restart files at this date and time.
+   set save_rest_freq = BOGUS_save_every_Mth
+
+   set purge = 'true'
+   # Learn whether save_rest_freq a string or a number.
+   # Character strings must be tested outside of the 'if' statement.
+   echo $save_rest_freq | grep '[a-z]'
+   if ($status == 0) then
+      set purge_date = $RM_DATE_PARTS[1]-$RM_DATE_PARTS[2]-$RM_DATE_PARTS[3]
+      set weekday = `date --date="$purge_date" +%A`
+      if ($weekday == $save_rest_freq) set purge = 'false'
+ 
+   # Numbers can be tested inside the 'if' statement.
+   else if (`echo $save_rest_freq | grep '[0-9]'`) then
+      if (${day_o_month} % ${save_rest_freq} == 0) set purge = 'false'
+ 
+   endif
+
    # Identify log files to be removed or moved.
    # [3] means the 3rd oldest restart set is being (re)moved.
    set rm_log = `echo $log_list[3] | sed -e "s/\./ /g;"`
@@ -367,7 +385,7 @@ if ($#log_list >= 3) then
    # The 'else' block preserves the restarts in the archive directory.
 
    if ( $sec_o_day !~ '00000' || \
-       ($sec_o_day =~ '00000' && $day_o_month % BOGUS_save_every_Mth != 0) ) then
+       ($sec_o_day =~ '00000' && $purge == 'true') ) then
 
       # Optionally save inflation restarts, even if it's not a 'save restart' time.
       if ($save_all_inf =~ TRUE) ${MOVE} ${CASE}*inf*${day_time}*  ${archive}/esp/hist

@@ -1381,8 +1381,10 @@ prior_bound_mass(2) = 0.0_r8
 
 ! WARNING: NEED TO DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE ARE VERY CLOSE/SAME
 base_prior_prob = 1.0_r8 / (ens_size + 1.0_r8)
+
 ! Default is that tails are not uniform
 do_uniform_tail(1:2) = .false.
+
 if(is_bounded(1)) then
    ! Compute the CDF at the bounds
    bound_quantile = norm_cdf(bound(1), tail_mean(1), tail_sd(1))

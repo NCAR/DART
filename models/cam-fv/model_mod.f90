@@ -2077,18 +2077,21 @@ character(len=*), parameter :: routine = 'obs_vertical_to_scaleheight'
 
 ens_size = 1
 
+! if this location is on the surface, use the surface pressure field
+! in the computations below.  otherwise use the 3d pressure field.
+if (query_location(location) == VERTISSURFACE) then
+   ptype = QTY_SURFACE_PRESSURE
+else
+   ptype = QTY_PRESSURE
+endif
+
+
 ! there are 4 cases here.
 
 if (no_normalization_of_scale_heights) then
 
    ! take log of pressure, either surface pressure or regular pressure
    
-   if (query_location(location) == VERTISSURFACE) then
-      ptype = QTY_SURFACE_PRESSURE
-   else
-      ptype = QTY_PRESSURE
-   endif
-
    call ok_to_interpolate(ptype, varid1, my_status)
    if (my_status /= 0) return
       

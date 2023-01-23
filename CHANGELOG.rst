@@ -22,6 +22,33 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 21 2022 :: Documentation update for CLM and the DART Tutorial. Tag v10.6.1**
+
+- Improved instructions for the CLM-DART tutorial.  
+- Fixes link within the documentation to a section describing how to
+  configure MATLAB's path to use DART MATLAB functions.
+
+**December 12 2022 :: Automated testing of pull requests. Tag v10.6.0**
+
+- GitHub actions for pull requests which checkout, compile and run a 
+  given model.  
+  Current workflow: lorenz_96 (mpi) and lorenz_63 (no mpi)
+
+*contributed by Anderson Chauphan*
+
+**December 2 2022 :: Bug-fix cam-fv. Tag v10.5.6**
+
+- Fix for assimilate.csh purge of restart files when the interval for restart
+  saves is given as a string rather than an integer.
+- Fix for setting ptype when no_normalization_of_scale_heights = .false.
+
+**November 8 2022 :: Improved clean_nml and CLM quickbuild.sh. Tag v10.5.5**
+
+- clean_nml tool for comparing input.nmls given optional arguments to 
+  keep the original order of nmls and/or entries, and optionally keep 
+  namelist comments.   
+- fill_inflation_restart now a default build for CLM.
+
 **November 3 2022 :: Bug-fix release. Tag v10.5.4**
 
 - Perfect_model_obs (pmo) fixed for running with MPI and advancing the

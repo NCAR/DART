@@ -1,6 +1,13 @@
 Welcome to the Data Assimilation Research Testbed
 =================================================
 
+.. warning::
+
+  Pre-release version of DART: quantile conserving and probit transform tools
+	
+  To get started, see the :ref:`tracer advection example<quantile tracer>`
+
+
 The Data Assimilation Research Testbed (DART) is an open-source, freely
 available community facility for ensemble data assimilation (DA). [1]_ DART is
 developed and maintained by the `Data Assimilation Research Section
@@ -221,6 +228,7 @@ References
    guide/downloading-dart
    guide/compiling-dart
    guide/verifying-installation
+   models/lorenz_96_tracer_advection/work/readme
 
 .. toctree::
    :maxdepth: 2
