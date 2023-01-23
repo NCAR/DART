@@ -127,9 +127,9 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
-                                'RAW_TRACER_CONCENTRATION'
-   evaluate_these_obs_types   = 'RAW_TRACER_SOURCE'
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE', 
+   'RAW_TRACER_CONCENTRATION'
+   evaluate_these_obs_types = 'RAW_TRACER_SOURCE'
    /
 
 &model_nml
@@ -144,6 +144,7 @@
    source_rate              = 100.0,
    point_tracer_source_rate = 5.0,
    positive_tracer          = .true.,
+   bound_above_is_one       = .false.
    time_step_days           = 0,
    time_step_seconds        = 3600,
    /
