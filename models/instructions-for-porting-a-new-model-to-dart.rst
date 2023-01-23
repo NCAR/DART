@@ -183,7 +183,7 @@ there are 2 additional steps:
 * ``dart_to_model`` - write the updated data back to the native file format
 
 
-More details on each of these 5 steps follows. There is a more in-depth desription of each individual program here: :ref:`DART programs`.
+More details on each of these 5 steps follows. There is a more in-depth description of each individual program here: :ref:`DART programs`.
 
 Running ``model_to_dart`` if needed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
