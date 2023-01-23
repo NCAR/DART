@@ -44,6 +44,10 @@ The DAReS team recommends that you look at the existing supported models and reu
 possible when you write the code required for DART. Models with similar grid types 
 or vertical coordinates are good candidates.
 
+There is often a sensible default implementation that can be used for each of these routines also. For
+more information on what the default behavior for each routine is and how to use the default implementations,
+see :ref:`Required model_mod routines`.
+
 The required subroutines are these:
 
 .. code-block:: text
@@ -100,7 +104,7 @@ For now, ignore these routines:
    read_model_time()
    write_model_time()
 
-If you have data in a dart initial condition/restart file, then you
+If you have data in a initial condition/restart file, then you
 can ignore these routines:
 
 .. code-block:: text
@@ -179,7 +183,7 @@ there are 2 additional steps:
 * ``dart_to_model`` - write the updated data back to the native file format
 
 
-More details on each of these 5 steps follows.
+More details on each of these 5 steps follows. There is a more in-depth desription of each individual program here: :ref:`DART programs`.
 
 Running ``model_to_dart`` if needed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

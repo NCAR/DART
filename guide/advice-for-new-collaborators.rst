@@ -16,7 +16,7 @@ Goals of using DART
 -------------------
 
 DART is the Data Assimilation Research Testbed.  It is a collection of 
-tools and routines and scripts that allow users to built custom solutions
+tools and routines and scripts that allow users to build custom solutions
 and explore a variety of DA related efforts.  It is not a turnkey system;
 it must be built before use and is often customized based on needs and goals.
 
@@ -24,7 +24,7 @@ DART is often used for the following types of projects:
 
 - Learning about Data Assimilation (DA)
 - Using DART with an existing model and supported observations
-- :ref:`Porting new models`
+- Using DART with a new model: :ref:`Porting new models`
 - Using new observations with DART in an existing model
 - Using both a new model and new observations with DART
 - Using DART to teach DA
@@ -313,3 +313,9 @@ If the observations are expected to impact only a small percentage
 of the state variables then doing it on demand is more efficient.
 The options here are namelist selectable at runtime and the impact
 on total runtime can be easily measured and compared.
+
+Where can I learn more about the process of creating a DART interface to new model?
+-----------------------------------------------------------------------------------
+
+A detailed, step-by-step set of instructions for porting a new model to DART can be
+found here: :ref:`Porting new models`.
