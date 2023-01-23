@@ -1254,6 +1254,11 @@ call ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_
 ! These are increments for sorted ensemble; convert to increments for unsorted
 do i = 1, ens_size
    obs_inc(sort_ind(i)) = sort_post(i) - ens(sort_ind(i))
+   ! It is possible, although apparently exceedingly unusual, to generate an increment
+   ! here that when added back onto the prior leads to a posterior that is greater than 
+   ! the bounds. Unclear if there is any direct way to fix this given that increments are
+   ! being passed out. It can be corrected in to_probit_bounded_normal_rh by changing the
+   ! priors to satisfy the bounds there
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
@@ -1376,6 +1381,8 @@ prior_bound_mass(2) = 0.0_r8
 
 ! WARNING: NEED TO DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE ARE VERY CLOSE/SAME
 base_prior_prob = 1.0_r8 / (ens_size + 1.0_r8)
+! Default is that tails are not uniform
+do_uniform_tail(1:2) = .false.
 if(is_bounded(1)) then
    ! Compute the CDF at the bounds
    bound_quantile = norm_cdf(bound(1), tail_mean(1), tail_sd(1))
@@ -1383,7 +1390,6 @@ if(is_bounded(1)) then
       ! If bound and ensemble member are too close, do uniform approximation
       do_uniform_tail(1) = .true.
    else
-      do_uniform_tail(1) = .false.
       ! Prior tail amplitude is  ratio of original probability to that retained in tail after bounding
       prior_tail_amp(1) = base_prior_prob / (base_prior_prob - bound_quantile)
       prior_bound_mass(1) = prior_tail_amp(1) * bound_quantile
@@ -1397,7 +1403,6 @@ if(is_bounded(2)) then
       ! If bound and ensemble member are too close, do uniform approximation
       do_uniform_tail(2) = .true.
    else
-      do_uniform_tail(2) = .false.
       ! Numerical concern, if ensemble is close to bound amplitude can become unbounded? Use inverse.
       prior_tail_amp(2) = base_prior_prob / (base_prior_prob - (1.0_r8 - bound_quantile))
       ! Compute amount of mass in prior tail normal that is beyond the bound
