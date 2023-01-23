@@ -42,4 +42,4 @@ DART supported models:
 - :doc:`wrf_hydro/readme`
 - :doc:`wrf/readme`
 
-For information on creating a DART interface for a new model, see :ref:`Porting new models`
+ If you are interested in creating a DART interface for a new model, see :ref:`Using new models` and :ref:`Porting new models`.
