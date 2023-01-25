@@ -317,5 +317,3 @@ on total runtime can be easily measured and compared.
 Where can I learn more about the process of creating a DART interface to a new model?
 -----------------------------------------------------------------------------------
 
-A detailed, step-by-step set of instructions for porting a new model to DART can be
-found here: :ref:`Porting new models`.
