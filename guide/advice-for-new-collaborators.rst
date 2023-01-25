@@ -317,8 +317,4 @@ of the state variables then doing it on demand is more efficient.
 The options here are namelist selectable at runtime and the impact
 on total runtime can be easily measured and compared.
 
-Where can I learn more about the process of creating a DART interface to a new model?
------------------------------------------------------------------------------------
 
-A detailed, step-by-step set of instructions for porting a new model to DART can be
-found here: :ref:`Porting new models`.
