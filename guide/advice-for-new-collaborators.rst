@@ -1,7 +1,7 @@
 .. _Using new models:
 
-Creating a DART interface to a new model 
-========================================
+Can I run my model with DART?
+=============================
 
 The DART team often collaborates with other groups to help write the interface
 code to a new model. The most efficient way to get started is to meet with
