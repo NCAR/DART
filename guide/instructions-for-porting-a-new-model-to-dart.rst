@@ -39,6 +39,7 @@ This will create an BOUMME model directory with the following files:
 - ``quickbuild.sh`` is used to compile DART for your model.
 
 Navigate to the work directory and enter ``./quickbuild.sh`` and everything should compile at this point.
+Please note that you will need to run ``./quickbuild.sh`` again after making edits to ``model_mod.f90`` to recompile. 
 
 The DAReS team recommends that you look at the existing supported models and reusing code from them if
 possible when you write the code required for DART. Models with similar grid types 
