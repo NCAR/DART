@@ -59,8 +59,8 @@ As an example, if a ``preprocess_nml`` namelist in ``input.nml`` looks like:
 .. code-block:: fortran
 
    &preprocess_nml
-       input_obs_qty_mod_fil e  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-       output_obs_qty_mod_fil e = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+       input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+       output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
        quantity_files           = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
        input_obs_def_mod_file   = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
        obs_type_files           = '../../../observations/forward_operators/obs_def_gps_mod.f90',
