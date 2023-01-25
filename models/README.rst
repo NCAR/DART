@@ -1,3 +1,5 @@
+.. _Supported models:
+
 Supported Models
 ================
 
