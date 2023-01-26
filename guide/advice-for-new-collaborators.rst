@@ -30,7 +30,7 @@ DART is often used for the following types of projects:
 - Using DART to teach DA
 
 You can view a list of models that are already supported at :ref:`Supported models`
-and a list of supported observations at https://docs.dart.ucar.edu/en/latest/observations/obs_converters/README.html#converter-programs.
+and a list of supported observations at :ref:`programs`.
 
 Everything on this "possible goals" list except adding support for a new model
 can generally be done by a single user with minimal help from the DART team.
