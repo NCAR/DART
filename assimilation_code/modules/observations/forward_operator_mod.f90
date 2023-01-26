@@ -133,7 +133,7 @@ expected_obs = MISSING_R8
 ! call prepare_to_read_from_vars(ens_handle)
 
 ! Set up access to the state
-call create_state_window(ens_handle)
+call create_state_window(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle)
 
 ens_size = ens_handle%num_copies - ens_handle%num_extras
 
