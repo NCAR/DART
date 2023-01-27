@@ -122,9 +122,8 @@ If your model is NOT subroutine callable, you can ignore this routine:
 
    adv_1step()
 
-Otherwise have it call the interface to your model and add the files
-necessary to build your model to all the `work/path_names_*` files.
-Add any needed model source files to a src/ directory.
+Otherwise have it call the interface to your model and put the files
+necessary to build your model into the models/YOUR_MODEL directory.
 
 If you want to let filter add gaussian noise to a single state vector
 to generate an ensemble, you can ignore this routine:

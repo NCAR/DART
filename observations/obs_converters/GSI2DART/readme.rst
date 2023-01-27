@@ -56,8 +56,7 @@ Note that within ``GSI`` the source file ``kinds.F90`` has an upper-case ``F90``
 suffix. Within the ``GSI2DART`` observation converter, it gets preprocessed 
 into ``mykinds.f90`` with a lower-case ``f90`` suffix. Case-insensitive filesystems 
 should be banned ... until then, it is more robust to implement some name change 
-during preprocessing. The path name specified 
-in ``GSI2DART/work/path_names_gsi_to_dart`` reflects this processed filename.
+during preprocessing. 
 
 The following three files had their open() statements modified to read 
 'BIG_ENDIAN' files without the need to compile EVERYTHING with 
