@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 27 2023 :: Documentation update for porting new models. Tag v10.6.2**
+
+- Improved 'porting new models to DART' documentation.
+- Removed outdated references to previous build system.
+
 **December 21 2022 :: Documentation update for CLM and the DART Tutorial. Tag v10.6.1**
 
 - Improved instructions for the CLM-DART tutorial.  
