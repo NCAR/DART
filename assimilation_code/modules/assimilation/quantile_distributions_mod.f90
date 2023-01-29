@@ -135,7 +135,7 @@ elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
       call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p_temp, state_ens_temp)
       diff = state_ens - state_ens_temp
       do i = 1, ens_size
-         if(abs(diff(i)) > 1.0e-12_r8) then
+         if(abs(diff(i)) > 1.0e-11_r8) then
             write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
             stop
          endif
@@ -147,13 +147,13 @@ elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
          use_input_p, bounded, bounds)
       call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p, state_ens_temp)
       diff = state_ens - state_ens_temp
-      if(abs(maxval(diff)) > 1.0e-8_r8) then
+      if(abs(maxval(diff)) > 1.0e-11_r8) then
          write(*, *) 'minloc ', minloc(state_ens)
          write(*, *) 'maxloc ', maxloc(state_ens)
          do i = 1, ens_size
             write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
          enddo
-         !!!stop
+         stop
       endif
    
    endif
@@ -380,7 +380,7 @@ real(r8), parameter :: uniform_threshold = 0.01_r8
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
-real(r8) :: mean, sd, base_prob, bound_quantile
+real(r8) :: mean, sd, base_prob, bound_quantile, fract, upper_q
 
 if(use_input_p) then
    ! Using an existing ensemble for the RH points
@@ -406,12 +406,12 @@ if(use_input_p) then
    tail_mean_right = p%params(ens_size + 10)
    tail_sd_right = p%params(ens_size + 12)
 
-write(*, *) 'bounded ', bounded_below, bounded_above
-write(*, *) 'uniform ', do_uniform_tail_left, do_uniform_tail_right
-write(*, *) 'amps ', tail_amp_left, tail_amp_right
-write(*, *) 'means ', tail_mean_left, tail_mean_right
-write(*, *) 'tail_sd ', tail_sd_left
-write(*, *) 'extremes ', p%params(1), p%params(ens_size)
+!write(*, *) 'bounded ', bounded_below, bounded_above
+!write(*, *) 'uniform ', do_uniform_tail_left, do_uniform_tail_right
+!write(*, *) 'amps ', tail_amp_left, tail_amp_right
+!write(*, *) 'means ', tail_mean_left, tail_mean_right
+!write(*, *) 'tail_sd ', tail_sd_left
+!write(*, *) 'extremes ', p%params(1), p%params(ens_size)
 
    ! Get the quantiles for each of the ensemble members in a RH distribution
    call ens_quantiles(p%params(1:ens_size), ens_size, &
@@ -482,21 +482,27 @@ write(*, *) 'extremes ', p%params(1), p%params(ens_size)
             ! x cannot be > p%params(ens_size).
             quantile = ens_size / (ens_size + 1.0_r8) + &
                (x - p%params(ens_size)) / (upper_bound - p%params(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
-write(*, *) 'in u right ', x, p%params(ens_size), upper_bound
-write(*, *) 'in uniform tail right', quantile, (x - p%params(ens_size)) / (upper_bound - p%params(ens_size))
+!write(*, *) 'in u right ', x, p%params(ens_size), upper_bound
+!write(*, *) 'in uniform tail right', quantile, (x - p%params(ens_size)) / (upper_bound - p%params(ens_size))
          else
             ! It's a normal tail
-            ! Want to avoid quantiles exceeding 1 due to numerical issues. Do fraction of the normal part
 !write(*, *) 'x in normal tail ', i, x
 !write(*, *) norm_cdf(x, tail_mean_right, tail_sd_right), norm_cdf(p%params(ens_size), &
-!   tail_mean_right, tail_sd_right), 1.0_r8 / (ens_size + 1.0_r8)
-               quantile = ens_size / (ens_size + 1.0_r8) + &
-                  tail_amp_right * (norm_cdf(x, tail_mean_right, tail_sd_right) - &
-                  norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) / &
-                  (tail_amp_right - tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) * &
-                  (1.0_r8 / (ens_size + 1.0_r8)) 
-!write(*, *) 'QUANTILE QUANTILE ', quantile
-               quantile = min(quantile, 1.0_r8)
+   !tail_mean_right, tail_sd_right), 1.0_r8 / (ens_size + 1.0_r8)
+
+            if(bounded_above) then
+               upper_q = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
+            else
+               upper_q = tail_amp_right
+            endif
+
+            ! Want to avoid quantiles exceeding 1 due to numerical issues. Do fraction of the normal part
+            fract = (tail_amp_right * norm_cdf(x,                  tail_mean_right, tail_sd_right) - &
+                     tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) / &
+                    (upper_q - tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) 
+            quantile = ens_size / (ens_size + 1.0_r8) + fract * (1.0_r8 / (ens_size + 1.0_r8)) 
+!write(*, *) 'QUANTILE QUANTILE fract ', quantile, fract
+            quantile = min(quantile, 1.0_r8)
          endif
 
       else
@@ -644,9 +650,9 @@ else
    if(bounded_above) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
-write(*, *) 'upper bound quantile ', upper_bound, bound_quantile
-write(*, *) 'base_prob, 1-bq ', base_prob, 1.0_r8 - bound_quantile
-write(*, *) 'the decider ', abs(base_prob - (1.0_r8 - bound_quantile)), uniform_threshold
+!write(*, *) 'upper bound quantile ', upper_bound, bound_quantile
+!write(*, *) 'base_prob, 1-bq ', base_prob, 1.0_r8 - bound_quantile
+!write(*, *) 'the decider ', abs(base_prob - (1.0_r8 - bound_quantile)), uniform_threshold
       if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
@@ -654,8 +660,8 @@ write(*, *) 'the decider ', abs(base_prob - (1.0_r8 - bound_quantile)), uniform_
          ! Compute the right tail amplitude
          tail_amp_right = base_prob / (base_prob - (1.0_r8 - bound_quantile))
       endif
-write(*, *) 'SETTING DO_UNIFORM_TAIL_RIGHT TO ', do_uniform_tail_right
-if(.not. do_uniform_tail_right) stop
+!write(*, *) 'SETTING DO_UNIFORM_TAIL_RIGHT TO ', do_uniform_tail_right
+!!!if(.not. do_uniform_tail_right) stop
    endif
 
    ! Store the parameters of the tail in the probit data structure
@@ -1015,21 +1021,28 @@ do i = 1, ens_size
          lower_state = p%params(ens_size)
          upper_state = upper_bound
          state_ens(i) = lower_state + & 
-            (quantile - (ens_size / (ens_size + 1.0_r8))) * (upper_state - lower_state)
+            (quantile - (ens_size / (ens_size + 1.0_r8))) * (upper_state - lower_state) / &
+            (1.0_r8 / (ens_size + 1.0_r8))
+           
       else
          ! Upper tail is (bounded) normal
          ! Find the mass at the upper bound (which could be unbounded)
          if(bounded_above) then
             upper_mass = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
+!write(*, *) 'upper mass ', upper_mass
          else
             upper_mass = 1.0_r8
          endif
          ! Find the mass at the lower bound (ensemble member n)
          lower_mass = tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)
+!write(*, *) 'lower mass ', lower_mass, upper_mass - lower_mass, 1.0_r8 / (ens_size + 1.0_r8)
          ! What fraction of the last interval do we need to move
          fract = (quantile - ens_size / (ens_size + 1.0_r8)) / (1.0_r8 / (ens_size + 1.0_r8))
          target_mass = lower_mass + fract * (upper_mass - lower_mass)
+!write(*, *) 'quantile ', quantile, ens_size / (ens_size + 1.0_r8)
+!write(*, *) 'fract ', fract, target_mass
          call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, state_ens(i))
+!write(*, *) 'state_ens ', i, state_ens(i)
       endif
          
    else
