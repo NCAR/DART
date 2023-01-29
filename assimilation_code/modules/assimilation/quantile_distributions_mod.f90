@@ -11,7 +11,8 @@ use types_mod, only : r8, digits12, PI
 
 use sort_mod,  only : sort, index_sort
 
-use utilities_mod, only : E_ERR, error_handler
+use utilities_mod, only : E_ERR, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
+                          find_namelist_in_file, check_namelist_read
 
 use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR,  &
                                GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, UNIFORM_PRIOR
@@ -28,7 +29,7 @@ private
 
 
 public :: convert_to_probit, convert_from_probit, convert_all_to_probit, &
-   convert_all_from_probit, dist_param_type
+   convert_all_from_probit, dist_param_type, ens_quantiles
 
 type dist_param_type
    integer               :: prior_distribution_type
@@ -41,8 +42,16 @@ integer :: bounded_norm_rh_ens_size = -99
 character(len=512)     :: errstring
 character(len=*), parameter :: source = 'quantile_distributions_mod.f90'
 
+! Global to indicate module has been initialized
+logical :: module_initialized = .false.
+
+! Namelist with default value
 ! Logical to fix bounds violations for bounded_normal_rh
 logical :: fix_bound_violations = .false.
+! Should we use a logit transform instead of the default probit transform
+logical :: use_logit_instead_of_probit = .true.
+
+namelist /quantile_distributions_nml/ fix_bound_violations, use_logit_instead_of_probit
 
 contains
 
@@ -96,6 +105,13 @@ logical, intent(in)                  :: use_input_p
 logical, intent(in)                  :: bounded(2)
 real(r8), intent(in)                 :: bounds(2)
 
+real(r8) :: probit_ens_temp(ens_size), state_ens_temp(ens_size), diff(ens_size)
+type(dist_param_type) :: p_temp
+integer :: i
+
+! If not initialized, read in the namelist
+if(.not. module_initialized) call initialize_quantile_distributions
+
 ! Set the type of the distribution in the parameters defined type
 p%prior_distribution_type = prior_distribution_type
 
@@ -112,6 +128,37 @@ elseif(p%prior_distribution_type == BETA_PRIOR) then
 elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded, bounds)
+
+   if(.not. use_input_p) then
+      call to_probit_bounded_normal_rh(ens_size, state_ens, p_temp, probit_ens_temp, &
+         use_input_p, bounded, bounds)
+      call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p_temp, state_ens_temp)
+      diff = state_ens - state_ens_temp
+      do i = 1, ens_size
+         if(abs(diff(i)) > 1.0e-12_r8) then
+            write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
+            stop
+         endif
+      enddo
+   endif
+
+   if(use_input_p) then
+      call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens_temp, &
+         use_input_p, bounded, bounds)
+      call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p, state_ens_temp)
+      diff = state_ens - state_ens_temp
+      if(abs(maxval(diff)) > 1.0e-8_r8) then
+         write(*, *) 'minloc ', minloc(state_ens)
+         write(*, *) 'maxloc ', maxloc(state_ens)
+         do i = 1, ens_size
+            write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
+         enddo
+         !!!stop
+      endif
+   
+   endif
+
+
 !!!elseif(p%prior_distribution_type == PARTICLE_PRIOR) then
    !!!call to_probit_particle(ens_size, state_ens, p, probit_ens, use_input_p, bounded, bounds)
 else
@@ -182,8 +229,8 @@ range = upper_bound - lower_bound
 do i = 1, ens_size
    ! Convert to quantile; U(lower_bound, upper_bound) to U(0, 1)
    quantile = (state_ens(i) - lower_bound) / range
-   ! Convert to probit space 
-   call norm_inv(quantile, probit_ens(i))
+   ! Convert to probit/logit space 
+   probit_ens(i) = probit_or_logit_transform(quantile)
 end do
 
 end subroutine to_probit_uniform
@@ -232,7 +279,7 @@ do i = 1, ens_size
    ! First, convert the ensemble member to quantile
    quantile = gamma_cdf(state_ens(i), shape, scale)
    ! Convert to probit space 
-   call norm_inv(quantile, probit_ens(i))
+   probit_ens(i) = probit_or_logit_transform(quantile)
 end do
 
 end subroutine to_probit_gamma
@@ -291,8 +338,8 @@ endif
 do i = 1, ens_size
    ! First, convert the ensemble member to quantile
    quantile = beta_cdf(probit_ens(i), alpha, beta)
-   ! Convert to probit space 
-   call norm_inv(quantile, probit_ens(i))
+   ! Convert to probit/logit space 
+   probit_ens(i) = probit_or_logit_transform(quantile)
 end do
 
 end subroutine to_probit_beta
@@ -359,6 +406,13 @@ if(use_input_p) then
    tail_mean_right = p%params(ens_size + 10)
    tail_sd_right = p%params(ens_size + 12)
 
+write(*, *) 'bounded ', bounded_below, bounded_above
+write(*, *) 'uniform ', do_uniform_tail_left, do_uniform_tail_right
+write(*, *) 'amps ', tail_amp_left, tail_amp_right
+write(*, *) 'means ', tail_mean_left, tail_mean_right
+write(*, *) 'tail_sd ', tail_sd_left
+write(*, *) 'extremes ', p%params(1), p%params(ens_size)
+
    ! Get the quantiles for each of the ensemble members in a RH distribution
    call ens_quantiles(p%params(1:ens_size), ens_size, &
       bounded_below, bounded_above, lower_bound, upper_bound, q)
@@ -399,7 +453,12 @@ if(use_input_p) then
                quantile = tail_amp_left * (norm_cdf(x, tail_mean_left, tail_sd_left) - &
                   norm_cdf(lower_bound, tail_mean_left, tail_sd_left))
             else        ! Unbounded, tail normal goes all the way down to quantile 0
-               quantile = tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left)
+               quantile = (tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left) / &
+                          (tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left))) &
+                          * (1.0_r8 / (1.0_r8 + ens_size)) 
+!write(*, *) 'quantile ', quantile, tail_amp_left*norm_cdf(x, tail_mean_left, tail_sd_left)
+!write(*, *) 'other', tail_amp_left*norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
+!write(*, *) 'x, p ', x, p%params(1)
             endif
             ! Make sure it doesn't sneak past the first ensemble member due to round-off
             quantile = min(quantile, 1.0_r8 / (ens_size + 1.0_r8))
@@ -423,12 +482,20 @@ if(use_input_p) then
             ! x cannot be > p%params(ens_size).
             quantile = ens_size / (ens_size + 1.0_r8) + &
                (x - p%params(ens_size)) / (upper_bound - p%params(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
+write(*, *) 'in u right ', x, p%params(ens_size), upper_bound
+write(*, *) 'in uniform tail right', quantile, (x - p%params(ens_size)) / (upper_bound - p%params(ens_size))
          else
             ! It's a normal tail
             ! Want to avoid quantiles exceeding 1 due to numerical issues. Do fraction of the normal part
+!write(*, *) 'x in normal tail ', i, x
+!write(*, *) norm_cdf(x, tail_mean_right, tail_sd_right), norm_cdf(p%params(ens_size), &
+!   tail_mean_right, tail_sd_right), 1.0_r8 / (ens_size + 1.0_r8)
                quantile = ens_size / (ens_size + 1.0_r8) + &
                   tail_amp_right * (norm_cdf(x, tail_mean_right, tail_sd_right) - &
-                  norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) * (1.0_r8 / (ens_size + 1.0_r8))
+                  norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) / &
+                  (tail_amp_right - tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) * &
+                  (1.0_r8 / (ens_size + 1.0_r8)) 
+!write(*, *) 'QUANTILE QUANTILE ', quantile
                quantile = min(quantile, 1.0_r8)
          endif
 
@@ -447,8 +514,8 @@ if(use_input_p) then
             endif
          enddo
       endif
-      ! Convert to probit space 
-      call norm_inv(quantile, probit_ens(i))
+      ! Convert to probit/logit space 
+      probit_ens(i) = probit_or_logit_transform(quantile)
    end do
 else
 
@@ -487,7 +554,8 @@ else
    ! Convert the quantiles to probit space
    do i = 1, ens_size
       indx = ens_index(i)
-      call norm_inv(q(i), probit_ens(indx))
+      ! Convert to probit/logit space
+      probit_ens(indx) = probit_or_logit_transform(q(i))
    end do 
 
    ! For BNRH, the required data for inversion is the original ensemble values
@@ -576,6 +644,9 @@ else
    if(bounded_above) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
+write(*, *) 'upper bound quantile ', upper_bound, bound_quantile
+write(*, *) 'base_prob, 1-bq ', base_prob, 1.0_r8 - bound_quantile
+write(*, *) 'the decider ', abs(base_prob - (1.0_r8 - bound_quantile)), uniform_threshold
       if(abs(base_prob - (1.0_r8 - bound_quantile)) < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
@@ -583,6 +654,8 @@ else
          ! Compute the right tail amplitude
          tail_amp_right = base_prob / (base_prob - (1.0_r8 - bound_quantile))
       endif
+write(*, *) 'SETTING DO_UNIFORM_TAIL_RIGHT TO ', do_uniform_tail_right
+if(.not. do_uniform_tail_right) stop
    endif
 
    ! Store the parameters of the tail in the probit data structure
@@ -648,8 +721,8 @@ if(use_input_p) then
             write(errstring, *) 'Unable to find prior for use_input_p', state_ens(i)
             call error_handler(E_ERR, 'to_probit_particle', errstring, source)
          endif
-         ! Do probit transform
-         call norm_inv(quantile, probit_ens(i))
+         ! Do probit/logit transform
+         probit_ens(i) = probit_or_logit_transform(quantile)
       end do
    end do
    
@@ -670,8 +743,8 @@ else
       ! The quantiles for a particle filter are just 2(i-1) / 2n
       quantile = 2*(indx - 1) / (2 * ens_size) 
 
-      ! Convert the quantiles to probit space
-      call norm_inv(quantile, probit_ens(indx))
+      ! Convert the quantiles to probit/logit space
+      probit_ens(indx) = probit_or_logit_transform(quantile)
    end do 
 
 endif
@@ -707,6 +780,9 @@ integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: probit_ens(ens_size)
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
+
+! If not initialized, read in the namelist
+if(.not. module_initialized) call initialize_quantile_distributions
 
 ! Convert back to the orig
 if(p%prior_distribution_type == NORMAL_PRIOR) then
@@ -779,7 +855,7 @@ upper_bound = p%params(2)
 
 do i = 1, ens_size
    ! First, invert the probit to get a quantile
-   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   quantile = inv_probit_or_logit_transform(probit_ens(i))
    ! Convert from U(0, 1) to U(lower_bound, upper_bound)
    state_ens(i) = lower_bound + quantile * (upper_bound - lower_bound)
 end do
@@ -808,8 +884,8 @@ shape = p%params(1)
 scale   = p%params(2)
 
 do i = 1, ens_size
-   ! First, invert the probit to get a quantile
-   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! First, invert the probit/logit to get a quantile
+   quantile = inv_probit_or_logit_transform(probit_ens(i))
    ! Invert the gamma quantiles to get physical space
    state_ens(i) = inv_gamma_cdf(quantile, shape, scale)
 end do
@@ -840,8 +916,8 @@ lower_bound = p%params(3)
 upper_bound = p%params(4)
 
 do i = 1, ens_size
-   ! First, invert the probit to get a quantile
-   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! First, invert the probit/logit to get a quantile
+   quantile = inv_probit_or_logit_transform(probit_ens(i))
    ! Invert the beta quantiles to get scaled physical space
    state_ens(i) = inv_beta_cdf(quantile, alpha, beta)
 end do
@@ -896,9 +972,8 @@ tail_sd_right = p%params(ens_size + 12)
 
 ! Convert each probit ensemble member back to physical space
 do i = 1, ens_size
-   ! First, invert the probit to get a quantile
-   ! NOTE: Since we're doing this a ton, may want to have a call specifically for the probit inverse
-   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! First, invert the probit/logit to get a quantile
+   quantile = inv_probit_or_logit_transform(probit_ens(i))
 
    ! Can assume that the quantiles of the original ensemble for the BNRH are uniform
    ! Note that there are some implicit assumptions here about cases where the original 
@@ -930,9 +1005,7 @@ do i = 1, ens_size
          ! What fraction of this mass difference should we go?
          fract = quantile / (1.0_r8 / (ens_size + 1.0_r8))
          target_mass = lower_mass + fract * (upper_mass - lower_mass)
-!!!write(*, *) 'first weighted normal call '
          call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
-!!!write(*, *) 'back from first weighted normal call '
       endif
 
    elseif(region == ens_size) then
@@ -956,9 +1029,7 @@ do i = 1, ens_size
          ! What fraction of the last interval do we need to move
          fract = (quantile - ens_size / (ens_size + 1.0_r8)) / (1.0_r8 / (ens_size + 1.0_r8))
          target_mass = lower_mass + fract * (upper_mass - lower_mass)
-!!!write(*, *) 'first weighted normal call '
          call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, state_ens(i))
-!!!write(*, *) 'back from first weighted normal call '
       endif
          
    else
@@ -1008,8 +1079,8 @@ integer :: i, indx
 real(r8) :: quantile
 
 do i = 1, ens_size
-   ! First invert the probit transform to tg
-   quantile = norm_cdf(probit_ens(i), 0.0_r8, 1.0_r8)
+   ! First invert the probit/logit transform to tg
+   quantile = inv_probit_or_logit_transform(probit_ens(i))
 
    ! Invert the quantile for a particle prior
    ! There is a prior ensemble member associated with each 1/ens_size fraction of the quantile 
@@ -1025,6 +1096,37 @@ deallocate(p%params)
 
 end subroutine from_probit_particle
 
+!------------------------------------------------------------------------
+
+function probit_or_logit_transform(quantile)
+
+real(r8)             :: probit_or_logit_transform
+real(r8), intent(in) :: quantile
+
+! Transform the quantile 
+if(use_logit_instead_of_probit) then
+   probit_or_logit_transform =  log(quantile / (1.0_r8 - quantile))
+else
+   call norm_inv(quantile, probit_or_logit_transform)
+endif
+
+end function probit_or_logit_transform
+
+!------------------------------------------------------------------------
+
+function inv_probit_or_logit_transform(p)
+
+real(r8)             :: inv_probit_or_logit_transform
+real(r8), intent(in) :: p 
+
+! Transform back to get a quantile
+if(use_logit_instead_of_probit) then
+   inv_probit_or_logit_transform = 1.0_r8 / (1.0_r8 + exp(-p))
+else
+   inv_probit_or_logit_transform = norm_cdf(p, 0.0_r8, 1.0_r8)
+endif
+
+end function inv_probit_or_logit_transform
 !------------------------------------------------------------------------
 
 subroutine ens_quantiles(ens, ens_size, bounded_below, bounded_above, &
@@ -1099,7 +1201,7 @@ end do
 
 ! Top bound duplicates next
 do i = ens_size - upper_dups + 1, ens_size
-   q(i) = upper_dups / (2.0_r8 * (ens_size + 1.0_r8))
+   q(i) = 1.0_r8 - upper_dups / (2.0_r8 * (ens_size + 1.0_r8))
 end do
 
 ! Do the interior series
@@ -1110,6 +1212,23 @@ do i = 1, series_num
 end do
 
 end subroutine ens_quantiles
+
+!------------------------------------------------------------------------
+subroutine initialize_quantile_distributions()
+
+integer :: iunit, io
+
+module_initialized = .true.
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "quantile_distributions_nml", iunit)
+read(iunit, nml = quantile_distributions_nml, iostat = io)
+call check_namelist_read(iunit, io, "quantile_distributions_nml")
+
+if (do_nml_file()) write(nmlfileunit,nml=quantile_distributions_nml)
+if (do_nml_term()) write(     *     ,nml=quantile_distributions_nml)
+
+end subroutine initialize_quantile_distributions
 
 !------------------------------------------------------------------------
 
