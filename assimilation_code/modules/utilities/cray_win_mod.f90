@@ -54,9 +54,11 @@ contains
 !-------------------------------------------------------------
 !> Create the window for the ensemble complete state vector
 !> I think you have to pass it the state ensemble handle
-subroutine create_state_window(state_ens_handle)
+subroutine create_state_window(state_ens_handle, fwd_op_ens_handle, qc_ens_handle)
 
 type(ensemble_type), intent(inout) :: state_ens_handle !< state ensemble handle
+type(ensemble_type), intent(inout), optional :: fwd_op_ens_handle
+type(ensemble_type), intent(inout), optional :: qc_ens_handle
 
 integer :: ii, jj, count, ierr
 integer :: bytesize !< size in bytes of each element in the window
@@ -68,6 +70,12 @@ data_count = copies_in_window(state_ens_handle)
 
 if (get_allow_transpose(state_ens_handle)) then
    call all_copies_to_all_vars(state_ens_handle)
+   if (present(fwd_op_ens_handle)) then
+      call all_copies_to_all_vars(fwd_op_ens_handle)
+   endif
+   if (present(qc_ens_handle)) then
+      call all_copies_to_all_vars(qc_ens_handle)
+   endif
 else
    ! find how many variables I have
    my_num_vars = state_ens_handle%my_num_vars
