@@ -139,6 +139,9 @@ real(r8) :: c1,c2,c3,c4,c5,c6
 real(r8) :: d1,d2,d3,d4
 real(r8) :: q,r
 
+call norm_inv_accurate(p_in, x)
+return
+
 ! Do a test for illegal values
 if(p_in < 0.0_r8 .or. p_in > 1.0_r8) then
    ! Need an error message
