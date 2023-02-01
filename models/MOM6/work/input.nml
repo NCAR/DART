@@ -121,13 +121,17 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
+   assimilate_these_obs_types = 'SALINITY'
    evaluate_these_obs_types   = ''
    /
 
 &model_nml
-   time_step_days      = 0,
-   time_step_seconds   = 3600
+   assimilation_period_days     = 1
+   assimilation_period_seconds  = 1
+   model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'UPDATE',
+                                  'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
+                                  'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
+                                  'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
    /
 
 &utilities_nml
@@ -143,8 +147,8 @@
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
    input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
    output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-   obs_type_files          = '../../../observations/forward_operators/obs_def_AURA_mod.f90'
-   quantity_files          = '../../../assimilation_code/modules/observations/default_quantities_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
    /
 
 &obs_sequence_tool_nml
@@ -179,10 +183,10 @@
    /
 
 &model_mod_check_nml
-   input_state_files    = 'input.nc'
+   input_state_files    = 'mom6.r.nc'
    output_state_files   = 'mmc_output.nc'
-   test1thru            = 0
-   run_tests            = 1,2,3,4,5,7
+   test1thru            = 3
+   run_tests            = 1,2,3,4,7
    x_ind                = 42
    loc_of_interest      = 0.3
    quantity_of_interest = 'QTY_STATE_VARIABLE'
@@ -196,3 +200,9 @@
    outlier_threshold        = -1.0,
 /
 
+&quad_interpolate_nml
+/
+
+&location_nml
+   horiz_dist_only             = .true.
+/
