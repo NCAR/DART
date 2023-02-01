@@ -323,8 +323,6 @@ if (get_allow_transpose(ens_handle)) then
    ! each ensemble member into global_qc_value
    allocate(var_istatus(qc_ens_handle%num_copies))
 
-   if (.not. isprior) call put_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
-
    MY_OBS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
       ! collect dart qc
       var_istatus = qc_ens_handle%copies(:,j) 
