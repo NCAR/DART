@@ -47,13 +47,13 @@ logical :: module_initialized = .false.
 
 ! Namelist with default value
 ! Logical to fix bounds violations for bounded_normal_rh
-logical :: fix_bound_violations = .false.
+logical :: fix_rh_bound_violations = .false.
 ! Should we use a logit transform instead of the default probit transform
 logical :: use_logit_instead_of_probit = .true.
 ! Set to true to do a check of the probit to/from transforms for inverse accuracy
 logical :: do_inverse_check = .false.
 
-namelist /quantile_distributions_nml/ fix_bound_violations, &
+namelist /quantile_distributions_nml/ fix_rh_bound_violations, &
           use_logit_instead_of_probit, do_inverse_check
 
 contains
@@ -429,14 +429,9 @@ if(use_input_p) then
       ! Figure out which bin it is in
       x = state_ens(i)
 
-      ! This block of the code is only applied for observation posteriors
-      ! Rare round-off issues with the bounded_normal RHF can lead to increments that produce posteriors
-      ! that can violate the bound by a tiny amount. The following statements can fix that. For now, they are 
-      ! turned off in the default code so that more egregious possible errors can be flagged below.
-      if(fix_bound_violations) then
-         if(bounded_below .and. x < lower_bound) x = lower_bound
-         if(bounded_above .and. x > upper_bound) x = upper_bound
-      endif
+      ! Fix bounds violations if requested
+      if(fix_rh_bound_violations) &
+         x = fix_bounds(x, bounded_below, bounded_above, lower_bound, upper_bound) 
 
       if(x < p%params(1)) then
          ! In the left tail
@@ -445,7 +440,7 @@ if(use_input_p) then
             write(errstring, *) 'Ensemble member less than lower bound first check(see code)', x, lower_bound
             call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
             ! This error can occur due to roundoff in increment generation from bounded RHF
-            ! It may be safe to just set x to the value of the bound here. See fix_bound_violations above
+            ! See discussion in function fix_bounds.
          endif
 
          if(do_uniform_tail_left) then
@@ -476,7 +471,7 @@ if(use_input_p) then
             write(errstring, *) 'Ensemble member greater than upper bound first check(see code)', x, upper_bound
             call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
             ! This error can occur due to roundoff in increment generation from bounded RHF
-            ! It may be safe to just set x to the value of the bound here. See fix_bound_violations above
+            ! See discussion in function fix_bounds
          endif
 
          if(do_uniform_tail_right) then
@@ -548,6 +543,13 @@ else
    ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
    call index_sort(state_ens, ens_index, ens_size)
    p%params(1:ens_size) = state_ens(ens_index)
+
+   ! Fix bounds violations if requested
+   if(fix_rh_bound_violations) then
+      do i = 1, ens_size
+         p%params(i) = fix_bounds(p%params(i), bounded_below, bounded_above, lower_bound, upper_bound) 
+      end do
+   endif
 
    ! Get the quantiles for each of the ensemble members in a RH distribution
    call ens_quantiles(p%params(1:ens_size), ens_size, &
@@ -625,14 +627,16 @@ else
    tail_amp_left  = 1.0_r8
    tail_amp_right = 1.0_r8
 
-   ! DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE ARE VERY CLOSE/SAME
+   ! DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE 
+   ! Have quantiles that are very close
    ! Default: not close
    do_uniform_tail_left = .false.
    base_prob = 1.0_r8 / (ens_size + 1.0_r8)
    if(bounded_below) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(lower_bound, tail_mean_left, sd)
-      if(abs(base_prob - bound_quantile) / base_prob < uniform_threshold) then
+      ! Note that due to roundoff it is possible for base_prob - quantile to be slightly negative
+      if((base_prob - bound_quantile) / base_prob < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_left = .true.
       else
@@ -646,7 +650,8 @@ else
    if(bounded_above) then
       ! Compute the CDF at the bounds
       bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
-      if(abs(base_prob - (1.0_r8 - bound_quantile)) / base_prob < uniform_threshold) then
+      ! Note that due to roundoff it is possible for the numerator to be slightly negative
+      if((bound_quantile - (1.0_r8 - base_prob)) / base_prob < uniform_threshold) then
          ! If bound and ensemble member are too close, do uniform approximation
          do_uniform_tail_right = .true.
       else
@@ -1227,6 +1232,44 @@ if (do_nml_file()) write(nmlfileunit,nml=quantile_distributions_nml)
 if (do_nml_term()) write(     *     ,nml=quantile_distributions_nml)
 
 end subroutine initialize_quantile_distributions
+
+!------------------------------------------------------------------------
+function fix_bounds(x, bounded_below, bounded_above,  lower_bound, upper_bound)
+
+real(r8)             :: fix_bounds
+real(r8), intent(in) :: x
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound, upper_bound
+
+! A variety of round off errors can lead to small violations of the bounds for state and
+! observation quantities. This function corrects the violations if they are small. If 
+! they are bigger than the egregious bound set here, then execution is terminated.
+      
+real(r8), parameter :: egregious_bound_threshold = 1e-12
+
+! Default behavior is to leave x unchanged
+fix_bounds = x
+
+! Fail here on egregious violations; this could be removed 
+if(bounded_below) then
+   if(lower_bound - x > egregious_bound_threshold) then
+      write(errstring, *) 'Egregious lower bound violation (see code)', x, lower_bound
+      call error_handler(E_ERR, 'fix_bounds', errstring, source)
+   else
+      fix_bounds = max(x, lower_bound)
+   endif
+endif
+
+if(bounded_above) then
+   if(x - upper_bound > egregious_bound_threshold) then
+      write(errstring, *) 'Egregious upper bound violoation first check(see code)', x, upper_bound
+      call error_handler(E_ERR, 'fix_bounds', errstring, source)
+   else
+      fix_bounds = min(x, upper_bound)
+   endif
+endif
+
+end function fix_bounds
 
 !------------------------------------------------------------------------
 

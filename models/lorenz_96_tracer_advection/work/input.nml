@@ -85,7 +85,7 @@
    /
 
 &quantile_distributions_nml
-   fix_bound_violations = .true.,
+   fix_rh_bound_violations = .true.,
    use_logit_instead_of_probit = .true.
    do_inverse_check = .true.
    /

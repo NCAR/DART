@@ -926,6 +926,8 @@ real(r8) :: likelihood(ens_size)
 logical  :: bounded(2)
 real(r8) :: bounds(2), like_sum
 
+real(r8) :: t_likelihood(ens_size), obs_inc_temp(ens_size)
+
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
 
@@ -1050,6 +1052,17 @@ else
 
       call obs_increment_bounded_norm_rhf(ens, likelihood, ens_size, prior_var, &
          obs_inc, bounded, bounds)
+
+      ! Do test of inversion for an uninformative likelihood
+      t_likelihood = 1.0
+      t_likelihood = t_likelihood / sum(t_likelihood)
+      call obs_increment_bounded_norm_rhf(ens, t_likelihood, ens_size, prior_var, &
+         obs_inc_temp, bounded, bounds)
+      if(maxval(abs(obs_inc_temp)) > 1e-11_r8) then
+         call error_handler(E_ERR,'obs_increment', &
+           'Null increment tests exceed the threshold', source)
+      endif
+
    !--------------------------------------------------------------------------
    else
       call error_handler(E_ERR,'obs_increment', &
@@ -1278,6 +1291,16 @@ real(r8), intent(in) :: bound(2)
 integer :: i
 real(r8) :: cdf(2), obs_sd, weight
 
+! A zero observation error variance is a degenerate case
+if(obs_var <= 0.0_r8) then
+   if(x == obs) then
+      get_truncated_normal_like = 1.0_r8
+   else
+      get_truncated_normal_like = 0.0_r8
+   endif
+   return
+endif
+
 obs_sd = sqrt(obs_var)
 
 ! If the truth were at point x, what is the weight of the truncated normal obs error dist?
@@ -1319,7 +1342,7 @@ logical  :: do_uniform_tail(2)
 integer  :: i
 
 ! Parameter to control switch to uniform approximation for normal tail
-real(r8), parameter :: uniform_threshold = 1e-5_r8
+real(r8), parameter :: uniform_threshold = 0.01_r8
 
 ! Save to avoid a modestly expensive computation redundancy
 real(r8), save :: dist_for_unit_sd
@@ -1388,7 +1411,7 @@ do_uniform_tail(1:2) = .false.
 if(is_bounded(1)) then
    ! Compute the CDF at the bounds
    bound_quantile = norm_cdf(bound(1), tail_mean(1), tail_sd(1))
-   if(abs(base_prior_prob - bound_quantile) < uniform_threshold) then
+   if(abs(base_prior_prob - bound_quantile) / base_prior_prob < uniform_threshold) then
       ! If bound and ensemble member are too close, do uniform approximation
       do_uniform_tail(1) = .true.
    else
@@ -1401,7 +1424,7 @@ endif
 if(is_bounded(2)) then
    ! Compute the CDF at the bounds
    bound_quantile = norm_cdf(bound(2), tail_mean(2), tail_sd(2))
-   if(abs(base_prior_prob - (1.0_r8 - bound_quantile)) < uniform_threshold) then
+   if(abs(base_prior_prob - (1.0_r8 - bound_quantile)) / base_prior_prob < uniform_threshold) then
       ! If bound and ensemble member are too close, do uniform approximation
       do_uniform_tail(2) = .true.
    else
