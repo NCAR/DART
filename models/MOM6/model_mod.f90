@@ -36,7 +36,10 @@ use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
 
 use state_structure_mod, only : add_domain, get_domain_size, &
                                 get_model_variable_indices, &
-                                get_kind_string
+                                get_kind_string, get_varid_from_kind, &
+                                get_dart_vector_index
+
+use distributed_state_mod, only : get_state
 
 use obs_kind_mod, only : get_index_for_quantity
 
@@ -203,12 +206,15 @@ real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolat
 integer,            intent(out) :: istatus(ens_size)
 
 integer  :: which_vert, four_lons(4), four_lats(4)
-integer  :: status_array(ens_size), locate_status
-real(r8) :: lon_fract, lat_fract
+integer  :: locate_status
+real(r8) :: lon_fract, lat_fract, lev_fract
 real(r8) :: lon_lat_vert(3)
-real(r8) :: quad_vals(ens_size,4)
+real(r8) :: quad_vals(4, ens_size)
+real(r8) :: expected(ens_size, 2) ! level below and above obs
 type(quad_interp_handle) :: interp
-integer :: imem
+integer :: varid, i
+integer(i8) :: indx
+integer :: lev(2) ! bottom, top level
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -217,11 +223,11 @@ if ( .not. module_initialized ) call static_init_model
 expected_obs(:) = MISSING_R8
 istatus(:) = 1
 
-! istatus for successful return should be 0. 
-! Any positive number is an error.
-! Negative values are reserved for use by the DART framework.
-! Using distinct positive values for different types of errors can be
-! useful in diagnosing problems.
+varid = get_varid_from_kind(dom_id, qty)
+if (varid < 0) then ! not in state
+   istatus = 12
+   return
+endif
 
 ! find which grid the qty is on
 interp = get_interp_handle(qty)
@@ -239,26 +245,46 @@ if (locate_status /= 0) then
   istatus(:) = locate_status
   return
 endif
+
 ! find levels
-
-! get values of state at four corners
-quad_vals(:,:) = 1
-status_array = 4
-
-if (any(status_array /= 0)) then
-   ! cannot get the state values at the corners
-   istatus(:) = maxval(status_array)
-   return
+! Get the bounding vertical levels and the fraction between bottom and top
+call find_level_bounds(lon_lat_vert(3), which_vert, lev, lev_fract, locate_status)
+if (locate_status /= 0) then
+  istatus(:) = 13
+  return
 endif
 
-do imem=1,ens_size
+! get values of state at four corners
+
+do i = 1, 2
+   !HK which corner of the quad is which?
+   ! corner1
+   indx = get_dart_vector_index(four_lons(1), four_lats(1), lev(i), dom_id, varid)
+   quad_vals(1, :) = get_state(indx, state_handle)
+
+   ! corner2
+   indx = get_dart_vector_index(four_lons(1), four_lats(2), lev(i), dom_id, varid)
+   quad_vals(2, :) = get_state(indx, state_handle)
+
+   ! corner3
+   indx = get_dart_vector_index(four_lons(2), four_lats(1), lev(i), dom_id, varid)
+   quad_vals(3, :) = get_state(indx, state_handle)
+
+   ! corner4
+   indx = get_dart_vector_index(four_lons(2), four_lats(2), lev(i), dom_id, varid)
+   quad_vals(4, :) = get_state(indx, state_handle)
+
    call quad_lon_lat_evaluate(interp, &
                               lon_fract, lat_fract, &
-                              quad_vals(imem,:), &
-                              expected_obs(imem), &
-                              istatus(imem))
-end do
+                              ens_size, &
+                              quad_vals, & ! 4 corners x ens_size
+                              expected(:,i), &
+                              istatus)
+enddo
 
+! Interpolate between levels
+! expected_obs = bot_val + lev_fract * (top_val - bot_val)
+expected_obs = expected(:,1) + lev_fract * (expected(:,2) - expected(:,1))
 
 end subroutine model_interpolate
 
@@ -386,7 +412,7 @@ call nc_begin_define_mode(ncid)
 call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
-call nc_add_global_attribute(ncid, "model", "template")
+call nc_add_global_attribute(ncid, "model", "MOM6")
 
 call nc_end_define_mode(ncid)
 
@@ -627,6 +653,23 @@ call nc_close_file(ncid, routine)
 read_model_time = set_time(0,int(days))
 
 end function read_model_time
+
+!--------------------------------------------------------------------
+subroutine find_level_bounds(vert_loc, which_vert, lev, lev_fract, istatus)
+
+real(r8), intent(in) :: vert_loc
+integer,  intent(in) :: which_vert
+integer,  intent(out) :: lev(2) ! bottom, top
+real(r8), intent(out) :: lev_fract
+integer,  intent(out) :: istatus
+
+! HK for testing
+lev(1) = 1
+lev(2) = 2
+lev_fract = 0.5
+istatus = 0
+
+end subroutine find_level_bounds
 
 !===================================================================
 ! End of model_mod
