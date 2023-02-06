@@ -24,7 +24,7 @@ use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf
 
 use beta_distribution_mod,  only : beta_cdf,  inv_beta_cdf
 
-use rh_distribution_mod,    only : ens_quantiles, rh_cdf_init
+use rh_distribution_mod,    only : rh_cdf_init, rh_cdf, rh_cdf_ens
 
 implicit none
 private
@@ -390,13 +390,11 @@ logical, intent(in)                  :: bounded(2)
 real(r8), intent(in)                 :: bounds(2)
 
 ! Probit transform for bounded normal rh.
-integer  :: i, j, indx, low_num, up_num
-real(r8) :: x, quantile, q(ens_size)
+integer  :: i, j
+real(r8) :: quantile(ens_size), q(ens_size)
 logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_right
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
-
-real(r8) :: fract, upper_q
 
 if(use_input_p) then
    ! Using an existing ensemble for the RH points
@@ -422,98 +420,19 @@ if(use_input_p) then
    tail_mean_right = p%params(ens_size + 10)
    tail_sd_right = p%params(ens_size + 12)
 
+
    ! Get the quantiles for each of the ensemble members in a RH distribution
-   call ens_quantiles(p%params(1:ens_size), ens_size, &
-      bounded_below, bounded_above, lower_bound, upper_bound, q)
+   call rh_cdf_ens(state_ens, ens_size, p%params(1:ens_size), &
+      bounded_below, bounded_above, lower_bound, upper_bound, &
+      tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
+      tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, &
+      quantile)
 
-   ! This can be done vastly more efficiently with either binary searches or by first sorting the
-   ! incoming state_ens so that the lower bound for starting the search is updated with each ensemble member
+   ! Convert to probit/logit space 
    do i = 1, ens_size
-      ! Figure out which bin it is in
-      x = state_ens(i)
-
-
-      if(x < p%params(1)) then
-         ! In the left tail
-         ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
-         if(bounded_below .and. x < lower_bound) then
-            write(errstring, *) 'Ensemble member less than lower bound first check(see code)', x, lower_bound
-            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
-            ! This error can occur due to roundoff in increment generation from bounded RHF
-            ! See discussion in function fix_bounds.
-         endif
-
-         if(do_uniform_tail_left) then
-            ! Uniform approximation for left tail
-            ! The division here could be a concern. However, if p%params(1) == lower_bound, then
-            ! x cannot be < p%params(1).
-            quantile = (x - lower_bound) / (p%params(1) - lower_bound) * (1.0_r8 / (ens_size + 1.0_r8))
-         else
-            ! It's a normal tail
-            if(bounded_below) then
-               quantile = tail_amp_left * (norm_cdf(x, tail_mean_left, tail_sd_left) - &
-                  norm_cdf(lower_bound, tail_mean_left, tail_sd_left))
-            else        ! Unbounded, tail normal goes all the way down to quantile 0
-               quantile = (tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left) / &
-                          (tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left))) &
-                          * (1.0_r8 / (1.0_r8 + ens_size)) 
-            endif
-            ! Make sure it doesn't sneak past the first ensemble member due to round-off
-            quantile = min(quantile, 1.0_r8 / (ens_size + 1.0_r8))
-         endif
-      elseif(x == p%params(1)) then
-         ! This takes care of cases where there are multiple rh values at the bdry or at first ensemble
-         quantile = q(1)
-      elseif(x > p%params(ens_size)) then
-         ! In the right tail
-         ! Do an error check to make sure ensemble member isn't outside bounds, may be redundant
-         if(bounded_above .and. x > upper_bound) then
-            write(errstring, *) 'Ensemble member greater than upper bound first check(see code)', x, upper_bound
-            call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
-            ! This error can occur due to roundoff in increment generation from bounded RHF
-            ! See discussion in function fix_bounds
-         endif
-
-         if(do_uniform_tail_right) then
-            ! Uniform approximation for right tail
-            ! The division here could be a concern. However, if p%params(ens_size) == upper_bound, then
-            ! x cannot be > p%params(ens_size).
-            quantile = ens_size / (ens_size + 1.0_r8) + &
-               (x - p%params(ens_size)) / (upper_bound - p%params(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
-         else
-            ! It's a normal tail
-            if(bounded_above) then
-               upper_q = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
-            else
-               upper_q = tail_amp_right
-            endif
-
-            ! Want to avoid quantiles exceeding 1 due to numerical issues. Do fraction of the normal part
-            fract = (tail_amp_right * norm_cdf(x,                  tail_mean_right, tail_sd_right) - &
-                     tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) / &
-                    (upper_q - tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)) 
-            quantile = ens_size / (ens_size + 1.0_r8) + fract * (1.0_r8 / (ens_size + 1.0_r8)) 
-            quantile = min(quantile, 1.0_r8)
-         endif
-
-      else
-         ! In an interior bin
-         do j = 1, ens_size - 1
-            if(x < p%params(j+1)) then
-               ! The division here could be a concern. 
-               ! However, p%params(j)< x < p%params(j+1) so the two cannot be equal
-               quantile = (j * 1.0_r8) / (ens_size + 1.0_r8) + &
-                  ((x - p%params(j)) / (p%params(j+1) - p%params(j))) * (1.0_r8 / (ens_size + 1.0_r8))
-               exit
-            elseif(x == p%params(j+1)) then
-               quantile = q(j+1)
-               exit
-            endif
-         enddo
-      endif
-      ! Convert to probit/logit space 
-      probit_ens(i) = probit_or_logit_transform(quantile)
+      probit_ens(i) = probit_or_logit_transform(quantile(i))
    end do
+
 else
    ! There is no preexisting CDF available, have to create one
 
