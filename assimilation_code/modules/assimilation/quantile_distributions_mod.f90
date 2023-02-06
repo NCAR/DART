@@ -24,12 +24,14 @@ use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf
 
 use beta_distribution_mod,  only : beta_cdf,  inv_beta_cdf
 
+use rh_distribution_mod,    only : ens_quantiles, rh_cdf_init
+
 implicit none
 private
 
 
 public :: convert_to_probit, convert_from_probit, convert_all_to_probit, &
-   convert_all_from_probit, dist_param_type, ens_quantiles
+   convert_all_from_probit, dist_param_type
 
 type dist_param_type
    integer               :: prior_distribution_type
@@ -47,13 +49,13 @@ logical :: module_initialized = .false.
 
 ! Namelist with default value
 ! Logical to fix bounds violations for bounded_normal_rh
-logical :: fix_rh_bound_violations = .false.
+logical :: fix_bound_violations = .false.
 ! Should we use a logit transform instead of the default probit transform
 logical :: use_logit_instead_of_probit = .true.
 ! Set to true to do a check of the probit to/from transforms for inverse accuracy
 logical :: do_inverse_check = .false.
 
-namelist /quantile_distributions_nml/ fix_rh_bound_violations, &
+namelist /quantile_distributions_nml/ fix_bound_violations, &
           use_logit_instead_of_probit, do_inverse_check
 
 contains
@@ -96,11 +98,11 @@ end subroutine convert_all_to_probit
 
 !------------------------------------------------------------------------
 
-subroutine convert_to_probit(ens_size, state_ens, prior_distribution_type, p, &
+subroutine convert_to_probit(ens_size, state_ens_in, prior_distribution_type, p, &
    probit_ens, use_input_p, bounded, bounds)
 
 integer, intent(in)                  :: ens_size
-real(r8), intent(in)                 :: state_ens(ens_size)
+real(r8), intent(in)                 :: state_ens_in(ens_size)
 integer, intent(in)                  :: prior_distribution_type
 type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
@@ -108,12 +110,22 @@ logical, intent(in)                  :: use_input_p
 logical, intent(in)                  :: bounded(2)
 real(r8), intent(in)                 :: bounds(2)
 
+real(r8) :: state_ens(ens_size)
 real(r8) :: probit_ens_temp(ens_size), state_ens_temp(ens_size), diff(ens_size)
 type(dist_param_type) :: p_temp
 integer :: i
 
 ! If not initialized, read in the namelist
 if(.not. module_initialized) call initialize_quantile_distributions
+
+! Fix bounds violations if requested
+if(fix_bound_violations) then
+   do i = 1, ens_size
+      state_ens(i) = fix_bounds(state_ens_in(i), bounded, bounds) 
+   end do
+else
+   state_ens = state_ens_in
+endif
 
 ! Set the type of the distribution in the parameters defined type
 p%prior_distribution_type = prior_distribution_type
@@ -379,21 +391,12 @@ real(r8), intent(in)                 :: bounds(2)
 
 ! Probit transform for bounded normal rh.
 integer  :: i, j, indx, low_num, up_num
-integer  :: ens_index(ens_size)
 real(r8) :: x, quantile, q(ens_size)
 logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_right
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
-! Parameter to control switch to uniform approximation for normal tail
-! This defines how many quantiles the bound is from the outermost ensemble member
-! If closer than this, can get into precision error problems with F(F-1(X)) on tails
-! Can also get other precision problems with the amplitude for the normal in the bounded region
-real(r8), parameter :: uniform_threshold = 0.01_r8
-
-! Save to avoid a modestly expensive computation redundancy
-real(r8), save :: dist_for_unit_sd
-real(r8) :: mean, sd, base_prob, bound_quantile, fract, upper_q
+real(r8) :: fract, upper_q
 
 if(use_input_p) then
    ! Using an existing ensemble for the RH points
@@ -429,9 +432,6 @@ if(use_input_p) then
       ! Figure out which bin it is in
       x = state_ens(i)
 
-      ! Fix bounds violations if requested
-      if(fix_rh_bound_violations) &
-         x = fix_bounds(x, bounded_below, bounded_above, lower_bound, upper_bound) 
 
       if(x < p%params(1)) then
          ! In the left tail
@@ -515,150 +515,47 @@ if(use_input_p) then
       probit_ens(i) = probit_or_logit_transform(quantile)
    end do
 else
+   ! There is no preexisting CDF available, have to create one
 
    ! Take care of space for the transform data structure
    if(allocated(p%params)) deallocate(p%params)
    allocate(p%params(ens_size + 2*6))
 
-   ! No pre-existing distribution, create one
-   mean = sum(state_ens) / ens_size
-   sd  = sqrt(sum((state_ens - mean)**2) / (ens_size - 1))
-   
+   ! Get all the info about the rank histogram cdf
+   call rh_cdf_init(state_ens, ens_size, bounded, bounds, p%params(1:ens_size), q, &
+      tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,        &
+      tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right)
+
    ! Don't know what to do if sd is 0 (or small, work on this later)
-   if(sd <= 0.0_r8) then
+   if(tail_sd_left <= 0.0_r8) then
       ! Store this info in the left_tail_sd (parameter 11 in structure) for possible subsequent call use
-      p%params(ens_size + 11) = sd
+      p%params(ens_size + 11) = tail_sd_left
       ! Just return the original ensemble
       probit_ens = state_ens 
       return
    endif
 
-   ! Clarity of use for bounds
-   lower_bound = bounds(1)
-   upper_bound = bounds(2)
-   bounded_below = bounded(1)
-   bounded_above = bounded(2)
-
-   ! Need to sort. For now, don't worry about efficiency, but may need to somehow pass previous
-   ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
-   call index_sort(state_ens, ens_index, ens_size)
-   p%params(1:ens_size) = state_ens(ens_index)
-
-   ! Fix bounds violations if requested
-   if(fix_rh_bound_violations) then
-      do i = 1, ens_size
-         p%params(i) = fix_bounds(p%params(i), bounded_below, bounded_above, lower_bound, upper_bound) 
-      end do
-   endif
-
-   ! Get the quantiles for each of the ensemble members in a RH distribution
-   call ens_quantiles(p%params(1:ens_size), ens_size, &
-      bounded_below, bounded_above, lower_bound, upper_bound, q)
-
    ! Convert the quantiles to probit space
    do i = 1, ens_size
-      indx = ens_index(i)
-      ! Convert to probit/logit space
-      probit_ens(indx) = probit_or_logit_transform(q(i))
-   end do 
+      probit_ens(i) = probit_or_logit_transform(q(i)) 
+   end do
 
-   ! For BNRH, the required data for inversion is the original ensemble values
-   ! Having them in sorted order is useful for subsequent inversion
-   ! It is also useful to store additional information regarding the continuous pdf representation of the tails
-   ! This includes whether the bounds are defined, the values of the bounds, whether a uniform is used in the outer
-   ! bounded bin, the amplitude of the outer continuous normal pdf, the mean of the outer continous
-   ! normal pdf, and the standard deviation of the
-   ! outer continous. 
-
-   ! Compute the description of the tail continous pdf; 
    ! First two entries are 'logicals' 0 for false and 1 for true indicating if bounds are in use
-   if(bounded_below) then
+   if(bounded(1)) then
       p%params(ens_size + 1) = 1.0_r8
    else
       p%params(ens_size + 1) = 0.0_r8
    endif
 
-   if(bounded_above) then
+   if(bounded(2)) then
       p%params(ens_size + 2) = 1.0_r8
    else
       p%params(ens_size + 2) = 0.0_r8
    endif
 
    ! Store the bounds (whether used or not) in the probit conversion metadata
-   p%params(ens_size + 3) = lower_bound
-   p%params(ens_size + 4) = upper_bound
-
-   ! Compute the characteristics of unbounded tail normals
-
-   ! For unit normal, find distance from mean to where cdf is 1/(ens_size+1).
-   ! Saved to avoid redundant computation for repeated calls with same ensemble size
-   if(bounded_norm_rh_ens_size /= ens_size) then
-      call norm_inv(1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
-      ! This will be negative, want it to be a distance so make it positive
-      dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
-      ! Keep a record of the ensemble size used to compute dist_for_unit_sd
-      bounded_norm_rh_ens_size = ens_size
-   endif
-   
-   ! Fail if lower bound is larger than smallest ensemble member 
-   if(bounded_below) then
-      ! Do in two ifs in case the bound is not defined
-      if(p%params(1) < lower_bound) then
-         errstring = 'Ensemble member less than lower bound'
-         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
-      endif
-   endif
-   
-   ! Fail if upper bound is smaller than the largest ensemble member 
-   if(bounded_above) then
-      if(p%params(ens_size) > upper_bound) then
-         errstring = 'Ensemble member greater than upper bound'
-         call error_handler(E_ERR, 'to_probit_bounded_normal_rh', errstring, source)
-      endif
-   endif
-
-   ! Find a mean so that 1 / (ens_size + 1) probability is in outer regions
-   tail_mean_left = p%params(1) + dist_for_unit_sd * sd
-   tail_mean_right = p%params(ens_size) - dist_for_unit_sd * sd
-
-   ! If the distribution is bounded, still want 1 / (ens_size + 1) in outer regions
-   ! Put an amplitude term (greater than 1) in front of the tail normals 
-   ! Amplitude is 1 if there are no bounds, so start with that
-   tail_amp_left  = 1.0_r8
-   tail_amp_right = 1.0_r8
-
-   ! DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE 
-   ! Have quantiles that are very close
-   ! Default: not close
-   do_uniform_tail_left = .false.
-   base_prob = 1.0_r8 / (ens_size + 1.0_r8)
-   if(bounded_below) then
-      ! Compute the CDF at the bounds
-      bound_quantile = norm_cdf(lower_bound, tail_mean_left, sd)
-      ! Note that due to roundoff it is possible for base_prob - quantile to be slightly negative
-      if((base_prob - bound_quantile) / base_prob < uniform_threshold) then
-         ! If bound and ensemble member are too close, do uniform approximation
-         do_uniform_tail_left = .true.
-      else
-         ! Compute the left tail amplitude
-         tail_amp_left = base_prob / (base_prob - bound_quantile); 
-      endif
-   endif
-   
-   ! Default: not close
-   do_uniform_tail_right = .false.
-   if(bounded_above) then
-      ! Compute the CDF at the bounds
-      bound_quantile = norm_cdf(upper_bound, tail_mean_right, sd)
-      ! Note that due to roundoff it is possible for the numerator to be slightly negative
-      if((bound_quantile - (1.0_r8 - base_prob)) / base_prob < uniform_threshold) then
-         ! If bound and ensemble member are too close, do uniform approximation
-         do_uniform_tail_right = .true.
-      else
-         ! Compute the right tail amplitude
-         tail_amp_right = base_prob / (base_prob - (1.0_r8 - bound_quantile))
-      endif
-   endif
+   p%params(ens_size + 3) = bounds(1)
+   p%params(ens_size + 4) = bounds(2)
 
    ! Store the parameters of the tail in the probit data structure
    if(do_uniform_tail_left) then 
@@ -676,8 +573,8 @@ else
    p%params(ens_size + 9) = tail_mean_left
    p%params(ens_size + 10) = tail_mean_right
    ! Standard deviation of prior tails is prior ensemble standard deviation
-   p%params(ens_size + 11) = sd
-   p%params(ens_size + 12) = sd
+   p%params(ens_size + 11) = tail_sd_left
+   p%params(ens_size + 12) = tail_sd_right
 endif
 
 end subroutine to_probit_bounded_normal_rh
@@ -1130,91 +1027,6 @@ else
 endif
 
 end function inv_probit_or_logit_transform
-!------------------------------------------------------------------------
-
-subroutine ens_quantiles(ens, ens_size, bounded_below, bounded_above, &
-                         lower_bound, upper_bound, q)
-
-! Given an ensemble, return information about duplicate values
-! in the ensemble. 
-
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size)
-logical,  intent(in)  :: bounded_below, bounded_above
-real(r8), intent(in)  :: lower_bound
-real(r8), intent(in)  :: upper_bound
-real(r8), intent(out) :: q(ens_size)
-
-integer :: i, j, lower_dups, upper_dups, d_start, d_end, series_num
-integer :: series_start(ens_size), series_end(ens_size), series_length(ens_size)
-
-! Get number of ensemble members that are duplicates of the lower bound
-lower_dups = 0
-if(bounded_below) then
-   do i = 1, ens_size
-      if(ens(i) == lower_bound) then 
-         lower_dups = lower_dups + 1
-      else
-         exit
-      endif
-   end do
-endif
-
-! Get number of ensemble members that are duplicates of the upper bound
-upper_dups = 0
-if(bounded_above) then
-   do i = ens_size, 1, -1
-      if(ens(i) == upper_bound) then 
-         upper_dups = upper_dups + 1
-      else
-         exit
-      endif
-   end do
-endif
-
-! If there are duplicate ensemble members away from the boundaries need to revise quantiles
-! Make sure not to count duplicates already handled at the boundaries
-! Outer loop determines if a series of duplicates starts at sorted index i
-d_start = lower_dups + 1 
-d_end   = ens_size - upper_dups
-
-! Get start, length, and end of each series of duplicates away from the bounds
-series_num = 1
-series_start(series_num) = d_start
-series_length(series_num) = 1
-do i = d_start + 1, d_end
-   if(ens(i) == ens(i - 1)) then
-      series_length(series_num) = series_length(series_num) + 1
-   else
-      series_end(series_num) = i-1
-      series_num = series_num + 1
-      series_start(series_num) = i
-      series_length(series_num) = 1
-   endif
-end do
-
-! Off the end, finish up the last series
-series_end(series_num) = d_end
-
-! Now get the value of the quantile for the exact ensemble members
-! Start with the lower bound duplicates
-do i = 1, lower_dups
-   q(i) = lower_dups / (2.0_r8 * (ens_size + 1.0_r8))
-end do
-
-! Top bound duplicates next
-do i = ens_size - upper_dups + 1, ens_size
-   q(i) = 1.0_r8 - upper_dups / (2.0_r8 * (ens_size + 1.0_r8))
-end do
-
-! Do the interior series
-do i = 1, series_num
-   do j = series_start(i), series_end(i)
-      q(j) = series_start(i) / (ens_size + 1.0_r8) + (series_length(i) - 1.0_r8) / (2.0_r8 * (ens_size + 1.0_r8))
-   end do
-end do
-
-end subroutine ens_quantiles
 
 !------------------------------------------------------------------------
 subroutine initialize_quantile_distributions()
@@ -1234,12 +1046,12 @@ if (do_nml_term()) write(     *     ,nml=quantile_distributions_nml)
 end subroutine initialize_quantile_distributions
 
 !------------------------------------------------------------------------
-function fix_bounds(x, bounded_below, bounded_above,  lower_bound, upper_bound)
+function fix_bounds(x, bounded,  bounds)
 
 real(r8)             :: fix_bounds
 real(r8), intent(in) :: x
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound, upper_bound
+logical,  intent(in) :: bounded(2)
+real(r8), intent(in) :: bounds(2)
 
 ! A variety of round off errors can lead to small violations of the bounds for state and
 ! observation quantities. This function corrects the violations if they are small. If 
@@ -1247,8 +1059,16 @@ real(r8), intent(in) :: lower_bound, upper_bound
       
 real(r8), parameter :: egregious_bound_threshold = 1e-12
 
+real(r8) :: lower_bound, upper_bound
+logical  :: bounded_below, bounded_above
+
 ! Default behavior is to leave x unchanged
 fix_bounds = x
+
+bounded_below = bounded(1)
+bounded_above = bounded(2)
+lower_bound = bounds(1)
+upper_bound = bounds(2)
 
 ! Fail here on egregious violations; this could be removed 
 if(bounded_below) then
