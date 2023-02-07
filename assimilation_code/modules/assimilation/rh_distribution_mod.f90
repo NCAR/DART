@@ -10,12 +10,12 @@ use utilities_mod,  only : E_ERR, error_handler
 
 use sort_mod, only : index_sort
 
-use normal_distribution_mod, only : norm_cdf, norm_inv
+use normal_distribution_mod, only : norm_cdf, norm_inv, weighted_norm_inv
 
 implicit none
 private
 
-public :: rh_cdf_init, rh_cdf, rh_cdf_ens
+public :: rh_cdf_init, rh_cdf, rh_cdf_ens, inv_rh_cdf
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'rh_distribution_mod.f90'
@@ -50,7 +50,7 @@ logical,  intent(out) :: do_uniform_tail_left, do_uniform_tail_right
 
 real(r8), save :: dist_for_unit_sd
 real(r8) :: q(ens_size)
-real(r8) :: base_prob, mean, bound_quantile
+real(r8) :: del_q, mean, bound_quantile
 real(r8) :: lower_bound, upper_bound
 logical  :: bounded_below, bounded_above
 integer :: sort_index(ens_size), indx, i
@@ -78,7 +78,7 @@ endif
 ! Sort. For now, don't worry about efficiency, but may need to somehow pass previous
 ! sorting indexes and use a sort that is faster for nearly sorted data. Profiling can guide the need
 call index_sort(x, sort_index, ens_size)
-sort_x(1:ens_size) = x(sort_index)
+sort_x = x(sort_index)
 
 ! Fail if lower bound is larger than smallest ensemble member 
 if(bounded_below) then
@@ -110,11 +110,12 @@ end do
 
 ! Compute the characteristics of tails
 
-! For unit normal, find distance from mean to where cdf is 1/(ens_size+1).
+! For unit normal, find distance from mean to where cdf is 1/(ens_size+1) (del_q_.
 ! Saved to avoid redundant computation for repeated calls with same ensemble size
-base_prob = 1.0_r8 / (ens_size + 1.0_r8)
+del_q = 1.0_r8 / (ens_size + 1.0_r8)
+
 if(saved_ens_size /= ens_size) then
-   call norm_inv(base_prob, dist_for_unit_sd)
+   call norm_inv(del_q, dist_for_unit_sd)
    ! This will be negative, want it to be a distance so make it positive
    dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
    ! Keep a record of the ensemble size used to compute dist_for_unit_sd
@@ -125,7 +126,7 @@ endif
 tail_mean_left =  sort_x(1)        + dist_for_unit_sd * tail_sd_left
 tail_mean_right = sort_x(ens_size) - dist_for_unit_sd * tail_sd_right
 
-! If the distribution is bounded, still want 1 / (ens_size + 1) in outer regions
+! If the distribution is bounded, still want 1 / (ens_size + 1) (del_q) in outer regions
 ! Put an amplitude term (greater than 1) in front of the tail normals 
 ! Amplitude is 1 if there are no bounds, so start with that
 tail_amp_left  = 1.0_r8
@@ -137,13 +138,13 @@ do_uniform_tail_left = .false.
 if(bounded_below) then
    ! Compute the CDF at the bounds
    bound_quantile = norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
-   ! Note that due to roundoff it is possible for base_prob - quantile to be slightly negative
-   if((base_prob - bound_quantile) / base_prob < uniform_threshold) then
+   ! Note that due to roundoff it is possible for del_q - quantile to be slightly negative
+   if((del_q - bound_quantile) / del_q < uniform_threshold) then
       ! If bound and ensemble member are too close, do uniform approximation
       do_uniform_tail_left = .true.
    else
       ! Compute the left tail amplitude
-      tail_amp_left = base_prob / (base_prob - bound_quantile);
+      tail_amp_left = del_q / (del_q - bound_quantile);
    endif
 endif
 
@@ -153,12 +154,12 @@ if(bounded_above) then
    ! Compute the CDF at the bounds
    bound_quantile = norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
    ! Note that due to roundoff it is possible for the numerator to be slightly negative
-   if((bound_quantile - (1.0_r8 - base_prob)) / base_prob < uniform_threshold) then
+   if((bound_quantile - (1.0_r8 - del_q)) / del_q < uniform_threshold) then
       ! If bound and ensemble member are too close, do uniform approximation
       do_uniform_tail_right = .true.
    else
       ! Compute the right tail amplitude
-      tail_amp_right = base_prob / (base_prob - (1.0_r8 - bound_quantile))
+      tail_amp_right = del_q / (del_q - (1.0_r8 - bound_quantile))
    endif
 endif
 
@@ -222,8 +223,11 @@ logical,  intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
 real(r8), intent(in)  :: q(ens_size)
 real(r8), intent(out) :: quantile
 
-real(r8) :: upper_q, fract
+real(r8) :: upper_q, fract, del_q
 integer :: j
+
+! Quantile increment between ensemble members for rh
+del_q = 1.0_r8 / (ens_size + 1.0_r8)
 
 if(x < sort_ens(1)) then
    ! In the left tail
@@ -239,7 +243,7 @@ if(x < sort_ens(1)) then
       ! Uniform approximation for left tail
       ! The division here could be a concern. However, if sort_ens(1) == lower_bound, then
       ! x cannot be < sort_ens(1).
-      quantile = (x - lower_bound) / (sort_ens(1) - lower_bound) * (1.0_r8 / (ens_size + 1.0_r8))
+      quantile = (x - lower_bound) / (sort_ens(1) - lower_bound) * del_q
    else
       ! It's a normal tail
       if(bounded_below) then
@@ -248,10 +252,10 @@ if(x < sort_ens(1)) then
       else        ! Unbounded, tail normal goes all the way down to quantile 0
          quantile = (tail_amp_left * norm_cdf(x, tail_mean_left, tail_sd_left) / &
                     (tail_amp_left * norm_cdf(sort_ens(1), tail_mean_left, tail_sd_left))) &
-                    * (1.0_r8 / (1.0_r8 + ens_size))
+                    * del_q
       endif
       ! Make sure it doesn't sneak past the first ensemble member due to round-off
-      quantile = min(quantile, 1.0_r8 / (ens_size + 1.0_r8))
+      quantile = min(quantile, del_q)
    endif
 elseif(x == sort_ens(1)) then
    ! This takes care of cases where there are multiple rh values at the bdry or at first ensemble
@@ -270,8 +274,8 @@ elseif(x > sort_ens(ens_size)) then
       ! Uniform approximation for right tail
       ! The division here could be a concern. However, if sort_ens(ens_size) == upper_bound, then
       ! x cannot be > sort_ens(ens_size).
-      quantile = ens_size / (ens_size + 1.0_r8) + &
-         (x - sort_ens(ens_size)) / (upper_bound - sort_ens(ens_size)) * (1.0_r8 / (ens_size + 1.0_r8))
+      quantile = ens_size *del_q + &
+         (x - sort_ens(ens_size)) / (upper_bound - sort_ens(ens_size)) * del_q
    else
       ! It's a normal tail
       if(bounded_above) then
@@ -284,7 +288,7 @@ elseif(x > sort_ens(ens_size)) then
       fract = (tail_amp_right * norm_cdf(x,                  tail_mean_right, tail_sd_right) - &
                tail_amp_right * norm_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)) / &
               (upper_q - tail_amp_right * norm_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right))
-      quantile = ens_size / (ens_size + 1.0_r8) + fract * (1.0_r8 / (ens_size + 1.0_r8))
+      quantile = ens_size * del_q + fract * del_q
       quantile = min(quantile, 1.0_r8)
    endif
 
@@ -294,8 +298,8 @@ else
       if(x < sort_ens(j+1)) then
          ! The division here could be a concern. 
          ! However, sort_ens(j)< x < sort_ens(j+1) so the two cannot be equal
-         quantile = (j * 1.0_r8) / (ens_size + 1.0_r8) + &
-            ((x - sort_ens(j)) / (sort_ens(j+1) - sort_ens(j))) * (1.0_r8 / (ens_size + 1.0_r8))
+         quantile = j * del_q + &
+            ((x - sort_ens(j)) / (sort_ens(j+1) - sort_ens(j))) * del_q
          exit
       elseif(x == sort_ens(j+1)) then
          quantile = q(j+1)
@@ -305,6 +309,110 @@ else
 endif
 
 end subroutine rh_cdf
+
+!-----------------------------------------------------------------------
+
+subroutine inv_rh_cdf(quantile, ens_size, sort_ens, &
+   bounded_below, bounded_above, lower_bound, upper_bound, &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x)
+
+real(r8), intent(in)  :: quantile
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: sort_ens(ens_size)
+logical,  intent(in)  :: bounded_below, bounded_above
+real(r8), intent(in)  :: lower_bound, upper_bound
+real(r8), intent(in)  :: tail_amp_left,  tail_mean_left,  tail_sd_left
+real(r8), intent(in)  :: tail_amp_right, tail_mean_right, tail_sd_right
+logical,  intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
+real(r8), intent(out) :: x
+
+integer :: region
+real(r8) :: lower_state, upper_state, lower_mass, upper_mass, target_mass
+real(r8) :: lower_q, upper_q, fract, del_q
+
+! Quantile increment between ensemble members for rh
+del_q = 1.0_r8 / (ens_size + 1.0_r8)
+
+! Assume that the quantiles of the original ensemble for the BNRH are uniform
+! Finding which region this quantile is in is trivial
+region = floor(quantile * (ens_size + 1.0_r8))
+! Careful about numerical issues moving outside of region [0 ens_size]
+if(region < 0) region = 0
+if(region > ens_size) region = ens_size
+
+if(region == 0) then
+   ! Lower tail
+   if(bounded_below .and. do_uniform_tail_left) then
+      ! Lower tail uniform
+      upper_state = sort_ens(1)
+! NOTE: NEED TO BE CAREFUL OF THE DENOMINATOR HERE AND ON THE PLUS SIDE
+      x = lower_bound + &
+         (quantile / del_q) * (upper_state - lower_bound)
+   else
+      ! Find the mass at the lower bound (which could be unbounded)
+      if(bounded_below) then
+         lower_mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+      else
+         lower_mass = 0.0_r8
+      endif
+      ! Find the mass at the upper bound (ensemble member 1)
+      upper_mass = tail_amp_left * norm_cdf(sort_ens(1), tail_mean_left, tail_sd_left)
+      ! What fraction of this mass difference should we go?
+      fract = quantile / del_q
+      target_mass = lower_mass + fract * (upper_mass - lower_mass)
+      call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, x)
+   endif
+
+elseif(region == ens_size) then
+   ! Upper tail
+   if(bounded_above .and. do_uniform_tail_right) then
+      ! Upper tail is uniform
+      lower_state = sort_ens(ens_size)
+      upper_state = upper_bound
+      x = lower_state + (quantile - ens_size *del_q) * &
+         (upper_state - lower_state) / del_q
+
+   else
+      ! Upper tail is (bounded) normal
+      ! Find the mass at the upper bound (which could be unbounded)
+      if(bounded_above) then
+         upper_mass = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
+      else
+         upper_mass = 1.0_r8
+      endif
+      ! Find the mass at the lower bound (ensemble member n)
+      lower_mass = tail_amp_right * norm_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
+      ! What fraction of the last interval do we need to move
+      fract = (quantile - ens_size * del_q) / del_q
+      target_mass = lower_mass + fract * (upper_mass - lower_mass)
+      call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, x)
+   endif
+
+else
+   ! Interior region; get the quantiles of the region boundary
+   lower_q = region * del_q
+   upper_q = (region + 1.0_r8) / (ens_size + 1.0_r8)
+   x = sort_ens(region) + ((quantile - lower_q) / (upper_q - lower_q)) * &
+      (sort_ens(region + 1) - sort_ens(region))
+endif
+
+! Check for posterior violating bounds; This may not be needed after development testing
+if(bounded_below) then
+   if(x < lower_bound) then
+      write(errstring, *) 'x less than lower_bound ', x
+      call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+   endif
+endif
+
+if(bounded_above) then
+   if(x > upper_bound) then
+      write(errstring, *) 'x greater than upper_bound ', x
+      call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+   endif
+endif
+
+end subroutine inv_rh_cdf
 
 !-----------------------------------------------------------------------
 

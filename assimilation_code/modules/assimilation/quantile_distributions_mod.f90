@@ -24,7 +24,7 @@ use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf
 
 use beta_distribution_mod,  only : beta_cdf,  inv_beta_cdf
 
-use rh_distribution_mod,    only : rh_cdf_init, rh_cdf, rh_cdf_ens
+use rh_distribution_mod,    only : rh_cdf_init, rh_cdf, rh_cdf_ens, inv_rh_cdf
 
 implicit none
 private
@@ -793,91 +793,11 @@ do i = 1, ens_size
    ! First, invert the probit/logit to get a quantile
    quantile = inv_probit_or_logit_transform(probit_ens(i))
 
-   ! Can assume that the quantiles of the original ensemble for the BNRH are uniform
-   ! Note that there are some implicit assumptions here about cases where the original 
-   ! ensemble had duplicate state members. 
-   ! Finding which region this quantile is in is trivial
-   region = floor(quantile * (ens_size + 1.0_r8))
-   ! Careful about numerical issues moving outside of region [0 ens_size]
-   if(region < 0) region = 0
-   if(region > ens_size) region = ens_size
-
-   if(region == 0) then
-      ! Lower tail
-      if(bounded_below .and. do_uniform_tail_left) then
-         ! Lower tail uniform
-         upper_state = p%params(1)
-! NOTE: NEED TO BE CAREFUL OF THE DENOMINATOR HERE AND ON THE PLUS SIDE
-         state_ens(i) = lower_bound + &
-            (quantile / (1.0_r8 /  (ens_size + 1.0_r8))) * (upper_state - lower_bound)
-      else
-         ! Find the mass at the lower bound (which could be unbounded)
-         if(bounded_below) then
-            lower_mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
-         else
-            lower_mass = 0.0_r8
-         endif
-         ! Find the mass at the upper bound (ensemble member 1)
-         upper_mass = tail_amp_left * norm_cdf(p%params(1), tail_mean_left, tail_sd_left)
-         ! What fraction of this mass difference should we go?
-         fract = quantile / (1.0_r8 / (ens_size + 1.0_r8))
-         target_mass = lower_mass + fract * (upper_mass - lower_mass)
-         call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, state_ens(i))
-      endif
-
-   elseif(region == ens_size) then
-      ! Upper tail
-      if(bounded_above .and. do_uniform_tail_right) then
-         ! Upper tail is uniform
-         lower_state = p%params(ens_size)
-         upper_state = upper_bound
-         state_ens(i) = lower_state + & 
-            (quantile - (ens_size / (ens_size + 1.0_r8))) * (upper_state - lower_state) / &
-            (1.0_r8 / (ens_size + 1.0_r8))
-           
-      else
-         ! Upper tail is (bounded) normal
-         ! Find the mass at the upper bound (which could be unbounded)
-         if(bounded_above) then
-            upper_mass = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
-         else
-            upper_mass = 1.0_r8
-         endif
-         ! Find the mass at the lower bound (ensemble member n)
-         lower_mass = tail_amp_right * norm_cdf(p%params(ens_size), tail_mean_right, tail_sd_right)
-         ! What fraction of the last interval do we need to move
-         fract = (quantile - ens_size / (ens_size + 1.0_r8)) / (1.0_r8 / (ens_size + 1.0_r8))
-         target_mass = lower_mass + fract * (upper_mass - lower_mass)
-         call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, state_ens(i))
-      endif
-         
-   else
-      ! Interior region; get the quantiles of the region boundary
-      lower_q = region / (ens_size + 1.0_r8)
-      upper_q = (region + 1.0_r8) / (ens_size + 1.0_r8)
-      state_ens(i) = p%params(region) + &
-          ((quantile - lower_q) / (upper_q - lower_q)) * (p%params(region + 1) - p%params(region))
-   endif
+   call inv_rh_cdf(quantile, ens_size, p%params, &
+      bounded_below, bounded_above, lower_bound, upper_bound, &
+      tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
+      tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, state_ens(i))
 end do
-
-! Check for posterior violating bounds; This may not be needed after development testing
-if(bounded_below) then
-   do i = 1, ens_size
-      if(state_ens(i) < lower_bound) then
-         write(errstring, *) 'state_ens ', i, ' less than lower_bound ', state_ens(i)
-         call error_handler(E_ERR, 'from_probit_bounded_normal_rh', errstring, source)
-      endif
-   end do
-endif
-
-if(bounded_above) then
-   do i = 1, ens_size
-      if(state_ens(i) > upper_bound) then
-         write(errstring, *) 'state_ens ', i, ' greater than upper_bound ', state_ens(i)
-         call error_handler(E_ERR, 'from_probit_bounded_normal_rh', errstring, source)
-      endif
-   end do
-endif
 
 ! Probably do this explicitly 
 ! Free the storage
