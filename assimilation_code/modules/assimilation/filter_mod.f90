@@ -1768,8 +1768,6 @@ end subroutine obs_space_diagnostics
 subroutine obs_space_sync_QCs(obs_fwd_op_ens_handle,  &
    seq, keys, num_obs_in_set, OBS_GLOBAL_QC_COPY, DART_qc_index)
 
-! If QCs were updated in the assimilation loop but posterior forward operators
-! are not being computed, collect any updated QCs into the output obs_seq.
 
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
 integer,                 intent(in)    :: num_obs_in_set
@@ -1788,11 +1786,10 @@ real(r8)              :: rvalue(1)
 io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
 my_task = my_task_id()
 
-! allocate temp space for sending data only on the task that will
 ! write the obs_seq.final file
 if (my_task == io_task) then
    allocate(obs_temp(num_obs_in_set))
-else ! TJH: this change became necessary when using Intel 19.0.5 ...
+else 
    allocate(obs_temp(1))
 endif
 
