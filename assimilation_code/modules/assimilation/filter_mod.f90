@@ -1768,8 +1768,6 @@ end subroutine obs_space_diagnostics
 subroutine obs_space_sync_QCs(obs_fwd_op_ens_handle,  &
    seq, keys, num_obs_in_set, OBS_GLOBAL_QC_COPY, DART_qc_index)
 
-! If QCs were updated in the assimilation loop but posterior forward operators
-! are not being computed, collect any updated QCs into the output obs_seq.
 
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
 integer,                 intent(in)    :: num_obs_in_set
