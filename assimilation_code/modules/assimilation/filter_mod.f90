@@ -1788,10 +1788,6 @@ real(r8)              :: rvalue(1)
 io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
 my_task = my_task_id()
 
-! Make var complete for get_copy() calls below.
-! Optimize: Could we use a gather instead of a transpose and get copy?
-call all_copies_to_all_vars(obs_fwd_op_ens_handle)
-
 ! allocate temp space for sending data only on the task that will
 ! write the obs_seq.final file
 if (my_task == io_task) then
@@ -1799,6 +1795,9 @@ if (my_task == io_task) then
 else ! TJH: this change became necessary when using Intel 19.0.5 ...
    allocate(obs_temp(1))
 endif
+
+! Optimize: Could we use a gather instead of a transpose and get copy?
+call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
 ! Update the qc global value
 call get_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
