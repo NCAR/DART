@@ -41,7 +41,8 @@ use state_structure_mod, only : add_domain, get_domain_size, &
 
 use distributed_state_mod, only : get_state
 
-use obs_kind_mod, only : get_index_for_quantity
+use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
+                         QTY_V_CURRENT_COMPONENT
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -97,7 +98,7 @@ integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
 !        Interface = 64 ;
 !        Time = UNLIMITED ; // (1 currently)
 real(r8), allocatable :: lath(:), lonh(:), latq(:), lonq(:), layer(:), interf(:)
-type(quad_interp_handle) :: interp_q_grid, interp_h_grid
+type(quad_interp_handle) :: interp_v_grid, interp_u_grid, interp_t_grid !HK do we need all three?
 
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 10
@@ -462,10 +463,10 @@ function get_lon(indx, qty)
 integer, intent(in) :: indx, qty
 real(r8) :: get_lon
 
-if (on_h(qty)) then
+if (on_u_grid(qty)) then
+   get_lon = lonq(indx)  ! only u current on lonq
+else
    get_lon = lonh(indx)
-else !on q grid
-   get_lon = lonq(indx)
 endif
 
 end function get_lon
@@ -477,10 +478,10 @@ function get_lat(indx, qty)
 integer, intent(in) :: indx, qty
 real(r8) :: get_lat
 
-if (on_h(qty)) then
-   get_lat = lath(indx)
-else !on q grid
+if (on_v_grid(qty)) then ! only v current on latq
    get_lat = latq(indx)
+else !on q grid
+   get_lat = lath(indx)
 endif
 
 end function get_lat
@@ -501,17 +502,51 @@ endif
 end function get_depth
 
 !------------------------------------------------------------
-!  HK todo: can a variable be on q for lon, h for lat?
-!------------------------------------------------------------
-! fixing for now, need to actually check by qty
-function on_h(qty)
+! Salt h
+! Temp h
+! u lath, lonq
+! v latq, lonh
+!----------------------------------------------------------
+function on_v_grid(qty)
 
-logical :: on_h
-integer :: qty
+integer, intent(in)  :: qty
+logical :: on_v_grid
 
-on_h = .true.
+if (qty == QTY_V_CURRENT_COMPONENT) then
+  on_v_grid = .true.
+else
+  on_v_grid = .false.
+endif
 
-end function on_h
+end function on_v_grid
+
+!----------------------------------------------------------
+function on_u_grid(qty)
+
+integer, intent(in)  :: qty
+logical :: on_u_grid
+
+if (qty == QTY_U_CURRENT_COMPONENT) then
+  on_u_grid = .true.
+else
+  on_u_grid = .false.
+endif
+
+end function on_u_grid
+
+!----------------------------------------------------------
+function on_t_grid(qty)
+
+integer, intent(in)  :: qty
+logical :: on_t_grid
+
+if (qty == QTY_U_CURRENT_COMPONENT .or. QTY_V_CURRENT_COMPONENT) then
+  on_t_grid = .false.
+else
+  on_t_grid = .true.
+endif
+
+end function on_t_grid
 
 !------------------------------------------------------------
 function on_layer(qty)
@@ -519,6 +554,7 @@ function on_layer(qty)
 logical :: on_layer
 integer :: qty
 
+! Salt, Temp, u, v all on layer 
 on_layer = .true.
 
 end function on_layer
@@ -532,17 +568,24 @@ subroutine setup_interpolation()
 call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nx, ny, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_q_grid)
+                      interp_handle=interp_v_grid)
 
-call set_quad_coords(interp_q_grid, lonq, latq)
+call set_quad_coords(interp_v_grid, lonq, lath)
 
 
 call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nx, ny, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_h_grid)
+                      interp_handle=interp_u_grid)
 
-call set_quad_coords(interp_h_grid, lonh, lath)
+call set_quad_coords(interp_u_grid, lonh, latq)
+
+call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nx, ny, &
+                      QUAD_LOCATED_CELL_CENTERS, &
+                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
+                      interp_handle=interp_t_grid)
+
+call set_quad_coords(interp_t_grid, lonh, lath)
 
 
 end subroutine setup_interpolation
@@ -554,10 +597,12 @@ function get_interp_handle(qty)
 type(quad_interp_handle) :: get_interp_handle
 integer, intent(in) :: qty
 
-if (on_h(qty)) then !oh h
-   get_interp_handle = interp_h_grid
-else ! on q
-   get_interp_handle = interp_q_grid
+if (on_v_grid(qty)) then
+  get_interp_handle = interp_v_grid
+elseif (on_v_grid(qty)) then
+  get_interp_handle = interp_u_grid
+else
+  get_interp_handle = interp_t_grid
 endif
 
 end function
