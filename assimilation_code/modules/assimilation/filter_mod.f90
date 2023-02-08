@@ -1792,7 +1792,6 @@ my_task = my_task_id()
 ! Optimize: Could we use a gather instead of a transpose and get copy?
 call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
-! allocate temp space for sending data only on the task that will
 ! write the obs_seq.final file
 if (my_task == io_task) then
    allocate(obs_temp(num_obs_in_set))
