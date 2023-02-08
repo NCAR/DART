@@ -1796,7 +1796,7 @@ call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 ! write the obs_seq.final file
 if (my_task == io_task) then
    allocate(obs_temp(num_obs_in_set))
-else ! TJH: this change became necessary when using Intel 19.0.5 ...
+else 
    allocate(obs_temp(1))
 endif
 
