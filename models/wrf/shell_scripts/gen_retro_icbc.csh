@@ -43,7 +43,6 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 set datea     = 2017042700
 set datefnl   = 2017042712 # set this appropriately #%%%#
 set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
-set paramfile = /glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/scripts/param.csh
 
 source $paramfile
 
