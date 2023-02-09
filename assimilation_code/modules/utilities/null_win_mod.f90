@@ -38,9 +38,11 @@ contains
 
 !-------------------------------------------------------------
 !> Always using distributed in non-mpi case
-subroutine create_state_window(state_ens_handle)
+subroutine create_state_window(state_ens_handle, fwd_op_ens_handle, qc_ens_handle)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
+type(ensemble_type), intent(inout), optional :: fwd_op_ens_handle
+type(ensemble_type), intent(inout), optional :: qc_ens_handle
 
 ! Find out how many copies to put in the window
 ! copies_in_window is not necessarily equal to ens_handle%num_copies

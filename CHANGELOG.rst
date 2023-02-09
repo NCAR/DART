@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 9 2023 :: Bug-fix for vertical conversion QC 8. Tag v10.6.3**
+
+- QC 8 values now correctly recorded. Previously this info was lost if 
+  the posterior FO was skipped.  
+- Fixes QC overwrite for forward operators when running distributed_state = .false.
+- WRF tutorial bug fix for setting paramfile.
+
 **January 27 2023 :: Documentation update for porting new models. Tag v10.6.2**
 
 - Improved 'porting new models to DART' documentation.
