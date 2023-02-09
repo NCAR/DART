@@ -56,8 +56,7 @@ Note that within ``GSI`` the source file ``kinds.F90`` has an upper-case ``F90``
 suffix. Within the ``GSI2DART`` observation converter, it gets preprocessed 
 into ``mykinds.f90`` with a lower-case ``f90`` suffix. Case-insensitive filesystems 
 should be banned ... until then, it is more robust to implement some name change 
-during preprocessing. The path name specified 
-in ``GSI2DART/work/path_names_gsi_to_dart`` reflects this processed filename.
+during preprocessing. 
 
 The following three files had their open() statements modified to read 
 'BIG_ENDIAN' files without the need to compile EVERYTHING with 
@@ -95,16 +94,6 @@ radiance observation types.
 - Modified ``../../DEFAULT_obs_kind_mod.F90``
 - Added ``../../forward_operators/obs_def_radiance_mod.f90`` which has radiance observation types
 
-Compiler notes
-~~~~~~~~~~~~~~
-
-When using ifort, the Intel Fortran compiler, you may need to add the compiler 
-flag ``-nostdinc`` to avoid inserting the standard C include files which have 
-incompatible comment characters for Fortran.  You can add this compiler flag 
-in the the ``GSI2DART/work/mkmf_gsi_to_dart`` file by adding it to the "-c" 
-string contents.
-
-*Please note: this was NOT needed for ifort version 19.0.5.281.*
 
 Additional files and directories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -143,7 +132,7 @@ The converter has been tested with 64-bit reals as well as 32-bit reals
 This requires changes in two places:
 
 1. ``DART/assimilation_code/modules/utilities/types_mod.f90`` change required:  r8 = r4
-2. ``GSI2DART/work/mkmf_gsi_to_dart`` change required: ``-D_REAL4_``
+2. ``GSI2DART/work/quickbuild.sh`` change required: ``-D_REAL4_``
 
 If these are not set in a compatible fashion, you will fail to compile with the
 following error (or something similar):

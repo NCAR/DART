@@ -87,7 +87,7 @@ of mpi_window mods:
 -  cray_win_mod.f90
 -  no_cray_win_mod.f90
 
-| We have these two modules that you can swap in your path_names files because the MPI 2 standard states:
+| We have these two modules that you can swap in because the MPI 2 standard states:
 | Implementors may restrict the use of RMA communication that is synchronized by lock calls to windows in memory
   allocated by MPI_ALLOC_MEM.
 | MPI_ALLOC_MEM uses cray pointers, thus we have supplied a window module that uses cray pointers. However,
