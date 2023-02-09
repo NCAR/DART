@@ -610,14 +610,12 @@ character(len=*), intent(in) :: mitfile
 integer,          intent(in) :: ncid, varid ! which file, which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var_data(Nx,Ny,Nz)
 
-recl = Nx*Ny*Ny*4
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var_data
 close(iunit)
 
@@ -638,14 +636,12 @@ character(len=*), intent(in) :: mitfile
 integer,          intent(in) :: ncid, varid ! which file, which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var_data(Nx,Ny)
 
-recl = recl2d
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var_data
 close(iunit)
 
@@ -667,17 +663,15 @@ character(len=*), intent(in) :: mitfile
 integer,          intent(in) :: ncid, varid ! which file, which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var_data(Nx,Ny,Nz)
 real(r4) :: low_conc
 
 low_conc = 1.0e-12
 
-recl = recl3d
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var_data
 close(iunit)
 
@@ -718,17 +712,15 @@ character(len=*), intent(in) :: mitfile
 integer,          intent(in) :: ncid, varid ! which file, which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var_data(Nx,Ny)
 real(r4) :: low_conc
 
 low_conc = 1.0e-12
 
-recl = recl3d
 iunit = get_unit()
 ! HK are the mit files big endian by default?
 open(iunit, file=mitfile, form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var_data
 close(iunit)
 
@@ -769,12 +761,9 @@ integer,          intent(in) :: ncid ! which file,
 character(len=*), intent(in) :: name ! which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var(Nx,Ny)
 integer  :: varid
 real(r4) :: local_fval
-
-recl = recl2d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -791,7 +780,7 @@ where (var == local_fval) var = binary_fill
 
 iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
 close(iunit)
 
@@ -804,12 +793,9 @@ integer,          intent(in) :: ncid ! which file,
 character(len=*), intent(in) :: name ! which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var(Nx,Ny,Nz)
 integer  :: varid
 real(r4) :: local_fval
-
-recl = recl3d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -826,7 +812,7 @@ where (var == local_fval) var = binary_fill
 
 iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
 close(iunit)
 
@@ -840,12 +826,9 @@ integer,          intent(in) :: ncid ! which file
 character(len=*), intent(in) :: name ! which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var(Nx,Ny,Nz)
 integer  :: varid
 real(r4) :: local_fval
-
-recl = recl3d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -870,7 +853,7 @@ endif
 
 iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
 close(iunit)
 
@@ -883,12 +866,9 @@ integer,          intent(in) :: ncid ! which file
 character(len=*), intent(in) :: name ! which variable
 
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var(Nx,Ny)
 integer  :: varid
 real(r4) :: local_fval
-
-recl = recl2d
 
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
@@ -910,7 +890,7 @@ endwhere
 
 iunit = get_unit()
 open(iunit, file=trim(name)//'.data', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
 write(iunit,rec=1)var
 close(iunit)
 
@@ -924,15 +904,12 @@ function get_compressed_size_3d() result(n3)
 
 integer  :: n3
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var3d(NX,NY,NZ)
 integer  :: i,j,k
 
-recl = recl3d
-
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var3d
 close(iunit)
 
@@ -952,21 +929,18 @@ enddo
 end function get_compressed_size_3d
 
 !------------------------------------------------------------------
-! Assumes all 3D variables are masked in the 
+! Assumes all 2D variables are masked in the
 ! same location
 function get_compressed_size_2d() result(n2)
 
 integer  :: n2
 integer  :: iunit
-integer  :: recl ! datasize*4
 real(r4) :: var2d(NX,NY)
 integer  :: i,j
 
-recl = recl2d
-
 iunit = get_unit()
 open(iunit, file='ETA.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=recl, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var2d
 close(iunit)
 
@@ -992,7 +966,7 @@ integer :: n, i, j, k
 
 iunit = get_unit()
 open(iunit, file='PSAL.data', form='UNFORMATTED', status='OLD', &
-            access='DIRECT', recl=Nx*Ny*Nz*4, convert='BIG_ENDIAN')
+            access='DIRECT', recl=recl3d, convert='BIG_ENDIAN')
 read(iunit,rec=1) var3d
 close(iunit)
 
