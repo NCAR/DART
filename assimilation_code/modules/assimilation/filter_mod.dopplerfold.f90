@@ -417,7 +417,6 @@ call adaptive_inflate_init(prior_inflate, &
                            inf_upper_bound(PRIOR_INF), &
                            inf_sd_lower_bound(PRIOR_INF), &
                            inf_sd_max_change(PRIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, &
@@ -432,7 +431,6 @@ call adaptive_inflate_init(post_inflate, &
                            inf_upper_bound(POSTERIOR_INF), &
                            inf_sd_lower_bound(POSTERIOR_INF), &
                            inf_sd_max_change(POSTERIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Posterior')
 
 if (do_output()) then
