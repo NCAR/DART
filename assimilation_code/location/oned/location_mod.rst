@@ -15,9 +15,9 @@ between 0 and 1. A type that abstracts the location is provided along with opera
 compute distances between locations. This is a member of a class of similar location modules that provide the same
 abstraction for different represenations of physical space.
 
-All possible location modules define the same module name ``location_mod``. Therefore, the DART framework and any user
-code should include a Fortran 90 'use' statement of 'location_mod'. The selection of exactly which location module is
-compiled is specified by the source file name in the ``path_names_xxx`` file, which is read by the ``mkmf_xxx`` scripts.
+All types of location modules define the same module name ``location_mod``. Therefore, the DART framework and any user
+code should include a Fortran 90 ``use`` statement of ``location_mod``. The selection of which location module will be
+compiled into the program is controlled by the LOCATION variable in ``quickbuild.sh``.
 
 The model-specific ``model_mod.f90`` files need to define four ``get_close`` routines, but in most cases they can simply
 put a ``use`` statement at the top which uses the routines in the locations module, and they do not have to provide any

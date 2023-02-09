@@ -1,3 +1,5 @@
+.. _obs sequence tool:
+
 program ``obs_sequence_tool``
 =============================
 
