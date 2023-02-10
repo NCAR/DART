@@ -291,8 +291,8 @@ end do
 ! This has implications for stability of probit algorithms that require further study
 x = x_new
 errstring = 'Failed to converge '
-call error_handler(E_MSG, 'norm_inv_accurate', errstring, source)
-!!!call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
+!!!call error_handler(E_MSG, 'norm_inv_accurate', errstring, source)
+call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
 
 end subroutine norm_inv_accurate
 

@@ -759,12 +759,12 @@ type(dist_param_type), intent(inout) :: p
 real(r8), intent(out)                :: state_ens(ens_size)
 
 integer :: i, region
-real(r8) :: quantile, target_mass, mass, lower_state, upper_state, lower_q, upper_q
+real(r8) :: quantiles(ens_size), target_mass, mass, lower_state, upper_state, lower_q, upper_q
 logical  :: bounded_below, bounded_above, do_uniform_tail_left, do_uniform_tail_right
 real(r8) :: lower_bound, tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8) :: upper_bound, tail_amp_right, tail_mean_right, tail_sd_right
 
-real(r8) :: fract, lower_mass, upper_mass
+real(r8) :: fract, lower_mass, upper_mass, t_state_ens(ens_size)
 
 ! Don't know what to do if original ensemble had all members the same (or nearly so???)
 tail_sd_left = p%params(ens_size + 11)
@@ -790,14 +790,15 @@ tail_sd_right = p%params(ens_size + 12)
 
 ! Convert each probit ensemble member back to physical space
 do i = 1, ens_size
-   ! First, invert the probit/logit to get a quantile
-   quantile = inv_probit_or_logit_transform(probit_ens(i))
-
-   call inv_rh_cdf(quantile, ens_size, p%params, &
-      bounded_below, bounded_above, lower_bound, upper_bound, &
-      tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
-      tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, state_ens(i))
+   ! First, invert the probit/logit to get quantiles
+   quantiles(i) = inv_probit_or_logit_transform(probit_ens(i))
 end do
+
+! Invert the rank histogram CDF to get the physical space ensemble
+call inv_rh_cdf(quantiles, ens_size, p%params, &
+   bounded_below, bounded_above, lower_bound, upper_bound, &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, state_ens)
 
 ! Probably do this explicitly 
 ! Free the storage

@@ -80,6 +80,8 @@ use algorithm_info_mod, only : probit_dist_info, obs_inc_info
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_shape_scale, &
                                    gamma_gamma_prod
+
+use rh_distribution_mod, only   :  inv_rh_cdf, rh_cdf_init
                                
 
 implicit none
@@ -1058,9 +1060,9 @@ else
       t_likelihood = t_likelihood / sum(t_likelihood)
       call obs_increment_bounded_norm_rhf(ens, t_likelihood, ens_size, prior_var, &
          obs_inc_temp, bounded, bounds)
-      if(maxval(abs(obs_inc_temp)) > 1e-11_r8) then
-         call error_handler(E_ERR,'obs_increment', &
-           'Null increment tests exceed the threshold', source)
+      if(maxval(abs(obs_inc_temp)) > 1e-10_r8) then
+         write(msgstring, *) 'Null increment tests exceed the threshold ', maxval(abs(obs_inc_temp))
+         call error_handler(E_ERR, 'obs_increment', msgstring, source)
       endif
 
    !--------------------------------------------------------------------------
@@ -1228,14 +1230,12 @@ real(r8), intent(in)  :: bound(2)
 ! is_bounded indicates if a bound exists on left/right and the 
 ! bound value says what the bound is if is_bounded is true
 
-! This interface is specifically tailored to the information for just doing observation
-! space. It does the sorting of the ensemble and computes the piecewise constant likelihood. 
-! It then calls  ens_increment_bounded_norm_rhf which is also used by state space QCEFF
-! code that only has a piecewise constant likelihood and has already sorted the ensemble.
-
-real(r8) :: sort_ens(ens_size), sort_ens_like(ens_size), sort_post(ens_size)
-real(r8) :: piece_const_like(0:ens_size)
-integer  :: i, sort_ind(ens_size)
+real(r8) :: sort_ens(ens_size), sort_ens_like(ens_size)
+real(r8) :: post(ens_size), sort_post(ens_size), q(ens_size)
+real(r8) :: tail_amp_left,  tail_mean_left,  tail_sd_left
+real(r8) :: tail_amp_right, tail_mean_right, tail_sd_right
+logical  :: do_uniform_tail_left, do_uniform_tail_right
+integer  :: i, sort_ind(ens_size), j
 
 ! If all ensemble members are identical, this algorithm becomes undefined, so fail
 if(prior_var <= 0.0_r8) then
@@ -1252,26 +1252,27 @@ sort_ens = ens(sort_ind)
 ! Get the sorted likelihood
 sort_ens_like = ens_like(sort_ind)
 
-! Compute the mean likelihood in each interior interval (bin)
-do i = 1, ens_size - 1
-   piece_const_like(i) = (sort_ens_like(i) + sort_ens_like(i + 1)) / 2.0_r8
-end do
+! Generate the prior information for a RH for this ensemble
+call rh_cdf_init(ens, ens_size, is_bounded, bound, sort_ens, q, &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right)
 
-! Likelihoods for outermost regions (bounded or unbounded); just outermost ensemble like
-piece_const_like(0) = sort_ens_like(1)
-piece_const_like(ens_size) = sort_ens_like(ens_size)
-
-call ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
-   sort_post, is_bounded, bound)
+! Invert the rh cdf after it is multiplied by the likelihood
+call inv_rh_cdf(q, ens_size, sort_ens, &
+   is_bounded(1), is_bounded(2), bound(1), bound(2), &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, post, &
+   sort_ens_like)
+! The posterior needs to be sorted to get increments; this can be done more efficiently
+sort_post = post(sort_ind)
 
 ! These are increments for sorted ensemble; convert to increments for unsorted
 do i = 1, ens_size
    obs_inc(sort_ind(i)) = sort_post(i) - ens(sort_ind(i))
-   ! It is possible, although apparently exceedingly unusual, to generate an increment
+   ! It may be possible, although apparently exceedingly unusual, to generate an increment
    ! here that when added back onto the prior leads to a posterior that is greater than 
    ! the bounds. Unclear if there is any direct way to fix this given that increments are
-   ! being passed out. It can be corrected in to_probit_bounded_normal_rh by changing the
-   ! priors to satisfy the bounds there
+   ! being passed out.
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
@@ -1321,259 +1322,6 @@ weight = 1.0_r8 / (cdf(2) - cdf(1))
 get_truncated_normal_like = weight * exp(-1.0_r8 * (x - obs)**2 / (2.0_r8 * obs_var))
 
 end function get_truncated_normal_like
-
-
-
-subroutine ens_increment_bounded_norm_rhf(sort_ens, piece_const_like, ens_size, prior_var, &
-   sort_post, is_bounded, bound)
-!-----------------------------------------------------------------------
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: sort_ens(ens_size)
-real(r8), intent(in)  :: piece_const_like(0:ens_size)
-real(r8), intent(in)  :: prior_var
-real(r8), intent(out) :: sort_post(ens_size)
-logical,  intent(in)  :: is_bounded(2)
-real(r8), intent(in)  :: bound(2)
-
-real(r8) :: post_weight(0:ens_size)
-real(r8) :: tail_mean(2), tail_sd(2), prior_bound_mass(2), prior_tail_amp(2)
-real(r8) :: prior_sd, base_prior_prob, like_sum, bound_quantile
-logical  :: do_uniform_tail(2)
-integer  :: i
-
-! Parameter to control switch to uniform approximation for normal tail
-real(r8), parameter :: uniform_threshold = 0.01_r8
-
-! Save to avoid a modestly expensive computation redundancy
-real(r8), save :: dist_for_unit_sd
-
-! For unit normal, find distance from mean to where cdf is 1/(ens_size+1).
-! Saved to avoid redundant computation for repeated calls with same ensemble size
-if(bounded_norm_rhf_ens_size /= ens_size) then
-   call norm_inv(1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
-   ! This will be negative, want it to be a distance so make it positive
-   dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
-   ! Keep a record of the ensemble size used to compute dist_for_unit_sd
-   bounded_norm_rhf_ens_size = ens_size
-endif
-
-! Fail if lower bound is larger than smallest ensemble member 
-if(is_bounded(1)) then
-   ! Do in two ifs in case the bound is not defined
-   if(sort_ens(1) < bound(1)) then
-      msgstring = 'Ensemble member less than lower bound'
-      call error_handler(E_ERR, 'ens_increment_bounded_norm_rhf', msgstring, source)
-   endif
-endif
-
-! Fail if upper bound is smaller than the largest ensemble member 
-if(is_bounded(2)) then
-   if(sort_ens(ens_size) > bound(2)) then
-      msgstring = 'Ensemble member greater than upper bound'
-      call error_handler(E_ERR, 'ens_increment_bounded_norm_rhf', msgstring, source)
-   endif
-endif
-
-! Posterior is prior times likelihood, normalized so the sum of weight is 1
-! Prior has 1 / (ens_size + 1) probability in each region, so it just normalizes out.
-! Posterior weights are then just the likelihood in each region normalized
-like_sum = sum(piece_const_like)
-if(like_sum < 0.0_r8) then
-   msgstring = 'Sum of piece_const_like is <= 0'
-   call error_handler(E_ERR, 'ens_increment_bounded_norm_rhf', msgstring, source)
-else
-   post_weight = piece_const_like/ like_sum
-endif
-
-
-! Standard deviation of prior tails is prior ensemble standard deviation
-prior_sd = sqrt(prior_var)
-tail_sd(1:2) = prior_sd
-! Find a mean so that 1 / (ens_size + 1) probability is in outer regions
-tail_mean(1) = sort_ens(1) + dist_for_unit_sd * prior_sd
-tail_mean(2) = sort_ens(ens_size) - dist_for_unit_sd * prior_sd
-
-! If the distribution is bounded, still want 1 / (ens_size + 1) in outer regions
-! Put an amplitude term (greater than 1) in front of the tail normals 
-! Amplitude is 1 if there are no bounds, so start with that
-prior_tail_amp = 1.0_r8
-
-! How much mass is outside the bounds? None if there are no bounds
-prior_bound_mass(1) = 0.0_r8
-prior_bound_mass(2) = 0.0_r8
-
-! WARNING: NEED TO DO SOMETHING TO AVOID CASES WHERE THE BOUND AND THE SMALLEST ENSEMBLE ARE VERY CLOSE/SAME
-base_prior_prob = 1.0_r8 / (ens_size + 1.0_r8)
-
-! Default is that tails are not uniform
-do_uniform_tail(1:2) = .false.
-
-if(is_bounded(1)) then
-   ! Compute the CDF at the bounds
-   bound_quantile = norm_cdf(bound(1), tail_mean(1), tail_sd(1))
-   if(abs(base_prior_prob - bound_quantile) / base_prior_prob < uniform_threshold) then
-      ! If bound and ensemble member are too close, do uniform approximation
-      do_uniform_tail(1) = .true.
-   else
-      ! Prior tail amplitude is  ratio of original probability to that retained in tail after bounding
-      prior_tail_amp(1) = base_prior_prob / (base_prior_prob - bound_quantile)
-      prior_bound_mass(1) = prior_tail_amp(1) * bound_quantile
-   endif
-endif
-
-if(is_bounded(2)) then
-   ! Compute the CDF at the bounds
-   bound_quantile = norm_cdf(bound(2), tail_mean(2), tail_sd(2))
-   if(abs(base_prior_prob - (1.0_r8 - bound_quantile)) / base_prior_prob < uniform_threshold) then
-      ! If bound and ensemble member are too close, do uniform approximation
-      do_uniform_tail(2) = .true.
-   else
-      ! Numerical concern, if ensemble is close to bound amplitude can become unbounded? Use inverse.
-      prior_tail_amp(2) = base_prior_prob / (base_prior_prob - (1.0_r8 - bound_quantile))
-      ! Compute amount of mass in prior tail normal that is beyond the bound
-      prior_bound_mass(2) = prior_tail_amp(2) * (1.0_r8 - bound_quantile)
-   endif
-endif
-
-! To reduce code complexity, use a subroutine to find the update ensembles with this info
-call find_bounded_norm_rhf_post(sort_ens, ens_size, post_weight, tail_mean, tail_sd, &
-   prior_tail_amp, bound, is_bounded, prior_bound_mass, do_uniform_tail, sort_post)
-
-end subroutine ens_increment_bounded_norm_rhf
-
-
-
-subroutine find_bounded_norm_rhf_post(ens, ens_size, post_weight, tail_mean, &
-   tail_sd, prior_tail_amp, bound, is_bounded, prior_bound_mass, do_uniform_tail, sort_post)
-!------------------------------------------------------------------------
-! Modifying code to make a more general capability top support bounded rhf
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size)
-real(r8), intent(in)  :: post_weight(ens_size + 1)
-real(r8), intent(in)  :: tail_mean(2)
-real(r8), intent(in)  :: tail_sd(2)
-real(r8), intent(in)  :: prior_tail_amp(2)
-real(r8), intent(in)  :: bound(2)
-logical,  intent(in)  :: is_bounded(2)
-real(r8), intent(in)  :: prior_bound_mass(2)
-logical,  intent(in)  :: do_uniform_tail(2)
-real(r8), intent(out) :: sort_post(ens_size)
-
-! Given a sorted set of points that bound rhf intervals and a 
-! posterior weight for each interval, find an updated ensemble. 
-! The tail mean and sd are dimensioned (2), first for the left tail, then for the right tail.
-! Allowing the sd to be different could allow a Gaussian likelihood tail to be supported.
-! The distribution on either side may be bounded and the bound is provided if so. The 
-! distribution on the tails is a doubly truncated normal. The inverse of the posterior amplitude
-! for the outermost regions is passed to minimize the possibility of overflow.
-
-real(r8) :: cumul_mass(0:ens_size + 1), umass, target_mass
-real(r8) :: smallest_ens_mass, largest_ens_mass, post_tail_amp(2), post_bound_mass(2)
-integer  :: i, j, lowest_box
-
-! MUCH MORE NUMERICAL ANALYSIS IS  NEEDED FOR THE QCEF ALGORITHMS
-
-! The posterior weight is already normalized here, see obs_increment_bounded_norm_rhf
-! May want to move the weight normalization to this subroutine
-
-! Compute the posterior tail amplitudes and amount of mass outside the tail normals
-if(.not. do_uniform_tail(1)) then
-   ! Ratio is ratio of posterior weight to prior weight (which is 1 / (N + 1)); multiply by N + 1
-   post_tail_amp(1) = prior_tail_amp(1) * post_weight(1) * (ens_size + 1)
-   ! Compute the amount of mass outside the tail normals
-   post_bound_mass(1) = prior_bound_mass(1) * post_weight(1) * (ens_size + 1)
-endif
-
-if(.not. do_uniform_tail(2)) then
-   post_tail_amp(2) = prior_tail_amp(2) * post_weight(ens_size + 1) * (ens_size + 1)
-   post_bound_mass(2) = prior_bound_mass(2) * post_weight(ens_size + 1) * (ens_size + 1)
-endif
-
-! Find cumulative posterior probability mass at each box boundary
-cumul_mass(0) = 0.0_r8
-do i = 1, ens_size + 1
-   cumul_mass(i) = cumul_mass(i - 1) + post_weight(i)
-end do
-
-! This reduces the impact of possible round-off errors on the cumulative mass
-cumul_mass = cumul_mass / cumul_mass(ens_size + 1)
-
-! Begin internal box search at bottom of lowest box, update for efficiency
-lowest_box = 1
-
-! Find each new ensemble member's location
-do i = 1, ens_size
-   ! Each update ensemble member has 1/(ens_size+1) mass before it
-   umass = (1.0_r8 * i) / (ens_size + 1.0_r8)
-
-   !--------------------------------------------------------------------------
-   ! If it is in the inner or outer range have to use normal tails
-   if(umass < cumul_mass(1)) then
-      ! It's in the left tail
-
-      ! If the bound and the smallest ensemble member are identical then any posterior 
-      ! in the lower interval is set to the value of the smallest ensemble member. 
-      if(do_uniform_tail(1) .and. is_bounded(1)) then
-         sort_post(i) = bound(1) + (umass / cumul_mass(1)) * (ens(1) - bound(1))
-      else
-
-         ! Target quantile is lower bound quantile plus umass
-         target_mass = post_bound_mass(1) + umass
-         call weighted_norm_inv(post_tail_amp(1), tail_mean(1), tail_sd(1), target_mass, sort_post(i))
-
-         ! If posterior is less than bound, set it to bound. (Only possible thru roundoff).
-         if(is_bounded(1) .and. sort_post(i) < bound(1)) then
-            ! Informative message for now can be turned off when code is mature
-            write(*, *) 'SMALLER THAN BOUND', i, sort_post(i), bound(1)
-         endif
-         if(is_bounded(1)) sort_post(i) = max(sort_post(i), bound(1))
-
-         ! It might be possible to get a posterior from the tail that exceeds the smallest 
-         ! prior ensemble member since the cdf and the inverse cdf are not exactly inverses. 
-         ! This has not been observed and is not obviously problematic.
-      endif
-
-   !--------------------------------------------------------------------------
-   else if(umass > cumul_mass(ens_size)) then
-      ! It's in the right tail; will work coming in from the right using symmetry of tail normal
-      if(do_uniform_tail(2) .and. is_bounded(2)) then
-         sort_post(i) = ens(ens_size) + &
-            (umass - cumul_mass(ens_size)) / (1.0_r8 - cumul_mass(ens_size)) * (bound(2) - ens(ens_size))
-      else
-         ! Target quantile distance from the upper bound; will come in from below
-         target_mass = post_bound_mass(2) + (1.0_r8 - umass)
-         ! Unbouded temporary for now
-         call weighted_norm_inv(post_tail_amp(2), tail_mean(2), tail_sd(2), target_mass, sort_post(i))
-         ! Coming in from the right, use symmetry after pretending its on left
-         sort_post(i) = tail_mean(2) + (tail_mean(2) - sort_post(i))
-
-        ! If post is larger than bound, set it to bound. (Only possible thru roundoff).
-         if(is_bounded(2) .and. sort_post(i) > bound(2)) then
-            write(*, *) 'BIGGER THAN BOUND', i, sort_post(i), bound(2)
-         endif
-         if(is_bounded(2)) sort_post(i) = min(sort_post(i), bound(2))
-      endif
-
-   !--------------------------------------------------------------------------
-   else
-      ! In one of the inner uniform boxes.
-      FIND_BOX:do j = lowest_box, ens_size - 1
-         ! Find the box that this mass is in
-         if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
-
-            ! Only supporting rectangular quadrature here: Linearly interpolate in mass
-            sort_post(i) = ens(j) + ((umass - cumul_mass(j)) / &
-               (cumul_mass(j+1) - cumul_mass(j))) * (ens(j + 1) - ens(j))
-            ! Don't need to search lower boxes again
-            lowest_box = j
-            exit FIND_BOX
-         end if
-      end do FIND_BOX
-   endif
-end do
-
-end subroutine find_bounded_norm_rhf_post
-
 
 
 

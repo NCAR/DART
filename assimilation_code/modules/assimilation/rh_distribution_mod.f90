@@ -312,12 +312,13 @@ end subroutine rh_cdf
 
 !-----------------------------------------------------------------------
 
-subroutine inv_rh_cdf(quantile, ens_size, sort_ens, &
+subroutine inv_rh_cdf(quantiles, ens_size, sort_ens, &
    bounded_below, bounded_above, lower_bound, upper_bound, &
    tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
-   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x)
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x, &
+   like)
 
-real(r8), intent(in)  :: quantile
+real(r8), intent(in)  :: quantiles(ens_size)
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: sort_ens(ens_size)
 logical,  intent(in)  :: bounded_below, bounded_above
@@ -325,93 +326,143 @@ real(r8), intent(in)  :: lower_bound, upper_bound
 real(r8), intent(in)  :: tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8), intent(in)  :: tail_amp_right, tail_mean_right, tail_sd_right
 logical,  intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
-real(r8), intent(out) :: x
+real(r8), intent(out) :: x(ens_size)
+real(r8), intent(inout), optional  :: like(ens_size)
 
-integer :: region
+! This inverts the cdf which is optionally multiplied by a likelihood.
+
+integer :: region, i, j
 real(r8) :: lower_state, upper_state, lower_mass, upper_mass, target_mass
-real(r8) :: lower_q, upper_q, fract, del_q
+real(r8) :: q(ens_size), curr_q, amp_adj, lower_q, upper_q, del_q, fract
 
 ! Quantile increment between ensemble members for rh
 del_q = 1.0_r8 / (ens_size + 1.0_r8)
 
-! Assume that the quantiles of the original ensemble for the BNRH are uniform
-! Finding which region this quantile is in is trivial
-region = floor(quantile * (ens_size + 1.0_r8))
-! Careful about numerical issues moving outside of region [0 ens_size]
-if(region < 0) region = 0
-if(region > ens_size) region = ens_size
-
-if(region == 0) then
-   ! Lower tail
-   if(bounded_below .and. do_uniform_tail_left) then
-      ! Lower tail uniform
-      upper_state = sort_ens(1)
-! NOTE: NEED TO BE CAREFUL OF THE DENOMINATOR HERE AND ON THE PLUS SIDE
-      x = lower_bound + &
-         (quantile / del_q) * (upper_state - lower_bound)
-   else
-      ! Find the mass at the lower bound (which could be unbounded)
-      if(bounded_below) then
-         lower_mass = tail_amp_left * norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
-      else
-         lower_mass = 0.0_r8
-      endif
-      ! Find the mass at the upper bound (ensemble member 1)
-      upper_mass = tail_amp_left * norm_cdf(sort_ens(1), tail_mean_left, tail_sd_left)
-      ! What fraction of this mass difference should we go?
-      fract = quantile / del_q
-      target_mass = lower_mass + fract * (upper_mass - lower_mass)
-      call weighted_norm_inv(tail_amp_left, tail_mean_left, tail_sd_left, target_mass, x)
-   endif
-
-elseif(region == ens_size) then
-   ! Upper tail
-   if(bounded_above .and. do_uniform_tail_right) then
-      ! Upper tail is uniform
-      lower_state = sort_ens(ens_size)
-      upper_state = upper_bound
-      x = lower_state + (quantile - ens_size *del_q) * &
-         (upper_state - lower_state) / del_q
-
-   else
-      ! Upper tail is (bounded) normal
-      ! Find the mass at the upper bound (which could be unbounded)
-      if(bounded_above) then
-         upper_mass = tail_amp_right * norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
-      else
-         upper_mass = 1.0_r8
-      endif
-      ! Find the mass at the lower bound (ensemble member n)
-      lower_mass = tail_amp_right * norm_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
-      ! What fraction of the last interval do we need to move
-      fract = (quantile - ens_size * del_q) / del_q
-      target_mass = lower_mass + fract * (upper_mass - lower_mass)
-      call weighted_norm_inv(tail_amp_right, tail_mean_right, tail_sd_right, target_mass, x)
-   endif
-
+! If no likelihood, prior quantiles are assumed to be uniformly distributed
+if(.not. present(like)) then
+   do i = 1, ens_size
+      q(i) = i * del_q
+   end do
 else
-   ! Interior region; get the quantiles of the region boundary
-   lower_q = region * del_q
-   upper_q = (region + 1.0_r8) / (ens_size + 1.0_r8)
-   x = sort_ens(region) + ((quantile - lower_q) / (upper_q - lower_q)) * &
-      (sort_ens(region + 1) - sort_ens(region))
-endif
+   ! Normalize the likelihood to have a sum of 1
+   like = like / (sum(like) + like(1) / 2.0_r8 + like(ens_size) / 2.0_r8)
 
-! Check for posterior violating bounds; This may not be needed after development testing
-if(bounded_below) then
-   if(x < lower_bound) then
-      write(errstring, *) 'x less than lower_bound ', x
-      call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+   ! Go from left to right adjusting the quantiles through the x's
+   ! Assume that the quantiles of the original ensemble for the BNRH are uniform
+   q(1) = like(1) 
+   do i = 2, ens_size
+      q(i) = q(i - 1) + (like(i-1) + like(i)) / 2.0_r8
+   end do
+
+   ! Temporary test to confirm posterior is a pdf
+   if(abs(q(ens_size) + like(ens_size) - 1.0_r8) > 1.0e-12) then
+      write(*, *) 'final q ', q(ens_size) + like(ens_size)
+      stop
    endif
 endif
 
-if(bounded_above) then
-   if(x > upper_bound) then
-      write(errstring, *) 'x greater than upper_bound ', x
-      call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+! Loop through each ensemble member to find posterior state
+do i = 1, ens_size
+   curr_q = quantiles(i)
+   ! Which region is this quantile in?
+   if(.not. present(like)) then
+      ! RH quantiles are uniform; finding region for this quantile is trivial
+      region = floor(curr_q * (ens_size + 1.0_r8))
+      ! Careful about numerical issues moving outside of region [0 ens_size]
+      if(region < 0) region = 0
+      if(region > ens_size) region = ens_size
+   else
+      ! Find which region this quantile is in
+      ! Need to make this more efficient once it is working
+      ! Default is that region is the highest one; quantile(i) >= largest q
+      region = ens_size
+      do j = 1, ens_size
+         if(curr_q < q(j)) then 
+            region = j - 1
+            exit
+         endif
+      end do
    endif
-endif
 
+   if(region == 0) then
+      ! Lower tail
+      if(bounded_below .and. do_uniform_tail_left) then
+         ! Lower tail uniform
+         upper_state = sort_ens(1)
+         x(i) = lower_bound + (curr_q / q(1)) * (upper_state - lower_bound)
+      else
+         ! Find the mass at the lower bound (which could be unbounded)
+         ! The amplitude is changed if there is a non-uniform likelihood
+         amp_adj = q(1) / del_q
+         if(bounded_below) then
+            lower_mass = amp_adj * tail_amp_left * &
+               norm_cdf(lower_bound, tail_mean_left, tail_sd_left)
+         else
+            lower_mass = 0.0_r8
+         endif
+         ! Find the mass at the upper bound (ensemble member 1)
+         upper_mass = amp_adj * tail_amp_left * &
+            norm_cdf(sort_ens(1), tail_mean_left, tail_sd_left)
+         ! What fraction of this mass difference should we go?
+         fract = curr_q / q(1)
+         target_mass = lower_mass + fract * (upper_mass - lower_mass)
+         call weighted_norm_inv(amp_adj*tail_amp_left, tail_mean_left, &
+            tail_sd_left, target_mass, x(i))
+      endif
+   
+   elseif(region == ens_size) then
+      ! Upper tail
+      if(bounded_above .and. do_uniform_tail_right) then
+         ! Upper tail is uniform
+         lower_state = sort_ens(ens_size)
+         upper_state = upper_bound
+         x(i) = lower_state + (curr_q - q(ens_size)) * &
+            (upper_state - lower_state) / (1.0_r8 - q(ens_size))
+      else
+         ! Upper tail is (bounded) normal
+         ! Find the mass at the upper bound (which could be unbounded)
+         amp_adj = (1.0_r8 - q(ens_size)) / del_q
+         if(bounded_above) then
+            upper_mass = amp_adj * tail_amp_right * &
+               norm_cdf(upper_bound, tail_mean_right, tail_sd_right)
+         else
+            upper_mass = amp_adj * 1.0_r8
+         endif
+         ! Find the mass at the lower edge of the region (ensemble member n)
+         lower_mass = amp_adj * tail_amp_right * &
+            norm_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
+         ! What fraction of the last interval do we need to move
+         fract = (curr_q - q(ens_size)) / (1.0_r8 - q(ens_size))
+         target_mass = lower_mass + fract * (upper_mass - lower_mass)
+         call weighted_norm_inv(amp_adj * tail_amp_right, tail_mean_right, &
+            tail_sd_right, target_mass, x(i))
+      endif
+   
+   else
+      ! Interior region; get the quantiles of the region boundary
+      lower_q = q(region)
+      upper_q = q(region + 1)
+      x(i) = sort_ens(region) + ((curr_q - lower_q) / (upper_q - lower_q)) * &
+         (sort_ens(region + 1) - sort_ens(region))
+   endif
+   
+   ! Check for posterior violating bounds; This may not be needed after development testing
+   if(bounded_below) then
+      if(x(i) < lower_bound) then
+         write(errstring, *) 'x less than lower_bound ', i, x(i)
+         call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+      endif
+   endif
+   
+   if(bounded_above) then
+      if(x(i) > upper_bound) then
+         write(errstring, *) 'x greater than upper_bound ', i, x(i)
+         call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+      endif
+   endif
+   
+enddo
+   
 end subroutine inv_rh_cdf
 
 !-----------------------------------------------------------------------
