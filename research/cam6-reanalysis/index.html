@@ -1,0 +1,92 @@
+<!doctype html><html lang=en-us><head><meta charset=utf-8><title>Using the CAM6+DART Reanalysis for Earth System Research</title><meta name=viewport content="width=device-width,initial-scale=1"><meta name=author content="DAReS"><meta name=generator content="Hugo 0.101.0"><link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css><link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css><link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css><link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet><link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon><link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon></head><body><nav class="navbar navbar-expand-lg site-navigation"><div class=container><a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding><img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo></a>
+<a class=navbar-second-brand href=/><img src=https://dart.ucar.edu/images/ncar-dart-logo-navy.svg alt=logo></a>
+<button class="navbar-toggler collapsed" type=button data-toggle=collapse data-target=#sitenavbar aria-label=menu>
+<span class=icon-bar></span>
+<span class=icon-bar></span>
+<span class=icon-bar></span></button><div class="collapse navbar-collapse" id=sitenavbar><ul class="navbar-nav ml-auto main-nav"><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/about>About</a></li><li class=nav-item><div class=dropdown-container><a href=# class="dropdown-toggle nav-link" data-toggle=dropdown role=button aria-haspopup=true aria-expanded=false>Research<span class=caret></span></a><ul class=dropdown-menu><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/publications>Publications</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></li><li class=nav-item><a class=nav-link a href=https://docs.dart.ucar.edu/>Documentation</a></li><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li class=nav-item><a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software><span class=btn-area><span data-text="Get DART">Get DART</span></span></a></li></ul></div></div></nav><main><section class=site-project-single-header style=background-image:url(https://dart.ucar.edu/images/hero/cam6-reanalysis.jpg)></section><section class=site-project-single-section><div class=container><div class=row><div class="col-lg-12 mx-auto"><div class=site-project-single><h1>Using the CAM6+DART Reanalysis for Earth System Research</h1></div></div></div><div class=row><div class="col-lg-8 mx-auto"><p>The Earth system can be viewed as distinct but connected components:
+atmosphere, land, ocean, cryosphere, biosphere, et cetera (Fig. 1). Data
+assimilation can help us create the best available representation of the state
+of Earth, but it requires relevant observations and a forecast model which
+represents all of the components of interest.</p><p>Earth system components interact in many ways at the interfaces between them.</p><p>NCAR&rsquo;s Community Earth System Model (CESM) can run forecasts with a flexible
+choice of &ldquo;active&rdquo; components, in which the component model state evolves
+according to equations, and &ldquo;data&rdquo; components, in which the component state is
+read from a data file. For example, to generate atmospheric forecasts, the
+configuration could have active atmosphere and land components, but simply read
+sea surface temperatures (SSTs) from data files, instead of running an
+expensive, active, ocean component to generate SSTs. CESM has been developed
+at NCAR for decades, and has evolved to work effectively with DART through the
+efforts of the CESM Software Engineering Group (M. Vertenstein, S. Goldhaber,
+J. Edwards) and R. Montuoro.</p><p>Data assimilation has been extensively applied to the atmosphere for decades,
+but not to the surface components until more recently. One hurdle has been
+that the surface components tend to be more slowly varying, so they require
+atmospheric forcing over long time spans. It&rsquo;s expensive to run an atmospheric
+model, and many experiments may require the same atmospheric forcing,
+which would be wasteful to regenerate each time. Further, research shows
+that an ensemble of surface models requires an ensemble of forcing from the
+atmosphere in order to maintain the necessary ensemble spread (Fig. 2).</p><p>So the cost is multiplied by the size of the ensemble. There are thus
+compelling reasons to generate an ensemble of atmospheric forcing once and
+archive it for repeated use.</p><p>To satisfy this need the DART team has generated a &ldquo;reanalysis&rdquo; spanning years
+2011-2020 using DART, CESM (v2.1) with an active atmospheric model
+component, the Community Atmosphere Model version 6(CAM6), and several million
+observations per day. This reanalysis shares characteristics with widely used
+reanalyses, such as ERA5 (Hersbach, et al., 2020), JRA55 (Kobayashi, et al.,
+2015), and MERRA-2 (Gelaro, et al., 2017). The primary goals of those are to
+provide a high resolution (spatial and temporal) description of the atmosphere
+using as many observations as provide useful information. The CAM6+DART
+Reanalysis is more focused on creating a larger (80-member) ensemble of fluxes
+and forcing at the surface, representing the actual weather, while using fewer
+observations and lower resolution. The assimilation is purely ensemble based,
+as opposed to the variational methods used in the other reanalyses, and it
+employed state-of-the-art algorithms such as:</p><ul><li>Enhanced Adaptive Inflation (Gharamti, 2018),</li><li>Sampling Error Correction (Anderson, 2012),</li><li>explicitly-tuned, horizontal and vertical observation localization.</li></ul><p>The ensemble automatically provides a representation of the uncertainty as a
+function of location, time, and variable (Fig. 3).</p><p>The results are archived with frequencies ranging from hourly to 6-hourly,
+depending on the variable. They are packaged into useful units and freely
+available from
+<a href=https://rda.ucar.edu/datasets/ds345.0/>NCAR&rsquo;s Research Data Archive</a>.</p><p>Another distinction from other reanalyses is the time span. The CAM6+DART
+Reanalysis spans 2011-2020, while the others span multiple decades up to the
+present. There is also a CAM4+DART Reanalysis which spans 1998-2011 and
+provides similar forcing files. The improvements in the CAM6 version from the
+CAM4 version include:</p><ul><li>1-degree, 32-level CAM6 instead of 2-degree, 26-level CAM4</li><li>high res SST forcing; 1/4 degree daily instead of 2 degree monthly</li><li>improved inflation algorithm (Gharamti, 2018).</li><li>careful tuning of assimilation parameters and choice of algorithms.</li><li>addition of AIRS T retrievals and GPS-RO (unavailable from the first half of
+the CAM4 Reanalysis); the quality and number of the cloud drift wind
+observations improved dramatically in the later years of the CAM6 Reanalysis.</li><li>more complete set of forcing variables were archived, enabling more CESM
+components to use them.</li></ul><p>The Reanalysis generated other datasets, which may be useful for other
+research:</p><ul><li>Ensembles of real-world initial conditions for some CESM configurations.</li><li>Time series of CESM+DART&rsquo;s &ldquo;best estimate&rdquo; of the atmospheric state, which
+can be compared against other forecasts (Fig. 4).</li><li>Diagnostics which display strengths and biases of the Reanalysis and the
+observations.</li><li>~10 billion &ldquo;labeled&rdquo; observations for use in machine learning or artificial
+intelligence research.</li></ul><p>A very detailed description is available in <a href=https://doi.org/10.1038/s41598-021-92927-0>A new CAM6+DART reanalysis with
+surface forcing from CAM6 to other CESM models (Raeder et al. 2021)</a>.</p><p>This reanalysis required 17 million core hours on NCAR&rsquo;s Cheyenne supercomputer
+and resulted in 120 Tbytes of archived data. Crucial resources to complete this
+project came from NCAR&rsquo;s Computational and Information Systems Lab Strategic
+Capability project NCIS0006.</p><p>D. Hart adapted Cheyenne&rsquo;s queues to enable efficient workflow. B. Matthews and
+B. Dobbins provided valuable efficiency advice.</p><p>The DART infrastructure has been developed over 20 years by J. Anderson,
+T. Hoar, N. Collins, H. Kershaw, K. Raeder, M. Gharamti, and a large community
+of contributors.</p><h3 id=example-studies-using-the-cam6-reanalysis>Example studies using the CAM6 Reanalysis</h3><p>Here are glimpses into how these products have been used:</p><ul><li>Surface forcing in &ldquo;Exploring Non-Gaussian Sea Ice Characteristics via
+Observing System Simulation Experiments&rdquo; (Riedel and Anderson, 2023;
+submitted to The Cryosphere). This study is a test of DART&rsquo;s new Quantile
+Conserving Filter (Anderson, 2022).</li><li>Surface forcing in &ldquo;Assimilating leaf area index and aboveground biomass into
+CLM to constrain the carbon dynamics in the Arctic and Boreal Region&rdquo; (Huo,
+et al., 2023; submitted to JGR: Biogeosciences). This study uses a spatial
+subset of the forcing data.</li><li>Surface forcing an 80 member, eddy-resolving, POP ensemble to generate a
+global ocean reanalysis spanning 2011-2015, that encompasses the termination
+of a La Niña in 2012, the transition of PDO from its cool to warm phase in
+2014 and the onset of an El Niño in 2015.</li></ul><h3 id=references>References</h3><ul><li>Anderson, J. L., 2012: Localization and Sampling Error Correction in Ensemble
+Kalman Filter Data Assimilation. <em>Monthly Weather Review</em>, <strong>140</strong>,
+2359–2371, <a href=https://opensky.ucar.edu/islandora/object/articles%3A10773>https://doi.org/10.1175/MWR-D-11-00013.1</a>.</li><li>Anderson, J. L., 2022: A Quantile-Conserving Ensemble Filter Framework. Part
+I: Updating an Observed Variable. <em>Monthly Weather Review</em>, <strong>150</strong>,
+1061–1074, <a href=https://opensky.ucar.edu/islandora/object/articles%3A25515>https://doi.org/10.1175/MWR-D-21-0229.1</a>.</li><li>El Gharamti, M., 2018: Enhanced Adaptive Inflation Algorithm for Ensemble
+Filters. <em>Monthly Weather Review</em>, <strong>146</strong>, 623–640,
+<a href=https://opensky.ucar.edu/islandora/object/articles%3A21551>https://doi.org/10.1175/MWR-D-17-0187.1</a>.</li><li>Gelaro, R., and Coauthors, 2017: The Modern-Era Retrospective Analysis for
+Research and Applications, Version 2 (MERRA-2). <em>Journal of Climate</em>, <strong>30</strong>,
+5419–5454, <a href=https://doi.org/10.1175/JCLI-D-16-0758.1>https://doi.org/10.1175/JCLI-D-16-0758.1</a>.</li><li>Huo, X., et al. Assimilating leaf area index and aboveground biomass into CLM
+to constrain the carbon dynamics in the Arctic and Boreal Region (submitted
+to JGR: Biogeosciences, 2023).</li><li>Hersbach, H., and Coauthors, 2020: The ERA5 global reanalysis. <em>Quarterly
+Journal of the Royal Meteorological Society</em>, <strong>146</strong>, 1999–2049,
+<a href=https://doi.org/10.1002/qj.3803>https://doi.org/10.1002/qj.3803</a>.</li><li>Kobayashi, S., and Coauthors, 2015: The JRA-55 Reanalysis: General
+Specifications and Basic Characteristics. <em>Journal of the Meteorological
+Society of Japan. Ser. II</em>, <strong>93</strong>, 5–48,
+<a href=https://doi.org/10.2151/jmsj.2015-001>https://doi.org/10.2151/jmsj.2015-001</a>.</li><li>Raeder, K., T. J. Hoar, M. El Gharamti, B. K. Johnson, N. Collins, J. L.
+Anderson, J. Steward, and M. Coady, 2021: A new CAM6 + DART reanalysis with
+surface forcing from CAM6 to other CESM models. <em>Scientific Reports</em>, <strong>11</strong>,
+16384, <a href=https://doi.org/10.1038/s41598-021-92927-0>https://doi.org/10.1038/s41598-021-92927-0</a>.</li><li>Riedel, C. and Anderson, J.L. Exploring Non-Gaussian Sea Ice Characteristics
+via Observing System Simulation Experiments (submitted to The Cryosphere,
+2023).</li></ul></div><div class="col-lg-4 mx-auto"><a href=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/chugatch-lake.jpg><img class=img-fluid src=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/chugatch-lake.jpg></a><p>Figure 1: Earth system components interact in many ways at the interfaces between them.</p><a href=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/single-v-ens-forcing.png><img class=img-fluid src=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/single-v-ens-forcing.png></a><p>Figure 2: A single atmospheric forcing allows an ensemble to collapse (top). Multiple atmospheric forcings cause the spread to increase (bottom). Picture courtesy of A. Fox.</p><a href=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/ens-heat-flux.png><img class=img-fluid src=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/ens-heat-flux.png></a><p>Figure 3: The downward longwave heat flux from 20 (of 80) ensemble members (various colors) and the ensemble mean (black).</p><a href=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/ps-sandy.png><img class=img-fluid src=https://dart.ucar.edu/images/featured-articles/cam6-reanalysis/ps-sandy.png></a><p>Figure 4: A 1-degree resolution model doesn't generate great hurricanes by itself, but here's hurricane Sandy shortly before landfall 0Z 10/29/2012 in the analysis, ensemble mean, surface pressure. Here's a comparison of central pressures: National Hurricane Center 'best track' = 950 hPa; Knaff-Zehr-Courtney pressure-wind relationship = 959 hPa; CAM6+DART ensemble mean and spread = 956.6 +/- 1.7 hPa.</p></div></div></div></section></main><footer class=site-footer><div class=container><div class=row><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Contact Info</h5><p class=site-footer-widget-description>1850 Table Mesa Dr.<br>Boulder, CO 80305<br><br><a href=mailto:dart@ucar.edu>dart@ucar.edu</a></p></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Sitemap</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/about>About Us</a></li><li><a href=https://dart.ucar.edu/research>Research</a></li><li><a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li><a href=https://dart.ucar.edu/contact>Contact</a></li></ul></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Research</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a href=https://dart.ucar.edu/publications>Publications</a></li><li><a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></div><div class="col-lg-4 col-md-6"><div class=site-footer-nsf>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</div></div><div class="col-lg-2 col-md-6"><div class=site-footer-logo><a href=https://nsf.gov><img src=https://dart.ucar.edu/images/ncar-koru/footer-logo-nsf.png alt=logo-footer></a></div></div></div></div></footer><script src=https://dart.ucar.edu/js/vendor.min.js></script>
+<script src=https://dart.ucar.edu/js/script.min.js></script><footer class=ucar-footer><div class=container><div class=row><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><center>© 2023 UCAR</center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/privacy-notice>Privacy</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/cookie-other-tracking-technologies-notice>Cookies</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/terms-of-use>Terms of Use</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act>Copyright Issues</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><center><h6><a href=https://nsf.gov>Sponsored by NSF</a></h5></center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://ncar.ucar.edu>NCAR Home</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu>UCAR Home</a></h5></div></div></div></div></div></footer></body></html>
