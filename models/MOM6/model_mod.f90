@@ -3,6 +3,10 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 
+! @todo
+!   layer thickness - this is per ensemble member?
+!    
+
 module model_mod
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
@@ -215,7 +219,7 @@ real(r8) :: expected(ens_size, 2) ! level below and above obs
 type(quad_interp_handle) :: interp
 integer :: varid, i
 integer(i8) :: indx
-integer :: lev(2) ! bottom, top level
+integer :: lev(2) ! level bounds
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -251,7 +255,7 @@ endif
 ! Get the bounding vertical levels and the fraction between bottom and top
 call find_level_bounds(lon_lat_vert(3), which_vert, lev, lev_fract, locate_status)
 if (locate_status /= 0) then
-  istatus(:) = 13
+  istatus(:) = locate_status
   return
 endif
 
@@ -449,8 +453,8 @@ call nc_get_variable(ncid, 'latq', latq, routine)
 
 call nc_get_variable_size(ncid, 'Layer', nz)
 allocate(layer(nz), interf(nz+1))
-call nc_get_variable(ncid, 'Layer', layer, routine)
-call nc_get_variable(ncid, 'Interface', interf, routine)
+call nc_get_variable(ncid, 'Layer', layer, routine) ! Layer pseudo-depth
+call nc_get_variable(ncid, 'Interface', interf, routine) ! Interface pseudo-depth
 
 call nc_close_file(ncid)
 
@@ -700,19 +704,43 @@ read_model_time = set_time(0,int(days))
 end function read_model_time
 
 !--------------------------------------------------------------------
+!                  Surface
+!                    --- 0 i=1  Interface pseudo-depth
+! Layer pseudo-depth  .
+!                    --- 1 i=2
+!                     .
+!                    --- 1 i=3
+!
+
 subroutine find_level_bounds(vert_loc, which_vert, lev, lev_fract, istatus)
 
-real(r8), intent(in) :: vert_loc
-integer,  intent(in) :: which_vert
-integer,  intent(out) :: lev(2) ! bottom, top
+real(r8), intent(in) :: vert_loc   ! observation location
+integer,  intent(in) :: which_vert ! obs vertical coordinate
+integer,  intent(out) :: lev(2)    ! bottom, top
 real(r8), intent(out) :: lev_fract
 integer,  intent(out) :: istatus
 
-! HK for testing
-lev(1) = 1
-lev(2) = 2
-lev_fract = 0.5
-istatus = 0
+integer :: i
+
+! HK assert(which_vert == height meters) ?
+
+if (vert_loc < interf(1)) then
+  istatus = 10 ! obs is above surface
+  return
+endif
+
+do i = 2, nz+1
+   if(vert_loc < interf(i)) then
+      lev(1) = i   ! bottom
+      lev(2) = i-1 ! top
+
+      lev_fract = (interf(lev(1)) - vert_loc) / (interf(lev(2)) - interf(lev(1)))
+      istatus = 0
+      return
+   endif
+enddo
+
+istatus = 20 ! obs is too deep
 
 end subroutine find_level_bounds
 
