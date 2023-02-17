@@ -6,7 +6,7 @@ module normal_distribution_mod
 
 use types_mod, only : r8, digits12, PI
 
-use utilities_mod, only : E_ERR, error_handler
+use utilities_mod, only : E_ERR, E_MSG, error_handler
 
 implicit none
 private
@@ -109,10 +109,10 @@ real(r8) :: np
 np = p / alpha
 
 ! Find spot in standard normal
-call norm_inv(np, x)
+!call norm_inv(np, x)
 
 ! Switch to this for more accuracy at greater cost
-!call norm_inv_accurate(np, x)
+call norm_inv_accurate(np, x)
 
 ! Add in the mean and normalize by sd
 x = mean + x * sd
@@ -138,6 +138,9 @@ real(r8) :: b1,b2,b3,b4,b5
 real(r8) :: c1,c2,c3,c4,c5,c6
 real(r8) :: d1,d2,d3,d4
 real(r8) :: q,r
+
+call norm_inv_accurate(p_in, x)
+return
 
 ! Do a test for illegal values
 if(p_in < 0.0_r8 .or. p_in > 1.0_r8) then
@@ -284,8 +287,11 @@ do iter = 1, max_iterations
    x_guess = x_new
 end do
 
-! Fell off the end, should be an error return eventually?
+! For now, have switched a failed convergence to return the latest guess
+! This has implications for stability of probit algorithms that require further study
+x = x_new
 errstring = 'Failed to converge '
+!!!call error_handler(E_MSG, 'norm_inv_accurate', errstring, source)
 call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
 
 end subroutine norm_inv_accurate

@@ -101,13 +101,17 @@ real(r8)    :: point_tracer_source_rate = 5.0_r8
 ! Allows having negative tracer values to test bounded above filter algorithms
 logical     :: positive_tracer          = .true.
 
+! Allows testing non-zero bounds above 
+logical     :: bound_above_is_one       = .false.
+
 integer     :: time_step_days           = 0
 integer     :: time_step_seconds        = 3600
 
 namelist /model_nml/ model_size, forcing, delta_t, mean_velocity,         &
                      pert_velocity_multiplier, diffusion_coef, e_folding, &
                      sink_rate, source_rate, point_tracer_source_rate,    &
-                     positive_tracer, time_step_days, time_step_seconds
+                     positive_tracer, bound_above_is_one,                 &
+                     time_step_days, time_step_seconds
 
 ! number state variable quantities
 integer, parameter  :: NVARS = 3 ! QTY_STATE_VARIABLE, QTY_TRACER_CONCENTRATION, QTY_TRACER_SOURCE
@@ -145,6 +149,9 @@ type(time_type), intent(inout) :: time
 real(r8)    :: velocity, target_loc, frac, ratio
 integer(r8) :: low, hi, up, down, i, f
 real(i8), dimension(grid_size) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
+
+! Test for tracer with upper bound of 1; Subtract 1 when entering here, then add it back on
+if(bound_above_is_one) x(grid_size + 1:2*grid_size) = x(grid_size + 1:2*grid_size) - 1.0_r8
 
 q = x(grid_size + 1 :2*grid_size)  ! QTY_TRACER_CONCENTRATION
 ! Doing an upstream semi-lagrangian advection for q for each grid point
@@ -238,6 +245,8 @@ x_new = x(1: grid_size) + x1/6 + x2/3 + x3/3 + x4/6
 
 x(1: grid_size) = x_new
 
+! Test for tracer with upper bound of 1; Subtract 1 when entering, then add it back on
+if(bound_above_is_one) x(grid_size + 1:2*grid_size) = x(grid_size + 1:2*grid_size) + 1.0_r8
 
 end subroutine adv_1step
 
@@ -325,7 +334,6 @@ real(r8), intent(out) :: x(:)
 
 ! Set all variables, winds, tracer concentration, and source to 0
 x(:) = 0.0_r8
-
 ! Add a single perturbation to L96 state (winds) to generate evolution
 x(1) = 0.1_r8
 ! For these tests, single tracer source at the first grid point
