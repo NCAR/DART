@@ -318,8 +318,8 @@ subroutine inv_rh_cdf(quantiles, ens_size, sort_ens, &
    tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x, &
    like)
 
-real(r8), intent(in)  :: quantiles(ens_size)
 integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: quantiles(ens_size)
 real(r8), intent(in)  :: sort_ens(ens_size)
 logical,  intent(in)  :: bounded_below, bounded_above
 real(r8), intent(in)  :: lower_bound, upper_bound
