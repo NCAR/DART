@@ -19,7 +19,7 @@ use     location_mod, only : location_type, get_close_type, &
                              set_location, set_location_missing, &
                              get_location, query_location, VERTISHEIGHT
 
-use    utilities_mod, only : register_module, error_handler, &
+use    utilities_mod, only : error_handler, &
                              E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                              find_namelist_in_file, check_namelist_read, &
@@ -140,9 +140,6 @@ integer, parameter :: VAR_QTY_INDEX = 2
 integer, parameter :: VAR_UPDATE_INDEX = 3
 
 module_initialized = .true.
-
-! Print module information to log file and stdout.
-call register_module(source)
 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
