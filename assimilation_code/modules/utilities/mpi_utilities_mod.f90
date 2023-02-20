@@ -86,18 +86,18 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !#endif
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -912,16 +912,16 @@ end function iam_task0
 !> intent(in) here, but they call a routine which is intent(inout) so they
 !> must be the same here.
 
-subroutine broadcast_send(from, array1, array2, array3, array4, array5, array6, &
-                          scalar1, scalar2, scalar3, scalar4, scalar5)
+subroutine broadcast_send(from, array1, array2, array3, array4, array5, array6, array7, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
  integer, intent(in) :: from
 ! arrays are really only intent(in) here, but must match array_broadcast() call.
  real(r8), intent(inout) :: array1(:)
- real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
- real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 real(r8) :: packbuf(PACKLIMIT)
-real(r8) :: local(5)
+real(r8) :: local(6)
 logical  :: doscalar, morethanone
 integer  :: itemcount
 
@@ -938,14 +938,14 @@ if (from /= myrank) then
 endif
 
 ! for relatively small array sizes, pack them into a single send/recv pair.
-call countup(array1, array2, array3, array4, array5, array6, &
-             scalar1, scalar2, scalar3, scalar4, scalar5, &
+call countup(array1, array2, array3, array4, array5, array6, array7, &
+             scalar1, scalar2, scalar3, scalar4, scalar5, scalar6, &
              itemcount, morethanone, doscalar)
 
 if (itemcount <= PACKLIMIT .and. morethanone) then
 
-   call packit(packbuf, array1, array2, array3, array4, array5, array6, doscalar, &
-                         scalar1, scalar2, scalar3, scalar4, scalar5)
+   call packit(packbuf, array1, array2, array3, array4, array5, array6, array7, doscalar, &
+                         scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
 
    call array_broadcast(packbuf, from, itemcount)
 
@@ -959,9 +959,10 @@ else
       if (present(array4)) call array_broadcast(array4, from)
       if (present(array5)) call array_broadcast(array5, from)
       if (present(array6)) call array_broadcast(array6, from)
+      if (present(array7)) call array_broadcast(array7, from)
       
       if (doscalar) then
-         call packscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5)
+         call packscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
          call array_broadcast(local, from)
       endif
 
@@ -984,16 +985,16 @@ end subroutine broadcast_send
 !> intent(out) here, but they call a routine which is intent(inout) so they
 !> must be the same here.
 
-subroutine broadcast_recv(from, array1, array2, array3, array4, array5, array6, &
-                          scalar1, scalar2, scalar3, scalar4, scalar5)
+subroutine broadcast_recv(from, array1, array2, array3, array4, array5, array6, array7, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
  integer, intent(in) :: from
 ! arrays are really only intent(out) here, but must match array_broadcast() call.
  real(r8), intent(inout) :: array1(:)
- real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
- real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 real(r8) :: packbuf(PACKLIMIT)
-real(r8) :: local(5)
+real(r8) :: local(6)
 logical :: doscalar, morethanone
 integer :: itemcount
 
@@ -1010,16 +1011,16 @@ if (from == myrank) then
 endif
 
 ! for relatively small array sizes, pack them into a single send/recv pair.
-call countup(array1, array2, array3, array4, array5, array6, &
-             scalar1, scalar2, scalar3, scalar4, scalar5, &
+call countup(array1, array2, array3, array4, array5, array6, array7, &
+             scalar1, scalar2, scalar3, scalar4, scalar5, scalar6, &
              itemcount, morethanone, doscalar)
 
 if (itemcount <= PACKLIMIT .and. morethanone) then
 
    call array_broadcast(packbuf, from, itemcount)
 
-   call unpackit(packbuf, array1, array2, array3, array4, array5, array6, doscalar, &
-                          scalar1, scalar2, scalar3, scalar4, scalar5)
+   call unpackit(packbuf, array1, array2, array3, array4, array5, array6, array7, doscalar, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
 
 else
 
@@ -1030,12 +1031,13 @@ else
       if (present(array3)) call array_broadcast(array3, from)
       if (present(array4)) call array_broadcast(array4, from)
       if (present(array5)) call array_broadcast(array5, from)
-      if (present(array6)) call array_broadcast(array6, from)   
+      if (present(array6)) call array_broadcast(array6, from)  
+      if (present(array7)) call array_broadcast(array7, from) 
 
       if (doscalar) then
          call array_broadcast(local, from)
          call unpackscalar(local, scalar1, scalar2, scalar3, &
-                           scalar4, scalar5)
+                           scalar4, scalar5, scalar6)
       endif
 
    endif
@@ -1050,12 +1052,12 @@ end subroutine broadcast_recv
 !> also note if there's more than a single array (array1) to send,
 !> and if there are any scalars specified.
 
-subroutine countup(array1, array2, array3, array4, array5, array6, &
-                   scalar1, scalar2, scalar3, scalar4, scalar5, &
+subroutine countup(array1, array2, array3, array4, array5, array6, array7, &
+                   scalar1, scalar2, scalar3, scalar4, scalar5, scalar6, &
                    numitems, morethanone, doscalar)
  real(r8), intent(in)           :: array1(:)
- real(r8), intent(in), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
- real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(in), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
+ real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
  integer,  intent(out)          :: numitems
  logical,  intent(out)          :: morethanone, doscalar
 
@@ -1080,6 +1082,10 @@ if (present(array5)) then
 endif
 if (present(array6)) then
    numitems = numitems + size(array6)
+   morethanone = .true.
+endif
+if (present(array7)) then
+   numitems = numitems + size(array7)
    morethanone = .true.
 endif
 if (present(scalar1)) then 
@@ -1107,6 +1113,11 @@ if (present(scalar5)) then
    morethanone = .true.
    doscalar = .true.
 endif
+if (present(scalar6)) then
+   numitems = numitems + 1
+   morethanone = .true.
+   doscalar = .true.
+endif
 
 end subroutine countup
 
@@ -1114,13 +1125,13 @@ end subroutine countup
 
 !> pack multiple small arrays into a single buffer before sending.
 
-subroutine packit(buf, array1, array2, array3, array4, array5, array6, doscalar, &
-                       scalar1, scalar2, scalar3, scalar4, scalar5)
+subroutine packit(buf, array1, array2, array3, array4, array5, array6, array7, doscalar, &
+                       scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
  real(r8), intent(out)          :: buf(:)
  real(r8), intent(in)           :: array1(:)
- real(r8), intent(in), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
+ real(r8), intent(in), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
  logical,  intent(in)           :: doscalar
- real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 integer :: sindex, eindex
 
@@ -1159,6 +1170,12 @@ if (present(array6)) then
    sindex = eindex+1
 endif
 
+if (present(array7)) then
+   eindex = sindex + size(array7) - 1
+   buf(sindex:eindex) = array7(:)
+   sindex = eindex+1
+endif
+
 if (doscalar) then
    if (present(scalar1)) then
       buf(sindex) = scalar1
@@ -1184,6 +1201,11 @@ if (doscalar) then
       buf(sindex) = scalar5
       sindex = sindex+1
    endif
+
+   if (present(scalar6)) then
+      buf(sindex) = scalar6
+      sindex = sindex+1
+   endif
 endif
 
 end subroutine packit
@@ -1192,13 +1214,13 @@ end subroutine packit
 
 !> unpack multiple small arrays from a single buffer after receiving.
 
-subroutine unpackit(buf, array1, array2, array3, array4, array5, array6, doscalar, &
-                         scalar1, scalar2, scalar3, scalar4, scalar5)
+subroutine unpackit(buf, array1, array2, array3, array4, array5, array6, array7, doscalar, &
+                         scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
  real(r8), intent(in)            :: buf(:)
  real(r8), intent(out)           :: array1(:)
- real(r8), intent(out), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
+ real(r8), intent(out), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
  logical,  intent(in)            :: doscalar
- real(r8), intent(out), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(out), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 integer :: sindex, eindex
 
@@ -1237,6 +1259,12 @@ if (present(array6)) then
    sindex = eindex+1
 endif
 
+if (present(array7)) then
+   eindex = sindex + size(array7) - 1
+   array7(:) = buf(sindex:eindex)
+   sindex = eindex+1
+endif
+
 if (doscalar) then
    if (present(scalar1)) then
       scalar1 = buf(sindex)
@@ -1262,6 +1290,11 @@ if (doscalar) then
       scalar5 = buf(sindex)
       sindex = sindex+1
    endif
+
+   if (present(scalar6)) then
+      scalar6 = buf(sindex)
+      sindex = sindex+1
+   endif
 endif
 
 end subroutine unpackit
@@ -1270,9 +1303,9 @@ end subroutine unpackit
 
 !> for any values specified, pack into a single array
 
-subroutine packscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5)
- real(r8), intent(out)          :: local(5) 
- real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+subroutine packscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
+ real(r8), intent(out)          :: local(6) 
+ real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 local = 0.0_r8
       
@@ -1281,6 +1314,7 @@ if (present(scalar2)) local(2) = scalar2
 if (present(scalar3)) local(3) = scalar3
 if (present(scalar4)) local(4) = scalar4
 if (present(scalar5)) local(5) = scalar5
+if (present(scalar6)) local(6) = scalar6
 
 end subroutine packscalar
    
@@ -1288,15 +1322,16 @@ end subroutine packscalar
 
 !> for any values specified, unpack from a single array
 
-subroutine unpackscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5)
- real(r8), intent(in)            :: local(5) 
- real(r8), intent(out), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+subroutine unpackscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
+ real(r8), intent(in)            :: local(6) 
+ real(r8), intent(out), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 if (present(scalar1)) scalar1 = local(1)
 if (present(scalar2)) scalar2 = local(2)
 if (present(scalar3)) scalar3 = local(3)
 if (present(scalar4)) scalar4 = local(4)
 if (present(scalar5)) scalar5 = local(5)
+if (present(scalar6)) scalar6 = local(6)
 
 end subroutine unpackscalar
    

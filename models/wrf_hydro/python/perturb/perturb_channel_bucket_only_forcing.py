@@ -49,6 +49,7 @@ def perturb_channel_only_forcing(
     paths = out_dir / chrtout_basename
 
     chrtout.to_netcdf(paths, mode='w')
+    chrtout.close()
     return paths
 
 

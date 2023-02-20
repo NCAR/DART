@@ -60,8 +60,9 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_in
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
-use hybrid_mod,           only : hybrid_type, do_single_ss_hybrid, get_hybrid_sample_size, &
-                                 scale_static_background, update_hybrid
+use hybrid_mod,           only : hybrid_type, do_single_ss_hybrid, get_hybrid_sample_size,   &
+                                 scale_static_background, do_constant_hybrid, update_hybrid, &
+                                 do_varying_ss_hybrid
 
 use time_manager_mod,     only : time_type, get_time
 
@@ -400,18 +401,24 @@ real(digits12), allocatable :: elapse_array(:)
 integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
 ! Hybrid configuration variables
-logical               :: do_hybrid, local_single_ss_hybrid
+logical               :: do_hybrid
+logical               :: local_constant_hybrid
+logical               :: local_single_ss_hybrid
+logical               :: local_varying_ss_hybrid
+
 integer               :: stat_mean_copy, stat_sd_copy
 integer               :: stat_obs_mean_copy, stat_obs_var_copy
 integer               :: hybrid_ens_size
 real(r8)              :: my_hybrid_weight, my_hybrid_weight_sd
-real(r8)              :: hybrid_scaling, orig_hybrid_weight
+real(r8)              :: hybrid_scaling
 real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
 real(r8)              :: hyb_obs_var, corr_rho
+real(r8)              :: vary_ss_hybrid_mean, vary_ss_hybrid_sd
+real(r8), allocatable :: orig_hybrid_weight(:)
 real(r8), allocatable :: stat_obs_prior(:) 
 real(r8), allocatable :: dtrd(:), tr_R(:), tr_B(:)
 real(r8)              :: sum_d, sum_R, sum_B, sum_d_all, sum_R_all, sum_B_all
-real(r8)              :: fs, ens_mean(1)
+real(r8)              :: fs, ens_mean(1), orig_hyb_mean
 integer               :: i_qc
 
 ! Are we hybridizing the increments?
@@ -428,26 +435,6 @@ else
    do_hybrid = .false.
 endif
 
-
-!print *, 'ens_size: '            , ens_size
-!print *, 'hybrid_ens_size: '     , hybrid_ens_size
-!print *, 'do_hybrid: '           , do_hybrid
-!print *, 'weight val: '          , ens_handle%copies(HYB_MEAN_COPY, 1) 
-!print *, 'weight sd: '           , ens_handle%copies(HYB_SD_COPY, 1)
-!print *, 'ENS_MEAN_COPY: '       , ENS_MEAN_COPY
-!print *, 'ENS_SD_COPY: '         , ENS_SD_COPY
-!print *, 'ENS_INF_COPY: '        , ENS_INF_COPY
-!print *, 'ENS_INF_SD_COPY: '     , ENS_INF_SD_COPY
-!print *, 'HYB_MEAN_COPY: '       , HYB_MEAN_COPY
-!print *, 'HYB_SD_COPY: '         , HYB_SD_COPY
-!print *, 'OBS_KEY_COPY: '        , OBS_KEY_COPY
-!print *, 'OBS_GLOBAL_QC_COPY: '  , OBS_GLOBAL_QC_COPY
-!print *, 'OBS_PRIOR_MEAN_START: ', OBS_PRIOR_MEAN_START
-!print *, 'OBS_PRIOR_MEAN_END: '  , OBS_PRIOR_MEAN_END
-!print *, 'OBS_PRIOR_VAR_START: ' , OBS_PRIOR_VAR_START
-!print *, 'OBS_PRIOR_VAR_END: '   , OBS_PRIOR_VAR_END
-
-
 ! timing disabled by default
 timing(:)  = .false.
 t_base(:)  = 0.0_r8
@@ -458,23 +445,7 @@ t_limit(:) = 0_i8
 allocate(n_close_state_items(obs_ens_handle%num_vars), &
          n_close_obs_items(  obs_ens_handle%num_vars))
 
-! turn these on carefully - they can generate a lot of output!
-! also, to be readable - at least with ifort:
-!  setenv FORT_FMT_RECL 1024
-! so output lines don't wrap.
-
-!timing(MLOOP)  = .true.
-!timing(LG_GRN) = .true.
-
 if (timing(MLOOP)) allocate(elapse_array(obs_ens_handle%num_vars))
-
-! use maxitems limit here or drown in output.
-!timing(SM_GRN) = .false.
-!t_limit(SM_GRN) = 4_i8
-
-!timing(GC) = .true.
-!t_limit(GC) = 4_i8
-
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -540,9 +511,16 @@ local_obs_inflate        = do_obs_inflate(inflate)
 
 ! Hybrid configuration
 if (do_hybrid) then 
-   hybrid_scaling         = scale_static_background(hybrid)
-   local_single_ss_hybrid = do_single_ss_hybrid(hybrid) 
+   hybrid_scaling          = scale_static_background(hybrid)
+   local_constant_hybrid   = do_constant_hybrid(hybrid)   
+   local_single_ss_hybrid  = do_single_ss_hybrid(hybrid) 
+   local_varying_ss_hybrid = do_varying_ss_hybrid(hybrid) 
 endif
+
+print *, ''
+print *, 'constant_hybrid  : ', local_constant_hybrid
+print *, 'single_ss_hybrid : ', local_single_ss_hybrid
+print *, 'varying_ss_hybrid: ', local_varying_ss_hybrid
 
 ! Default to printing nothing
 nth_obs = -1
@@ -583,17 +561,17 @@ if(local_single_ss_inflate) then
 end if
 
 ! Hybrid: if adaptive in time, but spatially constant
-if (do_hybrid .and. local_single_ss_hybrid) then 
-   ! Any element should work, here we go with the first one 
-   my_hybrid_weight      = ens_handle%copies(HYB_MEAN_COPY, 1)
-   my_hybrid_weight_sd   = ens_handle%copies(HYB_SD_COPY  , 1) 
+if (do_hybrid) then
+
+   my_hybrid_weight    = ens_handle%copies(HYB_MEAN_COPY, 1)
+   my_hybrid_weight_sd = ens_handle%copies(HYB_SD_COPY  , 1)
 
    ! Use the original weight for hybridizing
-   orig_hybrid_weight    = my_hybrid_weight
+   ! Need to change for spatially-varying form
+   allocate(orig_hybrid_weight(ens_handle%num_vars))
+   orig_hybrid_weight = ens_handle%copies(HYB_MEAN_COPY, :)
+   !ens_handle%copies(ENS_MEAN_COPY, :) = ens_handle%copies(HYB_MEAN_COPY, :)
 endif
-
-!print *, 'my_hybrid_weight: '   , my_hybrid_weight
-!print *, 'my_hybrid_weight_sd: ', my_hybrid_weight_sd
 
 ! Get info on my number and indices for obs
 my_num_obs = get_my_num_vars(obs_ens_handle)
@@ -607,9 +585,6 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! overwrite the vertical location with the required localization vertical coordinate when you
 ! do the forward operator calculation
 call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
-
-!print *, 'my_obs_kind: ', my_obs_kind
-!print *, 'my_obs_type: ', my_obs_type
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
@@ -751,7 +726,7 @@ if (do_hybrid) then
      call sum_across_tasks(sum_B, sum_B_all)
   
      fs = (sum_d_all - sum_R_all) / sum_B_all
-     !print *, 'fs: ', fs
+     
      if (fs <= 0.0_r8 ) fs = 1.0_r8
  
      deallocate(dtrd, tr_R, tr_B)
@@ -761,8 +736,8 @@ if (do_hybrid) then
      fs = 1.0_r8
    endif
 
-   !print *, 'scale: ', fs
-   !print *, 'input scale: ', hybrid_scaling
+   print *, 'scale: ', fs
+   print *, 'input scale: ', hybrid_scaling
 
    stat_ens_handle%copies(1:hybrid_ens_size, :) = sqrt(fs) * & 
                      stat_ens_handle%copies(1:hybrid_ens_size, :)
@@ -780,8 +755,6 @@ endif
 
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
-
-   !print *, 'obs i: ', i
 
    if (timing(MLOOP))  call start_timer(t_base(MLOOP))
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
@@ -814,15 +787,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    else
       call get_state_meta_data(-1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
    endif
-   
-   !print *, 'base_obs_type: ', base_obs_type
-   !print *, 'base_obs_kind: ', base_obs_kind
+
+   ! Weight coefficient at this obs location
+   if (do_hybrid) then
+      ! I don't know the exact obs location, take average in space 
+      if (base_obs_type > 0 ) then 
+         orig_hyb_mean = sum(orig_hybrid_weight)/size(orig_hybrid_weight)
+      else
+      ! Identity case:
+         orig_hyb_mean = orig_hybrid_weight(-1 * int(base_obs_type,i8))
+      endif
+   endif
 
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
-
-   !print *, 'obs_val: ', obs(1)
-   !print *, ''
 
    ! Find out who has this observation and where it is
    call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index) 
@@ -851,6 +829,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
+         print *, 'ensemble mean: ', orig_obs_prior_mean(1)
  
          ! Compute observation space increments for each group
          do group = 1, num_groups
@@ -869,18 +848,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             
                ! Find the static variance for this observation
                hyb_obs_var = stat_obs_ens_handle%copies(stat_obs_var_copy, owners_index)
-            
-               call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-                    obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate, &
-                    my_inflate_sd, net_a(group), orig_hybrid_weight, stat_obs_prior)
+
+               call obs_increment(obs_prior, ens_size, obs(1), &
+                    obs_err_var, obs_inc, inflate, my_inflate, &
+                    my_inflate_sd, net_a(1), orig_hyb_mean, stat_obs_prior)
             endif
          end do
-         !print *, 'obs_inc: ', obs_inc         
-        
+
          ! Update the hybrid weight value 
-         if (do_hybrid .and. local_single_ss_hybrid) then 
+         SINGLE_SS_HYBRID: if (do_hybrid .and. local_single_ss_hybrid .and. .not. inflate_only ) then 
             if(my_hybrid_weight > 0.0_r8 .and. my_hybrid_weight_sd > 0.0_r8) then
-               !print *, 'Performing the update for alpha'
+               print *, 'Performing the update for alpha: Spatially-constant'
  
                ens_obs_mean = orig_obs_prior_mean(1)
                ens_obs_var  = orig_obs_prior_var(1)
@@ -888,22 +866,23 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! Spatially-constant (correlation is uniform = 1)
                corr_rho = 1.0_r8 
 
-               !print *, 'a = ', my_hybrid_weight
+               print *, 'm   = ', my_hybrid_weight
+               print *, 'v   = ', my_hybrid_weight_sd**2
  
                call update_hybrid(my_hybrid_weight, my_hybrid_weight_sd,     &
                         ens_obs_var, hyb_obs_var, obs_err_var, ens_obs_mean, &
                         obs(1), corr_rho)
 
-               !print *, 'se2 = ', ens_obs_var
-               !print *, 'ss2 = ', hyb_obs_var
-               !print *, 'so2 = ', obs_err_var
-               !print *, 'd2  = ', (ens_obs_mean - obs(1))**2
-               !print *, '' 
-               !print *, 'post my_hybrid_weight: ', my_hybrid_weight
-               !print *, 'post my_hybrid_weight_sd: ', my_hybrid_weight_sd
-               !print *, ''
+               print *, 'se2 = ', ens_obs_var
+               print *, 'ss2 = ', hyb_obs_var
+               print *, 'so2 = ', obs_err_var
+               print *, 'd2  = ', (ens_obs_mean - obs(1))**2
+               print *, '' 
+               print *, 'post my_hybrid_weight_mean: ', my_hybrid_weight
+               print *, 'post my_hybrid_weight_sd  : ', my_hybrid_weight_sd
+               print *, ''
             endif
-         endif
+         endif SINGLE_SS_HYBRID
          
          ! Compute updated values for single state space inflation
          SINGLE_SS_INFLATE: if(local_single_ss_inflate) then
@@ -961,17 +940,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       if(local_varying_ss_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, stat_obs_prior, scalar1=obs_qc, &
+            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real, &
-            scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd)
+            scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd, scalar6=hyb_obs_var)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, stat_obs_prior, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
+           net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
            scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
       else
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, stat_obs_prior, scalar1=obs_qc, &
+           net_a, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real, &
            scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd)
       endif
@@ -986,17 +965,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       !>the cost of sending unneeded values
       if(local_varying_ss_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, stat_obs_prior, scalar1=obs_qc, &
+            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real, &
-            scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd)
+            scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd, scalar6=hyb_obs_var)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            net_a, stat_obs_prior, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
+            net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
             scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
       else
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-           net_a, stat_obs_prior, scalar1=obs_qc, &
+           net_a, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real, &
            scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd)
       endif
@@ -1217,11 +1196,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! Loop through to update each of my state variables that is potentially close
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
+   
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
-      
-      !print *, 'j: ', j
-      !print *, 'state_index: ', state_index
 
       ! the "any" is an expensive test when you do it for every ob.  don't test
       ! if we know there aren't going to be missing values in the state.
@@ -1229,6 +1206,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! Some models can take evasive action if one or more of the ensembles have
          ! a missing value. Generally means 'do nothing' (as opposed to DIE)
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
+      endif
+
+      ! Current hybrid weight values in space: 
+      if (local_varying_ss_hybrid) then 
+         vary_ss_hybrid_mean = ens_handle%copies(HYB_MEAN_COPY, state_index)
+         vary_ss_hybrid_sd   = ens_handle%copies(HYB_SD_COPY, state_index)
       endif
 
       ! Get the initial values of inflation for this variable if state varying inflation
@@ -1239,7 +1222,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          varying_ss_inflate    = 0.0_r8
          varying_ss_inflate_sd = 0.0_r8
       endif
-
+      
       ! Compute the distance and covariance factor
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
@@ -1257,20 +1240,21 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
       if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-      
       if (do_hybrid) then ! Regression for the hybrid case: Only support 1 group for now; i.e., num_groups = 1
          if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
             call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
                obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
                stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
                stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
-               orig_hybrid_weight, increment, reg_coef(1), net_a(1), correl(1))
+               !ens_handle%copies(ENS_MEAN_COPY, state_index), 
+               orig_hybrid_weight(state_index), increment, reg_coef(1), net_a(1), correl(1))
          else
             call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
                obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
                stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
                stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
-               orig_hybrid_weight, increment, reg_coef(1), net_a(1))
+               !ens_handle%copies(ENS_MEAN_COPY, state_index), 
+               orig_hybrid_weight(state_index), increment, reg_coef(1), net_a(1))
          endif
       else
          ! Loop through groups to update the state variable ensemble members
@@ -1313,6 +1297,42 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ens_handle%copies(1:ens_size, state_index) = &
             ens_handle%copies(1:ens_size, state_index) + reg_factor * increment
       endif
+
+      ! Compute spatially-varying hybrid weighting coefficient
+      VARYING_SS_HYBRID: if (do_hybrid .and. local_varying_ss_hybrid .and. .not. inflate_only) then
+         if (vary_ss_hybrid_mean > 0.0_r8 .and. vary_ss_hybrid_sd > 0.0_r8) then
+            print *, 'Performing the update for alpha: spatially_varying' 
+         
+            ens_obs_mean = orig_obs_prior_mean(1)
+            ens_obs_var =  orig_obs_prior_var(1)       
+ 
+            corr_rho = reg_factor * abs(correl(1))
+ 
+            print *, 'reg_factor: ', reg_factor
+            print *, 'correl: ', abs(correl(1))
+            print *, 'x   = ', j
+            print *, 'm   = ', vary_ss_hybrid_mean
+            print *, 'v   = ', vary_ss_hybrid_sd**2
+ 
+            call update_hybrid(vary_ss_hybrid_mean, vary_ss_hybrid_sd, &
+                  ens_obs_var, hyb_obs_var, obs_err_var, ens_obs_mean, &
+                      obs(1), corr_rho)
+
+            print *, 'rho = ', corr_rho
+            print *, 'se2 = ', ens_obs_var
+            print *, 'ss2 = ', hyb_obs_var
+            print *, 'so2 = ', obs_err_var
+            print *, 'd2  = ', (ens_obs_mean - obs(1))**2
+            print *, ''
+            print *, 'post my_hybrid_weight_mean: ', vary_ss_hybrid_mean
+            print *, 'post my_hybrid_weight_sd  : ', vary_ss_hybrid_sd
+            print *, ''
+
+            !Record the updated weights
+            ens_handle%copies(HYB_MEAN_COPY, state_index) = vary_ss_hybrid_mean
+            ens_handle%copies(HYB_SD_COPY, state_index) = vary_ss_hybrid_sd
+         endif
+      endif VARYING_SS_HYBRID
 
       ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate) then
@@ -1386,14 +1406,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    !call test_state_copies(ens_handle, 'after_state_updates')
-
    !------------------------------------------------------
-
    ! Now everybody updates their obs priors (only ones after this one)
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
-
+  
       ! Only have to update obs that have not yet been used
       if(my_obs_indx(obs_index) > i) then
 
@@ -1417,15 +1435,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
          if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
-     
+         ! Loop through and update ensemble members in each group
          if (do_hybrid) then 
-            call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1),   & 
-               obs_inc, obs_ens_handle%copies(1:ens_size, obs_index), ens_size,           & 
-               stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                   &
+            call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), obs_inc, &
+               obs_ens_handle%copies(1:ens_size, obs_index), ens_size, &
+               stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var, &
                stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), hybrid_ens_size, &
-               orig_hybrid_weight, increment, reg_coef(1), net_a(1))
+               orig_hyb_mean, increment, reg_coef(1), net_a(1))
          else
-            ! Loop through and update ensemble members in each group
             do group = 1, num_groups
                grp_bot = grp_beg(group)
                grp_top = grp_end(group)
@@ -1433,7 +1450,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                    obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                    obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
                    increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-            end do
+            enddo
          endif
          
          if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_O', &
@@ -1481,7 +1498,7 @@ if(local_single_ss_inflate) then
 end if
 
 ! Every pe needs to get the current my_hybrid and my_hybrid_sd back
-if(local_single_ss_hybrid) then
+if(local_single_ss_hybrid .and. .not. inflate_only) then
    ens_handle%copies(HYB_MEAN_COPY, :) = my_hybrid_weight 
    ens_handle%copies(HYB_SD_COPY, :)   = my_hybrid_weight_sd
 end if
@@ -1582,7 +1599,7 @@ deallocate(close_state_dist,      &
 deallocate(n_close_state_items, &
            n_close_obs_items)
 
-if (do_hybrid) deallocate(stat_obs_prior)
+if (do_hybrid) deallocate(stat_obs_prior, orig_hybrid_weight)
 ! end dealloc
 
 end subroutine filter_assim

@@ -632,6 +632,9 @@ if (task_count() > 1) &
 
 call set_num_extra_copies(state_ens_handle, num_extras)
 
+! For the static members, we only have 2 extra copies: meand and sd
+if (do_hybrid) call set_num_extra_copies(static_state_ens_handle, 2)
+
 call trace_message('After  setting up space for ensembles')
 
 ! Don't currently support number of processes > model_size
@@ -1006,7 +1009,7 @@ AdvanceTime : do
 
    if (do_hybrid) then
       call allocate_single_copy(static_obs_ens_handle, static_prior_qc_copy) 
-   
+        
       call get_obs_ens_distrib_state(static_state_ens_handle, static_obs_ens_handle, &
            static_qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
            STATIC_OBS_ERR_VAR_COPY, STATIC_OBS_VAL_COPY, STATIC_OBS_KEY_COPY, STATIC_OBS_GLOBAL_QC_COPY, &
@@ -1019,7 +1022,7 @@ AdvanceTime : do
 
    !print *, 'obs_hyb: ', static_obs_ens_handle%copies(1:hyb_ens_size, 1)
    !print *, 'rest: '   , static_obs_ens_handle%copies(hyb_ens_size+1:TOTAL_STATIC_OBS_COPIES, 1)   
-
+   
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
 
@@ -1067,7 +1070,6 @@ AdvanceTime : do
    call timestamp_message('Before observation assimilation')
 
    
-
    if (.not. do_hybrid) then 
       call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
          ens_size, num_groups, obs_val_index, prior_inflate, hybridization, &

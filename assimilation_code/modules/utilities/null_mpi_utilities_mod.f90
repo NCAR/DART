@@ -59,18 +59,18 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !#endif
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -304,13 +304,13 @@ end function iam_task0
 !> Returns with nothing to do.  Does validate the 'from' task id.
 !> Not an error to call.
 
-subroutine broadcast_send(from, array1, array2, array3, array4, array5, array6, &
-                          scalar1, scalar2, scalar3, scalar4, scalar5)
+subroutine broadcast_send(from, array1, array2, array3, array4, array5, array6, array7, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
  integer, intent(in) :: from
 ! arrays are really only intent(in) here, but must match array_broadcast() call.
  real(r8), intent(inout) :: array1(:)
- real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
- real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
@@ -332,13 +332,13 @@ end subroutine broadcast_send
 !> Returns with nothing to do.  Does validate the 'from' task id.
 !> Not an error to call.
 
-subroutine broadcast_recv(from, array1, array2, array3, array4, array5, array6, &
-                          scalar1, scalar2, scalar3, scalar4, scalar5)
+subroutine broadcast_recv(from, array1, array2, array3, array4, array5, array6, array7, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5, scalar6)
  integer, intent(in) :: from
 ! arrays are really only intent(out) here, but must match array_broadcast() call.
  real(r8), intent(inout) :: array1(:)
- real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:)
- real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:), array6(:), array7(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5, scalar6
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 

@@ -308,7 +308,7 @@ FILELOOP : do ifile=1,nfiles
 
    OBSLOOP: do n = 1, nobs
 
-      if ( discharge(n) < 0.0_r8 ) cycle OBSLOOP
+      if ( discharge(n) < 0.0_r8 .or. discharge(n) /= discharge(n) ) cycle OBSLOOP
 
       ! relate the TimeSlice:station to the RouteLink:gage so we can
       ! determine the location

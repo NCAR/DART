@@ -26,14 +26,15 @@ public :: NO_HYBRID, CONSTANT_HYBRID, SINGLE_SS_HYBRID, VARYING_SS_HYBRID,  &
           set_hybrid_sd_copy, do_single_ss_hybrid, get_hybrid_mean_copy,    &
           get_hybrid_sd_copy, do_ss_hybrid, get_hybrid_mean, get_hybrid_sd, &
           do_varying_ss_hybrid, hyb_minmax_task_zero, log_hybrid_info,      & 
-          update_hybrid, get_hybrid_sample_size, scale_static_background
+          update_hybrid, get_hybrid_sample_size, scale_static_background,   &
+          do_constant_hybrid
 
 character(len=*), parameter :: source = 'hybrid_mod.f90'
 
-integer, parameter :: NO_HYBRID         = 0
-integer, parameter :: CONSTANT_HYBRID   = 1
-integer, parameter :: SINGLE_SS_HYBRID  = 2
-integer, parameter :: VARYING_SS_HYBRID = 3
+integer, parameter :: NO_HYBRID         = 0  !only dynamic ensemble, not climatology
+integer, parameter :: CONSTANT_HYBRID   = 1  !with climatology but weight not adaptive in time
+integer, parameter :: SINGLE_SS_HYBRID  = 2  !adaptive in time, constant in space
+integer, parameter :: VARYING_SS_HYBRID = 3  !adaptive in time, varying in space
 
 ! Type to keep track of information for hybrid 
 type hybrid_type
@@ -98,13 +99,13 @@ if (hyb_flavor /= NO_HYBRID) do_hybrid = .true.
 ! Adaptive hybrid scheme is only spatially-constant for now, 
 ! Inflation is relied on to spread the information properly in space
 ! Only support hybrid with inf-flavors 0, 2, 4, 5 (1 is deprecated)
-if (do_hybrid .and. hyb_flavor >= SINGLE_SS_HYBRID) then 
+if (do_hybrid .and. hyb_flavor <= SINGLE_SS_HYBRID) then 
    if (inf_flavor(1) == SINGLE_SS_INFLATION .or. inf_flavor(2) == SINGLE_SS_INFLATION) then 
-      write(string1, '(A, i2, A)') 'Adaptive hybrid scheme does not support inf_flavor:', SINGLE_SS_HYBRID, ' (i.e., spatially-uniform inflation)' 
+      write(string1, '(A, i2, A, i2, A)') 'Adaptive hybrid scheme flavor:', hyb_flavor, &
+                     ' does not support inf_flavor:', SINGLE_SS_INFLATION, ' (i.e., spatially-uniform inflation)' 
       call error_handler(E_ERR, 'validate_hybrid_options:', string1, source)
    endif
-endif
- 
+endif 
 
 ! Check the size of the climatological ensemble
 ! We need this to be fairly large ~O(1000)
@@ -116,12 +117,12 @@ endif
 
 if (do_hybrid) output_hybrid = .true.
 
-! Observation space inflation not currently supported
-if(hyb_flavor == VARYING_SS_HYBRID) then 
-   call error_handler(E_ERR, 'validate_hybrid_options', &
-                      'Varying state-space hybridization (type 3) not currently supported', source, &
-                      text2 = 'Look out for this type in future DART releases.')
-endif
+! Spatially-varying hybrid not currently supported
+!if(hyb_flavor == VARYING_SS_HYBRID) then 
+!   call error_handler(E_ERR, 'validate_hybrid_options', &
+!                      'Varying state-space hybridization (type 3) not currently supported', source, &
+!                      text2 = 'Look out for this type in future DART releases.')
+!endif
 
 end subroutine validate_hybrid_options
 
@@ -239,6 +240,18 @@ do_single_ss_hybrid = (hybrid_handle%flavor == SINGLE_SS_HYBRID)
 
 end function do_single_ss_hybrid
 
+!-------------------------------------------------------------------------------
+!> Returns true if time-invarian and fixed in space and time
+
+function do_constant_hybrid(hybrid_handle)
+
+logical                       :: do_constant_hybrid
+type(hybrid_type), intent(in) :: hybrid_handle
+
+do_constant_hybrid = (hybrid_handle%flavor == CONSTANT_HYBRID)
+
+end function do_constant_hybrid
+
 
 !-------------------------------------------------------------------------------
 !> Given prior mean and sd values for the hybrid weighting coefficient, 
@@ -265,7 +278,6 @@ real(r8),          intent(in)    :: x, se2, ss2
 real(r8),          intent(in)    :: obs, so2 
 real(r8),          intent(in)    :: rho 
 
-!real(r8), parameter :: small_diff = 1.0e-8
 real(r8), parameter :: small_diff = epsilon(1.0_r8) 
 
 integer  :: k, find_index(1)
@@ -279,14 +291,14 @@ real(r8) :: new_weight, new_weight_sd
 ! If the weight_sd not positive, keep everything the same
 if(weight_sd <= 0.0_r8) return
 
+! Check for bad correlation
+if(rho /= rho .or. rho <= 0.0_r8) return !1.0e-5_r8
+
 m  = weight
 v  = weight_sd**2
 d2 = (obs - x)**2
 
 ss = se2 - ss2 
-
-!print *, 'd2: ', d2
-!print *, 'ss: ', ss
 
 if (ss == 0.0_r8 .or. abs(ss) <= small_diff) then
    ! If the ensemble and static variances are very close 
@@ -325,15 +337,11 @@ R = ( 2.0_r8 * a**3 - 9.0_r8 * a * b + 27.0_r8 * c ) / 54.0_r8
 
 disc = R**2 - Q**3
 
-!print *, 'disc: ', disc
-!print *, 'Q: ', Q, ' R: ', R
-
 ! Find cubic roots
 if (disc < 0.0_r8) then
    ! 3 distict real roots
  
    theta = acos( R / sqrt(Q**3) ) / 3.0_r8  
-   !print *, 'theta: ', theta
 
    mulfac = - 2.0_r8 * sqrt(Q)
    addfac = - a / 3.0_r8
@@ -344,8 +352,6 @@ if (disc < 0.0_r8) then
    sol(3) = mulfac * cos(theta - PIfac) + addfac 
   
    abssep = abs(sol - m)
-
-   !print *, 'sol: ', sol
 
    ! Closest root
    find_index = minloc(abssep)
@@ -361,13 +367,9 @@ else
       H = Q / G
    endif
    
-   !print *, 'G: ', G, 'H: ', H
-   
    new_weight = G + H - a / 3.0_r8
 
 endif
-
-!print *, 'new_weight = ', new_weight, ' d2 = ', d2, ' se2 = ', se2, ' ss2 = ', ss2, ' so2 = ', so2 
 
 ! Make sure weight satisfies constraints
 weight = new_weight

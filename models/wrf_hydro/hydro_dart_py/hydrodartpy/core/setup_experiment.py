@@ -215,6 +215,11 @@ allobsdir={3}
             new_name = po.name.replace('output', 'input')
             _ = shutil.copy(po, config['experiment']['run_dir'] / new_name)
 
+        # Adding the stage of the hybrid weighting coefficient files
+        hybrid_wght_files = from_filter_path.glob('output_*hybridweight*')
+        for hyb in hybrid_wght_files:
+            new_name = hyb.name.replace('output', 'input')
+            _ = shutil.copy(hyb, config['experiment']['run_dir'] / new_name)
 
     # ###################################
     # Place scripts into the run dir.

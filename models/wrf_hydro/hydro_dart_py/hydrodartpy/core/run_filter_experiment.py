@@ -364,6 +364,21 @@ def manage_filter_output(
             post_mean_file.rename('input_postinf_mean{0}.nc'.format(domain_tag))
             post_sd_file.rename('input_postinf_sd{0}.nc'.format(domain_tag))
 
+        # MEG: Hybridization coefficient section 
+        hybrd_mean_file = run_dir.joinpath('output_hybridweight_mean{0}.nc'.format(domain_tag))
+        hybrd_sd_file = run_dir.joinpath('output_hybridweight_sd{0}.nc'.format(domain_tag))
+        if hybrd_mean_file.exists():
+            shutil.copy2(
+                str(hybrd_mean_file),
+                str(output_dir_date / ('output_hybridweight_mean{0}.{1}.nc'.format(domain_tag, datestr)))
+            )
+            shutil.copy2(
+                str(hybrd_sd_file),
+                str(output_dir_date / ('output_hybridweight_sd{0}.{1}.nc'.format(domain_tag, datestr)))
+            )
+            hybrd_mean_file.rename('input_hybridweight_mean{0}.nc'.format(domain_tag))
+            hybrd_sd_file.rename('input_hybridweight_sd{0}.nc'.format(domain_tag))
+
     # Other output files.
     potential_output_file_globs = [
         'forecast*mean*nc',   'forecast*sd*nc',  'forecast_member_*.nc',

@@ -41,10 +41,10 @@
 # qpeek    see output from a running job
 #
 #PBS -N DART_cleanup         
-#PBS -l walltime=00:10:00
+#PBS -l walltime=00:30:00
 #PBS -q regular
 #PBS -l select=1:ncpus=36:mpiprocs=36
-#PBS -A NRAL0017
+#PBS -A P86850054
 #
 #===============================================================================
 # LSF directives                bsub < script.csh
@@ -58,15 +58,17 @@
 #BSUB -o DART_cleanup.%J.log
 #BSUB -q regular
 #BSUB -n 16
-#BSUB -W 0:30:00
+#BSUB -W 0:50:00
 #BSUB -P project
 #
 #===============================================================================
 
 # USER SETTINGS HERE
 
-set DARTdir = ${HOME}/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro
-set HydroDARTdir = /glade/scratch/${USER}/wrfhydro_dart/flo_cut/runs/da_ln1_n80_op2_lp4_sp4_noloc_ga_ana_sample_var
+module swap openmpi mpt
+
+set DARTdir = /glade/work/${USER}/DART/DART_development/models/wrf_hydro 
+set HydroDARTdir = /glade/scratch/${USER}/wrfhydro_dart/Ian/runs/h1_N20_a3_R08_infprpo_m0.5_s0.01  
 set MARKER = all
 
 # END USER SETTINGS
@@ -176,9 +178,9 @@ echo "DART time support ended at "`date`
 #===============================================================================
 
 foreach STAGE ( input preassim analysis output )
-   foreach TYPE (mean     sd     priorinf_mean     priorinf_sd     postinf_mean     postinf_sd     \
-                 mean_d01 sd_d01 priorinf_mean_d01 priorinf_sd_d01 postinf_mean_d01 postinf_sd_d01 \
-                 mean_d02 sd_d02 priorinf_mean_d02 priorinf_sd_d02 postinf_mean_d02 postinf_sd_d02 )
+   foreach TYPE (mean     sd     priorinf_mean     priorinf_sd     postinf_mean     postinf_sd     hybridweight_mean     hybridweight_sd     \
+                 mean_d01 sd_d01 priorinf_mean_d01 priorinf_sd_d01 postinf_mean_d01 postinf_sd_d01 hybridweight_mean_d01 hybridweight_sd_d01 \
+                 mean_d02 sd_d02 priorinf_mean_d02 priorinf_sd_d02 postinf_mean_d02 postinf_sd_d02 hybridweight_mean_d02 hybridweight_sd_d02 )
 
       set   OUTPUT = ${MARKER}_${STAGE}_${TYPE}.nc     
       ls -1 output/*/${STAGE}_${TYPE}.*.out.nc | sort >! concatlist.txt
@@ -194,6 +196,8 @@ end
 \rm -f concatlist.txt
 
 echo "DART diagnostics summarized at "`date`
+
+#exit 0
 
 #===============================================================================
 # Concatenate all ensemble members together
