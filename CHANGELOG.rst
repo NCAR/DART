@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 22 2023 :: Bug-fix release. Tag v10.6.4**
+
+- Removes unused and uninitialized argument to adaptive_inflate_init.
+- Fixes HDF5_utilities_mod i4 i8 mismatch.
+- Removes HDF tutorial code which is not part of DART.
+- Fixes misleading comment in filter_mod.f90
+
 **February 9 2023 :: Bug-fix for vertical conversion QC 8. Tag v10.6.3**
 
 - QC 8 values now correctly recorded. Previously this info was lost if 
