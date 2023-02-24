@@ -11,7 +11,7 @@ use utilities_mod, only : E_ERR, E_MSG, error_handler
 implicit none
 private
 
-public :: norm_cdf, norm_inv, weighted_norm_inv, test_normal, norm_inv_accurate
+public :: norm_cdf, norm_inv, weighted_norm_inv, test_normal
 
 character(len=512)        :: errstring
 character(len=*), parameter :: source = 'normal_distribution_mod.f90'
@@ -28,8 +28,9 @@ subroutine test_normal
 ! these tests suggests a serious problem. Passing them does not indicate that 
 ! there are acceptable results for all possible inputs. 
 
-integer :: i
-real(r8) :: mean, sd, x, y, inv, max_diff
+integer :: num_trials, i, j
+real(r8) :: x, quantile, inv, max_diff(16), max_q(16)
+real(r8) :: sd_range, half_trials, max_matlab_diff
 
 ! Comparative results for a handful of cases from MATLAB21a
 real(r8) :: cdf_diff(7)
@@ -40,31 +41,56 @@ real(r8) :: mx(7)     = [0.1_r8, 0.2_r8, 0.3_r8, 0.4_r8, 0.5_r8, 0.6_r8, 0.7_r8]
 real(r8) :: mcdf(7) = [0.579259709439103_r8, 0.211855398583397_r8, 0.742153889194135_r8, &
                        0.539827837277029_r8, 0.539827837277029_r8, 0.539827837277029_r8, &
                        0.788144601416603_r8]
+! Bounds for quantile inversion differences
+real(r8) :: inv_diff_bound(16) = [1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_r8, &
+                                  1e-9_r8, 1e-8_r8, 1e-7_r8, 1e-7_r8, 1e-6_r8, &
+                                  1e-5_r8, 1e-4_r8, 1e-3_r8, 1e-2_r8, 1e-1_r8, 1e-0_r8]
 
-! Compare to matlab
-write(*, *) 'Absolute value of differences should be less than 1e-15'
+! Compare to matlab 
+! Absolute value of differences should be less than 1e-15
 do i = 1, 7
    cdf_diff(i) = norm_cdf(mx(i), mmean(i), msd(i)) - mcdf(i)
-   write(*, *) i, cdf_diff(i)
+end do
+max_matlab_diff = maxval(abs(cdf_diff))
+if(max_matlab_diff > 1.0e-15_r8) then
+   write(*, *) 'WARNING: Difference from Matlab baseline is too large ', max_matlab_diff
+else
+   write(*, *) 'Agreement with Matlab baseline is okay: max diff is < 1e-15 ', max_matlab_diff
+endif
+
+! Keep track of differences as function of quantile
+max_diff = 0.0_r8
+do j = 1, 16
+   max_q(j) = 1.0_r8 - 0.1**j
+enddo
+
+write(*, *) 'There are some values for which norm_inv may fail to converge but still produce adequate errors'
+
+! Test the inversion of the cdf over +/- 30 standard deviations around mean
+sd_range = 30.0_r8
+num_trials = 1000
+half_trials = num_trials / 2.0_r8
+do i = 1, num_trials
+   x = ((i - half_trials) / half_trials) * sd_range
+   quantile = norm_cdf(x, 0.0_r8, 1.0_r8)
+   if(quantile >= 1.0_r8) exit
+   call norm_inv(quantile, inv)
+   do j = 1, 16
+      if(quantile < max_q(j)) then
+         max_diff(j) = max(abs(x-inv), max_diff(j))
+      endif
+   enddo
 end do
 
-! Test the inversion of the cdf over +/- 5 standard deviations around mean
-mean = 2.0_r8
-sd   = 3.0_r8
-
-do i = 1, 1000
-   x = mean + ((i - 500.0_r8) / 500.0_r8) * 5.0_r8 * sd
-   y = norm_cdf(x, mean, sd)
-   call weighted_norm_inv(1.0_r8, mean, sd, y, inv)
-   max_diff = max(abs(x-inv), max_diff)
+do j = 1, 16
+   if(max_diff(j) > inv_diff_bound(j)) then
+      write(*, *) 'WARNING: Max inversion diff ', max_diff(j), ' > bound ', inv_diff_bound(j), &
+        'for quantiles < ', max_q(j)
+   else
+      write(*, *) 'Max inversion diff ', max_diff(j), ' OK, bound ', inv_diff_bound(j), &
+        'for quantiles < ', max_q(j)
+   endif
 end do
-
-write(*, *) '----------------------------'
-write(*, *) 'max difference in inversion is ', max_diff
-write(*, *) 'max difference should be less than 2e-8'
-
-! Note that it is possible to get much more accuracy by using norm_inv_accurate
-! which is included below.
 
 end subroutine test_normal
 
@@ -104,15 +130,14 @@ real(r8), intent(out) :: x
 
 real(r8) :: np
 
+! VARIABLES THROUGHOUT NEED TO SWITCH TO DIGITS_12
+
 ! Can search in a standard normal, then multiply by sd at end and add mean
 ! Divide p by alpha to get the right place for weighted normal
 np = p / alpha
 
 ! Find spot in standard normal
-!call norm_inv(np, x)
-
-! Switch to this for more accuracy at greater cost
-call norm_inv_accurate(np, x)
+call norm_inv(np, x)
 
 ! Add in the mean and normalize by sd
 x = mean + x * sd
@@ -122,10 +147,12 @@ end subroutine weighted_norm_inv
 
 !------------------------------------------------------------------------
 
-subroutine norm_inv(p_in, x)
+subroutine approx_norm_inv(p_in, x)
 
 real(r8), intent(in)  :: p_in
 real(r8), intent(out) :: x
+
+! This is used to get a good first guess for the search in norm_inv
 
 ! normal inverse
 ! translate from http://home.online.no/~pjacklam/notes/invnorm
@@ -138,16 +165,6 @@ real(r8) :: b1,b2,b3,b4,b5
 real(r8) :: c1,c2,c3,c4,c5,c6
 real(r8) :: d1,d2,d3,d4
 real(r8) :: q,r
-
-call norm_inv_accurate(p_in, x)
-return
-
-! Do a test for illegal values
-if(p_in < 0.0_r8 .or. p_in > 1.0_r8) then
-   ! Need an error message
-   errstring = 'Illegal Quantile input'
-   call error_handler(E_ERR, 'norm_inv', errstring, source)
-endif
 
 ! Truncate out of range quantiles, converts them to smallest positive number or largest number <1
 ! This solution is stable, but may lead to underflows being thrown. May want to 
@@ -195,55 +212,42 @@ else
       (((((b1*r + b2)*r + b3)*r + b4)*r + b5)*r + 1.0_digits12)
 endif
 
-end subroutine norm_inv
+end subroutine approx_norm_inv
 
 !------------------------------------------------------------------------
 
-subroutine norm_inv_accurate(quantile, x)
+subroutine norm_inv(quantile, x)
 
 real(r8), intent(in)  :: quantile
 real(r8), intent(out) :: x
 
-! This naive Newton method is much more accurate that the default norm_inv, especially
-! for quantile values less than 0.5. However, it is also about 50 times slower for the
-! test here. It could be sped up by having better first guesses, but only be a few times.
-! It could be replaced by the matlab inverse erf method which is believed to have comparable
-! accuracy. While it is much slower, on a Mac Powerbook in 2022, 100 million calls took
-! a bit less than a minute. It is possible that this is just in the noise, even for large
-! RHF implementations. If accuracy seems to be a problem, try this.
+! This naive Newton method is much more accurate than approx_norm_inv, especially
+! for quantile values less than 0.5. 
 
+! Given a quantile q, finds the value of x for which the standard normal cdf
+! has approximately this quantile
 
-! Given a quantile q, finds the value of x for which the gamma cdf
-! with shape and scale has approximately this quantile
+! Limit on the total iterations; Increasing this does not change any of the results
+! that do not converge for the test_normal call on gfortran.
+integer, parameter :: max_iterations = 50
 
-! This version uses a Newton method using the fact that the PDF is the derivative of the CDF
-
-! Limit on the total iterations; There is no deep thought behind this choice
-integer, parameter :: max_iterations = 100
-! Limit on number of times to halve the increment; again, no deep thought
+! Limit on number of times to halve the increment; 
+! No deep thought. The halving never happens for test_normal on gfortran.
 integer, parameter :: max_half_iterations = 25
 
-real(r8) :: reltol, dq_dx
+real(r8) :: reltol, dq_dx, delta
 real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old
 integer  :: iter, j
 
 ! Do a test for illegal values
-if(quantile < 0.0_r8 .or. quantile > 1.0_r8) then
+if(quantile <= 0.0_r8 .or. quantile >= 1.0_r8) then
    ! Need an error message
-   errstring = 'Illegal Quantile input'
-   call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
+   write(errstring, *) 'Illegal Quantile input', quantile
+   call error_handler(E_ERR, 'norm_inv', errstring, source)
 endif
 
-! Do a special test for exactly 0
-if(quantile == 0.0_r8) then
-   ! Need an error message
-   errstring = 'Quantile of 0 input'
-   call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
-endif
-
-! Need some sort of first guess
-! Could use info about sd to further refine mean and reduce iterations
-x_guess = 0.0_r8
+! Get first guess from functional approximation
+call approx_norm_inv(quantile, x_guess)
 
 ! Make sure that the guess isn't too close to 0 where things can get ugly
 reltol = (EPSILON(x_guess))**(3./4.)
@@ -255,14 +259,21 @@ del_q = q_guess - quantile
 
 ! Iterations of the Newton method to approximate the root
 do iter = 1, max_iterations
-   ! The PDF is the derivative of the CDF
-   dq_dx = norm_pdf(x_guess)
+   ! PDF is derivative of CDF; but can be inaccurate for extreme values
+   !!!dq_dx = norm_pdf(x_guess)
+   ! Do numerical derivative to get more accurate inversion
+   ! These values for the delta for the approximation work with Gfortran
+   delta = max(1e-8, 1e-3 * abs(x_guess))
+      dq_dx = (norm_cdf(x_guess + delta, 0.0_r8, 1.0_r8) - &
+         norm_cdf(x_guess - delta, 0.0_r8, 1.0_r8)) / (2 * delta)
+      ! Derivative of 0 means we're not going anywhere else
+      if(dq_dx <= 0.0) then
+         x = x_guess
+         return
+      endif
+   
    ! Linear approximation for how far to move in x
    del_x = del_q / dq_dx
-
-   ! Avoid moving too much of the fraction towards the bound at 0 
-   ! because of potential instability there. The factor of 10.0 here is a magic number
-   !x_new = max(x_guess/10.0_r8, x_guess-del_x)
    x_new = x_guess - del_x
 
    ! Look for convergence; If the change in x is smaller than approximate precision 
@@ -273,6 +284,7 @@ do iter = 1, max_iterations
     
    ! If we've gone too far, the new error will be bigger than the old; 
    ! Repeatedly half the distance until this is rectified 
+   ! This is not believed to happen with the first guess quality here
    del_q_old = del_q
    q_new = norm_cdf(x_new, 0.0_r8, 1.0_r8)
    do j = 1, max_half_iterations
@@ -290,11 +302,11 @@ end do
 ! For now, have switched a failed convergence to return the latest guess
 ! This has implications for stability of probit algorithms that require further study
 x = x_new
-errstring = 'Failed to converge '
-!!!call error_handler(E_MSG, 'norm_inv_accurate', errstring, source)
-call error_handler(E_ERR, 'norm_inv_accurate', errstring, source)
+write(errstring, *)  'Failed to converge for quantile ', quantile
+call error_handler(E_MSG, 'norm_inv', errstring, source)
+!!!call error_handler(E_ERR, 'norm_inv', errstring, source)
 
-end subroutine norm_inv_accurate
+end subroutine norm_inv
 
 !------------------------------------------------------------------------
 
