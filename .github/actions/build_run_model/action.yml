@@ -1,0 +1,64 @@
+name: 'Build and run model'
+description: 'Build and run given model'
+
+# All possible input parameters that can be specified when using this composite action
+inputs:
+  models-directory:
+    description: 'path to top-level directory containing the model to build and run'
+    type: string
+    required: false
+    default: 'models/'
+  model: 
+    description: 'name of existing DART model'
+    type: string
+    required: true
+    default: 'lorenz_96'
+  run-program:
+    description: 'name of program to run in model /work directory after compile'
+    required: true
+    default: './filter'
+  run-program-args:
+    type: string
+    description: 'arguments to use when running specified program'
+    required: false
+    default: ''
+  use-mpi:
+    description: 'specify whether to run program with MPI or not'
+    type: boolean
+    required: true
+    default: true
+  mpi-n-tasks:
+    description: 'specify number of mpi tasks to run with program if mpi is used'
+    type: number
+    required: false
+    default: 2
+    
+runs:
+  using: "composite"
+  steps:
+    # Steps to create Makefile template
+    - name: Creating Makefile template :)
+      run: |
+        cd build_templates
+        cp mkmf.template.gfortran mkmf.template
+        echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+      shell: bash
+    # Steps to compile and build model
+    - name: Building ${{ inputs.model }} model
+      run: |
+        cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
+        ./quickbuild.sh
+      shell: bash
+    # Steps to run the specified run-program with mpi options
+    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=true)
+      if: ${{ inputs.use-mpi }} 
+      run: |
+        cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
+        mpirun -n ${{ inputs.mpi-n-tasks }} --allow-run-as-root ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
+      shell: bash
+    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=false)
+      if: ${{ !inputs.use-mpi }}
+      run: |
+        cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
+        ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
+      shell: bash

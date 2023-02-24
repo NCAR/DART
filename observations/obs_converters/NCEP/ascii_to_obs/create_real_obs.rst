@@ -16,12 +16,8 @@ etc.) and the DART observation variables (U, V, T, Q, Ps) which are specified in
 Instructions
 ------------
 
--  Go to DART/observations/NCEP/ascii_to_obs/work
--  Use ``quickbuild.sh`` to compile all executable programs in the directory. To rebuild just one program:
-
-   -  Use ``mkmf_create_real_obs`` to generate the makefile to compile ``create_real_obs.f90``.
-   -  Type ``make`` to get the executable.
-
+-  Go to DART/observations/obs_converters/NCEP/ascii_to_obs/work
+-  Use ``quickbuild.sh`` to compile all executable programs in the directory.
 -  Make appropriate changes to the ``&ncep_obs_nml`` namelist in ``input.nml``, as follows.
 -  run ``create_real_obs``.
 
@@ -258,7 +254,6 @@ Modules used
 Files
 -----
 
--  path_names_create_real_obs; the list of modules used in the compilation of create_real_obs.
 -  temp_obs.yyyymmdd; (input) NCEP BUFR (decoded/intermediate) observation file(s) Each one has 00Z of the next day on
    it.
 -  input.nml; the namelist file used by create_real_obs.
@@ -267,4 +262,4 @@ Files
 References
 ----------
 
--  .../DART/observations/NCEP/prep_bufr/docs/\* (NCEP text files describing the BUFR files)
+-  DART/observations/obs_converters/NCEP/prep_bufr/docs (NCEP text files describing the BUFR files)

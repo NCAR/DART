@@ -22,6 +22,45 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 22 2023 :: Bug-fix release. Tag v10.6.4**
+
+- Removes unused and uninitialized argument to adaptive_inflate_init.
+- Fixes HDF5_utilities_mod i4 i8 mismatch.
+- Removes HDF tutorial code which is not part of DART.
+- Fixes misleading comment in filter_mod.f90
+
+**February 9 2023 :: Bug-fix for vertical conversion QC 8. Tag v10.6.3**
+
+- QC 8 values now correctly recorded. Previously this info was lost if 
+  the posterior FO was skipped.  
+- Fixes QC overwrite for forward operators when running distributed_state = .false.
+- WRF tutorial bug fix for setting paramfile.
+
+**January 27 2023 :: Documentation update for porting new models. Tag v10.6.2**
+
+- Improved 'porting new models to DART' documentation.
+- Removed outdated references to previous build system.
+
+**December 21 2022 :: Documentation update for CLM and the DART Tutorial. Tag v10.6.1**
+
+- Improved instructions for the CLM-DART tutorial.  
+- Fixes link within the documentation to a section describing how to
+  configure MATLAB's path to use DART MATLAB functions.
+
+**December 12 2022 :: Automated testing of pull requests. Tag v10.6.0**
+
+- GitHub actions for pull requests which checkout, compile and run a 
+  given model.  
+  Current workflow: lorenz_96 (mpi) and lorenz_63 (no mpi)
+
+*contributed by Anderson Chauphan*
+
+**December 2 2022 :: Bug-fix cam-fv. Tag v10.5.6**
+
+- Fix for assimilate.csh purge of restart files when the interval for restart
+  saves is given as a string rather than an integer.
+- Fix for setting ptype when no_normalization_of_scale_heights = .false.
+
 **November 8 2022 :: Improved clean_nml and CLM quickbuild.sh. Tag v10.5.5**
 
 - clean_nml tool for comparing input.nmls given optional arguments to 

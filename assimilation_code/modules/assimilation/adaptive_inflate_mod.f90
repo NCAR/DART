@@ -220,7 +220,7 @@ end function do_ss_inflate
 subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
    sd_from_restart, output_inflation, deterministic, & 
    inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, sd_max_change, ens_handle, missing_ok, label)
+   sd_lower_bound, sd_max_change, missing_ok, label)
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 integer,                     intent(in)    :: inf_flavor
@@ -232,7 +232,6 @@ real(r8),                    intent(in)    :: inf_initial, sd_initial
 real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
 real(r8),                    intent(in)    :: sd_lower_bound
 real(r8),                    intent(in)    :: sd_max_change
-type(ensemble_type),         intent(inout) :: ens_handle
 logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
 

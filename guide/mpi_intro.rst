@@ -9,25 +9,18 @@ MPI is both a library and run-time system that enables multiple copies of a
 single program to run in parallel, exchange data, and combine to solve a
 problem more quickly.
 
-DART does **NOT** require MPI to run; the default build scripts do not need nor
-use MPI in any way. However, for larger models with large state vectors and
+DART does **NOT** require MPI to run. However, for larger models with large state vectors and
 large numbers of observations, the data assimilation step will run much faster
 in parallel, which requires MPI to be installed and used. However, if multiple
 ensembles of your model fit comfortably (in time and memory space) on a single
 processor, you need read no further about MPI.
 
-MPI is an open-source standard; there are many implementations of it. If you
+MPI is a `standard <https://www.mpi-forum.org/>`_; there are many implementations of MPI. If you
 have a large single-vendor system it probably comes with an MPI library by
 default. For a Linux cluster there are generally more variations in what might
-be installed; most systems use a version of MPI called MPICH. In smaller
-clusters or dual-processor workstations a version of MPI called either LAM-MPI
-or OpenMPI might be installed, or can be downloaded and installed by the end
-user.
+be installed; examples include `OpenMPI <https://www.open-mpi.org/>`_ and 
+`MVAPICH2 <http://mvapich.cse.ohio-state.edu/>`_.
 
-.. note:: 
-
-   OpenMP is a different parallel system; OpenMPI is a recent effort with a
-   confusingly similar name.
 
 An "MPI program" makes calls to an MPI library, and needs to be compiled with MPI include files and libraries.
 Generally the MPI installation includes a shell script called ``mpif90`` which adds the flags and libraries appropriate
@@ -42,16 +35,17 @@ system documentation or find an example of a successful MPI program compile comm
 DART use of MPI
 ~~~~~~~~~~~~~~~
 
-To run in parallel, only the DART 'filter' program (possibly the companion 'wakeup_filter' program), and the 'GSI2DART' observation converter need to be
-compiled with the MPI scripts. All other DART executables should be compiled with a standard F90 compiler and are not
-MPI enabled. (And note again that 'filter' can still be built as a single executable like previous releases of DART;
-using MPI and running in parallel is simply an additional option.) To build a parallel version of the 'filter'
-program, the 'mkmf_filter' command needs to be called with the '-mpi' option to generate a Makefile which compiles
-with the MPI scripts instead of the Fortran compiler.
+Several DART executables can make use of MPI. To build with MPI, make sure the ``$DART/mkmf/mkmf.template`` has
+the correct command for the MPI library you are using. Typically this is mpif90,
 
-Run ``quickbuild.sh`` will build DART with MPI. You will also need to edit the ``$DART/mkmf/mkmf.template`` file to call the proper version
-of the MPI compile script if it does not have the default name, is not in a standard location on the system, or needs
-additional options set to select between multiple Fortran compilers. To build without mpi, use ``quickbuild.sh nompi``.
+.. code::
+    
+    MPIFC = mpif90
+    MPILD = mpif90
+
+but may be ``mpiifort`` if you are using the Intel MPI library.  ``./quickbuild.sh`` will then build DART using MPI.
+
+If you want to build DART without using MPI, run ``./quickbuild.sh nompi``
 
 MPI programs generally need to be started with a shell script called 'mpirun' or 'mpiexec', but they also interact
 with any batch control system that might be installed on the cluster or parallel system. Parallel systems with
