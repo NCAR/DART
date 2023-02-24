@@ -16,6 +16,7 @@
 # in both lists, the same number of items
 
 &assim_tools_nml
+   use_algorithm_info_mod            = .true.,
    filter_kind                       = 1
    cutoff                            = 0.2
    distribute_mean                   = .false.
