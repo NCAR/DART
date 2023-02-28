@@ -220,7 +220,7 @@ integer,             intent(in) :: qty
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
-integer  :: which_vert, four_lons(4), four_lats(4)
+integer  :: which_vert, four_ilons(4), four_ilats(4)
 integer  :: locate_status
 real(r8) :: lon_fract, lat_fract, lev_fract
 real(r8) :: lon_lat_vert(3)
@@ -252,7 +252,7 @@ which_vert   = nint(query_location(location))
 ! get the indices for the 4 corners of the quad in the horizontal, plus
 ! the fraction across the quad for the obs location
 call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
-                         four_lons, four_lats, lon_fract, lat_fract, locate_status)
+                         four_ilons, four_ilats, lon_fract, lat_fract, locate_status)
 
 if (locate_status /= 0) then
   istatus(:) = QUAD_LOCATE_FAILED
@@ -260,7 +260,7 @@ if (locate_status /= 0) then
 endif
 
 ! check if all four corners are in the ocean
-if (on_land(four_lons, four_lats)) then
+if (on_land(four_ilons, four_ilats)) then
    istatus(:) = QUAD_ON_LAND
    return
 endif
@@ -273,7 +273,7 @@ if (locate_status /= 0) then
   return
 endif
 
-if (on_basin_edge(four_lons, four_lats, lev)) then
+if (on_basin_edge(four_ilons, four_ilats, lev)) then
    istatus(:) = QUAD_ON_BASIN_EDGE
    return
 endif
@@ -283,19 +283,19 @@ endif
 do i = 1, 2
    !HK which corner of the quad is which?
    ! corner1
-   indx = get_dart_vector_index(four_lons(1), four_lats(1), lev(i), dom_id, varid)
+   indx = get_dart_vector_index(four_ilons(1), four_ilats(1), lev(i), dom_id, varid)
    quad_vals(1, :) = get_state(indx, state_handle)
 
    ! corner2
-   indx = get_dart_vector_index(four_lons(1), four_lats(2), lev(i), dom_id, varid)
+   indx = get_dart_vector_index(four_ilons(1), four_ilats(2), lev(i), dom_id, varid)
    quad_vals(2, :) = get_state(indx, state_handle)
 
    ! corner3
-   indx = get_dart_vector_index(four_lons(2), four_lats(1), lev(i), dom_id, varid)
+   indx = get_dart_vector_index(four_ilons(2), four_ilats(1), lev(i), dom_id, varid)
    quad_vals(3, :) = get_state(indx, state_handle)
 
    ! corner4
-   indx = get_dart_vector_index(four_lons(2), four_lats(2), lev(i), dom_id, varid)
+   indx = get_dart_vector_index(four_ilons(2), four_ilats(2), lev(i), dom_id, varid)
    quad_vals(4, :) = get_state(indx, state_handle)
 
    call quad_lon_lat_evaluate(interp, &
