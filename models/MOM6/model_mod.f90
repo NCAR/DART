@@ -102,19 +102,30 @@ integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
 !        Interface = 64 ;
 !        Time = UNLIMITED ; // (1 currently)
 real(r8), allocatable :: lath(:), lonh(:), latq(:), lonq(:), layer(:), interf(:)
+real(r8), allocatable :: wet(:,:), basin_depth(:,:)
 type(quad_interp_handle) :: interp_v_grid, interp_u_grid, interp_t_grid !HK do we need all three?
 
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 10
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
 
+! model_interpolate failure codes
+integer, parameter :: NOT_IN_STATE = 12
+integer, parameter :: QUAD_LOCATE_FAILED = 14
+integer, parameter :: QUAD_ON_LAND = 16
+integer, parameter :: QUAD_ON_BASIN_EDGE = 18
+integer, parameter :: OBS_ABOVE_SURFACE = 20
+integer, parameter :: OBS_TOO_DEEP = 22
+
+
 ! namelist
 character(len=256) :: template_file = 'mom6.r.nc'
+character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = -1
 integer  :: assimilation_period_seconds   = -1
 character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
 
-namelist /model_nml/ template_file, assimilation_period_days, &
+namelist /model_nml/ template_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables
 
 contains
@@ -175,6 +186,8 @@ call read_grid()
 
 call setup_interpolation()
 
+call read_ocean_geometry()
+
 end subroutine static_init_model
 
 !------------------------------------------------------------------
@@ -220,14 +233,12 @@ integer :: lev(2) ! level bounds
 
 if ( .not. module_initialized ) call static_init_model
 
-! This should be the result of the interpolation of a
-! given kind (itype) of variable at the given location.
 expected_obs(:) = MISSING_R8
 istatus(:) = 1
 
 varid = get_varid_from_kind(dom_id, qty)
 if (varid < 0) then ! not in state
-   istatus = 12
+   istatus = NOT_IN_STATE
    return
 endif
 
@@ -244,8 +255,14 @@ call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
                          four_lons, four_lats, lon_fract, lat_fract, locate_status)
 
 if (locate_status /= 0) then
-  istatus(:) = locate_status
+  istatus(:) = QUAD_LOCATE_FAILED
   return
+endif
+
+! check if all four corners are in the ocean
+if (on_land(four_lons, four_lats)) then
+   istatus(:) = QUAD_ON_LAND
+   return
 endif
 
 ! find levels
@@ -254,6 +271,11 @@ call find_level_bounds(lon_lat_vert(3), which_vert, lev, lev_fract, locate_statu
 if (locate_status /= 0) then
   istatus(:) = locate_status
   return
+endif
+
+if (on_basin_edge(four_lons, four_lats, lev)) then
+   istatus(:) = QUAD_ON_BASIN_EDGE
+   return
 endif
 
 ! get values of state at four corners
@@ -456,6 +478,76 @@ call nc_get_variable(ncid, 'Interface', interf, routine) ! Interface pseudo-dept
 call nc_close_file(ncid)
 
 end subroutine read_grid
+
+!------------------------------------------------------------
+! ocean_geom are 2D state sized static data
+! HK Do these arrays become too big in high res cases?
+subroutine read_ocean_geometry()
+
+integer :: ncid
+
+character(len=*), parameter :: routine = 'read_ocean_geometry'
+
+! Need nx, ny
+if ( .not. module_initialized ) call static_init_model
+
+ncid = nc_open_file_readonly(ocean_geometry)
+
+allocate(wet(nx,ny), basin_depth(nx,ny))
+call nc_get_variable(ncid, 'wet', wet, routine)
+call nc_get_variable(ncid, 'D', basin_depth, routine)
+
+call nc_close_file(ncid)
+
+end subroutine read_ocean_geometry
+
+!------------------------------------------------------------
+! wet is a 2D array of ones and zeros
+! 1 is ocean
+! 0 is land
+function on_land(ilon, ilat)
+
+integer :: ilon(4), ilat(4) ! these are indices into lon, lat
+logical ::  on_land
+
+if ( wet(ilon(1), ilat(1)) + &
+     wet(ilon(1), ilat(2)) + &
+     wet(ilon(2), ilat(1)) + &
+     wet(ilon(2), ilat(2))  < 4) then
+   on_land = .true.
+else
+   on_land = .false.
+endif
+
+end function on_land
+
+!------------------------------------------------------------
+! basin_depth is a 2D array with the basin depth
+function on_basin_edge(ilon, ilat, lev)
+
+! indices into lon, lat, lev
+integer, intent(in) :: ilon(4), ilat(4), lev(2)
+logical :: on_basin_edge
+
+integer  :: i
+real(r8) :: d(4) ! basin depth at each corner
+
+d(1) = basin_depth(ilon(1), ilat(1))
+d(2) = basin_depth(ilon(1), ilat(2))
+d(3) = basin_depth(ilon(2), ilat(1))
+d(4) = basin_depth(ilon(2), ilat(2))
+
+do i = 1, 4
+  if (d(i) < Layer(lev(1)) .or. d(i) < Layer(lev(2))) then
+     on_basin_edge = .true.
+     return
+  endif
+enddo
+
+! four points are in the ocean
+on_basin_edge = .false.
+
+end function on_basin_edge
 
 !------------------------------------------------------------
 ! longitude value from index
@@ -722,7 +814,7 @@ integer :: i
 ! HK assert(which_vert == height meters) ?
 
 if (vert_loc < interf(1)) then
-  istatus = 10 ! obs is above surface
+  istatus = OBS_ABOVE_SURFACE
   return
 endif
 
@@ -737,7 +829,7 @@ do i = 2, nz+1
    endif
 enddo
 
-istatus = 20 ! obs is too deep
+istatus = OBS_TOO_DEEP
 
 end subroutine find_level_bounds
 
