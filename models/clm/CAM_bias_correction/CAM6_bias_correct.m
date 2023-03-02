@@ -20,7 +20,7 @@ close all
  path_CAM_forcing = '/glade/work/bmraczka/CAM6_NR1/';
  path_towermet_forcing = '/glade/work/bmraczka/SIFMIP2/tower_met_forcing/';
 % Output data files
- path_scaled_CAM_forcing = '/glade/work/bmraczka/CAM6_NR1/scaled/';
+ path_scaled_CAM_forcing = '<enter output file path here>';        %% Requires user input %%
 
 
 % Include Diagnostics?  1=ON, 2=OFF
