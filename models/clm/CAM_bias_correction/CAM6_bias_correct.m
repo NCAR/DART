@@ -1,28 +1,13 @@
 clear all
 close all
 
-%  11/3/22
-%  CAM6 Reanalysis Product
-%  V4 SIFMIP2 US-NR1 met forcing
-
-
-%  CAM_biascorrection_SIFMIP2.m uses updated SIFMIP2 tower met forcing.
-%  SIFMIP2 US-NR1 tower met is at 30 minute resolution, thus aggregated to 1 hour
-%  and 3 hour resolution to provide scaling correction for CAM6 Reanalysis
-%  Site level correction applied to Niwot Ridge
-
-%  12/9/22 Updated from V2 to V4 SIFMIP2 tower met forcing
-
-% Applying bias correction of CAM6 reanalysis meteorology roughly
-% following Yong-Fei Zhang (UT-Austin) dissertation approach.
+% This script applies a bias correction to CAM6 reanalysis meteorology roughly
+% following Yong-Fei Zhang (UT-Austin) dissertation approach. Meteorology data
+% from the site location of interest should be used as 'truth'.
 % All met variables use 'scaling' approach with exception for snow/rain precip.
-% CAM6 NR1 gridcell: (lat: 40.0523560209424, lon: 255)
+% This script is intended to be used after running CAM6_site_grid.sh 
 
-% 1/7/23
-% Need to adjust the time since : Year 2011 days since 2010-07, all other years days since 2011
-
-
-% NR1
+% Enter in site location data. US-NR1 flux tower used as example
  SITE_lat=40.03;
  SITE_lon=-105.55+360; % degrees East
  SITE_doma_area=0.000274675326661479; % radian^2 cell area (unique to grid location)
@@ -30,13 +15,19 @@ close all
  SITE_doma_mask=1   ; % all values =1 
  SITE_doma_frac=1   ; % all values =1 area fraction
 
-% Diagnostics ?  1=ON, 2=OFF
+
+% Input data files
+ path_CAM_forcing = '/glade/work/bmraczka/CAM6_NR1/';
+ path_towermet_forcing = '/glade/work/bmraczka/SIFMIP2/tower_met_forcing/';
+% Output data files
+ path_scaled_CAM_forcing = '/glade/work/bmraczka/CAM6_NR1/scaled/';
+
+
+% Include Diagnostics?  1=ON, 2=OFF
 Diagnostics=1;
 
-% CAM6 location: /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST/
-% f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2xresolution.YEAR.nc
 
-% Site level extract CAM6:  
+% Site level grid extract CAM6 naming convention:  
 
 % CAM6_NR1.cpl_NINST.ha2x1hi.YEAR.nc   % SOLAR:     a2x1hi_Faxa_swndr,a2x1hi_Faxa_swvdr,a2x1hi_Faxa_swndf,a2x1hi_Faxa_swvdf   
 % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % NON-SOLAR: a2x3h_Faxa_rainc,a2x3h_Faxa_rainl,a2x3h_Faxa_snowc,a2x3h_Faxa_snowl,a2x3h_Faxa_lwdn
@@ -44,11 +35,6 @@ Diagnostics=1;
 % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % 3hr state; a2x3h_Sa_tbot,a2x3h_Sa_shum,a2x3h_Sa_pbot
 % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % unchanged 3hr state: Sa_z Sa_ptem Sa_dens Sa_pslv Sa_topo
 
-path_CAM_forcing = '/glade/work/bmraczka/CAM6_NR1/';
-% SIFMIP2 Tower met forcing files V2 had issues with NR1, use V4 files
-% V2 files--> ver.2022.11.02.nc
-% V4 files--> ver.2022.11.29.nc
-path_towermet_forcing = '/glade/work/bmraczka/SIFMIP2/tower_met_forcing/'; 
 
 % 'yearstr' is list of years where both CAM6 reanalysis and tower met forcing
 % is available and the years we will create the bias-correct/scaled reanalysis product
@@ -68,10 +54,8 @@ enstr={'0001','0002','0003','0004','0005','0006','0007','0008','0009','0010',...
 
 
 
-% PLUMBER2 protocol time units --> LST (MST)
-
-
-% PLUMBER2 protocol tower met forcing units
+% Site level met forcing uses PLUMBER2 protocol 
+% time -->30 min increments in LST (MST)
 % Tair-->Kelvin
 % Qair--> specific humidity (kg kg-1)
 % Wind--> (m/s)
@@ -81,7 +65,7 @@ enstr={'0001','0002','0003','0004','0005','0006','0007','0008','0009','0010',...
 % Psurf  --> (Pa)
 
 
-% Best to upload all years of tower forcing, then parse by year
+% Uploading all years of tower forcing, then selecting a particular year
 TBOT_master=[];
 SH_master=[];
 WIND_master=[];
@@ -92,10 +76,6 @@ PSRF_master=[];
 YEAR_master=[];
 
 for ii = 1:length(yeartower);
-%SIFMIP2 files
-% V2 had issues with NR1, use V4 files
-% V2 files--> ver.2022.11.02.nc
-% V4 files--> ver.2022.11.29.nc
  
 TBOT_dummy=squeeze(ncread([path_towermet_forcing 'Forcing_Tower_US-NR1_' yeartower{ii} '_ver.2022.11.29.nc'],'Tair')); 
 SH_dummy=squeeze(ncread([path_towermet_forcing 'Forcing_Tower_US-NR1_' yeartower{ii} '_ver.2022.11.29.nc'],'Qair'));
@@ -119,39 +99,38 @@ clear TBOT_dummy SH_dummy WIND_dummy FSDS_dummy FLDS_dummy PRECTmms_dummy PSRF_d
 
 end
 
-% Now identify each year to perform the correction
+% Year Loop
 for ii = 1:length(yearstr);
-%for ii = 7:7;   % TEST for a customized year. 
 
-% Tower Forcing (PLUMBER):  LST (MST):  UTC-7
-% CAM6  Forcing: UTC
-% Tower Forcing must be advanced 7 hours to synchronize with CAM6 UTC
+% Time Zones:
+% Tower Meterology Forcing (PLUMBER):  LST (MST):  UTC-7
+% CAM6 Reanalsysis: UTC
 
-% There is a 6 hour forward shift in the CAM6 reanalysis yearly file.
-% To syncronize push the tower met forcing data another 6 hours ahead.
+% Syncing time steps:
+% Tower Forcing (LST) must be advanced 7 hours to synchronize with CAM6 (UTC)
+% In addition there is a 6 hour forward shift in the CAM6 reanalysis yearly files
+% Total shift of Tower Forcing: +13 hours with exception of
+% SW radiation which was shifted +12 hours for better synchronization
 
-% Total shift of Tower Forcing: +13 hours
-% SW radiation needs only +12 hour shift for some reason
-
-% Both CAM6 and Tower forcing include leap days, so code must
-% account for these years
+% Both CAM6 and Tower forcing include leap days
 
 
 % Select only indices of YEAR ii
 indices=find(YEAR_master==str2num(yearstr{ii}));
 
 % Pushing met forcing 13 hours forward (go back 26 indices)
-ta_30=TBOT_master(indices(1)-26:indices(end)-26)';                         % TBOT (Kelvin)
-q_30=SH_master(indices(1)-26:indices(end)-26)';                            % SH (kg kg-1)
+ta_30=TBOT_master(indices(1)-26:indices(end)-26)';                        % TBOT (Kelvin)
+q_30=SH_master(indices(1)-26:indices(end)-26)';                           % SH (kg kg-1)
 wind_30=WIND_master(indices(1)-26:indices(end)-26)';                      % Total Wind (m/s) 
-sw_30=FSDS_master(indices(1)-24:indices(end)-24)';                         % FSDS (W/m2)
-lw_30=FLDS_master(indices(1)-26:indices(end)-26)';                         % FLDS (W/m2)
-ppt_30=PRECTmms_master(indices(1)-26:indices(end)-26)';                    % PRECTmms  (mm/s) or (kg m-2 s-1)
-ps_30=PSRF_master(indices(1)-26:indices(end)-26)';                      % PSRF (Pa)
+sw_30=FSDS_master(indices(1)-24:indices(end)-24)';                        % FSDS (W/m2)
+lw_30=FLDS_master(indices(1)-26:indices(end)-26)';                        % FLDS (W/m2)
+ppt_30=PRECTmms_master(indices(1)-26:indices(end)-26)';                   % PRECTmms  (mm/s) or (kg m-2 s-1)
+ps_30=PSRF_master(indices(1)-26:indices(end)-26)';                        % PSRF (Pa)
 
 clear indices
 
-%% Generate 1,3,6 hourly averages to accomodate CAM4 and CAM6 reanalysis
+% Generate 1 and 3 hourly averages from tower met forcing to compare against
+% CAM6 reanalysis 
 
 ta_1hr=mean(reshape(ta_30,2,numel(ta_30)/2),1);        
 q_1hr=mean(reshape(q_30,2,numel(q_30)/2),1);           
@@ -162,19 +141,19 @@ ppt_1hr=mean(reshape(ppt_30,2,numel(ppt_30)/2),1);
 ps_1hr=mean(reshape(ps_30,2,numel(ps_30)/2),1);
 
 
-ta_3hr=mean(reshape(ta_1hr,3,numel(ta_1hr)/3),1);       % ta_6hr=mean(reshape(ta_1hr,6,numel(ta_1hr)/6),1);
-q_3hr=mean(reshape(q_1hr,3,numel(q_1hr)/3),1);          % q_6hr=mean(reshape(q_1hr,6,numel(q_1hr)/6),1);
-wind_3hr=mean(reshape(wind_1hr,3,numel(wind_1hr)/3),1); % wind_6hr=mean(reshape(wind_1hr,6,numel(wind_1hr)/6),1);
-sw_3hr=mean(reshape(sw_1hr,3,numel(sw_1hr)/3),1);       % sw_6hr=mean(reshape(sw_1hr,6,numel(sw_1hr)/6),1);
-lw_3hr=mean(reshape(lw_1hr,3,numel(lw_1hr)/3),1);       % lw_6hr=mean(reshape(lw_1hr,6,numel(lw_1hr)/6),1);
-ppt_3hr=mean(reshape(ppt_1hr,3,numel(ppt_1hr)/3),1);    % ppt_6hr=mean(reshape(ppt_1hr,6,numel(ppt_1hr)/6),1);
-ps_3hr=mean(reshape(ps_1hr,3,numel(ps_1hr)/3),1);       % ps_6hr=mean(reshape(ps_1hr,6,numel(ps_1hr)/6),1);
+ta_3hr=mean(reshape(ta_1hr,3,numel(ta_1hr)/3),1);       
+q_3hr=mean(reshape(q_1hr,3,numel(q_1hr)/3),1);         
+wind_3hr=mean(reshape(wind_1hr,3,numel(wind_1hr)/3),1); 
+sw_3hr=mean(reshape(sw_1hr,3,numel(sw_1hr)/3),1);       
+lw_3hr=mean(reshape(lw_1hr,3,numel(lw_1hr)/3),1);       
+ppt_3hr=mean(reshape(ppt_1hr,3,numel(ppt_1hr)/3),1);    
+ps_3hr=mean(reshape(ps_1hr,3,numel(ps_1hr)/3),1);       
 
 clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
 
 
-    
-   for jj = 1:80;  %% 80  ensemble loop
+   % Ensemble Loop 
+   for jj = 1:80;  
 
        %Downloading all ensemble members for all  reanalysis variables
     
@@ -205,13 +184,12 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
        Sa_ptem(jj,:) = ncread([path_CAM_forcing enstr{jj} '/CAM6_NR1.cpl_' enstr{jj} '.ha2x3h.' yearstr{ii} '.nc'],'a2x3h_Sa_ptem'); % 3 hour resolution
        Sa_dens(jj,:) = ncread([path_CAM_forcing enstr{jj} '/CAM6_NR1.cpl_' enstr{jj} '.ha2x3h.' yearstr{ii} '.nc'],'a2x3h_Sa_dens'); % 3 hour resolution
        Sa_pslv(jj,:) = ncread([path_CAM_forcing enstr{jj} '/CAM6_NR1.cpl_' enstr{jj} '.ha2x3h.' yearstr{ii} '.nc'],'a2x3h_Sa_pslv'); % 3 hour resolution
-
        Sa_topo(jj,:) = ncread([path_CAM_forcing enstr{jj} '/CAM6_NR1.cpl_' enstr{jj} '.ha2x3h.' yearstr{ii} '.nc'],'a2x3h_Sa_topo'); % 3 hour resolution
        
 
    end %% ensemble loop
      
-      %% Initialize the ensemble mean scale values to the default of '0' mean no change
+      %% Initialize the ensemble mean scale values to the default of '0' which means no change
        Faxa_swndr_scale =zeros(1,length(Faxa_swndr(1,:))); 
        Faxa_swvdr_scale =zeros(1,length(Faxa_swvdr(1,:))); 
        Faxa_swndf_scale =zeros(1,length(Faxa_swndf(1,:))); 
@@ -239,7 +217,7 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
        Sa_pslv_scale =zeros(1,length(Sa_pslv(1,:)));
        Sa_topo_scale =zeros(1,length(Sa_topo(1,:)));
       
-       % Calculate the ensemble mean for each CAM6 variables
+       % Calculate the ensemble mean for each CAM6 variable
         Faxa_swndr_mean= mean(Faxa_swndr,1);
         Faxa_swvdr_mean= mean(Faxa_swvdr,1);
         Faxa_swndf_mean= mean(Faxa_swndf,1);
@@ -262,17 +240,14 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
        Faxa_lwdn_mean = mean(Faxa_lwdn,1);
 
 
-     % Need this initialization for solar loop
+     % Need this initialization for precip loop
        Faxa_rain=Faxa_rainl;
        Faxa_snow=Faxa_snowl;
 
 
-      %% Calculate the scaled corrections for each year 
+      %% Calculate the scaled correction factors for each year 
 
       %% SOLAR 1 hour resolution
-
-      % Identify year of interest for tower met forcing      
-
       for ind=1:(length(sw_1hr));
 
         if (Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind)+Faxa_swndf_mean(ind)+Faxa_swvdr_mean(ind)>0)      
@@ -285,23 +260,20 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
                                                              +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
            Faxa_swvdf_scale(ind)= Faxa_swvdf_mean(ind) .* (sw_1hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
                                                              +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-        else
-        % Do nothing, default scale = 0
         end
       end 
-      %% NON-SOLAR 3 hour resolution
-      
-      
+
+      %% NON-SOLAR 3 hour resolution      
       for ind=1:(length(ppt_3hr));
       
-      % Precip loop needs to query temperature to re-assign to snow or rain
+      % Precip loop needs to query adjusted temperature to re-assign precip to snow or rain
 
           if ta_3hr(ind)>273.15
              % Forcing all unadjusted precip ensemble members to new variable Faxa_rain according to adjusted temperature
              Faxa_rain(:,ind)=Faxa_rainc(:,ind)+Faxa_rainl(:,ind)+Faxa_snowc(:,ind)+Faxa_snowl(:,ind);
              Faxa_snow(:,ind)=0;
 
-             % Adjustment will only be applied to total rain
+             % Adjustment will only be applied to total rain. CLM does not care if precip is convective/large scale 
              Faxa_rainc_scale(ind)= 0;
              Faxa_rainl_scale(ind)= 0;
              Faxa_snowc_scale(ind)= 0;
@@ -312,7 +284,7 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
             Faxa_snow(:,ind)= Faxa_rainc(:,ind)+Faxa_rainl(:,ind)+Faxa_snowc(:,ind)+Faxa_snowl(:,ind);
             Faxa_rain(:,ind)=0;
 
-            % Adjustment will only be applied to total snow
+            % Adjustment will only be applied to total snow. CLM does not care if precip is convective/large scale
              Faxa_rainc_scale(ind)=0;
              Faxa_rainl_scale(ind)=0;
              Faxa_snowc_scale(ind)=0;
@@ -326,15 +298,10 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
        Faxa_snow_mean= mean(Faxa_snow,1);
 
        % 1hr STATE
-
-       %Identify tower met forcing year
-
        Sa_u_scale = Sa_u_mean.*(wind_1hr./Sa_wind_mean); 
        Sa_v_scale = Sa_v_mean.*(wind_1hr./Sa_wind_mean);
 
        % 3hr STATE
-       %Identify tower met forcing year
-
        Sa_tbot_scale = Sa_tbot_mean.*(ta_3hr./Sa_tbot_mean);
        Sa_shum_scale = Sa_shum_mean.*(q_3hr./Sa_shum_mean);
        Sa_pbot_scale = Sa_pbot_mean.*(ps_3hr./Sa_pbot_mean);
@@ -347,13 +314,12 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
        %Sa_pslv_scale =  Sa_pslv_mean;
        %Sa_topo_scale =  Sa_topo_mean;
 
-   %% Apply the scaled corrections identically to each ensemble member, then generate updated netcdf
+   %% Apply the scaled corrections identically to each ensemble member, then generate corrected CAM6 reanalysis
    %% ensemble_scaled=ensemble + (ensemble_mean_scaled-ensemble_mean)
-
-   %% Put clamps on non-physical values.
+   %% Put clamping (hard bounds) on non-physical values.
 
        % SOLAR
-       % e.g Faxa_swndr(ensemble(80),time(1hr,3hr,6hr))
+       % e.g Faxa_swndr(ensemble(80),time(1hr,3hr)
        Faxa_swndr_adjust  = Faxa_swndr+repmat(Faxa_swndr_scale-Faxa_swndr_mean,80,1); Faxa_swndr_adjust(Faxa_swndr_adjust<0)=0;  
        Faxa_swvdr_adjust  = Faxa_swvdr+repmat(Faxa_swvdr_scale-Faxa_swvdr_mean,80,1); Faxa_swvdr_adjust(Faxa_swvdr_adjust<0)=0;
        Faxa_swndf_adjust  = Faxa_swndf+repmat(Faxa_swndf_scale-Faxa_swndf_mean,80,1); Faxa_swndf_adjust(Faxa_swndf_adjust<0)=0;
@@ -386,70 +352,13 @@ clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
        %Sa_pslv = Sa_pslv+repmat(Sa_pslv_scale-Sa_pslv_mean,80,1);
        %Sa_topo = Sa_topo+repmat(Sa_topo_scale-Sa_topo_mean,80,1);
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%       
 if Diagnostics==1
-     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%       
-      
-       %Quick AMS 2023 work   1/15/23
-       
-      % figure(1)
-      % scrsz = get(0,'ScreenSize');
-      % set(gcf,'Position',[1 1 scrsz(3)/2 scrsz(4)]);
-      % fontpt=24;
-      % mean_width=1.5;
-      % member_width=0.5;
-      % window=10;
 
-      % ha=tight_subplot(3,1, [.05,.08],[.10,.06],[.13,.04]);
-      % axes(ha(1));
-
-      % ax1=plot(Faxa_swndr(:,188*24:195*24)', '-', 'color',rgb('lightsalmon'), 'linewidth', member_width); hold on
-      % plot(Faxa_swndr_adjust(:,188*24:195*24)', '-', 'color',rgb('lightgreen'), 'linewidth', member_width);
-      % j=plot(mean(Faxa_swndr(:,188*24:195*24),1)', '-', 'color',rgb('darkred'), 'linewidth', mean_width);
-      % k=plot(mean(Faxa_swndr_adjust(:,188*24:195*24),1)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-      % grid on
-      % legend( [j,k], 'CAM6 Mean', 'Adjusted CAM6 Mean','FontSize',fontpt);
-      % ylabel('Near-IR, Direct (W  m^{-2})','FontSize', 26)
-      % %title(['CAM6 scaling against tower NR1 Met: July ', yearstr{ii}] , 'FontSize',fontpt);
-      % %xticks([24:24:24*18]);
-      % set(ha(1),'xticklabel',[])
-      %  a = get(ha(1),'YTickLabel');             
-      % set(ha(1),'YTickLabel',a,'fontsize',fontpt)
-      % set(ha(1),'YTickLabelMode','auto')
-              
-      % axes(ha(2));
-
-      % ax2=plot(repelem(Faxa_rain(:,188*8:195*8),1,3)', '-', 'color',rgb('lightsalmon'), 'linewidth', member_width); hold on
-      % plot(repelem(Faxa_rainl_adjust(:,188*8:195*8),1,3)', '-', 'color',rgb('lightgreen'), 'linewidth', member_width);
-      % plot(repelem(mean(Faxa_rain(:,188*8:195*8),1),1,3)', '-', 'color',rgb('darkred'), 'linewidth', mean_width);
-      % plot(repelem(mean(Faxa_rainl_adjust(:,188*8:195*8),1),1,3)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-      % grid on
-      % ylabel('Rain (mm  s^{-1})','FontSize', 26)
-      % %xticks([24:24:24*18]);
-      % set(ha(2),'xticklabel',[])
-      % a = get(ha(2),'YTickLabel');  
-      % set(ha(2),'YTickLabel',a,'fontsize',fontpt)
-      % set(ha(2),'YTickLabelMode','auto')
-
-      % axes(ha(3));
-
-      % ax3=plot(repelem(Sa_tbot(:,188*8:195*8),1,3)', '-', 'color',rgb('lightsalmon'), 'linewidth', member_width); hold on
-      % plot(repelem(Sa_tbot_adjust(:,188*8:195*8),1,3)', '-', 'color',rgb('lightgreen'), 'linewidth', member_width);
-      % plot(repelem(mean(Sa_tbot(:,188*8:195*8),1),1,3)', '-', 'color',rgb('darkred'), 'linewidth', mean_width);
-      % plot(repelem(mean(Sa_tbot_adjust(:,188*8:195*8),1),1,3)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-      % grid on
-      % ylabel('Temperature (K)','FontSize', 26)
-      % %xticks([24:24:24*18]);
-      % set(ha(3),'xticklabel',[])   
-      % a = get(ha(3),'YTickLabel');        
-      % set(ha(3),'YTickLabel',a,'fontsize',fontpt)
-      % set(ha(3),'YTickLabelMode','auto')
-      % linkaxes(ha(1:3), 'x');
-
-%%% End AMS 2023 work
-
-  % Diagnostic Figures Only
+     % Diagnostic Figures Only
      % Comparing original CAM6 and Tower met forcing
-     % Check for timing synchronization, variable magnitude checks 
+     % Check for time synchronization, ensemble adjustment, snow/rain partitioning etc. 
      
        figure(1)
        scrsz = get(0,'ScreenSize');
@@ -504,7 +413,10 @@ if Diagnostics==1
 
        ylabel('Specific Humidity (kg kg^{-1})','FontSize', fontpt) 
        linkaxes(ha(1:4), 'x'); 
-      
+     
+
+
+ 
        figure(2)
        scrsz = get(0,'ScreenSize');
        set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
@@ -557,6 +469,7 @@ if Diagnostics==1
        linkaxes(ha(1:3), 'x');
 
 
+
        figure(3)
        scrsz = get(0,'ScreenSize');
        set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
@@ -590,22 +503,12 @@ if Diagnostics==1
 display('  ')
 display('Finished tower CAM6 diagnostic plots. Press enter to proceed to adjusted CAM6 plots..')
 display('  ')
-%pause
+pause
 close all
 
-     % Compare CAM6 original vs CAM6 scaled, sanity check that algorithm is behaving as expected
 
-     % 1)swndr 2)swvdr 3)swndf 4)swvdf 5)rainc 6)rainl 7)snowc 8)snowl  9)u 10)v
-     % 11)tbot    12)shum      13)pbot    14)lwdn      
-     % CAM6 mean (red); CAM6 scaled mean (green);    
-     % CAM6 ensemble(light red) ; CAM6 scaled ensemble (light green)
-     % Figure 1 Summer Month
-     % Figure 2 Winter Month
-
-     % For plotting purposes only, make these 3 hour products into 1 hour products for easier comparison
-       
+     % For plotting purposes only, make these 3 hour products into 1 hour products for easier comparison 
      % Matrices (80, 2920) --> (80, 8760); 
-     % repelem(Faxa_rainc_adjust,1,3);       
 
        figure(4)
        scrsz = get(0,'ScreenSize');
@@ -662,1212 +565,8 @@ close all
        xticks([24:24:24*18]);
        linkaxes(ha(1:4), 'x');
 
-       %% Plotting standard deviation staistics to same as Figure(4)
-       
-       figure(5)
-       scrsz = get(0,'ScreenSize');
-       set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
-       fontpt=16;
-       mean_width=1.5;
-       member_width=0.5;
-       window=10;
-
-       ha=tight_subplot(6,1, [.02,.08],[.10,.06],[.08,.06]);
-       axes(ha(1));
-
-       j=plot(std(Faxa_swndr,0,1)', '-', 'color',rgb('darkred'), 'linewidth', mean_width); hold on
-       k=plot(std(Faxa_swndr_adjust,0,1)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-       grid on
-       legend( [j,k], 'CAM6 Mean', 'Adjusted CAM6 Mean','FontSize',fontpt);
-       ylabel('Near-IR, Direct (W  m^{-2})','FontSize', fontpt)
-       title(['Standard Deviation: CAM6 scaling against tower NR1 Met: ', yearstr{ii}] , 'FontSize',fontpt);
-       set(ha(1),'xticklabel',[])
-
-       axes(ha(2));
-
-       plot(repelem(std(Faxa_rain,0,1),1,3)', '-', 'color',rgb('darkred'), 'linewidth', mean_width); hold on
-       plot(repelem(std(Faxa_rainl_adjust,0,1),1,3)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-       grid on
-       ylabel('Rain (mm  s^{-1})','FontSize', fontpt)
-       set(ha(2),'xticklabel',[])
-
-       axes(ha(3));
-
-       plot(repelem(std(Faxa_snow,0,1),1,3)', '-', 'color',rgb('darkred'), 'linewidth', mean_width); hold on
-       plot(repelem(std(Faxa_snowl_adjust,0,1),1,3)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-       grid on
-       ylabel('Snow (mm  s^{-1})','FontSize', fontpt)
-       set(ha(3),'xticklabel',[])
-
-       axes(ha(4));
-
-       plot(repelem(std(Sa_tbot,0,1),1,3)', '-', 'color',rgb('darkred'), 'linewidth', mean_width); hold on
-       plot(repelem(std(Sa_tbot_adjust,0,1),1,3)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-       grid on
-       ylabel('Temperature (K)','FontSize', fontpt)
-       set(ha(4),'xticklabel',[])
-
-       axes(ha(5));
-
-       plot(repelem(std(Sa_shum,0,1),1,3)', '-', 'color',rgb('darkred'), 'linewidth', mean_width); hold on
-       plot(repelem(std(Sa_shum_adjust,0,1),1,3)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-       grid on
-       ylabel('Specific Humidity (kg  kg^{-2})','FontSize', fontpt)
-       set(ha(5),'xticklabel',[])
-
-       axes(ha(6));
-
-       plot(std(Sa_u,0,1)', '-', 'color',rgb('darkred'), 'linewidth', mean_width); hold on
-       plot(std(Sa_u_adjust,0,1)', '-', 'color',rgb('forestgreen'), 'linewidth', mean_width);
-       grid on
-       ylabel('Wind (m s^{-1})','FontSize', fontpt)
-       linkaxes(ha(1:6), 'x');
-
-       %% Output standard deviation statistics from above Figure here:
-
-
-       display(' ')
-       display('Display the average 2011-2019 standard deviation for each atmospheric forcing')
-       display(' ')
-
-       display('Average SW standard deviation for CAM6, adjusted CAM6 and % reduction')
-      a= mean(std(Faxa_swndr,0,1)')
-      b= mean(std(Faxa_swndr_adjust,0,1)')
-      ((a-b)/a)*100  
-       display('Average RAIN standard deviation for CAM6, adjusted CAM6 and % reduction')
-      a= mean(std(Faxa_rain,0,1)')
-      b= mean(std(Faxa_rainl_adjust,0,1)')
-      ((a-b)/a)*100
-       display('Average SNOW standard deviation for CAM6, adjusted CAM6 and % reduction')
-      a= mean(std(Faxa_snow,0,1)')
-      b= mean(std(Faxa_snowl_adjust,0,1)')
-      ((a-b)/a)*100
-       display('Average TEMP standard deviation for CAM6, adjusted CAM6 and % reduction')
-      a= mean(std(Sa_tbot,0,1)')
-      b= mean(std(Sa_tbot_adjust,0,1)')
-      ((a-b)/a)*100
-       display('Average SHUM standard deviation for CAM6, adjusted CAM6 and % reduction')
-      a= mean(std(Sa_shum,0,1)')
-      b= mean(std(Sa_shum_adjust,0,1)')
-      ((a-b)/a)*100
-       display('Average WIND standard deviation for CAM6, adjusted CAM6 and % reduction')
-       a=mean(std(Sa_u,0,1)')
-       b=mean(std(Sa_u_adjust,0,1)')
-       ((a-b)/a)*100
-close all
-     % Generate Heat Maps of the CAM6 met forcing relationships
-     % Are the relationships fundamentally different?
-
-
-
-
-       figure(6)
-       scrsz = get(0,'ScreenSize');
-       set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
-       fontpt=16;
-       mean_width=1.5;
-       member_width=0.5;
-       window=10;
-
-       ha=tight_subplot(6,6, [.005,.005],[.06,.06],[.08,.01]);
-       
-       axes(ha(31));
-       % Generate 2 column matrix Faxa_swndr --->(ens,time), (80,8760)
-      
-       
-       SW=Faxa_swndr'+Faxa_swndf'+Faxa_swvdr'+Faxa_swvdf';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       X=[SW_vector,SW_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       %[N,C]=hist3(X,'Nedges',{0:10:1100 0:10:1100})
-       [N31,C31]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,1100,20)}); hold on
-       contourf(C31{1},C31{2},N31)
-
-       colorbar
-       caxis([0 10000])
-       view(2)
-       xlabel('SW (W m^{-2})','FontSize', fontpt)
-       ylabel('SW (W m^{-2})','FontSize', fontpt)
-      % xlim([0 1100])
-      % ylim([0 1100])
-       
-
-       axes(ha(32));
-
-       SW=Faxa_swndr'+Faxa_swndf'+Faxa_swvdr'+Faxa_swvdf';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       LW=repelem(Faxa_lwdn,1,3)';
-       LW_vector=reshape(LW,numel(LW),1);
-       X=[SW_vector,LW_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %Example: {0:10:100 0:50:500}
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N32,C32]=hist3(X,'Edges',{linspace(0,1100,20) linspace(125,425,20)}); hold on
-       contourf(C32{1},C32{2},N32)
-       colorbar
-       caxis([0 3000])
-       view(2)
-       set(ha(32),'yticklabel',[])
-       xlabel('LW (W m^{-2})','FontSize', fontpt)
-       %xlim([125 425])
-       %ylim([0 1100])
-
-      axes(ha(33));
-
-       SW=Faxa_swndr'+Faxa_swndf'+Faxa_swvdr'+Faxa_swvdf';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Pr=repelem(Faxa_rainl,1,3)'+repelem(Faxa_rainc,1,3)'+repelem(Faxa_snowl,1,3)'+repelem(Faxa_snowc,1,3)';
-       Pr_vector=reshape(Pr,numel(Pr),1);
-       Pr_vector(Pr_vector<0.00001)=NaN;
-       X=[SW_vector,Pr_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N33,C33]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,0.001,20)}); hold on
-       contourf(C33{1},C33{2},N33)
-       colorbar
-       caxis([0 3000])
-       view(2)
-       set(ha(33),'yticklabel',[])  
-       xlabel('Precip (mm s^{-1})','FontSize', fontpt)
-       %xlim([0 10*10^(-4)])
-       %ylim([0 1100])
-
-       axes(ha(34));
-
-       SW=Faxa_swndr'+Faxa_swndf'+Faxa_swvdr'+Faxa_swvdf';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Ta=repelem(Sa_tbot,1,3)';
-       Ta_vector=reshape(Ta,numel(Ta),1);
-       X=[SW_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N34,C34]=hist3(X,'Edges',{linspace(0,1100,20) linspace(250,305,20)}); hold on
-       contourf(C34{1},C34{2},N34)
-       colorbar
-       caxis([0 3000])
-       view(2)
-       set(ha(34),'yticklabel',[])  
-       xlabel('Temp (K)','FontSize', fontpt)
-       %xlim([250 305])
-       %ylim([0 1100])
-
-       axes(ha(35));
-
-       SW=Faxa_swndr'+Faxa_swndf'+Faxa_swvdr'+Faxa_swvdf';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Shum=repelem(Sa_shum,1,3)';
-       Shum_vector=reshape(Shum,numel(Shum),1);
-       X=[SW_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N35,C35]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,0.0175,20)}); hold on
-       contourf(C35{1},C35{2},N35)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(35),'yticklabel',[])
-       xlabel('Shum (kg kg^{-1})','FontSize', fontpt)
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 1100])
-
-       axes(ha(36));
-
-       SW=Faxa_swndr'+Faxa_swndf'+Faxa_swvdr'+Faxa_swvdf';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Wind=((Sa_u.^2+Sa_v.^2).^0.5)';
-       Wind_vector=reshape(Wind,numel(Wind),1);
-       X=[SW_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N36,C36]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,20,20)}); hold on
-       contourf(C36{1},C36{2},N36)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(36),'yticklabel',[])
-       xlabel('Wind (m s^{-1})','FontSize', fontpt)
-       %xlim([0 20])
-       %ylim([0 1100])
-
-       % Next row
-
-
-       axes(ha(26));
-
-       X=[LW_vector,LW_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N26,C26]=hist3(X,'Edges',{linspace(125,425,20) linspace(125,425,20)}); hold on
-       contourf(C26{1},C26{2},N26)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       set(ha(26),'xticklabel',[])
-       ylabel('LW (W m^{-2})','FontSize', fontpt)
-       %xlim([125 425])
-       %ylim([125 425])
-
-       axes(ha(27));
-
-       X=[LW_vector,Pr_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N27,C27]=hist3(X,'Edges',{linspace(125,425,20) linspace(0,0.001,20)}); hold on
-       contourf(C27{1},C27{2},N27)
-       colorbar
-       caxis([0 7000])
-       view(2)
-       set(ha(27),'yticklabel',[])
-       set(ha(27),'yticklabel',[])
-       %xlim([0 10*10^(-4)])
-       %ylim([125 425])       
-
-       axes(ha(28));
-
-       X=[LW_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N28,C28]=hist3(X,'Edges',{linspace(125,425,20) linspace(250,305,20)}); hold on
-       contourf(C28{1},C28{2},N28)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       set(ha(28),'yticklabel',[])
-       set(ha(28),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([125 425])
-
-       axes(ha(29));
-
-       X=[LW_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N29,C29]=hist3(X,'Edges',{linspace(125,425,20) linspace(0,0.0175,20)}); hold on
-       contourf(C29{1},C29{2},N29)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       set(ha(29),'yticklabel',[])
-       set(ha(29),'xticklabel',[])
      
-       %xlim([0 17.5*10^(-3)])
-       %ylim([125 425])       
-
-
-
-       axes(ha(30));
-
-       X=[LW_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N30,C30]=hist3(X,'Edges',{linspace(125,425,20) linspace(0,20,20)}); hold on
-       contourf(C30{1},C30{2},N30)
-       colorbar
-       caxis([0 12000])
-       view(2)
-       set(ha(30),'yticklabel',[])
-       set(ha(30),'xticklabel',[])
-
-       %xlim([0 20])
-       %ylim([125 425])
-
-       %Next row
-
-
-       axes(ha(21));
-
-       X=[Pr_vector,Pr_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N21,C21]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(0,0.001,20)}); hold on
-       contourf(C21{1},C21{2},N21)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       ylabel('Precip (mm s^{-1})','FontSize', fontpt)
-       set(ha(21),'xticklabel',[])
-       %xlim([0 10*10^(-4)])
-       %ylim([0 10*10^(-4)])
-       
-       axes(ha(22));
-
-       X=[Pr_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N22,C22]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(250,305,20)}); hold on
-       contourf(C22{1},C22{2},N22)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(22),'yticklabel',[])
-       set(ha(22),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([0 10*10^(-4)])
-
-
-       axes(ha(23));
-
-       X=[Pr_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N23,C23]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(0,0.0175,20)}); hold on
-       contourf(C23{1},C23{2},N23)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(23),'yticklabel',[])
-       set(ha(23),'xticklabel',[])
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 10*10^(-4)])
-
-       axes(ha(24));
-
-       X=[Pr_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N24,C24]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(0,20,20)}); hold on 
-       contourf(C24{1},C24{2},N24)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(24),'yticklabel',[])
-       set(ha(24),'xticklabel',[])
-       %xlim([0 20])
-       %ylim([0 10*10^(-4)])
-    
-       % next row
-       axes(ha(16));
-
-       X=[Ta_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N16,C16]=hist3(X,'Edges',{linspace(250,305,20) linspace(250,305,20)}); hold on
-       contourf(C16{1},C16{2},N16)
-       colorbar
-       caxis([0 25000])
-       view(2)
-       ylabel('Temp (K)','FontSize', fontpt)
-       set(ha(16),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([250 305])
-
-       axes(ha(17));
-
-       X=[Ta_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N17,C17]=hist3(X,'Edges',{linspace(250,305,20) linspace(0,0.0175,20)}); hold on
-       contourf(C17{1},C17{2},N17)
-       colorbar
-       caxis([0 15000])
-       view(2)
-       set(ha(17),'yticklabel',[])
-       set(ha(17),'xticklabel',[])
-       %ylim([250 305])
-       %xlim([0 17.5*10^(-3)])
-
-       axes(ha(18));
-
-       X=[Ta_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N18,C18]=hist3(X,'Edges',{linspace(250,305,20) linspace(0,20,20)}); hold on
-       contourf(C18{1},C18{2},N18)
-       colorbar
-       caxis([0 12000])
-       view(2)
-       set(ha(18),'yticklabel',[])
-       set(ha(18),'xticklabel',[])
-       %ylim([250 305])
-       %xlim([0 20])
-
-       axes(ha(11));
-
-       X=[Shum_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N11,C11]=hist3(X,'Edges',{linspace(0,0.0175,20) linspace(0,0.0175,20)}); hold on
-       contourf(C11{1},C11{2},N11)
-       colorbar
-       caxis([0 25000])
-       view(2)
-       ylabel('Shum (kg kg^{-1})','FontSize', fontpt)
-       set(ha(11),'xticklabel',[])
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 17.5*10^(-3)])
-
-       axes(ha(12));
-
-       X=[Shum_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N12,C12]=hist3(X,'Edges',{linspace(0,0.0175,20) linspace(0,20,20)}); hold on
-       contourf(C12{1},C12{2},N12)
-       colorbar
-       caxis([0 17000])
-       view(2)
-       set(ha(12),'yticklabel',[])
-       set(ha(12),'xticklabel',[])
-       %xlim([0 20])
-       %ylim([0 17.5*10^(-3)])
-
-       axes(ha(6));
-
-       X=[Wind_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N6,C6]=hist3(X,'Edges',{linspace(0,20,20) linspace(0,20,20)}); hold on
-       contourf(C6{1},C6{2},N6)
-       colorbar
-       caxis([0 25000])
-       view(2)
-       set(ha(6),'xticklabel',[])
-       ylabel('Wind (m s^{-1})','FontSize', fontpt)
-       %xlim([0 20])
-       %ylim([0 20])
-
-
-
-
-%% Switch to the CAM6 bias adjusted  correction structure
-
-
-       figure(7)
-       scrsz = get(0,'ScreenSize');
-       set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
-       fontpt=16;
-       mean_width=1.5;
-       member_width=0.5;
-       window=10;
-
-       ha=tight_subplot(6,6, [.005,.005],[.06,.06],[.08,.01]);
  
-       axes(ha(31));
-       SW=Faxa_swndr_adjust'+Faxa_swndf_adjust'+Faxa_swvdr_adjust'+Faxa_swvdf_adjust';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       X=[SW_vector,SW_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       %[N,C]=hist3(X,'Nedges',{0:10:1100 0:10:1100})
-       [N31_adj,C31_adj]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,1100,20)}); hold on
-       contourf(C31_adj{1},C31_adj{2},N31_adj)
-
-       colorbar
-       caxis([0 10000])
-       view(2)
-       xlabel('SW adjust (W m^{-2})','FontSize', fontpt)
-       ylabel('SW adjust (W m^{-2})','FontSize', fontpt)
-      % xlim([0 1100])
-      % ylim([0 1100])
-
-
-       axes(ha(32));
-
-       SW=Faxa_swndr_adjust'+Faxa_swndf_adjust'+Faxa_swvdr_adjust'+Faxa_swvdf_adjust';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       LW=repelem(Faxa_lwdn_adjust,1,3)';
-       LW_vector=reshape(LW,numel(LW),1);
-       X=[SW_vector,LW_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %Example: {0:10:100 0:50:500}
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N32_adj,C32_adj]=hist3(X,'Edges',{linspace(0,1100,20) linspace(125,425,20)}); hold on
-       contourf(C32_adj{1},C32_adj{2},N32_adj)
-       colorbar
-       caxis([0 3000])
-       view(2)
-       set(ha(32),'yticklabel',[])
-       xlabel('LW adjust (W m^{-2})','FontSize', fontpt)
-       %xlim([125 425])
-       %ylim([0 1100])
-
-      axes(ha(33));
-
-       SW=Faxa_swndr_adjust'+Faxa_swndf_adjust'+Faxa_swvdr_adjust'+Faxa_swvdf_adjust';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Pr=repelem(Faxa_rainl_adjust,1,3)'+repelem(Faxa_rainc_adjust,1,3)'+repelem(Faxa_snowl_adjust,1,3)'+repelem(Faxa_snowc_adjust,1,3)';
-       Pr_vector=reshape(Pr,numel(Pr),1);
-       Pr_vector(Pr_vector<0.00001)=NaN;
-       X=[SW_vector,Pr_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N33_adj,C33_adj]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,0.001,20)}); hold on
-       contourf(C33_adj{1},C33_adj{2},N33_adj)
-       colorbar
-       caxis([0 3000])
-       view(2)
-       set(ha(33),'yticklabel',[])
-       xlabel('Precip adjust (mm s^{-1})','FontSize', fontpt)
-       %xlim([0 10*10^(-4)])
-       %ylim([0 1100])
-
-       axes(ha(34));
-
-       SW=Faxa_swndr_adjust'+Faxa_swndf_adjust'+Faxa_swvdr_adjust'+Faxa_swvdf_adjust';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Ta=repelem(Sa_tbot_adjust,1,3)';
-       Ta_vector=reshape(Ta,numel(Ta),1);
-       X=[SW_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N34_adj,C34_adj]=hist3(X,'Edges',{linspace(0,1100,20) linspace(250,305,20)}); hold on
-       contourf(C34_adj{1},C34_adj{2},N34_adj)
-       colorbar
-       caxis([0 3000])
-       view(2)
-       set(ha(34),'yticklabel',[])
-       xlabel('Temp adjust (K)','FontSize', fontpt)
-       %xlim([250 305])
-       %ylim([0 1100])
-
-       axes(ha(35));
-
-       SW=Faxa_swndr_adjust'+Faxa_swndf_adjust'+Faxa_swvdr_adjust'+Faxa_swvdf_adjust';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Shum=repelem(Sa_shum_adjust,1,3)';
-       Shum_vector=reshape(Shum,numel(Shum),1);
-       X=[SW_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N35_adj,C35_adj]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,0.0175,20)}); hold on
-       contourf(C35_adj{1},C35_adj{2},N35_adj)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(35),'yticklabel',[])
-       xlabel('Shum adjust (kg kg^{-1})','FontSize', fontpt)
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 1100])
-
-       axes(ha(36));
-
-       SW=Faxa_swndr_adjust'+Faxa_swndf_adjust'+Faxa_swvdr_adjust'+Faxa_swvdf_adjust';
-       SW_vector=reshape(SW,numel(SW),1);
-       SW_vector(SW_vector==0)=NaN;
-       Wind=((Sa_u_adjust.^2+Sa_v_adjust.^2).^0.5)';
-       Wind_vector=reshape(Wind,numel(Wind),1);
-       X=[SW_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N36_adj,C36_adj]=hist3(X,'Edges',{linspace(0,1100,20) linspace(0,20,20)}); hold on
-       contourf(C36_adj{1},C36_adj{2},N36_adj)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(36),'yticklabel',[])
-       xlabel('Wind (m s^{-1})','FontSize', fontpt)
-       %xlim([0 20])
-       %ylim([0 1100])
-
-       % Next row
-
-
-       axes(ha(26));
-
-       X=[LW_vector,LW_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N26_adj,C26_adj]=hist3(X,'Edges',{linspace(125,425,20) linspace(125,425,20)}); hold on
-       contourf(C26_adj{1},C26_adj{2},N26_adj)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       set(ha(26),'xticklabel',[])
-       ylabel('LW adjust (W m^{-2})','FontSize', fontpt)
-       %xlim([125 425])
-       %ylim([125 425])
-
-       axes(ha(27));
-
-       X=[LW_vector,Pr_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N27_adj,C27_adj]=hist3(X,'Edges',{linspace(125,425,20) linspace(0,0.001,20)}); hold on
-       contourf(C27_adj{1},C27_adj{2},N27_adj)
-       colorbar
-       caxis([0 7000])
-       view(2)
-       set(ha(27),'yticklabel',[])
-       set(ha(27),'yticklabel',[])
-       %xlim([0 10*10^(-4)])
-       %ylim([125 425])       
-
-       axes(ha(28));
-
-       X=[LW_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N28_adj,C28_adj]=hist3(X,'Edges',{linspace(125,425,20) linspace(250,305,20)}); hold on
-       contourf(C28_adj{1},C28_adj{2},N28_adj)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       set(ha(28),'yticklabel',[])
-       set(ha(28),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([125 425])
-
-       axes(ha(29));
-
-       X=[LW_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N29_adj,C29_adj]=hist3(X,'Edges',{linspace(125,425,20) linspace(0,0.0175,20)}); hold on
-       contourf(C29_adj{1},C29_adj{2},N29_adj)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       set(ha(29),'yticklabel',[])
-       set(ha(29),'xticklabel',[])
-
-       %xlim([0 17.5*10^(-3)])
-       %ylim([125 425])       
-
-
-
-       axes(ha(30));
-
-       X=[LW_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N30_adj,C30_adj]=hist3(X,'Edges',{linspace(125,425,20) linspace(0,20,20)}); hold on
-       contourf(C30_adj{1},C30_adj{2},N30_adj)
-       colorbar
-       caxis([0 12000])
-       view(2)
-       set(ha(30),'yticklabel',[])
-       set(ha(30),'xticklabel',[])
-
-       %xlim([0 20])
-       %ylim([125 425])
-
-       %Next row
-
-
-       axes(ha(21));
-
-       X=[Pr_vector,Pr_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N21_adj,C21_adj]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(0,0.001,20)}); hold on
-       contourf(C21_adj{1},C21_adj{2},N21_adj)
-       colorbar
-       caxis([0 20000])
-       view(2)
-       ylabel('Precip adjust (mm s^{-1})','FontSize', fontpt)
-       set(ha(21),'xticklabel',[])
-       %xlim([0 10*10^(-4)])
-       %ylim([0 10*10^(-4)])
-
-       axes(ha(22));
-
-       X=[Pr_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N22_adj,C22_adj]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(250,305,20)}); hold on
-       contourf(C22_adj{1},C22_adj{2},N22_adj)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(22),'yticklabel',[])
-       set(ha(22),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([0 10*10^(-4)])
-
-
-       axes(ha(23));
-
-       X=[Pr_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N23_adj,C23_adj]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(0,0.0175,20)}); hold on
-       contourf(C23_adj{1},C23_adj{2},N23_adj)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(23),'yticklabel',[])
-       set(ha(23),'xticklabel',[])
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 10*10^(-4)])
-
-       axes(ha(24));
-
-       X=[Pr_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N24_adj,C24_adj]=hist3(X,'Edges',{linspace(0,0.001,20) linspace(0,20,20)}); hold on
-       contourf(C24_adj{1},C24_adj{2},N24_adj)
-       colorbar
-       caxis([0 5000])
-       view(2)
-       set(ha(24),'yticklabel',[])
-       set(ha(24),'xticklabel',[])
-       %xlim([0 20])
-       %ylim([0 10*10^(-4)])
-
-       % next row
-       axes(ha(16));
-
-       X=[Ta_vector,Ta_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N16_adj,C16_adj]=hist3(X,'Edges',{linspace(250,305,20) linspace(250,305,20)}); hold on
-       contourf(C16_adj{1},C16_adj{2},N16_adj)
-       colorbar
-       caxis([0 25000])
-       view(2)
-       ylabel('Temp adjust (K)','FontSize', fontpt)
-       set(ha(16),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([250 305])
-
-       axes(ha(17));
-
-       X=[Ta_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N17_adj,C17_adj]=hist3(X,'Edges',{linspace(250,305,20) linspace(0,0.0175,20)}); hold on
-       contourf(C17_adj{1},C17_adj{2},N17_adj)
-       colorbar
-       caxis([0 15000])
-       view(2)
-       set(ha(17),'yticklabel',[])
-       set(ha(17),'xticklabel',[])
-       %ylim([250 305])
-       %xlim([0 17.5*10^(-3)])
-
-       axes(ha(18));
-
-       X=[Ta_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N18_adj,C18_adj]=hist3(X,'Edges',{linspace(250,305,20) linspace(0,20,20)}); hold on
-       contourf(C18_adj{1},C18_adj{2},N18_adj)
-       colorbar
-       caxis([0 12000])
-       view(2)
-       set(ha(18),'yticklabel',[])
-       set(ha(18),'xticklabel',[])
-       %ylim([250 305])
-       %xlim([0 20])
-
-       axes(ha(11));
-
-       X=[Shum_vector,Shum_vector];
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %hist3(X,'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N11_adj,C11_adj]=hist3(X,'Edges',{linspace(0,0.0175,20) linspace(0,0.0175,20)}); hold on
-       contourf(C11_adj{1},C11_adj{2},N11_adj)
-       colorbar
-       caxis([0 25000])
-       view(2)
-       ylabel('Shum adjust (kg kg^{-1})','FontSize', fontpt)
-       set(ha(11),'xticklabel',[])
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 17.5*10^(-3)])
-
-
-       axes(ha(12));
-
-       X=[Shum_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N12_adj,C12_adj]=hist3(X,'Edges',{linspace(0,0.0175,20) linspace(0,20,20)}); hold on
-       contourf(C12_adj{1},C12_adj{2},N12_adj)
-       colorbar
-       caxis([0 17000])
-       view(2)
-       set(ha(12),'yticklabel',[])
-       set(ha(12),'xticklabel',[])
-       %xlim([0 20])
-       %ylim([0 17.5*10^(-3)])
-
-       axes(ha(6));
-
-       X=[Wind_vector,Wind_vector];
-       %hist3(X,'Cdatamode','auto'); hold on
-       %hist3(X,'Nbins',[20 20],'Cdatamode','auto'); hold on
-       %[N,C]=hist3(X,'Nbins',[20 20])
-       [N6_adj,C6_adj]=hist3(X,'Edges',{linspace(0,20,20) linspace(0,20,20)}); hold on
-       contourf(C6_adj{1},C6_adj{2},N6_adj)
-       colorbar
-       caxis([0 25000])
-       view(2)
-       set(ha(6),'xticklabel',[])
-       ylabel('Wind adjust (m s^{-1})','FontSize', fontpt)
-       %xlim([0 20])
-       %ylim([0 20])
-
-      %% Calculate the grid count differences for the original and adjusted CAM6
-
-     N6_diff=N6_adj-N6; C6_diff1=C6_adj{1}-C6{1}; C6_diff2=C6_adj{2}-C6{2};
-
-     N12_diff=N12_adj-N12; C12_diff1=C12_adj{1}-C12{1}; C12_diff2=C12_adj{2}-C12{2};
-     N11_diff=N11_adj-N6; C11_diff1=C11_adj{1}-C11{1}; C11_diff2=C11_adj{2}-C11{2};
-
-     N16_diff=N16_adj-N16; C16_diff1=C16_adj{1}-C16{1}; C16_diff2=C16_adj{2}-C16{2};
-     N17_diff=N17_adj-N17; C17_diff1=C17_adj{1}-C17{1}; C17_diff2=C17_adj{2}-C17{2};
-     N18_diff=N18_adj-N18; C18_diff1=C18_adj{1}-C18{1}; C18_diff2=C18_adj{2}-C18{2};
-
-     N21_diff=N21_adj-N21; C21_diff1=C21_adj{1}-C21{1}; C21_diff2=C21_adj{2}-C21{2};
-     N22_diff=N22_adj-N22; C22_diff1=C22_adj{1}-C22{1}; C22_diff2=C22_adj{2}-C22{2};
-     N23_diff=N23_adj-N23; C23_diff1=C23_adj{1}-C23{1}; C23_diff2=C23_adj{2}-C23{2};
-     N24_diff=N24_adj-N24; C24_diff1=C24_adj{1}-C24{1}; C24_diff2=C24_adj{2}-C24{2};
-
-     N26_diff=N26_adj-N26; C26_diff1=C26_adj{1}-C26{1}; C26_diff2=C26_adj{2}-C26{2};
-     N27_diff=N27_adj-N27; C27_diff1=C27_adj{1}-C27{1}; C27_diff2=C27_adj{2}-C27{2};
-     N28_diff=N28_adj-N28; C28_diff1=C28_adj{1}-C28{1}; C28_diff2=C28_adj{2}-C28{2};
-     N29_diff=N29_adj-N29; C29_diff1=C29_adj{1}-C29{1}; C29_diff2=C29_adj{2}-C29{2};
-     N30_diff=N30_adj-N30; C30_diff1=C30_adj{1}-C30{1}; C30_diff2=C30_adj{2}-C30{2};
-   
-     N31_diff=N31_adj-N31; C31_diff1=C31_adj{1}-C31{1}; C31_diff2=C31_adj{2}-C31{2};
-     N32_diff=N32_adj-N32; C32_diff1=C32_adj{1}-C32{1}; C32_diff2=C32_adj{2}-C32{2};
-     N33_diff=N33_adj-N33; C33_diff1=C33_adj{1}-C33{1}; C33_diff2=C33_adj{2}-C33{2};
-     N34_diff=N34_adj-N34; C34_diff1=C34_adj{1}-C34{1}; C34_diff2=C34_adj{2}-C34{2};
-     N35_diff=N35_adj-N35; C35_diff1=C35_adj{1}-C35{1}; C35_diff2=C35_adj{2}-C35{2};
-     N36_diff=N36_adj-N36; C36_diff1=C36_adj{1}-C36{1}; C36_diff2=C36_adj{2}-C36{2};
-
-
-       figure(8)
-       scrsz = get(0,'ScreenSize');
-       set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
-       fontpt=16;
-       mean_width=1.5;
-       member_width=0.5;
-       window=10;
-
-       ha=tight_subplot(6,6, [.005,.005],[.06,.06],[.08,.01]);
-
-       axes(ha(31));
-       contourf(C31{1},C31{2},N31_diff)
-
-       
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 10000])
-       view(2)
-       xlabel('SW Diff (W m^{-2})','FontSize', fontpt)
-       ylabel('SW Diff (W m^{-2})','FontSize', fontpt)
-      % xlim([0 1100])
-      % ylim([0 1100])
-
-
-       axes(ha(32));
-
-       contourf(C32{1},C32{2},N32_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 3000])
-       view(2)
-       set(ha(32),'yticklabel',[])
-       xlabel('LW Diff (W m^{-2})','FontSize', fontpt)
-       %xlim([125 425])
-       %ylim([0 1100])
-
-      axes(ha(33));
-
-       contourf(C33{1},C33{2},N33_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 3000])
-       view(2)
-       set(ha(33),'yticklabel',[])
-       xlabel('Precip adjust (mm s^{-1})','FontSize', fontpt)
-       %xlim([0 10*10^(-4)])
-       %ylim([0 1100])
-
-       axes(ha(34));
-
-       contourf(C34{1},C34{2},N34_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 3000])
-       view(2)
-       set(ha(34),'yticklabel',[])
-       xlabel('Temp Diff (K)','FontSize', fontpt)
-       %xlim([250 305])
-       %ylim([0 1100])
-
-       axes(ha(35));
-
-       contourf(C35{1},C35{2},N35_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 5000])
-       view(2)
-       set(ha(35),'yticklabel',[])
-       xlabel('Shum Diff (kg kg^{-1})','FontSize', fontpt)
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 1100])
-
-       axes(ha(36));
-
-       contourf(C36{1},C36{2},N36_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 5000])
-       view(2)
-       set(ha(36),'yticklabel',[])
-       xlabel('Wind Diff (m s^{-1})','FontSize', fontpt)
-       %xlim([0 20])
-       %ylim([0 1100])
-
-       % Next row
-
-
-       axes(ha(26));
-
-       contourf(C26{1},C26{2},N26_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 20000])
-       view(2)
-       set(ha(26),'xticklabel',[])
-       ylabel('LW Diff (W m^{-2})','FontSize', fontpt)
-       %xlim([125 425])
-       %ylim([125 425])
-
-       axes(ha(27));
-
-       contourf(C27{1},C27{2},N27_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 7000])
-       view(2)
-       set(ha(27),'yticklabel',[])
-       set(ha(27),'yticklabel',[])
-       %xlim([0 10*10^(-4)])
-       %ylim([125 425])       
-
-       axes(ha(28));
-
-       contourf(C28{1},C28{2},N28_diff)
-       colormap(b2r(-10000,10000));
-       colorbar
-       %caxis([0 20000])
-       view(2)
-       set(ha(28),'yticklabel',[])
-       set(ha(28),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([125 425])
-
-       axes(ha(29));
-
-       contourf(C29{1},C29{2},N29_diff)
-       colormap(b2r(-10000,10000));
-       colorbar
-       %caxis([0 20000])
-       view(2)
-       set(ha(29),'yticklabel',[])
-       set(ha(29),'xticklabel',[])
-
-       %xlim([0 17.5*10^(-3)])
-       %ylim([125 425])       
-
-
-
-       axes(ha(30));
-
-       contourf(C30{1},C30{2},N30_diff)
-       colormap(b2r(-10000,10000));
-       colorbar
-       %caxis([0 12000])
-       view(2)
-       set(ha(30),'yticklabel',[])
-       set(ha(30),'xticklabel',[])
-
-       %xlim([0 20])
-       %ylim([125 425])
-
-       %Next row
-
-
-       axes(ha(21));
-
-       contourf(C21{1},C21{2},N21_diff)
-       colormap(b2r(-5000,5000)); 
-       colorbar
-       %caxis([0 20000])
-       view(2)
-       ylabel('Precip Diff (mm s^{-1})','FontSize', fontpt)
-       set(ha(21),'xticklabel',[])
-       %xlim([0 10*10^(-4)])
-       %ylim([0 10*10^(-4)])
-
-       axes(ha(22));
-
-       contourf(C22{1},C22{2},N22_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 5000])
-       view(2)
-       set(ha(22),'yticklabel',[])
-       set(ha(22),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([0 10*10^(-4)])
-
-
-       axes(ha(23));
-
-       contourf(C23{1},C23{2},N23_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 5000])
-       view(2)
-       set(ha(23),'yticklabel',[])
-       set(ha(23),'xticklabel',[])
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 10*10^(-4)])
-
-       axes(ha(24));
-
-       contourf(C24{1},C24{2},N24_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 5000])
-       view(2)
-       set(ha(24),'yticklabel',[])
-       set(ha(24),'xticklabel',[])
-       %xlim([0 20])
-       %ylim([0 10*10^(-4)])
-
-       % next row
-       axes(ha(16));
-
-       contourf(C16{1},C16{2},N16_diff)
-       colormap(b2r(-10000,10000));
-       colorbar
-       %caxis([0 25000])
-       view(2)
-       ylabel('Temp Diff (K)','FontSize', fontpt)
-       set(ha(16),'xticklabel',[])
-       %xlim([250 305])
-       %ylim([250 305])
-
-       axes(ha(17));
-
-       contourf(C17{1},C17{2},N17_diff)
-       colormap(b2r(-10000,10000));
-       colorbar
-       %caxis([0 15000])
-       view(2)
-       set(ha(17),'yticklabel',[])
-       set(ha(17),'xticklabel',[])
-       %ylim([250 305])
-       %xlim([0 17.5*10^(-3)])
-
-       axes(ha(18));
-
-       contourf(C18{1},C18{2},N18_diff)
-       colormap(b2r(-10000,10000));
-       colorbar
-       %caxis([0 12000])
-       view(2)
-       set(ha(18),'yticklabel',[])
-       set(ha(18),'xticklabel',[])
-       %ylim([250 305])
-       %xlim([0 20])
-
-       axes(ha(11));
-
-       contourf(C11{1},C11{2},N11_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 25000])
-       view(2)
-       ylabel('Shum Diff (kg kg^{-1})','FontSize', fontpt)
-       set(ha(11),'xticklabel',[])
-       %xlim([0 17.5*10^(-3)])
-       %ylim([0 17.5*10^(-3)])
-
-
-       axes(ha(12));
-
-       contourf(C12{1},C12{2},N12_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 17000])
-       view(2)
-       set(ha(12),'yticklabel',[])
-       set(ha(12),'xticklabel',[])
-       %xlim([0 20])
-       %ylim([0 17.5*10^(-3)])
-
-       axes(ha(6));
-
-       contourf(C6{1},C6{2},N6_diff)
-       colormap(b2r(-5000,5000));
-       colorbar
-       %caxis([0 25000])
-       view(2)
-       set(ha(6),'xticklabel',[])
-       ylabel('Wind Diff (m s^{-1})','FontSize', fontpt)
-       %xlim([0 20])
-       %ylim([0 20])
-
-
-
-
-
-
-
-
-
- stop
-      
        figure(5)
        scrsz = get(0,'ScreenSize');
        set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
@@ -1920,6 +619,7 @@ close all
 
        linkaxes(ha(1:4), 'x');
        
+
        figure(6)
        scrsz = get(0,'ScreenSize');
        set(gcf,'Position',[1 1 scrsz(3) scrsz(4)]);
@@ -2099,7 +799,7 @@ close all
        linkaxes(ha(1:5), 'x');
 
 display('   ')
-display(['Adjusted CAM6 plots completed.  Press enter to write ' yearstr{ii} ' CAM6 adjusted files to netcdf'])
+display(['Adjusted CAM6 plots and diagnostics completed.  Press enter to write ' yearstr{ii} ' CAM6 adjusted files to netcdf'])
 display('   ')
 pause
 close all
@@ -2107,9 +807,15 @@ close all
 
 end % Diagnostics Loop
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-stop
+
 
       % Assign the adjusted CAM variables to netcdf files for each ensemble member/ year
+          % CAM6_NR1.cpl_NINST.ha2x1hi.YEAR.nc   % SOLAR:     a2x1hi_Faxa_swndr,a2x1hi_Faxa_swvdr,a2x1hi_Faxa_swndf,a2x1hi_Faxa_swvdf   
+          % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % NON-SOLAR: a2x3h_Faxa_rainc,a2x3h_Faxa_rainl,a2x3h_Faxa_snowc,a2x3h_Faxa_snowl,a2x3h_Faxa_lwdn
+          % CAM6_NR1.cpl_NINST.ha2x1h.YEAR.nc    % 1hr state: a2x1h_Sa_u,a2x1h_Sa_v 
+          % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % 3hr state; a2x3h_Sa_tbot,a2x3h_Sa_shum,a2x3h_Sa_pbot
+          % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % unchanged 3hr state: Sa_z Sa_ptem Sa_dens Sa_pslv Sa_topo
+
 
           time_SOLAR = ncread([path_CAM_forcing enstr{1} '/CAM6_NR1.cpl_' enstr{1} '.ha2x1hi.' yearstr{ii} '.nc'],'time');
           time_NONSOLAR = ncread([path_CAM_forcing enstr{1} '/CAM6_NR1.cpl_' enstr{1} '.ha2x3h.' yearstr{ii} '.nc'],'time');
@@ -2126,15 +832,6 @@ stop
           time_bnds_1hr = ncread([path_CAM_forcing enstr{1} '/CAM6_NR1.cpl_' enstr{1} '.ha2x1h.' yearstr{ii} '.nc'],'time_bnds');
           time_bnds_3hr = ncread([path_CAM_forcing enstr{1} '/CAM6_NR1.cpl_' enstr{1} '.ha2x3h.' yearstr{ii} '.nc'],'time_bnds');
 
-
-          path_scaled_CAM_forcing = '/glade/work/bmraczka/CAM6_NR1/scaled/';
-
-
-          % CAM6_NR1.cpl_NINST.ha2x1hi.YEAR.nc   % SOLAR:     a2x1hi_Faxa_swndr,a2x1hi_Faxa_swvdr,a2x1hi_Faxa_swndf,a2x1hi_Faxa_swvdf   
-          % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % NON-SOLAR: a2x3h_Faxa_rainc,a2x3h_Faxa_rainl,a2x3h_Faxa_snowc,a2x3h_Faxa_snowl,a2x3h_Faxa_lwdn
-          % CAM6_NR1.cpl_NINST.ha2x1h.YEAR.nc    % 1hr state: a2x1h_Sa_u,a2x1h_Sa_v 
-          % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % 3hr state; a2x3h_Sa_tbot,a2x3h_Sa_shum,a2x3h_Sa_pbot
-          % CAM6_NR1.cpl_NINST.ha2x3h.YEAR.nc    % unchanged 3hr state: Sa_z Sa_ptem Sa_dens Sa_pslv Sa_topo
        
       % Allocate met variables in dimension necessary for assignment to netcdf
 
@@ -2150,7 +847,6 @@ stop
         topo_assign=ones(1,1,length(Sa_topo(1,:)))*NaN;
 
         for jj = 1:80;  %% ensemble loop         
-      % for jj = 1:1; %TEST 
         % Assign the met variables to appropriate 3-dimension format
         
         swndr_assign(1,1,:)=Faxa_swndr_adjust(jj,:);                swvdr_assign(1,1,:)=Faxa_swvdr_adjust(jj,:);
@@ -2170,7 +866,6 @@ stop
         ncid=netcdf.create(ncname,'CLOBBER');
         netcdf.close(ncid);
         nccreate(ncname,'a2x1hi_Faxa_swndf','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',Inf},'Datatype','single','Format','classic'); 
-        %nccreate(ncname,'a2x1hi_Faxa_swndf','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',dim_time_SOLAR},'Datatype','single','Format','classic','FillValue','single');
         ncwrite(ncname,'a2x1hi_Faxa_swndf',swndf_assign)
         ncwriteatt(ncname,'a2x1hi_Faxa_swndf','_FillValue', single(1.e30))
         ncwriteatt(ncname,'a2x1hi_Faxa_swndf','units','W m-2')
@@ -2179,7 +874,6 @@ stop
         ncwriteatt(ncname,'a2x1hi_Faxa_swndf','internal_dname','a2x1hi')
 
         nccreate(ncname,'a2x1hi_Faxa_swndr','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',Inf},'Datatype','single','Format','classic');
-        %nccreate(ncname,'a2x1hi_Faxa_swndr','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',dim_time_SOLAR},'Format','classic');
         ncwrite(ncname,'a2x1hi_Faxa_swndr',swndr_assign)
         ncwriteatt(ncname,'a2x1hi_Faxa_swndr','_FillValue', single(1.e30))
         ncwriteatt(ncname,'a2x1hi_Faxa_swndr','units','W m-2')
@@ -2188,7 +882,6 @@ stop
         ncwriteatt(ncname,'a2x1hi_Faxa_swndr','internal_dname','a2x1hi')
                
         nccreate(ncname,'a2x1hi_Faxa_swvdf','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',Inf},'Datatype','single','Format','classic');
-        %nccreate(ncname,'a2x1hi_Faxa_swvdf','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',dim_time_SOLAR},'Format','classic');
         ncwrite(ncname,'a2x1hi_Faxa_swvdf',swvdf_assign)
         ncwriteatt(ncname,'a2x1hi_Faxa_swvdf','_FillValue', single(1.e30))
         ncwriteatt(ncname,'a2x1hi_Faxa_swvdf','units','W m-2')
@@ -2197,7 +890,6 @@ stop
         ncwriteatt(ncname,'a2x1hi_Faxa_swvdf','internal_dname','a2x1hi')
     
         nccreate(ncname,'a2x1hi_Faxa_swvdr','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',Inf},'Datatype','single','Format','classic');
-        %nccreate(ncname,'a2x1hi_Faxa_swvdr','Dimensions',{'a2x1hi_nx',1,'a2x1hi_ny',1,'time',dim_time_SOLAR},'Format','classic');
         ncwrite(ncname,'a2x1hi_Faxa_swvdr',swvdr_assign)
         ncwriteatt(ncname,'a2x1hi_Faxa_swvdr','_FillValue', single(1.e30))
         ncwriteatt(ncname,'a2x1hi_Faxa_swvdr','units','W m-2')
@@ -2253,7 +945,6 @@ stop
         ncwriteatt(ncname,'doma_mask','standard_name','mask')
         ncwriteatt(ncname,'doma_mask','internal_dname','doma')
 
-       % nccreate(ncname,'time','Dimensions',{'time',dim_time_SOLAR},'Format','classic');
         nccreate(ncname,'time','Dimensions',{'time',Inf},'Format','classic');
         ncwrite(ncname,'time',time_SOLAR)
 
@@ -2267,13 +958,11 @@ stop
         ncwriteatt(ncname,'time','bounds','time_bnds')
 
         nccreate(ncname,'time_bnds','Dimensions',{'ntb',2,'time',Inf},'Format','classic');
-        %nccreate(ncname,'time_bnds','Dimensions',{'ntb',2,'time',dim_time_SOLAR},'Format','classic');
         ncwrite(ncname,'time_bnds',time_bnds_SOLAR)
 
         ncwriteatt(ncname,'/','creation_method', 'Scaling CAM6 regional product to tower site level met')
         ncwriteatt(ncname,'/','creation_date', datestr(now))
         ncwriteatt(ncname,'/','author', 'Brett Raczka, bmraczka@ucar.edu')
-        ncwriteatt(ncname,'/','code', '/glade/work/bmraczka/SIFMIP2/CAM_biascorrect_SIFMIP2.m')
 
 
         % Write NON-SOLAR (ha2x3h) File
@@ -2281,7 +970,6 @@ stop
         ncid=netcdf.create(ncname,'CLOBBER');
         netcdf.close(ncid);
         nccreate(ncname,'time','Dimensions',{'time',Inf},'Format','classic'); 
-        %nccreate(ncname,'time','Dimensions',{'time',dim_time_NONSOLAR},'Format','classic');
         ncwrite(ncname,'time',time_NONSOLAR)
 
         if str2num(yearstr{ii})==2011
@@ -2466,7 +1154,6 @@ stop
         ncwriteatt(ncname,'/','creation_method', 'Scaling CAM6 regional product to tower site level met')
         ncwriteatt(ncname,'/','creation_date', datestr(now))
         ncwriteatt(ncname,'/','author', 'Brett Raczka, bmraczka@ucar.edu') 
-        ncwriteatt(ncname,'/','code', '/glade/work/bmraczka/SIFMIP2/CAM_biascorrect_SIFMIP2.m')       
  
 
         % Write h1 (1 hour) file
@@ -2560,7 +1247,6 @@ stop
         ncwriteatt(ncname,'/','creation_method', 'Scaling CAM6 regional product to tower site level met')
         ncwriteatt(ncname,'/','creation_date', datestr(now))
         ncwriteatt(ncname,'/','author', 'Brett Raczka, bmraczka@ucar.edu')
-        ncwriteatt(ncname,'/','code', '/glade/work/bmraczka/SIFMIP2/CAM_biascorrect_SIFMIP2.m')
        
       
        end %% ensemble assignment loop  

@@ -1,21 +1,15 @@
 #!/bin/bash
 
-# 2/12/23
-# Extracting site level grid cell from CAM reanalysis
-# This site level extract will be fed to 'CAM4_reanalysis_biascorrection.m'
-# bias corrected for site level met forcing
+# Extracts site level grid cell from CAM4 reanalysis
 
-# CAM4 Reanalysis
-
+# CAM4 reanalysis
 CAM4_grid_path="/glade/collections/rda/data/ds199.1/"
+# Site Level grid cell from CAM4 renanalysis
 CAM4_site_path="/glade/work/bmraczka/CAM4_NR1/"
 
+# The US-NR1 flux tower site is used as an example 
 # NR1 location (40.03, -105.55) or (40.03, 254.45)
-# CAM6 grid is 1.25x0.95  or 288 longitude grids and 192 latitude grids
-# This lat/lon corresponds with doma_lon= 204 (255 degrees east) ; doma_lat= 138  ; (40.0524 degrees)
-
-# NR1 location (40.03, -105.55) or (40.03, 254.45)
-# CAM6 grid is 1.95x2.5  or 288 longitude grids and 96 latitude grids
+# CAM4 grid is 1.95x2.5  or 288 longitude grids and 96 latitude grids
 # This lat/lon corresponds with doma_lon= 102 (255 degrees east) ; doma_lat= 69  ; (40.7368 degrees)
 
 
