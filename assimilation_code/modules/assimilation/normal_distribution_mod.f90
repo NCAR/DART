@@ -16,6 +16,15 @@ public :: norm_cdf, norm_inv, weighted_norm_inv, test_normal
 character(len=512)        :: errstring
 character(len=*), parameter :: source = 'normal_distribution_mod.f90'
 
+! These quantiles bracket the range over which norm_inv functions
+! The test routines are confined to this range and values outside this are
+! changed to these. Approximate correpsonding standard deviations are in 
+! min_sd and max_sd and these are the range over which the test_normal functions.
+! The max_sd is smaller in magnitude than the min_sd because the Fortran number
+! model cannot represent numbers as close to 1 as it can to 0.
+real(r8), parameter :: min_quantile = 5.0e-198,  max_quantile = 0.999999999999999_r8
+real(r8), parameter :: min_sd = -30.0_r8, max_sd = 8.0_r8
+
 contains 
 
 !------------------------------------------------------------------------
@@ -28,9 +37,11 @@ subroutine test_normal
 ! these tests suggests a serious problem. Passing them does not indicate that 
 ! there are acceptable results for all possible inputs. 
 
-integer :: num_trials, i, j
-real(r8) :: x, quantile, inv, max_diff(16), max_q(16)
-real(r8) :: sd_range, half_trials, max_matlab_diff
+! Set number of equally spaced trials for the test F-1(F(x)) where F is the CDF.
+integer, parameter :: num_trials = 10000000
+
+integer  :: i, j
+real(r8) :: sd, quantile, inv, max_diff(16), max_q(16), max_matlab_diff
 
 ! Comparative results for a handful of cases from MATLAB21a
 real(r8) :: cdf_diff(7)
@@ -64,20 +75,14 @@ do j = 1, 16
    max_q(j) = 1.0_r8 - 0.1**j
 enddo
 
-write(*, *) 'There are some values for which norm_inv may fail to converge but still produce adequate errors'
-
 ! Test the inversion of the cdf over +/- 30 standard deviations around mean
-sd_range = 30.0_r8
-num_trials = 1000
-half_trials = num_trials / 2.0_r8
-do i = 1, num_trials
-   x = ((i - half_trials) / half_trials) * sd_range
-   quantile = norm_cdf(x, 0.0_r8, 1.0_r8)
-   if(quantile >= 1.0_r8) exit
+do i = 1, num_trials + 1
+   sd = min_sd + (i - 1.0_r8) * (max_sd - min_sd) / num_trials 
+   quantile = norm_cdf(sd, 0.0_r8, 1.0_r8)
    call norm_inv(quantile, inv)
    do j = 1, 16
       if(quantile < max_q(j)) then
-         max_diff(j) = max(abs(x-inv), max_diff(j))
+         max_diff(j) = max(abs(sd-inv), max_diff(j))
       endif
    enddo
 end do
@@ -216,9 +221,9 @@ end subroutine approx_norm_inv
 
 !------------------------------------------------------------------------
 
-subroutine norm_inv(quantile, x)
+subroutine norm_inv(quantile_in, x)
 
-real(r8), intent(in)  :: quantile
+real(r8), intent(in)  :: quantile_in
 real(r8), intent(out) :: x
 
 ! This naive Newton method is much more accurate than approx_norm_inv, especially
@@ -231,13 +236,18 @@ real(r8), intent(out) :: x
 ! that do not converge for the test_normal call on gfortran.
 integer, parameter :: max_iterations = 50
 
-! Limit on number of times to halve the increment; 
-! No deep thought. The halving never happens for test_normal on gfortran.
+! Limit on number of times to halve the increment; No deep thought.
 integer, parameter :: max_half_iterations = 25
 
+real(r8) :: quantile
 real(r8) :: reltol, dq_dx, delta
-real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old
+real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old, q_old
 integer  :: iter, j
+
+quantile = quantile_in
+! If input quantiles are outside the supported range, move them to the extremes
+quantile = min(quantile, max_quantile)
+quantile = max(quantile, min_quantile)
 
 ! Do a test for illegal values
 if(quantile <= 0.0_r8 .or. quantile >= 1.0_r8) then
@@ -249,9 +259,6 @@ endif
 ! Get first guess from functional approximation
 call approx_norm_inv(quantile, x_guess)
 
-! Make sure that the guess isn't too close to 0 where things can get ugly
-reltol = (EPSILON(x_guess))**(3./4.)
-
 ! Evaluate the cdf
 q_guess = norm_cdf(x_guess, 0.0_r8, 1.0_r8)
 
@@ -259,15 +266,15 @@ del_q = q_guess - quantile
 
 ! Iterations of the Newton method to approximate the root
 do iter = 1, max_iterations
-   ! PDF is derivative of CDF; but can be inaccurate for extreme values
+   ! PDF is derivative of CDF but this can be numerically inaccurate for extreme values
    !!!dq_dx = norm_pdf(x_guess)
    ! Do numerical derivative to get more accurate inversion
    ! These values for the delta for the approximation work with Gfortran
-   delta = max(1e-8, 1e-3 * abs(x_guess))
+   delta = max(1e-8_r8, 1e-8_r8 * abs(x_guess))
       dq_dx = (norm_cdf(x_guess + delta, 0.0_r8, 1.0_r8) - &
-         norm_cdf(x_guess - delta, 0.0_r8, 1.0_r8)) / (2 * delta)
+         norm_cdf(x_guess - delta, 0.0_r8, 1.0_r8)) / (2.0_r8 * delta)
       ! Derivative of 0 means we're not going anywhere else
-      if(dq_dx <= 0.0) then
+      if(dq_dx <= 0.0_r8) then
          x = x_guess
          return
       endif
@@ -277,23 +284,27 @@ do iter = 1, max_iterations
    x_new = x_guess - del_x
 
    ! Look for convergence; If the change in x is smaller than approximate precision 
-   if (abs(del_x) <= reltol*abs(x_guess)) then
+   reltol = (epsilon(x_guess))**(0.75_r8)
+   if(abs(del_x) <= reltol) then
       x = x_new
       return
    endif
     
    ! If we've gone too far, the new error will be bigger than the old; 
    ! Repeatedly half the distance until this is rectified 
-   ! This is not believed to happen with the first guess quality here
    del_q_old = del_q
    q_new = norm_cdf(x_new, 0.0_r8, 1.0_r8)
    do j = 1, max_half_iterations
       del_q = q_new - quantile
       if (abs(del_q) < abs(del_q_old)) then
-         EXIT
+         exit
       endif
+      q_old = q_new
       x_new = (x_guess + x_new)/2.0_r8
       q_new = norm_cdf(x_new, 0.0_r8, 1.0_r8)
+      ! If q isn't changing, no point in continuing
+      if(q_old == q_new) exit
+
    end do
 
    x_guess = x_new
@@ -301,6 +312,7 @@ end do
 
 ! For now, have switched a failed convergence to return the latest guess
 ! This has implications for stability of probit algorithms that require further study
+! Not currently happening for any of the test cases on gfortran
 x = x_new
 write(errstring, *)  'Failed to converge for quantile ', quantile
 call error_handler(E_MSG, 'norm_inv', errstring, source)

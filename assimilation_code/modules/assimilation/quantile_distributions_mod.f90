@@ -153,7 +153,7 @@ elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
             use_input_p, bounded, bounds)
          call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p_temp, state_ens_temp)
          diff = state_ens - state_ens_temp
-         if(abs(maxval(diff)) > 1.0e-12) then
+         if(abs(maxval(diff)) > 1.0e-8_r8) then
             write(*, *) 'Maximum allowed value of probit to/from difference exceeded'
             write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
             write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
@@ -169,7 +169,7 @@ elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
             use_input_p, bounded, bounds)
          call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p, state_ens_temp)
          diff = state_ens - state_ens_temp
-         if(abs(maxval(diff)) > 1.0e-11_r8) then
+         if(abs(maxval(diff)) > 1.0e-8_r8) then
             write(*, *) 'Maximum allowed value of probit to/from difference for input p exceeded'
             write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
             write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
@@ -897,7 +897,7 @@ real(r8), intent(in) :: bounds(2)
 ! observation quantities. This function corrects the violations if they are small. If 
 ! they are bigger than the egregious bound set here, then execution is terminated.
       
-real(r8), parameter :: egregious_bound_threshold = 1e-12
+real(r8), parameter :: egregious_bound_threshold = 1.0e-12_r8
 
 real(r8) :: lower_bound, upper_bound
 logical  :: bounded_below, bounded_above

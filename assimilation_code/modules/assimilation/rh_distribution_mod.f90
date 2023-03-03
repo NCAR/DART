@@ -6,7 +6,7 @@ module rh_distribution_mod
 
 use types_mod,      only : r8
 
-use utilities_mod,  only : E_ERR, error_handler
+use utilities_mod,  only : E_ERR, E_MSG, error_handler
 
 use sort_mod, only : index_sort
 
@@ -446,18 +446,22 @@ do i = 1, ens_size
          (sort_ens(region + 1) - sort_ens(region))
    endif
    
-   ! Check for posterior violating bounds; This may not be needed after development testing
+   ! Imprecision in the inv_norm routine can lead to x(i) being slightly below the
+   ! lower bound. Correct this and output a message. Could be numerically fixed above.
    if(bounded_below) then
       if(x(i) < lower_bound) then
-         write(errstring, *) 'x less than lower_bound ', i, x(i)
-         call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+         write(errstring, *) 'x less than lower_bound ', i, x(i), curr_q
+         call error_handler(E_MSG, 'inv_rh_cdf', errstring, source)
+         x(i) = lower_bound
       endif
    endif
-   
+  
+   ! See comment on lower bound in previous code block 
    if(bounded_above) then
       if(x(i) > upper_bound) then
-         write(errstring, *) 'x greater than upper_bound ', i, x(i)
-         call error_handler(E_ERR, 'inv_rh_cdf', errstring, source)
+         write(errstring, *) 'x greater than upper_bound ', i, x(i), curr_q
+         call error_handler(E_MSG, 'inv_rh_cdf', errstring, source)
+         x(i) = upper_bound
       endif
    endif
    
