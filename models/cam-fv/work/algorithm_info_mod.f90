@@ -186,11 +186,30 @@ real(r8), intent(inout) :: bounds(2)
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
+select case(obs_kind)
+   case(QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE, QTY_TEMPERATURE)
+      ! Set the observation increment details for each type of quantity
+      filter_kind = BOUNDED_NORMAL_RHF 
+      bounded(1) = .false.;     bounded(2) = .false.
+      bounds(1) = -999999999.0_r8;      bounds(2) = 999999999.0_r8
 
-! Set the observation increment details for each type of quantity
-   filter_kind = BOUNDED_NORMAL_RHF 
-   bounded(1) = .false.;     bounded(2) = .false.
-   bounds(1) = -999999999.0_r8;      bounds(2) = 999999999.0_r8
+   case(QTY_GPSRO)
+      filter_kind = BOUNDED_NORMAL_RHF 
+      bounded(1) = .true.;     bounded(2) = .false.
+!      bounded(1) = .false.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;      bounds(2) = 999999999.0_r8
+
+   case(QTY_SPECIFIC_HUMIDITY)
+      filter_kind = BOUNDED_NORMAL_RHF 
+      bounded(1) = .true.;     bounded(2) = .true.
+!      bounded(1) = .false.;     bounded(2) = .false.
+      bounds(1) = 0.0_r8;      bounds(2) = 1.0_r8
+
+   case DEFAULT
+      write(*, *) 'Unexpected QTY in algorithm_info_mod ', obs_kind
+      stop
+end select
+   
 
 ! Default settings for now for Icepack and tracer model tests
 sort_obs_inc = .false.
