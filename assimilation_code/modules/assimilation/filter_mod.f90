@@ -166,7 +166,8 @@ type(adaptive_inflate_type) :: prior_inflate, post_inflate
 logical           :: do_hybrid          = .false.
 logical           :: output_hybrid      = .false.
 integer           :: STAT_ENS_MEAN_COPY = COPY_NOT_PRESENT
-integer           :: STAT_ENS_SD_COPY   = COPY_NOT_PRESENT 
+integer           :: STAT_ENS_SD_COPY   = COPY_NOT_PRESENT
+integer           :: STAT_HYB_COPY      = COPY_NOT_PRESENT 
 type(hybrid_type) :: hybridization
 
 logical :: has_cycling          = .false. ! filter will advance the model
@@ -537,9 +538,6 @@ call parse_stages_to_write(stages_to_write)
 num_state_ens_copies = count_state_ens_copies(ens_size, prior_inflate, post_inflate, hybridization)
 num_extras           = num_state_ens_copies - ens_size
 
-!print *, 'num_state_ens_copies: ', num_state_ens_copies
-!print *, 'num_extras: ', num_extras
-
 ! Observation
 OBS_ERR_VAR_COPY     = ens_size + 1
 OBS_VAL_COPY         = ens_size + 2
@@ -559,9 +557,10 @@ if (do_hybrid) then
    endif
    
    ! state copies: # of static member files + mean + sd
-   num_static_ens_copies     = hyb_ens_size + 2 
-   STAT_ENS_MEAN_COPY        = hyb_ens_size + 1
-   STAT_ENS_SD_COPY          = hyb_ens_size + 2
+   num_static_ens_copies     = hyb_ens_size + 3 
+   STAT_HYB_COPY             = hyb_ens_size + 1
+   STAT_ENS_MEAN_COPY        = hyb_ens_size + 2
+   STAT_ENS_SD_COPY          = hyb_ens_size + 3
 
    ! Indices (dummy) needed to compute forward operators only 
    STATIC_OBS_ERR_VAR_COPY   = hyb_ens_size + 1
@@ -632,7 +631,9 @@ if (task_count() > 1) &
 
 call set_num_extra_copies(state_ens_handle, num_extras)
 
-! For the static members, we only have 2 extra copies: meand and sd
+! For the static members, we only have 3 extra copies: meand, sd, hyb weight
+! We are going to cheat and tell it that hybrid weight is part of the ensemble
+! Like this we can get the obs_space weights for identity obs
 if (do_hybrid) call set_num_extra_copies(static_state_ens_handle, 2)
 
 call trace_message('After  setting up space for ensembles')
@@ -690,12 +691,17 @@ if (do_hybrid) then
    call read_state(static_state_ens_handle, file_info_hybrid, read_time_from_file, time2)
 endif
 
+!print *, ''
+!write(*, '(A)') 'After read state:'
+!write(*, '(A, 20F10.6)') 'x(878): ', state_ens_handle%copies(1:ens_size, 878)
+!write(*, '(A, 20F10.6)') 'x(879): ', state_ens_handle%copies(1:ens_size, 879)
+
 !print *, '130 ens var: ', state_ens_handle%copies(1:ens_size, 130)
 !print *, ''
 !print *, '130 hyb var: ', static_state_ens_handle%copies(1:hyb_ens_size, 130)
 
-!print *, 'extras ens:  ', state_ens_handle%copies(ens_size+1:num_state_ens_copies, 130)
-!print *, 'extras hyb:  ', static_state_ens_handle%copies(hyb_ens_size+1:num_static_ens_copies, 130) 
+!print *, 'extras hyb 13644: ', static_state_ens_handle%copies(hyb_ens_size+1:num_static_ens_copies, 13644) 
+!print *, 'extras hyb 15914: ', static_state_ens_handle%copies(hyb_ens_size+1:num_static_ens_copies, 15914) 
 
 ! This must be after read_state
 call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
@@ -779,7 +785,13 @@ call filter_set_window_time(window_time)
 call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 ! Compute mean and spread for static ensemble
-if(do_hybrid) call compute_copy_mean_sd(static_state_ens_handle, 1, hyb_ens_size, STAT_ENS_MEAN_COPY, STAT_ENS_SD_COPY)
+if(do_hybrid) then 
+   call compute_copy_mean_sd(static_state_ens_handle, 1, hyb_ens_size, STAT_ENS_MEAN_COPY, STAT_ENS_SD_COPY)
+   static_state_ens_handle%copies(STAT_HYB_COPY, :) = state_ens_handle%copies(HYBRID_WEIGHT_MEAN_COPY, :)
+endif
+
+!print *, 'extras hyb 13644: ', static_state_ens_handle%copies(hyb_ens_size+1:num_static_ens_copies, 13644) 
+!print *, 'extras hyb 15914: ', static_state_ens_handle%copies(hyb_ens_size+1:num_static_ens_copies, 15914)
 
 ! Write out the mean and sd for the input files if requested
 if (get_stage_to_write('input')) then
@@ -1014,15 +1026,19 @@ AdvanceTime : do
            static_qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
            STATIC_OBS_ERR_VAR_COPY, STATIC_OBS_VAL_COPY, STATIC_OBS_KEY_COPY, STATIC_OBS_GLOBAL_QC_COPY, &
            STATIC_OBS_EXTRA_QC_COPY, STATIC_OBS_MEAN_START, STATIC_OBS_VAR_START, &
-           isprior=.true., prior_qc_copy=static_prior_qc_copy)
+           isprior=.true., prior_qc_copy=static_prior_qc_copy, do_hybrid=do_hybrid)
    endif
 
    !print *, 'obs_ens: ', obs_fwd_op_ens_handle%copies(1:ens_size, 1)
    !print *, 'rest: '   , obs_fwd_op_ens_handle%copies(ens_size+1:TOTAL_OBS_COPIES, 1)
 
    !print *, 'obs_hyb: ', static_obs_ens_handle%copies(1:hyb_ens_size, 1)
-   !print *, 'rest: '   , static_obs_ens_handle%copies(hyb_ens_size+1:TOTAL_STATIC_OBS_COPIES, 1)   
-   
+
+   !print *, 'hyb_ens: ', static_obs_ens_handle%copies(1:hyb_ens_size, 1)
+
+   !print *, 'rest 1: ', static_obs_ens_handle%copies(hyb_ens_size+1:TOTAL_STATIC_OBS_COPIES, 1)   
+   !print *, 'rest 2: ', static_obs_ens_handle%copies(hyb_ens_size+1:TOTAL_STATIC_OBS_COPIES, 2)   
+
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
 
@@ -1249,6 +1265,15 @@ AdvanceTime : do
 
       endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
+
+!print *, ''
+!write(*, '(A)') 'Before writing out the state:'
+!write(*, '(A, 20F10.6)') 'x(878): ', state_ens_handle%copies(1:ens_size, 878)
+!write(*, '(A, 20F10.6)') 'x(879): ', state_ens_handle%copies(1:ens_size, 879)
+
+!print *, ''
+!write(*, '(A, F10.6)') 'x878 mean: ', state_ens_handle%copies(ENS_MEAN_COPY, 878)
+!write(*, '(A, F10.6)') 'x879 mean: ', state_ens_handle%copies(ENS_MEAN_COPY, 879)
 
    ! Write out analysis diagnostic files if requested.  This contains the 
    ! posterior inflated ensemble and updated {prior,posterior} inflation values

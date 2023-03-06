@@ -70,7 +70,7 @@ use assim_model_mod,      only : get_state_meta_data,                           
                                  get_close_obs,         get_close_state,                  &
                                  convert_vertical_obs,  convert_vertical_state
 
-use distributed_state_mod, only : create_mean_window, free_mean_window
+use distributed_state_mod, only : create_mean_window, free_mean_window, get_state
 
 use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
@@ -414,11 +414,10 @@ real(r8)              :: hybrid_scaling
 real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
 real(r8)              :: hyb_obs_var, corr_rho
 real(r8)              :: vary_ss_hybrid_mean, vary_ss_hybrid_sd
-real(r8), allocatable :: orig_hybrid_weight(:)
 real(r8), allocatable :: stat_obs_prior(:) 
 real(r8), allocatable :: dtrd(:), tr_R(:), tr_B(:)
 real(r8)              :: sum_d, sum_R, sum_B, sum_d_all, sum_R_all, sum_B_all
-real(r8)              :: fs, ens_mean(1), orig_hyb_mean
+real(r8)              :: fs, ens_mean(1), orig_hyb_mean(1)
 integer               :: i_qc
 
 ! Are we hybridizing the increments?
@@ -568,9 +567,7 @@ if (do_hybrid) then
 
    ! Use the original weight for hybridizing
    ! Need to change for spatially-varying form
-   allocate(orig_hybrid_weight(ens_handle%num_vars))
-   orig_hybrid_weight = ens_handle%copies(HYB_MEAN_COPY, :)
-   !ens_handle%copies(ENS_MEAN_COPY, :) = ens_handle%copies(HYB_MEAN_COPY, :)
+   ens_handle%copies(ENS_MEAN_COPY, :) = ens_handle%copies(HYB_MEAN_COPY, :)
 endif
 
 ! Get info on my number and indices for obs
@@ -682,7 +679,7 @@ allow_missing_in_state = get_missing_ok_status()
 ! rescaled static covariance  more  appropriately  estimated  
 ! the total forecast-error variance
 if (do_hybrid) then 
-   
+
    if(hybrid_scaling < 0.0_r8) then
 
      i_qc = 0
@@ -747,6 +744,10 @@ if (do_hybrid) then
                      stat_obs_ens_handle%copies(stat_obs_var_copy, :)
 endif
 
+!print *, ''
+!write(*, '(A)') 'Before Obs Loop:'
+!write(*, '(A, 20F10.6)') 'x(879): ', ens_handle%copies(1:ens_size, 879)
+
 ! use MLOOP for the overall outer loop times; LG_GRN is for
 ! sections inside the overall loop, including the total time
 ! for the state_update and obs_update loops.  use SM_GRN for
@@ -786,17 +787,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       base_obs_kind = get_quantity_for_type_of_obs(base_obs_type)
    else
       call get_state_meta_data(-1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
-   endif
-
-   ! Weight coefficient at this obs location
-   if (do_hybrid) then
-      ! I don't know the exact obs location, take average in space 
-      if (base_obs_type > 0 ) then 
-         orig_hyb_mean = sum(orig_hybrid_weight)/size(orig_hybrid_weight)
-      else
-      ! Identity case:
-         orig_hyb_mean = orig_hybrid_weight(-1 * int(base_obs_type,i8))
-      endif
    endif
 
    ! Get the value of the observation
@@ -845,13 +835,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! The assumption here is that if the ensemble QC is OK, then the 
                ! static one is also OK. May need a revisit!
                stat_obs_prior = stat_obs_ens_handle%copies(1:hybrid_ens_size, owners_index)
-            
+
+               ! I don't know the exact obs location, take average in space 
+               if (base_obs_type > 0 ) then
+                  orig_hyb_mean = sum(ens_handle%copies(ENS_MEAN_COPY, :)) / size(ens_handle%copies(ENS_MEAN_COPY, :))
+               else ! Identity case:
+                  orig_hyb_mean = stat_obs_ens_handle%copies(hybrid_ens_size+2, owners_index)
+               endif
+               print *, 'orig_hyb_mean: ', orig_hyb_mean            
+  
                ! Find the static variance for this observation
                hyb_obs_var = stat_obs_ens_handle%copies(stat_obs_var_copy, owners_index)
-
                call obs_increment(obs_prior, ens_size, obs(1), &
                     obs_err_var, obs_inc, inflate, my_inflate, &
-                    my_inflate_sd, net_a(1), orig_hyb_mean, stat_obs_prior)
+                    my_inflate_sd, net_a(1), orig_hyb_mean(1), stat_obs_prior)
             endif
          end do
 
@@ -940,7 +937,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       if(local_varying_ss_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
+            orig_obs_prior_mean, orig_obs_prior_var, net_a, stat_obs_prior, orig_hyb_mean, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real, &
             scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd, scalar6=hyb_obs_var)
 
@@ -965,7 +962,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       !>the cost of sending unneeded values
       if(local_varying_ss_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
-            orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
+            orig_obs_prior_mean, orig_obs_prior_var, net_a, stat_obs_prior, orig_hyb_mean, scalar1=obs_qc, &
             scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real, &
             scalar4=my_hybrid_weight, scalar5=my_hybrid_weight_sd, scalar6=hyb_obs_var)
 
@@ -1197,6 +1194,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Loop through to update each of my state variables that is potentially close
    if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    
+   !print *, ''
+   !write(*, '(A, I2)') 'obsnum: ', i 
+   !write(*, '(A, 20F10.6)') 'x(879): ', ens_handle%copies(1:ens_size, 879)
+   !write(*, '(A, 20F10.6)') 'x(880): ', ens_handle%copies(1:ens_size, 880)
+   !write(*, '(A, 20F10.6)') 'x(881): ', ens_handle%copies(1:ens_size, 881)  
+   !print *, ''
+
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
@@ -1246,16 +1250,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
                stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
                stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
-               !ens_handle%copies(ENS_MEAN_COPY, state_index), 
-               orig_hybrid_weight(state_index), increment, reg_coef(1), net_a(1), correl(1))
+               ens_handle%copies(ENS_MEAN_COPY, state_index), orig_hyb_mean(1),         &
+               increment, reg_coef(1), net_a(1), correl(1)) 
          else
             call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
                obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
                stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
                stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
-               !ens_handle%copies(ENS_MEAN_COPY, state_index), 
-               orig_hybrid_weight(state_index), increment, reg_coef(1), net_a(1))
-         endif
+               ens_handle%copies(ENS_MEAN_COPY, state_index), orig_hyb_mean(1),         &
+               increment, reg_coef(1), net_a(1)) 
+         endif 
       else
          ! Loop through groups to update the state variable ensemble members
          do group = 1, num_groups
@@ -1441,7 +1445,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                obs_ens_handle%copies(1:ens_size, obs_index), ens_size, &
                stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var, &
                stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), hybrid_ens_size, &
-               orig_hyb_mean, increment, reg_coef(1), net_a(1))
+               orig_hyb_mean(1), orig_hyb_mean(1), increment, reg_coef(1), net_a(1))
          else
             do group = 1, num_groups
                grp_bot = grp_beg(group)
@@ -1599,7 +1603,7 @@ deallocate(close_state_dist,      &
 deallocate(n_close_state_items, &
            n_close_obs_items)
 
-if (do_hybrid) deallocate(stat_obs_prior, orig_hybrid_weight)
+if (do_hybrid) deallocate(stat_obs_prior)
 ! end dealloc
 
 end subroutine filter_assim
@@ -2276,7 +2280,8 @@ end subroutine update_from_obs_inc
 
 subroutine update_from_hybobs_inc(obs, obs_prior_mean, obs_prior_var, obs_inc,     &
                state, ens_size, clim_obs, clim_obs_prior_mean, clim_obs_prior_var, & 
-               clim_state, ens_size2, weight_factor, state_inc, reg_coef, net_a, correl_out)
+               clim_state, ens_size2, alpha_x, alpha_y, state_inc, reg_coef,       &
+               net_a, correl_out)
 !========================================================================
 
 ! Does linear regression of a state variable onto an observation and
@@ -2291,7 +2296,7 @@ real(r8),           intent(in)    :: obs(ens_size), clim_obs(ens_size2), obs_inc
 real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
 real(r8),           intent(in)    :: clim_obs_prior_mean, clim_obs_prior_var
 real(r8),           intent(in)    :: state(ens_size), clim_state(ens_size2)
-real(r8),           intent(in)    :: weight_factor
+real(r8),           intent(in)    :: alpha_x, alpha_y
 real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
 real(r8),           intent(inout) :: net_a
 real(r8), optional, intent(inout) :: correl_out
@@ -2300,6 +2305,7 @@ real(r8) :: obs_state_cov, hyb_obs_state_cov, hyb_obs_prior_var, intermed
 real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
 real(r8) :: factor, exp_true_correl, mean_factor
 real(r8) :: clim_state_mean, clim_obs_state_cov
+real(r8) :: hyb_state_var, clim_state_var
 
 ! For efficiency, just compute regression coefficient here unless correl is needed
 state_mean         = sum(state) / ens_size
@@ -2308,8 +2314,14 @@ obs_state_cov      = sum( (state - state_mean) * (obs - obs_prior_mean) ) / (ens
 clim_state_mean    = sum(clim_state) / ens_size2 
 clim_obs_state_cov = sum( (clim_state - clim_state_mean) * (clim_obs - clim_obs_prior_mean) ) / (ens_size2 - 1)
 
-hyb_obs_prior_var  = weight_factor * obs_prior_var + (1.0_r8 - weight_factor) * clim_obs_prior_var 
-hyb_obs_state_cov  = weight_factor * obs_state_cov + (1.0_r8 - weight_factor) * clim_obs_state_cov 
+!if (clim_state_mean /= clim_state_mean .or. clim_obs_prior_mean /= clim_obs_prior_mean) then 
+!   hyb_obs_prior_var = obs_prior_var
+!   hyb_obs_state_cov = obs_state_cov
+!else
+   hyb_obs_prior_var  = alpha_y * obs_prior_var + (1.0_r8 - alpha_y) * clim_obs_prior_var 
+   hyb_obs_state_cov  = sqrt(alpha_x) * sqrt(alpha_y) * obs_state_cov + & 
+                        sqrt(1.0_r8 - alpha_x) * sqrt(1.0_r8 - alpha_y) * clim_obs_state_cov 
+!endif
 
 if (hyb_obs_prior_var > 0.0_r8) then
    reg_coef = hyb_obs_state_cov / hyb_obs_prior_var
@@ -2338,7 +2350,9 @@ if(present(correl_out) .or. sampling_error_correction) then
    if (obs_state_cov == 0.0_r8 .or. obs_prior_var <= 0.0_r8) then
       correl = 0.0_r8
    else
-      state_var = sum((state - state_mean)**2) / (ens_size - 1)
+      state_var      = sum((state - state_mean)**2) / (ens_size - 1)
+      !clim_state_var = sum((clim_state - clim_state_mean)**2) / (ens_size2 - 1)
+      !hyb_state_var  = weight_factor * state_var + (1.0_r8 - weight_factor) * clim_state_var
       if (state_var <= 0.0_r8) then
          correl = 0.0_r8
       else

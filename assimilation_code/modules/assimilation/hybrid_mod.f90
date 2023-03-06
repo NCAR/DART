@@ -64,6 +64,9 @@ integer, parameter     :: clim_size_accept = 1000
 real(r8) :: weight_upper_bound = 1.0_r8
 real(r8) :: weight_lower_bound = 0.0_r8
 
+! Bound for the wieghting standard deviation 
+real(r8) :: weight_sd_lower_bound = 0.0001_r8
+
 !===============================================================================
 
 contains
@@ -287,12 +290,13 @@ real(r8) :: Q, R, G, H, theta
 real(r8) :: disc, sol(3), abssep(3)
 real(r8) :: mulfac, addfac, PIfac
 real(r8) :: new_weight, new_weight_sd
+real(r8) :: p1, p2, ratio 
 
 ! If the weight_sd not positive, keep everything the same
 if(weight_sd <= 0.0_r8) return
 
 ! Check for bad correlation
-if(rho /= rho .or. rho <= 0.0_r8) return !1.0e-5_r8
+if(rho /= rho .or. rho <= 0.0_r8) return
 
 m  = weight
 v  = weight_sd**2
@@ -312,7 +316,8 @@ if (ss == 0.0_r8 .or. abs(ss) <= small_diff) then
 endif
 
 ! Simplify coefficients
-Y  = so2+ss2
+!Y = so2 + rho*ss2 + (1.0_r8-rho)*se2 !:G-V-P 
+Y  = so2+ss2 !:G-V-B
 Z  = rho*ss
 Y2 = Y**2
 Z2 = Z**2
@@ -371,14 +376,72 @@ else
 
 endif
 
+! For now, the weight sd is assumed fixed in time.
+! The weight sd can be allowed to change. To do this, 
+! uncomment the next section
+
+! Need to update the sd of the weight 
+!if (abs(weight_sd - weight_sd_lower_bound) <= TINY(0.0_r8)) then 
+!   new_weight_sd = weight_sd
+!
+!else
+!   ! approximate the updated sd
+!   p1 = evaluate_post_pdf(d2, so2, se2, ss2, rho, weight, weight_sd, new_weight + weight_sd)
+!   p2 = evaluate_post_pdf(d2, so2, se2, ss2, rho, weight, weight_sd, new_weight)
+!
+!   if (abs(p1) <= TINY(0.0_r8) .or. abs(p2) <= TINY(0.0_r8) .or. p1 /= p1 .or. p2 /= p2) then     
+!      new_weight_sd = weight_sd
+!   else
+!      ratio = p1 / p2
+!
+!      if (ratio > 0.99) then 
+!         new_weight_sd = weight_sd
+!      else
+!         new_weight_sd = sqrt(-0.5_r8 * weight_sd**2 / log(ratio))
+!
+!         if (new_weight_sd > weight_sd) new_weight_sd = weight_sd
+!      endif
+!   endif
+!endif
+!weight_sd = new_weight_sd
+
 ! Make sure weight satisfies constraints
 weight = new_weight
 if(weight < weight_lower_bound) weight = weight_lower_bound
 if(weight > weight_upper_bound) weight = weight_upper_bound
 
-! For now, weight sd is assumed fixed in time. 
+if(weight_sd < weight_sd_lower_bound) weight_sd = weight_sd_lower_bound 
 
 end subroutine update_hybrid
+
+
+!-------------------------------------------------------------------------------
+!> A routine used to update the standard deviation of the hybrid weight
+!> Assumes that the posterior distribution of the weight is normal
+
+function evaluate_post_pdf(d2, so2, se2, ss2, rho, alpha_mean, alpha_sd, alpha)
+
+real(r8), intent(in) :: d2, so2, se2, ss2, rho
+real(r8), intent(in) :: alpha, alpha_mean, alpha_sd
+real(r8)             :: evaluate_post_pdf
+
+real(r8) :: theta, pr, like, c
+
+! find theta
+theta = so2 + rho*alpha*se2 + (1.0_r8 - rho*alpha) * ss2
+
+! exponent terms 
+pr   = - 0.5_r8 * d2 / theta
+like = - 0.5_r8 * (alpha - alpha_mean)**2 / alpha_sd**2  
+
+! multiplicative terms 
+c = 2.0_r8 * PI * sqrt(theta) * alpha_sd
+
+! posterior pdf value
+evaluate_post_pdf = exp(pr + like) / c
+
+end function evaluate_post_pdf
+
 
 !-------------------------------------------------------------------------------
 !> Write to log file what kind of hybridization is being used.  

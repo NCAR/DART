@@ -73,7 +73,7 @@ subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, &
    qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
    OBS_ERR_VAR_COPY,   OBS_VAL_COPY,   OBS_KEY_COPY, &
    OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_COPY, &
-   OBS_VAR_COPY, isprior, prior_qc_copy)
+   OBS_VAR_COPY, isprior, prior_qc_copy, do_hybrid)
 
 type(ensemble_type),     intent(inout) :: ens_handle  !! state ensemble handle
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !! observation forward operator handle
@@ -91,6 +91,7 @@ integer,                 intent(in)    :: OBS_MEAN_COPY  !! ensemble copy number
 integer,                 intent(in)    :: OBS_VAR_COPY  !! ensemble copy number for obs variance 
 logical,                 intent(in)    :: isprior  !! true for prior eval; false for posterior
 real(r8),                intent(inout) :: prior_qc_copy(:)  !! array instead of ensemble copy ??
+logical,       optional, intent(in)    :: do_hybrid
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var
 
@@ -283,8 +284,12 @@ else ! distributed state
    call get_expected_obs_distrib_state(seq, thiskey, &
       dummy_time, isprior, istatus, &
       assimilate_this_ob, evaluate_this_ob, ens_handle, num_copies_to_calc, my_copy_indices, expected_obs)
-
+ 
+   if (present(do_hybrid)) then 
+      obs_fwd_op_ens_handle%copies(1:num_copies_to_calc-1, j) = expected_obs(1:num_copies_to_calc-1)
+   else
       obs_fwd_op_ens_handle%copies(1:num_copies_to_calc, j) = expected_obs
+   endif
 
    ! collect dart qc
    global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
@@ -292,15 +297,27 @@ else ! distributed state
    call get_dart_qc(istatus, num_copies_to_calc, assimilate_this_ob, evaluate_this_ob, &
                   isprior, global_qc_value)
 
-   ! update the dart qc, error variance and for observed value
+   ! update the dart qc, erro rvariance and for observed value
    obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
    obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY  , j) = obs_err_var
    obs_fwd_op_ens_handle%copies(OBS_VAL_COPY      , j) = obs_value(1)
 
-   qc_ens_handle%copies(:, j) = istatus
+   ! Store the obs-space hybrid weight in obs val location
+   if (present(do_hybrid)) obs_fwd_op_ens_handle%copies(OBS_VAL_COPY, j) = expected_obs(num_copies_to_calc)
 
-   call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, evaluate_this_ob, &
+   if (present(do_hybrid)) then 
+      qc_ens_handle%copies(1:num_copies_to_calc-1, j) = istatus(1:num_copies_to_calc-1)
+   else
+      qc_ens_handle%copies(:, j) = istatus
+   endif
+
+   if (present(do_hybrid)) then 
+      call check_forward_operator_istatus(num_copies_to_calc-1, assimilate_this_ob, evaluate_this_ob, &
+                               istatus(1:num_copies_to_calc-1), expected_obs(1:num_copies_to_calc-1), thiskey(1))
+   else
+      call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, evaluate_this_ob, & 
                                istatus, expected_obs, thiskey(1))
+   endif
 
    end do MY_OBSERVATIONS
 
