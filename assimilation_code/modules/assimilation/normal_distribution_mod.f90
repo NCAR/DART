@@ -22,7 +22,7 @@ character(len=*), parameter :: source = 'normal_distribution_mod.f90'
 ! min_sd and max_sd and these are the range over which the test_normal functions.
 ! The max_sd is smaller in magnitude than the min_sd because the Fortran number
 ! model cannot represent numbers as close to 1 as it can to 0.
-real(r8), parameter :: min_quantile = 5.0e-198,  max_quantile = 0.999999999999999_r8
+real(r8), parameter :: min_quantile = 5.0d-198,  max_quantile = 0.999999999999999_r8
 real(r8), parameter :: min_sd = -30.0_r8, max_sd = 8.0_r8
 
 contains 
