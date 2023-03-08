@@ -188,12 +188,16 @@
    test1thru            = 4
    run_tests            = 1,2,3,4,7
    x_ind                = 42
-   loc_of_interest      = 60, 70, 41
+   loc_of_interest      = 179, 11, 41
    quantity_of_interest = 'QTY_SALINITY'
    interp_test_dx       = 0.02
    interp_test_xrange   = 0.0, 1.0
    verbose              = .false.
    /
+
+! land
+!   loc_of_interest      = 60, 70, 41
+
 
 &quality_control_nml
    input_qc_threshold       =  3.0,

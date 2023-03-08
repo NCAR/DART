@@ -5,7 +5,7 @@
 
 ! @todo
 !   layer thickness - this is per ensemble member?
-!    
+!   QUAD_LOCATED_CELL_CENTERS - what difference does this make?
 
 module model_mod
 
@@ -35,7 +35,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
                                    quad_lon_lat_evaluate, quad_interp_handle, &
-                                   GRID_QUAD_IRREG_SPACED_REGULAR, &
+                                   GRID_QUAD_FULLY_IRREGULAR, &
                                    QUAD_LOCATED_CELL_CENTERS
 
 use state_structure_mod, only : add_domain, get_domain_size, &
@@ -92,18 +92,14 @@ integer :: nfields ! number of fields in the state vector
 ! Grid parameters
 ! nx, ny and nz are the size of the dipole (or irregular) grids.
 integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
-!netcdf bmom.e20.BMOM.f09_t061.long_run_mct.006.mom6.r.0006-01-01-00000 {
-!dimensions:
-!        lath = 458 ;
-!        lonh = 540 ;
-!        latq = 458 ;
-!        lonq = 540 ;
-!        Layer = 63 ;
-!        Interface = 64 ;
-!        Time = UNLIMITED ; // (1 currently)
-real(r8), allocatable :: lath(:), lonh(:), latq(:), lonq(:), layer(:), interf(:)
+real(r8), allocatable :: geolon(:,:), geolat(:,:), geolon_u(:,:), geolat_u(:,:), geolon_v(:,:), geolat_v(:,:)
+type(quad_interp_handle) :: interp_t_grid, interp_u_grid, interp_v_grid
+
+! Ocean vs land
 real(r8), allocatable :: wet(:,:), basin_depth(:,:)
-type(quad_interp_handle) :: interp_v_grid, interp_u_grid, interp_t_grid !HK do we need all three?
+
+! Ocean veritcal
+real(r8), allocatable :: layer(:), interf(:)
 
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 10
@@ -112,6 +108,7 @@ integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
 ! model_interpolate failure codes
 integer, parameter :: NOT_IN_STATE = 12
 integer, parameter :: QUAD_LOCATE_FAILED = 14
+integer, parameter :: QUAD_EVALUTATE_FAILED = 15
 integer, parameter :: QUAD_ON_LAND = 16
 integer, parameter :: QUAD_ON_BASIN_EDGE = 18
 integer, parameter :: OBS_ABOVE_SURFACE = 20
@@ -120,6 +117,7 @@ integer, parameter :: OBS_TOO_DEEP = 22
 
 ! namelist
 character(len=256) :: template_file = 'mom6.r.nc'
+character(len=256) :: static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc'
 character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = -1
 integer  :: assimilation_period_seconds   = -1
@@ -182,9 +180,10 @@ dom_id = add_domain(template_file, nfields, &
 
 model_size = get_domain_size(dom_id)
 
-call read_grid()
-
+call read_horizontal_grid()
 call setup_interpolation()
+
+call read_vertical()
 
 call read_ocean_geometry()
 
@@ -221,8 +220,8 @@ real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolat
 integer,            intent(out) :: istatus(ens_size)
 
 integer  :: which_vert, four_ilons(4), four_ilats(4)
-integer  :: locate_status
-real(r8) :: lon_fract, lat_fract, lev_fract
+integer  :: locate_status, quad_status
+real(r8) :: lev_fract
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2) ! level below and above obs
@@ -252,7 +251,7 @@ which_vert   = nint(query_location(location))
 ! get the indices for the 4 corners of the quad in the horizontal, plus
 ! the fraction across the quad for the obs location
 call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
-                         four_ilons, four_ilats, lon_fract, lat_fract, locate_status)
+                         four_ilons, four_ilats, locate_status)
 
 if (locate_status /= 0) then
   istatus(:) = QUAD_LOCATE_FAILED
@@ -299,11 +298,19 @@ do i = 1, 2
    quad_vals(4, :) = get_state(indx, state_handle)
 
    call quad_lon_lat_evaluate(interp, &
-                              lon_fract, lat_fract, &
+                              lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
+                              four_ilons, four_ilats, &
                               ens_size, &
                               quad_vals, & ! 4 corners x ens_size
                               expected(:,i), &
-                              istatus)
+                              quad_status)
+   if (quad_status /= 0) then
+      istatus(:) = QUAD_EVALUTATE_FAILED
+      return
+   else
+      istatus = 0
+   endif
+
 enddo
 
 ! Interpolate between levels
@@ -348,8 +355,7 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, kind_index=local_qty)
 
-lon = get_lon(lon_index, local_qty)
-lat = get_lat(lat_index, local_qty)
+call get_lon_lat(lon_index, lat_index, local_qty, lon, lat)
 depth = get_depth(depth_index, local_qty)
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
@@ -446,29 +452,50 @@ call nc_synchronize_file(ncid)
 end subroutine nc_write_model_atts
 
 !------------------------------------------------------------
-! Read lon, lat, vertical from mom6 template file
-subroutine read_grid()
+! Read lon, lat for T,U,V grids from mom6 static file
+subroutine read_horizontal_grid()
+
+integer :: ncid
+integer :: nxy(2) ! (nx,ny)
+
+character(len=*), parameter :: routine = 'read_horizontal_grid'
+
+ncid = nc_open_file_readonly(static_file)
+
+call nc_get_variable_size(ncid, 'geolon', nxy)
+nx = nxy(1)
+ny = nxy(2)
+allocate(geolon(nx,ny), geolat(nx,ny))      ! T grid
+allocate(geolon_u(nx,ny), geolat_u(nx,ny))  ! U grid
+allocate(geolon_v(nx,ny), geolat_v(nx,ny))  ! V grid
+
+call nc_get_variable(ncid, 'geolon', geolon, routine)
+call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
+call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
+
+call nc_get_variable(ncid, 'geolat', geolat, routine)
+call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
+call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
+
+
+! mom6 example file has -ve longitude
+! DART uses [0,360]
+!where(lonh < 0 ) lonh = lonh + 360.0_r8
+!where(lonq < 0 ) lonq = lonq + 360.0_r8
+
+call nc_close_file(ncid)
+
+end subroutine read_horizontal_grid
+
+!------------------------------------------------------------
+! HK @todo the verical is different across the ensemble
+subroutine read_vertical()
 
 integer :: ncid
 
-character(len=*), parameter :: routine = 'read_grid'
+character(len=*), parameter :: routine = 'read_vertical'
 
 ncid = nc_open_file_readonly(template_file)
-
-call nc_get_variable_size(ncid, 'lonh', nx)
-allocate(lonh(nx), lonq(nx))
-call nc_get_variable(ncid, 'lonh', lonh, routine)
-call nc_get_variable(ncid, 'lonq', lonq, routine)
-! mom6 example file has -ve longitude
-! DART uses [0,360]
-where(lonh < 0 ) lonh = lonh + 360.0_r8
-where(lonq < 0 ) lonq = lonq + 360.0_r8
-
-
-call nc_get_variable_size(ncid, 'lath', ny)
-allocate(lath(ny), latq(ny))
-call nc_get_variable(ncid, 'lath', lath, routine)
-call nc_get_variable(ncid, 'latq', latq, routine)
 
 call nc_get_variable_size(ncid, 'Layer', nz)
 allocate(layer(nz), interf(nz+1))
@@ -477,7 +504,7 @@ call nc_get_variable(ncid, 'Interface', interf, routine) ! Interface pseudo-dept
 
 call nc_close_file(ncid)
 
-end subroutine read_grid
+end subroutine read_vertical
 
 !------------------------------------------------------------
 ! ocean_geom are 2D state sized static data
@@ -550,34 +577,24 @@ on_basin_edge = .false.
 end function on_basin_edge
 
 !------------------------------------------------------------
-! longitude value from index
-function get_lon(indx, qty)
+! longitude and latitide values from indices
+subroutine get_lon_lat(lon_indx, lat_indx, qty, lon, lat)
 
-integer, intent(in) :: indx, qty
-real(r8) :: get_lon
+integer, intent(in) :: lon_indx, lat_indx, qty
+real(r8) :: lon, lat
 
 if (on_u_grid(qty)) then
-   get_lon = lonq(indx)  ! only u current on lonq
-else
-   get_lon = lonh(indx)
+   lon = geolon_u(lon_indx, lat_indx)
+   lat = geolat_u(lon_indx, lat_indx)
+elseif (on_v_grid(qty)) then
+   lon = geolon_v(lon_indx, lat_indx)
+   lat = geolat_v(lon_indx, lat_indx)
+else ! T grid
+   lon = geolon(lon_indx, lat_indx)
+   lat = geolat(lon_indx, lat_indx)
 endif
 
-end function get_lon
-
-!------------------------------------------------------------
-! latitude value from index
-function get_lat(indx, qty)
-
-integer, intent(in) :: indx, qty
-real(r8) :: get_lat
-
-if (on_v_grid(qty)) then ! only v current on latq
-   get_lat = latq(indx)
-else !on q grid
-   get_lat = lath(indx)
-endif
-
-end function get_lat
+end subroutine get_lon_lat
 
 !------------------------------------------------------------
 ! depth value from index
@@ -595,11 +612,6 @@ endif
 end function get_depth
 
 !------------------------------------------------------------
-! Salt h
-! Temp h
-! u lath, lonq
-! v latq, lonh
-!----------------------------------------------------------
 function on_v_grid(qty)
 
 integer, intent(in)  :: qty
@@ -633,7 +645,7 @@ function on_t_grid(qty)
 integer, intent(in)  :: qty
 logical :: on_t_grid
 
-if (qty == QTY_U_CURRENT_COMPONENT .or. QTY_V_CURRENT_COMPONENT) then
+if (qty == QTY_U_CURRENT_COMPONENT .or. qty == QTY_V_CURRENT_COMPONENT) then
   on_t_grid = .false.
 else
   on_t_grid = .true.
@@ -658,27 +670,27 @@ end function on_layer
 subroutine setup_interpolation()
 
 
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_v_grid)
 
-call set_quad_coords(interp_v_grid, lonq, lath)
+call set_quad_coords(interp_v_grid, geolon_v, geolat_v)
 
 
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_u_grid)
 
-call set_quad_coords(interp_u_grid, lonh, latq)
+call set_quad_coords(interp_u_grid, geolon_u, geolat_u)
 
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_t_grid)
 
-call set_quad_coords(interp_t_grid, lonh, lath)
+call set_quad_coords(interp_t_grid, geolon, geolat)
 
 
 end subroutine setup_interpolation
