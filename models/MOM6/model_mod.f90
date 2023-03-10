@@ -17,7 +17,7 @@ use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
                              loc_get_close_state => get_close_state, &
                              set_location, set_location_missing, &
-                             get_location, query_location, VERTISHEIGHT
+                             get_location, query_location, VERTISLEVEL
 
 use    utilities_mod, only : error_handler, &
                              E_ERR, E_MSG, &
@@ -57,7 +57,7 @@ use ensemble_manager_mod, only : ensemble_type
 use default_model_mod, only : pert_model_copies, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
-                              convert_vertical_obs, convert_vertical_state, adv_1step
+                              convert_vertical_obs, adv_1step
 
 implicit none
 private
@@ -97,9 +97,6 @@ type(quad_interp_handle) :: interp_t_grid, interp_u_grid, interp_v_grid
 
 ! Ocean vs land
 real(r8), allocatable :: wet(:,:), basin_depth(:,:)
-
-! Ocean veritcal
-real(r8), allocatable :: layer(:), interf(:)
 
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 10
@@ -183,9 +180,7 @@ model_size = get_domain_size(dom_id)
 call read_horizontal_grid()
 call setup_interpolation()
 
-call read_vertical()
-
-call read_ocean_geometry()
+call read_ocean_geometry() ! ocean vs. land and basin depth
 
 end subroutine static_init_model
 
@@ -228,7 +223,7 @@ real(r8) :: expected(ens_size, 2) ! level below and above obs
 type(quad_interp_handle) :: interp
 integer :: varid, i
 integer(i8) :: indx
-integer :: lev(2) ! level bounds
+integer :: lev(2) ! level bounds: top, bottom
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -272,7 +267,7 @@ if (locate_status /= 0) then
   return
 endif
 
-if (on_basin_edge(four_ilons, four_ilats, lev)) then
+if (on_basin_edge(four_ilons, four_ilats, lev(2))) then
    istatus(:) = QUAD_ON_BASIN_EDGE
    return
 endif
@@ -348,23 +343,36 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
-real(r8) :: lat, lon, depth
-integer :: lon_index, lat_index, depth_index, local_qty
+real(r8) :: lat, lon
+integer :: lon_index, lat_index, level, local_qty
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, kind_index=local_qty)
+call get_model_variable_indices(index_in, lon_index, lat_index, level, kind_index=local_qty)
 
 call get_lon_lat(lon_index, lat_index, local_qty, lon, lat)
-depth = get_depth(depth_index, local_qty)
 
-location = set_location(lon, lat, depth, VERTISHEIGHT)
+location = set_location(lon, lat, real(level,r8), VERTISLEVEL)
 
 if (present(qty)) qty = local_qty
 
 end subroutine get_state_meta_data
 
+!------------------------------------------------------------------
+subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
+which_vert, istatus)
 
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+istatus = 1 ! fail for testing
+
+end subroutine convert_vertical_state
 !------------------------------------------------------------------
 ! Any model specific distance calcualtion can be done here
 subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
@@ -488,25 +496,6 @@ call nc_close_file(ncid)
 end subroutine read_horizontal_grid
 
 !------------------------------------------------------------
-! HK @todo the verical is different across the ensemble
-subroutine read_vertical()
-
-integer :: ncid
-
-character(len=*), parameter :: routine = 'read_vertical'
-
-ncid = nc_open_file_readonly(template_file)
-
-call nc_get_variable_size(ncid, 'Layer', nz)
-allocate(layer(nz), interf(nz+1))
-call nc_get_variable(ncid, 'Layer', layer, routine) ! Layer pseudo-depth
-call nc_get_variable(ncid, 'Interface', interf, routine) ! Interface pseudo-depth
-
-call nc_close_file(ncid)
-
-end subroutine read_vertical
-
-!------------------------------------------------------------
 ! ocean_geom are 2D state sized static data
 ! HK Do these arrays become too big in high res cases?
 subroutine read_ocean_geometry()
@@ -552,12 +541,16 @@ end function on_land
 ! basin_depth is a 2D array with the basin depth
 function on_basin_edge(ilon, ilat, lev)
 
-! indices into lon, lat, lev
-integer, intent(in) :: ilon(4), ilat(4), lev(2)
+! indices into lon, lat lev
+integer, intent(in) :: ilon(4), ilat(4), lev
 logical :: on_basin_edge
 
 integer  :: i
 real(r8) :: d(4) ! basin depth at each corner
+real(r8) :: blev ! depth at bottom level
+
+blev = -1 ! always fail for testing
+
 
 d(1) = basin_depth(ilon(1), ilat(1))
 d(2) = basin_depth(ilon(1), ilat(2))
@@ -565,7 +558,7 @@ d(3) = basin_depth(ilon(2), ilat(1))
 d(4) = basin_depth(ilon(2), ilat(2))
 
 do i = 1, 4
-  if (d(i) < Layer(lev(1)) .or. d(i) < Layer(lev(2))) then
+  if (d(i) < blev) then
      on_basin_edge = .true.
      return
   endif
@@ -595,21 +588,6 @@ else ! T grid
 endif
 
 end subroutine get_lon_lat
-
-!------------------------------------------------------------
-! depth value from index
-function get_depth(indx, qty)
-
-integer, intent(in) :: indx, qty
-real(r8) :: get_depth
-
-if (on_layer(qty)) then
-   get_depth = layer(indx)
-else
-   get_depth = interf(indx)
-endif
-
-end function get_depth
 
 !------------------------------------------------------------
 function on_v_grid(qty)
@@ -822,6 +800,9 @@ real(r8), intent(out) :: lev_fract
 integer,  intent(out) :: istatus
 
 integer :: i
+real(r8) :: interf(nz)
+
+
 
 ! HK assert(which_vert == height meters) ?
 

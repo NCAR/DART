@@ -132,6 +132,7 @@
                                   'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
                                   'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
                                   'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
+                                  'h    ', 'QTY_LAYER_THICKNESS      ', 'UPDATE',
    /
 
 &utilities_nml
