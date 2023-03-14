@@ -4,8 +4,8 @@
 !
 
 ! @todo
-!   layer thickness - this is per ensemble member?
 !   QUAD_LOCATED_CELL_CENTERS - what difference does this make?
+!   t_grid interp for thickess locate and evaluate
 
 module model_mod
 
@@ -259,7 +259,6 @@ which_vert   = nint(query_location(location))
 ! get the indices for the 4 corners of the quad in the horizontal
 call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
                          four_ilons, four_ilats, locate_status)
-
 if (locate_status /= 0) then
   istatus(:) = QUAD_LOCATE_FAILED
   return
