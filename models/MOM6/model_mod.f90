@@ -46,7 +46,7 @@ use state_structure_mod, only : add_domain, get_domain_size, &
 use distributed_state_mod, only : get_state
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
-                         QTY_V_CURRENT_COMPONENT
+                         QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -89,11 +89,14 @@ type(time_type) :: assimilation_time_step
 integer :: dom_id ! used to access the state structure
 integer(i8) :: model_size
 integer :: nfields ! number of fields in the state vector
-! Grid parameters
-! nx, ny and nz are the size of the dipole (or irregular) grids.
+! Grid parameters, nz is number of layers
 integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
-real(r8), allocatable :: geolon(:,:), geolat(:,:), geolon_u(:,:), geolat_u(:,:), geolon_v(:,:), geolat_v(:,:)
-type(quad_interp_handle) :: interp_t_grid, interp_u_grid, interp_v_grid
+real(r8), allocatable :: geolon(:,:), geolat(:,:),     & ! T
+                         geolon_u(:,:), geolat_u(:,:), & ! U
+                         geolon_v(:,:), geolat_v(:,:)    ! V
+type(quad_interp_handle) :: interp_t_grid,  &
+                            interp_u_grid,  &
+                            interp_v_grid
 
 ! Ocean vs land
 real(r8), allocatable :: wet(:,:), basin_depth(:,:)
@@ -104,9 +107,11 @@ integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
 
 ! model_interpolate failure codes
 integer, parameter :: NOT_IN_STATE = 12
+integer, parameter :: THICKNESS_NOT_IN_STATE = 13
 integer, parameter :: QUAD_LOCATE_FAILED = 14
-integer, parameter :: QUAD_EVALUTATE_FAILED = 15
-integer, parameter :: QUAD_ON_LAND = 16
+integer, parameter :: THICKNESS_QUAD_EVALUTATE_FAILED = 15
+integer, parameter :: QUAD_EVALUTATE_FAILED = 16
+integer, parameter :: QUAD_ON_LAND = 17
 integer, parameter :: QUAD_ON_BASIN_EDGE = 18
 integer, parameter :: OBS_ABOVE_SURFACE = 20
 integer, parameter :: OBS_TOO_DEEP = 22
@@ -120,7 +125,7 @@ integer  :: assimilation_period_days      = -1
 integer  :: assimilation_period_seconds   = -1
 character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
 
-namelist /model_nml/ template_file, ocean_geometry, assimilation_period_days, &
+namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables
 
 contains
@@ -180,6 +185,7 @@ model_size = get_domain_size(dom_id)
 call read_horizontal_grid()
 call setup_interpolation()
 
+call read_num_layers()
 call read_ocean_geometry() ! ocean vs. land and basin depth
 
 end subroutine static_init_model
@@ -214,16 +220,17 @@ integer,             intent(in) :: qty
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
-integer  :: which_vert, four_ilons(4), four_ilats(4)
+integer  :: which_vert, four_ilons(4), four_ilats(4), lev(2)
 integer  :: locate_status, quad_status
 real(r8) :: lev_fract
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2) ! level below and above obs
 type(quad_interp_handle) :: interp
-integer :: varid, i
+integer :: varid, i, thick_id
 integer(i8) :: indx
-integer :: lev(2) ! level bounds: top, bottom
+real(r8) :: depth_at_x(ens_size), thick_at_x(ens_size) ! depth, layer thickness at obs lat lon
+
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -236,6 +243,12 @@ if (varid < 0) then ! not in state
    return
 endif
 
+thick_id = get_varid_from_kind(dom_id, QTY_LAYER_THICKNESS)
+if (thick_id < 0) then ! thickness not in state
+   istatus = THICKNESS_NOT_IN_STATE
+   return ! HK else use pseudo depth?
+endif
+
 ! find which grid the qty is on
 interp = get_interp_handle(qty)
 
@@ -243,8 +256,7 @@ interp = get_interp_handle(qty)
 lon_lat_vert = get_location(location)
 which_vert   = nint(query_location(location))
 
-! get the indices for the 4 corners of the quad in the horizontal, plus
-! the fraction across the quad for the obs location
+! get the indices for the 4 corners of the quad in the horizontal
 call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
                          four_ilons, four_ilats, locate_status)
 
@@ -259,20 +271,54 @@ if (on_land(four_ilons, four_ilats)) then
    return
 endif
 
-! find levels
-! Get the bounding vertical levels and the fraction between bottom and top
-call find_level_bounds(lon_lat_vert(3), which_vert, lev, lev_fract, locate_status)
-if (locate_status /= 0) then
-  istatus(:) = locate_status
-  return
-endif
+! find which layer the observation is in. Layer thickness is a state variable
+! HK @todo Do you need to use t_grid interp for thickess four_ilons, four_ilats?
+depth_at_x(:) = 0
+FIND_LAYER: do i = 2, nz
 
-if (on_basin_edge(four_ilons, four_ilats, lev(2))) then
+   ! corner1
+   indx = get_dart_vector_index(four_ilons(1), four_ilats(1), i, dom_id, thick_id)
+   quad_vals(1, :) = get_state(indx, state_handle)
+   
+   ! corner2
+   indx = get_dart_vector_index(four_ilons(1), four_ilats(2), i, dom_id, thick_id)
+   quad_vals(2, :) = get_state(indx, state_handle)
+   
+   ! corner3
+   indx = get_dart_vector_index(four_ilons(2), four_ilats(1), i, dom_id, thick_id)
+   quad_vals(3, :) = get_state(indx, state_handle)
+   
+   ! corner4
+   indx = get_dart_vector_index(four_ilons(2), four_ilats(2), i, dom_id, thick_id)
+   quad_vals(4, :) = get_state(indx, state_handle)
+   
+   call quad_lon_lat_evaluate(interp, &
+                              lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
+                              four_ilons, four_ilats, &
+                              ens_size, &
+                              quad_vals, & ! 4 corners x ens_size
+                              thick_at_x, &
+                              quad_status)
+   if (quad_status /= 0) then
+      istatus(:) = THICKNESS_QUAD_EVALUTATE_FAILED
+      return
+   endif
+
+   depth_at_x = depth_at_x + thick_at_x
+
+   if (lon_lat_vert(3) < depth_at_x(1)) then !HK @todo depth_at_x is ens_size
+      lev(1) = i ! layer_below
+      lev(2) = i-1 ! layer_above
+      lev_fract = (depth_at_x(1) - lon_lat_vert(3)) / thick_at_x(1)
+      exit FIND_LAYER
+   endif
+
+enddo FIND_LAYER
+
+if (on_basin_edge(four_ilons, four_ilats, depth_at_x(1))) then
    istatus(:) = QUAD_ON_BASIN_EDGE
    return
 endif
-
-! get values of state at four corners
 
 do i = 1, 2
    !HK which corner of the quad is which?
@@ -371,6 +417,9 @@ integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
 
 istatus = 1 ! fail for testing
+
+
+
 
 end subroutine convert_vertical_state
 !------------------------------------------------------------------
@@ -485,16 +534,25 @@ call nc_get_variable(ncid, 'geolat', geolat, routine)
 call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
 call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
 
-
-! mom6 example file has -ve longitude
-! DART uses [0,360]
-!where(lonh < 0 ) lonh = lonh + 360.0_r8
-!where(lonq < 0 ) lonq = lonq + 360.0_r8
-
 call nc_close_file(ncid)
 
 end subroutine read_horizontal_grid
 
+!------------------------------------------------------------
+! Read number of vertical layers from mom6 template file
+subroutine read_num_layers()
+
+integer :: ncid
+
+character(len=*), parameter :: routine = 'read_num_layers'
+
+ncid = nc_open_file_readonly(template_file)
+
+call nc_get_variable_size(ncid, 'Layer', nz)
+
+call nc_close_file(ncid)
+
+end subroutine read_num_layers
 !------------------------------------------------------------
 ! ocean_geom are 2D state sized static data
 ! HK Do these arrays become too big in high res cases?
@@ -539,18 +597,15 @@ end function on_land
 
 !------------------------------------------------------------
 ! basin_depth is a 2D array with the basin depth
-function on_basin_edge(ilon, ilat, lev)
+function on_basin_edge(ilon, ilat, depth)
 
 ! indices into lon, lat lev
-integer, intent(in) :: ilon(4), ilat(4), lev
+integer, intent(in)  :: ilon(4), ilat(4)
+real(r8), intent(in) :: depth
 logical :: on_basin_edge
 
 integer  :: i
 real(r8) :: d(4) ! basin depth at each corner
-real(r8) :: blev ! depth at bottom level
-
-blev = -1 ! always fail for testing
-
 
 d(1) = basin_depth(ilon(1), ilat(1))
 d(2) = basin_depth(ilon(1), ilat(2))
@@ -558,7 +613,7 @@ d(3) = basin_depth(ilon(2), ilat(1))
 d(4) = basin_depth(ilon(2), ilat(2))
 
 do i = 1, 4
-  if (d(i) < blev) then
+  if (d(i) < depth) then
      on_basin_edge = .true.
      return
   endif
@@ -643,26 +698,9 @@ on_layer = .true.
 end function on_layer
 
 !------------------------------------------------------------
-! 1D arrays vs 2D arrays
-! HK what grids do we have to deal with?
 subroutine setup_interpolation()
 
-
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
-                      QUAD_LOCATED_CELL_CENTERS, &
-                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_v_grid)
-
-call set_quad_coords(interp_v_grid, geolon_v, geolat_v)
-
-
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
-                      QUAD_LOCATED_CELL_CENTERS, &
-                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
-                      interp_handle=interp_u_grid)
-
-call set_quad_coords(interp_u_grid, geolon_u, geolat_u)
-
+! T
 call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
@@ -670,6 +708,22 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
 
 call set_quad_coords(interp_t_grid, geolon, geolat)
 
+! U
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
+                      QUAD_LOCATED_CELL_CENTERS, &
+                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
+                      interp_handle=interp_u_grid)
+
+call set_quad_coords(interp_u_grid, geolon_u, geolat_u)
+
+
+! V
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
+                      QUAD_LOCATED_CELL_CENTERS, &
+                      global=.true., spans_lon_zero=.true., pole_wrap=.true., &
+                      interp_handle=interp_v_grid)
+
+call set_quad_coords(interp_v_grid, geolon_v, geolat_v)
 
 end subroutine setup_interpolation
 
@@ -782,49 +836,6 @@ read_model_time = set_time(0,int(days))
 
 end function read_model_time
 
-!--------------------------------------------------------------------
-!                  Surface
-!                    --- 0 i=1  Interface pseudo-depth
-! Layer pseudo-depth  .
-!                    --- 1 i=2
-!                     .
-!                    --- 1 i=3
-!
-
-subroutine find_level_bounds(vert_loc, which_vert, lev, lev_fract, istatus)
-
-real(r8), intent(in) :: vert_loc   ! observation location
-integer,  intent(in) :: which_vert ! obs vertical coordinate
-integer,  intent(out) :: lev(2)    ! bottom, top
-real(r8), intent(out) :: lev_fract
-integer,  intent(out) :: istatus
-
-integer :: i
-real(r8) :: interf(nz)
-
-
-
-! HK assert(which_vert == height meters) ?
-
-if (vert_loc < interf(1)) then
-  istatus = OBS_ABOVE_SURFACE
-  return
-endif
-
-do i = 2, nz+1
-   if(vert_loc < interf(i)) then
-      lev(1) = i   ! bottom
-      lev(2) = i-1 ! top
-
-      lev_fract = (interf(lev(1)) - vert_loc) / (interf(lev(2)) - interf(lev(1)))
-      istatus = 0
-      return
-   endif
-enddo
-
-istatus = OBS_TOO_DEEP
-
-end subroutine find_level_bounds
 
 !===================================================================
 ! End of model_mod
