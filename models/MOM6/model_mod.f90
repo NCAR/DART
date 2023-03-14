@@ -43,7 +43,7 @@ use state_structure_mod, only : add_domain, get_domain_size, &
                                 get_kind_string, get_varid_from_kind, &
                                 get_dart_vector_index
 
-use distributed_state_mod, only : get_state
+use distributed_state_mod, only : get_state, get_state_array
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
                          QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS
@@ -220,17 +220,17 @@ integer,             intent(in) :: qty
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
-integer  :: which_vert, four_ilons(4), four_ilats(4), lev(2)
+integer  :: which_vert, four_ilons(4), four_ilats(4), lev(ens_size,2)
 integer  :: locate_status, quad_status
-real(r8) :: lev_fract
+real(r8) :: lev_fract(ens_size)
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2) ! level below and above obs
 type(quad_interp_handle) :: interp
-integer :: varid, i, thick_id
-integer(i8) :: indx
+integer :: varid, i, e, thick_id
+integer(i8) :: th_indx, indx(ens_size)
 real(r8) :: depth_at_x(ens_size), thick_at_x(ens_size) ! depth, layer thickness at obs lat lon
-
+logical :: found(ens_size)
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -271,26 +271,27 @@ if (on_land(four_ilons, four_ilats)) then
    return
 endif
 
-! find which layer the observation is in. Layer thickness is a state variable
+! find which layer the observation is in. Layer thickness is a state variable.
 ! HK @todo Do you need to use t_grid interp for thickess four_ilons, four_ilats?
+found(:) = .false.
 depth_at_x(:) = 0
 FIND_LAYER: do i = 2, nz
 
    ! corner1
-   indx = get_dart_vector_index(four_ilons(1), four_ilats(1), i, dom_id, thick_id)
-   quad_vals(1, :) = get_state(indx, state_handle)
+   th_indx = get_dart_vector_index(four_ilons(1), four_ilats(1), i, dom_id, thick_id)
+   quad_vals(1, :) = get_state(th_indx, state_handle)
    
    ! corner2
-   indx = get_dart_vector_index(four_ilons(1), four_ilats(2), i, dom_id, thick_id)
-   quad_vals(2, :) = get_state(indx, state_handle)
+   th_indx = get_dart_vector_index(four_ilons(1), four_ilats(2), i, dom_id, thick_id)
+   quad_vals(2, :) = get_state(th_indx, state_handle)
    
    ! corner3
-   indx = get_dart_vector_index(four_ilons(2), four_ilats(1), i, dom_id, thick_id)
-   quad_vals(3, :) = get_state(indx, state_handle)
+   th_indx = get_dart_vector_index(four_ilons(2), four_ilats(1), i, dom_id, thick_id)
+   quad_vals(3, :) = get_state(th_indx, state_handle)
    
    ! corner4
-   indx = get_dart_vector_index(four_ilons(2), four_ilats(2), i, dom_id, thick_id)
-   quad_vals(4, :) = get_state(indx, state_handle)
+   th_indx = get_dart_vector_index(four_ilons(2), four_ilats(2), i, dom_id, thick_id)
+   quad_vals(4, :) = get_state(th_indx, state_handle)
    
    call quad_lon_lat_evaluate(interp, &
                               lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
@@ -306,37 +307,48 @@ FIND_LAYER: do i = 2, nz
 
    depth_at_x = depth_at_x + thick_at_x
 
-   if (lon_lat_vert(3) < depth_at_x(1)) then !HK @todo depth_at_x is ens_size
-      lev(1) = i ! layer_below
-      lev(2) = i-1 ! layer_above
-      lev_fract = (depth_at_x(1) - lon_lat_vert(3)) / thick_at_x(1)
-      exit FIND_LAYER
-   endif
+   do e = 1, ens_size
+      if (lon_lat_vert(3) < depth_at_x(e)) then
+         lev(e,1) = i ! layer_below
+         lev(e,2) = i-1 ! layer_above
+         lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
+         found(e) = .true.
+         if (all(found)) exit FIND_LAYER
+      endif
+   enddo
 
 enddo FIND_LAYER
 
-if (on_basin_edge(four_ilons, four_ilats, depth_at_x(1))) then
+if (on_basin_edge(four_ilons, four_ilats, ens_size, depth_at_x)) then
    istatus(:) = QUAD_ON_BASIN_EDGE
    return
 endif
 
-do i = 1, 2
+do i = 1, 2 
    !HK which corner of the quad is which?
    ! corner1
-   indx = get_dart_vector_index(four_ilons(1), four_ilats(1), lev(i), dom_id, varid)
-   quad_vals(1, :) = get_state(indx, state_handle)
+   do e = 1, ens_size
+      indx(e) = get_dart_vector_index(four_ilons(1), four_ilats(1), lev(e, i), dom_id, varid)
+   enddo
+   call get_state_array(quad_vals(1, :), indx, state_handle)
 
    ! corner2
-   indx = get_dart_vector_index(four_ilons(1), four_ilats(2), lev(i), dom_id, varid)
-   quad_vals(2, :) = get_state(indx, state_handle)
+   do e = 1, ens_size
+      indx(e) = get_dart_vector_index(four_ilons(1), four_ilats(2), lev(e, i), dom_id, varid)
+   enddo
+   call get_state_array(quad_vals(2, :), indx, state_handle)
 
    ! corner3
-   indx = get_dart_vector_index(four_ilons(2), four_ilats(1), lev(i), dom_id, varid)
-   quad_vals(3, :) = get_state(indx, state_handle)
+   do e = 1, ens_size
+      indx(e) = get_dart_vector_index(four_ilons(2), four_ilats(1), lev(e, i), dom_id, varid)
+   enddo
+   call get_state_array(quad_vals(3, :), indx, state_handle)
 
    ! corner4
-   indx = get_dart_vector_index(four_ilons(2), four_ilats(2), lev(i), dom_id, varid)
-   quad_vals(4, :) = get_state(indx, state_handle)
+   do e = 1, ens_size
+      indx(e) = get_dart_vector_index(four_ilons(2), four_ilats(2), lev(e, i), dom_id, varid)
+   enddo
+   call get_state_array(quad_vals(4, :), indx, state_handle)
 
    call quad_lon_lat_evaluate(interp, &
                               lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
@@ -356,7 +368,7 @@ enddo
 
 ! Interpolate between levels
 ! expected_obs = bot_val + lev_fract * (top_val - bot_val)
-expected_obs = expected(:,1) + lev_fract * (expected(:,2) - expected(:,1))
+expected_obs = expected(:,1) + lev_fract(:) * (expected(:,2) - expected(:,1))
 
 end subroutine model_interpolate
 
@@ -597,14 +609,15 @@ end function on_land
 
 !------------------------------------------------------------
 ! basin_depth is a 2D array with the basin depth
-function on_basin_edge(ilon, ilat, depth)
+function on_basin_edge(ilon, ilat, ens_size, depth)
 
 ! indices into lon, lat lev
 integer, intent(in)  :: ilon(4), ilat(4)
-real(r8), intent(in) :: depth
+integer, intent(in)  :: ens_size
+real(r8), intent(in) :: depth(ens_size)
 logical :: on_basin_edge
 
-integer  :: i
+integer  :: i, e
 real(r8) :: d(4) ! basin depth at each corner
 
 d(1) = basin_depth(ilon(1), ilat(1))
@@ -612,11 +625,13 @@ d(2) = basin_depth(ilon(1), ilat(2))
 d(3) = basin_depth(ilon(2), ilat(1))
 d(4) = basin_depth(ilon(2), ilat(2))
 
-do i = 1, 4
-  if (d(i) < depth) then
-     on_basin_edge = .true.
-     return
-  endif
+do e = 1, ens_size
+   do i = 1, 4
+      if (d(i) < depth(e)) then
+         on_basin_edge = .true.
+         return
+      endif
+   enddo
 enddo
 
 ! four points are in the ocean
