@@ -565,6 +565,13 @@ call nc_get_variable(ncid, 'geolon', geolon, routine)
 call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
 call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
 
+
+! mom6 example file has longitude > 360
+! DART uses [0,360]
+where(geolon > 360.0_r8 )   geolon   = geolon   - 360.0_r8
+where(geolon_u > 360.0_r8 ) geolon_u = geolon_u - 360.0_r8
+where(geolon_v > 360.0_r8 ) geolon_v = geolon_v - 360.0_r8
+
 call nc_get_variable(ncid, 'geolat', geolat, routine)
 call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
 call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
