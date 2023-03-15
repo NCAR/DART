@@ -17,7 +17,8 @@ use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
                              loc_get_close_state => get_close_state, &
                              set_location, set_location_missing, &
-                             get_location, query_location, VERTISLEVEL
+                             get_location, query_location, VERTISLEVEL, &
+                             VERTISHEIGHT, set_vertical
 
 use    utilities_mod, only : error_handler, &
                              E_ERR, E_MSG, &
@@ -421,16 +422,39 @@ which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
 integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
+type(location_type), intent(inout) :: locs(num) !locations
+integer,             intent(in)    :: loc_qtys(num) !qty at location
+integer(i8),         intent(in)    :: loc_indx(num) !state index
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
 
-istatus = 1 ! fail for testing
+integer :: i,j,k
+integer :: ii, layer ! loop variables
+integer :: thick_id
+integer(i8) :: indx
+real(r8) :: depth(1)
 
+! assert(which_vert == VERTISHEIGHT)
 
+thick_id = get_varid_from_kind(dom_id, QTY_LAYER_THICKNESS)
+if (thick_id < 0) then
+   istatus = THICKNESS_NOT_IN_STATE
+   return
+endif
 
+do ii = 1, num
+   call get_model_variable_indices(loc_indx(ii), i, j, k)
+
+   depth = 0.0_r8
+   do layer = 1, k
+      indx = get_dart_vector_index(i, j, layer, dom_id, thick_id)
+      depth = depth + get_state(indx, state_handle)
+   enddo
+
+   call set_vertical(locs(ii), depth(1), VERTISHEIGHT)
+enddo
+
+istatus = 0
 
 end subroutine convert_vertical_state
 !------------------------------------------------------------------
