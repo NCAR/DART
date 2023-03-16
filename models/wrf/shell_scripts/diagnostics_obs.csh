@@ -57,7 +57,7 @@
      set datef = `echo $datef $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
 
   end
-  ls -1 obs_seq.final_* >! flist
+  readlink -f obs_seq.final_* >! flist
 
   cat >! script.sed << EOF
   /obs_sequence_name/c\
