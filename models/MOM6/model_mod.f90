@@ -519,15 +519,25 @@ type(ensemble_type), optional, intent(in)    :: ens_handle
 
 character(len=*), parameter :: routine = 'get_close_state'
 
-integer :: i
+integer :: ii ! loop index
+integer :: i, j, k
+real(r8) :: lon_lat_vert(3)
 
 call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                             num_close, close_ind, dist, ens_handle)
 
 if (.not. present(dist)) return
 
-do i = 1, num_close
-  if(loc_qtys(close_ind(i)) == QTY_DRY_LAND) dist = 1.0e9_r8
+! Put any land or sea floor points very far away
+! so they are not updated by assimilation
+do ii = 1, num_close
+
+  if(loc_qtys(close_ind(ii)) == QTY_DRY_LAND) dist = 1.0e9_r8
+
+  lon_lat_vert = get_location(locs(close_ind(ii))) ! assuming VERTISHEIGHT
+  call get_model_variable_indices(loc_indx(ii), i, j, k)
+  if ( below_sea_floor(i,j,lon_lat_vert(3)) ) dist = 1.0e9_r8
+
 enddo
 
 end subroutine get_close_state
@@ -712,6 +722,22 @@ enddo
 on_basin_edge = .false.
 
 end function on_basin_edge
+
+!------------------------------------------------------------
+function below_sea_floor(ilon, ilat, depth)
+
+! indices into lon, lat lev
+integer,  intent(in) :: ilon, ilat
+real(r8), intent(in) :: depth
+logical :: below_sea_floor
+
+if (basin_depth(ilon, ilat) < depth) then
+   below_sea_floor = .true.
+else
+   below_sea_floor = .false.
+endif
+
+end function below_sea_floor
 
 !------------------------------------------------------------
 ! longitude and latitide values from indices
