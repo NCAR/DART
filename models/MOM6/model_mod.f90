@@ -4,8 +4,9 @@
 !
 
 ! @todo
-!   QUAD_LOCATED_CELL_CENTERS - what difference does this make?
-!   t_grid interp for thickess locate and evaluate
+!   * QUAD_LOCATED_CELL_CENTERS - what difference does this make?
+!   * t_grid interp for thickess locate and evaluate
+!   * vertical location for QTY_DRY_LAND
 
 module model_mod
 
@@ -47,7 +48,8 @@ use state_structure_mod, only : add_domain, get_domain_size, &
 use distributed_state_mod, only : get_state, get_state_array
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
-                         QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS
+                         QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS, &
+                         QTY_DRY_LAND
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -128,6 +130,12 @@ character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLES * N
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables
+
+
+interface on_land
+   module procedure on_land_point
+   module procedure on_land_quad
+end interface on_land
 
 contains
 
@@ -412,7 +420,11 @@ call get_lon_lat(lon_index, lat_index, local_qty, lon, lat)
 
 location = set_location(lon, lat, real(level,r8), VERTISLEVEL)
 
-if (present(qty)) qty = local_qty
+if (present(qty)) then
+   qty = local_qty
+   if (on_land(lon_index, lat_index)) qty = QTY_DRY_LAND
+endif
+
 
 end subroutine get_state_meta_data
 
@@ -443,15 +455,23 @@ if (thick_id < 0) then
 endif
 
 do ii = 1, num
-   call get_model_variable_indices(loc_indx(ii), i, j, k)
 
-   depth = 0.0_r8
-   do layer = 1, k
-      indx = get_dart_vector_index(i, j, layer, dom_id, thick_id)
-      depth = depth + get_state(indx, state_handle)
-   enddo
+   if (loc_qtys(ii) == QTY_DRY_LAND) then
+      call set_vertical(locs(ii), 0.0_r8, VERTISHEIGHT)
+   else
 
-   call set_vertical(locs(ii), depth(1), VERTISHEIGHT)
+      call get_model_variable_indices(loc_indx(ii), i, j, k)
+
+      depth = 0.0_r8
+      do layer = 1, k
+         indx = get_dart_vector_index(i, j, layer, dom_id, thick_id)
+         depth = depth + get_state(indx, state_handle)
+      enddo
+
+      call set_vertical(locs(ii), depth(1), VERTISHEIGHT)
+
+   endif
+
 enddo
 
 istatus = 0
@@ -621,21 +641,39 @@ end subroutine read_ocean_geometry
 ! wet is a 2D array of ones and zeros
 ! 1 is ocean
 ! 0 is land
-function on_land(ilon, ilat)
+function on_land_quad(ilon, ilat)
 
 integer :: ilon(4), ilat(4) ! these are indices into lon, lat
-logical ::  on_land
+logical ::  on_land_quad
 
 if ( wet(ilon(1), ilat(1)) + &
      wet(ilon(1), ilat(2)) + &
      wet(ilon(2), ilat(1)) + &
      wet(ilon(2), ilat(2))  < 4) then
-   on_land = .true.
+   on_land_quad = .true.
 else
-   on_land = .false.
+   on_land_quad = .false.
 endif
 
-end function on_land
+end function on_land_quad
+
+!------------------------------------------------------------
+function on_land_point(ilon, ilat)
+
+integer :: ilon, ilat ! these are indices into lon, lat
+logical :: on_land_point
+
+if ( wet(ilon, ilat) + &
+     wet(ilon, ilat) + &
+     wet(ilon, ilat) + &
+     wet(ilon, ilat)  < 4) then
+   on_land_point = .true.
+else
+   on_land_point = .false.
+endif
+
+
+end function on_land_point
 
 !------------------------------------------------------------
 ! basin_depth is a 2D array with the basin depth
