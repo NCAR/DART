@@ -519,10 +519,16 @@ type(ensemble_type), optional, intent(in)    :: ens_handle
 
 character(len=*), parameter :: routine = 'get_close_state'
 
+integer :: i
 
 call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                             num_close, close_ind, dist, ens_handle)
 
+if (.not. present(dist)) return
+
+do i = 1, num_close
+  if(loc_qtys(close_ind(i)) == QTY_DRY_LAND) dist = 1.0e9_r8
+enddo
 
 end subroutine get_close_state
 
