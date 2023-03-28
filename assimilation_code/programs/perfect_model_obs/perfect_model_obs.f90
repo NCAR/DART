@@ -179,8 +179,9 @@ character(len=256), allocatable :: input_filelist(:), output_filelist(:), true_s
 integer :: nfilesin, nfilesout
 
 ! Storage for bounded error 
-logical :: bounded(2)
-real(r8) :: bounds(2), error_variance
+logical  :: bounded_below, bounded_above
+real(r8) :: lower_bound,   upper_bound
+real(r8) :: error_variance
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -552,32 +553,34 @@ AdvanceTime: do
 
             ! Get the information for generating error sample for this observation
             if(use_algorithm_info_mod) then
-               call obs_error_info(obs_def, error_variance, bounded, bounds)
+               call obs_error_info(obs_def, error_variance, &
+                  bounded_below, bounded_above, lower_bound, upper_bound)
             else
                ! Default is unbounded with standard error_variance
                error_variance = get_obs_def_error_variance(obs_def)
-               bounded = .false. ; bounds = 0.0_r8
+               bounded_below = .false. ; bounded_above = .false.
+               lower_bound = 0.0_r8;     upper_bound = 0.0_r8
             endif
 
             ! Capability to do a bounded normal error
-            if(bounded(1) .and. bounded(2)) then
+            if(bounded_below .and. bounded_above) then
                ! Bounds on both sides
-               obs_value(1) = bounds(1) - 1.0_r8
-               do while(obs_value(1) < bounds(1) .or. obs_value(1) > bounds(2))
+               obs_value(1) = lower_bound - 1.0_r8
+               do while(obs_value(1) < lower_bound .or. obs_value(1) > upper_bound)
                   obs_value(1) = random_gaussian(random_seq, true_obs(1), &
                      sqrt(error_variance))
                end do
-            elseif(bounded(1) .and. .not. bounded(2)) then
+            elseif(bounded_below .and. .not. bounded_above) then
                ! Bound on lower side
-               obs_value(1) = bounds(1) - 1.0_r8
-               do while(obs_value(1) < bounds(1))
+               obs_value(1) = lower_bound - 1.0_r8
+               do while(obs_value(1) < lower_bound)
                   obs_value(1) = random_gaussian(random_seq, true_obs(1), &
                      sqrt(error_variance))
                end do
-            elseif(.not. bounded(1) .and. bounded(2)) then
+            elseif(.not. bounded_below .and. bounded_above) then
                ! Bound on upper side
-               obs_value(1) = bounds(2) + 1.0_r8
-               do while(obs_value(1) > bounds(2))
+               obs_value(1) = upper_bound + 1.0_r8
+               do while(obs_value(1) > upper_bound)
                   obs_value(1) = random_gaussian(random_seq, true_obs(1), &
                      sqrt(error_variance))
                end do

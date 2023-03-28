@@ -86,8 +86,8 @@ if(obs_kind == QTY_STATE_VARIABLE) then
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
 elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
-   bounded_below = .false.;    bounded_above = .true.
-   lower_bound   = missing_r8; upper_bound   = 0.0_r8
+   bounded_below = .true.;   bounded_above = .true.
+   lower_bound   = -10.0_r8; upper_bound = 1.0_r8
 elseif(obs_kind == QTY_TRACER_SOURCE) then
    bounded_below = .false.;    bounded_above = .true.
    lower_bound   = missing_r8; upper_bound   = 0.0_r8
@@ -142,8 +142,8 @@ if(is_inflation) then
       lower_bound   = missing_r8; upper_bound   = missing_r8
    elseif(kind == QTY_TRACER_CONCENTRATION) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
-      bounded_below = .false.;    bounded_above = .true.
-      lower_bound   = missing_r8; upper_bound   = 0.0_r8
+      bounded_below = .true.;   bounded_above = .true.
+      lower_bound   = -10.0_r8; upper_bound   = 1.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded_below = .false.;    bounded_above = .true.
@@ -160,8 +160,8 @@ elseif(is_state) then
       lower_bound   = missing_r8; upper_bound   = missing_r8
    elseif(kind == QTY_TRACER_CONCENTRATION) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
-      bounded_below = .false.;    bounded_above = .true.
-      lower_bound   = missing_r8; upper_bound   = 0.0_r8
+      bounded_below = .true.;   bounded_above = .true.
+      lower_bound   = -10.0_r8; upper_bound   = 1.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded_below = .false.;    bounded_above = .true.
@@ -178,8 +178,8 @@ else
       lower_bound   = missing_r8; upper_bound   = missing_r8
    elseif(kind == QTY_TRACER_CONCENTRATION) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
-      bounded_below = .false.;    bounded_above = .true.
-      lower_bound   = missing_r8; upper_bound   = 0.0_r8
+      bounded_below = .true.;     bounded_above = .true.
+      lower_bound = -10.0_r8;     upper_bound = 1.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
       dist_type = BOUNDED_NORMAL_RH_PRIOR
       bounded_below = .false.;    bounded_above = .true.
@@ -221,12 +221,12 @@ if(obs_kind == QTY_STATE_VARIABLE) then
    lower_bound   = missing_r8; upper_bound   = missing_r8
 elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
    filter_kind = BOUNDED_NORMAL_RHF
-   bounded_below = .false.;    bounded_above = .true.
-   lower_bound   = missing_r8; upper_bound   = 0.0_r8
+   bounded_below = .true.;   bounded_above = .true.
+   lower_bound   = -10.0_r8; upper_bound   = 1.0_r8
 elseif(obs_kind == QTY_TRACER_SOURCE) then
    filter_kind = BOUNDED_NORMAL_RHF
-   bounded_below = .false.;    bounded_above = .true.
-   lower_bound   = missing_r8; upper_bound   = 0.0_r8
+   bounded_below = .false.;     bounded_above = .true.
+   lower_bound   = missing_r8;  upper_bound   = 0.0_r8
 else
    write(*, *) 'Illegal obs_kind in obs_error_info'
    stop

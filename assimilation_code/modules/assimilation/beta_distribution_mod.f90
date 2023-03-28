@@ -6,7 +6,7 @@
 
 module beta_distribution_mod
 
-use types_mod,      only : r8, PI
+use types_mod,      only : r8, PI, missing_r8
 
 use utilities_mod,  only : E_ERR, error_handler
 
@@ -108,6 +108,9 @@ if (quantile < 0.0_r8 .or. quantile > 1.0_r8) then
   errstring = 'Bad input quantile value'
   call error_handler(E_ERR, 'inv_beta_cdf', errstring, source)
 endif
+
+! Set a failed default value
+inv_beta_cdf = missing_r8
 
 if (quantile == 0.0_r8) then
     inv_beta_cdf= 0.0_r8
@@ -287,6 +290,9 @@ if (x < 0.0_r8 .or. x > 1.0_r8) then
     errstring = 'Input value for x is not between 0 - 1'
     call error_handler(E_ERR, 'incomplete_beta', errstring, source)
 endif
+
+! Set a default failed value
+incomplete_beta = missing_r8
 
 front = exp(log(x)*a + log(1.0_r8-x)*b - log_beta(a, b)) / a
 f = 1.0_r8

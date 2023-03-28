@@ -128,8 +128,6 @@ type(time_type) :: time_step
 
 ! Module storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
-logical :: random_seq_init = .true.
-
 
 contains
 
@@ -147,7 +145,7 @@ real(r8), intent(inout)        :: x(:) ! for a grid_size = 40, model_size = 120:
 type(time_type), intent(inout) :: time
 
 real(r8)    :: velocity, target_loc, frac, ratio
-integer(r8) :: low, hi, up, down, i, f
+integer(r8) :: low, hi, up, down, i
 real(i8), dimension(grid_size) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
 
 ! Test for tracer with upper bound of 1; Subtract 1 when entering here, then add it back on
@@ -258,7 +256,7 @@ subroutine comp_dt(x, dt)
 real(r8), intent(in) :: x(grid_size)
 real(r8), intent(out) :: dt(grid_size)
 
-integer :: j, jp1, jm1, jm2, ms
+integer :: j, jp1, jm1, jm2
 
 do j = 1, grid_size
       jp1 = j + 1
@@ -279,8 +277,8 @@ end subroutine comp_dt
 
 subroutine static_init_model()
 
-real(r8) :: x_loc, delta_loc
-integer  :: i, dom_id, var_id
+real(r8) :: delta_loc
+integer  :: i, dom_id
 character(20) :: string1
 
 ! Do any initial setup needed, including reading the namelist values
@@ -502,7 +500,6 @@ integer :: i,j, num_my_grid_points
 integer(i8), allocatable :: my_grid_points(:)
 type(location_type) :: location
 integer :: var_type
-real(r8) :: temp
 
 interf_provided = .true.
 

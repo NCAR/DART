@@ -4,11 +4,11 @@
 
 module gamma_distribution_mod
 
-use types_mod,               only : r8, PI
+use types_mod,               only : r8, PI, missing_r8
 
 use utilities_mod,           only : E_ERR, error_handler
 
-use normal_distribution_mod, only : norm_cdf
+use normal_distribution_mod, only : normal_cdf
 
 use random_seq_mod,          only : random_seq_type, random_uniform
 
@@ -16,7 +16,7 @@ implicit none
 private
 
 public :: gamma_pdf, gamma_cdf, inv_gamma_cdf, random_gamma, test_gamma, &
-          gamma_shape_scale, gamma_gamma_prod
+          gamma_mn_var_to_shape_scale, gamma_gamma_prod, gamma_shape_scale
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'gamma_distribution_mod.f90'
@@ -36,7 +36,7 @@ subroutine test_gamma
 ! there are acceptable results for all possible inputs. 
 
 real(r8) :: x, y, inv
-real(r8) :: mean, variance, sd, shape, scale, max_diff
+real(r8) :: mean, variance, sd, gamma_shape, gamma_scale, max_diff
 integer :: i
 
 ! Comparative results for a handful of cases from MATLAB21a
@@ -67,20 +67,15 @@ sd = 1.0_r8
 variance = sd**2
 
 ! Get shape and scale
-shape = mean**2 / variance
-scale = variance / mean
-
-! Note, mean and sd inverse formulas
-! mean  = shape * scale
-! scale = sqrt(shape * scale**2)
-
+gamma_shape = mean**2 / variance
+gamma_scale = variance / mean
 
 ! Test the inversion of the cdf over +/- 5 standard deviations around mean
 max_diff = -1.0_r8
 do i = 0, 1000
    x = mean + ((i - 500.0_r8) / 500.0_r8) * 5.0_r8 * sd
-   y = gamma_cdf(x, shape, scale)
-   inv = inv_gamma_cdf(y, shape, scale)
+   y = gamma_cdf(x, gamma_shape, gamma_scale)
+   inv = inv_gamma_cdf(y, gamma_shape, gamma_scale)
    max_diff = max(abs(x-inv), max_diff)
 end do
 
@@ -92,12 +87,12 @@ end subroutine test_gamma
 
 !-----------------------------------------------------------------------
 
-function inv_gamma_cdf(quantile, shape, scale)
+function inv_gamma_cdf(quantile, gamma_shape, gamma_scale)
 
 real(r8)             :: inv_gamma_cdf
 real(r8), intent(in) :: quantile
-real(r8), intent(in) :: shape
-real(r8), intent(in) :: scale
+real(r8), intent(in) :: gamma_shape
+real(r8), intent(in) :: gamma_scale
 
 ! Given a quantile q, finds the value of x for which the gamma cdf
 ! with shape and scale has approximately this quantile
@@ -120,10 +115,13 @@ if(quantile == 0.0_r8) then
    return
 endif
 
+! Return a missing_r8 if no value is found
+inv_gamma_cdf = missing_r8
+
 ! Need some sort of first guess, should be smarter here
 ! For starters, take the mean for this shape and scale
-sd = sqrt(shape * scale**2)
-mn = shape * scale
+sd = sqrt(gamma_shape * gamma_scale**2)
+mn = gamma_shape * gamma_scale
 ! Could use info about sd to further refine mean and reduce iterations
 x_guess = mn
 
@@ -132,14 +130,14 @@ reltol = (EPSILON(x_guess))**(3./4.)
 x_guess = max(reltol, x_guess) 
 
 ! Evaluate the cdf
-q_guess = gamma_cdf(x_guess, shape, scale)
+q_guess = gamma_cdf(x_guess, gamma_shape, gamma_scale)
 
 del_q = q_guess - quantile
 
 ! Iterations of the Newton method to approximate the root
 do iter = 1, max_iterations
    ! The PDF is the derivative of the CDF
-   dq_dx = gamma_pdf(x_guess, shape, scale)
+   dq_dx = gamma_pdf(x_guess, gamma_shape, gamma_scale)
    ! Linear approximation for how far to move in x
    del_x = del_q / dq_dx
 
@@ -156,14 +154,14 @@ do iter = 1, max_iterations
    ! If we've gone too far, the new error will be bigger than the old; 
    ! Repeatedly half the distance until this is rectified 
    del_q_old = del_q
-   q_new = gamma_cdf(x_new, shape, scale)
+   q_new = gamma_cdf(x_new, gamma_shape, gamma_scale)
    do j = 1, max_half_iterations
       del_q = q_new - quantile
       if (abs(del_q) < abs(del_q_old)) then
          EXIT
       endif
       x_new = (x_guess + x_new)/2.0_r8
-      q_new = gamma_cdf(x_new, shape, scale)
+      q_new = gamma_cdf(x_new, gamma_shape, gamma_scale)
    end do
 
    x_guess = x_new
@@ -177,42 +175,42 @@ end function inv_gamma_cdf
 
 !---------------------------------------------------------------------------
 
-function gamma_pdf(x, shape, scale)
+function gamma_pdf(x, gamma_shape, gamma_scale)
 
 ! Returns the probability density of a gamma function with shape and scale
 ! at the value x
 
 real(r8)             :: gamma_pdf
-real(r8), intent(in) :: x, shape, scale
+real(r8), intent(in) :: x, gamma_shape, gamma_scale
 
 ! All inputs must be nonnegative
-if(x < 0.0_r8 .or. shape < 0.0_r8 .or. scale < 0.0_r8) then
+if(x < 0.0_r8 .or. gamma_shape < 0.0_r8 .or. gamma_scale < 0.0_r8) then
    gamma_pdf = failed_value
 else
-   gamma_pdf = x**(shape - 1.0_r8) * exp(-x / scale) / &
-      (gamma(shape) * scale**shape)
+   gamma_pdf = x**(gamma_shape - 1.0_r8) * exp(-x / gamma_scale) / &
+      (gamma(gamma_shape) * gamma_scale**gamma_shape)
 endif
 
 end function gamma_pdf
 
 !---------------------------------------------------------------------------
 
-function gamma_cdf(x, shape, scale)
+function gamma_cdf(x, gamma_shape, gamma_scale)
 
 ! Returns the cumulative distribution of a gamma function with shape and scale
 ! at the value x
 
 real(r8) :: gamma_cdf
-real(r8), intent(in) :: x, shape, scale
+real(r8), intent(in) :: x, gamma_shape, gamma_scale
 
 ! All inputs must be nonnegative
-if(x < 0.0_r8 .or. shape < 0.0_r8 .or. scale < 0.0_r8) then
+if(x < 0.0_r8 .or. gamma_shape < 0.0_r8 .or. gamma_scale < 0.0_r8) then
    gamma_cdf = failed_value
 elseif(x == 0.0_r8) then
    gamma_cdf = 0.0_r8 
 else
    ! Use definition as incomplete gamma ratio to gamma
-   gamma_cdf = gammad(x / scale, shape)
+   gamma_cdf = gammad(x / gamma_scale, gamma_shape)
 endif
 
 end function gamma_cdf
@@ -274,7 +272,7 @@ elseif(plimit < p) then
 ! If P is large, use a normal approximation.
    pn(1) = 3.0_r8 * sqrt(p) * ((x / p)**(1.0_r8 / 3.0_r8) + &
        1.0_r8 / (9.0_r8 * p) - 1.0_r8)
-   gammad = norm_cdf(pn(1), 0.0_r8, 1.0_r8)
+   gammad = normal_cdf(pn(1), 0.0_r8, 1.0_r8)
 elseif(x <= 1.0_r8 .or. x < p) then
 !  Use Pearson's series expansion.
 !  Original note: (Note that P is not large enough to force overflow in logAM).
@@ -379,15 +377,38 @@ end function random_gamma
 
 !---------------------------------------------------------------------------
 
-subroutine gamma_shape_scale(mean, variance, shape, scale)
+subroutine gamma_shape_scale(x, num, gamma_shape, gamma_scale)
 
-real(r8), intent(in)  :: mean, variance
-real(r8), intent(out) :: shape, scale
+integer,  intent(in)  :: num
+real(r8), intent(in)  :: x(num)
+real(r8), intent(out) :: gamma_shape
+real(r8), intent(out) :: gamma_scale
 
-shape = mean**2 / variance
-scale = variance / mean
+! This subroutine computes a shape and scale from a sample
+! It first computes the mean and sd, then converts
+! Note that this is NOT the maximum likelihood estimator from the sample 
+! and computing that would be an alternative method to get shape and scale
+
+real(r8) :: mean, variance
+
+mean = sum(x) / num
+variance  = sum((x - mean)**2) / (num - 1)
+
+call gamma_mn_var_to_shape_scale(mean, variance, gamma_shape, gamma_scale)
 
 end subroutine gamma_shape_scale
+
+!---------------------------------------------------------------------------
+
+subroutine gamma_mn_var_to_shape_scale(mean, variance, gamma_shape, gamma_scale)
+
+real(r8), intent(in)  :: mean, variance
+real(r8), intent(out) :: gamma_shape, gamma_scale
+
+gamma_shape = mean**2 / variance
+gamma_scale = variance / mean
+
+end subroutine gamma_mn_var_to_shape_scale
 
 !---------------------------------------------------------------------------
 

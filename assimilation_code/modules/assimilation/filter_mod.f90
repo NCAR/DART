@@ -94,8 +94,8 @@ use quality_control_mod,   only : initialize_qc
 
 use location_mod,          only : location_type
 
-use quantile_distributions_mod, only : dist_param_type, convert_to_probit, &
-                            convert_from_probit
+use probit_transform_mod,  only : dist_param_type, transform_to_probit, &
+                            transform_from_probit
 
 use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR
 
@@ -1627,11 +1627,10 @@ integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 integer :: j, group, grp_bot, grp_top, grp_size
 type(location_type) :: my_state_loc
 integer :: my_state_kind
-integer(i8) :: my_state_indx(ens_handle%my_num_vars)
 type(dist_param_type) :: dist_params
 real(r8) :: probit_ens(ens_size), probit_ens_mean
-logical  :: bounded(2)
-real(r8) :: bounds(2)
+logical  :: bounded_below, bounded_above
+real(r8) :: lower_bound,   upper_bound
 integer  :: dist_type
 
 ! Assumes that the ensemble is copy complete
@@ -1668,21 +1667,23 @@ do group = 1, num_groups
       ! This is an initial test of doing inflation in probit space
       ! Note that this appears to work with adaptive inflation, but more research would be good
       ! Probably also shouldn't be used with groups for now although it is coded to do so
-      call get_my_vars(ens_handle, my_state_indx)
       do j = 1, ens_handle%my_num_vars
-         call get_state_meta_data(my_state_indx(j), my_state_loc, my_state_kind)    
+         call get_state_meta_data(ens_handle%my_vars(j), my_state_loc, my_state_kind)    
 
          ! Need to specify what kind of prior to use for each
          ! Use default of untransformed if use_algorithm_info_mod is not true
          if(use_algorithm_info_mod) then
-            call probit_dist_info(my_state_kind, .true., .true., dist_type, bounded, bounds)
+            call probit_dist_info(my_state_kind, .true., .true., dist_type, &
+               bounded_below, bounded_above, lower_bound, upper_bound)
          else
             ! Default is just a normal which does nothing
             dist_type = NORMAL_PRIOR
-            bounded = .false. ;  bounds = 0.0_r8
+            bounded_below = .false. ;  bounded_above = .false.
+            lower_bound = 0.0_r8;      upper_bound = 0.0_r8
          endif
-         call convert_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
-            dist_type, dist_params, probit_ens(1:grp_size), .false., bounded, bounds)
+         call transform_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
+            dist_type, dist_params, probit_ens(1:grp_size), .false., &
+               bounded_below, bounded_above, lower_bound, upper_bound)
 
          ! Compute the ensemble mean in transformed space
          probit_ens_mean = sum(probit_ens(1:grp_size)) / grp_size
@@ -1690,7 +1691,7 @@ do group = 1, num_groups
          call inflate_ens(inflate, probit_ens(1:grp_size), probit_ens_mean, &
             ens_handle%copies(inflate_copy, j))
          ! Transform back from probit space
-         call convert_from_probit(grp_size, probit_ens(1:grp_size), &
+         call transform_from_probit(grp_size, probit_ens(1:grp_size), &
             dist_params, ens_handle%copies(grp_bot:grp_top, j))
       end do
    endif
