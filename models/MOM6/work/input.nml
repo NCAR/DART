@@ -128,6 +128,9 @@
 &model_nml
    assimilation_period_days     = 1
    assimilation_period_seconds  = 1
+   template_file = 'mom6.r.nc', 
+   static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc',
+   ocean_geometry = 'ocean_geometry.nc',
    model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'UPDATE',
                                   'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
                                   'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
@@ -186,9 +189,9 @@
 &model_mod_check_nml
    input_state_files    = 'mom6.r.nc'
    output_state_files   = 'mmc_output.nc'
-   test1thru            = 4
+   test1thru            = 7
    run_tests            = 1,2,3,4,7
-   x_ind                = 42
+   x_ind                = 421345,
    loc_of_interest      = 179, 11, 41
    quantity_of_interest = 'QTY_SALINITY'
    interp_test_dx       = 0.02
