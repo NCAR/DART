@@ -8,7 +8,7 @@ module assim_tools_mod
 !> \defgroup assim_tools assim_tools_mod
 !>
 !> @{
-use      types_mod,       only : r8, i8, digits12, PI, missing_r8
+use      types_mod,       only : r8, i8, PI, missing_r8
 
 use    options_mod,       only : get_missing_ok_status
 
@@ -1124,7 +1124,7 @@ integer :: i
 ! Compute the prior quantiles of each ensemble member in the prior gamma distribution
 call gamma_mn_var_to_shape_scale(prior_mean, prior_var, prior_shape, prior_scale)
 do i = 1, ens_size
-   q(i) = gamma_cdf(ens(i), prior_shape, prior_scale) 
+   q(i) = gamma_cdf(ens(i), prior_shape, prior_scale, .true., .false., 0.0_r8, missing_r8) 
 end do
 
 ! Compute the statistics of the continous posterior distribution
@@ -1141,7 +1141,7 @@ endif
 
 ! Now invert the quantiles with the posterior distribution
 do i = 1, ens_size
-   post(i) = inv_gamma_cdf(q(i), post_shape, post_scale)
+   post(i) = inv_gamma_cdf(q(i), post_shape, post_scale, .true., .false., 0.0_r8, missing_r8)
 end do
 
 obs_inc = post - ens
@@ -1319,8 +1319,8 @@ cdf(1) = 0.0_r8
 cdf(2) = 1.0_r8
 
 ! Compute the cdf's at the bounds if they exist
-if(bounded_below) cdf(1) = normal_cdf(lower_bound, x, obs_sd)
-if(bounded_above) cdf(2) = normal_cdf(upper_bound, x, obs_sd)
+if(bounded_below) cdf(1) = normal_cdf(lower_bound, x, obs_sd, .false., .false., missing_r8, missing_r8)
+if(bounded_above) cdf(2) = normal_cdf(upper_bound, x, obs_sd, .false., .false., missing_r8, missing_r8)
 
 ! The weight is the reciprocal of the fraction of the cdf that is in legal range
 weight = 1.0_r8 / (cdf(2) - cdf(1))
@@ -1933,10 +1933,10 @@ prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_v
 
 ! Split into 2*ens_size domains; mass in each is computed
 ! Start by computing mass in the outermost (gaussian) regions
-mass(1) = normal_cdf(ens(e_ind(1)), new_mean_left, new_sd) * &
+mass(1) = normal_cdf(ens(e_ind(1)), new_mean_left, new_sd, .false., .false., missing_r8, missing_r8) * &
    prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
 mass(2*ens_size) = (1.0_r8 - normal_cdf(ens(e_ind(ens_size)), new_mean_right, &
-   new_sd)) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
+   new_sd, .false., .false., missing_r8, missing_r8)) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
 
 ! Compute mass in the inner half boxes that have ensemble point on the left
 do i = 2, 2*ens_size - 2, 2
@@ -1970,11 +1970,11 @@ do i = 1, ens_size
    if(umass < cumul_mass(1)) then
       ! In the first normal box
       left_weight = (1.0_r8 / mass_sum) * prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
-      call inv_weighted_normal_cdf(left_weight, new_mean_left, new_sd, umass, new_ens(i))
+      new_ens(i) = inv_weighted_normal_cdf(left_weight, new_mean_left, new_sd, umass)
    else if(umass > cumul_mass(2*ens_size - 1)) then
       ! In the last normal box; Come in from the outside
       right_weight = (1.0_r8 / mass_sum) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
-      call inv_weighted_normal_cdf(right_weight, new_mean_right, new_sd, 1.0_r8 - umass, new_ens(i))
+      new_ens(i) = inv_weighted_normal_cdf(right_weight, new_mean_right, new_sd, 1.0_r8 - umass)
       new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
    else
       ! In one of the inner uniform boxes.
@@ -2083,8 +2083,8 @@ prior_sd = sqrt(prior_var)
 
 ! For unit normal, find distance from mean to where cdf is 1/(n+1)
 ! Lots of this can be done once in first call and then saved
-call inv_weighted_normal_cdf(1.0_r8, 0.0_r8, 1.0_r8, &
-   1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
+dist_for_unit_sd = inv_weighted_normal_cdf(1.0_r8, 0.0_r8, 1.0_r8, &
+   1.0_r8 / (ens_size + 1.0_r8))
 dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
 
 ! Have variance of tails just be sample prior variance
@@ -2113,7 +2113,7 @@ if(gaussian_likelihood_tails) then
          obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
          sqrt(left_var + obs_var)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
-   mass(1) = normal_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
+   mass(1) = normal_cdf(x(1), new_mean_left, new_sd_left, .false., .false., missing_r8, missing_r8) * prod_weight_left
 
    ! Same for the right tail
    var_ratio = obs_var / (right_var + obs_var)
@@ -2127,7 +2127,7 @@ if(gaussian_likelihood_tails) then
          sqrt(right_var + obs_var)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
    mass(ens_size + 1) = (1.0_r8 - normal_cdf(x(ens_size), new_mean_right, &
-      new_sd_right)) * prod_weight_right
+      new_sd_right, .false., .false., missing_r8, missing_r8)) * prod_weight_right
    !************ End Block to do Gaussian-Gaussian on tail **************
 else
    !*************** Block to do flat tail for likelihood ****************
@@ -2193,13 +2193,13 @@ do i = 1, ens_size
    if(umass < cumul_mass(1)) then
       ! It's in the left tail
       ! Get position of x in weighted gaussian where the cdf has value umass
-      call inv_weighted_normal_cdf(left_amp, new_mean_left, new_sd_left, &
-         umass, new_ens(i))
+      new_ens(i) = inv_weighted_normal_cdf(left_amp, new_mean_left, new_sd_left, &
+         umass)
    else if(umass > cumul_mass(ens_size)) then
       ! It's in the right tail
       ! Get position of x in weighted gaussian where the cdf has value umass
-      call inv_weighted_normal_cdf(right_amp, new_mean_right, new_sd_right, &
-         1.0_r8 - umass, new_ens(i))
+      new_ens(i) = inv_weighted_normal_cdf(right_amp, new_mean_right, new_sd_right, &
+         1.0_r8 - umass)
       ! Coming in from the right, use symmetry after pretending its on left
       new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
    else
@@ -2317,8 +2317,8 @@ prior_sd = sqrt(prior_var)
 
 ! Need to normalize the wings so they have 1/(2*ens_size) mass outside
 ! Use cdf to find out how much mass is left of 1st member, right of last
-total_mass_left = normal_cdf(ens(e_ind(1)), prior_mean, prior_sd)
-total_mass_right = 1.0_r8 - normal_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd)
+total_mass_left = normal_cdf(ens(e_ind(1)), prior_mean, prior_sd, .false., .false., missing_r8, missing_r8)
+total_mass_right = 1.0_r8 - normal_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd, .false., .false., missing_r8, missing_r8)
 
 ! Find the mass in each division given the initial equal partition and the weights
 updated_mass(1) = rel_weight(e_ind(1)) / (2.0_r8 * ens_size)
@@ -2359,10 +2359,10 @@ do i = 1, ens_size
    ! If it's in the inner or outer range have to use normal
    if(mass < cumul_mass(1)) then
       ! In the first normal box
-      call inv_weighted_normal_cdf(alpha(1), prior_mean, prior_sd, mass, new_ens(i))
+      new_ens(i) = inv_weighted_normal_cdf(alpha(1), prior_mean, prior_sd, mass)
    else if(mass > cumul_mass(2*ens_size - 1)) then
       ! In the last normal box; Come in from the outside
-      call inv_weighted_normal_cdf(alpha(2), prior_mean, prior_sd, 1.0_r8 - mass, new_ens(i))
+      new_ens(i) = inv_weighted_normal_cdf(alpha(2), prior_mean, prior_sd, 1.0_r8 - mass)
       new_ens(i) = prior_mean + (prior_mean - new_ens(i))
    else
       ! In one of the inner uniform boxes. Make this much more efficient search?

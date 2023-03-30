@@ -4,26 +4,26 @@
 
 module normal_distribution_mod
 
-use types_mod, only : r8, digits12, PI
+use types_mod, only : r8, missing_r8, digits12, PI
 
 use utilities_mod, only : E_ERR, E_MSG, error_handler
 
 implicit none
 private
 
-public :: normal_cdf, inv_normal_cdf, inv_weighted_normal_cdf, test_normal, &
-          normal_mean_variance, normal_mean_sd
+public :: normal_cdf, inv_std_normal_cdf, inv_weighted_normal_cdf, test_normal, &
+          normal_mean_variance, normal_mean_sd, inv_cdf
 
 character(len=512)        :: errstring
 character(len=*), parameter :: source = 'normal_distribution_mod.f90'
 
-! These quantiles bracket the range over which inv_normal_cdf functions
+! These quantiles bracket the range over which inv_std_normal_cdf functions
 ! The test routines are confined to this range and values outside this are
 ! changed to these. Approximate correpsonding standard deviations are in 
 ! min_sd and max_sd and these are the range over which the test_normal functions.
 ! The max_sd is smaller in magnitude than the min_sd because the Fortran number
 ! model cannot represent numbers as close to 1 as it can to 0.
-real(r8), parameter :: min_quantile = 5.0d-198,  max_quantile = 0.999999999999999_r8
+real(r8), parameter :: min_quantile = 0.0_r8,  max_quantile = 0.999999999999999_r8
 real(r8), parameter :: min_sd = -30.0_r8, max_sd = 8.0_r8
 
 contains 
@@ -61,7 +61,7 @@ real(r8) :: inv_diff_bound(16) = [1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_
 ! Compare to matlab 
 ! Absolute value of differences should be less than 1e-15
 do i = 1, 7
-   cdf_diff(i) = normal_cdf(mx(i), mmean(i), msd(i)) - mcdf(i)
+   cdf_diff(i) = normal_cdf(mx(i), mmean(i), msd(i), .false., .false., missing_r8, missing_r8) - mcdf(i)
 end do
 max_matlab_diff = maxval(abs(cdf_diff))
 if(max_matlab_diff > 1.0e-15_r8) then
@@ -79,8 +79,8 @@ enddo
 ! Test the inversion of the cdf over +/- 30 standard deviations around mean
 do i = 1, num_trials + 1
    sd = min_sd + (i - 1.0_r8) * (max_sd - min_sd) / num_trials 
-   quantile = normal_cdf(sd, 0.0_r8, 1.0_r8)
-   call inv_normal_cdf(quantile, inv)
+   quantile = normal_cdf(sd, 0.0_r8, 1.0_r8, .false., .false., missing_r8, missing_r8)
+   inv = inv_std_normal_cdf(quantile)
    do j = 1, 16
       if(quantile < max_q(j)) then
          max_diff(j) = max(abs(sd-inv), max_diff(j))
@@ -102,14 +102,16 @@ end subroutine test_normal
 
 !------------------------------------------------------------------------
 
-function normal_cdf(x_in, mean, sd)
+function normal_cdf(x_in, mean, sd, bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Approximate cumulative distribution function for normal
 ! with mean and sd evaluated at point x_in
 ! Only works for x>= 0.
 
-real(r8)             :: normal_cdf
-real(r8), intent(in) :: x_in, mean, sd
+real(r8)                       :: normal_cdf
+real(r8), intent(in)           :: x_in, mean, sd
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound, upper_bound
 
 real(digits12) :: nx
 
@@ -126,13 +128,13 @@ end function normal_cdf
 
 !------------------------------------------------------------------------
 
-subroutine inv_weighted_normal_cdf(alpha, mean, sd, p, x)
+function inv_weighted_normal_cdf(alpha, mean, sd, p) result(x)
 
 ! Find the value of x for which the cdf of a N(mean, sd) multiplied times
 ! alpha has value p.
 
+real(r8)              :: x
 real(r8), intent(in)  :: alpha, mean, sd, p
-real(r8), intent(out) :: x
 
 real(r8) :: np
 
@@ -143,22 +145,27 @@ real(r8) :: np
 np = p / alpha
 
 ! Find spot in standard normal
-call inv_normal_cdf(np, x)
+x = inv_std_normal_cdf(np)
 
 ! Add in the mean and normalize by sd
 x = mean + x * sd
 
-end subroutine inv_weighted_normal_cdf
+end function inv_weighted_normal_cdf
 
 
 !------------------------------------------------------------------------
 
-subroutine approx_inv_normal_cdf(p_in, x)
+function approx_inv_normal_cdf(p_in, param_1, param_2, &
+   bounded_below, bounded_above, lower_bound, upper_bound) result(x)
 
-real(r8), intent(in)  :: p_in
-real(r8), intent(out) :: x
+real(r8)                       :: x
+real(r8), intent(in)           :: p_in
+real(r8), intent(in)           :: param_1, param_2
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound, upper_bound
 
-! This is used to get a good first guess for the search in inv_normal_cdf
+! This is used to get a good first guess for the search in inv_std_normal_cdf
+! Arguments a and b are not used but are needed as placeholders
 
 ! normal inverse
 ! translate from http://home.online.no/~pjacklam/notes/invnorm
@@ -218,14 +225,56 @@ else
       (((((b1*r + b2)*r + b3)*r + b4)*r + b5)*r + 1.0_digits12)
 endif
 
-end subroutine approx_inv_normal_cdf
+end function approx_inv_normal_cdf
 
 !------------------------------------------------------------------------
 
-subroutine inv_normal_cdf(quantile_in, x)
+function inv_std_normal_cdf(quantile) result(x)
 
+real(r8)              :: x
+real(r8), intent(in)  :: quantile
+
+! This naive Newton method is much more accurate than approx_inv_normal_cdf, especially
+! for quantile values less than 0.5. 
+
+! Given a quantile q, finds the value of x for which the standard normal cdf
+! has approximately this quantile
+
+x = inv_cdf(quantile, normal_cdf, approx_inv_normal_cdf, 0.0_r8, 1.0_r8, &
+   .false., .false., missing_r8, missing_r8)
+
+end function inv_std_normal_cdf
+
+!------------------------------------------------------------------------
+
+function inv_cdf(quantile_in, cdf, first_guess, param_1, param_2, &
+   bounded_below, bounded_above, lower_bound, upper_bound) result(x)
+
+interface
+   function cdf(x, a, b, bounded_below, bounded_above, lower_bound, upper_bound)
+      use types_mod, only : r8
+      real(r8)             :: cdf
+      real(r8), intent(in) :: x, a, b
+      logical,  intent(in) :: bounded_below, bounded_above
+      real(r8), intent(in) :: lower_bound,   upper_bound
+   end function
+end interface
+
+interface
+   function first_guess(quantile, a, b, bounded_below, bounded_above, lower_bound, upper_bound)
+      use types_mod, only : r8
+      real(r8)             :: first_guess
+      real(r8), intent(in) :: quantile, a, b
+      logical,  intent(in) :: bounded_below, bounded_above
+      real(r8), intent(in) :: lower_bound,   upper_bound
+   end function
+end interface
+
+real(r8)              :: x
 real(r8), intent(in)  :: quantile_in
-real(r8), intent(out) :: x
+real(r8), intent(in)  :: param_1, param_2
+logical,  intent(in)  :: bounded_below, bounded_above
+real(r8), intent(in)  :: lower_bound,   upper_bound
 
 ! This naive Newton method is much more accurate than approx_inv_normal_cdf, especially
 ! for quantile values less than 0.5. 
@@ -246,22 +295,34 @@ real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old, q_old
 integer  :: iter, j
 
 quantile = quantile_in
-! If input quantiles are outside the supported range, move them to the extremes
-quantile = min(quantile, max_quantile)
-quantile = max(quantile, min_quantile)
 
-! Do a test for illegal values
-if(quantile <= 0.0_r8 .or. quantile >= 1.0_r8) then
+! Do a test for illegal values on the quantile
+if(quantile <  0.0_r8 .or. quantile > 1.0_r8) then
    ! Need an error message
    write(errstring, *) 'Illegal Quantile input', quantile
-   call error_handler(E_ERR, 'inv_normal_cdf', errstring, source)
+   call error_handler(E_ERR, 'inv_cdf', errstring, source)
 endif
 
+! If the distribution is bounded, quantiles at the limits have values at the bounds
+if(bounded_below .and. quantile == 0.0_r8) then
+   x = lower_bound
+   return
+endif
+if(bounded_above .and. quantile == 1.0_r8) then
+   x = upper_bound
+   return
+endif
+
+! If input quantiles are outside the numerically supported range, move them to the extremes
+quantile = min(quantile, max_quantile)
+! code tests stably for many distributions with min_quantile of 0.0, could remove this
+quantile = max(quantile, min_quantile)
+
 ! Get first guess from functional approximation
-call approx_inv_normal_cdf(quantile, x_guess)
+x_guess = first_guess(quantile, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Evaluate the cdf
-q_guess = normal_cdf(x_guess, 0.0_r8, 1.0_r8)
+q_guess = cdf(x_guess, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
 
 del_q = q_guess - quantile
 
@@ -271,8 +332,9 @@ do iter = 1, max_iterations
    ! Use numerical derivatives of the CDF to get more accurate inversion
    ! These values for the delta for the approximation work with Gfortran
    delta = max(1e-8_r8, 1e-8_r8 * abs(x_guess))
-   dq_dx = (normal_cdf(x_guess + delta, 0.0_r8, 1.0_r8) - &
-      normal_cdf(x_guess - delta, 0.0_r8, 1.0_r8)) / (2.0_r8 * delta)
+   dq_dx = (cdf(x_guess + delta, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound) - &
+      cdf(x_guess - delta, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)) / &
+      (2.0_r8 * delta)
    ! Derivative of 0 means we're not going anywhere else
    if(dq_dx <= 0.0_r8) then
       x = x_guess
@@ -293,7 +355,7 @@ do iter = 1, max_iterations
    ! If we've gone too far, the new error will be bigger than the old; 
    ! Repeatedly half the distance until this is rectified 
    del_q_old = del_q
-   q_new = normal_cdf(x_new, 0.0_r8, 1.0_r8)
+   q_new = cdf(x_new, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
    do j = 1, max_half_iterations
       del_q = q_new - quantile
       if (abs(del_q) < abs(del_q_old)) then
@@ -301,7 +363,7 @@ do iter = 1, max_iterations
       endif
       q_old = q_new
       x_new = (x_guess + x_new)/2.0_r8
-      q_new = normal_cdf(x_new, 0.0_r8, 1.0_r8)
+      q_new = cdf(x_new, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
       ! If q isn't changing, no point in continuing
       if(q_old == q_new) exit
 
@@ -315,10 +377,10 @@ end do
 ! Not currently happening for any of the test cases on gfortran
 x = x_new
 write(errstring, *)  'Failed to converge for quantile ', quantile
-call error_handler(E_MSG, 'inv_normal_cdf', errstring, source)
-!!!call error_handler(E_ERR, 'inv_normal_cdf', errstring, source)
+call error_handler(E_MSG, 'inv_cdf', errstring, source)
+!!!call error_handler(E_ERR, 'inv_cdf', errstring, source)
 
-end subroutine inv_normal_cdf
+end function inv_cdf
 
 !------------------------------------------------------------------------
 

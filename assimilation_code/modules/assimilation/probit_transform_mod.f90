@@ -7,7 +7,7 @@
 
 module probit_transform_mod
 
-use types_mod, only : r8, digits12, PI
+use types_mod, only : r8, missing_r8
 
 use sort_mod,  only : sort, index_sort
 
@@ -18,7 +18,7 @@ use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH
                                GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, UNIFORM_PRIOR
                                !!!PARTICLE_PRIOR
 
-use normal_distribution_mod, only : normal_cdf, inv_normal_cdf
+use normal_distribution_mod, only : normal_cdf, inv_std_normal_cdf
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_shape_scale
 
@@ -302,7 +302,7 @@ endif
 
 do i = 1, ens_size
    ! First, get the quantile for this ensemble member
-   quantile = gamma_cdf(state_ens(i), gamma_shape, gamma_scale)
+   quantile = gamma_cdf(state_ens(i), gamma_shape, gamma_scale, .true., .false., 0.0_r8, missing_r8)
    ! Transform to probit space 
    probit_ens(i) = probit_or_logit_transform(quantile)
 end do
@@ -362,7 +362,7 @@ endif
 
 do i = 1, ens_size
    ! First, get the quantile for this ensemble member
-   quantile = beta_cdf(probit_ens(i), alpha, beta)
+   quantile = beta_cdf(probit_ens(i), alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
    ! Transform to probit/logit space 
    probit_ens(i) = probit_or_logit_transform(quantile)
 end do
@@ -710,7 +710,7 @@ do i = 1, ens_size
    ! First, invert the probit/logit to get a quantile
    quantile = inv_probit_or_logit_transform(probit_ens(i))
    ! Invert the gamma quantiles to get physical space
-   state_ens(i) = inv_gamma_cdf(quantile, gamma_shape, gamma_scale)
+   state_ens(i) = inv_gamma_cdf(quantile, gamma_shape, gamma_scale, .true., .false., 0.0_r8, missing_r8)
 end do
 
 ! Probably should do an explicit clearing of this storage
@@ -742,7 +742,7 @@ do i = 1, ens_size
    ! First, invert the probit/logit to get a quantile
    quantile = inv_probit_or_logit_transform(probit_ens(i))
    ! Invert the beta quantiles to get scaled physical space
-   state_ens(i) = inv_beta_cdf(quantile, alpha, beta)
+   state_ens(i) = inv_beta_cdf(quantile, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
 end do
 
 ! Unscale the physical space
@@ -850,7 +850,7 @@ real(r8), intent(in) :: quantile
 if(use_logit_instead_of_probit) then
    probit_or_logit_transform =  log(quantile / (1.0_r8 - quantile))
 else
-   call inv_normal_cdf(quantile, probit_or_logit_transform)
+   probit_or_logit_transform = inv_std_normal_cdf(quantile)
 endif
 
 end function probit_or_logit_transform
@@ -866,7 +866,7 @@ real(r8), intent(in) :: p
 if(use_logit_instead_of_probit) then
    inv_probit_or_logit_transform = 1.0_r8 / (1.0_r8 + exp(-p))
 else
-   inv_probit_or_logit_transform = normal_cdf(p, 0.0_r8, 1.0_r8)
+   inv_probit_or_logit_transform = normal_cdf(p, 0.0_r8, 1.0_r8, .false., .false., missing_r8, missing_r8)
 endif
 
 end function inv_probit_or_logit_transform

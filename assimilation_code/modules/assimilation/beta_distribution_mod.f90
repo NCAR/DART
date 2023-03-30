@@ -12,6 +12,8 @@ use utilities_mod,  only : E_ERR, error_handler
 
 use random_seq_mod, only : random_seq_type, random_uniform
 
+use normal_distribution_mod, only : inv_cdf
+
 implicit none
 private
 
@@ -56,7 +58,7 @@ real(r8) :: mcdf(7) = [0.204832764699133_r8, 0.002430000000000_r8, 0.87500000000
 write(*, *) 'Absolute value of differences should be less than 1e-15'
 do i = 1, 7
    pdf_diff(i) = beta_pdf(mx(i), malpha(i), mbeta(i)) - mpdf(i)
-   cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i)) - mcdf(i)
+   cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i), .true., .true., 0.0_r8, 1.0_r8) - mcdf(i)
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
 
@@ -68,8 +70,8 @@ max_diff = -1.0_r8
 do i = 0, 1000
    x = i / 1000.0_r8
    p = beta_pdf(x, alpha, beta)
-   y = beta_cdf(x, alpha, beta)
-   inv = inv_beta_cdf(y, alpha, beta)
+   y = beta_cdf(x, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
+   inv = inv_beta_cdf(y, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
    max_diff = max(abs(x - inv), max_diff)
 end do
 
@@ -81,92 +83,26 @@ end subroutine test_beta
 
 !-----------------------------------------------------------------------
 
-function inv_beta_cdf(quantile, alpha, beta)
+function inv_beta_cdf(quantile, alpha, beta, &
+   bounded_below, bounded_above, lower_bound, upper_bound) result(x)
 
-real(r8)             :: inv_beta_cdf
+real(r8)             :: x
 real(r8), intent(in) :: quantile
 real(r8), intent(in) :: alpha
 real(r8), intent(in) :: beta
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound,   upper_bound
 
-! Given a quantile q, finds the value of x for which the beta cdf
+! Given a quantile, finds the value of x for which the beta cdf
 ! with alpha and beta has approximately this quantile
-
-integer, parameter :: max_iter = 100
-! For beta tests, this loop almost never happens so 25 seems very large
-integer, parameter :: max_half_iterations = 25
-
-real(r8) :: reltol, dq_dx
-real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old
-integer :: iter, j
 
 if (alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
   errstring = 'Negative input beta parameters'
   call error_handler(E_ERR, 'inv_beta_cdf', errstring, source)
 endif
 
-if (quantile < 0.0_r8 .or. quantile > 1.0_r8) then
-  errstring = 'Bad input quantile value'
-  call error_handler(E_ERR, 'inv_beta_cdf', errstring, source)
-endif
-
-! Set a failed default value
-inv_beta_cdf = missing_r8
-
-if (quantile == 0.0_r8) then
-    inv_beta_cdf= 0.0_r8
-else if (quantile == 1.0_r8) then
-    inv_beta_cdf= 1.0_r8
-else  
-   !Using Newton's Method to find a root of beta_cdf(x, alpha, beta) = quantile
-   ! Start with the mean for this alpha and beta as a first guess
-   ! Could use information about quantile to refine this and reduce required iterations
-   x_guess = alpha/(alpha + beta)
-   ! Make sure that the guess isn't too close to 1 or 0 where things can get ugly
-   reltol = (EPSILON(x_guess))**(3./4.)
-   x_guess = max(reltol, min(1.0_r8-reltol, x_guess))
-
-   ! Evaluate the cd 
-   q_guess = beta_cdf(x_guess, alpha, beta)
-   del_q = q_guess - quantile
-
-   ! Iterations of the Newton method to approximate the root
-   do iter= 1, max_iter
-      ! The PDF is the derivative of the CDF
-      dq_dx = beta_pdf(x_guess, alpha, beta)
-      ! Linear approximation for how far to move in x
-      del_x = del_q / dq_dx 
-
-      ! Avoid moving too much of the fraction towards the bounds at 0 and 1 
-      ! because of potential larger 2nd derivatives there. The factor of 10.0 here is a magic number
-      x_new = max(x_guess/10.0_r8, min(1.0_r8 - (1.0_r8 - x_guess)/10.0_r8, x_guess-del_x))
-
-      ! Look for convergence; If the change in x is smaller than approximate precision 
-      if (abs(del_x) <= reltol*x_guess) then
-         inv_beta_cdf= x_new
-         return
-      endif
-   
-      ! If we've gone too far, the new error will be bigger than the old; 
-      ! Repeatedly half the distance until this is rectified 
-      del_q_old = del_q
-      q_new = beta_cdf(x_new, alpha, beta)
-      do j = 1, max_half_iterations
-         del_q = q_new - quantile
-         if (abs(del_q) < abs(del_q_old)) then
-            EXIT
-         endif
-         x_new = (x_guess + x_new)/2.0_r8
-         q_new = beta_cdf(x_new, alpha, beta)
-      end do
-
-      x_guess = x_new
-   end do
-
-   ! Fell off the end, should be an error return eventually?
-   errstring = 'Failed to converge '
-   call error_handler(E_ERR, 'inv_beta_cdf', errstring, source)
-
-endif
+x = inv_cdf(quantile, beta_cdf, inv_beta_first_guess, alpha, beta, &
+            bounded_below, bounded_above, lower_bound, upper_bound)
 
 end function inv_beta_cdf
 
@@ -208,7 +144,7 @@ end function beta_pdf
 
 !---------------------------------------------------------------------------
 
-function beta_cdf(x, alpha, beta)
+function beta_cdf(x, alpha, beta, bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Returns the cumulative distribution of a beta function with alpha and beta
 ! at the value x
@@ -217,6 +153,8 @@ function beta_cdf(x, alpha, beta)
 
 real(r8) :: beta_cdf
 real(r8), intent(in) :: x, alpha, beta
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Parameters must be positive
 if(alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
@@ -265,7 +203,7 @@ endif
 ! Draw from U(0, 1) to get a quantile
 quantile = random_uniform(r)
 ! Invert cdf to get a draw from beta
-random_beta = inv_beta_cdf(quantile, alpha, beta)
+random_beta = inv_beta_cdf(quantile, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
 
 end function random_beta
 
@@ -344,6 +282,23 @@ real(r8), intent(in)  :: a, b
 log_beta = log(gamma(a)) + log(gamma(b)) - log(gamma(a + b))
 
 end function log_beta
+
+!---------------------------------------------------------------------------
+
+function inv_beta_first_guess(x, alpha, beta, &
+   bounded_below, bounded_above, lower_bound, upper_bound)
+
+real(r8) :: inv_beta_first_guess
+real(r8), intent(in) :: x
+real(r8), intent(in) :: alpha, beta
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound,   upper_bound
+
+! Need some sort of first guess, should be smarter here
+! For starters, take the mean for this alpha and beta
+inv_beta_first_guess = alpha/(alpha + beta)
+
+end function inv_beta_first_guess 
 
 !---------------------------------------------------------------------------
 

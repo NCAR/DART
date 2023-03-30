@@ -8,7 +8,7 @@ use types_mod,               only : r8, PI, missing_r8
 
 use utilities_mod,           only : E_ERR, error_handler
 
-use normal_distribution_mod, only : normal_cdf
+use normal_distribution_mod, only : normal_cdf, inv_cdf
 
 use random_seq_mod,          only : random_seq_type, random_uniform
 
@@ -57,7 +57,7 @@ real(r8) :: mcdf(7) = [0.393469340287367_r8, 0.264241117657115_r8, 0.19115316946
 write(*, *) 'Absolute value of differences should be less than 1e-15'
 do i = 1, 7
    pdf_diff(i) = gamma_pdf(mx(i), mshape(i), mscale(i)) - mpdf(i)
-   cdf_diff(i) = gamma_cdf(mx(i), mshape(i), mscale(i)) - mcdf(i)
+   cdf_diff(i) = gamma_cdf(mx(i), mshape(i), mscale(i), .true., .false., 0.0_r8, missing_r8) - mcdf(i)
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
 
@@ -74,8 +74,8 @@ gamma_scale = variance / mean
 max_diff = -1.0_r8
 do i = 0, 1000
    x = mean + ((i - 500.0_r8) / 500.0_r8) * 5.0_r8 * sd
-   y = gamma_cdf(x, gamma_shape, gamma_scale)
-   inv = inv_gamma_cdf(y, gamma_shape, gamma_scale)
+   y = gamma_cdf(x, gamma_shape, gamma_scale, .true., .false., 0.0_r8, missing_r8)
+   inv = inv_gamma_cdf(y, gamma_shape, gamma_scale, .true., .false., 0.0_r8, missing_r8)
    max_diff = max(abs(x-inv), max_diff)
 end do
 
@@ -87,89 +87,22 @@ end subroutine test_gamma
 
 !-----------------------------------------------------------------------
 
-function inv_gamma_cdf(quantile, gamma_shape, gamma_scale)
+function inv_gamma_cdf(quantile, gamma_shape, gamma_scale, &
+               bounded_below, bounded_above, lower_bound, upper_bound) result(x)
 
-real(r8)             :: inv_gamma_cdf
+real(r8)             :: x
 real(r8), intent(in) :: quantile
 real(r8), intent(in) :: gamma_shape
 real(r8), intent(in) :: gamma_scale
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Given a quantile q, finds the value of x for which the gamma cdf
 ! with shape and scale has approximately this quantile
 
-! This version uses a Newton method using the fact that the PDF is the derivative of the CDF
-
-! Limit on the total iterations; There is no deep thought behind this choice
-integer, parameter :: max_iterations = 100
-! Limit on number of times to halve the increment; again, no deep thought
-integer, parameter :: max_half_iterations = 25
-
-real(r8) :: mn, sd
-real(r8) :: reltol, dq_dx
-real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old
-integer  :: iter, j
-
-! Do a special test for exactly 0
-if(quantile == 0.0_r8) then
-   inv_gamma_cdf = 0.0_r8
-   return
-endif
-
-! Return a missing_r8 if no value is found
-inv_gamma_cdf = missing_r8
-
-! Need some sort of first guess, should be smarter here
-! For starters, take the mean for this shape and scale
-sd = sqrt(gamma_shape * gamma_scale**2)
-mn = gamma_shape * gamma_scale
-! Could use info about sd to further refine mean and reduce iterations
-x_guess = mn
-
-! Make sure that the guess isn't too close to 0 where things can get ugly
-reltol = (EPSILON(x_guess))**(3./4.)
-x_guess = max(reltol, x_guess) 
-
-! Evaluate the cdf
-q_guess = gamma_cdf(x_guess, gamma_shape, gamma_scale)
-
-del_q = q_guess - quantile
-
-! Iterations of the Newton method to approximate the root
-do iter = 1, max_iterations
-   ! The PDF is the derivative of the CDF
-   dq_dx = gamma_pdf(x_guess, gamma_shape, gamma_scale)
-   ! Linear approximation for how far to move in x
-   del_x = del_q / dq_dx
-
-   ! Avoid moving too much of the fraction towards the bound at 0 
-   ! because of potential instability there. The factor of 10.0 here is a magic number
-   x_new = max(x_guess/10.0_r8, x_guess-del_x)
-
-   ! Look for convergence; If the change in x is smaller than approximate precision 
-   if (abs(del_x) <= reltol*x_guess) then
-      inv_gamma_cdf= x_new
-      return
-   endif
-     
-   ! If we've gone too far, the new error will be bigger than the old; 
-   ! Repeatedly half the distance until this is rectified 
-   del_q_old = del_q
-   q_new = gamma_cdf(x_new, gamma_shape, gamma_scale)
-   do j = 1, max_half_iterations
-      del_q = q_new - quantile
-      if (abs(del_q) < abs(del_q_old)) then
-         EXIT
-      endif
-      x_new = (x_guess + x_new)/2.0_r8
-      q_new = gamma_cdf(x_new, gamma_shape, gamma_scale)
-   end do
-
-   x_guess = x_new
-end do
-
-! Fell off the end, should be an error return eventually?
-errstring = 'Failed to converge '
-call error_handler(E_ERR, 'inv_gamma_cdf', errstring, source)
+! Could do error checks for gamma_shape and gamma_scale values here
+x = inv_cdf(quantile, gamma_cdf, inv_gamma_first_guess, gamma_shape, gamma_scale, &
+            bounded_below, bounded_above, lower_bound, upper_bound)
 
 end function inv_gamma_cdf
 
@@ -195,13 +128,15 @@ end function gamma_pdf
 
 !---------------------------------------------------------------------------
 
-function gamma_cdf(x, gamma_shape, gamma_scale)
+function gamma_cdf(x, gamma_shape, gamma_scale, bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Returns the cumulative distribution of a gamma function with shape and scale
 ! at the value x
 
 real(r8) :: gamma_cdf
 real(r8), intent(in) :: x, gamma_shape, gamma_scale
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! All inputs must be nonnegative
 if(x < 0.0_r8 .or. gamma_shape < 0.0_r8 .or. gamma_scale < 0.0_r8) then
@@ -272,7 +207,7 @@ elseif(plimit < p) then
 ! If P is large, use a normal approximation.
    pn(1) = 3.0_r8 * sqrt(p) * ((x / p)**(1.0_r8 / 3.0_r8) + &
        1.0_r8 / (9.0_r8 * p) - 1.0_r8)
-   gammad = normal_cdf(pn(1), 0.0_r8, 1.0_r8)
+   gammad = normal_cdf(pn(1), 0.0_r8, 1.0_r8, .false., .false., missing_r8, missing_r8)
 elseif(x <= 1.0_r8 .or. x < p) then
 !  Use Pearson's series expansion.
 !  Original note: (Note that P is not large enough to force overflow in logAM).
@@ -371,7 +306,7 @@ endif
 ! Draw from U(0, 1) to get a quantile
 quantile = random_uniform(r)
 ! Invert cdf to get a draw from gamma
-random_gamma = inv_gamma_cdf(quantile, rshape, rscale)
+random_gamma = inv_gamma_cdf(quantile, rshape, rscale, .true., .false., 0.0_r8, missing_r8)
 
 end function random_gamma
 
@@ -424,6 +359,24 @@ post_shape = prior_shape + like_shape - 1
 post_scale = prior_scale * like_scale / (prior_scale + like_scale)
 
 end subroutine gamma_gamma_prod
+
+!---------------------------------------------------------------------------
+function inv_gamma_first_guess(x, gamma_shape, gamma_scale, &
+   bounded_below, bounded_above, lower_bound, upper_bound) 
+
+real(r8) :: inv_gamma_first_guess
+real(r8), intent(in) :: x
+real(r8), intent(in) :: gamma_shape, gamma_scale
+logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: lower_bound,   upper_bound
+
+! Need some sort of first guess, should be smarter here
+! For starters, take the mean for this shape and scale
+inv_gamma_first_guess = gamma_shape * gamma_scale
+! Could use info about sd to further refine mean and reduce iterations
+!!!sd = sqrt(gamma_shape * gamma_scale**2)
+
+end function inv_gamma_first_guess
 
 !---------------------------------------------------------------------------
 
