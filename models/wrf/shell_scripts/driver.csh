@@ -372,6 +372,13 @@ while ( 1 == 1 )
 
    echo "ready to integrate ensemble members"
 
+   # Removing old start_member and done_member diagnostics
+   if ( -e ${RUN_DIR}/start_member_1) then
+      ${REMOVE} ${RUN_DIR}/start_member_*  \
+                ${RUN_DIR}/done_member_*
+   endif
+
+
    set n = 1
    while ( $n <= $NUM_ENS )
 
