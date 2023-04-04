@@ -17,7 +17,7 @@
   source $paramfile
 
   cd $OBS_DIAG_DIR
-  ${COPY} ${TEMPLATE_DIR}/input.nml.template input.nml
+  ${COPY} ${RUN_DIR}/input.nml input.nml
   set gdate  = (`echo $datea 0 -g | ${DART_DIR}/models/wrf/work/advance_time`)
   set yyyy2  = `echo $datea | cut -b1-4`
   set mm2    = `echo $datea | cut -b5-6`
@@ -95,7 +95,7 @@
 EOF
 
 
-  sed -f script.sed ${TEMPLATE_DIR}/input.nml.template >! input.nml
+  sed -f script.sed ${RUN_DIR}/input.nml >! input.nml
 
   # create the state-space diagnostic summary
 
