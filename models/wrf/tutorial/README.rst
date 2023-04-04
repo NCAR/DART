@@ -237,14 +237,11 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
        cp $DART_DIR/models/wrf/tutorial/template/namelist.input.meso   $BASE_DIR/template/.
        cp $DART_DIR/models/wrf/tutorial/template/namelist.wps.template $BASE_DIR/template/.
 
-3. You will also need DART namelists and scripting to run a WRF/DART experiment. Copy
-   the DART tutorial namelist (``input.nml.template``) to the 
-   ``$DART_DIR/models/wrf/tutorial/template`` directory. Also copy the contents of 
+3. You will also need scripting to run a WRF/DART experiment. Copy the contents of 
    ``$DART_DIR/models/wrf/shell_scripts`` to the ``$BASE_DIR/scripts`` directory.
 
    ::
 
-       cp $DART_DIR/models/wrf/tutorial/template/input.nml.template    $BASE_DIR/template/.
        mkdir $BASE_DIR/scripts
        cp -R $DART_DIR/models/wrf/shell_scripts/* $BASE_DIR/scripts
 
