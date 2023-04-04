@@ -12,12 +12,16 @@ use utilities_mod,  only : E_ERR, error_handler
 
 use random_seq_mod, only : random_seq_type, random_uniform
 
+use distribution_params_mod, only : distribution_params_type
+
 use normal_distribution_mod, only : inv_cdf
 
 implicit none
 private
 
-public :: beta_pdf, beta_cdf, inv_beta_cdf, random_beta, test_beta
+public :: beta_cdf,       inv_beta_cdf,        &
+         beta_cdf_params, inv_beta_cdf_params, &
+         beta_pdf, random_beta, test_beta
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'beta_distribution_mod.f90'
@@ -83,6 +87,18 @@ end subroutine test_beta
 
 !-----------------------------------------------------------------------
 
+function inv_beta_cdf_params(quantile, p) result(x)
+
+real(r8)                                   :: x
+real(r8), intent(in)                       :: quantile
+type(distribution_params_type), intent(in) :: p
+
+x = inv_cdf(quantile, beta_cdf_params, inv_beta_first_guess_params, p)
+
+end function inv_beta_cdf_params
+
+!-----------------------------------------------------------------------
+
 function inv_beta_cdf(quantile, alpha, beta, &
    bounded_below, bounded_above, lower_bound, upper_bound) result(x)
 
@@ -96,13 +112,18 @@ real(r8), intent(in) :: lower_bound,   upper_bound
 ! Given a quantile, finds the value of x for which the beta cdf
 ! with alpha and beta has approximately this quantile
 
+type(distribution_params_type) :: p
+
 if (alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
   errstring = 'Negative input beta parameters'
   call error_handler(E_ERR, 'inv_beta_cdf', errstring, source)
 endif
 
-x = inv_cdf(quantile, beta_cdf, inv_beta_first_guess, alpha, beta, &
-            bounded_below, bounded_above, lower_bound, upper_bound)
+p%params(1) = alpha;  p%params(2) = beta
+p%bounded_below = bounded_below;   p%bounded_above = bounded_above
+p%lower_bound = lower_bound;       p%upper_bound = upper_bound
+
+x = inv_beta_cdf_params(quantile, p)
 
 end function inv_beta_cdf
 
@@ -141,6 +162,22 @@ else
 endif
 
 end function beta_pdf
+
+!---------------------------------------------------------------------------
+
+function beta_cdf_params(x, p)
+
+real(r8)                                   :: beta_cdf_params
+real(r8), intent(in)                       :: x
+type(distribution_params_type), intent(in) :: p
+
+real(r8) :: alpha, beta
+
+alpha = p%params(1);    beta = p%params(2)
+beta_cdf_params = beta_cdf(x, alpha, beta, &
+                    p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound)
+
+end function beta_cdf_params
 
 !---------------------------------------------------------------------------
 
@@ -282,6 +319,22 @@ real(r8), intent(in)  :: a, b
 log_beta = log(gamma(a)) + log(gamma(b)) - log(gamma(a + b))
 
 end function log_beta
+
+!---------------------------------------------------------------------------
+
+function inv_beta_first_guess_params(quantile, p)
+
+real(r8)                                   :: inv_beta_first_guess_params
+real(r8), intent(in)                       :: quantile
+type(distribution_params_type), intent(in) :: p
+
+real(r8) :: alpha, beta
+
+alpha = p%params(1);     beta = p%params(2)
+inv_beta_first_guess_params = inv_beta_first_guess(quantile, alpha, beta, &
+   p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound)
+
+end function inv_beta_first_guess_params
 
 !---------------------------------------------------------------------------
 

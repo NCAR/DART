@@ -8,11 +8,13 @@ use types_mod, only : r8, missing_r8, digits12, PI
 
 use utilities_mod, only : E_ERR, E_MSG, error_handler
 
+use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
+
 implicit none
 private
 
 public :: normal_cdf, inv_std_normal_cdf, inv_weighted_normal_cdf, test_normal, &
-          normal_mean_variance, normal_mean_sd, inv_cdf
+          normal_mean_variance, normal_mean_sd, inv_cdf, set_normal_params_from_ens
 
 character(len=512)        :: errstring
 character(len=*), parameter :: source = 'normal_distribution_mod.f90'
@@ -61,7 +63,7 @@ real(r8) :: inv_diff_bound(16) = [1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_
 ! Compare to matlab 
 ! Absolute value of differences should be less than 1e-15
 do i = 1, 7
-   cdf_diff(i) = normal_cdf(mx(i), mmean(i), msd(i), .false., .false., missing_r8, missing_r8) - mcdf(i)
+   cdf_diff(i) = normal_cdf(mx(i), mmean(i), msd(i)) - mcdf(i)
 end do
 max_matlab_diff = maxval(abs(cdf_diff))
 if(max_matlab_diff > 1.0e-15_r8) then
@@ -79,7 +81,7 @@ enddo
 ! Test the inversion of the cdf over +/- 30 standard deviations around mean
 do i = 1, num_trials + 1
    sd = min_sd + (i - 1.0_r8) * (max_sd - min_sd) / num_trials 
-   quantile = normal_cdf(sd, 0.0_r8, 1.0_r8, .false., .false., missing_r8, missing_r8)
+   quantile = normal_cdf(sd, 0.0_r8, 1.0_r8)
    inv = inv_std_normal_cdf(quantile)
    do j = 1, 16
       if(quantile < max_q(j)) then
@@ -102,16 +104,32 @@ end subroutine test_normal
 
 !------------------------------------------------------------------------
 
-function normal_cdf(x_in, mean, sd, bounded_below, bounded_above, lower_bound, upper_bound)
+function normal_cdf_params(x, p)
+
+real(r8)                                   :: normal_cdf_params
+real(r8), intent(in)                       :: x
+type(distribution_params_type), intent(in) :: p
+
+! A translation routine that is required to use the generic cdf optimization routine
+! Extracts the appropriate information from the distribution_params_type that is needed
+! for a call to the function normal_cdf below. 
+
+real(r8) :: mean, sd
+
+mean = p%params(1);    sd = p%params(2)
+normal_cdf_params = normal_cdf(x, mean, sd)
+
+end function normal_cdf_params
+
+!------------------------------------------------------------------------
+
+function normal_cdf(x_in, mean, sd)
 
 ! Approximate cumulative distribution function for normal
-! with mean and sd evaluated at point x_in
-! Only works for x>= 0.
 
-real(r8)                       :: normal_cdf
-real(r8), intent(in)           :: x_in, mean, sd
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound, upper_bound
+real(r8)             :: normal_cdf
+real(r8), intent(in) :: x_in
+real(r8), intent(in) :: mean, sd
 
 real(digits12) :: nx
 
@@ -128,24 +146,24 @@ end function normal_cdf
 
 !------------------------------------------------------------------------
 
-function inv_weighted_normal_cdf(alpha, mean, sd, p) result(x)
+function inv_weighted_normal_cdf(alpha, mean, sd, q) result(x)
 
 ! Find the value of x for which the cdf of a N(mean, sd) multiplied times
-! alpha has value p.
+! alpha has value q.
 
 real(r8)              :: x
-real(r8), intent(in)  :: alpha, mean, sd, p
+real(r8), intent(in)  :: alpha, mean, sd, q
 
-real(r8) :: np
+real(r8) :: normalized_q
 
 ! VARIABLES THROUGHOUT NEED TO SWITCH TO DIGITS_12
 
 ! Can search in a standard normal, then multiply by sd at end and add mean
-! Divide p by alpha to get the right place for weighted normal
-np = p / alpha
+! Divide q by alpha to get the right place for weighted normal
+normalized_q = q / alpha
 
 ! Find spot in standard normal
-x = inv_std_normal_cdf(np)
+x = inv_std_normal_cdf(normalized_q)
 
 ! Add in the mean and normalize by sd
 x = mean + x * sd
@@ -155,36 +173,50 @@ end function inv_weighted_normal_cdf
 
 !------------------------------------------------------------------------
 
-function approx_inv_normal_cdf(p_in, param_1, param_2, &
-   bounded_below, bounded_above, lower_bound, upper_bound) result(x)
+function approx_inv_normal_cdf_params(quantile, p)
 
-real(r8)                       :: x
-real(r8), intent(in)           :: p_in
-real(r8), intent(in)           :: param_1, param_2
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound, upper_bound
+real(r8)                                   :: approx_inv_normal_cdf_params
+real(r8), intent(in)                       :: quantile
+type(distribution_params_type), intent(in) :: p
+
+! A translation routine that is required to use the generic first_guess for
+! the cdf  optimization routine.
+! Extracts the appropriate information from the distribution_params_type that is needed
+! for a call to the function approx_inv_normal_cdf below (which is nothing).
+
+approx_inv_normal_cdf_params = approx_inv_normal_cdf(quantile)
+
+end function approx_inv_normal_cdf_params
+
+!------------------------------------------------------------------------
+
+function approx_inv_normal_cdf(quantile_in) result(x)
+
+real(r8)             :: x
+real(r8), intent(in) :: quantile_in
 
 ! This is used to get a good first guess for the search in inv_std_normal_cdf
-! Arguments a and b are not used but are needed as placeholders
+! The params argument is not needed here but is required for consistency &
+! with other distributions
 
 ! normal inverse
 ! translate from http://home.online.no/~pjacklam/notes/invnorm
 ! a routine written by john herrero
 
-real(r8) :: p
-real(r8) :: p_low,p_high
+real(r8) :: quantile 
+real(r8) :: quantile_low,quantile_high
 real(r8) :: a1,a2,a3,a4,a5,a6
 real(r8) :: b1,b2,b3,b4,b5
 real(r8) :: c1,c2,c3,c4,c5,c6
 real(r8) :: d1,d2,d3,d4
-real(r8) :: q,r
+real(r8) :: r, s
 
 ! Truncate out of range quantiles, converts them to smallest positive number or largest number <1
 ! This solution is stable, but may lead to underflows being thrown. May want to 
 ! think of a better solution. 
-p = p_in
-if(p <= 0.0_r8) p = tiny(p_in)
-if(p >= 1.0_r8) p = nearest(1.0_r8, -1.0_r8)
+quantile = quantile_in
+if(quantile <= 0.0_r8) quantile = tiny(quantile_in)
+if(quantile >= 1.0_r8) quantile = nearest(1.0_r8, -1.0_r8)
 
 a1 = -39.69683028665376_digits12
 a2 =  220.9460984245205_digits12
@@ -207,25 +239,38 @@ d1 =  0.007784695709041462_digits12
 d2 =  0.3224671290700398_digits12
 d3 =  2.445134137142996_digits12
 d4 =  3.754408661907416_digits12
-p_low  = 0.02425_digits12
-p_high = 1_digits12 - p_low
+quantile_low  = 0.02425_digits12
+quantile_high = 1_digits12 - quantile_low
 ! Split into an inner and two outer regions which have separate fits
-if(p < p_low) then
-   q = sqrt(-2.0_digits12 * log(p))
-   x = (((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
-      ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
-else if(p > p_high) then
-   q = sqrt(-2.0_digits12 * log(1.0_digits12 - p))
-   x = -(((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
-      ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
+if(quantile < quantile_low) then
+   s = sqrt(-2.0_digits12 * log(quantile))
+   x = (((((c1*s + c2)*s + c3)*s + c4)*s + c5)*s + c6) / &
+      ((((d1*s + d2)*s + d3)*s + d4)*s + 1.0_digits12)
+else if(quantile > quantile_high) then
+   s = sqrt(-2.0_digits12 * log(1.0_digits12 - quantile))
+   x = -(((((c1*s + c2)*s + c3)*s + c4)*s + c5)*s + c6) / &
+      ((((d1*s + d2)*s + d3)*s + d4)*s + 1.0_digits12)
 else
-   q = p - 0.5_digits12
-   r = q*q
-   x = (((((a1*r + a2)*r + a3)*r + a4)*r + a5)*r + a6)*q / &
+   s = quantile - 0.5_digits12
+   r = s*s
+   x = (((((a1*r + a2)*r + a3)*r + a4)*r + a5)*r + a6)*s / &
       (((((b1*r + b2)*r + b3)*r + b4)*r + b5)*r + 1.0_digits12)
 endif
 
 end function approx_inv_normal_cdf
+
+!------------------------------------------------------------------------
+
+function inv_std_normal_cdf_params(quantile, p) result(x)
+
+real(r8)                                   :: x
+real(r8), intent(in)                       :: quantile
+type(distribution_params_type), intent(in) :: p
+
+x = inv_cdf(quantile, normal_cdf_params, approx_inv_normal_cdf_params, p)
+
+
+end function inv_std_normal_cdf_params
 
 !------------------------------------------------------------------------
 
@@ -240,41 +285,45 @@ real(r8), intent(in)  :: quantile
 ! Given a quantile q, finds the value of x for which the standard normal cdf
 ! has approximately this quantile
 
-x = inv_cdf(quantile, normal_cdf, approx_inv_normal_cdf, 0.0_r8, 1.0_r8, &
-   .false., .false., missing_r8, missing_r8)
+! Where should the stupid p type come from
+type(distribution_params_type) :: p
+real(r8) :: mean, sd
+
+! Set the mean and sd to 0 and 1 for standard normal
+mean        = 0.0_r8;     sd          = 1.0_r8
+p%params(1) = mean;       p%params(2) = sd
+
+x = inv_std_normal_cdf_params(quantile, p)
 
 end function inv_std_normal_cdf
 
 !------------------------------------------------------------------------
 
-function inv_cdf(quantile_in, cdf, first_guess, param_1, param_2, &
-   bounded_below, bounded_above, lower_bound, upper_bound) result(x)
+function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
 
 interface
-   function cdf(x, a, b, bounded_below, bounded_above, lower_bound, upper_bound)
+   function cdf(x, p)
       use types_mod, only : r8
-      real(r8)             :: cdf
-      real(r8), intent(in) :: x, a, b
-      logical,  intent(in) :: bounded_below, bounded_above
-      real(r8), intent(in) :: lower_bound,   upper_bound
+      use distribution_params_mod, only : distribution_params_type
+      real(r8)                                   :: cdf
+      real(r8), intent(in)                       :: x
+      type(distribution_params_type), intent(in) :: p
    end function
 end interface
 
 interface
-   function first_guess(quantile, a, b, bounded_below, bounded_above, lower_bound, upper_bound)
+   function first_guess(quantile, p)
       use types_mod, only : r8
-      real(r8)             :: first_guess
-      real(r8), intent(in) :: quantile, a, b
-      logical,  intent(in) :: bounded_below, bounded_above
-      real(r8), intent(in) :: lower_bound,   upper_bound
+      use distribution_params_mod, only : distribution_params_type
+      real(r8)                                   :: first_guess
+      real(r8), intent(in)                       :: quantile
+      type(distribution_params_type), intent(in) :: p
    end function
 end interface
 
-real(r8)              :: x
-real(r8), intent(in)  :: quantile_in
-real(r8), intent(in)  :: param_1, param_2
-logical,  intent(in)  :: bounded_below, bounded_above
-real(r8), intent(in)  :: lower_bound,   upper_bound
+real(r8)                                   :: x
+real(r8), intent(in)                       :: quantile_in
+type(distribution_params_type), intent(in) :: p
 
 ! This naive Newton method is much more accurate than approx_inv_normal_cdf, especially
 ! for quantile values less than 0.5. 
@@ -293,6 +342,13 @@ real(r8) :: quantile
 real(r8) :: reltol, dq_dx, delta
 real(r8) :: x_guess, q_guess, x_new, q_new, del_x, del_q, del_q_old, q_old
 integer  :: iter, j
+
+real(r8) :: lower_bound,   upper_bound
+logical  :: bounded_below, bounded_above
+
+! Extract the required information from the p type
+bounded_below = p%bounded_below;   bounded_above = p%bounded_above
+lower_bound   = p%lower_bound;     upper_bound   = p%upper_bound
 
 quantile = quantile_in
 
@@ -319,10 +375,10 @@ quantile = min(quantile, max_quantile)
 quantile = max(quantile, min_quantile)
 
 ! Get first guess from functional approximation
-x_guess = first_guess(quantile, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
+x_guess = first_guess(quantile, p)
 
 ! Evaluate the cdf
-q_guess = cdf(x_guess, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
+q_guess = cdf(x_guess, p)
 
 del_q = q_guess - quantile
 
@@ -332,9 +388,7 @@ do iter = 1, max_iterations
    ! Use numerical derivatives of the CDF to get more accurate inversion
    ! These values for the delta for the approximation work with Gfortran
    delta = max(1e-8_r8, 1e-8_r8 * abs(x_guess))
-   dq_dx = (cdf(x_guess + delta, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound) - &
-      cdf(x_guess - delta, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)) / &
-      (2.0_r8 * delta)
+   dq_dx = (cdf(x_guess + delta, p) - cdf(x_guess - delta, p)) / (2.0_r8 * delta)
    ! Derivative of 0 means we're not going anywhere else
    if(dq_dx <= 0.0_r8) then
       x = x_guess
@@ -355,7 +409,7 @@ do iter = 1, max_iterations
    ! If we've gone too far, the new error will be bigger than the old; 
    ! Repeatedly half the distance until this is rectified 
    del_q_old = del_q
-   q_new = cdf(x_new, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
+   q_new = cdf(x_new, p)
    do j = 1, max_half_iterations
       del_q = q_new - quantile
       if (abs(del_q) < abs(del_q_old)) then
@@ -363,7 +417,7 @@ do iter = 1, max_iterations
       endif
       q_old = q_new
       x_new = (x_guess + x_new)/2.0_r8
-      q_new = cdf(x_new, param_1, param_2, bounded_below, bounded_above, lower_bound, upper_bound)
+      q_new = cdf(x_new, p)
       ! If q isn't changing, no point in continuing
       if(q_old == q_new) exit
 
@@ -384,15 +438,15 @@ end function inv_cdf
 
 !------------------------------------------------------------------------
 
-function normal_pdf(x)
+function std_normal_pdf(x)
 
 ! Pdf of standard normal evaluated at x
-real(r8) :: normal_pdf
+real(r8) :: std_normal_pdf
 real(r8), intent(in) :: x
 
-normal_pdf = exp(-0.5_r8 * x**2) / (sqrt(2.0_r8 * PI))
+std_normal_pdf = exp(-0.5_r8 * x**2) / (sqrt(2.0_r8 * PI))
 
-end function normal_pdf
+end function std_normal_pdf
 
 !------------------------------------------------------------------------
 
@@ -421,6 +475,22 @@ mean = sum(x) / num
 sd  = sqrt(sum((x - mean)**2) / (num - 1))
 
 end subroutine normal_mean_sd
+
+!------------------------------------------------------------------------
+
+subroutine set_normal_params_from_ens(ens, num, p)
+
+integer, intent(in)                         :: num
+real(r8), intent(in)                        :: ens(num)
+type(distribution_params_type), intent(out) :: p
+
+! Set up the description of the normal distribution defined by the ensemble
+p%distribution_type = NORMAL_DISTRIBUTION
+
+! The two meaningful params are the mean and standard deviation
+call normal_mean_sd(ens, num, p%params(1), p%params(2))
+
+end subroutine set_normal_params_from_ens
 
 !------------------------------------------------------------------------
 

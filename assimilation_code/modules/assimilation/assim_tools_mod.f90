@@ -1319,8 +1319,8 @@ cdf(1) = 0.0_r8
 cdf(2) = 1.0_r8
 
 ! Compute the cdf's at the bounds if they exist
-if(bounded_below) cdf(1) = normal_cdf(lower_bound, x, obs_sd, .false., .false., missing_r8, missing_r8)
-if(bounded_above) cdf(2) = normal_cdf(upper_bound, x, obs_sd, .false., .false., missing_r8, missing_r8)
+if(bounded_below) cdf(1) = normal_cdf(lower_bound, x, obs_sd)
+if(bounded_above) cdf(2) = normal_cdf(upper_bound, x, obs_sd)
 
 ! The weight is the reciprocal of the fraction of the cdf that is in legal range
 weight = 1.0_r8 / (cdf(2) - cdf(1))
@@ -1933,10 +1933,10 @@ prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_v
 
 ! Split into 2*ens_size domains; mass in each is computed
 ! Start by computing mass in the outermost (gaussian) regions
-mass(1) = normal_cdf(ens(e_ind(1)), new_mean_left, new_sd, .false., .false., missing_r8, missing_r8) * &
+mass(1) = normal_cdf(ens(e_ind(1)), new_mean_left, new_sd) * &
    prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
-mass(2*ens_size) = (1.0_r8 - normal_cdf(ens(e_ind(ens_size)), new_mean_right, &
-   new_sd, .false., .false., missing_r8, missing_r8)) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
+mass(2*ens_size) = (1.0_r8 - normal_cdf(ens(e_ind(ens_size)), new_mean_right, new_sd)) * &
+   prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
 
 ! Compute mass in the inner half boxes that have ensemble point on the left
 do i = 2, 2*ens_size - 2, 2
@@ -2113,7 +2113,7 @@ if(gaussian_likelihood_tails) then
          obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
          sqrt(left_var + obs_var)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
-   mass(1) = normal_cdf(x(1), new_mean_left, new_sd_left, .false., .false., missing_r8, missing_r8) * prod_weight_left
+   mass(1) = normal_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
 
    ! Same for the right tail
    var_ratio = obs_var / (right_var + obs_var)
@@ -2126,8 +2126,8 @@ if(gaussian_likelihood_tails) then
          obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
          sqrt(right_var + obs_var)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
-   mass(ens_size + 1) = (1.0_r8 - normal_cdf(x(ens_size), new_mean_right, &
-      new_sd_right, .false., .false., missing_r8, missing_r8)) * prod_weight_right
+   mass(ens_size + 1) = (1.0_r8 - normal_cdf(x(ens_size), new_mean_right, new_sd_right)) * &
+      prod_weight_right
    !************ End Block to do Gaussian-Gaussian on tail **************
 else
    !*************** Block to do flat tail for likelihood ****************
@@ -2317,8 +2317,8 @@ prior_sd = sqrt(prior_var)
 
 ! Need to normalize the wings so they have 1/(2*ens_size) mass outside
 ! Use cdf to find out how much mass is left of 1st member, right of last
-total_mass_left = normal_cdf(ens(e_ind(1)), prior_mean, prior_sd, .false., .false., missing_r8, missing_r8)
-total_mass_right = 1.0_r8 - normal_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd, .false., .false., missing_r8, missing_r8)
+total_mass_left = normal_cdf(ens(e_ind(1)), prior_mean, prior_sd)
+total_mass_right = 1.0_r8 - normal_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd)
 
 ! Find the mass in each division given the initial equal partition and the weights
 updated_mass(1) = rel_weight(e_ind(1)) / (2.0_r8 * ens_size)

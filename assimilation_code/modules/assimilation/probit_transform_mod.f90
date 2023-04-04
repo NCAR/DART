@@ -14,9 +14,12 @@ use sort_mod,  only : sort, index_sort
 use utilities_mod, only : E_ERR, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
                           find_namelist_in_file, check_namelist_read
 
-use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR,  &
-                               GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, UNIFORM_PRIOR
-                               !!!PARTICLE_PRIOR
+use algorithm_info_mod, only : probit_dist_info
+
+use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
+                                    GAMMA_DISTRIBUTION, BETA_DISTRIBUTION,               &
+                                    LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION,       &
+                                    PARTICLE_FILTER_DISTRIBUTION
 
 use normal_distribution_mod, only : normal_cdf, inv_std_normal_cdf
 
@@ -128,19 +131,19 @@ endif
 ! Set the type of the distribution in the parameters defined type
 p%prior_distribution_type = prior_distribution_type
 
-if(p%prior_distribution_type == NORMAL_PRIOR) then 
+if(p%prior_distribution_type == NORMAL_DISTRIBUTION) then 
    call to_probit_normal(ens_size, state_ens, p, probit_ens, use_input_p)
-elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then 
+elseif(p%prior_distribution_type == LOG_NORMAL_DISTRIBUTION) then 
    call to_probit_log_normal(ens_size, state_ens, p, probit_ens, use_input_p)
-elseif(p%prior_distribution_type == UNIFORM_PRIOR) then 
+elseif(p%prior_distribution_type == UNIFORM_DISTRIBUTION) then 
    call to_probit_uniform(ens_size, state_ens, p, probit_ens, use_input_p, lower_bound, upper_bound)
-elseif(p%prior_distribution_type == GAMMA_PRIOR) then 
+elseif(p%prior_distribution_type == GAMMA_DISTRIBUTION) then 
    call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p, &
       bounded_below, bounded_above, lower_bound, upper_bound)
-elseif(p%prior_distribution_type == BETA_PRIOR) then 
+elseif(p%prior_distribution_type == BETA_DISTRIBUTION) then 
    call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p, &
       bounded_below, bounded_above, lower_bound, upper_bound)
-elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
+elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
 
@@ -184,7 +187,7 @@ elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
 !----------------------------------------------------------------------------------
 
 
-!!!elseif(p%prior_distribution_type == PARTICLE_PRIOR) then
+!!!elseif(p%prior_distribution_type == PARTICLE_FILTER_DISTRIBUTION) then
    !!!call to_probit_particle(ens_size, state_ens, p, probit_ens, use_input_p, &
        !!!bounded_below, bounded_above, lower_bound, upper_bound)
 else
@@ -608,19 +611,19 @@ real(r8), intent(out)                :: state_ens(ens_size)
 if(.not. module_initialized) call initialize_probit_transform
 
 ! Transform back to the original space
-if(p%prior_distribution_type == NORMAL_PRIOR) then
+if(p%prior_distribution_type == NORMAL_DISTRIBUTION) then
    call from_probit_normal(ens_size, probit_ens, p, state_ens)
-elseif(p%prior_distribution_type == LOG_NORMAL_PRIOR) then
+elseif(p%prior_distribution_type == LOG_NORMAL_DISTRIBUTION) then
    call from_probit_log_normal(ens_size, probit_ens, p, state_ens)
-elseif(p%prior_distribution_type == UNIFORM_PRIOR) then
+elseif(p%prior_distribution_type == UNIFORM_DISTRIBUTION) then
    call from_probit_uniform(ens_size, probit_ens, p, state_ens)
-elseif(p%prior_distribution_type == GAMMA_PRIOR) then
+elseif(p%prior_distribution_type == GAMMA_DISTRIBUTION) then
    call from_probit_gamma(ens_size, probit_ens, p, state_ens)
-elseif(p%prior_distribution_type == BETA_PRIOR) then
+elseif(p%prior_distribution_type == BETA_DISTRIBUTION) then
    call from_probit_beta(ens_size, probit_ens, p, state_ens)
-elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_PRIOR) then
+elseif(p%prior_distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
-!!!elseif(p%prior_distribution_type == PARTICLE_PRIOR) then
+!!!elseif(p%prior_distribution_type == PARTICLE_FILTER_DISTRIBUTION) then
    !!!call from_probit_particle(ens_size, probit_ens, p, state_ens)
 else
    write(errstring, *) 'Illegal distribution type', p%prior_distribution_type
@@ -866,7 +869,7 @@ real(r8), intent(in) :: p
 if(use_logit_instead_of_probit) then
    inv_probit_or_logit_transform = 1.0_r8 / (1.0_r8 + exp(-p))
 else
-   inv_probit_or_logit_transform = normal_cdf(p, 0.0_r8, 1.0_r8, .false., .false., missing_r8, missing_r8)
+   inv_probit_or_logit_transform = normal_cdf(p, 0.0_r8, 1.0_r8)
 endif
 
 end function inv_probit_or_logit_transform

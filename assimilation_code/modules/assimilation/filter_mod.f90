@@ -97,7 +97,9 @@ use location_mod,          only : location_type
 use probit_transform_mod,  only : dist_param_type, transform_to_probit, &
                             transform_from_probit
 
-use algorithm_info_mod, only : probit_dist_info, NORMAL_PRIOR
+use algorithm_info_mod, only : probit_dist_info
+
+use distribution_params_mod, only : NORMAL_DISTRIBUTION
 
 !------------------------------------------------------------------------------
 
@@ -1677,7 +1679,7 @@ do group = 1, num_groups
                bounded_below, bounded_above, lower_bound, upper_bound)
          else
             ! Default is just a normal which does nothing
-            dist_type = NORMAL_PRIOR
+            dist_type = NORMAL_DISTRIBUTION
             bounded_below = .false. ;  bounded_above = .false.
             lower_bound = 0.0_r8;      upper_bound = 0.0_r8
          endif

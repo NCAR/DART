@@ -130,7 +130,7 @@ tail_amp_right = 1.0_r8
 do_uniform_tail_left = .false.
 if(bounded_below) then
    ! Compute the CDF at the bounds
-   bound_quantile = normal_cdf(lower_bound, tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8)
+   bound_quantile = normal_cdf(lower_bound, tail_mean_left, tail_sd_left)
    ! Note that due to roundoff it is possible for del_q - quantile to be slightly negative
    if((del_q - bound_quantile) / del_q < uniform_threshold) then
       ! If bound and ensemble member are too close, do uniform approximation
@@ -145,7 +145,7 @@ endif
 do_uniform_tail_right = .false.
 if(bounded_above) then
    ! Compute the CDF at the bounds
-   bound_quantile = normal_cdf(upper_bound, tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8)
+   bound_quantile = normal_cdf(upper_bound, tail_mean_right, tail_sd_right)
    ! Note that due to roundoff it is possible for the numerator to be slightly negative
    if((bound_quantile - (1.0_r8 - del_q)) / del_q < uniform_threshold) then
       ! If bound and ensemble member are too close, do uniform approximation
@@ -248,12 +248,11 @@ if(x < sort_ens(1)) then
    else
       ! It's a normal tail
       if(bounded_below) then
-         quantile = tail_amp_left * (normal_cdf(x, tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8) - &
-            normal_cdf(lower_bound, tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8))
+         quantile = tail_amp_left * (normal_cdf(x,           tail_mean_left, tail_sd_left) - &
+                                     normal_cdf(lower_bound, tail_mean_left, tail_sd_left))
       else        ! Unbounded, tail normal goes all the way down to quantile 0, amplitude is 1
-         quantile = (normal_cdf(x, tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8) / &
-                    normal_cdf(sort_ens(1), tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8)) &
-                    * del_q
+         quantile = (normal_cdf(x,          tail_mean_left, tail_sd_left) / &
+                    normal_cdf(sort_ens(1), tail_mean_left, tail_sd_left)) * del_q
       endif
       ! Make sure it doesn't sneak past the quantile of the smallest ensemble member due to round-off
       quantile = min(quantile, q(1))
@@ -279,16 +278,15 @@ elseif(x > sort_ens(ens_size)) then
          (x - sort_ens(ens_size)) / (upper_bound - sort_ens(ens_size)) * del_q
    else
       ! It's a normal tail
-      q_at_largest_ens = normal_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8)
+      q_at_largest_ens = normal_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
       ! Want to avoid quantiles exceeding 1 due to numerical issues. Do fraction of the normal part
       if(bounded_above) then
-         upper_q = tail_amp_right * normal_cdf(upper_bound, tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8)
-         fract = (tail_amp_right * normal_cdf(x, tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8) - &
-            tail_amp_right * q_at_largest_ens) / &
-            (upper_q - tail_amp_right * q_at_largest_ens)
+         upper_q = tail_amp_right * normal_cdf(upper_bound, tail_mean_right, tail_sd_right)
+         fract = (tail_amp_right * normal_cdf(x, tail_mean_right, tail_sd_right) - &
+                  tail_amp_right * q_at_largest_ens) / (upper_q - tail_amp_right * q_at_largest_ens)
       else
          ! Normal goes all the way to infinity, amplitude is 1, q at infinity is 1
-         fract = (normal_cdf(x, tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8) - q_at_largest_ens) / &
+         fract = (normal_cdf(x, tail_mean_right, tail_sd_right) - q_at_largest_ens) / &
             (1.0_r8 -  q_at_largest_ens)
       endif
 
@@ -400,13 +398,13 @@ do i = 1, ens_size
          amp_adj = q(1) / del_q
          if(bounded_below) then
             lower_mass = amp_adj * tail_amp_left * &
-               normal_cdf(lower_bound, tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8)
+               normal_cdf(lower_bound, tail_mean_left, tail_sd_left)
          else
             lower_mass = 0.0_r8
          endif
          ! Find the mass at the upper bound (ensemble member 1)
          upper_mass = amp_adj * tail_amp_left * &
-            normal_cdf(sort_ens(1), tail_mean_left, tail_sd_left, .false., .false., missing_r8, missing_r8)
+            normal_cdf(sort_ens(1), tail_mean_left, tail_sd_left)
          ! What fraction of this mass difference should we go?
          fract = curr_q / q(1)
          target_mass = lower_mass + fract * (upper_mass - lower_mass)
@@ -428,13 +426,13 @@ do i = 1, ens_size
          amp_adj = (1.0_r8 - q(ens_size)) / del_q
          if(bounded_above) then
             upper_mass = amp_adj * tail_amp_right * &
-               normal_cdf(upper_bound, tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8)
+               normal_cdf(upper_bound, tail_mean_right, tail_sd_right)
          else
             upper_mass = amp_adj * 1.0_r8
          endif
          ! Find the mass at the lower edge of the region (ensemble member n)
          lower_mass = amp_adj * tail_amp_right * &
-            normal_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right, .false., .false., missing_r8, missing_r8)
+            normal_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
          ! What fraction of the last interval do we need to move
          fract = (curr_q - q(ens_size)) / (1.0_r8 - q(ens_size))
          target_mass = lower_mass + fract * (upper_mass - lower_mass)

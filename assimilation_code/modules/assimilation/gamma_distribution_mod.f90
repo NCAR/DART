@@ -10,13 +10,17 @@ use utilities_mod,           only : E_ERR, error_handler
 
 use normal_distribution_mod, only : normal_cdf, inv_cdf
 
+use distribution_params_mod, only : distribution_params_type
+
 use random_seq_mod,          only : random_seq_type, random_uniform
 
 implicit none
 private
 
-public :: gamma_pdf, gamma_cdf, inv_gamma_cdf, random_gamma, test_gamma, &
-          gamma_mn_var_to_shape_scale, gamma_gamma_prod, gamma_shape_scale
+public :: gamma_cdf,        inv_gamma_cdf,                                  &
+          gamma_cdf_params, inv_gamma_cdf_params,                           &
+          random_gamma, gamma_pdf, test_gamma, gamma_mn_var_to_shape_scale, &
+          gamma_gamma_prod, gamma_shape_scale
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'gamma_distribution_mod.f90'
@@ -87,6 +91,18 @@ end subroutine test_gamma
 
 !-----------------------------------------------------------------------
 
+function inv_gamma_cdf_params(quantile, p) result(x)
+
+real(r8)                                   :: x
+real(r8),                       intent(in) :: quantile
+type(distribution_params_type), intent(in) :: p
+
+! Could do error checks for gamma_shape and gamma_scale values here
+x = inv_cdf(quantile, gamma_cdf_params, inv_gamma_first_guess_params, p)
+
+end function inv_gamma_cdf_params
+!-----------------------------------------------------------------------
+
 function inv_gamma_cdf(quantile, gamma_shape, gamma_scale, &
                bounded_below, bounded_above, lower_bound, upper_bound) result(x)
 
@@ -100,9 +116,14 @@ real(r8), intent(in) :: lower_bound,   upper_bound
 ! Given a quantile q, finds the value of x for which the gamma cdf
 ! with shape and scale has approximately this quantile
 
-! Could do error checks for gamma_shape and gamma_scale values here
-x = inv_cdf(quantile, gamma_cdf, inv_gamma_first_guess, gamma_shape, gamma_scale, &
-            bounded_below, bounded_above, lower_bound, upper_bound)
+type(distribution_params_type) :: p
+
+! Load the p type for the generic cdf calls
+p%params(1) = gamma_shape; p%params(2) = gamma_scale
+p%bounded_below = bounded_below;      p%bounded_above = bounded_above
+p%lower_bound   = lower_bound;        p%upper_bound   = upper_bound
+
+x = inv_gamma_cdf_params(quantile, p)
 
 end function inv_gamma_cdf
 
@@ -125,6 +146,26 @@ else
 endif
 
 end function gamma_pdf
+
+!---------------------------------------------------------------------------
+
+function gamma_cdf_params(x, p)
+
+real(r8)                                   :: gamma_cdf_params
+real(r8), intent(in)                       :: x
+type(distribution_params_type), intent(in) :: p
+
+! A translation routine that is required to use the generic cdf optimization routine
+! Extracts the appropriate information from the distribution_params_type that is needed
+! for a call to the function gamma_cdf below. 
+
+real(r8) :: gamma_shape, gamma_scale
+
+gamma_shape = p%params(1);     gamma_scale = p%params(2)
+gamma_cdf_params = gamma_cdf(x, gamma_shape, gamma_scale, &
+                     p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound)
+
+end function gamma_cdf_params
 
 !---------------------------------------------------------------------------
 
@@ -207,7 +248,7 @@ elseif(plimit < p) then
 ! If P is large, use a normal approximation.
    pn(1) = 3.0_r8 * sqrt(p) * ((x / p)**(1.0_r8 / 3.0_r8) + &
        1.0_r8 / (9.0_r8 * p) - 1.0_r8)
-   gammad = normal_cdf(pn(1), 0.0_r8, 1.0_r8, .false., .false., missing_r8, missing_r8)
+   gammad = normal_cdf(pn(1), 0.0_r8, 1.0_r8)
 elseif(x <= 1.0_r8 .or. x < p) then
 !  Use Pearson's series expansion.
 !  Original note: (Note that P is not large enough to force overflow in logAM).
@@ -361,14 +402,32 @@ post_scale = prior_scale * like_scale / (prior_scale + like_scale)
 end subroutine gamma_gamma_prod
 
 !---------------------------------------------------------------------------
-function inv_gamma_first_guess(x, gamma_shape, gamma_scale, &
-   bounded_below, bounded_above, lower_bound, upper_bound) 
+
+function inv_gamma_first_guess_params(quantile, p)
+
+real(r8)                                   :: inv_gamma_first_guess_params
+real(r8), intent(in)                       :: quantile
+type(distribution_params_type), intent(in) :: p
+
+! A translation routine that is required to use the generic first_guess for
+! the cdf  optimization routine.
+! Extracts the appropriate information from the distribution_params_type that is needed
+! for a call to the function approx_inv_normal_cdf below (which is nothing).
+
+real(r8) :: gamma_shape, gamma_scale
+
+gamma_shape = p%params(1);     gamma_scale = p%params(2)
+inv_gamma_first_guess_params = inv_gamma_first_guess(quantile, gamma_shape, gamma_scale)
+
+end function inv_gamma_first_guess_params
+
+!---------------------------------------------------------------------------
+
+function inv_gamma_first_guess(quantile, gamma_shape, gamma_scale)
 
 real(r8) :: inv_gamma_first_guess
-real(r8), intent(in) :: x
+real(r8), intent(in) :: quantile
 real(r8), intent(in) :: gamma_shape, gamma_scale
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Need some sort of first guess, should be smarter here
 ! For starters, take the mean for this shape and scale
