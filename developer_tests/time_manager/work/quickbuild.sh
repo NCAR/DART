@@ -11,7 +11,7 @@ export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
 MODEL="none"
-EXTRA="$DART"/models/template/model_mod.f90
+EXTRA="$DART"/models/template/threed_model_mod.f90
 dev_test=1
 TEST="time_manager"
 LOCATION="threed_sphere"
