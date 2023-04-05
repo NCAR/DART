@@ -19,9 +19,9 @@ use normal_distribution_mod, only : inv_cdf
 implicit none
 private
 
-public :: beta_cdf,       inv_beta_cdf,        &
-         beta_cdf_params, inv_beta_cdf_params, &
-         beta_pdf, random_beta, test_beta
+public :: beta_cdf,       inv_beta_cdf,         &
+          beta_cdf_params, inv_beta_cdf_params, &
+          beta_pdf, random_beta, test_beta, set_beta_params_from_ens
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'beta_distribution_mod.f90'
@@ -62,7 +62,7 @@ real(r8) :: mcdf(7) = [0.204832764699133_r8, 0.002430000000000_r8, 0.87500000000
 write(*, *) 'Absolute value of differences should be less than 1e-15'
 do i = 1, 7
    pdf_diff(i) = beta_pdf(mx(i), malpha(i), mbeta(i)) - mpdf(i)
-   cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i), .true., .true., 0.0_r8, 1.0_r8) - mcdf(i)
+   cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i), 0.0_r8, 1.0_r8) - mcdf(i)
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
 
@@ -74,8 +74,8 @@ max_diff = -1.0_r8
 do i = 0, 1000
    x = i / 1000.0_r8
    p = beta_pdf(x, alpha, beta)
-   y = beta_cdf(x, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
-   inv = inv_beta_cdf(y, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
+   y = beta_cdf(x, alpha, beta, 0.0_r8, 1.0_r8)
+   inv = inv_beta_cdf(y, alpha, beta, 0.0_r8, 1.0_r8)
    max_diff = max(abs(x - inv), max_diff)
 end do
 
@@ -99,17 +99,14 @@ end function inv_beta_cdf_params
 
 !-----------------------------------------------------------------------
 
-function inv_beta_cdf(quantile, alpha, beta, &
-   bounded_below, bounded_above, lower_bound, upper_bound) result(x)
+function inv_beta_cdf(quantile, alpha, beta, lower_bound, upper_bound) result(x)
 
 real(r8)             :: x
 real(r8), intent(in) :: quantile
-real(r8), intent(in) :: alpha
-real(r8), intent(in) :: beta
-logical,  intent(in) :: bounded_below, bounded_above
+real(r8), intent(in) :: alpha, beta
 real(r8), intent(in) :: lower_bound,   upper_bound
 
-! Given a quantile, finds the value of x for which the beta cdf
+! Given a quantile, finds the value of x for which the scaled beta cdf
 ! with alpha and beta has approximately this quantile
 
 type(distribution_params_type) :: p
@@ -120,10 +117,13 @@ if (alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
 endif
 
 p%params(1) = alpha;  p%params(2) = beta
-p%bounded_below = bounded_below;   p%bounded_above = bounded_above
+! Beta must be bounded on both sides
 p%lower_bound = lower_bound;       p%upper_bound = upper_bound
 
 x = inv_beta_cdf_params(quantile, p)
+
+! Undo the scaling 
+x = x * (upper_bound - lower_bound) + lower_bound
 
 end function inv_beta_cdf
 
@@ -174,14 +174,13 @@ type(distribution_params_type), intent(in) :: p
 real(r8) :: alpha, beta
 
 alpha = p%params(1);    beta = p%params(2)
-beta_cdf_params = beta_cdf(x, alpha, beta, &
-                    p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound)
+beta_cdf_params = beta_cdf(x, alpha, beta, p%lower_bound, p%upper_bound)
 
 end function beta_cdf_params
 
 !---------------------------------------------------------------------------
 
-function beta_cdf(x, alpha, beta, bounded_below, bounded_above, lower_bound, upper_bound)
+function beta_cdf(x, alpha, beta, lower_bound, upper_bound)
 
 ! Returns the cumulative distribution of a beta function with alpha and beta
 ! at the value x
@@ -190,7 +189,6 @@ function beta_cdf(x, alpha, beta, bounded_below, bounded_above, lower_bound, upp
 
 real(r8) :: beta_cdf
 real(r8), intent(in) :: x, alpha, beta
-logical,  intent(in) :: bounded_below, bounded_above
 real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Parameters must be positive
@@ -240,7 +238,7 @@ endif
 ! Draw from U(0, 1) to get a quantile
 quantile = random_uniform(r)
 ! Invert cdf to get a draw from beta
-random_beta = inv_beta_cdf(quantile, alpha, beta, .true., .true., 0.0_r8, 1.0_r8)
+random_beta = inv_beta_cdf(quantile, alpha, beta, 0.0_r8, 1.0_r8)
 
 end function random_beta
 
@@ -354,5 +352,51 @@ inv_beta_first_guess = alpha/(alpha + beta)
 end function inv_beta_first_guess 
 
 !---------------------------------------------------------------------------
+
+subroutine beta_alpha_beta(x, num, alpha, beta)
+
+! Computes the alpha and beta parameters for a beta distribution from an ensemble
+! Assumes the ensemble members are confined to [0, 1]
+! This may not be the maximum likelihood estimate
+
+integer,  intent(in)  :: num
+real(r8), intent(in)  :: x(num)
+real(r8), intent(out) :: alpha
+real(r8), intent(out) :: beta
+
+real(r8) :: mean, variance
+
+mean = sum(x) / num
+variance  = sum((x - mean)**2) / (num- 1)
+! Get alpha and beta
+alpha = mean**2 * (1.0_r8 - mean) / variance - mean
+beta  = alpha * (1.0_r8 / mean - 1.0_r8)
+
+end subroutine beta_alpha_beta
+
+!---------------------------------------------------------------------------
+
+subroutine set_beta_params_from_ens(ens, num, lower_bound, upper_bound, p)
+
+integer,  intent(in)                        :: num
+real(r8), intent(in)                        :: ens(num)
+real(r8), intent(in)                        :: lower_bound,   upper_bound
+type(distribution_params_type), intent(out) :: p
+                                     
+real(r8) :: alpha, beta
+
+! Set the bounds info
+p%lower_bound   = lower_bound;    p%upper_bound   = upper_bound
+
+! Get alpha and beta for the scaled ensemble
+call beta_alpha_beta(ens, num, alpha, beta)
+p%params(1) = alpha
+p%params(2) = beta
+
+end subroutine set_beta_params_from_ens
+                     
+!---------------------------------------------------------------------------
+
+
 
 end module beta_distribution_mod

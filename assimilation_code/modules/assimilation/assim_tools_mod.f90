@@ -16,7 +16,7 @@ use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_o
                                  find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-use       sort_mod,       only : index_sort, sort
+use       sort_mod,       only : index_sort
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -71,7 +71,7 @@ use distributed_state_mod, only : create_mean_window, free_mean_window
 
 use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
-use probit_transform_mod, only : dist_param_type, transform_to_probit, transform_from_probit, &
+use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
                                    transform_all_from_probit
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
@@ -82,6 +82,8 @@ use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_sha
                                    gamma_gamma_prod
 
 use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf
+
+use distribution_params_mod, only : distribution_params_type
                                
 
 implicit none
@@ -389,10 +391,10 @@ logical :: local_ss_inflate
 logical :: local_obs_inflate
 
 ! Storage for normal probit conversion, keeps prior mean and sd for all state ensemble members
-type(dist_param_type) :: state_dist_params(ens_handle%my_num_vars)
-type(dist_param_type) :: obs_dist_params(obs_ens_handle%my_num_vars)
+type(distribution_params_type) :: state_dist_params(ens_handle%my_num_vars)
+type(distribution_params_type) :: obs_dist_params(obs_ens_handle%my_num_vars)
 integer :: dist_for_state, dist_for_obs
-type(dist_param_type) :: temp_dist_params
+type(distribution_params_type) :: temp_dist_params
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
 real(r8) :: probit_ens(ens_size)

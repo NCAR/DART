@@ -17,6 +17,10 @@ use obs_kind_mod, only : QTY_STATE_VARIABLE, QTY_STATE_VAR_POWER, QTY_TRACER_CON
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
 
+use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
+   GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION, &
+   PARTICLE_FILTER_DISTRIBUTION
+
 implicit none
 private
 
@@ -30,18 +34,8 @@ integer, parameter :: UNBOUNDED_RHF      = 8
 integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
-! Defining parameter strings for different prior distributions that can be used for probit transform
-integer, parameter :: NORMAL_PRIOR            = 1
-integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
-integer, parameter :: GAMMA_PRIOR             = 3
-integer, parameter :: BETA_PRIOR              = 4
-integer, parameter :: LOG_NORMAL_PRIOR        = 5
-integer, parameter :: UNIFORM_PRIOR           = 6
-
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
-          NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, &
-          UNIFORM_PRIOR
+          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
@@ -119,8 +113,8 @@ real(r8), intent(out) :: lower_bound,   upper_bound
 ! along with additional logical info that indicates whether this is an observation
 ! or state variable and about whether the transformation is being done for inflation
 ! or for regress. 
-! Need to select the appropriate transform. At present, options are NORMAL_PRIOR
-! which does nothing or BOUNDED_NORMAL_RH_PRIOR. 
+! Need to select the appropriate transform. At present, options are NORMAL_DISTRIBUTION
+! which does nothing or BOUNDED_NORMAL_RH_DISTRIBUTION. 
 ! If the BNRH is selected then information about the bounds must also be set.
 ! The two dimensional logical array 'bounded' is set to false for no bounds and true
 ! for bounded. the first element of the array is for the lower bound, the second for the upper.
@@ -137,15 +131,15 @@ real(r8), intent(out) :: lower_bound,   upper_bound
 if(is_inflation) then
    ! Case for inflation transformation
    if(kind == QTY_STATE_VARIABLE) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .false.;    bounded_above = .false.
       lower_bound   = missing_r8; upper_bound   = missing_r8
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .true.;   bounded_above = .true.
       lower_bound   = -10.0_r8; upper_bound   = 1.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .false.;    bounded_above = .true.
       lower_bound   = missing_r8; upper_bound   = 0.0_r8
    else
@@ -155,15 +149,15 @@ if(is_inflation) then
 elseif(is_state) then
    ! Case for state variable priors
    if(kind == QTY_STATE_VARIABLE) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .false.;    bounded_above = .false.
       lower_bound   = missing_r8; upper_bound   = missing_r8
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .true.;   bounded_above = .true.
       lower_bound   = -10.0_r8; upper_bound   = 1.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .false.;    bounded_above = .true.
       lower_bound   = missing_r8; upper_bound   = 0.0_r8
    else
@@ -173,15 +167,15 @@ elseif(is_state) then
 else
    ! This case is for observation (extended state) priors
    if(kind == QTY_STATE_VARIABLE) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .false.;    bounded_above = .false.
       lower_bound   = missing_r8; upper_bound   = missing_r8
    elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .true.;     bounded_above = .true.
       lower_bound = -10.0_r8;     upper_bound = 1.0_r8
    elseif(kind == QTY_TRACER_SOURCE) then
-      dist_type = BOUNDED_NORMAL_RH_PRIOR
+      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       bounded_below = .false.;    bounded_above = .true.
       lower_bound   = missing_r8; upper_bound   = 0.0_r8
    else

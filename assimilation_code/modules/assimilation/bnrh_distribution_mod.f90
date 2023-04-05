@@ -13,10 +13,13 @@ use sort_mod, only : index_sort
 use normal_distribution_mod, only : normal_cdf, inv_std_normal_cdf, inv_weighted_normal_cdf, &
                                     normal_mean_sd
 
+use distribution_params_mod, only : distribution_params_type
+
 implicit none
 private
 
-public :: bnrh_cdf, bnrh_cdf_initialized_vector, inv_bnrh_cdf
+public :: bnrh_cdf, bnrh_cdf_params, bnrh_cdf_initialized_vector, &
+          inv_bnrh_cdf, inv_bnrh_cdf_params, get_bnrh_sd, deallocate_bnrh_params
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'bnrh_distribution_mod.f90'
@@ -33,6 +36,34 @@ real(r8), save :: dist_for_unit_sd
 real(r8), parameter :: uniform_threshold = 0.01_r8
 
 contains
+
+!-----------------------------------------------------------------------
+subroutine bnrh_cdf_params(x, ens_size, bounded_below, bounded_above, &
+   lower_bound, upper_bound, p, quantiles)
+
+integer,                        intent(in)    :: ens_size
+real(r8),                       intent(in)    :: x(ens_size)
+logical,                        intent(in)    :: bounded_below, bounded_above
+real(r8),                       intent(in)    :: lower_bound, upper_bound
+type(distribution_params_type), intent(inout) :: p
+real(r8),                       intent(out)   :: quantiles(ens_size)
+
+real(r8) :: tail_amp_left,  tail_mean_left,  tail_sd_left
+real(r8) :: tail_amp_right, tail_mean_right, tail_sd_right
+real(r8) :: sort_ens(ens_size)
+logical  :: do_uniform_tail_left, do_uniform_tail_right
+
+call bnrh_cdf(x, ens_size, bounded_below, bounded_above, lower_bound, upper_bound, &
+   sort_ens, quantiles, &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right)
+
+! Store the info about this cdf in the distribution_params_type
+call pack_bnrh_params(ens_size, bounded_below, bounded_above, lower_bound, upper_bound, &
+   do_uniform_tail_left, do_uniform_tail_right, tail_amp_left, tail_amp_right, &
+   tail_mean_left, tail_mean_right, tail_sd_left, tail_sd_right, sort_ens, p)
+
+end subroutine bnrh_cdf_params
 
 !-----------------------------------------------------------------------
 
@@ -160,22 +191,16 @@ end subroutine bnrh_cdf
 
 !-----------------------------------------------------------------------
 
-subroutine bnrh_cdf_initialized_vector(x, num, sort_ens, ens_size,          &
-   bounded_below, bounded_above, lower_bound, upper_bound,                   &
-   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,     &
-   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right,    &
-   quantiles)
+subroutine bnrh_cdf_initialized_vector(x, num, p, quantiles)
 
-integer,  intent(in)  :: num
-real(r8), intent(in)  :: x(num)
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: sort_ens(ens_size)
-logical,  intent(in)  :: bounded_below, bounded_above
-real(r8), intent(in)  :: lower_bound, upper_bound
-real(r8), intent(in)  :: tail_amp_left,  tail_mean_left,  tail_sd_left
-real(r8), intent(in)  :: tail_amp_right, tail_mean_right, tail_sd_right
-logical,  intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
-real(r8), intent(out) :: quantiles(ens_size)
+integer, intent(in)                        :: num
+real(r8), intent(in)                       :: x(num)
+type(distribution_params_type), intent(in) :: p
+real(r8), intent(out)                      :: quantiles(num)
+
+real(r8) :: tail_amp_left,  tail_mean_left,  tail_sd_left
+real(r8) :: tail_amp_right, tail_mean_right, tail_sd_right
+logical  :: do_uniform_tail_left, do_uniform_tail_right
 
 ! Given the sorted ensemble (sort_ens) that defines a bnrh CDF and all the corresponding
 ! information about that distribution, computes the value of the CDF for a vector of num
@@ -186,21 +211,25 @@ real(r8), intent(out) :: quantiles(ens_size)
 ! ensemble size. For hybrid filter applications, the ensemble size defining the BNRH CDF
 ! might be different from the ensemble that needs updating, so x could have a different size.
 
-real(r8) :: q(ens_size)
+real(r8) :: q(p%ens_size)
 integer  :: i
+
+! Extract the required information from the distribution_params_type
+call unpack_bnrh_params(p, do_uniform_tail_left, do_uniform_tail_right, &
+   tail_amp_left, tail_amp_right, tail_mean_left, tail_mean_right, tail_sd_left, tail_sd_right)
 
 ! Compute the quantiles of each of the sorted ensemble members that define the BNRH distribution.
 ! This was all computed when the distribution was originally set up, could choose to cache that
 ! in the params structure for efficiency. This is only used for the single observation posterior
 ! so one could only save in that case removing any storage concerns.
-call ens_quantiles(sort_ens, ens_size, bounded_below, bounded_above, lower_bound, upper_bound, q)
+call ens_quantiles(p%ens, p%ens_size, p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound, q)
 
 ! Loop through the values in the x vector to compute the CDF at each one.
 ! This can be done vastly more efficiently with either binary searches or by first sorting the
 ! vector of values (x) for which the CDF needs to be computed
-do i = 1, ens_size
+do i = 1, p%ens_size
    ! Figure out which bin it is in
-   call bnrh_cdf_initialized(x(i), ens_size, sort_ens, bounded_below, bounded_above, lower_bound, upper_bound, &
+   call bnrh_cdf_initialized(x(i), p%ens_size, p%ens, p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound, &
       tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
       tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, q, quantiles(i))
 end do
@@ -311,6 +340,28 @@ else
 endif
 
 end subroutine bnrh_cdf_initialized
+
+!-----------------------------------------------------------------------
+subroutine inv_bnrh_cdf_params(quantiles, ens_size, p, x)
+
+integer,                        intent(in)    :: ens_size
+real(r8),                       intent(in)    :: quantiles(ens_size)
+type(distribution_params_type), intent(inout) :: p
+real(r8), intent(out) :: x(ens_size)
+
+real(r8) :: tail_amp_left,  tail_mean_left,  tail_sd_left
+real(r8) :: tail_amp_right, tail_mean_right, tail_sd_right
+logical  :: do_uniform_tail_left, do_uniform_tail_right
+
+call unpack_bnrh_params(p, do_uniform_tail_left, do_uniform_tail_right, &
+   tail_amp_left, tail_amp_right, tail_mean_left, tail_mean_right, tail_sd_left, tail_sd_right)
+
+call inv_bnrh_cdf(quantiles, ens_size, p%ens,                            &
+   p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound,       &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x)
+
+end subroutine inv_bnrh_cdf_params
 
 !-----------------------------------------------------------------------
 
@@ -556,6 +607,98 @@ do i = 1, series_num
 end do
 
 end subroutine ens_quantiles
+
+!-----------------------------------------------------------------------
+
+subroutine pack_bnrh_params(ens_size, bounded_below, bounded_above, lower_bound, upper_bound, &
+   do_uniform_tail_left, do_uniform_tail_right, tail_amp_left, tail_amp_right, &
+   tail_mean_left, tail_mean_right, tail_sd_left, tail_sd_right, sort_ens, p)
+
+integer,                        intent(in)  :: ens_size
+logical,                        intent(in)  :: bounded_below,        bounded_above
+real(r8),                       intent(in)  :: lower_bound,          upper_bound
+logical,                        intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
+real(r8),                       intent(in)  :: tail_amp_left,        tail_amp_right
+real(r8),                       intent(in)  :: tail_mean_left,       tail_mean_right
+real(r8),                       intent(in)  :: tail_sd_left,         tail_sd_right
+real(r8),                       intent(in)  :: sort_ens(ens_size)
+type(distribution_params_type), intent(out) :: p
+
+! Set the fixed storage parameters in the distribution_params_type
+p%bounded_below = bounded_below;    p%lower_bound = lower_bound
+p%bounded_above = bounded_above;    p%upper_bound = upper_bound
+p%ens_size = ens_size
+
+! Allocate space needed for the parameters
+allocate(p%ens(ens_size))
+allocate(p%more_params(2*4))
+
+! Save the sorted bnrh ensemble values
+p%ens = sort_ens
+
+! Store the extra information about the distribution in the more_params array
+if(do_uniform_tail_left) then 
+   p%more_params(1) = 1.0_r8
+else
+   p%more_params(1) = 0.0_r8
+endif
+if(do_uniform_tail_right) then 
+   p%more_params(2) = 1.0_r8
+else
+   p%more_params(2) = 0.0_r8
+endif
+
+p%more_params(3) = tail_amp_left;    p%more_params(4) = tail_amp_right
+p%more_params(5) = tail_mean_left;   p%more_params(6) = tail_mean_right
+p%more_params(7) = tail_sd_left;     p%more_params(8) = tail_sd_right
+
+end subroutine pack_bnrh_params
+
+!-----------------------------------------------------------------------
+
+subroutine unpack_bnrh_params(p, do_uniform_tail_left, do_uniform_tail_right, &
+   tail_amp_left, tail_amp_right, tail_mean_left, tail_mean_right, tail_sd_left, tail_sd_right)
+
+! Unpack values describing the bnrh distribution from the distribution_params_type p
+
+type(distribution_params_type), intent(in)  :: p
+logical,                        intent(out) :: do_uniform_tail_left, do_uniform_tail_right
+real(r8),                       intent(out) :: tail_amp_left,        tail_amp_right
+real(r8),                       intent(out) :: tail_mean_left,       tail_mean_right
+real(r8),                       intent(out) :: tail_sd_left,         tail_sd_right
+
+! Logicals are stored as 1 for true, 0 for false   
+do_uniform_tail_left  = p%more_params(1) > 0.5_r8  
+do_uniform_tail_right = p%more_params(2) > 0.5_r8
+
+tail_amp_left  = p%more_params(3);    tail_amp_right  = p%more_params(4)
+tail_mean_left = p%more_params(5);    tail_mean_right = p%more_params(6)
+tail_sd_left   = p%more_params(7);    tail_sd_right   = p%more_params(8)
+
+end subroutine unpack_bnrh_params
+
+!-----------------------------------------------------------------------
+
+function get_bnrh_sd(p)
+
+real(r8)                                   :: get_bnrh_sd
+type(distribution_params_type), intent(in) :: p
+
+! Return the standard deviation of this distribution
+get_bnrh_sd = p%more_params(7)
+
+end function get_bnrh_sd
+
+!-----------------------------------------------------------------------
+
+subroutine deallocate_bnrh_params(p)
+
+type(distribution_params_type), intent(inout) :: p
+
+deallocate(p%ens)
+deallocate(p%more_params)
+
+end subroutine deallocate_bnrh_params
 
 !-----------------------------------------------------------------------
 

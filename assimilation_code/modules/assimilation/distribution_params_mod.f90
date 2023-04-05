@@ -12,6 +12,8 @@ type distribution_params_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
    real(r8)              :: params(2)
+   integer               :: ens_size
+   real(r8), allocatable :: ens(:)
    real(r8), allocatable :: more_params(:)
 end type
 

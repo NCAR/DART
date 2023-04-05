@@ -20,7 +20,7 @@ private
 public :: gamma_cdf,        inv_gamma_cdf,                                  &
           gamma_cdf_params, inv_gamma_cdf_params,                           &
           random_gamma, gamma_pdf, test_gamma, gamma_mn_var_to_shape_scale, &
-          gamma_gamma_prod, gamma_shape_scale
+          gamma_gamma_prod, gamma_shape_scale, set_gamma_params_from_ens
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'gamma_distribution_mod.f90'
@@ -436,6 +436,30 @@ inv_gamma_first_guess = gamma_shape * gamma_scale
 !!!sd = sqrt(gamma_shape * gamma_scale**2)
 
 end function inv_gamma_first_guess
+
+!---------------------------------------------------------------------------
+
+subroutine set_gamma_params_from_ens(ens, num, bounded_below, bounded_above, &
+                                     lower_bound, upper_bound, p)
+
+integer,  intent(in)                        :: num
+real(r8), intent(in)                        :: ens(num)
+logical,  intent(in)                        :: bounded_below, bounded_above
+real(r8), intent(in)                        :: lower_bound,   upper_bound
+type(distribution_params_type), intent(out) :: p
+
+real(r8) :: gamma_shape, gamma_scale
+
+! Set the bounds info
+p%bounded_below = bounded_below;  p%bounded_above = bounded_above
+p%lower_bound   = lower_bound;    p%upper_bound   = upper_bound
+
+! Get shape and scale
+call gamma_shape_scale(ens, num, gamma_shape, gamma_scale)
+p%params(1) = gamma_shape
+p%params(2) = gamma_scale
+
+end subroutine set_gamma_params_from_ens
 
 !---------------------------------------------------------------------------
 

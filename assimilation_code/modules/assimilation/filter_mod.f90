@@ -94,12 +94,11 @@ use quality_control_mod,   only : initialize_qc
 
 use location_mod,          only : location_type
 
-use probit_transform_mod,  only : dist_param_type, transform_to_probit, &
-                            transform_from_probit
+use probit_transform_mod,  only : transform_to_probit, transform_from_probit
 
 use algorithm_info_mod, only : probit_dist_info
 
-use distribution_params_mod, only : NORMAL_DISTRIBUTION
+use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
 
 !------------------------------------------------------------------------------
 
@@ -1629,7 +1628,7 @@ integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 integer :: j, group, grp_bot, grp_top, grp_size
 type(location_type) :: my_state_loc
 integer :: my_state_kind
-type(dist_param_type) :: dist_params
+type(distribution_params_type) :: dist_params
 real(r8) :: probit_ens(ens_size), probit_ens_mean
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
