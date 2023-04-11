@@ -237,9 +237,8 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
        cp $DART_DIR/models/wrf/tutorial/template/namelist.input.meso   $BASE_DIR/template/.
        cp $DART_DIR/models/wrf/tutorial/template/namelist.wps.template $BASE_DIR/template/.
 
-3. You will also need the scripting to run a WRF/DART experiment. Copy
-   the contents of ``$DART_DIR/models/wrf/shell_scripts`` to the
-   ``$BASE_DIR/scripts`` directory.
+3. You will also need scripting to run a WRF/DART experiment. Copy the contents of 
+   ``$DART_DIR/models/wrf/shell_scripts`` to the ``$BASE_DIR/scripts`` directory.
 
    ::
 
@@ -457,7 +456,7 @@ changes:
 +====================+======================================+=========================================================================================================================================================================================================================================================+
 | driver.csh         | datefnl = 2017042712                 | Change to the final target date; here the final date is already set correctly for this tutorial.                                                                                                                                                        |
 +--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh | datefnl = 2017043000                 | This is the final date to create WRF initial/boundary conditions for. This is set to the last date that files are included in the tutorial.                                                                                                             |
+| gen_retro_icbc.csh | datefnl = 2017042712                 | Set to the final target date of the tutorial.  However, it is possible (not necessary) to create WRF initial/boundary conditions to 2017043000. This is the latest date that files are included in the tutorial.                                        |
 +--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | gen_retro_icbc.csh | paramfile = <full path to param.csh> | The full path to param.csh. Change this on the line after the comment. While these two files are in the same directory here, in general it is helpful to have one param.csh for each experiment.                                                        |
 +--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -556,6 +555,11 @@ and look near the end. You will need to modify the lines staring with
 #PBS and change 'qsub' to the right command for your system. You might
 also want to modify this script to test running a single member first —
 just in case you have some debugging to do.
+
+However, be warned that to successfully complete the tutorial, including
+running the *driver.csh* script in Step 5, using a smaller ensemble 
+(e.g. < 20 members) can lead to spurious updates during the analysis step,
+causing the WRF simulation to fail. 
 
 When complete for the full ensemble, you should find 50 new files in the
 directory ``output/2017042700/PRIORS`` with names like *prior_d01.0001*,
