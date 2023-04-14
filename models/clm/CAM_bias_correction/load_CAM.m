@@ -7,13 +7,13 @@ function [cam_main] = load_CAM(varname,ens,year,path,n)
 
 switch n
 
-  case SOLAR  % SOLAR instantaneous 1hr
+  case 'SOLAR'  % SOLAR instantaneous 1hr
   cam_main = ncread([path ens '/CAM6_NR1.cpl_' ens '.ha2x1hi.' year '.nc'],varname); 
 	
-  case hour3 % average 3hr
+  case 'hour3' % average 3hr
   cam_main = ncread([path ens '/CAM6_NR1.cpl_' ens '.ha2x3h.' year '.nc'],varname); 
 
-  case hour1 % average 1hr
+  case 'hour1' % average 1hr
   cam_main = ncread([path ens '/CAM6_NR1.cpl_' ens '.ha2x1h.' year '.nc'],varname); 
 
 end
