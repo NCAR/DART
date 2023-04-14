@@ -5,20 +5,12 @@ close all
 % following Yong-Fei Zhang (UT-Austin) dissertation approach. Meteorology data
 % from the site location of interest should be used as 'truth'.
 % All met variables use 'scaling' approach with exception for snow/rain precip.
-% This script is intended to be used after running CAM6_site_grid.sh 
+% *Warning* This script is intended to be used after running CAM6_site_grid.sh 
 
-% Enter in site location data. US-NR1 flux tower used as example
+%%%% This section requires user input %%%%%%%
+% Site location. US-NR1 flux tower used as example
 SITE_lat=40.03;  
 SITE_lon=-105.55+360; % lon should be positive (degrees East only)
-
-%%% These probably should be queried from the raw data file, not entered manually %%%%%
-%%FIX THIS%%
-%%FIX THIS%%
-SITE_doma_area=0.000274675326661479; % radian^2 cell area (unique to grid location)
-SITE_doma_aream=0.000274672687732932; % radian^2 cell area mapping
-SITE_doma_mask=1   ; % all values =1 
-SITE_doma_frac=1   ; % all values =1 area fraction
-%%FIX THIS%%
 
 % Input data files
 path_CAM = '/glade/work/bmraczka/CAM6_NR1/';
@@ -26,13 +18,13 @@ path_towermet = '/glade/work/bmraczka/SIFMIP2/tower_met_forcing/';
 ens_mem=80;  % CAM6 reanalysis provides 80 total members, 1-80 is valid
  
 % Output data files
-%path_scaled_CAM = '<enter output file path here>';        %% Requires user input %%
-path_scaled_CAM = '/glade/work/bmraczka/CAM6_NR1/test/';
+path_scaled_CAM = '<enter output file path here>';       
 
 % Include Diagnostics?  true/false
-Diagnostics=false;
+Diagnostics=true;
 
-
+% End of user input section 
+%-----------------------------------------------------------------------------
 % Site level grid extract CAM6 naming convention:  
 
 % CAM6_NR1.cpl_NINST.ha2x1hi.YEAR.nc   % SOLAR:     a2x1hi_Faxa_swndr,a2x1hi_Faxa_swvdr,a2x1hi_Faxa_swndf,a2x1hi_Faxa_swvdf   
@@ -52,9 +44,23 @@ yeartower={'2010','2011','2012','2013','2014','2015','2016','2017','2018','2019'
 ens_range=[1:ens_mem];
 enstr=cell(1,ens_mem);
 
-     for i=1:ens_mem
-         enstr{i}=sprintf('%04d', ens_range(i));
-     end
+for i=1:ens_mem
+    enstr{i}=sprintf('%04d', ens_range(i));
+end
+
+% Check for existence of output file from CAM6_site_grid.sh
+% and set some fixed variables from grid cell collocated with site
+site_grid_file = [path_CAM enstr{1} '/CAM6_NR1.cpl_' enstr{1} '.ha2x3h.' yearstr{1} '.nc'];
+
+if exist(site_grid_file,'file')
+  SITE_doma_area=ncread(site_grid_file,'doma_area');
+  SITE_doma_aream=ncread(site_grid_file,'doma_aream');
+  SITE_doma_mask=ncread(site_grid_file,'doma_mask');
+  SITE_doma_frac=ncread(site_grid_file,'doma_frac');
+else
+   error('ERROR !! missing site_grid_file, make sure CAM6_site_grid.sh was run:  %s.',site_grid_file)
+end
+
 
 % Site level met forcing uses PLUMBER2 protocol 
 % time -->30 min increments in LST (MST)
