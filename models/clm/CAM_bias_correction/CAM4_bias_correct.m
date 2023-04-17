@@ -10,7 +10,7 @@ close all
 %%%% This section requires user input %%%%%%
 % Site location. US-NR1 flux tower used as example
  SITE_lat=40.03;
- SITE_lon=-105.55+360; % on should be positive (degrees East only)
+ SITE_lon=-105.55+360; % lon should be positive (degrees East only)
 
 %% SITE_doma_area=0.00109327562271889; % m^2 cell area (unique to grid location)
 %% SITE_doma_mask=1   ; % all values =1 
@@ -233,18 +233,15 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
       %% SOLAR 6 hour resolution
 
       for ind=1:(length(sw_6hr));
-
-        if (Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind)+Faxa_swndf_mean(ind)+Faxa_swvdr_mean(ind)>0)      
-      
-           Faxa_swndr_scale(ind)= Faxa_swndr_mean(ind) .* (sw_6hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-           Faxa_swvdr_scale(ind)= Faxa_swvdr_mean(ind) .* (sw_6hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-           Faxa_swndf_scale(ind)= Faxa_swndf_mean(ind) .* (sw_6hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-           Faxa_swvdf_scale(ind)= Faxa_swvdf_mean(ind) .* (sw_6hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-        end
+        rad_sum=Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind)+Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind);  
+        rad_sum_ratio=(sw_6hr(ind)./(rad_sum)); 
+          if (rad_sum>0)      
+             Faxa_swndr_scale(ind)= Faxa_swndr_mean(ind) .* rad_sum_ratio;
+             Faxa_swvdr_scale(ind)= Faxa_swvdr_mean(ind) .* rad_sum_ratio;
+             Faxa_swndf_scale(ind)= Faxa_swndf_mean(ind) .* rad_sum_ratio;
+             Faxa_swvdf_scale(ind)= Faxa_swvdf_mean(ind) .* rad_sum_ratio;
+          end
+        clear rad_sum rad_sum_ratio
       end 
       
       %% PRECIP 6  hour resolution

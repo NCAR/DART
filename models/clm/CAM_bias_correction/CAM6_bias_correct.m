@@ -18,7 +18,7 @@ path_towermet = '/glade/work/bmraczka/SIFMIP2/tower_met_forcing/';
 ens_mem=80;  % CAM6 reanalysis provides 80 total members, 1-80 is valid
  
 % Output data files
-path_scaled_CAM = '<enter output file path here>';       
+path_scaled_CAM = '<enter output file path here>';
 % Include Diagnostics?  true/false
 Diagnostics=true;
 
@@ -232,18 +232,15 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
 
       %% SOLAR 1 hour resolution
       for ind=1:(length(sw_1hr));
-
-        if (Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind)+Faxa_swndf_mean(ind)+Faxa_swvdr_mean(ind)>0)      
-      
-           Faxa_swndr_scale(ind)= Faxa_swndr_mean(ind) .* (sw_1hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-           Faxa_swvdr_scale(ind)= Faxa_swvdr_mean(ind) .* (sw_1hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-           Faxa_swndf_scale(ind)= Faxa_swndf_mean(ind) .* (sw_1hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-           Faxa_swvdf_scale(ind)= Faxa_swvdf_mean(ind) .* (sw_1hr(ind)./(Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind) ...
-                                                             +Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind)));
-        end
+        rad_sum=Faxa_swndr_mean(ind)+Faxa_swvdr_mean(ind)+Faxa_swndf_mean(ind)+Faxa_swvdf_mean(ind);
+        rad_sum_ratio=(sw_1hr(ind)./(rad_sum));
+          if (rad_sum>0)                                                                            
+             Faxa_swndr_scale(ind)= Faxa_swndr_mean(ind) .* rad_sum_ratio;
+             Faxa_swvdr_scale(ind)= Faxa_swvdr_mean(ind) .* rad_sum_ratio;
+             Faxa_swndf_scale(ind)= Faxa_swndf_mean(ind) .* rad_sum_ratio;
+             Faxa_swvdf_scale(ind)= Faxa_swvdf_mean(ind) .* rad_sum_ratio;
+          end
+        clear rad_sum rad_sum_ratio
       end 
 
       %% NON-SOLAR 3 hour resolution      
