@@ -22,7 +22,6 @@ ens_mem=80;  % CAM6 reanalysis provides 80 total members, 1-80 is valid
 
 % Output data files
 path_scaled_CAM = '<enter output file path here>';   
-
 % Include Diagnostics?  true/false
 Diagnostics=true;
 
@@ -101,16 +100,16 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
 
 
     % Select only indices of YEAR ii
-    indices=find(YEAR_master==str2num(yearstr{ii}));
+    indices=find(YEAR_main==str2num(yearstr{ii}));
 
     % Pushing met forcing 7 hours forward (go back 14 indices)
-    ta_30=TBOT_master(indices(1)-14:indices(end)-14)';                         % TBOT (Kelvin)
-    q_30=SH_master(indices(1)-14:indices(end)-14)';                            % SH (kg kg-1)
-    wind_30=WIND_master(indices(1)-14:indices(end)-14)';                       % Total Wind (m/s) 
-    sw_30=FSDS_master(indices(1)-14:indices(end)-14)';                         % FSDS (W/m2)
-    lw_30=FLDS_master(indices(1)-14:indices(end)-14)';                         % FLDS (W/m2)
-    ppt_30=PRECTmms_master(indices(1)-14:indices(end)-14)';                    % PRECTmms  (mm/s) or (kg m-2 s-1)
-    ps_30=PSRF_master(indices(1)-14:indices(end)-14)';                         % PSRF (Pa)
+    ta_30=TBOT_main(indices(1)-14:indices(end)-14)';                         % TBOT (Kelvin)
+    q_30=SH_main(indices(1)-14:indices(end)-14)';                            % SH (kg kg-1)
+    wind_30=WIND_main(indices(1)-14:indices(end)-14)';                       % Total Wind (m/s) 
+    sw_30=FSDS_main(indices(1)-14:indices(end)-14)';                         % FSDS (W/m2)
+    lw_30=FLDS_main(indices(1)-14:indices(end)-14)';                         % FLDS (W/m2)
+    ppt_30=PRECTmms_main(indices(1)-14:indices(end)-14)';                    % PRECTmms  (mm/s) or (kg m-2 s-1)
+    ps_30=PSRF_main(indices(1)-14:indices(end)-14)';                         % PSRF (Pa)
 
     % CAM4 is 'noleap' calendar, thus trim down tower met to 365 days to match
     % Remove Feb 29th julian day: 60
@@ -147,10 +146,11 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
     ppt_6hr=mean(reshape(ppt_1hr,6,numel(ppt_1hr)/6),1);
     ps_6hr=mean(reshape(ps_1hr,6,numel(ps_1hr)/6),1);
 
+    ppt_3hr=NaN; ta_3hr=NaN; %Placeholders
     clear ta_30 q_30 wind_30 sw_30 lw_30 ppt_30 ps_30
 
       % Load CAM Ensemble Loop 
-      for jj = 1:80;  %% 80  ensemble loop
+      for jj = 1:ens_mem;  
 
           %Downloading all ensemble members for all  reanalysis variables
           
@@ -302,38 +302,38 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
   %% Put clamping (hard bounds) on non-physical values.
 
   % SOLAR
-  % e.g Faxa_swndr(ensemble(80),time(6hr))
-  Faxa_swndr_adjust  = Faxa_swndr+repmat(Faxa_swndr_scale-Faxa_swndr_mean,80,1); Faxa_swndr_adjust(Faxa_swndr_adjust<0)=0;  
-  Faxa_swvdr_adjust  = Faxa_swvdr+repmat(Faxa_swvdr_scale-Faxa_swvdr_mean,80,1); Faxa_swvdr_adjust(Faxa_swvdr_adjust<0)=0;
-  Faxa_swndf_adjust  = Faxa_swndf+repmat(Faxa_swndf_scale-Faxa_swndf_mean,80,1); Faxa_swndf_adjust(Faxa_swndf_adjust<0)=0;
-  Faxa_swvdf_adjust  = Faxa_swvdf+repmat(Faxa_swvdf_scale-Faxa_swvdf_mean,80,1); Faxa_swvdf_adjust(Faxa_swvdf_adjust<0)=0;
+  % e.g Faxa_swndr(ensemble(ens_mem),time(6hr))
+  Faxa_swndr_adjust  = Faxa_swndr+repmat(Faxa_swndr_scale-Faxa_swndr_mean,ens_mem,1); Faxa_swndr_adjust(Faxa_swndr_adjust<0)=0;  
+  Faxa_swvdr_adjust  = Faxa_swvdr+repmat(Faxa_swvdr_scale-Faxa_swvdr_mean,ens_mem,1); Faxa_swvdr_adjust(Faxa_swvdr_adjust<0)=0;
+  Faxa_swndf_adjust  = Faxa_swndf+repmat(Faxa_swndf_scale-Faxa_swndf_mean,ens_mem,1); Faxa_swndf_adjust(Faxa_swndf_adjust<0)=0;
+  Faxa_swvdf_adjust  = Faxa_swvdf+repmat(Faxa_swvdf_scale-Faxa_swvdf_mean,ens_mem,1); Faxa_swvdf_adjust(Faxa_swvdf_adjust<0)=0;
 
   %PRECIP
   % Purposely setting convective rain and snow to zero
   % Purposely setting snow and rain adjusted variables to large scale snow (snowl) and rain (rainl)
   % These will carry the ensemble spread for snow/rain
  
-  Faxa_rainc_adjust = Faxa_rainc+repmat(Faxa_rainc_scale-Faxa_rainc_mean,80,1); Faxa_rainc_adjust(:,:)=0;
-  Faxa_rainl_adjust = Faxa_rain+repmat(Faxa_rain_scale-Faxa_rain_mean,80,1); Faxa_rainl_adjust(Faxa_rainl_adjust<0)=0;
-  Faxa_snowc_adjust = Faxa_snowc+repmat(Faxa_snowc_scale-Faxa_snowc_mean,80,1); Faxa_snowc_adjust(:,:)=0;
-  Faxa_snowl_adjust = Faxa_snow+repmat(Faxa_snow_scale-Faxa_snow_mean,80,1); Faxa_snowl_adjust(Faxa_snowl_adjust<0)=0;
+  Faxa_rainc_adjust = Faxa_rainc+repmat(Faxa_rainc_scale-Faxa_rainc_mean,ens_mem,1); Faxa_rainc_adjust(:,:)=0;
+  Faxa_rainl_adjust = Faxa_rain+repmat(Faxa_rain_scale-Faxa_rain_mean,ens_mem,1); Faxa_rainl_adjust(Faxa_rainl_adjust<0)=0;
+  Faxa_snowc_adjust = Faxa_snowc+repmat(Faxa_snowc_scale-Faxa_snowc_mean,ens_mem,1); Faxa_snowc_adjust(:,:)=0;
+  Faxa_snowl_adjust = Faxa_snow+repmat(Faxa_snow_scale-Faxa_snow_mean,ens_mem,1); Faxa_snowl_adjust(Faxa_snowl_adjust<0)=0;
 
   % meridional and zonal winds allowed to go negative
-  Sa_u_adjust = Sa_u+repmat(Sa_u_scale-Sa_u_mean,80,1);
-  Sa_v_adjust = Sa_v+repmat(Sa_v_scale-Sa_v_mean,80,1); 
+  Sa_u_adjust = Sa_u+repmat(Sa_u_scale-Sa_u_mean,ens_mem,1);
+  Sa_v_adjust = Sa_v+repmat(Sa_v_scale-Sa_v_mean,ens_mem,1); 
 
   % Remaining variables
-  Sa_tbot_adjust = Sa_tbot+repmat(Sa_tbot_scale-Sa_tbot_mean,80,1); Sa_tbot_adjust(Sa_tbot_adjust<0)=0;
-  Sa_shum_adjust = Sa_shum+repmat(Sa_shum_scale-Sa_shum_mean,80,1); Sa_shum_adjust(Sa_shum_adjust<0)=0;
-  Sa_pbot_adjust = Sa_pbot+repmat(Sa_pbot_scale-Sa_pbot_mean,80,1); Sa_pbot_adjust(Sa_pbot_adjust<0)=0;
-  Faxa_lwdn_adjust = Faxa_lwdn+repmat(Faxa_lwdn_scale-Faxa_lwdn_mean,80,1); Faxa_lwdn_adjust(Faxa_lwdn_adjust<0)=0;
+  Sa_tbot_adjust = Sa_tbot+repmat(Sa_tbot_scale-Sa_tbot_mean,ens_mem,1); Sa_tbot_adjust(Sa_tbot_adjust<0)=0;
+  Sa_shum_adjust = Sa_shum+repmat(Sa_shum_scale-Sa_shum_mean,ens_mem,1); Sa_shum_adjust(Sa_shum_adjust<0)=0;
+  Sa_pbot_adjust = Sa_pbot+repmat(Sa_pbot_scale-Sa_pbot_mean,ens_mem,1); Sa_pbot_adjust(Sa_pbot_adjust<0)=0;
+  Faxa_lwdn_adjust = Faxa_lwdn+repmat(Faxa_lwdn_scale-Faxa_lwdn_mean,ens_mem,1); Faxa_lwdn_adjust(Faxa_lwdn_adjust<0)=0;
 
   % (3hr STATE Unchanged)
-  %Sa_z = Sa_z+repmat(Sa_z_scale-Sa_z_mean,80,1); 
-  %Sa_ptem = Sa_ptem+repmat(Sa_ptem_scale-Sa_ptem_mean,80,1);
-  %Sa_dens = Sa_dens+repmat(Sa_dens_scale-Sa_dens_mean,80,1);
-  %Sa_pslv = Sa_pslv+repmat(Sa_pslv_scale-Sa_pslv_mean,80,1);
-  %Sa_topo = Sa_topo+repmat(Sa_topo_scale-Sa_topo_mean,80,1);
+  %Sa_z = Sa_z+repmat(Sa_z_scale-Sa_z_mean,ens_mem,1); 
+  %Sa_ptem = Sa_ptem+repmat(Sa_ptem_scale-Sa_ptem_mean,ens_mem,1);
+  %Sa_dens = Sa_dens+repmat(Sa_dens_scale-Sa_dens_mean,ens_mem,1);
+  %Sa_pslv = Sa_pslv+repmat(Sa_pslv_scale-Sa_pslv_mean,ens_mem,1);
+  %Sa_topo = Sa_topo+repmat(Sa_topo_scale-Sa_topo_mean,ens_mem,1);
 
 
       if Diagnostics==true
@@ -344,7 +344,7 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
                          Faxa_swndr_adjust,Faxa_swndf_adjust,Faxa_swvdr_adjust, ...
                          Faxa_swvdf_adjust,Faxa_rainl_adjust,Faxa_snowl_adjust, ...
                          Sa_tbot_adjust,Sa_shum_adjust,Sa_u_adjust,Sa_v_adjust, ...
-                         Sa_pbot_adjust,Faxa_lwdn_adjust,'CAM4' ...
+                         Sa_pbot_adjust,Faxa_lwdn_adjust,'CAM4', ...
                          sw_1hr,ppt_1hr,ta_1hr,q_1hr,wind_1hr,ps_1hr,lw_1hr, ...
                          ppt_3hr,ta_3hr,wind_6hr,ta_6hr,ppt_6hr,sw_6hr);
       end 
@@ -352,9 +352,9 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
 
   % Assign the adjusted CAM variables to netcdf files for each ensemble member/ year
 
-  time_var= ncread([path_CAM_forcing enstr{1} '/CAM4_NR1.cpl_' enstr{1} '.ha2x1dx6h.' yearstr{ii} '.nc'],'time');
+  time_var= ncread([path_CAM enstr{1} '/CAM4_NR1.cpl_' enstr{1} '.ha2x1dx6h.' yearstr{ii} '.nc'],'time');
   dim_time=length(time_var);        % ha2x1dx6h
-  time_bnds = ncread([path_CAM_forcing enstr{1} '/CAM4_NR1.cpl_' enstr{1} '.ha2x1dx6h.' yearstr{ii} '.nc'],'time_bnds');
+  time_bnds = ncread([path_CAM enstr{1} '/CAM4_NR1.cpl_' enstr{1} '.ha2x1dx6h.' yearstr{ii} '.nc'],'time_bnds');
 
        
   % Allocate met variables in dimension necessary for assignment to netcdf
@@ -369,7 +369,7 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
   z_assign=ones(1,1,length(Sa_z(1,:)))*NaN;            ptem_assign=ones(1,1,length(Sa_ptem(1,:)))*NaN;
   dens_assign=ones(1,1,length(Sa_dens(1,:)))*NaN;      pslv_assign=ones(1,1,length(Sa_pslv(1,:)))*NaN;
 
-    for jj = 1:80;  %% Ensemble assignment loop         
+    for jj = 1:ens_mem;  %% Ensemble assignment loop         
         % Assign the met variables to appropriate 3-dimension format
         
       swndr_assign(1,1,:)=Faxa_swndr_adjust(jj,:);                swvdr_assign(1,1,:)=Faxa_swvdr_adjust(jj,:);
@@ -382,7 +382,7 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
       z_assign(1,1,:)=Sa_z(jj,:);                                 ptem_assign(1,1,:)=Sa_ptem(jj,:);
       dens_assign(1,1,:)=Sa_dens(jj,:);                           pslv_assign(1,1,:)=Sa_pslv(jj,:);
 
-      ncname=[path_scaled_CAM_forcing 'CAM4_NR1.cpl_' enstr{jj} '.ha2x1dx6h.' yearstr{ii} '.nc'];
+      ncname=[path_scaled_CAM 'CAM4_NR1.cpl_' enstr{jj} '.ha2x1dx6h.' yearstr{ii} '.nc'];
       ncid=netcdf.create(ncname,'CLOBBER');
       netcdf.close(ncid);
 
@@ -398,237 +398,107 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
       nccreate(ncname,'doma_area','Dimensions',{'doma_nx',1,'doma_ny',1},'Format','classic');
       ncwrite(ncname,'doma_area',SITE_doma_area)
       write_netcdf_att(ncname,'doma_area',0.,'m^2','undefined','cell area','doma')
-      %ncwriteatt(ncname,'doma_area','_FillValue', 0.)
-      %ncwriteatt(ncname,'doma_area','units','m^2')
-      %ncwriteatt(ncname,'doma_area','long_name','undefined')
-      %ncwriteatt(ncname,'doma_area','standard_name','cell area')
-      %ncwriteatt(ncname,'doma_area','internal_dname','doma')
         
       nccreate(ncname,'doma_lat','Dimensions',{'doma_nx',1,'doma_ny',1},'Format','classic');
       ncwrite(ncname,'doma_lat',SITE_lat)
       write_netcdf_att(ncname,'doma_lat',0.,'degrees north','undefined','latitude','doma')
-      %ncwriteatt(ncname,'doma_lat','_FillValue', 0.)
-      %ncwriteatt(ncname,'doma_lat','units','degrees north')
-      %ncwriteatt(ncname,'doma_lat','long_name','undefined')
-      %ncwriteatt(ncname,'doma_lat','standard_name','latitude')
-      %ncwriteatt(ncname,'doma_lat','internal_dname','doma')
         
       nccreate(ncname,'doma_lon','Dimensions',{'doma_nx',1,'doma_ny',1},'Format','classic');
       ncwrite(ncname,'doma_lon',SITE_lon)
       write_netcdf_att(ncname,'doma_lon',0.,'degrees east','undefined','longitude','doma')
-      %ncwriteatt(ncname,'doma_lon','_FillValue', 0.)
-      %ncwriteatt(ncname,'doma_lon','units','degrees east')
-      %ncwriteatt(ncname,'doma_lon','long_name','undefined')
-      %ncwriteatt(ncname,'doma_lon','standard_name','longitude')
-      %ncwriteatt(ncname,'doma_lon','internal_dname','doma')
 
       nccreate(ncname,'doma_mask','Dimensions',{'doma_nx',1,'doma_ny',1},'Format','classic');
       ncwrite(ncname,'doma_mask',SITE_doma_mask)
       write_netcdf_att(ncname,'doma_mask',0.,'unitless','undefined','mask','doma')
-      %ncwriteatt(ncname,'doma_mask','_FillValue', 0.)
-      %ncwriteatt(ncname,'doma_mask','units','unitless')
-      %ncwriteatt(ncname,'doma_mask','long_name','undefined')
-      %ncwriteatt(ncname,'doma_mask','standard_name','mask')
-      %ncwriteatt(ncname,'doma_mask','internal_dname','doma')
         
       nccreate(ncname,'a2x6h_Faxa_swndf','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_swndf',swndf_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_swndf',single(1.e30),'W m-2','Diffuse near-infrared incident solar radiation', ...
                        'surface_downward_diffuse_shortwave_flux_due_to_near_infrared_radiation','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndf','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndf','units','W m-2')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndf','long_name','Diffuse near-infrared incident solar radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndf','standard_name','surface_downward_diffuse_shortwave_flux_due_to_near_infrared_radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndf','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndf','cell_methods', 'time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_swndr','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_swndr',swndr_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_swndr',single(1.e30),'W m-2','Direct near-infrared incident solar radiation', ...
                        'surface_downward_direct_shortwave_flux_due_to_near_infrared_radiation','a2x6h','time: mean')      
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndr','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndr','units','W m-2')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndr','long_name','Direct near-infrared incident solar radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndr','standard_name','surface_downward_direct_shortwave_flux_due_to_near_infrared_radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndr','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swndr','cell_methods', 'time: mean') 
 
       nccreate(ncname,'a2x6h_Faxa_swvdf','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_swvdf',swvdf_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_swvdf',single(1.e30),'W m-2','Diffuse visible incident solar radiation', ...
                        'surface_downward_diffuse_shortwave_flux_due_to_visible_radiation','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdf','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdf','units','W m-2')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdf','long_name','Diffuse visible incident solar radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdf','standard_name','surface_downward_diffuse_shortwave_flux_due_to_visible_radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdf','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdf','cell_methods', 'time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_swvdr','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_swvdr',swvdr_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_swvdr',single(1.e30),'W m-2','Direct visible incident solar radiation', ...
                        'surface_downward_direct_shortwave_flux_due_to_visible_radiation','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdr','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdr','units','W m-2')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdr','long_name','Direct visible incident solar radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdr','standard_name','surface_downward_direct_shortwave_flux_due_to_visible_radiation')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdr','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_swvdr','cell_methods', 'time: mean')
                                                                                                                 
       nccreate(ncname,'a2x6h_Sa_z','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_z',z_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_z',single(1.e30),'m','Height at the lowest model level','height','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_z','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_z','units','m')
-      %ncwriteatt(ncname,'a2x6h_Sa_z','long_name','Height at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_z','standard_name','height')
-      %ncwriteatt(ncname,'a2x6h_Sa_z','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_z','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Sa_tbot','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_tbot',tbot_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_tbot',single(1.e30),'K','Temperature at the lowest model level','air_temperature', ...
                        'a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_tbot','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_tbot','units','K')
-      %ncwriteatt(ncname,'a2x6h_Sa_tbot','long_name','Temperature at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_tbot','standard_name','air_temperature')
-      %ncwriteatt(ncname,'a2x6h_Sa_tbot','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_tbot','cell_methods','time: mean')
         
       nccreate(ncname,'a2x6h_Sa_ptem','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_ptem',ptem_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_ptem',single(1.e30),'K','Potential temperature at the lowest model level', ...
                        'air_potential_temperature','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_ptem','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_ptem','units','K')
-      %ncwriteatt(ncname,'a2x6h_Sa_ptem','long_name','Potential temperature at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_ptem','standard_name','air_potential_temperature')
-      %ncwriteatt(ncname,'a2x6h_Sa_ptem','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_ptem','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Sa_shum','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_shum',shum_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_shum',single(1.e30),'kg kg-1','Specific humidity at the lowest model level', ...
                        'specific humidity','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_shum','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_shum','units','kg kg-1')
-      %ncwriteatt(ncname,'a2x6h_Sa_shum','long_name','Specific humidity at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_shum','standard_name','specific humidity')
-      %ncwriteatt(ncname,'a2x6h_Sa_shum','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_shum','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Sa_dens','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_dens',dens_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_dens',single(1.e30),'kg m-3','Air density at the lowest model level', ...
                        'air_density','a2x6h','time: mean') 
-      %ncwriteatt(ncname,'a2x6h_Sa_dens','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_dens','units','kg m-3')
-      %ncwriteatt(ncname,'a2x6h_Sa_dens','long_name','Air density at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_dens','standard_name','air_density')
-      %ncwriteatt(ncname,'a2x6h_Sa_dens','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_dens','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Sa_pbot','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_pbot',pbot_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_pbot',single(1.e30),'Pa','Pressure at the lowest model level', ...
                        'air_pressure','a2x6h','time: mean')      
-      %ncwriteatt(ncname,'a2x6h_Sa_pbot','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_pbot','units','Pa')
-      %ncwriteatt(ncname,'a2x6h_Sa_pbot','long_name','Pressure at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_pbot','standard_name','air_pressure')
-      %ncwriteatt(ncname,'a2x6h_Sa_pbot','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_pbot','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Sa_pslv','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_pslv',pslv_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_pslv',single(1.e30),'Pa','Sea level pressure','air_pressure_at_sea_level', ...
                        'a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_pslv','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_pslv','units','Pa')
-      %ncwriteatt(ncname,'a2x6h_Sa_pslv','long_name','Sea level pressure')
-      %ncwriteatt(ncname,'a2x6h_Sa_pslv','standard_name','air_pressure_at_sea_level')
-      %ncwriteatt(ncname,'a2x6h_Sa_pslv','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_pslv','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_lwdn','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_lwdn',lwdn_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_lwdn',single(1.e30),'W m-2','Downward longwave heat flux', ...
                        'downwelling_longwave_flux','a2x6h','time: mean') 
-      %ncwriteatt(ncname,'a2x6h_Faxa_lwdn','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_lwdn','units','W m-2')
-      %ncwriteatt(ncname,'a2x6h_Faxa_lwdn','long_name','Downward longwave heat flux')
-      %ncwriteatt(ncname,'a2x6h_Faxa_lwdn','standard_name','downwelling_longwave_flux')
-      %ncwriteatt(ncname,'a2x6h_Faxa_lwdn','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_lwdn','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_rainc','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_rainc',rainc_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_rainc',single(1.e30),'kg m-2 s-1','Convective precipitation rate', ...
                        'convective_precipitation_flux','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainc','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainc','units','kg m-2 s-1')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainc','long_name','Convective precipitation rate')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainc','standard_name','convective_precipitation_flux')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainc','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainc','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_rainl','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_rainl',rainl_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_rainl',single(1.e30),'kg m-2 s-1','Large-scale (stable) precipitation rate', ...
                        'large_scale_precipitation_flux','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainl','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainl','units','kg m-2 s-1')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainl','long_name','Large-scale (stable) precipitation rate')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainl','standard_name','large_scale_precipitation_flux')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainl','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_rainl','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_snowc','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_snowc',snowc_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_snowc',single(1.e30),'kg m-2 s-1','Convective snow rate (water equivalent)', ...
                        'convective_snowfall_flux','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowc','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowc','units','kg m-2 s-1')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowc','long_name','Convective snow rate (water equivalent)')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowc','standard_name','convective_snowfall_flux')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowc','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowc','cell_methods','time: mean')
 
       nccreate(ncname,'a2x6h_Faxa_snowl','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Faxa_snowl',snowl_assign)
       write_netcdf_att(ncname,'a2x6h_Faxa_snowl',single(1.e30),'kg m-2 s-1','Large-scale (stable) snow rate (water equivalent)', ...
                        'large_scale_snowfall_flux','a2x6h','time: mean')      
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowl','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowl','units','kg m-2 s-1')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowl','long_name','Large-scale (stable) snow rate (water equivalent)')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowl','standard_name','large_scale_snowfall_flux')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowl','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Faxa_snowl','cell_methods','time: mean')
-
 
       nccreate(ncname,'a2x6h_Sa_u','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_u',u_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_u',single(1.e30),'m s-1','Zonal wind at the lowest model level', ...
                        'eastward_wind','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_u','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_u','units','m s-1')
-      %ncwriteatt(ncname,'a2x6h_Sa_u','long_name','Zonal wind at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_u','standard_name','eastward_wind')
-      %ncwriteatt(ncname,'a2x6h_Sa_u','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_u','cell_methods','time: mean')
-
 
       nccreate(ncname,'a2x6h_Sa_v','Dimensions',{'a2x6h_nx',1,'a2x6h_ny',1,'time',Inf},'Datatype','single','Format','classic');
       ncwrite(ncname,'a2x6h_Sa_v',v_assign)
       write_netcdf_att(ncname,'a2x6h_Sa_v',single(1.e30),'m s-1','Meridional wind at the lowest model level', ...
                        'northward_wind','a2x6h','time: mean')
-      %ncwriteatt(ncname,'a2x6h_Sa_v','_FillValue', single(1.e30))
-      %ncwriteatt(ncname,'a2x6h_Sa_v','units','m s-1')
-      %ncwriteatt(ncname,'a2x6h_Sa_v','long_name','Meridional wind at the lowest model level')
-      %ncwriteatt(ncname,'a2x6h_Sa_v','standard_name','northward_wind')
-      %ncwriteatt(ncname,'a2x6h_Sa_v','internal_dname','a2x6h')
-      %ncwriteatt(ncname,'a2x6h_Sa_v','cell_methods','time: mean')
 
       ncwriteatt(ncname,'/','creation_method', 'Scaling CAM4 regional product (ds199.1) to tower site level met')
       ncwriteatt(ncname,'/','creation_date', datestr(now))

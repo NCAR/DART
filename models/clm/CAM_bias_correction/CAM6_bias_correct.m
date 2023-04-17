@@ -19,7 +19,6 @@ ens_mem=80;  % CAM6 reanalysis provides 80 total members, 1-80 is valid
  
 % Output data files
 path_scaled_CAM = '<enter output file path here>';       
-
 % Include Diagnostics?  true/false
 Diagnostics=true;
 
@@ -138,7 +137,7 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
 
 
       % Load CAM Ensemble Loop 
-      for jj = 1:80;  
+      for jj = 1:ens_mem;  
 
          %Downloading all ensemble members for all  reanalysis variables
     
@@ -303,38 +302,38 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
   % Put clamping (hard bounds) on non-physical values.
 
   % SOLAR
-  % e.g Faxa_swndr(ensemble(80),time(1hr,3hr)
-  Faxa_swndr_adjust  = Faxa_swndr+repmat(Faxa_swndr_scale-Faxa_swndr_mean,80,1); Faxa_swndr_adjust(Faxa_swndr_adjust<0)=0;  
-  Faxa_swvdr_adjust  = Faxa_swvdr+repmat(Faxa_swvdr_scale-Faxa_swvdr_mean,80,1); Faxa_swvdr_adjust(Faxa_swvdr_adjust<0)=0;
-  Faxa_swndf_adjust  = Faxa_swndf+repmat(Faxa_swndf_scale-Faxa_swndf_mean,80,1); Faxa_swndf_adjust(Faxa_swndf_adjust<0)=0;
-  Faxa_swvdf_adjust  = Faxa_swvdf+repmat(Faxa_swvdf_scale-Faxa_swvdf_mean,80,1); Faxa_swvdf_adjust(Faxa_swvdf_adjust<0)=0;
+  % e.g Faxa_swndr(ensemble(ens_mem),time(1hr,3hr)
+  Faxa_swndr_adjust  = Faxa_swndr+repmat(Faxa_swndr_scale-Faxa_swndr_mean,ens_mem,1); Faxa_swndr_adjust(Faxa_swndr_adjust<0)=0;  
+  Faxa_swvdr_adjust  = Faxa_swvdr+repmat(Faxa_swvdr_scale-Faxa_swvdr_mean,ens_mem,1); Faxa_swvdr_adjust(Faxa_swvdr_adjust<0)=0;
+  Faxa_swndf_adjust  = Faxa_swndf+repmat(Faxa_swndf_scale-Faxa_swndf_mean,ens_mem,1); Faxa_swndf_adjust(Faxa_swndf_adjust<0)=0;
+  Faxa_swvdf_adjust  = Faxa_swvdf+repmat(Faxa_swvdf_scale-Faxa_swvdf_mean,ens_mem,1); Faxa_swvdf_adjust(Faxa_swvdf_adjust<0)=0;
 
   %NONSOLAR
   % Purposely setting convective rain and snow to zero
   % Purposely setting snow and rain adjusted variables to large scale snow (snowl) and rain (rainl)
   % These will carry the ensemble spread for snow/rain
  
-  Faxa_rainc_adjust = Faxa_rainc+repmat(Faxa_rainc_scale-Faxa_rainc_mean,80,1); Faxa_rainc_adjust(:,:)=0;
-  Faxa_rainl_adjust = Faxa_rain+repmat(Faxa_rain_scale-Faxa_rain_mean,80,1); Faxa_rainl_adjust(Faxa_rainl_adjust<0)=0;
-  Faxa_snowc_adjust = Faxa_snowc+repmat(Faxa_snowc_scale-Faxa_snowc_mean,80,1); Faxa_snowc_adjust(:,:)=0;
-  Faxa_snowl_adjust = Faxa_snow+repmat(Faxa_snow_scale-Faxa_snow_mean,80,1); Faxa_snowl_adjust(Faxa_snowl_adjust<0)=0;
+  Faxa_rainc_adjust = Faxa_rainc+repmat(Faxa_rainc_scale-Faxa_rainc_mean,ens_mem,1); Faxa_rainc_adjust(:,:)=0;
+  Faxa_rainl_adjust = Faxa_rain+repmat(Faxa_rain_scale-Faxa_rain_mean,ens_mem,1); Faxa_rainl_adjust(Faxa_rainl_adjust<0)=0;
+  Faxa_snowc_adjust = Faxa_snowc+repmat(Faxa_snowc_scale-Faxa_snowc_mean,ens_mem,1); Faxa_snowc_adjust(:,:)=0;
+  Faxa_snowl_adjust = Faxa_snow+repmat(Faxa_snow_scale-Faxa_snow_mean,ens_mem,1); Faxa_snowl_adjust(Faxa_snowl_adjust<0)=0;
 
   % 1hr STATE, meridional and zonal winds allowed to go negative
-  Sa_u_adjust = Sa_u+repmat(Sa_u_scale-Sa_u_mean,80,1);
-  Sa_v_adjust = Sa_v+repmat(Sa_v_scale-Sa_v_mean,80,1); 
+  Sa_u_adjust = Sa_u+repmat(Sa_u_scale-Sa_u_mean,ens_mem,1);
+  Sa_v_adjust = Sa_v+repmat(Sa_v_scale-Sa_v_mean,ens_mem,1); 
 
   % 3hr STATE
-  Sa_tbot_adjust = Sa_tbot+repmat(Sa_tbot_scale-Sa_tbot_mean,80,1); Sa_tbot_adjust(Sa_tbot_adjust<0)=0;
-  Sa_shum_adjust = Sa_shum+repmat(Sa_shum_scale-Sa_shum_mean,80,1); Sa_shum_adjust(Sa_shum_adjust<0)=0;
-  Sa_pbot_adjust = Sa_pbot+repmat(Sa_pbot_scale-Sa_pbot_mean,80,1); Sa_pbot_adjust(Sa_pbot_adjust<0)=0;
-  Faxa_lwdn_adjust = Faxa_lwdn+repmat(Faxa_lwdn_scale-Faxa_lwdn_mean,80,1); Faxa_lwdn_adjust(Faxa_lwdn_adjust<0)=0;
+  Sa_tbot_adjust = Sa_tbot+repmat(Sa_tbot_scale-Sa_tbot_mean,ens_mem,1); Sa_tbot_adjust(Sa_tbot_adjust<0)=0;
+  Sa_shum_adjust = Sa_shum+repmat(Sa_shum_scale-Sa_shum_mean,ens_mem,1); Sa_shum_adjust(Sa_shum_adjust<0)=0;
+  Sa_pbot_adjust = Sa_pbot+repmat(Sa_pbot_scale-Sa_pbot_mean,ens_mem,1); Sa_pbot_adjust(Sa_pbot_adjust<0)=0;
+  Faxa_lwdn_adjust = Faxa_lwdn+repmat(Faxa_lwdn_scale-Faxa_lwdn_mean,ens_mem,1); Faxa_lwdn_adjust(Faxa_lwdn_adjust<0)=0;
 
   % (3hr STATE Unchanged)
-  %Sa_z = Sa_z+repmat(Sa_z_scale-Sa_z_mean,80,1); 
-  %Sa_ptem = Sa_ptem+repmat(Sa_ptem_scale-Sa_ptem_mean,80,1);
-  %Sa_dens = Sa_dens+repmat(Sa_dens_scale-Sa_dens_mean,80,1);
-  %Sa_pslv = Sa_pslv+repmat(Sa_pslv_scale-Sa_pslv_mean,80,1);
-  %Sa_topo = Sa_topo+repmat(Sa_topo_scale-Sa_topo_mean,80,1);
+  %Sa_z = Sa_z+repmat(Sa_z_scale-Sa_z_mean,ens_mem,1); 
+  %Sa_ptem = Sa_ptem+repmat(Sa_ptem_scale-Sa_ptem_mean,ens_mem,1);
+  %Sa_dens = Sa_dens+repmat(Sa_dens_scale-Sa_dens_mean,ens_mem,1);
+  %Sa_pslv = Sa_pslv+repmat(Sa_pslv_scale-Sa_pslv_mean,ens_mem,1);
+  %Sa_topo = Sa_topo+repmat(Sa_topo_scale-Sa_topo_mean,ens_mem,1);
 
 
       if Diagnostics==true
@@ -345,7 +344,7 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
                          Faxa_swndr_adjust,Faxa_swndf_adjust,Faxa_swvdr_adjust, ...
                          Faxa_swvdf_adjust,Faxa_rainl_adjust,Faxa_snowl_adjust, ...
                          Sa_tbot_adjust,Sa_shum_adjust,Sa_u_adjust,Sa_v_adjust, ...
-                         Sa_pbot_adjust,Faxa_lwdn_adjust,'CAM6' ...
+                         Sa_pbot_adjust,Faxa_lwdn_adjust,'CAM6', ...
                          sw_1hr,ppt_1hr,ta_1hr,q_1hr,wind_1hr,ps_1hr,lw_1hr, ...
                          ppt_3hr,ta_3hr);
 
@@ -391,7 +390,7 @@ YEAR_main=load_towermet('year',yeartower,path_towermet);
   dens_assign=ones(1,1,length(Sa_dens(1,:)))*NaN;      pslv_assign=ones(1,1,length(Sa_pslv(1,:)))*NaN;
   topo_assign=ones(1,1,length(Sa_topo(1,:)))*NaN;
 
-    for jj = 1:80;  %% Ensemble assignment loop         
+    for jj = 1:ens_mem;  %% Ensemble assignment loop         
       % Assign the met variables to appropriate 3-dimension format
         
       swndr_assign(1,1,:)=Faxa_swndr_adjust(jj,:);                swvdr_assign(1,1,:)=Faxa_swvdr_adjust(jj,:);
