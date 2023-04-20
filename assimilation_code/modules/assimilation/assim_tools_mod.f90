@@ -2048,8 +2048,8 @@ real(r8), intent(in)  :: ens(ens_size), prior_var, obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
 integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: prior_sd, var_ratio, umass, left_amp, right_amp
-real(r8) :: left_sd, left_var, right_sd, right_var, left_mean, right_mean
+real(r8) :: prior_sd, var_ratio, umass, left_amp, right_amp, norm_const
+real(r8) :: left_mean, right_mean
 real(r8) :: mass(ens_size + 1), like(ens_size), cumul_mass(0:ens_size + 1)
 real(r8) :: nmass(ens_size + 1)
 real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
@@ -2062,20 +2062,16 @@ real(r8) :: a, b, c, hright, hleft, r1, r2, adj_r1, adj_r2
 
 ! Do an index sort of the ensemble members; Will want to do this very efficiently
 call index_sort(ens, e_ind, ens_size)
+x = ens(e_ind)
 
+! Define normal PDF constant term
+norm_const = 1.0_r8 / sqrt(2.0_r8 * PI * obs_var)
+! Compute likelihood for each ensemble member; just evaluate the gaussian
 do i = 1, ens_size
-   ! The boundaries of the interior bins are just the sorted ensemble members
-   x(i) = ens(e_ind(i))
-   ! Compute likelihood for each ensemble member; just evaluate the gaussian
-   ! No need to compute the constant term since relative likelihood is what matters
-   like(i) = exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
+   like(i) = norm_const * exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
 end do
 
-! Prior distribution is boxcar in the central bins with 1/(n+1) density
-! in each intermediate bin. BUT, distribution on the tails is a normal with
-! 1/(n + 1) of the mass on each side.
-
-! Can now compute the mean likelihood density in each interior bin
+! Compute approx likelihood each interior bin (average of bounding likelihoods)
 do i = 2, ens_size
    like_dense(i) = ((like(i - 1) + like(i)) / 2.0_r8)
 end do
@@ -2092,57 +2088,52 @@ dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
 ! Have variance of tails just be sample prior variance
 ! Mean is adjusted so that 1/(n+1) is outside
 left_mean = x(1) + dist_for_unit_sd * prior_sd
-left_var = prior_var
-left_sd = prior_sd
 ! Same for right tail
 right_mean = x(ens_size) - dist_for_unit_sd * prior_sd
-right_var = prior_var
-right_sd = prior_sd
 
 if(gaussian_likelihood_tails) then
    !*************** Block to do Gaussian-Gaussian on tail **************
    ! Compute the product of the obs likelihood gaussian with the priors
    ! Left tail gaussian first
-   var_ratio = obs_var / (left_var + obs_var)
-   new_var_left = var_ratio * left_var
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_var_left = var_ratio * prior_var
    new_sd_left = sqrt(new_var_left)
-   new_mean_left  = var_ratio * (left_mean  + left_var*obs / obs_var)
+   new_mean_left  = var_ratio * (left_mean  + prior_var*obs / obs_var)
    ! REMEMBER, this product has an associated weight which must be taken into account
    ! See Anderson and Anderson for this weight term (or tutorial kernel filter)
    ! NOTE: The constant term has been left off the likelihood so we don't have
    ! to divide by sqrt(2 PI) in this expression
-   prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / left_var + &
+   prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / prior_var + &
          obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
-         sqrt(left_var + obs_var)
+         sqrt(prior_var + obs_var) / sqrt(2.0_r8 * PI)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
    mass(1) = normal_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
 
    ! Same for the right tail
-   var_ratio = obs_var / (right_var + obs_var)
-   new_var_right = var_ratio * right_var
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_var_right = var_ratio * prior_var
    new_sd_right = sqrt(new_var_right)
-   new_mean_right  = var_ratio * (right_mean  + right_var*obs / obs_var)
+   new_mean_right  = var_ratio * (right_mean  + prior_var*obs / obs_var)
    ! NOTE: The constant term has been left off the likelihood so we don't have
    ! to divide by sqrt(2 PI) in this expression
-   prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / right_var + &
+   prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / prior_var + &
          obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
-         sqrt(right_var + obs_var)
+         sqrt(prior_var + obs_var) / sqrt(2.0_r8 * PI)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
    mass(ens_size + 1) = (1.0_r8 - normal_cdf(x(ens_size), new_mean_right, new_sd_right)) * &
       prod_weight_right
+
    !************ End Block to do Gaussian-Gaussian on tail **************
 else
    !*************** Block to do flat tail for likelihood ****************
    ! Flat tails: THIS REMOVES ASSUMPTIONS ABOUT LIKELIHOOD AND CUTS COST
-   new_var_left = left_var
-   new_sd_left = left_sd
+   new_sd_left = prior_sd
    new_mean_left = left_mean
    prod_weight_left = like(1)
    mass(1) = like(1) / (ens_size + 1.0_r8)
 
    ! Same for right tail
-   new_var_right = right_var
-   new_sd_right = right_sd
+   new_sd_right = prior_sd
    new_mean_right = right_mean
    prod_weight_right = like(ens_size)
    mass(ens_size + 1) = like(ens_size) / (ens_size + 1.0_r8)
