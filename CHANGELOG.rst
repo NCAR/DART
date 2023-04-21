@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 21 2023 :: MOM6. Tag v10.7.0**  
+
+- CESM-MOM6 interface added to DART.
+
 **April 11 2023 :: Bug-fixes for WRF Tutorial and developer test quickbuilds. Tag v10.6.5**
 
 - Fixes the developer_tests quickbuild.sh files
