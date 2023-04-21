@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 11 2023 :: Bug-fixes for WRF Tutorial and developer test quickbuilds. Tag v10.6.5**
+
+- Fixes the developer_tests quickbuild.sh files
+- Fixes the broken link to WRF DART tutorial input.nml.template
+
 **February 22 2023 :: Bug-fix release. Tag v10.6.4**
 
 - Removes unused and uninitialized argument to adaptive_inflate_init.
