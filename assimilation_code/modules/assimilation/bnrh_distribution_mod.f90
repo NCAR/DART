@@ -19,7 +19,8 @@ implicit none
 private
 
 public :: bnrh_cdf, bnrh_cdf_params, bnrh_cdf_initialized_vector, &
-          inv_bnrh_cdf, inv_bnrh_cdf_params, get_bnrh_sd, deallocate_bnrh_params
+          inv_bnrh_cdf, inv_bnrh_cdf_params, get_bnrh_sd, deallocate_bnrh_params, &
+          inv_bnrh_cdf_like
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'bnrh_distribution_mod.f90'
@@ -368,8 +369,7 @@ end subroutine inv_bnrh_cdf_params
 subroutine inv_bnrh_cdf(quantiles, ens_size, sort_ens, &
    bounded_below, bounded_above, lower_bound, upper_bound, &
    tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
-   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x, &
-   like)
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x)
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: quantiles(ens_size)
@@ -380,7 +380,113 @@ real(r8), intent(in)  :: tail_amp_left,  tail_mean_left,  tail_sd_left
 real(r8), intent(in)  :: tail_amp_right, tail_mean_right, tail_sd_right
 logical,  intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
 real(r8), intent(out) :: x(ens_size)
-real(r8), intent(inout), optional  :: like(ens_size)
+
+integer :: region, i, j
+real(r8) :: lower_state, upper_state, lower_mass, upper_mass, target_mass
+real(r8) :: q(ens_size), curr_q, lower_q, upper_q, del_q, fract
+
+! Quantile increment between ensemble members for bnrh
+del_q = 1.0_r8 / (ens_size + 1.0_r8)
+
+do i = 1, ens_size
+   q(i) = i * del_q
+end do
+
+! Loop through each ensemble member to find posterior state
+do i = 1, ens_size
+   curr_q = quantiles(i)
+   ! Which region is this quantile in?
+   ! BNRH quantiles are uniform; finding region for this quantile is trivial
+   region = floor(curr_q * (ens_size + 1.0_r8))
+   ! Careful about numerical issues moving outside of region [0 ens_size]
+   if(region < 0) region = 0
+   if(region > ens_size) region = ens_size
+
+   if(region == 0) then
+      ! Lower tail
+      if(bounded_below .and. do_uniform_tail_left) then
+         ! Lower tail uniform
+         upper_state = sort_ens(1)
+         x(i) = lower_bound + (curr_q / q(1)) * (upper_state - lower_bound)
+      else
+         ! Find the mass at the lower bound (which could be unbounded)
+         if(bounded_below) then
+            lower_mass = tail_amp_left * &
+               normal_cdf(lower_bound, tail_mean_left, tail_sd_left)
+         else
+            lower_mass = 0.0_r8
+         endif
+         ! Find the mass at the upper bound (ensemble member 1)
+         upper_mass = tail_amp_left * &
+            normal_cdf(sort_ens(1), tail_mean_left, tail_sd_left)
+         ! What fraction of this mass difference should we go?
+         fract = curr_q / q(1)
+         target_mass = lower_mass + fract * (upper_mass - lower_mass)
+         x(i) = inv_weighted_normal_cdf(tail_amp_left, tail_mean_left, &
+            tail_sd_left, target_mass)
+      endif
+   
+   elseif(region == ens_size) then
+      ! Upper tail
+      if(bounded_above .and. do_uniform_tail_right) then
+         ! Upper tail is uniform
+         lower_state = sort_ens(ens_size)
+         upper_state = upper_bound
+         x(i) = lower_state + (curr_q - q(ens_size)) * &
+            (upper_state - lower_state) / (1.0_r8 - q(ens_size))
+      else
+         ! Upper tail is (bounded) normal
+         ! Find the mass at the upper bound (which could be unbounded)
+         if(bounded_above) then
+            upper_mass = tail_amp_right * &
+               normal_cdf(upper_bound, tail_mean_right, tail_sd_right)
+         else
+            upper_mass = 1.0_r8
+         endif
+         ! Find the mass at the lower edge of the region (ensemble member n)
+         lower_mass = tail_amp_right * &
+            normal_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
+         ! What fraction of the last interval do we need to move
+         fract = (curr_q - q(ens_size)) / (1.0_r8 - q(ens_size))
+         target_mass = lower_mass + fract * (upper_mass - lower_mass)
+         x(i) = inv_weighted_normal_cdf(tail_amp_right, tail_mean_right, &
+            tail_sd_right, target_mass)
+      endif
+   
+   else
+      ! Interior region; get the quantiles of the region boundary
+      lower_q = q(region)
+      upper_q = q(region + 1)
+      x(i) = sort_ens(region) + ((curr_q - lower_q) / (upper_q - lower_q)) * &
+         (sort_ens(region + 1) - sort_ens(region))
+   endif
+   
+   ! Imprecision can lead to x being slightly out of bounds, fix it to bounds
+   call check_bounds(x(i), curr_q, bounded_below, lower_bound, &
+                              bounded_above, upper_bound, 'inf_bnrh_cdf')
+enddo
+   
+end subroutine inv_bnrh_cdf
+
+!-----------------------------------------------------------------------
+
+
+subroutine inv_bnrh_cdf_like(quantiles, ens_size, sort_ens, &
+   bounded_below, bounded_above, lower_bound, upper_bound, &
+   tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left,  &
+   tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, x, &
+   like)
+
+integer,  intent(in)    :: ens_size
+real(r8), intent(in)    :: quantiles(ens_size)
+real(r8), intent(in)    :: sort_ens(ens_size)
+logical,  intent(in)    :: bounded_below, bounded_above
+real(r8), intent(in)    :: lower_bound, upper_bound
+real(r8), intent(in)    :: tail_amp_left,  tail_mean_left,  tail_sd_left
+real(r8), intent(in)    :: tail_amp_right, tail_mean_right, tail_sd_right
+logical,  intent(in)    :: do_uniform_tail_left, do_uniform_tail_right
+real(r8), intent(out)   :: x(ens_size)
+real(r8), intent(inout) :: like(ens_size)
 
 ! This inverts the cdf which is optionally multiplied by a likelihood.
 
@@ -391,51 +497,36 @@ real(r8) :: q(ens_size), curr_q, amp_adj, lower_q, upper_q, del_q, fract
 ! Quantile increment between ensemble members for bnrh
 del_q = 1.0_r8 / (ens_size + 1.0_r8)
 
-! If no likelihood, prior quantiles are assumed to be uniformly distributed
-if(.not. present(like)) then
-   do i = 1, ens_size
-      q(i) = i * del_q
-   end do
-else
-   ! Normalize the likelihood to have a sum of 1
-   like = like / (sum(like) + like(1) / 2.0_r8 + like(ens_size) / 2.0_r8)
+! Normalize the likelihood to have a sum of 1
+like = like / (sum(like) + like(1) / 2.0_r8 + like(ens_size) / 2.0_r8)
 
-   ! Go from left to right adjusting the quantiles through the x's
-   ! Assume that the quantiles of the original ensemble for the BNRH are uniform
-   q(1) = like(1) 
-   do i = 2, ens_size
-      q(i) = q(i - 1) + (like(i-1) + like(i)) / 2.0_r8
-   end do
+! Go from left to right adjusting the quantiles through the x's
+! Assume that the quantiles of the original ensemble for the BNRH are uniform
+q(1) = like(1) 
+do i = 2, ens_size
+   q(i) = q(i - 1) + (like(i-1) + like(i)) / 2.0_r8
+end do
 
-   ! Temporary test to confirm posterior is a pdf
-   if(abs(q(ens_size) + like(ens_size) - 1.0_r8) > 1.0e-12) then
-      write(*, *) 'final q ', q(ens_size) + like(ens_size)
-      stop
-   endif
+! Temporary test to confirm posterior is a pdf
+if(abs(q(ens_size) + like(ens_size) - 1.0_r8) > 1.0e-12) then
+   write(*, *) 'final q ', q(ens_size) + like(ens_size)
+   stop
 endif
 
 ! Loop through each ensemble member to find posterior state
 do i = 1, ens_size
    curr_q = quantiles(i)
    ! Which region is this quantile in?
-   if(.not. present(like)) then
-      ! BNRH quantiles are uniform; finding region for this quantile is trivial
-      region = floor(curr_q * (ens_size + 1.0_r8))
-      ! Careful about numerical issues moving outside of region [0 ens_size]
-      if(region < 0) region = 0
-      if(region > ens_size) region = ens_size
-   else
-      ! Find which region this quantile is in
-      ! Need to make this more efficient once it is working
-      ! Default is that region is the highest one; quantile(i) >= largest q
-      region = ens_size
-      do j = 1, ens_size
-         if(curr_q < q(j)) then 
-            region = j - 1
-            exit
-         endif
-      end do
-   endif
+   ! Find which region this quantile is in
+   ! Need to make this more efficient once it is working
+   ! Default is that region is the highest one; quantile(i) >= largest q
+   region = ens_size
+   do j = 1, ens_size
+      if(curr_q < q(j)) then 
+         region = j - 1
+         exit
+      endif
+   end do
 
    if(region == 0) then
       ! Lower tail
@@ -499,28 +590,12 @@ do i = 1, ens_size
          (sort_ens(region + 1) - sort_ens(region))
    endif
    
-   ! Imprecision in the inv_norm routine can lead to x(i) being slightly below the
-   ! lower bound. Correct this and output a message. Could be numerically fixed above.
-   if(bounded_below) then
-      if(x(i) < lower_bound) then
-         write(errstring, *) 'x less than lower_bound ', i, x(i), curr_q
-         call error_handler(E_MSG, 'inv_bnrh_cdf', errstring, source)
-         x(i) = lower_bound
-      endif
-   endif
-  
-   ! See comment on lower bound in previous code block 
-   if(bounded_above) then
-      if(x(i) > upper_bound) then
-         write(errstring, *) 'x greater than upper_bound ', i, x(i), curr_q
-         call error_handler(E_MSG, 'inv_bnrh_cdf', errstring, source)
-         x(i) = upper_bound
-      endif
-   endif
-   
+   ! Imprecision can lead to x being slightly out of bounds, fix it to bounds
+   call check_bounds(x(i), curr_q, bounded_below, lower_bound, &
+                              bounded_above, upper_bound, 'inf_bnrh_cdf_like')
 enddo
-   
-end subroutine inv_bnrh_cdf
+
+end subroutine inv_bnrh_cdf_like
 
 !-----------------------------------------------------------------------
 
@@ -699,6 +774,38 @@ deallocate(p%ens)
 deallocate(p%more_params)
 
 end subroutine deallocate_bnrh_params
+
+!-----------------------------------------------------------------------
+
+subroutine check_bounds(x, q, bounded_below, lower_bound, &
+                              bounded_above, upper_bound, msgstring)
+
+real(r8),         intent(inout) :: x
+real(r8),         intent(in)    :: q
+logical,          intent(in)    :: bounded_below, bounded_above
+real(r8),         intent(in)    :: lower_bound,   upper_bound
+character(len=*), intent(in)    :: msgstring
+
+! Imprecision in inv_norm could lead to x(i) being out of bounds: check for now
+! lower bound. Correct this and output a message. Could be numerically fixed above.
+if(bounded_below) then
+   if(x < lower_bound) then
+      write(errstring, *) 'x less than lower_bound ', x, q
+      call error_handler(E_MSG, msgstring, errstring, source)
+      x = lower_bound
+   endif
+endif
+
+! See comment on lower bound in previous code block 
+if(bounded_above) then
+   if(x > upper_bound) then
+      write(errstring, *) 'x greater than upper_bound ', x, q
+      call error_handler(E_MSG, msgstring, errstring, source)
+      x = upper_bound
+   endif
+endif
+
+end subroutine check_bounds   
 
 !-----------------------------------------------------------------------
 

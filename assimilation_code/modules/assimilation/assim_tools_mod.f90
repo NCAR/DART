@@ -81,7 +81,7 @@ use algorithm_info_mod, only : probit_dist_info, obs_inc_info
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
 
-use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf
+use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf, inv_bnrh_cdf_like
 
 use distribution_params_mod, only : distribution_params_type
                                
@@ -1210,7 +1210,7 @@ call bnrh_cdf(ens, ens_size, bounded_below, bounded_above, lower_bound, upper_bo
    tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right)
 
 ! Invert the bnrh cdf after it is multiplied by the likelihood
-call inv_bnrh_cdf(q, ens_size, sort_ens, &
+call inv_bnrh_cdf_like(q, ens_size, sort_ens, &
    bounded_below, bounded_above, lower_bound, upper_bound, &
    tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
    tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, post, &
