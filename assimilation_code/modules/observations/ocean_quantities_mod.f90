@@ -36,6 +36,7 @@
 !   QTY_DISSOLVED_ORGANIC_P
 !   QTY_DISSOLVED_INORGANIC_IRON
 !   QTY_SURFACE_CHLOROPHYLL
+!   QTY_LAYER_THICKNESS
 !
 ! ! fixme - these units are hardcoded in obs_diag and shouldn't be
 !   QTY_U_WIND_COMPONENT
