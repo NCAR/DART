@@ -18,7 +18,7 @@ SITE_lon=-105.55+360; % lon should be positive (degrees East only)
 % Input data files
 path_CAM = '/glade/work/bmraczka/CAM4_NR1/';
 path_towermet = '/glade/work/bmraczka/SIFMIP2/tower_met_forcing/';
-ens_mem=80;  % CAM6 reanalysis provides 80 total members, 1-80 is valid
+ens_mem=80;  % CAM4 reanalysis provides 80 total members, 1-80 is valid
 
 % Output data files
 path_scaled_CAM = '<enter output file path here>';
@@ -51,7 +51,7 @@ for i=1:ens_mem
     enstr{i}=sprintf('%04d', ens_range(i));
 end
 
-% Check for existence of output file from CAM6_site_grid.sh
+% Check for existence of output file from CAM4_site_grid.sh
 % and set some fixed variables from grid cell collocated with site
 site_grid_file = [path_CAM enstr{1} '/CAM4_NR1.cpl_' enstr{1} '.ha2x1dx6h.' yearstr{1} '.nc'];
 
