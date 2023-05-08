@@ -473,7 +473,7 @@ my $noff = scalar keys %off_sources;
 &print_formatted_list( "OFF =", keys %off_sources ) if $noff > 0;
 
 #write targets
-print MAKEFILE "clean: neat\n\t-rm -f .cppdefs \$(OBJ) $opt_p\n";
+print MAKEFILE "clean: neat\n\t-rm -f .cppdefs *.mod \$(OBJ) $opt_p\n";
 print MAKEFILE "neat:\n\t-rm -f \$(TMPFILES)\n";
 print MAKEFILE "localize: \$(OFF)\n\tcp \$(OFF) .\n" if $noff > 0;
 print MAKEFILE "TAGS: \$(SRC)\n\tetags \$(SRC)\n";
