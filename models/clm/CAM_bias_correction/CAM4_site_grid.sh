@@ -9,7 +9,7 @@ CAM4_site_path="/glade/work/bmraczka/CAM4_NR1/"
 
 # The US-NR1 flux tower site is used as an example 
 # NR1 location (40.03, -105.55) or (40.03, 254.45)
-# CAM4 grid is 1.95x2.5  or 288 longitude grids and 96 latitude grids
+# CAM4 grid is 1.95x2.5  or 288 longitude grid points and 96 latitude grid points
 # This lat/lon corresponds with doma_lon= 102 (255 degrees east) ; doma_lat= 69  ; (40.7368 degrees)
 
 

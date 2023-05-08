@@ -3,7 +3,7 @@ function [cam_main] = load_CAM(varname,ens,year,path,n)
 % Input:  'varname' is the CAM met name; 'ens' is the ensemble member
 %         'year' is year of CAM reanalysis
 %         'path' is path to the CAM reanalysis; 'n' indicates Solar (1hr inst),1hr,or 3hr
-% Output: 'cam_main' is the CAM array indexed by ensemble and time
+% Output: 'cam_main' is the CAM array indexed by ensemble member and time
 
 switch n
     
