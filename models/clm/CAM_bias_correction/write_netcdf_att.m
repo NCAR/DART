@@ -1,9 +1,10 @@
 function [] = write_netcdf_att(ncname,varname,fillval,units, ...
     long,standard,internal,cell)
-% function write_netcdf: loads all years of tower met forcing (PLUMBER2 format)
+% function write_netcdf_att: loads all years of tower met forcing (PLUMBER2 format)
 % Input:  'ncname' netcdf file name and path
 %         'varname' is the CAM met name
-%         'fillval' FillValue,
+%         'fillval' FillValue
+%         'units'
 %         'long,standard,internal' all attribute naming conventions
 %         'cell': optional argument
 % Output: N/A
