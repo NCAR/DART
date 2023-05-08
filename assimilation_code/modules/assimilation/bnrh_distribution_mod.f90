@@ -383,7 +383,7 @@ real(r8), intent(out) :: x(ens_size)
 
 integer :: region, i, j
 real(r8) :: lower_state, upper_state, lower_mass, upper_mass, target_mass
-real(r8) :: q(ens_size), curr_q, lower_q, upper_q, del_q, fract
+real(r8) :: q(ens_size), curr_q, lower_q, upper_q, del_q, fract, amp_adj
 
 ! Quantile increment between ensemble members for bnrh
 del_q = 1.0_r8 / (ens_size + 1.0_r8)
@@ -410,19 +410,24 @@ do i = 1, ens_size
          x(i) = lower_bound + (curr_q / q(1)) * (upper_state - lower_bound)
       else
          ! Find the mass at the lower bound (which could be unbounded)
+         ! NOTE: The amplitude here should be one since there is no likelihood. However, there is 
+         ! round-off error that occurs in the statement below. In the long term, amp_adj should be 
+         ! removed from this code block and the onn for the upper region. However, removing it now
+         ! would require resetting the baseline for the large number of baseline archived experiments.
+         amp_adj = q(1) / del_q
          if(bounded_below) then
-            lower_mass = tail_amp_left * &
+            lower_mass = amp_adj * tail_amp_left * &
                normal_cdf(lower_bound, tail_mean_left, tail_sd_left)
          else
             lower_mass = 0.0_r8
          endif
          ! Find the mass at the upper bound (ensemble member 1)
-         upper_mass = tail_amp_left * &
+         upper_mass = amp_adj * tail_amp_left * &
             normal_cdf(sort_ens(1), tail_mean_left, tail_sd_left)
          ! What fraction of this mass difference should we go?
          fract = curr_q / q(1)
          target_mass = lower_mass + fract * (upper_mass - lower_mass)
-         x(i) = inv_weighted_normal_cdf(tail_amp_left, tail_mean_left, &
+         x(i) = inv_weighted_normal_cdf(amp_adj*tail_amp_left, tail_mean_left, &
             tail_sd_left, target_mass)
       endif
    
@@ -437,19 +442,20 @@ do i = 1, ens_size
       else
          ! Upper tail is (bounded) normal
          ! Find the mass at the upper bound (which could be unbounded)
+         amp_adj = (1.0_r8 - q(ens_size)) / del_q
          if(bounded_above) then
-            upper_mass = tail_amp_right * &
+            upper_mass = amp_adj * tail_amp_right * &
                normal_cdf(upper_bound, tail_mean_right, tail_sd_right)
          else
-            upper_mass = 1.0_r8
+            upper_mass = amp_adj * 1.0_r8
          endif
          ! Find the mass at the lower edge of the region (ensemble member n)
-         lower_mass = tail_amp_right * &
+         lower_mass = amp_adj * tail_amp_right * &
             normal_cdf(sort_ens(ens_size), tail_mean_right, tail_sd_right)
          ! What fraction of the last interval do we need to move
          fract = (curr_q - q(ens_size)) / (1.0_r8 - q(ens_size))
          target_mass = lower_mass + fract * (upper_mass - lower_mass)
-         x(i) = inv_weighted_normal_cdf(tail_amp_right, tail_mean_right, &
+         x(i) = inv_weighted_normal_cdf(amp_adj * tail_amp_right, tail_mean_right, &
             tail_sd_right, target_mass)
       endif
    
