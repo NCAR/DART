@@ -26,8 +26,7 @@ Location-independent code
 
 All types of location modules define the same module name ``location_mod``. Therefore, the DART framework and any user
 code should include a Fortran 90 ``use`` statement of ``location_mod``. The selection of which location module will be
-compiled into the program is controlled by which source file name is specified in the ``path_names_xxx`` file, which is
-used by the ``mkmf_xxx`` scripts.
+compiled into the program is controlled by the LOCATION variable in ``quickbuild.sh``.
 
 All types of location modules define the same Fortran 90 derived type ``location_type``. Programs that need to pass
 location information to subroutines but do not need to interpret the contents can declare, receive, and pass this

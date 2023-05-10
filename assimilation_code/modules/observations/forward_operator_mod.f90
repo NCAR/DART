@@ -133,7 +133,7 @@ expected_obs = MISSING_R8
 ! call prepare_to_read_from_vars(ens_handle)
 
 ! Set up access to the state
-call create_state_window(ens_handle)
+call create_state_window(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle)
 
 ens_size = ens_handle%num_copies - ens_handle%num_extras
 
@@ -322,8 +322,6 @@ if (get_allow_transpose(ens_handle)) then
    ! Extra step for non-distributed to consolidate qc values for
    ! each ensemble member into global_qc_value
    allocate(var_istatus(qc_ens_handle%num_copies))
-
-   if (.not. isprior) call put_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
 
    MY_OBS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
       ! collect dart qc

@@ -43,7 +43,6 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 set datea     = 2017042700
 set datefnl   = 2017042712 # set this appropriately #%%%#
 set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
-set paramfile = /glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/scripts/param.csh
 
 source $paramfile
 
@@ -59,7 +58,7 @@ while ( 1 == 1 )
    if ( ! -d ${OUTPUT_DIR}/${datea} )  mkdir -p ${OUTPUT_DIR}/${datea}
 
    cd ${ICBC_DIR}
-   ${LINK} ${TEMPLATE_DIR}/input.nml.template input.nml
+   ${LINK} ${RUN_DIR}/input.nml input.nml
    ${REMOVE} gfs*pgrb2* *grib2
 
    #  prepare to run WPS ungrib and metgrid

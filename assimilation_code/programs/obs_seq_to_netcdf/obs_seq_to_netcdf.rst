@@ -431,49 +431,35 @@ make sensible plots of the observations. Some important aspects are highlighted.
 Usage
 -----
 
-Obs_seq_to_netcdf
-~~~~~~~~~~~~~~~~~
-
-| ``obs_seq_to_netcdf`` is built and run in ``/DART/observations/utilities/threed_sphere`` or
-  ``/DART/observations/utilities/oned`` or in the same way as the other DART components. That directory is intentionally
-  designed to hold components that are model-insensitive. Essentially, we avoid having to populate every ``model``
-  directory with identical ``mkmf_obs_seq_to_netcdf`` and ``path_names_obs_seq_to_netcdf`` files. After the program has
-  been run, ``/DART/observations/utilities/threed_sphere/``\ ``plot_obs_netcdf.m`` can be run to plot the observations.
-  Be aware that the ``ObsTypesMetaData`` list is all known observation types and not only the observation types in the
-  netCDF file.
-
 .. _example-1:
 
-Example
-^^^^^^^
+Obs_seq_to_netcdf example
 
-.. container:: routine
+.. code:: text
 
-   ::
+   &schedule_nml
+      calendar        = 'Gregorian',
+      first_bin_start =  2006, 8, 1, 3, 0, 0 ,
+      first_bin_end   =  2006, 8, 1, 9, 0, 0 ,
+      last_bin_end    =  2006, 8, 3, 3, 0, 0 ,
+      bin_interval_days    = 0,
+      bin_interval_seconds = 21600,
+      max_num_bins         = 1000,
+      print_table          = .true.
+      /
 
-      &schedule_nml
-         calendar        = 'Gregorian',
-         first_bin_start =  2006, 8, 1, 3, 0, 0 ,
-         first_bin_end   =  2006, 8, 1, 9, 0, 0 ,
-         last_bin_end    =  2006, 8, 3, 3, 0, 0 ,
-         bin_interval_days    = 0,
-         bin_interval_seconds = 21600,
-         max_num_bins         = 1000,
-         print_table          = .true.
-         /
+   &obs_seq_to_netcdf_nml
+      obs_sequence_name = '',
+      obs_sequence_list = 'olist',
+      append_to_netcdf  = .false.,
+      lonlim1    =    0.0,
+      lonlim2    =  360.0,
+      latlim1    =  -80.0,
+      latlim2    =   80.0,
+      verbose    = .false.
+      /
 
-      &obs_seq_to_netcdf_nml
-         obs_sequence_name = '',
-         obs_sequence_list = 'olist',
-         append_to_netcdf  = .false.,
-         lonlim1    =    0.0,
-         lonlim2    =  360.0,
-         latlim1    =  -80.0,
-         latlim2    =   80.0,
-         verbose    = .false.
-         /
-
-   > *cat olist*
+   > cat olist
    /users/thoar/temp/obs_0001/obs_seq.final
    /users/thoar/temp/obs_0002/obs_seq.final
    /users/thoar/temp/obs_0003/obs_seq.final

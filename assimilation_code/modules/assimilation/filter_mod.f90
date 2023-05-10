@@ -189,7 +189,7 @@ logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
-logical  :: distributed_state = .true. ! Default to do state complete forward operators.
+logical  :: distributed_state = .true. ! Default to do distributed forward operators.
 
 ! IO options
 !>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
@@ -412,7 +412,6 @@ call adaptive_inflate_init(prior_inflate, &
                            inf_upper_bound(PRIOR_INF), &
                            inf_sd_lower_bound(PRIOR_INF), &
                            inf_sd_max_change(PRIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, &
@@ -427,7 +426,6 @@ call adaptive_inflate_init(post_inflate, &
                            inf_upper_bound(POSTERIOR_INF), &
                            inf_sd_lower_bound(POSTERIOR_INF), &
                            inf_sd_max_change(POSTERIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Posterior')
 
 if (do_output()) then
@@ -1051,6 +1049,10 @@ AdvanceTime : do
    
       call trace_message('After  posterior obs space diagnostics')
    else
+      ! call this alternate routine to collect any updated QC values that may
+      ! have been set in the assimilation loop and copy them to the outgoing obs seq
+      call obs_space_sync_QCs(obs_fwd_op_ens_handle, seq, keys, num_obs_in_set, &
+                              OBS_GLOBAL_QC_COPY, DART_qc_index)
       call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
    endif
 
@@ -1663,7 +1665,7 @@ subroutine obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size,
    OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
    OBS_ERR_VAR_COPY, DART_qc_index, do_post)
 
-! Do prior observation space diagnostics on the set of obs corresponding to keys
+! Do observation space diagnostics on the set of obs corresponding to keys
 
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle, qc_ens_handle
 integer,                 intent(in)    :: ens_size
@@ -1758,6 +1760,52 @@ endif
 deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
+
+!-------------------------------------------------------------------------
+
+subroutine obs_space_sync_QCs(obs_fwd_op_ens_handle,  &
+   seq, keys, num_obs_in_set, OBS_GLOBAL_QC_COPY, DART_qc_index)
+
+
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
+integer,                 intent(in)    :: num_obs_in_set
+integer,                 intent(in)    :: keys(num_obs_in_set)
+type(obs_sequence_type), intent(inout) :: seq
+integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY
+integer,                 intent(in)    :: DART_qc_index
+
+integer               :: j
+integer               :: io_task, my_task
+real(r8), allocatable :: obs_temp(:)
+real(r8)              :: rvalue(1)
+
+! this is a query routine to return which task has 
+! logical processing element 0 in this ensemble.
+io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
+my_task = my_task_id()
+
+! write the obs_seq.final file
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else 
+   allocate(obs_temp(1))
+endif
+
+! Optimize: Could we use a gather instead of a transpose and get copy?
+call all_copies_to_all_vars(obs_fwd_op_ens_handle)
+
+! Update the qc global value
+call get_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      rvalue(1) = obs_temp(j)
+      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
+   end do
+endif
+
+deallocate(obs_temp)
+
+end subroutine obs_space_sync_QCs
 
 !-------------------------------------------------------------------------
 

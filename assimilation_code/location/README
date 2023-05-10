@@ -13,7 +13,7 @@ needed by the DART algorithms.
 
 Each of the different location_mod.f90 files provides the same
 set of interfaces and defines a 'module location_mod', so by
-selecting the proper version in your path_names_xxx file you
+selecting the proper version in quickbuild.sh you
 can compile your model code with the main DART routines.
 
 threed_sphere:
