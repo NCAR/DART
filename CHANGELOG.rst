@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 10 2023 :: Doc-fix. Tag v10.7.2**
+ 
+- conf.py changes for latest readthedocs. Fixes search and flyout menu.
+
 **May 8 2023 :: CLM-DART: CAM reanalysis site-level bias correction tool. Tag v10.7.1**
 
 - Initial version of bias correction for CAM reanalysis forcing for
