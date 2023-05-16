@@ -1,20 +1,15 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
-program level4_to_obs
+program Fluxnetfull_to_obs
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!------------------------------------------------------------------------
 !
-!   level4_to_obs - a program that only needs minor customization to read
-!      in a text-based dataset - either white-space separated values or
-!      fixed-width column data.
-!
-!     created 3 May 2012   Tim Hoar NCAR/IMAGe
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!   Fluxnetfull_to_obs - a program that converts Ameriflux/Fluxnet FULLSET eddy
+!                        covariance tower data of carbon, water and energy into
+!                        DART obs_seq formatted files
+!        ## Fixme  Add more description here once completed
 
 use         types_mod, only : r8, MISSING_R8
 
@@ -38,15 +33,14 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
 
 use      obs_kind_mod, only : TOWER_SENSIBLE_HEAT_FLUX, &
                               TOWER_NETC_ECO_EXCHANGE,  &
-                              TOWER_LATENT_HEAT_FLUX
+                              TOWER_LATENT_HEAT_FLUX,   &
+                              TOWER_ER_FLUX,            &
+                              TOWER_GPP_FLUX
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'Fluxnetfull_to_obs.f90'
+character(len=512), parameter :: string1,string2,string3
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
@@ -54,18 +48,19 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=256) :: text_input_file = 'textdata.input'
 character(len=256) :: obs_out_file    = 'obs_seq.out'
-integer            :: year            = -1
 real(r8)           :: timezoneoffset  = -1.0_r8
 real(r8)           :: latitude        = -1.0_r8
 real(r8)           :: longitude       = -1.0_r8
 real(r8)           :: elevation       = -1.0_r8
 real(r8)           :: flux_height     = -1.0_r8
 real(r8)           :: maxgoodqc       = 3.0_r8
+! Latent,sensible heat and NEE have this option only
+logical            :: gap_filled      = .false.
 logical            :: verbose         = .false.
 
-namelist /level4_to_obs_nml/ text_input_file, obs_out_file, year, &
+namelist /Fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &
              timezoneoffset, latitude, longitude, elevation, &
-             flux_height, maxgoodqc, verbose
+             flux_height, maxgoodqc, gap_filled, verbose
 
 !-----------------------------------------------------------------------
 ! globally-scoped variables
@@ -85,36 +80,78 @@ real(r8), parameter     :: umol_to_gC = (1.0_r8/1000000.0_r8) * 12.0_r8
 
 type towerdata
   type(time_type)   :: time_obs
-  character(len=20) :: monthstring = 'Month'
-  character(len=20) :: daystring   = 'Day'
-  character(len=20) :: hourstring  = 'Hour'
-  character(len=20) :: doystring   = 'DoY'
-  character(len=20) :: neestring   = 'NEE_or_fMDS'
-  character(len=20) :: neeQCstring = 'NEE_or_fMDSqc'
-  character(len=20) :: lestring    = 'LE_f'
-  character(len=20) :: leQCstring  = 'LE_fqc'
-  character(len=20) :: hstring     = 'H_f'
-  character(len=20) :: hQCstring   = 'H_fqc'
-  integer  :: monthindex
-  integer  :: dayindex
-  integer  :: hourindex
-  integer  :: doyindex
+  character(len=20) :: startstring    = 'TIMESTAMP_START'
+  character(len=20) :: endstring      = 'TIMESTAMP_END'
+  character(len=20) :: neestring      = 'NEE_VUT_REF'
+  character(len=20) :: neeUNCstring   = 'NEE_VUT_REF_JOINTUNC'
+  character(len=20) :: neeQCstring    = 'NEE_VUT_REF_QC'
+  character(len=20) :: lestring       = 'LE_F_MDS'
+  character(len=20) :: leUNCstring    = 'LE_RANDUNC'
+  character(len=20) :: leQCstring     = 'LE_F_MDS_QC'
+  character(len=20) :: hstring        = 'H_F_MDS'
+  character(len=20) :: hUNCstring     = 'H_RANDUNC'
+  character(len=20) :: hQCstring      = 'H_F_MDS_QC'
+  character(len=20) :: gppDTstring    = 'GPP_DT_VUT_REF'
+  character(len=20) :: gppNTstring    = 'GPP_NT_VUT_REF'
+  character(len=20) :: recoDTstring    = 'RECO_DT_VUT_REF'
+  character(len=20) :: recoNTstring    = 'RECO_NT_VUT_REF'
+  character(len=20) :: gppUNCNT16string   = 'GPP_NT_VUT_16'
+  character(len=20) :: gppUNCNT84string   = 'GPP_NT_VUT_84'
+  character(len=20) :: gppUNCDT16string   = 'GPP_DT_VUT_16'
+  character(len=20) :: gppUNCDT84string   = 'GPP_DT_VUT_84'
+  character(len=20) :: recoUNCNT16string   = 'RECO_NT_VUT_16'
+  character(len=20) :: recoUNCNT84string   = 'RECO_NT_VUT_84'
+  character(len=20) :: recoUNCDT16string   = 'RECO_DT_VUT_16'
+  character(len=20) :: recoUNCDT84string   = 'RECO_DT_VUT_84'
+  integer  :: startindex
+  integer  :: endindex
   integer  :: neeindex
+  integer  :: neeUNCindex
   integer  :: neeQCindex
   integer  :: leindex
+  integer  :: leUNCindex
   integer  :: leQCindex
   integer  :: hindex
+  integer  :: hUNCindex
   integer  :: hQCindex
+  integer  :: gppDTindex
+  integer  :: gppNTindex
+  integer  :: recoDTindex
+  integer  :: recoNTindex
+  integer  :: gppUNCDT16index
+  integer  :: gppUNCDT84index
+  integer  :: gppUNCNT16index
+  integer  :: gppUNCNT84index
+  integer  :: recoUNCDT16index
+  integer  :: recoUNCDT84index
+  integer  :: recoUNCNT16index
+  integer  :: recoUNCNT84index  
+
+  integer  :: year
   integer  :: month
   integer  :: day
+  integer  :: minute
   real(r8) :: hour
   real(r8) :: doy
   real(r8) :: nee
+  real(r8) :: neeUNC
   integer  :: neeQC
   real(r8) :: le
+  real(r8) :: leUNC
   integer  :: leQC
   real(r8) :: h
+  real(r8) :: hUNC
   integer  :: hQC
+  real(r8) :: gppNT
+  real(r8) :: gppDT
+  real(r8) :: gppUNCNT84
+  real(r8) :: gppUNCNT16
+  real(r8) :: gppUNCDT84
+  real(r8) :: gppUNCDT16
+  real(r8) :: recoUNCNT84
+  real(r8) :: recoUNCNT16
+  real(r8) :: recoUNCDT84
+  real(r8) :: recoUNCDT16
 end type towerdata
 
 type(towerdata) :: tower
@@ -123,19 +160,16 @@ type(towerdata) :: tower
 ! start of executable code
 !-----------------------------------------------------------------------
 
-call initialize_utilities('level4_to_obs')
-
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
+call initialize_utilities('Fluxnetfull_to_obs')
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "level4_to_obs_nml", iunit)
-read(iunit, nml = level4_to_obs_nml, iostat = rcio)
-call check_namelist_read(iunit, rcio, "level4_to_obs_nml")
+call find_namelist_in_file("input.nml", "Fluxnetfull_to_obs_nml", iunit)
+read(iunit, nml = Fluxnetfull_to_obs_nml, iostat = rcio)
+call check_namelist_read(iunit, rcio, "Fluxnetfull_to_obs_nml")
 
-! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=level4_to_obs_nml)
-if (do_nml_term()) write(     *     , nml=level4_to_obs_nml)
+! Record the namelist values used for the run
+if (do_nml_file()) write(nmlfileunit, nml=Fluxnetfull_to_obs_nml)
+if (do_nml_term()) write(     *     , nml=Fluxnetfull_to_obs_nml)
 
 ! time setup
 call set_calendar_type(GREGORIAN)
@@ -144,7 +178,7 @@ prev_time = set_time(0, 0)
 
 write(string1, *) 'tower located at lat, lon, elev  =', latitude, longitude, elevation
 write(string2, *) 'flux observations taken at       =', flux_height,'m'
-if (verbose) call error_handler(E_MSG,'level4_to_obs',string1,text2=string2)
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
 
 ! check the lat/lon values to see if they are ok
 if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
@@ -155,9 +189,9 @@ if (( latitude > 90.0_r8 .or. latitude  <  -90.0_r8 ) .or. &
    write (string2,*)'latitude  should be [-90, 90] but is ',latitude
    write (string3,*)'longitude should be [  0,360] but is ',longitude
 
-   string1 ='tower location error in input.nml&level4_to_obs_nml'
-   call error_handler(E_ERR,'level4_to_obs', string1, source, revision, &
-                      revdate, text2=string2,text3=string3)
+   string1 ='tower location error in input.nml&Fluxnetfull_to_obs_nml'
+   call error_handler(E_ERR,'Fluxnetfull_to_obs', source, string1, &
+                      text2=string2,text3=string3)
 
 endif
 
@@ -202,7 +236,7 @@ obsloop: do iline = 2,nlines
    if (rcio > 0) then
       write (string1,'(''Cannot read (error '',i3,'') line '',i8,'' in '',A)') &
                     rcio, iline, trim(text_input_file)
-      call error_handler(E_ERR,'main', string1, source, revision, revdate)
+      call error_handler(E_ERR,'main', string1, source)
    endif
 
    input_line = adjustl(bigline)
@@ -439,8 +473,7 @@ countloop : do i = 1,tenmillion
    if (rcio < 0) exit countloop ! end of file
    if (rcio > 0) then
       write (string1,'('' read around line '',i8)')i
-      call error_handler(E_ERR,'count_file_lines', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'count_file_lines', string1, source)
    endif
    count_file_lines = count_file_lines + 1
 
@@ -449,8 +482,7 @@ rewind(iunit)
 
 if (count_file_lines >= tenmillion) then
    write (string1,'('' suspiciously large number of lines '',i8)')count_file_lines
-   call error_handler(E_MSG,'count_file_lines', string1, &
-                         source, revision, revdate)
+   call error_handler(E_MSG,'count_file_lines', string1, source)
 endif
 
 end function count_file_lines
@@ -476,7 +508,7 @@ integer, dimension(10) :: qc = 0
 read(iunit,'(A)',iostat=rcio) bigline
 if (rcio /= 0) then
   write(string1,*)'Cannot parse header. Begins <',trim(bigline(1:40)),'>'
-  call error_handler(E_ERR,'decode_header',string1, source, revision, revdate)
+  call error_handler(E_ERR,'decode_header',string1, source)
 endif
 
 input_line = adjustl(bigline)
@@ -496,7 +528,7 @@ do i = 1,len_trim(input_line)
       if (wordlength > maxwordlength) then
          write(string1,*)'unexpected long word ... starts <',&
                            input_line((i-wordlength):(i-1)),'>'
-         call error_handler(E_ERR,'decode_header',string1, source, revision, revdate)
+         call error_handler(E_ERR,'decode_header',string1, source)
       endif
       columns(columncount) = input_line((i-wordlength):(i-1)) 
       write(string1,*) 'word(',columncount,') is ',columns(columncount)
@@ -513,7 +545,7 @@ enddo
 if ((columncount+1) /= ncolumns) then
     write(string1,*)'parsed wrong number of words ...'
     write(string2,*)'expected ',ncolumns,' got ',columncount+1
-    call error_handler(E_ERR,'decode_header',string1,source,revision,revdate, &
+    call error_handler(E_ERR,'decode_header',string1,source, &
                        text2=trim(string2), text3=trim(input_line))
 endif
 
@@ -552,7 +584,7 @@ qc(10) = CheckIndex( tower%neeQCindex, tower%neeQCstring)
 
 if (any(qc /= 0) ) then
   write(string1,*)'Did not find all the required column indices.'
-  call error_handler(E_ERR,'decode_header',string1, source, revision, revdate)
+  call error_handler(E_ERR,'decode_header',string1, source)
 endif
 
 ! Summarize if desired
@@ -633,7 +665,7 @@ character(len=*), intent(in)  :: context
 
 if (myindex == 0) then
    write(string1,*)'Did not find column header matching ',trim(context)
-   call error_handler(E_MSG,'decode_header:CheckIndex',string1, source, revision, revdate)
+   call error_handler(E_MSG,'decode_header:CheckIndex',string1, source)
    CheckIndex = -1 ! not a good thing
 else
    CheckIndex = 0  ! Good to go
@@ -661,7 +693,7 @@ values = MISSING_R8
 read(str1,*,iostat=rcio) values
 if (rcio /= 0) then
    write(string1,*)'Cannot parse line',linenum,'. Begins <',trim(str1(1:40)),'>'
-   call error_handler(E_ERR,'stringparse',string1, source, revision, revdate)
+   call error_handler(E_ERR,'stringparse',string1, source)
 endif
 
 ! Stuff what we want into the tower structure
@@ -716,8 +748,8 @@ if ( iday > 0 ) then
    if (verbose) then
       write(string1,*)'converting ',tower%month,tower%day,tower%hour,tower%doy
       write(string2,*)'the day-of-year indicates we should amend the month/day values.' 
-      call error_handler(E_MSG,'stringparse', string1, source, revision, &
-                      revdate, text2=string2)
+      call error_handler(E_MSG,'stringparse', string1, source, &
+                      text2=string2)
 
       call print_date(time0, 'stringparse: using ymd date is')
       call print_date(time1, 'stringparse: using doy date is')
@@ -762,93 +794,3 @@ end subroutine stringparse
 end program level4_to_obs
 
 
-! LEVEL 4 VARIABLE DESCRIPTION
-!
-! Variables description:
-! Level 4 data are obtained from the level 3 products, data are ustar filtered,
-! gap-filled using different methods and partitioned.
-! Datasets are also aggregated from daily to monthly.
-! Flags with information regarding quality of the original and gapfilled data are added.
-!
-! Half hourly dataset variables description:
-!
-! - Month          : from 1 to 12
-! - Day            : day of the month
-! - Hour           : from 0 to 23.5, indicates the end of the half hour of measurement
-! - DoY            : decimal day of the year
-! - Rg_f           : global radiation filled [W m-2]
-! - Rg_fqc         : global radiation quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ta_f           : air temperature filled [deg C]
-! - Ta_fqc         : air temperature quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - VPD_f          : vapour pressure deficit [hPa]
-! - VPD_fqc        : vapour pressure deficit quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ts_f           : soil temperature filled [deg C]
-! - Ts_fqc         : soil temperature quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Precip         : precipitation [mm]
-! - SWC            : soil water content [%vol]
-! - H_f            : sensible heat flux filled [W m-2]
-! - H_fqc          : sensible heat flux quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - LE_f           : latent heat flux filled [W m-2]
-! - LE_fqc         : latent heat flux quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - qf_NEE_st      : fluxes quality flags as defined in the Level3 product
-! - qf_NEE_or      : fluxes quality flags as defined in the Level3 product
-! - Reco_st        : Estimated ecosystem respiration according to the short-term temperature
-!                    response of night-time fluxes based on NEE_st
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-!                    [umolCO2 m-2 s-1]
-! - Reco_or        : Estimated ecosystem respiration according to the short-term temperature
-!                    response of night-time fluxes based on NEE_or
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-!                    [umolCO2 m-2 s-1]
-! - NEE_st_fMDS    : NEE_st filled using the Marginal Distribution Sampling method
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-!                    [umolCO2 m-2 s-1]
-! - NEE_st_fMDSqc  : NEE_st_fMDS quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - GPP_st_MDS     : Gross Primary Production calculated as GPP_st_MDS = Reco_st - NEE_st_MDS
-!                    [umolCO2 m-2 s-1]
-! - NEE_or_fMDS    : NEE_or filled using the Marginal Distribution Sampling method
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-!                    [umolCO2 m-2 s-1]
-! - NEE_or_fMDSqc  : NEE_or_fMDS quality flags:
-!                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
-!                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - GPP_or_MDS     : Gross Primary Production calculated as GPP_or_MDS = Reco_or - NEE_or_MDS
-!                    [umolCO2 m-2 s-1]
-! - NEE_st_fANN    : NEE_st filled using the Artificial Neural Network method
-!                    (Refer to Papale et al. 2003 Global Change Biology and to the Other Information section in this document)
-!                    [umolCO2 m-2 s-1]
-! - NEE_st_fANNqc  : NEE_st_fANN quality flags:
-!                    0 = original, 1 = filled using original meteorological inputs or filled with qc=1,
-!                    2 = filled using filled meteorological inputs with qc=2 or 3,
-!                    3 = not filled using ANN due to one or more input missed but filled with the MDS method
-! - GPP_st_ANN     : Gross Primary Production calculated as GPP_st_ ANN = Reco_st - NEE_st_ ANN
-!                    [umolCO2 m-2 s-1]
-! - NEE_or_f ANN   : NEE_or filled using the Artificial Neural Network method
-!                    (Refer to Papale et al. 2003 Global Change Biology and to the Other Information section in this document)
-!                    [umolCO2 m-2 s-1]
-! - NEE_or_f ANNqc : NEE_or_fANN quality flags:
-!                    0 = original, 1 = filled using original meteorological inputs or filled with qc=1,
-!                    2 = filled using filled meteorological inputs with qc=2 or 3,
-!                    3 = not filled using ANN due to one or more input missed but filled with the MDS method
-! - GPP_or_ ANN    : Gross Primary Production calculated as GPP_or_ ANN = Reco_or - NEE_or_ ANN
-!                    [umolCO2 m-2 s-1]
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

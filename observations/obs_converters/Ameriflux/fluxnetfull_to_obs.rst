@@ -1,4 +1,4 @@
-PROGRAM ``fluxnetfull_to_obs``
+PROGRAM ``Fluxnetfull_to_obs``
 =========================
 
 Overview
@@ -25,9 +25,9 @@ The workflow is usually:
 #. record the TIME ZONE, latitude, longitude, and elevation for each tower
 #. build the DART executables with support for the tower observations. This is done by running ``preprocess`` with
    ``obs_def_tower_mod.f90`` in the list of ``input_files`` for ``preprocess_nml``.
-#. provide basic tower information via the ``fluxnetfull_to_obs_nml`` namelist since this information is not contained in the
+#. provide basic tower information via the ``Fluxnetfull_to_obs_nml`` namelist since this information is not contained in the
    Level 4 data file
-#. convert each Level 4 data file individually using ``fluxnetfull_to_obs``
+#. convert each Level 4 data file individually using ``Fluxnetfull_to_obs``
 #. combine all output files for the region and timeframe of interest into one file using
    :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
 
@@ -44,7 +44,7 @@ namelist.
 
 ::
 
-   &fluxnetfull_to_obs_nml
+   &Fluxnetfull_to_obs_nml
       text_input_file = 'textdata.input',
       obs_out_file    = 'obs_seq.out',
       year            = -1,
@@ -150,7 +150,7 @@ I believe it is important to be a good scientific citizen:
 Programs
 --------
 
-The ``fluxnetfull_to_obs.f90`` file is the source for the main converter program. Look at the source code where it reads the
+The ``Fluxnetfull_to_obs.f90`` file is the source for the main converter program. Look at the source code where it reads the
 example data file. You will almost certainly need to change the "read" statement to match your data format. The example
 code reads each text line into a character buffer and then reads from that buffer to parse up the data items.
 

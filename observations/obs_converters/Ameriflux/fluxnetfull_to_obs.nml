@@ -1,4 +1,4 @@
-&fluxnetfull_to_obs_nml
+&Fluxnetfull_to_obs_nml
    text_input_file = 'textdata.input',
    obs_out_file    = 'obs_seq.out',
    year            = -1,
