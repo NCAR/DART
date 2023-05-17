@@ -10,7 +10,8 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL="template"
+MODEL="none"
+EXTRA="$DART"/models/template/oned_model_mod.f90
 LOCATION="oned"
 dev_test=1
 TEST="obs_sequence"
