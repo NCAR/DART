@@ -58,7 +58,7 @@ while ( 1 == 1 )
    if ( ! -d ${OUTPUT_DIR}/${datea} )  mkdir -p ${OUTPUT_DIR}/${datea}
 
    cd ${ICBC_DIR}
-   ${LINK} ${TEMPLATE_DIR}/input.nml.template input.nml
+   ${LINK} ${RUN_DIR}/input.nml input.nml
    ${REMOVE} gfs*pgrb2* *grib2
 
    #  prepare to run WPS ungrib and metgrid

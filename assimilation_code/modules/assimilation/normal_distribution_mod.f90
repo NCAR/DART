@@ -490,7 +490,53 @@ p%distribution_type = NORMAL_DISTRIBUTION
 ! The two meaningful params are the mean and standard deviation
 call normal_mean_sd(ens, num, p%params(1), p%params(2))
 
+
 end subroutine set_normal_params_from_ens
+
+!------------------------------------------------------------------------
+subroutine inv_cdf_quadrature_like(quantiles, ens, likelihood, ens_size, cdf, p, x_out) 
+
+interface
+   function cdf(x, p)
+      use types_mod, only : r8
+      use distribution_params_mod, only : distribution_params_type
+      real(r8)                                   :: cdf
+      real(r8), intent(in)                       :: x
+      type(distribution_params_type), intent(in) :: p
+   end function
+end interface
+
+integer,                        intent(in)  :: ens_size
+real(r8),                       intent(in)  :: quantiles(ens_size)
+real(r8),                       intent(in)  :: ens(ens_size)
+real(r8),                       intent(in)  :: likelihood(ens_size)
+type(distribution_params_type), intent(in)  :: p
+real(r8),                       intent(out) :: x_out(ens_size)
+
+integer :: i
+real(r8) :: quad_like(ens_size + 1), q_ens(ens_size + 1)
+
+! Assume that the quantiles and the corresponding ens are sorted
+
+! Get the likelihood for each of the ens_size + 1 intervals
+do i = 2, ens_size
+   quad_like(i) = (likelihood(i - 1) + likelihood(i)) / 2.0_r8
+end do
+quad_like(1) = likelihood(1)
+quad_like(ens_size + 1) = likelihood(ens_size)
+
+!  Compute the quantiles at the ensemble boundaries for the posterior
+q_ens(1) = quad_like(1) * quantiles(1)
+do i = 2, ens_size
+   q_ens(i) = q_ens(i - 1) + quad_like(i) * (quantiles(i) - quantiles(i - 1))
+end do
+q_ens(ens_size + 1) = q_ens(ens_size) + &
+   quad_like(ens_size + 1) * (1.0_r8 - quantiles(ens_size))
+
+! Normalize so that this is a posterior cdf
+q_ens = q_ens / q_ens(ens_size + 1)
+
+end subroutine inv_cdf_quadrature_like
 
 !------------------------------------------------------------------------
 

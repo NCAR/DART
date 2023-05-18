@@ -81,7 +81,7 @@ use algorithm_info_mod, only : probit_dist_info, obs_inc_info
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
 
-use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf
+use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf, inv_bnrh_cdf_like
 
 use distribution_params_mod, only : distribution_params_type
                                
@@ -1036,12 +1036,6 @@ else
       call obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
    else if(filter_kind == 4) then
       call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 5) then
-      call obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 6) then
-      call obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 7) then
-      call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
    else if(filter_kind == 8) then
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
    else if(filter_kind == 11) then
@@ -1175,59 +1169,6 @@ obs_inc = a * (ens - prior_mean) + new_mean - ens
 end subroutine obs_increment_eakf
 
 
-subroutine obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-!========================================================================
-!
-! Forms a random sample of the Gaussian from the update equations.
-! This is very close to what a true 'ENSEMBLE' Kalman Filter would
-! look like. Note that outliers, multimodality, etc., get tossed.
-
-integer,   intent(in)  :: ens_size
-real(r8),  intent(in)  :: prior_mean, prior_var
-real(r8),  intent(in)  :: ens(ens_size), obs, obs_var
-real(r8),  intent(out) :: obs_inc(ens_size)
-
-real(r8) :: new_mean, var_ratio
-real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
-integer  :: i
-
-var_ratio = obs_var / (prior_var + obs_var)
-new_var = var_ratio * prior_var
-new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
-
-! This will reproduce exactly for multiple runs with the same task count,
-! but WILL NOT reproduce for a different number of MPI tasks.
-! To make it independent of the number of MPI tasks, it would need to
-! use the global ensemble number or something else that remains constant
-! as the processor count changes.  this is not currently an argument to
-! this function and so we are not trying to make it task-count invariant.
-
-! Form a random sample from the updated distribution
-! Then adjust the mean (what about adjusting the variance?)!
-! Definitely need to sort with this; sort is done in main obs_increment
-if(first_inc_ran_call) then
-   call init_random_seq(inc_ran_seq, my_task_id() + 1)
-   first_inc_ran_call = .false.
-endif
-
-do i = 1, ens_size
-   new_ens(i) = random_gaussian(inc_ran_seq, new_mean, sqrt(prior_var*var_ratio))
-end do
-
-! Adjust the mean of the new ensemble
-temp_mean = sum(new_ens) / ens_size
-new_ens(:) = new_ens(:) - temp_mean + new_mean
-
-! Compute prior variance and mean from sample
-temp_var  = sum((new_ens - new_mean)**2) / (ens_size - 1)
-! Adjust the variance, also
-new_ens = (new_ens - new_mean) * sqrt(new_var / temp_var) + new_mean
-
-! Get the increments
-obs_inc = new_ens - ens
-
-end subroutine obs_increment_ran_kf
-
 subroutine obs_increment_bounded_norm_rhf(ens, ens_like, ens_size, prior_var, &
    obs_inc, bounded_below, bounded_above, lower_bound, upper_bound)
 !------------------------------------------------------------------------
@@ -1269,7 +1210,7 @@ call bnrh_cdf(ens, ens_size, bounded_below, bounded_above, lower_bound, upper_bo
    tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right)
 
 ! Invert the bnrh cdf after it is multiplied by the likelihood
-call inv_bnrh_cdf(q, ens_size, sort_ens, &
+call inv_bnrh_cdf_like(q, ens_size, sort_ens, &
    bounded_below, bounded_above, lower_bound, upper_bound, &
    tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
    tail_amp_right, tail_mean_right, tail_sd_right, do_uniform_tail_right, post, &
@@ -1330,96 +1271,6 @@ weight = 1.0_r8 / (cdf(2) - cdf(1))
 get_truncated_normal_like = weight * exp(-1.0_r8 * (x - obs)**2 / (2.0_r8 * obs_var))
 
 end function get_truncated_normal_like
-
-
-
-subroutine obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
-!========================================================================
-!
-! Does a deterministic ensemble layout for the updated Gaussian.
-! Note that all outliers, multimodal behavior, etc. get tossed.
-
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: prior_mean, prior_var
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
-
-real(r8) :: new_mean, var_ratio, temp_var, new_ens(ens_size), new_var
-integer :: i
-
-var_ratio = obs_var / (prior_var + obs_var)
-new_var = var_ratio * prior_var
-new_mean = var_ratio * (prior_mean  + prior_var*obs / obs_var)
-
-! Want a symmetric distribution with kurtosis 3 and variance new_var and mean new_mean
-if(ens_size /= 20) then
-   write(*, *) 'EXPERIMENTAL version obs_increment_det_kf only works for ens_size 20 now'
-   stop
-endif
-
-! This has kurtosis of 3.0, verify again from initial uniform
-!new_ens(1) = -2.146750_r8
-!new_ens(2) = -1.601447_r8
-!new_ens(3) = -1.151582_r8
-!new_ens(4) = -0.7898650_r8
-!new_ens(5) = -0.5086292_r8
-!new_ens(6) = -0.2997678_r8
-!new_ens(7) = -0.1546035_r8
-!new_ens(8) = -6.371084E-02_r8
-!new_ens(9) = -1.658448E-02_r8
-!new_ens(10) = -9.175255E-04_r8
-
-! This has kurtosis of 3.0, verify again from initial inverse gaussian
-!new_ens(1) = -2.188401_r8
-!new_ens(2) = -1.502174_r8
-!new_ens(3) = -1.094422_r8
-!new_ens(4) = -0.8052422_r8
-!new_ens(5) = -0.5840152_r8
-!new_ens(6) = -0.4084518_r8
-!new_ens(7) = -0.2672727_r8
-!new_ens(8) = -0.1547534_r8
-!new_ens(9) = -6.894587E-02_r8
-!new_ens(10) = -1.243549E-02_r8
-
-! This has kurtosis of 2.0, verify again
-new_ens(1) = -1.789296_r8
-new_ens(2) = -1.523611_r8
-new_ens(3) = -1.271505_r8
-new_ens(4) = -1.033960_r8
-new_ens(5) = -0.8121864_r8
-new_ens(6) = -0.6077276_r8
-new_ens(7) = -0.4226459_r8
-new_ens(8) = -0.2598947_r8
-new_ens(9) = -0.1242189_r8
-new_ens(10) = -2.539018E-02_r8
-
-! This has kurtosis of 1.7, verify again
-!new_ens(1) = -1.648638_r8
-!new_ens(2) = -1.459415_r8
-!new_ens(3) = -1.272322_r8
-!new_ens(4) = -1.087619_r8
-!new_ens(5) = -0.9056374_r8
-!new_ens(6) = -0.7268229_r8
-!new_ens(7) = -0.5518176_r8
-!new_ens(8) = -0.3816142_r8
-!new_ens(9) = -0.2179997_r8
-!new_ens(10) = -6.538583E-02_r8
-do i = 11, 20
-   new_ens(i) = -1.0_r8 * new_ens(20 + 1 - i)
-end do
-
-! Right now, this ensemble has mean 0 and some variance
-! Compute prior variance and mean from sample
-temp_var  = sum((new_ens)**2) / (ens_size - 1)
-
-! Adjust the variance of this ensemble to match requirements and add in the mean
-new_ens = new_ens * sqrt(new_var / temp_var) + new_mean
-
-! Get the increments
-obs_inc = new_ens - ens
-
-end subroutine obs_increment_det_kf
-
 
 
 
@@ -1837,178 +1688,6 @@ endif
 end subroutine get_correction_from_table
 
 
-
-subroutine obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weight)
-!------------------------------------------------------------------------
-!
-! An observation space update that uses a set of boxcar kernels plus two
-! half-gaussians on the wings to represent the prior distribution. If N is
-! the ensemble size, 1/(N+1) of the mass is placed between each ensemble
-! member. This is reminiscent of the ranked historgram approach for
-! evaluating ensembles. The prior distribution on the wings is
-! represented by a half gaussian with mean being the outermost ensemble
-! member (left or right) and variance being somewhat arbitrarily chosen
-! as half the total ensemble sample variance. A particle
-! filter like algorithm is then used for the update. The weight associated
-! with each prior ensemble member is computed by evaluating the likelihood.
-! For the interior, the domain for each boxcar is divided in half and each
-! half is associated with the nearest ensemble member. The updated mass in
-! each half box is the product of the prior mass and the ensemble weight.
-! In the wings, the observation likelihood gaussian is convolved with the
-! prior gaussian to get an updated weighted gaussian that is assumed to
-! represent the posterior outside of the outermost ensemble members. The
-! updated ensemble members are chosen so that 1/(N+1) of the updated
-! mass is between each member and also on the left and right wings. This
-! algorithm is able to deal well with outliers, bimodality and other
-! non-gaussian behavior in observation space. It could also be modified to
-! deal with non-gaussian likelihoods in the future.
-
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
-real(r8), intent(out) :: rel_weight(ens_size)
-
-integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: sx, prior_mean, prior_var, prior_var_d2
-real(r8) :: var_ratio, new_var, new_sd, umass, left_weight, right_weight
-real(r8) :: mass(2*ens_size), weight(ens_size), cumul_mass(0:2*ens_size)
-real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
-real(r8) :: new_ens(ens_size), mass_sum, const_term
-real(r8) :: x(1:2*ens_size - 1), sort_inc(ens_size)
-
-! The factor a is not defined for this filter for now (could it be???)
-
-! The relative weights could be used for a multi-dimensional particle-type
-! update using update_ens_from_weights. There are algorithmic challenges
-! with outliers so this is not currently a supported option. For now,
-! rel_weight is simply set to 0 and is unused elsewhere.
-rel_weight = 0.0_r8
-
-! Do an index sort of the ensemble members; Need sorted ensemble
-call index_sort(ens, e_ind, ens_size)
-
-! Prior distribution is boxcar in the central bins with 1/(n+1) density
-! in each intermediate bin. BUT, distribution on the wings is a normal with
-! 1/(n + 1) of the mass on each side.
-
-! Begin by computing a weight for each of the prior ensemble membersA
-! This is just evaluating the gaussian likelihood
-const_term = 1.0_r8 / (sqrt(2.0_r8 * PI) * sqrt(obs_var))
-do i = 1, ens_size
-   weight(i) = const_term * exp(-1.0_r8 * (ens(i) - obs)**2 / (2.0_r8 * obs_var))
-end do
-
-! Compute the points that bound all the updated mass boxes; start with ensemble
-do i = 1, ens_size
-   x(2*i - 1) = ens(e_ind(i))
-end do
-! Compute the mid-point interior boundaries; these are halfway between ensembles
-do i = 2, 2*ens_size - 2, 2
-   x(i) = (x(i - 1) + x(i + 1)) / 2.0_r8
-end do
-
-! Compute the s.d. of the ensemble for getting the gaussian wings
-sx         = sum(ens)
-prior_mean = sx / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
-
-! Need to normalize the wings so they have 1/(ens_size + 1) mass outside
-! Since 1/2 of a normal is outside, need to multiply by 2 / (ens_size + 1)
-
-! Need some sort of width for the boundary kernel, try 1/2 the VAR for now
-prior_var_d2 = prior_var / 2.0_r8
-
-! Compute the product of the obs error gaussian with the prior gaussian (EAKF)
-! Left wing first
-var_ratio = obs_var / (prior_var_d2 + obs_var)
-new_var = var_ratio * prior_var_d2
-new_sd = sqrt(new_var)
-new_mean_left  = var_ratio * (ens(e_ind(1))  + prior_var_d2*obs / obs_var)
-new_mean_right  = var_ratio * (ens(e_ind(ens_size))  + prior_var_d2*obs / obs_var)
-! REMEMBER, this product has an associated weight which must be taken into account
-! See Anderson and Anderson for this weight term (or tutorial kernel filter)
-prod_weight_left =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(1))**2 / prior_var_d2 + &
-      obs**2 / obs_var - new_mean_left**2 / new_var)) / sqrt(2.0_r8 * PI)
-
-prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_var_d2 + &
-      obs**2 / obs_var - new_mean_right**2 / new_var)) / sqrt(2.0_r8 * PI)
-
-! Split into 2*ens_size domains; mass in each is computed
-! Start by computing mass in the outermost (gaussian) regions
-mass(1) = normal_cdf(ens(e_ind(1)), new_mean_left, new_sd) * &
-   prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
-mass(2*ens_size) = (1.0_r8 - normal_cdf(ens(e_ind(ens_size)), new_mean_right, new_sd)) * &
-   prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
-
-! Compute mass in the inner half boxes that have ensemble point on the left
-do i = 2, 2*ens_size - 2, 2
-   mass(i) = (1.0_r8 / (2.0_r8 * (ens_size + 1.0_r8))) * weight(e_ind(i/2))
-end do
-
-! Now right inner half boxes
-do i = 3, 2*ens_size - 1, 2
-   mass(i) = (1.0_r8 / (2.0_r8 * (ens_size + 1.0_r8))) * weight(e_ind(i/2 + 1))
-end do
-
-! Now normalize the mass in the different bins
-mass_sum = sum(mass)
-mass = mass / mass_sum
-
-! Find cumulative mass at each box boundary and middle boundary
-cumul_mass(0) = 0.0_r8
-do i = 1, 2*ens_size
-   cumul_mass(i) = cumul_mass(i - 1) + mass(i)
-end do
-
-! Get resampled ensemble, Need 1/(ens_size + 1) between each
-umass = 1.0_r8 / (ens_size + 1.0_r8)
-
-! Begin search at bottom of lowest box, but then update for efficiency
-lowest_box = 1
-
-! Find each new ensemble members location
-do i = 1, ens_size
-   ! If it's in the inner or outer range have to use normal
-   if(umass < cumul_mass(1)) then
-      ! In the first normal box
-      left_weight = (1.0_r8 / mass_sum) * prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
-      new_ens(i) = inv_weighted_normal_cdf(left_weight, new_mean_left, new_sd, umass)
-   else if(umass > cumul_mass(2*ens_size - 1)) then
-      ! In the last normal box; Come in from the outside
-      right_weight = (1.0_r8 / mass_sum) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
-      new_ens(i) = inv_weighted_normal_cdf(right_weight, new_mean_right, new_sd, 1.0_r8 - umass)
-      new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
-   else
-      ! In one of the inner uniform boxes.
-      FIND_BOX:do j = lowest_box, 2 * ens_size - 2
-         ! Find the box that this mass is in
-         if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
-            new_ens(i) = x(j) + ((umass - cumul_mass(j)) / (cumul_mass(j+1) - cumul_mass(j))) * &
-               (x(j + 1) - x(j))
-            ! Don't need to search lower boxes again
-            lowest_box = j
-            exit FIND_BOX
-         end if
-      end do FIND_BOX
-   endif
-   ! Want equally partitioned mass in update with exception that outermost boxes have half
-   umass = umass + 1.0_r8 / (ens_size + 1.0_r8)
-end do
-
-! Can now compute sorted increments
-do i = 1, ens_size
-   sort_inc(i) = new_ens(i) - ens(e_ind(i))
-end do
-
-! Now, need to convert to increments for unsorted
-do i = 1, ens_size
-   obs_inc(e_ind(i)) = sort_inc(i)
-end do
-
-end subroutine obs_increment_boxcar
-
-
-
 subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
    obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
@@ -2048,8 +1727,8 @@ real(r8), intent(in)  :: ens(ens_size), prior_var, obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
 integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: prior_sd, var_ratio, umass, left_amp, right_amp
-real(r8) :: left_sd, left_var, right_sd, right_var, left_mean, right_mean
+real(r8) :: prior_sd, var_ratio, umass, left_amp, right_amp, norm_const
+real(r8) :: left_mean, right_mean
 real(r8) :: mass(ens_size + 1), like(ens_size), cumul_mass(0:ens_size + 1)
 real(r8) :: nmass(ens_size + 1)
 real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
@@ -2062,20 +1741,16 @@ real(r8) :: a, b, c, hright, hleft, r1, r2, adj_r1, adj_r2
 
 ! Do an index sort of the ensemble members; Will want to do this very efficiently
 call index_sort(ens, e_ind, ens_size)
+x = ens(e_ind)
 
+! Define normal PDF constant term
+norm_const = 1.0_r8 / sqrt(2.0_r8 * PI * obs_var)
+! Compute likelihood for each ensemble member; just evaluate the gaussian
 do i = 1, ens_size
-   ! The boundaries of the interior bins are just the sorted ensemble members
-   x(i) = ens(e_ind(i))
-   ! Compute likelihood for each ensemble member; just evaluate the gaussian
-   ! No need to compute the constant term since relative likelihood is what matters
-   like(i) = exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
+   like(i) = norm_const * exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
 end do
 
-! Prior distribution is boxcar in the central bins with 1/(n+1) density
-! in each intermediate bin. BUT, distribution on the tails is a normal with
-! 1/(n + 1) of the mass on each side.
-
-! Can now compute the mean likelihood density in each interior bin
+! Compute approx likelihood each interior bin (average of bounding likelihoods)
 do i = 2, ens_size
    like_dense(i) = ((like(i - 1) + like(i)) / 2.0_r8)
 end do
@@ -2092,57 +1767,52 @@ dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
 ! Have variance of tails just be sample prior variance
 ! Mean is adjusted so that 1/(n+1) is outside
 left_mean = x(1) + dist_for_unit_sd * prior_sd
-left_var = prior_var
-left_sd = prior_sd
 ! Same for right tail
 right_mean = x(ens_size) - dist_for_unit_sd * prior_sd
-right_var = prior_var
-right_sd = prior_sd
 
 if(gaussian_likelihood_tails) then
    !*************** Block to do Gaussian-Gaussian on tail **************
    ! Compute the product of the obs likelihood gaussian with the priors
    ! Left tail gaussian first
-   var_ratio = obs_var / (left_var + obs_var)
-   new_var_left = var_ratio * left_var
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_var_left = var_ratio * prior_var
    new_sd_left = sqrt(new_var_left)
-   new_mean_left  = var_ratio * (left_mean  + left_var*obs / obs_var)
+   new_mean_left  = var_ratio * (left_mean  + prior_var*obs / obs_var)
    ! REMEMBER, this product has an associated weight which must be taken into account
    ! See Anderson and Anderson for this weight term (or tutorial kernel filter)
    ! NOTE: The constant term has been left off the likelihood so we don't have
    ! to divide by sqrt(2 PI) in this expression
-   prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / left_var + &
+   prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / prior_var + &
          obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
-         sqrt(left_var + obs_var)
+         sqrt(prior_var + obs_var) / sqrt(2.0_r8 * PI)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
    mass(1) = normal_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
 
    ! Same for the right tail
-   var_ratio = obs_var / (right_var + obs_var)
-   new_var_right = var_ratio * right_var
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_var_right = var_ratio * prior_var
    new_sd_right = sqrt(new_var_right)
-   new_mean_right  = var_ratio * (right_mean  + right_var*obs / obs_var)
+   new_mean_right  = var_ratio * (right_mean  + prior_var*obs / obs_var)
    ! NOTE: The constant term has been left off the likelihood so we don't have
    ! to divide by sqrt(2 PI) in this expression
-   prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / right_var + &
+   prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / prior_var + &
          obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
-         sqrt(right_var + obs_var)
+         sqrt(prior_var + obs_var) / sqrt(2.0_r8 * PI)
    ! Determine how much mass is in the updated tails by computing gaussian cdf
    mass(ens_size + 1) = (1.0_r8 - normal_cdf(x(ens_size), new_mean_right, new_sd_right)) * &
       prod_weight_right
+
    !************ End Block to do Gaussian-Gaussian on tail **************
 else
    !*************** Block to do flat tail for likelihood ****************
    ! Flat tails: THIS REMOVES ASSUMPTIONS ABOUT LIKELIHOOD AND CUTS COST
-   new_var_left = left_var
-   new_sd_left = left_sd
+   new_sd_left = prior_sd
    new_mean_left = left_mean
    prod_weight_left = like(1)
    mass(1) = like(1) / (ens_size + 1.0_r8)
 
    ! Same for right tail
-   new_var_right = right_var
-   new_sd_right = right_sd
+   new_sd_right = prior_sd
    new_mean_right = right_mean
    prod_weight_right = like(ens_size)
    mass(ens_size + 1) = like(ens_size) / (ens_size + 1.0_r8)
