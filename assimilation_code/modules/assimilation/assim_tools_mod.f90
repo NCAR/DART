@@ -83,7 +83,7 @@ use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_sha
 
 use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf, inv_bnrh_cdf_like
 
-use distribution_params_mod, only : distribution_params_type
+use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params
                                
 
 implicit none
@@ -729,6 +729,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       call transform_to_probit(grp_size, obs_post(grp_bot:grp_top), dist_for_obs, &
          temp_dist_params, probit_obs_post(grp_bot:grp_top), .true., &
          bounded_below, bounded_above, lower_bound, upper_bound)
+      ! Free up the storage used for this transform
+      call deallocate_distribution_params(temp_dist_params)
 
       ! Copy back into original storage
       obs_prior(grp_bot:grp_top) = probit_obs_prior(grp_bot:grp_top)

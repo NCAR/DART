@@ -19,8 +19,7 @@ implicit none
 private
 
 public :: bnrh_cdf, bnrh_cdf_params, bnrh_cdf_initialized_vector, &
-          inv_bnrh_cdf, inv_bnrh_cdf_params, get_bnrh_sd, deallocate_bnrh_params, &
-          inv_bnrh_cdf_like
+          inv_bnrh_cdf, inv_bnrh_cdf_params, get_bnrh_sd, inv_bnrh_cdf_like
 
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'bnrh_distribution_mod.f90'
@@ -695,15 +694,15 @@ subroutine pack_bnrh_params(ens_size, bounded_below, bounded_above, lower_bound,
    do_uniform_tail_left, do_uniform_tail_right, tail_amp_left, tail_amp_right, &
    tail_mean_left, tail_mean_right, tail_sd_left, tail_sd_right, sort_ens, p)
 
-integer,                        intent(in)  :: ens_size
-logical,                        intent(in)  :: bounded_below,        bounded_above
-real(r8),                       intent(in)  :: lower_bound,          upper_bound
-logical,                        intent(in)  :: do_uniform_tail_left, do_uniform_tail_right
-real(r8),                       intent(in)  :: tail_amp_left,        tail_amp_right
-real(r8),                       intent(in)  :: tail_mean_left,       tail_mean_right
-real(r8),                       intent(in)  :: tail_sd_left,         tail_sd_right
-real(r8),                       intent(in)  :: sort_ens(ens_size)
-type(distribution_params_type), intent(out) :: p
+integer,                        intent(in)    :: ens_size
+logical,                        intent(in)    :: bounded_below,        bounded_above
+real(r8),                       intent(in)    :: lower_bound,          upper_bound
+logical,                        intent(in)    :: do_uniform_tail_left, do_uniform_tail_right
+real(r8),                       intent(in)    :: tail_amp_left,        tail_amp_right
+real(r8),                       intent(in)    :: tail_mean_left,       tail_mean_right
+real(r8),                       intent(in)    :: tail_sd_left,         tail_sd_right
+real(r8),                       intent(in)    :: sort_ens(ens_size)
+type(distribution_params_type), intent(inout) :: p
 
 ! Set the fixed storage parameters in the distribution_params_type
 p%bounded_below = bounded_below;    p%lower_bound = lower_bound
@@ -772,16 +771,6 @@ end function get_bnrh_sd
 
 !-----------------------------------------------------------------------
 
-subroutine deallocate_bnrh_params(p)
-
-type(distribution_params_type), intent(inout) :: p
-
-deallocate(p%ens)
-deallocate(p%more_params)
-
-end subroutine deallocate_bnrh_params
-
-!-----------------------------------------------------------------------
 
 subroutine check_bounds(x, q, bounded_below, lower_bound, &
                               bounded_above, upper_bound, msgstring)

@@ -14,7 +14,7 @@ use sort_mod,  only : index_sort
 use utilities_mod, only : E_ERR, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
                           find_namelist_in_file, check_namelist_read
 
-use distribution_params_mod, only : distribution_params_type,                            &
+use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params, &
                                     NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
                                     GAMMA_DISTRIBUTION, BETA_DISTRIBUTION,               &
                                     LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION,       &
@@ -29,7 +29,7 @@ use beta_distribution_mod,  only : beta_cdf_params, inv_beta_cdf_params, &
                                    set_beta_params_from_ens
 
 use bnrh_distribution_mod,    only : bnrh_cdf_initialized_vector, bnrh_cdf_params, &
-                                     inv_bnrh_cdf_params, get_bnrh_sd, deallocate_bnrh_params
+                                     inv_bnrh_cdf_params, get_bnrh_sd
 
 implicit none
 private
@@ -497,6 +497,9 @@ else
    stop
 endif
 
+! Deallocate any allocatable storage that was used for this distribution
+call deallocate_distribution_params(p)
+
 end subroutine transform_from_probit
 
 !------------------------------------------------------------------------
@@ -603,10 +606,6 @@ else
    ! Invert the rank histogram CDF to get the physical space ensemble
    call inv_bnrh_cdf_params(quantiles, ens_size, p, state_ens)
 endif
-
-! Probably do this explicitly 
-! Free the storage
-call deallocate_bnrh_params(p)
 
 end subroutine from_probit_bounded_normal_rh
 
