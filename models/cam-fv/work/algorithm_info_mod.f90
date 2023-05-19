@@ -2,23 +2,24 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-! This version is specific for tests in cam-fv
-
 module algorithm_info_mod
 
-use types_mod, only : r8, i8
+use types_mod, only : r8, i8, missing_r8
 
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs
 
 ! Get the QTY definitions that are needed (aka kind)
-! NOTE: Sadly, the QTY itself is not sufficient for the POWER because there is additional metadata
 use obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE, &
                          QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, QTY_CLOUD_LIQUID_WATER, &
                          QTY_CLOUD_ICE, QTY_GPSRO
 
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
+
+use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
+   GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION,  &
+   PARTICLE_FILTER_DISTRIBUTION
 
 implicit none
 private
@@ -33,18 +34,8 @@ integer, parameter :: UNBOUNDED_RHF      = 8
 integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
-! Defining parameter strings for different prior distributions that can be used for probit transform
-integer, parameter :: NORMAL_PRIOR            = 1
-integer, parameter :: BOUNDED_NORMAL_RH_PRIOR = 2
-integer, parameter :: GAMMA_PRIOR             = 3
-integer, parameter :: BETA_PRIOR              = 4
-integer, parameter :: LOG_NORMAL_PRIOR        = 5
-integer, parameter :: UNIFORM_PRIOR           = 6
-
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
-          NORMAL_PRIOR, BOUNDED_NORMAL_RH_PRIOR, GAMMA_PRIOR, BETA_PRIOR, LOG_NORMAL_PRIOR, &
-          UNIFORM_PRIOR
+          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
@@ -57,14 +48,15 @@ public :: obs_error_info, probit_dist_info, obs_inc_info, &
 contains
 
 !-------------------------------------------------------------------------
-subroutine obs_error_info(obs_def, error_variance, bounded, bounds)
+subroutine obs_error_info(obs_def, error_variance, &
+   bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Computes information needed to compute error sample for this observation
 ! This is called by perfect_model_obs when generating noisy obs
 type(obs_def_type), intent(in)  :: obs_def
 real(r8),           intent(out) :: error_variance
-logical,            intent(out) :: bounded(2)
-real(r8),           intent(out) :: bounds(2)
+logical,            intent(out) :: bounded_below, bounded_above
+real(r8),           intent(out) :: lower_bound, upper_bound
 
 integer     :: obs_type, obs_kind
 integer(i8) :: state_var_index
@@ -84,8 +76,8 @@ endif
 error_variance = get_obs_def_error_variance(obs_def)
 
 ! Set the observation error details for each type of quantity
-   bounded(1) = .false.;     bounded(2) = .false.
-   bounds(1) = -999999999.0_r8;      bounds(2) = 999999999.0_r8
+bounded_below  = .false.;    bounded_above  = .false.
+lower_bound = missing_r8;    upper_bound = missing_r8
 
 end subroutine obs_error_info
 
@@ -94,7 +86,7 @@ end subroutine obs_error_info
 
 
 subroutine probit_dist_info(kind, is_state, is_inflation, dist_type, &
-   bounded, bounds)
+   bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Computes the details of the probit transform for initial experiments
 ! with Molly 
@@ -103,8 +95,8 @@ integer,  intent(in)  :: kind
 logical,  intent(in)  :: is_state      ! True for state variable, false for obs
 logical,  intent(in)  :: is_inflation  ! True for inflation transform
 integer,  intent(out) :: dist_type
-logical,  intent(out) :: bounded(2)
-real(r8), intent(out) :: bounds(2)
+logical,  intent(out) :: bounded_below, bounded_above
+real(r8), intent(out) :: lower_bound,   upper_bound
 
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
@@ -119,42 +111,42 @@ real(r8), intent(out) :: bounds(2)
 ! real array 'bounds'.
 ! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
 ! would be:
-! bounded(1) = .true.;  bounded(2) = .true.
-! bounds(1)  = 0.0_r8;  bounds(2)  = 1.0_r8
+! bounded_below = .true.;  bounded_above = .true.
+! lower_bound  = 0.0_r8;   upper_bounds  = 1.0_r8
 
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
 
 select case(kind)
    case(QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE, QTY_TEMPERATURE)
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 !   dist_type = NORMAL_PRIOR
-   bounded(1) = .false.;     bounded(2) = .false.
-   bounds(1) = -999999999.0_r8;      bounds(2) = 999999999.0_r8
+   bounded_below = .false.;       bounded_above = .false.
+   lower_bound = missing_r8;      upper_bound = missing_r8
 
 !--------------
    case(QTY_SPECIFIC_HUMIDITY)
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 !   dist_type = NORMAL_PRIOR
-!   bounded(1) = .false.;     bounded(2) = .false.
-   bounded(1) = .true.;     bounded(2) = .true.
-   bounds(1) = 0.0_r8;      bounds(2) = 1.0_r8
+!   bounded_below = .false.;     bounded_above = .false.
+   bounded_below = .true.;     bounded_above = .true.
+   lower_bound = 0.0_r8;       upper_bound = 1.0_r8
 
 !--------------
    case(QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE)
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 !   dist_type = NORMAL_PRIOR
-!   bounded(1) = .false.;     bounded(2) = .false.
-   bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;      bounds(2) = 999999999.0_r8
+!   bound_below = .false.;     bounded_above = .false.
+   bounded_below = .true.;     bounded_above = .false.
+   lower_bound = 0.0_r8;       upper_bound = missing_r8
 
 !--------------
    case(QTY_GPSRO)
-   dist_type = BOUNDED_NORMAL_RH_PRIOR
+   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 !   dist_type = NORMAL_PRIOR
-!   bounded(1) = .false.;     bounded(2) = .false.
-   bounded(1) = .true.;     bounded(2) = .false.
-   bounds(1) = 0.0_r8;      bounds(2) = 999999999.0_r8
+!   bounded_below = .false.;     bounded_above = .false.
+   bounded_below = .true.;     bounded_above = .false.
+   lower_bound = 0.0_r8;       upper_bound = missing_r8
 
 !--------------
    case DEFAULT
@@ -162,22 +154,21 @@ select case(kind)
       stop
 end select
 
-
 end subroutine probit_dist_info
 
 !------------------------------------------------------------------------
 
 
 subroutine obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-   sort_obs_inc, spread_restoration, bounded, bounds)
+   sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
 
 integer,  intent(in)  :: obs_kind
 integer,  intent(inout) :: filter_kind
 logical,  intent(inout) :: rectangular_quadrature, gaussian_likelihood_tails
 logical,  intent(inout) :: sort_obs_inc
 logical,  intent(inout) :: spread_restoration
-logical,  intent(inout) :: bounded(2)
-real(r8), intent(inout) :: bounds(2)
+logical,  intent(inout) :: bounded_below, bounded_above
+real(r8), intent(inout) :: lower_bound,  upper_bound
 
 ! The information arguments are all intent (inout). This means that if they are not set
 ! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
@@ -189,27 +180,26 @@ real(r8), intent(inout) :: bounds(2)
 select case(obs_kind)
    case(QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE, QTY_TEMPERATURE)
       ! Set the observation increment details for each type of quantity
-      filter_kind = BOUNDED_NORMAL_RHF 
-      bounded(1) = .false.;     bounded(2) = .false.
-      bounds(1) = -999999999.0_r8;      bounds(2) = 999999999.0_r8
+      filter_kind = BOUNDED_NORMAL_RHF
+      bounded_below = .false.;     bounded_above = .false.
+      lower_bound = missing_r8;    upper_bound = missing_r8
 
    case(QTY_GPSRO)
-      filter_kind = BOUNDED_NORMAL_RHF 
-      bounded(1) = .true.;     bounded(2) = .false.
-!      bounded(1) = .false.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;      bounds(2) = 999999999.0_r8
+      filter_kind = BOUNDED_NORMAL_RHF
+      bounded_below = .true.;     bounded_above = .false.
+!      bounded_below = .false.;     bounded_above = .false.
+      lower_bound = 0.0_r8;       upper_bound = missing_r8
 
    case(QTY_SPECIFIC_HUMIDITY)
-      filter_kind = BOUNDED_NORMAL_RHF 
-      bounded(1) = .true.;     bounded(2) = .true.
-!      bounded(1) = .false.;     bounded(2) = .false.
-      bounds(1) = 0.0_r8;      bounds(2) = 1.0_r8
+      filter_kind = BOUNDED_NORMAL_RHF
+      bounded_below = .true.;     bounded_above = .true.
+!      bounded_below = .false.;     bounded_above = .false.
+      lower_bound = 0.0_r8;       upper_bound = 1.0_r8
 
    case DEFAULT
       write(*, *) 'Unexpected QTY in algorithm_info_mod ', obs_kind
       stop
 end select
-   
 
 ! Default settings for now for Icepack and tracer model tests
 sort_obs_inc = .false.
