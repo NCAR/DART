@@ -195,20 +195,19 @@ if (( latitude > 90.0_r8 .or. latitude  <  -90.0_r8 ) .or. &
 
 endif
 
-! We need to know the maximum number of observations in the input file.
-! Each line has info for the 3 observations we want.
-! The max possible number of obs needs to be specified but it
-! will only write out the actual number created.
+! Specify the maximum number of observations in the input file,
+! but only the actual number created will be written out.
+! Each line has 5 flux observations available.
 ! Each observation in this series will have a single
 ! observation value and a quality control flag.  
 ! Initialize two empty observations - one to track location
 ! in observation sequence - the other is for the new observation.
 
 iunit = open_file(text_input_file, 'formatted', 'read')
-if (verbose) call error_handler(E_MSG,'level4_to_obs','opened input file '//trim(text_input_file))
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs','opened input file '//trim(text_input_file))
 
 nlines     = count_file_lines(iunit)
-max_obs    = 3*nlines
+max_obs    = 5*nlines
 num_copies = 1
 num_qc     = 1
 first_obs  = .true.
@@ -223,8 +222,8 @@ call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
 call set_copy_meta_data(obs_seq, 1, 'observation')
 call set_qc_meta_data(  obs_seq, 1, 'Ameriflux QC')
 
-! The first line describes all the fields ... column headers, if you will
-
+! Subroutine decode_header reads obs file header and identifies the columns 
+! where flux variables of interest are located
 rewind(iunit)
 call decode_header(iunit, nwords)
 
@@ -241,7 +240,10 @@ obsloop: do iline = 2,nlines
 
    input_line = adjustl(bigline)
 
-   ! parse the line into the tower structure (including the observation time)
+   ! Parse the header line into the tower structure (including the observation time)
+
+   !! FIXME --- Start editing here again
+
    call stringparse(input_line, nwords, iline)
 
    if (iline <= 2) then
@@ -491,9 +493,8 @@ end function count_file_lines
 
 
 subroutine decode_header(iunit,ncolumns)
-! Reads the first line of the header and parses the information.
-! And by parse, I mean determine which columns are the columns
-! of interest.
+! Reads the first line of the obs header and identifies whic columns
+! the flux variable of interest is located
 
 integer, intent(in) :: iunit
 integer, intent(out) :: ncolumns
@@ -554,53 +555,89 @@ columns(ncolumns) = input_line((charcount+1):len_trim(input_line))
 write(string1,*)'word(',ncolumns,') is ',columns(ncolumns)
 if (verbose) call error_handler(E_MSG,'decode_header',string1)
 
-! Finally get to the task at hand
+! Finally, identify column index based on string name
+tower%startindex       = Match(columns, tower%startstring)
+tower%endindex         = Match(columns, tower%endstring)
+tower%neeindex         = Match(columns, tower%neestring)
+tower%neeUNCindex      = Match(columns, tower%neeUNCstring)
+tower%neeQCindex       = Match(columns, tower%neeQCstring)
+tower%neeUNCQCindex    = Match(columns, tower%neeUNCstring)
+tower%leindex          = Match(columns, tower%lestring)
+tower%leQCindex        = Match(columns, tower%leQCstring)
+tower%leUNCindex       = Match(columns, tower%leUNCstring)
+tower%hindex           = Match(columns, tower%hstring)
+tower%hQCindex         = Match(columns, tower%hQCstring)
+tower%hUNCindex        = Match(columns, tower%hUNCstring)
+tower%gppDTindex       = Match(columns, tower%gppDTstring)
+tower%gppNTindex       = Match(columns, tower%gppNTstring)
+tower%recoDTindex      = Match(columns, tower%recoDTstring)
+tower%recoNTindex      = Match(columns, tower%recoNTstring)
+tower%gppUNCDT16index  = Match(columns, tower%gppUNCDT16string)
+tower%gppUNCDT84index  = Match(columns, tower%gppUNCDT84string)
+tower%gppUNCNT16index  = Match(columns, tower%gppUNCNT16string)
+tower%gppUNCNT84index  = Match(columns, tower%gppUNCNT84string)
+tower%recoUNCDT16index = Match(columns, tower%recoUNCDT16string)
+tower%recoUNCDT84index = Match(columns, tower%recoUNCDT84string)
+tower%recoUNCNT16index = Match(columns, tower%recoUNCNT16string)
+tower%recoUNCNT84index = Match(columns, tower%recoUNCNT84string)
 
-tower%monthindex = Match(columns, tower%monthstring)
-tower%dayindex   = Match(columns, tower%daystring)
-tower%hourindex  = Match(columns, tower%hourstring)
-tower%doyindex   = Match(columns, tower%doystring)
-tower%hindex     = Match(columns, tower%hstring)
-tower%hQCindex   = Match(columns, tower%hQCstring)
-tower%leindex    = Match(columns, tower%lestring)
-tower%leQCindex  = Match(columns, tower%leQCstring)
-tower%neeindex   = Match(columns, tower%neestring)
-tower%neeQCindex = Match(columns, tower%neeQCstring)
-
-! FIXME ... find a column marked 'year' or 'error_var' and use if possible.
-
-! Check to make sure we got all the indices we need
-
-qc( 1) = CheckIndex( tower%monthindex, tower%monthstring)
-qc( 2) = CheckIndex( tower%dayindex  , tower%daystring)
-qc( 3) = CheckIndex( tower%hourindex , tower%hourstring)
-qc( 4) = CheckIndex( tower%doyindex  , tower%doystring)
-qc( 5) = CheckIndex( tower%hindex    , tower%hstring)
-qc( 6) = CheckIndex( tower%hQCindex  , tower%hQCstring)
-qc( 7) = CheckIndex( tower%leindex   , tower%lestring)
-qc( 8) = CheckIndex( tower%leQCindex , tower%leQCstring)
-qc( 9) = CheckIndex( tower%neeindex  , tower%neestring)
-qc(10) = CheckIndex( tower%neeQCindex, tower%neeQCstring)
+! Confirm indices were found successfully
+qc( 1) = CheckIndex( tower%startindex      , tower%startstring)
+qc( 2) = CheckIndex( tower%endindex        , tower%endstring)
+qc( 3) = CheckIndex( tower%neeindex        , tower%neestring)
+qc( 4) = CheckIndex( tower%neeUNCindex     , tower%neeUNCstring)
+qc( 5) = CheckIndex( tower%neeQCindex      , tower%neeQCstring)
+qc( 6) = CheckIndex( tower%neeUNCQCindex   , tower%neeUNCstring)
+qc( 7) = CheckIndex( tower%leindex         , tower%lestring)
+qc( 8) = CheckIndex( tower%leQCindex       , tower%leQCstring)
+qc( 9) = CheckIndex( tower%leUNCindex      , tower%leUNCstring)
+qc(10) = CheckIndex( tower%hindex          , tower%hstring)
+qc(11) = CheckIndex( tower%hQCindex        , tower%hQCstring)
+qc(12) = CheckIndex( tower%hUNCindex       , tower%hUNCstring)
+qc(13) = CheckIndex( tower%gppDTindex      , tower%gppDTstring)
+qc(14) = CheckIndex( tower%gppNTindex      , tower%gppNTstring)
+qc(15) = CheckIndex( tower%recoDTindex     , tower%recoDTstring)
+qc(16) = CheckIndex( tower%recoNTindex     , tower%recoNTstring)
+qc(17) = CheckIndex( tower%gppUNCDT16index , tower%gppUNCDT16string)
+qc(18) = CheckIndex( tower%gppUNCDT84index , tower%gppUNCDT84string)
+qc(19) = CheckIndex( tower%gppUNCNT16index , tower%gppUNCNT16string)
+qc(20) = CheckIndex( tower%gppUNCNT84index , tower%gppUNCNT84string)
+qc(21) = CheckIndex( tower%recoUNCDT16index, tower%recoUNCDT16string)
+qc(22) = CheckIndex( tower%recoUNCDT84index, tower%recoUNCDT84string)
+qc(23) = CheckIndex( tower%recoUNCNT16index, tower%recoUNCNT16string)
+qc(24) = CheckIndex( tower%recoUNCNT84index, tower%recoUNCNT84string)
 
 if (any(qc /= 0) ) then
   write(string1,*)'Did not find all the required column indices.'
   call error_handler(E_ERR,'decode_header',string1, source)
 endif
 
-! Summarize if desired
-
 if (verbose) then
 110 format('index for ',A20,' is ',i3)
-   write(*,110)tower%monthstring, tower%monthindex
-   write(*,110)tower%daystring  , tower%dayindex
-   write(*,110)tower%hourstring , tower%hourindex
-   write(*,110)tower%doystring  , tower%doyindex
-   write(*,110)tower%hstring    , tower%hindex
-   write(*,110)tower%hQCstring  , tower%hQCindex
-   write(*,110)tower%lestring   , tower%leindex
-   write(*,110)tower%leQCstring , tower%leQCindex
-   write(*,110)tower%neestring  , tower%neeindex
-   write(*,110)tower%neeQCstring, tower%neeQCindex
+   write(*,110)tower%startstring      ,tower%startindex
+   write(*,110)tower%endstring        , tower%endindex
+   write(*,110)tower%neestring        , tower%neeindex
+   write(*,110)tower%neeUNCstring     , tower%neeUNCindex
+   write(*,110)tower%neeQCstring      , tower%neeQCindex
+   write(*,110)tower%neeUNCstring     , tower%neeUNCindex
+   write(*,110)tower%lestring         , tower%leindex
+   write(*,110)tower%leQCstring       , tower%leQCindex
+   write(*,110)tower%leUNCstring      , tower%leUNCindex
+   write(*,110)tower%hstring          , tower%hindex
+   write(*,110)tower%hQCstring        , tower%hQCindex
+   write(*,110)tower%hUNCstring       , tower%hUNCindex
+   write(*,110)tower%gppDTstring      , tower%gppDTindex
+   write(*,110)tower%gppNTstring      , tower%gppNTindex
+   write(*,110)tower%recoDTstring     , tower%recoDTindex
+   write(*,110)tower%recoNTstring     , tower%recoNTindex
+   write(*,110)tower%gppUNCDT16string , tower%gppUNCDT16index
+   write(*,110)tower%gppUNCDT84string , tower%gppUNCDT84index
+   write(*,110)tower%gppUNCNT16string , tower%gppUNCNT16index
+   write(*,110)tower%gppUNCNT84string , tower%gppUNCNT84index
+   write(*,110)tower%recoUNCDT16string, tower%recoUNCDT16index
+   write(*,110)tower%recoUNCDT84string, tower%recoUNCDT84index
+   write(*,110)tower%recoUNCNT16string, tower%recoUNCNT16index
+   write(*,110)tower%recoUNCNT84string, tower%recoUNCNT84index
 endif
 
 deallocate(columns)
