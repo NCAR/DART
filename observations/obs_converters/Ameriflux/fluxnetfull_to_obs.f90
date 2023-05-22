@@ -78,6 +78,9 @@ type(obs_type)          :: obs, prev_obs
 type(time_type)         :: prev_time, offset
 real(r8), parameter     :: umol_to_gC = (1.0_r8/1000000.0_r8) * 12.0_r8
 
+! Fixme: These are for high resolution format HH or HR
+! Fixme: If aggregrated (DD,WW,MM) need to edit
+
 type towerdata
   type(time_type)   :: time_obs
   character(len=20) :: startstring    = 'TIMESTAMP_START'
@@ -133,6 +136,8 @@ type towerdata
   integer  :: minute
   real(r8) :: hour
   real(r8) :: doy
+  character(len=12) :: start    
+  character(len=12) :: end      
   real(r8) :: nee
   real(r8) :: neeUNC
   integer  :: neeQC
@@ -144,10 +149,16 @@ type towerdata
   integer  :: hQC
   real(r8) :: gppNT
   real(r8) :: gppDT
+  real(r8) :: gppNTQC
+  real(r8) :: gppDTQC
   real(r8) :: gppUNCNT84
   real(r8) :: gppUNCNT16
   real(r8) :: gppUNCDT84
   real(r8) :: gppUNCDT16
+  real(r8) :: recoNT
+  real(r8) :: recoDT
+  real(r8) :: recoNTQC
+  real(r8) :: recoDTQC
   real(r8) :: recoUNCNT84
   real(r8) :: recoUNCNT16
   real(r8) :: recoUNCDT84
@@ -220,7 +231,7 @@ call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
 ! the first one needs to contain the string 'observation' and the
 ! second needs the string 'QC'.
 call set_copy_meta_data(obs_seq, 1, 'observation')
-call set_qc_meta_data(  obs_seq, 1, 'Ameriflux QC')
+call set_qc_meta_data(  obs_seq, 1, 'Fluxnet QC')
 
 ! Subroutine decode_header reads obs file header and identifies the columns 
 ! where flux variables of interest are located
@@ -493,7 +504,7 @@ end function count_file_lines
 
 
 subroutine decode_header(iunit,ncolumns)
-! Reads the first line of the obs header and identifies whic columns
+! Reads the first line of the obs header and identifies which columns
 ! the flux variable of interest is located
 
 integer, intent(in) :: iunit
@@ -514,7 +525,7 @@ endif
 
 input_line = adjustl(bigline)
 
-! Count how many commas are in the line - use this to determine how many columns
+! Comma separated file, thus count commas to determine the number of columns
 
 charcount = CountChar(input_line,',')
 ncolumns  = charcount + 1
@@ -720,8 +731,9 @@ integer         , intent(in) :: nwords
 integer         , intent(in) :: linenum
 
 real(r8), allocatable, dimension(:) :: values
-integer :: iday, ihour, imin, isec, seconds
-type(time_type) :: time0, time1, time2
+integer :: iyear0, imonth0, iday0, ihour0, imin0
+integer :: iyear1, imonth1, iday1, ihour1, imin1
+type(time_type) :: time_start, time_end
 
 allocate(values(nwords))
 
@@ -733,101 +745,96 @@ if (rcio /= 0) then
    call error_handler(E_ERR,'stringparse',string1, source)
 endif
 
-! Stuff what we want into the tower structure
+! Assign flux observations, uncertainty and QC to tower structure
 !
+! Fixme: These are for high resolution format HH or HR only
+! Fixme: If aggregrated (DD,WW,MM) need to edit, expand this
+
+! start,end     format   YYYYMMDDHHMM
+! nee           units    [umolCO2 m-2 s-1], VUT_REF
+! neeUNC        units    [umolCO2 m-2 s-1], joint
+! neeQC         no dim   0=measured,gap_filled: 1=good,2=medium,3=poor
+! le            units    [W m-2]
+! leUNC         units    [W m-2], random
+! leQC          no dim   0=measured,gap_filled: 1=good gf,2=medium,3=poor
+! h             units    [W m-2]
+! hUNC          units    [W m-2], random
+! hQC           no dim   0=measured,gap_filled: 1=good gf,2=medium,3=poor
+! gppDT         units    [umolCO2 m-2 s-1] VUT_REF daytime partition
+! gppNT         units    [umolCO2 m-2 s-1] VUT_REF nighttime partition
+! gppUNCDT[xx]  units    [umolCO2 m-2 s-1] 16,84 percentile
+! gppUNCNT[xx]  units    [umolCO2 m-2 s-1] 16,84 percentile
+! recoDT        units    [umolCO2 m-2 s-1] VUT_REF daytime partition
+! recoNT        units    [umolCO2 m-2 s-1] VUT_REF nighttime partition
+! recoUNCDT[xx] units    [umolCO2 m-2 s-1] 16,84 percentile
+! recoUNCNT[xx] units    [umolCO2 m-2 s-1] 16,84 percentile
+
 ! Convert to 'CLM-friendly' units AFTER we determine observation error variance.
 ! That happens in the main routine.
-!
-! NEE_or_fMDS    has units     [umolCO2 m-2 s-1] 
-! H_f            has units     [W m-2]
-! LE_f           has units     [W m-2]
-!
-! (CLM) NEE      has units     [gC m-2 s-1]
 
-tower%month = nint(values(tower%monthindex))
-tower%day   = nint(values(tower%dayindex  ))
-tower%hour  =      values(tower%hourindex )
-tower%doy   =      values(tower%doyindex  )
-tower%nee   =      values(tower%neeindex  )
-tower%neeQC = nint(values(tower%neeQCindex))
-tower%le    =      values(tower%leindex   )
-tower%leQC  = nint(values(tower%leQCindex ))
-tower%h     =      values(tower%hindex    )
-tower%hQC   = nint(values(tower%hQCindex  ))
+! Fixme: Double check these defs and units
+! (CLM) NEE,GPP,ER  units     [gC m-2 s-1]
+! (CLM) LE,SH       units     [W m-2]
 
+tower%start       =      values(tower%startindex      )
+tower%end         =      values(tower%endindex        )
+tower%nee         =      values(tower%neeindex        )
+tower%nee         =      values(tower%neeUNCindex     )
+tower%neeQC       = nint(values(tower%neeQCindex     ))
+tower%le          =      values(tower%leindex         )
+tower%leUNC       =      values(tower%leUNCindex      )
+tower%leQC        = nint(values(tower%leQCindex      ))
+tower%h           =      values(tower%hindex          )
+tower%hUNC        =      values(tower%hUNCindex       )
+tower%hQC         = nint(values(tower%hQCindex       ))
+tower%gppDT       =      values(tower%gppDTindex      )
+tower%gppNT       =      values(tower%gppNTindex      )
+tower%recoDT      =      values(tower%recoDTindex     )
+tower%recoNT      =      values(tower%recoNTindex     )
+tower%gppUNCDT16  =      values(tower%gppUNCDT16index )
+tower%gppUNCDT84  =      values(tower%gppUNCDT84index )
+tower%gppUNCNT16  =      values(tower%gppUNCNT16index )
+tower%gppUNCNT84  =      values(tower%gppUNCNT84index )
+tower%recoUNCDT16 =      values(tower%recoUNCDT16index)
+tower%recoUNCDT84 =      values(tower%recoUNCDT84index)
+tower%recoUNCNT16 =      values(tower%recoUNCNT16index)
+tower%recoUNCNT84 =      values(tower%recoUNCNT84index)
 deallocate(values)
 
-! decode the time pieces ... two times ...
-! The LAST line of these files is knackered ... and we have to check that
-! if the doy is greater than the ymd ...
-! 12,31,23.5,366.979    N-1
-!  1, 1, 0.0,367.000    N
+! The observation time must be assigned through the flux timestamp string
 
-iday    = int(tower%doy)
-ihour   = int(tower%hour)
-seconds = nint((tower%hour - real(ihour,r8))*3600)
-imin    = seconds / 60
-isec    = seconds - imin * 60
-time0   = set_date(year, tower%month, tower%day, ihour, imin, isec)
+write(tower%start,'(i4, 4i2)') iyear0,imonth0,iday0,ihour0,imin0
+write(tower%end,'(i4, 4i2)') iyear1,imonth1,iday1,ihour1,imin1
 
-isec    = ihour*3600 + imin*60 + isec
-time1   = set_date(year,1,1,0,0,0) + set_time(isec, (iday-1))
-time2   = time0 - time1
+time_start= set_date(iyear0,imonth0,iday0,ihour0,imin0,0)
+time_end=   set_date(iyear1,imonth1,iday1,ihour1,imin0,0)
 
-call get_time(time2, isec, iday)
+! Assign average of flux time window to obs_seq (DART time)
+tower%time_obs = (time_start+time_end) / 2
 
-if ( iday > 0 ) then
-   ! FIXME we need to change the day ...
-   ! This blows up if you try to use a non-leap year with leapyear ...
-
-   tower%time_obs = time1
-
-   if (verbose) then
-      write(string1,*)'converting ',tower%month,tower%day,tower%hour,tower%doy
-      write(string2,*)'the day-of-year indicates we should amend the month/day values.' 
-      call error_handler(E_MSG,'stringparse', string1, source, &
-                      text2=string2)
-
-      call print_date(time0, 'stringparse: using ymd date is')
-      call print_date(time1, 'stringparse: using doy date is')
-      call print_time(time0, 'stringparse: using ymd time is')
-      call print_time(time1, 'stringparse: using doy time is')
-      call print_time(time2, 'stringparse: difference     is')
-
-      call print_date(time0, 'stringparse: using ymd date is',logfileunit)
-      call print_date(time1, 'stringparse: using doy date is',logfileunit)
-      call print_time(time0, 'stringparse: using ymd time is',logfileunit)
-      call print_time(time1, 'stringparse: using doy time is',logfileunit)
-      call print_time(time2, 'stringparse: difference     is',logfileunit)
-   endif
-else
-
-   tower%time_obs = time0
-
-endif
-
-! 8AM East Coast is 1PM Greenwich 
+! Covert from Fluxnet provided LTC to UTC, UTC is standard for DART and CLM 
+! For example, EST = UTC-5 
 if (timezoneoffset < 0.0_r8) then
    tower%time_obs = tower%time_obs + offset
 else
    tower%time_obs = tower%time_obs - offset
 endif
 
-! The QC values can be 'missing' ... in which case the values are too
-
+! If missing value (-9999) manually assign poor QC value
+! such that value is excluded in obs_seq
 if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000 
 if (tower%leQC  < 0) tower%leQC  = maxgoodqc + 1000
 if (tower%hQC   < 0) tower%hQC   = maxgoodqc + 1000
 
-! if (tower%neeQC < maxgoodqc) then
-!    write(*,*)'nee umol m-2 s-1 ',tower%nee
-!    write(*,*)'nee   gC m-2 s-1 ',tower%nee*umol_to_gC
-! endif
+if (tower%gppNT < 0) tower%gppNTQC = maxgoodqc + 1000
+if (tower%gppDT < 0) tower%gppDTQC = maxgoodqc + 1000
+if (tower%recoNT < 0) tower%recoNTQC = maxgoodqc + 1000
+if (tower%recoDT < 0) tower%recoDTQC = maxgoodqc + 1000
  
 end subroutine stringparse
 
 
 
-end program level4_to_obs
+end program Fluxnetfull_to_obs
 
 
