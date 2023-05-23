@@ -53,9 +53,11 @@ real(r8)           :: latitude        = -1.0_r8
 real(r8)           :: longitude       = -1.0_r8
 real(r8)           :: elevation       = -1.0_r8
 real(r8)           :: flux_height     = -1.0_r8
+! A maxgooqc=3 allows for good,medium and poor quality gap-filled data
 real(r8)           :: maxgoodqc       = 3.0_r8
-! Latent,sensible heat and NEE have this option only
-logical            :: gap_filled      = .false.
+! Always 'true' except for latent,sensible heat and NEE for hourly time periods
+! Fixme This option must be worked into the code later on
+logical            :: gap_filled      = .true.
 logical            :: verbose         = .false.
 
 namelist /Fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &

@@ -6,18 +6,14 @@ Overview
 
 FLUXNET FULLSET data to DART observation sequence converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+! Fixme*** These need to be edited.
+***********************************
 | This routine is designed to convert the flux tower Level 4 data from the `AmeriFlux <http://ameriflux.lbl.gov>`__
   network of observations from micrometeorological tower sites. AmeriFlux is part of
   `FLUXNET <http://fluxnet.ornl.gov>`__ and the converter is hoped to be a suitable starting point for the conversion of
   observations from FLUXNET. As of May 2012, I have not yet tried to work with any other observations from FLUXNET.
 | The AmeriFlux Level 4 products are recorded using the local time. DART observation sequence files use GMT. For more
   information about AmeriFlux data products, go to http://ameriflux.lbl.gov.
-
-.. warning::
-
-   There was a pretty severe bug in the converter that swapped latent heat flux and sensible heat flux. The bug was
-   present through revision 7200. It was corrected on 30 Dec 2016. 
 
 The workflow is usually:
 
@@ -32,7 +28,7 @@ The workflow is usually:
    :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
 
 For some models (CLM, for example), it is required to reorganize the observation sequence files into a series of files
-that contains ONLY the observations for each assimilation. This can be achieved with the `makedaily.sh <makedaily.sh>`__
+that contains ONLY the observations for each assimilation time step. This can be achieved with the `makedaily.sh <makedaily.sh>`__
 script.
 
 Namelist
@@ -54,6 +50,7 @@ namelist.
       elevation       = -1.0,
       flux_height     = -1.0,
       maxgoodqc       = 3,
+      gap_filled      = .true.
       verbose         = .false.
       /
 
