@@ -378,10 +378,10 @@ end subroutine beta_alpha_beta
 
 subroutine set_beta_params_from_ens(ens, num, lower_bound, upper_bound, p)
 
-integer,  intent(in)                        :: num
-real(r8), intent(in)                        :: ens(num)
-real(r8), intent(in)                        :: lower_bound,   upper_bound
-type(distribution_params_type), intent(out) :: p
+integer,                        intent(in)    :: num
+real(r8),                       intent(in)    :: ens(num)
+real(r8),                       intent(in)    :: lower_bound,   upper_bound
+type(distribution_params_type), intent(inout) :: p
                                      
 real(r8) :: alpha, beta
 

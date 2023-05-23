@@ -442,11 +442,11 @@ end function inv_gamma_first_guess
 subroutine set_gamma_params_from_ens(ens, num, bounded_below, bounded_above, &
                                      lower_bound, upper_bound, p)
 
-integer,  intent(in)                        :: num
-real(r8), intent(in)                        :: ens(num)
-logical,  intent(in)                        :: bounded_below, bounded_above
-real(r8), intent(in)                        :: lower_bound,   upper_bound
-type(distribution_params_type), intent(out) :: p
+integer,                        intent(in)    :: num
+real(r8),                       intent(in)    :: ens(num)
+logical,                        intent(in)    :: bounded_below, bounded_above
+real(r8),                       intent(in)    :: lower_bound,   upper_bound
+type(distribution_params_type), intent(inout) :: p
 
 real(r8) :: gamma_shape, gamma_scale
 

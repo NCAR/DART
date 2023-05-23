@@ -480,9 +480,9 @@ end subroutine normal_mean_sd
 
 subroutine set_normal_params_from_ens(ens, num, p)
 
-integer, intent(in)                         :: num
-real(r8), intent(in)                        :: ens(num)
-type(distribution_params_type), intent(out) :: p
+integer,                        intent(in)                         :: num
+real(r8),                       intent(in)                        :: ens(num)
+type(distribution_params_type), intent(inout) :: p
 
 ! Set up the description of the normal distribution defined by the ensemble
 p%distribution_type = NORMAL_DISTRIBUTION
