@@ -73,6 +73,7 @@ logical                 :: first_obs
 integer                 :: oday, osec, rcio, iunit
 integer                 :: num_copies, num_qc, max_obs
 real(r8)                :: oerr, qc
+real(r8)                :: sig_gppdt, sig_gppnt, sig_recodt, sig_recont
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: prev_time, offset
@@ -130,14 +131,8 @@ type towerdata
   integer  :: recoUNCNT16index
   integer  :: recoUNCNT84index  
 
-  integer  :: year
-  integer  :: month
-  integer  :: day
-  integer  :: minute
-  real(r8) :: hour
-  real(r8) :: doy
-  character(len=12) :: start    
-  character(len=12) :: end      
+  character(len=12) :: start_time    
+  character(len=12) :: end_time      
   real(r8) :: nee
   real(r8) :: neeUNC
   integer  :: neeQC
@@ -149,6 +144,7 @@ type towerdata
   integer  :: hQC
   real(r8) :: gppNT
   real(r8) :: gppDT
+  real(r8) :: gpp
   real(r8) :: gppNTQC
   real(r8) :: gppDTQC
   real(r8) :: gppUNCNT84
@@ -157,6 +153,7 @@ type towerdata
   real(r8) :: gppUNCDT16
   real(r8) :: recoNT
   real(r8) :: recoDT
+  real(r8) :: reco
   real(r8) :: recoNTQC
   real(r8) :: recoDTQC
   real(r8) :: recoUNCNT84
@@ -252,9 +249,6 @@ obsloop: do iline = 2,nlines
    input_line = adjustl(bigline)
 
    ! Parse the header line into the tower structure (including the observation time)
-
-   !! FIXME --- Start editing here again
-
    call stringparse(input_line, nwords, iline)
 
    if (iline <= 2) then
@@ -262,32 +256,60 @@ obsloop: do iline = 2,nlines
       call print_date(tower%time_obs, ' first observation date (local time) is')
       call print_time(tower%time_obs, ' first observation time (local time) is')
       write(*,*)'first observation raw values: (column,string,value) timezone not applied'
-      write(*,*)tower%monthindex, tower%monthstring , tower%month
-      write(*,*)tower%dayindex  , tower%daystring   , tower%day
-      write(*,*)tower%hourindex , tower%hourstring  , tower%hour
-      write(*,*)tower%doyindex  , tower%doystring   , tower%doy
-      write(*,*)tower%hindex    , tower%hstring     , tower%h
-      write(*,*)tower%hQCindex  , tower%hQCstring   , tower%hQC
-      write(*,*)tower%leindex   , tower%lestring    , tower%le
-      write(*,*)tower%leQCindex , tower%leQCstring  , tower%leQC
-      write(*,*)tower%neeindex  , tower%neestring   , tower%nee
-      write(*,*)tower%neeQCindex, tower%neeQCstring , tower%neeQC
+      write(*,*)tower%hindex          , tower%hstring          , tower%h
+      write(*,*)tower%hUNCindex       , tower%hUNCstring       , tower%hUNC
+      write(*,*)tower%hQCindex        , tower%hQCstring        , tower%hQC
+      write(*,*)tower%leindex         , tower%lestring         , tower%le
+      write(*,*)tower%leUNCindex      , tower%leUNCstring      , tower%leUNC
+      write(*,*)tower%leQCindex       , tower%leQCstring       , tower%leQC
+      write(*,*)tower%neeindex        , tower%neestring        , tower%nee
+      write(*,*)tower%neeUNCindex     , tower%neeUNCstring     , tower%UNCnee
+      write(*,*)tower%neeQCindex      , tower%neeQCstring      , tower%neeQC
+      write(*,*)tower%gppDTindex      , tower%gppDTstring      , tower%gppDT
+      write(*,*)tower%gppDTUNC16index , tower%gppDTUNC16string , tower%gppDTUNC16
+      write(*,*)tower%gppDTUNC84index , tower%gppDTUNC84string , tower%gppDTUNC84
+      write(*,*)tower%gppDTQC 
+      write(*,*)tower%gppNTindex      , tower%gppNTstring      , tower%gppNT  
+      write(*,*)tower%gppNTUNC16index , tower%gppNTUNC16string , tower%gppNTUNC16
+      write(*,*)tower%gppNTUNC84index , tower%gppNTUNC84string , tower%gppNTUNC84
+      write(*,*)tower%gppNTQC 
+      write(*,*)tower%recoDTindex     , tower%recoDTstring     , tower%recoDT  
+      write(*,*)tower%recoDTUNC16index, tower%recoDTUNC16string, tower%recoDTUNC16
+      write(*,*)tower%recoDTUNC84index, tower%recoDTUNC84string, tower%recoDTUNC84
+      write(*,*)tower%recoDTQC 
+      write(*,*)tower%recoNTindex     , tower%recoNTstring     , tower%recoNT      
+      write(*,*)tower%recoNTUNC16index, tower%recoNTUNC16string, tower%recoNTUNC16
+      write(*,*)tower%recoNTUNC84index, tower%recoNTUNC84string, tower%recoNTUNC84
+      write(*,*)tower%recoNTQC
       write(*,*)''
 
       write(logfileunit,*)''
       call print_date(tower%time_obs, ' first observation date (local time) is',logfileunit)
       call print_time(tower%time_obs, ' first observation time (local time) is',logfileunit)
       write(logfileunit,*)'first observation raw values: (column,string,value) timezone not applied'
-      write(logfileunit,*)tower%monthindex, tower%monthstring , tower%month
-      write(logfileunit,*)tower%dayindex  , tower%daystring   , tower%day
-      write(logfileunit,*)tower%hourindex , tower%hourstring  , tower%hour
-      write(logfileunit,*)tower%doyindex  , tower%doystring   , tower%doy
-      write(logfileunit,*)tower%hindex    , tower%hstring     , tower%h
-      write(logfileunit,*)tower%hQCindex  , tower%hQCstring   , tower%hQC
-      write(logfileunit,*)tower%leindex   , tower%lestring    , tower%le
-      write(logfileunit,*)tower%leQCindex , tower%leQCstring  , tower%leQC
-      write(logfileunit,*)tower%neeindex  , tower%neestring   , tower%nee
-      write(logfileunit,*)tower%neeQCindex, tower%neeQCstring , tower%neeQC
+      write(logfileunit,*)tower%hindex          , tower%hstring          , tower%h
+      write(logfileunit,*)tower%hUNCindex       , tower%hUNCstring       , tower%hUNC
+      write(logfileunit,*)tower%hQCindex        , tower%hQCstring        , tower%hQC
+      write(logfileunit,*)tower%leindex         , tower%lestring         , tower%le
+      write(logfileunit,*)tower%leUNCindex      , tower%leUNCstring      , tower%leUNC
+      write(logfileunit,*)tower%leQCindex       , tower%leQCstring       , tower%leQC
+      write(logfileunit,*)tower%neeindex        , tower%neestring        , tower%nee
+      write(logfileunit,*)tower%neeQCindex      , tower%neeQCstring      , tower%neeQC
+      write(logfileunit,*)tower%gppDTUNC16index , tower%gppDTUNC16string , tower%gppDTUNC16
+      write(logfileunit,*)tower%gppDTUNC84index , tower%gppDTUNC84string , tower%gppDTUNC84
+      write(logfileunit,*)tower%gppDTQC 
+      write(logfileunit,*)tower%gppNTindex      , tower%gppNTstring      , tower%gppNT
+      write(logfileunit,*)tower%gppNTUNC16index , tower%gppNTUNC16string , tower%gppNTUNC16
+      write(logfileunit,*)tower%gppNTUNC84index , tower%gppNTUNC84string , tower%gppNTUNC84
+      write(logifleunit,*)tower%gppNTQC
+      write(logfileunit,*)tower%recoDTindex     , tower%recoDTstring     , tower%recoDT
+      write(logfileunit,*)tower%recoDTUNC16index, tower%recoDTUNC16string, tower%recoDTUNC16
+      write(logfileunit,*)tower%recoDTUNC84index, tower%recoDTUNC84string, tower%recoDTUNC84
+      write(logfileunit,*)tower%recoDTQC
+      write(logfileunit,*)tower%recoNTindex     , tower%recoNTstring     , tower%recoNT
+      write(logfileunit,*)tower%recoNTUNC16index, tower%recoNTUNC16string, tower%recoNTUNC16
+      write(logfileunit,*)tower%recoNTUNC84index, tower%recoNTUNC84string, tower%recoNTUNC84
+      write(logfileunit,*)tower%recoNTQC
       write(logfileunit,*)''
    end if
 
@@ -299,14 +321,10 @@ obsloop: do iline = 2,nlines
       call print_date(tower%time_obs, trim(string1),logfileunit)
    endif
 
-   ! make an obs derived type, and then add it to the sequence
-   ! If the QC value is good, use the observation.
-   ! Increasingly larger QC values are more questionable quality data.
-   ! The observation errors are from page 183, Table 7.1(A) in 
-   ! Chapter 7 of a book by A.D. Richardson et al. via Andy Fox.  
-
+   ! Create and add observation and uncertainty (1 SD) to obs_seq file
+   ! Assign the observation the appropriate obs type
    if (tower%hQC <= maxgoodqc) then   ! Sensible Heat Flux [W m-2]
-      oerr = 10.0_r8 + abs(tower%h)*0.22_r8
+      oerr = tower%hUNC
       qc   = real(tower%hQC,r8)
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%h, &
                          TOWER_SENSIBLE_HEAT_FLUX, oerr, oday, osec, qc, obs)
@@ -314,32 +332,56 @@ obsloop: do iline = 2,nlines
    endif
 
    if (tower%leQC <= maxgoodqc) then   ! Latent Heat Flux [W m-2]
-      oerr = 10.0_r8 + abs(tower%le)*0.32_r8
+      oerr = tower%leUNC
       qc   = real(tower%leQC,r8)
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%le, &
                          TOWER_LATENT_HEAT_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
    endif
 
-   if (tower%neeQC <= maxgoodqc) then   ! Net Ecosystem Exchange  [umol m-2 s-1]
-      if (tower%nee <= 0) then
-         oerr = (2.0_r8 + abs(tower%nee)*0.1_r8) * umol_to_gC
-      else
-         oerr = (2.0_r8 + abs(tower%nee)*0.4_r8) * umol_to_gC
-      endif
-      tower%nee = -tower%nee * umol_to_gC ! to match convention in CLM [gC m-2 s-1]
+   if (tower%neeQC <= maxgoodqc) then       ! Net Ecosystem Exchange  [umol m-2 s-1]
+      oerr      = tower%neeUNC * umol_to_gC
+      tower%nee = -tower%nee * umol_to_gC   ! Matches units in CLM [gC m-2 s-1]
       qc        = real(tower%neeQC,r8)
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%nee, &
                          TOWER_NETC_ECO_EXCHANGE, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
    endif
 
+   if (tower%gppDTQC .and. tower%gppNTQC <= maxgoodqc) then    ! Gross Primary Production  [umol m-2 s-1]
+      sig_gppdt = (((tower%gppDTUNC84-tower%gppDTUNC16 / 2))^2)^0.5  ! Ustar unc contribution
+      sig_gppnt = (((tower%gppNTUNC84-tower%gppNTUNC16 / 2))^2)^0.5  
+      
+      oerr      = (0.25 * (sig_gppdt)^2 + 0.25 * (sig_gppnt)^2)^0.5  ! Combine Ustar and partitioning unc
+      oerr      = oerr * umol_to_gC
+      ! Take average of night and day partitioning methods
+      tower%gpp = ((tower%gppDT + tower%gppNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
+      qc        = maxval(real(tower%gppDTQC,r8),real(tower%gppNTQC,r8))
+      call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%gpp, &
+                         TOWER_GPP_FLUX, oerr, oday, osec, qc, obs)
+      call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+   endif
+
+   if (tower%recoDTQC .and. tower%recoNTQC <= maxgoodqc) then   ! Gross Primary Production  [umol m-2 s-1]
+      sig_recodt = (((tower%recoDTUNC84-tower%recoDTUNC16 / 2))^2)^0.5  ! Ustar unc contribution
+      sig_recont = (((tower%recoNTUNC84-tower%recoNTUNC16 / 2))^2)^0.5  
+
+      oerr      = (0.25 * (sig_recodt)^2 + 0.25 * (sig_recont)^2)^0.5  ! Combine Ustar and partitioning unc
+      oerr      = oerr * umol_to_gC
+      ! Take average of night and day partitioning methods
+      tower%reco = ((tower%recoDT + tower%recoNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
+      qc        = maxval(real(tower%recoDTQC,r8),real(tower%recoNTQC,r8))
+      call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%reco, &
+                         TOWER_ER_FLUX, oerr, oday, osec, qc, obs)
+      call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+   endif
+
 end do obsloop
 
-! if we added any obs to the sequence, write it out to a file now.
+! If obs added to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
    write(string1,*)'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
-   if (verbose) call error_handler(E_MSG,'level4_to_obs',string1)
+   if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
    call write_obs_seq(obs_seq, obs_out_file)
 endif
 
@@ -705,7 +747,7 @@ function CheckIndex( myindex, context )
 ! Routine to issue a warning if the index was not found.
 ! Returns an error code ... 0 means the index WAS found
 ! a negative number means the index was NOT found - an error condition.
-! I want to check ALL the indexes before fatally ending.
+! ALL indices checked before fatally ending.
 
 integer                       :: CheckIndex
 integer,          intent(in)  :: myindex
@@ -733,7 +775,7 @@ integer         , intent(in) :: linenum
 real(r8), allocatable, dimension(:) :: values
 integer :: iyear0, imonth0, iday0, ihour0, imin0
 integer :: iyear1, imonth1, iday1, ihour1, imin1
-type(time_type) :: time_start, time_end
+type(time_type) :: date_start, date_end
 
 allocate(values(nwords))
 
@@ -750,7 +792,7 @@ endif
 ! Fixme: These are for high resolution format HH or HR only
 ! Fixme: If aggregrated (DD,WW,MM) need to edit, expand this
 
-! start,end     format   YYYYMMDDHHMM
+! start_time,end_time     format   YYYYMMDDHHMM
 ! nee           units    [umolCO2 m-2 s-1], VUT_REF
 ! neeUNC        units    [umolCO2 m-2 s-1], joint
 ! neeQC         no dim   0=measured,gap_filled: 1=good,2=medium,3=poor
@@ -776,8 +818,8 @@ endif
 ! (CLM) NEE,GPP,ER  units     [gC m-2 s-1]
 ! (CLM) LE,SH       units     [W m-2]
 
-tower%start       =      values(tower%startindex      )
-tower%end         =      values(tower%endindex        )
+tower%start_time  =      values(tower%startindex      )
+tower%end_end     =      values(tower%endindex        )
 tower%nee         =      values(tower%neeindex        )
 tower%nee         =      values(tower%neeUNCindex     )
 tower%neeQC       = nint(values(tower%neeQCindex     ))
@@ -803,14 +845,14 @@ deallocate(values)
 
 ! The observation time must be assigned through the flux timestamp string
 
-write(tower%start,'(i4, 4i2)') iyear0,imonth0,iday0,ihour0,imin0
-write(tower%end,'(i4, 4i2)') iyear1,imonth1,iday1,ihour1,imin1
+write(tower%start_time,'(i4, 4i2)') iyear0,imonth0,iday0,ihour0,imin0
+write(tower%end_time,  '(i4, 4i2)') iyear1,imonth1,iday1,ihour1,imin1
 
-time_start= set_date(iyear0,imonth0,iday0,ihour0,imin0,0)
-time_end=   set_date(iyear1,imonth1,iday1,ihour1,imin0,0)
+date_start= set_date(iyear0,imonth0,iday0,ihour0,imin0,0)
+date_end=   set_date(iyear1,imonth1,iday1,ihour1,imin0,0)
 
 ! Assign average of flux time window to obs_seq (DART time)
-tower%time_obs = (time_start+time_end) / 2
+tower%time_obs = (date_start+date_end) / 2
 
 ! Covert from Fluxnet provided LTC to UTC, UTC is standard for DART and CLM 
 ! For example, EST = UTC-5 
@@ -825,6 +867,11 @@ endif
 if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000 
 if (tower%leQC  < 0) tower%leQC  = maxgoodqc + 1000
 if (tower%hQC   < 0) tower%hQC   = maxgoodqc + 1000
+
+tower%gppNTQC = 1
+tower%gppDTQC = 1
+tower%recoNTQC = 1
+tower%recoDTQC = 1
 
 if (tower%gppNT < 0) tower%gppNTQC = maxgoodqc + 1000
 if (tower%gppDT < 0) tower%gppDTQC = maxgoodqc + 1000
