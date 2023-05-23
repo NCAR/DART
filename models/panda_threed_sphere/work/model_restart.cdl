@@ -1,0 +1,34 @@
+netcdf model_restart {
+dimensions:
+	// time = UNLIMITED ; 
+	t = 1 ;	
+	lat = 7 ;
+	lon = 13 ;
+
+variables:
+		
+	double time(t) ;
+	//time:calendar = "none" ;
+	//time:units = "days" ;		
+
+	double lat(lat);
+	lat:units = "degrees" ;
+	
+	double lon(lon);
+	lon:units = "degrees" ;
+	
+// global attribute
+	:title = "garbage lat long for pathological model" ;
+	
+data:
+	lat =
+		-90, -60, -30, 0,
+		30, 60, 90 ;
+	
+	lon =
+		-180, -150, -120, -90, -60, -30, 0,
+		30, 60, 90, 120, 150, 180 ;
+	
+	time = 1 ;	
+
+}
