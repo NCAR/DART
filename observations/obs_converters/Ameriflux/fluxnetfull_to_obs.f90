@@ -22,7 +22,8 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, &
 use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                               set_date, set_time, get_time, print_time, &
                               print_date, operator(-), operator(+), operator(>), &
-                              operator(<), operator(==), operator(<=), operator(>=)
+                              operator(<), operator(==), operator(<=), operator(>=), &
+                              operator(/)
 
 use      location_mod, only : VERTISHEIGHT
 
@@ -40,7 +41,6 @@ use      obs_kind_mod, only : TOWER_SENSIBLE_HEAT_FLUX, &
 implicit none
 
 character(len=*), parameter :: source   = 'Fluxnetfull_to_obs.f90'
-character(len=512), parameter :: string1,string2,string3
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
@@ -101,14 +101,14 @@ type towerdata
   character(len=20) :: gppNTstring    = 'GPP_NT_VUT_REF'
   character(len=20) :: recoDTstring    = 'RECO_DT_VUT_REF'
   character(len=20) :: recoNTstring    = 'RECO_NT_VUT_REF'
-  character(len=20) :: gppUNCNT16string   = 'GPP_NT_VUT_16'
-  character(len=20) :: gppUNCNT84string   = 'GPP_NT_VUT_84'
-  character(len=20) :: gppUNCDT16string   = 'GPP_DT_VUT_16'
-  character(len=20) :: gppUNCDT84string   = 'GPP_DT_VUT_84'
-  character(len=20) :: recoUNCNT16string   = 'RECO_NT_VUT_16'
-  character(len=20) :: recoUNCNT84string   = 'RECO_NT_VUT_84'
-  character(len=20) :: recoUNCDT16string   = 'RECO_DT_VUT_16'
-  character(len=20) :: recoUNCDT84string   = 'RECO_DT_VUT_84'
+  character(len=20) :: gppNTUNC16string   = 'GPP_NT_VUT_16'
+  character(len=20) :: gppNTUNC84string   = 'GPP_NT_VUT_84'
+  character(len=20) :: gppDTUNC16string   = 'GPP_DT_VUT_16'
+  character(len=20) :: gppDTUNC84string   = 'GPP_DT_VUT_84'
+  character(len=20) :: recoNTUNC16string   = 'RECO_NT_VUT_16'
+  character(len=20) :: recoNTUNC84string   = 'RECO_NT_VUT_84'
+  character(len=20) :: recoDTUNC16string   = 'RECO_DT_VUT_16'
+  character(len=20) :: recoDTUNC84string   = 'RECO_DT_VUT_84'
   integer  :: startindex
   integer  :: endindex
   integer  :: neeindex
@@ -124,17 +124,17 @@ type towerdata
   integer  :: gppNTindex
   integer  :: recoDTindex
   integer  :: recoNTindex
-  integer  :: gppUNCDT16index
-  integer  :: gppUNCDT84index
-  integer  :: gppUNCNT16index
-  integer  :: gppUNCNT84index
-  integer  :: recoUNCDT16index
-  integer  :: recoUNCDT84index
-  integer  :: recoUNCNT16index
-  integer  :: recoUNCNT84index  
+  integer  :: gppDTUNC16index
+  integer  :: gppDTUNC84index
+  integer  :: gppNTUNC16index
+  integer  :: gppNTUNC84index
+  integer  :: recoDTUNC16index
+  integer  :: recoDTUNC84index
+  integer  :: recoNTUNC16index
+  integer  :: recoNTUNC84index  
 
-  character(len=12) :: start_time    
-  character(len=12) :: end_time      
+  integer  :: start_time    
+  integer  :: end_time      
   real(r8) :: nee
   real(r8) :: neeUNC
   integer  :: neeQC
@@ -149,19 +149,19 @@ type towerdata
   real(r8) :: gpp
   real(r8) :: gppNTQC
   real(r8) :: gppDTQC
-  real(r8) :: gppUNCNT84
-  real(r8) :: gppUNCNT16
-  real(r8) :: gppUNCDT84
-  real(r8) :: gppUNCDT16
+  real(r8) :: gppNTUNC84
+  real(r8) :: gppNTUNC16
+  real(r8) :: gppDTUNC84
+  real(r8) :: gppDTUNC16
   real(r8) :: recoNT
   real(r8) :: recoDT
   real(r8) :: reco
   real(r8) :: recoNTQC
   real(r8) :: recoDTQC
-  real(r8) :: recoUNCNT84
-  real(r8) :: recoUNCNT16
-  real(r8) :: recoUNCDT84
-  real(r8) :: recoUNCDT16
+  real(r8) :: recoNTUNC84
+  real(r8) :: recoNTUNC16
+  real(r8) :: recoDTUNC84
+  real(r8) :: recoDTUNC16
 end type towerdata
 
 type(towerdata) :: tower
@@ -265,7 +265,7 @@ obsloop: do iline = 2,nlines
       write(*,*)tower%leUNCindex      , tower%leUNCstring      , tower%leUNC
       write(*,*)tower%leQCindex       , tower%leQCstring       , tower%leQC
       write(*,*)tower%neeindex        , tower%neestring        , tower%nee
-      write(*,*)tower%neeUNCindex     , tower%neeUNCstring     , tower%UNCnee
+      write(*,*)tower%neeUNCindex     , tower%neeUNCstring     , tower%neeUNC
       write(*,*)tower%neeQCindex      , tower%neeQCstring      , tower%neeQC
       write(*,*)tower%gppDTindex      , tower%gppDTstring      , tower%gppDT
       write(*,*)tower%gppDTUNC16index , tower%gppDTUNC16string , tower%gppDTUNC16
@@ -303,7 +303,7 @@ obsloop: do iline = 2,nlines
       write(logfileunit,*)tower%gppNTindex      , tower%gppNTstring      , tower%gppNT
       write(logfileunit,*)tower%gppNTUNC16index , tower%gppNTUNC16string , tower%gppNTUNC16
       write(logfileunit,*)tower%gppNTUNC84index , tower%gppNTUNC84string , tower%gppNTUNC84
-      write(logifleunit,*)tower%gppNTQC
+      write(logfileunit,*)tower%gppNTQC
       write(logfileunit,*)tower%recoDTindex     , tower%recoDTstring     , tower%recoDT
       write(logfileunit,*)tower%recoDTUNC16index, tower%recoDTUNC16string, tower%recoDTUNC16
       write(logfileunit,*)tower%recoDTUNC84index, tower%recoDTUNC84string, tower%recoDTUNC84
@@ -350,29 +350,29 @@ obsloop: do iline = 2,nlines
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
    endif
 
-   if (tower%gppDTQC .and. tower%gppNTQC <= maxgoodqc) then    ! Gross Primary Production  [umol m-2 s-1]
-      sig_gppdt = (((tower%gppDTUNC84-tower%gppDTUNC16 / 2))^2)^0.5  ! Ustar unc contribution
-      sig_gppnt = (((tower%gppNTUNC84-tower%gppNTUNC16 / 2))^2)^0.5  
+   if (tower%gppDTQC <=maxgoodqc .and. tower%gppNTQC <= maxgoodqc) then    ! Gross Primary Production  [umol m-2 s-1]
+      sig_gppdt = (((tower%gppDTUNC84-tower%gppDTUNC16) / 2)**2)**0.5  ! Ustar unc contribution
+      sig_gppnt = (((tower%gppNTUNC84-tower%gppNTUNC16) / 2)**2)**0.5  
       
-      oerr      = (0.25 * (sig_gppdt)^2 + 0.25 * (sig_gppnt)^2)^0.5  ! Combine Ustar and partitioning unc
+      oerr      = (0.25 * (sig_gppdt)**2 + 0.25 * (sig_gppnt)**2)**0.5  ! Combine Ustar and partitioning unc
       oerr      = oerr * umol_to_gC
       ! Take average of night and day partitioning methods
       tower%gpp = ((tower%gppDT + tower%gppNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
-      qc        = maxval(real(tower%gppDTQC,r8),real(tower%gppNTQC,r8))
+      qc        = maxval((/real(tower%recoDTQC,r8),real(tower%recoNTQC,r8)/))
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%gpp, &
                          TOWER_GPP_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
    endif
 
-   if (tower%recoDTQC .and. tower%recoNTQC <= maxgoodqc) then   ! Gross Primary Production  [umol m-2 s-1]
-      sig_recodt = (((tower%recoDTUNC84-tower%recoDTUNC16 / 2))^2)^0.5  ! Ustar unc contribution
-      sig_recont = (((tower%recoNTUNC84-tower%recoNTUNC16 / 2))^2)^0.5  
+   if (tower%recoDTQC <= maxgoodqc .and. tower%recoNTQC <= maxgoodqc) then   ! Gross Primary Production  [umol m-2 s-1]
+      sig_recodt = (((tower%recoDTUNC84-tower%recoDTUNC16) / 2)**2)**0.5  ! Ustar unc contribution
+      sig_recont = (((tower%recoNTUNC84-tower%recoNTUNC16) / 2)**2)**0.5  
 
-      oerr      = (0.25 * (sig_recodt)^2 + 0.25 * (sig_recont)^2)^0.5  ! Combine Ustar and partitioning unc
+      oerr      = (0.25 * (sig_recodt)**2 + 0.25 * (sig_recont)**2)**0.5  ! Combine Ustar and partitioning unc
       oerr      = oerr * umol_to_gC
       ! Take average of night and day partitioning methods
       tower%reco = ((tower%recoDT + tower%recoNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
-      qc        = maxval(real(tower%recoDTQC,r8),real(tower%recoNTQC,r8))
+      qc        = maxval((/real(tower%recoDTQC,r8),real(tower%recoNTQC,r8)/))
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%reco, &
                          TOWER_ER_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
@@ -557,7 +557,7 @@ integer, intent(out) :: ncolumns
 integer, parameter :: maxwordlength = 30
 integer :: i,charcount,columncount,wordlength
 character(len=maxwordlength), dimension(:), allocatable :: columns
-integer, dimension(10) :: qc = 0
+integer, dimension(23) :: qc = 0
 
 ! Read the line and strip off any leading whitespace.
 
@@ -616,7 +616,7 @@ tower%endindex         = Match(columns, tower%endstring)
 tower%neeindex         = Match(columns, tower%neestring)
 tower%neeUNCindex      = Match(columns, tower%neeUNCstring)
 tower%neeQCindex       = Match(columns, tower%neeQCstring)
-tower%neeUNCQCindex    = Match(columns, tower%neeUNCstring)
+tower%neeUNCindex      = Match(columns, tower%neeUNCstring)
 tower%leindex          = Match(columns, tower%lestring)
 tower%leQCindex        = Match(columns, tower%leQCstring)
 tower%leUNCindex       = Match(columns, tower%leUNCstring)
@@ -627,14 +627,14 @@ tower%gppDTindex       = Match(columns, tower%gppDTstring)
 tower%gppNTindex       = Match(columns, tower%gppNTstring)
 tower%recoDTindex      = Match(columns, tower%recoDTstring)
 tower%recoNTindex      = Match(columns, tower%recoNTstring)
-tower%gppUNCDT16index  = Match(columns, tower%gppUNCDT16string)
-tower%gppUNCDT84index  = Match(columns, tower%gppUNCDT84string)
-tower%gppUNCNT16index  = Match(columns, tower%gppUNCNT16string)
-tower%gppUNCNT84index  = Match(columns, tower%gppUNCNT84string)
-tower%recoUNCDT16index = Match(columns, tower%recoUNCDT16string)
-tower%recoUNCDT84index = Match(columns, tower%recoUNCDT84string)
-tower%recoUNCNT16index = Match(columns, tower%recoUNCNT16string)
-tower%recoUNCNT84index = Match(columns, tower%recoUNCNT84string)
+tower%gppDTUNC16index  = Match(columns, tower%gppDTUNC16string)
+tower%gppDTUNC84index  = Match(columns, tower%gppDTUNC84string)
+tower%gppNTUNC16index  = Match(columns, tower%gppNTUNC16string)
+tower%gppNTUNC84index  = Match(columns, tower%gppNTUNC84string)
+tower%recoDTUNC16index = Match(columns, tower%recoDTUNC16string)
+tower%recoDTUNC84index = Match(columns, tower%recoDTUNC84string)
+tower%recoNTUNC16index = Match(columns, tower%recoNTUNC16string)
+tower%recoNTUNC84index = Match(columns, tower%recoNTUNC84string)
 
 ! Confirm indices were found successfully
 qc( 1) = CheckIndex( tower%startindex      , tower%startstring)
@@ -642,25 +642,24 @@ qc( 2) = CheckIndex( tower%endindex        , tower%endstring)
 qc( 3) = CheckIndex( tower%neeindex        , tower%neestring)
 qc( 4) = CheckIndex( tower%neeUNCindex     , tower%neeUNCstring)
 qc( 5) = CheckIndex( tower%neeQCindex      , tower%neeQCstring)
-qc( 6) = CheckIndex( tower%neeUNCQCindex   , tower%neeUNCstring)
-qc( 7) = CheckIndex( tower%leindex         , tower%lestring)
-qc( 8) = CheckIndex( tower%leQCindex       , tower%leQCstring)
-qc( 9) = CheckIndex( tower%leUNCindex      , tower%leUNCstring)
-qc(10) = CheckIndex( tower%hindex          , tower%hstring)
-qc(11) = CheckIndex( tower%hQCindex        , tower%hQCstring)
-qc(12) = CheckIndex( tower%hUNCindex       , tower%hUNCstring)
-qc(13) = CheckIndex( tower%gppDTindex      , tower%gppDTstring)
-qc(14) = CheckIndex( tower%gppNTindex      , tower%gppNTstring)
-qc(15) = CheckIndex( tower%recoDTindex     , tower%recoDTstring)
-qc(16) = CheckIndex( tower%recoNTindex     , tower%recoNTstring)
-qc(17) = CheckIndex( tower%gppUNCDT16index , tower%gppUNCDT16string)
-qc(18) = CheckIndex( tower%gppUNCDT84index , tower%gppUNCDT84string)
-qc(19) = CheckIndex( tower%gppUNCNT16index , tower%gppUNCNT16string)
-qc(20) = CheckIndex( tower%gppUNCNT84index , tower%gppUNCNT84string)
-qc(21) = CheckIndex( tower%recoUNCDT16index, tower%recoUNCDT16string)
-qc(22) = CheckIndex( tower%recoUNCDT84index, tower%recoUNCDT84string)
-qc(23) = CheckIndex( tower%recoUNCNT16index, tower%recoUNCNT16string)
-qc(24) = CheckIndex( tower%recoUNCNT84index, tower%recoUNCNT84string)
+qc( 6) = CheckIndex( tower%leindex         , tower%lestring)
+qc( 7) = CheckIndex( tower%leQCindex       , tower%leQCstring)
+qc( 8) = CheckIndex( tower%leUNCindex      , tower%leUNCstring)
+qc( 9) = CheckIndex( tower%hindex          , tower%hstring)
+qc(10) = CheckIndex( tower%hQCindex        , tower%hQCstring)
+qc(11) = CheckIndex( tower%hUNCindex       , tower%hUNCstring)
+qc(12) = CheckIndex( tower%gppDTindex      , tower%gppDTstring)
+qc(13) = CheckIndex( tower%gppNTindex      , tower%gppNTstring)
+qc(14) = CheckIndex( tower%recoDTindex     , tower%recoDTstring)
+qc(15) = CheckIndex( tower%recoNTindex     , tower%recoNTstring)
+qc(16) = CheckIndex( tower%gppDTUNC16index , tower%gppDTUNC16string)
+qc(17) = CheckIndex( tower%gppDTUNC84index , tower%gppDTUNC84string)
+qc(18) = CheckIndex( tower%gppNTUNC16index , tower%gppNTUNC16string)
+qc(19) = CheckIndex( tower%gppNTUNC84index , tower%gppNTUNC84string)
+qc(20) = CheckIndex( tower%recoDTUNC16index, tower%recoDTUNC16string)
+qc(21) = CheckIndex( tower%recoDTUNC84index, tower%recoDTUNC84string)
+qc(22) = CheckIndex( tower%recoNTUNC16index, tower%recoNTUNC16string)
+qc(23) = CheckIndex( tower%recoNTUNC84index, tower%recoNTUNC84string)
 
 if (any(qc /= 0) ) then
   write(string1,*)'Did not find all the required column indices.'
@@ -685,14 +684,14 @@ if (verbose) then
    write(*,110)tower%gppNTstring      , tower%gppNTindex
    write(*,110)tower%recoDTstring     , tower%recoDTindex
    write(*,110)tower%recoNTstring     , tower%recoNTindex
-   write(*,110)tower%gppUNCDT16string , tower%gppUNCDT16index
-   write(*,110)tower%gppUNCDT84string , tower%gppUNCDT84index
-   write(*,110)tower%gppUNCNT16string , tower%gppUNCNT16index
-   write(*,110)tower%gppUNCNT84string , tower%gppUNCNT84index
-   write(*,110)tower%recoUNCDT16string, tower%recoUNCDT16index
-   write(*,110)tower%recoUNCDT84string, tower%recoUNCDT84index
-   write(*,110)tower%recoUNCNT16string, tower%recoUNCNT16index
-   write(*,110)tower%recoUNCNT84string, tower%recoUNCNT84index
+   write(*,110)tower%gppDTUNC16string , tower%gppDTUNC16index
+   write(*,110)tower%gppDTUNC84string , tower%gppDTUNC84index
+   write(*,110)tower%gppNTUNC16string , tower%gppNTUNC16index
+   write(*,110)tower%gppNTUNC84string , tower%gppNTUNC84index
+   write(*,110)tower%recoDTUNC16string, tower%recoDTUNC16index
+   write(*,110)tower%recoDTUNC84string, tower%recoDTUNC84index
+   write(*,110)tower%recoNTUNC16string, tower%recoNTUNC16index
+   write(*,110)tower%recoNTUNC84string, tower%recoNTUNC84index
 endif
 
 deallocate(columns)
@@ -794,7 +793,7 @@ endif
 ! Fixme: These are for high resolution format HH or HR only
 ! Fixme: If aggregrated (DD,WW,MM) need to edit, expand this
 
-! start_time,end_time     format   YYYYMMDDHHMM
+! start_time,end_time    format   YYYYMMDDHHMM
 ! nee           units    [umolCO2 m-2 s-1], VUT_REF
 ! neeUNC        units    [umolCO2 m-2 s-1], joint
 ! neeQC         no dim   0=measured,gap_filled: 1=good,2=medium,3=poor
@@ -821,7 +820,7 @@ endif
 ! (CLM) LE,SH       units     [W m-2]
 
 tower%start_time  =      values(tower%startindex      )
-tower%end_end     =      values(tower%endindex        )
+tower%end_time    =      values(tower%endindex        )
 tower%nee         =      values(tower%neeindex        )
 tower%nee         =      values(tower%neeUNCindex     )
 tower%neeQC       = nint(values(tower%neeQCindex     ))
@@ -835,14 +834,14 @@ tower%gppDT       =      values(tower%gppDTindex      )
 tower%gppNT       =      values(tower%gppNTindex      )
 tower%recoDT      =      values(tower%recoDTindex     )
 tower%recoNT      =      values(tower%recoNTindex     )
-tower%gppUNCDT16  =      values(tower%gppUNCDT16index )
-tower%gppUNCDT84  =      values(tower%gppUNCDT84index )
-tower%gppUNCNT16  =      values(tower%gppUNCNT16index )
-tower%gppUNCNT84  =      values(tower%gppUNCNT84index )
-tower%recoUNCDT16 =      values(tower%recoUNCDT16index)
-tower%recoUNCDT84 =      values(tower%recoUNCDT84index)
-tower%recoUNCNT16 =      values(tower%recoUNCNT16index)
-tower%recoUNCNT84 =      values(tower%recoUNCNT84index)
+tower%gppDTUNC16  =      values(tower%gppDTUNC16index )
+tower%gppDTUNC84  =      values(tower%gppDTUNC84index )
+tower%gppNTUNC16  =      values(tower%gppNTUNC16index )
+tower%gppNTUNC84  =      values(tower%gppNTUNC84index )
+tower%recoDTUNC16 =      values(tower%recoDTUNC16index)
+tower%recoDTUNC84 =      values(tower%recoDTUNC84index)
+tower%recoNTUNC16 =      values(tower%recoNTUNC16index)
+tower%recoNTUNC84 =      values(tower%recoNTUNC84index)
 deallocate(values)
 
 ! The observation time must be assigned through the flux timestamp string

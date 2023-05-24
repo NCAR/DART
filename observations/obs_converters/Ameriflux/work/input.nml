@@ -27,7 +27,7 @@
    text_input_file = '../data/USHa12003_L4_h.txt'
    obs_out_file    = 'obs_seq.out'
    year            = 2003
-   timezoneoffset  = -6
+   timezoneoffset  = -5
    latitude        =  42.5378
    longitude       = -72.1715
    elevation       = 353
@@ -39,14 +39,14 @@
 &Fluxnetfull_to_obs_nml
    text_input_file = '../data/AMF_US-Ha1_FLUXNET_FULLSET_HR_1991-2020_3-5.csv'
    obs_out_file    = 'obs_seq.out'
-   year            = 2003
-   timezoneoffset  = -6
+   timezoneoffset  = -5
    latitude        =  42.5378
    longitude       = -72.1715
    elevation       = 353
    flux_height     = 29
    maxgoodqc       = 3
-   verbose         = .TRUE.
+   gap_filled      = .false.
+   verbose         = .true.
    /
 
 
