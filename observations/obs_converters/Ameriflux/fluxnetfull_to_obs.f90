@@ -68,7 +68,7 @@ namelist /Fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &
 ! globally-scoped variables
 !-----------------------------------------------------------------------
 
-character(len=300)      :: input_line, bigline
+character(len=3100)      :: input_line, bigline
 character(len=512)      :: string1, string2, string3
 integer                 :: iline, nlines, nwords
 logical                 :: first_obs
@@ -132,9 +132,9 @@ type towerdata
   integer  :: recoDTUNC84index
   integer  :: recoNTUNC16index
   integer  :: recoNTUNC84index  
-
-  integer  :: start_time    
-  integer  :: end_time      
+  
+  character(len=12) :: start_time    
+  character(len=12) :: end_time      
   real(r8) :: nee
   real(r8) :: neeUNC
   integer  :: neeQC
@@ -318,7 +318,7 @@ obsloop: do iline = 2,nlines
    call get_time(tower%time_obs, osec, oday)
 
    if (verbose) then
-      write(string1,*)'obs time is (seconds,days) ',osec, oday,' obs date is '
+      write(string1,*)'obs time (UTC) is (seconds,days) ',osec, oday,' obs date (UTC) is '
       call print_date(tower%time_obs, trim(string1))
       call print_date(tower%time_obs, trim(string1),logfileunit)
    endif
@@ -767,22 +767,26 @@ end function CheckIndex
 
 
 subroutine stringparse(str1, nwords, linenum)
-! just declare everything as reals and chunk it
 
 character(len=*), intent(in) :: str1
 integer         , intent(in) :: nwords
 integer         , intent(in) :: linenum
 
 real(r8), allocatable, dimension(:) :: values
-integer :: iyear0, imonth0, iday0, ihour0, imin0
-integer :: iyear1, imonth1, iday1, ihour1, imin1
+
+
+integer :: yeara, yearb
+integer :: montha, daya, houra, mina
+integer :: monthb, dayb, hourb, minb
 type(time_type) :: date_start, date_end
 
-allocate(values(nwords))
+allocate(values(nwords-2))
 
 values = MISSING_R8
 
-read(str1,*,iostat=rcio) values
+! First two elements of string read in as character (time stamp)
+! remainder of line read in as reals.
+read(str1,*,iostat=rcio) tower%start_time,tower%end_time,values
 if (rcio /= 0) then
    write(string1,*)'Cannot parse line',linenum,'. Begins <',trim(str1(1:40)),'>'
    call error_handler(E_ERR,'stringparse',string1, source)
@@ -819,38 +823,54 @@ endif
 ! (CLM) NEE,GPP,ER  units     [gC m-2 s-1]
 ! (CLM) LE,SH       units     [W m-2]
 
-tower%start_time  =      values(tower%startindex      )
-tower%end_time    =      values(tower%endindex        )
-tower%nee         =      values(tower%neeindex        )
-tower%nee         =      values(tower%neeUNCindex     )
-tower%neeQC       = nint(values(tower%neeQCindex     ))
-tower%le          =      values(tower%leindex         )
-tower%leUNC       =      values(tower%leUNCindex      )
-tower%leQC        = nint(values(tower%leQCindex      ))
-tower%h           =      values(tower%hindex          )
-tower%hUNC        =      values(tower%hUNCindex       )
-tower%hQC         = nint(values(tower%hQCindex       ))
-tower%gppDT       =      values(tower%gppDTindex      )
-tower%gppNT       =      values(tower%gppNTindex      )
-tower%recoDT      =      values(tower%recoDTindex     )
-tower%recoNT      =      values(tower%recoNTindex     )
-tower%gppDTUNC16  =      values(tower%gppDTUNC16index )
-tower%gppDTUNC84  =      values(tower%gppDTUNC84index )
-tower%gppNTUNC16  =      values(tower%gppNTUNC16index )
-tower%gppNTUNC84  =      values(tower%gppNTUNC84index )
-tower%recoDTUNC16 =      values(tower%recoDTUNC16index)
-tower%recoDTUNC84 =      values(tower%recoDTUNC84index)
-tower%recoNTUNC16 =      values(tower%recoNTUNC16index)
-tower%recoNTUNC84 =      values(tower%recoNTUNC84index)
+tower%nee         =           values(tower%neeindex       -2 )
+tower%neeUNC      =           values(tower%neeUNCindex    -2 )
+tower%neeQC       =      nint(values(tower%neeQCindex     -2))
+tower%le          =           values(tower%leindex        -2 )
+tower%leUNC       =           values(tower%leUNCindex     -2 )
+tower%leQC        =      nint(values(tower%leQCindex      -2))
+tower%h           =           values(tower%hindex         -2 )
+tower%hUNC        =           values(tower%hUNCindex      -2 )
+tower%hQC         =      nint(values(tower%hQCindex       -2))
+tower%gppDT       =           values(tower%gppDTindex      -2)
+tower%gppNT       =           values(tower%gppNTindex      -2)
+tower%recoDT      =           values(tower%recoDTindex     -2)
+tower%recoNT      =           values(tower%recoNTindex     -2)
+tower%gppDTUNC16  =           values(tower%gppDTUNC16index -2)
+tower%gppDTUNC84  =           values(tower%gppDTUNC84index -2)
+tower%gppNTUNC16  =           values(tower%gppNTUNC16index -2)
+tower%gppNTUNC84  =           values(tower%gppNTUNC84index -2)
+tower%recoDTUNC16 =           values(tower%recoDTUNC16index-2)
+tower%recoDTUNC84 =           values(tower%recoDTUNC84index-2)
+tower%recoNTUNC16 =           values(tower%recoNTUNC16index-2)
+tower%recoNTUNC84 =           values(tower%recoNTUNC84index-2)
 deallocate(values)
 
-! The observation time must be assigned through the flux timestamp string
 
-write(tower%start_time,'(i4, 4i2)') iyear0,imonth0,iday0,ihour0,imin0
-write(tower%end_time,  '(i4, 4i2)') iyear1,imonth1,iday1,ihour1,imin1
 
-date_start= set_date(iyear0,imonth0,iday0,ihour0,imin0,0)
-date_end=   set_date(iyear1,imonth1,iday1,ihour1,imin0,0)
+write(*,*)''
+write(string1, *) 'Display tower%start_time and tower%end_time (LTC)  =', tower%start_time,' ', tower%end_time
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+
+write(*,*)''
+write(string1, *) 'Display tower%nee tower%neeQC  =', tower%nee, tower%neeQC
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+
+
+read(tower%start_time(1:12), fmt='(i4, 4i2)') yeara,montha,daya,houra,mina 
+read(tower%end_time(1:12),   fmt='(i4, 4i2)') yearb,monthb,dayb,hourb,minb
+
+write(*,*)''
+write(string1, *) 'Display tower%start_time,yeara,montha,daya,houra,mina (LTC)  =', tower%start_time, yeara, montha, daya, houra, mina
+write(string2, *) 'Display tower%end_time,yearb,monthb,dayb,hourb,minb   (LTC)  =', tower%end_time, yearb, monthb, dayb, hourb, minb
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+
+
+
+date_start= set_date(yeara,montha,daya,houra,mina,0)
+date_end=   set_date(yearb,monthb,dayb,hourb,minb,0)
+
+
 
 ! Assign average of flux time window to obs_seq (DART time)
 tower%time_obs = (date_start+date_end) / 2
@@ -869,6 +889,8 @@ if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000
 if (tower%leQC  < 0) tower%leQC  = maxgoodqc + 1000
 if (tower%hQC   < 0) tower%hQC   = maxgoodqc + 1000
 
+! No qc values for gpp/reco, thus assign good qc unless
+! the gpp/reco value is missing
 tower%gppNTQC = 1
 tower%gppDTQC = 1
 tower%recoNTQC = 1
@@ -878,6 +900,21 @@ if (tower%gppNT < 0) tower%gppNTQC = maxgoodqc + 1000
 if (tower%gppDT < 0) tower%gppDTQC = maxgoodqc + 1000
 if (tower%recoNT < 0) tower%recoNTQC = maxgoodqc + 1000
 if (tower%recoDT < 0) tower%recoDTQC = maxgoodqc + 1000
+
+! Assign very bad qc to gap_filled data if user requests it
+
+if (gap_filled .eqv. .false.) then
+   if (tower%neeQC >0) tower%neeQC = maxgoodqc + 100
+   if (tower%leQC >0)  tower%leQC =  maxgoodqc + 100
+   if (tower%hQC >0)   tower%hQC =   maxgoodqc + 100
+   ! GPP and RECO are modeled data and considered gap_filled
+   tower%gppNTQC = maxgoodqc + 100
+   tower%gppDTQC = maxgoodqc + 100
+   tower%recoNTQC = maxgoodqc + 100
+   tower%recoDTQC = maxgoodqc + 100
+endif
+
+
  
 end subroutine stringparse
 
