@@ -53,22 +53,26 @@ real(r8)           :: latitude        = -1.0_r8
 real(r8)           :: longitude       = -1.0_r8
 real(r8)           :: elevation       = -1.0_r8
 real(r8)           :: flux_height     = -1.0_r8
-! A maxgooqc=3 allows for good,medium and poor quality gap-filled data
+! A maxgooqc=3 allows for good=1, medium=2, and poor=3 quality gap-filled data
 real(r8)           :: maxgoodqc       = 3.0_r8
-! Always 'true' except for latent,sensible heat and NEE for hourly time periods
-! Fixme This option must be worked into the code later on
+! Always true except for latent,sensible heat and NEE for hourly time periods
 logical            :: gap_filled      = .true.
+! Option for energy balance correction for latent and sensible heat
+! Recommned to keep false as these values are typically missing
+logical            :: energy_balance  = .false.
+character(len=2)   :: time_resolution = 'HH'
 logical            :: verbose         = .false.
 
 namelist /Fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &
              timezoneoffset, latitude, longitude, elevation, &
-             flux_height, maxgoodqc, gap_filled, verbose
+             flux_height, maxgoodqc, gap_filled, energy_balance, &
+             time_resolution, verbose
 
 !-----------------------------------------------------------------------
 ! globally-scoped variables
 !-----------------------------------------------------------------------
 
-character(len=3100)      :: input_line, bigline
+character(len=3100)     :: input_line, bigline
 character(len=512)      :: string1, string2, string3
 integer                 :: iline, nlines, nwords
 logical                 :: first_obs
@@ -81,8 +85,7 @@ type(obs_type)          :: obs, prev_obs
 type(time_type)         :: prev_time, offset
 real(r8), parameter     :: umol_to_gC = (1.0_r8/1000000.0_r8) * 12.0_r8
 
-! Fixme: These are for high resolution format HH or HR
-! Fixme: If aggregrated (DD,WW,MM) need to edit
+! Initialize with default tower strings, modify later
 
 type towerdata
   type(time_type)   :: time_obs
@@ -134,7 +137,7 @@ type towerdata
   integer  :: recoNTUNC84index  
   
   character(len=12) :: start_time    
-  character(len=12) :: end_time      
+  character(len=12) :: end_time
   real(r8) :: nee
   real(r8) :: neeUNC
   integer  :: neeQC
@@ -165,6 +168,50 @@ type towerdata
 end type towerdata
 
 type(towerdata) :: tower
+
+! Modify towerdata strings based on user input.nml
+
+! 1) time_resolution: DD(daily),MM(monthly),YY(yearly) uses 'TIMESTAMP' header
+
+if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
+    time_resolution == 'YY') then
+
+  startstring    = 'TIMESTAMP'
+  endstring      = 'TIMESTAMP'
+
+  write(string1, *) 'Time resolution is set to =', time_res
+  write(string2, *) 'Using TIMESTAMP to set DART observation time'
+  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+
+elseif (time_resolution == 'HH' .or. time_resolution == 'HR' .or. & 
+        time_resolution == 'WW') then
+  write(string1, *) 'Time resolution is set to =', time_res
+  write(string2, *) 'Using TIMESTAMP_START and TIMESTAMP_END to set DART observation time'
+  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+
+else
+  write(string1,*) 'time_resolution set incorrectly within input.nml'
+  write(string2,*) 'time_resolution must be HR,HH,DD,WW,MM, or YY'
+  call error_handler(E_ERR, source, string1,text2=string2)
+
+endif
+
+! 2) energy_balance: .true. changes sensible and latent heat strings
+!    Note: There are no qc values for energy_balance correction
+!    The qc values are manually set later in code 
+if (energy_balance .eqv. .true.) then
+   
+   lestring       = 'LE_CORR'
+   leUNCstring    = 'LE_CORR_JOINTUNC'
+   hstring        = 'H_CORR'
+   hUNCstring     = 'H_CORR_JOINTUNC'
+   write(string1,*) 'WARNING! Energy balance correction data turned on for LE and H' 
+   write(string2,*) 'Check to make sure LE_CORR and H_CORR data is not missing'
+   call error_handler(E_MSG, source, string1,text=string2)
+endif
+
+
+
 
 !-----------------------------------------------------------------------
 ! start of executable code
@@ -200,10 +247,16 @@ if (( latitude > 90.0_r8 .or. latitude  <  -90.0_r8 ) .or. &
    write (string3,*)'longitude should be [  0,360] but is ',longitude
 
    string1 ='tower location error in input.nml&Fluxnetfull_to_obs_nml'
-   call error_handler(E_ERR,'Fluxnetfull_to_obs', source, string1, &
+   call error_handler(E_ERR, source, string1, &
                       text2=string2,text3=string3)
-
 endif
+
+if (gap_filled .eqv. .false.) then
+
+   string1 ='WARNING!: gap_filled=false which removes all gpp and reco data'
+   call error_handler(E_MSG, source, string1)
+endif
+
 
 ! Specify the maximum number of observations in the input file,
 ! but only the actual number created will be written out.
@@ -819,9 +872,9 @@ endif
 ! Convert to 'CLM-friendly' units AFTER we determine observation error variance.
 ! That happens in the main routine.
 
-! Fixme: Double check these defs and units
-! (CLM) NEE,GPP,ER  units     [gC m-2 s-1]
-! (CLM) LE,SH       units     [W m-2]
+! CLM history file names and units
+! (CLM) NEP,GPP,ER  units     [gC m-2 s-1]
+! (CLM) EFLX_LH_TOT_R,FSH     units     [W m-2]
 
 tower%nee         =           values(tower%neeindex       -2 )
 tower%neeUNC      =           values(tower%neeUNCindex    -2 )
@@ -855,6 +908,13 @@ if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
 write(*,*)''
 write(string1, *) 'Display tower%nee tower%neeQC  =', tower%nee, tower%neeQC
 if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+write(*,*)''
+write(string1, *) 'Display tower%le tower%leQC  =', tower%le, tower%leQC
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+write(*,*)''
+write(string1, *) 'Display tower%h tower%hQC  =', tower%h, tower%hQC
+if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+
 
 
 read(tower%start_time(1:12), fmt='(i4, 4i2)') yeara,montha,daya,houra,mina 
@@ -883,14 +943,23 @@ else
    tower%time_obs = tower%time_obs - offset
 endif
 
-! If missing value (-9999) manually assign poor QC value
-! such that value is excluded in obs_seq
-if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000 
-if (tower%leQC  < 0) tower%leQC  = maxgoodqc + 1000
-if (tower%hQC   < 0) tower%hQC   = maxgoodqc + 1000
+
+! Reject NEE data where neeQC is missing
+if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000
+
+! The QC values are typically missing for le and h (-9999)
+! Thus  manually assign poor QC values in these cases
+if (energy_balance .eqv. .false.) then
+   (tower%leQC  < 0) tower%leQC  = 3
+   (tower%hQC   < 0) tower%hQC   = 3
+else  ! No QC values for energy balance le and h.  Assign poor QC.
+   tower%leQC  = 3
+   tower%leQC  = 3
+endif
+
 
 ! No qc values for gpp/reco, thus assign good qc unless
-! the gpp/reco value is missing
+! the gpp/reco value is missing (-9999)
 tower%gppNTQC = 1
 tower%gppDTQC = 1
 tower%recoNTQC = 1
@@ -902,7 +971,7 @@ if (tower%recoNT < 0) tower%recoNTQC = maxgoodqc + 1000
 if (tower%recoDT < 0) tower%recoDTQC = maxgoodqc + 1000
 
 ! Assign very bad qc to gap_filled data if user requests it
-
+! such that maxgoodqc threshold does not add gap_filled data to obs_seq file
 if (gap_filled .eqv. .false.) then
    if (tower%neeQC >0) tower%neeQC = maxgoodqc + 100
    if (tower%leQC >0)  tower%leQC =  maxgoodqc + 100
@@ -912,6 +981,17 @@ if (gap_filled .eqv. .false.) then
    tower%gppDTQC = maxgoodqc + 100
    tower%recoNTQC = maxgoodqc + 100
    tower%recoDTQC = maxgoodqc + 100
+endif
+
+if (energy_balance .eqv. .true.) then
+   
+   lestring       = 'LE_CORR'
+   leUNCstring    = 'LE_CORR_JOINTUNC'
+   hstring        = 'H_CORR'
+   hUNCstring     = 'H_CORR_JOINTUNC'
+   write(string1,*) 'WARNING! Energy balance correction data turned on for LE and H'    
+   write(string2,*) 'Check to make sure LE_CORR and H_CORR data is not missing'
+   call error_handler(E_MSG, source, string1,text=string2)
 endif
 
 

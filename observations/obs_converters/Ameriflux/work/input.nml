@@ -46,6 +46,8 @@
    flux_height     = 29
    maxgoodqc       = 3
    gap_filled      = .false.
+   energy_balance  = .false.
+   time_resolution = 'HH'
    verbose         = .true.
    /
 
