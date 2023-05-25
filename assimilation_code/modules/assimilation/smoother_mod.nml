@@ -1,7 +1,0 @@
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'ics',
-   restart_out_file_name = 'restart'  /
-
