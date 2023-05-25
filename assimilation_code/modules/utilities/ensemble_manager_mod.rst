@@ -1162,9 +1162,7 @@ dimensioned large enough to hold all copies. Depends on distribution_type with o
 
 .. container:: indent1
 
-   Round-robin MPI task layout starting at the first node. Starting on the first node forces pe 0 = task 0. The smoother
-   code assumes task 0 has an ensemble member. If you want to break the assumption that pe 0 = task 0, this routine is a
-   good place to start. Test with the smoother.
+   Round-robin MPI task layout starting at the first node. Starting on the first node forces pe 0 = task 0. 
 
    ============== =======================
    ``ens_handle`` Handle for an ensemble.
