@@ -430,9 +430,13 @@ end subroutine check_meta_data
 
 subroutine setup_interp_grid()
 
+! write(*,'(A)') 'in setup_interp_grid subroutine'
+
 if ( interp_test_dx  /= missing_r8 .or. &
      interp_test_dy  /= missing_r8 .or. &
      interp_test_dz  /= missing_r8 ) then
+
+   ! write(*,'(A,I2)') 'in setup_interp_grid if statement',interp_test_dx
 
    ! if the user defines cartesian coordinates just
    ! overwrite values for the test_interpolation calls.

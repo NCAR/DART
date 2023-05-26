@@ -1,13 +1,13 @@
 netcdf model_restart {
 dimensions:
-	// time = UNLIMITED ; 
-	t = 1 ;	
+	time = UNLIMITED ; 
+//	t = 1 ;	
 	lat = 7 ;
 	lon = 13 ;
 
 variables:
 		
-	double time(t) ;
+	double time(time) ;
 	//time:calendar = "none" ;
 	//time:units = "days" ;		
 
@@ -29,6 +29,6 @@ data:
 		-180, -150, -120, -90, -60, -30, 0,
 		30, 60, 90, 120, 150, 180 ;
 	
-	time = 1 ;	
+	time = 1.0 ;	
 
 }
