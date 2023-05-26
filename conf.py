@@ -21,7 +21,7 @@ copyright = '2022, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '10.6.4'
+release = '10.7.2'
 master_doc = 'README'
 
 # -- General configuration ---------------------------------------------------
@@ -30,6 +30,7 @@ master_doc = 'README'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+     'sphinx_rtd_theme',
      'sphinx.ext.autodoc',
      'sphinx.ext.mathjax'
 ]
