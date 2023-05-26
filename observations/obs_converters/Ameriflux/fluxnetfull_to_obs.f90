@@ -89,7 +89,7 @@ real(r8), parameter     :: umol_to_gC = (1.0_r8/1000000.0_r8) * 12.0_r8
 
 type towerdata
   type(time_type)   :: time_obs
-  character(len=20) :: startstring    = 'TIMESTAMP_START'
+  character(len=20) :: startstring    = 'TIMESTAMP_START'   
   character(len=20) :: endstring      = 'TIMESTAMP_END'
   character(len=20) :: neestring      = 'NEE_VUT_REF'
   character(len=20) :: neeUNCstring   = 'NEE_VUT_REF_JOINTUNC'
@@ -150,8 +150,8 @@ type towerdata
   real(r8) :: gppNT
   real(r8) :: gppDT
   real(r8) :: gpp
-  real(r8) :: gppNTQC
-  real(r8) :: gppDTQC
+  integer  :: gppNTQC
+  integer  :: gppDTQC
   real(r8) :: gppNTUNC84
   real(r8) :: gppNTUNC16
   real(r8) :: gppDTUNC84
@@ -159,8 +159,8 @@ type towerdata
   real(r8) :: recoNT
   real(r8) :: recoDT
   real(r8) :: reco
-  real(r8) :: recoNTQC
-  real(r8) :: recoDTQC
+  integer  :: recoNTQC
+  integer  :: recoDTQC
   real(r8) :: recoNTUNC84
   real(r8) :: recoNTUNC16
   real(r8) :: recoDTUNC84
@@ -168,49 +168,6 @@ type towerdata
 end type towerdata
 
 type(towerdata) :: tower
-
-! Modify towerdata strings based on user input.nml
-
-! 1) time_resolution: DD(daily),MM(monthly),YY(yearly) uses 'TIMESTAMP' header
-
-if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
-    time_resolution == 'YY') then
-
-  startstring    = 'TIMESTAMP'
-  endstring      = 'TIMESTAMP'
-
-  write(string1, *) 'Time resolution is set to =', time_res
-  write(string2, *) 'Using TIMESTAMP to set DART observation time'
-  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
-
-elseif (time_resolution == 'HH' .or. time_resolution == 'HR' .or. & 
-        time_resolution == 'WW') then
-  write(string1, *) 'Time resolution is set to =', time_res
-  write(string2, *) 'Using TIMESTAMP_START and TIMESTAMP_END to set DART observation time'
-  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
-
-else
-  write(string1,*) 'time_resolution set incorrectly within input.nml'
-  write(string2,*) 'time_resolution must be HR,HH,DD,WW,MM, or YY'
-  call error_handler(E_ERR, source, string1,text2=string2)
-
-endif
-
-! 2) energy_balance: .true. changes sensible and latent heat strings
-!    Note: There are no qc values for energy_balance correction
-!    The qc values are manually set later in code 
-if (energy_balance .eqv. .true.) then
-   
-   lestring       = 'LE_CORR'
-   leUNCstring    = 'LE_CORR_JOINTUNC'
-   hstring        = 'H_CORR'
-   hUNCstring     = 'H_CORR_JOINTUNC'
-   write(string1,*) 'WARNING! Energy balance correction data turned on for LE and H' 
-   write(string2,*) 'Check to make sure LE_CORR and H_CORR data is not missing'
-   call error_handler(E_MSG, source, string1,text=string2)
-endif
-
-
 
 
 !-----------------------------------------------------------------------
@@ -251,9 +208,57 @@ if (( latitude > 90.0_r8 .or. latitude  <  -90.0_r8 ) .or. &
                       text2=string2,text3=string3)
 endif
 
+
+! Modify values to towerdata strings based on user input.nml
+! 1) time_resolution: DD(daily),MM(monthly),YY(yearly) uses 'TIMESTAMP' header
+
+if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
+    time_resolution == 'YY') then
+
+  tower%startstring    = 'TIMESTAMP'
+  tower%endstring      = 'TIMESTAMP'
+
+  write(string1, *) 'Time resolution is set to =', time_resolution
+  write(string2, *) 'Using TIMESTAMP to set DART observation time'
+  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+
+elseif (time_resolution == 'HH' .or. time_resolution == 'HR' .or. &
+        time_resolution == 'WW') then
+
+  write(string1, *) 'Time resolution is set to =', time_resolution
+  write(string2, *) 'Using TIMESTAMP_START and TIMESTAMP_END to set: DART observation time'
+  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+
+else
+  write(string1,*) 'time_resolution set incorrectly within input.nml'
+  write(string2,*) 'time_resolution must be HR,HH,DD,WW,MM, or YY'
+  call error_handler(E_ERR, source, string1,text2=string2)
+
+endif
+
+! 2) energy_balance: .true. changes sensible and latent heat strings
+!    Note: There are no qc values for energy_balance correction
+!    The qc values are manually set later in code 
+if (energy_balance .eqv. .true.) then
+
+   tower%lestring       = 'LE_CORR'
+   tower%leUNCstring    = 'LE_CORR_JOINTUNC'
+   tower%hstring        = 'H_CORR'
+   tower%hUNCstring     = 'H_CORR_JOINTUNC'
+   write(string1,*) 'WARNING! Energy balance correction data turned on for LE and H'
+   write(string2,*) 'Check to make sure LE_CORR and H_CORR data is not missing'
+   call error_handler(E_MSG, source, string1,text2=string2)
+else
+
+   write(string1,*) 'Standard LE (LE_F_MDS) and H (H_F_MDS) data being used'
+   call error_handler(E_MSG, source, string1)
+endif
+
+
 if (gap_filled .eqv. .false.) then
 
-   string1 ='WARNING!: gap_filled=false which removes all gpp and reco data'
+   write(string1,*) 'WARNING!: gap_filled = false which removes all gpp and reco data'
+   write(string2,*) ' ...and also will remove nee, h and le if qc value is missing'
    call error_handler(E_MSG, source, string1)
 endif
 
@@ -374,6 +379,33 @@ obsloop: do iline = 2,nlines
       write(string1,*)'obs time (UTC) is (seconds,days) ',osec, oday,' obs date (UTC) is '
       call print_date(tower%time_obs, trim(string1))
       call print_date(tower%time_obs, trim(string1),logfileunit)
+   
+
+      write(*,*)''
+      write(string1, *) 'Display tower%start_time and tower%end_time (LTC)  =', tower%start_time,' ', tower%end_time
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%nee tower%neeQC  =', tower%nee, tower%neeQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%le tower%leQC  =', tower%le, tower%leQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%h tower%hQC  =', tower%h, tower%hQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%gppDT tower%gppDTQC  =', tower%gppDT, tower%gppDTQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%gppNT tower%gppNTQC  =', tower%gppNT, tower%gppNTQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%recoDT tower%recoDTQC  =', tower%recoDT, tower%recoDTQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      write(*,*)''
+      write(string1, *) 'Display tower%recoNT tower%recoNTQC  =', tower%recoNT, tower%recoNTQC
+      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+
    endif
 
    ! Create and add observation and uncertainty (1 SD) to obs_seq file
@@ -901,22 +933,6 @@ deallocate(values)
 
 
 
-write(*,*)''
-write(string1, *) 'Display tower%start_time and tower%end_time (LTC)  =', tower%start_time,' ', tower%end_time
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
-
-write(*,*)''
-write(string1, *) 'Display tower%nee tower%neeQC  =', tower%nee, tower%neeQC
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
-write(*,*)''
-write(string1, *) 'Display tower%le tower%leQC  =', tower%le, tower%leQC
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
-write(*,*)''
-write(string1, *) 'Display tower%h tower%hQC  =', tower%h, tower%hQC
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
-
-
-
 read(tower%start_time(1:12), fmt='(i4, 4i2)') yeara,montha,daya,houra,mina 
 read(tower%end_time(1:12),   fmt='(i4, 4i2)') yearb,monthb,dayb,hourb,minb
 
@@ -950,9 +966,9 @@ if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000
 ! The QC values are typically missing for le and h (-9999)
 ! Thus  manually assign poor QC values in these cases
 if (energy_balance .eqv. .false.) then
-   (tower%leQC  < 0) tower%leQC  = 3
-   (tower%hQC   < 0) tower%hQC   = 3
-else  ! No QC values for energy balance le and h.  Assign poor QC.
+   if (tower%leQC  < 0) tower%leQC  = 3
+   if (tower%hQC   < 0) tower%hQC   = 3
+else  ! No QC values for energy balance corrected le and h.  Assign poor QC.
    tower%leQC  = 3
    tower%leQC  = 3
 endif
@@ -972,6 +988,7 @@ if (tower%recoDT < 0) tower%recoDTQC = maxgoodqc + 1000
 
 ! Assign very bad qc to gap_filled data if user requests it
 ! such that maxgoodqc threshold does not add gap_filled data to obs_seq file
+! If leQC and hQC are missing no way to identify if gap_filled, thus rejected
 if (gap_filled .eqv. .false.) then
    if (tower%neeQC >0) tower%neeQC = maxgoodqc + 100
    if (tower%leQC >0)  tower%leQC =  maxgoodqc + 100
@@ -983,19 +1000,6 @@ if (gap_filled .eqv. .false.) then
    tower%recoDTQC = maxgoodqc + 100
 endif
 
-if (energy_balance .eqv. .true.) then
-   
-   lestring       = 'LE_CORR'
-   leUNCstring    = 'LE_CORR_JOINTUNC'
-   hstring        = 'H_CORR'
-   hUNCstring     = 'H_CORR_JOINTUNC'
-   write(string1,*) 'WARNING! Energy balance correction data turned on for LE and H'    
-   write(string2,*) 'Check to make sure LE_CORR and H_CORR data is not missing'
-   call error_handler(E_MSG, source, string1,text=string2)
-endif
-
-
- 
 end subroutine stringparse
 
 
