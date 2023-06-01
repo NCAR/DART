@@ -22,6 +22,17 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 10 2023 :: Doc-fix. Tag v10.7.2**
+ 
+- conf.py changes for latest readthedocs. Fixes search and flyout menu.
+
+**May 8 2023 :: CLM-DART: CAM reanalysis site-level bias correction tool. Tag v10.7.1**
+
+- Initial version of bias correction for CAM reanalysis forcing for
+  site-level assimilation with CLM-DART.
+- mkmf change: make clean removes .mod files.
+- bug-fix: readthedocs yaml file for online documentation build.
+
 **April 21 2023 :: MOM6. Tag v10.7.0**  
 
 - CESM-MOM6 interface added to DART.

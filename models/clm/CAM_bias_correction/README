@@ -1,0 +1,39 @@
+3/1/23
+
+Purpose: 
+
+These scripts are designed to improve site level CLM-DART simulations.  They remove
+bias from the CAM6 (ds345.0) and CAM4 (ds199.1) reanalysis products.  Meteorological bias
+is significant and detrimental for site level simulations because of 
+the spatial mismatch between a reanalysis grid (1-2 degrees) and a land site (1x1 km). 
+These scripts are designed to operate on the CAM6 or CAM4 reanalysis global gridded datasets
+to create a bias-corrected site specific ensemble reanalysis product that is used with CLM-DART.
+See the following github issue for more information: https://github.com/NCAR/DART/issues/446. 
+
+Required Input:
+1) CAM4 or CAM6 global datasets (80 members)
+   Located on Cheyenne or archived at:
+   https://rda.ucar.edu/datasets/ds345-0/
+   https://rda.ucar.edu/datasets/ds199-1/
+ 
+2) Site Level Meterological Forcing (e.g. Ameriflux, NEON)
+   The scripts are designed for PLUMBER2 format w/ US-NR1 as example.
+
+
+Output:
+A single site, 80 member bias-corrected reanalysis product, of identical format of the
+original CAM4/CAM6.
+
+
+File Description(s):
+
+CAM4_site_grid.sh: Based on site lat/lon coordinates 'cuts out' collocated grid cell from global
+                   data set for CAM4.
+CAM6_site_grid.sh: Based on site lat/lon coordinates 'cuts out' collocated grid cell from global
+                   data set for CAM6.
+
+CAM4_bias_correct.m: Performs bias correction on the selected grid cell from the CAM4 reanalysis product.
+
+CAM6_bias_correct.m: Performs bias correction on the selected grid cell from the CAM6 reanalysis product.
+
+Note: Output from CAM*site_grid.sh scripts are the input for CAM*bias_correct.m scripts.
