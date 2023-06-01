@@ -476,7 +476,6 @@ Modules used
    ensemble_manager_mod
    adaptive_inflate_mod
    mpi_utilities_mod
-   smoother_mod
    random_seq_mod
    state_vector_io_mod
    io_filenames_mod
