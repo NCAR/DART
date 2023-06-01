@@ -121,9 +121,9 @@ if ((interp_test_dlon < 0.0_r8) .or. (interp_test_dlat < 0.0_r8)) then
    if ( do_output() ) then
       write(*,'(A)')    'Skipping the rigorous interpolation test because one of'
       write(*,'(A)')    'interp_test_dlon,interp_test_dlat are < 0.0'
-      write(*,'(A,I2)') 'interp_test_dlon  = ',interp_test_dlon
-      write(*,'(A,I2)') 'interp_test_dlat  = ',interp_test_dlat
-      write(*,'(A,I2)') 'interp_test_dvert = ',interp_test_dvert
+      write(*,*) 'interp_test_dlon  = ',interp_test_dlon
+      write(*,*) 'interp_test_dlat  = ',interp_test_dlat
+      write(*,*) 'interp_test_dvert = ',interp_test_dvert
    endif
    return
 endif
@@ -359,7 +359,7 @@ select case (test_vertcoord)
    case ('VERTISSURFACE')
       get_location_index = VERTISSURFACE
    case ('VERTISLEVEL')
-      get_location_index = VERTISLEVEL
+      get_location_index = VERTISLEVEL 
    case ('VERTISPRESSURE')
       get_location_index = VERTISPRESSURE
    case ('VERTISHEIGHT')
