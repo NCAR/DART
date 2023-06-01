@@ -2,22 +2,26 @@ netcdf model_restart {
 dimensions:
 //	time = UNLIMITED ; 
 	t = 5 ;	
-	lat = 5 ;
-	lon = 5 ;
+	temp = 5 ;
+   lat = 180 ;
+	lon = 360 ;
 variables:
 		
 	double time(t) ;
 	//time:calendar = "none" ;
 	//time:units = "days" ;		
 	
-	double temp(t, lat, lon);
+	double temp(temp) ;
 	temp:units = "celsius" ;
+   temp:_FillValue = -888888.0 ;
 	
 	double lat(lat);
-	lat:units = "degrees north";
+	lat:units = "degrees north" ;
+   lat:_FillValue = -888888.0 ;
 	
 	double lon(lon);
-	lon:units = "degrees east";
+	lon:units = "degrees east" ;
+   lon:_FillValue = -888888.0 ;
 // global attribute
 	:title = "garbage lat long for pathological model" ;
 	

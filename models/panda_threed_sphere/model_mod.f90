@@ -25,9 +25,13 @@ use    utilities_mod, only : register_module, error_handler, &
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, &
-                                 nc_begin_define_mode, nc_end_define_mode
+                                 nc_begin_define_mode, nc_end_define_mode, &
+                                 nc_open_file_readonly, nc_get_dimension_size, &
+                                 nc_get_variable, nc_close_file
 
-use state_structure_mod, only : add_domain, get_domain_size
+use        obs_kind_mod,  only : QTY_STATE_VARIABLE
+
+use state_structure_mod,  only : add_domain, get_domain_size
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -69,11 +73,27 @@ logical :: module_initialized = .false.
 integer :: dom_id ! used to access the state structure
 type(time_type) :: assimilation_time_step 
 
+!------------------------------------------------------------------
+! defined model parameters
+
+integer               :: nlon, nlat, ntemps
+! Grid info, indexing into each contains the lon/lat at grid point.
+real(r8), allocatable :: lons(:), lats(:)
+! Plain temperature values - index corresponds to lats, lons index 
+real(r8), allocatable :: temperatures(:)
+! Model's grid, indexed with (lon,lat)
+real(r8), allocatable :: model_grid(:,:)
+
+integer(i8) :: model_size ! length of state vector
+integer     :: nfields    ! number of variables in state
+
 ! Example Namelist
 ! Use the namelist for options to be set at runtime.
-character(len=256) :: template_file = 'model_restart.nc'
+character(len=256) :: template_file = 'panda_restart.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
+
+character(len=512) :: string1, string2
 
 namelist /model_nml/ template_file, time_step_days, time_step_seconds
 
@@ -111,9 +131,16 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
-
+! 311
 ! Define which variables are in the model state
-dom_id = add_domain(template_file, num_vars=2, var_names=(/'lat', 'lon'/))
+dom_id = add_domain(template_file, num_vars=1, &
+                              var_names=(/'temp'/), &
+                              kind_list=(/0/))
+
+model_size = get_domain_size(dom_id)
+
+call read_panda_definitions(template_file)
+
 
 end subroutine static_init_model
 
@@ -126,7 +153,7 @@ integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
-get_model_size = get_domain_size(dom_id)
+get_model_size = model_size
 
 end function get_model_size
 
@@ -196,6 +223,7 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
+real(r8) :: lat, lon
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -203,7 +231,7 @@ if ( .not. module_initialized ) call static_init_model
 location = set_location_missing()
 
 ! should be set to the physical quantity, e.g. QTY_TEMPERATURE
-if (present(qty)) qty = 0  
+if (present(qty)) qty = QTY_STATE_VARIABLE
 
 end subroutine get_state_meta_data
 
@@ -293,6 +321,63 @@ call nc_end_define_mode(ncid)
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
+
+!------------------------------------------------------------------
+! Routines below are private to the module
+!------------------------------------------------------------------
+
+subroutine read_panda_definitions(file_name)
+! Read panda grid definitions from the panda restart file
+! populate module's metadata storage variables
+! nlon, lons(:), nlat, lats(:)
+!
+! note: longitudes are expected to be non-negative
+
+character(len=*), parameter :: routine = 'read_panda_definitions'
+
+character(len=*), intent(in) :: file_name
+integer :: ncid, i, j
+
+ncid = nc_open_file_readonly(file_name, routine)
+
+! Load dimension sizes for lon & lat
+nlon   = nc_get_dimension_size(ncid, 'lon', routine)
+nlat   = nc_get_dimension_size(ncid, 'lat', routine)
+ntemps = nc_get_dimension_size(ncid, 'temp', routine)
+
+! Allocate lons & lat arrays with dimension sizes
+allocate(lons(nlon))
+allocate(lats(nlat))
+allocate(temperatures(ntemps))
+
+! Load variable data into module storage
+call nc_get_variable(ncid, 'lon', lons, routine)
+call nc_get_variable(ncid, 'lat', lats, routine)
+call nc_get_variable(ncid, 'temp', temperatures, routine)
+
+! Allocate and load model_grid with 0 index
+allocate(model_grid(0:nlat, 0:nlon))
+
+! Load all grid points with default value.
+do i = 1, nlat
+   do j = 1, nlon
+      model_grid(i, j) = MISSING_R8 
+   end do
+end do
+
+! Check temperature(:) bounds with nlats & nlons
+if (ntemps > nlat .or. ntemps > nlon) then
+   write(string1, *) 'num. of temperatures greater than defined dims'
+   call error_handler(E_ERR, routine, string1) 
+endif
+
+do i = 1, ntemps
+   model_grid(lats(i), lons(i)) = temperatures(i)
+end do
+
+call nc_close_file(ncid)
+
+end subroutine read_panda_definitions
 
 !===================================================================
 ! End of model_mod
