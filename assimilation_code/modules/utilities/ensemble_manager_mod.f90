@@ -1692,9 +1692,6 @@ subroutine round_robin(ens_handle)
 
 ! Round-robin MPI task layout starting at the first node.  
 ! Starting on the first node forces pe 0 = task 0. 
-! The smoother code assumes task 0 has an ensemble member.
-! If you want to break the assumption that pe 0 = task 0, this routine is a good 
-! place to start. Test with the smoother. 
 
 type(ensemble_type), intent(inout)   :: ens_handle
 
