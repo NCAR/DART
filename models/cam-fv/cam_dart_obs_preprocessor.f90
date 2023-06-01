@@ -79,7 +79,7 @@ type(location_type) :: obs_loc
 real(r8)            :: obs_loc_array(LocationDims)
 real(r8)            :: vert_value
 integer             :: which_vert 
-integer             :: too_high
+integer             :: vert_status
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -219,10 +219,11 @@ if ( get_first_obs(seq_in, obs_in) )  then
       vert_value = obs_loc_array(3)
       which_vert = int(query_location(obs_loc, "which_vert"))
 
-      call obs_too_high(vert_value, which_vert, too_high)
-      if (verbose) print *, '   vert_value = ', vert_value, ' which_vert = ', which_vert, ' too_high = ', too_high
+      call obs_too_high(vert_value, which_vert, vert_status)
+      if (verbose) print *, '   vert_value = ', vert_value, ' which_vert = ', which_vert, ' vert_status = ', vert_status
 
-      if (too_high == 0) then
+      !If vert_status is good (0), then insert the obs into the new obs_seq file
+      if (vert_status == 0) then
 
          ! Since the stride through the observation sequence file is always
          ! guaranteed to be in temporally-ascending order, we can use the
