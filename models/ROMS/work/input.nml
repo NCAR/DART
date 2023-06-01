@@ -80,8 +80,6 @@
   /
 
 
-&smoother_nml
-  /
 
 
 &ensemble_manager_nml
