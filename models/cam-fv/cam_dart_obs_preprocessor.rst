@@ -1,5 +1,5 @@
 program ``cam_dart_obs_preprocessor``
-====================
+=====================================
 
 Overview
 --------
@@ -57,10 +57,10 @@ Items in this namelist set the input and output files.
    |              |                    |                                                                                |
    +--------------+--------------------+--------------------------------------------------------------------------------+
    | calendar     | character(len=32)  | The string name of a valid DART calendar type. (See the                        |
-   |              |                    | :doc:`../../modules/utilities/time_manager_mod` documentation for a list of    |
-   |              |                    | valid types.) The setting here does not change what is written to the output   |
-   |              |                    | file; it only changes how the date information is printed to the screen in the |
-   |              |                    | informational messages.                                                        |
+   |              |                    | :doc:`../../../assimilation_code/modules/utilities/time_manager_mod` document  |
+   |              |                    | for a list of valid types.) The setting here does not change what is written to|
+   |              |                    | the output file; it only changes how the date information is printed to the    |
+   |              |                    | screen in the informational messages.                                          |
    +--------------+--------------------+--------------------------------------------------------------------------------+
    | print_every  | integer            | If set to a positive integer, print a status message each time after           |
    |              |                    | processing that number of observations.                                        |
