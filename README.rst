@@ -372,6 +372,7 @@ References
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme
+   models/cam-fv/cam_dart_obs_preprocessor
    models/CESM/readme
    models/cice/readme
    models/clm/readme
