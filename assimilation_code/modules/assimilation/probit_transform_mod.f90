@@ -129,6 +129,7 @@ p%distribution_type = distribution_type
 
 if(p%distribution_type == NORMAL_DISTRIBUTION) then 
    ! No transformation is done for a normal
+   probit_ens = state_ens
 elseif(p%distribution_type == LOG_NORMAL_DISTRIBUTION) then 
    call to_probit_log_normal(ens_size, state_ens, probit_ens)
 elseif(p%distribution_type == UNIFORM_DISTRIBUTION) then 
@@ -479,6 +480,7 @@ if(.not. module_initialized) call initialize_probit_transform
 ! Transform back to the original space
 if(p%distribution_type == NORMAL_DISTRIBUTION) then
    ! No need to do any transformation for a normal
+   state_ens = probit_ens
 elseif(p%distribution_type == LOG_NORMAL_DISTRIBUTION) then
    call from_probit_log_normal(ens_size, probit_ens, state_ens)
 elseif(p%distribution_type == UNIFORM_DISTRIBUTION) then
