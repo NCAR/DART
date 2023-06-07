@@ -34,7 +34,7 @@
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
-   single_file_out              = .true.,
+   single_file_out              = .false.,
    output_state_files           = ''
    output_state_file_list       = 'filter_output_list.txt'
    output_interval              = 1,
