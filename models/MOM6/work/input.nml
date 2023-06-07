@@ -22,13 +22,13 @@
 
    trace_execution            = .false.,
    output_timestamps          = .false.,
-   print_every_nth_obs        = -1,
+   print_every_nth_obs        = 1000,
    output_forward_op_errors   = .false.,
    silence                    = .false.,
    /
 
 &filter_nml
-   single_file_in               = .true.,
+   single_file_in               = .false.,
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
 
@@ -44,7 +44,7 @@
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
 
-   ens_size                     = 20,
+   ens_size                     = 3,
    num_groups                   = 1,
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
@@ -56,8 +56,8 @@
    obs_sequence_in_name         = "obs_seq.out",
    obs_sequence_out_name        = "obs_seq.final",
    num_output_obs_members       = 20,
-   init_time_days               = 0,
-   init_time_seconds            = 0,
+   init_time_days               = -1,
+   init_time_seconds            = -1,
    first_obs_days               = -1,
    first_obs_seconds            = -1,
    last_obs_days                = -1,
@@ -75,7 +75,7 @@
    inf_sd_lower_bound          = 0.0,                     0.0,
    inf_sd_max_change           = 1.05,                    1.05,
 
-   trace_execution              = .false.,
+   trace_execution              = .true.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
    silence                      = .false.,
@@ -121,7 +121,19 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'SALINITY'
+   assimilate_these_obs_types = 'FLOAT_SALINITY'
+                                'FLOAT_TEMPERATURE'              
+                                'GLIDER_SALINITY'                
+                                'GLIDER_TEMPERATURE'             
+                                'MOORING_SALINITY'               
+                                'MOORING_TEMPERATURE'            
+                                'BOTTLE_SALINITY'                
+                                'BOTTLE_TEMPERATURE'             
+                                'CTD_SALINITY'                   
+                                'CTD_TEMPERATURE'                
+                                'XBT_TEMPERATURE'                
+                                'APB_SALINITY'                   
+                                'APB_TEMPERATURE'  
    evaluate_these_obs_types   = ''
    /
 
@@ -129,7 +141,7 @@
    assimilation_period_days     = 1
    assimilation_period_seconds  = 1
    template_file = 'mom6.r.nc', 
-   static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc',
+   static_file = 'mom6.static.nc',
    ocean_geometry = 'ocean_geometry.nc',
    model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'UPDATE',
                                   'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',

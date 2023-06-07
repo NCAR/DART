@@ -12,7 +12,8 @@ module model_mod
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
 
-use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type
+use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type,  &
+                             print_time
 
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
@@ -326,6 +327,11 @@ FIND_LAYER: do i = 2, nz
    enddo
 
 enddo FIND_LAYER
+
+if (any(found == .false.)) then
+   istatus(:) = 202
+   return
+endif
 
 if (on_basin_edge(four_ilons, four_ilats, ens_size, depth_at_x)) then
    istatus(:) = QUAD_ON_BASIN_EDGE
@@ -947,7 +953,11 @@ call nc_get_variable(ncid, 'Time', days, routine)
 
 call nc_close_file(ncid, routine)
 
-read_model_time = set_time(0,int(days))
+! MOM6 counts days from year 1
+! DART counts days from 1601 
+
+!read_model_time = set_time(0,int(days))
+read_model_time = set_time(0,int(151246)) !HK hack for CESM testing
 
 end function read_model_time
 
