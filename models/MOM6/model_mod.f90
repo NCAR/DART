@@ -329,7 +329,7 @@ FIND_LAYER: do i = 2, nz
 enddo FIND_LAYER
 
 if (any(found == .false.)) then
-   istatus(:) = 202
+   istatus(:) = OBS_TOO_DEEP
    return
 endif
 
