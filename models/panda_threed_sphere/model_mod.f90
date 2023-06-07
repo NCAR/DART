@@ -16,7 +16,8 @@ use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
                              loc_get_close_state => get_close_state, &
-                             set_location, set_location_missing
+                             set_location, set_location_missing, &
+                             VERTISUNDEF
 
 use    utilities_mod, only : register_module, error_handler, &
                              E_ERR, E_MSG, &
@@ -31,7 +32,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
 
 use        obs_kind_mod,  only : QTY_STATE_VARIABLE
 
-use state_structure_mod,  only : add_domain, get_domain_size
+use state_structure_mod,  only : add_domain, get_domain_size, &
+                                 get_model_variable_indices
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -74,15 +76,13 @@ integer :: dom_id ! used to access the state structure
 type(time_type) :: assimilation_time_step 
 
 !------------------------------------------------------------------
-! defined model parameters
+! model grid information
 
 integer               :: nlon, nlat, ntemps
 ! Grid info, indexing into each contains the lon/lat at grid point.
 real(r8), allocatable :: lons(:), lats(:)
 ! Plain temperature values - index corresponds to lats, lons index 
 real(r8), allocatable :: temperatures(:)
-! Model's grid, indexed with (lon,lat)
-real(r8), allocatable :: model_grid(:,:)
 
 integer(i8) :: model_size ! length of state vector
 integer     :: nfields    ! number of variables in state
@@ -223,12 +223,16 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
+integer  :: lon_index, lat_index, lev_index
+
 real(r8) :: lat, lon
 
 if ( .not. module_initialized ) call static_init_model
 
+call get_model_variable_indices(index_in, lon_index, lat_index, lev_index, kind_index=qty)
+
 ! should be set to the actual location using set_location()
-location = set_location_missing()
+location = set_location(lons(lon_index), lats(lat_index), MISSING_R8, VERTISUNDEF)
 
 ! should be set to the physical quantity, e.g. QTY_TEMPERATURE
 if (present(qty)) qty = QTY_STATE_VARIABLE
@@ -354,26 +358,6 @@ allocate(temperatures(ntemps))
 call nc_get_variable(ncid, 'lon', lons, routine)
 call nc_get_variable(ncid, 'lat', lats, routine)
 call nc_get_variable(ncid, 'temp', temperatures, routine)
-
-! Allocate and load model_grid with 0 index
-allocate(model_grid(0:nlat, 0:nlon))
-
-! Load all grid points with default value.
-do i = 1, nlat
-   do j = 1, nlon
-      model_grid(i, j) = MISSING_R8 
-   end do
-end do
-
-! Check temperature(:) bounds with nlats & nlons
-if (ntemps > nlat .or. ntemps > nlon) then
-   write(string1, *) 'num. of temperatures greater than defined dims'
-   call error_handler(E_ERR, routine, string1) 
-endif
-
-do i = 1, ntemps
-   model_grid(lats(i), lons(i)) = temperatures(i)
-end do
 
 call nc_close_file(ncid)
 
