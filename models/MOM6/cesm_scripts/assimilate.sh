@@ -10,7 +10,8 @@ caseroot=$1
 
 dart_build_dir=/glade/scratch/hkershaw/DART/MOM6/DART/models/MOM6/work
 comp_name=OCN
-obs_dir=/glade/scratch/hkershaw/DART/MOM6/Observations/201502
+obs_dir=/glade/scratch/hkershaw/DART/MOM6/Observations/
+ntasks=512  # should pull this from CIME
 
 echo "DART dart_build_dir" $dart_build_dir
 
@@ -18,6 +19,9 @@ cd $caseroot
 get_cesm_info
 
 cd $rundir
+
+get_model_time_from_filename
+
 get_obs_sequence
 
 setup_dart
@@ -56,6 +60,34 @@ case=$(./xmlquery CASE --value)
 
 
 #-------------------------------
+# get the model time from the filename
+#  used to get the correct obs_seq.out
+#-------------------------------
+get_model_time_from_filename
+
+pointer=rpointer.ocn_0001
+filename=$(head -n 1 $pointer)
+
+date1=${filename##*.r.}  # cut off case.mom6.r.
+date="${date1%._*}"      # cut off _ensemble member.nc
+
+array=(${date//-/ })
+
+year=${array[0]}
+month=${array[1]}
+day=${array[2]}
+seconds=${array[3]}
+
+echo "model time is $year $month $day $seconds"
+
+YYYYMMDD=$(printf %04d%02d%02d ${year} ${month} ${day})
+YYYYMM=$(printf %04d%02d ${year} ${month})
+obs_filename=obs_seq.0Z.${YYYYMMDD}
+obs_file=${obs_dir}/${YYYYMM}/${obs_filename}
+
+
+
+#-------------------------------
 # Setup dart executables
 #  This step should go in case.setup/case.build
 #-------------------------------
@@ -75,7 +107,8 @@ setup_dart_input_nml() {
 echo "setting up input.nml for DART" 
 
 # list restart files
-ls $case.mom6.r* > filter_input_list.txt
+
+cat rpointer.ocn_???? > filter_input_list.txt
 cp filter_input_list.txt  filter_output_list.txt
 
 # What about other input.nml in the rundir?
@@ -99,9 +132,9 @@ ln -sf $(ls $case.mom6.static* | head -1) mom6.static.nc
 #-------------------------------
 get_obs_sequence() {
 
-echo "grab obs_seq.out"
+echo "grab obs_seq.out" $obs_file
 
-ln -sf $obs_dir/obs_seq.0Z.20150206 obs_seq.out
+ln -sf $obs_file obs_seq.out
 }
 
 #-------------------------------
@@ -111,7 +144,7 @@ run_filter() {
 
 echo "running filter"
 if [ "$assimilate" = TRUE ]; then
-   mpirun -n 512 "$exeroot"/filter
+   mpirun -n $ntasks "$exeroot"/filter
 fi
 
 }
@@ -121,7 +154,7 @@ fi
 #-------------------------------
 cleanup() {
 
-echo "stashing restart files for the next cycle"
+echo "TODO: stashing restart files for the next cycle"
 
 }
 
