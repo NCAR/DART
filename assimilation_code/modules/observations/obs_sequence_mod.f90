@@ -2505,7 +2505,7 @@ if(write_binary_obs_sequence) then
    write(file_id) obs%prev_time, obs%next_time, obs%cov_group
    call write_obs_def(file_id, obs%def, obs%key, 'unformatted')
 else
-   write(file_id, "(I8,A,I8,A,I8)") obs%prev_time, ",", obs%next_time, ",", obs%cov_group
+   write(file_id, "(3I8)") obs%prev_time, obs%next_time, obs%cov_group
    call write_obs_def(file_id, obs%def, obs%key)
 endif
 
