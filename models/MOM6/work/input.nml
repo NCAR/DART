@@ -44,7 +44,7 @@
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
 
-   ens_size                     = 3,
+   ens_size                     = 20,
    num_groups                   = 1,
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
@@ -75,7 +75,7 @@
    inf_sd_lower_bound          = 0.0,                     0.0,
    inf_sd_max_change           = 1.05,                    1.05,
 
-   trace_execution              = .true.,
+   trace_execution              = .false.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
    silence                      = .false.,
