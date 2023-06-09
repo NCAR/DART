@@ -63,7 +63,7 @@ case=$(./xmlquery CASE --value)
 # get the model time from the filename
 #  used to get the correct obs_seq.out
 #-------------------------------
-get_model_time_from_filename
+get_model_time_from_filename() {
 
 pointer=rpointer.ocn_0001
 filename=$(head -n 1 $pointer)
@@ -85,6 +85,7 @@ YYYYMM=$(printf %04d%02d ${year} ${month})
 obs_filename=obs_seq.0Z.${YYYYMMDD}
 obs_file=${obs_dir}/${YYYYMM}/${obs_filename}
 
+}
 
 
 #-------------------------------
@@ -94,7 +95,7 @@ obs_file=${obs_dir}/${YYYYMM}/${obs_filename}
 setup_dart() {
 
 # Should these checks just be for CONTINUE_RUN?
-[ ! -f "$exeroot"/filter ] || cp $dart_build_dir/filter  $exeroot
+[ ! -f "$exeroot"/filter ] && cp $dart_build_dir/filter  $exeroot
 
 
 }
