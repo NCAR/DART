@@ -1,0 +1,14 @@
+&panda_nml
+  PT_module_init 			= .true.
+  PT_neg_assim_time_step 	= .false.
+
+  PT_invalid_template_file	= .false.
+
+  PT_add_domain_mismatch	= .false.
+  PT_add_domain_loop		= .false.
+  PT_add_domain_nloops		= 1
+    
+  PT_invalid_model_size 	= .false.
+  PT_model_size				= -1
+  
+  /
