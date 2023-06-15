@@ -5,9 +5,11 @@
 
 module model_mod
 
-! This is a template showing the interfaces required for a model to be compliant
-! with the DART data assimilation infrastructure. Do not change the arguments
-! for the public routines.
+! This is a template model for adding and running pathological tests for
+! threed_sphere location modules. Modify the provided panda_restart input file, 
+! panda_nml test configuration file, and this model_mod inferface as needed. 
+! Examples of pathological test cases are provided in static_init_model.
+! Do not change the arguments for the public routines.
 
 use        types_mod, only : r8, i8, MISSING_R8
 
@@ -69,6 +71,24 @@ public :: get_model_size,         &
           shortest_time_between_assimilations, &
           write_model_time
 
+!------------------------------------------------------------------
+! default pathological test namelist options
+
+logical :: PT_module_init           = .false.
+logical :: PT_neg_assim_time_step   = .false.
+logical :: PT_invalid_template_file = .false.
+logical :: PT_add_domain_mismatch   = .false.
+logical :: PT_add_domain_loop       = .false.
+integer :: PT_add_domain_nloops     = 1
+logical :: PT_invalid_model_size    = .false.
+integer :: PT_model_size            = -1
+
+namelist /panda_nml/ PT_module_init, PT_neg_assim_time_step, &
+                     PT_invalid_template_file, &
+                     PT_add_domain_mismatch, PT_add_domain_loop, &
+                     PT_add_domain_nloops, PT_invalid_model_size, &
+                     PT_model_size
+
 
 character(len=256), parameter :: source   = "model_mod.f90"
 logical :: module_initialized = .false.
@@ -105,12 +125,20 @@ contains
 ! might define information about the model size or model timestep.
 ! In models that require pre-computed static data, for instance
 ! spherical harmonic weights, these would also be computed here.
+!
+! This routine has been modified with example pathological tests.
+! Tests are triggered from the panda_threed.nml file.
 
 subroutine static_init_model()
 
-integer  :: iunit, io
+integer  :: iunit, io, i
 
-module_initialized = .true.
+! Find and read pathological test options namelist
+call find_namelist_in_file("panda_threed.nml", "panda_nml", iunit)
+read(iunit, nml = panda_nml, iostat = io)
+call check_namelist_read(iunit, io, "panda_nml")
+
+module_initialized = PT_module_init
 
 ! Print module information to log file and stdout.
 call register_module(source)
@@ -128,16 +156,29 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 ! window.  All observations within +/- 1/2 this interval from the current
 ! model time will be assimilated. If this is not settable at runtime 
 ! feel free to hardcode it and remove from the namelist.
+
+if (PT_neg_assim_time_step) then
+    time_step_seconds = -1
+    time_step_days    = -1
+end if
+
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
-! 311
+if (PT_invalid_template_file) template_file = 'invalid_file'
+
 ! Define which variables are in the model state
-dom_id = add_domain(template_file, num_vars=1, &
+do i = 1, PT_add_domain_nloops
+    dom_id = add_domain(template_file, num_vars=1, &
                               var_names=(/'temp'/), &
                               kind_list=(/0/))
+end do
 
-model_size = get_domain_size(dom_id)
+if (PT_invalid_model_size) then
+    model_size = PT_model_size
+else
+    model_size = get_domain_size(dom_id)
+end if
 
 call read_panda_definitions(template_file)
 
@@ -171,7 +212,6 @@ end function get_model_size
 
 subroutine model_interpolate(state_handle, ens_size, location, qty, expected_obs, istatus)
 
-
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
@@ -200,6 +240,8 @@ end subroutine model_interpolate
 ! Returns the smallest increment in time that the model is capable 
 ! of advancing the state in a given implementation, or the shortest
 ! time you want the model to advance between assimilations.
+
+! - return blank time_type?
 
 function shortest_time_between_assimilations()
 
@@ -231,7 +273,6 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, lev_index, kind_index=qty)
 
-! should be set to the actual location using set_location()
 location = set_location(lons(lon_index), lats(lat_index), MISSING_R8, VERTISUNDEF)
 
 ! should be set to the physical quantity, e.g. QTY_TEMPERATURE
@@ -242,6 +283,7 @@ end subroutine get_state_meta_data
 
 !------------------------------------------------------------------
 ! Any model specific distance calcualtion can be done here
+
 subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
                          num_close, close_ind, dist, ens_handle)
 
