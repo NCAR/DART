@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 1 2023 :: Smoother removal. Tag v10.7.3**
+
+- Dead smoother code removed.
+- Documentation fix for quality control.
+- Cray Compiler Environment mkmf.template 
+
 **May 10 2023 :: Doc-fix. Tag v10.7.2**
  
 - conf.py changes for latest readthedocs. Fixes search and flyout menu.
