@@ -946,7 +946,10 @@ type(time_type) :: read_model_time
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
 real(r8) :: days
+type(time_type) :: mom6_time
+integer :: dart_base_date_in_days, dart_days
 
+dart_base_date_in_days = 584388 ! 1601 1 1 0 0
 ncid = nc_open_file_readonly(filename, routine)
 
 call nc_get_variable(ncid, 'Time', days, routine)
@@ -955,9 +958,9 @@ call nc_close_file(ncid, routine)
 
 ! MOM6 counts days from year 1
 ! DART counts days from 1601 
+dart_days = int(days) - dart_base_date_in_days
 
-!read_model_time = set_time(0,int(days))
-read_model_time = set_time(0,int(151246)) !HK hack for CESM testing
+read_model_time = set_time(0,dart_days)
 
 end function read_model_time
 
