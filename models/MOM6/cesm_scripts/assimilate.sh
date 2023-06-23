@@ -95,8 +95,10 @@ obs_file=${obs_dir}/${YYYYMM}/${obs_filename}
 setup_dart() {
 
 # Should these checks just be for CONTINUE_RUN?
-[ ! -f "$exeroot"/filter ] && cp $dart_build_dir/filter  $exeroot
-
+if [ ! -f "$exeroot"/filter ]
+then
+  cp $dart_build_dir/filter  $exeroot
+fi
 
 }
 
