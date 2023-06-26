@@ -176,7 +176,9 @@ netcdf=(\
 "output_postinf_mean.nc"     "output_postinf_sd.nc")
 
 for file in ${netcdf[@]}; do
-  mv "$file" "$case"."$file".${YYYYMMDD}
+  if [ -f $file ]; then
+     mv "$file" "$case"."$file".${YYYYMMDD}
+  fi
 done
 
 }
