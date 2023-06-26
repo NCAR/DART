@@ -32,6 +32,8 @@ setup_template_files
 
 run_filter
 
+date_stamp_output
+
 cleanup
 
 }
@@ -94,7 +96,7 @@ obs_file=${obs_dir}/${YYYYMM}/${obs_filename}
 #-------------------------------
 setup_dart() {
 
-# Should these checks just be for CONTINUE_RUN?
+# Should this check just be for CONTINUE_RUN?
 if [ ! -f "$exeroot"/filter ]
 then
   cp $dart_build_dir/filter  $exeroot
@@ -114,7 +116,8 @@ echo "setting up input.nml for DART"
 cat rpointer.ocn_???? > filter_input_list.txt
 cp filter_input_list.txt  filter_output_list.txt
 
-# What about other input.nml in the rundir?
+# Store MOM6 nml so it is not overwritten by dart input.nml
+mv input.nml input.nml.mom6
 cp $dart_build_dir/input.nml $rundir/input.nml
 }
 
@@ -153,11 +156,40 @@ fi
 }
 
 #-------------------------------
+# append timestamp to filter output
+#-------------------------------
+date_stamp_output() {
+
+mv obs_seq.final "$case".obs_seq.final.${YYYYMMDD}
+mv dart_log.out "$case".dart_log.out.${YYYYMMDD}
+
+# possible dart output files:
+netcdf=(\
+"preassim_mean.nc"           "preassim_sd.nc" \
+"preassim_priorinf_mean.nc"  "preassim_priorinf_sd.nc" \
+"preassim_postinf_mean.nc"   "preassim_postinf_sd.nc" \
+"postassim_mean.nc"          "postassim_sd.nc" \
+"postassim_priorinf_mean.nc" "postassim_priorinf_sd.nc" \
+"postassim_postinf_mean.nc"  "postassim_postinf_sd.nc" \
+"output_mean.nc"             "output_sd.nc" \
+"output_priorinf_mean.nc"    "output_priorinf_sd.nc" \
+"output_postinf_mean.nc"     "output_postinf_sd.nc")
+
+for file in ${netcdf[@]}; do
+  mv "$file" "$case"."$file".${YYYYMMDD}
+done
+
+}
+
+
+#-------------------------------
 # cleanup
+# restore mom6 input.nml for next cycle
 #-------------------------------
 cleanup() {
 
 echo "TODO: stashing restart files for the next cycle"
+mv input.nml.mom6 input.nml
 
 }
 
