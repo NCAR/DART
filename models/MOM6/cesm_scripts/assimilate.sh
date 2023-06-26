@@ -82,8 +82,8 @@ seconds=${array[3]}
 
 echo "model time is $year $month $day $seconds"
 
-YYYYMMDD=$(printf %04d%02d%02d ${year} ${month} ${day})
-YYYYMM=$(printf %04d%02d ${year} ${month})
+YYYYMMDD=${year}${month}${day}
+YYYYMM=${year}${month}
 obs_filename=obs_seq.0Z.${YYYYMMDD}
 obs_file=${obs_dir}/${YYYYMM}/${obs_filename}
 
