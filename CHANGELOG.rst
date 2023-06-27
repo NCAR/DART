@@ -22,7 +22,7 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**June 27 2023 :: CAM-DART observation preprocessor**
+**June 27 2023 :: CAM-DART observation preprocessor. Tag v10.8.3**
 
 - Tool to remove observations above a given CAM level from an obs sequence file
 - bug-fixes:
