@@ -251,7 +251,7 @@ call nc_check(nf90_put_att(ncid, latVarID, 'cartesian_axis', 'Y'),   &
 call nc_check(nf90_def_var(ncid=ncid, name='vert', xtype=nf90_double, &
         dimids=nvertDimID, varid=vertVarID), routine, &
                  'vert def_var '//trim(ncfilename))
-call nc_check(nf90_put_att(ncid, vertVarID, 'range', interp_test_vertcoord), &
+call nc_check(nf90_put_att(ncid, vertVarID, 'range', interp_test_vertrange), &
            routine, 'put_att vertrange '//trim(ncfilename))
 call nc_check(nf90_put_att(ncid, vertVarID, 'cartesian_axis', 'Z'),   &
            routine, 'vert cartesian_axis '//trim(ncfilename))
