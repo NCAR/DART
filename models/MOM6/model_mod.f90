@@ -327,6 +327,11 @@ FIND_LAYER: do i = 2, nz
 
 enddo FIND_LAYER
 
+if (any(found == .false.)) then
+   istatus(:) = OBS_TOO_DEEP
+   return
+endif
+
 if (on_basin_edge(four_ilons, four_ilats, ens_size, depth_at_x)) then
    istatus(:) = QUAD_ON_BASIN_EDGE
    return
