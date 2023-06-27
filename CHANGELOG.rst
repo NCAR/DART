@@ -22,6 +22,16 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 27 2023 :: CAM-DART observation preprocessor**
+
+- Tool to remove observations above a given CAM level from an obs sequence file
+- bug-fixes:
+
+  -  MOM6 added check for too deep observations
+  -  test_interpolate_range write format corrected
+  -  removed unused code from mpas_atm directory
+- doc: removed outdated references to prep_buf.html
+
 **June 1 2023 :: Smoother removal. Tag v10.7.3**
 
 - Dead smoother code removed.
