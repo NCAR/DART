@@ -55,6 +55,31 @@ of the DART routines run at each assimilation time.
 Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer
 --------------------------------------------------------------------------
 
+There are required SourceMods that enable POP to recompute the barotropic velocity
+after assimilation to prevent the barotropic solver from crashing.
+
+SourceMods may be handled in one of two ways. If you have your own git clone of
+the repository, you may simply commit the changes to your git repo and
+set use_SourceMods = FALSE in the DART_param.csh script. 
+
+If you prefer to keep your changes separate
+(as was required under svn), please put your SourceMods in a directory with
+the following structure (which is intended to be similar to the structure
+in the CLM distribution):
+
+.. code-block::
+
+${SourceModDir}/src.pop
+               |-- forcing.F90
+               |-- initial.F90
+               |-- overflows.F90
+               `-- restart.F90
+
+The necessary files for CESM2_1 can be found
+at http://www.image.ucar.edu/pub/DART/CESM.
+Untar these into your HOME directory - they will create a
+directory with the appropriate SourceMods structure.
+
 If you're using NCAR's supercomputer, you can run the setup scripts after
 making minor edits to set details that are specific to your project. The setup
 scripts create a CESM case in which POP is configured using a 1° horizontal
@@ -83,6 +108,7 @@ Summary
 To use DART and CESM POP2 on NCAR's supercomputer, you will need to complete
 the following steps.
 
+#. Install the required SourceMods for POP
 #. Configure the scripts for your specific experiment by editing
    ``DART_params.csh``.
 #. Stage your initial ensemble using ``copy_POP_JRA_restarts.py``.
