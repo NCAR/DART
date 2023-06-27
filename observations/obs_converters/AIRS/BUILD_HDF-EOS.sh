@@ -19,7 +19,7 @@ echo
 echo  'setenv("NCAR_INC_HDFEOS5",    "/glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5/include")'
 echo  'setenv("NCAR_LDFLAGS_HDFEOS5","/glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5/lib")'
 echo  'setenv("NCAR_LIBS_HDFEOS5","-Wl,-Bstatic -lGctp -lhe5_hdfeos -lsz -lz -Wl,-Bdynamic")'
-echo  'which we then use in mkmf_convert_airs_L2'
+echo  'which we then use in when compiling convert_airs_L2'
 echo 
 echo  'If you need to build the HDF-EOS and/or the HDF-EOS5 libraries, you may '
 echo  'try to follow the steps outlined in this script. They will need to be '

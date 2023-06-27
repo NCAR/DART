@@ -246,6 +246,7 @@ References
    :caption: Run DART with your model
 
    guide/advice-for-new-collaborators
+   guide/instructions-for-porting-a-new-model-to-dart
    DART build system <guide/quickbuild.rst>
    guide/assimilation-complex-model
    guide/mpi_intro
@@ -371,6 +372,7 @@ References
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme
+   models/cam-fv/cam_dart_obs_preprocessor
    models/CESM/readme
    models/cice/readme
    models/clm/readme
@@ -394,6 +396,7 @@ References
    models/lorenz_96_tracer_advection/readme
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
+   models/MOM6/readme
    models/mpas_atm/readme
    models/mpas_atm/mpas_dart_obs_preprocess
    models/mpas_ocn/readme
@@ -486,7 +489,6 @@ References
    assimilation_code/modules/observations/obs_kind_mod
    assimilation_code/modules/observations/DEFAULT_obs_kind_mod
    assimilation_code/modules/observations/obs_sequence_mod
-   assimilation_code/modules/assimilation/smoother_mod
    assimilation_code/modules/assimilation/assim_readme
    assimilation_code/modules/assimilation/assim_tools_mod
    assimilation_code/modules/assimilation/cov_cutoff_mod

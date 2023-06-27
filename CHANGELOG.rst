@@ -22,6 +22,81 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 27 2023 :: CAM-DART observation preprocessor. Tag v10.8.0**
+
+- Tool to remove observations above a given CAM level from an obs sequence file
+- bug-fixes:
+
+  -  MOM6 added check for too deep observations
+  -  test_interpolate_range write format corrected
+  -  removed unused code from mpas_atm directory
+- doc: removed outdated references to prep_buf.html
+
+**June 1 2023 :: Smoother removal. Tag v10.7.3**
+
+- Dead smoother code removed.
+- Documentation fix for quality control.
+- Cray Compiler Environment mkmf.template 
+
+**May 10 2023 :: Doc-fix. Tag v10.7.2**
+ 
+- conf.py changes for latest readthedocs. Fixes search and flyout menu.
+
+**May 8 2023 :: CLM-DART: CAM reanalysis site-level bias correction tool. Tag v10.7.1**
+
+- Initial version of bias correction for CAM reanalysis forcing for
+  site-level assimilation with CLM-DART.
+- mkmf change: make clean removes .mod files.
+- bug-fix: readthedocs yaml file for online documentation build.
+
+**April 21 2023 :: MOM6. Tag v10.7.0**  
+
+- CESM-MOM6 interface added to DART.
+
+**April 11 2023 :: Bug-fixes for WRF Tutorial and developer test quickbuilds. Tag v10.6.5**
+
+- Fixes the developer_tests quickbuild.sh files
+- Fixes the broken link to WRF DART tutorial input.nml.template
+
+**February 22 2023 :: Bug-fix release. Tag v10.6.4**
+
+- Removes unused and uninitialized argument to adaptive_inflate_init.
+- Fixes HDF5_utilities_mod i4 i8 mismatch.
+- Removes HDF tutorial code which is not part of DART.
+- Fixes misleading comment in filter_mod.f90
+
+**February 9 2023 :: Bug-fix for vertical conversion QC 8. Tag v10.6.3**
+
+- QC 8 values now correctly recorded. Previously this info was lost if 
+  the posterior FO was skipped.  
+- Fixes QC overwrite for forward operators when running distributed_state = .false.
+- WRF tutorial bug fix for setting paramfile.
+
+**January 27 2023 :: Documentation update for porting new models. Tag v10.6.2**
+
+- Improved 'porting new models to DART' documentation.
+- Removed outdated references to previous build system.
+
+**December 21 2022 :: Documentation update for CLM and the DART Tutorial. Tag v10.6.1**
+
+- Improved instructions for the CLM-DART tutorial.  
+- Fixes link within the documentation to a section describing how to
+  configure MATLAB's path to use DART MATLAB functions.
+
+**December 12 2022 :: Automated testing of pull requests. Tag v10.6.0**
+
+- GitHub actions for pull requests which checkout, compile and run a 
+  given model.  
+  Current workflow: lorenz_96 (mpi) and lorenz_63 (no mpi)
+
+*contributed by Anderson Chauphan*
+
+**December 2 2022 :: Bug-fix cam-fv. Tag v10.5.6**
+
+- Fix for assimilate.csh purge of restart files when the interval for restart
+  saves is given as a string rather than an integer.
+- Fix for setting ptype when no_normalization_of_scale_heights = .false.
+
 **November 8 2022 :: Improved clean_nml and CLM quickbuild.sh. Tag v10.5.5**
 
 - clean_nml tool for comparing input.nmls given optional arguments to 

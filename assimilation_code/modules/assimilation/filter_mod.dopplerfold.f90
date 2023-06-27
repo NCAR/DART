@@ -65,12 +65,6 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 
-use smoother_mod,          only : smoother_read_restart, advance_smoother,             &
-                                  smoother_gen_copy_meta_data, smoother_write_restart, &
-                                  init_smoother, do_smoothing, smoother_mean_spread,   &
-                                  smoother_assim, smoother_ss_diagnostics,             &
-                                  smoother_end, set_smoother_trace
-
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
 use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state, &
@@ -189,7 +183,7 @@ logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
-logical  :: distributed_state = .true. ! Default to do state complete forward operators.
+logical  :: distributed_state = .true. ! Default to do distributed forward operators.
 
 ! IO options
 !>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
@@ -358,9 +352,8 @@ type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
 type(file_info_type) :: file_info_all
 
-logical :: ds, all_gone, allow_missing
+logical :: all_gone, allow_missing
 
-! real(r8), allocatable   :: temp_ens(:) ! for smoother
 real(r8), allocatable   :: prior_qc_copy(:)
 
 call filter_initialize_modules_used() ! static_init_model called in here
@@ -392,8 +385,6 @@ endif
 write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
 call error_handler(E_MSG,'filter_main:', msgstring, source)
 
-! See if smoothing is turned on
-ds = do_smoothing()
 
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
@@ -417,7 +408,6 @@ call adaptive_inflate_init(prior_inflate, &
                            inf_upper_bound(PRIOR_INF), &
                            inf_sd_lower_bound(PRIOR_INF), &
                            inf_sd_max_change(PRIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, &
@@ -432,7 +422,6 @@ call adaptive_inflate_init(post_inflate, &
                            inf_upper_bound(POSTERIOR_INF), &
                            inf_sd_lower_bound(POSTERIOR_INF), &
                            inf_sd_max_change(POSTERIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Posterior')
 
 if (do_output()) then
@@ -553,13 +542,6 @@ endif
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
-! Moved this. Not doing anything with it, but when we do it should be before the read
-! Read in or initialize smoother restarts as needed
-if(ds) then
-   call init_smoother(state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-   call smoother_read_restart(state_ens_handle, ens_size, model_size, time1, init_time_days)
-endif
-
 call     trace_message('Before reading in ensemble restart files')
 call timestamp_message('Before reading in ensemble restart files')
 
@@ -614,11 +596,6 @@ call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index, &
       compute_posterior)
-
-if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-
-!>@todo fudge
-if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -737,15 +714,6 @@ AdvanceTime : do
 
    ! if model state data not at required time, advance model
    if (curr_ens_time /= next_ens_time) then
-      ! Advance the lagged distribution, if needed.
-      ! Must be done before the model runs and updates the data.
-      if(ds) then
-         call     trace_message('Before advancing smoother')
-         call timestamp_message('Before advancing smoother')
-         call advance_smoother(state_ens_handle)
-         call timestamp_message('After  advancing smoother')
-         call     trace_message('After  advancing smoother')
-      endif
 
       ! we are going to advance the model - make sure we're doing single file output
       if (.not. has_cycling) then
@@ -930,24 +898,6 @@ AdvanceTime : do
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
 
-   ! Do the update for the smoother lagged fields, too.
-   ! Would be more efficient to do these all at once inside filter_assim
-   ! in the future
-   if(ds) then
-      write(msgstring, '(A,I8,A)') 'Ready to reassimilate up to', size(keys), ' observations in the smoother'
-      call trace_message(msgstring, 'filter:', -1)
-
-      call     trace_message('Before smoother assimilation')
-      call timestamp_message('Before smoother assimilation')
-      call smoother_assim(obs_fwd_op_ens_handle, seq, keys, ens_size, num_groups, &
-         obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, &
-         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-         OBS_VAR_END)
-      call timestamp_message('After  smoother assimilation')
-      call     trace_message('After  smoother assimilation')
-   endif
-
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -983,11 +933,6 @@ AdvanceTime : do
          else
             call write_state(state_ens_handle, file_info_postassim)
          endif
-
-         !>@todo What to do here?
-         !call smoother_ss_diagnostics(model_size, num_output_state_members, &
-         !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-         ! POST_INF_COPY, POST_INF_SD_COPY)
 
          call timestamp_message('After  postassim state space output')
          call     trace_message('After  postassim state space output')
@@ -1036,12 +981,6 @@ AdvanceTime : do
    
       call timestamp_message('After  computing posterior observation values')
       call     trace_message('After  computing posterior observation values')
-   
-      if(ds) then
-         call trace_message('Before computing smoother means/spread')
-         call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-         call trace_message('After  computing smoother means/spread')
-      endif
    
       call trace_message('Before posterior obs space diagnostics')
    
@@ -1106,11 +1045,6 @@ AdvanceTime : do
             call write_state(state_ens_handle, file_info_analysis)
          endif
 
-         !>@todo What to do here?
-         !call smoother_ss_diagnostics(model_size, num_output_state_members, &
-         !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-         ! POST_INF_COPY, POST_INF_SD_COPY)
-
          call timestamp_message('After  analysis state space output')
          call     trace_message('After  analysis state space output')
 
@@ -1155,9 +1089,6 @@ if (get_stage_to_write('output')) then
       if (.not. write_all_stages_at_end) &
          call write_state(state_ens_handle, file_info_output)
    
-      !>@todo need to fix smoother
-      !if(ds) call smoother_write_restart(1, ens_size)
-
       call timestamp_message('After  state space output')
       call     trace_message('After  state space output')
 
@@ -1216,12 +1147,6 @@ call end_ensemble_manager(state_ens_handle)
 ! Free up the obs sequence
 call destroy_obs_sequence(seq)
 call trace_message('After  ensemble and obs memory cleanup')
-
-if(ds) then
-   call trace_message('Before smoother memory cleanup')
-   call smoother_end()
-   call trace_message('After  smoother memory cleanup')
-endif
 
 call     trace_message('Filter done')
 call timestamp_message('Filter done')
@@ -1877,7 +1802,6 @@ if (silence) then
    timestamp_level = -1
 endif
 
-call set_smoother_trace(trace_level, timestamp_level)
 call set_obs_model_trace(trace_level, timestamp_level)
 call set_assim_tools_trace(trace_level, timestamp_level)
 

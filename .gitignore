@@ -89,6 +89,7 @@ gitm_blocks_to_netcdf
 gitm_to_netcdf
 netcdf_to_gitm_blocks
 streamflow_obs_diag
+cam_dart_obs_preprocessor
 
 # Observation converter exectutables
 convert_aviso

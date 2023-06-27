@@ -16,7 +16,7 @@ provides code for creating, setting/getting, copying location information (coord
 specific coordinate information. It also contains distance routines needed by the DART algorithms.
 
 Each of the different location_mod.f90 files provides the same set of interfaces and defines a 'module location_mod', so
-by selecting the proper version in your path_names_xxx file you can compile your model code with the main DART routines.
+by selecting the proper version in quickbuild.sh you can compile your model code with the main DART routines.
 
 -  :doc:`./threed_sphere/location_mod`:
    The most frequently used version for real-world 3d models. It uses latitude and longitude for horizontal coordinates,

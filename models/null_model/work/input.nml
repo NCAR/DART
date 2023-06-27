@@ -180,8 +180,6 @@
    verbose               = .false.
    /
 
-&smoother_nml
-   /
 
 &state_vector_io_nml
    /
