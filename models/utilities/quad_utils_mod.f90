@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! DART $Id$
 
 !> Interpolation routines for longitude/latitude grids which are logically 
 !> rectangular and either fully regular, partially regular or fully deformed.
@@ -43,6 +42,31 @@
 !>        regular grid box, returning when one of the target grid quads encloses 
 !>        the given location.
 !>
+!> Examples of expected usage:
+!> 
+!> interpolation of a single field value at a given location:
+!>
+!> init_quad_interp()
+!> set_quad_coords()
+!> do i=1, num_locations_to_interpolate
+!>     quad_lon_lat_locate()
+!>     quad_lon_lat_evaluate()
+!> enddo
+!> finalize_quad_interp()
+!> 
+!> interpolation of multiple field values at the same location:
+!> 
+!> init_quad_interp()
+!> set_quad_coords()
+!> do i=1, num_locations_to_interpolate
+!>     quad_lon_lat_locate()
+!>     do j=1, nfields_at_this_loc
+!>         quad_lon_lat_evaluate()
+!>     enddo
+!>  enddo
+!>  finalize_quad_interp()
+!> 
+!> 
 
 module quad_utils_mod
 
@@ -2617,9 +2641,3 @@ end subroutine quad_lon_lat_evaluate_ir_array
 
 end module quad_utils_mod
 
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
