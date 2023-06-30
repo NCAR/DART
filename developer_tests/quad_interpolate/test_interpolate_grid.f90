@@ -5,12 +5,20 @@
 
 program test_interpolate_grid
 
-use regular_grid_mod, only: create_grid0, create_field
+use regular_grid_mod, only : create_grid0, create_field
 use types_mod, only : r8
 use functions_mod, only : sine
+use target_grid_mod, only : create_gridT, target_grid
 
 implicit none
 
+! irregular grids have lon(:,:) lat(:,:)
+! so the split between reg and irreg has to
+! be somewhere.  do we need separate progs
+! for interp to reg and interp to irreg ?
+
+
+! maybe grid0 should also be a grid type?
 
 real(r8), allocatable :: lon(:)
 real(r8), allocatable :: lat(:)
