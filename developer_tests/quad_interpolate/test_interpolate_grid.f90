@@ -8,7 +8,8 @@ program test_interpolate_grid
 use regular_grid_mod, only : create_grid0, create_field
 use types_mod, only : r8
 use functions_mod, only : sine
-use target_grid_mod, only : create_gridT, target_grid
+use grid_mod, only : grid_type
+use target_grid_mod, only : create_gridT
 
 implicit none
 
@@ -28,7 +29,8 @@ real(r8) :: resolution
 integer  :: n
 integer  :: i,j ! loop variables
 
-resolution = 1
+resolution = 30
+!resolution = 1
 call create_grid0(resolution, lon, lat, n)
 allocate(field(n,n))
 call create_field(n, lon, lat, field, sine)

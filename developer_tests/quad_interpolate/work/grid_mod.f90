@@ -6,7 +6,7 @@
 
 module grid_mod
 
-use types_mod, only : r8, metadatalen
+use types_mod, only : r8, metadatalength
 
 implicit none
 
@@ -20,17 +20,18 @@ type grid_type
  integer :: type = GRID_UNKNOWN
  integer :: nlon = 0
  integer :: nlat = 0
- character(len=metadatalen) :: lon_name = 'unknown'
- character(len=metadatalen) :: lat_name = 'unknown
+ character(len=metadatalength) :: lon_name = 'unknown'
+ character(len=metadatalength) :: lat_name = 'unknown'
  real(r8), allocatable :: rrlon(:),   rrlat(:)
  real(r8), allocatable :: irlon(:,:), irlat(:,:)
 end type
 
 public :: grid_type, set_grid_type_regular, &
-          set_grid_type_irregular, set_grid_sizes, &
-          set_grid_names, is_grid_type_regular, &
-          is_grid_type_irregular, set_grid_sizes, &
-          get_grid_sizes, set_grid_names, get_grid_names, &
+          is_grid_type_regular, &
+          set_grid_type_irregular, &
+          is_grid_type_irregular, &
+          set_grid_sizes, get_grid_sizes, &
+          set_grid_names, get_grid_names, &
           allocate_grid_space
 
 contains
@@ -38,7 +39,7 @@ contains
 !---------------------------------------------
 subroutine set_grid_type_regular(grid)
 
-type(grid_type), inten(inout) :: grid
+type(grid_type), intent(inout) :: grid
 
 grid%type = GRID_REGULAR
 
@@ -47,7 +48,7 @@ end subroutine
 !---------------------------------------------
 subroutine set_grid_type_irregular(grid)
 
-type(grid_type), inten(inout) :: grid
+type(grid_type), intent(inout) :: grid
 
 grid%type = GRID_IRREGULAR
 
@@ -68,7 +69,7 @@ end function
 function is_grid_type_irregular(grid)
 
 type(grid_type), intent(in) :: grid
-logical :: is_grid_type_regular
+logical :: is_grid_type_irregular
 
 is_grid_type_irregular = (grid%type == GRID_IRREGULAR)
 
@@ -97,7 +98,7 @@ nlat = grid%nlat
 end subroutine
 
 !---------------------------------------------
-subroutine set_grid_names(grid, lonname, latname)
+subroutine set_grid_names(grid, lon_name, lat_name)
 
 type(grid_type), intent(inout) :: grid
 character(len=*), intent(in) :: lon_name, lat_name
@@ -108,7 +109,7 @@ grid%lat_name = lat_name
 end subroutine
 
 !---------------------------------------------
-subroutine get_grid_names(grid, lonname, latname)
+subroutine get_grid_names(grid, lon_name, lat_name)
 
 type(grid_type), intent(inout) :: grid
 character(len=*), intent(out) :: lon_name, lat_name
@@ -127,8 +128,8 @@ type(grid_type), intent(inout) :: grid
 
 ! add checks here
 
-if (type == GRID_REGULAR) then
-   allocate(grid%rrlon(grid%nlon)), grid%rrlat(grid%nlat))
+if (grid%type == GRID_REGULAR) then
+   allocate(grid%rrlon(grid%nlon), grid%rrlat(grid%nlat))
 else
    allocate(grid%irlon(grid%nlon, grid%nlat))
    allocate(grid%irlat(grid%nlon, grid%nlat))

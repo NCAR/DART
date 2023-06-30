@@ -6,12 +6,13 @@
 
 module target_grid_mod
 
-use types_mod, only : r8
+use types_mod, only : r8, metadatalength
 
 ! fix this to use only once we know what
 ! routines are needed
 use grid_mod
 use read_grid_mod
+use netcdf_utilities_mod
 
 implicit none
 
@@ -47,6 +48,8 @@ end subroutine create_gridT
 subroutine set_lon_lat_names(gridT)
 
 type(grid_type), intent(inout) :: gridT
+
+character(len=metadatalength) :: lon_name, lat_name
 
 lon_name = "geolon"
 lat_name = "geolat"
