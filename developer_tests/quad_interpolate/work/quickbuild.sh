@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash 
 
 main() {
 
@@ -7,9 +7,9 @@ source "$DART"/build_templates/buildfunctions.sh
 
 MODEL="none"
 EXTRA="$DART"/models/template/threed_model_mod.f90
-TEST=quad_interpolate
-dev_test=1
 LOCATION="threed_sphere"
+dev_test=1
+TEST=quad_interpolate
 
 programs=(
 )
