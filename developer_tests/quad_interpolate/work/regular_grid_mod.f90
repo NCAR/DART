@@ -5,6 +5,7 @@
 module regular_grid_mod
 
 use types_mod, only : r8
+use grid_mod
 
 implicit none
 
@@ -16,36 +17,46 @@ contains
 
 
 !---------------------------------------------
-subroutine create_grid0(resolution, lon, lat, n)
+subroutine create_grid0(resolution, grid)
 
 real(r8), intent(in) :: resolution ! decimal degree 1, 0.1
-real(r8), allocatable, intent(out) :: lon(:)
-real(r8), allocatable, intent(out) :: lat(:)
-integer, intent(out) :: n
+type(grid_type), intent(inout) :: grid
 
-integer :: i
+
+integer :: i, n
 
 n = floor(360.d0 / resolution)
 
-allocate(lon(n), lat(n))
+call set_grid_type_regular(grid)
+call set_grid_sizes(grid, n, n)
+call set_grid_names(grid, "lon", "lat")
+call allocate_grid_space(grid)
 
-lon(1) = 0
+! make a cover routine for setting lon/lat arrays
+
+grid%rrlon(1) = 0.0_r8
 
 do i = 2, n
-   lon(i) = lon(i-1) + resolution
+   grid%rrlon(i) = grid%rrlon(i-1) + resolution
 enddo
 
-lat = lon
+n = floor(180.d0 / resolution) - 90.0
+
+grid%rrlat(1) = -90.0_r8
+
+do i = 2, n
+   grid%rrlat(i) = grid%rrlat(i-1) + resolution
+enddo
+
 
 end subroutine create_grid0
 
 
 !---------------------------------------------
-subroutine create_field(n, lon, lat, field, func)
+subroutine create_field(grid, field, func)
 
-real(r8), intent(in) :: lon(n)
-real(r8), intent(in) :: lat(n)
-real(r8), intent(out) :: field(n,n)
+type(grid_type), intent(inout) :: grid
+real(r8), intent(inout) :: field(:,:)
 
 interface 
    pure function func(x,y)
@@ -57,9 +68,11 @@ end interface
 
 integer :: i,j,n
 
+call get_grid_sizes(grid, i, j)
+
 do i = 1, n
    do j = 1, n
-      field(i,j) = func(lon(i), lat(j))
+      field(i,j) = func(grid%rrlon(i), grid%rrlat(j))
    enddo
 enddo
 

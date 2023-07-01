@@ -1,4 +1,21 @@
 
+&test_interpolate_grid_nml
+  is_regular = .false.
+  target_filename = 'ocean_geometry.nc'
+  lon_name = "geolon"
+  lat_name = "geolat"
+/
+
+!  is_regular = .true.
+!  target_filename = 'caminput.nc'
+!  lon_name = "lon"
+!  lat_name = "lat"
+!
+!  is_regular = .false.
+!  target_filename = 'ocean_geometry.nc'
+!  lon_name = "geolon"
+!  lat_name = "geolat"
+
 &state_vector_io_nml
   buffer_state_io         = .false.
   single_precision_output = .false.

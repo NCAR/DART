@@ -89,7 +89,7 @@ end subroutine
 !---------------------------------------------
 subroutine get_grid_sizes(grid, nlon, nlat)
 
-type(grid_type), intent(inout) :: grid
+type(grid_type), intent(in) :: grid
 integer, intent(out) :: nlon, nlat
 
 nlon = grid%nlon
@@ -111,7 +111,7 @@ end subroutine
 !---------------------------------------------
 subroutine get_grid_names(grid, lon_name, lat_name)
 
-type(grid_type), intent(inout) :: grid
+type(grid_type), intent(in) :: grid
 character(len=*), intent(out) :: lon_name, lat_name
 
 lon_name = grid%lon_name

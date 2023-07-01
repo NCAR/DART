@@ -6,11 +6,16 @@
 program test_interpolate_grid
 
 use regular_grid_mod, only : create_grid0, create_field
-use types_mod, only : r8
+use types_mod, only : r8, MISSING_R8, metadatalength
 use functions_mod, only : sine
 use grid_mod, only : grid_type, dump_grid
 use target_grid_mod, only : create_gridT
-use utilities_mod
+use utilities_mod, only : initialize_utilities, finalize_utilities, &
+                          array_dump, register_module, do_nml_file, do_nml_term, &
+                          nmlfileunit, find_namelist_in_file, &
+                          check_namelist_read
+
+
 
 implicit none
 
@@ -24,34 +29,85 @@ implicit none
 
 real(r8), allocatable :: lon(:)
 real(r8), allocatable :: lat(:)
-real(r8), allocatable :: field(:,:)
+real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:)
 
-real(r8) :: resolution
+real(r8) :: resolution = 30
 integer  :: n
 integer  :: i,j ! loop variables
 
+integer :: case = 1
+logical :: is_regular = .true.
+integer :: debug = 0
+
 character(len=256) :: target_filename
-type(grid_type) :: gridT
+character(len=metadatalength) :: lon_name, lat_name
+type(grid_type) :: grid0, gridT, grid1
+
+namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
+         case, debug, resolution, lon_name, lat_name
+
 
 call initialize_utilities("test_interpolate_grid")
+call read_namelist()
 
-resolution = 30
-!resolution = 1
-call create_grid0(resolution, lon, lat, n)
 
-target_filename = 'caminput.nc'
-!target_filename = 'ocean_geometry.nc'
-call create_gridT(target_filename, gridT)
+! make source grid and give it data
+
+call create_grid0(resolution, grid0)
+
+allocate(field0(n,n))
+call create_field(grid0, field0, sine)
+call array_dump(field0, 8)
+
+! (export FORT_FMT_RECL=10240 for easy print with ifort)
+
+
+! make target grid, no data
+
+call create_gridT(target_filename, lon_name, lat_name, is_regular, gridT)
 call dump_grid(gridT)
 
-allocate(field(n,n))
-call create_field(n, lon, lat, field, sine)
 
-! export FORT_FMT_RECL=10240 for easy print with ifort
-do i = 1, n
-  print*, (field(i,j), j = 1, n)
-enddo
+! call quad utils to move data from src to dst
+
+!call move_data(grid0, field0, gridT, fieldT)
+
+
+! create a copy of the src grid with no data
+
+allocate(field1(n,n))
+field1(:,:) = MISSING_R8
+
+! call quad utils to move data back from dst to src2
+! call move_data((gridT, fieldT, grid1, field1)
+
+
+! compare field0 and field1 and evaluate success or failure
+! call evaluate_results(grid0, field0, grid1, field1)
+
 
 call finalize_utilities()
+
+
+contains
+
+!------------------------------------------------------------------
+subroutine read_namelist()          
+                                 
+integer :: iunit, io
+
+! Read the namelist 
+call find_namelist_in_file("input.nml", "test_interpolate_grid_nml", iunit)
+read(iunit, nml = test_interpolate_grid_nml, iostat = io)
+call check_namelist_read(iunit, io, "test_interpolate_grid_nml")
+
+! Output the namelist values if requested
+if (do_nml_file()) write(nmlfileunit, nml=test_interpolate_grid_nml)
+if (do_nml_term()) write(     *     , nml=test_interpolate_grid_nml)
+
+end subroutine read_namelist
+
+
+
 
 end program test_interpolate_grid
