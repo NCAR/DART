@@ -51,8 +51,10 @@ type(grid_type), intent(inout) :: gridT
 
 character(len=metadatalength) :: lon_name, lat_name
 
-lon_name = "geolon"
-lat_name = "geolat"
+!lon_name = "geolon"
+!lat_name = "geolat"
+lon_name = "lon"
+lat_name = "lat"
 
 call set_grid_names(gridT, lon_name, lat_name)
 
@@ -63,6 +65,7 @@ subroutine set_grid_type(gridT)
 
 type(grid_type), intent(inout) :: gridT
 
+!call set_grid_type_irregular(gridT)
 call set_grid_type_regular(gridT)
 
 end subroutine set_grid_type

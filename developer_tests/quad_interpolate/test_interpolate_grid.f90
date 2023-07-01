@@ -8,8 +8,9 @@ program test_interpolate_grid
 use regular_grid_mod, only : create_grid0, create_field
 use types_mod, only : r8
 use functions_mod, only : sine
-use grid_mod, only : grid_type
+use grid_mod, only : grid_type, dump_grid
 use target_grid_mod, only : create_gridT
+use utilities_mod
 
 implicit none
 
@@ -29,9 +30,20 @@ real(r8) :: resolution
 integer  :: n
 integer  :: i,j ! loop variables
 
+character(len=256) :: target_filename
+type(grid_type) :: gridT
+
+call initialize_utilities("test_interpolate_grid")
+
 resolution = 30
 !resolution = 1
 call create_grid0(resolution, lon, lat, n)
+
+target_filename = 'caminput.nc'
+!target_filename = 'ocean_geometry.nc'
+call create_gridT(target_filename, gridT)
+call dump_grid(gridT)
+
 allocate(field(n,n))
 call create_field(n, lon, lat, field, sine)
 
@@ -39,5 +51,7 @@ call create_field(n, lon, lat, field, sine)
 do i = 1, n
   print*, (field(i,j), j = 1, n)
 enddo
+
+call finalize_utilities()
 
 end program test_interpolate_grid

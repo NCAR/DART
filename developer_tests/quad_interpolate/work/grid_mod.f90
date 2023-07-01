@@ -32,7 +32,7 @@ public :: grid_type, set_grid_type_regular, &
           is_grid_type_irregular, &
           set_grid_sizes, get_grid_sizes, &
           set_grid_names, get_grid_names, &
-          allocate_grid_space
+          allocate_grid_space, dump_grid
 
 contains
 
@@ -137,6 +137,22 @@ endif
 
 end subroutine
 
+!---------------------------------------------
+!---------------------------------------------
+subroutine dump_grid(grid)
+
+type(grid_type), intent(inout) :: grid
+
+print *, 'type = ', grid%type
+print *, 'nlon = ', grid%nlon
+print *, 'nlat = ', grid%nlat
+print *, 'lon name = ', trim(grid%lon_name)
+print *, 'lat name = ', trim(grid%lat_name)
+
+! real(r8), allocatable :: rrlon(:),   rrlat(:)
+! real(r8), allocatable :: irlon(:,:), irlat(:,:)
+
+end subroutine
 !---------------------------------------------
 
 end module grid_mod
