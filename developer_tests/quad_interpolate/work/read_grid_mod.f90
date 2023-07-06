@@ -62,8 +62,8 @@ call allocate_grid_space(gridT)
 
 ! add an interface to get data arrays in grid mod
 
-call read_1d_array(ncid, lon_name, gridT%rrlon)
-call read_1d_array(ncid, lat_name, gridT%rrlat)
+call read_1d_array(ncid, lon_name, gridT%irlon)
+call read_1d_array(ncid, lat_name, gridT%irlat)
 
 end subroutine read_reggrid
 
@@ -86,8 +86,8 @@ call allocate_grid_space(gridT)
 
 ! add an interface to get data arrays in grid mod
 
-call read_2d_array(ncid, lon_name, gridT%irlon)
-call read_2d_array(ncid, lat_name, gridT%irlat)
+call read_2d_array(ncid, lon_name, gridT%iilon)
+call read_2d_array(ncid, lat_name, gridT%iilat)
 
 end subroutine read_irreggrid
 

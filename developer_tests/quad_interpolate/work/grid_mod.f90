@@ -7,6 +7,7 @@
 module grid_mod
 
 use types_mod, only : r8, metadatalength
+use utilities_mod, only : array_dump
 
 implicit none
 
@@ -14,7 +15,11 @@ private
 
 integer, parameter :: GRID_UNKNOWN = 0
 integer, parameter :: GRID_REGULAR = 1
-integer, parameter :: GRID_IRREGULAR = 2
+integer, parameter :: GRID_PARTREGULAR = 2
+integer, parameter :: GRID_IRREGULAR = 3
+
+! this is just layering over the quad interp routines.
+! is it better to have 3 different grid structs?
 
 type grid_type
  integer :: type = GRID_UNKNOWN
@@ -22,8 +27,10 @@ type grid_type
  integer :: nlat = 0
  character(len=metadatalength) :: lon_name = 'unknown'
  character(len=metadatalength) :: lat_name = 'unknown'
- real(r8), allocatable :: rrlon(:),   rrlat(:)
- real(r8), allocatable :: irlon(:,:), irlat(:,:)
+ real(r8), allocatable :: rrlon_start, rrlon_del
+ real(r8), allocatable :: rrlat_start, rrlat_del
+ real(r8), allocatable :: irlon(:),   irlat(:)
+ real(r8), allocatable :: iilon(:,:), iilat(:,:)
 end type
 
 public :: grid_type, set_grid_type_regular, &
@@ -129,10 +136,12 @@ type(grid_type), intent(inout) :: grid
 ! add checks here
 
 if (grid%type == GRID_REGULAR) then
-   allocate(grid%rrlon(grid%nlon), grid%rrlat(grid%nlat))
+print *, 'allocating reg grid space, sizes = ', grid%nlon, grid%nlat
+   allocate(grid%irlon(grid%nlon), grid%irlat(grid%nlat))
 else
-   allocate(grid%irlon(grid%nlon, grid%nlat))
-   allocate(grid%irlat(grid%nlon, grid%nlat))
+print *, 'allocating irreg grid space, sizes = ', grid%nlon, grid%nlat
+   allocate(grid%iilon(grid%nlon, grid%nlat))
+   allocate(grid%iilat(grid%nlon, grid%nlat))
 endif
 
 end subroutine
@@ -149,8 +158,10 @@ print *, 'nlat = ', grid%nlat
 print *, 'lon name = ', trim(grid%lon_name)
 print *, 'lat name = ', trim(grid%lat_name)
 
-! real(r8), allocatable :: rrlon(:),   rrlat(:)
-! real(r8), allocatable :: irlon(:,:), irlat(:,:)
+if (allocated(grid%irlon)) call array_dump(grid%irlon, label="reg lon")
+if (allocated(grid%irlat)) call array_dump(grid%irlat, label="reg lat")
+if (allocated(grid%iilon)) call array_dump(grid%iilon, label="irreg lon")
+if (allocated(grid%iilat)) call array_dump(grid%iilat, label="irreg lat")
 
 end subroutine
 !---------------------------------------------

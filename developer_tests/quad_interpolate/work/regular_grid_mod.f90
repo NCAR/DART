@@ -17,15 +17,22 @@ contains
 
 
 !---------------------------------------------
-subroutine create_grid0(resolution, grid)
+subroutine create_grid0(resolution, grid, n)
 
 real(r8), intent(in) :: resolution ! decimal degree 1, 0.1
 type(grid_type), intent(inout) :: grid
+integer, intent(out) :: n
 
 
-integer :: i, n
+integer :: i
 
 n = floor(360.d0 / resolution)
+
+! ni = floor(360.d0 / resolution)
+! nj = floor(180.d0 / resolution) 
+
+print *, 'starting create grid, n = ', n
+print *, 'passed in resolution = ', resolution
 
 call set_grid_type_regular(grid)
 call set_grid_sizes(grid, n, n)
@@ -34,20 +41,20 @@ call allocate_grid_space(grid)
 
 ! make a cover routine for setting lon/lat arrays
 
-grid%rrlon(1) = 0.0_r8
+grid%irlon(1) = 0.0_r8
 
 do i = 2, n
-   grid%rrlon(i) = grid%rrlon(i-1) + resolution
+   grid%irlon(i) = grid%irlon(i-1) + resolution
 enddo
 
-n = floor(180.d0 / resolution) - 90.0
 
-grid%rrlat(1) = -90.0_r8
+grid%irlat(1) = -90.0_r8
 
 do i = 2, n
-   grid%rrlat(i) = grid%rrlat(i-1) + resolution
+   grid%irlat(i) = grid%irlat(i-1) + (resolution/2.0_r8)
 enddo
 
+print *, 'leaving create grid, n = ', n
 
 end subroutine create_grid0
 
@@ -66,13 +73,15 @@ interface
    end function
 end interface
 
-integer :: i,j,n
+integer :: i,j,ni,nj
 
-call get_grid_sizes(grid, i, j)
+call get_grid_sizes(grid, ni, nj)
+print *, 'got grid sizes of ', ni, nj
 
-do i = 1, n
-   do j = 1, n
-      field(i,j) = func(grid%rrlon(i), grid%rrlat(j))
+do i = 1, ni
+   do j = 1, nj
+print *, i, j, field(i, j),  grid%irlon(i), grid%irlat(j)
+      field(i,j) = func(grid%irlon(i), grid%irlat(j))
    enddo
 enddo
 

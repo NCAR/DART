@@ -7,7 +7,7 @@ program test_interpolate_grid
 
 use regular_grid_mod, only : create_grid0, create_field
 use types_mod, only : r8, MISSING_R8, metadatalength
-use functions_mod, only : sine
+use functions_mod, only : f_sine, f_sum
 use grid_mod, only : grid_type, dump_grid
 use target_grid_mod, only : create_gridT
 use utilities_mod, only : initialize_utilities, finalize_utilities, &
@@ -15,6 +15,7 @@ use utilities_mod, only : initialize_utilities, finalize_utilities, &
                           nmlfileunit, find_namelist_in_file, &
                           check_namelist_read
 
+use quad_interp_mod
 
 
 implicit none
@@ -53,11 +54,12 @@ call read_namelist()
 
 ! make source grid and give it data
 
-call create_grid0(resolution, grid0)
+call create_grid0(resolution, grid0, n)
 
+print *, 'allocating field ', n, ' by ', n
 allocate(field0(n,n))
-call create_field(grid0, field0, sine)
-call array_dump(field0, 8)
+call create_field(grid0, field0, f_sine)
+call array_dump(field0, 4)
 
 ! (export FORT_FMT_RECL=10240 for easy print with ifort)
 
@@ -66,11 +68,12 @@ call array_dump(field0, 8)
 
 call create_gridT(target_filename, lon_name, lat_name, is_regular, gridT)
 call dump_grid(gridT)
+allocate(fieldT(gridT%nlon, gridT%nlat))
 
 
 ! call quad utils to move data from src to dst
-
-!call move_data(grid0, field0, gridT, fieldT)
+call do_reg_interp(grid0, field0, gridT, fieldT)
+call array_dump(fieldT, 4)
 
 
 ! create a copy of the src grid with no data
@@ -79,7 +82,7 @@ allocate(field1(n,n))
 field1(:,:) = MISSING_R8
 
 ! call quad utils to move data back from dst to src2
-! call move_data((gridT, fieldT, grid1, field1)
+!call do_reg_interp(gridT, fieldT, grid1, field1)
 
 
 ! compare field0 and field1 and evaluate success or failure
