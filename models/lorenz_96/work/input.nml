@@ -226,8 +226,8 @@
   output_state_files    = 'mmc_output.nc'
   num_ens               = 1
   single_file           = .false.
-  test1thru             = 0
-  run_tests             = 1,2,3,4,5,6,7
+  test1thru             = 9
+  run_tests             = -1
   x_ind                 = 2
   loc_of_interest       = 0.3
   quantity_of_interest  = 'QTY_STATE_VARIABLE'

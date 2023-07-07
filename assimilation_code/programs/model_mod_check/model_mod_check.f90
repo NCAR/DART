@@ -18,7 +18,9 @@ use         utilities_mod, only : error_handler, E_MSG, E_ERR, &
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                   my_task_id, task_count
 
-use          location_mod, only : location_type, write_location
+use          location_mod, only : location_type, write_location, get_close_type, &
+                                  set_location, LocationDims, get_close_init, &
+                                  get_close_state, get_close_destroy
 
 use          obs_kind_mod, only : get_name_for_quantity
 
@@ -29,7 +31,8 @@ use       assim_model_mod, only : static_init_assim_model
 use      time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                                   get_calendar_type, NO_CALENDAR
 
-use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
+use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
+                                  get_my_num_vars, get_my_vars
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
@@ -92,7 +95,7 @@ character(len=*), parameter :: source = 'model_mod_check.f90'
 ! 
 !  nsc.
 
-integer, parameter :: MAX_TESTS = 9
+integer, parameter :: MAX_TESTS = 10
 
 ! this is max number of domains times number of ensemble members
 ! if you have more than one domain and your ensemble members are
@@ -112,7 +115,7 @@ character(len=256)            :: input_state_files(MAX_FILES)  = 'null'
 character(len=256)            :: output_state_files(MAX_FILES) = 'null'
 character(len=256)            :: all_metadata_file = 'metadata.txt'
 integer(i8)                   :: x_ind   = -1
-real(r8), dimension(3)        :: loc_of_interest = -1.0_r8
+real(r8), dimension(4)        :: loc_of_interest = -1.0_r8
 character(len=metadatalength) :: quantity_of_interest = 'NONE'
 character(len=metadatalength) :: interp_test_vertcoord = 'VERTISHEIGHT'
 logical                       :: verbose = .FALSE.
@@ -274,9 +277,9 @@ if (tests_to_run(2)) then
 
 endif
 
-if (tests_to_run(8)) then
+if (tests_to_run(10)) then
 
-   call print_test_message('TEST 8', &
+   call print_test_message('TEST 10', &
                            'Write restart file', starting=.true.)
 
    ! Set up the ensemble storage
@@ -287,7 +290,7 @@ if (tests_to_run(8)) then
 
    call do_write_test(ens_handle)
 
-   call print_test_message('TEST 8', ending=.true.)
+   call print_test_message('TEST 10', ending=.true.)
 
 endif
 
@@ -442,6 +445,33 @@ if (tests_to_run(7)) then
 
    call print_test_message('TEST 7', ending=.true.)
 
+endif
+
+
+
+!----------------------------------------------------------------------
+! Find the state indices closest to a location
+! The local index of the states is the correct return value.
+! With 1 task ... this is obvious.
+! With 2 (or more) tasks, the task has a subset of the states.
+!----------------------------------------------------------------------
+
+if (tests_to_run(8)) then
+
+   call print_test_message('TEST 8', &
+                           'Testing localization with get_close_state().', &
+                            starting=.true.)
+
+   ! this is usually the ens mean. use member 1 for now.
+   call create_mean_window(ens_handle, 1, .false.)  
+
+   location_of_interest = setup_location(loc_of_interest, interp_test_vertcoord)
+
+   call do_localization_test(location_of_interest, ens_handle)
+
+   call free_mean_window()
+
+   call print_test_message('TEST 8', ending=.true.)
 endif
 
 !----------------------------------------------------------------------
@@ -793,6 +823,69 @@ end subroutine do_write_test
 
 !------------------------------------------------------------------
 
+subroutine do_localization_test(location_of_interest, ens_handle)
+
+type(location_type), intent(in) :: location_of_interest
+type(ensemble_type), intent(in) :: ens_handle
+
+integer                          :: my_num_state, num_close_states
+integer                          :: base_obs_type
+integer(i8), allocatable         :: my_state_indx(:)
+integer, allocatable             :: my_state_kind(:), close_state_ind(:)
+type(location_type), allocatable :: my_state_loc(:)
+real(r8), allocatable            :: close_state_dist(:)
+type(get_close_type)             :: gc_state
+
+type(location_type)              :: base_obs_loc
+integer                          :: ivar
+
+! Get info on my number and indices for state
+my_num_state = get_my_num_vars(ens_handle)
+
+allocate(my_state_indx(my_num_state), &
+         my_state_loc(my_num_state),  &
+         my_state_kind(my_num_state), &
+         close_state_ind(my_num_state), &
+         close_state_dist(my_num_state) )
+
+! this is location dependent.
+base_obs_loc = location_of_interest
+! ????
+!base_obs_type = -1 * x_ind
+base_obs_type = 1
+
+call get_my_vars(ens_handle, my_state_indx)
+
+do ivar = 1, ens_handle%my_num_vars
+    call get_state_meta_data(my_state_indx(ivar), my_state_loc(ivar), my_state_kind(ivar))
+enddo
+
+call get_close_init(gc_state, my_num_state, 2.0_r8, my_state_loc)
+
+call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+         my_state_loc, my_state_kind, my_state_indx, &
+         num_close_states, close_state_ind, close_state_dist, ens_handle)
+
+write(string1,'("PE ",I3, A, I16)') my_task_id(), ' num_close_states is ',num_close_states
+call print_info_message(string1)
+
+write(string1,'("PE ",I3, A)') my_task_id(), ' close_state_ind  is '
+call print_info_message(string1)
+call array_i4_dump(close_state_ind, 10, num_close_states)
+
+write(string1,'("PE ",I3, A)') my_task_id(), ' close_state_dist is '
+call print_info_message(string1)
+call array_r8_dump(close_state_dist, 10, num_close_states)
+
+call get_close_destroy(gc_state)
+
+deallocate(my_state_indx, my_state_loc, my_state_kind, &
+           close_state_ind, close_state_dist) 
+
+end subroutine do_localization_test
+
+!------------------------------------------------------------------
+
 subroutine print_model_time(mtime)
 
 type(time_type), intent(in) :: mtime
@@ -939,6 +1032,112 @@ write(ostring, *)  ivalue
 ostring = adjustl(ostring)
 
 end subroutine left_just_i8
+
+!------------------------------------------------------------------
+! this needs to go in the location-dependent model_mod assist routines.
+function convert_vert_string_to_int(vertstring)
+ character(len=*), intent(in) :: vertstring
+ integer :: convert_vert_string_to_int
+
+! from 3d sphere.
+!integer, parameter :: VERTISUNDEF       = -2  ! has no specific vertical location (undefined)
+!integer, parameter :: VERTISSURFACE     = -1  ! surface value (value is surface elevation in m)
+!integer, parameter :: VERTISLEVEL       =  1  ! by level
+!integer, parameter :: VERTISPRESSURE    =  2  ! by pressure (in pascals)
+!integer, parameter :: VERTISHEIGHT      =  3  ! by height (in meters)
+!integer, parameter :: VERTISSCALEHEIGHT =  4  ! by scale height (unitless)
+
+select case  (vertstring)
+   case ("VERTISUNDEF") 
+      convert_vert_string_to_int = -2
+   case ("VERTISSURFACE")
+      convert_vert_string_to_int = -1
+   case ("VERTISLEVEL")
+      convert_vert_string_to_int =  1
+   case ("VERTISPRESSURE")
+      convert_vert_string_to_int =  2
+   case ("VERTISHEIGHT") 
+      convert_vert_string_to_int =  3
+   case ("VERTISSCALE_HEIGHT")
+      convert_vert_string_to_int =  4
+   case default
+      write(string1, *) 'unrecognized key for vertical type: ', vertstring
+      call error_handler(E_ERR, 'convert_vert_string_to_int', string1, source)
+end select
+
+end function convert_vert_string_to_int
+
+!------------------------------------------------------------------
+
+subroutine array_i4_dump(array, nper_line, max_items, funit, label)
+integer,          intent(in)           :: array(:)
+integer,          intent(in), optional :: nper_line
+integer,          intent(in), optional :: max_items
+integer,          intent(in), optional :: funit
+character(len=*), intent(in), optional :: label
+
+integer :: i, per_line, ounit, asize_i
+logical :: has_label
+
+! set defaults and override if arguments are present
+
+per_line = 8
+if (present(nper_line)) per_line = nper_line
+
+asize_i = size(array)
+if (present(max_items)) asize_i = min(asize_i, max_items)
+          
+ounit = 0
+if (present(funit)) ounit = funit
+
+has_label = .false.
+if (present(label)) has_label = .true.
+          
+! output section
+
+if (has_label) write(ounit, *) trim(label)
+
+do i=1, asize_i, per_line
+   write(ounit, *) i, ' : ', array(i:min(asize_i,i+per_line-1))
+enddo
+
+end subroutine array_i4_dump
+
+!------------------------------------------------------------------
+
+subroutine array_r8_dump(array, nper_line, max_items, funit, label)
+real(r8),         intent(in)           :: array(:)
+integer,          intent(in), optional :: nper_line
+integer,          intent(in), optional :: max_items
+integer,          intent(in), optional :: funit
+character(len=*), intent(in), optional :: label
+
+integer :: i, per_line, ounit, asize_i
+logical :: has_label
+
+! set defaults and override if arguments are present
+
+per_line = 4
+if (present(nper_line)) per_line = nper_line
+
+asize_i = size(array)
+if (present(max_items)) asize_i = min(asize_i, max_items)
+          
+ounit = 0
+if (present(funit)) ounit = funit
+
+has_label = .false.
+if (present(label)) has_label = .true.
+          
+! output section
+
+if (has_label) write(ounit, *) trim(label)
+
+do i=1, asize_i, per_line
+   write(ounit, *) i, ' : ', array(i:min(asize_i,i+per_line-1))
+enddo
+
+end subroutine array_r8_dump
 
 !------------------------------------------------------------------
 
