@@ -31,9 +31,9 @@ implicit none
 
 real(r8), allocatable :: lon(:)
 real(r8), allocatable :: lat(:)
-real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:)
+real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:), field2(:,:)
 
-real(r8) :: resolution = 5
+real(r8) :: resolution = 1
 integer  :: ni, nj
 integer  :: i,j ! loop variables
 
@@ -43,7 +43,7 @@ integer :: debug = 0
 
 character(len=256) :: target_filename
 character(len=metadatalength) :: lon_name, lat_name
-type(grid_type) :: grid0, gridT, grid1
+type(grid_type) :: grid0, gridT, grid1, grid2
 
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
          case, debug, resolution, lon_name, lat_name
@@ -67,28 +67,45 @@ call create_gridT(target_filename, lon_name, lat_name, is_regular, gridT)
 
 allocate(fieldT(gridT%nlon, gridT%nlat))
 
+! call quad utils to move data from src to dst
 
-!! call quad utils to move data from src to dst
 call do_reg_interp(grid0, field0, gridT, fieldT)
-
-! call dump_grid(gridT)
 call write_grid(gridT, fieldT, "fieldT.nc")
 
 
 ! create a copy of the src grid with no data
 
+call create_grid0(resolution, grid1, ni, nj)
+
 allocate(field1(ni,nj))
-!field1(:,:) = MISSING_R8
+field1(:,:) = MISSING_R8
 
 ! call quad utils to move data back from dst to src2
-!call do_reg_interp(gridT, fieldT, grid1, field1)
-!call write_grid(grid1, field1, "field1.nc")
+
+call do_reg_interp(gridT, fieldT, grid1, field1)
+call write_grid(grid1, field1, "field1.nc")
 
 
 ! compare field0 and field1 and evaluate success or failure
 ! call evaluate_results(grid0, field0, grid1, field1)
 
-deallocate(field0, fieldT, field1)
+! create a denser copy of the src grid with no data
+
+call create_grid0(resolution/2.0, grid2, ni, nj)
+
+allocate(field2(ni,nj))
+field2(:,:) = MISSING_R8
+
+! call quad utils to move data back from dst to src2
+
+call do_reg_interp(gridT, fieldT, grid2, field2)
+call write_grid(grid2, field2, "field2.nc")
+
+
+! compare field0 and field1 and evaluate success or failure
+! call evaluate_results(grid0, field0, grid1, field1)
+
+deallocate(field0, fieldT, field1, field2)
 
 call finalize_utilities()
 
