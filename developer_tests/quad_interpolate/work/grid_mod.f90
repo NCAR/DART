@@ -136,10 +136,8 @@ type(grid_type), intent(inout) :: grid
 ! add checks here
 
 if (grid%type == GRID_REGULAR) then
-print *, 'allocating reg grid space, sizes = ', grid%nlon, grid%nlat
    allocate(grid%irlon(grid%nlon), grid%irlat(grid%nlat))
 else
-print *, 'allocating irreg grid space, sizes = ', grid%nlon, grid%nlat
    allocate(grid%iilon(grid%nlon, grid%nlat))
    allocate(grid%iilat(grid%nlon, grid%nlat))
 endif

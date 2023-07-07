@@ -49,8 +49,8 @@ real(r8), intent(out) :: tofield(:,:)
 
 
 
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, to%nlon, to%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
-call set_quad_coords(h, to%irlon, to%irlat)
+call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, from%nlon, from%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
+call set_quad_coords(h, from%irlon, from%irlat)
 
 
 do j=1, to%nlat
