@@ -7,13 +7,14 @@ program test_interpolate_grid
 
 use regular_grid_mod, only : create_grid0, create_field
 use types_mod, only : r8, MISSING_R8, metadatalength
-use functions_mod, only : f_sine, f_sum
+use functions_mod, only : f_sine, f_sum, f_row, f_col
 use grid_mod, only : grid_type, dump_grid
 use target_grid_mod, only : create_gridT
 use utilities_mod, only : initialize_utilities, finalize_utilities, &
                           array_dump, register_module, do_nml_file, do_nml_term, &
                           nmlfileunit, find_namelist_in_file, &
                           check_namelist_read
+use write_grid_mod, only : write_grid
 
 use quad_interp_mod
 
@@ -32,8 +33,8 @@ real(r8), allocatable :: lon(:)
 real(r8), allocatable :: lat(:)
 real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:)
 
-real(r8) :: resolution = 30
-integer  :: n
+real(r8) :: resolution = 5
+integer  :: ni, nj
 integer  :: i,j ! loop variables
 
 integer :: case = 1
@@ -54,40 +55,40 @@ call read_namelist()
 
 ! make source grid and give it data
 
-call create_grid0(resolution, grid0, n)
+call create_grid0(resolution, grid0, ni, nj)
 
-print *, 'allocating field ', n, ' by ', n
-allocate(field0(n,n))
+allocate(field0(ni,nj))
 call create_field(grid0, field0, f_sine)
-call array_dump(field0, 4)
-
-! (export FORT_FMT_RECL=10240 for easy print with ifort)
-
+call write_grid(grid0, field0, "field0.nc")
 
 ! make target grid, no data
 
 call create_gridT(target_filename, lon_name, lat_name, is_regular, gridT)
-call dump_grid(gridT)
+
 allocate(fieldT(gridT%nlon, gridT%nlat))
 
 
-! call quad utils to move data from src to dst
+!! call quad utils to move data from src to dst
 call do_reg_interp(grid0, field0, gridT, fieldT)
-call array_dump(fieldT, 4)
+
+! call dump_grid(gridT)
+call write_grid(gridT, fieldT, "fieldT.nc")
 
 
 ! create a copy of the src grid with no data
 
-allocate(field1(n,n))
-field1(:,:) = MISSING_R8
+allocate(field1(ni,nj))
+!field1(:,:) = MISSING_R8
 
 ! call quad utils to move data back from dst to src2
 !call do_reg_interp(gridT, fieldT, grid1, field1)
+!call write_grid(grid1, field1, "field1.nc")
 
 
 ! compare field0 and field1 and evaluate success or failure
 ! call evaluate_results(grid0, field0, grid1, field1)
 
+deallocate(field0, fieldT, field1)
 
 call finalize_utilities()
 

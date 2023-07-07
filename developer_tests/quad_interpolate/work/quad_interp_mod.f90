@@ -47,16 +47,14 @@ real(r8), intent(in) :: fromfield(:,:)
 type(grid_type), intent(inout) :: to
 real(r8), intent(out) :: tofield(:,:)
 
-print *, 'in do_reg_interp'
 
 
 call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, to%nlon, to%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
 call set_quad_coords(h, to%irlon, to%irlat)
 
-print *, 'after init and set'
 
-do i=1, to%nlon
-   do j=1, to%nlat
+do j=1, to%nlat
+   do i=1, to%nlon
 
       call quad_lon_lat_locate(h, to%irlon(i), to%irlat(j), lon_indices, lat_indices, &
                                lon_fract, lat_fract, istatus)

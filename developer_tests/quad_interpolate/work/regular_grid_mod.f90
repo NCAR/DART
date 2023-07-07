@@ -17,25 +17,22 @@ contains
 
 
 !---------------------------------------------
-subroutine create_grid0(resolution, grid, n)
+subroutine create_grid0(resolution, grid, ni, nj)
 
 real(r8), intent(in) :: resolution ! decimal degree 1, 0.1
 type(grid_type), intent(inout) :: grid
-integer, intent(out) :: n
+integer, intent(out) :: ni, nj
 
 
-integer :: i
+integer :: i, j
 
-n = floor(360.d0 / resolution)
+! regular lat/lon grid goes from [0-360), [-90,90]
 
-! ni = floor(360.d0 / resolution)
-! nj = floor(180.d0 / resolution) 
-
-print *, 'starting create grid, n = ', n
-print *, 'passed in resolution = ', resolution
+ni = floor(360.d0 / resolution)
+nj = floor(180.d0 / resolution) 
 
 call set_grid_type_regular(grid)
-call set_grid_sizes(grid, n, n)
+call set_grid_sizes(grid, ni, nj)
 call set_grid_names(grid, "lon", "lat")
 call allocate_grid_space(grid)
 
@@ -43,18 +40,16 @@ call allocate_grid_space(grid)
 
 grid%irlon(1) = 0.0_r8
 
-do i = 2, n
+do i = 2, ni
    grid%irlon(i) = grid%irlon(i-1) + resolution
 enddo
 
 
 grid%irlat(1) = -90.0_r8
 
-do i = 2, n
-   grid%irlat(i) = grid%irlat(i-1) + (resolution/2.0_r8)
+do j = 2, nj
+   grid%irlat(j) = grid%irlat(j-1) + resolution
 enddo
-
-print *, 'leaving create grid, n = ', n
 
 end subroutine create_grid0
 
@@ -76,11 +71,9 @@ end interface
 integer :: i,j,ni,nj
 
 call get_grid_sizes(grid, ni, nj)
-print *, 'got grid sizes of ', ni, nj
 
-do i = 1, ni
-   do j = 1, nj
-print *, i, j, field(i, j),  grid%irlon(i), grid%irlat(j)
+do j = 1, nj
+   do i = 1, ni
       field(i,j) = func(grid%irlon(i), grid%irlat(j))
    enddo
 enddo
