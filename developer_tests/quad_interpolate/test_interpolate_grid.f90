@@ -7,7 +7,7 @@ program test_interpolate_grid
 
 use regular_grid_mod, only : create_grid0, create_field
 use types_mod, only : r8, MISSING_R8, metadatalength
-use functions_mod, only : f_sine, f_sum, f_row, f_col
+use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand
 use grid_mod, only : grid_type, dump_grid
 use target_grid_mod, only : create_gridT
 use utilities_mod, only : initialize_utilities, finalize_utilities, &
@@ -16,7 +16,7 @@ use utilities_mod, only : initialize_utilities, finalize_utilities, &
                           check_namelist_read
 use write_grid_mod, only : write_grid
 
-use quad_interp_mod
+use quad_interp_mod, only : do_interp
 
 
 implicit none
@@ -64,25 +64,24 @@ call write_grid(grid0, field0, "field0.nc")
 ! make target grid, no data
 
 call create_gridT(target_filename, lon_name, lat_name, is_regular, gridT)
-
 allocate(fieldT(gridT%nlon, gridT%nlat))
+
 
 ! call quad utils to move data from src to dst
 
-call do_reg_interp(grid0, field0, gridT, fieldT)
+call do_interp(grid0, field0, gridT, fieldT)
 call write_grid(gridT, fieldT, "fieldT.nc")
 
 
 ! create a copy of the src grid with no data
 
 call create_grid0(resolution, grid1, ni, nj)
-
 allocate(field1(ni,nj))
 field1(:,:) = MISSING_R8
 
 ! call quad utils to move data back from dst to src2
 
-call do_reg_interp(gridT, fieldT, grid1, field1)
+call do_interp(gridT, fieldT, grid1, field1)
 call write_grid(grid1, field1, "field1.nc")
 
 
@@ -92,13 +91,12 @@ call write_grid(grid1, field1, "field1.nc")
 ! create a denser copy of the src grid with no data
 
 call create_grid0(resolution/2.0, grid2, ni, nj)
-
 allocate(field2(ni,nj))
 field2(:,:) = MISSING_R8
 
 ! call quad utils to move data back from dst to src2
 
-call do_reg_interp(gridT, fieldT, grid2, field2)
+call do_interp(gridT, fieldT, grid2, field2)
 call write_grid(grid2, field2, "field2.nc")
 
 

@@ -60,7 +60,7 @@ real(r8) :: f_rand
 real(r8), intent(in) :: x,y
 
 
-f_rand = mod(x**y, 100.0)
+f_rand = mod(x*y, 100.0)
 
 end function
 

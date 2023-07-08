@@ -1,9 +1,9 @@
 
 &test_interpolate_grid_nml
-  is_regular = .true.
-  target_filename = 'caminput.nc'
-  lon_name = "lon"
-  lat_name = "lat"
+  is_regular = .false.
+  target_filename = 'pop_grid.nc'
+  lon_name = "TLON"
+  lat_name = "TLAT"
 /
 
 !  is_regular = .true.

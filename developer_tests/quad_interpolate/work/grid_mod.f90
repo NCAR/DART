@@ -146,20 +146,33 @@ end subroutine
 
 !---------------------------------------------
 !---------------------------------------------
-subroutine dump_grid(grid)
+subroutine dump_grid(grid, alldata, label)
 
-type(grid_type), intent(inout) :: grid
+type(grid_type), intent(in) :: grid
+logical, intent(in), optional :: alldata
+character(len=*), intent(in), optional :: label
 
-print *, 'type = ', grid%type
-print *, 'nlon = ', grid%nlon
-print *, 'nlat = ', grid%nlat
-print *, 'lon name = ', trim(grid%lon_name)
-print *, 'lat name = ', trim(grid%lat_name)
+if (present(label)) then
+   print *, 'dumping grid info for ', trim(label)
+endif
 
-if (allocated(grid%irlon)) call array_dump(grid%irlon, label="reg lon")
-if (allocated(grid%irlat)) call array_dump(grid%irlat, label="reg lat")
-if (allocated(grid%iilon)) call array_dump(grid%iilon, label="irreg lon")
-if (allocated(grid%iilat)) call array_dump(grid%iilat, label="irreg lat")
+print *, "type = ", grid%type
+print *, "nlon = ", grid%nlon
+print *, "nlat = ", grid%nlat
+print *, "lon name = ", trim(grid%lon_name)
+print *, "lat name = ", trim(grid%lat_name)
+
+if (allocated(grid%irlon)) print *, "reg lon", shape(grid%irlon)
+if (allocated(grid%irlat)) print *, "reg lat", shape(grid%irlat)
+if (allocated(grid%iilon)) print *, "irreg lon", shape(grid%iilon)
+if (allocated(grid%iilat)) print *, "irreg lat", shape(grid%iilat)
+
+if (present(alldata)) then
+   if (alldata .and. allocated(grid%irlon)) call array_dump(grid%irlon, label="reg lon")
+   if (alldata .and. allocated(grid%irlat)) call array_dump(grid%irlat, label="reg lat")
+   if (alldata .and. allocated(grid%iilon)) call array_dump(grid%iilon, label="irreg lon")
+   if (alldata .and. allocated(grid%iilat)) call array_dump(grid%iilat, label="irreg lat")
+endif
 
 end subroutine
 !---------------------------------------------

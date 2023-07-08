@@ -10,9 +10,10 @@ use types_mod, only : r8, metadatalength
 
 ! fix this to use only once we know what
 ! routines are needed
-use grid_mod
-use read_grid_mod
-use netcdf_utilities_mod
+use grid_mod, only : grid_type, set_grid_names, &
+                     set_grid_type_regular, set_grid_type_irregular
+use read_grid_mod, only : read_grid
+use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file
 
 implicit none
 
