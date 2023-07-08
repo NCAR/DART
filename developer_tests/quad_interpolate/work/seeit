@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# if any of the grids are irregular, the output netcdf file
+# will have a 'lon', 'lat' and 'data' array, all 2d, all indexed
+# by (i,j).  ncview cannot display data directly that isn't on
+# a regular grid.  but you can see what the lons and lats look
+# like, and the data.  (you have to select which one to look at
+# with the buttons on ncview.).
+
+# run the program
+./test_interpolate_grid
+
+# field 0 is the original regular grid field with
+# synthetic data on it
+ncview field0.nc &
+
+# field T is the target grid and controlled by
+# the input.nml - regular or not, and the data
+# file to read the grid from
+ncview fieldT.nc &
+
+# field 1 is a copy of the original field 0 grid
+# where the data is interpolated from grid T to it.
+ncview field1.nc &
+
+# field 2 is a denser regular grid (2x) and data
+# is interpolated from T to this one.
+ncview field2.nc &
+
+# this is the difference between 0 and 1 when
+# the data has gone to the T grid and back.
+ncdiff -O field0.nc field1.nc diff.nc
+ncview diff.nc &
+
+exit 0
+
