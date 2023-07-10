@@ -31,7 +31,7 @@ implicit none
 private
 
 
-public :: do_interp
+public :: do_interp, set_quad_grid_opts
 
 type(quad_interp_handle) :: h
 
@@ -46,10 +46,27 @@ real(r8) :: lon_fract, lat_fract
 integer  :: istatus
 real(r8) :: invals(4), outval
 
+logical :: grid_global = .true.
+logical :: grid_spans_lon_zero = .true.
+logical :: grid_pole_wrap = .true.
+
 contains
 
 !------------------------------------------------------------------
+subroutine set_quad_grid_opts(global, spans_lon_zero, pole_wrap)
 
+logical :: global
+logical :: spans_lon_zero
+logical :: pole_wrap
+logical :: grid_rotate
+
+grid_global = global
+grid_spans_lon_zero = spans_lon_zero
+grid_pole_wrap = pole_wrap
+
+end subroutine set_quad_grid_opts
+
+!------------------------------------------------------------------
 subroutine do_interp(from, fromfield, to, tofield)
 
 type(grid_type), intent(in) :: from
@@ -93,7 +110,8 @@ type(grid_type), intent(inout) :: to
 real(r8), intent(out) :: tofield(:,:)
 
 
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, from%nlon, from%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
+call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, from%nlon, from%nlat, &
+                      QUAD_LOCATED_CELL_CENTERS, grid_global, grid_spans_lon_zero, grid_pole_wrap, h)
 call set_quad_coords(h, from%irlon, from%irlat)
 
 do j=1, to%nlat
@@ -137,7 +155,8 @@ type(grid_type), intent(inout) :: to
 real(r8), intent(out) :: tofield(:,:)
 
 
-call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, from%nlon, from%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
+call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, from%nlon, from%nlat, &
+                      QUAD_LOCATED_CELL_CENTERS, grid_global, grid_spans_lon_zero, grid_pole_wrap, h)
 call set_quad_coords(h, from%irlon, from%irlat)
 
 
@@ -182,7 +201,8 @@ type(grid_type), intent(inout) :: to
 real(r8), intent(out) :: tofield(:,:)
 
 
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, from%nlon, from%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, from%nlon, from%nlat, &
+                      QUAD_LOCATED_CELL_CENTERS, grid_global, grid_spans_lon_zero, grid_pole_wrap, h)
 call set_quad_coords(h, from%iilon, from%iilat)
 
 
@@ -227,7 +247,8 @@ type(grid_type), intent(inout) :: to
 real(r8), intent(out) :: tofield(:,:)
 
 
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, from%nlon, from%nlat, QUAD_LOCATED_CELL_CENTERS, .false., .false., .false., h)
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, from%nlon, from%nlat, &
+                      QUAD_LOCATED_CELL_CENTERS, grid_global, grid_spans_lon_zero, grid_pole_wrap, h)
 call set_quad_coords(h, from%iilon, from%iilat)
 
 

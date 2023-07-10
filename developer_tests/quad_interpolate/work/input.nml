@@ -4,6 +4,10 @@
   target_filename = 'ocean_geometry.nc'
   lon_name = "geolon"
   lat_name = "geolat"
+
+  grid_global = .true.
+  grid_spans_lon_zero = .true.
+  grid_pole_wrap = .true.
 /
 
 !  is_regular = .true.
@@ -99,6 +103,7 @@
    / 
 
 &quad_interpolate_nml
+   do_rotate = .false.
    debug = 0
   /
 

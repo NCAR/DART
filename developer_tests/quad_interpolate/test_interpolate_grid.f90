@@ -16,7 +16,7 @@ use utilities_mod, only : initialize_utilities, finalize_utilities, &
                           check_namelist_read
 use write_grid_mod, only : write_grid
 
-use quad_interp_mod, only : do_interp
+use quad_interp_mod, only : do_interp, set_quad_grid_opts
 
 
 implicit none
@@ -41,16 +41,22 @@ integer :: case = 1
 logical :: is_regular = .true.
 integer :: debug = 0
 
+logical :: grid_global = .true.
+logical :: grid_spans_lon_zero = .true.
+logical :: grid_pole_wrap = .true.
+
 character(len=256) :: target_filename
 character(len=metadatalength) :: lon_name, lat_name
 type(grid_type) :: grid0, gridT, grid1, grid2
 
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
-         case, debug, resolution, lon_name, lat_name
+         case, debug, resolution, lon_name, lat_name, &
+         grid_global, grid_spans_lon_zero, grid_pole_wrap
 
 
 call initialize_utilities("test_interpolate_grid")
 call read_namelist()
+call set_quad_grid_opts(grid_global, grid_spans_lon_zero, grid_pole_wrap)
 
 
 ! make source grid and give it data
