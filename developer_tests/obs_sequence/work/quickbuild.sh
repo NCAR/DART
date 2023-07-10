@@ -11,13 +11,14 @@ export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
 MODEL="none"
-EXTRA="$DART"/models/template/oned_model_mod.f90
-LOCATION="oned"
+EXTRA="$DART"/models/template/threed_model_mod.f90
+LOCATION="threed_sphere"
 dev_test=1
 TEST="obs_sequence"
 
 programs=(
-obs_rwtest
+obs_sequence_tool
+test_obsseq_rw
 )
 
 
