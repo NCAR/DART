@@ -5,13 +5,26 @@
 module regular_grid_mod
 
 use types_mod, only : r8
+use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand, f_long, f_lati
 use grid_mod
 
 implicit none
 
 private
 
-public :: create_grid0, create_field
+public :: create_grid0, create_field, set_data_function
+
+
+interface 
+   pure function func(x,y)
+      use types_mod, only: r8
+      real(r8), intent(in) :: x,y
+      real(r8) :: func
+   end function
+end interface
+ 
+procedure(func), pointer :: func_ptr => NULL()
+
 
 contains
 
@@ -55,18 +68,10 @@ end subroutine create_grid0
 
 
 !---------------------------------------------
-subroutine create_field(grid, field, func)
+subroutine create_field(grid, field)
 
 type(grid_type), intent(inout) :: grid
 real(r8), intent(inout) :: field(:,:)
-
-interface 
-   pure function func(x,y)
-      use types_mod, only: r8
-      real(r8), intent(in) :: x,y
-      real(r8) :: func
-   end function
-end interface
 
 integer :: i,j,ni,nj
 
@@ -74,10 +79,59 @@ call get_grid_sizes(grid, ni, nj)
 
 do j = 1, nj
    do i = 1, ni
-      field(i,j) = func(grid%irlon(i), grid%irlat(j))
+      field(i,j) = func_ptr(grid%irlon(i), grid%irlat(j))
+print *, "i, j, f =", i, j, field(i,j)
    enddo
 enddo
 
 end subroutine create_field
+
+!---------------------------------------------
+subroutine set_data_function(func_name)
+
+character(len=*), intent(in) :: func_name
+
+!interface 
+!   pure function the_func(x,y)
+!      use types_mod, only: r8
+!      real(r8), intent(in) :: x,y
+!      real(r8) :: func
+!   end function
+!end interface
+
+select case ( func_name )
+
+case ("sine")
+   func_ptr => f_sine
+
+case ("sum")
+   func_ptr => f_sum
+
+case ("row")
+   func_ptr => f_row
+
+case ("column")
+   func_ptr => f_col
+
+case ("random")
+   func_ptr => f_rand
+
+case ("longitude")
+   func_ptr => f_long
+
+case ("latitude")
+   func_ptr => f_lati
+
+case default 
+   print *, "data function must be one of:"
+   print *, "sine, sum, row, column, random, longitude, latitude"
+   call exit(-1)
+
+end select
+
+
+end subroutine set_data_function
+
+!---------------------------------------------
 
 end module regular_grid_mod

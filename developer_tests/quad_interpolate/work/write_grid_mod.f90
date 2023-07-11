@@ -159,7 +159,7 @@ subroutine get_range_1d(data_array, data_range)
 real(r8), intent(in) :: data_array(:)
 real(r8), intent(out) :: data_range(2)
 
-data_range(1) = minval(data_array)
+data_range(1) = minval(data_array, MASK = data_array /= MISSING_R8)
 data_range(2) = maxval(data_array)
 
 end subroutine get_range_1d
@@ -170,7 +170,7 @@ subroutine get_range_2d(data_array, data_range)
 real(r8), intent(in) :: data_array(:,:)
 real(r8), intent(out) :: data_range(2)
 
-data_range(1) = minval(data_array)
+data_range(1) = minval(data_array, MASK = data_array /= MISSING_R8)
 data_range(2) = maxval(data_array)
 
 end subroutine get_range_2d

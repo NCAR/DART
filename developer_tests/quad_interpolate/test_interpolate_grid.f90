@@ -5,7 +5,7 @@
 
 program test_interpolate_grid
 
-use regular_grid_mod, only : create_grid0, create_field
+use regular_grid_mod, only : create_grid0, create_field, set_data_function
 use types_mod, only : r8, MISSING_R8, metadatalength
 use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand
 use grid_mod, only : grid_type, dump_grid
@@ -45,18 +45,20 @@ logical :: grid_global = .true.
 logical :: grid_spans_lon_zero = .true.
 logical :: grid_pole_wrap = .true.
 
+character(len=256) :: data_function = "sine"
 character(len=256) :: target_filename
 character(len=metadatalength) :: lon_name, lat_name
 type(grid_type) :: grid0, gridT, grid1, grid2
 
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
          case, debug, resolution, lon_name, lat_name, &
-         grid_global, grid_spans_lon_zero, grid_pole_wrap
+         grid_global, grid_spans_lon_zero, grid_pole_wrap, data_function
 
 
 call initialize_utilities("test_interpolate_grid")
 call read_namelist()
 call set_quad_grid_opts(grid_global, grid_spans_lon_zero, grid_pole_wrap)
+call set_data_function(data_function)
 
 
 ! make source grid and give it data
@@ -64,7 +66,7 @@ call set_quad_grid_opts(grid_global, grid_spans_lon_zero, grid_pole_wrap)
 call create_grid0(resolution, grid0, ni, nj)
 
 allocate(field0(ni,nj))
-call create_field(grid0, field0, f_sine)
+call create_field(grid0, field0)
 call write_grid(grid0, field0, "field0.nc")
 
 ! make target grid, no data
@@ -133,6 +135,6 @@ if (do_nml_term()) write(     *     , nml=test_interpolate_grid_nml)
 end subroutine read_namelist
 
 
-
+!------------------------------------------------------------------
 
 end program test_interpolate_grid

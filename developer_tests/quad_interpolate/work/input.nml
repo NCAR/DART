@@ -1,9 +1,11 @@
 
 &test_interpolate_grid_nml
+  data_function = "latitude"
+
   is_regular = .false.
-  target_filename = 'ocean_geometry.nc'
-  lon_name = "geolon"
-  lat_name = "geolat"
+  target_filename = 'pop_grid.nc'
+  lon_name = "TLON"
+  lat_name = "TLAT"
 
   grid_global = .true.
   grid_spans_lon_zero = .true.
@@ -24,6 +26,12 @@
 !  target_filename = 'pop_grid.nc'
 !  lon_name = "TLON"
 !  lat_name = "TLAT"
+
+&quad_interpolate_nml
+   do_rotate = .false.
+   debug = 0
+  /
+
 
 
 &state_vector_io_nml
@@ -101,9 +109,4 @@
 &obs_def_gps_nml
    max_gpsro_obs = 15000000
    / 
-
-&quad_interpolate_nml
-   do_rotate = .false.
-   debug = 0
-  /
 

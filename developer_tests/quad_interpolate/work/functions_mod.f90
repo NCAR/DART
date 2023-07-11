@@ -9,7 +9,7 @@ use types_mod, only : r8, DEG2RAD
 implicit none
 
 private
-public :: f_sine, f_row, f_col, f_sum, f_rand
+public :: f_sine, f_row, f_col, f_sum, f_rand, f_long, f_lati
 
 contains
 
@@ -60,7 +60,35 @@ real(r8) :: f_rand
 real(r8), intent(in) :: x,y
 
 
-f_rand = mod(x*y, 100.0)
+f_rand = mod((x*y), 100.0) * x
+
+end function
+
+!--------------------------------------------------------------------
+pure function f_long(x,y)
+
+real(r8) :: f_long
+real(r8), intent(in) :: x,y
+
+if (x > 180.0) then
+   f_long = 360 - x
+else
+   f_long = x
+endif
+
+end function
+
+!--------------------------------------------------------------------
+pure function f_lati(x,y)
+
+real(r8) :: f_lati
+real(r8), intent(in) :: x,y
+
+if (y < 0) then
+   f_lati = -y
+else
+   f_lati = y
+endif
 
 end function
 
