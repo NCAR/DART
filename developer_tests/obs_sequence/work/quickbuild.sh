@@ -17,7 +17,6 @@ dev_test=1
 TEST="obs_sequence"
 
 programs=(
-obs_sequence_tool
 test_obsseq_rw
 )
 

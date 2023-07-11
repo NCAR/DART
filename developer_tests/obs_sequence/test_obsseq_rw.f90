@@ -23,7 +23,6 @@ use obs_sequence_mod,  only : obs_sequence_type, obs_type, write_obs_seq,   &
                               init_obs_sequence, static_init_obs_sequence,  &
                               validate_obs_seq_time
 
-
 implicit none
 
 type(obs_sequence_type) :: seq_in
