@@ -79,10 +79,10 @@ logical :: from_reg, to_reg
 from_reg = is_grid_type_regular(from)
 to_reg   = is_grid_type_regular(to)
  
-print *, 'in do_interp'
-print *, 'is_reg for from, to = ', from_reg, to_reg
-call dump_grid(from, label = 'from')
-call dump_grid(to, label = 'to')
+!print *, 'in do_interp'
+!print *, 'is_reg for from, to = ', from_reg, to_reg
+!call dump_grid(from, label = 'from')
+!call dump_grid(to, label = 'to')
 
 if (from_reg) then
    if (to_reg) then

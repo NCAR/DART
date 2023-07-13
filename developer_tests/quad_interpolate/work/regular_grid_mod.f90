@@ -5,7 +5,8 @@
 module regular_grid_mod
 
 use types_mod, only : r8
-use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand, f_long, f_lati
+use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand, f_long, f_lati, &
+                          f_oddrow, f_oddcol
 use grid_mod
 
 implicit none
@@ -80,7 +81,7 @@ call get_grid_sizes(grid, ni, nj)
 do j = 1, nj
    do i = 1, ni
       field(i,j) = func_ptr(grid%irlon(i), grid%irlat(j))
-print *, "i, j, f =", i, j, field(i,j)
+!print *, "i, j, f =", i, j, field(i,j)
    enddo
 enddo
 
@@ -122,9 +123,15 @@ case ("longitude")
 case ("latitude")
    func_ptr => f_lati
 
+case ("oddrow")
+   func_ptr => f_oddrow
+
+case ("oddcolumn")
+   func_ptr => f_oddcol
+
 case default 
    print *, "data function must be one of:"
-   print *, "sine, sum, row, column, random, longitude, latitude"
+   print *, "sine, sum, row, column, random, longitude, latitude, oddrow, oddcolumn"
    call exit(-1)
 
 end select

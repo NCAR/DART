@@ -82,9 +82,9 @@ call get_both_dim_sizes(ncid, lon_name, nlon, nlat)
 
 call set_grid_sizes(gridT, nlon, nlat)
 
-print *, 'read irreggrid:'
-print *, 'lon, lat: ', trim(lon_name), ', ', trim(lat_name)
-print *, 'nlon, nlat: ', nlon, nlat
+!print *, 'read irreggrid:'
+!print *, 'lon, lat: ', trim(lon_name), ', ', trim(lat_name)
+!print *, 'nlon, nlat: ', nlon, nlat
 
 call allocate_grid_space(gridT)
 
@@ -93,7 +93,7 @@ call allocate_grid_space(gridT)
 call read_2d_array(ncid, lon_name, gridT%iilon)
 call read_2d_array(ncid, lat_name, gridT%iilat)
 
-call dump_grid(gridT)
+! call dump_grid(gridT)
 
 end subroutine read_irreggrid
 

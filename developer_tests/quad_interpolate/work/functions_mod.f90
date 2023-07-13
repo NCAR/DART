@@ -9,7 +9,9 @@ use types_mod, only : r8, DEG2RAD
 implicit none
 
 private
-public :: f_sine, f_row, f_col, f_sum, f_rand, f_long, f_lati
+public :: f_sine, f_row, f_col, f_sum, f_rand, f_long, f_lati, &
+          f_oddrow, f_oddcol
+    
 
 contains
 
@@ -88,6 +90,34 @@ if (y < 0) then
    f_lati = -y
 else
    f_lati = y
+endif
+
+end function
+
+!--------------------------------------------------------------------
+pure function f_oddrow(x,y)
+
+real(r8) :: f_oddrow
+real(r8), intent(in) :: x,y
+
+if (mod(x,2.0) == 0) then
+   f_oddrow = x
+else
+   f_oddrow = x/2.0
+endif
+
+end function
+
+!--------------------------------------------------------------------
+pure function f_oddcol(x,y)
+
+real(r8) :: f_oddcol
+real(r8), intent(in) :: x,y
+
+if (mod(y,2.0) == 0) then
+   f_oddcol = y
+else
+   f_oddcol = y/2.0
 endif
 
 end function
