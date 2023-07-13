@@ -51,7 +51,7 @@ character(len=metadatalength) :: lon_name, lat_name
 type(grid_type) :: grid0, gridT, grid1, grid2
 
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
-         case, debug, resolution, lon_name, lat_name, &
+         case, debug, resolution, lon_name, lat_name, resolution, &
          grid_global, grid_spans_lon_zero, grid_pole_wrap, data_function
 
 

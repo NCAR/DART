@@ -1,6 +1,7 @@
 
 &test_interpolate_grid_nml
-  data_function = "latitude"
+  data_function = "longitude"
+  resolution = 1
 
   is_regular = .false.
   target_filename = 'pop_grid.nc'
