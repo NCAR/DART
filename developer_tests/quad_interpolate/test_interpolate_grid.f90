@@ -34,6 +34,16 @@ real(r8), allocatable :: lat(:)
 real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:), field2(:,:)
 
 real(r8) :: resolution = 1
+real(r8) :: grid_origin_longitude = 0.0_r8
+real(r8) :: grid_end_longitude = 360.0_r8  ! minus resolution if global
+real(r8) :: grid_origin_latitude = -90.0_r8
+real(r8) :: grid_end_latitude = 90.0_r8
+
+
+real(r8) :: grid_corners(2,2)   ! (min, max lon), (min, max lat)
+real(r8) :: globe_corners(2,2) 
+data globe_corners(:,1)  /   0.0_r8, 360.0_r8 /
+data globe_corners(:,2)  / -90.0_r8,  90.0_r8 /
 integer  :: ni, nj
 integer  :: i,j ! loop variables
 
@@ -52,7 +62,9 @@ type(grid_type) :: grid0, gridT, grid1, grid2
 
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
          case, debug, resolution, lon_name, lat_name, resolution, &
-         grid_global, grid_spans_lon_zero, grid_pole_wrap, data_function
+         grid_global, grid_spans_lon_zero, grid_pole_wrap, data_function, &
+         grid_origin_longitude, grid_origin_latitude, grid_end_longitude, &
+         grid_end_latitude
 
 
 call initialize_utilities("test_interpolate_grid")
@@ -63,7 +75,8 @@ call set_data_function(data_function)
 
 ! make source grid and give it data
 
-call create_grid0(resolution, grid0, ni, nj)
+call set_grid_corners(grid_origin_longitude, grid_end_longitude, grid_origin_latitude, grid_end_latitude)
+call create_grid0(resolution, grid_corners, grid0, ni, nj)
 
 allocate(field0(ni,nj))
 call create_field(grid0, field0)
@@ -83,7 +96,7 @@ call write_grid(gridT, fieldT, "fieldT.nc")
 
 ! create a copy of the src grid with no data
 
-call create_grid0(resolution, grid1, ni, nj)
+call create_grid0(resolution, grid_corners, grid1, ni, nj)
 allocate(field1(ni,nj))
 field1(:,:) = MISSING_R8
 
@@ -98,7 +111,7 @@ call write_grid(grid1, field1, "field1.nc")
 
 ! create a denser copy of the src grid with no data
 
-call create_grid0(resolution/2.0, grid2, ni, nj)
+call create_grid0(resolution/2.0, grid_corners, grid2, ni, nj)
 allocate(field2(ni,nj))
 field2(:,:) = MISSING_R8
 
@@ -136,5 +149,15 @@ end subroutine read_namelist
 
 
 !------------------------------------------------------------------
+subroutine set_grid_corners(xmin, xmax, ymin, ymax)
+
+real(r8), intent(in) :: xmin, xmax, ymin, ymax
+
+grid_corners(1,1) = xmin
+grid_corners(2,1) = xmax
+grid_corners(1,2) = ymin
+grid_corners(2,2) = ymax
+
+end subroutine set_grid_corners
 
 end program test_interpolate_grid

@@ -1,7 +1,11 @@
 
 &test_interpolate_grid_nml
-  data_function = "longitude"
+  data_function = "row"
   resolution = 1
+  grid_origin_longitude = 0.0
+  grid_end_longitude = 360.0
+  grid_origin_latitude = -90.0
+  grid_end_latitude = 90.0
 
   is_regular = .false.
   target_filename = 'pop_grid.nc'
@@ -10,7 +14,7 @@
 
   grid_global = .true.
   grid_spans_lon_zero = .true.
-  grid_pole_wrap = .true.
+  grid_pole_wrap = .false.
 /
 
 !  is_regular = .true.
@@ -27,6 +31,25 @@
 !  target_filename = 'pop_grid.nc'
 !  lon_name = "TLON"
 !  lat_name = "TLAT"
+
+! check this:
+!  data_function = "oddrow"
+!  resolution = 1
+!  grid_origin_longitude = 180.0
+!  grid_end_longitude = 360.0
+!  grid_origin_latitude = 60.0
+!  grid_end_latitude = 90.0
+!
+!  is_regular = .false.
+!  target_filename = 'pop_grid.nc'
+!  lon_name = "TLON"
+!  lat_name = "TLAT"
+!
+!  grid_global = .false.
+!  grid_spans_lon_zero = .false.
+!  grid_pole_wrap = .false.
+
+
 
 &quad_interpolate_nml
    do_rotate = .false.
