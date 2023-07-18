@@ -40,7 +40,7 @@ format for the World Ocean Database 2013 (WOD13) and the World Ocean Database
 
 .. Warning::  
 
-   The WOD data is in PSU, the dart observation converter ``wod_to_obs`` converts the observation to MSU.
+   The WOD data is in PSU, the dart observation converter ``wod_to_obs`` converts the observations to MSU.
  
    | PSU = g/kg
    | MSU = PSU/1000 = kg/kg
