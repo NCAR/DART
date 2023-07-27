@@ -39,7 +39,7 @@ A list of all the DART QC values can be found in the QC table in
    was skipped for this reason.
 
 -  If the DART QC values are 7, the observation value is too far away from the
-   ensemble mean. Set *&filter_nml::outlier_threshold = -1* to ignore this for
+   ensemble mean. Set *&quality_control_nml::outlier_threshold = -1* to ignore this for
    now and rerun. In general, this is not the optimal strategy as the number of
    observations inconsistent with the ensemble is a very powerful indicator of
    the success or failure of the assimilation.
