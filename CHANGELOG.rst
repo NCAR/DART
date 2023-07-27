@@ -22,6 +22,31 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 27 2023 :: Bug-fixes for MOM6 and WRF. Tag v10.8.1**
+
+- bug-fixes:
+
+  - MOM6 read_model_time converts to dart time to match observation sequences.
+  - MOM6 salinity units converted to MSU during model_interpolate.
+  - WRF get_dist calculation fixed for observations with VERTISUNDEF.
+
+- doc-fixes:
+
+  - WOD and GTSPP converter documentation notes about salinity units.
+  - MOM6 documentation for setting the Gregorian calendar in CESM.
+  - comment fix in filter_mod.f90
+
+
+**June 27 2023 :: CAM-DART observation preprocessor. Tag v10.8.0**
+
+- Tool to remove observations above a given CAM level from an obs sequence file
+- bug-fixes:
+
+  -  MOM6 added check for too deep observations
+  -  test_interpolate_range write format corrected
+  -  removed unused code from mpas_atm directory
+- doc: removed outdated references to prep_buf.html
+
 **June 1 2023 :: Smoother removal. Tag v10.7.3**
 
 - Dead smoother code removed.
