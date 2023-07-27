@@ -7458,8 +7458,7 @@ qv_nonzero = max(qv,0.0_r8)
 tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus)
 
 where (istatus == 0)       ! We only take non-missing tk here
-   ! Soyoung (Nov-2022): The last term is added for full pressure P = (rho_d*R_d + rho_v*R_v)*tk
-   pressure = rho * rgas * tk * (1.0_r8 + rvord * qv_nonzero + rvordm1 * qv_nonzero**2)
+   pressure = rho * rgas * tk * (1.0_r8 + rvord * qv_nonzero)
 end where
 
 if ( debug > 1 ) then
