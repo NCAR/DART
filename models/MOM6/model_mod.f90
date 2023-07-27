@@ -49,7 +49,7 @@ use distributed_state_mod, only : get_state, get_state_array
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
                          QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS, &
-                         QTY_DRY_LAND
+                         QTY_DRY_LAND, QTY_SALINITY
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -382,6 +382,11 @@ enddo
 ! Interpolate between levels
 ! expected_obs = bot_val + lev_fract * (top_val - bot_val)
 expected_obs = expected(:,1) + lev_fract(:) * (expected(:,2) - expected(:,1))
+
+if (qty == QTY_SALINITY) then  ! convert from PSU (model) to MSU (obersvation)
+   expected_obs = expected_obs/1000.0_r8
+endif
+
 
 end subroutine model_interpolate
 
@@ -945,14 +950,21 @@ type(time_type) :: read_model_time
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
 real(r8) :: days
+type(time_type) :: mom6_time
+integer :: dart_base_date_in_days, dart_days
 
+dart_base_date_in_days = 584388 ! 1601 1 1 0 0
 ncid = nc_open_file_readonly(filename, routine)
 
 call nc_get_variable(ncid, 'Time', days, routine)
 
 call nc_close_file(ncid, routine)
 
-read_model_time = set_time(0,int(days))
+! MOM6 counts days from year 1
+! DART counts days from 1601 
+dart_days = int(days) - dart_base_date_in_days
+
+read_model_time = set_time(0,dart_days)
 
 end function read_model_time
 
