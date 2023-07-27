@@ -49,7 +49,7 @@ use distributed_state_mod, only : get_state, get_state_array
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
                          QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS, &
-                         QTY_DRY_LAND
+                         QTY_DRY_LAND, QTY_SALINITY
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -382,6 +382,11 @@ enddo
 ! Interpolate between levels
 ! expected_obs = bot_val + lev_fract * (top_val - bot_val)
 expected_obs = expected(:,1) + lev_fract(:) * (expected(:,2) - expected(:,1))
+
+if (qty == QTY_SALINITY) then  ! convert from PSU (model) to MSU (obersvation)
+   expected_obs = expected_obs/1000.0_r8
+endif
+
 
 end subroutine model_interpolate
 
