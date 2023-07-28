@@ -212,12 +212,11 @@ integer, parameter :: TIMELEN = 19
 ! redefined here for consistency with the model (MPAS/src/framework/mpas_constants.F).
 real(r8), parameter :: rgas = 287.0_r8  ! = R_d (Gas constant for dry air [J kg-1 K-1])
 real(r8), parameter :: rv = 461.6_r8    ! = R_v (Gas constant for water varpor [J kg-1 K-1])
-real(r8), parameter :: cp = 7.*rgas/2.  ! = 1004.5
+real(r8), parameter :: cp = 7.0_r8*rgas/2.0_r8  ! = 1004.5
 real(r8), parameter :: cv = cp-rgas     ! = 717.5
 real(r8), parameter :: p0 = 100000.0_r8
 real(r8), parameter :: rcv = rgas/(cp-rgas)
 real(r8), parameter :: rvord = rv/rgas           ! = 1.6083623693379792
-real(r8), parameter :: rvordm1 = rv/rgas-1.0_r8  ! = 0.6083623693379792
 
 ! earth radius; needed to convert lat/lon to x,y,z cartesian coords.
 ! for the highest accuracy this should match what the model uses.
@@ -382,7 +381,9 @@ type progvartype
    integer :: numvertical   ! number of vertical levels in variable
    integer :: numcells      ! number of horizontal locations (cell centers)
    integer :: numedges      ! number of horizontal locations (edges for velocity components)
-   logical :: ZonHalf       ! vertical coordinate has dimension nVertLevels
+!   logical :: ZonHalf       ! vertical coordinate has dimension nVertLevels
+   logical :: onHalf        ! vertical coordinate on half vs full level
+   logical :: onCenter      ! horizontal coordinate is at cell center vs on edge
    integer :: varsize       ! prod(dimlens(1:numdims))
    integer :: index1        ! location in dart state vector of first occurrence
    integer :: indexN        ! location in dart state vector of last  occurrence
@@ -430,11 +431,9 @@ real(r8), allocatable :: dcEdge(:)  ! distance between two adjacent cell centers
 real(r8), allocatable :: xland(:)   ! land-ocean mask (1=land including sea-ice ; 2=ocean)  
 real(r8), allocatable :: seaice(:)  ! sea-ice flag (0=no seaice; =1 otherwise) - for rttov
 real(r8), allocatable :: skintemp(:)! ground or water surface temperature      - for rttov
-real(r8), allocatable :: zGridFace(:,:)   ! geometric height at cell faces   (nVertLevelsP1,nCells)
-real(r8), allocatable :: zGridCenter(:,:) ! geometric height at cell centers (nVertLevels,  nCells)
-real(r8), allocatable :: zGridEdge(:,:)   ! geometric height at edge centers (nVertLevels,  nEdges)
-!real(r8), allocatable :: zEdgeFace(:,:)   ! geometric height at edges faces  (nVertLevelsP1,nEdges)
-!real(r8), allocatable :: zEdgeCenter(:,:) ! geometric height at edges faces  (nVertLevels  ,nEdges)
+real(r8), allocatable :: zGridFull(:,:)   ! geometric height at cell centers at full levels (nVertLevelsP1,nCells) = zgrid
+real(r8), allocatable :: zGridCenter(:,:) ! geometric height at cell centers at half levels (nVertLevels,  nCells)
+real(r8), allocatable :: zGridEdge(:,:)   ! geometric height at edge centers at half levels (nVertLevels,  nEdges)
 
 integer,  allocatable :: cellsOnVertex(:,:) ! list of cell centers defining a triangle
 integer,  allocatable :: verticesOnCell(:,:)
@@ -629,7 +628,7 @@ call verify_state_variables( mpas_state_variables, ncid, init_template_filename,
 call read_grid_dims(ncid)
 
 allocate(latCell(nCells), lonCell(nCells))
-allocate(zGridFace(nVertLevelsP1, nCells))
+allocate(zGridFull(nVertLevelsP1, nCells))
 allocate(zGridCenter(nVertLevels, nCells))
 
 allocate(cellsOnVertex(vertexDegree, nVertices))
@@ -662,10 +661,11 @@ call set_global_grid(ncid)
 ! fill in the grid values
 call get_grid(ncid)
 
-! vertical faces are in the input file.  compute vertical center locations here.
-do kloc=1, nCells
-   do iloc=1, nVertLevels
-      zGridCenter(iloc,kloc) = (zGridFace(iloc,kloc) + zGridFace(iloc+1,kloc))*0.5_r8
+! zgrid is defined at full levels [nVertLevelsP1], with the first level at the surface.
+! Compute zgrid at half levels for analysis fields (ex. theta, rho, qv, and horizontal wind).
+do iloc=1, nCells
+   do kloc=1, nVertLevels
+      zGridCenter(kloc,iloc) = (zGridFull(kloc,iloc) + zGridFull(kloc+1,iloc))*0.5_r8
    enddo
 enddo
 
@@ -673,18 +673,18 @@ if(data_on_edges) then
    ! FIXME: This code is supposed to check whether an edge has 2 neighbours or 1 neighbour and then
    !        compute the height accordingly.  HOWEVER, the array cellsOnEdge does not change with
    !        depth, but it should as an edge may have 2 neighbour cells at the top but not at depth.
-   do kloc=1, nEdges
-      do iloc=1, nVertLevels
-         cel1 = cellsOnEdge(1,kloc)
-         cel2 = cellsOnEdge(2,kloc)
+   do iloc=1, nEdges
+      do kloc=1, nVertLevels
+         cel1 = cellsOnEdge(1,iloc)
+         cel2 = cellsOnEdge(2,iloc)
          if (cel1>0 .and. cel2>0) then
-            zGridEdge(iloc,kloc) = (zGridCenter(iloc,cel1) + zGridCenter(iloc,cel2))*0.5_r8
+            zGridEdge(kloc,iloc) = (zGridCenter(kloc,cel1) + zGridCenter(kloc,cel2))*0.5_r8
          else if (cel1>0) then
-            zGridEdge(iloc,kloc) = zGridCenter(iloc,cel1)
+            zGridEdge(kloc,iloc) = zGridCenter(kloc,cel1)
          else if (cel2>0) then
-            zGridEdge(iloc,kloc) = zGridCenter(iloc,cel2)
+            zGridEdge(kloc,iloc) = zGridCenter(kloc,cel2)
          else  !this is bad...
-            write(string1,*)'Edge ',kloc,' at vertlevel ',iloc,' has no neighbouring cells!'
+            write(string1,*)'Edge ',iloc,' at vertlevel ',kloc,' has no neighbouring cells!'
             call error_handler(E_ERR,'static_init_model', string1, source, revision, revdate)
          endif
       enddo
@@ -756,11 +756,13 @@ do ivar = 1, nfields
       progvar(ivar)%dimname(i) = trim(dimname)
       varsize = varsize * dimlen
 
+      progvar(ivar)%onCenter = .TRUE.
       select case ( dimname(1:6) )
          case ('nCells')
             progvar(ivar)%numcells = dimlen
          case ('nEdges')
             progvar(ivar)%numedges = dimlen
+            progvar(ivar)%onCenter = .FALSE.
          case ('nVertL')  ! nVertLevels, nVertLevelsP1, nVertLevelsP2
             progvar(ivar)%numvertical = dimlen
          case ('nSoilL')  ! nSoilLevels
@@ -773,9 +775,9 @@ do ivar = 1, nfields
    call get_variable_bounds(mpas_state_bounds, ivar)
 
    if (progvar(ivar)%numvertical == nVertLevels) then
-      progvar(ivar)%ZonHalf = .TRUE.
+      progvar(ivar)%onHalf = .TRUE.
    else
-      progvar(ivar)%ZonHalf = .FALSE.
+      progvar(ivar)%onHalf = .FALSE.
    endif
 
    if (varname == 'u') has_edge_u = .true.
@@ -986,16 +988,14 @@ call find_mpas_indices(index_in, iloc, vloc, ndim, nf)
 
 nzp  = progvar(nf)%numvertical
 
-! the zGrid array contains the location of the cell top and bottom faces, so it has one
-! more value than the number of cells in each column.  for locations of cell centers
-! you have to take the midpoint of the top and bottom face of the cell.
+! there is a zGridCenter array, zGridFull array, and if edges are read in, a zGridEdge array.
 if (progvar(nf)%numedges /= MISSING_I) then
    if (.not. data_on_edges) then
       call error_handler(E_ERR, 'get_state_meta_data', &
                         'Internal error: numedges present but data_on_edges false', &
                         source, revision, revdate, text2='variable '//trim(progvar(nf)%varname))
    endif
-   if ( progvar(nf)%ZonHalf ) then
+   if ( .not. progvar(nf)%onCenter ) then
       height = zGridEdge(vloc,iloc)
    else
       call error_handler(E_ERR, 'get_state_meta_data', 'no support for edges at face heights', &
@@ -1008,12 +1008,12 @@ if (progvar(nf)%numedges /= MISSING_I) then
       location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISHEIGHT)
    endif
 else
-   if ( progvar(nf)%ZonHalf ) then
+   if ( progvar(nf)%onHalf) then
       height = zGridCenter(vloc,iloc)
    else if (nzp <= 1) then
-      height = zGridFace(1,iloc)
+      height = zGridFull(1,iloc)
    else
-      height = zGridFace(vloc,iloc)
+      height = zGridFull(vloc,iloc)
    endif
 
    if (nzp <= 1) then
@@ -1112,7 +1112,6 @@ end subroutine find_mpas_dims
 !>       ISTATUS = 13:  Missing value in interpolation.
 !>       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
 !>       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
-!>       ISTATUS = 16:  Don't know how to do vertical velocity for now
 !>       ISTATUS = 17:  Unable to compute pressure values
 !>       ISTATUS = 18:  altitude illegal
 !>       ISTATUS = 19:  could not compute u using RBF code
@@ -1201,11 +1200,11 @@ if((obs_kind == QTY_SURFACE_PRESSURE) .or. (obs_kind == QTY_SURFACE_ELEVATION)  
 else
 ! Reject obs if the station height is far way from the model terrain.
    if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
-   if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
+   if(abs(llv(3) - zGridFull(1,cellid)) > sfc_elev_max_diff) then
       istatus = 12
       if (debug > 0 .and. do_output()) then
          print*, 'model_interpolate: Skip due to abs(dz) > sfc_elev_max_diff:', &
-         llv(3)-zGridFace(1,cellid), trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring)
+         llv(3)-zGridFull(1,cellid), trim(get_name_for_quantity(obs_kind)),' at ',trim(locstring)
          goto 100
       endif
    endif
@@ -1296,13 +1295,6 @@ if (debug > 9 .and. do_output()) then
 endif
 
 endif !(.not.surface_obs) then
-
-! Not prepared to do W interpolation at this time
-if(obs_kind == QTY_VERTICAL_VELOCITY) then
-   if (debug > 0 .and. do_output()) print *, 'model_interpolate: code does not handle vertical velocity yet'
-   istatus(:) = 16
-   goto 100
-endif
 
 ! winds
 if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
@@ -1403,7 +1395,7 @@ else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
          obs_kind == QTY_SKIN_TEMPERATURE  .or. obs_kind == QTY_SURFACE_TYPE ) then
 
    if (obs_kind == QTY_SURFACE_ELEVATION) then
-       call compute_surface_data_with_barycentric(zGridFace(1,:), location, expected_obs(1), istatus(1))
+       call compute_surface_data_with_barycentric(zGridFull(1,:), location, expected_obs(1), istatus(1))
    else if (obs_kind == QTY_SKIN_TEMPERATURE) then
        call compute_surface_data_with_barycentric(skintemp(:), location, expected_obs(1), istatus(1))
    else if (obs_kind == QTY_SURFACE_TYPE) then
@@ -1420,7 +1412,7 @@ else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
    if ( all(istatus /= 0 ) ) goto 100
 
 else
-   ! all other kinds come here.
+   ! all other kinds come here, including QTY_VERTICAL_VELOCITY (as of Jul-28-2023).
    ! direct interpolation: kind is in the state vector and no clamping or other conversions needed
 
    tvars(1) = ivar
@@ -1625,7 +1617,7 @@ call nc_end_define_mode(ncid)
 call nc_put_variable(ncid, 'lonCell', lonCell, routine)
 call nc_put_variable(ncid, 'latCell', latCell, routine)
 
-call nc_put_variable(ncid, 'zgrid', zGridFace, routine)
+call nc_put_variable(ncid, 'zgrid', zGridFull, routine)
 
 if(data_on_edges) then
    call nc_put_variable(ncid, 'lonEdge', lonEdge, routine)
@@ -1730,7 +1722,7 @@ subroutine end_model()
 
 if (allocated(latCell))        deallocate(latCell)
 if (allocated(lonCell))        deallocate(lonCell)
-if (allocated(zGridFace))      deallocate(zGridFace)
+if (allocated(zGridFull))      deallocate(zGridFull)
 if (allocated(zGridCenter))    deallocate(zGridCenter)
 if (allocated(dcEdge))         deallocate(dcEdge)
 if (allocated(cellsOnVertex))  deallocate(cellsOnVertex)
@@ -3324,7 +3316,7 @@ where (latCell >  90.0_r8) latCell = 90.0_r8
 where (latCell < -90.0_r8) latCell = -90.0_r8
 
 call nc_get_variable(ncid, 'dcEdge',        dcEdge,        routine)
-call nc_get_variable(ncid, 'zgrid',         zGridFace,     routine)
+call nc_get_variable(ncid, 'zgrid',         zGridFull,     routine)
 call nc_get_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 call nc_get_variable(ncid, 'xland',         xland,         routine)
 call nc_get_variable(ncid, 'seaice',        seaice,        routine)
@@ -3370,7 +3362,7 @@ if ( debug > 9 .and. do_output() ) then
    write(*,*)
    write(*,*)'latCell           range ',minval(latCell),           maxval(latCell)
    write(*,*)'lonCell           range ',minval(lonCell),           maxval(lonCell)
-   write(*,*)'zgrid             range ',minval(zGridFace),         maxval(zGridFace)
+   write(*,*)'zgrid             range ',minval(zGridFull),         maxval(zGridFull)
    write(*,*)'cellsOnVertex     range ',minval(cellsOnVertex),     maxval(cellsOnVertex)
    write(*,*)'edgeNormalVectors range ',minval(edgeNormalVectors), maxval(edgeNormalVectors)
    write(*,*)'nEdgesOnCell      range ',minval(nEdgesOnCell),      maxval(nEdgesOnCell)
@@ -3988,7 +3980,8 @@ integer,  intent(in)           :: ivar
 !%!    integer :: numvertical   ! number of vertical levels in variable
 !%!    integer :: numcells      ! number of horizontal locations (typically cell centers)
 !%!    integer :: numedges
-!%!    logical :: ZonHalf       ! vertical coordinate has dimension nVertLevels
+!%!    logical :: onHalf       ! vertical coordinate has dimension nVertLevels (vs +1)
+!%!    logical :: onCenter     ! horizontal coordinate is located at cell center (vs edges)
 !%!    integer :: varsize       ! prod(dimlens(1:numdims))
 !%!    integer :: index1        ! location in dart state vector of first occurrence
 !%!    integer :: indexN        ! location in dart state vector of last  occurrence
@@ -4020,8 +4013,10 @@ write(logfileunit,*) '  numcells    ',progvar(ivar)%numcells
 write(     *     ,*) '  numcells    ',progvar(ivar)%numcells
 write(logfileunit,*) '  numedges    ',progvar(ivar)%numedges
 write(     *     ,*) '  numedges    ',progvar(ivar)%numedges
-write(logfileunit,*) '  ZonHalf     ',progvar(ivar)%ZonHalf
-write(     *     ,*) '  ZonHalf     ',progvar(ivar)%ZonHalf
+write(logfileunit,*) '  onHalf      ',progvar(ivar)%onHalf
+write(     *     ,*) '  onHalf      ',progvar(ivar)%onHalf
+write(logfileunit,*) '  onCenter    ',progvar(ivar)%onCenter
+write(     *     ,*) '  onCenter    ',progvar(ivar)%onCenter
 write(logfileunit,*) '  varsize     ',progvar(ivar)%varsize
 write(     *     ,*) '  varsize     ',progvar(ivar)%varsize
 write(logfileunit,*) '  index1      ',progvar(ivar)%index1
@@ -4397,25 +4392,6 @@ else if(is_vertical(location, "SURFACE")) then
      istatus = 88    ! required quantity not in state vector
      return
 
-!%!     !>original code:
-!%!     !>@todo FIXME: do we really want to do this if the vert is surface and
-!%!     !> the surface pressure field is not in the state?  this is going to return
-!%!     !> the pressure at the midpoint of the first level, is it not?
-!%!
-!%!     new_location(1) = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
-!%!
-!%!     ! Need to get base offsets for the potential temperature, density, and water
-!%!     ! vapor mixing fields in the state vector
-!%!     ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-!%!     ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-!%!     ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-!%!
-!%!     call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
-!%!     if ( all(istatus /= 0) ) return
-!%!
-!%!     ! Convert surface theta, rho, qv into pressure
-!%!     call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
-
    endif
 
 else if(is_vertical(location, "UNDEFINED")) then    ! not error, but no exact vert loc either
@@ -4617,7 +4593,9 @@ select case (ztypeout)
       location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
       return
    endif
-   call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
+   ivars(1) = get_progvar_index_from_kind(obs_kind)
+   call find_vert_indices (state_handle, ens_size, location(1), n, c, ivars(1), &
+                          k_low, k_up, fract, istatus)
    if( all(istatus /= 0) ) then
       location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
       return
@@ -4678,7 +4656,9 @@ select case (ztypeout)
       location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
       return
    endif
-   call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
+   ivars(1) = get_progvar_index_from_kind(obs_kind)
+   call find_vert_indices (state_handle, ens_size, location(1), n, c, ivars(1), &
+                          k_low, k_up, fract, istatus)
    if( all(istatus /= 0) ) then
       location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
       return
@@ -4686,10 +4666,17 @@ select case (ztypeout)
 
    fdata = 0.0_r8
    do i = 1, n
-      where (istatus == 0)
-         fdata(i, :) = zGridFace(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
-                       zGridFace(k_up (i, :),c(i))*fract(i, :)
-      end where
+      if (progvar(ivars(1))%onHalf) then
+         where (istatus == 0)
+            fdata(i, :) = zGridCenter(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
+                          zGridCenter(k_up (i, :),c(i))*fract(i, :)
+         end where
+      else
+         where (istatus == 0)
+            fdata(i, :) = zGridFull(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
+                          zGridFull(k_up (i, :),c(i))*fract(i, :)
+         end where
+      endif
    enddo
 
    ! now have vertically interpolated values at cell centers.
@@ -5010,14 +4997,15 @@ select case (ztypeout)
    ! ------------------------------------------------------------
    case (VERTISHEIGHT)
 
-   ! surface obs should use the lower face of the first level.  the rest
-   ! of the quantities should use the level centers.
+   ! surface obs should use zgrid (=zGridFull) at the first level.  the rest
+   ! of the quantities can use zGridCenter, zGridFull, or zGridEdge.
    if ( ndim == 1 )  then
-      zout(:) = zGridFace(1, cellid)
+      zout(:) = zGridFull(1, cellid)
    else
+      ivars(1) = get_progvar_index_from_kind(quantity)
       zout(:) = zGridCenter(vert_level, cellid)
-      if ( quantity == QTY_VERTICAL_VELOCITY ) zout(:) = zGridFace(vert_level, cellid)
-      if ( quantity == QTY_EDGE_NORMAL_SPEED ) zout(:) = zGridEdge(vert_level, cellid)
+      if ( .not. progvar(ivars(1))%onHalf)   zout(:) = zGridFull(vert_level, cellid)
+      if ( .not. progvar(ivars(1))%onCenter) zout(:) = zGridEdge(vert_level, cellid)
    endif
 
    if (debug > 9 .and. do_output()) then
@@ -5271,12 +5259,13 @@ end subroutine find_height_bounds
 !------------------------------------------------------------------
 !> given a location and 3 cell ids, return three sets of:
 !> the two level numbers that enclose the given vertical value
-!> plus the fraction between them for each of the 3 cell centers.
+!> plus the fraction between them for each of the 3 cell centers or faces.
+!> (half levels vs full levels in the model terminology).
 !> If the requested location uses a vertical coordinate that only
 !> has one level, both level numbers are identical ... 1 and the
 !> fractions are identical ... 0.0
 
-subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, oncenters, lower, upper, fract, ier)
+subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, onhalf, oncenter, lower, upper, fract, ier)
 
 ! note that this code handles data at cell centers, at edges, but not
 ! data on faces.  so far we don't have any on faces.
@@ -5286,7 +5275,8 @@ type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nc, ids(:)
-logical,             intent(in)  :: oncenters
+logical,             intent(in)  :: onhalf
+logical,             intent(in)  :: oncenter
 integer,             intent(out) :: lower(:, :), upper(:, :) ! ens_size
 real(r8),            intent(out) :: fract(:, :)
 integer,             intent(out) :: ier(:)
@@ -5295,7 +5285,7 @@ real(r8) :: lat, lon, vert, llv(3)
 real(r8) :: vert_array(ens_size)
 integer  :: track_ier(ens_size)
 integer(i8) :: pt_base_offset, density_base_offset, qv_base_offset
-integer     :: verttype, i
+integer     :: verttype, i, itop
 integer     :: e
 
 ! Initialization
@@ -5344,8 +5334,12 @@ endif
 
 ! model level numbers (supports fractional levels)
 if(verttype == VERTISLEVEL) then
-   ! FIXME: if this is W, the top is nVertLevels+1
-   if (vert > nVertLevels) then 
+   if (onhalf) then
+      itop = nVertLevels
+   else
+      itop = nVertLevelsP1
+   endif
+   if (vert > itop) then
       ier(:) = 81
       return
    endif
@@ -5417,16 +5411,15 @@ if(verttype == VERTISHEIGHT) then
    track_ier = 0
 
    do i=1, nc
-      if (oncenters) then
-         call find_height_bounds(vert, nVertLevels, zGridCenter(:, ids(i)), &
-                                 lower(i, :), upper(i, :), fract(i, :), ier)
-      else
-
-         if (.not. data_on_edges) then
-            call error_handler(E_ERR, 'find_vert_level', &
-                              'Internal error: oncenters false but data_on_edges false', &
-                              source, revision, revdate)
+      if (oncenter) then
+         if (onhalf) then
+            call find_height_bounds(vert, nVertLevels, zGridCenter(:, ids(i)), &
+                                    lower(i, :), upper(i, :), fract(i, :), ier)
+         else
+            call find_height_bounds(vert, nVertLevelsP1, zGridFull(:, ids(i)), &
+                                    lower(i, :), upper(i, :), fract(i, :), ier)
          endif
+      else
          call find_height_bounds(vert, nVertLevels, zGridEdge(:, ids(i)), &
                                  lower(i, :), upper(i, :), fract(i, :), ier)
       endif
@@ -5769,8 +5762,13 @@ if(ier(1) /= 0) then
    return
 endif
 
+! FIXME: make sure if n > 1 that all fields are on the same vertical stagger;  error if not.
+! do k=2, n
+!   if (ival(1)%onHalf /= ival(k)%onHalf)  print error meg and error out
+! enddo
+
 ! If the field is on a single level, lower and upper are both 1
-call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
+call find_vert_indices (state_handle, ens_size, loc, nc, c, ival(1), lower, upper, fract, ier)
 if(all(ier /= 0)) return
 
 ! for each field to compute at this location:
@@ -6028,13 +6026,14 @@ end subroutine find_triangle
 !> has some early return statements that prevent having the debugging
 !> information in it.
 
-subroutine find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
+subroutine find_vert_indices (state_handle, ens_size, loc, nc, c, ival, lower, upper, fract, ier)
 
 type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nc
 integer,             intent(in)  :: c(:)
+integer,             intent(in)  :: ival
 integer,             intent(out) :: lower(:, :), upper(:, :) ! ens_size
 real(r8),            intent(out) :: fract(:, :) ! ens_size
 integer,             intent(out) :: ier(:) ! ens_size
@@ -6047,7 +6046,7 @@ upper = MISSING_I
 fract = 0.0_r8
 
 ! need vert index for the vertical level
-call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
+call find_vert_level(state_handle, ens_size, loc, nc, c, progvar(ival)%onHalf, progvar(ival)%onCenter, lower, upper, fract, ier)
 
 if (debug > 9 .and. do_output()) then
    write(string3,*) 'ier = ',ier(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1), ' nc = ', nc
@@ -6139,8 +6138,8 @@ if (verttype == VERTISPRESSURE) then
    ! the closest vertex.
    call make_cell_list(vertexid, 3, ncells, celllist)
 
-   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
-                        lower, upper, fract, ier)
+   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, &
+                        .true., .true., lower, upper, fract, ier)
 
    if (all(ier /= 0)) return
 
@@ -6151,9 +6150,10 @@ if (verttype == VERTISPRESSURE) then
    if (all(ier /= 0)) return
 
 else
-   ! need vert index for the vertical level
-   call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
-                        lower, upper, fract, ier)
+   ! need vert index for the vertical level. 
+   ! We do not consider any case for 'u' at full levels.
+   call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, &
+                        .true., .false., lower, upper, fract, ier)
    if (all(ier /= 0)) return
 endif
 
@@ -7442,7 +7442,7 @@ subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, tk, istatus
 
 integer,  intent(in)  :: ens_size
 real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
-real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
+real(r8), dimension(ens_size), intent(in)  :: rho      ! dry air density [kg/m3]
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
 real(r8), dimension(ens_size), intent(out) :: pressure ! full pressure [Pa]
 real(r8), dimension(ens_size), intent(out) :: tk       ! return sensible temperature to caller
