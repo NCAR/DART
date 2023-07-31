@@ -92,6 +92,9 @@
 &ensemble_manager_nml
    /
 
+&probit_transform_nml
+   /
+
 # the localization cutoff in this file is distributed is too
 # large for the model to converge.  to test that the model is 
 # doing a successful assimilation, change cutoff to 0.02 and rerun.

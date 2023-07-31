@@ -71,7 +71,7 @@
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
    inf_lower_bound             = 0.0,                     1.0,
-   inf_upper_bound             = 1000.0,                     1.2,
+   inf_upper_bound             = 1000.0,                  1.2,
    inf_damping                 = 0.9,                     1.0,
    inf_sd_initial              = 0.6,                     0.0,
    inf_sd_lower_bound          = 0.6,                     0.0,
@@ -114,6 +114,8 @@
    print_every_nth_obs             = 0,
    rectangular_quadrature          = .true.,
    gaussian_likelihood_tails       = .false.,
+   adjust_obs_impact               = .true.,
+   obs_impact_filename             = 'obs_impact_file'
    /
 
 &cov_cutoff_nml
@@ -134,8 +136,8 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
-   'RAW_TRACER_CONCENTRATION' 
-   evaluate_these_obs_types = 'RAW_TRACER_SOURCE'  
+   'RAW_TRACER_CONCENTRATION'
+   evaluate_these_obs_types = 'RAW_TRACER_SOURCE'
    /
 
 &model_nml

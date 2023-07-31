@@ -31,6 +31,47 @@ end
 % Need ens_size + 1 bins
 bins(1:ens_size + 1) = 0.0;
 
+% Doing this for possibly duplicate ensemble members
+for time = 1:num_times
+   sens = sort(ens(:, time));
+   v = verif(time);
+   if(v < sens(1)) 
+      bins(1) = bins(1) + 1;
+   elseif(v > sens(ens_size))
+      bins(ens_size + 1) = bins(ens_size + 1) + 1;
+   end
+   for i = 1:ens_size - 1
+      % Is it between two of the sorted members; this is the traditional easy case
+      if(v > sens(i) && v < sens(i + 1))
+         bins(i + 1) = bins(i + 1) + 1;
+      end
+   end
+
+   % What about the case of exactly equal and the possibility of duplicates?
+   exact_count = 0;
+   for i = 1:ens_size
+      if(v == sens(i)) 
+         exact_count = exact_count + 1;
+      end
+   end
+   % Each bin that has an endpoint equal to the ensemble member gets 1 / (exact_count + 1) mass
+   is_first = true;
+   for i = 1:ens_size
+      if(v == sens(i))
+         if(is_first) 
+            bins(i) = bins(i) + 1 / (exact_count + 1);
+            is_first = false;
+         end 
+         bins(i+1) = bins(i+1) + 1 / (exact_count + 1);
+      end
+   end
+
+end
+
+
+
+return
+
 % Loop through time series to get count for each bin
 for itime = 1:num_times
    count = 0;
