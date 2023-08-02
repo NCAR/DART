@@ -121,13 +121,11 @@ namelist.
    |                                       |                                       | non-negative, ignore any observations |
    |                                       |                                       | after this time.                      |
    +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_window_days                       | integer                               | If negative, don't use. If            |
-   |                                       |                                       | non-negative, reserved for future     |
-   |                                       |                                       | use.                                  |
+   | obs_window_days                       | integer                               | Currently unsupported.  Leave as -1.  |
+   |                                       |                                       | Reserved for future use.              |
    +---------------------------------------+---------------------------------------+---------------------------------------+
-   | obs_window_seconds                    | integer                               | If negative, don't use. If            |
-   |                                       |                                       | non-negative, reserved for future     |
-   |                                       |                                       | use.                                  |
+   | obs_window_seconds                    | integer                               | Currently unsupported.  Leave as -1.  |
+   |                                       |                                       | Reserved for future use.              |
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | trace_execution                       | logical                               | True means output very detailed       |
    |                                       |                                       | messages about what routines are      |

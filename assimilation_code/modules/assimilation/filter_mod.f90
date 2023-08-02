@@ -170,7 +170,9 @@ integer  :: first_obs_days      = -1
 integer  :: first_obs_seconds   = -1
 integer  :: last_obs_days       = -1
 integer  :: last_obs_seconds    = -1
-! Assimilation window; defaults to model timestep size.
+! Assimilation window; default is model timestep size. 
+! Changing these is currently unsupported/not implemented. 
+! Reserved for future use.
 integer  :: obs_window_days     = -1
 integer  :: obs_window_seconds  = -1
 ! Control diagnostic output for state variables
@@ -1507,7 +1509,7 @@ integer,         intent(in)  :: days, seconds
 type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
-if(days >= 0) then
+if(days >= 0 .or. seconds >= 0) then
    dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
@@ -1524,7 +1526,14 @@ subroutine filter_set_window_time(dart_time)
 type(time_type), intent(out) :: dart_time
 
 
-if(obs_window_days >= 0) then
+if(obs_window_days >= 0 .or. obs_window_seconds >= 0) then
+   write(msgstring, *) 'obs_window_days and obs_window_seconds are currently unsupported and will be ignored.'
+   call error_handler(E_MSG, 'filter_set_window_time: ', msgstring)
+
+   ! we still need to set the output to something. in the current code
+   ! this time is passed into move_ahead() where it is then ignored.  
+   ! if it is ever supported there the two lines above should be removed and
+   ! this next line is the correct code to use.
    dart_time = set_time(obs_window_seconds, obs_window_days)
 else
    dart_time = set_time(0, 0)

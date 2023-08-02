@@ -90,6 +90,9 @@ integer  :: first_obs_days     = -1
 integer  :: first_obs_seconds  = -1
 integer  :: last_obs_days      = -1
 integer  :: last_obs_seconds   = -1
+! Assimilation window; default is model timestep size.
+! Changing these is currently unsupported/not implemented.
+! Reserved for future use.    
 integer  :: obs_window_days    = -1
 integer  :: obs_window_seconds = -1
 logical  :: output_forward_op_errors = .false.
@@ -295,6 +298,11 @@ call set_io_copy_flag( file_info_output, 1, 1, WRITE_COPY, num_output_ens=1)
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
+! Catch if someone is trying to use an unsupported option.
+if (obs_window_days >= 0 .or. obs_window_seconds >= 0) then
+   write(msgstring, *) 'obs_window_days and obs_window_seconds are currently unsupported and will be ignored.'
+   call error_handler(E_MSG, 'perfect_main', msgstring)
+endif
 
 if (read_input_state_from_file) then
 

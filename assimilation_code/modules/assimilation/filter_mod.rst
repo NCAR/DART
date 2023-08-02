@@ -263,11 +263,11 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | If non-negative, ignore all observations  |
 |                              |                     | after this time.                          |
 +------------------------------+---------------------+-------------------------------------------+
-| obs_window_days              | integer             | Assimilation window days;                 |
-|                              |                     | defaults to model timestep size.          |
+| obs_window_days              | integer             | Currently unsupported.  Leave as -1.      |
+|                              |                     | Reserved for future use.                  |
 +------------------------------+---------------------+-------------------------------------------+
-| obs_window_seconds           | integer             | Assimilation window seconds;              |
-|                              |                     | defaults to model timestep size.          |
+| obs_window_seconds           | integer             | Currently unsupported.  Leave as -1.      |
+|                              |                     | Reserved for future use.                  |
 +------------------------------+---------------------+-------------------------------------------+
 | All variables named inf_* are arrays of length 2. The first element controls the prior,        |
 | the second element controls the posterior inflation. See :doc:`../../programs/filter/filter`   |
