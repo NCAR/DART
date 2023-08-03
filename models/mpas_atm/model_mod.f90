@@ -7380,7 +7380,7 @@ function theta_to_tk (ens_size, theta, rho, qv, istatus)
 
 integer,                       intent(in)  :: ens_size
 real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
-real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
+real(r8), dimension(ens_size), intent(in)  :: rho      ! dry air density [kg/m3]
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
 integer,  dimension(ens_size), intent(inout) :: istatus
 real(r8), dimension(ens_size) :: theta_to_tk          ! sensible temperature [K]
@@ -7441,7 +7441,7 @@ subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, tk, istatus
 
 integer,  intent(in)  :: ens_size
 real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
-real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
+real(r8), dimension(ens_size), intent(in)  :: rho      ! dry air density [kg/m3]
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
 real(r8), dimension(ens_size), intent(out) :: pressure ! full pressure [Pa]
 real(r8), dimension(ens_size), intent(out) :: tk       ! return sensible temperature to caller
