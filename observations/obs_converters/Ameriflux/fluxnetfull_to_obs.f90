@@ -8,8 +8,9 @@ program Fluxnetfull_to_obs
 !
 !   Fluxnetfull_to_obs - a program that converts Ameriflux/Fluxnet FULLSET eddy
 !                        covariance tower data of carbon, water and energy into
-!                        DART obs_seq formatted files
-!        ## Fixme  Add more description here once completed
+!                        DART obs_seq formatted files. Works on native time 
+!                        resolution (HH, HR) or coarser resolution files (DD,WW,MM).
+    
 
 use         types_mod, only : r8, MISSING_R8
 
@@ -72,7 +73,7 @@ namelist /Fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &
 ! globally-scoped variables
 !-----------------------------------------------------------------------
 
-character(len=3100)     :: input_line, bigline
+character(len=5000)     :: input_line, bigline
 character(len=512)      :: string1, string2, string3
 integer                 :: iline, nlines, nwords
 logical                 :: first_obs
@@ -84,6 +85,7 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: prev_time, offset
 real(r8), parameter     :: umol_to_gC = (1.0_r8/1000000.0_r8) * 12.0_r8
+logical                 :: res 
 
 ! Initialize with default tower strings, modify later
 
@@ -208,6 +210,28 @@ if (( latitude > 90.0_r8 .or. latitude  <  -90.0_r8 ) .or. &
                       text2=string2,text3=string3)
 endif
 
+! Provide gap-filling warning, and provide error if gap-filling
+! turned on with DD or coarser time resolution
+
+if (gap_filled .eqv. .false.) then
+
+   write(string1,*) 'WARNING!: gap filling is turned off. This is only recommended for'
+   write(string2,*) 'NEE, H and LE  observations at native time resolution (HH, HR)' 
+   write(string3,*) ' ...this approach assigns poor QC values to gap filled obs'
+   call error_handler(E_MSG, source, string1, &
+                      text2=string2,text3=string3)
+
+   if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
+       time_resolution == 'WW') then
+      write(string1,*) 'ERROR!: gap filling can only be turned off for native time'
+      write(string2,*) 'resolution data (HH, HR)'
+      write(string3,*) 'Coarser time resolution (DD, WW, MM)  must have gap_filled = .true.'
+      call error_handler(E_ERR, source, string1, &
+                      text2=string2,text3=string3)
+   endif
+
+endif
+
 
 ! Modify values to towerdata strings based on user input.nml
 ! 1) time_resolution: DD(daily),MM(monthly),YY(yearly) uses 'TIMESTAMP' header
@@ -217,6 +241,7 @@ if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
 
   tower%startstring    = 'TIMESTAMP'
   tower%endstring      = 'TIMESTAMP'
+  res                  = .false.  
 
   write(string1, *) 'Time resolution is set to =', time_resolution
   write(string2, *) 'Using TIMESTAMP to set DART observation time'
@@ -225,6 +250,7 @@ if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
 elseif (time_resolution == 'HH' .or. time_resolution == 'HR' .or. &
         time_resolution == 'WW') then
 
+  res = .true.
   write(string1, *) 'Time resolution is set to =', time_resolution
   write(string2, *) 'Using TIMESTAMP_START and TIMESTAMP_END to set: DART observation time'
   if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
@@ -253,15 +279,6 @@ else
    write(string1,*) 'Standard LE (LE_F_MDS) and H (H_F_MDS) data being used'
    call error_handler(E_MSG, source, string1)
 endif
-
-
-if (gap_filled .eqv. .false.) then
-
-   write(string1,*) 'WARNING!: gap_filled = false which removes all gpp and reco data'
-   write(string2,*) ' ...and also will remove nee, h and le if qc value is missing'
-   call error_handler(E_MSG, source, string1)
-endif
-
 
 ! Specify the maximum number of observations in the input file,
 ! but only the actual number created will be written out.
@@ -646,6 +663,7 @@ integer, dimension(23) :: qc = 0
 
 ! Read the line and strip off any leading whitespace.
 
+
 read(iunit,'(A)',iostat=rcio) bigline
 if (rcio /= 0) then
   write(string1,*)'Cannot parse header. Begins <',trim(bigline(1:40)),'>'
@@ -860,22 +878,42 @@ integer         , intent(in) :: linenum
 real(r8), allocatable, dimension(:) :: values
 
 
-integer :: yeara, yearb
-integer :: montha, daya, houra, mina
-integer :: monthb, dayb, hourb, minb
+integer :: yeara, yearb, montha, monthb, daya, dayb
+integer :: houra, hourb, mina, minb
+
+integer :: time_adjust
 type(time_type) :: date_start, date_end
 
-allocate(values(nwords-2))
+if (res .eqv. .true.) then
+   time_adjust = 2 
+else
+   time_adjust = 1  
+endif
 
+
+
+allocate(values(nwords-time_adjust))
 values = MISSING_R8
 
-! First two elements of string read in as character (time stamp)
+! First two/one element(s) of string read in as character (time stamp)
 ! remainder of line read in as reals.
-read(str1,*,iostat=rcio) tower%start_time,tower%end_time,values
-if (rcio /= 0) then
-   write(string1,*)'Cannot parse line',linenum,'. Begins <',trim(str1(1:40)),'>'
-   call error_handler(E_ERR,'stringparse',string1, source)
+
+if (res .eqv. .true.) then
+
+   read(str1,*,iostat=rcio) tower%start_time,tower%end_time,values
+   if (rcio /= 0) then
+      write(string1,*)'Cannot parse line',linenum,'. Begins <',trim(str1(1:40)),'>'
+      call error_handler(E_ERR,'stringparse',string1, source)
+   endif
+else
+   read(str1,*,iostat=rcio) tower%start_time,values
+   if (rcio /= 0) then
+      write(string1,*)'Cannot parse line',linenum,'. Begins <',trim(str1(1:40)),'>'
+      call error_handler(E_ERR,'stringparse',string1, source)
+   endif
+   tower%end_time=tower%start_time
 endif
+
 
 ! Assign flux observations, uncertainty and QC to tower structure
 !
@@ -908,33 +946,42 @@ endif
 ! (CLM) NEP,GPP,ER  units     [gC m-2 s-1]
 ! (CLM) EFLX_LH_TOT_R,FSH     units     [W m-2]
 
-tower%nee         =           values(tower%neeindex       -2 )
-tower%neeUNC      =           values(tower%neeUNCindex    -2 )
-tower%neeQC       =      nint(values(tower%neeQCindex     -2))
-tower%le          =           values(tower%leindex        -2 )
-tower%leUNC       =           values(tower%leUNCindex     -2 )
-tower%leQC        =      nint(values(tower%leQCindex      -2))
-tower%h           =           values(tower%hindex         -2 )
-tower%hUNC        =           values(tower%hUNCindex      -2 )
-tower%hQC         =      nint(values(tower%hQCindex       -2))
-tower%gppDT       =           values(tower%gppDTindex      -2)
-tower%gppNT       =           values(tower%gppNTindex      -2)
-tower%recoDT      =           values(tower%recoDTindex     -2)
-tower%recoNT      =           values(tower%recoNTindex     -2)
-tower%gppDTUNC16  =           values(tower%gppDTUNC16index -2)
-tower%gppDTUNC84  =           values(tower%gppDTUNC84index -2)
-tower%gppNTUNC16  =           values(tower%gppNTUNC16index -2)
-tower%gppNTUNC84  =           values(tower%gppNTUNC84index -2)
-tower%recoDTUNC16 =           values(tower%recoDTUNC16index-2)
-tower%recoDTUNC84 =           values(tower%recoDTUNC84index-2)
-tower%recoNTUNC16 =           values(tower%recoNTUNC16index-2)
-tower%recoNTUNC84 =           values(tower%recoNTUNC84index-2)
+tower%nee         =           values(tower%neeindex        -time_adjust )
+tower%neeUNC      =           values(tower%neeUNCindex     -time_adjust )
+tower%neeQC       =      nint(values(tower%neeQCindex      -time_adjust))
+tower%le          =           values(tower%leindex         -time_adjust )
+tower%leUNC       =           values(tower%leUNCindex      -time_adjust )
+tower%leQC        =      nint(values(tower%leQCindex       -time_adjust))
+tower%h           =           values(tower%hindex          -time_adjust )
+tower%hUNC        =           values(tower%hUNCindex       -time_adjust )
+tower%hQC         =      nint(values(tower%hQCindex        -time_adjust))
+tower%gppDT       =           values(tower%gppDTindex      -time_adjust)
+tower%gppNT       =           values(tower%gppNTindex      -time_adjust)
+tower%recoDT      =           values(tower%recoDTindex     -time_adjust)
+tower%recoNT      =           values(tower%recoNTindex     -time_adjust)
+tower%gppDTUNC16  =           values(tower%gppDTUNC16index -time_adjust)
+tower%gppDTUNC84  =           values(tower%gppDTUNC84index -time_adjust)
+tower%gppNTUNC16  =           values(tower%gppNTUNC16index -time_adjust)
+tower%gppNTUNC84  =           values(tower%gppNTUNC84index -time_adjust)
+tower%recoDTUNC16 =           values(tower%recoDTUNC16index-time_adjust)
+tower%recoDTUNC84 =           values(tower%recoDTUNC84index-time_adjust)
+tower%recoNTUNC16 =           values(tower%recoNTUNC16index-time_adjust)
+tower%recoNTUNC84 =           values(tower%recoNTUNC84index-time_adjust)
 deallocate(values)
 
 
 
 read(tower%start_time(1:12), fmt='(i4, 4i2)') yeara,montha,daya,houra,mina 
 read(tower%end_time(1:12),   fmt='(i4, 4i2)') yearb,monthb,dayb,hourb,minb
+
+
+! Certain time resolutions (MM) does not define days
+if (time_resolution == 'MM') then
+   daya = 1
+   dayb = 1
+endif
+
+
 
 write(*,*)''
 write(string1, *) 'Display tower%start_time,yeara,montha,daya,houra,mina (LTC)  =', tower%start_time, yeara, montha, daya, houra, mina

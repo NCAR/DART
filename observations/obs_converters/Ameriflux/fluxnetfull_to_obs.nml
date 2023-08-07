@@ -7,7 +7,7 @@
    elevation       = -1.0,
    flux_height     = -1.0,
    maxgoodqc       = 3,
-   gap_filled      = .false.
+   gap_filled      = .true.
    energy_balance  = .false.
    time_resolution = 'HH'
    verbose         = .false.
