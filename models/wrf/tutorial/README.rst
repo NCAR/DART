@@ -135,7 +135,7 @@ might need for an experiment with that model.
 
 1. It is assumed you have successfully configured the
    ``$DART_DIR/build_templates/mkmf.template`` file for your system. If
-   not, you will need to do so now. See the :ref:`Getting Started <Welcome page>`
+   not, you will need to do so now. See :ref:`Getting Started <Welcome page>`
    for more detail, if necessary.
 
 2. [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
@@ -576,7 +576,7 @@ want to run with the example observations, you can skip to Step
 4.
 
 However, observation processing is critical to the success of running
-DART and was covered in :ref:`getting started <Welcome page>`. In
+DART and was covered in :ref:`Getting Started <Welcome page>`. In
 brief, to add your own observations to WRF/DART you will need to
 understand the relationship between observation definitions and
 observation sequences, observation types and observation quantities, and
