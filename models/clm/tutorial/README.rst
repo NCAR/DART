@@ -31,7 +31,7 @@ for CLM-specific assistance.
 
 If you are new to DART, we recommend that you become familiar
 by first working through the :doc:`../../../theory/readme` and then
-understanding the :doc:`DART getting started <../../../README>` documentation.
+understanding the :ref:`DART getting started <Welcome page>` documentation.
 
 This CLM5-DART tutorial is based on a simple example in which we 
 describe how to:
@@ -53,8 +53,8 @@ observations that are assimilated, updated model state variables, assimilation t
 assimilation frequency, and the model and observation grid resolution.
 
 We encourage users to complete the tutorial and then modify CLM-DART to pursue their own
-research questions.  We have comprehensive and searchable :doc:`documentation
-<../../../README>`, with trained and experienced
+research questions.  We have comprehensive and searchable :ref:`documentation
+<Welcome page>`, with trained and experienced
 staff that can help troubleshoot issues (dart@ucar.edu).
 
 
