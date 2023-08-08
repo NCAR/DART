@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 8 2023 :: MPAS-ATM constants and readthedocs fix. Tag v10.8.2**
+
+- MPAS-ATM constants updated to MPAS v5+
+- readthedocs build info updated.
+
+
 **July 27 2023 :: Bug-fixes for MOM6 and WRF. Tag v10.8.1**
 
 - bug-fixes:
