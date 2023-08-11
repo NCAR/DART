@@ -37,7 +37,7 @@
    /
 
 &Fluxnetfull_to_obs_nml
-   text_input_file = '../data/AMF_US-Ha1_FLUXNET_FULLSET_HR_1991-2020_3-5.csv'
+   text_input_file = '../data/AMF_US-Ha1_FLUXNET_FULLSET_MM_1991-2020_3-5.csv'
    obs_out_file    = 'obs_seq.out'
    timezoneoffset  = -5
    latitude        =  42.5378
@@ -45,9 +45,9 @@
    elevation       = 353
    flux_height     = 29
    maxgoodqc       = 3
-   gap_filled      = .false.
+   gap_filled      = .true.
    energy_balance  = .false.
-   time_resolution = 'HH'
+   time_resolution = 'MM'
    verbose         = .true.
    /
 
