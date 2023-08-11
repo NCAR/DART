@@ -59,7 +59,7 @@ real(r8)           :: maxgoodqc       = 3.0_r8
 ! Always true except for latent,sensible heat and NEE for hourly time periods
 logical            :: gap_filled      = .true.
 ! Option for energy balance correction for latent and sensible heat
-! Recommned to keep false as these values are typically missing
+! Recommend to keep false as these values are typically missing
 logical            :: energy_balance  = .false.
 character(len=2)   :: time_resolution = 'HH'
 logical            :: verbose         = .false.
@@ -143,6 +143,7 @@ type towerdata
   real(r8) :: nee
   real(r8) :: neeUNC
   integer  :: neeQC
+  real(r8) :: neeQCfrac
   real(r8) :: le
   real(r8) :: leUNC
   integer  :: leQC
@@ -216,8 +217,8 @@ endif
 if (gap_filled .eqv. .false.) then
 
    write(string1,*) 'WARNING!: gap filling is turned off. This is only recommended for'
-   write(string2,*) 'NEE, H and LE  observations at native time resolution (HH, HR)' 
-   write(string3,*) ' ...this approach assigns poor QC values to gap filled obs'
+   write(string2,*) 'NEE,LE,SH  observations 0=measured,gap_filled: 1=good gf,2=medium,3=poor. This approach' 
+   write(string3,*) 'assigns QC values > maxgoodQC thus gap-filled data will not be written to obs_seq'
    call error_handler(E_MSG, source, string1, &
                       text2=string2,text3=string3)
 
@@ -372,6 +373,7 @@ obsloop: do iline = 2,nlines
       write(logfileunit,*)tower%leQCindex       , tower%leQCstring       , tower%leQC
       write(logfileunit,*)tower%neeindex        , tower%neestring        , tower%nee
       write(logfileunit,*)tower%neeQCindex      , tower%neeQCstring      , tower%neeQC
+      write(logfileunit,*)tower%neeQCindex      , tower%neeQCstring      , tower%neeQCfrac
       write(logfileunit,*)tower%gppDTUNC16index , tower%gppDTUNC16string , tower%gppDTUNC16
       write(logfileunit,*)tower%gppDTUNC84index , tower%gppDTUNC84string , tower%gppDTUNC84
       write(logfileunit,*)tower%gppDTQC 
@@ -402,7 +404,7 @@ obsloop: do iline = 2,nlines
       write(string1, *) 'Display tower%start_time and tower%end_time (LTC)  =', tower%start_time,' ', tower%end_time
       call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
       write(*,*)''
-      write(string1, *) 'Display tower%nee tower%neeQC  =', tower%nee, tower%neeQC
+      write(string1, *) 'Display tower%nee tower%neeQC  tower%neeQCfrac =', tower%nee, tower%neeQC, tower%neeQCfrac
       call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%le tower%leQC  =', tower%le, tower%leQC
@@ -430,27 +432,92 @@ obsloop: do iline = 2,nlines
    if (tower%hQC <= maxgoodqc) then   ! Sensible Heat Flux [W m-2]
       oerr = tower%hUNC
       qc   = real(tower%hQC,r8)
+      ! Check for missing uncertainty value, if needed assign % error
+      ! based on empirical examination of data      
+      if (oerr <=0) then
+         select case(time_resolution)
+           case ('HR', 'HH')
+              oerr= tower%h*0.2
+           case ('DD', 'WW')
+              oerr= tower%h*0.1
+           case ('MM')
+              oerr= tower%h*0.05 
+           case default
+              write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution
+              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+         end select      
+      endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%h, &
                          TOWER_SENSIBLE_HEAT_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+
+      if (verbose) then
+         write(*,*)''
+         write(string1, *) 'Display tower%h, tower%hUNC (1 SD)  =', tower%h,' ', tower%hUNC
+         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      endif
+
    endif
 
    if (tower%leQC <= maxgoodqc) then   ! Latent Heat Flux [W m-2]
       oerr = tower%leUNC
       qc   = real(tower%leQC,r8)
+      if (oerr <=0) then
+         select case( time_resolution )
+           case ('HR', 'HH')
+              oerr= tower%le*0.2
+           case ('DD', 'WW')
+              oerr= tower%le*0.1
+           case ('MM')
+              oerr= tower%le*0.05
+           case default
+              write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
+              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+         end select      
+      endif
+
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%le, &
                          TOWER_LATENT_HEAT_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+
+      if (verbose) then
+         write(*,*)''
+         write(string1, *) 'Display tower%le, tower%leUNC  (1 SD) =', tower%le,' ', tower%leUNC
+         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      endif
+
    endif
 
    if (tower%neeQC <= maxgoodqc) then       ! Net Ecosystem Exchange  [umol m-2 s-1]
       oerr      = tower%neeUNC * umol_to_gC
       tower%nee = -tower%nee * umol_to_gC   ! Matches units in CLM [gC m-2 s-1]
       qc        = real(tower%neeQC,r8)
+      if (oerr <=0) then
+         select case( time_resolution )
+           case ('HR', 'HH')
+              oerr= abs(tower%nee)*0.2
+           case ('DD', 'WW')
+              oerr= abs(tower%nee)*0.1
+           case ('MM')
+              oerr= abs(tower%nee)*0.05
+           case default
+              write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
+              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+         end select      
+      endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%nee, &
                          TOWER_NETC_ECO_EXCHANGE, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+
+      if (verbose) then
+         write(*,*)''
+         write(string1, *) 'Display tower%nee, tower%neeUNC  (1 SD) =', tower%nee,' ', tower%neeUNC
+         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      endif
+
    endif
+
+
 
    if (tower%gppDTQC <=maxgoodqc .and. tower%gppNTQC <= maxgoodqc) then    ! Gross Primary Production  [umol m-2 s-1]
       sig_gppdt = (((tower%gppDTUNC84-tower%gppDTUNC16) / 2)**2)**0.5  ! Ustar unc contribution
@@ -461,9 +528,29 @@ obsloop: do iline = 2,nlines
       ! Take average of night and day partitioning methods
       tower%gpp = ((tower%gppDT + tower%gppNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
       qc        = maxval((/real(tower%recoDTQC,r8),real(tower%recoNTQC,r8)/))
+      if (oerr <=0) then
+         select case( time_resolution )
+           case ('HR', 'HH')
+              oerr= tower%gpp*0.2
+           case ('DD', 'WW')
+              oerr= tower%gpp*0.1
+           case ('MM')
+              oerr= tower%gpp*0.05
+           case default
+              write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
+              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+         end select      
+      endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%gpp, &
                          TOWER_GPP_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+
+      if (verbose) then
+         write(*,*)''
+         write(string1, *) 'Display tower%gpp, gpp uncertainty (1 SD)  =', tower%gpp,' ', oerr
+         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      endif
+
    endif
 
    if (tower%recoDTQC <= maxgoodqc .and. tower%recoNTQC <= maxgoodqc) then   ! Gross Primary Production  [umol m-2 s-1]
@@ -475,10 +562,33 @@ obsloop: do iline = 2,nlines
       ! Take average of night and day partitioning methods
       tower%reco = ((tower%recoDT + tower%recoNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
       qc        = maxval((/real(tower%recoDTQC,r8),real(tower%recoNTQC,r8)/))
+      if (oerr <=0) then
+         select case( time_resolution )
+           case ('HR', 'HH')
+              oerr= tower%reco*0.2
+           case ('DD', 'WW')
+              oerr= tower%reco*0.1
+           case ('MM')
+              oerr= tower%reco*0.05
+           case default
+              write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
+              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+         end select      
+      endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%reco, &
                          TOWER_ER_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
+
+      if (verbose) then
+         write(*,*)''
+         write(string1, *) 'Display tower%reco, reco uncertainty (1 SD)  =', tower%reco,' ', oerr
+         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      endif
+
    endif
+
+
+
 
 end do obsloop
 
@@ -916,20 +1026,21 @@ endif
 
 
 ! Assign flux observations, uncertainty and QC to tower structure
-!
-! Fixme: These are for high resolution format HH or HR only
-! Fixme: If aggregrated (DD,WW,MM) need to edit, expand this
+! Description of FLUXNET FULLSET variables
 
 ! start_time,end_time    format   YYYYMMDDHHMM
 ! nee           units    [umolCO2 m-2 s-1], VUT_REF
 ! neeUNC        units    [umolCO2 m-2 s-1], joint
-! neeQC         no dim   0=measured,gap_filled: 1=good,2=medium,3=poor
+! neeQC (HH,HR) no dim   0=measured, gap_filled:1=good,2=medium,3=poor,-9999=missing
+! neeQC (DD-MM) no dim   fraction between 0-1, % of good quality filled data
 ! le            units    [W m-2]
 ! leUNC         units    [W m-2], random
-! leQC          no dim   0=measured,gap_filled: 1=good gf,2=medium,3=poor
+! leQC (HH,HR) no dim   0=measured, gap_filled:1=good,2=medium,3=poor,-9999=missing
+! leQC (DD-MM) no dim   fraction between 0-1, % of good quality filled data
 ! h             units    [W m-2]
 ! hUNC          units    [W m-2], random
-! hQC           no dim   0=measured,gap_filled: 1=good gf,2=medium,3=poor
+! hQC           no dim   0=measured, gap_filled:1=good,2=medium,3=poor,-9999=missing
+! hQC (DD-MM) no dim   fraction between 0-1, % of good quality filled data
 ! gppDT         units    [umolCO2 m-2 s-1] VUT_REF daytime partition
 ! gppNT         units    [umolCO2 m-2 s-1] VUT_REF nighttime partition
 ! gppUNCDT[xx]  units    [umolCO2 m-2 s-1] 16,84 percentile
@@ -947,8 +1058,9 @@ endif
 ! (CLM) EFLX_LH_TOT_R,FSH     units     [W m-2]
 
 tower%nee         =           values(tower%neeindex        -time_adjust )
-tower%neeUNC      =           values(tower%neeUNCindex     -time_adjust )
+tower%neeUNC      =           values(tower%neeUNCindex     -time_adjust)
 tower%neeQC       =      nint(values(tower%neeQCindex      -time_adjust))
+tower%neeQCfrac   =           values(tower%neeQCindex      -time_adjust)
 tower%le          =           values(tower%leindex         -time_adjust )
 tower%leUNC       =           values(tower%leUNCindex      -time_adjust )
 tower%leQC        =      nint(values(tower%leQCindex       -time_adjust))
@@ -1010,28 +1122,37 @@ endif
 ! Reject NEE data where neeQC is missing
 if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000
 
-! The QC values are typically missing for le and h (-9999)
-! Thus  manually assign poor QC values in these cases
-if (energy_balance .eqv. .false.) then
-   if (tower%leQC  < 0) tower%leQC  = 3
-   if (tower%hQC   < 0) tower%hQC   = 3
-else  ! No QC values for energy balance corrected le and h.  Assign poor QC.
-   tower%leQC  = 3
-   tower%leQC  = 3
+! If NEE (DD,WW,MM) convert from  % filled QC to integer QC  good/fair/poor
+if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
+    time_resolution == 'WW') then
+   if (tower%neeQCfrac >= 0.90) tower%neeQC = 1 ! >90% fill is good
+   if (tower%neeQCfrac < 0.90 .and. tower%neeQC >= 0.60) tower%neeQC = 2 ! 60-90% fill is fair
+   if (tower%neeQCfrac < 0.60 .and. tower%neeQC >= 0.0_r8) tower%neeQC = 3 ! <60% fill is poor
 endif
 
 
-! No qc values for gpp/reco, thus assign good qc unless
-! the gpp/reco value is missing (-9999)
-tower%gppNTQC = 1
-tower%gppDTQC = 1
-tower%recoNTQC = 1
-tower%recoDTQC = 1
+! The QC values are typically missing for le and h (-9999)
+! Thus  manually assign poor QC values in these cases
+if (energy_balance .eqv. .false.) then
+   if (tower%leQC  < 0.0_r8) tower%leQC  = 2
+   if (tower%hQC   < 0.0_r8) tower%hQC   = 2
+else  ! No QC values for energy balance corrected le and h.  Assign fair QC.
+   tower%leQC  = 2
+   tower%leQC  = 2
+endif
 
-if (tower%gppNT < 0) tower%gppNTQC = maxgoodqc + 1000
-if (tower%gppDT < 0) tower%gppDTQC = maxgoodqc + 1000
-if (tower%recoNT < 0) tower%recoNTQC = maxgoodqc + 1000
-if (tower%recoDT < 0) tower%recoDTQC = maxgoodqc + 1000
+
+! No qc values for gpp/reco, thus assign fair qc unless
+! the gpp/reco values are negative values, then reject.
+tower%gppNTQC = 2
+tower%gppDTQC = 2
+tower%recoNTQC = 2
+tower%recoDTQC = 2
+
+if (tower%gppNT < 0.0_r8) tower%gppNTQC = maxgoodqc + 1000
+if (tower%gppDT < 0.0_r8) tower%gppDTQC = maxgoodqc + 1000
+if (tower%recoNT < 0.0_r8) tower%recoNTQC = maxgoodqc + 1000
+if (tower%recoDT < 0.0_r8) tower%recoDTQC = maxgoodqc + 1000
 
 ! Assign very bad qc to gap_filled data if user requests it
 ! such that maxgoodqc threshold does not add gap_filled data to obs_seq file
