@@ -13,7 +13,7 @@ parameter configuration that are driven from its namelist. See the namelist sect
 of assimilation steps to be done is controlled by the input observation sequence and by the time-stepping capabilities
 of the model being used in the assimilation.
 
-See :doc:`../../../README` for more documentation, including a discussion of the
+See :ref:`Welcome page` for more documentation, including a discussion of the
 capabilities of the assimilation system, a diagram of the entire execution cycle, the options and features.
 
 Namelist
@@ -476,7 +476,6 @@ Modules used
    ensemble_manager_mod
    adaptive_inflate_mod
    mpi_utilities_mod
-   smoother_mod
    random_seq_mod
    state_vector_io_mod
    io_filenames_mod
