@@ -31,7 +31,7 @@ implicit none
 
 real(r8), allocatable :: lon(:)
 real(r8), allocatable :: lat(:)
-real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:), field2(:,:)
+real(r8), allocatable :: field0(:,:), fieldT(:,:), field1(:,:), field2(:,:), field3(:,:), diff(:,:)
 
 real(r8) :: resolution = 1
 real(r8) :: grid_origin_longitude = 0.0_r8
@@ -50,6 +50,7 @@ integer  :: i,j ! loop variables
 integer :: case = 1
 logical :: is_regular = .true.
 integer :: debug = 0
+logical :: do_more = .false.
 
 logical :: grid_global = .true.
 logical :: grid_spans_lon_zero = .true.
@@ -58,13 +59,13 @@ logical :: grid_pole_wrap = .true.
 character(len=256) :: data_function = "sine"
 character(len=256) :: target_filename
 character(len=metadatalength) :: lon_name, lat_name
-type(grid_type) :: grid0, gridT, grid1, grid2
+type(grid_type) :: grid0, gridT, grid1, grid2, grid3
 
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
          case, debug, resolution, lon_name, lat_name, resolution, &
          grid_global, grid_spans_lon_zero, grid_pole_wrap, data_function, &
          grid_origin_longitude, grid_origin_latitude, grid_end_longitude, &
-         grid_end_latitude
+         grid_end_latitude, do_more
 
 
 call initialize_utilities("test_interpolate_grid")
@@ -107,24 +108,44 @@ call write_grid(grid1, field1, "field1.nc")
 
 
 ! compare field0 and field1 and evaluate success or failure
-! call evaluate_results(grid0, field0, grid1, field1)
+! call evaluate_results(grid0, field0, grid1, field1)  ! TODO
 
-! create a denser copy of the src grid with no data
+allocate(diff(ni, nj))
+diff = field1 - field0
+call write_grid(grid0, diff, "diff.nc")
 
-call create_grid0(resolution/2.0, grid_corners, grid2, ni, nj)
-allocate(field2(ni,nj))
-field2(:,:) = MISSING_R8
+! additional tests to isolate problems
 
-! call quad utils to move data back from dst to src2
+if (do_more) then
 
-call do_interp(gridT, fieldT, grid2, field2)
-call write_grid(grid2, field2, "field2.nc")
+   ! create a denser copy of the src grid with no data
+   
+   call create_grid0(resolution/2.0, grid_corners, grid2, ni, nj)
+   allocate(field2(ni,nj))
+   field2(:,:) = MISSING_R8
+   
+   ! call quad utils to move data back from dst to src2
+   
+   call do_interp(gridT, fieldT, grid2, field2)
+   call write_grid(grid2, field2, "field2.nc")
+   
+   ! create a denser copy of the src grid with no data
+   ! and interp directly from grid 0 to this.
+   
+   call create_grid0(resolution/4.0, grid_corners, grid3, ni, nj)
+   allocate(field3(ni,nj))
+   field3(:,:) = MISSING_R8
+   
+   ! call quad utils to move data back from orig grid to dense grid
+   
+   call do_interp(grid0, field0, grid3, field3)
+   call write_grid(grid3, field3, "field3.nc")
+   
+   deallocate(field2, field3)
 
+endif
 
-! compare field0 and field1 and evaluate success or failure
-! call evaluate_results(grid0, field0, grid1, field1)
-
-deallocate(field0, fieldT, field1, field2)
+deallocate(field0, fieldT, field1, diff)
 
 call finalize_utilities()
 

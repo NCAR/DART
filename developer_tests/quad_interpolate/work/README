@@ -1,0 +1,25 @@
+
+
+mom grids:
+
+T62_g16  low resolution for testing  
+tx0.66v1 current workhorse grid  T62_t061
+tx2_3v1 future workhorse grid f09_t232
+and the regional grid
+
+
+what i've been testing with:
+cheyenne.ucar.edu:~nancy/{caminput.nc,pop_grid.nc,ocean_geometry.nc}
+
+
+(on my home laptop, ~nancy/inputfiles/* )
+
+
+COMPACT, REG, IRREG?  better terminology
+
+
+for ncview, turn coast outlines off (opts) and turn
+bi-lin off for better results.
+
+
+

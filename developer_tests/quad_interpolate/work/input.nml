@@ -1,20 +1,22 @@
 
 &test_interpolate_grid_nml
-  data_function = "row"
+  data_function = "sine"
   resolution = 1
   grid_origin_longitude = 0.0
   grid_end_longitude = 360.0
   grid_origin_latitude = -90.0
   grid_end_latitude = 90.0
 
-  is_regular = .false.
-  target_filename = 'pop_grid.nc'
-  lon_name = "TLON"
-  lat_name = "TLAT"
+  is_regular = .true.
+  target_filename = 'caminput.nc'
+  lon_name = "lon"
+  lat_name = "lat"
 
   grid_global = .true.
   grid_spans_lon_zero = .true.
-  grid_pole_wrap = .false.
+  grid_pole_wrap = .true.
+
+  do_more = .false.
 /
 
 !  is_regular = .true.

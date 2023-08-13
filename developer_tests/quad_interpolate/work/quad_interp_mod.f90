@@ -31,7 +31,7 @@ implicit none
 private
 
 
-public :: do_interp, set_quad_grid_opts
+public :: do_interp, set_quad_grid_opts, is_global
 
 type(quad_interp_handle) :: h
 
@@ -65,6 +65,15 @@ grid_spans_lon_zero = spans_lon_zero
 grid_pole_wrap = pole_wrap
 
 end subroutine set_quad_grid_opts
+
+!------------------------------------------------------------------
+function is_global()
+
+logical :: is_global
+
+is_global = grid_global
+
+end function is_global
 
 !------------------------------------------------------------------
 subroutine do_interp(from, fromfield, to, tofield)

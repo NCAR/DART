@@ -8,6 +8,7 @@ use types_mod, only : r8
 use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand, f_long, f_lati, &
                           f_oddrow, f_oddcol
 use grid_mod
+use quad_interp_mod, only : is_global
 
 implicit none
 
@@ -25,7 +26,6 @@ interface
 end interface
  
 procedure(func), pointer :: func_ptr => NULL()
-
 
 contains
 
@@ -48,8 +48,10 @@ real(r8) :: dlon, dlat
 dlon = grid_corners(2,1) - grid_corners(1,1)
 dlat = grid_corners(2,2) - grid_corners(1,2)
 
-ni = floor(dlon / resolution)
-nj = floor(dlat / resolution) 
+ni = floor(dlon / resolution)      ! if global, long is periodic
+nj = floor(dlat / resolution) + 1  ! lat is not
+
+if (.not. is_global()) ni = ni + 1
 
 !print *, dlon, dlat
 !print *, ni, nj
@@ -75,6 +77,7 @@ do j = 2, nj
    grid%irlat(j) = grid%irlat(j-1) + resolution
 enddo
 
+call dump_grid(grid)
 !call dump_grid(grid, .true.)
 
 end subroutine create_grid0
