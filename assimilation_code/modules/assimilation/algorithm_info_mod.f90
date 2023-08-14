@@ -35,8 +35,50 @@ integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          init_qcf_table,  &
+          init_qcf_table, read_qcf_table, &
+          obs_error_info_type, probit_inflation_type, probit_state_type, &
+          probit_extended_state_type, obs_inc_info_type, qcf_table_data_type, &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
+
+!Creates the type definitions for the QCF table
+type obs_error_info_type
+   logical               :: bounded_below, bounded_above
+   real                  :: lower_bound,   upper_bound
+end type
+
+type probit_inflation_type
+   integer               :: dist_type
+   logical               :: bounded_below, bounded_above
+   real                  :: lower_bound,   upper_bound
+end type
+
+type probit_state_type
+   integer               :: dist_type
+   logical               :: bounded_below, bounded_above
+   real                  :: lower_bound,   upper_bound
+end type
+
+type probit_extended_state_type
+   integer               :: dist_type
+   logical               :: bounded_below, bounded_above
+   real                  :: lower_bound,   upper_bound
+end type
+
+type obs_inc_info_type
+   integer :: filter_kind
+   logical :: rectangular_quadrature, gaussian_likelihood_tails
+   logical :: sort_obs_inc, spread_restoration
+   logical :: bounded_below, bounded_above
+   real :: lower_bound,   upper_bound
+end type
+
+type qcf_table_data_type
+   type(obs_error_info_type) :: obs_error_info
+   type(probit_inflation_type) :: probit_inflation
+   type(probit_state_type) :: probit_state
+   type(probit_extended_state_type) :: probit_extended_state
+   type(obs_inc_info_type) :: obs_inc_info
+end type
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
@@ -265,5 +307,7 @@ print *, 'numrows: ', numrows
 end subroutine init_qcf_table
 
 !------------------------------------------------------------------------
+
+
 
 end module algorithm_info_mod
