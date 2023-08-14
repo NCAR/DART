@@ -35,6 +35,7 @@ integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
+          init_qcf_table,  &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
 
 ! Provides routines that give information about details of algorithms for 
@@ -235,6 +236,33 @@ spread_restoration = .false.
 !!!gaussian_likelihood_tails = .false.
 
 end subroutine obs_inc_info
+
+!------------------------------------------------------------------------
+
+
+subroutine init_qcf_table(qcf_table_filename, numrows)
+
+character(len=50), intent(in) :: qcf_table_filename
+integer, intent(out) :: numrows !return value
+
+integer :: nlines
+integer :: io
+integer, parameter :: fileid = 10 !file identifier
+
+open(unit=fileid, file=qcf_table_filename)
+nlines = 0
+
+do !do loop to get number of rows (or QTY's) in the table
+  read(fileid,*,iostat=io)
+  if(io/=0) exit
+  nlines = nlines + 1
+end do
+close(fileid)
+
+numrows = nlines - 2
+print *, 'numrows: ', numrows
+
+end subroutine init_qcf_table
 
 !------------------------------------------------------------------------
 
