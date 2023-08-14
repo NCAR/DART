@@ -80,6 +80,9 @@ type qcf_table_data_type
    type(obs_inc_info_type) :: obs_inc_info
 end type
 
+type(qcf_table_data_type), allocatable :: qcf_table_data(:)
+character(len=129), allocatable :: qcf_table_row_headers(:) !!!!! might need to change len=129
+
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
 ! for regression and inflation in probit space. 
@@ -282,11 +285,11 @@ end subroutine obs_inc_info
 !------------------------------------------------------------------------
 
 
-subroutine init_qcf_table(qcf_table_filename, numrows)
+subroutine init_qcf_table(qcf_table_filename)
 
 character(len=50), intent(in) :: qcf_table_filename
-integer, intent(out) :: numrows !return value
 
+integer :: numrows 
 integer :: nlines
 integer :: io
 integer, parameter :: fileid = 10 !file identifier
@@ -304,6 +307,11 @@ close(fileid)
 numrows = nlines - 2
 print *, 'numrows: ', numrows
 
+allocate(qcf_table_data(numrows))
+allocate(rowheaders(numrows))
+
+call read_qcf_table(qcf_table_filename, numrows, qcf_table_data, rowheaders)
+
 end subroutine init_qcf_table
 
 !------------------------------------------------------------------------
@@ -315,8 +323,9 @@ subroutine read_qcf_table(qcf_table_filename, numrows, qcf_table_data, rowheader
 
 character(len=129), intent(in) :: qcf_table_filename
 integer, intent(in) :: numrows
-type(qcf_table_data_type), intent(inout) :: qcf_table_data(:)
-character(len=129), intent(inout) :: rowheaders(:) !!!!! might need to change len=129
+
+type(qcf_table_data_type) :: qcf_table_data(:)
+character(len=129) :: rowheaders(:) !!!!! might need to change len=129
 
 integer, parameter :: fileid = 10 !file identifier
 integer :: row
