@@ -129,6 +129,9 @@ real(r8), allocatable  :: obs_impact_table(:,:)
 
 character(len=*), parameter :: source = 'assim_tools_mod.f90'
 
+type(qcf_table_data_type), allocatable :: qcf_table_data(:)
+character(len=129), allocatable :: qcf_table_row_headers(:) !!!!! might need to change len=129
+
 !============================================================================
 
 !---- namelist with default values
@@ -318,6 +321,8 @@ call log_namelist_selections(num_special_cutoff, cache_override)
 
 if(qcf_table_filename) then
    call init_qcf_table(qcf_table_filename, numrows)
+   allocate(qcf_table_row_headers(numrows))
+   allocate(qcf_table_data(numrows))
 endif
 
 end subroutine assim_tools_init
