@@ -76,7 +76,7 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, &
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, read_qcf_table, &
                                qcf_table_data_type, obs_error_info_type, obs_inc_info_type, &
                                probit_inflation_type, probit_state_type, probit_extended_state_type
 
@@ -323,6 +323,7 @@ if(qcf_table_filename) then
    call init_qcf_table(qcf_table_filename, numrows)
    allocate(qcf_table_row_headers(numrows))
    allocate(qcf_table_data(numrows))
+   call read_qcf_table(qcf_table_filename, numrows, qcf_table_data, qcf_table_row_headers)
 endif
 
 end subroutine assim_tools_init
