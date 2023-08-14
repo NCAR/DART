@@ -76,7 +76,7 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, read_qcf_table
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -314,7 +314,10 @@ is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localizatio
 
 call log_namelist_selections(num_special_cutoff, cache_override)
 
-if(qcf_table_filename) then
+write(*,*), "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+if(qcf_table_filename == '') then
+   write(*,*), "no qcf table in namelist" 
+else
    call init_qcf_table(qcf_table_filename)
 endif
 

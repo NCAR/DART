@@ -287,7 +287,7 @@ end subroutine obs_inc_info
 
 subroutine init_qcf_table(qcf_table_filename)
 
-character(len=50), intent(in) :: qcf_table_filename
+character(len=129), intent(in) :: qcf_table_filename
 
 integer :: numrows 
 integer :: nlines
@@ -308,9 +308,9 @@ numrows = nlines - 2
 print *, 'numrows: ', numrows
 
 allocate(qcf_table_data(numrows))
-allocate(rowheaders(numrows))
+allocate(qcf_table_row_headers(numrows))
 
-call read_qcf_table(qcf_table_filename, numrows, qcf_table_data, rowheaders)
+call read_qcf_table(qcf_table_filename, numrows, qcf_table_data, qcf_table_row_headers)
 
 end subroutine init_qcf_table
 
