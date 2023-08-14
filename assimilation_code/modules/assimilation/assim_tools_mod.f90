@@ -76,7 +76,9 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, &
+                               qcf_table_data_type, obs_error_info_type, obs_inc_info_type, &
+                               probit_inflation_type, probit_state_type, probit_extended_state_type
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
