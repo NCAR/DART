@@ -76,9 +76,7 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, read_qcf_table, &
-                               qcf_table_data_type, obs_error_info_type, obs_inc_info_type, &
-                               probit_inflation_type, probit_state_type, probit_extended_state_type
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, read_qcf_table
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -128,9 +126,6 @@ real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 real(r8), allocatable  :: obs_impact_table(:,:)
 
 character(len=*), parameter :: source = 'assim_tools_mod.f90'
-
-type(qcf_table_data_type), allocatable :: qcf_table_data(:)
-character(len=129), allocatable :: qcf_table_row_headers(:) !!!!! might need to change len=129
 
 !============================================================================
 
@@ -320,10 +315,7 @@ is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localizatio
 call log_namelist_selections(num_special_cutoff, cache_override)
 
 if(qcf_table_filename) then
-   call init_qcf_table(qcf_table_filename, numrows)
-   allocate(qcf_table_row_headers(numrows))
-   allocate(qcf_table_data(numrows))
-   call read_qcf_table(qcf_table_filename, numrows, qcf_table_data, qcf_table_row_headers)
+   call init_qcf_table(qcf_table_filename)
 endif
 
 end subroutine assim_tools_init
