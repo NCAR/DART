@@ -45,7 +45,7 @@ end type
 !real(r8), intent(out) :: qcf_table_data
 !real, dimension(:, :), allocatable :: qcf_table_data_rows
 type(qcf_table_data_type), allocatable :: qcf_table_data(:)
-character(len=30), dimension(:), allocatable :: rowheaders !!!!! might need to change len=30
+character(len=129), dimension(:), allocatable :: rowheaders !!!!! might need to change len=30
 
 integer, parameter :: fileid = 10 !file identifier
 character(len=30), parameter :: tester_QTY = 'QTY_GPSRO'
@@ -63,7 +63,7 @@ character(len=30), dimension(4) :: header1
 character(len=30), dimension(29) :: header2
 !variables for table values ^^^ 
 
-open(unit=fileid, file='cam_qcf_table.dat')
+open(unit=fileid, file='cam_qcf_table.txt')
 nlines = 0
 
 do !do loop to get number of rows (or QTY's) in the table
@@ -82,7 +82,7 @@ allocate(qcf_table_data(numrows))
 allocate(rowheaders(numrows))
 write(*,*) shape(qcf_table_data)
 
-open(unit=fileid, file='cam_qcf_table.dat')
+open(unit=fileid, file='cam_qcf_table.txt')
 
 read(fileid, *) header1
 read(fileid, *) header2 !! skip the headers
