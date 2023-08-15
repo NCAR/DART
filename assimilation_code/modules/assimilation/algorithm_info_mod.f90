@@ -176,8 +176,26 @@ integer :: QTY_loc(1)
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
 
-if(is_inflation) then
+QTY_loc = findloc(qcf_table_row_headers, kind)
+write(*, *) 'findloc of kind: ', QTY_loc(1)
+
+if (QTY_loc(1) == 0) then
+   write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+   
+   !using default values here
+   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   bounded_below = .false.;    bounded_above = .false.
+   lower_bound   = missing_r8; upper_bound   = missing_r8
+
+   elseif(is_inflation) then
    ! Case for inflation transformation
+
+      dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
+      bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
+      bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
+      lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
+      upper_bound = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
+
 !   if(kind == QTY_STATE_VARIABLE) then
 !      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 !      bounded_below = .false.;    bounded_above = .false.
@@ -190,48 +208,65 @@ if(is_inflation) then
 !      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 !      bounded_below = .true.; bounded_above = .false.
 !      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-   if findloc
-   else
-      write(*, *) 'Illegal kind in obs_error_info'
-      stop
-   endif
-elseif(is_state) then
+!   else
+!      write(*, *) 'Illegal kind in obs_error_info'
+!      stop
+!   endif
+ 
+   elseif(is_state) then
    ! Case for state variable priors
-   if(kind == QTY_STATE_VARIABLE) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .false.;    bounded_above = .false.
-      lower_bound   = missing_r8; upper_bound   = missing_r8
-   elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .true.; bounded_above = .false.
-      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-   elseif(kind == QTY_TRACER_SOURCE) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .true.; bounded_above = .false.
-      lower_bound   = 0.0_r8; upper_bound = missing_r8
+
+      dist_type = qcf_table_data(QTY_loc(1))%probit_state%dist_type
+      bounded_below = qcf_table_data(QTY_loc(1))%probit_state%bounded_below
+      bounded_above = qcf_table_data(QTY_loc(1))%probit_state%bounded_above
+      lower_bound = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
+      upper_bound = qcf_table_data(QTY_loc(1))%probit_state%upper_bound
+
+   !if(kind == QTY_STATE_VARIABLE) then
+    !  dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+     ! bounded_below = .false.;    bounded_above = .false.
+     ! lower_bound   = missing_r8; upper_bound   = missing_r8
+  ! elseif(kind == QTY_TRACER_CONCENTRATION) then
+  !    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   !   bounded_below = .true.; bounded_above = .false.
+   !   lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!   elseif(kind == QTY_TRACER_SOURCE) then
+ !     dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+  !    bounded_below = .true.; bounded_above = .false.
+   !   lower_bound   = 0.0_r8; upper_bound = missing_r8
+!   else
+!      write(*, *) 'Illegal kind in obs_error_info'
+ !     stop
+  ! endif
+
    else
-      write(*, *) 'Illegal kind in obs_error_info'
-      stop
-   endif
-else
    ! This case is for observation (extended state) priors
-   if(kind == QTY_STATE_VARIABLE) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .false.;    bounded_above = .false.
-      lower_bound   = missing_r8; upper_bound   = missing_r8
-   elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .true.; bounded_above = .false.
-      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-   elseif(kind == QTY_TRACER_SOURCE) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .true.; bounded_above = .false.
-      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-   else
-      write(*, *) 'Illegal kind in obs_error_info'
-      stop
-   endif
+
+      dist_type = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
+      bounded_below = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_below
+      bounded_above = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_above
+      lower_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
+      upper_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%upper_bound
+
+!   if(kind == QTY_STATE_VARIABLE) then
+!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+!      bounded_below = .false.;    bounded_above = .false.
+!      lower_bound   = missing_r8; upper_bound   = missing_r8
+!   elseif(kind == QTY_TRACER_CONCENTRATION) then
+!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+!     bounded_below = .true.; bounded_above = .false.
+!      lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!   elseif(kind == QTY_TRACER_SOURCE) then
+!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+!      bounded_below = .true.; bounded_above = .false.
+!      lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!   else
+!      write(*, *) 'Illegal kind in obs_error_info'
+!      stop
+!   endif
 endif
+
+write(*,*) dist_type, bounded_below, bounded_above, lower_bound, upper_bound
 
 end subroutine probit_dist_info
 
