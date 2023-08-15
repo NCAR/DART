@@ -155,6 +155,8 @@ integer,  intent(out) :: dist_type
 logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,   upper_bound
 
+integer :: QTY_loc(1)
+
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
 ! or state variable and about whether the transformation is being done for inflation
@@ -176,18 +178,19 @@ real(r8), intent(out) :: lower_bound,   upper_bound
 
 if(is_inflation) then
    ! Case for inflation transformation
-   if(kind == QTY_STATE_VARIABLE) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .false.;    bounded_above = .false.
-      lower_bound   = missing_r8; upper_bound   = missing_r8
-   elseif(kind == QTY_TRACER_CONCENTRATION) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .true.; bounded_above = .false.
-      lower_bound   = 0.0_r8; upper_bound = missing_r8
-   elseif(kind == QTY_TRACER_SOURCE) then
-      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-      bounded_below = .true.; bounded_above = .false.
-      lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!   if(kind == QTY_STATE_VARIABLE) then
+!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+!      bounded_below = .false.;    bounded_above = .false.
+!      lower_bound   = missing_r8; upper_bound   = missing_r8
+!   elseif(kind == QTY_TRACER_CONCENTRATION) then
+!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+!      bounded_below = .true.; bounded_above = .false.
+!      lower_bound   = 0.0_r8; upper_bound = missing_r8
+!   elseif(kind == QTY_TRACER_SOURCE) then
+!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+!      bounded_below = .true.; bounded_above = .false.
+!      lower_bound   = 0.0_r8; upper_bound   = missing_r8
+   if findloc
    else
       write(*, *) 'Illegal kind in obs_error_info'
       stop
@@ -310,22 +313,21 @@ print *, 'numrows: ', numrows
 allocate(qcf_table_data(numrows))
 allocate(qcf_table_row_headers(numrows))
 
-call read_qcf_table(qcf_table_filename, numrows, qcf_table_data, qcf_table_row_headers)
+call read_qcf_table(qcf_table_filename)
 
 end subroutine init_qcf_table
 
 !------------------------------------------------------------------------
 
 
-subroutine read_qcf_table(qcf_table_filename, numrows, qcf_table_data, rowheaders)
+subroutine read_qcf_table(qcf_table_filename)
 
 ! Reads in the QCEFF input options from tabular data file
 
 character(len=129), intent(in) :: qcf_table_filename
-integer, intent(in) :: numrows
 
-type(qcf_table_data_type) :: qcf_table_data(:)
-character(len=129) :: rowheaders(:) !!!!! might need to change len=129
+!type(qcf_table_data_type) :: qcf_table_data(:)
+!character(len=129) :: rowheaders(:) !!!!! might need to change len=129
 
 integer, parameter :: fileid = 10 !file identifier
 integer :: row
@@ -341,24 +343,8 @@ write(*, *) "header1: ", header1
 write(*, *) "header2: ", header2
 
 ! read in table values directly to qcf_table_data type
-do row = 1, numrows
-   read(fileid, *) rowheaders(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
-                   qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
-                   qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
-                   qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
-                   qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
-                   qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
-                   qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
-                   qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-                   qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
-                   qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
-                   qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
-                   qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
-
-! write to check values were correctly assigned
-   write(*, *) "rowheader(", row, "): ", rowheaders(row)
-   write(*, *) "qcf_table_data(", row, "): "
-   write(*, *) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+do row = 1, size(qcf_table_data)
+   read(fileid, *) qcf_table_row_headers(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                    qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
                    qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
                    qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
@@ -374,8 +360,52 @@ end do
 
 close(fileid)
 
+call write_qcf_table()
 
 end subroutine read_qcf_table
+
+!------------------------------------------------------------------------
+
+
+subroutine write_qcf_table()
+
+! write to check values were correctly assigned
+! testing for findloc
+
+character(len=30), parameter :: tester_QTY = 'QTY_GPSRO'
+integer :: QTY_loc(1)
+
+character(len=30), parameter :: tester_QTY0 = 'QTY_DUMMY'
+integer :: QTY_loc0(1)
+
+integer :: row
+
+write(*,*), 'SIZE: ', size(qcf_table_data)
+
+do row = 1, size(qcf_table_data)
+   write(*, *) "qcf_table_row_headers(", row, "): ", qcf_table_row_headers(row)
+   write(*, *) "qcf_table_data(", row, "): "
+   write(*, *) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+               qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
+               qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
+               qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
+               qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
+               qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
+               qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
+               qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
+               qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
+               qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
+               qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
+               qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+end do
+
+QTY_loc = findloc(qcf_table_row_headers, tester_QTY)
+write(*, *) 'findloc of QTY_GPSRO: ', QTY_loc(1)
+
+QTY_loc0 = findloc(qcf_table_row_headers, tester_QTY0)
+write(*, *) 'findloc of invalid QTY (QTY_DUMMY): ', QTY_loc0(1)
+
+end subroutine write_qcf_table
 
 !------------------------------------------------------------------------
 
