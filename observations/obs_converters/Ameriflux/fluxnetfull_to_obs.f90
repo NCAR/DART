@@ -7,9 +7,11 @@ program Fluxnetfull_to_obs
 !------------------------------------------------------------------------
 !
 !   Fluxnetfull_to_obs - a program that converts Ameriflux/Fluxnet FULLSET eddy
-!                        covariance tower data of carbon, water and energy into
-!                        DART obs_seq formatted files. Works on native time 
-!                        resolution (HH, HR) or coarser resolution files (DD,WW,MM).
+!                        covariance tower data of NEE, GPP, RE, latent heat and sensible
+!                        heat fluxes into DART obs_seq formatted files. Works on native time 
+!                        resolution (HH, HR) that ED tower data or collected or at coarser
+!                        aggregated time resolution files (DD,WW,MM) based on ONEFLUX
+!                        methodology (Pastorello et al., 2020)
     
 
 use         types_mod, only : r8, MISSING_R8
@@ -57,6 +59,7 @@ real(r8)           :: flux_height     = -1.0_r8
 ! A maxgooqc=3 allows for good=1, medium=2, and poor=3 quality gap-filled data
 real(r8)           :: maxgoodqc       = 3.0_r8
 ! Always true except for latent,sensible heat and NEE for hourly time periods
+! Can only be false of HH or HR time resolution
 logical            :: gap_filled      = .true.
 ! Option for energy balance correction for latent and sensible heat
 ! Recommend to keep false as these values are typically missing
@@ -1120,7 +1123,7 @@ endif
 
 
 ! Reject NEE data where neeQC is missing
-if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 1000
+if (tower%neeQC < 0) tower%neeQC = maxgoodqc + 100
 
 ! If NEE (DD,WW,MM) convert from  % filled QC to integer QC  good/fair/poor
 if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
@@ -1149,10 +1152,10 @@ tower%gppDTQC = 2
 tower%recoNTQC = 2
 tower%recoDTQC = 2
 
-if (tower%gppNT < 0.0_r8) tower%gppNTQC = maxgoodqc + 1000
-if (tower%gppDT < 0.0_r8) tower%gppDTQC = maxgoodqc + 1000
-if (tower%recoNT < 0.0_r8) tower%recoNTQC = maxgoodqc + 1000
-if (tower%recoDT < 0.0_r8) tower%recoDTQC = maxgoodqc + 1000
+if (tower%gppNT < 0.0_r8) tower%gppNTQC = maxgoodqc + 100
+if (tower%gppDT < 0.0_r8) tower%gppDTQC = maxgoodqc + 100
+if (tower%recoNT < 0.0_r8) tower%recoNTQC = maxgoodqc + 100
+if (tower%recoDT < 0.0_r8) tower%recoDTQC = maxgoodqc + 100
 
 ! Assign very bad qc to gap_filled data if user requests it
 ! such that maxgoodqc threshold does not add gap_filled data to obs_seq file

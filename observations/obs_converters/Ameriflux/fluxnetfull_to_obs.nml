@@ -9,7 +9,7 @@
    maxgoodqc       = 3,
    gap_filled      = .true.
    energy_balance  = .false.
-   time_resolution = 'HH'
+   time_resolution = 'HR'
    verbose         = .false.
    /
 
