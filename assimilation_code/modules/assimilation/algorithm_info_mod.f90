@@ -109,6 +109,9 @@ integer     :: obs_type, obs_kind
 integer(i8) :: state_var_index
 type(location_type) :: temp_loc
 
+integer :: QTY_loc(1)
+character(len=129) :: kind_name
+
 ! Get the kind of the observation
 obs_type = get_obs_def_type_of_obs(obs_def)
 ! If it is negative, it is an identity obs
@@ -122,20 +125,45 @@ endif
 ! Get the default error variance
 error_variance = get_obs_def_error_variance(obs_def)
 
-! Set the observation error details for each type of quantity
-if(obs_kind == QTY_STATE_VARIABLE) then
+!get actual name of QTY from integer index
+kind_name = get_name_for_quantity(obs_kind)
+write(*,*) 'kind_name: ', kind_name
+
+!find location of QTY in qcf_table_data structure
+QTY_loc = findloc(qcf_table_row_headers, kind_name)
+write(*,*) 'findloc of kind: ', QTY_loc(1)
+
+if (QTY_loc(1) == 0) then
+   write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+
+   !use default values
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
-elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
-   bounded_below = .true.; bounded_above = .false.
-   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-elseif(obs_kind == QTY_TRACER_SOURCE) then
-   bounded_below = .true.; bounded_above = .false.
-   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-else
-   write(*, *) 'Illegal obs_kind in obs_error_info'
-   stop
+
+   else
+      bounded_below = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_below
+      bounded_above = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_above
+      lower_bound = qcf_table_data(QTY_loc(1))%obs_error_info%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
+      upper_bound = qcf_table_data(QTY_loc(1))%obs_error_info%upper_bound
+
 endif
+
+write(*,*) 'obs_error_info: ', bounded_below, bounded_above, lower_bound, upper_bound
+
+! Set the observation error details for each type of quantity
+!if(obs_kind == QTY_STATE_VARIABLE) then
+!   bounded_below = .false.;    bounded_above = .false.
+!   lower_bound   = missing_r8; upper_bound   = missing_r8
+!elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
+!   bounded_below = .true.; bounded_above = .false.
+!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!elseif(obs_kind == QTY_TRACER_SOURCE) then
+!   bounded_below = .true.; bounded_above = .false.
+!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!else
+!   write(*, *) 'Illegal obs_kind in obs_error_info'
+!   stop
+!endif
 
 end subroutine obs_error_info
 
