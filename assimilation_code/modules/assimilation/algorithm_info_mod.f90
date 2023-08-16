@@ -291,6 +291,9 @@ logical,  intent(inout) :: spread_restoration
 logical,  intent(inout) :: bounded_below, bounded_above
 real(r8), intent(inout) :: lower_bound,  upper_bound
 
+integer :: QTY_loc(1)
+character(len=129) :: kind_name
+
 ! The information arguments are all intent (inout). This means that if they are not set
 ! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
 ! in that namelist, so default values are set in assim_tools_mod just before the call to here.
@@ -299,7 +302,7 @@ real(r8), intent(inout) :: lower_bound,  upper_bound
 ! This example is designed to reproduce the squared forward operator results from paper
 
 !get actual name of QTY from integer index
-kind_name = get_name_for_quantity(kind)
+kind_name = get_name_for_quantity(obs_kind)
 write(*,*) 'kind_name: ', kind_name
 
 !find location of QTY in qcf_table_data structure
@@ -310,32 +313,42 @@ if (QTY_loc(1) == 0) then
    write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 
    !use default values
-   dist_type = BOUNDED_NORMAL_RHF
+   filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
-   
+   sort_obs_inc = .false.; spread_restoration = .false.
+   ! Default settings for now for Icepack and tracer model tests (sort_obs_inc, spread_restoration)
 
-! Set the observation increment details for each type of quantity
-if(obs_kind == QTY_STATE_VARIABLE) then
-   filter_kind = BOUNDED_NORMAL_RHF
-   bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
-elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
-   filter_kind = BOUNDED_NORMAL_RHF
-   bounded_below = .true.; bounded_above = .false.
-   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-elseif(obs_kind == QTY_TRACER_SOURCE) then
-   filter_kind = BOUNDED_NORMAL_RHF
-   bounded_below = .true.; bounded_above = .false.
-   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-else
-   write(*, *) 'Illegal obs_kind in obs_error_info'
-   stop
+   else
+      filter_kind = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind !filter_kind has a check in obs_increment
+      sort_obs_inc = qcf_table_data(QTY_loc(1))%obs_inc_info%sort_obs_inc
+      spread_restoration = qcf_table_data(QTY_loc(1))%obs_inc_info%spread_restoration
+      bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
+      bounded_above = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_above
+      lower_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
+      upper_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
+
 endif
 
-! Default settings for now for Icepack and tracer model tests
-sort_obs_inc = .false.
-spread_restoration = .false.
+write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
+
+! Set the observation increment details for each type of quantity
+!if(obs_kind == QTY_STATE_VARIABLE) then
+!   filter_kind = BOUNDED_NORMAL_RHF
+!   bounded_below = .false.;    bounded_above = .false.
+!   lower_bound   = missing_r8; upper_bound   = missing_r8
+!elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
+!   filter_kind = BOUNDED_NORMAL_RHF
+!   bounded_below = .true.; bounded_above = .false.
+!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!elseif(obs_kind == QTY_TRACER_SOURCE) then
+!   filter_kind = BOUNDED_NORMAL_RHF
+!   bounded_below = .true.; bounded_above = .false.
+!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
+!else
+!   write(*, *) 'Illegal obs_kind in obs_error_info'
+!   stop
+!endif
 
 ! Only need to set these two for options the original RHF implementation
 !!!rectangular_quadrature = .true.
