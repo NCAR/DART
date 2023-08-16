@@ -36,7 +36,7 @@ integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          init_qcf_table, read_qcf_table, &
+          init_qcf_table, deallocate_qcf_table, &
           obs_error_info_type, probit_inflation_type, probit_state_type, &
           probit_extended_state_type, obs_inc_info_type, qcf_table_data_type, &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
@@ -509,5 +509,15 @@ write(*, *) 'findloc of invalid QTY (QTY_DUMMY): ', QTY_loc0(1)
 end subroutine write_qcf_table
 
 !------------------------------------------------------------------------
+
+
+subroutine deallocate_qcf_table()
+
+deallocate(qcf_table_data)
+deallocate(qcf_table_row_headers)
+
+end subroutine deallocate_qcf_table
+
+!----------------------------------------------------------------------
 
 end module algorithm_info_mod
