@@ -7,7 +7,8 @@ module algorithm_info_mod
 use types_mod, only : r8, i8, missing_r8
 
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
-use obs_kind_mod, only : get_quantity_for_type_of_obs
+use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity
+
 
 ! Get the QTY definitions that are needed (aka kind)
 use obs_kind_mod, only : QTY_STATE_VARIABLE, QTY_STATE_VAR_POWER, QTY_TRACER_CONCENTRATION, &
@@ -156,6 +157,7 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,   upper_bound
 
 integer :: QTY_loc(1)
+character(len=129) :: kind_name
 
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
@@ -176,13 +178,18 @@ integer :: QTY_loc(1)
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
 
-QTY_loc = findloc(qcf_table_row_headers, kind)
-write(*, *) 'findloc of kind: ', QTY_loc(1)
+!get actual name of QTY from integer index
+kind_name = get_name_for_quantity(kind)
+write(*,*) 'kind_name: ', kind_name
+
+!find location of QTY in qcf_table_data structure
+QTY_loc = findloc(qcf_table_row_headers, kind_name)
+write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
    write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
    
-   !using default values here
+   !use default values
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
@@ -190,10 +197,10 @@ if (QTY_loc(1) == 0) then
    elseif(is_inflation) then
    ! Case for inflation transformation
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
+      dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type  !dist_type has checks in transform_to_probit, transform_from_probit
       bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
+      lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
       upper_bound = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
 
 !   if(kind == QTY_STATE_VARIABLE) then
@@ -266,7 +273,7 @@ if (QTY_loc(1) == 0) then
 !   endif
 endif
 
-write(*,*) dist_type, bounded_below, bounded_above, lower_bound, upper_bound
+write(*,*) 'probit_dist_info: ', dist_type, bounded_below, bounded_above, lower_bound, upper_bound
 
 end subroutine probit_dist_info
 
@@ -291,6 +298,22 @@ real(r8), intent(inout) :: lower_bound,  upper_bound
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
+!get actual name of QTY from integer index
+kind_name = get_name_for_quantity(kind)
+write(*,*) 'kind_name: ', kind_name
+
+!find location of QTY in qcf_table_data structure
+QTY_loc = findloc(qcf_table_row_headers, kind_name)
+write(*,*) 'findloc of kind: ', QTY_loc(1)
+
+if (QTY_loc(1) == 0) then
+   write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+
+   !use default values
+   dist_type = BOUNDED_NORMAL_RHF
+   bounded_below = .false.;    bounded_above = .false.
+   lower_bound   = missing_r8; upper_bound   = missing_r8
+   
 
 ! Set the observation increment details for each type of quantity
 if(obs_kind == QTY_STATE_VARIABLE) then
@@ -372,8 +395,9 @@ character(len=129), dimension(29) :: header2
 
 open(unit=fileid, file=qcf_table_filename)
 
+! skip the headers 
 read(fileid, *) header1
-read(fileid, *) header2 !! skip the headers
+read(fileid, *) header2
 write(*, *) "header1: ", header1
 write(*, *) "header2: ", header2
 
@@ -404,6 +428,7 @@ end subroutine read_qcf_table
 
 subroutine write_qcf_table()
 
+! DRAFT SUBROUTINE 
 ! write to check values were correctly assigned
 ! testing for findloc
 
