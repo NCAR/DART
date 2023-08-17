@@ -530,7 +530,7 @@ obsloop: do iline = 2,nlines
       oerr      = oerr * umol_to_gC
       ! Take average of night and day partitioning methods
       tower%gpp = ((tower%gppDT + tower%gppNT) / 2)  * umol_to_gC    ! Matches units in CLM [gC m-2 s-1]
-      qc        = maxval((/real(tower%recoDTQC,r8),real(tower%recoNTQC,r8)/))
+      qc        = maxval((/real(tower%gppDTQC,r8),real(tower%gppNTQC,r8)/))
       if (oerr <=0) then
          select case( time_resolution )
            case ('HR', 'HH')
@@ -1142,7 +1142,7 @@ if (energy_balance .eqv. .false.) then
    if (tower%hQC   < 0.0_r8) tower%hQC   = 2
 else  ! No QC values for energy balance corrected le and h.  Assign fair QC.
    tower%leQC  = 2
-   tower%leQC  = 2
+   tower%hQC  = 2
 endif
 
 
