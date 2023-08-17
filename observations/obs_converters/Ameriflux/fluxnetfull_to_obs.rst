@@ -298,6 +298,10 @@ An Introduction to Error Analysis).
    step.  To prevent overconfident observations the ONEflux method attempts to account for as many sources of uncertainty as possible
    and that is reflected in this converter code.
 
+   If an observation has a missing uncertainty value, the code estimates an uncertainty based on an empirically-based relative uncertainty
+   value that reduces with increasing time resolution.  The default relative uncertainty values are 20%, 10% and 5% for HH/HR, DD/WW and MM
+   time resolution respectively.  The user can adjust these values within the source code.
+
 
 
 Quality Control
@@ -317,8 +321,11 @@ based on an integer value scale, the conversion code converts these fractional Q
 #. ``QC(integer)=2 when 0.90 >= QC(fraction) >= 0.60``;
 #. ``QC(integer)=3 when 0.60 > QC(fraction) >=0``.
 
-This conversion system was based on a qualitative assessment of a small sample size of flux data. The user can change these thresholds within
-the source code.
+.. Note::
+
+   The fraction QC to integer QC conversion approach was based on a qualitative assessment of flux data from Harvard Forest.
+   Depending on location and topography not all flux tower data will have a comparably high % of gap filled data.. The user 
+   can change these thresholds within the source code.
 
 There are times when a QC value is missing or does not exist for an observation.  In these cases the converter code does the following:
 
