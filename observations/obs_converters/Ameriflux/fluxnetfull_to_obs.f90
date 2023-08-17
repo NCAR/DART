@@ -1135,7 +1135,8 @@ endif
 
 
 ! The QC values are typically missing for le and h (-9999)
-! Thus  manually assign poor QC values in these cases
+! Thus  manually assign fair  QC values in these cases
+! When energy balance is turned off
 if (energy_balance .eqv. .false.) then
    if (tower%leQC  < 0.0_r8) tower%leQC  = 2
    if (tower%hQC   < 0.0_r8) tower%hQC   = 2
@@ -1159,7 +1160,7 @@ if (tower%recoDT < 0.0_r8) tower%recoDTQC = maxgoodqc + 100
 
 ! Assign very bad qc to gap_filled data if user requests it
 ! such that maxgoodqc threshold does not add gap_filled data to obs_seq file
-! If leQC and hQC are missing no way to identify if gap_filled, thus rejected
+! If leQC and hQC are missing values already forced to 2, thus rejected
 if (gap_filled .eqv. .false.) then
    if (tower%neeQC >0) tower%neeQC = maxgoodqc + 100
    if (tower%leQC >0)  tower%leQC =  maxgoodqc + 100
