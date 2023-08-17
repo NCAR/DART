@@ -67,13 +67,6 @@
    inf_sd_max_change           = 1.05,                    1.05,
    /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .true.,
-   restart_in_file_name  = 'ics',
-   restart_out_file_name = 'restart',
-   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,

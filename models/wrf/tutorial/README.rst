@@ -27,7 +27,7 @@ forum for WRF-specific assistance.
 
 If you are new to DART, we recommend that you become familiar with DART
 by working through the :doc:`../../../theory/readme` and then
-understanding the :doc:`DART getting started <../../../README>` documentation.
+understanding the :ref:`DART getting started <Welcome page>` documentation.
 
 before attempting the WRF/DART tutorial as you will find many helpful
 resources for learning the base DART configuration.
@@ -109,7 +109,7 @@ needed to perform an experiment.
 Build the DART executables.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you have not already, see :doc:`Getting Started <../../../README>` to
+If you have not already, see :ref:`Getting Started <Welcome page>` to
 download the DART software package. Set an environment variable
 *DART_DIR* to point to your base DART directory. How to do this will
 depend on which shell you are using.
@@ -135,7 +135,7 @@ might need for an experiment with that model.
 
 1. It is assumed you have successfully configured the
    ``$DART_DIR/build_templates/mkmf.template`` file for your system. If
-   not, you will need to do so now. See the :doc:`Getting Started <../../../README>`
+   not, you will need to do so now. See :ref:`Getting Started <Welcome page>`
    for more detail, if necessary.
 
 2. [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
@@ -576,7 +576,7 @@ want to run with the example observations, you can skip to Step
 4.
 
 However, observation processing is critical to the success of running
-DART and was covered in :doc:`getting started <../../../README>`. In
+DART and was covered in :ref:`Getting Started <Welcome page>`. In
 brief, to add your own observations to WRF/DART you will need to
 understand the relationship between observation definitions and
 observation sequences, observation types and observation quantities, and

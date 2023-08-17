@@ -2,11 +2,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
-
-This additional info will go into the ../prep_bufr.html file soon and
-be deleted from here. 
 
 All the programs in the prep_bufr directory read bufr format data files
 and output ascii intermediate files. These ascii files then need to be 
@@ -41,7 +37,3 @@ the 'exe' subdir with an extension of .x
 
 the quickbuild.sh script builds advance_time now, and is also needed.
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

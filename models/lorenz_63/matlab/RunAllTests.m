@@ -152,10 +152,7 @@ pinfo.copyindices    = [5 10 15];
 PlotSawtooth(pinfo)
 fprintf('Finished %s ... pausing, hit any key\n','PlotSawtooth'); pause
 
-%% -----------------------------------------------------------
-% plot_smoother_err
-%------------------------------------------------------------
-% plot_smoother_err
+
 
 %% ----------------------------------------------------------
 % plot_total_err
