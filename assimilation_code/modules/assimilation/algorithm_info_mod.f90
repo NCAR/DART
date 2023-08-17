@@ -95,6 +95,8 @@ character(len=129), allocatable :: qcf_table_row_headers(:) !!!!! might need to 
 contains
 
 !-------------------------------------------------------------------------
+
+
 subroutine obs_error_info(obs_def, error_variance, &
    bounded_below, bounded_above, lower_bound, upper_bound)
 
@@ -134,7 +136,7 @@ QTY_loc = findloc(qcf_table_row_headers, kind_name)
 write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+   write(*,*) 'QTY not in table, using default values'
 
    !use default values
    bounded_below = .false.;    bounded_above = .false.
@@ -150,23 +152,7 @@ endif
 
 write(*,*) 'obs_error_info: ', bounded_below, bounded_above, lower_bound, upper_bound
 
-! Set the observation error details for each type of quantity
-!if(obs_kind == QTY_STATE_VARIABLE) then
-!   bounded_below = .false.;    bounded_above = .false.
-!   lower_bound   = missing_r8; upper_bound   = missing_r8
-!elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
-!   bounded_below = .true.; bounded_above = .false.
-!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!elseif(obs_kind == QTY_TRACER_SOURCE) then
-!   bounded_below = .true.; bounded_above = .false.
-!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!else
-!   write(*, *) 'Illegal obs_kind in obs_error_info'
-!   stop
-!endif
-
 end subroutine obs_error_info
-
 
 !-------------------------------------------------------------------------
 
@@ -215,7 +201,7 @@ QTY_loc = findloc(qcf_table_row_headers, kind_name)
 write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+   write(*,*) 'QTY not in table, using default values'
    
    !use default values
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
@@ -231,23 +217,6 @@ if (QTY_loc(1) == 0) then
       lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
       upper_bound = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
 
-!   if(kind == QTY_STATE_VARIABLE) then
-!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-!      bounded_below = .false.;    bounded_above = .false.
-!      lower_bound   = missing_r8; upper_bound   = missing_r8
-!   elseif(kind == QTY_TRACER_CONCENTRATION) then
-!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-!      bounded_below = .true.; bounded_above = .false.
-!      lower_bound   = 0.0_r8; upper_bound = missing_r8
-!   elseif(kind == QTY_TRACER_SOURCE) then
-!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-!      bounded_below = .true.; bounded_above = .false.
-!      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!   else
-!      write(*, *) 'Illegal kind in obs_error_info'
-!      stop
-!   endif
- 
    elseif(is_state) then
    ! Case for state variable priors
 
@@ -256,23 +225,6 @@ if (QTY_loc(1) == 0) then
       bounded_above = qcf_table_data(QTY_loc(1))%probit_state%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%probit_state%upper_bound
-
-   !if(kind == QTY_STATE_VARIABLE) then
-    !  dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-     ! bounded_below = .false.;    bounded_above = .false.
-     ! lower_bound   = missing_r8; upper_bound   = missing_r8
-  ! elseif(kind == QTY_TRACER_CONCENTRATION) then
-  !    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-   !   bounded_below = .true.; bounded_above = .false.
-   !   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!   elseif(kind == QTY_TRACER_SOURCE) then
- !     dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-  !    bounded_below = .true.; bounded_above = .false.
-   !   lower_bound   = 0.0_r8; upper_bound = missing_r8
-!   else
-!      write(*, *) 'Illegal kind in obs_error_info'
- !     stop
-  ! endif
 
    else
    ! This case is for observation (extended state) priors
@@ -283,22 +235,6 @@ if (QTY_loc(1) == 0) then
       lower_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%upper_bound
 
-!   if(kind == QTY_STATE_VARIABLE) then
-!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-!      bounded_below = .false.;    bounded_above = .false.
-!      lower_bound   = missing_r8; upper_bound   = missing_r8
-!   elseif(kind == QTY_TRACER_CONCENTRATION) then
-!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-!     bounded_below = .true.; bounded_above = .false.
-!      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!   elseif(kind == QTY_TRACER_SOURCE) then
-!      dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-!      bounded_below = .true.; bounded_above = .false.
-!      lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!   else
-!      write(*, *) 'Illegal kind in obs_error_info'
-!      stop
-!   endif
 endif
 
 write(*,*) 'probit_dist_info: ', dist_type, bounded_below, bounded_above, lower_bound, upper_bound
@@ -338,7 +274,7 @@ QTY_loc = findloc(qcf_table_row_headers, kind_name)
 write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+   write(*,*) 'QTY not in table, using default values'
 
    !use default values
    filter_kind = BOUNDED_NORMAL_RHF
@@ -359,24 +295,6 @@ if (QTY_loc(1) == 0) then
 endif
 
 write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
-
-! Set the observation increment details for each type of quantity
-!if(obs_kind == QTY_STATE_VARIABLE) then
-!   filter_kind = BOUNDED_NORMAL_RHF
-!   bounded_below = .false.;    bounded_above = .false.
-!   lower_bound   = missing_r8; upper_bound   = missing_r8
-!elseif(obs_kind == QTY_TRACER_CONCENTRATION) then
-!   filter_kind = BOUNDED_NORMAL_RHF
-!   bounded_below = .true.; bounded_above = .false.
-!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!elseif(obs_kind == QTY_TRACER_SOURCE) then
-!   filter_kind = BOUNDED_NORMAL_RHF
-!   bounded_below = .true.; bounded_above = .false.
-!   lower_bound   = 0.0_r8; upper_bound   = missing_r8
-!else
-!   write(*, *) 'Illegal obs_kind in obs_error_info'
-!   stop
-!endif
 
 ! Only need to set these two for options the original RHF implementation
 !!!rectangular_quadrature = .true.
@@ -424,9 +342,6 @@ subroutine read_qcf_table(qcf_table_filename)
 ! Reads in the QCEFF input options from tabular data file
 
 character(len=129), intent(in) :: qcf_table_filename
-
-!type(qcf_table_data_type) :: qcf_table_data(:)
-!character(len=129) :: rowheaders(:) !!!!! might need to change len=129
 
 integer, parameter :: fileid = 10 !file identifier
 integer :: row
