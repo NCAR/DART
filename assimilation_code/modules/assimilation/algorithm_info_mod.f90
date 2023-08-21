@@ -9,12 +9,6 @@ use types_mod, only : r8, i8, missing_r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity
 
-
-! Get the QTY definitions that are needed (aka kind)
-use obs_kind_mod, only : QTY_STATE_VARIABLE, QTY_STATE_VAR_POWER, QTY_TRACER_CONCENTRATION, &
-                        QTY_TRACER_SOURCE
-! NOTE: Sadly, the QTY itself is not sufficient for the POWER because there is additional metadata
-
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
 

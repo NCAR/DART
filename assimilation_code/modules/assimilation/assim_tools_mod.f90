@@ -223,7 +223,7 @@ contains
 
 subroutine assim_tools_init()
 
-integer :: iunit, io, i, j, numrows
+integer :: iunit, io, i, j
 integer :: num_special_cutoff, type_index
 logical :: cache_override = .false.
 
@@ -315,7 +315,7 @@ is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localizatio
 call log_namelist_selections(num_special_cutoff, cache_override)
 
 if(qcf_table_filename == '') then
-   write(*,*), "no qcf table in namelist" 
+   write(*,*), "No QCF table in namelist, using default values for all QTYs" 
 else
    call init_qcf_table(qcf_table_filename)
 endif
@@ -902,6 +902,9 @@ if(output_localization_diagnostics .and. my_task_id() == 0) call close_file(loca
 
 ! get rid of mpi window
 call free_mean_window()
+
+! free qcf_table_data structures
+call deallocate_qcf_table()
 
 ! deallocate space
 deallocate(close_obs_dist,      &
