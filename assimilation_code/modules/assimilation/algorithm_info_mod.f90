@@ -30,7 +30,7 @@ integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
-          init_qcf_table, deallocate_qcf_table, &
+          init_algorithm_info_mod, end_algorithm_info_mod, &
           obs_error_info_type, probit_inflation_type, probit_state_type, &
           probit_extended_state_type, obs_inc_info_type, qcf_table_data_type, &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
@@ -76,7 +76,7 @@ type qcf_table_data_type
 end type
 
 type(qcf_table_data_type), allocatable :: qcf_table_data(:)
-character(len=129), allocatable :: qcf_table_row_headers(:) !!!!! might need to change len=129
+character(len=129), allocatable :: qcf_table_row_headers(:) 
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
@@ -139,7 +139,7 @@ if (QTY_loc(1) == 0) then
    else
       bounded_below = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%obs_error_info%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
+      lower_bound = qcf_table_data(QTY_loc(1))%obs_error_info%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%obs_error_info%upper_bound
 
 endif
@@ -208,7 +208,7 @@ if (QTY_loc(1) == 0) then
       dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type  !dist_type has checks in transform_to_probit, transform_from_probit
       bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
+      lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
 
    elseif(is_state) then
@@ -283,7 +283,7 @@ if (QTY_loc(1) == 0) then
       spread_restoration = qcf_table_data(QTY_loc(1))%obs_inc_info%spread_restoration
       bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound  !NEED TO ADD CHECKS THAT THESE ARE VALID VALUES
+      lower_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
 
 endif
@@ -299,7 +299,7 @@ end subroutine obs_inc_info
 !------------------------------------------------------------------------
 
 
-subroutine init_qcf_table(qcf_table_filename)
+subroutine init_algorithm_info_mod(qcf_table_filename)
 
 character(len=129), intent(in) :: qcf_table_filename
 
@@ -326,7 +326,7 @@ allocate(qcf_table_row_headers(numrows))
 
 call read_qcf_table(qcf_table_filename)
 
-end subroutine init_qcf_table
+end subroutine init_algorithm_info_mod
 
 !------------------------------------------------------------------------
 
@@ -420,12 +420,12 @@ end subroutine write_qcf_table
 !------------------------------------------------------------------------
 
 
-subroutine deallocate_qcf_table()
+subroutine end_algorithm_info_mod()
 
 deallocate(qcf_table_data)
 deallocate(qcf_table_row_headers)
 
-end subroutine deallocate_qcf_table
+end subroutine end_algorithm_info_mod
 
 !----------------------------------------------------------------------
 

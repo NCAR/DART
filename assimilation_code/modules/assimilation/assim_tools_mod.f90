@@ -76,7 +76,7 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_qcf_table, deallocate_qcf_table
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_algorithm_info_mod, end_algorithm_info_mod
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -143,7 +143,7 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !  special_localization_obs_types -> Special treatment for the specified observation types
 !  special_localization_cutoffs   -> Different cutoff value for each specified obs type
 !
-character(len = 129) :: qcf_table_filename  = '' !not sure if the len should be 129 here, but it is consistent with other nml variables
+character(len = 129) :: qcf_table_filename  = ''
 logical  :: use_algorithm_info_mod          = .true.
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
@@ -317,7 +317,7 @@ call log_namelist_selections(num_special_cutoff, cache_override)
 if(qcf_table_filename == '') then
    write(*,*), "No QCF table in namelist, using default values for all QTYs" 
 else
-   call init_qcf_table(qcf_table_filename)
+   call init_algorithm_info_mod(qcf_table_filename)
 endif
 
 end subroutine assim_tools_init
@@ -903,8 +903,8 @@ if(output_localization_diagnostics .and. my_task_id() == 0) call close_file(loca
 ! get rid of mpi window
 call free_mean_window()
 
-! free qcf_table_data structures
-call deallocate_qcf_table()
+! deallocate qcf_table_data structures
+call end_algorithm_info_mod()
 
 ! deallocate space
 deallocate(close_obs_dist,      &
