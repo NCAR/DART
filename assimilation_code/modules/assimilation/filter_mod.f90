@@ -1153,7 +1153,7 @@ call end_assim_model()
 call trace_message('After  end_model call')
 
 ! deallocate qcf_table_data structures
-!call end_algorithm_info_mod()
+call end_algorithm_info_mod()
 
 call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(state_ens_handle)
