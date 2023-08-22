@@ -76,7 +76,7 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info, init_algorithm_info_mod, end_algorithm_info_mod
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -143,7 +143,6 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !  special_localization_obs_types -> Special treatment for the specified observation types
 !  special_localization_cutoffs   -> Different cutoff value for each specified obs type
 !
-character(len = 129) :: qcf_table_filename  = ''
 logical  :: use_algorithm_info_mod          = .true.
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
@@ -204,7 +203,7 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-namelist / assim_tools_nml / qcf_table_filename, use_algorithm_info_mod,   &
+namelist / assim_tools_nml / use_algorithm_info_mod,                       &
    filter_kind, cutoff, sort_obs_inc,                                      &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
@@ -313,12 +312,6 @@ endif
 is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on())
 
 call log_namelist_selections(num_special_cutoff, cache_override)
-
-if(qcf_table_filename == '') then
-   write(*,*), "No QCF table in namelist, using default values for all QTYs" 
-else
-   call init_algorithm_info_mod(qcf_table_filename)
-endif
 
 end subroutine assim_tools_init
 
@@ -902,9 +895,6 @@ if(output_localization_diagnostics .and. my_task_id() == 0) call close_file(loca
 
 ! get rid of mpi window
 call free_mean_window()
-
-! deallocate qcf_table_data structures
-call end_algorithm_info_mod()
 
 ! deallocate space
 deallocate(close_obs_dist,      &

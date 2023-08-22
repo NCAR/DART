@@ -90,7 +90,7 @@ use location_mod,          only : location_type
 
 use probit_transform_mod,  only : transform_to_probit, transform_from_probit
 
-use algorithm_info_mod, only : probit_dist_info
+use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_algorithm_info_mod
 
 use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
 
@@ -166,6 +166,7 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
+character(len = 129) :: qcf_table_filename = ''
 logical  :: use_algorithm_info_mod = .true.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
@@ -261,6 +262,7 @@ logical  :: allow_missing_clm = .false.
 
 
 namelist /filter_nml/ async,     &
+   qcf_table_filename,           &
    use_algorithm_info_mod,       &
    adv_ens_command,              &
    ens_size,                     &
@@ -1150,6 +1152,9 @@ call trace_message('Before end_model call')
 call end_assim_model()
 call trace_message('After  end_model call')
 
+! deallocate qcf_table_data structures
+!call end_algorithm_info_mod()
+
 call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(state_ens_handle)
 
@@ -1267,6 +1272,13 @@ call trace_message('Before filter_initialize_module_used call')
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
+
+! Initialize algorothm_info_mod and read in QCF table data
+if(qcf_table_filename == '') then
+   write(*,*) "No QCF table in namelist, using default values for all QTYs"
+else
+   call init_algorithm_info_mod(qcf_table_filename)
+endif
 
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
