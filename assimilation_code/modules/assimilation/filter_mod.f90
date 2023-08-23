@@ -166,7 +166,7 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-character(len = 129) :: qcf_table_filename = ''
+character(len = 129) :: qcf_table_filename = 'real_qcf_table.txt' !NEED TO REMOVE THIS LATER
 logical  :: use_algorithm_info_mod = .true.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
@@ -1273,17 +1273,14 @@ call trace_message('Before filter_initialize_module_used call')
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
 
-! Initialize algorothm_info_mod and read in QCF table data
-if(qcf_table_filename == '') then
-   write(*,*) "No QCF table in namelist, using default values for all QTYs"
-else
-   call init_algorithm_info_mod(qcf_table_filename)
-endif
-
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
 call state_vector_io_init()
 call initialize_qc()
+
+! Initialize algorothm_info_mod and read in QCF table data
+call init_algorithm_info_mod(qcf_table_filename)
+
 call trace_message('After filter_initialize_module_used call')
 
 end subroutine filter_initialize_modules_used
