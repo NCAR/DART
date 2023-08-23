@@ -91,6 +91,87 @@ contains
 !-------------------------------------------------------------------------
 
 
+subroutine init_algorithm_info_mod(qcf_table_filename)
+
+! Gets number of lines/QTYs in the QCF table, allocates space for the table data
+
+character(len=129), intent(in) :: qcf_table_filename
+
+integer :: numrows
+integer :: nlines
+integer :: io
+integer, parameter :: fileid = 10 !file identifier
+
+write(*,*) 'filename: ', qcf_table_filename
+
+open(unit=fileid, file=qcf_table_filename)
+nlines = 0
+
+do !do loop to get number of rows (or QTY's) in the table
+  read(fileid,*,iostat=io)
+  if(io/=0) exit
+  nlines = nlines + 1
+end do
+close(fileid)
+
+numrows = nlines - 2
+print *, 'numrows: ', numrows
+
+allocate(qcf_table_data(numrows))
+allocate(qcf_table_row_headers(numrows))
+
+call read_qcf_table(qcf_table_filename)
+call write_qcf_table()
+
+end subroutine init_algorithm_info_mod
+
+!------------------------------------------------------------------------
+
+
+subroutine read_qcf_table(qcf_table_filename)
+
+! Reads in the QCEFF input options from tabular data file
+
+character(len=129), intent(in) :: qcf_table_filename
+
+integer, parameter :: fileid = 10 !file identifier
+integer :: row
+
+character(len=129), dimension(4) :: header1
+character(len=129), dimension(29) :: header2
+
+write(*,*) 'filename: ', qcf_table_filename
+open(unit=fileid, file=qcf_table_filename)
+
+! skip the headers 
+read(fileid, *) header1
+read(fileid, *) header2
+write(*, *) "header1: ", header1
+write(*, *) "header2: ", header2
+
+! read in table values directly to qcf_table_data type
+do row = 1, size(qcf_table_data)
+   read(fileid, *) qcf_table_row_headers(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+                   qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
+                   qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
+                   qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
+                   qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
+                   qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
+                   qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
+                   qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
+                   qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
+                   qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
+                   qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
+                   qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+end do
+
+close(fileid)
+
+end subroutine read_qcf_table
+
+!------------------------------------------------------------------------
+
+
 subroutine obs_error_info(obs_def, error_variance, &
    bounded_below, bounded_above, lower_bound, upper_bound)
 
@@ -295,83 +376,6 @@ write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, boun
 !!!gaussian_likelihood_tails = .false.
 
 end subroutine obs_inc_info
-
-!------------------------------------------------------------------------
-
-
-subroutine init_algorithm_info_mod(qcf_table_filename)
-
-character(len=129), intent(in) :: qcf_table_filename
-
-integer :: numrows 
-integer :: nlines
-integer :: io
-integer, parameter :: fileid = 10 !file identifier
-
-open(unit=fileid, file=qcf_table_filename)
-nlines = 0
-
-do !do loop to get number of rows (or QTY's) in the table
-  read(fileid,*,iostat=io)
-  if(io/=0) exit
-  nlines = nlines + 1
-end do
-close(fileid)
-
-numrows = nlines - 2
-print *, 'numrows: ', numrows
-
-allocate(qcf_table_data(numrows))
-allocate(qcf_table_row_headers(numrows))
-
-call read_qcf_table(qcf_table_filename)
-
-end subroutine init_algorithm_info_mod
-
-!------------------------------------------------------------------------
-
-
-subroutine read_qcf_table(qcf_table_filename)
-
-! Reads in the QCEFF input options from tabular data file
-
-character(len=129), intent(in) :: qcf_table_filename
-
-integer, parameter :: fileid = 10 !file identifier
-integer :: row
-
-character(len=129), dimension(4) :: header1
-character(len=129), dimension(29) :: header2
-
-open(unit=fileid, file=qcf_table_filename)
-
-! skip the headers 
-read(fileid, *) header1
-read(fileid, *) header2
-write(*, *) "header1: ", header1
-write(*, *) "header2: ", header2
-
-! read in table values directly to qcf_table_data type
-do row = 1, size(qcf_table_data)
-   read(fileid, *) qcf_table_row_headers(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
-                   qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
-                   qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
-                   qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
-                   qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
-                   qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
-                   qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
-                   qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-                   qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
-                   qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
-                   qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
-                   qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
-end do
-
-close(fileid)
-
-call write_qcf_table()
-
-end subroutine read_qcf_table
 
 !------------------------------------------------------------------------
 
