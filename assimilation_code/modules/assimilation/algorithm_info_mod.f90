@@ -220,14 +220,16 @@ error_variance = get_obs_def_error_variance(obs_def)
 kind_name = get_name_for_quantity(obs_kind)
 write(*,*) 'kind_name: ', kind_name
 
-!find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, kind_name)
-write(*,*) 'findloc of kind: ', QTY_loc(1)
-
 !use default values if qcf_table_filename is not in namelist
 if (.not. qcf_table_listed) then
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
+   return
+endif
+
+!find location of QTY in qcf_table_data structure
+QTY_loc = findloc(qcf_table_row_headers, kind_name)
+write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
    !use default values
