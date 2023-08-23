@@ -19,6 +19,9 @@ use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTR
 implicit none
 private
 
+logical :: module_initialized = .false.
+logical :: qcf_table_listed = .false.
+
 ! Defining parameter strings for different observation space filters
 ! For now, retaining backwards compatibility in assim_tools_mod requires using
 ! these specific integer values and there is no point in using these in assim_tools.
@@ -102,8 +105,17 @@ integer :: nlines
 integer :: io
 integer, parameter :: fileid = 10 !file identifier
 
+if (module_initialized) return
+module_initialized = .true.
+
 write(*,*) 'filename: ', qcf_table_filename
 
+if (qcf_table_filename == '') then
+   write(*,*) 'No QCF table file listed in namelist, using default values for all QTYs'
+   return
+endif
+
+qcf_table_listed = .true.
 open(unit=fileid, file=qcf_table_filename)
 nlines = 0
 
@@ -139,6 +151,8 @@ integer :: row
 
 character(len=129), dimension(4) :: header1
 character(len=129), dimension(29) :: header2
+
+if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
 
 write(*,*) 'filename: ', qcf_table_filename
 open(unit=fileid, file=qcf_table_filename)
@@ -210,9 +224,12 @@ write(*,*) 'kind_name: ', kind_name
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
 write(*,*) 'findloc of kind: ', QTY_loc(1)
 
-if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table, using default values'
+!use default values if qcf_table_filename is not in namelist
+if (.not. qcf_table_listed) then
+   bounded_below = .false.;    bounded_above = .false.
+   lower_bound   = missing_r8; upper_bound   = missing_r8
 
+if (QTY_loc(1) == 0) then
    !use default values
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
@@ -428,6 +445,8 @@ subroutine end_algorithm_info_mod()
 
 deallocate(qcf_table_data)
 deallocate(qcf_table_row_headers)
+
+module_initialized = .false.
 
 end subroutine end_algorithm_info_mod
 
