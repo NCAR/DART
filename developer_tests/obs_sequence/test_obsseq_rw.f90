@@ -33,6 +33,9 @@ character(len=128)      :: read_format
 logical                 :: pre_I_format, cal
 character(len=256)      :: msgstring, msgstring1, msgstring2
 
+integer :: arg_count, i
+character(len=:), allocatable :: arg_values
+
 !=======================================================
 ! namelist input default values
 
@@ -48,6 +51,8 @@ integer :: iunit, io
 
 !=======================================================
 ! main executable
+
+
 
 call initialize_mpi_utilities('test_obsseq_rw')
 
@@ -70,7 +75,10 @@ call read_obs_seq_header(file_in, num_copies_in, num_qc_in, &
 
 call read_obs_seq(file_in, 0, 0, 0, seq_in)
 
-call validate_obs_seq_time(seq_in, file_in)
+! call validate_obs_seq_time(seq_in, file_in)
+
+! call obs_space_diagnostics here
+
 
 call task_sync()
 

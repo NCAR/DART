@@ -100,6 +100,7 @@ private
 
 public :: filter_sync_keys_time, &
           filter_set_initial_time, &
+          filter_setup_obs_sequence, &
           filter_main
 
 character(len=*), parameter :: source = 'filter_mod.f90'
@@ -2786,6 +2787,9 @@ enddo
 close(iunit)
 
 end subroutine test_obs_copies
+
+
+
 
 !-------------------------------------------------------------------
 end module filter_mod
