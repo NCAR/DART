@@ -9,6 +9,8 @@ use types_mod, only : r8, i8, missing_r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity
 
+use utilities_mod, only : error_handler, E_ERR
+
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
 
@@ -18,6 +20,9 @@ use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTR
 
 implicit none
 private
+
+character(len=512) :: errstring
+character(len=*), parameter :: source = 'algorithm_info_mod.f90'
 
 logical :: module_initialized = .false.
 logical :: qcf_table_listed = .false.
@@ -154,14 +159,11 @@ character(len=129), dimension(29) :: header2
 
 if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
 
-write(*,*) 'filename: ', qcf_table_filename
 open(unit=fileid, file=qcf_table_filename)
 
-! skip the headers 
+! skip the headers, make sure user is using the correct table version
 read(fileid, *) header1
 read(fileid, *) header2
-write(*, *) "header1: ", header1
-write(*, *) "header2: ", header2
 
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
@@ -180,6 +182,8 @@ do row = 1, size(qcf_table_data)
 end do
 
 close(fileid)
+
+call assert_qcf_table_version(header1)
 
 end subroutine read_qcf_table
 
@@ -218,7 +222,6 @@ error_variance = get_obs_def_error_variance(obs_def)
 
 !get actual name of QTY from integer index
 kind_name = get_name_for_quantity(obs_kind)
-write(*,*) 'kind_name: ', kind_name
 
 !use default values if qcf_table_filename is not in namelist
 if (.not. qcf_table_listed) then
@@ -229,7 +232,6 @@ endif
 
 !find location of QTY in qcf_table_data structure
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
-write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
    !use default values
@@ -243,8 +245,6 @@ if (QTY_loc(1) == 0) then
       upper_bound = qcf_table_data(QTY_loc(1))%obs_error_info%upper_bound
 
 endif
-
-write(*,*) 'obs_error_info: ', bounded_below, bounded_above, lower_bound, upper_bound
 
 end subroutine obs_error_info
 
@@ -288,11 +288,9 @@ character(len=129) :: kind_name
 
 !get actual name of QTY from integer index
 kind_name = get_name_for_quantity(kind)
-write(*,*) 'kind_name: ', kind_name
 
 !find location of QTY in qcf_table_data structure
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
-write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
    write(*,*) 'QTY not in table, using default values'
@@ -331,8 +329,6 @@ if (QTY_loc(1) == 0) then
 
 endif
 
-write(*,*) 'probit_dist_info: ', dist_type, bounded_below, bounded_above, lower_bound, upper_bound
-
 end subroutine probit_dist_info
 
 !------------------------------------------------------------------------
@@ -361,11 +357,9 @@ character(len=129) :: kind_name
 
 !get actual name of QTY from integer index
 kind_name = get_name_for_quantity(obs_kind)
-write(*,*) 'kind_name: ', kind_name
 
 !find location of QTY in qcf_table_data structure
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
-write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
    write(*,*) 'QTY not in table, using default values'
@@ -387,8 +381,6 @@ if (QTY_loc(1) == 0) then
       upper_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
 
 endif
-
-write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
 
 ! Only need to set these two for options the original RHF implementation
 !!!rectangular_quadrature = .true.
@@ -443,7 +435,27 @@ end subroutine write_qcf_table
 !------------------------------------------------------------------------
 
 
+subroutine assert_qcf_table_version(header)
+
+!subroutine to ensure the correct version of the QCF table is being used
+
+character(len=129), dimension(4), intent(in) :: header
+
+write(*,*) 'version: ', header(4)
+
+if (header(4) /= '1:') then
+   write(errstring,*) "Using outdated/incorrect version of the QCF table"
+   call error_handler(E_ERR, 'assert_qcf_table_version', errstring, source)
+endif
+
+end subroutine assert_qcf_table_version
+
+!------------------------------------------------------------------------
+
+
 subroutine end_algorithm_info_mod()
+
+if (.not. module_initialized) return
 
 deallocate(qcf_table_data)
 deallocate(qcf_table_row_headers)
