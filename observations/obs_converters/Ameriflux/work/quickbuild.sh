@@ -14,7 +14,7 @@ LOCATION=threed_sphere
 
 
 programs=(
-Fluxnetfull_to_obs
+fluxnetfull_to_obs
 level4_to_obs
 obs_sequence_tool
 advance_time

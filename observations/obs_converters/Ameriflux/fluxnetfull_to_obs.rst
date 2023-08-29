@@ -1,4 +1,4 @@
-PROGRAM ``Fluxnetfull_to_obs``
+PROGRAM ``fluxnetfull_to_obs``
 ==============================
 
 Overview
@@ -25,11 +25,11 @@ The steps required to prepare Ameriflux data for an assimilation usually include
 #. Download the Ameriflux or FLUXNET FULLSET  data for the towers and years in question (see DATA SOURCES below)
 #. Record the TIME ZONE, latitude, longitude, and elevation and tower height at each site. This tower metadata can be found 
    `here <https://fluxnet.org/sites/site-list-and-pages/>`__ or `here <https://ameriflux.lbl.gov/sites/site-search/>`__.
-#. Manually provide tower metadata information via the ``Fluxnetfull_to_obs_nml`` namelist as this information is
+#. Manually provide tower metadata information via the ``fluxnetfull_to_obs_nml`` namelist as this information is
    not contained in the data file itself.
 #. Build the DART executables with support for the tower observations. This is done by running ``preprocess`` with
    ``obs_def_tower_mod.f90`` in the list of ``input_files`` for ``preprocess_nml``.
-#. Convert each Ameriflux data file individually using ``Fluxnetfull_to_obs``
+#. Convert each Ameriflux data file individually using ``fluxnetfull_to_obs``
 #. If necessary, combine all output files for the region and timeframe of interest into one file using
    :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool`
 
@@ -48,7 +48,7 @@ namelist.
 
 ::
 
-   &Fluxnetfull_to_obs_nml
+   &fluxnetfull_to_obs_nml
       text_input_file = 'textdata.input',
       obs_out_file    = 'obs_seq.out',
       timezoneoffset  = -1,
@@ -373,7 +373,7 @@ and the FLUXNET 2015 data policy provided `here <https://fluxnet.org/data/data-p
 Programs
 --------
 
-The ``Fluxnetfull_to_obs.f90`` file is the source for the main converter program. Look at the source code where it reads the
+The ``fluxnetfull_to_obs.f90`` file is the source for the main converter program. Look at the source code where it reads the
 example data file. The example code reads each text line into a character buffer and then reads from that buffer to parse up the data items.
 
 To compile and test, go into the work subdirectory and run the ``quickbuild.sh`` script to build the converter and a

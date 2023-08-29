@@ -2,11 +2,11 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program Fluxnetfull_to_obs
+program fluxnetfull_to_obs
 
 !------------------------------------------------------------------------
 !
-!   Fluxnetfull_to_obs - a program that converts Ameriflux/Fluxnet FULLSET eddy
+!   fluxnetfull_to_obs - a program that converts Ameriflux/Fluxnet FULLSET eddy
 !                        covariance tower data of NEE, GPP, RE, latent heat and sensible
 !                        heat fluxes into DART obs_seq formatted files. Works on native time 
 !                        resolution (HH, HR) that ED tower data or collected or at coarser
@@ -43,7 +43,7 @@ use      obs_kind_mod, only : TOWER_SENSIBLE_HEAT_FLUX, &
 
 implicit none
 
-character(len=*), parameter :: source   = 'Fluxnetfull_to_obs.f90'
+character(len=*), parameter :: source   = 'fluxnetfull_to_obs.f90'
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
@@ -67,7 +67,7 @@ logical            :: energy_balance  = .false.
 character(len=2)   :: time_resolution = 'HH'
 logical            :: verbose         = .false.
 
-namelist /Fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &
+namelist /fluxnetfull_to_obs_nml/ text_input_file, obs_out_file, &
              timezoneoffset, latitude, longitude, elevation, &
              flux_height, maxgoodqc, gap_filled, energy_balance, &
              time_resolution, verbose
@@ -180,16 +180,16 @@ type(towerdata) :: tower
 ! start of executable code
 !-----------------------------------------------------------------------
 
-call initialize_utilities('Fluxnetfull_to_obs')
+call initialize_utilities('fluxnetfull_to_obs')
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "Fluxnetfull_to_obs_nml", iunit)
-read(iunit, nml = Fluxnetfull_to_obs_nml, iostat = rcio)
-call check_namelist_read(iunit, rcio, "Fluxnetfull_to_obs_nml")
+call find_namelist_in_file("input.nml", "fluxnetfull_to_obs_nml", iunit)
+read(iunit, nml = fluxnetfull_to_obs_nml, iostat = rcio)
+call check_namelist_read(iunit, rcio, "fluxnetfull_to_obs_nml")
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(nmlfileunit, nml=Fluxnetfull_to_obs_nml)
-if (do_nml_term()) write(     *     , nml=Fluxnetfull_to_obs_nml)
+if (do_nml_file()) write(nmlfileunit, nml=fluxnetfull_to_obs_nml)
+if (do_nml_term()) write(     *     , nml=fluxnetfull_to_obs_nml)
 
 ! time setup
 call set_calendar_type(GREGORIAN)
@@ -198,7 +198,7 @@ prev_time = set_time(0, 0)
 
 write(string1, *) 'tower located at lat, lon, elev  =', latitude, longitude, elevation
 write(string2, *) 'flux observations taken at       =', flux_height,'m'
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+if (verbose) call error_handler(E_MSG,'fluxnetfull_to_obs',string1,text2=string2)
 
 ! check the lat/lon values to see if they are ok
 if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
@@ -209,7 +209,7 @@ if (( latitude > 90.0_r8 .or. latitude  <  -90.0_r8 ) .or. &
    write (string2,*)'latitude  should be [-90, 90] but is ',latitude
    write (string3,*)'longitude should be [  0,360] but is ',longitude
 
-   string1 ='tower location error in input.nml&Fluxnetfull_to_obs_nml'
+   string1 ='tower location error in input.nml &fluxnetfull_to_obs_nml'
    call error_handler(E_ERR, source, string1, &
                       text2=string2,text3=string3)
 endif
@@ -249,7 +249,7 @@ if (time_resolution == 'DD' .or. time_resolution == 'MM' .or. &
 
   write(string1, *) 'Time resolution is set to =', time_resolution
   write(string2, *) 'Using TIMESTAMP to set DART observation time'
-  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+  if (verbose) call error_handler(E_MSG,'fluxnetfull_to_obs',string1,text2=string2)
 
 elseif (time_resolution == 'HH' .or. time_resolution == 'HR' .or. &
         time_resolution == 'WW') then
@@ -257,7 +257,7 @@ elseif (time_resolution == 'HH' .or. time_resolution == 'HR' .or. &
   res = .true.
   write(string1, *) 'Time resolution is set to =', time_resolution
   write(string2, *) 'Using TIMESTAMP_START and TIMESTAMP_END to set: DART observation time'
-  if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+  if (verbose) call error_handler(E_MSG,'fluxnetfull_to_obs',string1,text2=string2)
 
 else
   write(string1,*) 'time_resolution set incorrectly within input.nml'
@@ -293,7 +293,7 @@ endif
 ! in observation sequence - the other is for the new observation.
 
 iunit = open_file(text_input_file, 'formatted', 'read')
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs','opened input file '//trim(text_input_file))
+if (verbose) call error_handler(E_MSG,'fluxnetfull_to_obs','opened input file '//trim(text_input_file))
 
 nlines     = count_file_lines(iunit)
 max_obs    = 5*nlines
@@ -405,28 +405,28 @@ obsloop: do iline = 2,nlines
 
       write(*,*)''
       write(string1, *) 'Display tower%start_time and tower%end_time (LTC)  =', tower%start_time,' ', tower%end_time
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%nee tower%neeQC  tower%neeQCfrac =', tower%nee, tower%neeQC, tower%neeQCfrac
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%le tower%leQC  =', tower%le, tower%leQC
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%h tower%hQC  =', tower%h, tower%hQC
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%gppDT tower%gppDTQC  =', tower%gppDT, tower%gppDTQC
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%gppNT tower%gppNTQC  =', tower%gppNT, tower%gppNTQC
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%recoDT tower%recoDTQC  =', tower%recoDT, tower%recoDTQC
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       write(*,*)''
       write(string1, *) 'Display tower%recoNT tower%recoNTQC  =', tower%recoNT, tower%recoNTQC
-      call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+      call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
 
    endif
 
@@ -447,7 +447,7 @@ obsloop: do iline = 2,nlines
               oerr= tower%h*0.05 
            case default
               write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution
-              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+              call error_handler(E_ERR,'fluxnetfull_to_obs',string1)
          end select      
       endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%h, &
@@ -457,7 +457,7 @@ obsloop: do iline = 2,nlines
       if (verbose) then
          write(*,*)''
          write(string1, *) 'Display tower%h, tower%hUNC (1 SD)  =', tower%h,' ', tower%hUNC
-         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+         call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       endif
 
    endif
@@ -475,7 +475,7 @@ obsloop: do iline = 2,nlines
               oerr= tower%le*0.05
            case default
               write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
-              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+              call error_handler(E_ERR,'fluxnetfull_to_obs',string1)
          end select      
       endif
 
@@ -486,7 +486,7 @@ obsloop: do iline = 2,nlines
       if (verbose) then
          write(*,*)''
          write(string1, *) 'Display tower%le, tower%leUNC  (1 SD) =', tower%le,' ', tower%leUNC
-         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+         call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       endif
 
    endif
@@ -505,7 +505,7 @@ obsloop: do iline = 2,nlines
               oerr= abs(tower%nee)*0.05
            case default
               write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
-              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+              call error_handler(E_ERR,'fluxnetfull_to_obs',string1)
          end select      
       endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%nee, &
@@ -515,7 +515,7 @@ obsloop: do iline = 2,nlines
       if (verbose) then
          write(*,*)''
          write(string1, *) 'Display tower%nee, tower%neeUNC  (1 SD) =', tower%nee,' ', tower%neeUNC
-         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+         call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       endif
 
    endif
@@ -541,7 +541,7 @@ obsloop: do iline = 2,nlines
               oerr= tower%gpp*0.05
            case default
               write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
-              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+              call error_handler(E_ERR,'fluxnetfull_to_obs',string1)
          end select      
       endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%gpp, &
@@ -551,7 +551,7 @@ obsloop: do iline = 2,nlines
       if (verbose) then
          write(*,*)''
          write(string1, *) 'Display tower%gpp, gpp uncertainty (1 SD)  =', tower%gpp,' ', oerr
-         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+         call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       endif
 
    endif
@@ -575,7 +575,7 @@ obsloop: do iline = 2,nlines
               oerr= tower%reco*0.05
            case default
               write(string1, *) 'ERROR, time_resolution must be HH,HR,DD,WW,MM, value is:', time_resolution 
-              call error_handler(E_ERR,'Fluxnetfull_to_obs',string1)
+              call error_handler(E_ERR,'fluxnetfull_to_obs',string1)
          end select      
       endif
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%reco, &
@@ -585,7 +585,7 @@ obsloop: do iline = 2,nlines
       if (verbose) then
          write(*,*)''
          write(string1, *) 'Display tower%reco, reco uncertainty (1 SD)  =', tower%reco,' ', oerr
-         call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+         call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
       endif
 
    endif
@@ -598,7 +598,7 @@ end do obsloop
 ! If obs added to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
    write(string1,*)'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
-   if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1)
+   if (verbose) call error_handler(E_MSG,'fluxnetfull_to_obs',string1)
    call write_obs_seq(obs_seq, obs_out_file)
 endif
 
@@ -1101,7 +1101,7 @@ endif
 write(*,*)''
 write(string1, *) 'Display tower%start_time,yeara,montha,daya,houra,mina (LTC)  =', tower%start_time, yeara, montha, daya, houra, mina
 write(string2, *) 'Display tower%end_time,yearb,monthb,dayb,hourb,minb   (LTC)  =', tower%end_time, yearb, monthb, dayb, hourb, minb
-if (verbose) call error_handler(E_MSG,'Fluxnetfull_to_obs',string1,text2=string2)
+if (verbose) call error_handler(E_MSG,'fluxnetfull_to_obs',string1,text2=string2)
 
 
 
@@ -1176,6 +1176,6 @@ end subroutine stringparse
 
 
 
-end program Fluxnetfull_to_obs
+end program fluxnetfull_to_obs
 
 
