@@ -9,7 +9,7 @@ use types_mod, only : r8, i8, missing_r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity
 
-use utilities_mod, only : error_handler, E_ERR
+use utilities_mod, only : error_handler, E_ALLMSG, E_ERR, E_MSG, log_it
 
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
@@ -138,7 +138,11 @@ allocate(qcf_table_data(numrows))
 allocate(qcf_table_row_headers(numrows))
 
 call read_qcf_table(qcf_table_filename)
+!call verify_qcf_table_data(qcf_table_filename, nlines)
 call write_qcf_table()
+call log_qcf_table_data()
+
+!stop
 
 end subroutine init_algorithm_info_mod
 
@@ -164,6 +168,8 @@ open(unit=fileid, file=qcf_table_filename)
 ! skip the headers, make sure user is using the correct table version
 read(fileid, *) header1
 read(fileid, *) header2
+write(*,*) 'header1: ', header1
+write(*,*) 'header2: ', header2
 
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
@@ -220,9 +226,6 @@ endif
 ! Get the default error variance
 error_variance = get_obs_def_error_variance(obs_def)
 
-!get actual name of QTY from integer index
-kind_name = get_name_for_quantity(obs_kind)
-
 !use default values if qcf_table_filename is not in namelist
 if (.not. qcf_table_listed) then
    bounded_below = .false.;    bounded_above = .false.
@@ -230,11 +233,14 @@ if (.not. qcf_table_listed) then
    return
 endif
 
+!get actual name of QTY from integer index
+kind_name = get_name_for_quantity(obs_kind)
+
 !find location of QTY in qcf_table_data structure
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
 
 if (QTY_loc(1) == 0) then
-   !use default values
+   !use default values if QTY is not in table
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
 
@@ -286,6 +292,14 @@ character(len=129) :: kind_name
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
 
+!use default values if qcf_table_filename is not in namelist
+if (.not. qcf_table_listed) then
+   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   bounded_below = .false.;    bounded_above = .false.
+   lower_bound   = missing_r8; upper_bound   = missing_r8
+   return
+endif
+
 !get actual name of QTY from integer index
 kind_name = get_name_for_quantity(kind)
 
@@ -293,9 +307,9 @@ kind_name = get_name_for_quantity(kind)
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
 
 if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table, using default values'
+   write(*,*) 'QTY not in table, using default values' !remove these writes on PR
    
-   !use default values
+   !use default values if QTY is not in table
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
@@ -355,16 +369,27 @@ character(len=129) :: kind_name
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
+!use default values if qcf_table_filename is not in namelist
+if (.not. qcf_table_listed) then
+   filter_kind = BOUNDED_NORMAL_RHF
+   bounded_below = .false.;    bounded_above = .false.
+   lower_bound   = missing_r8; upper_bound   = missing_r8
+   sort_obs_inc = .false.; spread_restoration = .false.
+   return
+endif
+
 !get actual name of QTY from integer index
 kind_name = get_name_for_quantity(obs_kind)
+write(*,*) 'kind_name: ', kind_name
 
 !find location of QTY in qcf_table_data structure
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
+write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
    write(*,*) 'QTY not in table, using default values'
 
-   !use default values
+   !use default values if QTY is not in table
    filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
@@ -381,6 +406,8 @@ if (QTY_loc(1) == 0) then
       upper_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
 
 endif
+
+write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
 
 ! Only need to set these two for options the original RHF implementation
 !!!rectangular_quadrature = .true.
@@ -405,12 +432,10 @@ integer :: QTY_loc0(1)
 
 integer :: row
 
-write(*,*), 'SIZE: ', size(qcf_table_data)
-
 do row = 1, size(qcf_table_data)
-   write(*, *) "qcf_table_row_headers(", row, "): ", qcf_table_row_headers(row)
-   write(*, *) "qcf_table_data(", row, "): "
-   write(*, *) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+   write(*,*) "qcf_table_row_headers(", row, "): ", qcf_table_row_headers(row)
+   write(*,*) "qcf_table_data(", row, "): "
+   write(*,*) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
                qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
                qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
@@ -441,6 +466,10 @@ subroutine assert_qcf_table_version(header)
 
 character(len=129), dimension(4), intent(in) :: header
 
+!if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
+
+if (.not. qcf_table_listed) return
+
 write(*,*) 'version: ', header(4)
 
 if (header(4) /= '1:') then
@@ -449,6 +478,84 @@ if (header(4) /= '1:') then
 endif
 
 end subroutine assert_qcf_table_version
+
+!------------------------------------------------------------------------
+
+
+subroutine verify_qcf_table_data(qcf_table_filename, nlines)
+
+!subroutine to ensure that the data in the QCF table is valid and in 
+!the correct formatthe right format and is correct size
+
+character(len=129), intent(in) :: qcf_table_filename
+integer, intent(in) :: nlines
+
+character(len=500) :: table_rows(nlines)
+integer, parameter :: fileid = 10 !file identifier
+integer :: row
+
+if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
+
+if (.not. qcf_table_listed) return
+
+open(unit=fileid, file=qcf_table_filename)
+
+do row = 1, nlines
+   read(fileid, '(A)') table_rows(row)
+   print *, 'full line:'
+   print *, table_rows(row)
+   print *, 'trimmed line:'
+   print *, trim(table_rows(row))
+   print *, 'length', len_trim(table_rows(row))
+end do
+
+close(fileid) 
+
+!if (size(qcf_table_row_headers) /= 2) then                                        !NO, this needs to be table headers, not row
+!   write(errstring,*) 'Incorrect number of headers in the QCF table; ' , &
+!                      'ensure that the latest version of this table is ', &
+!                      'being used and is in the same format as the example'
+!   call error_handler(E_ERR, 'assert_qcf_table_version', errstring, source)
+!endif
+
+end subroutine verify_qcf_table_data
+
+!------------------------------------------------------------------------
+
+
+subroutine log_qcf_table_data()
+
+!subroutine to write the data in QCF table to dart_log
+
+character(len=500) :: log_msg
+integer :: row
+
+if (.not. qcf_table_listed) return
+
+do row = 1, size(qcf_table_data)
+   write(log_msg, *) "qcf_table_row_headers(", row, "): ", qcf_table_row_headers(row)
+   write(*,*) 'log_msg: ', log_msg
+   call log_it(log_msg)
+   write(log_msg, *) "qcf_table_data(", row, "): "
+   write(*,*) 'log_msg: ', log_msg
+   call log_it(log_msg)
+   write(log_msg, *) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+               qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
+               qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
+               qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
+               qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
+               qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
+               qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
+               qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
+               qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
+               qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
+               qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
+               qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+   write(*,*) 'e_allmsg: '
+   call error_handler(E_ALLMSG, 'write_qcf_table', log_msg, source)
+end do
+
+end subroutine log_qcf_table_data
 
 !------------------------------------------------------------------------
 
