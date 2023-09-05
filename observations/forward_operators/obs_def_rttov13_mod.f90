@@ -4238,8 +4238,6 @@ function get_rttov_option_logical(field_name) result(p)
          p = USER_CLD_OPT_PARAM
       case('GRID_BOX_AVG_CLOUD')
          p = GRID_BOX_AVG_CLOUD
-      case('CLOUD_OVERLAP')
-         p = cloud_overlap
       case('ADDPC')
          p = ADDPC
       case('ADDRADREC')
