@@ -113,7 +113,7 @@ integer, parameter :: fileid = 10 !file identifier
 if (module_initialized) return
 module_initialized = .true.
 
-write(*,*) 'filename: ', qcf_table_filename
+!write(*,*) 'filename: ', qcf_table_filename
 
 if (qcf_table_filename == '') then
    write(*,*) 'No QCF table file listed in namelist, using default values for all QTYs'
@@ -132,14 +132,14 @@ end do
 close(fileid)
 
 numrows = nlines - 2
-print *, 'numrows: ', numrows
+!print *, 'numrows: ', numrows
 
 allocate(qcf_table_data(numrows))
 allocate(qcf_table_row_headers(numrows))
 
 call read_qcf_table(qcf_table_filename)
 !call verify_qcf_table_data(qcf_table_filename, nlines)
-call write_qcf_table()
+!call write_qcf_table()
 call log_qcf_table_data()
 
 !stop
@@ -168,8 +168,8 @@ open(unit=fileid, file=qcf_table_filename)
 ! skip the headers, make sure user is using the correct table version
 read(fileid, *) header1
 read(fileid, *) header2
-write(*,*) 'header1: ', header1
-write(*,*) 'header2: ', header2
+!write(*,*) 'header1: ', header1
+!write(*,*) 'header2: ', header2
 
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
@@ -307,7 +307,7 @@ kind_name = get_name_for_quantity(kind)
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
 
 if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table, using default values' !remove these writes on PR
+ !  write(*,*) 'QTY not in table, using default values' !remove these writes on PR
    
    !use default values if QTY is not in table
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
@@ -380,14 +380,14 @@ endif
 
 !get actual name of QTY from integer index
 kind_name = get_name_for_quantity(obs_kind)
-write(*,*) 'kind_name: ', kind_name
+!write(*,*) 'kind_name: ', kind_name
 
 !find location of QTY in qcf_table_data structure
 QTY_loc = findloc(qcf_table_row_headers, kind_name)
-write(*,*) 'findloc of kind: ', QTY_loc(1)
+!write(*,*) 'findloc of kind: ', QTY_loc(1)
 
 if (QTY_loc(1) == 0) then
-   write(*,*) 'QTY not in table, using default values'
+   !write(*,*) 'QTY not in table, using default values'
 
    !use default values if QTY is not in table
    filter_kind = BOUNDED_NORMAL_RHF
@@ -407,7 +407,7 @@ if (QTY_loc(1) == 0) then
 
 endif
 
-write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
+!write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
 
 ! Only need to set these two for options the original RHF implementation
 !!!rectangular_quadrature = .true.
@@ -470,7 +470,7 @@ character(len=129), dimension(4), intent(in) :: header
 
 if (.not. qcf_table_listed) return
 
-write(*,*) 'version: ', header(4)
+!write(*,*) 'version: ', header(4)
 
 if (header(4) /= '1:') then
    write(errstring,*) "Using outdated/incorrect version of the QCF table"
@@ -534,10 +534,10 @@ if (.not. qcf_table_listed) return
 
 do row = 1, size(qcf_table_data)
    write(log_msg, *) "qcf_table_row_headers(", row, "): ", qcf_table_row_headers(row)
-   write(*,*) 'log_msg: ', log_msg
+ !  print *, 'log_msg: ', log_msg
    call log_it(log_msg)
    write(log_msg, *) "qcf_table_data(", row, "): "
-   write(*,*) 'log_msg: ', log_msg
+ !  print *, 'log_msg: ', log_msg
    call log_it(log_msg)
    write(log_msg, *) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
@@ -551,7 +551,7 @@ do row = 1, size(qcf_table_data)
                qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
                qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
-   write(*,*) 'e_allmsg: '
+  ! print *, 'e_allmsg: '
    call error_handler(E_ALLMSG, 'write_qcf_table', log_msg, source)
 end do
 
