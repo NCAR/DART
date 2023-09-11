@@ -430,8 +430,8 @@ integer :: QTY_loc0(1)
 integer :: row
 
 do row = 1, size(qcf_table_data)
-   write(*,*) "qcf_table_row_headers(", row, "): ", qcf_table_row_headers(row)
-   write(*,*) "qcf_table_data(", row, "): "
+   write(*,*) 'qcf_table_row_headers(', row, '): ', qcf_table_row_headers(row)
+   write(*,*) 'qcf_table_data(', row, '): '
    write(*,*) qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
                qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
@@ -462,7 +462,7 @@ subroutine assert_qcf_table_version()
 !subroutine to ensure the correct version of the QCF table is being used
 
 if (header1(4) /= '1:') then
-   write(errstring,*) "Using outdated/incorrect version of the QCF table"
+   write(errstring,*) 'Using outdated/incorrect version of the QCF table'
    call error_handler(E_ERR, 'assert_qcf_table_version', errstring, source)
 endif
 
@@ -486,23 +486,23 @@ if (.not. qcf_table_listed) return
 !Here we could add more specific checks if we have known limits on the bounds
 do row = 1, size(qcf_table_data)
    if(qcf_table_data(row)%obs_error_info%lower_bound > qcf_table_data(row)%obs_error_info%upper_bound) then
-      write(errstring,*) "Invalid bounds in obs_error_info"
+      write(errstring,*) 'Invalid bounds in obs_error_info'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
    if(qcf_table_data(row)%probit_inflation%lower_bound > qcf_table_data(row)%probit_inflation%upper_bound) then
-      write(errstring,*) "Invalid bounds in probit_inflation"
+      write(errstring,*) 'Invalid bounds in probit_inflation'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
    if(qcf_table_data(row)%probit_state%lower_bound > qcf_table_data(row)%probit_state%upper_bound) then
-      write(errstring,*) "Invalid bounds in probit_state"
+      write(errstring,*) 'Invalid bounds in probit_state'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
    if(qcf_table_data(row)%probit_extended_state%lower_bound > qcf_table_data(row)%probit_extended_state%upper_bound) then
-      write(errstring,*) "Invalid bounds in probit_extended_state"
+      write(errstring,*) 'Invalid bounds in probit_extended_state'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
    if(qcf_table_data(row)%obs_inc_info%lower_bound > qcf_table_data(row)%obs_inc_info%upper_bound) then
-      write(errstring,*) "Invalid bounds in obs_inc_info"
+      write(errstring,*) 'Invalid bounds in obs_inc_info'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
 end do
@@ -511,7 +511,7 @@ end do
 do row = 1, size(qcf_table_data)
    varid = get_index_for_quantity(qcf_table_row_headers(row))
    if(varid == -1) then
-      write(errstring,*) trim(qcf_table_row_headers(row)), " is not a valid DART QTY"
+      write(errstring,*) trim(qcf_table_row_headers(row)), ' is not a valid DART QTY'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
 end do
