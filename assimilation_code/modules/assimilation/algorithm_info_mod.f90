@@ -9,7 +9,7 @@ use types_mod, only : r8, i8, missing_r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
 
-use utilities_mod, only : error_handler, E_ALLMSG, E_ERR, E_MSG, log_it, logfileunit
+use utilities_mod, only : error_handler, E_ALLMSG, E_ERR, E_MSG, log_it, logfileunit, open_file, close_file
 
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
@@ -107,10 +107,11 @@ subroutine init_algorithm_info_mod(qcf_table_filename)
 
 character(len=129), intent(in) :: qcf_table_filename
 
+integer :: fileid
+integer :: io
+
 integer :: numrows
 integer :: nlines
-integer :: io
-integer, parameter :: fileid = 10 !file identifier
 
 if (module_initialized) return
 module_initialized = .true.
@@ -121,8 +122,9 @@ if (qcf_table_filename == '') then
 endif
 
 qcf_table_listed = .true.
-open(unit=fileid, file=qcf_table_filename)
 nlines = 0
+
+fileid = open_file(qcf_table_filename, 'formatted', 'read')
 
 !do loop to get number of rows (or QTY's) in the table
 do
@@ -130,7 +132,8 @@ do
   if(io/=0) exit
   nlines = nlines + 1
 end do
-close(fileid)
+
+call close_file(fileid)
 
 numrows = nlines - 2
 
@@ -156,12 +159,12 @@ subroutine read_qcf_table(qcf_table_filename)
 
 character(len=129), intent(in) :: qcf_table_filename
 
-integer, parameter :: fileid = 10 !file identifier
+integer :: fileid
 integer :: row
 
 if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
 
-open(unit=fileid, file=qcf_table_filename)
+fileid = open_file(qcf_table_filename, 'formatted', 'read')
 
 ! skip the headers, make sure user is using the correct table version
 read(fileid, *) header1
@@ -185,7 +188,7 @@ do row = 1, size(qcf_table_data)
                    qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
 end do
 
-close(fileid)
+call close_file(fileid)
 
 end subroutine read_qcf_table
 
