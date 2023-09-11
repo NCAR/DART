@@ -166,7 +166,7 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-character(len = 129) :: qcf_table_filename = 'real_qcf_table.txt' !NEED TO REMOVE THIS LATER
+character(len = 129) :: qcf_table_filename = '' 
 logical  :: use_algorithm_info_mod = .true.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
@@ -363,12 +363,12 @@ logical :: all_gone, allow_missing
 
 real(r8), allocatable   :: prior_qc_copy(:)
 
-call filter_initialize_modules_used() ! static_init_model called in here
-
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "filter_nml", iunit)
 read(iunit, nml = filter_nml, iostat = io)
 call check_namelist_read(iunit, io, "filter_nml")
+
+call filter_initialize_modules_used() ! static_init_model called in here
 
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
