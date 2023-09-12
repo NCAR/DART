@@ -5,6 +5,7 @@
 
 program test_interpolate_grid
 
+use assert_mod, only : assert_equal
 use regular_grid_mod, only : create_grid0, create_field, set_data_function
 use types_mod, only : r8, MISSING_R8, metadatalength
 use functions_mod, only : f_sine, f_sum, f_row, f_col, f_rand
@@ -61,11 +62,14 @@ character(len=256) :: target_filename
 character(len=metadatalength) :: lon_name, lat_name
 type(grid_type) :: grid0, gridT, grid1, grid2, grid3
 
+! how much difference is ok when going from one grid to another and back?
+real(r8) :: tolerance = 0.0001_r8
+
 namelist /test_interpolate_grid_nml/ is_regular, target_filename, &
          case, debug, resolution, lon_name, lat_name, resolution, &
          grid_global, grid_spans_lon_zero, grid_pole_wrap, data_function, &
          grid_origin_longitude, grid_origin_latitude, grid_end_longitude, &
-         grid_end_latitude, do_more
+         grid_end_latitude, do_more, tolerance
 
 
 call initialize_utilities("test_interpolate_grid")
@@ -115,6 +119,13 @@ call write_grid(grid1, field1, "field1.nc")
 allocate(diff(ni, nj))
 diff = field1 - field0
 call write_grid(grid0, diff, "diff.nc")
+
+! give the results, pass or fail
+if (maxval(diff) < tolerance) then
+   call assert_equal(0, 0, 'interpolation differences less than tolerance')
+else
+   call assert_equal(0, 1, 'interpolation differences too large')
+endif
 
 ! additional tests to isolate problems
 
