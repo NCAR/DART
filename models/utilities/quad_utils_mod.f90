@@ -102,14 +102,14 @@ public :: quad_interp_handle,              & ! derived type which holds the grid
           QUAD_LOCATED_CELL_CORNERS,       &
           get_quad_grid_size,              &
           get_quad_global,                 &
+          set_debug_level,                 &
           print_quad_handle                ! debug
 
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+! remains from SVN, remove all but source at some point
+character(len=*), parameter :: source   = "quad_utils_mod.f90"
+character(len=*), parameter :: revision = "github"
+character(len=*), parameter :: revdate  = ""
 
 ! message strings
 character(len=512) :: string1, string2, string3
@@ -507,6 +507,15 @@ end subroutine init_quad_interp
 
 !------------------------------------------------------------------
 
+subroutine set_debug_level(value)
+integer, intent(in) :: value
+
+debug = value
+
+end subroutine set_debug_level
+
+!------------------------------------------------------------------
+
 subroutine print_quad_handle(interp_handle)
 type(quad_interp_handle), intent(in) :: interp_handle
 
@@ -720,6 +729,21 @@ call shapecheck(interp_handle, gridsize, 'latitude')
 
 interp_handle%ii%lons_2D(:,:) = lons(:,:)
 interp_handle%ii%lats_2D(:,:) = lats(:,:)
+
+! convert all longitudes to be between 0 and 360 if they aren't already.  -180 to 180 is common 
+! range in many models, but some include longitudes below -180.   try once to convert them into 
+! the valid range.  then complain if the values aren't between 0 and 360 because it might be 
+! a symptom of bad values in the longitude array.
+where(interp_handle%ii%lons_2D(:,:) <    0.0_r8) interp_handle%ii%lons_2D = interp_handle%ii%lons_2D + 360.0_r8
+where(interp_handle%ii%lons_2D(:,:) >= 360.0_r8) interp_handle%ii%lons_2D = interp_handle%ii%lons_2D - 360.0_r8
+
+if (minval(interp_handle%ii%lons_2D) < 0.0_r8 .or. maxval(interp_handle%ii%lons_2D) > 360.0_r8) then
+   write(string1, *) 'grid longitude values will be converted into the range of 0-360'
+   write(string2, *) 'incoming values must be between -360 and +720 to be valid.  received min/max = ', &
+	             minval(interp_handle%ii%lons_2D), maxval(interp_handle%ii%lons_2D)
+   call error_handler(E_ERR, 'set_quad_coords', string1, source, revision, revdate, text2=string2)
+
+endif
 
 if (present(mask)) then
    interp_handle%opt%uses_mask = .true.
@@ -1454,12 +1478,15 @@ select case (interp_handle%grid_type)
                          source, revision, revdate, text2=string2)
    endif
 
-   ! Fail if point is in one of the U boxes that go through the
-   ! pole (this could be fixed up if necessary)
-   if (lat_bot == u_pole_y .and. &
-      (lon_bot == pole_x -1 .or. lon_bot == pole_x)) then
-      istatus = 4
-      return
+   if (.not. interp_handle%opt%pole_wrap) then
+      ! Fail if point is in one of the boxes that go through the pole
+      ! FIXME: we tell users to make a separate interpolator for T, U, and V grids
+      ! so i'm not sure what this test should actually be.
+      if (lat_bot == u_pole_y .and. &
+         (lon_bot == pole_x -1 .or. lon_bot == pole_x)) then
+         istatus = 4
+         return
+      endif
    endif
 
  case (GRID_QUAD_IRREG_SPACED_REGULAR)
@@ -1916,7 +1943,7 @@ real(r8)             :: lon_dist
 lon_dist = lon2 - lon1
 if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then
    return
-else if(lon_dist< -180.0_r8) then
+else if(lon_dist < -180.0_r8) then
    lon_dist = lon_dist + 360.0_r8
 else
    lon_dist = lon_dist - 360.0_r8
@@ -2288,16 +2315,20 @@ a = p(4) - r(1) * x_corners(4) - &
 
 
 !----------------- Implementation test block
-! When interpolating on dipole x3 never exceeded 1e-9 error in this test
-if (debug > 10)  write(*,'(A,8F12.3)') 'test corners: a, r(1), r(2), r(3)', a, r(1), r(2), r(3)
-do i = 1, 4
-   interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
+! When interpolating on dipole x3 never exceeded 1e-9 error in this test.
+! but only do additional testing when debug is on.
+if (debug > 10) then
+    write(*,'(A,8F12.3)') 'test corners: a, r(1), r(2), r(3)', a, r(1), r(2), r(3)
+   do i = 1, 4
+      interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
 
-   if(abs(interp_val - p(i)) > 1e-9) &
-      write(*, *) 'large interp residual ', i, interp_val, p(i), interp_val - p(i)
-if (debug > 10)  write(*,'(A,I3,8F12.5)') 'test corner: i, interp_val, x_corn, y_corn: ',  &
+      if(abs(interp_val - p(i)) > 1e-9) then
+         write(*, *) 'large interp residual ', i, interp_val, p(i), interp_val - p(i)
+         write(*,'(A,I3,8F12.5)') 'test corner: i, interp_val, x_corn, y_corn: ',  &
                                                         i, interp_val, x_corners(i), y_corners(i)
-enddo
+      endif
+   enddo
+endif
 
 !----------------- Implementation test block
 
@@ -2315,11 +2346,11 @@ if (debug > 10)  write(*,'(A,8F15.5)') 'poly: expected,     lon, lat, a,  r(1)*l
 ! When doing bilinear interpolation in quadrangle, can get interpolated
 ! values that are outside the range of the corner values
 if(expected_obs > maxval(p)) then
-!   expected_obs = maxval(p)
-if (debug > 10)  write(*,'(A,3F12.3)') 'expected obs > maxval (diff): ', expected_obs, maxval(p), abs(expected_obs - maxval(p))
+if (debug > -1)  write(*,'(A,3F12.8)') 'expected obs > maxval (diff): ', expected_obs, maxval(p), abs(expected_obs - maxval(p))
+   expected_obs = maxval(p)
 else if(expected_obs < minval(p)) then
-!   expected_obs = minval(p)
-if (debug > 10)  write(*,'(A,3F12.3)') 'expected obs < minval (diff): ', expected_obs, minval(p), abs(expected_obs - minval(p))
+if (debug > -1)  write(*,'(A,3F12.8)') 'expected obs < minval (diff): ', expected_obs, minval(p), abs(expected_obs - minval(p))
+   expected_obs = minval(p)
 endif
 !********
 

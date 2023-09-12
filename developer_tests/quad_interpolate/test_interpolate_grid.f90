@@ -91,6 +91,7 @@ allocate(fieldT(gridT%nlon, gridT%nlat))
 
 ! call quad utils to move data from src to dst
 
+print *, 'moving data from field 0 to T'
 call do_interp(grid0, field0, gridT, fieldT)
 call write_grid(gridT, fieldT, "fieldT.nc")
 
@@ -103,6 +104,7 @@ field1(:,:) = MISSING_R8
 
 ! call quad utils to move data back from dst to src2
 
+print *, 'moving data from field T to 1'
 call do_interp(gridT, fieldT, grid1, field1)
 call write_grid(grid1, field1, "field1.nc")
 
@@ -126,6 +128,7 @@ if (do_more) then
    
    ! call quad utils to move data back from dst to src2
    
+print *, 'moving data from field T to 2'
    call do_interp(gridT, fieldT, grid2, field2)
    call write_grid(grid2, field2, "field2.nc")
    
@@ -138,6 +141,7 @@ if (do_more) then
    
    ! call quad utils to move data back from orig grid to dense grid
    
+print *, 'moving data from field 0 to 3'
    call do_interp(grid0, field0, grid3, field3)
    call write_grid(grid3, field3, "field3.nc")
    

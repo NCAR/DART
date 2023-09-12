@@ -1,22 +1,22 @@
 
 &test_interpolate_grid_nml
   data_function = "sine"
-  resolution = 1
+  resolution = 2
   grid_origin_longitude = 0.0
   grid_end_longitude = 360.0
   grid_origin_latitude = -90.0
   grid_end_latitude = 90.0
 
-  is_regular = .true.
-  target_filename = 'caminput.nc'
-  lon_name = "lon"
-  lat_name = "lat"
+  is_regular = .false.
+  target_filename = '/Users/nancy/inputfiles/ocean_geometry.nc'
+  lon_name = "geolon"
+  lat_name = "geolat"
 
-  grid_global = .true.
+  grid_global = .false.
   grid_spans_lon_zero = .true.
-  grid_pole_wrap = .true.
+  grid_pole_wrap = .false.
 
-  do_more = .false.
+  do_more = .true.
 /
 
 !  is_regular = .true.
@@ -54,7 +54,7 @@
 
 
 &quad_interpolate_nml
-   do_rotate = .false.
+   do_rotate = .true.
    debug = 0
   /
 
