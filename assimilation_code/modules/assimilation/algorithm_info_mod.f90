@@ -461,7 +461,7 @@ subroutine assert_qcf_table_version()
 
 !subroutine to ensure the correct version of the QCF table is being used
 
-if (header1(4) /= '1:') then
+if (header1(4) /= '1') then
    write(errstring,*) 'Using outdated/incorrect version of the QCF table'
    call error_handler(E_ERR, 'assert_qcf_table_version', errstring, source)
 endif
@@ -512,6 +512,14 @@ do row = 1, size(qcf_table_data)
    varid = get_index_for_quantity(qcf_table_row_headers(row))
    if(varid == -1) then
       write(errstring,*) trim(qcf_table_row_headers(row)), ' is not a valid DART QTY'
+      call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
+   endif
+end do
+
+!Ensures that there are no duplicate QTYs in the table
+do row = 1, size(qcf_table_data)
+   if(count(qcf_table_row_headers==qcf_table_row_headers(row)) > 1) then
+      write(errstring,*) trim(qcf_table_row_headers(row)), ' has multiple entries in the table'
       call error_handler(E_ERR, 'verify_qcf_table_data', errstring, source)
    endif
 end do
