@@ -9,7 +9,7 @@ use types_mod, only : r8, i8, missing_r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
 
-use utilities_mod, only : error_handler, E_ALLMSG, E_ERR, E_MSG, log_it, logfileunit, open_file, close_file
+use utilities_mod, only : error_handler, E_ALLMSG, E_ERR, E_MSG, log_it, logfileunit, open_file, close_file, to_upper
 
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
@@ -66,7 +66,7 @@ type probit_extended_state_type
 end type
 
 type obs_inc_info_type
-   integer               :: filter_kind
+   character(len=129)    :: filter_kind
    logical               :: rectangular_quadrature, gaussian_likelihood_tails
    logical               :: sort_obs_inc, spread_restoration
    logical               :: bounded_below, bounded_above
@@ -141,12 +141,12 @@ allocate(qcf_table_data(numrows))
 allocate(qcf_table_row_headers(numrows))
 
 call read_qcf_table(qcf_table_filename)
-!call write_qcf_table()
+call write_qcf_table()
 call assert_qcf_table_version()
 call verify_qcf_table_data()
 !call log_qcf_table_data()
 
-stop !FOR TESTING, REMOVE LATER
+!stop !FOR TESTING, REMOVE LATER
 
 end subroutine init_algorithm_info_mod
 
@@ -270,6 +270,7 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,   upper_bound
 
 integer :: QTY_loc(1)
+character(len=129) :: dist_type_string
 character(len=129) :: kind_name
 
 ! Have input information about the kind of the state or observation being transformed
@@ -316,6 +317,8 @@ if (QTY_loc(1) == 0) then
    elseif(is_inflation) then
    ! Case for inflation transformation
 
+!      dist_type_string = to_upper(qcf_table_data(QTY_loc(1))%probit_inflation%dist_type)
+
       dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type  !dist_type has checks in transform_to_probit, transform_from_probit
       bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
@@ -361,12 +364,34 @@ real(r8), intent(inout) :: lower_bound,  upper_bound
 integer :: QTY_loc(1)
 character(len=129) :: kind_name
 
+integer :: filter_kind_loc(1)
+character(len=129), dimension(5) :: possible_filter_kinds
+integer, dimension(5) :: possible_filter_kind_ints
+character(len=129) :: filter_kind_string
+
 ! The information arguments are all intent (inout). This means that if they are not set
 ! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
 ! in that namelist, so default values are set in assim_tools_mod just before the call to here.
 
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
+
+! Fill array with possible filter_kind strings
+possible_filter_kinds(1) = 'EAKF'
+possible_filter_kinds(2) = 'ENKF'
+possible_filter_kinds(3) = 'UNBOUNDED_RHF'
+possible_filter_kinds(4) = 'GAMMA_FILTER'
+possible_filter_kinds(5) = 'BOUNDED_NORMAL_RHF'
+write(*,*) 'possible_filter_kinds'
+write(*,*) possible_filter_kinds
+
+possible_filter_kind_ints(1) = 1
+possible_filter_kind_ints(2) = 2
+possible_filter_kind_ints(3) = 8
+possible_filter_kind_ints(4) = 11
+possible_filter_kind_ints(5) = 101
+write(*,*) 'possible_filter_kind_ints'
+write(*,*) possible_filter_kind_ints
 
 !use default values if qcf_table_filename is not in namelist
 if (.not. qcf_table_listed) then
@@ -394,7 +419,25 @@ if (QTY_loc(1) == 0) then
    ! Default settings for now for Icepack and tracer model tests (sort_obs_inc, spread_restoration)
 
    else
-      filter_kind = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind !filter_kind has a check in obs_increment
+
+      ! Comparing the filter_kind in string format to list of potential filter_kinds
+      filter_kind_string = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
+      write(*,*) 'filter_kind_string: ', filter_kind_string
+      call to_upper(filter_kind_string)
+      filter_kind_loc = findloc(possible_filter_kinds, trim(filter_kind_string))
+      write(*,*) 'filter_kind_string: ', filter_kind_string
+
+      if (filter_kind_loc(1) == 0) then
+         write(errstring, *) 'Invalid filter_kind'
+         call error_handler(E_ERR, 'obs_inc_info', errstring, source)
+
+      else
+         filter_kind = possible_filter_kind_ints(filter_kind_loc(1))
+      endif
+     
+!      if (filter_kind_string ==
+
+     ! filter_kind = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind !filter_kind has a check in obs_increment
       sort_obs_inc = qcf_table_data(QTY_loc(1))%obs_inc_info%sort_obs_inc
       spread_restoration = qcf_table_data(QTY_loc(1))%obs_inc_info%spread_restoration
       bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
@@ -404,7 +447,7 @@ if (QTY_loc(1) == 0) then
 
 endif
 
-!write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
+write(*,*) 'obs_inc_info: ', filter_kind, sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound
 
 ! Only need to set these two for options the original RHF implementation
 !!!rectangular_quadrature = .true.
