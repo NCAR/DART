@@ -21,7 +21,6 @@ use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTR
 implicit none
 private
 
-character(len=2000) :: log_msg
 character(len=512) :: errstring
 character(len=*), parameter :: source = 'algorithm_info_mod.f90'
 
@@ -45,41 +44,41 @@ public :: obs_error_info, probit_dist_info, obs_inc_info, &
 !Creates the type definitions for the QCF table
 type obs_error_info_type
    logical               :: bounded_below, bounded_above
-   real                  :: lower_bound,   upper_bound
+   real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_inflation_type
    integer               :: dist_type
    logical               :: bounded_below, bounded_above
-   real                  :: lower_bound,   upper_bound
+   real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_state_type
    integer               :: dist_type
    logical               :: bounded_below, bounded_above
-   real                  :: lower_bound,   upper_bound
+   real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_extended_state_type
    integer               :: dist_type
    logical               :: bounded_below, bounded_above
-   real                  :: lower_bound,   upper_bound
+   real(r8)              :: lower_bound,   upper_bound
 end type
 
 type obs_inc_info_type
-   integer :: filter_kind
-   logical :: rectangular_quadrature, gaussian_likelihood_tails
-   logical :: sort_obs_inc, spread_restoration
-   logical :: bounded_below, bounded_above
-   real :: lower_bound,   upper_bound
+   integer               :: filter_kind
+   logical               :: rectangular_quadrature, gaussian_likelihood_tails
+   logical               :: sort_obs_inc, spread_restoration
+   logical               :: bounded_below, bounded_above
+   real(r8)              :: lower_bound,   upper_bound
 end type
 
 type qcf_table_data_type
-   type(obs_error_info_type) :: obs_error_info
-   type(probit_inflation_type) :: probit_inflation
-   type(probit_state_type) :: probit_state
+   type(obs_error_info_type)        :: obs_error_info
+   type(probit_inflation_type)      :: probit_inflation
+   type(probit_state_type)          :: probit_state
    type(probit_extended_state_type) :: probit_extended_state
-   type(obs_inc_info_type) :: obs_inc_info
+   type(obs_inc_info_type)          :: obs_inc_info
 end type
 
 character(len=129), dimension(4) :: header1
@@ -117,7 +116,8 @@ if (module_initialized) return
 module_initialized = .true.
 
 if (qcf_table_filename == '') then
-   write(*,*) 'No QCF table file listed in namelist, using default values for all QTYs'
+   write(errstring,*) 'No QCF table file listed in namelist, using default values for all QTYs'
+   call error_handler(E_MSG, 'init_algorithm_info_mod', errstring, source)
    return
 endif
 
@@ -144,7 +144,7 @@ call read_qcf_table(qcf_table_filename)
 !call write_qcf_table()
 call assert_qcf_table_version()
 call verify_qcf_table_data()
-call log_qcf_table_data()
+!call log_qcf_table_data()
 
 stop !FOR TESTING, REMOVE LATER
 
@@ -169,8 +169,8 @@ fileid = open_file(qcf_table_filename, 'formatted', 'read')
 ! skip the headers, make sure user is using the correct table version
 read(fileid, *) header1
 read(fileid, *) header2
-write(*,*) 'header1: ', header1
-write(*,*) 'header2: ', header2
+!write(*,*) 'header1: ', header1
+!write(*,*) 'header2: ', header2
 
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
@@ -533,21 +533,40 @@ subroutine log_qcf_table_data()
 
 !subroutine to write the data in QCF table to dart_log
 
+character(len=512) :: log_msg
 integer :: row
+integer :: i
 
 if (.not. qcf_table_listed) return
 
 !call error_handler(E_ALLMSG, 'log_qcf_table_data', log_msg, source)
 !call log_it(log_msg)
 
-write(logfileunit, *) header1
-write(logfileunit, *) header2
+!Write the headers to the dart_log and terminal
 
-do row = 1, size(qcf_table_data)
-   write(*,*) qcf_table_row_headers(row), qcf_table_data(row)
+!write(log_msg, *) trim(header1(1))
+do i = 1, size(header1)
+   write(*,*) trim(header1(i))
+   write(log_msg,*) trim(header1(i))
+   !log_msg = log_msg//trim(header1(i))
+  ! call error_handler(E_MSG, 'log_qcf_table_data', trim(log_msg), source)
+   write(*, *) trim(log_msg)
 end do
+write(*,*) 'log_msg: ', trim(log_msg)
+!write(*,*) trim(log_msg)
+!write(log_msg,*) header1
+!call error_handler(E_MSG, 'log_qcf_table_data', trim(log_msg), source)
+!write(log_msg, *) header2
+!call error_handler(E_MSG, 'log_qcf_table_data', trim(log_msg), source)
 
-!write(log_msg,*) qcf_table_data
+!Write the data to the dart_log and terminal
+!do row = 1, size(qcf_table_data)
+!   write(log_msg,*) qcf_table_row_headers(row), qcf_table_data(row)
+!   call error_handler(E_MSG, 'log_qcf_table_data', trim(log_msg), source)
+!end do
+
+write(log_msg,*) qcf_table_data
+write(*,*) 'log_msg: ', trim(log_msg)
 !write(*, *) trim(log_msg)
 !write(logfileunit, *) trim(log_msg)
 !call log_it(trim(log_msg))
