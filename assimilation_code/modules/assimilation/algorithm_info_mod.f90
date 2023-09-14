@@ -48,19 +48,19 @@ type obs_error_info_type
 end type
 
 type probit_inflation_type
-   integer               :: dist_type
+   character(len=129)    :: dist_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_state_type
-   integer               :: dist_type
+   character(len=129)    :: dist_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_extended_state_type
-   integer               :: dist_type
+   character(len=129)    :: dist_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
@@ -270,8 +270,12 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,   upper_bound
 
 integer :: QTY_loc(1)
-character(len=129) :: dist_type_string
 character(len=129) :: kind_name
+
+integer :: dist_type_loc(1)
+character(len=129), dimension(7) :: possible_dist_types
+integer, dimension(7) :: possible_dist_type_ints
+character(len=129) :: dist_type_string
 
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
@@ -291,6 +295,27 @@ character(len=129) :: kind_name
 
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
+
+! Fill arrays with possible dist_type strings and corresponding ints
+possible_dist_types(1) = 'NORMAL_DISTRIBUTION '
+possible_dist_types(2) = 'BOUNDED_NORMAL_RH_DISTRIBUTION'
+possible_dist_types(3) = 'GAMMA_DISTRIBUTION'
+possible_dist_types(4) = 'BETA_DISTRIBUTION'
+possible_dist_types(5) = 'LOG_NORMAL_DISTRIBUTION'
+possible_dist_types(6) = 'UNIFORM_DISTRIBUTION '
+possible_dist_types(7) = 'PARTICLE_FILTER_DISTRIBUTION'
+!write(*,*) 'possible_dist_types'
+!write(*,*) possible_dist_types
+
+possible_dist_type_ints(1) = 1
+possible_dist_type_ints(2) = 2
+possible_dist_type_ints(3) = 3
+possible_dist_type_ints(4) = 4
+possible_dist_type_ints(5) = 5
+possible_dist_type_ints(6) = 6
+possible_dist_type_ints(7) = 7
+!write(*,*) 'possible_dist_type_ints'
+!write(*,*) possible_dist_type_ints
 
 !use default values if qcf_table_filename is not in namelist
 if (.not. qcf_table_listed) then
@@ -317,31 +342,79 @@ if (QTY_loc(1) == 0) then
    elseif(is_inflation) then
    ! Case for inflation transformation
 
-!      dist_type_string = to_upper(qcf_table_data(QTY_loc(1))%probit_inflation%dist_type)
+      ! Comparing the dist_type in string format to list of potential dist_types
+      dist_type_string = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
+  !    write(*,*) 'dist_type_string: ', dist_type_string
+      call to_upper(dist_type_string)
+      dist_type_loc = findloc(possible_dist_types, trim(dist_type_string))
+ !     write(*,*) 'dist_type_string: ', dist_type_string
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type  !dist_type has checks in transform_to_probit, transform_from_probit
+      if (dist_type_loc(1) == 0) then
+         write(errstring, *) 'Invalid dist_type'
+         call error_handler(E_ERR, 'probit_dist_info', errstring, source)
+
+      else
+         dist_type = possible_dist_type_ints(dist_type_loc(1))
+      endif
+
       bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
 
+      write(*,*) 'probit_inflation: ', dist_type, bounded_below, bounded_above, lower_bound, upper_bound
+
    elseif(is_state) then
    ! Case for state variable priors
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_state%dist_type
+      ! Comparing the dist_type in string format to list of potential dist_types
+      dist_type_string = qcf_table_data(QTY_loc(1))%probit_state%dist_type
+      write(*,*) 'dist_type_string: ', dist_type_string
+      call to_upper(dist_type_string)
+      dist_type_loc = findloc(possible_dist_types, trim(dist_type_string))
+      write(*,*) 'dist_type_string: ', dist_type_string
+
+      if (dist_type_loc(1) == 0) then
+         write(errstring, *) 'Invalid dist_type'
+         call error_handler(E_ERR, 'probit_dist_info', errstring, source)
+
+      else
+         dist_type = possible_dist_type_ints(dist_type_loc(1))
+      endif
+
+    !  dist_type = qcf_table_data(QTY_loc(1))%probit_state%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_state%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_state%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%probit_state%upper_bound
 
+      write(*,*) 'probit_state: ', dist_type, bounded_below, bounded_above, lower_bound, upper_bound
+
    else
    ! This case is for observation (extended state) priors
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
+      ! Comparing the dist_type in string format to list of potential dist_types
+      dist_type_string = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
+      write(*,*) 'dist_type_string: ', dist_type_string
+      call to_upper(dist_type_string)
+      dist_type_loc = findloc(possible_dist_types, trim(dist_type_string))
+      write(*,*) 'dist_type_string: ', dist_type_string
+
+      if (dist_type_loc(1) == 0) then
+         write(errstring, *) 'Invalid dist_type'
+         call error_handler(E_ERR, 'probit_dist_info', errstring, source)
+
+      else
+         dist_type = possible_dist_type_ints(dist_type_loc(1))
+      endif
+
+  !    dist_type = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
       upper_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%upper_bound
+
+      write(*,*) 'probit_extended_state: ', dist_type, bounded_below, bounded_above, lower_bound, upper_bound
 
 endif
 
@@ -376,22 +449,22 @@ character(len=129) :: filter_kind_string
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
-! Fill array with possible filter_kind strings
+! Fill arrays with possible filter_kind strings and corresponding ints
 possible_filter_kinds(1) = 'EAKF'
 possible_filter_kinds(2) = 'ENKF'
 possible_filter_kinds(3) = 'UNBOUNDED_RHF'
 possible_filter_kinds(4) = 'GAMMA_FILTER'
 possible_filter_kinds(5) = 'BOUNDED_NORMAL_RHF'
-write(*,*) 'possible_filter_kinds'
-write(*,*) possible_filter_kinds
+!write(*,*) 'possible_filter_kinds'
+!write(*,*) possible_filter_kinds
 
 possible_filter_kind_ints(1) = 1
 possible_filter_kind_ints(2) = 2
 possible_filter_kind_ints(3) = 8
 possible_filter_kind_ints(4) = 11
 possible_filter_kind_ints(5) = 101
-write(*,*) 'possible_filter_kind_ints'
-write(*,*) possible_filter_kind_ints
+!write(*,*) 'possible_filter_kind_ints'
+!write(*,*) possible_filter_kind_ints
 
 !use default values if qcf_table_filename is not in namelist
 if (.not. qcf_table_listed) then
