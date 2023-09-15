@@ -36,7 +36,7 @@
    verbose         = .TRUE.
    /
 
-&Fluxnetfull_to_obs_nml
+&fluxnetfull_to_obs_nml
    text_input_file = '../data/AMF_US-Ha1_FLUXNET_FULLSET_MM_1991-2020_3-5.csv'
    obs_out_file    = 'obs_seq.out'
    timezoneoffset  = -5
