@@ -17,7 +17,7 @@ program fluxnetfull_to_obs
 use         types_mod, only : r8, MISSING_R8
 
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
-                              register_module, error_handler, E_MSG, E_ERR, &
+                              error_handler, E_MSG, E_ERR, &
                               open_file, close_file, do_nml_file, do_nml_term, &
                               check_namelist_read, find_namelist_in_file, &
                               nmlfileunit, logfileunit
@@ -30,7 +30,7 @@ use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
 
 use      location_mod, only : VERTISHEIGHT
 
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
+use  obs_sequence_mod, only : obs_sequence_type, obs_type, &
                               static_init_obs_sequence, init_obs, write_obs_seq, &
                               init_obs_sequence, get_num_obs, &
                               set_copy_meta_data, set_qc_meta_data
@@ -596,6 +596,8 @@ obsloop: do iline = 2,nlines
 
 
 end do obsloop
+
+call close_file(iunit)
 
 ! If obs added to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
