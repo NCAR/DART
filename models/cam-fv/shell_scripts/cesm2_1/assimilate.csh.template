@@ -530,13 +530,14 @@ ${REMOVE} ${CAMINPUT}
 ${LINK} ${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc ${CAMINPUT} || exit 90
 
 # All of the .h0. files contain the same PHIS field, so we can link to any of them.
-
-set hists = `${LIST} ${CASE}.cam_0001.h0.*.nc`
 set MYSTRING = `grep cam_phis_filename input.nml`
 set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set CAM_PHIS = $MYSTRING[2]
-${REMOVE} ${CAM_PHIS}
-${LINK} $hists[1] ${CAM_PHIS} || exit 100
+# Listings are slow in productions runs; only do it if necessary
+if (! -f ${CAM_PHIS}) then
+   set hists = `${LIST} ${CASE}.cam_0001.h0.*.nc`
+   ${COPY} $hists[1] ${CAM_PHIS} || exit 100
+endif
 
 # Now, actually check the inflation settings
 
