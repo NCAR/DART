@@ -22,6 +22,32 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 18 2023 :: Fluxnet observation converter and obs_def_rttov13_mod.f90 bug-fixes. Tag v10.8.4**
+
+Fluxnet obs converter:
+
+- Generates a new observation converter (Fluxnetfull_to_obs) for eddy 
+  covariance flux tower data (carbon, water energy fluxes)
+- Documentation changes made to the older, deprecated ameriflux 
+  converter (level4_to_obs) and the broken links have been fixed
+- New flux tower observation types added to accomodate the forward 
+  operator approach for time aggregated fluxes (daily through monthly)
+
+obs_def_rttov13_mod.f90 bug-fixes:
+
+- Added public get_channel to obs_def_rttov13_mod.f90 to compile WRF 
+  successfully with rttov13.
+- Removed cloud_overlap (integer) from the function: get_rttov_option_logical
+
+**August 21 2023 :: CAM-FV shell scripts. Tag v10.8.3**
+
+Performance improvements for CAM-FV shell scripts:
+
+- Avoid listing files if the CAM_PHIS file already exists.
+- Avoid using /var/tmp
+- RUNDIR defined after CIME_OUTPUT_ROOT change.
+- Warn if no inflation files found.
+
 **August 8 2023 :: MPAS-ATM constants and readthedocs fix. Tag v10.8.2**
 
 - MPAS-ATM constants updated to MPAS v5+
