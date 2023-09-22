@@ -881,15 +881,15 @@ continue to cycle until the final analysis time has been reached.
 Step 6: Diagnosing the assimilation results
 -------------------------------------------
 
-Once you have successfully completed steps 1-5 it is time to check if things ran
-well or if there are problems that need to be addressed. DART provides
+Once you have successfully completed steps 1-5, it is important to
+check the quality of the assimilation. In order to do this, DART provides
 analysis system diagnostics in both state and observation space.
 
-Check to see if the analysis system actually changed the state. You
-should find a file in the ``$BASE_DIR/output/*`` directory called
-``analysis_increment.nc`` which is the change in the ensemble mean state
-from the background to the analysis after running ``filter``. Use a tool,
-such as **ncview**, to look at this file as follows:
+As a preliminary check, confirm that the analysis system actually updated 
+the WRF state. Locate the file in the ``$BASE_DIR/output/*`` directory called
+``analysis_increment.nc`` which is the difference of the ensemble mean state
+between the background (prior) and the analysis (posterior) after running 
+``filter``. Use a tool, such as **ncview**, to look at this file as follows:
 
 ::
 
@@ -900,19 +900,18 @@ such as **ncview**, to look at this file as follows:
 
 
 The ``analysis_increment.nc`` file includes the following atmospheric variables: 
-``MU``,``PH``,``PSFC``,``QRAIN``,``QCLOUD``,``QGRAUP``,``QICE``,``QNICE``,``QSNOW``,
-``QVAPOR``,``T``, and ``T2``. The example figure below shows the increments for 
-temperature (T) only. You can use **ncview** to advance through all 11 atmospheric 
-pressure levels. You should see spatial patterns that look something like the meteorology
-of the day.
+``MU, PH, PSFC, QRAIN, QCLOUD, QGRAUP, QICE, QNICE, QSNOW, QVAPOR, T`` and ``T2``.
+The example figure below shows the increments for temperature (T) only. You can 
+use **ncview** to advance through all 11 atmospheric pressure levels. You should
+see spatial patterns that look something like the meteorology of the day.
 
-+-----------------------------------+-------------------------+
-| |ncview1|                         | |ncview2|               |
-+-----------------------------------+-------------------------+
++--------------------------+--------------------------------+
+| |ncview1|                | |ncview2|                      |
++--------------------------+--------------------------------+
 
 
 For more information on how the increments were calculated,  we recommend
-(but not required to complete the tutorial) you review the 
+(but do not require to complete the tutorial) that you review the 
 :doc:`Diagnostics Section <../../../guide/checking-your-assimilation>`
 of the DART Documentation. There are seven sections within the diagnostics
 section including 1) Checking your initial assimilation, 2) Computing
@@ -923,10 +922,10 @@ this says nothing about the quality of the assimilation.  For example,
 how many of the observations were assimilated? Does the posterior state
 better represent the observed conditions of the atmosphere?  These questions
 can be addressed with the tools described in the remainder of this section. 
-All of the diagnostic files have alread been generated from the tutorial 
-(*driver.csh* executes  *diagnostics_obs.csh) which generates the
-``obs_epoch*.nc`` and ``obs_diag_output.nc`` files required for the next
-sections.
+All of the diagnostic files (**obs_epoch*.nc** and **obs_diag_output.nc**) 
+have already been generated from the tutorial. 
+(**driver.csh* executes  **diagnostics_obs.csh**). Therefore you are ready
+to start the next sections.
 
 
 Visualizing the observation locations and acceptance rate 
@@ -955,7 +954,7 @@ are included within the DART package, and require a license of Matlab to run.  T
 commands shown below to run the diagnostics use NCAR's Cheyenne, but a user could
 also run on their local machine.
 
-First explore the obs_epoch*.nc and identify the variety of observations included
+First explore the obs_epoch*.nc file and identify the variety of observations included
 in the assimilation including aircraft, surface, satelllite and radiosonde types.
  
 
@@ -963,43 +962,47 @@ in the assimilation including aircraft, surface, satelllite and radiosonde types
 
  ncdump -h $BASEDIR/output/datefnl/obs_epoch_029.nc
  
-
-                RADIOSONDE_U_WIND_COMPONENT 
-                RADIOSONDE_V_WIND_COMPONENT
-                RADIOSONDE_TEMPERATURE 
-                RADIOSONDE_SPECIFIC_HUMIDITY 
-                ACARS_U_WIND_COMPONENT 
-                ACARS_V_WIND_COMPONENT 
-                ACARS_TEMPERATURE 
-                MARINE_SFC_U_WIND_COMPONENT 
-                MARINE_SFC_V_WIND_COMPONENT 
-                MARINE_SFC_TEMPERATURE 
-                MARINE_SFC_SPECIFIC_HUMIDITY 
-                LAND_SFC_U_WIND_COMPONENT 
-                LAND_SFC_V_WIND_COMPONENT 
-                LAND_SFC_TEMPERATURE 
-                LAND_SFC_SPECIFIC_HUMIDITY 
-                SAT_U_WIND_COMPONENT 
-                SAT_V_WIND_COMPONENT 
-                RADIOSONDE_SURFACE_ALTIMETER 
-                MARINE_SFC_ALTIMETER 
-                LAND_SFC_ALTIMETER 
-                METAR_ALTIMETER 
-                METAR_U_10_METER_WIND 
-                METAR_V_10_METER_WIND 
-                METAR_TEMPERATURE_2_METER 
-                METAR_SPECIFIC_HUMIDITY_2_METER 
-                METAR_DEWPOINT_2_METER 
-                RADIOSONDE_DEWPOINT 
-                LAND_SFC_DEWPOINT 
-                RADIOSONDE_RELATIVE_HUMIDITY 
-                LAND_SFC_RELATIVE_HUMIDITY 
+     ..
+     ..
+     RADIOSONDE_U_WIND_COMPONENT 
+     RADIOSONDE_V_WIND_COMPONENT
+     RADIOSONDE_TEMPERATURE 
+     RADIOSONDE_SPECIFIC_HUMIDITY 
+     ACARS_U_WIND_COMPONENT 
+     ACARS_V_WIND_COMPONENT 
+     ACARS_TEMPERATURE 
+     MARINE_SFC_U_WIND_COMPONENT 
+     MARINE_SFC_V_WIND_COMPONENT 
+     MARINE_SFC_TEMPERATURE 
+     MARINE_SFC_SPECIFIC_HUMIDITY 
+     LAND_SFC_U_WIND_COMPONENT 
+     LAND_SFC_V_WIND_COMPONENT 
+     LAND_SFC_TEMPERATURE 
+     LAND_SFC_SPECIFIC_HUMIDITY 
+     SAT_U_WIND_COMPONENT 
+     SAT_V_WIND_COMPONENT 
+     RADIOSONDE_SURFACE_ALTIMETER 
+     MARINE_SFC_ALTIMETER 
+     LAND_SFC_ALTIMETER 
+     METAR_ALTIMETER 
+     METAR_U_10_METER_WIND 
+     METAR_V_10_METER_WIND 
+     METAR_TEMPERATURE_2_METER 
+     METAR_SPECIFIC_HUMIDITY_2_METER 
+     METAR_DEWPOINT_2_METER 
+     RADIOSONDE_DEWPOINT 
+     LAND_SFC_DEWPOINT 
+     RADIOSONDE_RELATIVE_HUMIDITY 
+     LAND_SFC_RELATIVE_HUMIDITY 
+     ..
+     ..
 
 The example below uses the **plot_obs_netcdf.m** script to visulaize 
 the observation type: ``RADIOSONDE_TEMPERATURE`` which includes both horizontal
 and vertical coverage across North America. We recommend to view the script's 
 contents with a text editor, paying special attention to the beginning of the file
-which is notated with a variety of examples.
+which is notated with a variety of examples. Then to run the example do the 
+following:
 
 ::
 
@@ -1035,15 +1038,17 @@ violation of the outlier threshold (QC = 7), and forward operator failure
 regarding the rejected observations (bottom left of figure), and percentage
 of observations that were rejected (flagged, located within title of figure).
 
+
++-------------------------------------------------------------+
+| |radiosonde_obs|                                            |
++-------------------------------------------------------------+
+
 .. Tip::
  The user can manually adjust the appearance of the data by accessing the 
  'Rotate 3D' option either by clicking on the top of the figure or through
  the menu bar as Tools > Rotate 3D. Use your cursor to rotate the map to the
  desired orientation.
 
-+-------------------------------------------------------------+
-| |radiosonde_obs|                                            |
-+-------------------------------------------------------------+
 
 For the next figure (below) the same steps are taken as described
 above, however, the observation type (``ObsTypeString``) is set to
@@ -1060,7 +1065,8 @@ provides visual tools to explore how the observations impacted the
 assimilation. The script generates 3 different figures which includes
 a unique linking feature that allows the user to identify the features
 of a specific observation including physical location, QC value, and 
-prior/posterior estimated values.  To execute **link_obs.m** do the 
+prior/posterior estimated values. In the example below the 'linked'
+observation appears 'red' in all figures.  To execute **link_obs.m** do the 
 following within Matlab being sure to modify ``fname`` for your case:
 
 ::
@@ -1077,6 +1083,12 @@ following within Matlab being sure to modify ``fname`` for your case:
  >> link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region)
 
 
+
++-----------------------------------+------------------------------+
+| |linkobs1|                        | |linkobs2|                   |
++-----------------------------------+------------------------------+
+
+
 .. Tip::
  To access the linking feature, click near the top of the figure such
  that a list of icons appear. Next click on the 'brush data' icon then
@@ -1084,16 +1096,11 @@ following within Matlab being sure to modify ``fname`` for your case:
  you can access the brush tool through the menu bar (Tools > Brush).
   
 
-+-----------------------------------+-------------------------+
-| |linkobs1|                        | |linkobs2|              |
-+-----------------------------------+-------------------------+
-
-
 Another useful application of the **link_obs.m** script is to visually identify
 the improvement of the model estimate of the observation through the 1:1 plot.
 One way to do this is to compare the prior and posterior model estimate of the
-either the ensemble mean or ensemble member. In the example figure below, a 1:1
-plot was generated for the prior and posterior values for ensemble member 3.
+either the ensemble mean or a single ensemble member. In the example figures below,
+a 1:1 plot was generated for the prior and posterior values for ensemble member 3.
 (Left Figure: ``CopyString =  'prior ensemble member 3'`` and Right Figure:
 ``CopyString = posterior ensemble member 3'``).  Note how the prior member 
 estimate (left figure) compares less favorably to the observations as compared
@@ -1102,9 +1109,9 @@ to the posterior member estimate (right figure). The improved alignment
 indicates that the DART filter update provided an improved representation of the
 observed atmospheric state.  
 
-+-----------------------------------+-------------------------+
-| |oneline1|                        | |oneline2|              |
-+-----------------------------------+-------------------------+
++-------------------------+-------------------------+
+| |oneline1|              | |oneline2|              |
++-------------------------+-------------------------+
 
 So far the example figures have provided primarily  qualitative estimates 
 of the assimilation performance. The next step demonstrates how to apply more
@@ -1170,10 +1177,10 @@ assimilation skill. To generate the figures below the following matlab commands 
 
 ::
 
- fname   = '$BASEDIR/output/2017042712/obs_diag_output.nc';
- copy    = 'totalspread';
- obsname = 'RADIOSONDE_TEMPERATURE';
- plotdat =  plot_rmse_xxx_evolution(fname,copy,'obsname',obsname,'level',3);
+ >> fname   = '$BASEDIR/output/2017042712/obs_diag_output.nc';
+ >> copy    = 'totalspread';
+ >> obsname = 'RADIOSONDE_TEMPERATURE';
+ >> plotdat =  plot_rmse_xxx_evolution(fname,copy,'obsname',obsname,'level',3);
 
 .. NOTE::
  The figures below only evaluate two different assimilation
@@ -1181,11 +1188,11 @@ assimilation skill. To generate the figures below the following matlab commands 
  temporal progression of the assimilation statistics.  This is given purely as an 
  example. Real world assimilations generally span for months and years thus 
  evaluating temporal evolution of statistics is more straightforward. The x-axis was
- also manually adjusted in the figure below.  To do this **plot_rmse_xxx_evolution.m** 
- was edited as:
-
- % axlims = [min(plotdat.bincenters) max(plotdat.bincenters) plotdat.Yrange];
-   axlims = [datenum(2017,4,27,2,0,0) datenum(2017,4,27,14,0,0)  plotdat.Yrange];
+ also manually adjusted in the figure below.  To do this 
+ **plot_rmse_xxx_evolution.m** was edited such that the ``bincenters`` were replaced
+ with ``datenum`` values when defining ``axlims`` as:
+ 
+      axlims = [datenum(2017,4,27,2,0,0) datenum(2017,4,27,14,0,0)  plotdat.Yrange];
 
 +-------------------------------------------------------------+
 | |evolution1|                                                |
@@ -1193,7 +1200,8 @@ assimilation skill. To generate the figures below the following matlab commands 
 
 The above figure is evaluated at model level 850hPa ('level',3), whereas
 the figure below is generated in the same way except is evaluated at
-300 hPa using: plotdat =  plot_rmse_xxx_evolution(fname,copy,'obsname',obsname,'level',7)
+300 hPa ('level',7) using: 
+plotdat =  plot_rmse_xxx_evolution(fname,copy,'obsname',obsname,'level',7)
 
 
 +-------------------------------------------------------------+
@@ -1208,7 +1216,9 @@ the figure below is generated in the same way except is evaluated at
  `DART LAB and DART Tutorial <https://dart.ucar.edu/tutorials/>`__
  for more details.
 
-**(OPTIONAL)** Generating the obs_diag_output.nc and obs_epoch*.nc files manually
+
+
+Generating the obs_diag_output.nc and obs_epoch*.nc files manually **[OPTIONAL]**
 ---------------------------------------------------------------------------------
 
 This step is optional because the WRF-DART Tutorial automatically generates 
@@ -1220,7 +1230,7 @@ the diagnostic files directly from the DART scripts by using the
 WRF Tutorial as an example.
 
 
-Generating the obs_epoch*.nc file(s)
+Generating the obs_epoch*.nc file
 ------------------------------------
 
 ::
@@ -1270,7 +1280,7 @@ Finally, run the exectuable:
  ./obs_seq_to_netcdf
 
 
-Generating the obs_diag_output.nc file(s)
+Generating the obs_diag_output.nc file
 -----------------------------------------
 
 ::
@@ -1320,7 +1330,7 @@ contact us at dart(at)ucar(dot)edu.
 Additional materials from previous in-person tutorials
 ------------------------------------------------------
 
--  Introduction (Anderson) - `DART Lab
+-  Introduction - `DART Lab
    materials <../../../guide/DART_LAB/DART_LAB.html>`__
 -  WRF/DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
@@ -1359,7 +1369,7 @@ More Resources
    :height: 300px
    :width: 100%
 
-.. |surface_obs| image:: ../../../guide/images/WRF_tutorial_radiosonde_obs.png
+.. |surface_obs| image:: ../../../guide/images/WRF_tutorial_surface_obs.png
    :height: 300px
    :width: 100%
 
