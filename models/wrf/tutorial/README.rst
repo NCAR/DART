@@ -911,9 +911,6 @@ of the day.
 +-----------------------------------+-------------------------+
 
 
-
-
-
 For more information on how the increments were calculated,  we recommend
 (but not required to complete the tutorial) you review the 
 :doc:`Diagnostics Section <../../../guide/checking-your-assimilation>`
@@ -927,7 +924,9 @@ how many of the observations were assimilated? Does the posterior state
 better represent the observed conditions of the atmosphere?  These questions
 can be addressed with the tools described in the remainder of this section. 
 All of the diagnostic files have alread been generated from the tutorial 
-including ``obs_epoch*.nc`` and ``obs_diag_output.nc``.
+(*driver.csh* executes  *diagnostics_obs.csh) which generates the
+``obs_epoch*.nc`` and ``obs_diag_output.nc`` files required for the next
+sections.
 
 
 Visualizing the observation locations and acceptance rate 
@@ -1014,15 +1013,15 @@ Within Matlab declare the following variables, then run the script
 
 ::
 
->> fname = '$BASEDIR/output/2017042712/obs_epoch_029.nc';
->> ObsTypeString = 'RADIOSONDE_TEMPERATURE';  
->> region        = [200 330 0 90 -Inf Inf];
->> CopyString    = 'NCEP BUFR observation';
->> QCString      = 'DART quality control';
->> maxgoodQC     = 2;
->> verbose       = 1;   % anything > 0 == 'true'
->> twoup         = 1;   % anything > 0 == 'true'
->> plotdat = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
+ >> fname = '$BASEDIR/output/2017042712/obs_epoch_029.nc';
+ >> ObsTypeString = 'RADIOSONDE_TEMPERATURE';  
+ >> region        = [200 330 0 90 -Inf Inf];
+ >> CopyString    = 'NCEP BUFR observation';
+ >> QCString      = 'DART quality control';
+ >> maxgoodQC     = 2;
+ >> verbose       = 1;   % anything > 0 == 'true'
+ >> twoup         = 1;   % anything > 0 == 'true'
+ >> plotdat = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
 
 Below is an example of the figure produced by **plot_obs_netcdf.m**.  
 Note that the top panel includes both the 3-D location of all possible
@@ -1065,16 +1064,17 @@ prior/posterior estimated values.  To execute **link_obs.m** do the
 following within Matlab being sure to modify ``fname`` for your case:
 
 ::
->> clear all
->> close all
->> fname = '$BASEDIR/output/2017042712/obs_epoch_029.nc';
->> ObsTypeString = 'RADIOSONDE_TEMPERATURE';  
->> region        = [200 330 0 90 -Inf Inf];
->> ObsCopyString = 'NCEP BUFR observation';  
->> CopyString    =  'prior ensemble mean';
->> QCString      = 'DART quality control';
->> global obsmat;
->> link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region)
+
+ >> clear all
+ >> close all
+ >> fname = '$BASEDIR/output/2017042712/obs_epoch_029.nc';
+ >> ObsTypeString = 'RADIOSONDE_TEMPERATURE';  
+ >> region        = [200 330 0 90 -Inf Inf];
+ >> ObsCopyString = 'NCEP BUFR observation';  
+ >> CopyString    =  'prior ensemble mean';
+ >> QCString      = 'DART quality control';
+ >> global obsmat;
+ >> link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region)
 
 
 .. Tip::
@@ -1121,10 +1121,11 @@ observation acceptance and other statistics.  Here we choose the ensemble
 ‘total spread’ statistic to plot alongside RMSE:
 
 ::
->> fname ='$BASEDIR/output/2017042712/obs_diag_output.nc';
->> copy = 'totalspread';
->> obsname = 'RADIOSONDE_TEMPERATURE';
->> plotdat = plot_rmse_xxx_profile(fname,copy,'obsname',obsname)
+
+ >> fname ='$BASEDIR/output/2017042712/obs_diag_output.nc';
+ >> copy = 'totalspread';
+ >> obsname = 'RADIOSONDE_TEMPERATURE';
+ >> plotdat = plot_rmse_xxx_profile(fname,copy,'obsname',obsname)
 
 
 +-------------------------------------------------------------+
@@ -1167,8 +1168,184 @@ because of changes in the quality of the observations.  In these cases the
 **plot_rmse_xxx_evolution.m** script is used to illustrate temporal changes in 
 assimilation skill. To generate the figures below the following matlab commands were used:
 
+::
+
+ fname   = '$BASEDIR/output/2017042712/obs_diag_output.nc';
+ copy    = 'totalspread';
+ obsname = 'RADIOSONDE_TEMPERATURE';
+ plotdat =  plot_rmse_xxx_evolution(fname,copy,'obsname',obsname,'level',3);
+
+.. NOTE::
+ The figures below only evaluate two different assimilation
+ cycles (hour 6 and hour 12 on 4/27/17), thus it is difficult to evaluate the
+ temporal progression of the assimilation statistics.  This is given purely as an 
+ example. Real world assimilations generally span for months and years thus 
+ evaluating temporal evolution of statistics is more straightforward. The x-axis was
+ also manually adjusted in the figure below.  To do this **plot_rmse_xxx_evolution.m** 
+ was edited as:
+
+ % axlims = [min(plotdat.bincenters) max(plotdat.bincenters) plotdat.Yrange];
+   axlims = [datenum(2017,4,27,2,0,0) datenum(2017,4,27,14,0,0)  plotdat.Yrange];
+
++-------------------------------------------------------------+
+| |evolution1|                                                |
++-------------------------------------------------------------+
+
+The above figure is evaluated at model level 850hPa ('level',3), whereas
+the figure below is generated in the same way except is evaluated at
+300 hPa using: plotdat =  plot_rmse_xxx_evolution(fname,copy,'obsname',obsname,'level',7)
 
 
++-------------------------------------------------------------+
+| |evolution2|                                                |
++-------------------------------------------------------------+
+
+
+.. Important::
+ The example diagnostics provided here are only a subset of the diagnostics
+ available in the DART package.  Please see the web-based diagnostic 
+ :doc:`documentation. <../../../guide/matlab-observation-space>` or 
+ `DART LAB and DART Tutorial <https://dart.ucar.edu/tutorials/>`__
+ for more details.
+
+**(OPTIONAL)** Generating the obs_diag_output.nc and obs_epoch*.nc files manually
+---------------------------------------------------------------------------------
+
+This step is optional because the WRF-DART Tutorial automatically generates 
+the diagnostic files (obs_diag_output.nc and obs_epoch_*.nc). However, these
+files were generated with pre-set options that you may wish to modify.  Also, 
+it is uncommon to generate these diagnostics files automatically for a new
+assimilation application.  Therefore this section describes the steps to generate
+the diagnostic files directly from the DART scripts by using the
+WRF Tutorial as an example.
+
+
+Generating the obs_epoch*.nc file(s)
+------------------------------------
+
+::
+
+ cd $DARTROOT/models/wrf/work
+
+Generate a list of all the **obs_seq.final** files created by the assimilation
+step (filter step).  This command creates a text list file.
+
+::
+
+ ls /glade/scratch/bmraczka/WRF_DART_Tut4/output/2017*/obs_seq.final > obs_seq_tutorial.txt
+
+The DART exectuable **obs_seq_to_netcdf** is used to generate the obs_epoch 
+type files. Modify the ``obs_seq_to_netcdf`` and ``schedule`` namelist settings
+(using a text editor like `vi`) with the **input.nml** file to specify the spatial domain 
+and temporal binning. The values below are intended to include the entire time
+period of the assimilation.
+
+::
+
+ &obs_seq_to_netcdf_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq_tutorial.txt',
+   lonlim1 =   0.0
+   lonlim2 = 360.0
+   latlim1 = -90.0
+   latlim2 =  90.0
+   verbose = .false.
+   /
+
+ &schedule_nml
+   calendar       = 'Gregorian',
+   first_bin_start =  1601, 1, 1, 0, 0, 0,
+   first_bin_end   =  2999, 1, 1, 0, 0, 0,
+   last_bin_end   =  2999, 1, 1, 0, 0, 0,
+   bin_interval_days    = 0,
+   bin_interval_seconds = 21600,
+   max_num_bins         = 1000,
+   print_table          = .true
+   /
+
+Finally, run the exectuable:
+
+::
+
+ ./obs_seq_to_netcdf
+
+
+Generating the obs_diag_output.nc file(s)
+-----------------------------------------
+
+::
+
+ cd $DARTROOT/models/wrf/work
+
+The DART exectuable **obs_diag** is used to generate the obs_diag_output 
+files. Modify the ``obs_diag`` namelist settings
+(using a text editor like `vi`) with the **input.nml** file to specify the spatial domain
+and temporal binning. Follow the same steps to generate the **obs_seq_tutorial.txt**
+file as described in the previous section.
+
+::
+
+ &obs_diag_nml
+   obs_sequence_name = '',
+   obs_sequence_list = 'obs_seq_tutorial.txt',
+   first_bin_center =  2017, 4, 27, 0, 0, 0 ,
+   last_bin_center  =  2017, 4, 27, 12, 0, 0 ,
+   bin_separation   =     0, 0, 0, 6, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   max_num_bins  = 1000,
+   Nregions   = 1,
+   lonlim1    =   0.0, 
+   lonlim2    = 360.0, 
+   latlim1    = 10.0, 
+   latlim2    = 65.0,  
+   reg_names  = 'Full Domain',
+   print_mismatched_locs = .false.,
+   verbose = .true.
+   /
+
+Finally, run the exectuable:
+
+::
+
+ ./obs_diag
+
+
+
+If you encounter difficulties setting up, running, or evaluating the
+system performance, please consider using the `GitHub
+Issue <https://github.com/NCAR/DART/issues>`__ facility or feel free to
+contact us at dart(at)ucar(dot)edu.
+
+Additional materials from previous in-person tutorials
+------------------------------------------------------
+
+-  Introduction (Anderson) - `DART Lab
+   materials <../../../guide/DART_LAB/DART_LAB.html>`__
+-  WRF/DART basic building blocks
+   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
+   (some material is outdated)
+-  Computing environment support
+   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_computing_environment.pdf>`__
+-  WRF/DART application examples
+   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_application_examples.pdf>`__
+   (some material is outdated)
+-  Observation processing
+   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_observation_processing.pdf>`__
+-  DART diagnostics - :doc:`observation diagnostics <../../../guide/matlab-observation-space>`
+
+
+More Resources
+--------------
+
+-  `Check or Submit DART Issues <https://github.com/NCAR/DART/issues>`__
+-  `DAReS website <ttp://dart.ucar.edu>`__
+-  `Register for
+   DART <https://www2.cisl.ucar.edu/software/dart/download>`__
+-  `Preparing
+   MATLAB <https://dart.ucar.edu/pages/Getting_Started.html#matlab>`__
+   to use with DART.
+-  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
 
 .. |ncview1| image:: ../../../guide/images/WRF_tutorial_ncview1.png
    :height: 300px
@@ -1210,71 +1387,10 @@ assimilation skill. To generate the figures below the following matlab commands 
    :height: 300px
    :width: 100%
 
+.. |evolution1| image:: ../../../guide/images/WRF_tutorial_evolution1.png
+   :height: 300px
+   :width: 100%
 
-******************************************************************
-****OLD STUFF I should incorporate in the main text !!!!!!
-
-
-The *driver.csh* script also ran the *diagnostics_obs.csh* which runs
-the
-`obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__
-program to investigate the observation space analysis statistics. You'll
-find the results of this in
-``$BASE_DIR/output/<DATE>/obs_diag_output.nc``. There are many Matlab
-scripts in the ``$DART_DIR/diagnostics/matlab`` directory that help
-explore the effectiveness of the assimilation. Look for their examples
-in the :doc:`Observation-Space
-Diagnostics <../../../guide/matlab-observation-space>`
-section.
-
-The additional files enable plotting the time series of recently
-assimilated observations once multiple cycles have been run. Be sure to
-check that a high percentage (> 90%) of available observations were
-assimilated. Low assimilation rates typically point to a problem with
-the background analysis, observation quality, and/or observation error
-specification which are important to address before using system results
-for science.
-
-Additional statistics can be evaluated using the converted final
-observation sequence file in netcdf format from the
-`obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__
-tool. This file has a name like *obs_epoch_029.nc*, where the number in
-the file is largest in the most recent set of observations processed.
-There are Matlab tools to explore where and why the observations were
-rejected. *plot_obs_netcdf.m* and *link_obs.m* are particularly useful.
-
-If you encounter difficulties setting up, running, or evaluating the
-system performance, please consider using the `GitHub
-Issue <https://github.com/NCAR/DART/issues>`__ facility or feel free to
-contact us at dart(at)ucar(dot)edu.
-
-Agenda from the 22 Jan 2014 tutorial
-------------------------------------
-
--  Introduction (Anderson) - `DART Lab
-   materials <../../../guide/DART_LAB/DART_LAB.html>`__
--  WRF/DART basic building blocks (Romine)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
-   (some material is outdated)
--  Computing environment support (Collins)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_computing_environment.pdf>`__
--  WRF/DART application examples (Romine)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_application_examples.pdf>`__
-   (some material is outdated)
--  Observation processing (Collins)
-   -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_observation_processing.pdf>`__
--  DART diagnostics (Hoar) - :doc:`observation diagnostics <../../../guide/matlab-observation-space>`
-
-
-More Resources
---------------
-
--  `Check or Submit DART Issues <https://github.com/NCAR/DART/issues>`__
--  `DAReS website <ttp://dart.ucar.edu>`__
--  `Register for
-   DART <https://www2.cisl.ucar.edu/software/dart/download>`__
--  `Preparing
-   MATLAB <https://dart.ucar.edu/pages/Getting_Started.html#matlab>`__
-   to use with DART.
--  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
--  Need help? e-mail dart (at) ucar (dot) edu
+.. |evolution2| image:: ../../../guide/images/WRF_tutorial_evolution2.png
+   :height: 300px
+   :width: 100%
