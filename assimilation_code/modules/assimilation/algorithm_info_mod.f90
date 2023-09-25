@@ -607,11 +607,12 @@ end subroutine log_qcf_table_data
 subroutine end_algorithm_info_mod()
 
 if (.not. module_initialized) return
+module_initialized = .false.
+
+if (.not. qcf_table_listed) return
 
 deallocate(qcf_table_data)
 deallocate(qcf_table_row_headers)
-
-module_initialized = .false.
 
 end subroutine end_algorithm_info_mod
 
