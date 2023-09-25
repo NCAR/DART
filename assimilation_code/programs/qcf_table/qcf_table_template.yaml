@@ -1,0 +1,103 @@
+QCF table version: 1
+QTY_TEMPLATE:
+  obs_error_info:
+    bounded_below
+    bounded_above
+    lower_bound
+    upper_bound
+  probit_inflation:
+    dist_type
+    bounded_below
+    bounded_above
+    lower_bound
+    upper_bound
+  probit_state:
+    dist_type
+    bounded_below
+    bounded_above
+    lower_bound
+    upper_bound
+  probit_extended_state:
+    dist_type
+    bounded_below
+    bounded_above
+    lower_bound
+    upper_bound
+  obs_inc_info:
+    filter_kind
+    rectangular_quadrature
+    gaussian_likelihood_tails
+    sort_obs_inc
+    spread_restoration
+    bounded_below
+    bounded_above
+    lower_bound
+    upper_bound
+QTY_STATE_VARIABLE:
+  obs_error_info:
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  probit_inflation:
+    dist_type: BOUNDED_NORMAL_RH_DISTRIBUTION
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  probit_state:
+    dist_type: BOUNDED_NORMAL_RH_DISTRIBUTION
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  probit_extended_state:
+    dist_type: BOUNDED_NORMAL_RH_DISTRIBUTION
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  obs_inc_info:
+    filter_kind: BOUNDED_NORMAL_RHF
+    rectangular_quadrature: .false.
+    gaussian_likelihood_tails: .false.
+    sort_obs_inc: .false.
+    spread_restoration: .false.
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+QTY_TRACER_SOURCE:
+  obs_error_info:
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  probit_inflation:
+    dist_type: BOUNDED_NORMAL_RH_DISTRIBUTION
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  probit_state:
+    dist_type: BOUNDED_NORMAL_RH_DISTRIBUTION
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  probit_extended_state:
+    dist_type: BOUNDED_NORMAL_RH_DISTRIBUTION
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
+  obs_inc_info:
+    filter_kind: BOUNDED_NORMAL_RHF
+    rectangular_quadrature: .false.
+    gaussian_likelihood_tails: .false.
+    sort_obs_inc: .false.
+    spread_restoration: .false.
+    bounded_below: .false.
+    bounded_above: .false.
+    lower_bound: -888888.0
+    upper_bound: -888888.0
