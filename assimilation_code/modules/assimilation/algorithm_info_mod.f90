@@ -291,12 +291,12 @@ character(len=129) :: dist_type_string
 ! However, for now these are things that need to be explored for science understanding
 
 ! Fill arrays with possible dist_type strings and corresponding ints
-possible_dist_types(1) = 'NORMAL_DISTRIBUTION '
+possible_dist_types(1) = 'NORMAL_DISTRIBUTION'
 possible_dist_types(2) = 'BOUNDED_NORMAL_RH_DISTRIBUTION'
 possible_dist_types(3) = 'GAMMA_DISTRIBUTION'
 possible_dist_types(4) = 'BETA_DISTRIBUTION'
 possible_dist_types(5) = 'LOG_NORMAL_DISTRIBUTION'
-possible_dist_types(6) = 'UNIFORM_DISTRIBUTION '
+possible_dist_types(6) = 'UNIFORM_DISTRIBUTION'
 possible_dist_types(7) = 'PARTICLE_FILTER_DISTRIBUTION'
 
 possible_dist_type_ints(1) = 1
