@@ -9,7 +9,7 @@ use types_mod, only : r8, i8, missing_r8
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
 
-use utilities_mod, only : error_handler, E_ALLMSG, E_ERR, E_MSG, log_it, logfileunit, open_file, close_file, to_upper
+use utilities_mod, only : error_handler, E_ERR, E_MSG, open_file, close_file, to_upper
 
 use assim_model_mod, only : get_state_meta_data
 use location_mod, only    : location_type
