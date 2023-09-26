@@ -167,7 +167,6 @@ logical, parameter :: P_TIME    = .true.
 ! Namelist input with default values
 !
 character(len = 129) :: qcf_table_filename = '' 
-logical  :: use_algorithm_info_mod = .true.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -263,7 +262,6 @@ logical  :: allow_missing_clm = .false.
 
 namelist /filter_nml/ async,     &
    qcf_table_filename,           &
-   use_algorithm_info_mod,       &
    adv_ens_command,              &
    ens_size,                     &
    tasks_per_model_advance,      &
@@ -1608,16 +1606,9 @@ do group = 1, num_groups
          call get_state_meta_data(ens_handle%my_vars(j), my_state_loc, my_state_kind)    
 
          ! Need to specify what kind of prior to use for each
-         ! Use default of untransformed if use_algorithm_info_mod is not true
-         if(use_algorithm_info_mod) then
-            call probit_dist_info(my_state_kind, .true., .true., dist_type, &
-               bounded_below, bounded_above, lower_bound, upper_bound)
-         else
-            ! Default is just a normal which does nothing
-            dist_type = NORMAL_DISTRIBUTION
-            bounded_below = .false. ;  bounded_above = .false.
-            lower_bound = 0.0_r8;      upper_bound = 0.0_r8
-         endif
+         call probit_dist_info(my_state_kind, .true., .true., dist_type, &
+            bounded_below, bounded_above, lower_bound, upper_bound)
+
          call transform_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
             dist_type, dist_params, probit_ens(1:grp_size), .false., &
                bounded_below, bounded_above, lower_bound, upper_bound)

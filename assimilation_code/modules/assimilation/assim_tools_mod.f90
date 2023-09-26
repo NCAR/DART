@@ -143,7 +143,6 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !  special_localization_obs_types -> Special treatment for the specified observation types
 !  special_localization_cutoffs   -> Different cutoff value for each specified obs type
 !
-logical  :: use_algorithm_info_mod          = .true.
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .false.
@@ -203,8 +202,7 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-namelist / assim_tools_nml / use_algorithm_info_mod,                       &
-   filter_kind, cutoff, sort_obs_inc,                                      &
+namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc,            &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
@@ -976,7 +974,8 @@ endif
 !--------------------------begin algorithm_info control block-----------------
 ! More flexible abilities to control the observation space increments are 
 ! available with this code block. It gets information about the increment method
-! for the current observation is use_algorithm_info_mod is set to true in the namelist.
+! for the current observation.
+
 ! This is not an extensible mechanism for doing this as the number of 
 ! obs increments distributions and associated information goes up
 ! Implications for sorting increments and for spread restoration need to be examined
@@ -988,9 +987,8 @@ endif
 bounded_below = .false.;      lower_bound = 0.0_r8
 bounded_above = .false.;      upper_bound = 0.0_r8
 
-if(use_algorithm_info_mod) &
-   call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-      sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
+call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
+   sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Could add logic to check on sort being true when not needed.
 ! Could also add logic to limit the use of spread_restoration to EAKF. It will fail
