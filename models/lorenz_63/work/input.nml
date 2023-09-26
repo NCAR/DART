@@ -35,7 +35,6 @@
 
 &filter_nml
    qcf_table_filename           = '',
-   use_algorithm_info_mod       = .true.,
    single_file_in               = .true.,
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
@@ -94,7 +93,6 @@
    /
 
 &assim_tools_nml
-   use_algorithm_info_mod          = .true.,
    filter_kind                     = 1,
    cutoff                          = 1000000.0
    sort_obs_inc                    = .false.,
@@ -147,9 +145,9 @@
 &preprocess_nml
    overwrite_output        = .true.
    input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-output_obs_def_mod_file = './obs_def_mod.f90'
+output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
    input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-output_obs_qty_mod_file = './obs_kind_mod.f90'
+output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
    obs_type_files          = '../../../observations/forward_operators/obs_def_1d_state_mod.f90'
    quantity_files          = '../../../assimilation_code/modules/observations/oned_quantities_mod.f90'
    /
