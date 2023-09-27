@@ -1,7 +1,7 @@
 &probit_transform_nml
    fix_bound_violations = .false.,
-   use_logit_instead_of_probit = .false.
-   do_inverse_check = .true.
+   use_logit_instead_of_probit = .false.,
+   do_inverse_check = .true.,
    /
 
 &perfect_model_obs_nml
@@ -28,7 +28,7 @@
    /
 
 &filter_nml
-   qcf_table_filename       = ''
+   qcf_table_filename       = '',
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
    ens_size                 = 10, 
