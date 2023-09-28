@@ -38,3 +38,8 @@ fi
 
 ./test_table_read qcf_table_broke.txt ; should_fail "bad value"
 
+./test_table_read qcf_table_no_header.txt ; should_fail "no header"
+
+./test_table_read qcf_table_lower_gt_upper.txt ; should_fail "upper bound less than lower"
+
+./test_table_read ./test_table_read qcf_table_lower_bound_only.txt ; should_pass "lower bound only"
