@@ -15,7 +15,7 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_in
                                  set_num_extra_copies, all_copies_to_all_vars, &
                                  all_vars_to_all_copies
 
-use mpi
+use mpi_f08
 
 implicit none
 
@@ -25,8 +25,8 @@ public :: create_mean_window, create_state_window, free_mean_window, &
           mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
 
 ! mpi window handles
-integer :: state_win   !< window for the forward operator
-integer :: mean_win    !< window for the mean
+type(MPI_Win) :: state_win   !< window for the forward operator
+type(MPI_Win) :: mean_win    !< window for the mean
 integer :: current_win !< keep track of current window, start out assuming an invalid window
 
 ! parameters for keeping track of which window is open
