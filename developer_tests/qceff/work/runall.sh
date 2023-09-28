@@ -43,3 +43,5 @@ fi
 ./test_table_read qcf_table_lower_gt_upper.txt ; should_fail "upper bound less than lower"
 
 ./test_table_read ./test_table_read qcf_table_lower_bound_only.txt ; should_pass "lower bound only"
+
+./test_table_read qcf_table_no_bounds_with_values.txt ; should_pass "bounds false, values for bounds"
