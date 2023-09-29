@@ -32,7 +32,6 @@ integer :: write_limit = 1000000   ! but only if rep count is not greater than t
 integer, parameter :: ntests = 1
 
 call initialize_utilities('test_ran_unif')
-call register_module(source,revision,revdate)
 
 write(*, *) '' 
 
