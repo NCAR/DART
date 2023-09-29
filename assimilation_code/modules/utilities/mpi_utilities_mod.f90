@@ -1975,7 +1975,7 @@ integer,  intent(in)  :: owner    ! task in the window that owns the memory
 type(MPI_Win),  intent(in)  :: window   ! window object
 integer,  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: num_rows ! number of rows in the window
-real(r8), intent(out) :: x(:)     ! result
+real(r8), intent(out) :: x(num_rows)     ! result
 
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer :: errcode
