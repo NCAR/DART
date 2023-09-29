@@ -538,6 +538,7 @@ end function ran_gamma
 
 !> A random congruential random number generator from
 !> the GNU Scientific Library (The Mersenne Twister MT19937 varient.)
+!> This function returns an Integer.
 
 function ran_twist(s)
  type(random_seq_type), intent(inout) :: s
