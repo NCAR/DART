@@ -45,3 +45,7 @@ fi
 ./test_table_read qcf_table_lower_bound_only.txt ; should_pass "lower bound only"
 
 ./test_table_read qcf_table_no_bounds_with_values.txt ; should_pass "bounds false, values for bounds"
+
+./test_table_read qcf_table_incorrect_filter_kind.txt ; should_fail "incorrect filter_kind"
+
+./test_table_read qcf_table_incorrect_distribution.txt ; should_fail "incorrect distribution" 
