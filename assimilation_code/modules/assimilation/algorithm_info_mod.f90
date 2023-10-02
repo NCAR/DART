@@ -199,21 +199,21 @@ real(r8),           intent(out) :: error_variance
 logical,            intent(out) :: bounded_below, bounded_above
 real(r8),           intent(out) :: lower_bound, upper_bound
 
-integer     :: obs_type, obs_kind
+integer     :: obs_type, obs_qty
 integer(i8) :: state_var_index
 type(location_type) :: temp_loc
 
 integer :: QTY_loc(1)
-character(len=129) :: kind_name
+character(len=129) :: qty_name
 
 ! Get the kind of the observation
 obs_type = get_obs_def_type_of_obs(obs_def)
 ! If it is negative, it is an identity obs
 if(obs_type < 0) then
    state_var_index = -1 * obs_type
-   call get_state_meta_data(state_var_index, temp_loc, obs_kind)
+   call get_state_meta_data(state_var_index, temp_loc, obs_qty)
 else
-   obs_kind = get_quantity_for_type_of_obs(obs_type)
+   obs_qty = get_quantity_for_type_of_obs(obs_type)
 endif
 
 ! Get the default error variance
@@ -227,10 +227,10 @@ if (.not. qcf_table_listed) then
 endif
 
 !get actual name of QTY from integer index
-kind_name = get_name_for_quantity(obs_kind)
+qty_name = get_name_for_quantity(obs_qty)
 
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, kind_name)
+QTY_loc = findloc(qcf_table_row_headers, qty_name)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -264,7 +264,7 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,   upper_bound
 
 integer :: QTY_loc(1)
-character(len=129) :: kind_name
+character(len=129) :: qty_name
 
 integer :: dist_type_loc(1)
 character(len=129), dimension(7) :: possible_dist_types
@@ -316,10 +316,10 @@ if (.not. qcf_table_listed) then
 endif
 
 !get actual name of QTY from integer index
-kind_name = get_name_for_quantity(kind)
+qty_name = get_name_for_quantity(kind)
 
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, kind_name)
+QTY_loc = findloc(qcf_table_row_headers, qty_name)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -397,10 +397,10 @@ end subroutine probit_dist_info
 !------------------------------------------------------------------------
 
 
-subroutine obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
+subroutine obs_inc_info(obs_qty, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
    sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
 
-integer,  intent(in)  :: obs_kind
+integer,  intent(in)  :: obs_qty
 integer,  intent(inout) :: filter_kind
 logical,  intent(inout) :: rectangular_quadrature, gaussian_likelihood_tails
 logical,  intent(inout) :: sort_obs_inc
@@ -409,7 +409,7 @@ logical,  intent(inout) :: bounded_below, bounded_above
 real(r8), intent(inout) :: lower_bound,  upper_bound
 
 integer :: QTY_loc(1)
-character(len=129) :: kind_name
+character(len=129) :: qty_name
 
 integer :: filter_kind_loc(1)
 character(len=129), dimension(5) :: possible_filter_kinds
@@ -446,10 +446,10 @@ if (.not. qcf_table_listed) then
 endif
 
 !get actual name of QTY from integer index
-kind_name = get_name_for_quantity(obs_kind)
+qty_name = get_name_for_quantity(obs_qty)
 
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, kind_name)
+QTY_loc = findloc(qcf_table_row_headers, qty_name)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
