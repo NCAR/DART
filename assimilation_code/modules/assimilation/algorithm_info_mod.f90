@@ -73,7 +73,7 @@ type obs_inc_info_type
    real(r8)              :: lower_bound,   upper_bound
 end type
 
-type qcf_table_data_type
+type algorithm_info_type
    type(obs_error_info_type)        :: obs_error_info
    type(probit_inflation_type)      :: probit_inflation
    type(probit_state_type)          :: probit_state
@@ -86,7 +86,7 @@ character(len=129), dimension(4) :: header1
 character(len=129), dimension(29) :: header2
 
 character(len=129), allocatable :: qcf_table_row_headers(:)
-type(qcf_table_data_type), allocatable :: qcf_table_data(:)
+type(algorithm_info_type), allocatable :: qcf_table_data(:)
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
