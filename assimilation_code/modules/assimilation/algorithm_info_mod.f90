@@ -48,25 +48,25 @@ type obs_error_info_type
 end type
 
 type probit_inflation_type
-   character(len=129)    :: dist_type
+   integer               :: dist_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_state_type
-   character(len=129)    :: dist_type
+   integer               :: dist_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
 
 type probit_extended_state_type
-   character(len=129)    :: dist_type
+   integer               :: dist_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
 
 type obs_inc_info_type
-   character(len=129)    :: filter_kind
+   integer               :: filter_kind
    logical               :: rectangular_quadrature, gaussian_likelihood_tails
    logical               :: sort_obs_inc, spread_restoration
    logical               :: bounded_below, bounded_above
@@ -87,6 +87,11 @@ character(len=129), dimension(29) :: header2
 
 character(len=129), allocatable :: qcf_table_row_headers(:)
 type(algorithm_info_type), allocatable :: qcf_table_data(:)
+
+character(len=129) :: dist_type_string_probit_inflation
+character(len=129) :: dist_type_string_probit_state
+character(len=129) :: dist_type_string_probit_extended_state
+character(len=129) :: filter_kind_string
 
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
@@ -166,17 +171,92 @@ read(fileid, *) header2
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
    read(fileid, *) qcf_table_row_headers(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
-                   qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
+                   qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, dist_type_string_probit_inflation, &
                    qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
-                   qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
+                   qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, dist_type_string_probit_state, &
                    qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
-                   qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
+                   qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, dist_type_string_probit_extended_state, &
                    qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
                    qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-                   qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
+                   filter_kind_string, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
                    qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
                    qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                    qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+
+   ! Converting the distribution types (read in from table as a string) to its corresponding int value
+   if (trim(dist_type_string_probit_inflation) == 'NORMAL_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = NORMAL_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_inflation) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_inflation) == 'GAMMA_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_inflation) == 'BETA_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_inflation) == 'LOG_NORMAL_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_inflation) == 'UNIFORM_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_inflation) == 'PARTICLE_FILTER_DISTRIBUTION') then
+      qcf_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
+   else
+      write(errstring, *) 'Invalid distribution type for probit inflation: ', trim(dist_type_string_probit_inflation)
+      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+   endif
+
+   if (trim(dist_type_string_probit_state) == 'NORMAL_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = NORMAL_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_state) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_state) == 'GAMMA_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_state) == 'BETA_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_state) == 'LOG_NORMAL_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_state) == 'UNIFORM_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_state) == 'PARTICLE_FILTER_DISTRIBUTION') then
+      qcf_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+   else
+      write(errstring, *) 'Invalid distribution type for probit state: ', trim(dist_type_string_probit_state)
+      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+   endif
+
+   if (trim(dist_type_string_probit_extended_state) == 'NORMAL_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = NORMAL_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_extended_state) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_extended_state) == 'GAMMA_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_extended_state) == 'BETA_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_extended_state) == 'LOG_NORMAL_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_extended_state) == 'UNIFORM_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
+   elseif (trim(dist_type_string_probit_extended_state) == 'PARTICLE_FILTER_DISTRIBUTION') then
+      qcf_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+   else
+      write(errstring, *) 'Invalid distribution type for probit extended state: ', trim(dist_type_string_probit_extended_state)
+      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+   endif
+
+   ! Converting the filter kind (read in from table as a string) to its corresponding int value
+   if (trim(filter_kind_string) == 'EAKF') then
+      qcf_table_data(row)%obs_inc_info%filter_kind = EAKF
+   elseif (trim(filter_kind_string) == 'ENKF') then
+      qcf_table_data(row)%obs_inc_info%filter_kind = ENKF
+   elseif (trim(filter_kind_string) == 'UNBOUNDED_RHF') then
+      qcf_table_data(row)%obs_inc_info%filter_kind = UNBOUNDED_RHF
+   elseif (trim(filter_kind_string) == 'GAMMA_FILTER') then
+      qcf_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
+   elseif (trim(filter_kind_string) == 'BOUNDED_NORMAL_RHF') then
+      qcf_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
+   else
+      write(errstring, *) 'Invalid filter kind: ', trim(filter_kind_string)
+      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+   endif
+
 end do
 
 call close_file(fileid)
@@ -264,9 +344,6 @@ integer :: QTY_loc(1)
 character(len=129) :: qty_name
 
 integer :: dist_type_loc(1)
-character(len=129), dimension(7) :: possible_dist_types
-integer, dimension(7) :: possible_dist_type_ints
-character(len=129) :: dist_type_string
 
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
@@ -287,23 +364,6 @@ character(len=129) :: dist_type_string
 
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
-
-! Fill arrays with possible dist_type strings and corresponding ints
-possible_dist_types(1) = 'NORMAL_DISTRIBUTION'
-possible_dist_types(2) = 'BOUNDED_NORMAL_RH_DISTRIBUTION'
-possible_dist_types(3) = 'GAMMA_DISTRIBUTION'
-possible_dist_types(4) = 'BETA_DISTRIBUTION'
-possible_dist_types(5) = 'LOG_NORMAL_DISTRIBUTION'
-possible_dist_types(6) = 'UNIFORM_DISTRIBUTION'
-possible_dist_types(7) = 'PARTICLE_FILTER_DISTRIBUTION'
-
-possible_dist_type_ints(1) = 1
-possible_dist_type_ints(2) = 2
-possible_dist_type_ints(3) = 3
-possible_dist_type_ints(4) = 4
-possible_dist_type_ints(5) = 5
-possible_dist_type_ints(6) = 6
-possible_dist_type_ints(7) = 7
 
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
@@ -328,19 +388,7 @@ if (QTY_loc(1) == 0) then
    elseif(is_inflation) then
    ! Case for inflation transformation
 
-      ! Comparing the dist_type in string format to list of potential dist_types
-      dist_type_string = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
-      call to_upper(dist_type_string)
-      dist_type_loc = findloc(possible_dist_types, trim(dist_type_string))
-
-      if (dist_type_loc(1) == 0) then
-         write(errstring, *) 'Invalid dist_type: ', trim(dist_type_string)
-         call error_handler(E_ERR, 'probit_dist_info:', errstring, source)
-
-      else
-         dist_type = possible_dist_type_ints(dist_type_loc(1))
-      endif
-
+      dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
@@ -349,19 +397,7 @@ if (QTY_loc(1) == 0) then
    elseif(is_state) then
    ! Case for state variable priors
 
-      ! Comparing the dist_type in string format to list of potential dist_types
-      dist_type_string = qcf_table_data(QTY_loc(1))%probit_state%dist_type
-      call to_upper(dist_type_string)
-      dist_type_loc = findloc(possible_dist_types, trim(dist_type_string))
-
-      if (dist_type_loc(1) == 0) then
-         write(errstring, *) 'Invalid dist_type: ', trim(dist_type_string)
-         call error_handler(E_ERR, 'probit_dist_info:', errstring, source)
-
-      else
-         dist_type = possible_dist_type_ints(dist_type_loc(1))
-      endif
-
+      dist_type = qcf_table_data(QTY_loc(1))%probit_state%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_state%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_state%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
@@ -370,19 +406,7 @@ if (QTY_loc(1) == 0) then
    else
    ! This case is for observation (extended state) priors
 
-      ! Comparing the dist_type in string format to list of potential dist_types
-      dist_type_string = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
-      call to_upper(dist_type_string)
-      dist_type_loc = findloc(possible_dist_types, trim(dist_type_string))
-
-      if (dist_type_loc(1) == 0) then
-         write(errstring, *) 'Invalid dist_type: ', trim(dist_type_string)
-         call error_handler(E_ERR, 'probit_dist_info:', errstring, source)
-
-      else
-         dist_type = possible_dist_type_ints(dist_type_loc(1))
-      endif
-
+      dist_type = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
@@ -410,9 +434,6 @@ integer :: QTY_loc(1)
 character(len=129) :: qty_name
 
 integer :: filter_kind_loc(1)
-character(len=129), dimension(5) :: possible_filter_kinds
-integer, dimension(5) :: possible_filter_kind_ints
-character(len=129) :: filter_kind_string
 
 ! The information arguments are all intent (inout). This means that if they are not set
 ! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
@@ -420,19 +441,6 @@ character(len=129) :: filter_kind_string
 
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
-
-! Fill arrays with possible filter_kind strings and corresponding ints
-possible_filter_kinds(1) = 'EAKF'
-possible_filter_kinds(2) = 'ENKF'
-possible_filter_kinds(3) = 'UNBOUNDED_RHF'
-possible_filter_kinds(4) = 'GAMMA_FILTER'
-possible_filter_kinds(5) = 'BOUNDED_NORMAL_RHF'
-
-possible_filter_kind_ints(1) = 1
-possible_filter_kind_ints(2) = 2
-possible_filter_kind_ints(3) = 8
-possible_filter_kind_ints(4) = 11
-possible_filter_kind_ints(5) = 101
 
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
@@ -459,19 +467,7 @@ if (QTY_loc(1) == 0) then
 
    else
 
-      ! Comparing the filter_kind in string format to list of potential filter_kinds
-      filter_kind_string = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
-      call to_upper(filter_kind_string)
-      filter_kind_loc = findloc(possible_filter_kinds, trim(filter_kind_string))
-
-      if (filter_kind_loc(1) == 0) then
-         write(errstring, *) 'Invalid filter_kind: ', trim(filter_kind_string)
-         call error_handler(E_ERR, 'obs_inc_info:', errstring, source)
-
-      else
-         filter_kind = possible_filter_kind_ints(filter_kind_loc(1))
-      endif
-     
+      filter_kind = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
       sort_obs_inc = qcf_table_data(QTY_loc(1))%obs_inc_info%sort_obs_inc
       spread_restoration = qcf_table_data(QTY_loc(1))%obs_inc_info%spread_restoration
       bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
@@ -592,14 +588,14 @@ call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
 ! Write the table data to the dart_log and terminal
 do row = 1, size(qcf_table_data)
    write(log_msg, *) trim(qcf_table_row_headers(row)), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
-               qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, trim(qcf_table_data(row)%probit_inflation%dist_type), &
+               qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
                qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
-               qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, trim(qcf_table_data(row)%probit_state%dist_type), &
+               qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
                qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
-               qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, trim(qcf_table_data(row)%probit_extended_state%dist_type), &
+               qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
                qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
                qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-               trim(qcf_table_data(row)%obs_inc_info%filter_kind), qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
+               qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
                qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
                qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
