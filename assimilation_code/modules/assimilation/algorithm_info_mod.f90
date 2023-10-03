@@ -81,6 +81,7 @@ type qcf_table_data_type
    type(obs_inc_info_type)          :: obs_inc_info
 end type
 
+integer, parameter :: HEADER_LINES = 2
 character(len=129), dimension(4) :: header1
 character(len=129), dimension(29) :: header2
 
@@ -130,7 +131,7 @@ end do
 
 call close_file(fileid)
 
-numrows = nlines - 2
+numrows = nlines - HEADER_LINES
 
 allocate(qcf_table_data(numrows))
 allocate(qcf_table_row_headers(numrows))
