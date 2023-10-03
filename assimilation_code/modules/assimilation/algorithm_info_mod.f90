@@ -90,10 +90,6 @@ type(qcf_table_data_type), allocatable :: qcf_table_data(:)
 ! Provides routines that give information about details of algorithms for 
 ! observation error sampling, observation increments, and the transformations
 ! for regression and inflation in probit space. 
-! For now, it is convenient to have these in a single module since several
-! users will be developing their own problem specific versions of these
-! subroutines. This will avoid constant merge conflicts as other parts of the
-! assimilation code are updated.
 
 contains
 
@@ -275,8 +271,9 @@ character(len=129) :: dist_type_string
 ! along with additional logical info that indicates whether this is an observation
 ! or state variable and about whether the transformation is being done for inflation
 ! or for regress. 
-! Need to select the appropriate transform. At present, options are NORMAL_PRIOR
-! which does nothing or BOUNDED_NORMAL_RH_PRIOR. 
+! Need to select the appropriate transform. At present, the options are NORMAL_DISTRIBUTION,
+! BOUNDED_NORMAL_RH_DISTRIBUTION, GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION,
+! UNIFORM_DISTRIBUTION, and PARTICLE_FILTER_DISTRIBUTION.
 ! If the BNRH is selected then information about the bounds must also be set.
 ! The two dimensional logical array 'bounded' is set to false for no bounds and true
 ! for bounded. the first element of the array is for the lower bound, the second for the upper.
