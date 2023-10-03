@@ -25,7 +25,7 @@ character(len=512) :: errstring
 character(len=*), parameter :: source = 'algorithm_info_mod.f90'
 
 logical :: module_initialized = .false.
-logical :: qcf_table_listed = .false.
+logical :: use_qty_defaults = .true.
 
 ! Defining parameter strings for different observation space filters
 ! For now, retaining backwards compatibility in assim_tools_mod requires using
@@ -118,7 +118,7 @@ if (qcf_table_filename == '') then
    return
 endif
 
-qcf_table_listed = .true.
+use_qty_defaults = .false.
 fileid = open_file(trim(qcf_table_filename), 'formatted', 'read')
 
 ! Do loop to get number of rows (or QTY's) in the table
@@ -217,7 +217,7 @@ endif
 error_variance = get_obs_def_error_variance(obs_def)
 
 !use default values if qcf_table_filename is not in namelist
-if (.not. qcf_table_listed) then
+if (use_qty_defaults) then
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
    return
@@ -306,7 +306,7 @@ possible_dist_type_ints(6) = 6
 possible_dist_type_ints(7) = 7
 
 !use default values if qcf_table_filename is not in namelist
-if (.not. qcf_table_listed) then
+if (use_qty_defaults) then
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
@@ -435,7 +435,7 @@ possible_filter_kind_ints(4) = 11
 possible_filter_kind_ints(5) = 101
 
 !use default values if qcf_table_filename is not in namelist
-if (.not. qcf_table_listed) then
+if (use_qty_defaults) then
    filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
@@ -511,7 +511,7 @@ subroutine verify_qcf_table_data()
 integer :: varid
 integer :: row
 
-if (.not. qcf_table_listed) return
+if (use_qty_defaults) return
 
 !Checks that all bounds are valid; currently checks that the lower bound in less than the upper
 !Here we could add more specific checks if we have known limits on the bounds
@@ -577,7 +577,7 @@ subroutine log_qcf_table_data()
 character(len=2000) :: log_msg
 integer :: row
 
-if (.not. qcf_table_listed) return
+if (use_qty_defaults) return
 
 call error_handler(E_MSG, '', '', source) !Writing blank line to log
 call error_handler(E_MSG, 'log_qcf_table_data:', 'Logging the data in the QCF Table', source)
@@ -618,7 +618,7 @@ subroutine end_algorithm_info_mod()
 if (.not. module_initialized) return
 module_initialized = .false.
 
-if (.not. qcf_table_listed) return
+if (use_qty_defaults) return
 
 deallocate(qcf_table_data)
 deallocate(qcf_table_row_headers)
