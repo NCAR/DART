@@ -1056,7 +1056,7 @@ above, however, the observation type (``ObsTypeString``) is set to
 ``METAR_TEMPERATURE_2_METER``. Notice in this case the observations
 are limited to near the land surface.  This is because the vertical location
 of this observation type was defined to be at the land surface 
-(VERTISSUFACE), as opposed to the ``RADIOSONDE_TEMPERATURE`` observation
+(VERTISSURFACE), as opposed to the ``RADIOSONDE_TEMPERATURE`` observation
 in which the vertical location was defined as pressure (VERTISPRESSURE). The
 vertical coordinate system is defined in the ``obs_seq.out`` file and
 `documented here. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__ 
