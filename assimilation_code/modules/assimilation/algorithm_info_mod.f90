@@ -85,7 +85,7 @@ integer, parameter :: HEADER_LINES = 2
 character(len=129), dimension(4) :: header1
 character(len=129), dimension(29) :: header2
 
-character(len=129), allocatable :: qcf_table_row_headers(:)
+character(len=129), allocatable :: specified_qtys(:)
 type(algorithm_info_type), allocatable :: qcf_table_data(:)
 
 character(len=129) :: dist_type_string_probit_inflation
@@ -138,8 +138,8 @@ call close_file(fileid)
 
 numrows = nlines - HEADER_LINES
 
+allocate(specified_qtys(numrows))
 allocate(qcf_table_data(numrows))
-allocate(qcf_table_row_headers(numrows))
 
 call read_qcf_table(qcf_table_filename)
 call assert_qcf_table_version()
@@ -170,7 +170,7 @@ read(fileid, *) header2
 
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
-   read(fileid, *) qcf_table_row_headers(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+   read(fileid, *) specified_qtys(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                    qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, dist_type_string_probit_inflation, &
                    qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
                    qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, dist_type_string_probit_state, &
@@ -307,7 +307,7 @@ endif
 qty_name = get_name_for_quantity(obs_qty)
 
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, qty_name)
+QTY_loc = findloc(specified_qtys, qty_name)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -343,8 +343,6 @@ real(r8), intent(out) :: lower_bound,   upper_bound
 integer :: QTY_loc(1)
 character(len=129) :: qty_name
 
-integer :: dist_type_loc(1)
-
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
 ! or state variable and about whether the transformation is being done for inflation
@@ -377,7 +375,7 @@ endif
 qty_name = get_name_for_quantity(kind)
 
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, qty_name)
+QTY_loc = findloc(specified_qtys, qty_name)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -433,8 +431,6 @@ real(r8), intent(inout) :: lower_bound,  upper_bound
 integer :: QTY_loc(1)
 character(len=129) :: qty_name
 
-integer :: filter_kind_loc(1)
-
 ! The information arguments are all intent (inout). This means that if they are not set
 ! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
 ! in that namelist, so default values are set in assim_tools_mod just before the call to here.
@@ -455,7 +451,7 @@ endif
 qty_name = get_name_for_quantity(obs_qty)
 
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(qcf_table_row_headers, qty_name)
+QTY_loc = findloc(specified_qtys, qty_name)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -547,17 +543,17 @@ end do
 
 !Ensures that all QTYs listed in the table exist in DART
 do row = 1, size(qcf_table_data)
-   varid = get_index_for_quantity(trim(qcf_table_row_headers(row)))
+   varid = get_index_for_quantity(trim(specified_qtys(row)))
    if(varid == -1) then
-      write(errstring,*) trim(qcf_table_row_headers(row)), ' is not a valid DART QTY'
+      write(errstring,*) trim(specified_qtys(row)), ' is not a valid DART QTY'
       call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
    endif
 end do
 
 !Ensures that there are no duplicate QTYs in the table
 do row = 1, size(qcf_table_data)
-   if(count(qcf_table_row_headers==trim(qcf_table_row_headers(row))) > 1) then
-      write(errstring,*) trim(qcf_table_row_headers(row)), ' has multiple entries in the table'
+   if(count(specified_qtys==trim(specified_qtys(row))) > 1) then
+      write(errstring,*) trim(specified_qtys(row)), ' has multiple entries in the table'
       call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
    endif
 end do
@@ -587,7 +583,7 @@ call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
 
 ! Write the table data to the dart_log and terminal
 do row = 1, size(qcf_table_data)
-   write(log_msg, *) trim(qcf_table_row_headers(row)), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+   write(log_msg, *) trim(specified_qtys(row)), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, qcf_table_data(row)%probit_inflation%dist_type, &
                qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
                qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, qcf_table_data(row)%probit_state%dist_type, &
@@ -616,8 +612,8 @@ module_initialized = .false.
 
 if (use_qty_defaults) return
 
+deallocate(specified_qtys)
 deallocate(qcf_table_data)
-deallocate(qcf_table_row_headers)
 
 end subroutine end_algorithm_info_mod
 
