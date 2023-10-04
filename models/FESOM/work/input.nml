@@ -1,3 +1,9 @@
+&probit_transform_nml
+   fix_bound_violations        = .false.
+   use_logit_instead_of_probit = .false.
+   do_inverse_check            = .true.
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    input_state_files          = "ENS01.2009.oce.nc"
@@ -31,6 +37,7 @@
 # state by specifying the 'input' stage.
 
 &filter_nml
+   qcf_table_filename       = ''
    async                    = 5
    adv_ens_command          = "advance_model_script.die"
    ens_size                 = 3

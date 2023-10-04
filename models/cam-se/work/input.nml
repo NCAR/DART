@@ -28,7 +28,14 @@
 !    inf_sd_from_restart      inflation restart files from the values in inf*_initial
 !                             if needed.
 
+&probit_transform_nml
+   fix_bound_violations        = .false.
+   use_logit_instead_of_probit = .false.
+   do_inverse_check            = .true.
+   /
+
 &filter_nml
+   qcf_table_filename           = ''
    input_state_files            = ''
    input_state_file_list        = 'cam_init_files'
    single_file_in               = .false.

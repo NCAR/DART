@@ -1,3 +1,9 @@
+&probit_transform_nml
+   fix_bound_violations        = .false.,
+   use_logit_instead_of_probit = .false.,
+   do_inverse_check            = .true.,
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
    single_file_in             = .true.
@@ -28,6 +34,7 @@
    /
 
 &filter_nml
+   qcf_table_filename           = '',
    single_file_in               = .false.,
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'

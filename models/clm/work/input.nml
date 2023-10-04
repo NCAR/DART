@@ -1,3 +1,9 @@
+&probit_transform_nml
+   fix_bound_violations        = .false.
+   use_logit_instead_of_probit = .false.
+   do_inverse_check            = .true.
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    write_output_state_to_file = .false.
@@ -25,6 +31,7 @@
 
 
 &filter_nml
+   qcf_table_filename           = ''
    allow_missing_clm = .true.
    perturb_from_single_instance = .FALSE.
    perturbation_amplitude       = 0.2
