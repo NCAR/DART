@@ -1031,12 +1031,13 @@ Note that the top panel includes both the 3-D location of all possible
 ``RADIOSONDE_TEMPERATURE`` observations, which are color-coded based upon
 the temperature value.  The bottom panel, on the other hand, provides only
 the location of the observations that were rejected by the assimilation.
-The color code indicates the reason for the rejection based on the DART 
-quality control (QC). In this example observations were rejected based on
-violation of the outlier threshold (QC = 7), and forward operator failure
-(QC = 4).  Text is included within the figures that give more details 
-regarding the rejected observations (bottom left of figure), and percentage
-of observations that were rejected (flagged, located within title of figure).
+The color code indicates the reason for the rejection based on the
+:doc:`DART quality control (QC). <../../../guide/dart-quality-control>`
+In this example observations were rejected based on violation of the 
+outlier threshold (QC = 7), and forward operator failure (QC = 4).  
+Text is included within the figures that give more details regarding the
+rejected observations  (bottom left of figure), and percentage of observations
+that were rejected (flagged, located within title of figure).
 
 
 +-------------------------------------------------------------+
@@ -1053,7 +1054,12 @@ of observations that were rejected (flagged, located within title of figure).
 For the next figure (below) the same steps are taken as described
 above, however, the observation type (``ObsTypeString``) is set to
 ``METAR_TEMPERATURE_2_METER``. Notice in this case the observations
-are limited to near the land surface only.
+are limited to near the land surface.  This is because the vertical location
+of this observation type was defined to be at the land surface 
+(VERTISSUFACE), as opposed to the ``RADIOSONDE_TEMPERATURE`` observation
+in which the vertical location was defined as pressure (VERTISPRESSURE). The
+vertical coordinate system is defined in the ``obs_seq.out`` file and
+`documented here. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__ 
 
 +-------------------------------------------------------------+
 | |surface_obs|                                               |
@@ -1125,7 +1131,9 @@ The **plot_rmse_xxx_profile.nc** script is one of the best tools to evaluate
 assimilation performance across a 3-D domain such as the atmosphere.
 It uses the **obs_diag_output.nc** file as an input to generate RMSE, 
 observation acceptance and other statistics.  Here we choose the ensemble
-‘total spread’ statistic to plot alongside RMSE:
+‘total spread’ statistic to plot alongside RMSE, however, you can choose
+other statistics including 'bias', 'ens_mean' and 'spread'.  For a full
+list of statistics perform the command ``ncdump -v CopyMetaData obs_diag_output.nc``.
 
 ::
 
@@ -1223,11 +1231,11 @@ Generating the obs_diag_output.nc and obs_epoch*.nc files manually **[OPTIONAL]*
 
 This step is optional because the WRF-DART Tutorial automatically generates 
 the diagnostic files (obs_diag_output.nc and obs_epoch_*.nc). However, these
-files were generated with pre-set options that you may wish to modify.  Also, 
-it is uncommon to generate these diagnostics files automatically for a new
-assimilation application.  Therefore this section describes the steps to generate
-the diagnostic files directly from the DART scripts by using the
-WRF Tutorial as an example.
+files were generated with pre-set options (e.g. spatial domain, temporal bin size etc.)
+that you may wish to modify.  Also, it is uncommon to generate these diagnostics
+files automatically for a new assimilation application.  Therefore this section
+describes the steps to generate the diagnostic files directly from the DART scripts
+by using the WRF Tutorial as an example.
 
 
 Generating the obs_epoch*.nc file
