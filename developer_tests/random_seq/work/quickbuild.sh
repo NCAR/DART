@@ -25,6 +25,7 @@ test_gaussian
 test_hist
 test_inv_gamma
 test_random
+test_ran_unif
 test_reseed
 )
 
