@@ -5,6 +5,8 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 
+# ftn is for Derecho (a Cray machine)
+# For non-Cray machines use nvfortran
 MPIFC = ftn
 MPILD = ftn
 FC = ftn
