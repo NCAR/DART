@@ -67,7 +67,6 @@ end type
 
 type obs_inc_info_type
    integer               :: filter_kind
-   logical               :: rectangular_quadrature, gaussian_likelihood_tails
    logical               :: sort_obs_inc, spread_restoration
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
@@ -83,7 +82,7 @@ end type
 
 integer, parameter :: HEADER_LINES = 2
 character(len=129), dimension(4) :: header1
-character(len=129), dimension(29) :: header2
+character(len=129), dimension(27) :: header2
 
 character(len=129), allocatable :: specified_qtys(:)
 type(algorithm_info_type), allocatable :: qcf_table_data(:)
@@ -178,9 +177,8 @@ do row = 1, size(qcf_table_data)
                    qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, dist_type_string_probit_extended_state, &
                    qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
                    qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-                   filter_kind_string, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
-                   qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
-                   qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
+                   filter_kind_string, qcf_table_data(row)%obs_inc_info%sort_obs_inc, qcf_table_data(row)%obs_inc_info%spread_restoration, &
+                   qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                    qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
 
    ! Converting the distribution types (read in from table as a string) to its corresponding int value
@@ -417,12 +415,11 @@ end subroutine probit_dist_info
 !------------------------------------------------------------------------
 
 
-subroutine obs_inc_info(obs_qty, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-   sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
+subroutine obs_inc_info(obs_qty, filter_kind, sort_obs_inc, spread_restoration, &
+   bounded_below, bounded_above, lower_bound, upper_bound)
 
 integer,  intent(in)  :: obs_qty
 integer,  intent(inout) :: filter_kind
-logical,  intent(inout) :: rectangular_quadrature, gaussian_likelihood_tails
 logical,  intent(inout) :: sort_obs_inc
 logical,  intent(inout) :: spread_restoration
 logical,  intent(inout) :: bounded_below, bounded_above
@@ -472,10 +469,6 @@ if (QTY_loc(1) == 0) then
       upper_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
 
 endif
-
-! Only need to set these two for options the original RHF implementation
-!!!rectangular_quadrature = .true.
-!!!gaussian_likelihood_tails = .false.
 
 end subroutine obs_inc_info
 
@@ -591,8 +584,7 @@ do row = 1, size(qcf_table_data)
                qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, qcf_table_data(row)%probit_extended_state%dist_type, &
                qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
                qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-               qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%rectangular_quadrature, &
-               qcf_table_data(row)%obs_inc_info%gaussian_likelihood_tails, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
+               qcf_table_data(row)%obs_inc_info%filter_kind, qcf_table_data(row)%obs_inc_info%sort_obs_inc, &
                qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
 call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)

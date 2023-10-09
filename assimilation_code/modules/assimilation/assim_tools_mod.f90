@@ -987,8 +987,8 @@ endif
 bounded_below = .false.;      lower_bound = 0.0_r8
 bounded_above = .false.;      upper_bound = 0.0_r8
 
-call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-   sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
+call obs_inc_info(obs_kind, filter_kind, sort_obs_inc, spread_restoration, &
+        bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Could add logic to check on sort being true when not needed.
 ! Could also add logic to limit the use of spread_restoration to EAKF. It will fail
