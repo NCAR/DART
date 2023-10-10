@@ -145,7 +145,7 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !
 integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
-logical  :: sort_obs_inc                    = .false.
+logical  :: sort_obs_inc                    = .true.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
 integer  :: adaptive_localization_threshold = -1
@@ -420,22 +420,6 @@ if (.not. module_initialized) call assim_tools_init()
 ! used for vertical conversion in get_close_obs
 ! Need to give create_mean_window the mean copy
 call create_mean_window(ens_handle, ENS_MEAN_COPY, distribute_mean)
-
-! filter kinds 1 and 8 return sorted increments, however non-deterministic
-! inflation can scramble these. the sort is expensive, so help users get better
-! performance by rejecting namelist combinations that do unneeded work.
-if (sort_obs_inc) then
-   if(deterministic_inflate(inflate) .and. ((filter_kind == 1) .or. (filter_kind == 8))) then
-      write(msgstring,  *) 'With a deterministic filter [assim_tools_nml:filter_kind = ',filter_kind,']'
-      write(msgstring2, *) 'and deterministic inflation [filter_nml:inf_deterministic = .TRUE.]'
-      write(msgstring3, *) 'assim_tools_nml:sort_obs_inc = .TRUE. is not needed and is expensive.'
-      call error_handler(E_MSG,'', '')  ! whitespace
-      call error_handler(E_MSG,'WARNING filter_assim:', msgstring, source, &
-                         text2=msgstring2,text3=msgstring3)
-      call error_handler(E_MSG,'', '')  ! whitespace
-      sort_obs_inc = .FALSE.
-   endif
-endif
 
 ! Open the localization diagnostics file
 if(output_localization_diagnostics .and. my_task_id() == 0) &
@@ -987,7 +971,7 @@ endif
 bounded_below = .false.;      lower_bound = 0.0_r8
 bounded_above = .false.;      upper_bound = 0.0_r8
 
-call obs_inc_info(obs_kind, filter_kind, sort_obs_inc, spread_restoration, &
+call obs_inc_info(obs_kind, filter_kind, spread_restoration, &
         bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Could add logic to check on sort being true when not needed.
@@ -1081,21 +1065,6 @@ endif
 
 ! Add in the extra increments if doing observation space covariance inflation
 if(do_obs_inflate(inflate)) obs_inc = obs_inc + inflate_inc
-
-! To minimize regression errors, may want to sort to minimize increments
-! This makes sense for any of the non-deterministic algorithms
-! By doing it here, can take care of both standard non-deterministic updates
-! plus non-deterministic obs space covariance inflation. This is expensive, so
-! don't use it if it's not needed.
-if (sort_obs_inc) then
-   new_val = ens_in + obs_inc
-   ! Sorting to make increments as small as possible
-   call index_sort(ens_in, ens_index, ens_size)
-   call index_sort(new_val, new_index, ens_size)
-   do i = 1, ens_size
-      obs_inc(ens_index(i)) = new_val(new_index(i)) - ens_in(ens_index(i))
-   end do
-endif
 
 ! Get the net change in spread if obs space inflation was used
 if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
