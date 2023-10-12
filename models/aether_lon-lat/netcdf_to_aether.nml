@@ -1,0 +1,4 @@
+&netcdf_to_gitm_blocks_nml
+   netcdf_to_gitm_blocks_input_file = 'filter_output.nc',
+   /
+

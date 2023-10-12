@@ -1,0 +1,72 @@
+TIEGCM:
+&model_nml
+   debug                       = 1
+   tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
+   tiegcm_secondary_file_name  = 'tiegcm_s.nc'
+   estimate_f10_7 = .false.
+   f10_7_file_name = 'f10_7.nc'
+   assimilation_period_seconds = 3600
+   variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
+               'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+               'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',    'UPDATE',
+               'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',    'UPDATE',
+               'OP_NM', 'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+	       'O1',    'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
+               'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'UPDATE',
+               'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'UPDATE',
+               'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
+   /
+
+
+GITM:
+# The list of variables to put into the state vector is here:
+# The definitions for the DART kinds are in DART/obs_def/obs_def*f90
+# The order doesn't matter to DART. It may to you.
+
+&model_nml
+   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 1800,
+   model_perturbation_amplitude = 0.2,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   gitm_state_variables =
+                           'Temperature',            'QTY_TEMPERATURE',
+                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON',
+                           'ITemperature',           'QTY_TEMPERATURE_ION',
+                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',
+                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',
+                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',
+                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',
+                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',
+                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',
+                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',
+                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',
+                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',
+                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',
+                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',
+                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',
+                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',
+                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',
+                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',
+                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',
+                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',
+                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',
+                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',
+                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',
+                           'ie_IDensityS',           'QTY_DENSITY_ION_E',
+                           'U_Velocity_component',   'QTY_VELOCITY_U',
+                           'V_Velocity_component',   'QTY_VELOCITY_V',
+                           'W_Velocity_component',   'QTY_VELOCITY_W',
+                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',
+                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',
+                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',
+                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P',
+                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2',
+                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2',
+                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S',
+                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO',
+                           'f107',                   'QTY_1D_PARAMETER',
+                           'Rho',                    'QTY_DENSITY',
+    /
+
