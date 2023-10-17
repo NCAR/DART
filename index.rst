@@ -99,7 +99,7 @@ non-Gaussian prior distributions can also see large improvements. Examples can i
 quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
 
 The instructions to use these tools can be found on this page: 
-:doc:`Quantile Conserving and Probit Transform Filtering Tools <QCF>`
+:ref:`QCF`
 
 Organization of the documentation
 ---------------------------------
