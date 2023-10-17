@@ -62,6 +62,45 @@ These tools are intended for use by the full range of geosciencies community:
 beginners and experts; students and teachers; national centers and university
 research labs.
 
+Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+-----------------------------------------------------------------
+The default DART algorithms assume a normal distribution to compute ensemble increments
+for the observed quantity (this is the ensemble adjustment Kalman filter, or EAKF) and 
+then linearly regresses the observation increments onto each state variable.
+ 
+DART’s newest and innovative capability, the Quantile Conserving Filters (QCF), provide a 
+very general method of computing increments for the prior ensemble of an observed quantity 
+and allow for the use of quantile conserving ensemble filters that can assume arbitrary 
+distributions for the prior and the observation error. Quantile conserving filters are 
+especially useful for bounded quantities like tracer concentrations, depths of things like 
+snow or ice, and estimating model parameters that have a restricted range.
+
+While Quantile Conserving Filters lead to significant improvements in analysis estimates for 
+observed variables, those improvements can be lost when using standard linear regression of 
+observation increments to update other state variables. Therefore, DART also includes new 
+functionality to use probit-transformed quantile regression methods that allow much more general 
+regression for computing state increments. Doing the regression of observation quantile increments 
+in a probit-transformed, bivariate, quantile space guarantees that the posterior ensembles 
+for state variables also have all the advantages of the observation space quantile conserving 
+posteriors. For example, if state variables are bounded, then posterior ensembles will respect 
+the bounds. The posterior ensembles also respect other aspects of the continuous prior distributions.
+
+Inflation and localization, methods that improve the quality of ensemble DA, can also negate the 
+advantages of the quantile conserving method. However, both localization and inflation can be done 
+in the probit-transformed quantile space. 
+
+Combining these new methods can significantly improve data assimilation for non-Gaussian quantities 
+in Earth system models by extending the capabilities of ensemble DA to general non-Gaussian and 
+nonlinear distributions. Transformative improvements in DA can result for many applications. The 
+largest improvements are found for bounded variables like tracer concentrations, snow and ice depth, 
+soil moisture, and similar quantities in other parts of the Earth system. Model parameters can also be 
+estimated with DA and large improvements can occur for bounded parameters. Variables that have distinctly 
+non-Gaussian prior distributions can also see large improvements. Examples can include atmospheric 
+quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
+
+The instructions to use these tools can be found on this page: 
+:doc:`Quantile Conserving and Probit Transform Filtering Tools <QCF>`
+
 Organization of the documentation
 ---------------------------------
 
@@ -230,7 +269,7 @@ References
    guide/downloading-dart
    guide/compiling-dart
    guide/verifying-installation
-   models/lorenz_96_tracer_advection/work/readme
+   guide/qcf_probit.rst
 
 .. toctree::
    :maxdepth: 2
