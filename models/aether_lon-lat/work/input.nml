@@ -1,0 +1,375 @@
+&quality_control_nml
+/
+
+&state_vector_io_nml
+   /
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.
+   single_file_in             = .false.
+   input_state_files          = 'wrfinput_d01'
+   init_time_days             = -1
+   init_time_seconds          = -1
+
+   write_output_state_to_file = .false.
+   single_file_out            = .false.
+   output_state_files         = 'perfect_output_d01.nc'
+   output_interval            = 1
+
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   async                      = 0
+   adv_ens_command            = "../shell_scripts/advance_model.csh"
+
+   trace_execution            = .true.
+   output_timestamps          = .false.
+   print_every_nth_obs        = -1
+   output_forward_op_errors   = .true.
+   silence                    = .false.
+   /
+
+# Example for f10.7 estimation. 
+#   input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt', 'f10.7.txt'
+#   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt', 'out_f10.7.txt' 
+
+&filter_nml
+   single_file_in               = .false.,
+   input_state_files            = ''
+   input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt'
+   init_time_days               = 153131,
+   init_time_seconds            = 0,
+   perturb_from_single_instance = .true.,
+   perturbation_amplitude       = 0.2,
+
+   stages_to_write              = 'output'
+
+   single_file_out              = .false.,
+   output_state_files           = ''
+   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt'
+   output_interval              = 1,
+   output_members               = .true.
+   num_output_state_members     = 0,
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+   compute_posterior            = .true.
+
+   ens_size                     = 20,
+   num_groups                   = 1,
+   distributed_state            = .true.
+
+   async                        = 4,
+   adv_ens_command              = "./advance_model.csh",
+   tasks_per_model_advance      = 1
+
+   obs_sequence_in_name         = "obs_seq.out.1",
+   obs_sequence_out_name        = "obs_seq.final",
+   num_output_obs_members       = 20,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+   obs_window_days              = -1,
+   obs_window_seconds           = -1,
+
+   inf_flavor                  = 0,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                     1.0,
+   inf_lower_bound             = 0.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_max_change           = 1.05,                    1.05,
+
+   trace_execution              = .false.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
+   silence                      = .false.,
+
+   allow_missing_clm            = .false.
+   /
+
+
+
+&ensemble_manager_nml
+   /
+
+&assim_tools_nml
+   filter_kind                     = 1
+   cutoff                          = 0.2
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
+   print_every_nth_obs             = 0
+   /
+
+# Each variable must have 6 entries.
+# 1: variable name
+# 2: DART KIND
+# 3: minimum value - as a character string - if none, use 'NA'
+# 4: maximum value - as a character string - if none, use 'NA'
+# 5: which aether netcdf file contains the variable - restart or secondary
+# 6: does the updated variable  
+#    'UPDATE' =>       updated variable written to file
+#    'NO_COPY_BACK' => variable not written to file
+#    all these variables will be updated INTERNALLY IN DART.
+#
+# This is an example of how to restrict the range of each variable
+#  variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',   'UPDATE',
+#              'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',   'UPDATE',
+#              'TN_NM', 'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',   'NO_COPY_BACK',
+#              'O1',    'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.98888', 'restart',   'UPDATE',
+#              'O1_NM', 'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.98888', 'restart',   'NO_COPY_BACK',
+#              'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.98888', 'restart',   'UPDATE',
+#              'O2_NM', 'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.98888', 'restart',   'NO_COPY_BACK',
+#              'UN',    'QTY_U_WIND_COMPONENT',          'NA',      'NA',      'restart',   'UPDATE',
+#              'UN_NM', 'QTY_U_WIND_COMPONENT',          'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'VN',    'QTY_V_WIND_COMPONENT',          'NA',      'NA',      'restart',   'UPDATE',
+#              'VN_NM', 'QTY_V_WIND_COMPONENT',          'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',   'UPDATE',
+#              'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary', 'NO_COPY_BACK',
+#              'f10_7'  'QTY_1D_PARAMETER'               'NA',      'NA',      'calculate', 'UPDATE'
+# &model_nml
+#    debug                       = 1
+#    tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
+#    tiegcm_secondary_file_name  = 'tiegcm_s.nc'
+#    estimate_f10_7 = .false.
+#    f10_7_file_name = 'f10_7.nc'
+#    assimilation_period_seconds = 3600
+#    variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
+#                'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+#                'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',    'UPDATE',
+#                'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',    'UPDATE',
+#                'OP_NM', 'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+# 	       'O1',    'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
+#                'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'UPDATE',
+#                'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'UPDATE',
+#                'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
+#    /
+
+&model_nml
+   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 1800,
+   model_perturbation_amplitude = 0.2,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   gitm_state_variables =
+                           'Temperature',            'QTY_TEMPERATURE',
+                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON',
+                           'ITemperature',           'QTY_TEMPERATURE_ION',
+                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',
+                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',
+                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',
+                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',
+                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',
+                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',
+                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',
+                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',
+                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',
+                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',
+                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',
+                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',
+                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',
+                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',
+                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',
+                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',
+                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',
+                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',
+                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',
+                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',
+                           'ie_IDensityS',           'QTY_DENSITY_ION_E',
+                           'U_Velocity_component',   'QTY_VELOCITY_U',
+                           'V_Velocity_component',   'QTY_VELOCITY_V',
+                           'W_Velocity_component',   'QTY_VELOCITY_W',
+                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',
+                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',
+                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',
+                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P',
+                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2',
+                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2',
+                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S',
+                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO',
+                           'f107',                   'QTY_1D_PARAMETER',
+                           'Rho',                    'QTY_DENSITY',
+    /
+
+&aether_to_dart_nml
+   aether_restart_input_dirname = 'none'
+   aether_to_dart_output_file = 'filter_input.nc'
+   /
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = "reg_diagnostics"
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'CHAMP_DENSITY', 'GPS_VTEC_EXTRAP', 'GPS_PROFILE', 'COSMIC_ELECTRON_DENSITY'
+   evaluate_these_obs_types   = 'GND_GPS_VTEC'
+   /
+
+&location_nml
+   horiz_dist_only             = .true.
+   vert_normalization_pressure = 100000.0
+   vert_normalization_height   = 10000.0
+   vert_normalization_level    = 20.0
+   approximate_distance        = .false.
+   nlon                        = 71
+   nlat                        = 36
+   output_box_info             = .false.
+   /
+
+&preprocess_nml
+           overwrite_output = .true.
+    input_obs_qty_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+      obs_type_files        = '../../../observations/forward_operators/obs_def_upper_atm_mod.f90',
+                              '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                             '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                             '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_vortex_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gts_mod.f90'
+    quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90', 
+                              '../../../assimilation_code/modules/observations/space_quantities_mod.f90',
+                              '../../../assimilation_code//modules/observations/chemistry_quantities_mod.f90'
+   /
+
+&utilities_nml
+   TERMLEVEL = 1
+   module_details = .true.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+   write_nml   = 'file'
+   /
+
+&mpi_utilities_nml
+   /
+
+
+   /
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+
+&obs_diag_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   first_bin_center =  2005, 9,  9, 0, 0, 0 
+   last_bin_center  =  2005, 9, 10, 0, 0, 0 
+   bin_separation   =     0, 0,  0, 1, 0, 0 
+   bin_width        =     0, 0,  0, 1, 0, 0 
+   time_to_skip     =     0, 0,  0, 1, 0, 0 
+   max_num_bins     = 1000
+   trusted_obs      = 'null'
+   Nregions   = 4
+   hlevel = 0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000
+   lonlim1    =   0.0,   0.0,   0.0, 235.0
+   lonlim2    = 360.0, 360.0, 360.0, 295.0
+   latlim1    =  20.0, -80.0, -20.0,  25.0
+   latlim2    =  80.0, -20.0,  20.0,  55.0
+   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
+   /
+
+# obs_seq_to_netcdf also requires the schedule_nml.
+# In this context, schedule_nml defines how many netcdf files get created.
+# Each 'bin' results in an obs_epoch_xxxx.nc file.
+# default is to put everything into one 'bin'.
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+&obs_sequence_tool_nml
+   num_input_files   = 1
+   filename_seq      = 'obs_seq.out'
+   filename_out      = 'obs_seq.processed'
+   first_obs_days    = -1
+   first_obs_seconds = -1
+   last_obs_days     = -1
+   last_obs_seconds  = -1
+   obs_types         = ''
+   keep_types        = .false.
+   print_only        = .false.
+   min_lat           = -90.0
+   max_lat           = 90.0
+   min_lon           = 0.0
+   max_lon           = 360.0
+   /
+
+&model_mod_check_nml
+   input_state_files     = "tiegcm_restart_p.nc", "tiegcm_s.nc"
+   output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc"
+   test1thru             = 7
+   run_tests             = 0,1,2,3,4,5,7
+   x_ind                 = 1
+   loc_of_interest       = 240.0, 12.49, 200000.0
+   quantity_of_interest  = 'QTY_DENSITY_ION_OP'
+   interp_test_dlon      = 5 
+   interp_test_dlat      = 5 
+   interp_test_dvert     = 50000.0
+   interp_test_lonrange  = 0,  360 
+   interp_test_latrange  = -87.5,   87.5
+   interp_test_vertrange = 200000.0, 300000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
+   /
+

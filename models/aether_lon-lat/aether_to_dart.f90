@@ -4,18 +4,18 @@
 !
 ! $Id$
 
-program gitm_blocks_to_netcdf
+program aether_to_dart
 
 !----------------------------------------------------------------------
 ! purpose: interface between the GITM model and DART
 !
-! method: Read gitm "restart" files of model state (multiple files, one
-!         block per gitm mpi task)
+! method: Read aether "restart" files of model state (multiple files, one
+!         block per aether mpi task)
 !         Reform fields into a DART netcdf file
 !
-! USAGE:  The gitm dirname is read from the gitm_in namelist
-!         <edit gitm_to_netcdf_output_file in input.nml:gitm_blocks_to_netcdf_nml>
-!         gitm_blocks_to_netcdf
+! USAGE:  The aether dirname is read from the aether_in namelist
+!         <edit aether_to_dart_output_file in input.nml:aether_blocks_to_netcdf_nml>
+!         aether_blocks_to_netcdf
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
@@ -37,17 +37,17 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=512) :: string1, string2
-character(len=*), parameter :: program_name = 'gitm_blocks_to_netcdf'
+character(len=*), parameter :: program_name = 'aether_blocks_to_netcdf'
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=256) :: gitm_restart_input_dirname    = 'none'
-character(len=256) :: gitm_to_netcdf_output_file    = 'filter_input.nc'
+character(len=256) :: aether_restart_input_dirname    = 'none'
+character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
 
-namelist /gitm_blocks_to_netcdf_nml/ gitm_restart_input_dirname,        &
-                                     gitm_to_netcdf_output_file
+namelist /aether_to_dart/ aether_restart_input_dirname,        &
+                          aether_to_dart_output_file
 
 !----------------------------------------------------------------------
 ! global storage
@@ -63,26 +63,26 @@ call initialize_utilities(program_name)
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file("input.nml", "gitm_blocks_to_netcdf_nml", iunit)
-read(iunit, nml = gitm_blocks_to_netcdf_nml, iostat = io)
-call check_namelist_read(iunit, io, "gitm_blocks_to_netcdf_nml") ! closes, too.
+call find_namelist_in_file("input.nml", "aether_blocks_to_netcdf_nml", iunit)
+read(iunit, nml = aether_blocks_to_netcdf_nml, iostat = io)
+call check_namelist_read(iunit, io, "aether_blocks_to_netcdf_nml") ! closes, too.
 
 !----------------------------------------------------------------------
 ! Convert the files
 !----------------------------------------------------------------------
 
 call error_handler(E_MSG, '', '')
-write(string1,*) 'converting gitm restart files in directory ', &
-                 "'"//trim(gitm_restart_input_dirname)//"'"
-write(string2,*) ' to the NetCDF file ', "'"//trim(gitm_to_netcdf_output_file)//"'"
+write(string1,*) 'converting aether restart files in directory ', &
+                 "'"//trim(aether_restart_input_dirname)//"'"
+write(string2,*) ' to the NetCDF file ', "'"//trim(aether_to_dart_output_file)//"'"
 call error_handler(E_MSG, program_name, string1, text2=string2)
 call error_handler(E_MSG, '', '')
 
-call restart_files_to_netcdf(gitm_restart_input_dirname, gitm_to_netcdf_output_file)
+call restart_files_to_netcdf(aether_restart_input_dirname, aether_to_dart_output_file)
 
 call error_handler(E_MSG, '', '')
 write(string1,*) 'Successfully converted the GITM restart files to ', &
-                 "'"//trim(gitm_to_netcdf_output_file)//"'"
+                 "'"//trim(aether_to_dart_output_file)//"'"
 call error_handler(E_MSG, program_name, string1)
 call error_handler(E_MSG, '', '')
 
@@ -93,7 +93,7 @@ call error_handler(E_MSG, '', '')
 ! end - close the log, etc
 call finalize_utilities()
 
-end program gitm_blocks_to_netcdf
+end program aether_to_dart
 
 ! <next few lines under version control, do not edit>
 ! $URL$

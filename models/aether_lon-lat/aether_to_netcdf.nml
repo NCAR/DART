@@ -1,4 +1,0 @@
-&gitm_blocks_to_netcdf_nml
-   gitm_blocks_to_netcdf_input_file = 'filter_input.nc',
-   /
-

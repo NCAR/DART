@@ -1,0 +1,5 @@
+&aether_to_dart_nml
+   aether_restart_input_dirname = 'none'
+   aether_to_dart_output_file = 'filter_input.nc'
+   /
+
