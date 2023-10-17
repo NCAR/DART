@@ -1326,7 +1326,8 @@ real(r8), intent(out) :: obs_inc(ens_size)
 real(r8) :: obs_var_inv, prior_var_inv, new_var, new_mean(ens_size)
 ! real(r8) :: sx, s_x2
 real(r8) :: temp_mean, temp_obs(ens_size)
-integer  :: i
+real(r8) :: new_val(ens_size)
+integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0_r8 / obs_var
@@ -1354,6 +1355,21 @@ end do
 ! Move this so that it has original obs mean
 temp_mean = sum(temp_obs) / ens_size
 temp_obs(:) = temp_obs(:) - temp_mean + obs
+
+! To minimize regression errors, may want to sort to minimize increments
+! This makes sense for any of the non-deterministic algorithms
+! By doing it here, can take care of both standard non-deterministic updates
+! plus non-deterministic obs space covariance inflation. This is expensive, so
+! don't use it if it's not needed.
+if (sort_obs_inc) then
+   new_val = ens + obs_inc
+   ! Sorting to make increments as small as possible
+   call index_sort(ens, ens_index, ens_size)
+   call index_sort(new_val, new_index, ens_size)
+   do i = 1, ens_size
+      obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
+   end do
+endif
 
 ! Loop through pairs of priors and obs and compute new mean
 do i = 1, ens_size
