@@ -68,10 +68,11 @@ The default DART algorithms assume a normal distribution to compute ensemble inc
 for the observed quantity (this is the ensemble adjustment Kalman filter, or EAKF) and 
 then linearly regresses the observation increments onto each state variable.
  
-DART’s newest and innovative capability, the Quantile Conserving Filters (QCF), provide a 
+DART’s newest and innovative capability, the Quantile Conserving Filters (QCF), also known
+as the Quantile Conserving Ensemble Filtering Framework (QCEFF), provide a 
 very general method of computing increments for the prior ensemble of an observed quantity 
-and allow for the use of quantile conserving ensemble filters that can assume arbitrary 
-distributions for the prior and the observation error. Quantile conserving filters are 
+by allowing the use of quantile conserving ensemble filters that can assume arbitrary 
+distributions for the prior and the observation error. Quantile Conserving Filters are 
 especially useful for bounded quantities like tracer concentrations, depths of things like 
 snow or ice, and estimating model parameters that have a restricted range.
 
@@ -86,8 +87,8 @@ posteriors. For example, if state variables are bounded, then posterior ensemble
 the bounds. The posterior ensembles also respect other aspects of the continuous prior distributions.
 
 Inflation and localization, methods that improve the quality of ensemble DA, can also negate the 
-advantages of the quantile conserving method. However, both localization and inflation can be done 
-in the probit-transformed quantile space. 
+advantages of the quantile conserving method. For this reason, both localization and inflation can be done 
+in the probit-transformed quantile space as well. 
 
 Combining these new methods can significantly improve data assimilation for non-Gaussian quantities 
 in Earth system models by extending the capabilities of ensemble DA to general non-Gaussian and 
