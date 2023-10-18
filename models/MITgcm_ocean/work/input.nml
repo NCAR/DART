@@ -78,7 +78,6 @@
 # enabling sampling error correction is generally beneficial
 # the default file is in assimilation_code/programs/gen_sampling_err_table/work
 #
-# With a deterministic filter (filter_kind == 1 or 8)
 # and a deterministic inflation (filter_nml:inf_deterministic == .true.)
 # sort_obs_inc is not needed and is expensive. Should be .false.
 #
@@ -86,7 +85,6 @@
 # in both lists, the same number of items
 
 &assim_tools_nml
-   filter_kind                       = 1
    cutoff                            = 0.025
    distribute_mean                   = .false.
    sort_obs_inc                      = .false.
