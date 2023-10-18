@@ -143,7 +143,6 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 !  special_localization_obs_types -> Special treatment for the specified observation types
 !  special_localization_cutoffs   -> Different cutoff value for each specified obs type
 !
-integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .true.
 logical  :: spread_restoration              = .false.
@@ -202,7 +201,7 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc,            &
+namelist / assim_tools_nml / cutoff, sort_obs_inc,                         &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
@@ -246,12 +245,6 @@ if (do_nml_term()) write(     *     , nml=assim_tools_nml)
 ! Forcing distributed_mean for single processor.
 ! Note null_win_mod.f90 ignores distibute_mean.
 if (task_count() == 1) distribute_mean = .true.
-
-! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
-if(spread_restoration .and. .not. filter_kind == 1) then
-   write(msgstring, *) 'cannot combine spread_restoration and filter_kind ', filter_kind
-   call error_handler(E_ERR,'assim_tools_init:', msgstring, source)
-endif
 
 ! allocate a list in all cases - even the ones where there is only
 ! a single cutoff value.  note that in spite of the name these
@@ -922,6 +915,7 @@ real(r8) :: rel_weights(ens_size)
 
 ! Declarations for bounded rank histogram filter
 real(r8) :: likelihood(ens_size), like_sum
+integer  :: filter_kind
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
 
@@ -2488,33 +2482,6 @@ integer, intent(in) :: num_special_cutoff
 logical, intent(in) :: cache_override
 
 integer :: i
-
-select case (filter_kind)
- case (1)
-   msgstring = 'Ensemble Adjustment Kalman Filter (EAKF)'
- case (2)
-   msgstring = 'Ensemble Kalman Filter (ENKF)'
- case (3)
-   msgstring = 'Kernel filter'
- case (4)
-   msgstring = 'observation space particle filter'
- case (5)
-   msgstring = 'random draw from posterior'
- case (6)
-   msgstring = 'deterministic draw from posterior with fixed kurtosis'
- case (7)
-   msgstring = 'Boxcar'
- case (8)
-   msgstring = 'Rank Histogram Filter'
- case (11)
-   msgstring = 'Gamma Filter'
- case (101)
-   msgstring = 'Bounded Rank Histogram Filter'
- case default
-   call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-8', &
-                      source)
-end select
-call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(msgstring))
 
 if (adjust_obs_impact) then
    call allocate_impact_table(obs_impact_table)

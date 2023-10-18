@@ -82,7 +82,7 @@ end type
 
 integer, parameter :: HEADER_LINES = 2
 character(len=129), dimension(4) :: header1
-character(len=129), dimension(26) :: header2
+character(len=129), dimension(26) :: header2 ! Number of table columns plus 1
 
 character(len=129), allocatable :: specified_qtys(:)
 type(algorithm_info_type), allocatable :: qcf_table_data(:)
@@ -423,10 +423,10 @@ subroutine obs_inc_info(obs_qty, filter_kind, spread_restoration, &
    bounded_below, bounded_above, lower_bound, upper_bound)
 
 integer,  intent(in)  :: obs_qty
-integer,  intent(inout) :: filter_kind
+integer,  intent(out) :: filter_kind
 logical,  intent(inout) :: spread_restoration
-logical,  intent(inout) :: bounded_below, bounded_above
-real(r8), intent(inout) :: lower_bound,  upper_bound
+logical,  intent(out) :: bounded_below, bounded_above
+real(r8), intent(out) :: lower_bound,  upper_bound
 
 integer :: QTY_loc(1)
 character(len=129) :: qty_name
