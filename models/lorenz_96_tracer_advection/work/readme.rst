@@ -4,12 +4,14 @@
 Quantile conserving and probit transform tools
 ==============================================
 
-This file contains instructions for using the lorenz_96_tracer model with DART 
+This file contains instructions for using the lorenz_96_tracer_advection model with DART 
 quantile conserving and probit transform filtering tools. These tools are still
 being refined, but are working for the examples described. The DART development 
 team (dart@ucar.edu) would be happy to hear about your experiences and is
 anxious to build scientific collaborations using these new capabilities.
 
+Make sure that you are on the quantile_methods branch of DART:
+``git checkout quantile_methods``
 
 Steps for reproducing basic tests:
 
@@ -20,9 +22,26 @@ The default model configuration has a single tracer source at gridpoint 1 along 
 small uniform tracer sinks that lead to areas where the true tracer concentration is
 usually 0. This is a particularly tough test for ensemble methods.
 
+#. Download the QCF Table from Google Sheets as a .csv file:
+  
+   Visit this link https://docs.google.com/spreadsheets/d/1ZhKbj0EYKHCgOHvTmJI3k7HI_Ae1NyNKchtekPW0lZs/edit#gid=0
+   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   menu bar.
+   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
+   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
+
+#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
+
+   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
+   in the &filter_mod section. 
+
 #. Build all executables,
 
    ``./quickbuild.sh nompi`` 
+
 #. Create a set_def.out file using create_obs_sequence:
 
    ``./create_obs_sequence < create_obs_sequence_input``
@@ -71,9 +90,21 @@ Doing a diff between these modules shows how the control is being changed for th
 following tests in that module. The tests below 
 replace the default version of that module with others that change certain options. 
 
-#. In directory assimilation_code/modules/assimilation, 
+#. Download the QCF Table from Google Sheets as a .csv file:
+  
+   Visit this link https://docs.google.com/spreadsheets/d/1e26KuOv_uwrn8y1Ki85FzSeQAc9Pw-nCGk91MpJGVC0/edit#gid=0
+   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   menu bar.
+   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
+   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-   ``cp all_eakf_algorithm_info_mod algorithm_info_mod.f90``
+#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
+
+   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
+   in the &filter_mod section.
 
 #. Recompile all programs in this directory,
 
@@ -84,10 +115,22 @@ replace the default version of that module with others that change certain optio
 
 Test C: Using default ensemble adjustment Kalman filter for state, but bounded normal rank histogram filter and priors for tracer concentration and source.
 
-#. In directory assimilation_code/modules/assimilation, 
+#. Download the QCF Table from Google Sheets as a .csv file:
+  
+   Visit this link https://docs.google.com/spreadsheets/d/1BEKEnFrw5KI9jf6ewg0POyr98ul5nGjerSVxjqEPDgA/edit#gid=0
+   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   menu bar.
+   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
+   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-   ``cp state_eakf_tracer_bnrhf_algorithm_info_mod algorithm_info_mod.f90``
+#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
 
+   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
+   in the &filter_mod section.
+   
 #. Recompile all programs in this directory,
 
    ``./quickbiuld.sh nompi``
@@ -102,10 +145,22 @@ above. There are distinct numerical challenges in implementing the quantile algo
 for quantities that are bounded above, so flipping the sign of the tracers is a good
 test. 
 
-#. In directory assimilation_code/modules/assimilation,
- 
-   ``cp neg_algorithm_info_mod algorithm_info_mod.f90``
+#. Download the QCF Table from Google Sheets as a .csv file:
+  
+   Visit this link https://docs.google.com/spreadsheets/d/1RHlwyhCpbgcShoQnGW-xp2v-paw1ar-5-EA-uj9CkR8/edit#gid=0
+   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   menu bar.
+   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
+   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
+#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
+
+   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
+   in the &filter_mod section.
+   
 #. Recompile all programs in this directory,
 
    ``./quickbiuld.sh nompi``
@@ -114,5 +169,3 @@ test.
    entry read_input_state_from_file back to .false. 
 
 #. Repeat steps 3-6 from Test A.
-
-

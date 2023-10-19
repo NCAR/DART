@@ -99,8 +99,11 @@ estimated with DA and large improvements can occur for bounded parameters. Varia
 non-Gaussian prior distributions can also see large improvements. Examples can include atmospheric 
 quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
 
-The instructions to use these tools can be found on this page: 
+Instructions to use these tools can be found on this page: 
 :ref:`QCF`
+
+Examples for using these tools with the lorenz_96_tracer_advection model can be found here:
+:ref:`quantile tracer`
 
 Organization of the documentation
 ---------------------------------
@@ -270,7 +273,8 @@ References
    guide/downloading-dart
    guide/compiling-dart
    guide/verifying-installation
-   guide/qcf_probit.rst
+   guide/qcf_probit
+   models/lorenz_96_tracer_advection/work/readme
 
 .. toctree::
    :maxdepth: 2
