@@ -1,8 +1,8 @@
 .. _quantile tracer: 
 
 
-Quantile conserving and probit transform tools
-==============================================
+QCF and Probit Transform Tools - Examples with lorenz_96_tracer_advection
+=========================================================================
 
 This file contains instructions for using the lorenz_96_tracer_advection model with DART 
 quantile conserving and probit transform filtering tools. These tools are still
@@ -24,20 +24,18 @@ usually 0. This is a particularly tough test for ensemble methods.
 
 #. Download the QCF Table from Google Sheets as a .csv file:
   
-   Visit this link https://docs.google.com/spreadsheets/d/1ZhKbj0EYKHCgOHvTmJI3k7HI_Ae1NyNKchtekPW0lZs/edit#gid=0
-   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   * Visit this link: https://docs.google.com/spreadsheets/d/1ZhKbj0EYKHCgOHvTmJI3k7HI_Ae1NyNKchtekPW0lZs/edit#gid=0
+   * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
    menu bar.
-   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
    For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
    Rename this file to remove this addition to ensure that there are no spaces in the filename.
-   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
+   * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
-
-   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
-   in the &filter_mod section. 
-
+#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+   in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
+   
 #. Build all executables,
 
    ``./quickbuild.sh nompi`` 
@@ -92,24 +90,18 @@ replace the default version of that module with others that change certain optio
 
 #. Download the QCF Table from Google Sheets as a .csv file:
   
-   Visit this link https://docs.google.com/spreadsheets/d/1e26KuOv_uwrn8y1Ki85FzSeQAc9Pw-nCGk91MpJGVC0/edit#gid=0
-   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   * Visit this link https://docs.google.com/spreadsheets/d/1e26KuOv_uwrn8y1Ki85FzSeQAc9Pw-nCGk91MpJGVC0/edit#gid=0
+   * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
    menu bar.
-   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
    For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
    Rename this file to remove this addition to ensure that there are no spaces in the filename.
-   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
+   * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
-
-   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
-   in the &filter_mod section.
-
-#. Recompile all programs in this directory,
-
-   ``./quickbiuld.sh nompi``
-
+#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+   in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
+   
 #. Run the filter 
    ``./filter``
 
@@ -117,24 +109,18 @@ Test C: Using default ensemble adjustment Kalman filter for state, but bounded n
 
 #. Download the QCF Table from Google Sheets as a .csv file:
   
-   Visit this link https://docs.google.com/spreadsheets/d/1BEKEnFrw5KI9jf6ewg0POyr98ul5nGjerSVxjqEPDgA/edit#gid=0
-   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   * Visit this link https://docs.google.com/spreadsheets/d/1BEKEnFrw5KI9jf6ewg0POyr98ul5nGjerSVxjqEPDgA/edit#gid=0
+   * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
    menu bar.
-   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
    For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
    Rename this file to remove this addition to ensure that there are no spaces in the filename.
-   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
+   * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
-
-   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
-   in the &filter_mod section.
+#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+   in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
    
-#. Recompile all programs in this directory,
-
-   ``./quickbiuld.sh nompi``
-
 #. Run the filter 
    ``./filter``
 
@@ -147,25 +133,19 @@ test.
 
 #. Download the QCF Table from Google Sheets as a .csv file:
   
-   Visit this link https://docs.google.com/spreadsheets/d/1RHlwyhCpbgcShoQnGW-xp2v-paw1ar-5-EA-uj9CkR8/edit#gid=0
-   Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
+   * Visit this link https://docs.google.com/spreadsheets/d/1RHlwyhCpbgcShoQnGW-xp2v-paw1ar-5-EA-uj9CkR8/edit#gid=0
+   * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
    menu bar.
-   Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
    For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
    Rename this file to remove this addition to ensure that there are no spaces in the filename.
-   Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
+   * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to /DART/models/lorenz_96_tracer_advection/work/input.nml
-
-   Add the name of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''``
-   in the &filter_mod section.
+#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+   in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
    
-#. Recompile all programs in this directory,
-
-   ``./quickbiuld.sh nompi``
-
 #. In the file input.nml, change the entry positive_tracer to .false. Also, change the
    entry read_input_state_from_file back to .false. 
 
-#. Repeat steps 3-6 from Test A.
+#. Repeat steps 5-8 from Test A.
