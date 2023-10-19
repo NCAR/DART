@@ -69,9 +69,9 @@ EAKF, ENKF, UNBOUNDED_RHF, GAMMA_FILTER, BOUNDED_NORMAL_RHF
 Make a copy of the table by selecting 'File > Make a copy' from the menu bar.
 
 To customize the spreadsheet, click on the cell you want to edit and change the value of that cell.
-To add a new QTY to the spreadsheet, copy row 3 of the table into the next available row, change ``QTY_TEMPLATE`` to the name of the QTY to specify, and edit the cells individually to set the control options.
+To add a new QTY to the spreadsheet, copy row 3 of the table into the next available row, change ``QTY_NAME`` to the name of the QTY to specify, and edit the cells individually to set the control options.
 To remove a QTY from the spreadsheet, select the row number corresponding to that QTY. Then right click and choose "Delete Row"
-Make sure to remove the row for ``QTY_TEMPLATE`` when you have finished adding all of the specified QTYs to the table.
+Make sure to remove the row for ``QTY_NAME`` when you have finished adding all of the specified QTYs to the table.
 
 Ensure that there are no empty rows in between the QTYs listed in the spreadsheet.
 

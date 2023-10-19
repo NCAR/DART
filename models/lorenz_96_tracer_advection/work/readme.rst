@@ -1,8 +1,8 @@
 .. _quantile tracer: 
 
 
-QCF and Probit Transform Tools - Examples with lorenz_96_tracer_advection
-=========================================================================
+QCF and Probit Transform Tools: Examples with the Lorenz 96 Tracer Model
+========================================================================
 
 This file contains instructions for using the lorenz_96_tracer_advection model with DART 
 quantile conserving and probit transform filtering tools. These tools are still
@@ -26,14 +26,11 @@ usually 0. This is a particularly tough test for ensemble methods.
   
    * Visit this link: https://docs.google.com/spreadsheets/d/1ZhKbj0EYKHCgOHvTmJI3k7HI_Ae1NyNKchtekPW0lZs/edit#gid=0
    * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
-   menu bar.
-   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
-   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
-   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the menu bar.
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv". Rename this file to remove this addition to ensure that there are no spaces in the filename.
    * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+#. Add the filename of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''`` 
    in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
    
 #. Build all executables,
@@ -92,14 +89,11 @@ replace the default version of that module with others that change certain optio
   
    * Visit this link https://docs.google.com/spreadsheets/d/1e26KuOv_uwrn8y1Ki85FzSeQAc9Pw-nCGk91MpJGVC0/edit#gid=0
    * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
-   menu bar.
-   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
-   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
-   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the menu bar.
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv". Rename this file to remove this addition to ensure that there are no spaces in the filename.
    * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+#. Add the filename of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''`` 
    in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
    
 #. Run the filter 
@@ -111,14 +105,11 @@ Test C: Using default ensemble adjustment Kalman filter for state, but bounded n
   
    * Visit this link https://docs.google.com/spreadsheets/d/1BEKEnFrw5KI9jf6ewg0POyr98ul5nGjerSVxjqEPDgA/edit#gid=0
    * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
-   menu bar.
-   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
-   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
-   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the menu bar.
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv". Rename this file to remove this addition to ensure that there are no spaces in the filename.
    * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+#. Add the filename of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''`` 
    in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
    
 #. Run the filter 
@@ -135,14 +126,11 @@ test.
   
    * Visit this link https://docs.google.com/spreadsheets/d/1RHlwyhCpbgcShoQnGW-xp2v-paw1ar-5-EA-uj9CkR8/edit#gid=0
    * Make a copy of the spreadsheet by selecting "File > Make a copy" from the menu bar.
-   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the 
-   menu bar.
-   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. 
-   For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv"
-   Rename this file to remove this addition to ensure that there are no spaces in the filename.
+   * Download the spreadsheet as a .csv file by selecting "File > Download > csv" from the menu bar.
+   * Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv". Rename this file to remove this addition to ensure that there are no spaces in the filename.
    * Copy or move this file to your working directory (/DART/models/lorenz_96_tracer_advection/work).
 
-#. Add the filename of the downloaded .csv file to in between the single quotes on the line ``qcf_table_filename = ''`` 
+#. Add the filename of the downloaded .csv file in between the single quotes on the line ``qcf_table_filename = ''`` 
    in the &filter_mod section of /DART/models/lorenz_96_tracer_advection/work/input.nml
    
 #. In the file input.nml, change the entry positive_tracer to .false. Also, change the
