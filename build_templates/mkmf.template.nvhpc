@@ -20,5 +20,5 @@ LD = ftn
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS = -O -Mbackslash $(INCS)
+FFLAGS = -O -Kieee -Mbackslash $(INCS)
 LDFLAGS = $(INCS) $(LIBS)
