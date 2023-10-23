@@ -131,18 +131,6 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 
 !---- namelist with default values
 
-! Filter kind selects type of observation space filter
-!      1 = EAKF filter
-!      2 = ENKF
-!      3 = Kernel filter
-!      4 = particle filter
-!      5 = random draw from posterior
-!      6 = deterministic draw from posterior with fixed kurtosis
-!      8 = Rank Histogram Filter (see Anderson 2011)
-!
-!  special_localization_obs_types -> Special treatment for the specified observation types
-!  special_localization_cutoffs   -> Different cutoff value for each specified obs type
-!
 real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .true.
 logical  :: spread_restoration              = .false.
