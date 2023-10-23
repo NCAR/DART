@@ -428,10 +428,6 @@ real(r8), intent(out) :: lower_bound,  upper_bound
 integer :: QTY_loc(1)
 character(len=129) :: qty_name
 
-! The information arguments are all intent (inout). This means that if they are not set
-! here, they retain the default values from the assim_tools_mod namelist. Bounds don't exist 
-! in that namelist, so default values are set in assim_tools_mod just before the call to here.
-
 ! Temporary approach for setting the details of how to assimilate this observation
 ! This example is designed to reproduce the squared forward operator results from paper
 
