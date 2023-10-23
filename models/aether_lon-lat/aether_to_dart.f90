@@ -9,13 +9,13 @@ program aether_to_dart
 !----------------------------------------------------------------------
 ! purpose: interface between the GITM model and DART
 !
-! method: Read aether "restart" files of model state (multiple files, one
-!         block per aether mpi task)
+! method: Read aether "restart" files of model state (multiple files, 
+!         one block per aether mpi task)
 !         Reform fields into a DART netcdf file
 !
-! USAGE:  The aether dirname is read from the aether_in namelist
-!         <edit aether_to_dart_output_file in input.nml:aether_blocks_to_netcdf_nml>
-!         aether_blocks_to_netcdf
+! USAGE:  The aether restart dirname and output filename are read from 
+!         the aether_to_dart_nml namelist.
+!         <edit input.nml:aether_to_dart_nml>
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
@@ -37,7 +37,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=512) :: string1, string2
-character(len=*), parameter :: program_name = 'aether_blocks_to_netcdf'
+character(len=*), parameter :: program_name = 'aether_to_dart'
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
@@ -46,8 +46,8 @@ character(len=*), parameter :: program_name = 'aether_blocks_to_netcdf'
 character(len=256) :: aether_restart_input_dirname    = 'none'
 character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
 
-namelist /aether_to_dart/ aether_restart_input_dirname,        &
-                          aether_to_dart_output_file
+namelist /aether_to_dart_nml/ aether_restart_input_dirname,        &
+                              aether_to_dart_output_file
 
 !----------------------------------------------------------------------
 ! global storage
@@ -63,9 +63,9 @@ call initialize_utilities(program_name)
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file("input.nml", "aether_blocks_to_netcdf_nml", iunit)
-read(iunit, nml = aether_blocks_to_netcdf_nml, iostat = io)
-call check_namelist_read(iunit, io, "aether_blocks_to_netcdf_nml") ! closes, too.
+call find_namelist_in_file("input.nml", "aether_to_dart_nml", iunit)
+read(iunit, nml = aether_to_dart_nml, iostat = io)
+call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
 
 !----------------------------------------------------------------------
 ! Convert the files
