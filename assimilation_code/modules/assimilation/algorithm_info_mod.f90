@@ -428,9 +428,6 @@ real(r8), intent(out) :: lower_bound,  upper_bound
 integer :: QTY_loc(1)
 character(len=129) :: qty_name
 
-! Temporary approach for setting the details of how to assimilate this observation
-! This example is designed to reproduce the squared forward operator results from paper
-
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
    filter_kind = BOUNDED_NORMAL_RHF
