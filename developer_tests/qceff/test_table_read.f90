@@ -17,7 +17,7 @@ call initialize_utilities('test_table_read')
 call get_command_argument(1,qcf_table_filename)
 
 call init_algorithm_info_mod(qcf_table_filename)
-
+call finalize_utilities()
 call end_algorithm_info_mod()
 
 
