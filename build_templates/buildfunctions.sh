@@ -193,7 +193,9 @@ elif [ "$mpisrc" == "mpif08" ]; then
 else  #nompi
 
    core=${core//$mpi/}
+   core=${core//$mpif08/}
    core=${core//$nocraywin/}
+   core=${core//$no_cray_winf08/}
    core=${core//$craywin/}
 fi
 
