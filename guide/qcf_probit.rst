@@ -18,9 +18,9 @@ If the user does not use a QCF input table with the DART quantile conserving and
 
 Table Composition
 -----------------
-The table consists of two headers. The first states the version # of the table being used; the most recent version of the table needs to be used to ensure compatibilty with DART. The current version # is 1. The second header lists the full set of input options, or all 25 column names in other words.
+The table consists of two headers. The first states the version # of the table being used; the most recent version of the table needs to be used to ensure compatibilty with DART. The current version # is 1. The second header lists the full set of input options, or all 24 column names in other words.
 
-Each QTY is specified in its own column, having 25 total control options. 
+Each QTY is specified in its own column, having 24 total control options. 
 These control options are divided into 3 main groups, which are the options used for the obs_error_info, probit_dist_info, and obs_inc_info. However, the user is able to specify different values for probit inflation, probit state, and probit extended state, resulting in 5 total groupings for the control options.
 
 The obs_error_info subroutine computes information needed to compute error sample for this observation.
@@ -30,12 +30,12 @@ The probit_dist_info subroutine computes the details of the probit transform.
 From probit_dist_info, the values needed are the bounds and the distribution type. These can be different for all three cases (inflation, state, and extended_state).
 
 The obs_inc_info subrotuine sets the details of how to assimilate this observation.
-From obs_inc_info, the bounds, plus the filter_kind and spread_restoration are needed.
+From obs_inc_info, the values needed are the bounds and the filter_kind.
 
 Full list of options:
 Obs_error_info: bounded_below, bounded_above, lower_bound, upper_bound [4 columns]
 Probit_dist_info: dist_type, bounded_below, bounded_above, lower_bound, upper_bound (x3 for inflation, state, and observation (extended state) priors) [15 columns]
-Obs_inc_info: filter_kind, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound [6 columns]
+Obs_inc_info: filter_kind, bounded_below, bounded_above, lower_bound, upper_bound [5 columns]
 
 Customizing the Table
 ---------------------
@@ -50,7 +50,6 @@ lower_bound   = -888888
 upper_bound   = -888888
 dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
 filter_kind = BOUNDED_NORMAL_RHF
-spread_restoration = .false.
 
 Note that bounds set to -888888 are missing_r8 values.
 

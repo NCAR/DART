@@ -246,6 +246,12 @@ if (do_nml_term()) write(     *     , nml=assim_tools_nml)
 ! Note null_win_mod.f90 ignores distibute_mean.
 if (task_count() == 1) distribute_mean = .true.
 
+if(spread_restoration) then
+   write(msgstring, *) 'The spread_restoration option is not supported in this version of ', &
+                       'DART. Contact the DAReS team if this option is needed '
+   call error_handler(E_ERR,'assim_tools_init:', msgstring, source)
+endif
+
 ! allocate a list in all cases - even the ones where there is only
 ! a single cutoff value.  note that in spite of the name these
 ! are specific types (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE)
@@ -965,12 +971,8 @@ endif
 bounded_below = .false.;      lower_bound = 0.0_r8
 bounded_above = .false.;      upper_bound = 0.0_r8
 
-call obs_inc_info(obs_kind, filter_kind, spread_restoration, &
-        bounded_below, bounded_above, lower_bound, upper_bound)
-
-! Could add logic to check on sort being true when not needed.
-! Could also add logic to limit the use of spread_restoration to EAKF. It will fail
-! in some ugly way right now.
+call obs_inc_info(obs_kind, filter_kind, bounded_below, bounded_above, &
+                  lower_bound, upper_bound)
 
 !----------------------------end algorithm_info control block-----------------
 
@@ -1546,41 +1548,6 @@ endif
 
 ! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
-
-!
-! FIXME: craig schwartz has a degenerate case involving externally computed
-! forward operators in which the obs prior variance is in fact exactly 0.
-! adding this test allowed him to continue to  use spread restoration
-! without numerical problems.  we don't know if this is sufficient;
-! for now we'll leave the original code but it needs to be revisited.
-!
-! Spread restoration algorithm option.
-!if(spread_restoration .and. obs_prior_var > 0.0_r8) then
-!
-
-! Spread restoration algorithm option.
-if(spread_restoration) then
-   ! Don't use this to reduce spread at present (should revisit this line)
-   net_a = min(net_a_in, 1.0_r8)
-
-   ! Default restoration increment is 0.0
-   restoration_inc = 0.0_r8
-
-   ! Compute the factor by which to inflate
-   ! These come from correl_error.f90 in system_simulation and the files ens??_pairs and
-   ! ens_pairs_0.5 in work under system_simulation. Assume a linear reduction from 1
-   ! as a function of the net_a. Assume that the slope of this reduction is a function of
-   ! the reciprocal of the ensemble_size (slope = 0.80 / ens_size). These are empirical
-   ! for now. See also README in spread_restoration_paper documentation.
-   !!!factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) * (0.8_r8 / ens_size)) - 1.0_r8
-   factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) / (-2.4711_r8 + 1.6386_r8 * ens_size)) - 1.0_r8
-   !!!factor = 1.0_r8 / (1.0_r8 + (net_a**2 - 1.0_r8) * (-0.0111_r8 + .8585_r8 / ens_size)) - 1.0_r8
-
-   ! Variance restoration
-   state_mean = sum(state) / ens_size
-   restoration_inc = factor * (state - state_mean)
-   state_inc = state_inc + restoration_inc
-endif
 
 !! NOTE: if requested to be returned, correl_out is set further up in the
 !! code, before the sampling error correction, if enabled, is applied.

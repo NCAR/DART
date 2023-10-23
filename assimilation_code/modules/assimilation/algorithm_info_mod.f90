@@ -67,7 +67,6 @@ end type
 
 type obs_inc_info_type
    integer               :: filter_kind
-   logical               :: spread_restoration
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
 end type
@@ -82,7 +81,7 @@ end type
 
 integer, parameter :: HEADER_LINES = 2
 character(len=129), dimension(4) :: header1
-character(len=129), dimension(26) :: header2 ! Number of table columns plus 1
+character(len=129), dimension(25) :: header2 ! Number of table columns plus 1
 
 character(len=129), allocatable :: specified_qtys(:)
 type(algorithm_info_type), allocatable :: qcf_table_data(:)
@@ -181,8 +180,7 @@ do row = 1, size(qcf_table_data)
                    qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, dist_type_string_probit_extended_state(row), &
                    qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
                    qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-                   filter_kind_string(row), qcf_table_data(row)%obs_inc_info%spread_restoration, &
-                   qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
+                   filter_kind_string(row), qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                    qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
 
    ! Converting the distribution types (read in from table as a string) to its corresponding int value
@@ -419,12 +417,11 @@ end subroutine probit_dist_info
 !------------------------------------------------------------------------
 
 
-subroutine obs_inc_info(obs_qty, filter_kind, spread_restoration, &
-   bounded_below, bounded_above, lower_bound, upper_bound)
+subroutine obs_inc_info(obs_qty, filter_kind, bounded_below, bounded_above, &
+                        lower_bound, upper_bound)
 
 integer,  intent(in)  :: obs_qty
 integer,  intent(out) :: filter_kind
-logical,  intent(inout) :: spread_restoration
 logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,  upper_bound
 
@@ -443,7 +440,6 @@ if (use_qty_defaults) then
    filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
-   spread_restoration = .false.
    return
 endif
 
@@ -458,13 +454,10 @@ if (QTY_loc(1) == 0) then
    filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = missing_r8; upper_bound   = missing_r8
-   spread_restoration = .false.
-   ! Default settings for now for Icepack and tracer model tests (spread_restoration)
 
    else
 
       filter_kind = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
-      spread_restoration = qcf_table_data(QTY_loc(1))%obs_inc_info%spread_restoration
       bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_above
       lower_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound
@@ -573,7 +566,7 @@ call error_handler(E_MSG, 'log_qcf_table_data:', 'Logging the data in the QCF Ta
 write(log_msg, '(A4, A6, A9, A)') header1(:)
 call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
 
-write(log_msg,'(3A14, 2A12, 3(A10, 2A14, 2A12), A12, A23, A26, A13, A19, 2A14, 2A12)') header2(:)
+write(log_msg,'(3A14, 2A12, 3(A10, 2A14, 2A12), A12, 2A14, 2A12)') header2(:)
 call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
 
 ! Write the table data to the dart_log and terminal
@@ -586,8 +579,8 @@ do row = 1, size(qcf_table_data)
                qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, trim(dist_type_string_probit_extended_state(row)), &
                qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
                qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-               trim(filter_kind_string(row)), qcf_table_data(row)%obs_inc_info%spread_restoration, qcf_table_data(row)%obs_inc_info%bounded_below, &
-               qcf_table_data(row)%obs_inc_info%bounded_above, qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+               trim(filter_kind_string(row)), qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
+               qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
 call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
 end do
 
