@@ -67,8 +67,8 @@ The default DART algorithms assume a normal distribution to compute ensemble inc
 for the observed quantity (this is the ensemble adjustment Kalman filter, or EAKF) and 
 then linearly regresses the observation increments onto each state variable.
  
-DART’s newest and innovative capability, the Quantile Conserving Filters (QCF), also known
-as the Quantile Conserving Ensemble Filtering Framework (QCEFF), provide a 
+DART’s newest and innovative capability, the :ref:`Quantile Conserving Filters (QCF) <QCF>`, 
+also known as the Quantile Conserving Ensemble Filtering Framework (QCEFF), provide a 
 very general method of computing increments for the prior ensemble of an observed quantity 
 by allowing the use of quantile conserving ensemble filters that can assume arbitrary 
 distributions for the prior and the observation error. Quantile Conserving Filters are 
