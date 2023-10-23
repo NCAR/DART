@@ -22,3 +22,9 @@ INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 FFLAGS = -O -Kieee -Mbackslash $(INCS)
 LDFLAGS = $(INCS) $(LIBS)
+
+# For development or debugging, use the following flags.
+# To generate a traceback, 
+# set the enviroment variable 'NVCOMPILER_TERM=trace' at runtime.
+# FFLAGS = -gopt -C -traceback -Ktrap=fp  -Mbackslash -Kieee $(INCS)
+
