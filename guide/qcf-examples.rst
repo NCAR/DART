@@ -1,5 +1,4 @@
-.. _quantile tracer: 
-
+.. _quantile tracer:
 
 QCF and Probit Transform Tools: Examples with the Lorenz 96 Tracer Model
 ========================================================================
