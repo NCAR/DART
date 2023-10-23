@@ -491,7 +491,7 @@ References
    assimilation_code/modules/observations/obs_kind_mod
    assimilation_code/modules/observations/DEFAULT_obs_kind_mod
    assimilation_code/modules/observations/obs_sequence_mod
-   assimilation_code/modules/assimilation/assim_readme
+   assimilation_code/modules/assimilation/assim_model_mod
    assimilation_code/modules/assimilation/assim_tools_mod
    assimilation_code/modules/assimilation/cov_cutoff_mod
    assimilation_code/modules/assimilation/obs_model_mod
