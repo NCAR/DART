@@ -1352,12 +1352,18 @@ end do
 temp_mean = sum(temp_obs) / ens_size
 temp_obs(:) = temp_obs(:) - temp_mean + obs
 
+! Loop through pairs of priors and obs and compute new mean
+do i = 1, ens_size
+   new_mean(i) = new_var * (prior_var_inv * ens(i) + temp_obs(i) / obs_var)
+   obs_inc(i)  = new_mean(i) - ens(i)
+end do
+
 ! To minimize regression errors, may want to sort to minimize increments
 ! This makes sense for any of the non-deterministic algorithms
 ! By doing it here, can take care of both standard non-deterministic updates
 ! plus non-deterministic obs space covariance inflation. This is expensive, so
 ! don't use it if it's not needed.
-if (sort_obs_inc) then
+if (sort_obs_inc) then 
    new_val = ens + obs_inc
    ! Sorting to make increments as small as possible
    call index_sort(ens, ens_index, ens_size)
@@ -1366,12 +1372,6 @@ if (sort_obs_inc) then
       obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
    end do
 endif
-
-! Loop through pairs of priors and obs and compute new mean
-do i = 1, ens_size
-   new_mean(i) = new_var * (prior_var_inv * ens(i) + temp_obs(i) / obs_var)
-   obs_inc(i)  = new_mean(i) - ens(i)
-end do
 
 ! Can also adjust mean (and) variance of final sample; works fine
 !sx         = sum(new_mean)
