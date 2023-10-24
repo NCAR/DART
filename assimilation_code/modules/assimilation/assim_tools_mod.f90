@@ -955,10 +955,6 @@ endif
 ! Note that all but the first argument to obs_inc_info are intent(inout) so that if they
 ! are not set in that routine they will remain with the namelist selected values.
 
-! Set default values for bounds information
-bounded_below = .false.;      lower_bound = 0.0_r8
-bounded_above = .false.;      upper_bound = 0.0_r8
-
 call obs_inc_info(obs_kind, filter_kind, bounded_below, bounded_above, &
                   lower_bound, upper_bound)
 
