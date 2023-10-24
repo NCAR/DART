@@ -946,22 +946,9 @@ if(do_obs_inflate(inflate)) then
       prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
 
-!--------------------------begin algorithm_info control block-----------------
-! More flexible abilities to control the observation space increments are 
-! available with this code block. It gets information about the increment method
-! for the current observation.
-
-! This is not an extensible mechanism for doing this as the number of 
-! obs increments distributions and associated information goes up
-! Implications for sorting increments and for spread restoration need to be examined
-! further. 
-! Note that all but the first argument to obs_inc_info are intent(inout) so that if they
-! are not set in that routine they will remain with the namelist selected values.
-
+! Gets information about the increment method (filter_kind, bounds) for the current observation.
 call obs_inc_info(obs_kind, filter_kind, bounded_below, bounded_above, &
                   lower_bound, upper_bound)
-
-!----------------------------end algorithm_info control block-----------------
 
 ! The first three options in the next if block of code may be inappropriate for 
 ! some more general filters; need to revisit

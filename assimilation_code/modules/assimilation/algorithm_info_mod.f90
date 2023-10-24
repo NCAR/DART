@@ -349,15 +349,13 @@ character(len=129) :: qty_name
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
 ! or state variable and about whether the transformation is being done for inflation
-! or for regress. 
-! Need to select the appropriate transform. At present, the options are NORMAL_DISTRIBUTION,
-! BOUNDED_NORMAL_RH_DISTRIBUTION, GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION,
+! or for regress.
+ 
+! Selects the appropriate transform, which is specified in the QCF input table per QTY. 
+! At present, the options are NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, 
+! GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION,
 ! UNIFORM_DISTRIBUTION, and PARTICLE_FILTER_DISTRIBUTION.
 ! If the BNRH is selected then information about the bounds must also be set.
-! The two dimensional logical array 'bounded' is set to false for no bounds and true
-! for bounded. the first element of the array is for the lower bound, the second for the upper.
-! If bounded is chosen, the corresponding bound value(s) must be set in the two dimensional 
-! real array 'bounds'.
 ! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
 ! would be:
 ! bounded_below = .true.;  bounded_above = .true.
