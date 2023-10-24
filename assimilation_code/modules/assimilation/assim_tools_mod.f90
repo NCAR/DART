@@ -907,11 +907,12 @@ integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 real(r8) :: rel_weights(ens_size)
 
-! Declarations for bounded rank histogram filter
-real(r8) :: likelihood(ens_size), like_sum
 integer  :: filter_kind
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
+
+! Declarations for bounded rank histogram filter
+real(r8) :: likelihood(ens_size), like_sum
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
