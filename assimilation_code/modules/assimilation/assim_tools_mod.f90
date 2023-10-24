@@ -76,7 +76,9 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, EAKF, ENKF, &
+                               BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
+                               KERNEL, OBS_PARTICLE
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -992,21 +994,21 @@ else
    ! note that at this point we've taken care of the cases where either the
    ! obs_var or the prior_var is 0, so the individual routines no longer need
    ! to have code to test for those cases.
-   if(filter_kind == 1) then
+   if(filter_kind == EAKF) then
       call obs_increment_eakf(ens, ens_size, prior_mean, prior_var, &
          obs, obs_var, obs_inc, net_a)
-   else if(filter_kind == 2) then
+   else if(filter_kind == ENKF) then
       call obs_increment_enkf(ens, ens_size, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 3) then
+   else if(filter_kind == KERNEL) then
       call obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 4) then
+   else if(filter_kind == OBS_PARTICLE) then
       call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 8) then
+   else if(filter_kind == UNBOUNDED_RHF) then
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 11) then
+   else if(filter_kind == GAMMA_FILTER) then
       call obs_increment_gamma(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
    !--------------------------------------------------------------------------
-   else if(filter_kind == 101) then
+   else if(filter_kind == BOUNDED_NORMAL_RHF) then
 
       ! Use bounded normal likelihood; Could use an arbitrary likelihood
       do i = 1, ens_size

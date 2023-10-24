@@ -33,13 +33,16 @@ logical :: use_qty_defaults = .true.
 ! That will change if backwards compatibility is removed in the future.
 integer, parameter :: EAKF               = 1
 integer, parameter :: ENKF               = 2
+integer, parameter :: KERNEL             = 3
+integer, parameter :: OBS_PARTICLE       = 4
 integer, parameter :: UNBOUNDED_RHF      = 8
 integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101 
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
           init_algorithm_info_mod, end_algorithm_info_mod, &
-          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER
+          EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, &
+          GAMMA_FILTER, KERNEL, OBS_PARTICLE
 
 !Creates the type definitions for the QCF table
 type obs_error_info_type
