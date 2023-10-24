@@ -12,6 +12,9 @@ anxious to build scientific collaborations using these new capabilities.
 Make sure that you are on the quantile_methods branch of DART:
 ``git checkout quantile_methods``
 
+Build all executables:
+   ``./quickbuild.sh nompi``
+
 Steps for reproducing basic tests:
 
 Test A: Assimilating observations of state (wind) and tracer concentration using
@@ -21,11 +24,7 @@ The default model configuration has a single tracer source at gridpoint 1 along 
 small uniform tracer sinks that lead to areas where the true tracer concentration is
 usually 0. This is a particularly tough test for ensemble methods.
 
-#. Build all executables,
-
-   ``./quickbuild.sh nompi``
-
-#. Add the filename of the already prepared .csv file (all_bnrhf_qcf_table.csv) in between 
+#. Add the filename of the already prepared QCF table (all_bnrhf_qcf_table.csv) in between 
    the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of 
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
@@ -82,7 +81,7 @@ Doing a diff between these modules shows how the control is being changed for th
 following tests in that module. The tests below 
 replace the default version of that module with others that change certain options. 
 
-#. Add the filename of the already prepared .csv file (all_eakf_qcf_table.csv) in between 
+#. Add the filename of the already prepared QCF table (all_eakf_qcf_table.csv) in between 
    the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
@@ -96,7 +95,7 @@ replace the default version of that module with others that change certain optio
 
 Test C: Using default ensemble adjustment Kalman filter for state, but bounded normal rank histogram filter and priors for tracer concentration and source.
 
-#. Add the filename of the already prepared .csv file (state_eakf_tracer_bnrhf_qcf_table.csv) in  
+#. Add the filename of the already prepared QCF table (state_eakf_tracer_bnrhf_qcf_table.csv) in  
    between the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
@@ -115,15 +114,16 @@ above. There are distinct numerical challenges in implementing the quantile algo
 for quantities that are bounded above, so flipping the sign of the tracers is a good
 test. 
 
-#. Add the filename of the already prepared .csv file (neg_qcf_table.csv) in between the 
+#. Add the filename of the already prepared QCF table (neg_qcf_table.csv) in between the 
    single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
-   .. code::
+   .. code-block:: text
 
       &filter_nml
-      qcf_table_filename = 'neg_qcf_table.csv'
-   
+         qcf_table_filename = 'neg_qcf_table.csv'
+      /
+
 #. In the file input.nml, change the entry positive_tracer to .false. Also, change the
    entry read_input_state_from_file back to .false. 
 

@@ -39,7 +39,7 @@ Obs_inc_info: filter_kind, bounded_below, bounded_above, lower_bound, upper_boun
 
 Customizing the Table
 ---------------------
-The table can be customized by editing a Google Sheet spreadsheet (which is then downloaded in .csv format). Folow this link https://docs.google.com/spreadsheets/d/1SI4wHBXatLAAMfiMx3mUUC7x0fqz4lniKuM4_i5j6bM/edit#gid=0 to access the template spreadsheet.
+The table can be customized by editing a Google Sheet spreadsheet (which is then downloaded in .csv format). Folow this `link <https://docs.google.com/spreadsheets/d/1SI4wHBXatLAAMfiMx3mUUC7x0fqz4lniKuM4_i5j6bM/edit#gid=0>`_ to access the template spreadsheet.
 
 The user will add and fill in one row for each bounded QTY they want to specify. If a QTY is not listed in the table, the default values will be used for all 25 options. Therefore, the user will only need to add rows for QTYs that use non-default values for any of the input options.
 
