@@ -9,13 +9,9 @@ being refined, but are working for the examples described. The DART development
 team (dart@ucar.edu) would be happy to hear about your experiences and is
 anxious to build scientific collaborations using these new capabilities.
 
-Make sure that you are on the quantile_methods branch of DART:
-``git checkout quantile_methods``
+Make sure that you are on the quantile_methods branch of DART: ``git checkout quantile_methods``
 
-Build all executables:
-   ``./quickbuild.sh nompi``
-
-Steps for reproducing basic tests:
+Build all executables: ``./quickbuild.sh nompi``
 
 Test A: Assimilating observations of state (wind) and tracer concentration using
 a rank histogram observation space filter and rank histogram probit transforms for
@@ -28,10 +24,11 @@ usually 0. This is a particularly tough test for ensemble methods.
    the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of 
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
-   .. code::
+   .. code-block:: text
 
       &filter_nml
-      qcf_table_filename = 'all_bnrhf_qcf_table.csv'
+         qcf_table_filename = 'neg_qcf_table.csv'
+      / 
 
 #. Create a set_def.out file using create_obs_sequence:
 
@@ -85,10 +82,11 @@ replace the default version of that module with others that change certain optio
    the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
-   .. code::
+   .. code-block:: text
 
       &filter_nml
-      qcf_table_filename = 'all_eakf_qcf_table.csv'
+         qcf_table_filename = 'neg_qcf_table.csv'
+      / 
 
 #. Run the filter 
    ``./filter``
@@ -99,10 +97,11 @@ Test C: Using default ensemble adjustment Kalman filter for state, but bounded n
    between the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
    /DART/models/lorenz_96_tracer_advection/work/input.nml
 
-   .. code::
+   .. code-block:: text
 
       &filter_nml
-      qcf_table_filename = 'state_eakf_tracer_bnrhf_qcf_table.csv'
+         qcf_table_filename = 'neg_qcf_table.csv'
+      / 
 
 #. Run the filter 
    ``./filter``
