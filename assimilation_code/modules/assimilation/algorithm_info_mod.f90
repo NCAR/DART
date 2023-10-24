@@ -467,7 +467,9 @@ subroutine assert_qcf_table_version()
 
 ! Subroutine to ensure the correct version of the QCF table is being used
 
-if (trim(header1(4)) /= '1') then
+character(1), parameter :: QCF_VERSION = '1'
+
+if (trim(header1(4)) /= QCF_VERSION) then
    write(errstring,*) 'Using outdated/incorrect version of the QCF table'
    call error_handler(E_ERR, 'assert_qcf_table_version:', errstring, source)
 endif
