@@ -4,7 +4,7 @@
 
 module algorithm_info_mod
 
-use types_mod, only : r8, i8, missing_r8
+use types_mod, only : r8, i8, MISSING_R8
 
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
@@ -299,7 +299,7 @@ error_variance = get_obs_def_error_variance(obs_def)
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
    bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
+   lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
    return
 endif
 
@@ -312,7 +312,7 @@ QTY_loc = findloc(specified_qtys, qty_name)
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
    bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
+   lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
 
    else
       bounded_below = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_below
@@ -367,7 +367,7 @@ character(len=129) :: qty_name
 if (use_qty_defaults) then
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
+   lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
    return
 endif
 
@@ -381,7 +381,7 @@ if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
    dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
+   lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
 
    elseif(is_inflation) then
    ! Case for inflation transformation
@@ -432,7 +432,7 @@ character(len=129) :: qty_name
 if (use_qty_defaults) then
    filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
+   lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
    return
 endif
 
@@ -446,7 +446,7 @@ if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
    filter_kind = BOUNDED_NORMAL_RHF
    bounded_below = .false.;    bounded_above = .false.
-   lower_bound   = missing_r8; upper_bound   = missing_r8
+   lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
 
    else
 
