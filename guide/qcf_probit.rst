@@ -53,7 +53,7 @@ filter_kind = BOUNDED_NORMAL_RHF
 
 Note that bounds set to -888888 are missing_r8 values.
 
-The following input options are read in as logicals, and will need to be written in the format of either 'F' or '.false.' These include bounded_below, bounded_above, and spread_restoration.
+bounded_below and bounded_above are read in as logicals, and will need to be written in the format of either 'F' or '.false.'
 
 The actual numerical values of the bounds are read in as real_r8 types. These can be specified as reals or integers in the table. 
 
