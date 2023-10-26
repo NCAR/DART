@@ -92,7 +92,7 @@ use probit_transform_mod,  only : transform_to_probit, transform_from_probit
 
 use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_algorithm_info_mod
 
-use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
+use distribution_params_mod, only : distribution_params_type
 
 !------------------------------------------------------------------------------
 
