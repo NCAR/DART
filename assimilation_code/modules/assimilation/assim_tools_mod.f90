@@ -149,7 +149,7 @@ real(r8)             :: special_localization_cutoffs(MAX_ITEMS)
 logical              :: output_localization_diagnostics = .false.
 character(len = 129) :: localization_diagnostics_file = "localization_diagnostics"
 
-! Following only relevant for filter_kind = 8
+! Following only relevant for filter_kind = UNBOUNDED_RHF
 logical  :: rectangular_quadrature          = .true.
 logical  :: gaussian_likelihood_tails       = .false.
 
