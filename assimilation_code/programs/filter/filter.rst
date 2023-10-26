@@ -23,7 +23,7 @@ This overview includes these subsections:
 -  Description of Inflation Options
 -  Detailed Program Flow
 
-See :doc:`../../../README` for more documentation, including a discussion of the
+See :ref:`Welcome page` for more documentation, including a discussion of the
 capabilities of the assimilation system, a diagram of the entire execution cycle, the options and features.
 
 Program flow

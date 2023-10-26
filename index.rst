@@ -1,3 +1,5 @@
+.. _Welcome page:
+
 Welcome to the Data Assimilation Research Testbed
 =================================================
 

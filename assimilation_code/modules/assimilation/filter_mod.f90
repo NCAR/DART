@@ -1711,7 +1711,7 @@ real(r8)              :: rvalue(1)
 io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
 my_task = my_task_id()
 
-! write the obs_seq.final file
+! create temp space for QC values
 if (my_task == io_task) then
    allocate(obs_temp(num_obs_in_set))
 else 
