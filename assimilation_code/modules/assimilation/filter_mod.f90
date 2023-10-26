@@ -666,11 +666,19 @@ call timestamp_message('Before reading in ensemble restart files')
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
-call initialize_file_information(num_state_ens_copies ,                     &
+if (do_hybrid) then 
+   call initialize_file_information(num_state_ens_copies ,                  &
                                  file_info_input      , file_info_mean_sd,  &
                                  file_info_forecast   , file_info_preassim, &
                                  file_info_postassim  , file_info_analysis, &
                                  file_info_output     , file_info_hybrid)
+else
+   call initialize_file_information(num_state_ens_copies ,                  &
+                                 file_info_input      , file_info_mean_sd,  &
+                                 file_info_forecast   , file_info_preassim, &
+                                 file_info_postassim  , file_info_analysis, &
+                                 file_info_output     )
+endif
 
 call check_file_info_variable_shape(file_info_output, state_ens_handle)
 

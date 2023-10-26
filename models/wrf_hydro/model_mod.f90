@@ -26,7 +26,8 @@ use         utilities_mod, only : register_module, error_handler, &
 
 use  netcdf_utilities_mod, only : nc_check, nc_add_global_attribute, &
                                   nc_synchronize_file, nc_end_define_mode, &
-                                  nc_add_global_creation_time, nc_begin_define_mode
+                                  nc_add_global_creation_time, nc_begin_define_mode, &
+                                  nc_get_dimension_size, nc_open_file_readonly
 
 use obs_def_utilities_mod, only : track_status
 
@@ -536,6 +537,7 @@ integer :: year, month, day, hour, minute, second
 integer :: DimID, VarID, strlen, ntimes
 logical :: isLsmFile, isClimFile
 integer :: ncid, io
+integer :: c_link
 
 io = nf90_open(filename, NF90_NOWRITE, ncid)
 call nc_check(io,routine,'open',filename)
@@ -587,6 +589,21 @@ elseif (isClimFile) then
    allocate(datestring(ntimes))
    datestring(1) = '1980-01-01_00:00:00'
 
+   ! Also check if the state in the climatology is consistent 
+   ! with the state in the restarts
+   ncid   = nc_open_file_readonly(filename, routine)
+   c_link = nc_get_dimension_size(ncid, 'links', routine)
+
+   if ( c_link /= n_link ) then
+      write(string1,'(A)')'The size of the state in the climatology files is not consistent with the current domain size.'
+      write(string2, *   )'number of links: ', c_link, &
+                      ' from "'//trim(filename)//'"'
+      write(string3,*)'number of links: ',int(n_link,i8), &
+                      ' from "'//get_hydro_domain_filename()//'"'
+      call error_handler(E_ERR, routine, string1, &
+                 source, revision, revdate, text2=string2, text3=string3)
+   endif
+
 else ! Get the time from the hydro or parameter file
 
    io = nf90_inquire_attribute(ncid, NF90_GLOBAL, 'Restart_Time', len=strlen)
@@ -611,6 +628,7 @@ if ( do_output() .and. debug > 0 ) write(*,*)'routine: Last time string is '//tr
 if ( do_output() .and. debug > 0 ) call print_date(read_model_time,' valid time is ')
 
 deallocate(datestring)
+
 
 end function read_model_time
 
