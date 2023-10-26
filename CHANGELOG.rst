@@ -22,6 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**October 5 2023 :: WRF-DART tutorial diagnostic section. Tag v10.8.5**
+
+- Improvements:
+
+  - Added a more complete diagnostics section to the WRF-DART Tutorial.
+  - Developer test for Mersenne twister random number generator.
+
+- Bug-fix: 
+
+  - 1D location subsetting fixed for obs_sequence_tool.  
+
+   *contributed by Henry Santer*
+
+
 **September 18 2023 :: Fluxnet observation converter and obs_def_rttov13_mod.f90 bug-fixes. Tag v10.8.4**
 
 Fluxnet obs converter:
