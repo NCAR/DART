@@ -4,7 +4,7 @@
 
 module algorithm_info_mod
 
-use types_mod, only : r8, i8, MISSING_R8
+use types_mod, only : r8, i8, MISSING_R8, obstypelength
 
 use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
@@ -86,7 +86,7 @@ integer, parameter :: HEADER_LINES = 2
 character(len=129), dimension(4) :: header1
 character(len=129), dimension(25) :: header2 ! Number of table columns plus 1
 
-character(len=129), allocatable :: specified_qtys(:)
+integer, allocatable :: specified_qtys(:)
 type(algorithm_info_type), allocatable :: qcf_table_data(:)
 
 character(len=129), allocatable :: dist_type_string_probit_inflation(:)
@@ -164,6 +164,7 @@ character(len=129), intent(in) :: qcf_table_filename
 
 integer :: fileid
 integer :: row
+character(len=obstypelength) :: qty_string
 
 if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
 
@@ -175,7 +176,7 @@ read(fileid, *) header2
 
 ! read in table values directly to qcf_table_data type
 do row = 1, size(qcf_table_data)
-   read(fileid, *) specified_qtys(row), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+   read(fileid, *) qty_string, qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                    qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, dist_type_string_probit_inflation(row), &
                    qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
                    qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, dist_type_string_probit_state(row), &
@@ -185,6 +186,13 @@ do row = 1, size(qcf_table_data)
                    qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
                    filter_kind_string(row), qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
                    qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+
+   specified_qtys(row) = get_index_for_quantity(qty_string)  
+
+   if(specified_qtys(row) == -1) then
+      write(errstring,*) trim(qty_string), ' is not a valid DART QTY'
+      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+   endif
 
    ! Converting the distribution types (read in from table as a string) to its corresponding int value
    if (trim(dist_type_string_probit_inflation(row)) == 'NORMAL_DISTRIBUTION') then
@@ -284,7 +292,6 @@ integer(i8) :: state_var_index
 type(location_type) :: temp_loc
 
 integer :: QTY_loc(1)
-character(len=129) :: qty_name
 
 ! Get the kind of the observation
 obs_type = get_obs_def_type_of_obs(obs_def)
@@ -306,11 +313,8 @@ if (use_qty_defaults) then
    return
 endif
 
-!get actual name of QTY from integer index
-qty_name = get_name_for_quantity(obs_qty)
-
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(specified_qtys, qty_name)
+QTY_loc = findloc(specified_qtys, obs_qty)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -330,13 +334,13 @@ end subroutine obs_error_info
 !-------------------------------------------------------------------------
 
 
-subroutine probit_dist_info(kind, is_state, is_inflation, dist_type, &
+subroutine probit_dist_info(qty, is_state, is_inflation, dist_type, &
    bounded_below, bounded_above, lower_bound, upper_bound)
 
 ! Computes the details of the probit transform for initial experiments
 ! with Molly 
 
-integer,  intent(in)  :: kind
+integer,  intent(in)  :: qty
 logical,  intent(in)  :: is_state      ! True for state variable, false for obs
 logical,  intent(in)  :: is_inflation  ! True for inflation transform
 integer,  intent(out) :: dist_type
@@ -344,7 +348,6 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,   upper_bound
 
 integer :: QTY_loc(1)
-character(len=129) :: qty_name
 
 ! Have input information about the kind of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
@@ -372,11 +375,7 @@ if (use_qty_defaults) then
    return
 endif
 
-!get actual name of QTY from integer index
-qty_name = get_name_for_quantity(kind)
-
-!find location of QTY in qcf_table_data structure
-QTY_loc = findloc(specified_qtys, qty_name)
+QTY_loc = findloc(specified_qtys, qty)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -427,7 +426,6 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,  upper_bound
 
 integer :: QTY_loc(1)
-character(len=129) :: qty_name
 
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
@@ -437,11 +435,8 @@ if (use_qty_defaults) then
    return
 endif
 
-!get actual name of QTY from integer index
-qty_name = get_name_for_quantity(obs_qty)
-
 !find location of QTY in qcf_table_data structure
-QTY_loc = findloc(specified_qtys, qty_name)
+QTY_loc = findloc(specified_qtys, obs_qty)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
@@ -484,7 +479,6 @@ subroutine verify_qcf_table_data()
 
 ! Subroutine to ensure that the data in the QCF table is valid 
 
-integer :: varid
 integer :: row
 
 if (use_qty_defaults) return
@@ -525,19 +519,11 @@ do row = 1, size(qcf_table_data)
     endif
 end do
 
-!Ensures that all QTYs listed in the table exist in DART
-do row = 1, size(qcf_table_data)
-   varid = get_index_for_quantity(trim(specified_qtys(row)))
-   if(varid == -1) then
-      write(errstring,*) trim(specified_qtys(row)), ' is not a valid DART QTY'
-      call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
-   endif
-end do
 
 !Ensures that there are no duplicate QTYs in the table
 do row = 1, size(qcf_table_data)
-   if(count(specified_qtys==trim(specified_qtys(row))) > 1) then
-      write(errstring,*) trim(specified_qtys(row)), ' has multiple entries in the table'
+   if(count(specified_qtys==specified_qtys(row)) > 1) then
+      write(errstring,*) trim(get_name_for_quantity(specified_qtys(row))), ' has multiple entries in the table'
       call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
    endif
 end do
@@ -567,7 +553,7 @@ call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
 
 ! Write the table data to the dart_log and terminal
 do row = 1, size(qcf_table_data)
-   write(log_msg, *) trim(specified_qtys(row)), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
+   write(log_msg, *) trim(get_name_for_quantity(specified_qtys(row))), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
                qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, trim(dist_type_string_probit_inflation(row)), &
                qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
                qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, trim(dist_type_string_probit_state(row)), &
