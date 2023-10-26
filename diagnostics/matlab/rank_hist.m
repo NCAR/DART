@@ -68,21 +68,6 @@ for time = 1:num_times
 
 end
 
-
-
-return
-
-% Loop through time series to get count for each bin
-for itime = 1:num_times
-   count = 0;
-   for imem = 1:ens_size
-      if verif(itime) > ens(imem,itime)
-         count = count + 1;
-      end
-   end
-   bins(count+1) = bins(count+1) + 1;
-end
-
 % <next few lines under version control, do not edit>
 % $URL$
 % $Revision$
