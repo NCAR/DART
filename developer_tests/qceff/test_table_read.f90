@@ -6,7 +6,7 @@
 program test_table_read
 
 use algorithm_info_mod, only : init_algorithm_info_mod, end_algorithm_info_mod
-use utilities_mod,      only : initialize_utilities
+use utilities_mod,      only : initialize_utilities, finalize_utilities
 
 implicit none
 
@@ -17,8 +17,8 @@ call initialize_utilities('test_table_read')
 call get_command_argument(1,qcf_table_filename)
 
 call init_algorithm_info_mod(qcf_table_filename)
-call finalize_utilities()
 call end_algorithm_info_mod()
 
+call finalize_utilities()
 
 end program test_table_read
