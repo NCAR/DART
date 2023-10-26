@@ -4,15 +4,19 @@
 
 module algorithm_info_mod
 
-use types_mod, only : r8, i8, MISSING_R8, obstypelength
+! Provides routines that give information about details of algorithms for 
+! observation error sampling, observation increments, and the transformations
+! for regression and inflation in probit space. 
 
-use obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
-use obs_kind_mod, only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
+use types_mod,       only : r8, i8, MISSING_R8, obstypelength
 
-use utilities_mod, only : error_handler, E_ERR, E_MSG, open_file, close_file, to_upper
+use obs_def_mod,     only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
+use obs_kind_mod,    only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
+
+use utilities_mod,   only : error_handler, E_ERR, E_MSG, open_file, close_file, to_upper
 
 use assim_model_mod, only : get_state_meta_data
-use location_mod, only    : location_type
+use location_mod,    only : location_type
 
 use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
    GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION,  &
@@ -27,10 +31,7 @@ character(len=*), parameter :: source = 'algorithm_info_mod.f90'
 logical :: module_initialized = .false.
 logical :: use_qty_defaults = .true.
 
-! Defining parameter strings for different observation space filters
-! For now, retaining backwards compatibility in assim_tools_mod requires using
-! these specific integer values and there is no point in using these in assim_tools.
-! That will change if backwards compatibility is removed in the future.
+! Defining parameters for different observation space filters
 integer, parameter :: EAKF               = 1
 integer, parameter :: ENKF               = 2
 integer, parameter :: KERNEL             = 3
@@ -44,7 +45,7 @@ public :: obs_error_info, probit_dist_info, obs_inc_info, &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, &
           GAMMA_FILTER, KERNEL, OBS_PARTICLE
 
-!Creates the type definitions for the QCF table
+! type definitions for the QCF table
 type obs_error_info_type
    logical               :: bounded_below, bounded_above
    real(r8)              :: lower_bound,   upper_bound
@@ -94,10 +95,6 @@ character(len=129), allocatable :: dist_type_string_probit_state(:)
 character(len=129), allocatable :: dist_type_string_probit_extended_state(:)
 character(len=129), allocatable :: filter_kind_string(:)
 
-! Provides routines that give information about details of algorithms for 
-! observation error sampling, observation increments, and the transformations
-! for regression and inflation in probit space. 
-
 contains
 
 !-------------------------------------------------------------------------
@@ -127,7 +124,7 @@ endif
 use_qty_defaults = .false.
 fileid = open_file(trim(qcf_table_filename), 'formatted', 'read')
 
-! Do loop to get number of rows (or QTY's) in the table
+! Do loop to get number of rows (or QTYs) in the table
 nlines = 0
 do
   read(fileid,*,iostat=io)
@@ -293,7 +290,7 @@ type(location_type) :: temp_loc
 
 integer :: QTY_loc(1)
 
-! Get the kind of the observation
+! Get the type of the observation
 obs_type = get_obs_def_type_of_obs(obs_def)
 ! If it is negative, it is an identity obs
 if(obs_type < 0) then
@@ -324,8 +321,8 @@ if (QTY_loc(1) == 0) then
    else
       bounded_below = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%obs_error_info%lower_bound
-      upper_bound = qcf_table_data(QTY_loc(1))%obs_error_info%upper_bound
+      lower_bound   = qcf_table_data(QTY_loc(1))%obs_error_info%lower_bound
+      upper_bound   = qcf_table_data(QTY_loc(1))%obs_error_info%upper_bound
 
 endif
 
@@ -337,9 +334,6 @@ end subroutine obs_error_info
 subroutine probit_dist_info(qty, is_state, is_inflation, dist_type, &
    bounded_below, bounded_above, lower_bound, upper_bound)
 
-! Computes the details of the probit transform for initial experiments
-! with Molly 
-
 integer,  intent(in)  :: qty
 logical,  intent(in)  :: is_state      ! True for state variable, false for obs
 logical,  intent(in)  :: is_inflation  ! True for inflation transform
@@ -349,7 +343,7 @@ real(r8), intent(out) :: lower_bound,   upper_bound
 
 integer :: QTY_loc(1)
 
-! Have input information about the kind of the state or observation being transformed
+! Have input information about the qty of the state or observation being transformed
 ! along with additional logical info that indicates whether this is an observation
 ! or state variable and about whether the transformation is being done for inflation
 ! or for regress.
@@ -359,7 +353,7 @@ integer :: QTY_loc(1)
 ! GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION,
 ! UNIFORM_DISTRIBUTION, and PARTICLE_FILTER_DISTRIBUTION.
 ! If the BNRH is selected then information about the bounds must also be set.
-! For example, if my_state_kind corresponds to a sea ice fraction then an appropriate choice
+! For example, if qty corresponds to a sea ice fraction then an appropriate choice
 ! would be:
 ! bounded_below = .true.;  bounded_above = .true.
 ! lower_bound  = 0.0_r8;   upper_bounds  = 1.0_r8
@@ -386,29 +380,29 @@ if (QTY_loc(1) == 0) then
    elseif(is_inflation) then
    ! Case for inflation transformation
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
+      dist_type     = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
-      upper_bound = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
+      lower_bound   = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
+      upper_bound   = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
 
    elseif(is_state) then
    ! Case for state variable priors
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_state%dist_type
+      dist_type     = qcf_table_data(QTY_loc(1))%probit_state%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_state%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_state%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
-      upper_bound = qcf_table_data(QTY_loc(1))%probit_state%upper_bound
+      lower_bound   = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
+      upper_bound   = qcf_table_data(QTY_loc(1))%probit_state%upper_bound
 
    else
    ! This case is for observation (extended state) priors
 
-      dist_type = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
+      dist_type     = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
       bounded_below = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
-      upper_bound = qcf_table_data(QTY_loc(1))%probit_extended_state%upper_bound
+      lower_bound   = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
+      upper_bound   = qcf_table_data(QTY_loc(1))%probit_extended_state%upper_bound
 
 endif
 
@@ -446,11 +440,11 @@ if (QTY_loc(1) == 0) then
 
    else
 
-      filter_kind = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
+      filter_kind   = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
       bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
       bounded_above = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_above
-      lower_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound
-      upper_bound = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
+      lower_bound   = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound
+      upper_bound   = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
 
 endif
 
