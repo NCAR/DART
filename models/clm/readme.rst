@@ -744,7 +744,8 @@ References
 
 The 
 `CTSM Documentation <https://escomp.github.io/ctsm-docs/versions/master/html/index.html>`__
-is THE reference for CLM.
+is THE reference for CLM. Below are a list of CLM-DART scientific publications:
+
 
 ..     Zhang, Y.-F., T. J. Hoar, Z.-L. Yang, J. L. Anderson, A. M. Toure and M. Rodell, 2014:
        Assimilation of MODIS snow cover through the Data Assimilation Research Testbed 
