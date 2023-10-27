@@ -1,29 +1,44 @@
-TIEGCM:
+! TIEGCM:  (Any variables from GITM?)
 &model_nml
-   debug                       = 1
-   tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
-   tiegcm_secondary_file_name  = 'tiegcm_s.nc'
+   debug                       = 100
+   filter_inout_dir         = 'testdata1/restartOut.Sphere.1member'
    estimate_f10_7 = .false.
    f10_7_file_name = 'f10_7.nc'
+   variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
+               'O+',          'QTY_DENSITY_ION_OP',      'NA',      'NA',      'ions',        'UPDATE'
+   calendar = 'Gregorian'
    assimilation_period_seconds = 3600
-   variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
-               'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+   /
+! >>> Don't code these until we get new CF-compliant field names from Aaron. <<<
+! Other neutrals from restart files, which Aaron identified as important:
+         Zonal\ Wind 
+         Meridional\ Wind 
+! Other ions from restart files, which Aaron identified as important:
+         O2+ 
+         O+2D 
+         O+2P 
+         N2+ 
+! Other neutrals
+         Vertical\ Wind 
+
                'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',    'UPDATE',
                'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',    'UPDATE',
                'OP_NM', 'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
 	       'O1',    'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
                'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'UPDATE',
                'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'UPDATE',
-               'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
-   /
+Delete from namelist
+   assimilation_period_seconds = 3600
+   tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
+   tiegcm_secondary_file_name  = 'tiegcm_s.nc'
 
 
-GITM:
+! GITM:
 # The list of variables to put into the state vector is here:
 # The definitions for the DART kinds are in DART/obs_def/obs_def*f90
 # The order doesn't matter to DART. It may to you.
 
-&model_nml
+! &model_nml
    gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 1800,

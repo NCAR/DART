@@ -120,7 +120,8 @@
 # 2: DART KIND
 # 3: minimum value - as a character string - if none, use 'NA'
 # 4: maximum value - as a character string - if none, use 'NA'
-# 5: which aether netcdf file contains the variable - restart or secondary
+# 5: which aether netcdf file contains the variable - neutrals or ions
+#    All neutrals must be listed before the ions.
 # 6: does the updated variable  
 #    'UPDATE' =>       updated variable written to file
 #    'NO_COPY_BACK' => variable not written to file
@@ -162,54 +163,29 @@
 #    /
 
 &model_nml
-   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
-   assimilation_period_days     = 0,
-   assimilation_period_seconds  = 1800,
-   model_perturbation_amplitude = 0.2,
-   calendar                     = 'Gregorian',
-   debug                        = 0,
-   gitm_state_variables =
-                           'Temperature',            'QTY_TEMPERATURE',
-                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON',
-                           'ITemperature',           'QTY_TEMPERATURE_ION',
-                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',
-                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',
-                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',
-                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',
-                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',
-                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',
-                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',
-                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',
-                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',
-                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',
-                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',
-                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',
-                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',
-                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',
-                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',
-                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',
-                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',
-                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',
-                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',
-                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',
-                           'ie_IDensityS',           'QTY_DENSITY_ION_E',
-                           'U_Velocity_component',   'QTY_VELOCITY_U',
-                           'V_Velocity_component',   'QTY_VELOCITY_V',
-                           'W_Velocity_component',   'QTY_VELOCITY_W',
-                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',
-                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',
-                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',
-                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P',
-                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2',
-                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2',
-                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S',
-                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO',
-                           'f107',                   'QTY_1D_PARAMETER',
-                           'Rho',                    'QTY_DENSITY',
-    /
+   debug             = 100
+   filter_inout_dir  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   estimate_f10_7 = .false.
+   f10_7_file_name = 'f10_7.nc'
+   variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
+               'O+',          'QTY_DENSITY_ION_OP',      'NA',      'NA',      'ions',        'UPDATE'
+   calendar = 'Gregorian'
+   assimilation_period_seconds = 3600
+   /
+! >>> Don't code these until we get new CF-compliant field names from Aaron. <<<
+! Other neutrals from restart files, which Aaron identified as important:
+         Zonal\ Wind 
+         Meridional\ Wind 
+! Other ions from restart files, which Aaron identified as important:
+         O2+ 
+         O+2D 
+         O+2P 
+         N2+ 
+! Other neutrals
+         Vertical\ Wind 
 
 &aether_to_dart_nml
-   aether_restart_input_dirname = 'none'
+   aether_restart_input_dirname = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
    aether_to_dart_output_file = 'filter_input.nc'
    /
 

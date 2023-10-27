@@ -12,6 +12,11 @@ program aether_to_dart
 ! method: Read aether "restart" files of model state (multiple files, 
 !         one block per aether mpi task)
 !         Reform fields into a DART netcdf file
+! TODO: Should this be an MPI program so that all members can be done at once?
+!       Get the ensemble size from input.nml:filter_nml.
+!       Can I send each member to a different node, so that the restart files
+!       could all be read at once on separate processors, and still be local 
+!       to the member's filter_input.nc?
 !
 ! USAGE:  The aether restart dirname and output filename are read from 
 !         the aether_to_dart_nml namelist.
@@ -44,6 +49,8 @@ character(len=*), parameter :: program_name = 'aether_to_dart'
 !-----------------------------------------------------------------------
 
 character(len=256) :: aether_restart_input_dirname    = 'none'
+! TODO: the calling script will need to move this to a name with $member in it,
+!       or use filter_nml:input_state_file_list
 character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
 
 namelist /aether_to_dart_nml/ aether_restart_input_dirname,        &
@@ -53,7 +60,7 @@ namelist /aether_to_dart_nml/ aether_restart_input_dirname,        &
 ! global storage
 !----------------------------------------------------------------------
 
-integer               :: iunit, io
+integer               :: iunit, io, member
 
 !======================================================================
 
@@ -68,6 +75,14 @@ read(iunit, nml = aether_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
 
 !----------------------------------------------------------------------
+! Get the ensemble member
+! TODO: The script must echo the member number to the aether_to_dart.
+!----------------------------------------------------------------------
+member = -88
+read '(I3)', member
+print*,'aether_to_dart: member = ',member
+
+!----------------------------------------------------------------------
 ! Convert the files
 !----------------------------------------------------------------------
 
@@ -78,7 +93,8 @@ write(string2,*) ' to the NetCDF file ', "'"//trim(aether_to_dart_output_file)//
 call error_handler(E_MSG, program_name, string1, text2=string2)
 call error_handler(E_MSG, '', '')
 
-call restart_files_to_netcdf(aether_restart_input_dirname, aether_to_dart_output_file)
+call restart_files_to_netcdf(aether_restart_input_dirname, member, &
+                             aether_to_dart_output_file)
 
 call error_handler(E_MSG, '', '')
 write(string1,*) 'Successfully converted the GITM restart files to ', &
