@@ -294,6 +294,7 @@ References
    observations/obs_converters/AIRS/convert_amsu_L1
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/level4_to_obs
+   observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/CHAMP/work/README
    observations/obs_converters/cice/cice_to_obs
    observations/obs_converters/CONAGUA/README
@@ -414,6 +415,7 @@ References
    models/rose/readme
    models/simple_advection/readme
    models/sqg/readme
+   models/template/new_model
    models/tiegcm/readme
    models/wrf_hydro/readme
    models/wrf/readme
