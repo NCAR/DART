@@ -1,12 +1,10 @@
 .. _quantile tracer:
 
-Quantile Conserving and Probit Transform Tools: 
-===============================================
-Examples with the Lorenz 96 Tracer Model
-------------------------------------------
+QCEFF: Examples with the Lorenz 96 Tracer Model
+-----------------------------------------------
 
 
-The QCEFF tools are in the alpha release stage.
+The Quantile-Conserving Ensemble Filter Framewor (QCEFF) tools are in the alpha release stage.
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences and is
 anxious to build scientific collaborations using these new capabilities.
 

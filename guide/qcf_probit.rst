@@ -1,97 +1,152 @@
 .. _QCF:
 
-########################################################
-Quantile Conserving and Probit Transform Filtering Tools
-########################################################
+Quantile-Conserving Ensemble Filter Framework
+==============================================
 
-This file contains instructions for using the DART Quantile Conserving Filters (QCF), also known as the Quantile Conserving Ensemble Filtering Framework (QCEFF), and probit transform filtering tools.
+The Quantile-Conserving Ensemble Filter Framework (QCEFF) tools are in the alpha release stage. 
+The DART development team (dart@ucar.edu) would be happy to hear about your experiences 
+and is anxious to build scientific collaborations using these new capabilities.
 
-The DART development team (dart@ucar.edu) would be happy to hear about your experiences and is anxious to build scientific collaborations using these new capabilities.
+The QCEFF options are set using a :ref:`qcf table <qcf table>` given as a namelist option to &filter_nml.
 
-The user can include an input table allows the user to specify the control options for these tools. The observation, state, and inflation variables are all included in this single table.
+   .. code-block:: text
 
-The new quantile options are read in from the table at runtime and then set in the module algorithm_info_mod.f90 in the DART/assimilation_code/modules/assimilation directory. This module provides routines that give information about details of algorithms for observation error sampling, observation increments, and the transformations for regression and inflation in probit space.
+      &filter_nml
+         qcf_table_filename = 'qcf_table.csv'
 
-For individual QTYs in DART, the user can specify the options such as the bounds, distribution type, filter kind, etc. for the obs_error_info, probit_dist_info, and obs_inc_info subroutines in algorithm_info_mod.f90
 
-If the user does not use a QCF input table with the DART quantile conserving and probit transform filtering tools, then the default values for these options will be used for all QTYs.
+.. _QCEFF options:
 
-Table Composition
------------------
-The table consists of two headers. The first states the version # of the table being used; the most recent version of the table needs to be used to ensure compatibilty with DART. The current version # is 1. The second header lists the full set of input options, or all 24 column names in other words.
+QCEFF options
+--------------
 
-Each QTY is specified in its own column, having 24 total control options. 
-These control options are divided into 3 main groups, which are the options used for the obs_error_info, probit_dist_info, and obs_inc_info. However, the user is able to specify different values for probit inflation, probit state, and probit extended state, resulting in 5 total groupings for the control options.
+QCEFF options are per quantity. For a given quantity, you specify the following 
+options as columns of the qcf_table:
 
-The obs_error_info subroutine computes information needed to compute error sample for this observation.
-For obs_error_info the input options are the two bounds (lower and upper).
+* Observation error information
 
-The probit_dist_info subroutine computes the details of the probit transform.
-From probit_dist_info, the values needed are the bounds and the distribution type. These can be different for all three cases (inflation, state, and extended_state).
+   Used to compute sample for this observation when using perfect_model_obs
+   to generate noisy observations.
+   
+     * bounded_below (default .false.) 
+     * bounded_above (default .false.)
+     * lower_bound   
+     * upper_bound
 
-The obs_inc_info subrotuine sets the details of how to assimilate this observation.
-From obs_inc_info, the values needed are the bounds and the filter_kind.
 
-Full list of options:
-Obs_error_info: bounded_below, bounded_above, lower_bound, upper_bound [4 columns]
-Probit_dist_info: dist_type, bounded_below, bounded_above, lower_bound, upper_bound (x3 for inflation, state, and observation (extended state) priors) [15 columns]
-Obs_inc_info: filter_kind, bounded_below, bounded_above, lower_bound, upper_bound [5 columns]
+* Probit distribution information 
 
-Customizing the Table
----------------------
-The table can be customized by editing a Google Sheet spreadsheet (which is then downloaded in .csv format). Folow this `link <https://docs.google.com/spreadsheets/d/1SI4wHBXatLAAMfiMx3mUUC7x0fqz4lniKuM4_i5j6bM/edit#gid=0>`_ to access the template spreadsheet.
+   Used in the computation of the probit transform.
+   The values needed are the bounds and the distribution type.
+   These can be different for all three cases (inflation, state, and extended_state priors)
+   
+     * distribution (one of :ref:`Distributions`)
+     * bounded_below (default .false.)
+     * bounded_above (default .false.)
+     * lower_bound
+     * upper_bound
 
-The user will add and fill in one row for each bounded QTY they want to specify. If a QTY is not listed in the table, the default values will be used for all 25 options. Therefore, the user will only need to add rows for QTYs that use non-default values for any of the input options.
 
-The default values for each of the options are listed below:
-bounded_below = .false.
-bounded_above = .false.
-lower_bound   = -888888
-upper_bound   = -888888
-dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-filter_kind = BOUNDED_NORMAL_RHF
+* Observation increment information
 
-Note that bounds set to -888888 are missing_r8 values.
+     * filter_kind (one of :ref:`Filter kinds`)
+     * bounded_below (default .false.)
+     * bounded_above (default .false.)
+     * lower_bound
+     * upper_bound
 
-bounded_below and bounded_above are read in as logicals, and will need to be written in the format of either 'F' or '.false.'
 
-The actual numerical values of the bounds are read in as real_r8 types. These can be specified as reals or integers in the table. 
 
-dist_type and filter_kind are read in as strings. The possible values for these variables are listed below:
+.. _qcf table:
 
-dist_type:
-NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION, PARTICLE_FILTER_DISTRIBUTION
+Creating a qcf table
+--------------------
 
-filter_kind:
-EAKF, ENKF, UNBOUNDED_RHF, GAMMA_FILTER, BOUNDED_NORMAL_RHF
+The table has two headers, row 1 and 2.
+The first row is the version number.  The second row describes the :ref:`QCEFF options` corresponding to each column of the table. 
+These two headers must be present in your qcf table. 
+The :ref:`qcf trunc table` below shows the table headers, 
+and an example quantity QTY_TRACER_CONCENTRATION for the first 5 columns of the table. 
+There is a complete table with all 25 columns in `Google Sheets <https://docs.google.com/spreadsheets/d/1CRGHWc7boQt81pw2pDxEFY6WPyQeCh64OwPyoVMqijE/edit?usp=sharing>`_. You can copy and edit this table as needed.
 
-Make a copy of the table by selecting 'File > Make a copy' from the menu bar.
+To add a quantity, add a row to the table.
+For any quantity not listed in the table, the :ref:`Default values` values will be used for all 25 options. 
+You only have to add rows for quantitiies that use non-default values for any of the input options.
+Ensure that there are no empty rows in between the quantities listed in the spreadsheet.
+Save your spreadsheet as a .csv file. 
 
-To customize the spreadsheet, click on the cell you want to edit and change the value of that cell.
-To add a new QTY to the spreadsheet, copy row 3 of the table into the next available row, change ``QTY_NAME`` to the name of the QTY to specify, and edit the cells individually to set the control options.
-To remove a QTY from the spreadsheet, select the row number corresponding to that QTY. Then right click and choose "Delete Row"
-Make sure to remove the row for ``QTY_NAME`` when you have finished adding all of the specified QTYs to the table.
+To run filter or perfect_model_obs, put the .csv file in the directory where you are running.
+Edit input.nml to set the filter_nml option qcf_table_filename, for example:
 
-Ensure that there are no empty rows in between the QTYs listed in the spreadsheet.
 
-Download the spreadsheet as a .csv file by selecting 'File > Download > csv' from the menu bar.
+   .. code-block:: text
 
-Google Sheets will append the name of the file with " - Sheet1.csv" when it is downloaded. For example, a spreadsheet named "qcf_table" wil be downloaded as "qcf_table - Sheet1.csv" 
-Rename this file to remove this addition to ensure that there are no spaces in the filename.
+      &filter_nml
+         qcf_table_filename = 'qcf_table.csv'
 
-Copy or move this file to your working directory (/DART/models/model_name/work).
 
-Using the table in DART
+.. _qcf trunc table:
+
+.. list-table:: truncated table 
+   :header-rows: 2
+
+   * - QCF table version: 1
+     - 
+     -  
+     -  
+     - 
+   * - QTY
+     - bounded_below
+     - bounded_above
+     - lower_bound
+     - upper_bound
+   * - QTY_TRACER_CONCENTRATION
+     - .true.
+     - .false.
+     - 0
+     - -888888
+
+
+.. _Filter kinds:
+
+Available filter kinds
 -----------------------
-Navigate to your working directory (/DART/models/model_name/work).
 
-Switch to the quantile_methods branch of DART:
-``git checkout quantile_methods``
+   * EAKF
+   * ENKF
+   * UNBOUNDED_RH
+   * GAMMA_FILTER
+   * BOUNDED_NORMAL_RHF  (default)
 
-Edit your namelist file (input.nml):
-Add the name of the QCF table file in between the quotes of ``qcf_table_filename = ''`` in the &filter_nml section.
-Remember that the default values will be used for all QTYs if no filename is listed here.
+.. _Distributions:
 
-Build and run filter normally.
+Available distributions
+------------------------
 
-The data that is read from in the QCF table is written to the output file dart_log.out
+  * NORMAL_DISTRIBUTION
+  * BOUNDED_NORMAL_RH_DISTRIBUTION
+  * GAMMA_DISTRIBUTION 
+  * BETA_DISTRIBUTION
+  * LOG_NORMAL_DISTRIBUTION
+  * UNIFORM_DISTRIBUTION
+  * PARTICLE_FILTER_DISTRIBUTION
+
+
+
+.. _Default values:
+
+Default values
+---------------
+
+If a quantity is not in the qcf table, the following default values
+are used:
+
+  * filter_kind (default BOUNDED_NORMAL_RHF)
+  * dist_type (default BOUNDED_NORMAL_RH_DISTRIBUTION)
+  * bounded_below  (default .false.)
+  * bounded_above   (default .false.)
+  * lower_bound    (default -888888)
+  * upper_bound    (default -888888)
+
+Note -888888 is a missing value in DART.
+
