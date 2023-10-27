@@ -1,44 +1,88 @@
 .. _quantile tracer:
 
-QCF and Probit Transform Tools: Examples with the Lorenz 96 Tracer Model
-========================================================================
+Quantile Conserving and Probit Transform Tools: 
+===============================================
+Examples with the Lorenz 96 Tracer Model
+------------------------------------------
 
-This file contains instructions for using the lorenz_96_tracer_advection model with DART 
-quantile conserving and probit transform filtering tools. These tools are still
-being refined, but are working for the examples described. The DART development 
-team (dart@ucar.edu) would be happy to hear about your experiences and is
+
+The QCEFF tools are in the alpha release stage.
+The DART development team (dart@ucar.edu) would be happy to hear about your experiences and is
 anxious to build scientific collaborations using these new capabilities.
 
-Make sure that you are on the quantile_methods branch of DART: ``git checkout quantile_methods``
+To get started, make sure that you are on the quantile_methods branch of DART: 
 
-Build all executables: ``./quickbuild.sh nompi``
+.. code-block:: text
 
-Test A: Assimilating observations of state (wind) and tracer concentration using
+   git checkout quantile_methods
+
+Build the DART executables for the Lorenz 96 tracer advection model:
+
+.. code-block:: text
+
+    cd DART/models/lorenz_96_tracer_advection/work
+    ./quickbuild.sh nompi
+
+
+The new quantile options are set using a :ref:`qcf table <QCF>` given as a namelist
+option to &filter_nml. The examples below show how to change the quantile options
+using various qcf tables. You can find the .csv files for these four example in the directory
+``DART/models/lorenz_96_tracer_advection/work``
+
+
+.. list-table::
+   :header-rows: 1 
+   :widths: 15 60 25
+
+   * - example
+     - description
+     - .cvs filename 
+   * - Example A 
+     - boundend normal rank histogram with no bounds set (default value)
+     - all_bnrhf_qcf_table.csv (or no qcf_table_filename set)
+   * - Example B
+     - Ensemble Adjustment Kalman filters
+     - all_eakf_qcf_table.csv 
+   * - Example C
+     - EAKF for state and bounded normal rank histogram filter and priors for tracer concentration and source
+     - state_eakf_tracer_bnrhf_qcf_table.csv
+   * - Example D
+     - Negative tracers bounded above
+     - neg_qcf_table.csv
+
+
+You can view .csv files with a text editor, or spreadsheet tool such as Google Sheets,
+or Microsoft Excel.
+
+Example A
+----------
+
+Assimilating observations of state (wind) and tracer concentration using
 a rank histogram observation space filter and rank histogram probit transforms for
-state variable updates. Example includes adaptive inflation.
+state variable updates. This example includes adaptive inflation.
+
 The default model configuration has a single tracer source at gridpoint 1 along with
 small uniform tracer sinks that lead to areas where the true tracer concentration is
 usually 0. This is a particularly tough test for ensemble methods.
 
-#. Add the filename of the already prepared QCF table (all_bnrhf_qcf_table.csv) in between 
-   the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of 
-   /DART/models/lorenz_96_tracer_advection/work/input.nml
+#. Edit input.nml to set the qcf_table_filename to 'all_bnrhf_qcf_table.csv' 
 
    .. code-block:: text
 
       &filter_nml
-         qcf_table_filename = 'neg_qcf_table.csv'
-      / 
+         qcf_table_filename = 'all_bnrhf_qcf_table.csv'
+       
 
-#. Create a set_def.out file using create_obs_sequence:
+#. Create a set_def.out file using create_obs_sequence,
 
    ``./create_obs_sequence < create_obs_sequence_input``
 
-#. Create an obs_sequence.in file using ``./create_fixed_network_seq``
+#. Create an obs_sequence.in file using create_fixed_network_seq
+
+      ``./create_fixed_network_seq``
 
    .. code:: text
 
-      ./create_fixed_network_seq
       Select the default input filename <return>,
       Create a regularly repeating sequence by entering "1",
       Enter "1000" for the number of observation times,
@@ -48,19 +92,26 @@ usually 0. This is a particularly tough test for ensemble methods.
 
 #. Spin-up a model initial condition by running perfect_model_obs
 
-   ``./perfect_model_obs``
+      ``./perfect_model_obs``
 
 #. Generate a spun-up true time series,
 
-   .. code:: text
+      ``cp perfect_output.nc perfect_input.nc``
 
-      cp perfect_output.nc perfect_input.nc
-      Use a text editor to change read_input_state_from_file to .true. in the file input.nml
-      Run "./perfect_model_obs" again
+
+   Edit input.nml to set read_input_state_from_file to .true.
+
+   .. code:: text
+     
+      &filter_nml
+        read_input_state_from_file = .false.,
+
+
+   Run ``./perfect_model_obs`` again.
 
 #. Run a filter assimilation,
 
-   ``./filter``
+      ``./filter``
 
 #. Examine the output with your favorite tools. Looking at the analysis ensemble 
    for the tracer_concentration variables with indices near the source (location 1)
@@ -68,62 +119,68 @@ usually 0. This is a particularly tough test for ensemble methods.
    source estimation capabilities of the model and filters are not being tested here.
 
 
-Test B: Using default ensemble adjustment Kalman filters.
+Example B 
+---------
 
-The new quantile options are controlled by Fortran code in the module
-algorithm_info_mod.f90 in the assimilation_code/modules/assimilation directory.
-More information about the control can be found in that module. The tests below 
-replace the default version of that module with others that change certain options. 
-Doing a diff between these modules shows how the control is being changed for the 
-following tests in that module. The tests below 
-replace the default version of that module with others that change certain options. 
+Using Ensemble Adjustment Kalman filters.
 
-#. Add the filename of the already prepared QCF table (all_eakf_qcf_table.csv) in between 
-   the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
-   /DART/models/lorenz_96_tracer_advection/work/input.nml
+
+#. Edit input.nml to set the qcf_table_filename to 'all_eakf_qcf_table.csv'
 
    .. code-block:: text
 
       &filter_nml
-         qcf_table_filename = 'neg_qcf_table.csv'
-      / 
+         qcf_table_filename = 'all_eakf_qcf_table.csv'
+       
 
 #. Run the filter 
-   ``./filter``
 
-Test C: Using default ensemble adjustment Kalman filter for state, but bounded normal rank histogram filter and priors for tracer concentration and source.
+      ``./filter``
 
-#. Add the filename of the already prepared QCF table (state_eakf_tracer_bnrhf_qcf_table.csv) in  
-   between the single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
-   /DART/models/lorenz_96_tracer_advection/work/input.nml
+Example C 
+---------
+
+Using Ensemble Adjustment Kalman filter for state, but bounded normal rank histogram filter and priors for tracer concentration and source.
+
+
+#. Edit input.nml to set the qcf_table_filename to state_eakf_tracer_bnrhf_qcf_table.csv
 
    .. code-block:: text
 
       &filter_nml
-         qcf_table_filename = 'neg_qcf_table.csv'
-      / 
+         qcf_table_filename = 'state_eakf_tracer_bnrhf_qcf_table.csv'
+       
 
 #. Run the filter 
-   ``./filter``
 
-Test D: Testing bounded above option
+     ``./filter``
 
-Normally tracers are bounded below, but there are other quantities that may be bounded
+Example D 
+----------
+
+Testing the bounded above option. Normally tracers are bounded below, but there are other quantities that may be bounded
 above. There are distinct numerical challenges in implementing the quantile algorithms
 for quantities that are bounded above, so flipping the sign of the tracers is a good
 test. 
 
-#. Add the filename of the already prepared QCF table (neg_qcf_table.csv) in between the 
-   single quotes on the line ``qcf_table_filename = ''`` in the &filter_mod section of  
-   /DART/models/lorenz_96_tracer_advection/work/input.nml
+#. Edit input.nml to set the qcf_table_filename to neg_qcf_table.csv
 
    .. code-block:: text
 
       &filter_nml
          qcf_table_filename = 'neg_qcf_table.csv'
-      /
+      
 
-#. In the file input.nml, change the entry positive_tracer to .false. Also, change the
-   entry read_input_state_from_file back to .false. 
+#. Edit input.nml, to change the entry positive_tracer to .false. and read_input_state_from_file back to .false. 
+
+   
+   .. code-block:: text
+
+      &model_nml
+          positive_tracer          = .false.,
+
+      &filter_nml
+          read_input_state_from_file = .false.,
+
 
 #. Repeat steps 5-8 from Test A.
