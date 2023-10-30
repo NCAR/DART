@@ -36,7 +36,7 @@ using various qcf tables. You can find the .csv files for these four example in 
      - description
      - .cvs filename 
    * - Example A 
-     - boundend normal rank histogram with QTY_TRACER_CONCENTRATION lower bound = 0
+     - boundend normal rank histogram
      - all_bnrhf_qcf_table.csv
    * - Example B
      - Ensemble Adjustment Kalman filters
