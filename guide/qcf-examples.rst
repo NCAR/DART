@@ -1,10 +1,10 @@
 .. _quantile tracer:
 
 QCEFF: Examples with the Lorenz 96 Tracer Model
------------------------------------------------
+===============================================
 
 
-The Quantile-Conserving Ensemble Filter Framewor (QCEFF) tools are in the alpha release stage.
+The Quantile-Conserving Ensemble Filter Framework (QCEFF) tools are in the alpha release stage.
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences and is
 anxious to build scientific collaborations using these new capabilities.
 
@@ -36,8 +36,8 @@ using various qcf tables. You can find the .csv files for these four example in 
      - description
      - .cvs filename 
    * - Example A 
-     - boundend normal rank histogram with no bounds set (default value)
-     - all_bnrhf_qcf_table.csv (or no qcf_table_filename set)
+     - boundend normal rank histogram with QTY_TRACER_CONCENTRATION lower bound = 0
+     - all_bnrhf_qcf_table.csv
    * - Example B
      - Ensemble Adjustment Kalman filters
      - all_eakf_qcf_table.csv 
