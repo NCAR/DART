@@ -49,3 +49,6 @@ fi
 ./test_table_read qcf_table_incorrect_filter_kind.txt ; should_fail "incorrect filter_kind"
 
 ./test_table_read qcf_table_incorrect_distribution.txt ; should_fail "incorrect distribution" 
+
+./test_table_read all_bnrhf_qceff_table.csv ; should_pass "lower case QTY"
+
