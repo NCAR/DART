@@ -172,7 +172,7 @@ namelist.
       filter_kind                       = 1
       cutoff                            = 0.2
       distribute_mean                   = .false.
-      sort_obs_inc                      = .false.
+      sort_obs_inc                      = .true.
       spread_restoration                = .false.
       sampling_error_correction         = .false.
       adaptive_localization_threshold   = -1
@@ -245,10 +245,11 @@ Description of each namelist entry
    *type:* logical
 
    If true, the final increments from obs_increment are sorted so that the mean increment value is as small as possible.
-   This minimizes regression errors when non-deterministic filters or error correction algorithms are applied. HOWEVER,
-   when using deterministic filters (filter_kind == 1 or 8) with no inflation or a combination of a determinstic filter
+   Applies to ENKF only.
+   ``sort_ob_inc`` minimizes regression errors when non-deterministic filters or error correction algorithms are applied. HOWEVER,
+   when using deterministic filters with no inflation or a combination of a determinstic filter
    and deterministic inflation (filter_nml:inf_deterministic = .TRUE.) sorting the increments is both unnecessary and
-   expensive. A warning is printed to stdout and the log and the sorting is skipped.
+   expensive. 
 
 ``spread_restoration``
    *type:* logical
