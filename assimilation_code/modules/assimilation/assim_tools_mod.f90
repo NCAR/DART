@@ -1029,7 +1029,7 @@ else
    !--------------------------------------------------------------------------
    else
       call error_handler(E_ERR,'obs_increment', &
-              'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', source)
+              'Illegal value of filter_kind', source)
    endif
 endif
 

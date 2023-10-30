@@ -10,25 +10,6 @@ for both mean and spread. In addition, algorithms to do a variety of flavors of 
 particle filter, and kernel filters are included. The parallel implementation that allows each observation to update all
 state variables that are close to it at the same time is described in Anderson and Collins, 2007.
 
-Filter types
-------------
-
-Available observation space filter types include:
-
--  1 = EAKF (Ensemble Adjustment Kalman Filter, see Anderson 2001)
--  2 = ENKF (Ensemble Kalman Filter)
--  3 = Kernel filter
--  4 = Observation Space Particle filter
--  5 = Random draw from posterior (contact dart@ucar.edu before using)
--  6 = Deterministic draw from posterior with fixed kurtosis (ditto)
--  7 = Boxcar kernel filter
--  8 = Rank Histogram filter (see Anderson 2010)
--  9 = Particle filter (see Poterjoy 2016)
-
-We recommend using type=1, the EAKF. Note that although the algorithm is expressed in a slightly different form, the
-EAKF is identical to the EnSRF (Ensemble Square Root Filter) described by Whitaker and Hamill in 2002. Highly
-non-gaussian distributions may get better results from type=8, Rank Histogram filter.
-
 Localization
 ------------
 
@@ -169,7 +150,6 @@ namelist.
 ::
 
    &assim_tools_nml
-      filter_kind                       = 1
       cutoff                            = 0.2
       distribute_mean                   = .false.
       sort_obs_inc                      = .true.
@@ -194,36 +174,6 @@ namelist.
 
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``filter_kind``
-   *type:* integer
-
-   Selects the variant of filter to be used.
-
-   -  1 = EAKF (Ensemble Adjustment Kalman Filter, see Anderson 2001)
-   -  2 = ENKF (Ensemble Kalman Filter)
-   -  3 = Kernel filter
-   -  4 = Observation Space Particle filter
-   -  5 = Random draw from posterior (contact dart@ucar.edu before using)
-   -  6 = Deterministic draw from posterior with fixed kurtosis (ditto)
-   -  7 = Boxcar kernel filter
-   -  8 = Rank Histogram filter (see Anderson 2010)
-   -  9 = Particle filter (see Poterjoy 2016)
-
-   The EAKF is the most commonly used filter. Note that although the algorithm is expressed in a slightly different
-   form, the EAKF is identical to the EnSRF (Ensemble Square Root Filter) described by Whitaker and Hamill in 2002.
-
-   The Rank Histgram filter can be more successful for highly nongaussian distributions.
-
-   Jon Poterjoy's Particle filter is included with this code release. To use, it, overwrite ``assim_tools_mod.f90`` with
-   ``assim_tools_mod.pf.f90`` and rebuild filter.
-
-   ::
-
-
-      $ mv assimilation_code/modules/assimilation/assim_tools_mod.pf.f90 assimilation_code/modules/assimilation/assim_tools_mod.f90
-
-   There are additional namelist items in this version specific to the particle filter. Read the code for more details.
 
 ``cutoff``
    *type:* real(r8)
@@ -313,12 +263,12 @@ Description of each namelist entry
 ``rectangular_quadrature``
    *type:* logical
 
-   Only relevant for filter type 8 and recommended to leave ``.true.``.
+   Only relevant for filter type UNBOUNDED_RHF and recommended to leave ``.true.``.
 
 ``gaussian_likelihood_tails``
    *type:* logical
 
-   Only relevant for filter type 8 and recommended to leave ``.false.``.
+   Only relevant for filter type UNBOUNDED_RHF and recommended to leave ``.false.``.
 
 ``close_obs_caching``
    *type:* logical
