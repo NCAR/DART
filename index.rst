@@ -63,38 +63,40 @@ research labs.
 
 Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
 -----------------------------------------------------------------
-The default DART algorithms assume a normal distribution to compute ensemble increments
+
+The default DART algorithms assume a normal distribution to compute ensemble increments 
 for the observed quantity (this is the ensemble adjustment Kalman filter, or EAKF) and 
-then linearly regresses the observation increments onto each state variable.
- 
-DART’s newest and innovative capability, the :ref:`Quantile Conserving Filters (QCF) <QCF>`, 
-also known as the Quantile Conserving Ensemble Filtering Framework (QCEFF), provide a 
-very general method of computing increments for the prior ensemble of an observed quantity 
-by allowing the use of quantile conserving ensemble filters that can assume arbitrary 
-distributions for the prior and the observation error. Quantile Conserving Filters are 
-especially useful for bounded quantities like tracer concentrations, depths of things like 
-snow or ice, and estimating model parameters that have a restricted range.
+then linearly regress the observation increments onto each state variable.
 
-While Quantile Conserving Filters lead to significant improvements in analysis estimates for 
-observed variables, those improvements can be lost when using standard linear regression of 
-observation increments to update other state variables. Therefore, DART also includes new 
-functionality to use probit-transformed quantile regression methods that allow much more general 
-regression for computing state increments. Doing the regression of observation quantile increments 
-in a probit-transformed, bivariate, quantile space guarantees that the posterior ensembles 
-for state variables also have all the advantages of the observation space quantile conserving 
-posteriors. For example, if state variables are bounded, then posterior ensembles will respect 
-the bounds. The posterior ensembles also respect other aspects of the continuous prior distributions.
 
-Inflation and localization, methods that improve the quality of ensemble DA, can also negate the 
-advantages of the quantile conserving method. For this reason, both localization and inflation can be done 
-in the probit-transformed quantile space as well. 
+DART now implements a Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCF>`.
+The QCEFF provides a very general method of computing increments for the prior ensemble of 
+an observed quantity by allowing the use of arbitrary distributions for the prior and the 
+observation error. This is especially useful for bounded quantities like tracer concentrations, 
+depths of things like snow or ice, and estimating model parameters that have a restricted range.
+See this Monthly Weather Review article for details,
+`QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_.
 
-Combining these new methods can significantly improve data assimilation for non-Gaussian quantities 
-in Earth system models by extending the capabilities of ensemble DA to general non-Gaussian and 
-nonlinear distributions. Transformative improvements in DA can result for many applications. The 
-largest improvements are found for bounded variables like tracer concentrations, snow and ice depth, 
-soil moisture, and similar quantities in other parts of the Earth system. Model parameters can also be 
-estimated with DA and large improvements can occur for bounded parameters. Variables that have distinctly 
+While the QCEFF for computing observation increments can lead to significant improvements in 
+analysis estimates for observed variables, those improvements can be lost when using standard 
+linear regression of observation increments to update other state variables. The QCEFF also 
+implements a capability to do regression in a probit probability integral transformed space. 
+Doing the regression of observation quantile increments in the transformed space guarantees 
+that the posterior ensembles for state variables also the advantages of the observation space 
+quantile conserving posteriors. For example, if state variables are bounded, then posterior 
+ensembles will respect the bounds. The posterior ensembles also respect other aspects of the 
+continuous prior distributions. See this Monthly Weather Review article for details, 
+`QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.
+
+Inflation and localization, methods that improve the quality of ensemble DA, can also negate 
+the advantages of the QCEFF methods. For this reason, both localization and inflation can be 
+done in the probit-transformed quantile space as well.  Combining these new methods can 
+significantly improve data assimilation for non-Gaussian quantities in Earth system models by 
+extending the capabilities of ensemble DA to general non-Gaussian and nonlinear distributions. 
+Transformative improvements in DA can result for many applications. The largest improvements are 
+found for bounded variables like tracer concentrations, snow and ice depth, soil moisture, and 
+similar quantities in other parts of the Earth system. Model parameters can also be estimated 
+with DA and large improvements can occur for bounded parameters. Variables that have distinctly 
 non-Gaussian prior distributions can also see large improvements. Examples can include atmospheric 
 quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
 

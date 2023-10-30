@@ -112,18 +112,18 @@ Edit input.nml to set the filter_nml option qcf_table_filename, for example:
 Available filter kinds
 -----------------------
 
-   * EAKF
+   * EAKF (default)
    * ENKF
    * UNBOUNDED_RH
    * GAMMA_FILTER
-   * BOUNDED_NORMAL_RHF  (default)
+   * BOUNDED_NORMAL_RHF
 
 .. _Distributions:
 
 Available distributions
 ------------------------
 
-  * NORMAL_DISTRIBUTION
+  * NORMAL_DISTRIBUTION (default)
   * BOUNDED_NORMAL_RH_DISTRIBUTION
   * GAMMA_DISTRIBUTION 
   * BETA_DISTRIBUTION
@@ -141,8 +141,8 @@ Default values
 If a quantity is not in the qcf table, the following default values
 are used:
 
-  * filter_kind (default BOUNDED_NORMAL_RHF)
-  * dist_type (default BOUNDED_NORMAL_RH_DISTRIBUTION)
+  * filter_kind (default EAKF)
+  * dist_type (default NORMAL_DISTRIBUTION)
   * bounded_below  (default .false.)
   * bounded_above   (default .false.)
   * lower_bound    (default -888888)

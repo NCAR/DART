@@ -363,7 +363,7 @@ integer :: QTY_loc(1)
 
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
-   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   dist_type = NORMAL_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
    return
@@ -373,7 +373,7 @@ QTY_loc = findloc(specified_qtys, qty)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
-   dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+   dist_type = NORMAL_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
 
@@ -423,7 +423,7 @@ integer :: QTY_loc(1)
 
 !use default values if qcf_table_filename is not in namelist
 if (use_qty_defaults) then
-   filter_kind = BOUNDED_NORMAL_RHF
+   filter_kind = EAKF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
    return
@@ -434,7 +434,7 @@ QTY_loc = findloc(specified_qtys, obs_qty)
 
 if (QTY_loc(1) == 0) then
    !use default values if QTY is not in table
-   filter_kind = BOUNDED_NORMAL_RHF
+   filter_kind = EAKF
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
 
