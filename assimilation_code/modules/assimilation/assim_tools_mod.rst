@@ -257,6 +257,11 @@ Description of each namelist entry
    True turns on algorithm to restore amount of spread that would be expected to be lost if underlying obs/state
    variable correlation were really 0.
 
+.. Warning:: 
+
+    ``spread_restoration`` is not supported in this version, please reach out to the DAReS team dart@ucar.edu
+    if you need to use spread_restoration.
+
 ``sampling_error_correction``
    *type:* logical
 
