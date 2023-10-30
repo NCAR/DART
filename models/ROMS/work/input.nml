@@ -1,8 +1,5 @@
 &probit_transform_nml
-   fix_bound_violations        = .false.
-   use_logit_instead_of_probit = .false.
-   do_inverse_check            = .true.
-   /
+  /
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
