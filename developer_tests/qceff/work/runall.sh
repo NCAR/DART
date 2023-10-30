@@ -52,3 +52,5 @@ fi
 
 ./test_table_read all_bnrhf_qceff_table.csv ; should_pass "lower case QTY"
 
+./test_table_read qcf_table_lower_case_dist.txt; should_pass "lower case dist_type"
+
