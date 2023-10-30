@@ -82,7 +82,7 @@ analysis estimates for observed variables, those improvements can be lost when u
 linear regression of observation increments to update other state variables. The QCEFF also 
 implements a capability to do regression in a probit probability integral transformed space. 
 Doing the regression of observation quantile increments in the transformed space guarantees 
-that the posterior ensembles for state variables also the advantages of the observation space 
+that the posterior ensembles for state variables also retain the advantages of the observation space
 quantile conserving posteriors. For example, if state variables are bounded, then posterior 
 ensembles will respect the bounds. The posterior ensembles also respect other aspects of the 
 continuous prior distributions. See this Monthly Weather Review article for details, 
