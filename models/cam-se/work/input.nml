@@ -32,7 +32,7 @@
    /
 
 &filter_nml
-   qcf_table_filename           = ''
+   qceff_table_filename           = ''
    input_state_files            = ''
    input_state_file_list        = 'cam_init_files'
    single_file_in               = .false.

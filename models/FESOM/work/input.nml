@@ -34,7 +34,7 @@
 # state by specifying the 'input' stage.
 
 &filter_nml
-   qcf_table_filename       = ''
+   qceff_table_filename       = ''
    async                    = 5
    adv_ens_command          = "advance_model_script.die"
    ens_size                 = 3

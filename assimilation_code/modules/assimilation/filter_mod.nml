@@ -1,5 +1,5 @@
 &filter_nml
-   qcf_table_filename           = ''
+   qceff_table_filename           = ''
    use_algorithm_info_mod       = .true.,
    single_file_in               = .false.,
    input_state_files            = ''

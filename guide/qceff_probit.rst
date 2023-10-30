@@ -1,4 +1,4 @@
-.. _QCF:
+.. _QCEFF:
 
 Quantile-Conserving Ensemble Filter Framework
 ==============================================
@@ -7,12 +7,12 @@ The Quantile-Conserving Ensemble Filter Framework (QCEFF) tools are in the alpha
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences 
 and is anxious to build scientific collaborations using these new capabilities.
 
-The QCEFF options are set using a :ref:`qcf table <qcf table>` given as a namelist option to &filter_nml.
+The QCEFF options are set using a :ref:`qceff table <qceff table>` given as a namelist option to &filter_nml.
 
    .. code-block:: text
 
       &filter_nml
-         qcf_table_filename = 'qcf_table.csv'
+         qceff_table_filename = 'qceff_table.csv'
 
 
 .. _QCEFF options:
@@ -21,7 +21,7 @@ QCEFF options
 --------------
 
 QCEFF options are per quantity. For a given quantity, you specify the following 
-options as columns of the qcf_table:
+options as columns of the qceff_table:
 
 * Observation error information
 
@@ -57,14 +57,14 @@ options as columns of the qcf_table:
 
 
 
-.. _qcf table:
+.. _qceff table:
 
-Creating a qcf table
---------------------
+Creating a qceff table
+-----------------------
 
 The table has two headers, row 1 and 2.
 The first row is the version number.  The second row describes the :ref:`QCEFF options` corresponding to each column of the table. 
-These two headers must be present in your qcf table. 
+These two headers must be present in your qceff table. 
 The :ref:`qcf trunc table` below shows the table headers, 
 and an example quantity QTY_TRACER_CONCENTRATION for the first 5 columns of the table. 
 There is a complete table with all 25 columns in `Google Sheets <https://docs.google.com/spreadsheets/d/1CRGHWc7boQt81pw2pDxEFY6WPyQeCh64OwPyoVMqijE/edit?usp=sharing>`_. You can copy and edit this table as needed.
@@ -76,13 +76,13 @@ Ensure that there are no empty rows in between the quantities listed in the spre
 Save your spreadsheet as a .csv file. 
 
 To run filter or perfect_model_obs, put the .csv file in the directory where you are running.
-Edit input.nml to set the filter_nml option qcf_table_filename, for example:
+Edit input.nml to set the filter_nml option qceff_table_filename, for example:
 
 
    .. code-block:: text
 
       &filter_nml
-         qcf_table_filename = 'qcf_table.csv'
+         qceff_table_filename = 'qceff_table.csv'
 
 
 .. _qcf trunc table:
@@ -138,7 +138,7 @@ Available distributions
 Default values
 ---------------
 
-If a quantity is not in the qcf table, the following default values
+If a quantity is not in the qceff table, the following default values
 are used:
 
   * filter_kind (default EAKF)

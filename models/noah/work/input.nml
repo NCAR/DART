@@ -52,7 +52,7 @@
 
 
 &filter_nml
-   qcf_table_filename           = ''
+   qceff_table_filename           = ''
    input_state_file_list        = 'input_file_list.txt'
    perturb_from_single_instance = .false.
    init_time_days               = -1

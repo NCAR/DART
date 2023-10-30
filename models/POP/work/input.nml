@@ -31,7 +31,7 @@
   /
 
 &filter_nml
-   qcf_table_filename       = ''
+   qceff_table_filename       = ''
    async                    = 0
    adv_ens_command          = 'no_CESM_advance_script'
    ens_size                 =  3

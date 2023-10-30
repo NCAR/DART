@@ -28,7 +28,7 @@
 
 
 &filter_nml
-   qcf_table_filename           = ''
+   qceff_table_filename           = ''
    allow_missing_clm = .true.
    perturb_from_single_instance = .FALSE.
    perturbation_amplitude       = 0.2

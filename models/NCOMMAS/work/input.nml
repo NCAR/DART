@@ -27,7 +27,7 @@
 
 
 &filter_nml
-   qcf_table_filename       = '',
+   qceff_table_filename       = '',
    async                    = 4,
    adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 =  20,

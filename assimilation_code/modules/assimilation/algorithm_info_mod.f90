@@ -88,7 +88,7 @@ character(len=129), dimension(4) :: header1
 character(len=129), dimension(25) :: header2 ! Number of table columns plus 1
 
 integer, allocatable :: specified_qtys(:)
-type(algorithm_info_type), allocatable :: qcf_table_data(:)
+type(algorithm_info_type), allocatable :: qceff_table_data(:)
 
 character(len=129), allocatable :: dist_type_string_probit_inflation(:)
 character(len=129), allocatable :: dist_type_string_probit_state(:)
@@ -100,11 +100,11 @@ contains
 !-------------------------------------------------------------------------
 
 
-subroutine init_algorithm_info_mod(qcf_table_filename)
+subroutine init_algorithm_info_mod(qceff_table_filename)
 
 ! Gets number of lines/QTYs in the QCF table, allocates space for the table data
 
-character(len=129), intent(in) :: qcf_table_filename
+character(len=129), intent(in) :: qceff_table_filename
 
 integer :: fileid
 integer :: io
@@ -115,14 +115,14 @@ integer :: nlines
 if (module_initialized) return
 module_initialized = .true.
 
-if (qcf_table_filename == '') then
+if (qceff_table_filename == '') then
    write(errstring,*) 'No QCF table file listed in namelist, using default values for all QTYs'
    call error_handler(E_MSG, 'init_algorithm_info_mod:', errstring, source)
    return
 endif
 
 use_qty_defaults = .false.
-fileid = open_file(trim(qcf_table_filename), 'formatted', 'read')
+fileid = open_file(trim(qceff_table_filename), 'formatted', 'read')
 
 ! Do loop to get number of rows (or QTYs) in the table
 nlines = 0
@@ -137,139 +137,139 @@ call close_file(fileid)
 numrows = nlines - HEADER_LINES
 
 allocate(specified_qtys(numrows))
-allocate(qcf_table_data(numrows))
+allocate(qceff_table_data(numrows))
 allocate(dist_type_string_probit_inflation(numrows))
 allocate(dist_type_string_probit_state(numrows))
 allocate(dist_type_string_probit_extended_state(numrows))
 allocate(filter_kind_string(numrows))
 
-call read_qcf_table(qcf_table_filename)
-call assert_qcf_table_version()
-call verify_qcf_table_data()
-call log_qcf_table_data()
+call read_qceff_table(qceff_table_filename)
+call assert_qceff_table_version()
+call verify_qceff_table_data()
+call log_qceff_table_data()
 
 end subroutine init_algorithm_info_mod
 
 !------------------------------------------------------------------------
 
  
-subroutine read_qcf_table(qcf_table_filename)
+subroutine read_qceff_table(qceff_table_filename)
 
 ! Reads in the QCEFF input options from tabular data file
 
-character(len=129), intent(in) :: qcf_table_filename
+character(len=129), intent(in) :: qceff_table_filename
 
 integer :: fileid
 integer :: row
 character(len=obstypelength) :: qty_string
 
-if (.not. module_initialized) call init_algorithm_info_mod(qcf_table_filename)
+if (.not. module_initialized) call init_algorithm_info_mod(qceff_table_filename)
 
-fileid = open_file(trim(qcf_table_filename), 'formatted', 'read')
+fileid = open_file(trim(qceff_table_filename), 'formatted', 'read')
 
 ! skip the headers
 read(fileid, *) header1
 read(fileid, *) header2
 
-! read in table values directly to qcf_table_data type
-do row = 1, size(qcf_table_data)
-   read(fileid, *) qty_string, qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
-                   qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, dist_type_string_probit_inflation(row), &
-                   qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
-                   qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, dist_type_string_probit_state(row), &
-                   qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
-                   qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, dist_type_string_probit_extended_state(row), &
-                   qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
-                   qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-                   filter_kind_string(row), qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
-                   qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
+! read in table values directly to qceff_table_data type
+do row = 1, size(qceff_table_data)
+   read(fileid, *) qty_string, qceff_table_data(row)%obs_error_info%bounded_below, qceff_table_data(row)%obs_error_info%bounded_above, &
+                   qceff_table_data(row)%obs_error_info%lower_bound, qceff_table_data(row)%obs_error_info%upper_bound, dist_type_string_probit_inflation(row), &
+                   qceff_table_data(row)%probit_inflation%bounded_below, qceff_table_data(row)%probit_inflation%bounded_above, &
+                   qceff_table_data(row)%probit_inflation%lower_bound, qceff_table_data(row)%probit_inflation%upper_bound, dist_type_string_probit_state(row), &
+                   qceff_table_data(row)%probit_state%bounded_below, qceff_table_data(row)%probit_state%bounded_above, &
+                   qceff_table_data(row)%probit_state%lower_bound, qceff_table_data(row)%probit_state%upper_bound, dist_type_string_probit_extended_state(row), &
+                   qceff_table_data(row)%probit_extended_state%bounded_below, qceff_table_data(row)%probit_extended_state%bounded_above, &
+                   qceff_table_data(row)%probit_extended_state%lower_bound, qceff_table_data(row)%probit_extended_state%upper_bound, &
+                   filter_kind_string(row), qceff_table_data(row)%obs_inc_info%bounded_below, qceff_table_data(row)%obs_inc_info%bounded_above, &
+                   qceff_table_data(row)%obs_inc_info%lower_bound, qceff_table_data(row)%obs_inc_info%upper_bound
 
    specified_qtys(row) = get_index_for_quantity(qty_string)  
 
    if(specified_qtys(row) == -1) then
       write(errstring,*) trim(qty_string), ' is not a valid DART QTY'
-      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
    endif
 
    ! Converting the distribution types (read in from table as a string) to its corresponding int value
    if (trim(dist_type_string_probit_inflation(row)) == 'NORMAL_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = NORMAL_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = NORMAL_DISTRIBUTION
    elseif (trim(dist_type_string_probit_inflation(row)) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    elseif (trim(dist_type_string_probit_inflation(row)) == 'GAMMA_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
    elseif (trim(dist_type_string_probit_inflation(row)) == 'BETA_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
    elseif (trim(dist_type_string_probit_inflation(row)) == 'LOG_NORMAL_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
    elseif (trim(dist_type_string_probit_inflation(row)) == 'UNIFORM_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
    elseif (trim(dist_type_string_probit_inflation(row)) == 'PARTICLE_FILTER_DISTRIBUTION') then
-      qcf_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      qceff_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
    else
       write(errstring, *) 'Invalid distribution type for probit inflation: ', trim(dist_type_string_probit_inflation(row))
-      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
    endif
 
    if (trim(dist_type_string_probit_state(row)) == 'NORMAL_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = NORMAL_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = NORMAL_DISTRIBUTION
    elseif (trim(dist_type_string_probit_state(row)) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    elseif (trim(dist_type_string_probit_state(row)) == 'GAMMA_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
    elseif (trim(dist_type_string_probit_state(row)) == 'BETA_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
    elseif (trim(dist_type_string_probit_state(row)) == 'LOG_NORMAL_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
    elseif (trim(dist_type_string_probit_state(row)) == 'UNIFORM_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
    elseif (trim(dist_type_string_probit_state(row)) == 'PARTICLE_FILTER_DISTRIBUTION') then
-      qcf_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
    else
       write(errstring, *) 'Invalid distribution type for probit state: ', trim(dist_type_string_probit_state(row))
-      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
    endif
 
    if (trim(dist_type_string_probit_extended_state(row)) == 'NORMAL_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = NORMAL_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = NORMAL_DISTRIBUTION
    elseif (trim(dist_type_string_probit_extended_state(row)) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
    elseif (trim(dist_type_string_probit_extended_state(row)) == 'GAMMA_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
    elseif (trim(dist_type_string_probit_extended_state(row)) == 'BETA_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
    elseif (trim(dist_type_string_probit_extended_state(row)) == 'LOG_NORMAL_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
    elseif (trim(dist_type_string_probit_extended_state(row)) == 'UNIFORM_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
    elseif (trim(dist_type_string_probit_extended_state(row)) == 'PARTICLE_FILTER_DISTRIBUTION') then
-      qcf_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
    else
       write(errstring, *) 'Invalid distribution type for probit extended state: ', trim(dist_type_string_probit_extended_state(row))
-      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
    endif
 
    ! Converting the filter kind (read in from table as a string) to its corresponding int value
    if (trim(filter_kind_string(row)) == 'EAKF') then
-      qcf_table_data(row)%obs_inc_info%filter_kind = EAKF
+      qceff_table_data(row)%obs_inc_info%filter_kind = EAKF
    elseif (trim(filter_kind_string(row)) == 'ENKF') then
-      qcf_table_data(row)%obs_inc_info%filter_kind = ENKF
+      qceff_table_data(row)%obs_inc_info%filter_kind = ENKF
    elseif (trim(filter_kind_string(row)) == 'UNBOUNDED_RHF') then
-      qcf_table_data(row)%obs_inc_info%filter_kind = UNBOUNDED_RHF
+      qceff_table_data(row)%obs_inc_info%filter_kind = UNBOUNDED_RHF
    elseif (trim(filter_kind_string(row)) == 'GAMMA_FILTER') then
-      qcf_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
+      qceff_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
    elseif (trim(filter_kind_string(row)) == 'BOUNDED_NORMAL_RHF') then
-      qcf_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
+      qceff_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
    else
       write(errstring, *) 'Invalid filter kind: ', trim(filter_kind_string(row))
-      call error_handler(E_ERR, 'read_qcf_table:', errstring, source)
+      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
    endif
 
 end do
 
 call close_file(fileid)
 
-end subroutine read_qcf_table
+end subroutine read_qceff_table
 
 !------------------------------------------------------------------------
 
@@ -303,14 +303,14 @@ endif
 ! Get the default error variance
 error_variance = get_obs_def_error_variance(obs_def)
 
-!use default values if qcf_table_filename is not in namelist
+!use default values if qceff_table_filename is not in namelist
 if (use_qty_defaults) then
    bounded_below = .false.;    bounded_above = .false.
    lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
    return
 endif
 
-!find location of QTY in qcf_table_data structure
+!find location of QTY in qceff_table_data structure
 QTY_loc = findloc(specified_qtys, obs_qty)
 
 if (QTY_loc(1) == 0) then
@@ -319,10 +319,10 @@ if (QTY_loc(1) == 0) then
    lower_bound   = MISSING_R8; upper_bound   = MISSING_R8
 
    else
-      bounded_below = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_below
-      bounded_above = qcf_table_data(QTY_loc(1))%obs_error_info%bounded_above
-      lower_bound   = qcf_table_data(QTY_loc(1))%obs_error_info%lower_bound
-      upper_bound   = qcf_table_data(QTY_loc(1))%obs_error_info%upper_bound
+      bounded_below = qceff_table_data(QTY_loc(1))%obs_error_info%bounded_below
+      bounded_above = qceff_table_data(QTY_loc(1))%obs_error_info%bounded_above
+      lower_bound   = qceff_table_data(QTY_loc(1))%obs_error_info%lower_bound
+      upper_bound   = qceff_table_data(QTY_loc(1))%obs_error_info%upper_bound
 
 endif
 
@@ -361,7 +361,7 @@ integer :: QTY_loc(1)
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
 
-!use default values if qcf_table_filename is not in namelist
+!use default values if qceff_table_filename is not in namelist
 if (use_qty_defaults) then
    dist_type = NORMAL_DISTRIBUTION
    bounded_below = .false.;    bounded_above = .false.
@@ -380,29 +380,29 @@ if (QTY_loc(1) == 0) then
    elseif(is_inflation) then
    ! Case for inflation transformation
 
-      dist_type     = qcf_table_data(QTY_loc(1))%probit_inflation%dist_type
-      bounded_below = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_below
-      bounded_above = qcf_table_data(QTY_loc(1))%probit_inflation%bounded_above
-      lower_bound   = qcf_table_data(QTY_loc(1))%probit_inflation%lower_bound
-      upper_bound   = qcf_table_data(QTY_loc(1))%probit_inflation%upper_bound
+      dist_type     = qceff_table_data(QTY_loc(1))%probit_inflation%dist_type
+      bounded_below = qceff_table_data(QTY_loc(1))%probit_inflation%bounded_below
+      bounded_above = qceff_table_data(QTY_loc(1))%probit_inflation%bounded_above
+      lower_bound   = qceff_table_data(QTY_loc(1))%probit_inflation%lower_bound
+      upper_bound   = qceff_table_data(QTY_loc(1))%probit_inflation%upper_bound
 
    elseif(is_state) then
    ! Case for state variable priors
 
-      dist_type     = qcf_table_data(QTY_loc(1))%probit_state%dist_type
-      bounded_below = qcf_table_data(QTY_loc(1))%probit_state%bounded_below
-      bounded_above = qcf_table_data(QTY_loc(1))%probit_state%bounded_above
-      lower_bound   = qcf_table_data(QTY_loc(1))%probit_state%lower_bound
-      upper_bound   = qcf_table_data(QTY_loc(1))%probit_state%upper_bound
+      dist_type     = qceff_table_data(QTY_loc(1))%probit_state%dist_type
+      bounded_below = qceff_table_data(QTY_loc(1))%probit_state%bounded_below
+      bounded_above = qceff_table_data(QTY_loc(1))%probit_state%bounded_above
+      lower_bound   = qceff_table_data(QTY_loc(1))%probit_state%lower_bound
+      upper_bound   = qceff_table_data(QTY_loc(1))%probit_state%upper_bound
 
    else
    ! This case is for observation (extended state) priors
 
-      dist_type     = qcf_table_data(QTY_loc(1))%probit_extended_state%dist_type
-      bounded_below = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_below
-      bounded_above = qcf_table_data(QTY_loc(1))%probit_extended_state%bounded_above
-      lower_bound   = qcf_table_data(QTY_loc(1))%probit_extended_state%lower_bound
-      upper_bound   = qcf_table_data(QTY_loc(1))%probit_extended_state%upper_bound
+      dist_type     = qceff_table_data(QTY_loc(1))%probit_extended_state%dist_type
+      bounded_below = qceff_table_data(QTY_loc(1))%probit_extended_state%bounded_below
+      bounded_above = qceff_table_data(QTY_loc(1))%probit_extended_state%bounded_above
+      lower_bound   = qceff_table_data(QTY_loc(1))%probit_extended_state%lower_bound
+      upper_bound   = qceff_table_data(QTY_loc(1))%probit_extended_state%upper_bound
 
 endif
 
@@ -421,7 +421,7 @@ real(r8), intent(out) :: lower_bound,  upper_bound
 
 integer :: QTY_loc(1)
 
-!use default values if qcf_table_filename is not in namelist
+!use default values if qceff_table_filename is not in namelist
 if (use_qty_defaults) then
    filter_kind = EAKF
    bounded_below = .false.;    bounded_above = .false.
@@ -429,7 +429,7 @@ if (use_qty_defaults) then
    return
 endif
 
-!find location of QTY in qcf_table_data structure
+!find location of QTY in qceff_table_data structure
 QTY_loc = findloc(specified_qtys, obs_qty)
 
 if (QTY_loc(1) == 0) then
@@ -440,11 +440,11 @@ if (QTY_loc(1) == 0) then
 
    else
 
-      filter_kind   = qcf_table_data(QTY_loc(1))%obs_inc_info%filter_kind
-      bounded_below = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_below
-      bounded_above = qcf_table_data(QTY_loc(1))%obs_inc_info%bounded_above
-      lower_bound   = qcf_table_data(QTY_loc(1))%obs_inc_info%lower_bound
-      upper_bound   = qcf_table_data(QTY_loc(1))%obs_inc_info%upper_bound
+      filter_kind   = qceff_table_data(QTY_loc(1))%obs_inc_info%filter_kind
+      bounded_below = qceff_table_data(QTY_loc(1))%obs_inc_info%bounded_below
+      bounded_above = qceff_table_data(QTY_loc(1))%obs_inc_info%bounded_above
+      lower_bound   = qceff_table_data(QTY_loc(1))%obs_inc_info%lower_bound
+      upper_bound   = qceff_table_data(QTY_loc(1))%obs_inc_info%upper_bound
 
 endif
 
@@ -453,7 +453,7 @@ end subroutine obs_inc_info
 !------------------------------------------------------------------------
 
 
-subroutine assert_qcf_table_version()
+subroutine assert_qceff_table_version()
 
 ! Subroutine to ensure the correct version of the QCF table is being used
 
@@ -461,15 +461,15 @@ character(1), parameter :: QCF_VERSION = '1'
 
 if (trim(header1(4)) /= QCF_VERSION) then
    write(errstring,*) 'Using outdated/incorrect version of the QCF table'
-   call error_handler(E_ERR, 'assert_qcf_table_version:', errstring, source)
+   call error_handler(E_ERR, 'assert_qceff_table_version:', errstring, source)
 endif
 
-end subroutine assert_qcf_table_version
+end subroutine assert_qceff_table_version
 
 !------------------------------------------------------------------------
 
 
-subroutine verify_qcf_table_data()
+subroutine verify_qceff_table_data()
 
 ! Subroutine to ensure that the data in the QCF table is valid 
 
@@ -479,55 +479,55 @@ if (use_qty_defaults) return
 
 !Checks that all bounds are valid; currently checks that the lower bound in less than the upper
 !Here we could add more specific checks if we have known limits on the bounds
-do row = 1, size(qcf_table_data)
+do row = 1, size(qceff_table_data)
 
-   if (qcf_table_data(row)%obs_error_info%bounded_below .and.  qcf_table_data(row)%obs_error_info%bounded_above) then
-      if(qcf_table_data(row)%obs_error_info%lower_bound > qcf_table_data(row)%obs_error_info%upper_bound) then
+   if (qceff_table_data(row)%obs_error_info%bounded_below .and.  qceff_table_data(row)%obs_error_info%bounded_above) then
+      if(qceff_table_data(row)%obs_error_info%lower_bound > qceff_table_data(row)%obs_error_info%upper_bound) then
          write(errstring,*) 'Invalid bounds in obs_error_info'
-         call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
+         call error_handler(E_ERR, 'verify_qceff_table_data:', errstring, source)
       endif
    endif
-   if (qcf_table_data(row)%probit_inflation%bounded_below .and. qcf_table_data(row)%probit_inflation%bounded_above) then
-      if(qcf_table_data(row)%probit_inflation%lower_bound > qcf_table_data(row)%probit_inflation%upper_bound) then
+   if (qceff_table_data(row)%probit_inflation%bounded_below .and. qceff_table_data(row)%probit_inflation%bounded_above) then
+      if(qceff_table_data(row)%probit_inflation%lower_bound > qceff_table_data(row)%probit_inflation%upper_bound) then
          write(errstring,*) 'Invalid bounds in probit_inflation'
-         call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
+         call error_handler(E_ERR, 'verify_qceff_table_data:', errstring, source)
       endif
    endif
-   if(qcf_table_data(row)%probit_state%bounded_below .and. qcf_table_data(row)%probit_state%bounded_above) then
-      if(qcf_table_data(row)%probit_state%lower_bound > qcf_table_data(row)%probit_state%upper_bound) then
+   if(qceff_table_data(row)%probit_state%bounded_below .and. qceff_table_data(row)%probit_state%bounded_above) then
+      if(qceff_table_data(row)%probit_state%lower_bound > qceff_table_data(row)%probit_state%upper_bound) then
          write(errstring,*) 'Invalid bounds in probit_state'
-         call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
+         call error_handler(E_ERR, 'verify_qceff_table_data:', errstring, source)
       endif
    endif
-   if(qcf_table_data(row)%probit_extended_state%bounded_below .and. qcf_table_data(row)%probit_extended_state%bounded_above) then
-      if(qcf_table_data(row)%probit_extended_state%lower_bound > qcf_table_data(row)%probit_extended_state%upper_bound) then
+   if(qceff_table_data(row)%probit_extended_state%bounded_below .and. qceff_table_data(row)%probit_extended_state%bounded_above) then
+      if(qceff_table_data(row)%probit_extended_state%lower_bound > qceff_table_data(row)%probit_extended_state%upper_bound) then
          write(errstring,*) 'Invalid bounds in probit_extended_state'
-         call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
+         call error_handler(E_ERR, 'verify_qceff_table_data:', errstring, source)
       endif
    endif
-   if(qcf_table_data(row)%obs_inc_info%bounded_below .and. qcf_table_data(row)%obs_inc_info%bounded_above) then
-       if(qcf_table_data(row)%obs_inc_info%lower_bound > qcf_table_data(row)%obs_inc_info%upper_bound) then
+   if(qceff_table_data(row)%obs_inc_info%bounded_below .and. qceff_table_data(row)%obs_inc_info%bounded_above) then
+       if(qceff_table_data(row)%obs_inc_info%lower_bound > qceff_table_data(row)%obs_inc_info%upper_bound) then
           write(errstring,*) 'Invalid bounds in obs_inc_info'
-          call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
+          call error_handler(E_ERR, 'verify_qceff_table_data:', errstring, source)
        endif
     endif
 end do
 
 
 !Ensures that there are no duplicate QTYs in the table
-do row = 1, size(qcf_table_data)
+do row = 1, size(qceff_table_data)
    if(count(specified_qtys==specified_qtys(row)) > 1) then
       write(errstring,*) trim(get_name_for_quantity(specified_qtys(row))), ' has multiple entries in the table'
-      call error_handler(E_ERR, 'verify_qcf_table_data:', errstring, source)
+      call error_handler(E_ERR, 'verify_qceff_table_data:', errstring, source)
    endif
 end do
 
-end subroutine verify_qcf_table_data
+end subroutine verify_qceff_table_data
 
 !------------------------------------------------------------------------
 
 
-subroutine log_qcf_table_data()
+subroutine log_qceff_table_data()
 
 ! Subroutine to write the data in QCF table to dart_log
 character(len=2000) :: log_msg
@@ -536,33 +536,33 @@ integer :: row
 if (use_qty_defaults) return
 
 call error_handler(E_MSG, '', '', source) !Writing blank line to log
-call error_handler(E_MSG, 'log_qcf_table_data:', 'Logging the data in the QCF Table', source)
+call error_handler(E_MSG, 'log_qceff_table_data:', 'Logging the data in the QCF Table', source)
 
 ! Write the table headers to the dart_log and terminal
 write(log_msg, '(A4, A6, A9, A)') header1(:)
-call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
+call error_handler(E_MSG, 'log_qceff_table_data:', trim(log_msg), source)
 
 write(log_msg,'(3A14, 2A12, 3(A10, 2A14, 2A12), A12, 2A14, 2A12)') header2(:)
-call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
+call error_handler(E_MSG, 'log_qceff_table_data:', trim(log_msg), source)
 
 ! Write the table data to the dart_log and terminal
-do row = 1, size(qcf_table_data)
-   write(log_msg, *) trim(get_name_for_quantity(specified_qtys(row))), qcf_table_data(row)%obs_error_info%bounded_below, qcf_table_data(row)%obs_error_info%bounded_above, &
-               qcf_table_data(row)%obs_error_info%lower_bound, qcf_table_data(row)%obs_error_info%upper_bound, trim(dist_type_string_probit_inflation(row)), &
-               qcf_table_data(row)%probit_inflation%bounded_below, qcf_table_data(row)%probit_inflation%bounded_above, &
-               qcf_table_data(row)%probit_inflation%lower_bound, qcf_table_data(row)%probit_inflation%upper_bound, trim(dist_type_string_probit_state(row)), &
-               qcf_table_data(row)%probit_state%bounded_below, qcf_table_data(row)%probit_state%bounded_above, &
-               qcf_table_data(row)%probit_state%lower_bound, qcf_table_data(row)%probit_state%upper_bound, trim(dist_type_string_probit_extended_state(row)), &
-               qcf_table_data(row)%probit_extended_state%bounded_below, qcf_table_data(row)%probit_extended_state%bounded_above, &
-               qcf_table_data(row)%probit_extended_state%lower_bound, qcf_table_data(row)%probit_extended_state%upper_bound, &
-               trim(filter_kind_string(row)), qcf_table_data(row)%obs_inc_info%bounded_below, qcf_table_data(row)%obs_inc_info%bounded_above, &
-               qcf_table_data(row)%obs_inc_info%lower_bound, qcf_table_data(row)%obs_inc_info%upper_bound
-call error_handler(E_MSG, 'log_qcf_table_data:', trim(log_msg), source)
+do row = 1, size(qceff_table_data)
+   write(log_msg, *) trim(get_name_for_quantity(specified_qtys(row))), qceff_table_data(row)%obs_error_info%bounded_below, qceff_table_data(row)%obs_error_info%bounded_above, &
+               qceff_table_data(row)%obs_error_info%lower_bound, qceff_table_data(row)%obs_error_info%upper_bound, trim(dist_type_string_probit_inflation(row)), &
+               qceff_table_data(row)%probit_inflation%bounded_below, qceff_table_data(row)%probit_inflation%bounded_above, &
+               qceff_table_data(row)%probit_inflation%lower_bound, qceff_table_data(row)%probit_inflation%upper_bound, trim(dist_type_string_probit_state(row)), &
+               qceff_table_data(row)%probit_state%bounded_below, qceff_table_data(row)%probit_state%bounded_above, &
+               qceff_table_data(row)%probit_state%lower_bound, qceff_table_data(row)%probit_state%upper_bound, trim(dist_type_string_probit_extended_state(row)), &
+               qceff_table_data(row)%probit_extended_state%bounded_below, qceff_table_data(row)%probit_extended_state%bounded_above, &
+               qceff_table_data(row)%probit_extended_state%lower_bound, qceff_table_data(row)%probit_extended_state%upper_bound, &
+               trim(filter_kind_string(row)), qceff_table_data(row)%obs_inc_info%bounded_below, qceff_table_data(row)%obs_inc_info%bounded_above, &
+               qceff_table_data(row)%obs_inc_info%lower_bound, qceff_table_data(row)%obs_inc_info%upper_bound
+call error_handler(E_MSG, 'log_qceff_table_data:', trim(log_msg), source)
 end do
 
 call error_handler(E_MSG, '', '', source) !Writing blank line to log
 
-end subroutine log_qcf_table_data
+end subroutine log_qceff_table_data
 
 !------------------------------------------------------------------------
 
@@ -575,7 +575,7 @@ module_initialized = .false.
 if (use_qty_defaults) return
 
 deallocate(specified_qtys)
-deallocate(qcf_table_data)
+deallocate(qceff_table_data)
 
 end subroutine end_algorithm_info_mod
 

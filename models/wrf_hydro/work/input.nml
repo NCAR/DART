@@ -74,7 +74,7 @@
 #  output_state_file_list       = 'hydro_file_list.txt'
 
 &filter_nml
-   qcf_table_filename           = ''
+   qceff_table_filename           = ''
    input_state_file_list        = 'hydro_file_list.txt'
    single_file_in               = .false.
    init_time_days               = -1,

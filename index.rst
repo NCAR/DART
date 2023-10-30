@@ -5,7 +5,7 @@ Welcome to the Data Assimilation Research Testbed
 
 .. warning::
 
-  Pre-release version of DART: quantile conserving and probit transform tools
+  Pre-release version of DART: Quantile-Conserving Ensemble Filter Framework
 	
 
 The Data Assimilation Research Testbed (DART) is an open-source, freely
@@ -69,7 +69,7 @@ for the observed quantity (this is the ensemble adjustment Kalman filter, or EAK
 then linearly regress the observation increments onto each state variable.
 
 
-DART now implements a Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCF>`.
+DART now implements a Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCEFF>`.
 The QCEFF provides a very general method of computing increments for the prior ensemble of 
 an observed quantity by allowing the use of arbitrary distributions for the prior and the 
 observation error. This is especially useful for bounded quantities like tracer concentrations, 
@@ -100,7 +100,7 @@ with DA and large improvements can occur for bounded parameters. Variables that 
 non-Gaussian prior distributions can also see large improvements. Examples can include atmospheric 
 quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
 
-For instructions on how to use these tools, see :ref:`QCF`.
+For instructions on how to use these tools, see :ref:`QCEFF`.
 
 For step-by-step examples of the QCEFF tools, you can work through 
 :ref:`examples with the Lorenz 96 tracer model <quantile tracer>`
@@ -292,7 +292,7 @@ References
    guide/high-level-da-workflows
    guide/dart-design-philosophy
    guide/important-capabilities-dart
-   guide/qcf_probit
+   guide/qceff_probit
 
 .. toctree::
    :maxdepth: 2
@@ -409,7 +409,7 @@ References
    guide/DART_LAB/DART_LAB
    CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
-   guide/qcf-examples.rst
+   guide/qceff-examples.rst
    
 .. toctree::
    :maxdepth: 2

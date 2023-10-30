@@ -31,7 +31,7 @@
    /
 
 &filter_nml
-   qcf_table_filename           = '',
+   qceff_table_filename           = '',
    single_file_in               = .true.,
    input_state_files            = 'filter_input.nc'
    input_state_file_list        = ''
