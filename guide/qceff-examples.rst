@@ -102,7 +102,7 @@ usually 0. This is a particularly tough test for ensemble methods.
    .. code:: text
      
       &filter_nml
-        read_input_state_from_file = .false.,
+        read_input_state_from_file = .true.,
 
 
    Run ``./perfect_model_obs`` again.
