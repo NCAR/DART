@@ -1,6 +1,10 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    start_from_restart    = .false.,
    output_restart        = .true.,
@@ -25,7 +29,6 @@
    /
 
 &filter_nml
-   qceff_table_filename       = '',
    async                    = 2,
    adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 20,

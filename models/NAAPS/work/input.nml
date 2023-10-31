@@ -1,6 +1,10 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &assim_tools_nml
    cutoff                          = 0.03
    sort_obs_inc                    = .false.
@@ -125,7 +129,6 @@
 
 
 &filter_nml
-   qceff_table_filename       = ''
    async                    = 0
    adv_ens_command          = "./advance_model.csh"
    ens_size                 = 20

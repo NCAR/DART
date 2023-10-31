@@ -5,8 +5,11 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &filter_nml
-  qceff_table_filename          = ''
   async                       = 2
   adv_ens_command             = 'advance_model.csh'
   input_state_file_list       = 'input_filelist.txt'

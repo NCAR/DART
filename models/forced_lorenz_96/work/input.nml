@@ -1,6 +1,10 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
    single_file_in             = .true.
@@ -33,7 +37,6 @@
    # stages_to_write  = 'preassim', 'postassim', 'output'
 
 &filter_nml
-   qceff_table_filename           = '',
    single_file_in               = .true.,
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'

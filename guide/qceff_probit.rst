@@ -7,11 +7,11 @@ The Quantile-Conserving Ensemble Filter Framework (QCEFF) tools are in the alpha
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences 
 and is anxious to build scientific collaborations using these new capabilities.
 
-The QCEFF options are set using a :ref:`qceff table <qceff table>` given as a namelist option to &filter_nml.
+The QCEFF options are set using a :ref:`qceff table <qceff table>` given as a namelist option to &algorithm_info_nml.
 
    .. code-block:: text
 
-      &filter_nml
+      &algorithm_info_nml
          qceff_table_filename = 'qceff_table.csv'
 
 
@@ -76,12 +76,12 @@ Ensure that there are no empty rows in between the quantities listed in the spre
 Save your spreadsheet as a .csv file. 
 
 To run filter or perfect_model_obs, put the .csv file in the directory where you are running.
-Edit input.nml to set the filter_nml option qceff_table_filename, for example:
+Edit input.nml to set the algorithm_info_nml option qceff_table_filename, for example:
 
 
    .. code-block:: text
 
-      &filter_nml
+      &algorithm_info_nml
          qceff_table_filename = 'qceff_table.csv'
 
 

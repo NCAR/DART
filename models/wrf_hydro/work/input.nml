@@ -10,6 +10,10 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &model_nml
      assimilation_period_days       = 0
      assimilation_period_seconds    = 3600
@@ -74,7 +78,6 @@
 #  output_state_file_list       = 'hydro_file_list.txt'
 
 &filter_nml
-   qceff_table_filename           = ''
    input_state_file_list        = 'hydro_file_list.txt'
    single_file_in               = .false.
    init_time_days               = -1,

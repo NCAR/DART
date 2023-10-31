@@ -13,7 +13,9 @@ use types_mod,       only : r8, i8, MISSING_R8, obstypelength
 use obs_def_mod,     only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_error_variance
 use obs_kind_mod,    only : get_quantity_for_type_of_obs, get_name_for_quantity, get_index_for_quantity
 
-use utilities_mod,   only : error_handler, E_ERR, E_MSG, open_file, close_file, to_upper
+use utilities_mod,   only : error_handler, E_ERR, E_MSG, open_file, close_file, to_upper, &
+                            do_nml_file, do_nml_term, nmlfileunit, check_namelist_read, &
+                            find_namelist_in_file
 
 use assim_model_mod, only : get_state_meta_data
 use location_mod,    only : location_type
@@ -95,25 +97,38 @@ character(len=129), allocatable :: dist_type_string_probit_state(:)
 character(len=129), allocatable :: dist_type_string_probit_extended_state(:)
 character(len=129), allocatable :: filter_kind_string(:)
 
+! namelist
+character(len=129) :: qceff_table_filename = ''
+
+namelist /algorithm_info_nml/ qceff_table_filename
+
 contains
 
 !-------------------------------------------------------------------------
 
 
-subroutine init_algorithm_info_mod(qceff_table_filename)
+subroutine init_algorithm_info_mod()
 
 ! Gets number of lines/QTYs in the QCF table, allocates space for the table data
 
-character(len=129), intent(in) :: qceff_table_filename
 
 integer :: fileid
-integer :: io
+integer :: io, iunit
 
 integer :: numrows
 integer :: nlines
 
 if (module_initialized) return
 module_initialized = .true.
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "algorithm_info_nml", iunit)
+read(iunit, nml = algorithm_info_nml, iostat = io)
+call check_namelist_read(iunit, io, "algorithm_info_nml")
+
+if (do_nml_file()) write(nmlfileunit, nml=algorithm_info_nml)
+if (do_nml_term()) write(     *     , nml=algorithm_info_nml)
+
 
 if (qceff_table_filename == '') then
    write(errstring,*) 'No QCF table file listed in namelist, using default values for all QTYs'
@@ -163,7 +178,7 @@ integer :: fileid
 integer :: row
 character(len=obstypelength) :: qty_string
 
-if (.not. module_initialized) call init_algorithm_info_mod(qceff_table_filename)
+if (.not. module_initialized) call init_algorithm_info_mod()
 
 fileid = open_file(trim(qceff_table_filename), 'formatted', 'read')
 
@@ -305,6 +320,8 @@ type(location_type) :: temp_loc
 
 integer :: QTY_loc(1)
 
+if (.not. module_initialized) call init_algorithm_info_mod()
+
 ! Get the type of the observation
 obs_type = get_obs_def_type_of_obs(obs_def)
 ! If it is negative, it is an identity obs
@@ -376,6 +393,8 @@ integer :: QTY_loc(1)
 ! In the long run, may not have to have separate controls for each of the input possibilities
 ! However, for now these are things that need to be explored for science understanding
 
+if (.not. module_initialized) call init_algorithm_info_mod()
+
 !use default values if qceff_table_filename is not in namelist
 if (use_qty_defaults) then
    dist_type = NORMAL_DISTRIBUTION
@@ -435,6 +454,8 @@ logical,  intent(out) :: bounded_below, bounded_above
 real(r8), intent(out) :: lower_bound,  upper_bound
 
 integer :: QTY_loc(1)
+
+if (.not. module_initialized) call init_algorithm_info_mod()
 
 !use default values if qceff_table_filename is not in namelist
 if (use_qty_defaults) then

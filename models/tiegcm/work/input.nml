@@ -1,6 +1,10 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &quality_control_nml
 /
 
@@ -41,7 +45,6 @@
 #   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt', 'out_f10.7.txt' 
 
 &filter_nml
-   qceff_table_filename           = '',
    single_file_in               = .false.,
    input_state_files            = ''
    input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt'

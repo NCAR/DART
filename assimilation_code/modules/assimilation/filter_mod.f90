@@ -166,7 +166,6 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-character(len = 129) :: qceff_table_filename = '' 
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -261,7 +260,6 @@ logical  :: allow_missing_clm = .false.
 
 
 namelist /filter_nml/ async,     &
-   qceff_table_filename,           &
    adv_ens_command,              &
    ens_size,                     &
    tasks_per_model_advance,      &
@@ -1277,7 +1275,7 @@ call state_vector_io_init()
 call initialize_qc()
 
 ! Initialize algorothm_info_mod and read in QCF table data
-call init_algorithm_info_mod(qceff_table_filename)
+call init_algorithm_info_mod()
 
 call trace_message('After filter_initialize_module_used call')
 

@@ -31,8 +31,11 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &filter_nml
-   qceff_table_filename           = ''
    input_state_files            = ''
    input_state_file_list        = 'cam_init_files'
    single_file_in               = .false.

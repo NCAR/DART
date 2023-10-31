@@ -1,6 +1,10 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    write_output_state_to_file = .false.
@@ -28,7 +32,6 @@
 
 
 &filter_nml
-   qceff_table_filename           = ''
    allow_missing_clm = .true.
    perturb_from_single_instance = .FALSE.
    perturbation_amplitude       = 0.2

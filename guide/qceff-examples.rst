@@ -23,7 +23,7 @@ Build the DART executables for the Lorenz 96 tracer advection model:
 
 
 The new quantile options are set using a :ref:`qceff table <QCEFF>` given as a namelist
-option ``qceff_table_filename`` to &filter_nml. The examples below show how to change the quantile options
+option ``qceff_table_filename`` to &algorithm_info_nml. The examples below show how to change the quantile options
 using various qceff tables. You can find the .csv files for these four example in the directory
 ``DART/models/lorenz_96_tracer_advection/work``
 
@@ -67,7 +67,7 @@ usually 0. This is a particularly tough test for ensemble methods.
 
    .. code-block:: text
 
-      &filter_nml
+      &algorithm_info_nml
          qceff_table_filename = 'all_bnrhf_qceff_table.csv'
        
 
@@ -101,7 +101,7 @@ usually 0. This is a particularly tough test for ensemble methods.
 
    .. code:: text
      
-      &filter_nml
+      &perfect_model_obs_nml
         read_input_state_from_file = .true.,
 
 
@@ -127,7 +127,7 @@ Using Ensemble Adjustment Kalman filters.
 
    .. code-block:: text
 
-      &filter_nml
+      &algorithm_info_nml
          qceff_table_filename = 'all_eakf_qceff_table.csv'
        
 
@@ -145,7 +145,7 @@ Using Ensemble Adjustment Kalman filter for state, but bounded normal rank histo
 
    .. code-block:: text
 
-      &filter_nml
+      &algorithm_info_nml
          qceff_table_filename = 'state_eakf_tracer_bnrhf_qceff_table.csv'
        
 
@@ -165,7 +165,7 @@ test.
 
    .. code-block:: text
 
-      &filter_nml
+      &algorithm_info_nml
          qceff_table_filename = 'neg_qceff_table.csv'
       
 
@@ -177,7 +177,7 @@ test.
       &model_nml
           positive_tracer          = .false.,
 
-      &filter_nml
+      &perfect_model_obs_nml
           read_input_state_from_file = .false.,
 
 

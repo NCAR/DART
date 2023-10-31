@@ -1,8 +1,11 @@
 &probit_transform_nml
    /
 
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
-   use_algorithm_info_mod     = .true.,
    read_input_state_from_file = .false.,
    single_file_in             = .true.
    input_state_files          = "perfect_input.nc"
@@ -32,7 +35,6 @@
    /
 
 &filter_nml
-   qceff_table_filename           = '',
    single_file_in               = .true.,
    input_state_files            = 'perfect_input.nc'
    input_state_file_list        = ''

@@ -1,5 +1,9 @@
 &probit_transform_nml
-  /
+   /
+   
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
@@ -32,7 +36,6 @@
 
 
 &filter_nml
-   qceff_table_filename       = ''
    async                    = 0
    adv_ens_command          = "DART_trying_to_advance_ROMS_not_supported"
    ens_size                 = 3
