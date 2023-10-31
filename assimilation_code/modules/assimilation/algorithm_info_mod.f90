@@ -183,7 +183,8 @@ do row = 1, size(qceff_table_data)
                    qceff_table_data(row)%probit_extended_state%lower_bound, qceff_table_data(row)%probit_extended_state%upper_bound, &
                    filter_kind_string(row), qceff_table_data(row)%obs_inc_info%bounded_below, qceff_table_data(row)%obs_inc_info%bounded_above, &
                    qceff_table_data(row)%obs_inc_info%lower_bound, qceff_table_data(row)%obs_inc_info%upper_bound
-
+   
+   call to_upper(qty_string)
    specified_qtys(row) = get_index_for_quantity(qty_string)  
 
    if(specified_qtys(row) == -1) then
@@ -192,78 +193,92 @@ do row = 1, size(qceff_table_data)
    endif
 
    ! Converting the distribution types (read in from table as a string) to its corresponding int value
-   if (trim(dist_type_string_probit_inflation(row)) == 'NORMAL_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = NORMAL_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_inflation(row)) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_inflation(row)) == 'GAMMA_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_inflation(row)) == 'BETA_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_inflation(row)) == 'LOG_NORMAL_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_inflation(row)) == 'UNIFORM_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_inflation(row)) == 'PARTICLE_FILTER_DISTRIBUTION') then
-      qceff_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
-   else
-      write(errstring, *) 'Invalid distribution type for probit inflation: ', trim(dist_type_string_probit_inflation(row))
-      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
-   endif
+   call to_upper(dist_type_string_probit_inflation(row))
 
-   if (trim(dist_type_string_probit_state(row)) == 'NORMAL_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = NORMAL_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_state(row)) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_state(row)) == 'GAMMA_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_state(row)) == 'BETA_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_state(row)) == 'LOG_NORMAL_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_state(row)) == 'UNIFORM_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_state(row)) == 'PARTICLE_FILTER_DISTRIBUTION') then
-      qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
-   else
-      write(errstring, *) 'Invalid distribution type for probit state: ', trim(dist_type_string_probit_state(row))
-      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
-   endif
+   select case (trim(dist_type_string_probit_inflation(row)))
+      case ('NORMAL_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = NORMAL_DISTRIBUTION
+      case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+      case ('GAMMA_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
+      case ('BETA_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
+      case ('LOG_NORMAL_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
+      case ('UNIFORM_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
+      case ('PARTICLE_FILTER_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      case default
+         write(errstring, *) 'Invalid distribution type for probit inflation: ', trim(dist_type_string_probit_inflation(row))
+         call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
+   end select
 
-   if (trim(dist_type_string_probit_extended_state(row)) == 'NORMAL_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = NORMAL_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_extended_state(row)) == 'BOUNDED_NORMAL_RH_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_extended_state(row)) == 'GAMMA_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_extended_state(row)) == 'BETA_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_extended_state(row)) == 'LOG_NORMAL_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_extended_state(row)) == 'UNIFORM_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
-   elseif (trim(dist_type_string_probit_extended_state(row)) == 'PARTICLE_FILTER_DISTRIBUTION') then
-      qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
-   else
-      write(errstring, *) 'Invalid distribution type for probit extended state: ', trim(dist_type_string_probit_extended_state(row))
-      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
-   endif
+
+   call to_upper(dist_type_string_probit_state(row))
+  
+   select case (trim(dist_type_string_probit_state(row)))
+      case ('NORMAL_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = NORMAL_DISTRIBUTION
+      case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+      case ('GAMMA_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
+      case ('BETA_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
+      case ('LOG_NORMAL_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
+      case ('UNIFORM_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
+      case ('PARTICLE_FILTER_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      case default
+         write(errstring, *) 'Invalid distribution type for probit state: ', trim(dist_type_string_probit_state(row))
+         call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
+   end select
+
+   call to_upper(dist_type_string_probit_extended_state(row))
+
+   select case (trim(dist_type_string_probit_extended_state(row)))
+      case ('NORMAL_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = NORMAL_DISTRIBUTION
+      case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
+      case ('GAMMA_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
+      case ('BETA_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
+      case ('LOG_NORMAL_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
+      case ('UNIFORM_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
+      case ('PARTICLE_FILTER_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      case default
+         write(errstring, *) 'Invalid distribution type for probit extended state: ', trim(dist_type_string_probit_extended_state(row))
+         call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
+   end select
+
 
    ! Converting the filter kind (read in from table as a string) to its corresponding int value
-   if (trim(filter_kind_string(row)) == 'EAKF') then
-      qceff_table_data(row)%obs_inc_info%filter_kind = EAKF
-   elseif (trim(filter_kind_string(row)) == 'ENKF') then
-      qceff_table_data(row)%obs_inc_info%filter_kind = ENKF
-   elseif (trim(filter_kind_string(row)) == 'UNBOUNDED_RHF') then
-      qceff_table_data(row)%obs_inc_info%filter_kind = UNBOUNDED_RHF
-   elseif (trim(filter_kind_string(row)) == 'GAMMA_FILTER') then
-      qceff_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
-   elseif (trim(filter_kind_string(row)) == 'BOUNDED_NORMAL_RHF') then
-      qceff_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
-   else
-      write(errstring, *) 'Invalid filter kind: ', trim(filter_kind_string(row))
-      call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
-   endif
+   call to_upper(filter_kind_string(row))
+ 
+   select case (trim(filter_kind_string(row)))
+      case ('EAKF')
+         qceff_table_data(row)%obs_inc_info%filter_kind = EAKF
+      case ('ENKF')
+         qceff_table_data(row)%obs_inc_info%filter_kind = ENKF
+      case ('UNBOUNDED_RHF')
+         qceff_table_data(row)%obs_inc_info%filter_kind = UNBOUNDED_RHF
+      case ('GAMMA_FILTER')
+         qceff_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
+      case ('BOUNDED_NORMAL_RHF')
+         qceff_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
+      case default
+         write(errstring, *) 'Invalid filter kind: ', trim(filter_kind_string(row))
+         call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
+   end select
 
 end do
 
