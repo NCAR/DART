@@ -181,4 +181,4 @@ test.
           read_input_state_from_file = .false.,
 
 
-#. Repeat steps 5-8 from Test A.
+#. Repeat steps 3-6 from Test A.
