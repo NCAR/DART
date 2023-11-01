@@ -68,7 +68,7 @@ For models there are four arrays in quickbuild.sh:
   )
    
   serial_programs=(
-  DART programs that do not use mpi go here
+  DART programs that do not use mpi go here, but not model_to_dart, dart_to_model
   )
 
   model_programs=(
@@ -76,7 +76,7 @@ For models there are four arrays in quickbuild.sh:
   ) 
 
   model_serial_programs=(
-  model programs that do not use mpi go here
+  model programs that do not use mpi go here, e.g. model_to_dart, dart_to_model
   ) 
 
 For observation converters, there is a single array.

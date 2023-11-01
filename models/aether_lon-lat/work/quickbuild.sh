@@ -13,18 +13,21 @@ MODEL=aether_lon-lat
 LOCATION=threed_sphere
 
 programs=(
+filter
+model_mod_check
+perfect_model_obs
 )
-# filter
-# model_mod_check
-# perfect_model_obs
 
 serial_programs=(
-aether_to_dart
+create_fixed_network_seq
+create_obs_sequence
+obs_diag
+obs_seq_to_netcdf
 )
-# create_fixed_network_seq
-# create_obs_sequence
-# obs_diag
-# obs_seq_to_netcdf
+
+model_serial_programs=(
+aether_to_dart
+dart_to_aether)
 
 arguments "$@"
 
