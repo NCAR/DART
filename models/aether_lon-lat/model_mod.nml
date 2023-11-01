@@ -1,7 +1,7 @@
 ! TIEGCM:  (Any variables from GITM?)
 &model_nml
    debug                       = 100
-   filter_inout_dir         = 'testdata1/restartOut.Sphere.1member'
+   filter_io_dir         = 'testdata1/restartOut.Sphere.1member'
    estimate_f10_7 = .false.
    f10_7_file_name = 'f10_7.nc'
    variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
