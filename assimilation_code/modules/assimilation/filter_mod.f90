@@ -90,9 +90,9 @@ use location_mod,          only : location_type
 
 use probit_transform_mod,  only : transform_to_probit, transform_from_probit
 
-use algorithm_info_mod, only : probit_dist_info
+use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_algorithm_info_mod
 
-use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
+use distribution_params_mod, only : distribution_params_type
 
 !------------------------------------------------------------------------------
 
@@ -166,7 +166,6 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-logical  :: use_algorithm_info_mod = .true.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -261,7 +260,6 @@ logical  :: allow_missing_clm = .false.
 
 
 namelist /filter_nml/ async,     &
-   use_algorithm_info_mod,       &
    adv_ens_command,              &
    ens_size,                     &
    tasks_per_model_advance,      &
@@ -361,12 +359,12 @@ logical :: all_gone, allow_missing
 
 real(r8), allocatable   :: prior_qc_copy(:)
 
-call filter_initialize_modules_used() ! static_init_model called in here
-
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "filter_nml", iunit)
 read(iunit, nml = filter_nml, iostat = io)
 call check_namelist_read(iunit, io, "filter_nml")
+
+call filter_initialize_modules_used() ! static_init_model called in here
 
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
@@ -1150,6 +1148,9 @@ call trace_message('Before end_model call')
 call end_assim_model()
 call trace_message('After  end_model call')
 
+! deallocate qceff_table_data structures
+call end_algorithm_info_mod()
+
 call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(state_ens_handle)
 
@@ -1272,6 +1273,10 @@ call static_init_obs_sequence()
 call static_init_assim_model()
 call state_vector_io_init()
 call initialize_qc()
+
+! Initialize algorothm_info_mod and read in QCF table data
+call init_algorithm_info_mod()
+
 call trace_message('After filter_initialize_module_used call')
 
 end subroutine filter_initialize_modules_used
@@ -1599,16 +1604,9 @@ do group = 1, num_groups
          call get_state_meta_data(ens_handle%my_vars(j), my_state_loc, my_state_kind)    
 
          ! Need to specify what kind of prior to use for each
-         ! Use default of untransformed if use_algorithm_info_mod is not true
-         if(use_algorithm_info_mod) then
-            call probit_dist_info(my_state_kind, .true., .true., dist_type, &
-               bounded_below, bounded_above, lower_bound, upper_bound)
-         else
-            ! Default is just a normal which does nothing
-            dist_type = NORMAL_DISTRIBUTION
-            bounded_below = .false. ;  bounded_above = .false.
-            lower_bound = 0.0_r8;      upper_bound = 0.0_r8
-         endif
+         call probit_dist_info(my_state_kind, .true., .true., dist_type, &
+            bounded_below, bounded_above, lower_bound, upper_bound)
+
          call transform_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
             dist_type, dist_params, probit_ens(1:grp_size), .false., &
                bounded_below, bounded_above, lower_bound, upper_bound)

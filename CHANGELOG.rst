@@ -22,6 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 2 2023 :: QCEFF Input Table. Tag v11.1.0-alpha**
+
+- The QCEFF input table allows for the specification of QCEFF/probit
+  input options, per QTY, at runtime.
+- This replaces the functionality of using an algorithm_info_mod specific
+  to the model, which meant editing algorithm_info_mod.f90 to specify
+  which distribution should be used for which quantity.
+- The algorithm_info_mod files for the lorenz_96_tracer_advection model
+  examples have been replaced with set QCF tables (all_bnrhf_qcf_table.csv,
+  all_eakf_qcf_table.csv, state_eakf_tracer_bnrhf_qcf_table.csv,
+  neg_qcf_table.csv) and can be found in lorenz_96_tracer_advection/work.
+- Removed the ‘global’ version of filter_kind from assim_tools_mod.f90
+  and the &assim_tools_nml
+
 **October 5 2023 :: WRF-DART tutorial diagnostic section. Tag v10.8.5**
 
 - Improvements:

@@ -47,7 +47,7 @@ logical :: module_initialized = .false.
 ! Logical to fix bounds violations for bounded_normal_rh
 logical :: fix_bound_violations = .false.
 ! Should we use a logit transform instead of the default probit transform
-logical :: use_logit_instead_of_probit = .true.
+logical :: use_logit_instead_of_probit = .false.
 ! Set to true to do a check of the probit to/from transforms for inverse accuracy
 logical :: do_inverse_check = .false.
 

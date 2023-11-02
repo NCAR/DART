@@ -1,5 +1,4 @@
 &filter_nml
-   use_algorithm_info_mod       = .true.,
    single_file_in               = .false.,
    input_state_files            = ''
    input_state_file_list        = ''

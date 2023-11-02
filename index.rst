@@ -5,10 +5,8 @@ Welcome to the Data Assimilation Research Testbed
 
 .. warning::
 
-  Pre-release version of DART: quantile conserving and probit transform tools
+  Pre-release version of DART: Quantile-Conserving Ensemble Filter Framework
 	
-  To get started, see the :ref:`tracer advection example<quantile tracer>`
-
 
 The Data Assimilation Research Testbed (DART) is an open-source, freely
 available community facility for ensemble data assimilation (DA). [1]_ DART is
@@ -51,6 +49,7 @@ DART includes:
 - Extensive documentation of its source code.
 - Interfaces to a variety of models and observation sets that can be used to
   introduce new users or graduate students to ensemble DA.
+- Nonlinear and Non-Gaussian DA Capabilities
 
 DART is also designed to facilitate the combination of assimilation algorithms,
 models, and real or synthetic observations to allow increased
@@ -61,6 +60,50 @@ removing the implementation-specific peculiarities of one-off DA systems.
 These tools are intended for use by the full range of geosciencies community:
 beginners and experts; students and teachers; national centers and university
 research labs.
+
+Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+-----------------------------------------------------------------
+
+The default DART algorithms assume a normal distribution to compute ensemble increments 
+for the observed quantity (this is the ensemble adjustment Kalman filter, or EAKF) and 
+then linearly regress the observation increments onto each state variable.
+
+
+DART now implements a Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCEFF>`.
+The QCEFF provides a very general method of computing increments for the prior ensemble of 
+an observed quantity by allowing the use of arbitrary distributions for the prior and the 
+observation error. This is especially useful for bounded quantities like tracer concentrations, 
+depths of things like snow or ice, and estimating model parameters that have a restricted range.
+See this Monthly Weather Review article for details,
+`QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_.
+
+While the QCEFF for computing observation increments can lead to significant improvements in 
+analysis estimates for observed variables, those improvements can be lost when using standard 
+linear regression of observation increments to update other state variables. The QCEFF also 
+implements a capability to do regression in a probit probability integral transformed space. 
+Doing the regression of observation quantile increments in the transformed space guarantees 
+that the posterior ensembles for state variables also retain the advantages of the observation space
+quantile conserving posteriors. For example, if state variables are bounded, then posterior 
+ensembles will respect the bounds. The posterior ensembles also respect other aspects of the 
+continuous prior distributions. See this Monthly Weather Review article for details, 
+`QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.
+
+Inflation and localization, methods that improve the quality of ensemble DA, can also negate 
+the advantages of the QCEFF methods. For this reason, both localization and inflation can be 
+done in the probit-transformed quantile space as well.  Combining these new methods can 
+significantly improve data assimilation for non-Gaussian quantities in Earth system models by 
+extending the capabilities of ensemble DA to general non-Gaussian and nonlinear distributions. 
+Transformative improvements in DA can result for many applications. The largest improvements are 
+found for bounded variables like tracer concentrations, snow and ice depth, soil moisture, and 
+similar quantities in other parts of the Earth system. Model parameters can also be estimated 
+with DA and large improvements can occur for bounded parameters. Variables that have distinctly 
+non-Gaussian prior distributions can also see large improvements. Examples can include atmospheric 
+quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
+
+For instructions on how to use these tools, see :ref:`QCEFF`.
+
+For step-by-step examples of the QCEFF tools, you can work through 
+:ref:`examples with the Lorenz 96 tracer model <quantile tracer>`
 
 Organization of the documentation
 ---------------------------------
@@ -230,7 +273,6 @@ References
    guide/downloading-dart
    guide/compiling-dart
    guide/verifying-installation
-   models/lorenz_96_tracer_advection/work/readme
 
 .. toctree::
    :maxdepth: 2
@@ -250,6 +292,7 @@ References
    guide/high-level-da-workflows
    guide/dart-design-philosophy
    guide/important-capabilities-dart
+   guide/qceff_probit
 
 .. toctree::
    :maxdepth: 2
@@ -366,6 +409,7 @@ References
    guide/DART_LAB/DART_LAB
    CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
+   guide/qceff-examples.rst
    
 .. toctree::
    :maxdepth: 2

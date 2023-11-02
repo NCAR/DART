@@ -1,5 +1,11 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
-   use_algorithm_info_mod     = .true.,
    read_input_state_from_file = .false.,
    single_file_in             = .true.
    input_state_files          = "perfect_input.nc"
@@ -29,7 +35,6 @@
    /
 
 &filter_nml
-   use_algorithm_info_mod       = .true.,
    single_file_in               = .true.,
    input_state_files            = 'perfect_input.nc'
    input_state_file_list        = ''
@@ -84,18 +89,10 @@
    silence                      = .false.,
    /
 
-&probit_transform_nml
-   fix_bound_violations = .false.,
-   use_logit_instead_of_probit = .false.
-   do_inverse_check = .true.
-   /
-
 &ensemble_manager_nml
    /
 
 &assim_tools_nml
-   use_algorithm_info_mod          = .true.,
-   filter_kind                     = 1,
    cutoff                          = 1000000.0
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,

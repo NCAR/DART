@@ -63,7 +63,7 @@ use forward_operator_mod, only : get_expected_obs_distrib_state
 
 use mpi_utilities_mod,    only : my_task_id
 
-use algorithm_info_mod,   only : obs_error_info
+use algorithm_info_mod,   only : init_algorithm_info_mod, obs_error_info, end_algorithm_info_mod
 
 implicit none
 
@@ -77,7 +77,6 @@ integer            :: trace_level, timestamp_level
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
-logical  :: use_algorithm_info_mod     = .true.
 logical  :: read_input_state_from_file = .false.
 logical  :: write_output_state_to_file = .false.
 integer  :: async              = 0
@@ -112,7 +111,7 @@ character(len=256) :: input_state_files(MAX_NUM_DOMS)  = '',               &
                       obs_seq_out_file_name           = 'obs_seq.out',     &
                       adv_ens_command                 = './advance_model.csh'
 
-namelist /perfect_model_obs_nml/ use_algorithm_info_mod, read_input_state_from_file,& 
+namelist /perfect_model_obs_nml/ read_input_state_from_file,&
                                  write_output_state_to_file,                        &
                                  init_time_days, init_time_seconds, async,          &
                                  first_obs_days, first_obs_seconds,                 &
@@ -552,15 +551,8 @@ AdvanceTime: do
          if( qc_ens_handle%vars(i, 1) == 0 ) then
 
             ! Get the information for generating error sample for this observation
-            if(use_algorithm_info_mod) then
-               call obs_error_info(obs_def, error_variance, &
-                  bounded_below, bounded_above, lower_bound, upper_bound)
-            else
-               ! Default is unbounded with standard error_variance
-               error_variance = get_obs_def_error_variance(obs_def)
-               bounded_below = .false. ; bounded_above = .false.
-               lower_bound = 0.0_r8;     upper_bound = 0.0_r8
-            endif
+            call obs_error_info(obs_def, error_variance, &
+                 bounded_below, bounded_above, lower_bound, upper_bound)
 
             ! Capability to do a bounded normal error
             if(bounded_below .and. bounded_above) then
@@ -666,6 +658,8 @@ call destroy_obs(obs)
 call destroy_obs_sequence(seq)
 call trace_message('After  ensemble and obs memory cleanup')
 
+call end_algorithm_info_mod()
+
 call trace_message('Perfect_model done')
 call timestamp_message('Perfect_model done')
 
@@ -693,6 +687,7 @@ call static_init_assim_model()
 
 call state_vector_io_init()
 call initialize_qc()
+call init_algorithm_info_mod()
 
 end subroutine perfect_initialize_modules_used
 

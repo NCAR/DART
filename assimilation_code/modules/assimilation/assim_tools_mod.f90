@@ -76,7 +76,9 @@ use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
 
 use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
-use algorithm_info_mod, only : probit_dist_info, obs_inc_info
+use algorithm_info_mod, only : probit_dist_info, obs_inc_info, EAKF, ENKF, &
+                               BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
+                               KERNEL, OBS_PARTICLE
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -131,22 +133,8 @@ character(len=*), parameter :: source = 'assim_tools_mod.f90'
 
 !---- namelist with default values
 
-! Filter kind selects type of observation space filter
-!      1 = EAKF filter
-!      2 = ENKF
-!      3 = Kernel filter
-!      4 = particle filter
-!      5 = random draw from posterior
-!      6 = deterministic draw from posterior with fixed kurtosis
-!      8 = Rank Histogram Filter (see Anderson 2011)
-!
-!  special_localization_obs_types -> Special treatment for the specified observation types
-!  special_localization_cutoffs   -> Different cutoff value for each specified obs type
-!
-logical  :: use_algorithm_info_mod          = .true.
-integer  :: filter_kind                     = 1
 real(r8) :: cutoff                          = 0.2_r8
-logical  :: sort_obs_inc                    = .false.
+logical  :: sort_obs_inc                    = .true.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
 integer  :: adaptive_localization_threshold = -1
@@ -161,7 +149,7 @@ real(r8)             :: special_localization_cutoffs(MAX_ITEMS)
 logical              :: output_localization_diagnostics = .false.
 character(len = 129) :: localization_diagnostics_file = "localization_diagnostics"
 
-! Following only relevant for filter_kind = 8
+! Following only relevant for filter_kind = UNBOUNDED_RHF
 logical  :: rectangular_quadrature          = .true.
 logical  :: gaussian_likelihood_tails       = .false.
 
@@ -203,8 +191,7 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-namelist / assim_tools_nml / use_algorithm_info_mod,                           &
-   filter_kind, cutoff, sort_obs_inc,                                      &
+namelist / assim_tools_nml / cutoff, sort_obs_inc,                         &
    spread_restoration, sampling_error_correction,                          &
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
@@ -249,9 +236,9 @@ if (do_nml_term()) write(     *     , nml=assim_tools_nml)
 ! Note null_win_mod.f90 ignores distibute_mean.
 if (task_count() == 1) distribute_mean = .true.
 
-! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
-if(spread_restoration .and. .not. filter_kind == 1) then
-   write(msgstring, *) 'cannot combine spread_restoration and filter_kind ', filter_kind
+if(spread_restoration) then
+   write(msgstring, *) 'The spread_restoration option is not supported in this version of ', &
+                       'DART. Contact the DAReS team if this option is needed '
    call error_handler(E_ERR,'assim_tools_init:', msgstring, source)
 endif
 
@@ -422,22 +409,6 @@ if (.not. module_initialized) call assim_tools_init()
 ! used for vertical conversion in get_close_obs
 ! Need to give create_mean_window the mean copy
 call create_mean_window(ens_handle, ENS_MEAN_COPY, distribute_mean)
-
-! filter kinds 1 and 8 return sorted increments, however non-deterministic
-! inflation can scramble these. the sort is expensive, so help users get better
-! performance by rejecting namelist combinations that do unneeded work.
-if (sort_obs_inc) then
-   if(deterministic_inflate(inflate) .and. ((filter_kind == 1) .or. (filter_kind == 8))) then
-      write(msgstring,  *) 'With a deterministic filter [assim_tools_nml:filter_kind = ',filter_kind,']'
-      write(msgstring2, *) 'and deterministic inflation [filter_nml:inf_deterministic = .TRUE.]'
-      write(msgstring3, *) 'assim_tools_nml:sort_obs_inc = .TRUE. is not needed and is expensive.'
-      call error_handler(E_MSG,'', '')  ! whitespace
-      call error_handler(E_MSG,'WARNING filter_assim:', msgstring, source, &
-                         text2=msgstring2,text3=msgstring3)
-      call error_handler(E_MSG,'', '')  ! whitespace
-      sort_obs_inc = .FALSE.
-   endif
-endif
 
 ! Open the localization diagnostics file
 if(output_localization_diagnostics .and. my_task_id() == 0) &
@@ -938,10 +909,12 @@ integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 real(r8) :: rel_weights(ens_size)
 
-! Declarations for bounded rank histogram filter
-real(r8) :: likelihood(ens_size), like_sum
+integer  :: filter_kind
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
+
+! Declarations for bounded rank histogram filter
+real(r8) :: likelihood(ens_size), like_sum
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
@@ -973,30 +946,9 @@ if(do_obs_inflate(inflate)) then
       prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
 
-!--------------------------begin algorithm_info control block-----------------
-! More flexible abilities to control the observation space increments are 
-! available with this code block. It gets information about the increment method
-! for the current observation is use_algorithm_info_mod is set to true in the namelist.
-! This is not an extensible mechanism for doing this as the number of 
-! obs increments distributions and associated information goes up
-! Implications for sorting increments and for spread restoration need to be examined
-! further. 
-! Note that all but the first argument to obs_inc_info are intent(inout) so that if they
-! are not set in that routine they will remain with the namelist selected values.
-
-! Set default values for bounds information
-bounded_below = .false.;      lower_bound = 0.0_r8
-bounded_above = .false.;      upper_bound = 0.0_r8
-
-if(use_algorithm_info_mod) &
-   call obs_inc_info(obs_kind, filter_kind, rectangular_quadrature, gaussian_likelihood_tails, &
-      sort_obs_inc, spread_restoration, bounded_below, bounded_above, lower_bound, upper_bound)
-
-! Could add logic to check on sort being true when not needed.
-! Could also add logic to limit the use of spread_restoration to EAKF. It will fail
-! in some ugly way right now.
-
-!----------------------------end algorithm_info control block-----------------
+! Gets information about the increment method (filter_kind, bounds) for the current observation.
+call obs_inc_info(obs_kind, filter_kind, bounded_below, bounded_above, &
+                  lower_bound, upper_bound)
 
 ! The first three options in the next if block of code may be inappropriate for 
 ! some more general filters; need to revisit
@@ -1029,21 +981,21 @@ else
    ! note that at this point we've taken care of the cases where either the
    ! obs_var or the prior_var is 0, so the individual routines no longer need
    ! to have code to test for those cases.
-   if(filter_kind == 1) then
+   if(filter_kind == EAKF) then
       call obs_increment_eakf(ens, ens_size, prior_mean, prior_var, &
          obs, obs_var, obs_inc, net_a)
-   else if(filter_kind == 2) then
+   else if(filter_kind == ENKF) then
       call obs_increment_enkf(ens, ens_size, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 3) then
+   else if(filter_kind == KERNEL) then
       call obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 4) then
+   else if(filter_kind == OBS_PARTICLE) then
       call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
-   else if(filter_kind == 8) then
+   else if(filter_kind == UNBOUNDED_RHF) then
       call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
-   else if(filter_kind == 11) then
+   else if(filter_kind == GAMMA_FILTER) then
       call obs_increment_gamma(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
    !--------------------------------------------------------------------------
-   else if(filter_kind == 101) then
+   else if(filter_kind == BOUNDED_NORMAL_RHF) then
 
       ! Use bounded normal likelihood; Could use an arbitrary likelihood
       do i = 1, ens_size
@@ -1077,27 +1029,12 @@ else
    !--------------------------------------------------------------------------
    else
       call error_handler(E_ERR,'obs_increment', &
-              'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', source)
+              'Illegal value of filter_kind', source)
    endif
 endif
 
 ! Add in the extra increments if doing observation space covariance inflation
 if(do_obs_inflate(inflate)) obs_inc = obs_inc + inflate_inc
-
-! To minimize regression errors, may want to sort to minimize increments
-! This makes sense for any of the non-deterministic algorithms
-! By doing it here, can take care of both standard non-deterministic updates
-! plus non-deterministic obs space covariance inflation. This is expensive, so
-! don't use it if it's not needed.
-if (sort_obs_inc) then
-   new_val = ens_in + obs_inc
-   ! Sorting to make increments as small as possible
-   call index_sort(ens_in, ens_index, ens_size)
-   call index_sort(new_val, new_index, ens_size)
-   do i = 1, ens_size
-      obs_inc(ens_index(i)) = new_val(new_index(i)) - ens_in(ens_index(i))
-   end do
-endif
 
 ! Get the net change in spread if obs space inflation was used
 if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
@@ -1359,7 +1296,8 @@ real(r8), intent(out) :: obs_inc(ens_size)
 real(r8) :: obs_var_inv, prior_var_inv, new_var, new_mean(ens_size)
 ! real(r8) :: sx, s_x2
 real(r8) :: temp_mean, temp_obs(ens_size)
-integer  :: i
+real(r8) :: new_val(ens_size)
+integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0_r8 / obs_var
@@ -1393,6 +1331,21 @@ do i = 1, ens_size
    new_mean(i) = new_var * (prior_var_inv * ens(i) + temp_obs(i) / obs_var)
    obs_inc(i)  = new_mean(i) - ens(i)
 end do
+
+! To minimize regression errors, may want to sort to minimize increments
+! This makes sense for any of the non-deterministic algorithms
+! By doing it here, can take care of both standard non-deterministic updates
+! plus non-deterministic obs space covariance inflation. This is expensive, so
+! don't use it if it's not needed.
+if (sort_obs_inc) then 
+   new_val = ens + obs_inc
+   ! Sorting to make increments as small as possible
+   call index_sort(ens, ens_index, ens_size)
+   call index_sort(new_val, new_index, ens_size)
+   do i = 1, ens_size
+      obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
+   end do
+endif
 
 ! Can also adjust mean (and) variance of final sample; works fine
 !sx         = sum(new_mean)
@@ -1569,41 +1522,6 @@ endif
 
 ! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
-
-!
-! FIXME: craig schwartz has a degenerate case involving externally computed
-! forward operators in which the obs prior variance is in fact exactly 0.
-! adding this test allowed him to continue to  use spread restoration
-! without numerical problems.  we don't know if this is sufficient;
-! for now we'll leave the original code but it needs to be revisited.
-!
-! Spread restoration algorithm option.
-!if(spread_restoration .and. obs_prior_var > 0.0_r8) then
-!
-
-! Spread restoration algorithm option.
-if(spread_restoration) then
-   ! Don't use this to reduce spread at present (should revisit this line)
-   net_a = min(net_a_in, 1.0_r8)
-
-   ! Default restoration increment is 0.0
-   restoration_inc = 0.0_r8
-
-   ! Compute the factor by which to inflate
-   ! These come from correl_error.f90 in system_simulation and the files ens??_pairs and
-   ! ens_pairs_0.5 in work under system_simulation. Assume a linear reduction from 1
-   ! as a function of the net_a. Assume that the slope of this reduction is a function of
-   ! the reciprocal of the ensemble_size (slope = 0.80 / ens_size). These are empirical
-   ! for now. See also README in spread_restoration_paper documentation.
-   !!!factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) * (0.8_r8 / ens_size)) - 1.0_r8
-   factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) / (-2.4711_r8 + 1.6386_r8 * ens_size)) - 1.0_r8
-   !!!factor = 1.0_r8 / (1.0_r8 + (net_a**2 - 1.0_r8) * (-0.0111_r8 + .8585_r8 / ens_size)) - 1.0_r8
-
-   ! Variance restoration
-   state_mean = sum(state) / ens_size
-   restoration_inc = factor * (state - state_mean)
-   state_inc = state_inc + restoration_inc
-endif
 
 !! NOTE: if requested to be returned, correl_out is set further up in the
 !! code, before the sampling error correction, if enabled, is applied.
@@ -2505,33 +2423,6 @@ integer, intent(in) :: num_special_cutoff
 logical, intent(in) :: cache_override
 
 integer :: i
-
-select case (filter_kind)
- case (1)
-   msgstring = 'Ensemble Adjustment Kalman Filter (EAKF)'
- case (2)
-   msgstring = 'Ensemble Kalman Filter (ENKF)'
- case (3)
-   msgstring = 'Kernel filter'
- case (4)
-   msgstring = 'observation space particle filter'
- case (5)
-   msgstring = 'random draw from posterior'
- case (6)
-   msgstring = 'deterministic draw from posterior with fixed kurtosis'
- case (7)
-   msgstring = 'Boxcar'
- case (8)
-   msgstring = 'Rank Histogram Filter'
- case (11)
-   msgstring = 'Gamma Filter'
- case (101)
-   msgstring = 'Bounded Rank Histogram Filter'
- case default
-   call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-8', &
-                      source)
-end select
-call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(msgstring))
 
 if (adjust_obs_impact) then
    call allocate_impact_table(obs_impact_table)
