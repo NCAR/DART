@@ -4,11 +4,11 @@
 Overview
 --------
 
-The programs in this directory help convert data which is 
+The programs in the ``obs_converters/var`` directory help convert data which is 
 formatted for input into the 3DVAR/4DVAR programs into DART
 obs_seq observation files.
 
-This directory contains conversion programs for various
+The directory contains conversion programs for various
 obs formats related to 3D-Var, WRF-Var, and MM5:
 
 - :doc:`./littler_tf_dart` to and back from little-r format, temperature and winds only.
@@ -17,7 +17,8 @@ obs formats related to 3D-Var, WRF-Var, and MM5:
 
 You need to add some WRF-Var source files to the 3DVAR_OBSPROC
 directory, and then you can go into the work directory and
-run the 'quickbuild.csh' script.
+run the 'quickbuild.sh' script. The required WRF-Var source files are
+listed in ``3DVAR_OBSPROC/README``.
 
 The little-r converter may need changes to the code to convert
 from the original quality control flags into QC flags compatible

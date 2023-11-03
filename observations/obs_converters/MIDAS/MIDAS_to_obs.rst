@@ -68,13 +68,13 @@ Programs
 --------
 
 | The ``MIDAS_to_obs.f90`` file is the source code for the main converter program.
-| To compile and test, go into the ``MIDAS/work`` subdirectory and run the ``quickbuild.csh`` script to build the
+| To compile and test, go into the ``MIDAS/work`` subdirectory and run the ``quickbuild.sh`` script to build the
   converter and a couple of general purpose utilities. The
   :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool` manipulates (i.e. combines, subsets)
   DART observation files once they have been created. The default observations supported are those defined in
   `observations/forward_operators/obs_def_upper_atm_mod.f90 <../../forward_operators/obs_def_upper_atm_mod.f90>`__. If
   you need additional observation types, you will have to add the appropriate ``obs_def_XXX_mod.f90`` file to the
-  ``input.nml`` ``&preprocess_nml:input_files`` variable and run ``quickbuild.csh`` again. It rebuilds the table of
+  ``input.nml`` ``&preprocess_nml:input_files`` variable and run ``quickbuild.sh`` again. It rebuilds the table of
   supported observation types before compiling the source code.
 
 Namelist

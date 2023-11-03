@@ -29,7 +29,7 @@ documentation.
 
 The workflow is usually:
 
-#. compile the converters by running ``work/quickbuild.csh`` in the usual way.
+#. compile the converters by running ``work/quickbuild.sh`` in the usual way.
 #. customize the ``shell_scripts/parameters_SST`` resource file to specify variables used by the rest of the scripting.
 #. run ``shell_scripts/get_sst_ftp.sh`` to download the data from PODAAC.
 #. provide a mask for the desired study area.
@@ -81,20 +81,10 @@ should look like the following:
        |-- Makefile
        |-- advance_time
        |-- input.nml
-       |-- mkmf_advance_time
-       |-- mkmf_obs_sequence_tool
-       |-- mkmf_oi_sst_to_obs
-       |-- mkmf_preprocess
-       |-- mkmf_sst_to_obs
        |-- obs_sequence_tool
        |-- oi_sst_to_obs
-       |-- path_names_advance_time
-       |-- path_names_obs_sequence_tool
-       |-- path_names_oi_sst_to_obs
-       |-- path_names_preprocess
-       |-- path_names_sst_to_obs
        |-- preprocess
-       |-- quickbuild.csh
+       |-- quickbuild.sh
        `-- sst_to_obs
 
 The location of the DART observation sequence files is specified by ``parameter_SST``:``DIR_OUT_DART``. That directory
@@ -133,7 +123,7 @@ typical file is shown here:
 
 The workflow is usually:
 
-#. compile the converters by running ``work/quickbuild.csh`` in the usual way.
+#. compile the converters by running ``work/quickbuild.sh`` in the usual way.
 #. `download the desired data. <https://www.esrl.noaa.gov/psd/data/gridded/data.noaa.oisst.v2.highres.html>`__
 #. customize the ``work/input.nml`` file.
 #. run ``work/oi_sst_to_obs`` to create a single DART observation sequence file.

@@ -106,7 +106,7 @@ Overview
      ncommas netCDF restart files into a set of DART files that have a consistent timestamp. If you simply convert each
      ncommas file to a DART file using ``ncommas_to_dart``, each DART file will have a 'valid time' that reflects the
      ncommas time of that state - instead of an ensemble of states reflecting one single time. The
-     :doc:`restart_file_tool <../../assimilation_code/programs/restart_file_tool/restart_file_tool>` can be used to overwrite the timestep in the
+     restart_file_tool can be used to overwrite the timestep in the
      header of each DART initial conditions file. The namelist for this program must look something like:
 
    ::

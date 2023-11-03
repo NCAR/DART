@@ -106,9 +106,9 @@ echo "Building DART binaries..."
 cd ${DART_WORK}
 echo "cp $DART_BASE/input.nml ."
 cp -f "${DART_NAMELIST}" ./input.nml
-echo "${DART_SCRIPTS}/quickbuild.csh > ${DART_WORK}/make.out"
-${DART_SCRIPTS}/quickbuild.csh | tee ${DART_WORK}/make.out
-check_return $? quickbuild.csh
+echo "${DART_SCRIPTS}/quickbuild.sh > ${DART_WORK}/make.out"
+${DART_SCRIPTS}/quickbuild.sh | tee ${DART_WORK}/make.out
+check_return $? quickbuild.sh
 
 exit 0
 

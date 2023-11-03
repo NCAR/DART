@@ -219,11 +219,12 @@ while($state_copy <= $num_states)     # MULTIPLE DOMAINS - we don't expect advan
 #   endif
 
    # link WRF-runtime files (required) and be.dat (if using WRF-Var)
-     ${LN} ${CENTRALDIR}/WRF_RUN/*       .
+   ${LN} ${CENTRALDIR}/WRF_RUN/*       .
 
-   # link DART namelist
-   ${COPY} ${CENTRALDIR}/input.nml       .
-
+   # Copy DART namelist if necessary
+   if ( ! -e input.nml) then
+      ${COPY} ${CENTRALDIR}/input.nml       .
+   endif
    # append LSM data from previous cycle
    if ( -e ${CENTRALDIR}/append_lsm_data ) then
       ${LN} ${CENTRALDIR}/LSM/lsm_data_${ensemble_member}.nc lsm_data.nc

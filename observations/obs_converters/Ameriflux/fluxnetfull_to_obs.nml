@@ -1,0 +1,15 @@
+&fluxnetfull_to_obs_nml
+   text_input_file = 'textdata.input',
+   obs_out_file    = 'obs_seq.out',
+   timezoneoffset  = -1,
+   latitude        = -1.0,
+   longitude       = -1.0,
+   elevation       = -1.0,
+   flux_height     = -1.0,
+   maxgoodqc       = 3,
+   gap_filled      = .true.
+   energy_balance  = .false.
+   time_resolution = 'HR'
+   verbose         = .false.
+   /
+

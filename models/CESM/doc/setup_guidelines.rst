@@ -5,7 +5,7 @@ CESM+DART setup overview
 ------------------------
 
 If you found your way to this file without reading more basic DART help files, 
-please read those first. :doc:`Getting Started <../../../README>` is a good place to find pointers to those files. 
+please read those first. :ref:`Getting Started <Welcome page>` is a good place to find pointers to those files. 
 Then see :doc:`CESM<../readme>` for an overview of DART's interfaces to CESM.
 Finally, see the ../../{your_cesm_component(s)}/readme.html documentation about
 the code-level interfaces and namelist values for various CESM component models.
@@ -51,7 +51,7 @@ Some of the steps can be skipped if you have a suitable replacement, as noted.
     first assimilation cycle.   That may include creating spread in the initial ensemble by perturbing it.
     Input.nml will be copied to the $CASEROOT directory and used by assimilate.csh.
     That copy can be modified for whichever cycles will be run next.
-#.  Build the DART executables using quickbuild.csh.
+#.  Build the DART executables using quickbuild.sh.
 #.  Follow the directions in CESM/shell_scripts/\*setup\* to set up the CESM case and integrate DART into it.
     The DART team recommends a tiny ensemble to start with, to more quickly test whether everything is in order.
 #.  Choose a start date for your assimilation. Choosing/creating the initial ensemble is a complicated issue.

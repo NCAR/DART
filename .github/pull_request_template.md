@@ -24,7 +24,12 @@ Please describe any tests you ran to verify your changes.
 
 - [ ] Updated changelog entry
 - [ ] Documentation updated
-- [ ] Version tag 
+- [ ] Update conf.py
+
+## Checklist for release
+- [ ] Merge into main
+- [ ] Create release from the main branch with appropriate tag
+- [ ] Delete feature-branch
 
 ## Testing Datasets
 

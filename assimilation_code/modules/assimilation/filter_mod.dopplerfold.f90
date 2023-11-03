@@ -29,7 +29,7 @@ use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), o
                                   operator(-), print_time
 
 use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,                         &
-                                  logfileunit, nmlfileunit, timestamp, get_value_from_string, &
+                                  logfileunit, nmlfileunit, timestamp,                        &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
                                   set_multiple_filename_lists, find_textfile_dims
@@ -64,12 +64,6 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
-
-use smoother_mod,          only : smoother_read_restart, advance_smoother,             &
-                                  smoother_gen_copy_meta_data, smoother_write_restart, &
-                                  init_smoother, do_smoothing, smoother_mean_spread,   &
-                                  smoother_assim, smoother_ss_diagnostics,             &
-                                  smoother_end, set_smoother_trace
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
@@ -189,7 +183,7 @@ logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
-logical  :: distributed_state = .true. ! Default to do state complete forward operators.
+logical  :: distributed_state = .true. ! Default to do distributed forward operators.
 
 ! IO options
 !>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
@@ -237,11 +231,8 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! The inflation algorithm variables are defined in adaptive_inflate_mod.
 ! We use the integer parameters for PRIOR_INF and POSTERIOR_INF from 
 ! adaptive_inflate_mod to index these 'length 2' arrays.
-! To support more flexible methods of specifying the inflation algorithm,
-! inf_flavor must be a character string whose value is converted to an
-! integer to be backward compatible. 
 
-character(len=32) :: inf_flavor(2)         = (/ 'none', 'none' /)
+integer  :: inf_flavor(2)                  = 0
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
@@ -315,7 +306,6 @@ namelist /filter_nml/ async,     &
 ! during the computation?  e.g. Folded doppler intensities.
 logical :: observations_updateable = .true.
 
-integer :: inflation_flavor(2)
 
 !----------------------------------------------------------------
 
@@ -362,9 +352,8 @@ type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
 type(file_info_type) :: file_info_all
 
-logical :: ds, all_gone, allow_missing
+logical :: all_gone, allow_missing
 
-! real(r8), allocatable   :: temp_ens(:) ! for smoother
 real(r8), allocatable   :: prior_qc_copy(:)
 
 call filter_initialize_modules_used() ! static_init_model called in here
@@ -396,26 +385,19 @@ endif
 write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
 call error_handler(E_MSG,'filter_main:', msgstring, source)
 
-! See if smoothing is turned on
-ds = do_smoothing()
 
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
-! inf_flavor from the namelist is now a character string.  
-! the inflation-related subroutines require an integer so the
-! variable inflation_flavor is added and is type integer.
-inflation_flavor = set_inflation_flavor(inf_flavor)
-
-call validate_inflate_options(inflation_flavor, inf_damping, inf_initial_from_restart, &
+call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, &
-                           inflation_flavor(PRIOR_INF), &
+                           inf_flavor(PRIOR_INF), &
                            inf_initial_from_restart(PRIOR_INF), & 
                            inf_sd_initial_from_restart(PRIOR_INF), &
                            output_inflation, &
@@ -426,11 +408,10 @@ call adaptive_inflate_init(prior_inflate, &
                            inf_upper_bound(PRIOR_INF), &
                            inf_sd_lower_bound(PRIOR_INF), &
                            inf_sd_max_change(PRIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, &
-                           inflation_flavor(POSTERIOR_INF), &
+                           inf_flavor(POSTERIOR_INF), &
                            inf_initial_from_restart(POSTERIOR_INF), &
                            inf_sd_initial_from_restart(POSTERIOR_INF), &
                            output_inflation, &
@@ -441,17 +422,16 @@ call adaptive_inflate_init(post_inflate, &
                            inf_upper_bound(POSTERIOR_INF), &
                            inf_sd_lower_bound(POSTERIOR_INF), &
                            inf_sd_max_change(POSTERIOR_INF), &
-                           state_ens_handle, &
                            allow_missing, 'Posterior')
 
 if (do_output()) then
-   if (inflation_flavor(PRIOR_INF) > NO_INFLATION .and. &
+   if (inf_flavor(PRIOR_INF) > NO_INFLATION .and. &
             inf_damping(PRIOR_INF) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', &
                                       inf_damping(PRIOR_INF), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
-   if (inflation_flavor(POSTERIOR_INF) > NO_INFLATION .and. &
+   if (inf_flavor(POSTERIOR_INF) > NO_INFLATION .and. &
             inf_damping(POSTERIOR_INF) < 1.0_r8) then
       write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', &
                                       inf_damping(POSTERIOR_INF), ' will be used'
@@ -562,13 +542,6 @@ endif
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
-! Moved this. Not doing anything with it, but when we do it should be before the read
-! Read in or initialize smoother restarts as needed
-if(ds) then
-   call init_smoother(state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-   call smoother_read_restart(state_ens_handle, ens_size, model_size, time1, init_time_days)
-endif
-
 call     trace_message('Before reading in ensemble restart files')
 call timestamp_message('Before reading in ensemble restart files')
 
@@ -623,11 +596,6 @@ call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index, &
       compute_posterior)
-
-if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-
-!>@todo fudge
-if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -746,15 +714,6 @@ AdvanceTime : do
 
    ! if model state data not at required time, advance model
    if (curr_ens_time /= next_ens_time) then
-      ! Advance the lagged distribution, if needed.
-      ! Must be done before the model runs and updates the data.
-      if(ds) then
-         call     trace_message('Before advancing smoother')
-         call timestamp_message('Before advancing smoother')
-         call advance_smoother(state_ens_handle)
-         call timestamp_message('After  advancing smoother')
-         call     trace_message('After  advancing smoother')
-      endif
 
       ! we are going to advance the model - make sure we're doing single file output
       if (.not. has_cycling) then
@@ -939,24 +898,6 @@ AdvanceTime : do
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
 
-   ! Do the update for the smoother lagged fields, too.
-   ! Would be more efficient to do these all at once inside filter_assim
-   ! in the future
-   if(ds) then
-      write(msgstring, '(A,I8,A)') 'Ready to reassimilate up to', size(keys), ' observations in the smoother'
-      call trace_message(msgstring, 'filter:', -1)
-
-      call     trace_message('Before smoother assimilation')
-      call timestamp_message('Before smoother assimilation')
-      call smoother_assim(obs_fwd_op_ens_handle, seq, keys, ens_size, num_groups, &
-         obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, &
-         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-         OBS_VAR_END)
-      call timestamp_message('After  smoother assimilation')
-      call     trace_message('After  smoother assimilation')
-   endif
-
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -992,11 +933,6 @@ AdvanceTime : do
          else
             call write_state(state_ens_handle, file_info_postassim)
          endif
-
-         !>@todo What to do here?
-         !call smoother_ss_diagnostics(model_size, num_output_state_members, &
-         !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-         ! POST_INF_COPY, POST_INF_SD_COPY)
 
          call timestamp_message('After  postassim state space output')
          call     trace_message('After  postassim state space output')
@@ -1045,12 +981,6 @@ AdvanceTime : do
    
       call timestamp_message('After  computing posterior observation values')
       call     trace_message('After  computing posterior observation values')
-   
-      if(ds) then
-         call trace_message('Before computing smoother means/spread')
-         call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-         call trace_message('After  computing smoother means/spread')
-      endif
    
       call trace_message('Before posterior obs space diagnostics')
    
@@ -1115,11 +1045,6 @@ AdvanceTime : do
             call write_state(state_ens_handle, file_info_analysis)
          endif
 
-         !>@todo What to do here?
-         !call smoother_ss_diagnostics(model_size, num_output_state_members, &
-         !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-         ! POST_INF_COPY, POST_INF_SD_COPY)
-
          call timestamp_message('After  analysis state space output')
          call     trace_message('After  analysis state space output')
 
@@ -1164,9 +1089,6 @@ if (get_stage_to_write('output')) then
       if (.not. write_all_stages_at_end) &
          call write_state(state_ens_handle, file_info_output)
    
-      !>@todo need to fix smoother
-      !if(ds) call smoother_write_restart(1, ens_size)
-
       call timestamp_message('After  state space output')
       call     trace_message('After  state space output')
 
@@ -1225,12 +1147,6 @@ call end_ensemble_manager(state_ens_handle)
 ! Free up the obs sequence
 call destroy_obs_sequence(seq)
 call trace_message('After  ensemble and obs memory cleanup')
-
-if(ds) then
-   call trace_message('Before smoother memory cleanup')
-   call smoother_end()
-   call trace_message('After  smoother memory cleanup')
-endif
 
 call     trace_message('Filter done')
 call timestamp_message('Filter done')
@@ -1886,7 +1802,6 @@ if (silence) then
    timestamp_level = -1
 endif
 
-call set_smoother_trace(trace_level, timestamp_level)
 call set_obs_model_trace(trace_level, timestamp_level)
 call set_assim_tools_trace(trace_level, timestamp_level)
 
@@ -2407,7 +2322,7 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; must save the prior ensemble spread in a different copy
-if ( inflation_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
+if ( inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif
 
@@ -2774,50 +2689,6 @@ if (output_inflation) then
 endif
 
 end subroutine set_copies
-
-
-!-------------------------------------------------------------------------------
-!> The infl_flavor namelist is a string, and specifies the inflation algorithm.
-!> The character string can either be the name associated with the type of inflation
-!> or the integer associated with the type of inflation. The string names of the
-!> inflation algorithms is based on what is declared in the adaptive_inflate_mod.f90
-!> which is repeated here for reference. 
-!>
-!> NO_INFLATION               = 0
-!> OBS_INFLATION              = 1    observation-space inflation (deprecated)
-!> VARYING_SS_INFLATION       = 2    spatially-varying state-space inflation
-!> SINGLE_SS_INFLATION        = 3    spatially-constant state-space inflation
-!> RELAXATION_TO_PRIOR_SPREAD = 4    (available only with posterior inflation)
-!> ENHANCED_SS_INFLATION      = 5    Inverse Gamma version of VARYING_SS_INFLATION
-
-function set_inflation_flavor(flavor_string) result(flavors)
-
-character(len=*), intent(in)  :: flavor_string(2)
-integer                       :: flavors(2)
-
-integer :: int_options(7) = (/ NO_INFLATION,               &
-                               OBS_INFLATION,              &
-                               VARYING_SS_INFLATION,       &
-                               SINGLE_SS_INFLATION,        &
-                               RELAXATION_TO_PRIOR_SPREAD, &
-                               RELAXATION_TO_PRIOR_SPREAD, &
-                               ENHANCED_SS_INFLATION       /)
-
-character(len=32) :: string_options(7) = (/ 'NO_INFLATION              ',&
-                                            'OBS_INFLATION             ',&
-                                            'VARYING_SS_INFLATION      ',&
-                                            'SINGLE_SS_INFLATION       ',&
-                                            'RELAXATION_TO_PRIOR_SPREAD',&
-                                            'RTPS                      ',&
-                                            'ENHANCED_SS_INFLATION     ' /)
-
-flavors(PRIOR_INF)     = get_value_from_string(flavor_string(PRIOR_INF),     &
-                          int_options, string_options, 'input_nml:inf_flavor(1)')
-flavors(POSTERIOR_INF) = get_value_from_string(flavor_string(POSTERIOR_INF), &
-                          int_options, string_options, 'input_nml:inf_flavor(2)')
-
-end function set_inflation_flavor
-
 
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT

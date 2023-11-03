@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 # THIS VERSION IS USEFUL FOR FLUX OBSERVATIONS FOR CLM.
 # split file(s) into "daily" files which start at 00:00Z
@@ -17,13 +15,16 @@
 # depending on the window and the input file,
 # the data from outside these bounds may be needed.
 
-start_year=2004
-start_month=01
+start_year=2005
+start_month=07
 start_day=01
 
-end_year=2004
-end_month=12
+end_year=2005
+end_month=07
 end_day=31
+
+DATDIR=/glade/p/cisl/dares/Observations/land/pmo/input
+OUTDIR=/glade/p/cisl/dares/Observations/land/pmo/output
 
 # end of things you should have to set in this script IFF you are
 # content to have 'daily' files with observations 
@@ -72,9 +73,13 @@ let totaldays=${end_d[0]}-${start_d[0]}+1
 # filetime    .... the time in the file NAME ... usually the center.
 # with no -g option advance_time returns strings in the format YYYYMMDDHH
 
-time_one=(`echo ${start_year}${mon2}${day2}00 -1d | ../work/advance_time`)
-time_end=(`echo ${start_year}${mon2}${day2}00 -1s | ../work/advance_time`)
-filetime=(`echo ${start_year}${mon2}${day2}00   0 | ../work/advance_time`)
+time_one=(`echo ${start_year}${mon2}${day2}00 -43199s | ../work/advance_time`)
+time_end=(`echo ${start_year}${mon2}${day2}00 +43200s | ../work/advance_time`)
+filetime=(`echo ${start_year}${mon2}${day2}00       0 | ../work/advance_time`)
+
+echo "time_one is $time_one"
+echo "time_end is $time_end"
+echo "filetime is $filetime"
 
 # loop over each day
 let d=1
@@ -83,17 +88,22 @@ while (( d <= totaldays)) ; do
    echo "subsetting $d of $totaldays ..."
    #echo $filetime $time_end
 
-   # string for first time in the file
-    pyear=${time_one:0:4}
-   pmonth=${time_one:4:2}
-     pday=${time_one:6:2}
-    phour=${time_one:8:2}
+   # compute the equivalent DART timestamps here - seconds and days.
+   g=(`echo ${time_one} 0 -g | ../work/advance_time`)
+   dart1d=${g[0]}
+   dart1s=${g[1]}
 
-   # string for last time in the file
-    nyear=${time_end:0:4}
-   nmonth=${time_end:4:2}
-     nday=${time_end:6:2}
-    nhour=${time_end:8:2}
+   g=(`echo ${time_end} 0 -g | ../work/advance_time`)
+   dartNd=${g[0]}
+   dartNs=${g[1]}
+
+   g=(`echo ${filetime} 0 -g | ../work/advance_time`)
+   dartFd=${g[0]}
+   dartFs=`printf %05d ${g[1]}`
+
+   echo "first $time_one which is dart $dart1d $dart1s"
+   echo "last  $time_end which is dart $dartNd $dartNs"
+   echo "file  $filetime which is dart $dartFd $dartFs"
 
    # string for time for the file NAME
     fyear=${filetime:0:4}
@@ -101,46 +111,20 @@ while (( d <= totaldays)) ; do
      fday=${filetime:6:2}
     fhour=${filetime:8:2}
 
-   # compute the equivalent DART timestamps here - seconds and days.
-   g=(`echo ${fyear}${fmonth}${fday}${fhour} -1d -g | ../work/advance_time`)
-   dart1d=${g[0]}
-   darts1=${g[1]}
-#  dart1s=${darts1}+1     for non-flux tower observations
-   dart1s=${darts1}
-
-   # flux tower observations do not actually contain the time in the file name.
-   g=(`echo ${fyear}${fmonth}${fday}${fhour} -1s -g | ../work/advance_time`)
-   dartNd=${g[0]}
-   dartNs=${g[1]}
-
-   g=(`echo ${fyear}${fmonth}${fday}${fhour}   0 -g | ../work/advance_time`)
-   dartFd=${g[0]}
-   dartFs=`printf %05d ${g[1]}`
-
-   echo "first $pyear $pmonth $pday $phour which is dart $dart1d $dart1s"
-   echo "last  $nyear $nmonth $nday $nhour which is dart $dartNd $dartNs"
-   echo "file  $fyear $fmonth $fday $fhour which is dart $dartFd $dartFs"
-
    # Create the file containing the input observation sequences.
    # The input.nml.template explicitly references this file.
    # The input observation sequences generally live in directories
    # with names YYYYMM. FIXME ... year boundaries ...
 
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USBar.2004" >  olist
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USHa1.2004" >> olist
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USNR1.2004" >> olist
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USSP3.2004" >> olist
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USSRM.2004" >> olist
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USWcr.2004" >> olist
-   echo "/glade/p/image/Observations/FluxTower/obs_seq.USWrc.2004" >> olist
+   ls -1 ${DATDIR}/*${fyear}${fmonth}.in > olist
 
    # make sure output dir exists
-   OUTDIR=../${fyear}${fmonth}
-   if [[ ! -d ${OUTDIR} ]] ; then
-        mkdir ${OUTDIR}
+   OUTPUT=${OUTDIR}/${fyear}${fmonth}
+   if [[ ! -d ${OUTPUT} ]] ; then
+        mkdir ${OUTPUT}
    fi
 
-   sed -e "s#OUTDIR#${OUTDIR}#g" \
+   sed -e "s#OUTDIR#${OUTPUT}#g" \
        -e "s#YYYY#${fyear}#g"    \
        -e "s#MM#${fmonth}#g"     \
        -e "s#DD#${fday}#g"       \
@@ -154,9 +138,9 @@ while (( d <= totaldays)) ; do
    ../work/obs_sequence_tool
 
    # advance the day; the output is YYYYMMDD00
-   time_one=(`echo ${pyear}${pmonth}${pday}${phour} +1d | ../work/advance_time`)
-   filetime=(`echo ${fyear}${fmonth}${fday}${fhour} +1d | ../work/advance_time`)
-   time_end=(`echo ${nyear}${nmonth}${nday}${nhour} +1d | ../work/advance_time`)
+   time_one=(`echo ${time_one} +1d | ../work/advance_time`)
+   filetime=(`echo ${filetime} +1d | ../work/advance_time`)
+   time_end=(`echo ${time_end} +1d | ../work/advance_time`)
    echo "next set of times are: $time_one $filetime $time_end"
 
    # advance the loop counter
@@ -166,8 +150,4 @@ done
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

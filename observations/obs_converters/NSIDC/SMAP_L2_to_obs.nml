@@ -1,0 +1,7 @@
+&SMAP_L2_to_obs_nml
+   input_file_list     = 'file_list.txt'
+   obs_out_file        = 'obs_seq.out'
+   max_num_input_files = 10
+   verbose             = .TRUE.
+   /
+

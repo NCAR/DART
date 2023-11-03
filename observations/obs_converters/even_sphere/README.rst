@@ -237,7 +237,7 @@ and :code:`create_fixed_network_seq` programs:
 
 A. building them in the :code:`models/template/work` directory 
 B. using the ones which were built in :code:`models/your_model/work` directory 
-   by :code:`quickbuild.csh`. 
+   by :code:`quickbuild.sh`.
 
 Choice A uses programs which have no model specific file dependencies,
 but may involve more separate steps than B.
@@ -288,7 +288,7 @@ Fortran program for generating obs directly
 -------------------------------------------
 
 
-cd into the work directory and run ``quickbuild.csh``.
+cd into the work directory and run ``quickbuild.sh``.
 
 This builds the ``create_even_sphere`` executable.  Edit the ``input.nml``
 to set the number of obs to generate and the date in the namelist.  Run

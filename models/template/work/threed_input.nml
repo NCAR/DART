@@ -1,0 +1,191 @@
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.,
+   single_file_in             = .true.
+   input_state_files          = "perfect_input.nc"
+
+   write_output_state_to_file = .true.,
+   single_file_out            = .true.
+   output_state_files         = "perfect_output.nc"
+   output_interval            = 1,
+
+   async                      = 0,
+   adv_ens_command            = "./advance_model.csh",
+
+   obs_seq_in_file_name       = "obs_seq.in",
+   obs_seq_out_file_name      = "obs_seq.out",
+   init_time_days             = 0,
+   init_time_seconds          = 0,
+   first_obs_days             = -1,
+   first_obs_seconds          = -1,
+   last_obs_days              = -1,
+   last_obs_seconds           = -1,
+
+   trace_execution            = .false.,
+   output_timestamps          = .false.,
+   print_every_nth_obs        = -1,
+   output_forward_op_errors   = .false.,
+   silence                    = .false.,
+   /
+
+&filter_nml
+   single_file_in               = .true.,
+   input_state_files            = ''
+   input_state_file_list        = 'filter_input_list.txt'
+
+   stages_to_write  = 'preassim', 'analysis', 'output'
+
+   single_file_out              = .true.,
+   output_state_files           = ''
+   output_state_file_list       = 'filter_output_list.txt'
+   output_interval              = 1,
+   output_members               = .true.
+   num_output_state_members     = 20,
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+
+   ens_size                     = 20,
+   num_groups                   = 1,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2,
+   distributed_state            = .true.
+
+   async                        = 0,
+   adv_ens_command              = "./advance_model.csh",
+
+   obs_sequence_in_name         = "obs_seq.out",
+   obs_sequence_out_name        = "obs_seq.final",
+   num_output_obs_members       = 20,
+   init_time_days               = 0,
+   init_time_seconds            = 0,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+
+   inf_flavor                  = 0,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                    1.0,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 100.0,                   1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
+
+   trace_execution              = .false.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
+   silence                      = .false.,
+   /
+
+
+&ensemble_manager_nml
+   /
+
+&assim_tools_nml
+   filter_kind                     = 1,
+   cutoff                          = 1000000.0
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   distribute_mean                 = .false.
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 0
+   /
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = "reg_diagnostics"
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
+   evaluate_these_obs_types   = ''
+   /
+
+&model_nml
+   time_step_days      = 0,
+   time_step_seconds   = 3600
+   /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   module_details = .false.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml',
+   write_nml   = 'none'
+   /
+
+&preprocess_nml
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_AURA_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/default_quantities_mod.f90'
+   /
+
+&obs_sequence_tool_nml
+   filename_seq      = 'obs_seq.one', 'obs_seq.two',
+   filename_out      = 'obs_seq.processed',
+   first_obs_days    = -1,
+   first_obs_seconds = -1,
+   last_obs_days     = -1,
+   last_obs_seconds  = -1,
+   print_only        = .false.,
+   gregorian_cal     = .false.
+   /
+
+&obs_diag_nml
+   obs_sequence_name     = 'obs_seq.final',
+   bin_width_days        = -1,
+   bin_width_seconds     = -1,
+   init_skip_days        = 0,
+   init_skip_seconds     = 0,
+   Nregions              = 3,
+   trusted_obs           = 'null',
+   lonlim1               = 0.00, 0.00, 0.50
+   lonlim2               = 1.01, 0.50, 1.01
+   reg_names             = 'whole', 'yin', 'yang'
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .false.
+   /
+
+&state_vector_io_nml
+   /
+
+&model_mod_check_nml
+   input_state_files    = 'input.nc'
+   output_state_files   = 'mmc_output.nc'
+   test1thru            = 0
+   run_tests            = 1,2,3,4,5,7
+   x_ind                = 42
+   loc_of_interest      = 0.3
+   quantity_of_interest = 'QTY_STATE_VARIABLE'
+   interp_test_dx       = 0.02
+   interp_test_xrange   = 0.0, 1.0
+   verbose              = .false.
+   /
+
+&quality_control_nml
+   input_qc_threshold       =  3.0,
+   outlier_threshold        = -1.0,
+/
+

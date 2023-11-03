@@ -1,0 +1,336 @@
+&location_nml
+   horiz_dist_only                 = .true.
+   nlon                            = 71
+   nlat                            = 36
+   output_box_info                 = .false.
+  /
+
+&state_vector_io_nml
+   buffer_state_io         = .false.
+   single_precision_output = .false.
+/
+&obs_kind_nml
+   assimilate_these_obs_types = 'SALINITY',
+                                'TEMPERATURE',
+                                'U_CURRENT_COMPONENT',
+                                'V_CURRENT_COMPONENT',
+                                'SEA_SURFACE_HEIGHT',
+                                'ARGO_U_CURRENT_COMPONENT',
+                                'ARGO_V_CURRENT_COMPONENT',
+                                'ARGO_SALINITY',
+                                'ARGO_TEMPERATURE',
+                                'ADCP_U_CURRENT_COMPONENT',
+                                'ADCP_V_CURRENT_COMPONENT',
+                                'ADCP_SALINITY',
+                                'ADCP_TEMPERATURE',
+                                'FLOAT_SALINITY',
+                                'FLOAT_TEMPERATURE',
+                                'DRIFTER_U_CURRENT_COMPONENT',
+                                'DRIFTER_V_CURRENT_COMPONENT',
+                                'DRIFTER_SALINITY',
+                                'DRIFTER_TEMPERATURE',
+                                'GLIDER_U_CURRENT_COMPONENT',
+                                'GLIDER_V_CURRENT_COMPONENT',
+                                'GLIDER_SALINITY',
+                                'GLIDER_TEMPERATURE',
+                                'MOORING_U_CURRENT_COMPONENT',
+                                'MOORING_V_CURRENT_COMPONENT',
+                                'MOORING_SALINITY',
+                                'MOORING_TEMPERATURE',
+                                'SATELLITE_MICROWAVE_SST',
+                                'SATELLITE_INFRARED_SST',
+                                'SATELLITE_SSH',
+                                'SATELLITE_SSS',
+                                'HFRADAR_RADIAL_VELOCITY'
+   /
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
+   input_files              = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   read_binary_file_format   = 'native'
+  /
+
+&ensemble_manager_nml
+   layout                      = 1
+   tasks_per_node              = 1
+   communication_configuration = 1
+   debug                       = .false.
+ /
+
+&utilities_nml
+   TERMLEVEL      = 2
+   logfilename    = 'dart_log.out'
+   nmlfilename    = 'dart_log.nml'
+   module_details = .true.
+   print_debug    = .false.
+   write_nml      = 'file'
+  /
+
+&create_ocean_obs_nml
+   year = 2010 
+   month    =    12,
+   day      =    30,
+   tot_days =   4,
+   max_num  = 1000000,
+   fname    = 'obs_seq.txt',
+   output_name    = 'obs_seq.out',
+   lon1     =   20.0,
+   lon2     = 60.0,
+   lat1     = 5.0,
+   lat2     =  35.0,
+   hfradar  = .false.   /
+
+&model_nml
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 259200,
+   model_perturbation_amplitude = 0.2,
+  /
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins,
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+#
+# you can specify either [phm]level_edges or [phm]level,
+# but not both. You can mix and match. plevel & hlevel_edges is fine.
+
+&obs_diag_nml
+   obs_sequence_name     = ''
+   obs_sequence_list     = ''
+   first_bin_center      =  2003, 1, 1, 0, 0, 0 
+   last_bin_center       =  2003, 1, 2, 0, 0, 0 
+   bin_separation        =     0, 0, 0, 6, 0, 0 
+   bin_width             =     0, 0, 0, 6, 0, 0 
+   time_to_skip          =     0, 0, 1, 0, 0, 0 
+   max_num_bins          = 1000
+
+   plevel                = -888888.0
+   hlevel                = -888888.0
+   mlevel                = -888888
+   plevel_edges          = -888888.0
+   hlevel_edges          = -888888.0
+   mlevel_edges          = -888888
+
+   Nregions              = 0
+   lonlim1               = -888888.0
+   lonlim2               = -888888.0
+   latlim1               = -888888.0
+   latlim2               = -888888.0
+   reg_names             = 'null'
+   trusted_obs           = 'null'
+   use_zero_error_obs    = .false.
+   print_mismatched_locs = .false.
+   print_obs_locations   = .false.
+   create_rank_histogram = .false.
+   outliers_in_histogram = .true.
+   verbose               = .false.
+  /
+
+&obs_sequence_tool_nml
+   filename_seq         = 'obs_seq.in'
+   filename_seq_list    = ''
+   filename_out         = 'obs_seq.out.NAME'
+   first_obs_days       = 149747
+   first_obs_seconds    = 43200
+   last_obs_days        = 149750
+   last_obs_seconds     = 43200
+   obs_types            = ''
+   keep_types           = .true.
+   min_box              = -888888.0
+   max_box              = -888888.0
+   min_lat              =  5.0
+   max_lat              =  35.0
+   min_lon              =  20.0
+   max_lon              =  60.0
+   copy_metadata        = ''
+   min_copy             = -888888.0
+   max_copy             = -888888.0
+   copy_type            = ''
+   edit_copy_metadata   = .false.
+   new_copy_metadata    = ''
+   edit_copies          = .false.
+   new_copy_index       = -1
+   new_copy_data        = -888888.0
+   qc_metadata          = ''
+   min_qc               = -888888.0
+   max_qc               = -888888.0
+   edit_qc_metadata     = .false.
+   new_qc_metadata      = ''
+   edit_qcs             = .false.
+   new_qc_index         = -1
+   new_qc_data          = -888888.0
+   synonymous_copy_list = ''
+   synonymous_qc_list   = ''
+   print_only           = .false.
+   gregorian_cal        = .true.
+   /
+
+! SEE THE .HTML FILE FOR MORE DETAILED EXAMPLES AND FULL
+! DOCUMENTATION.  here are brief examples of possible settings:
+!
+! keep only observations with a DART QC of 0:
+!   qc_metadata        = 'Dart quality control'
+!   min_qc             = 0
+!   max_qc             = 0
+!
+! keep only radiosonde temp obs between 250 and 300 K:
+!   copy_metadata      = 'NCEP BUFR observation'
+!   copy_type          = 'RADIOSONDE_TEMPERATURE'
+!   min_copy           = 250.0
+!   max_copy           = 300.0
+!
+! keep only the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+!                        'RADIOSONDE_V_WIND_COMPONENT'
+!   keep_types         = .true.
+!
+! remove the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+!                        'RADIOSONDE_V_WIND_COMPONENT'
+!   keep_types         = .false.
+!
+! change the metadata strings:
+!   edit_copy_metadata  = .true.
+!   new_copy_metadata   = 'observations'
+!   edit_qc_metadata    = .true.
+!   new_qc_metadata     = 'QC', 'DART quality control'
+!
+! change the number and order of the copies and qc:
+!   edit_copies    = .true.
+!   new_copy_index = 1, 2, 81, 82
+!   edit_qcs       = .true.
+!   new_qc_index   =  2
+!
+! add a new copy or qc by using 0 as the index number:
+!   edit_copies    = .true.
+!   new_copy_index = 1, 2, 0, 81, 82
+!   new_copy_data  = 5.0
+!   edit_qcs       = .true.
+!   new_qc_index   =  1, 2, 0, 0
+!   new_qc_data    = 0.0, 3.0
+!
+! allow different metadata strings in multiple files to match:
+!   synonymous_copy_list = 'NCEP BUFR observations', 'observations'
+!   synonymous_qc_list   = 'NCEP QC index', 'AIRS QC', 'QC'
+
+
+
+
+# distribute_mean = false is faster if your model does vertical
+#                   conversions but takes more memory
+# distribute_mean = true is slower but takes much less memory and
+#                   may allow you to run at all compared to not
+#                   for very large state vectors
+
+# enabling sampling error correction is generally beneficial
+# the default file is in assimilation_code/programs/gen_sampling_err_table/work
+
+# With a deterministic filter (filter_kind == 1 or 8)
+# and a deterministic inflation (filter_nml:inf_deterministic == .true.)
+# sort_obs_inc is not needed and is expensive. Should be .false.
+
+# specify special localization items in the same order
+# in both lists, the same number of items
+
+&assim_tools_nml
+   filter_kind                       = 1
+   cutoff                            = 0.025
+   distribute_mean                   = .false.
+   sort_obs_inc                      = .false.
+   spread_restoration                = .false.
+   sampling_error_correction         = .false.
+   adaptive_localization_threshold   = -1
+   adaptive_cutoff_floor             = 0.0
+   output_localization_diagnostics   = .false.
+   localization_diagnostics_file     = 'localization_diagnostics'
+   print_every_nth_obs               = 0
+   rectangular_quadrature            = .true.
+   gaussian_likelihood_tails         = .false.
+   close_obs_caching                 = .true.
+   adjust_obs_impact                 = .false.
+   obs_impact_filename               = ""
+   allow_any_impact_values           = .false.
+   convert_all_obs_verticals_first   = .true.
+   convert_all_state_verticals_first = .false.
+   special_localization_cutoffs      = -888888.0
+  /
+
+&cov_cutoff_nml
+   select_localization = 1  /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = "reg_diagnostics"  /
+
+
+&mpi_utilities_nml
+   reverse_task_layout        = .false.
+   all_tasks_print            = .false. 
+   verbose                    = .false.
+   async2_verbose             = .false.
+   async4_verbose             = .false. 
+   shell_name                 = ''
+   separate_node_sync         = .false.
+   create_local_comm          = .true.
+   make_copy_before_sendrecv  = .false.
+  /
+
+&filter_nml
+   single_file_in               = .false.
+   input_state_file_list        = 'input_list.txt'
+   init_time_days               = 149749
+   init_time_seconds            = 0
+   perturb_from_single_instance = .false.
+   perturbation_amplitude       = 0.2
+   stages_to_write              = 'preassim','postassim','output'
+   single_file_out              = .false.
+   output_state_file_list       = 'output_list.txt'
+   output_interval              = 1
+   output_members               = .true.
+   num_output_state_members     = 0
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+   compute_posterior            = .true.
+   ens_size                     = 4
+   num_groups                   = 1
+   distributed_state            = .true.
+   async                        =4 
+   obs_sequence_in_name         = "obs_seq.out"
+   obs_sequence_out_name        = "obs_seq.final"
+   first_obs_days               = 149747
+   first_obs_seconds            = 43200
+   last_obs_days                = 149750
+   last_obs_seconds             = 43200
+   inf_flavor                  = 3,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.05,                     1.0
+   inf_lower_bound             = 0.0,                     1.0
+   inf_upper_bound             = 1000000.0,               1000000.0
+   inf_damping                 = 1.0,                     1.0
+   inf_sd_initial              = 0.0,                     0.0
+   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_max_change           = 1.05,                    1.05,
+   output_forward_op_errors     = .false.
+   /
+&quality_control_nml
+   input_qc_threshold          = 3
+   outlier_threshold           = -1
+   enable_special_outlier_code = .false.
+  /
+

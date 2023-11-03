@@ -1,0 +1,6 @@
+
+&clm_to_dart_nml
+   clm_restart_file  = 'clm_restart.nc'
+   verbose           = 0
+   /
+

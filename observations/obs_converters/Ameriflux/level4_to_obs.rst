@@ -7,12 +7,14 @@ Overview
 AmeriFlux level 4 data to DART observation sequence converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-| This routine is designed to convert the flux tower Level 4 data from the `AmeriFlux <http://ameriflux.lbl.gov>`__
-  network of observations from micrometeorological tower sites. AmeriFlux is part of
-  `FLUXNET <http://fluxnet.ornl.gov>`__ and the converter is hoped to be a suitable starting point for the conversion of
-  observations from FLUXNET. As of May 2012, I have not yet tried to work with any other observations from FLUXNET.
-| The AmeriFlux Level 4 products are recorded using the local time. DART observation sequence files use GMT. For more
-  information about AmeriFlux data products, go to http://ameriflux.lbl.gov.
+| This routine was designed to convert the flux tower Level 4 data from the `AmeriFlux <http://ameriflux.lbl.gov>`__
+  network of observations from micrometeorological tower sites. The download link and flux data format for this code
+  *has been discontinued* (e.g. ``USBar2004_L4_h.txt``).  Thus if you are using flux obs converters for the first time
+  *PLEASE USE* the updated ``Fluxnetfull_to_obs.f90`` converter and follow the documentation there :doc:`./Fluxnetfull_to_obs`
+  We have kept this code available if you still use the older Ameriflux data format.  Also this code uses a general approach
+  to calculating sensible, latent and net ecosystem exchange uncertainty, that may be helpful. 
+| The AmeriFlux Level 4 data products are provided in the local time of the flux tower location. DART observation sequence
+  files are provided in UTC, thus this routine includes a time conversion. 
 
 .. warning::
 
@@ -153,14 +155,14 @@ The ``level4_to_obs.f90`` file is the source for the main converter program. Loo
 example data file. You will almost certainly need to change the "read" statement to match your data format. The example
 code reads each text line into a character buffer and then reads from that buffer to parse up the data items.
 
-To compile and test, go into the work subdirectory and run the ``quickbuild.csh`` script to build the converter and a
+To compile and test, go into the work subdirectory and run the ``quickbuild.sh`` script to build the converter and a
 couple of general purpose utilities. ``advance_time`` helps with calendar and time computations, and the
 ``obs_sequence_tool`` manipulates DART observation files once they have been created.
 
 To change the observation types, look in the ``DART/obs_def`` directory. If you can find an obs_def_XXX_mod.f90 file
 with an appropriate set of observation types, change the 'use' lines in the converter source to include those types.
 Then add that filename in the ``input.nml`` namelist file to the &preprocess_nml namelist, the 'input_files' variable.
-Multiple files can be listed. Then run quickbuild.csh again. It remakes the table of supported observation types before
+Multiple files can be listed. Then run quickbuild.sh again. It remakes the table of supported observation types before
 trying to recompile the source code.
 
 An example script for converting batches of files is in the ``shell_scripts`` directory. A tiny example data file is in

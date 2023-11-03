@@ -24,7 +24,7 @@ Programs
 --------
 
 | Conversion program ``convert_ssec_satwnd`` converts the ascii data in the input files into a DART observation sequence
-  file. Go into the ``work`` directory and run the ``quickbuild.csh`` script to compile the necessary files.
+  file. Go into the ``work`` directory and run the ``quickbuild.sh`` script to compile the necessary files.
 | The program reads standard input for the data time range, which types of observations to convert, and then, if quality
   control information is found in the input file, what type of quality control algorithm to use when deciding whether
   the observation is of good quality or not. See the references below.

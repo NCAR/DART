@@ -1,0 +1,627 @@
+! This namelist is set up for a single, CAM-SE, assimilation cycle
+! using the default values as found in model_mod.f90 and
+! DART/cam-fv/shell_scripts/cesm2_1/setup_{hybrid,advanced}
+! starting from a single model state, which must be perturbed into an ensemble.
+! Comments below give suggestions for setting it up for other assimilations:
+! > continuing an assimilation (no perturbations) and/or starting from an ensemble.
+! > Setting up a WACCM(-X) assimilation
+! > Setting up for perfect_model_obs
+!
+
+! ens_size, num_output_*  will be (re)set by the setup script
+! To use a pre-existing ensemble, make the following changes
+! This applies to the second cycle after starting from a single ensemble member.
+! It's not necessary to change any other variables controlling the perturbation
+! because this will cause them to be ignored.
+!    perturb_from_single_instance = .false.
+! Other variables of interest
+! stages_to_write          Controls diagnostic and restart output.  Valid values are
+!                          'input', 'forecast','preassim', 'postassim', 'analysis', and 'output'.
+!                          If only prior inflation is used, then 'postassim' and 'analysis'
+!                          are redundant with 'output'.  Just use 'output'.
+!                          If only posterior inflation is used, 'forecast' and 'preassim'
+!                          are redundant with 'input'.
+!                          If you want input_mean and input_sd, you'll
+!                          need to set output_mean and output_sd = .true.
+!                          (and include 'input' in stages_to_write).
+!    inf_initial_from_restart These should be true because assimilate.csh will create
+!    inf_sd_from_restart      inflation restart files from the values in inf*_initial
+!                             if needed.
+
+&filter_nml
+   input_state_files            = ''
+   input_state_file_list        = 'cam_init_files'
+   single_file_in               = .false.
+   perturb_from_single_instance = .true.
+   init_time_days               = -1
+   init_time_seconds            = -1
+
+   stages_to_write              = 'forecast','output'
+
+   output_state_files           = ''
+   output_state_file_list       = 'cam_out_files'
+   output_mean                  = .true.
+   output_sd                    = .true.
+   output_members               = .true.
+   num_output_state_members     = 3
+   single_file_out              = .false.
+   write_all_stages_at_end      = .false.
+   output_interval              = 1
+
+   ens_size                     = 3
+   num_groups                   = 1
+   distributed_state            = .true.
+
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .true.,                  .false.
+   inf_initial                 = 1.0,                     1.0
+   inf_lower_bound             = 0.0,                     0.0
+   inf_upper_bound             = 100.0,                   100.0
+   inf_sd_initial_from_restart = .true.,                  .false.
+   inf_sd_initial              = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
+   inf_damping                 = 0.9,                     0.9
+   inf_deterministic           = .true.,                  .true.
+
+   obs_sequence_in_name     = 'obs_seq.out'
+   obs_sequence_out_name    = 'obs_seq.final'
+   num_output_obs_members   = 3
+   compute_posterior        = .false.
+
+   trace_execution          = .true.
+   output_timestamps        = .true.
+   output_forward_op_errors = .false.
+   silence                  = .false.
+   /
+! Moha's enhanced (gamma distribution) adaptive:
+!    inf_flavor                  = 5,                       0
+!    inf_lower_bound             = 0.0,                     0.0
+! flavor 2
+!    inf_flavor                  = 2,                       0
+!    inf_lower_bound             = 1.0,                     1.0
+
+
+! Not used in CAM assims
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   obs_window_days          = -1
+   obs_window_seconds       = -1
+   adv_ens_command          = 'no_CESM_advance_script'
+   tasks_per_model_advance      = -1  Used only for models run inside filter.
+   write_obs_every_cycle        = .false. intended for debugging when cycling inside filter.
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.
+   input_state_files          = "caminput.nc"
+   init_time_days             = -1
+   init_time_seconds          = -1
+
+   write_output_state_to_file = .true.
+   output_state_files         = "perfect_restart.nc"
+
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   trace_execution            = .true.
+   output_timestamps          = .true.
+   print_every_nth_obs        = 0
+   output_forward_op_errors   = .false.
+   /
+
+#========================================================================
+# Start of CAM-SE dependencies and general discussion.
+#========================================================================
+!
+! Creation of initial ensemble from a single model state.
+!     fields_to_perturb lists the DART QTY_s of the state variables to be perturbed to make the ensemble.
+!     perturbation_amplitude > 0 allows each point of the fields_to_perturb fields of each ens member 
+!         to be randomly perturbed with a standard deviation of perturbation_amplitude.  
+!         Each field can be given a different perturbation_amplitude.
+!     Used by filter's call to pert_model_copies.
+!
+! state_variables (5 columns for each variable):
+!     netcdf varname, dart quantity, min allowed value, max allowed value, (no)update this var
+!
+! vert_normalization_YYY
+!     The vert_normalization_scale_height default value was chosen based on 
+!     Pedatella's settling on 1.5 (scale heights/radian), based on tuning experiments.
+!     This is supported by tuning experiments with CAM5.
+!
+! use_log_vertical_scale(vertical interpolation only):
+!     .false. or .true.
+!
+! no_obs_assim_above_level 
+!     Prevents assimilation of observations whose vertical location is above
+!     this model level.  Note that, if this value is set to a large value,
+!     it may be within CAM's hybrid coordinate layers instead of in the pure pressure layers.
+!     This will result in the the observation cutoff height being at different pressure levels
+!     over mountains versus lower areas.
+
+! model_damping_ends_at_level
+!     This controls how much innovations are reduced near the model top, to mitigate the effects 
+!     of the extra diffusion sometimes applied there in CAM and WACCM (see fv_div24del2flag).
+!     The default value (-1) turns off the damping and relies on the choices of the following 
+!     variables to prevent assimilation from happening in CAM's diffusive top layers:
+!        no_obs_assim_above_level,
+!        use_log_vertical_scale,
+!        vert_normalization_YYY,
+!        cutoff.
+!     When it is turned on (> 0), it is the lowest level which will be damped.  
+!     Damping increases with height (smaller level numbers).
+!     The values given below are the minimums recommended for various models.
+!     You can start with the minimum and increase it if there seems to be excessive
+!     noise in the upper layers.
+!
+! CAM-SE Section
+!     Model top 220 Pa
+!     Number of CAM model top levels with extra diffusion, controlled by div24del2:
+!         2 = div2    -> 2 levels
+!         4,24 = del2 -> 3 levels 
+!     CAM assimilations can use pressure or scale height vertical coordinate.
+!     We recommend scale height.
+!        use_log_vertical_scale          = .true.
+!        vert_normalization_scale_height = 1.5 
+!        vert_normalization_pressure     = 20000. 
+!     
+!     26 levels (CAM4):
+!        no_obs_assim_above_level            = 5       ! corresponds to ~3700 Pa
+!     30 levels (CAM5):
+!        no_obs_assim_above_level            = 5       ! corresponds to ~3800 Pa
+!     32 levels (CAM6):
+!        no_obs_assim_above_level            = 5       ! corresponds to ~3600 Pa
+!
+! WACCM 
+!     The model top for WACCM is (naturally) much higher: 4.5e-4 Pa
+!     The number of model top levels with extra diffusion is controlled by WACCM's 
+!     fv_div24del2flag:
+!         2 = div2    -> 3 levels
+!         4,24 = del2 -> 4 levels
+!     70 levels (WACCM4):
+!        no_obs_assim_above_level            = 7       ! corresponds to 0.012 Pa
+!     This values must be used with WACCM assimilations;
+!        use_log_vertical_scale          = .true.
+!     This is recommended, but your own tuning experiments may support a different value.
+!        vert_normalization_scale_height = 1.5
+!
+!========================================================================
+
+&model_nml
+   cam_template_filename       = 'caminput.nc'
+   cam_phis_filename           = 'cam_phis.nc'
+   custom_routine_to_generate_ensemble = .true.
+   fields_to_perturb                   = 'QTY_TEMPERATURE'
+   perturbation_amplitude              = 0.1
+   state_variables  = 'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
+                      'U',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+                      'V',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+                      'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
+                      'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
+                      'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
+                      'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
+   use_log_vertical_scale              = .true.
+   use_variable_mean_mass              = .false.
+   no_normalization_of_scale_heights   = .true.
+   vertical_localization_coord         = 'SCALEHEIGHT'
+   no_obs_assim_above_level            = 5
+   model_damping_ends_at_level         = -1
+   using_chemistry                = .false.
+   assimilation_period_days       = 0
+   assimilation_period_seconds    = 21600
+   suppress_grid_info_in_output   = .false.
+   debug_level                    = 0
+   /
+
+! Other fields in the CAM initial file, which could be included in the model state:
+! These QTYs should be changed to physically meaningful values before any real assim.
+!                       'DMS',   'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'H2O2',  'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'H2SO4', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMICE','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMLIQ','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMRAI','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'NUMSNO','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'RAINQM','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'SNOWQM','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'SO2',   'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'SOAG',  'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'bc_a1', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'bc_a4', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'dst_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'dst_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'dst_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'ncl_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'ncl_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'ncl_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'num_a4','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'pom_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'pom_a4','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'so4_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'so4_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'so4_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'soa_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+!                       'soa_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
+&location_nml
+   horiz_dist_only                 = .false.
+   vert_normalization_pressure     = 20000.0
+   vert_normalization_height       = 10000.0
+   vert_normalization_level        = 20.0
+   vert_normalization_scale_height = 1.5
+   approximate_distance            = .false.
+   nlon                            = 141
+   nlat                            = 72
+   output_box_info                 = .false.
+   print_box_level                 = 0
+   /
+
+#========================================================================
+# End of CAM-FV dependencies.
+#========================================================================
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.01
+   prior_inf_sd    = 0.6
+
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'caminput.nc'
+   single_file       = .false.
+                       
+   verbose           = .false.
+   /
+
+! to use chemistry or saber temperatures, include the following below.
+!                             '../../../observations/forward_operators/obs_def_CO_Nadir_mod.f90',
+!                             '../../../observations/forward_operators/obs_def_SABER_mod.f90',
+!                             '../../../observations/forward_operators/obs_def_MOPITT_CO_mod.f90',
+
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_upper_atm_mod.f90',
+                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_altimeter_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
+                             '../../../assimilation_code/modules/observations/space_quantities_mod.f90',
+                             '../../../assimilation_code/modules/observations/chemistry_quantities_mod.f90'
+   /
+
+! Not usually assimilated.  No fundamental reason not to.
+!                               'RADIOSONDE_SPECIFIC_HUMIDITY',
+! Available from mid-2006 onward.  Build filter with obs_def_gps_mod.f90
+!                               'GPSRO_REFRACTIVITY',
+! WACCM can use higher observations than CAM.
+! An example can be included via obs_def_SABER_mod.f90.
+!                               'SABER_TEMPERATURE',
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT',
+                                'RADIOSONDE_V_WIND_COMPONENT',
+                                'RADIOSONDE_TEMPERATURE',
+                                'AIRCRAFT_U_WIND_COMPONENT',
+                                'AIRCRAFT_V_WIND_COMPONENT',
+                                'AIRCRAFT_TEMPERATURE',
+                                'ACARS_U_WIND_COMPONENT',
+                                'ACARS_V_WIND_COMPONENT',
+                                'ACARS_TEMPERATURE',
+                                'SAT_U_WIND_COMPONENT',
+                                'SAT_V_WIND_COMPONENT',
+                                'GPSRO_REFRACTIVITY'
+
+   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+   /
+
+
+&state_vector_io_nml
+   buffer_state_io         = .false.
+   single_precision_output = .false.
+   /
+
+
+! 'layout' and 'tasks_per_node' will be reset by the assimilate.csh script
+! to match the number used when laying out the job.
+
+&ensemble_manager_nml
+   layout         = 2
+   tasks_per_node = 16
+   /
+
+
+&assim_tools_nml
+   filter_kind                       = 1
+   cutoff                            = 0.15
+   sort_obs_inc                      = .false.
+   spread_restoration                = .false.
+   sampling_error_correction       = .true.
+   adaptive_localization_threshold   = -1
+   output_localization_diagnostics   = .false.
+   localization_diagnostics_file     = 'localization_diagnostics'
+   convert_all_obs_verticals_first   = .true.
+   convert_all_state_verticals_first = .true.
+   print_every_nth_obs               = 10000
+   distribute_mean                   = .false.
+   /
+
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = 'time_mean_reg'
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = 'reg_diagnostics'
+   /
+
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+
+&quality_control_nml
+   input_qc_threshold          =  3.0
+   outlier_threshold           =  3.0
+   enable_special_outlier_code = .false.
+   /
+
+
+&xyz_location_nml
+   /
+
+
+!  : error codes >= TERMLEVEL will cause termination
+!  E_DBG = -2,   E_MSG = -1,  E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
+!  write_nml default is 'file'.
+!    write_nml = 'none'  reduces printed output.
+&utilities_nml
+   TERMLEVEL      = 2
+   module_details = .false.
+   logfilename    = 'dart_log.out'
+   nmlfilename    = 'dart_log.nml'
+   /
+
+
+&mpi_utilities_nml
+   /
+
+
+&obs_def_gps_nml
+   max_gpsro_obs = 15000000
+   /
+
+
+#========================================================================
+# observation manipulation tools
+#========================================================================
+
+! other possible obs tool namelist items:
+!
+! keep only the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT'
+!                        'RADIOSONDE_V_WIND_COMPONENT'
+!   keep_types         = .true.
+!
+! remove the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT'
+!                        'RADIOSONDE_V_WIND_COMPONENT'
+!   keep_types         = .false.
+!
+! keep only observations with a DART QC of 0:
+!   qc_metadata        = 'Dart quality control'
+!   min_qc             = 0
+!   max_qc             = 0
+!
+! keep only radiosonde temp obs between 250 and 300 K:
+!   copy_metadata      = 'NCEP BUFR observation'
+!   copy_type          = 'RADIOSONDE_TEMPERATURE'
+!   min_copy           = 250.0
+!   max_copy           = 300.0
+
+
+&obs_sequence_tool_nml
+   num_input_files    = 2
+   filename_seq       = 'obs_seq.one', 'obs_seq.two'
+   filename_out       = 'obs_seq.processed'
+   first_obs_days     = -1
+   first_obs_seconds  = -1
+   last_obs_days      = -1
+   last_obs_seconds   = -1
+   min_lat            =  -90.0
+   max_lat            =   90.0
+   min_lon            =    0.0
+   max_lon            =  360.0
+   gregorian_cal      = .true.
+   print_only         =  .false.
+   /
+
+
+&obs_common_subset_nml
+   num_to_compare_at_once   = 2
+   filename_seq             = ''
+   filename_seq_list        = ''
+   filename_out_suffix      = '.common' 
+   print_only               = .false.
+   print_every              = 10000
+   calendar                 = 'Gregorian'
+   dart_qc_threshold        = 3
+   eval_and_assim_can_match = .false.
+   /
+
+
+&obs_impact_tool_nml
+   input_filename         = 'cross_correlations.txt'
+   output_filename        = 'control_impact_runtime.txt'
+   debug                  = .false.
+   /
+
+
+
+
+#========================================================================
+# diagnostic tools
+#========================================================================
+
+! The times in the namelist for the obs_diag program are vectors
+! that follow the following sequence:
+! year   month   day   hour   minute   second
+! max_num_bins can be used to specify a fixed number of bins,
+! in which case last_bin_center should be safely in the future.
+!
+! Acceptable latitudes range from  [-90,  90]
+! Acceptable longitudes range from [  0, Inf]
+!
+! Other available namelist variables, not in the default obs_diag.nml:
+!  hlevel
+!  mlevel
+!  print_obs_locations
+!  outliers_in_histogram
+!  plevel_edges
+!  hlevel_edges
+!  mlevel_edges
+! Standard layers:
+! 1000, 925, 850, 700, 600, 500, 400, 300,  250,  200,  150,  100,   70,   50,   30,   20,   10 hPa
+!    +950(MetOffc)     -600(skipped in obs_diag.f90 defaults)   -70 and less skipped in obs_diag.f90
+! Corresponding heights (assuming a standard atmosphere)
+! 200,  650, 1350, 2900,4100,5480,7090,9080,10280,11700,13520,16100,18358,21060,24640,27480,32330
+! I've changed the height vertical axis in plot_rmse_xxx* to be logarithmic 
+! in order to make the layers look more like the pressure layers.
+! So the bottom edge can't be 0.
+! The lowest GPS ob is 200, so that's the new lowest edge
+!
+!    plevel = 1000.,925.,850.,700.,500.,400.,300.,250.,200.,150.,100.,50.,20.,10.
+!    hlevel = 1000., 2000., 3000., 4000., 5000., 6000., 7000., 8000., 9000., 10000.,11000.
+!             0, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 9500, 11500, 13500, 15500
+!
+! Defaults
+!    plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
+!    Nregions   = 4
+!    lonlim1    =   0.0,   0.0,   0.0, 235.0
+!    lonlim2    = 360.0, 360.0, 360.0, 295.0
+!    latlim1    =  20.0, -80.0, -20.0,  25.0
+!    latlim2    =  80.0, -20.0,  20.0,  55.0
+!    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'
+!
+! for WACCM you will want to change the plevel to match
+! the higher vertical range of the model.
+!   plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
+! these are specified in hectopascals (hPa)
+
+&obs_diag_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   first_bin_center  =  BOGUS_YEAR, 1, 1, 0, 0, 0
+   last_bin_center   =  BOGUS_YEAR, 1, 2, 0, 0, 0
+   bin_separation    =     0, 0, 0, 6, 0, 0
+   bin_width         =     0, 0, 0, 6, 0, 0
+   time_to_skip      =     0, 0, 1, 0, 0, 0
+   max_num_bins      = 1000
+   trusted_obs       = 'null'
+   plevel_edges = 1035.5, 962.5, 887.5, 775, 600, 450, 350, 275, 225,   175,   125,   75,   35,   15,    2
+   hlevel_edges =    200, 630,   930,  1880,3670,5680,7440,9130,10530,12290, 14650,18220,23560,29490,43000
+   Nregions     = 3
+   reg_names    = 'Northern Hemisphere', 'Tropics', 'Southern Hemisphere'
+   lonlim1      =   0.0,   0.0,   0.0
+   lonlim2      = 360.0, 360.0, 360.0
+   latlim1      =  20.0, -20.0, -90.0
+   latlim2      =  90.0,  20.0, -20.0
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .false.
+   /
+
+
+&schedule_nml
+   calendar             = 'Gregorian'
+   first_bin_start      =  1601,  1,  1,  0,  0,  0
+   first_bin_end        =  2999,  1,  1,  0,  0,  0
+   last_bin_end         =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
+
+
+&model_mod_check_nml
+   input_state_files     = 'caminput.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 175001
+
+   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   loc_of_interest       = 254.727854, 39.9768545, 50000.0
+
+   interp_test_lonrange  = 0.0, 360.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -90.0, 90.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 10000.0,  90000.0
+   interp_test_dvert     = 10000.0
+   interp_test_vertcoord = 'VERTISPRESSURE'
+   verbose               = .false.
+   /
+
+
+! different methods to compute 'distance' from mean:
+!  1 = simple absolute difference
+!  2 = normalized absolute difference
+!  3 = simple rmse difference
+!  4 = normalized rmse difference
+
+&closest_member_tool_nml
+   input_restart_file_list = 'cam_in.txt'
+   output_file_name        = 'closest_restart'
+   ens_size                = 3
+   single_restart_file_in  = .false.
+   difference_method       = 4
+   use_only_qtys           = ''
+   /
+
+
+&perturb_single_instance_nml
+   ens_size               = 3
+   input_files            = 'caminput.nc'
+   output_files           = 'cam_pert1.nc','cam_pert2.nc','cam_pert3.nc'
+   output_file_list       = ''
+   perturbation_amplitude = 0.2
+   /
+
+
+&quad_interpolate_nml
+   debug = 0
+   /
+

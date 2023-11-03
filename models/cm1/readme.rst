@@ -43,7 +43,7 @@ only contain output at the analysis time (which requires setting
 Here is an example configuration of the ``&param9`` namelist in
 ``namelist.input``:
 
-.. code-block:: fortran
+.. code-block:: text
 
    &param9 
      restart_format     = 2         restart needs to be netCDF
@@ -61,13 +61,14 @@ Here is an example configuration of the ``&param9`` namelist in
 
 Additional state variables that have been tested within DART include:
 
-``ua, va, wa, ppi, u0, v0, u10, v10, t2, th2, tsk, q2, psfc, qv, qc, qr, qi qs, & qg``.
+``ua, va, wa, prs, u0, v0, u10, v10, t2, th2, tsk, q2, psfc, qv, qc, qr, qi qs, qg, nc, nr, ns, ni, nh, ng``.
   
 At present, observation times are evaluated relative to the date and time
 specified in the ``&param11`` namelist.
 
 Observation locations are specified in meters relative to the domain origin as
 defined the ``iorigin`` setting of ``&param2``.
+
 
 About Testing CM1 and DART
 --------------------------
@@ -284,7 +285,7 @@ namelists start with an ampersand ``&`` and terminate with a slash ``/``.
 Character strings that contain a ``/`` must be enclosed in quotes to prevent
 them from prematurely terminating the namelist.
 
-.. code-block:: fortran
+.. code-block:: text
 
    &model_nml 
       assimilation_period_days     = 0
@@ -373,9 +374,11 @@ Description of each namelist entry
 .. note::
 
    The values above are the default values. A more realistic example is shown
-   below and closely matches the values in the default ``input.nml``.
+   below and closely matches the values in the default ``input.nml``. The example input block is
+   for a case run using the Morrison Microphysics scheme.  Any changes in microphysics will require the
+   user to update the hydrometeor state variables.
 
-.. code-block:: fortran
+.. code-block:: text
 
    &model_nml 
       assimilation_period_days     = 0
@@ -390,7 +393,33 @@ Description of each namelist entry
                         'va'   , 'QTY_V_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
                         'wa'   , 'QTY_VERTICAL_VELOCITY'     , 'NULL', 'NULL', 'UPDATE',
                         'theta', 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
-                        'ppi'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
+                        'prs'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
+                        'qv'   , 'QTY_VAPOR_MIXING_RATIO'      , 0.0000, 'NULL', 'UPDATE',
+                        'qc'   , 'QTY_CLOUD_LIQUID_WATER'      , 0.0000, 'NULL', 'UPDATE',
+                        'qr'   , 'QTY_RAINWATER_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
+                        'qi'   , 'QTY_CLOUD_ICE'               , 0.0000, 'NULL', 'UPDATE',
+                        'qs'   , 'QTY_SNOW_MIXING_RATIO'       , 0.0000, 'NULL', 'UPDATE',
+                        'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
+                       'ncr'   , 'QTY_RAIN_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                       'nci'   , 'QTY_ICE_NUMBER_CONCENTRATION', 0.0000, 'NULL', 'UPDATE',
+                       'ncs'   , 'QTY_SNOW_NUMBER_CONCENTR'    , 0.0000, 'NULL', 'UPDATE',
+                       'ncg'   , 'QTY_GRAUPEL_NUMBER_CONCENTR' , 0.0000, 'NULL', 'UPDATE',
+                       'rho'   , 'QTY_DENSITY'                 , 0.0000, 'NULL', 'UPDATE',
+                       'dbz'   , 'QTY_RADAR_REFLECTIVITY'      , 0.0000, 'NULL', 'UPDATE',
+
+
+   /
+                      
+.. note:: **From Jon Labriola on additional model variables that could be considered:**
+
+   There are other model variables that can be included if you use a very specific forecast configuration.
+   The following model variables output by CM1 when you run with a simulation with
+   a surface model and set "output_sfcdiags = 1".  These variables can be used to 
+   simulated surface observations including TEMPERATURE_2M, U_WIND_10, V_WIND_10, SPECIFIC_HUMIDITY_2M,
+   and SURFACE_PRESSURE.
+
+   .. code-block:: text 
+       
                         'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
                         'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
                         't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
@@ -398,10 +427,143 @@ Description of each namelist entry
                         'tsk'  , 'QTY_SURFACE_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
                         'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
                         'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
-                        'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
-                        'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
-                        'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
-                        'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
-                        'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
-                        'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE'
+
+   If you want to assimilate pseudo "near-surface" observations but are not using a surface model 
+   in your forecast, I recommend defining a single radionsonde or dropsonde observation that is located
+   near the surface (but at or above the lowest model level.  The DART forward operator will perform 
+   3D interpolation to obtain the near-surface observation.
+
+   Also be warned - from what I can tell DART forward operators are unable to calculate air temperature and 
+   specific humidity from CM1 model fields. To simulate these fields (e.g., DROPSONDE_TEMPERATURE, RADIOSONDE_SPECIFIC_HUMIDITY,...)
+   you will have to manually go into the CM1 code (./src/writeout_nc.F and ./src/restart.F) and update
+   the model to output 3D air temperature (air_temp) and specific humidity (spec_hum) fields. Then you
+   can add the following fields to model_variables.
+ 
+   .. code-block:: text
+ 
+                        'air_temp'  , 'QTY_TEMPERATURE'             , 'NULL', 'NULL', 'UPDATE',
+                        'spec_hum'  , 'QTY_SPECIFIC_HUMIDITY'       , 0.0000, 'NULL', 'UPDATE',  
+
+
+Some other areas of interest in input.nml will also be discussed
+
+&assim_tools_nml
+~~~~~~~~~~~~~~~~~~
+
+The CM1 DART code was updated so that horizontal and vertical localization radii
+can be defined for each assimilated observation type.  The horizontal and vertical localization
+radius is first defined by the ``cutoff`` variable in the &assim_tools_nml
+code block of input.nml.  However, you can use ``special_localization_obs_types`` and 
+``special_localization_cutoffs`` variables to define the observation type and corresponding
+half localization radius, respectively. 
+
+
+``horizontal localization radius = 2 * special_localization_cutoffs[ob_type]``
+
+An example of the &assim_tools_nml using per-type radii is provided below.
+
+.. code-block:: text
+
+   &assim_tools_nml
+     adaptive_localization_threshold = -1
+     cutoff                          = 15000.0
+     filter_kind                     = 1
+     print_every_nth_obs             = 100
+     rectangular_quadrature          = .true.
+     sampling_error_correction       = .false.
+     sort_obs_inc                    = .false.
+     spread_restoration              = .false.
+     gaussian_likelihood_tails       = .false.
+     distribute_mean                 = .true.
+     output_localization_diagnostics = .false.
+     localization_diagnostics_file   = 'localization_diagnostics'
+     special_localization_obs_types    = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+     special_localization_cutoffs      = 50000., 50000., 6000., 6000.  ! Horizontal Localization radii (100km, 100km, 12km, 12km)
    /
+
+
+
+&location_nml
+~~~~~~~~~~~~~~~
+
+You can also define the vertical localization radius for each observation 
+type.  ``special_vert_normalization_obs_types`` is
+where you define the observation type and ``special_vert_normalization_heights`` is
+where you define the normalization factor in the vertical. If you just one set one normalization for all
+observation types use ``vert_normalization_height`` (not typically recommended since horizontal localization
+radii often switch between obs types).
+
+
+``vertical localization radius = 2 * special_localization_cutoffs[ob_type]* special_vert_normalization_heights[ob_type]``
+
+or if no obs types are defined...
+
+``vertical localization radius = 2 * cutoff * vert_normalization_height``
+
+You can also define periodic boundary conditions in the &location_nml code block.  Do not change ``nx``, ``ny``, and ``nz``
+they are defined search radii used by DART (not the domain size itself).
+
+An example of the &location_nml is provided below.
+
+.. code-block:: text
+
+   &location_nml
+      x_is_periodic       = .false.  
+      y_is_periodic       = .false.
+      z_is_periodic       = .false.
+      min_x_for_periodic  = 0.0
+      max_x_for_periodic  = 200000.0
+      min_y_for_periodic  = 0.0
+      max_y_for_periodic  = 200000.0
+      min_z_for_periodic  = 0.0
+      max_z_for_periodic  = 1.0
+      compare_to_correct  = .false.
+      output_box_info     = .false.
+      print_box_level     = 0
+      nx                  = 10
+      ny                  = 10
+      nz                  = 10
+      vert_normalization_height = 1
+      special_vert_normalization_obs_types = 'RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT', 'RADAR_REFLECTIVITY', 'DOPPLER_RADIAL_VELOCITY'
+      special_vert_normalization_heights   = 0.04, 0.04, 0.33, 0.33
+   /
+
+
+&obs_def_radar_mod_nml
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The block defines how radar observations are assimilated
+e.g., what forward operator is used for reflectivity, radial velocity,
+microphysical information, observation cutoff values. 
+
+Rather than diagnosing radar reflectivity directly from model output
+I feed the DART system the 3D radar reflectivity variable output by cm1.
+If you decide to follow this same technique set ``microphysics_type = 5``.
+
+To calculate radar radial velocity you need to set ``allow_dbztowt_conv=.true.``
+this will allow the DART to diagnose particle fall speed via reflecvtivity
+which is used for the radial velocity calculation. 
+
+A sample &obs_def_radar_mod_nml is provided below:
+
+.. code-block:: text
+
+   &obs_def_radar_mod_nml
+      apply_ref_limit_to_obs      =   .false.,
+      reflectivity_limit_obs      =     -10.0,
+      lowest_reflectivity_obs     =     -10.0,
+      apply_ref_limit_to_fwd_op   =   .false.,
+      reflectivity_limit_fwd_op   =     -10.0,
+      lowest_reflectivity_fwd_op  =     -10.0,
+      max_radial_vel_obs          =   1000000,
+      allow_wet_graupel           =   .false.,
+      microphysics_type           =         5,
+      allow_dbztowt_conv          =    .true.,
+      dielectric_factor           =     0.224,
+      n0_rain                     =     8.0e6,
+      n0_graupel                  =     4.0e6,
+      n0_snow                     =     3.0e6,
+      rho_rain                    =    1000.0,
+      rho_graupel                 =     400.0,
+      rho_snow                    =     100.0
+      /

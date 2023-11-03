@@ -21,7 +21,7 @@ Programs
 
 The ``snow_to_obs.f90`` file is the source for the main converter program.
 
-To compile and test, go into the work subdirectory and run the ``quickbuild.csh`` script to build the converter and a
+To compile and test, go into the work subdirectory and run the ``quickbuild.sh`` script to build the converter and a
 couple of general purpose utilities. ``advance_time`` helps with calendar and time computations, and the
 ``obs_sequence_tool`` manipulates DART observation files once they have been created.
 

@@ -73,7 +73,7 @@ switch lower(vars.model)
          varid.var_inds = vrbl_inds;
       end
 
-   case 'simple_advection'
+   case {'simple_advection','lorenz_96_tracer_advection'}
 
       % query to see if the defaults are OK ...
 

@@ -8,9 +8,9 @@ This directory contains the interface code and the shell scripts to
 run the MPAS-ATM atmospheric model with DART ensemble data assimilation.
 
 The 'work' directory is where the executables are built.
-Run 'quickbuild.csh' to compile all the executables.  
-'quickbuild.csh -nompi' builds the serial versions only, 
-'quickbuild.csh -mpi' is the default and builds MPI (parallel) versions
+Run './quickbuild.sh' to compile all the executables.
+'./quickbuild.sh nompi' builds the serial versions only,
+'./quickbuild.sh' is the default and builds MPI (parallel) versions
 of the filter and any other executables that can run on multiple CPUs.
 
 The 'shell_scripts' directory contains a collection of scripts that 

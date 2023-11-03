@@ -55,14 +55,14 @@ parse up the data items. The items are then combined with the COSMIC parameters 
 DART-format observation sequence file. The DART format allows for the additional COSMIC parameters to be contained as
 metadata for each observation.
 
-To compile and test, go into the ``COSMOS/work`` subdirectory and run the ``quickbuild.csh`` script to build the
+To compile and test, go into the ``COSMOS/work`` subdirectory and run the ``quickbuild.sh`` script to build the
 converter and a couple of general purpose utilities. The
 :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool` manipulates (i.e. combines, subsets) DART
 observation files once they have been created. The default observations supported are those defined in
 ``DART/observations/forward_operators/obs_def_land_mod.f90`` and
 ``DART/observations/forward_operators/obs_def_COSMOS_mod.f90``. If you need
 additional observation types, you will have to add the appropriate ``obs_def_XXX_mod.f90`` file to the ``input.nml``
-``&preprocess_nml:input_files`` variable and run ``quickbuild.csh`` again. It rebuilds the table of supported
+``&preprocess_nml:input_files`` variable and run ``quickbuild.sh`` again. It rebuilds the table of supported
 observation types before compiling the source code.
 
 .. container:: indent1

@@ -52,10 +52,8 @@ Shell scripts that come with the DART/WRF distribution:
 
 runme_filter - shell script that starts the job
 advance_model.csh - shell script that advances the WRF model
-quickbuild.csh - shell script that builds all the executables.  run it with
-                 the single argument -nompi if you want to run it as a serial
-                 program, use -mpi (the default) to compile it to run as
-                 parallel mpi job.
+quickbuild.sh - shell script that builds all the executables.  run it with
+                 the single argument nompi if you want to compile without mpi.
 
 
 Files which are there to validate your results:

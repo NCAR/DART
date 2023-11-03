@@ -1,3 +1,6 @@
+
+.. _DART programs:
+
 Programs included with DART
 ===========================
 
@@ -171,9 +174,6 @@ Historical and Deprecated
    A collection of standalone programs for simulating various properties of ensembles.
    Talk to Jeff Anderson about the programs in this directory.
 
-:doc:`restart_file_tool <restart_file_tool/restart_file_tool>`
-   Deprecated, since in Manhattan all DART initial and restart files are in NetCDF format.
- 
 :doc:`wakeup_filter <wakeup_filter/wakeup_filter>`
    For use in the "async=4" case where both the main filter program and the hindcast model are MPI programs. 
    The main MPI job script runs each of the model advances for the ensemble members, 

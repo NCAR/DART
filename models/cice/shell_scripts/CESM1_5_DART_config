@@ -136,7 +136,7 @@ foreach MODEL ( cice )
       echo "WARNING: executable file 'filter' not found."
       echo "         Looking for: $targetdir/filter "
       echo "         Trying to rebuild all executables for $MODEL now ..."
-      (cd $targetdir; ./quickbuild.csh -mpi)
+      (cd $targetdir; ./quickbuild.sh)
       if ( ! -x $targetdir/filter ) then
          echo "ERROR: executable file 'filter' not found."
          echo "       Unsuccessfully tried to rebuild: $targetdir/filter "

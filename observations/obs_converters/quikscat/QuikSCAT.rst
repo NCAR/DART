@@ -5,12 +5,12 @@ Overview
 --------
 
 NASA's QuikSCAT mission is described in
-`http://winds.jpl.nasa.gov/missions/quikscat/ <http://winds.jpl.nasa.gov/missions/quikscat/index.cfm>`__. "QuikSCAT"
+`Quick Scatteromoeter <https://podaac.jpl.nasa.gov/QuikSCAT>`_. "QuikSCAT"
 refers to the satellite, "SeaWinds" refers to the instrument that provides near-surface wind speeds and directions over
 large bodies of water. QuikSCAT has an orbit of about 100 minutes, and the SeaWinds microwave radar covers a swath under
 the satellite. The swath is comprised of successive scans (or rows) and each scan has many wind-vector-cells (WVCs). For
 the purpose of this document, we will focus only the **Level 2B** product at 25km resolution. If you go to the official
-JPL data distribution site http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html , we are using the product labelled
+JPL data distribution site `podaac.jpl.nasa.gov <http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html>`_, we are using the product labelled
 **L2B OWV 25km Swath**. Each orbit consists of (potentially) 76 WVCs in each of 1624 rows or scans. The azimuthal
 diversity of the radar returns affects the error characteristics of the retrieved wind speeds and directions, as does
 rain, interference of land in the radar footprint, and very low wind speeds. Hence, not all wind retrievals are created
@@ -18,7 +18,7 @@ equal.
 
 The algorithm that converts the 'sigma naughts' (the measure of radar backscatter) into wind speeds and directions has
 multiple solutions. Each candidate solution is called an 'ambiguity', and there are several ways of choosing 'the best'
-ambiguity. Beauty is in the eye of the beholder. At present, the routine to convert the original L2B data files (one per
+ambiguity. At present, the routine to convert the original L2B data files (one per
 orbit) in HDF format into the DART observation sequence file makes several assumptions:
 
 #. All retrievals are labelled with a 10m height, in accordance with the retrieval algorithm.
@@ -34,13 +34,13 @@ orbit) in HDF format into the DART observation sequence file makes several assum
 Data sources
 ------------
 
-The NASA Jet Propulsion Laboratory (JPL) `data repository <http://winds.jpl.nasa.gov/imagesAnim/quikscat.cfm>`__ has a
+The NASA Jet Propulsion Laboratory (JPL) `data repository <https://podaac.jpl.nasa.gov/>`_ has a
 collection of animations and data sets from this instrument. In keeping with NASA tradition, these data are in HDF
-format (specifically, HDF4), so if you want to read these files directly, you will need to install the HDF4 libraries
-(which can be downloaded from http://www.hdfgroup.org/products/hdf4/)
+format (specifically, HDF4), so if you want to read these files directly, you will need to install the 
+`HDF4 libraries <https://portal.hdfgroup.org/display/support/Download+HDF4>`_.
 
 If you go to the official JPL data distribution site http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html, we are
-using the product labelled **L2B OWV 25km Swath**. They are organized in folders by day ... with each orbit (each
+using the product labelled **L2B OWV 25km Swath**. They are organized in folders by day, with each orbit (each
 revolution) in one compressed file. There are 14 revolutions per day. The conversion to DART observation sequence format
 is done on each revolution, multiple revolutions may be combined 'after the fact' by any ``obs_sequence_tool`` in the
 ``work`` directory of any model.
@@ -49,44 +49,46 @@ Programs
 --------
 
 There are several programs that are distributed from the JPL www-site,
-ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/; we specifically started from the Fortran file
-`read_qscat2b.f <ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/FORTRAN/read_qscat2b.f>`__ and modified it to
-be called as a subroutine to make it more similar to the rest of the DART framework. The original ``Makefile`` and
-``read_qscat2b.f`` are included in the DART distribution in the ``DART/observations/quikscat`` directory. You will have
-to modify the ``Makefile`` to build the executable.
+ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/; we modified the Fortran file
+`read_qscat2b.f <ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/FORTRAN/read_qscat2b.f>`__ 
+to be a subroutine for use with DART. For reference, the original ``read_qscat2b.f`` and ``Makefile``
+are included in ``DART/observations/quikscat`` directory.
+
 
 convert_L2b.f90
 ~~~~~~~~~~~~~~~
 
-``convert_L2b`` is the executable that reads the HDF files distributed by JPL. ``DART/observations/quikscat/work`` has
-the expected ``mkmf_convert_L2b`` and ``path_names_convert_L2b`` files and compiles the executable in the typical DART
-fashion - with one exception. The location of the HDF (and possible dependencies) installation must be conveyed to the
-``mkmf`` build mechanism. Since this information is not required by the rest of DART, it made sense (to me) to isolate
-it in the ``mkmf_convert_L2b`` script. **It will be necessary to modify the ``mkmf_convert_L2b`` script to be able to
-build ``convert_L2b``**. In particular, you will have to change the two lines specifying the location of the HDF (and
-probably the JPG) libraries. The rest of the script should require little, if any, modification.
+``convert_L2b`` converts the HDF files distributed by JPL to an obs_sequence file.
+To build ``convert_l2b`` using ``quickbuild.sh`` you will first need to build the HDF4 library.
 
-.. container:: routine
+.. warning::
 
-   set JPGDIR = */contrib/jpeg-6b_gnu-4.1.2-64*
-   set HDFDIR = */contrib/hdf-4.2r4_gnu-4.1.2-64*
+  To avoid conflicts with netCDF library required by DART, we recommend building HDF4 *without* 
+  the HDF4 versions of the NetCDF API. 
+
+After successfully building HDF, add the appropriate library flags to your mkmf.template file. 
+Below is a snippet from an mkmf.template file used to link to both NetCDF and HDF4.   
+
+.. code:: text
+
+   NETCDF = /glade/u/apps/ch/opt/netcdf/4.8.1/intel/19.1.1
+   HDF = /glade/p/cisl/dares/libraries/hdf
+   
+   INCS = -I$(NETCDF)/include -I$(HDF)/include
+   LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -L$(HDF)/lib -lmfhdf -ljpeg
+   FFLAGS  = -O -assume buffered_io $(INCS)
+   LDFLAGS = $(FFLAGS) $(LIBS)
+
 
 There are a lot of observations in every QuikSCAT orbit. Consequently, the observation sequence files are pretty large -
 particularly if you use the ASCII format. Using the binary format (i.e. *obs_sequence_nml:write_binary_obs_sequence =
 .true.*) will result in observation sequence files that are about *half* the size of the ASCII format.
 
 Since there are about 14 QuikSCAT orbits per day, it may be useful to convert individual orbits to an observation
-sequence file and then concatenate multiple observation sequence files into one file per day. This may be trivially
-accomplished with the ``obs_sequence_tool`` program in any ``model/xxxx/work`` directory. Be sure to include the
-``'../../../obs_def/obs_def_QuikSCAT_mod.f90'`` string in ``input.nml&preprocess_nml:input_files`` when you run
-``preprocess``.
+sequence file and then concatenate multiple observation sequence files into one file per day. This can be
+accomplished with the :ref:`obs_sequence_tool<obs sequence tool>` program. To build the ``obs_sequence_tool``, 
+add ``obs_sequence_tool`` to the list of programs in ``quickbuid.sh``.
 
-Obs_to_table.f90, plot_wind_vectors.m
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``DART/diagnostics/threed_sphere/obs_to_table.f90`` is a potentially useful tool. You can run the observation sequence
-files through this filter to come up with a 'XYZ'-like file that can be readily plotted with
-``DART/diagnostics/matlab/plot_wind_vectors.m``.
 
 Namelist
 --------

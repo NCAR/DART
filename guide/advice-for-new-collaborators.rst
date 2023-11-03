@@ -1,5 +1,7 @@
-Working with collaborators on porting new models
-================================================
+.. _Using new models:
+
+Can I run my model with DART?
+=============================
 
 The DART team often collaborates with other groups to help write the interface
 code to a new model. The most efficient way to get started is to meet with
@@ -14,7 +16,7 @@ Goals of using DART
 -------------------
 
 DART is the Data Assimilation Research Testbed.  It is a collection of 
-tools and routines and scripts that allow users to built custom solutions
+tools, routines, and scripts that allow users to build custom solutions
 and explore a variety of DA related efforts.  It is not a turnkey system;
 it must be built before use and is often customized based on needs and goals.
 
@@ -22,17 +24,20 @@ DART is often used for the following types of projects:
 
 - Learning about Data Assimilation (DA)
 - Using DART with an existing model and supported observations
-- **Adding a DART interface to a new model**
+- Using DART with a new model: :ref:`Porting new models`
 - Using new observations with DART in an existing model
 - Using both a new model and new observations with DART
 - Using DART to teach DA
+
+You can view a list of models that are already supported at :ref:`Supported models`
+and a list of supported observations at :ref:`programs`.
 
 Everything on this "possible goals" list except adding support for a new model
 can generally be done by a single user with minimal help from the DART team.
 Therefore this discussion focuses only on adding a new model to DART.
 
-Should I consider using DART?
------------------------------
+Should I consider using DART with my model?
+-------------------------------------------
 
 DART is an ensemble-based DA system. It makes multiple runs of a model with
 slightly different inputs and uses the statistical distribution of the results
@@ -312,10 +317,4 @@ of the state variables then doing it on demand is more efficient.
 The options here are namelist selectable at runtime and the impact
 on total runtime can be easily measured and compared.
 
-Reuse code when possible
-------------------------
 
-The ``models/template`` directory has files that can be used to start
-porting code to support a new model, but we also recommend looking at
-the existing supported models and reusing code from them if possible.
-Models with similar grid types or vertical coordiates are good candidates.

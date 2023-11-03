@@ -1,10 +1,12 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
-Here are instructions to help visualize the Prior/Posterior/True_State netCDF files.
+
+Contents: Instructions to help visualize the Prior/Posterior/True_State netCDF files
+using clm_get_var.m and clm_plot_var.m scripts.  These scripts reconstitute vector
+formatted netCDF files (e.g. CLM restart, DART stage files) such that they
+can be viewed in lon/lat format
 
 *) to check if I preserved the metadata of the CLM variables (given their 'sparse' representation),
    I used clm_get_var.m  to read a variable from the DART Posterior/Prior/True_State netCDF files:
@@ -43,9 +45,13 @@ Here are instructions to help visualize the Prior/Posterior/True_State netCDF fi
    is convenient to differ the files and then add back the metadata from one of the
    parents:
 
+   Example 1: (CLM 4.5 and prior versions)
    ncdiff analysis.2000-01-06-00000.nc preassim.2000-01-06-00000.nc Innov.nc
-
    ncks -A -v lon,lat,levgrnd,area,landfrac,cols1d_ixy,cols1d_jxy,pfts1d_ixy,pfts1d_jxy,cols1d_wtxy,pfts1d_wtxy preassim.2000-01-06-00000.nc  Innov.nc
+
+   Example 2: (CLM5.0 and later versions) 
+   ncdiff clm_analysis_member_0001_d01.2011-01-02-00000.nc clm_preassim_member_0001_d01.2011-01-02-00000.nc Innov.nc
+   ncks -A -v lon,lat,levgrnd,levsoi,levdcmp,levlak,area,landfrac,land1d_ixy,land1d_jxy,land1d_wtxy,land1d_ityplun,cols1d_ixy,cols1d_jxy,cols1d_lon,cols1d_lat,cols1d_ityplun,pfts1d_ixy,pfts1d_jxy,cols1d_wtxy,pfts1d_wtxy,pfts1d_lon,pfts1d_lat,pfts1d_ityplun clm_analysis_member_0001_d01.2011-01-02-00000.nc  Innov.nc
 
    % Now - visualize as before, with one added twist. 
    % To differentiate between ocean and a difference of zero,
@@ -103,7 +109,3 @@ even though 90+% of the columns are not lakes! At present, the values in those c
 there is an index array that specifies the portion of the columns with valid values. I don't want
 to get into it at that kind of detail ... too many decisions to track, too many variables to support.
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

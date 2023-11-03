@@ -10,7 +10,6 @@
    output_state_files         = "",
    output_interval            = 1,
 
-   distributed_state          = .false.,
    async                      = 0,
    adv_ens_command            = "./advance_model.csh",
    tasks_per_model_advance    = 1,

@@ -712,6 +712,17 @@ subroutine set_up_ens_distribution(ens_handle)
 type (ensemble_type),  intent(inout)  :: ens_handle
 
 integer :: num_per_pe_below, num_left_over, i
+integer(i8) :: per_pe, suggest_pes
+
+! Check that there are enough pes for the state
+per_pe = ens_handle%num_vars / num_pes
+if (per_pe >= (huge(i)-100) ) then
+   suggest_pes = ( ens_handle%num_vars / (huge(i)) ) * 2
+   write(msgstring, '(A,I5,1X,A)') &
+   'not enough MPI tasks for the model size, suggest at least ' , &
+   suggest_pes, 'tasks'
+   call error_handler(E_ERR, 'set_up_ens_distribution', msgstring, source)
+endif
 
 ! Option 1: Maximum separation for both vars and copies
 ! Compute the total number of copies I'll get for var complete
@@ -1681,9 +1692,6 @@ subroutine round_robin(ens_handle)
 
 ! Round-robin MPI task layout starting at the first node.  
 ! Starting on the first node forces pe 0 = task 0. 
-! The smoother code assumes task 0 has an ensemble member.
-! If you want to break the assumption that pe 0 = task 0, this routine is a good 
-! place to start. Test with the smoother. 
 
 type(ensemble_type), intent(inout)   :: ens_handle
 

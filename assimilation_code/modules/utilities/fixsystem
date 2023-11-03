@@ -4,36 +4,90 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
-
-# usage: fixsystem [ your_fortran_command_name | -help  ]
-#         (e.g. ifort, pgf90, gfortran, g95, xlf90, etc)
+#
+# usage: fixsystem your_fortran_command_name [ files to change ]
+#    fortran names such as: ifort, pgf90, gfortran, g95, xlf90, etc
+#    default filenames are mpi_utilities_mod.f90 and null_mpi_utilities_mod.f90
+#    other filenames can be given instead
 #
 # this script updates the mpi source files for any compiler-dependent
-# changes needed before building.
+# changes needed before building.  these changes should be handled
+# by the compiler preprocessor, except that on systems with 
+# case-insensitive filesystems (e.g. macs with OSX), bob.F90 
+# and bob.f90 are the same file and the preprocessor bombs.
 # 
-# at the moment the only compiler-dependent code is the declaration
-# of the "system()" function in a fortran interface block.
-# the code uses this function to run a shell script or command and 
-# wait for the command exit code, e.g.:  rc = system("/bin/date")
+# there are currently two code blocks of interest:  1) the fortran
+# interface block declaring the system() function, and 2) some
+# NAG-specific external use lines.
 #
+# the DART code uses system() to run a shell script or command and 
+# wait for the command exit code, e.g.:  rc = system("/bin/date")
 # for all compilers, except gfortran, an interface block is required
 # to define the integer return from the system function.  however
 # the gfortran compiler gives an error if this block is defined.
-# this script enables and disables this interface block by
+#
+# this script enables and disables these interface blocks by
 # looking for a pair of specially formatted comment lines and
 # commenting in (or out) all the lines between those comment 
 # delimiter lines.
 #
-# the original usage of this script was without any arguments. 
-# the backwards compatibility remains for now, but is deprecated.
-# usage now is to give it a single argument - the name that the
+# this script requires at least one argument - the name the
 # fortran compiler is invoked with, e.g. ifort, xlf90, pgf90, etc.
-# it will ensure that any required changes to the source will be
-# made here before compilation.
+# by default mpi_utilities_mod.f90 and null_mpi_utilities_mod.f90
+# will be examined and changed if needed.  other filenames can be
+# given instead and they will be processed instead of these.
+#
+
+# default file list, and both marker strings must exist in these files
+export FLIST="mpi_utilities_mod.f90 null_mpi_utilities_mod.f90"
+export STRINGS_REQUIRED=1
+
+# compiler name required.  additional filenames optional.
+# if filenames are given, they replace the defaults
+if [ $# = 0 ]; then
+    echo invalid usage, 1 argument required by $0
+    echo "usage: $0 your_fortran_command_name [ filenames to modify  ]"
+    echo "  e.g. $0 gfortran"
+    echo "  or   $0 ifort "
+    echo "  or   $0 pgf90 "
+    echo "  etc."
+    exit 1
+elif [ $# = 1 ]; then
+    # first arg: the name of your fortran compiler command
+    export COMPILER=$1
+    shift
+else
+    # first arg: the name of your fortran compiler command
+    # additional args: list of filenames to process
+    # not a fatal error if files don't contain marker strings
+    export COMPILER=$1
+    shift
+    export FLIST="$*"
+    export STRINGS_REQUIRED=0
+fi
 
 
-for f in mpi_utilities_mod.f90 null_mpi_utilities_mod.f90
+# based on the compiler, what needs doing?
+# "out" means comment the code block out
+# "in" means remove comment character so the
+#      code will be compiled.
+# currently there are two different code blocks
+# that need to be handled.  
+
+if [ "$COMPILER" = gfortran ]; then
+  export todo1=out
+  export todo2=out
+elif [ "$COMPILER" = nagfor ]; then
+  export todo1=out
+  export todo2=in
+else
+  export todo1=in
+  export todo2=out
+fi
+
+# check each file in the list
+
+for f in $FLIST
 do
 
   # figure out what state the source file is in before we start
@@ -43,11 +97,15 @@ do
   elif [ "`echo $bline1 | grep COMMENTED_IN`" != ""  ]; then
     export before1=in
   else
-    echo ${f} not found, or does not have the right comment string to
-    echo automatically change the system interface block via script.
-    echo Please restore original file from the subversion repository
-    echo and try again.
-    exit 1
+    if [ $STRINGS_REQUIRED = 0 ]; then
+      before1=none
+    else
+      echo ${f} not found, or does not have the right comment string to
+      echo automatically change the system interface block via script.
+      echo Please restore original file from the repository
+      echo and try again.
+      exit 1
+    fi
   fi
   
   # NAG sections have both in and out - but NAG_BLOCK_EDIT is key
@@ -57,54 +115,20 @@ do
   elif [ "`echo $bline2 | grep COMMENTED_IN`" != ""  ]; then
     export before2=in
   else
-    echo ${f} not found, or does not have the right comment string to
-    echo automatically change the system interface block via script.
-    echo Please restore original file from the subversion repository
-    echo and try again.
-    exit 1
-  fi
-
-  # no args given - error.  required now.
-  if [ $# = 0 ]; then
-      echo invalid usage, 1 argument required by $0
-      echo "usage: $0 [ your_fortran_command_name | -help  ]"
-      echo "  e.g. $0 gfortran"
-      echo "  or   $0 ifort "
-      echo "  or   $0 pgf90 "
-      echo "  etc."
-      exit 1
-  elif [ $# = 1 ]; then
-    # single arg: the name of your fortran compiler command
-    if ([ "$1" = help ] || [ "$1" = -help ] || [ "$1" = --help ]); then
-      echo "usage: $0 [ your_fortran_command_name | -help  ]"
-      echo "  e.g. $0 gfortran"
-      echo "  or   $0 ifort "
-      echo "  or   $0 pgf90 "
-      echo "  etc."
-      exit 1
-    elif ([ "$1" = gfortran ] || [ "$1" = nagfor ]); then
-      export todo1=out
-      export todo2=out
-    elif [ "$1" = nagfor ]; then
-      export todo1=out
-      export todo2=in
+    if [ $STRINGS_REQUIRED = 0 ]; then
+      before2=none
     else
-      export todo1=in
-      export todo2=out
+      echo ${f} not found, or does not have the right comment string to
+      echo automatically change the NAG interface block via script.
+      echo Please restore original file from the repository
+      echo and try again.
+      exit 1
     fi
-    export compiler=$1
-
-  else
-    # too many arguments, give an error message and exit
-    echo invalid usage, more than 1 argument given to $0
-    echo "usage: $0 [ your_fortran_command_name | -help  ]"
-    echo "  e.g. $0 gfortran"
-    echo "  or   $0 ifort "
-    echo "  or   $0 pgf90 "
-    echo "  etc."
-    exit 1
   fi
-  
+
+  # if neither marker string is found, loop without complaint.
+  if ([ $before1 = none ] && [ $before2 = none ]); then continue; fi
+
   # if we are already in the right state, loop to next file
   if ([ $before1 = $todo1 ] && [ $before2 = $todo2 ]); then continue; fi
  
@@ -115,7 +139,7 @@ do
   
   # say what compiler we are doing this for, and move the existing
   # code into a temporary file so the sed command does not overwrite it.
-  echo Setting for $compiler compiler in ${f}
+  echo Setting for $COMPILER compiler in ${f}
   mv ${f} tempfile
 
   # removing comment chars, enabling interface block code
@@ -132,7 +156,7 @@ do
    mv ${f} tempfile
   fi
 
-  # changing comment chars, enabling NAG specific block code
+  # removing comment chars, enabling NAG specific block code
   # non-nag section headers cannot match nag headers.
   if [ $todo2 = in ]; then
    sed -e '/NAG_BLOCK_EDIT START COMMENTED_OUT/,/NAG_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
@@ -141,7 +165,7 @@ do
        -e '/\(OTHER_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
   fi
   
-  # changing comment chars, disabling NAG specific block code
+  # adding comment chars, disabling NAG specific block code
   if [ $todo2 = out ]; then
    sed -e '/NAG_BLOCK_EDIT START COMMENTED_IN/,/NAG_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
        -e '/\(NAG_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' \
@@ -155,7 +179,3 @@ done
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

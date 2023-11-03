@@ -17,12 +17,12 @@
 # -- Project information -----------------------------------------------------
 
 project = 'DART'
-copyright = '2021, University Corporation for Atmospheric Research'
+copyright = '2022, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '9.11.7'
-master_doc = 'README'
+release = '10.8.5'
+root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 
@@ -30,6 +30,7 @@ master_doc = 'README'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+     'sphinx_rtd_theme',
      'sphinx.ext.autodoc',
      'sphinx.ext.mathjax'
 ]
@@ -38,6 +39,7 @@ extensions = [
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*',
+        'guide/Manhattan_release.rst',
         'guide/Lanai_release.rst',
         'guide/history/Kodiak_release.rst',
         'guide/history/Jamaica_release.rst',
@@ -45,7 +47,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
         'guide/history/hawaii_release.rst',
         'guide/history/Guam_release.rst',
         'guide/history/Fiji_release.rst',
-        'guide/Lanai_diffs_from_Kodiak.rst',   
+        'guide/Lanai_diffs_from_Kodiak.rst',
         'guide/history/Jamaica_diffs_from_I.rst',
         'guide/history/pre_j_release.rst',
         'guide/history/PostI_diffs_from_I.rst',
@@ -53,13 +55,12 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
         'guide/history/I_diffs_from_workshop.rst',
         'guide/history/pre_hawaii_release.rst',
         'guide/history/pre_guam_release.rst',
-        'guide/Manhattan_getting_started.rst',
         'guide/bitwise_considerations.rst',
         'guide/rma.rst',
         'guide/vertical_conversion.rst',
-        'guide/boilerplate/boilerplate.rst',    
-        'guide/boilerplate/template.rst'     
-        
+        'guide/boilerplate/boilerplate.rst',
+        'guide/boilerplate/template.rst'
+
 ]
 
 

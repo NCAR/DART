@@ -197,7 +197,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
    ! if you want to create different obs types for clear air vs cloud,
    ! change the DWL_x_WIND_COMPONENT below to what you need.  it must be
-   ! defined in obs_def/obs_def_dwl_mod.f90, and then quickbuild.csh must
+   ! defined in obs_def/obs_def_dwl_mod.f90, and then quickbuild.sh must
    ! be run again.
 
    call create_3d_obs(add_obs_data, lat, lon, vert, VERTISHEIGHT, uwnd, &

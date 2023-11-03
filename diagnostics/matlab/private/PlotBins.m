@@ -102,7 +102,7 @@ switch lower(pinfo.model)
          axis tight
       end
 
-   case {'lorenz_96_2scale','simple_advection'}
+   case {'lorenz_96_2scale','simple_advection', 'lorenz_96_tracer_advection'}
 
       clf; iplot = 0;
       for ivar = pinfo.var_inds,

@@ -75,7 +75,7 @@ switch lower(pinfo.model)
       inputstring = input('Input variable and index for correlation \n','s');
       [pinfo.state_var, pinfo.state_var_index] = ParseAlphaNumerics(inputstring);
 
-   case {'simple_advection'}
+   case {'simple_advection', 'lorenz_96_tracer_advection'}
 
       disp('Your choice of variables are:')
       disp(pinfo.vars)

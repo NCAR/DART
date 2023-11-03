@@ -38,6 +38,15 @@ NCAR staff have prepared datasets already converted to DART's obs_seq file
 format for the World Ocean Database 2013 (WOD13) and the World Ocean Database
 2009 (WOD09).
 
+.. Warning::  
+
+   The WOD data is in PSU, the dart observation converter ``wod_to_obs`` converts the observations to MSU.
+ 
+   | PSU = g/kg
+   | MSU = PSU/1000 = kg/kg
+   
+   The WOD observation sequence files availiable from NCAR's RDA are in MSU.
+
 WOD13
 ~~~~~
 
@@ -105,7 +114,7 @@ The data is distributed in a specialized packed ASCII format. In this directory 
 is an example reader program to print out data values from the files. The program ``wod_to_obs`` converts these packed
 ASCII files into DART obs_sequence files.
 
-As with most other DART directories, the ``work`` directory contains a ``quickbuild.csh`` script to build all necessary
+As with most other DART directories, the ``work`` directory contains a ``quickbuild.sh`` script to build all necessary
 executables.
 
 Namelist

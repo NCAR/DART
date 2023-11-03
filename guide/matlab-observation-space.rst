@@ -1,9 +1,32 @@
-#####################################
-MATLAB® observation space diagnostics
-#####################################
+####################################
+MATLAB observation space diagnostics
+####################################
 
-The observation-space functions are in the ``$DARTROOT/diagnostics/matlab``
-directory. Once you have processed the ``obs_seq.final`` files into a single
+Configuring MATLAB
+==================
+
+DART uses MATLAB's own netCDF reading and writing capability and does not use
+any MATLAB or third-party toolboxes. 
+
+To allow your environment to seamlessly use the DART MATLAB functions, your
+MATLAB path must be set to include two of the directories in the DART
+repository. In the MATLAB command prompt enter the following, using the real
+path to your DART installation:
+
+.. code-block::
+
+   addpath('DART/diagnostics/matlab','-BEGIN')
+   addpath('DART/guide/DART_LAB/matlab','-BEGIN')
+
+It is convenient to put these commands in your ``~/matlab/startup.m`` so they
+get run every time MATLAB starts up. You can use the example ``startup.m`` file
+located at ``DART/diagnostics/matlab/startup.m``. This example startup file
+contains instructions for using it.
+
+Summary of MATLAB functions
+===========================
+
+Once you have processed the ``obs_seq.final`` files into a single
 ``obs_diag_output.nc``, you can use that as input to your own plotting routines
 or use the following DART MATLAB® routines:
 
@@ -241,3 +264,4 @@ the selected observations get highlighted there too.
 
 .. |link obs example frame 0| image:: images/science_nuggets/link_obs_example_F0.png
    :width: 100%
+

@@ -41,7 +41,7 @@ To become familiar with the model, try this quick experiment.
    .. code-block::
    
       cd $DARTROOT/models/forced_lorenz_96/work
-      ./quickbuild.csh
+      ./quickbuild.ch
 
 #. make sure the ``input.nml`` looks like the following (there is a lot
    that has been left out for clarity, these are the settings of

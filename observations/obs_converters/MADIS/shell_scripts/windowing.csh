@@ -128,7 +128,7 @@ set file_win_after =(+45m +59m +59m +45m +30m)
 if ( ! -x ./advance_time ) then
    echo 'FATAL ERROR:'
    echo 'advance_time program not found in current directory.'
-   echo 'should be built by the quickbuild.csh script in the'
+   echo 'should be built by the quickbuild.sh script in the'
    echo 'MADIS/work directory. put a copy here and try again.'
    exit 1
 endif
@@ -136,7 +136,7 @@ endif
 if ( ! -x ./obs_sequence_tool ) then
    echo 'FATAL ERROR:'
    echo 'obs_sequence_tool program not found in current directory.'
-   echo 'should be built by the quickbuild.csh script in the'
+   echo 'should be built by the quickbuild.sh script in the'
    echo 'MADIS/work directory. put a copy here and try again.'
    exit 1
 endif
