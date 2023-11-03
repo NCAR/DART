@@ -744,6 +744,23 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             OBS_PRIOR_MEAN_END, owners_index)
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
+
+         if (do_hybrid) then
+            ! MEG The assumption here is that if the ensemble QC is OK, then the
+            ! static one is also OK. May need a revisit!
+            stat_obs_prior = stat_obs_ens_handle%copies(1:hybrid_ens_size, owners_index)
+
+            ! MEG I don't know the exact obs location, take average in space
+            if (base_obs_type > 0 ) then
+               orig_hyb_mean = sum(ens_handle%copies(ENS_MEAN_COPY, :)) / size(ens_handle%copies(ENS_MEAN_COPY, :))
+            else ! Identity case:
+               orig_hyb_mean = stat_obs_ens_handle%copies(hybrid_ens_size+2, owners_index)
+            endif
+
+            ! Find the static variance for this observation
+            hyb_obs_var = stat_obs_ens_handle%copies(stat_obs_var_copy, owners_index)
+        endif
+
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -754,6 +771,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
          orig_obs_prior_mean, orig_obs_prior_var,                          &
+         orig_hyb_mean, hyb_obs_var, &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
 
@@ -761,7 +779,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
    else
       call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         orig_obs_prior_mean, orig_obs_prior_var,                          & 
+         orig_obs_prior_mean, orig_obs_prior_var,                          &
+         orig_hyb_mean, hyb_obs_var, &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
@@ -780,25 +799,34 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Compute observation space increments for each group
    do group = 1, num_groups
       grp_bot = grp_beg(group); grp_top = grp_end(group)
-      call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-         obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
-         my_inflate_sd, net_a(group))
+
+      if (do_hybrid) then !HK I do not think hybrid works for num_groups > 1
+         call obs_increment(obs_prior, ens_size, obs(1), &
+              obs_err_var, obs_inc, inflate, my_inflate, &
+              my_inflate_sd, net_a(group), orig_hyb_mean(1), stat_obs_prior)
+      else
+
+         call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
+            obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
+            my_inflate_sd, net_a(group))
+      endif
 
       ! Also compute prior mean and variance of obs for efficiency here
       obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
       obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
          (grp_size - 1)
       if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
-   end do
 
-   if (do_hybrid) then
-      stat_obs_prior_mean = sum(stat_obs_prior) / hybrid_ens_size
-      stat_obs_prior_var  = sum((stat_obs_prior - stat_obs_prior_mean)**2) / (hybrid_ens_size - 1.0_r8)
-
-      if (stat_obs_prior_var < 0.0_r8) stat_obs_prior_var = 0.0_r8       
-   endif
+      if (do_hybrid) then
+         stat_obs_prior_mean = sum(stat_obs_prior) / hybrid_ens_size
+         stat_obs_prior_var  = sum((stat_obs_prior - stat_obs_prior_mean)**2) / (hybrid_ens_size - 1.0_r8)
    
-   ! Compute updated values for single state space inflation
+         if (stat_obs_prior_var < 0.0_r8) stat_obs_prior_var = 0.0_r8
+      endif
+   
+   enddo
+
+! Compute updated values for single state space inflation
    if(local_single_ss_inflate) then
       ! Update for each group separately
       do group = 1, num_groups
@@ -851,15 +879,39 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          my_state_kind(state_index), close_state_dist(j), cutoff_rev)
 
       if(final_factor <= 0.0_r8) cycle STATE_UPDATE
-      
-      call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-         my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
-         obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-         net_a, grp_size, grp_beg, grp_end, i, &
-         my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
+ 
+      ! Current hybrid weight values in space:
+      if (local_varying_ss_hybrid) then
+         vary_ss_hybrid_mean = ens_handle%copies(HYB_MEAN_COPY, state_index)
+         vary_ss_hybrid_sd   = ens_handle%copies(HYB_SD_COPY, state_index)
+      endif
+
+      if (do_hybrid) then ! Regression for the hybrid case: Only support 1 group for now; i.e., num_groups = 1
+         call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+            obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
+            stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+            stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
+            ens_handle%copies(ENS_MEAN_COPY, state_index), orig_hyb_mean(1),         &
+            increment, reg_coef(1), net_a(1), correl(1))
+      else
+         call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+            obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
+            stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+            stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
+            ens_handle%copies(ENS_MEAN_COPY, state_index), orig_hyb_mean(1),         &
+            increment, reg_coef(1), net_a(1))
+      else
+
+         call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+            my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+            obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+            net_a, grp_size, grp_beg, grp_end, i, &
+            my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
+
+      endif
 
       ! Compute spatially-varying hybrid weighting coefficient
-      VARYING_SS_HYBRID: if (do_hybrid .and. local_varying_ss_hybrid .and. .not. inflate_only) then
+      VARYING_SS_HYBRID: if (do_hybrid .and. local_varying_ss_hybrid .and. .not. inflate_only) then !HK long if statement
          if (vary_ss_hybrid_mean > 0.0_r8 .and. vary_ss_hybrid_sd > 0.0_r8) then
             print *, 'Performing the update for alpha: spatially_varying' 
          
@@ -912,41 +964,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Now everybody updates their obs priors (only ones after this one)
       OBS_UPDATE: do j = 1, num_close_obs
          obs_index = close_obs_ind(j)
-  
-         ! Only have to update obs that have not yet been used
-         if(my_obs_indx(obs_index) > i) then
-
-            ! If the forward observation operator failed, no need to update the unassimilated observations
-            if (any(obs_ens_handle%copies(1:ens_size, obs_index) == MISSING_R8)) cycle OBS_UPDATE
-
-        ! Compute the covariance localization and adjust_obs_impact factors (module storage)
-            final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_obs_loc(obs_index), &
-            my_obs_kind(obs_index), close_obs_dist(j), cutoff_rev)
-
-            if(final_factor <= 0.0_r8) cycle OBS_UPDATE
-
-            ! Loop through and update ensemble members in each group
-            if (do_hybrid) then
-               call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), obs_inc, &
-                  obs_ens_handle%copies(1:ens_size, obs_index), ens_size, &
-                  stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var, &
-                  stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), hybrid_ens_size, &
-                  orig_hyb_mean(1), orig_hyb_mean(1), increment, reg_coef(1), net_a(1))
-            else
-               call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-                  my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
-                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-                  net_a, grp_size, grp_beg, grp_end, i, &
-                  my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
-            endif
-
-      endif
-   end do STATE_UPDATE
-
-   if(.not. inflate_only) then
-      ! Now everybody updates their obs priors (only ones after this one)
-      OBS_UPDATE: do j = 1, num_close_obs
-         obs_index = close_obs_ind(j)
 
          ! Only have to update obs that have not yet been used
          if(my_obs_indx(obs_index) > i) then
@@ -960,11 +977,21 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
             if(final_factor <= 0.0_r8) cycle OBS_UPDATE
 
-            call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
-               my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
-               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-               net_a, grp_size, grp_beg, grp_end, i, &
-               -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+            if (do_hybrid) then
+               call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), obs_inc, &
+                    obs_ens_handle%copies(1:ens_size, obs_index), ens_size, &
+                    stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var, &
+                    stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), hybrid_ens_size, &
+                    orig_hyb_mean(1), orig_hyb_mean(1), increment, reg_coef(1), net_a(1))
+            else
+               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                  net_a, grp_size, grp_beg, grp_end, i, &
+                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+
+            endif
+
          endif
       end do OBS_UPDATE
    endif
