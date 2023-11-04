@@ -435,14 +435,14 @@ ncid = nc_create_file(netcdf_output_file)
 ! Enters and exits define mode;
 call nc_write_model_atts(ncid, 0)
 
-call get_data(restart_dirname, ncid, member, define=.true.)
+call restarts_to_filter(restart_dirname, ncid, member, define=.true.)
 
 ! TODO: add_nc_dimvars has not been activated because the functionality is in nc_write_model_atts
 !       but maybe it shouldn't be.  Also, we haven't settled on the mechanism for identifying
 !       the state vector field names and source.
 ! call add_nc_dimvars(ncid)
 
-call get_data(restart_dirname, ncid, member, define=.false.)
+call restarts_to_filter(restart_dirname, ncid, member, define=.false.)
 
 ! TODO: this needs to be updated to write to which file?
 ! call write_model_time(ncid, state_time)
@@ -1723,86 +1723,87 @@ endif
 end subroutine verify_block_variables
 
 !==================================================================
-
-subroutine add_nc_definitions(ncid)
-
-integer, intent(in) :: ncid 
-
-call nc_add_global_attribute(ncid, 'model', 'aether')
-
-!-------------------------------------------------------------------------------
-! Determine shape of most important namelist
-!-------------------------------------------------------------------------------
-!
-!call find_textfile_dims('gitm_vars.nml', nlines, linelen)
-!if (nlines > 0) then
-!   has_gitm_namelist = .true.
-!
-!   allocate(textblock(nlines))
-!   textblock = ''
-!
-!   call nc_define_dimension(ncid, 'nlines',  nlines)
-!   call nc_define_dimension(ncid, 'linelen', linelen)
-!   call nc_define_character_variable(ncid, 'gitm_in', (/ 'nlines ', 'linelen' /))
-!   call nc_add_attribute_to_variable(ncid, 'gitm_in', 'long_name', 'contents of gitm_in namelist')
-!
-!else
-!  has_gitm_namelist = .false.
-!endif
-!
-!----------------------------------------------------------------------------
-! output only grid info - state vars will be written by other non-model_mod code
-!----------------------------------------------------------------------------
-
-call nc_define_dimension(ncid, LON_DIM_NAME, nlon)
-call nc_define_dimension(ncid, LAT_DIM_NAME, nlat)
-call nc_define_dimension(ncid, ALT_DIM_NAME, nalt)
-! TODO: is WL in Aether?  No; remove from model_mod.
-call nc_define_dimension(ncid, 'WL',  1)  ! wavelengths - currently only 1?
-
-!----------------------------------------------------------------------------
-! Create the (empty) Coordinate Variables and the Attributes
-!----------------------------------------------------------------------------
-
-! TODO: This defines more attributes than TIEGCM.  Prefer?  Are these accurate for Aether?
-! Grid Longitudes
-call nc_define_double_variable(ncid, LON_VAR_NAME, (/ LON_DIM_NAME /) )
-call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'type',           'x1d')
-call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'long_name',      'grid longitudes')
-call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'cartesian_axis', 'X')
-call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'units',          'degrees_east')
-call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'valid_range',     (/ 0.0_r8, 360.0_r8 /) )
-
-! Grid Latitudes
-call nc_define_double_variable(ncid, LAT_VAR_NAME, (/ LAT_DIM_NAME /) )
-call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'type',           'y1d')
-call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'long_name',      'grid latitudes')
-call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'cartesian_axis', 'Y')
-call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'units',          'degrees_north')
-call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'valid_range',     (/ -90.0_r8, 90.0_r8 /) )
-
-! Grid Altitudes
-call nc_define_double_variable(ncid, ALT_VAR_NAME, (/ ALT_DIM_NAME /) )
-call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'type',           'z1d')
-call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'long_name',      'grid altitudes')
-call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'cartesian_axis', 'Z')
-call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'units',          'meters')
-call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'positive',       'up')
-
-! Grid wavelengths
-call nc_define_double_variable(ncid, 'WL', (/ 'WL' /) )
-call nc_add_attribute_to_variable(ncid, 'WL', 'type',           'x1d')
-call nc_add_attribute_to_variable(ncid, 'WL', 'long_name',      'grid wavelengths')
-call nc_add_attribute_to_variable(ncid, 'WL', 'cartesian_axis', 'X')
-call nc_add_attribute_to_variable(ncid, 'WL', 'units',          'wavelength_index')
-call nc_add_attribute_to_variable(ncid, 'WL', 'valid_range',     (/ 0.9_r8, 38.1_r8 /) )
-
-end subroutine add_nc_definitions
-
+! 
+! subroutine add_nc_definitions(ncid)
+! 
+! integer, intent(in) :: ncid 
+! 
+! call nc_add_global_attribute(ncid, 'model', 'aether')
+! 
+! !-------------------------------------------------------------------------------
+! ! Determine shape of most important namelist
+! !-------------------------------------------------------------------------------
+! !
+! !call find_textfile_dims('gitm_vars.nml', nlines, linelen)
+! !if (nlines > 0) then
+! !   has_gitm_namelist = .true.
+! !
+! !   allocate(textblock(nlines))
+! !   textblock = ''
+! !
+! !   call nc_define_dimension(ncid, 'nlines',  nlines)
+! !   call nc_define_dimension(ncid, 'linelen', linelen)
+! !   call nc_define_character_variable(ncid, 'gitm_in', (/ 'nlines ', 'linelen' /))
+! !   call nc_add_attribute_to_variable(ncid, 'gitm_in', 'long_name', 'contents of gitm_in namelist')
+! !
+! !else
+! !  has_gitm_namelist = .false.
+! !endif
+! !
+! !----------------------------------------------------------------------------
+! ! output only grid info - state vars will be written by other non-model_mod code
+! !----------------------------------------------------------------------------
+! 
+! call nc_define_dimension(ncid, LON_DIM_NAME, nlon)
+! call nc_define_dimension(ncid, LAT_DIM_NAME, nlat)
+! call nc_define_dimension(ncid, ALT_DIM_NAME, nalt)
+! ! TODO: is WL in Aether?  No; remove from model_mod.
+! call nc_define_dimension(ncid, 'WL',  1)  ! wavelengths - currently only 1?
+! 
+! !----------------------------------------------------------------------------
+! ! Create the (empty) Coordinate Variables and the Attributes
+! !----------------------------------------------------------------------------
+! 
+! ! TODO: This defines more attributes than TIEGCM.  Prefer?  Are these accurate for Aether?
+! ! Grid Longitudes
+! call nc_define_double_variable(ncid, LON_VAR_NAME, (/ LON_DIM_NAME /) )
+! call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'type',           'x1d')
+! call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'long_name',      'grid longitudes')
+! call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'cartesian_axis', 'X')
+! call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'units',          'degrees_east')
+! call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'valid_range',     (/ 0.0_r8, 360.0_r8 /) )
+! 
+! ! Grid Latitudes
+! call nc_define_double_variable(ncid, LAT_VAR_NAME, (/ LAT_DIM_NAME /) )
+! call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'type',           'y1d')
+! call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'long_name',      'grid latitudes')
+! call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'cartesian_axis', 'Y')
+! call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'units',          'degrees_north')
+! call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'valid_range',     (/ -90.0_r8, 90.0_r8 /) )
+! 
+! ! Grid Altitudes
+! call nc_define_double_variable(ncid, ALT_VAR_NAME, (/ ALT_DIM_NAME /) )
+! call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'type',           'z1d')
+! call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'long_name',      'grid altitudes')
+! call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'cartesian_axis', 'Z')
+! call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'units',          'meters')
+! call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'positive',       'up')
+! 
+! ! Grid wavelengths
+! call nc_define_double_variable(ncid, 'WL', (/ 'WL' /) )
+! call nc_add_attribute_to_variable(ncid, 'WL', 'type',           'x1d')
+! call nc_add_attribute_to_variable(ncid, 'WL', 'long_name',      'grid wavelengths')
+! call nc_add_attribute_to_variable(ncid, 'WL', 'cartesian_axis', 'X')
+! call nc_add_attribute_to_variable(ncid, 'WL', 'units',          'wavelength_index')
+! call nc_add_attribute_to_variable(ncid, 'WL', 'valid_range',     (/ 0.9_r8, 38.1_r8 /) )
+! 
+! end subroutine add_nc_definitions
+! 
 !=================================================================
-! open all restart files and read in the requested data item
+! open all restart files and transfer the requested data item
+! to the filter input file.
 
-subroutine get_data(dirname, ncid_output, member, define)
+subroutine restarts_to_filter(dirname, ncid_output, member, define)
 
 character(len=*), intent(in)  :: dirname
 integer,          intent(in)  :: ncid_output, member
@@ -1816,41 +1817,41 @@ character(len=256) :: filename
 
 if (define) then
    ! if define, run one block.
-   ! the read_data_from_block call defines the variables in the whole domain netCDF file.
+   ! the block_to_filter_io call defines the variables in the whole domain netCDF file.
    ibLoop = 1
    jbLoop = 1
    call nc_begin_define_mode(ncid_output)
 else
    ! if not define, run all blocks.
-   ! the read_data_from_block call adds the (ib,jb) block to a netCDF variable 
+   ! the block_to_filter_io call adds the (ib,jb) block to a netCDF variable 
    ! in order to make a file containing the data for all the blocks.
    ibLoop = nBlocksLon
    jbLoop = nBlocksLat
 end if
 
-print*,'get_data: define = ',define
+print*,'restarts_to_filter: define = ',define
 do jb = 1, jbLoop
    do ib = 1, ibLoop
 
-      call read_data_from_block(ncid_output, dirname, ib, jb, member, define)
+      call block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
 
    enddo
 enddo
 
 if (define) call nc_end_define_mode(ncid_output)
 
-end subroutine get_data
+end subroutine restarts_to_filter
 
 !==================================================================
 
-!> Open all restart files and read in the requested data items.
-!> The unpack* calls will write the data to the filter_input.nc.
+!> Open all restart files for a block and read in the requested data items.
+!> The write_filter_io calls will write the data to the filter_input.nc.
 !>
 !> This is a two-pass method: first run through to define the NC variables
 !> in the filter_input.nc (define = .true.),
 !> then run again to write the data to the NC file(define = .false.)
 
-subroutine read_data_from_block(ncid_output, dirname, ib, jb, member, define)
+subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
 
 integer,  intent(in) :: ncid_output
 character(len=*), intent(in)  :: dirname
@@ -1866,7 +1867,7 @@ integer :: block(2) = 0
 
 logical :: no_idensity
 
-character(len=*), parameter :: routine = 'read_data_from_block'
+character(len=*), parameter :: routine = 'block_to_filter_io'
 character(len=128) :: file_root 
 character(len=256) :: filename
 character(len=NF90_MAX_NAME) :: varname
@@ -1931,7 +1932,7 @@ allocate(density_ion_e(1:nzPerBlock, &
 !       read(iunit)  temp3d
 !       if (j <= inum) then
 !          if (i == gitmvar(ivals(j))%gitm_index) then
-!             call unpack_data(temp3d, ivals(j), block, ncid)
+!             call write_filter_io(temp3d, ivals(j), block, ncid)
 !             j = j + 1
 !          endif
 !       endif
@@ -1975,7 +1976,7 @@ allocate(density_ion_e(1:nzPerBlock, &
 !                no_idensity = .false.
 !             end if
 !             ! read from input but write from state vector
-!             call unpack_data(temp3d, ivals(j), block, ncid)
+!             call write_filter_io(temp3d, ivals(j), block, ncid)
 !             j = j + 1
 !          endif
 !       endif
@@ -2000,7 +2001,7 @@ file_root = variable_table(1,VT_ORIGININDX)
 filename = block_file_name(file_root, member, nb)
 ncid_input = open_block_file(trim(filename), 'read')
 
-print*,'read_data_from_block: nfields_neutral = ',nfields_neutral
+print*,'block_to_filter_io: nfields_neutral = ',nfields_neutral
 do ivar = 1, nfields_neutral
    write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
 
@@ -2033,9 +2034,9 @@ do ivar = 1, nfields_neutral
    ! Read 3D array and extract the non-halo data of this block.
 ! TODO: There are no 2D or 1D fields in ions or neutrals, but there could be; different temp array.
       call nc_get_variable(ncid_input, varname, temp3d, routine)
-      print*,'read_data_from_block: temp3d = ',temp3d(1,1,1),temp3d(15,15,15),variable_table(ivar,VT_VARNAMEINDX)
-      print*,'read_data_from_block: define = ',define
-      call unpack_data(temp3d, ivar, block, ncid_output)
+      print*,'block_to_filter_io: temp3d = ',temp3d(1,1,1),temp3d(15,15,15),variable_table(ivar,VT_VARNAMEINDX)
+      print*,'block_to_filter_io: define = ',define
+      call write_filter_io(temp3d, ivar, block, ncid_output)
    else
       write(string1,*) 'Trying to read neutrals, but variable_table(',ivar,VT_ORIGININDX, &
                        ') /= "neutrals"'
@@ -2049,7 +2050,7 @@ file_root = variable_table(nfields_neutral+1,VT_ORIGININDX)
 filename = block_file_name(file_root, member, nb)
 ncid_input = open_block_file(trim(filename), 'read')
 
-print*,'read_data_from_block: nfields_ion = ',nfields_ion
+print*,'block_to_filter_io: nfields_ion = ',nfields_ion
 do ivar = nfields_neutral +1,nfields_neutral + nfields_ion
    write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
 
@@ -2066,7 +2067,7 @@ do ivar = nfields_neutral +1,nfields_neutral + nfields_ion
 
    else if (file_root == 'ions') then
       call nc_get_variable(ncid_input, varname, temp3d, routine)
-      call unpack_data(temp3d, ivar, block, ncid_output)
+      call write_filter_io(temp3d, ivar, block, ncid_output)
    else
       write(string1,*) 'Trying to read ions, but variable_table(',ivar,VT_ORIGININDX, &
                        ') /= "ions"'
@@ -2111,14 +2112,14 @@ call nc_close_file(ncid_input)
 ! read(iunit)  temp3d
 ! call get_index_from_gitm_varname('Rho', inum, ivals)
 ! if (inum > 0) then
-!    call unpack_data(temp3d, ivals(1), block, ncid)
+!    call write_filter_io(temp3d, ivals(1), block, ncid)
 ! endif
 
 !print *, 'calling dealloc'
 deallocate(temp1d, temp2d, temp3d)
 deallocate(alt1d, density_ion_e)
 
-end subroutine read_data_from_block
+end subroutine block_to_filter_io
 
 !==================================================================
 
@@ -2215,7 +2216,7 @@ end subroutine read_data_from_block
 
 ! put the requested data into a netcdf variable
 
-subroutine unpack_data(data3d, ivar, block, ncid)
+subroutine write_filter_io(data3d, ivar, block, ncid)
 
 real(r4), intent(in)    :: data3d(1:nzPerBlock, &
                                   1-nGhost:nyPerBlock+nGhost, &
@@ -2248,7 +2249,7 @@ call nc_put_variable(ncid, varname, &
    nc_count=(/nzPerBlock,nyPerBlock,nxPerBlock/))
 print*,'unpack_data: filled varname = ', varname 
 
-end subroutine unpack_data
+end subroutine write_filter_io
 
 
 !==================================================================
