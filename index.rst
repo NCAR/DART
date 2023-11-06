@@ -121,6 +121,8 @@ If you are planning to run one of the larger models and want to use the Lorenz
 63 model as a test, run ``./quickbuild.sh``. It will build filter and any
 other MPI-capable executables with MPI.
 
+``./quickbuild.sh help`` will print out the quickbuild.sh usage.
+
 .. important::
 
    The ``mpif90`` command you use must have been built with the same version of
