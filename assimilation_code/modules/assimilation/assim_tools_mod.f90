@@ -330,6 +330,7 @@ type(ensemble_type), optional, intent(inout) :: stat_ens_handle, stat_obs_ens_ha
 ! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), updated_ens(ens_size)
+real(r8) :: ens_obs_mean, ens_obs_var
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
 real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
@@ -389,7 +390,7 @@ integer               :: hybrid_ens_size
 real(r8)              :: my_hybrid_weight, my_hybrid_weight_sd
 real(r8)              :: hybrid_scaling
 real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
-real(r8)              :: hyb_obs_var, corr_rho
+real(r8)              :: hyb_obs_var, corr_rho, array_hyb_obs_var(1)
 real(r8)              :: vary_ss_hybrid_mean, vary_ss_hybrid_sd
 real(r8), allocatable :: stat_obs_prior(:) 
 real(r8), allocatable :: dtrd(:), tr_R(:), tr_B(:)
@@ -768,10 +769,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! my_inflate and my_inflate_sd only used with single state space inflation
       ! vertvalue_obs_in_localization_coord and whichvert_real only used for vertical
       ! coordinate transformation
+      array_hyb_obs_var = hyb_obs_var
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
          orig_obs_prior_mean, orig_obs_prior_var,                          &
-         orig_hyb_mean, hyb_obs_var, &
+         orig_hyb_mean, array_hyb_obs_var, & ! HK todo broadcast only has 5 scalars
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
 
@@ -780,10 +782,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    else
       call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
          orig_obs_prior_mean, orig_obs_prior_var,                          &
-         orig_hyb_mean, hyb_obs_var, &
+         orig_hyb_mean, array_hyb_obs_var, &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
+     hyb_obs_var = array_hyb_obs_var(1)
 
    endif
    !-----------------------------------------------------------------------
@@ -887,19 +890,19 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
       if (do_hybrid) then ! Regression for the hybrid case: Only support 1 group for now; i.e., num_groups = 1
-         call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
-            obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
-            stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
-            stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
-            ens_handle%copies(ENS_MEAN_COPY, state_index), orig_hyb_mean(1),         &
-            increment, reg_coef(1), net_a(1), correl(1))
-      else
-         call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
-            obs_inc, ens_handle%copies(1:ens_size, state_index), ens_size,           &
-            stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
-            stat_ens_handle%copies(1:hybrid_ens_size, state_index), hybrid_ens_size, &
-            ens_handle%copies(ENS_MEAN_COPY, state_index), orig_hyb_mean(1),         &
-            increment, reg_coef(1), net_a(1))
+
+         call hybrid_obs_ens_updates(&
+hybrid_ens_size, &
+stat_obs_prior, &
+stat_obs_prior_mean, &
+stat_obs_prior_var, &
+stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
+orig_hyb_mean, &
+ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+   my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+   obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+   net_a, grp_size, grp_beg, grp_end, i, &
+   my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
       else
 
          call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
@@ -918,9 +921,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             ens_obs_mean = orig_obs_prior_mean(1)
             ens_obs_var =  orig_obs_prior_var(1)       
  
-            corr_rho = reg_factor * abs(correl(1))
+            corr_rho = final_factor * abs(correl(1))
  
-            print *, 'reg_factor: ', reg_factor
+            print *, 'reg_factor: ', final_factor !HK todo check final_factor = reg_factor
             print *, 'correl: ', abs(correl(1))
             print *, 'x   = ', j
             print *, 'm   = ', vary_ss_hybrid_mean
@@ -978,18 +981,46 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             if(final_factor <= 0.0_r8) cycle OBS_UPDATE
 
             if (do_hybrid) then
-               call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), obs_inc, &
-                    obs_ens_handle%copies(1:ens_size, obs_index), ens_size, &
-                    stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var, &
-                    stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), hybrid_ens_size, &
-                    orig_hyb_mean(1), orig_hyb_mean(1), increment, reg_coef(1), net_a(1))
-            else
-               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
-                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
-                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-                  net_a, grp_size, grp_beg, grp_end, i, &
-                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
 
+               call hybrid_obs_ens_updates(&
+hybrid_ens_size, &
+stat_obs_prior, &
+stat_obs_prior_mean, &
+stat_obs_prior_var, &
+stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
+orig_hyb_mean, &
+ens_size, &
+1, &
+obs_ens_handle%copies(1:ens_size, obs_index), &
+my_obs_loc(obs_index), &
+my_obs_kind(obs_index), &
+obs_prior, &
+obs_inc, &
+obs_prior_mean, &
+obs_prior_var, &
+base_obs_loc, &
+base_obs_type, &
+obs_time, &
+net_a, &
+grp_size, &
+grp_beg, &
+grp_end, &
+i, &
+-1*my_obs_indx(obs_index), &
+final_factor, &
+correl, &
+.false., &
+inflate_only)
+
+
+
+
+            else
+
+               call obs_updates_ens(ens_size,num_groups,obs_ens_handle%copies(1:ens_size, obs_index), & my_obs_loc(obs_index),my_obs_kind(obs_index),obs_prior,obs_inc, &
+                   obs_prior_mean,obs_prior_var,base_obs_loc,base_obs_type,obs_time, &
+                   net_a,grp_size,grp_beg,grp_end,i, &
+                   -1*my_obs_indx(obs_index),final_factor,correl,.false., inflate_only) !HK todo why is this negative?
             endif
 
          endif
@@ -2587,6 +2618,94 @@ endif
 if(.not. inflate_only) ens = ens + final_factor * increment
 
 end subroutine obs_updates_ens
+
+!-------------------------------------------------------------
+subroutine hybrid_obs_ens_updates(&
+hybrid_ens_size, &
+stat_obs_prior, &
+stat_obs_prior_mean, &
+stat_obs_prior_var, &
+stat_ens, &
+orig_hyb_mean, &
+ens_size, &
+num_groups, &
+ens, &
+ens_loc, &
+ens_kind, &
+   obs_prior, &
+obs_inc, &
+obs_prior_mean, &
+obs_prior_var, &
+obs_loc, &
+obs_type, &
+obs_time,    &
+   net_a, &
+grp_size, &
+grp_beg, &
+grp_end, &
+reg_factor_obs_index,         &
+   reg_factor_ens_index, &
+final_factor, &
+correl, &
+correl_needed, &
+inflate_only)
+
+integer,             intent(in)  :: hybrid_ens_size
+real(r8),            intent(inout) ::stat_obs_prior(hybrid_ens_size)
+real(r8),            intent(in)  :: stat_obs_prior_mean
+real(r8),            intent(in)  :: stat_obs_prior_var
+real(r8),            intent(in)  :: stat_ens(hybrid_ens_size)
+real(r8),            intent(in)  :: orig_hyb_mean(1)
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: num_groups
+real(r8),            intent(inout)  :: ens(ens_size)
+type(location_type), intent(in)  :: ens_loc
+integer,             intent(in)  :: ens_kind
+real(r8),            intent(in)  :: obs_prior(ens_size)
+real(r8),            intent(in)  :: obs_inc(ens_size)
+real(r8),            intent(in)  :: obs_prior_mean(num_groups)
+real(r8),            intent(in)  :: obs_prior_var(num_groups)
+type(location_type), intent(in)  :: obs_loc
+integer,             intent(in)  :: obs_type
+type(time_type),     intent(in)  :: obs_time
+real(r8),            intent(inout)  :: net_a(num_groups)
+integer,             intent(in)  :: grp_size
+integer,             intent(in)  :: grp_beg(num_groups)
+integer,             intent(in)  :: grp_end(num_groups)
+integer,             intent(in)  :: reg_factor_obs_index
+integer(i8),         intent(in)  :: reg_factor_ens_index
+real(r8),            intent(inout) :: final_factor
+real(r8),            intent(out) :: correl(num_groups)
+logical,             intent(in)  :: correl_needed
+logical,             intent(in)  :: inflate_only
+
+real(r8) :: reg_coef(num_groups), increment(ens_size)
+real(r8) :: reg_factor
+integer  :: group, grp_bot, grp_top
+
+! HK todo No groups allowed for hybrid (all the 1s)
+! Do update of state, correl only needed for varying ss inflate
+   if(correl_needed) then
+call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+   obs_inc, ens, ens_size,           &
+   stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+   stat_ens, hybrid_ens_size, &
+   obs_prior_mean(1), orig_hyb_mean(1),         &
+   increment, reg_coef(1), net_a(1), correl(1))
+   else
+call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+   obs_inc, ens, ens_size,           &
+   stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+   stat_ens, hybrid_ens_size, &
+   obs_prior_mean(1), orig_hyb_mean(1),         &
+   increment, reg_coef(1), net_a(1))
+ 
+endif
+
+! Get the updated ensemble
+if(.not. inflate_only) ens = ens + final_factor * increment
+
+end subroutine hybrid_obs_ens_updates
 
 !-------------------------------------------------------------
 

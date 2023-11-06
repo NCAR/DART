@@ -30,7 +30,7 @@ public :: update_inflation,                                 do_obs_inflate,     
           get_is_prior,             get_is_posterior,       do_ss_inflate,            &
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
-          print_inflation_restart_filename,                                           &
+          print_inflation_restart_filename, set_from_string,                          &
           PRIOR_INF, POSTERIOR_INF, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
           SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
 

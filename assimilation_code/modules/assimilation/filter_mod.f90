@@ -436,7 +436,7 @@ call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart,
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
 
-call validate_hybrid_options(inflation_flavor, hyb_flavor, hyb_ens_size, hyb_initial_from_restart, &
+call validate_hybrid_options(inf_flavor, hyb_flavor, hyb_ens_size, hyb_initial_from_restart, &
    hyb_sd_initial_from_restart, do_hybrid, output_hybrid)
 
 ! Initialize the adaptive inflation module
