@@ -69,8 +69,8 @@ file variables are often included within the DART state because they serve as th
 the forward operator, however, the history variables are usually not updated because they are
 diagnostic variables which do not impact the forecast.  In rare instances it may be useful 
 to update the history variables through the ``history_update`` option. The user can 
-specify which history variables that are updated through the ``history_update_variables`` option.   
-
+specify which history variables that are updated through modification of the 
+``dart_to_clm.f90`` source code.
 
 
 Namelist
@@ -89,7 +89,6 @@ them from prematurely terminating the namelist. These are the defaults:
       repartition_vhist_file    = 'clm_vector_history.nc'
       repartition_analysis_file = 'dart_posterior_vector.nc'
       history_update            = 0
-      history_update_variables  = 'GPP'
       verbose                   = 0
       /
 
@@ -115,7 +114,6 @@ them from prematurely terminating the namelist. These are the defaults:
    history_update            integer             | Flag to turn on history file updates (history domain)
                                                  | 0   History updates turned off
                                                  | 1   History updates turned on
-   history_update_variables  character(len=256)    History variables to be updated
    verbose                   integer             | Flag to control how much run-time output is created.
                                                  | 0   is very little output.
                                                  | 1   reports which CLM variables are being updated.

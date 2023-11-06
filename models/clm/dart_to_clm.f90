@@ -79,7 +79,6 @@ integer            :: repartition_swe = 0
 character(len=256) :: repartition_vhist_file = 'clm_vector_history.nc'
 character(len=256) :: repartition_analysis_file = 'dart_posterior_vector.nc'
 integer            :: history_update = 0
-character(len=256) :: history_update_variables = 'GPP'
 integer            :: verbose = 0
 
 namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
@@ -88,7 +87,6 @@ namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
                            repartition_vhist_file, &
                            repartition_analysis_file, &
                            history_update, &
-                           history_update_variables, &
                            verbose
 
 !----------------------------------------------------------------------
@@ -213,13 +211,13 @@ enddo UPDATE
 
 dom_history = 2
 
-UPDATE : do ivar=1, get_num_variables(dom_history) 
+UPDATE2 : do ivar=1, get_num_variables(dom_history) 
 
   if (history_update > 0) then
 
    varname = get_variable_name(dom_history,ivar)
    select case (varname)
-      case (history_update_variables)
+      case ('GPP')
                rank = get_num_dims(dom_history,ivar)
 
              if (rank == 1) then
@@ -238,7 +236,7 @@ UPDATE : do ivar=1, get_num_variables(dom_history)
    end select
    endif
   
-enddo UPDATE
+enddo UPDATE2
 
 
 
