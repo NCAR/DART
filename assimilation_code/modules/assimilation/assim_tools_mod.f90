@@ -977,38 +977,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
             if (do_hybrid) then
 
-               call hybrid_obs_updates_ens(&
-hybrid_ens_size, &
-stat_obs_prior, &
-stat_obs_prior_mean, &
-stat_obs_prior_var, &
-stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
-orig_hyb_mean, &
-ens_size, &
-1, &
-obs_ens_handle%copies(1:ens_size, obs_index), &
-my_obs_loc(obs_index), &
-my_obs_kind(obs_index), &
-obs_prior, &
-obs_inc, &
-obs_prior_mean, &
-obs_prior_var, &
-base_obs_loc, &
-base_obs_type, &
-obs_time, &
-net_a, &
-grp_size, &
-grp_beg, &
-grp_end, &
-i, &
--1*my_obs_indx(obs_index), &
-final_factor, &
-correl, &
-.false., &
-inflate_only)
-
-
-
+               call hybrid_obs_updates_ens(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
+                 stat_obs_prior_var, stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
+                 orig_hyb_mean, ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                 my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, &
+                 obs_inc, obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                 net_a, grp_size, grp_beg, grp_end, i, -1*my_obs_indx(obs_index), final_factor, correl, &
+                 .false., inflate_only)
 
             else
 
@@ -2657,20 +2632,20 @@ integer  :: group, grp_bot, grp_top
 
 ! HK todo No groups allowed for hybrid (all the 1s)
 ! Do update of state, correl only needed for varying ss inflate
-   if(correl_needed) then
-call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
-   obs_inc, ens, ens_size,           &
-   stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
-   stat_ens, hybrid_ens_size, &
-   obs_prior_mean(1), orig_hyb_mean(1),         &
-   increment, reg_coef(1), net_a(1), correl(1))
-   else
-call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
-   obs_inc, ens, ens_size,           &
-   stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
-   stat_ens, hybrid_ens_size, &
-   obs_prior_mean(1), orig_hyb_mean(1),         &
-   increment, reg_coef(1), net_a(1))
+if(correl_needed) then
+   call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+      obs_inc, ens, ens_size,           &
+      stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+      stat_ens, hybrid_ens_size, &
+      obs_prior_mean(1), orig_hyb_mean(1),         &
+      increment, reg_coef(1), net_a(1), correl(1))
+else
+   call update_from_hybobs_inc(obs_prior, obs_prior_mean(1), obs_prior_var(1), &
+      obs_inc, ens, ens_size,           &
+      stat_obs_prior, stat_obs_prior_mean, stat_obs_prior_var,                 &
+      stat_ens, hybrid_ens_size, &
+      obs_prior_mean(1), orig_hyb_mean(1),         &
+      increment, reg_coef(1), net_a(1))
  
 endif
 
