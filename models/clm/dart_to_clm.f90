@@ -78,6 +78,8 @@ character(len=256) :: dart_to_clm_output_file = 'clm_restart.nc'
 integer            :: repartition_swe = 0
 character(len=256) :: repartition_vhist_file = 'clm_vector_history.nc'
 character(len=256) :: repartition_analysis_file = 'dart_posterior_vector.nc'
+integer            :: history_update = 0
+character(len=256) :: history_update_variables = 'GPP'
 integer            :: verbose = 0
 
 namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
@@ -85,11 +87,13 @@ namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
                            repartition_swe, &
                            repartition_vhist_file, &
                            repartition_analysis_file, &
+                           history_update, &
+                           history_update_variables, &
                            verbose
 
 !----------------------------------------------------------------------
 
-integer            :: iunit, io, dom_restart, ivar, rank, irank
+integer            :: iunit, io, dom_restart, dom_history, ivar, rank, irank
 integer            :: nlevsno, ICE_varsize(2)
 integer            :: ncid_dart, ncid_clm
 type(time_type)    :: dart_time, clm_time
@@ -140,7 +144,7 @@ call print_time( clm_time,'dart_to_clm:DART model time',logfileunit)
 ! update the current clm restart file
 !
 ! Get the DART posterior variable names from the restart domain (domain 1).
-! The other domains do not need to be updated - they are not used for
+! It is not mandatory to update other domains because they are not used for
 ! forecasting.
 
 ! There are some dependencies on the state structure, which come from the shapefile,
@@ -202,6 +206,39 @@ enddo UPDATE
                       ICE_varsize(1), nlevsno, repartition_swe)
 
   endif
+
+ ! Default is for history files not to be updated, 
+ ! but there are rare cases when updating history variables is useful.
+ ! This allows for the manual selection of history variable update
+
+dom_history = 2
+
+UPDATE : do ivar=1, get_num_variables(dom_history) 
+
+  if (history_update > 0) then
+
+   varname = get_variable_name(dom_history,ivar)
+   select case (varname)
+      case (history_update_variables)
+               rank = get_num_dims(dom_history,ivar)
+
+             if (rank == 1) then
+                 call replace_values_1D(dom_history, ivar, ncid_dart, ncid_clm)
+
+             elseif (rank == 2) then
+                   call replace_values_2D(dom_history, ivar, ncid_dart, ncid_clm)
+
+            else
+                write(string1, *) 'no support for data array of dimension ', rank
+                call error_handler(E_ERR, source, string1, source)
+            endif
+       
+     case default
+      ! do nothing -- do not update this history variable
+   end select
+   endif
+  
+enddo UPDATE
 
 
 

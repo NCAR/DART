@@ -5,6 +5,8 @@
    repartition_swe         = 0
    repartition_vhist_file = 'clm_vector_history.nc'
    repartition_analysis_file = 'dart_posterior_vector.nc'
+   history_update = 0
+   history_update_variables = 'GPP'
    verbose                 = 0
    /
 
