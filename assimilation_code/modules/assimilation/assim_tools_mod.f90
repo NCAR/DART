@@ -71,7 +71,7 @@ use assim_model_mod,      only : get_state_meta_data,                           
                                  get_close_obs,         get_close_state,                  &
                                  convert_vertical_obs,  convert_vertical_state
 
-use distributed_state_mod, only : create_mean_window, free_mean_window, get_state
+use distributed_state_mod, only : create_mean_window, free_mean_window
 
 use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
