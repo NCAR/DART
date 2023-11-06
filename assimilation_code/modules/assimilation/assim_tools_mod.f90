@@ -390,7 +390,7 @@ integer               :: hybrid_ens_size
 real(r8)              :: my_hybrid_weight, my_hybrid_weight_sd
 real(r8)              :: hybrid_scaling
 real(r8)              :: stat_obs_prior_mean, stat_obs_prior_var
-real(r8)              :: hyb_obs_var, corr_rho, array_hyb_obs_var(1)
+real(r8)              :: hyb_obs_var, corr_rho
 real(r8)              :: vary_ss_hybrid_mean, vary_ss_hybrid_sd
 real(r8), allocatable :: stat_obs_prior(:) 
 real(r8), allocatable :: dtrd(:), tr_R(:), tr_B(:)
@@ -769,24 +769,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! my_inflate and my_inflate_sd only used with single state space inflation
       ! vertvalue_obs_in_localization_coord and whichvert_real only used for vertical
       ! coordinate transformation
-      array_hyb_obs_var = hyb_obs_var
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
       call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         orig_obs_prior_mean, orig_obs_prior_var,                          &
-         orig_hyb_mean, array_hyb_obs_var, & ! HK todo broadcast only has 5 scalars
+         orig_obs_prior_mean, orig_obs_prior_var, orig_hyb_mean,           &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
-         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
+         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd, scalar6=hyb_obs_var)
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
    else
       call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
-         orig_obs_prior_mean, orig_obs_prior_var,                          &
-         orig_hyb_mean, array_hyb_obs_var, &
+         orig_obs_prior_mean, orig_obs_prior_var, orig_hyb_mean,           &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
-         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
+         scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd, scalar6=hyb_obs_var)
       whichvert_obs_in_localization_coord = nint(whichvert_real)
-     hyb_obs_var = array_hyb_obs_var(1)
 
    endif
    !-----------------------------------------------------------------------
