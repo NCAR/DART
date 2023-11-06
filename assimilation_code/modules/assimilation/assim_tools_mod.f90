@@ -891,18 +891,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       if (do_hybrid) then ! Regression for the hybrid case: Only support 1 group for now; i.e., num_groups = 1
 
-         call hybrid_obs_ens_updates(&
-hybrid_ens_size, &
-stat_obs_prior, &
-stat_obs_prior_mean, &
-stat_obs_prior_var, &
-stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
-orig_hyb_mean, &
-ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-   my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
-   obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-   net_a, grp_size, grp_beg, grp_end, i, &
-   my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
+         call hybrid_obs_ens_updates(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
+            stat_obs_prior_var, stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
+            orig_hyb_mean, ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+            my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+            obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+            net_a, grp_size, grp_beg, grp_end, i, &
+            my_state_indx(state_index), final_factor, correl, local_varying_ss_inflate, inflate_only)
       else
 
          call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
@@ -2620,35 +2615,12 @@ if(.not. inflate_only) ens = ens + final_factor * increment
 end subroutine obs_updates_ens
 
 !-------------------------------------------------------------
-subroutine hybrid_obs_ens_updates(&
-hybrid_ens_size, &
-stat_obs_prior, &
-stat_obs_prior_mean, &
-stat_obs_prior_var, &
-stat_ens, &
-orig_hyb_mean, &
-ens_size, &
-num_groups, &
-ens, &
-ens_loc, &
-ens_kind, &
-   obs_prior, &
-obs_inc, &
-obs_prior_mean, &
-obs_prior_var, &
-obs_loc, &
-obs_type, &
-obs_time,    &
-   net_a, &
-grp_size, &
-grp_beg, &
-grp_end, &
-reg_factor_obs_index,         &
-   reg_factor_ens_index, &
-final_factor, &
-correl, &
-correl_needed, &
-inflate_only)
+subroutine hybrid_obs_ens_updates(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
+             stat_obs_prior_var, stat_ens, orig_hyb_mean, ens_size, num_groups, &
+             ens, ens_loc, ens_kind, obs_prior, obs_inc, obs_prior_mean, &
+             obs_prior_var, obs_loc, obs_type, obs_time, net_a, grp_size, grp_beg, &
+             grp_end, reg_factor_obs_index, reg_factor_ens_index, final_factor, &
+             correl, correl_needed, inflate_only)
 
 integer,             intent(in)  :: hybrid_ens_size
 real(r8),            intent(inout) ::stat_obs_prior(hybrid_ens_size)
