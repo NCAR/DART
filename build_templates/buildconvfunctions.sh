@@ -45,11 +45,11 @@ EXTRA=""
 function print_usage() {
   echo ""
   echo " Usage:   "
-  echo "  buildconverter.sh               : build everything"
-  echo "  buildconverter.sh clean         : clean the build" 
-  echo "  buildconverter.sh help          : print help message"
+  echo "  quickbuild.sh               : build everything"
+  echo "  quickbuild.sh clean         : clean the build"
+  echo "  quickbuild.sh help          : print help message"
   echo "   " 
-  echo "  buildconverter.sh [program]     : build a single program"
+  echo "  quickbuild.sh [program]     : build a single program"
   echo "   " 
   exit
 }
