@@ -62,6 +62,16 @@ applying the mass adjustment to the bottom snow layer only, does not maintain th
 relative mass distribution and given the proximity to the soil, may provide a more immediate
 impact on soil moisture conditions.    
 
+Finally, ``dart_to_clm`` includes an option to update clm history variables (HISTORY domain).
+The default functionality is for only the clm restart files (RESTART domain) to be updated
+because they include the prognostic variables that will influence the model forecast. History 
+file variables are often included within the DART state because they serve as the basis for
+the forward operator, however, the history variables are usually not updated because they are
+diagnostic variables which do not impact the forecast.  In rare instances it may be useful 
+to update the history variables through the ``history_update`` option. The user can 
+specify which history variables that are updated through the ``history_update_variables`` option.   
+
+
 
 Namelist
 --------
@@ -78,6 +88,8 @@ them from prematurely terminating the namelist. These are the defaults:
       repartition_swe           = 0
       repartition_vhist_file    = 'clm_vector_history.nc'
       repartition_analysis_file = 'dart_posterior_vector.nc'
+      history_update            = 0
+      history_update_variables  = 'GPP'
       verbose                   = 0
       /
 
@@ -100,6 +112,10 @@ them from prematurely terminating the namelist. These are the defaults:
                                                  Only required when repartition_swe = 1,2
    repartition_analysis_file character(len=256)  Name of the DART analysis file (posterior SWE value)
                                                  Only required when repartition_swe = 1,2
+   history_update            integer             | Flag to turn on history file updates (history domain)
+                                                 | 0   History updates turned off
+                                                 | 1   History updates turned on
+   history_update_variables  character(len=256)    History variables to be updated
    verbose                   integer             | Flag to control how much run-time output is created.
                                                  | 0   is very little output.
                                                  | 1   reports which CLM variables are being updated.
