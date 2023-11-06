@@ -55,7 +55,7 @@ function print_usage() {
   echo "  quickbuild.sh [nompi/nompi/mpif08] [program]   : optional arguments " 
   echo "                                                   [mpi]     build with mpi (default)"
   echo "                                                   [nompi]   build without mpi"
-  echo "                                                   [mpif08]  build with mpi using mpif_f08"
+  echo "                                                   [mpif08]  build with mpi using mpi_f08"
   echo "                                                   [program] build a single program"
   echo "   " 
   echo "  Example 1. Build filter without mpi:"
