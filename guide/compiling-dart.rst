@@ -17,12 +17,12 @@ To build DART executables you will need to
      quickbuild.sh clean               : clean the build
      quickbuild.sh help                : print help message
    
-     quickbuild.sh [nompi/nompi/mpif08] [program]   : optional arguments
-                                                      [mpi]     build with mpi (default)
-                                                      [nompi]   build without mpi
-                                                      [mpif08]  build with mpi using mpi_f08
-                                                      [program] build a single program
-   
+     quickbuild.sh [mpi/nompi/mpif08] [program]   : optional arguments
+                                                    [mpi]     build with mpi (default)
+                                                    [nompi]   build without mpi
+                                                    [mpif08]  build with mpi using mpi_f08
+                                                    [program] build a single program
+  
      Example 1. Build filter without mpi:
               quickbuild.sh nompi filter
    
