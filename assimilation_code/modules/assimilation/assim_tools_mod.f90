@@ -891,7 +891,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       if (do_hybrid) then ! Regression for the hybrid case: Only support 1 group for now; i.e., num_groups = 1
 
-         call hybrid_obs_ens_updates(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
+         call hybrid_obs_updates_ens(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
             stat_obs_prior_var, stat_obs_ens_handle%copies(1:hybrid_ens_size, obs_index), &
             orig_hyb_mean, ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
             my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
@@ -977,7 +977,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
             if (do_hybrid) then
 
-               call hybrid_obs_ens_updates(&
+               call hybrid_obs_updates_ens(&
 hybrid_ens_size, &
 stat_obs_prior, &
 stat_obs_prior_mean, &
@@ -2615,7 +2615,7 @@ if(.not. inflate_only) ens = ens + final_factor * increment
 end subroutine obs_updates_ens
 
 !-------------------------------------------------------------
-subroutine hybrid_obs_ens_updates(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
+subroutine hybrid_obs_updates_ens(hybrid_ens_size, stat_obs_prior, stat_obs_prior_mean, &
              stat_obs_prior_var, stat_ens, orig_hyb_mean, ens_size, num_groups, &
              ens, ens_loc, ens_kind, obs_prior, obs_inc, obs_prior_mean, &
              obs_prior_var, obs_loc, obs_type, obs_time, net_a, grp_size, grp_beg, &
@@ -2677,7 +2677,7 @@ endif
 ! Get the updated ensemble
 if(.not. inflate_only) ens = ens + final_factor * increment
 
-end subroutine hybrid_obs_ens_updates
+end subroutine hybrid_obs_updates_ens
 
 !-------------------------------------------------------------
 
