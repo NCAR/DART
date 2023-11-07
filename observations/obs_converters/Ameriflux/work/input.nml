@@ -27,7 +27,7 @@
    text_input_file = '../data/USHa12003_L4_h.txt'
    obs_out_file    = 'obs_seq.out'
    year            = 2003
-   timezoneoffset  = -6
+   timezoneoffset  = -5
    latitude        =  42.5378
    longitude       = -72.1715
    elevation       = 353
@@ -35,6 +35,23 @@
    maxgoodqc       = 3
    verbose         = .TRUE.
    /
+
+&fluxnetfull_to_obs_nml
+   text_input_file = '../data/AMF_US-Ha1_FLUXNET_FULLSET_MM_1991-2020_3-5.csv'
+   obs_out_file    = 'obs_seq.out'
+   timezoneoffset  = -5
+   latitude        =  42.5378
+   longitude       = -72.1715
+   elevation       = 353
+   flux_height     = 29
+   maxgoodqc       = 3
+   gap_filled      = .true.
+   energy_balance  = .false.
+   time_resolution = 'MM'
+   verbose         = .true.
+   /
+
+
 
 # This is appropriate for a days worth of flux tower observations
 # the obs in the file end 1 second before the time in the name.
