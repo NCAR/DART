@@ -22,6 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 7 2023 :: MPI f08 quickbuild option. Tag v10.9.0**
+
+- quickbuild.sh mpif08 option to build using the mpi_f08 module
+- nvhpc mkmf.template for use on Derecho
+
+bug-fixes:
+
+- filter_mod.dopperlerfold in sync with filter_mod
+- unnecessary loop removed from Mersenne twister developer test
+
+doc-fixes:
+
+- rename assim_model_mod.rst to match the module
+- fix various Sphinx warnings and broken link
+
+
 **October 5 2023 :: WRF-DART tutorial diagnostic section. Tag v10.8.5**
 
 - Improvements:
