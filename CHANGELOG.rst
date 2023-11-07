@@ -22,6 +22,83 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 7 2023 :: MPI f08 quickbuild option. Tag v10.9.0**
+
+- quickbuild.sh mpif08 option to build using the mpi_f08 module
+- nvhpc mkmf.template for use on Derecho
+
+bug-fixes:
+
+- filter_mod.dopperlerfold in sync with filter_mod
+- unnecessary loop removed from Mersenne twister developer test
+
+doc-fixes:
+
+- rename assim_model_mod.rst to match the module
+- fix various Sphinx warnings and broken link
+
+
+**October 5 2023 :: WRF-DART tutorial diagnostic section. Tag v10.8.5**
+
+- Improvements:
+
+  - Added a more complete diagnostics section to the WRF-DART Tutorial.
+  - Developer test for Mersenne twister random number generator.
+
+- Bug-fix: 
+
+  - 1D location subsetting fixed for obs_sequence_tool.  
+
+   *contributed by Henry Santer*
+
+
+**September 18 2023 :: Fluxnet observation converter and obs_def_rttov13_mod.f90 bug-fixes. Tag v10.8.4**
+
+Fluxnet obs converter:
+
+- Generates a new observation converter (Fluxnetfull_to_obs) for eddy 
+  covariance flux tower data (carbon, water energy fluxes)
+- Documentation changes made to the older, deprecated ameriflux 
+  converter (level4_to_obs) and the broken links have been fixed
+- New flux tower observation types added to accomodate the forward 
+  operator approach for time aggregated fluxes (daily through monthly)
+
+obs_def_rttov13_mod.f90 bug-fixes:
+
+- Added public get_channel to obs_def_rttov13_mod.f90 to compile WRF 
+  successfully with rttov13.
+- Removed cloud_overlap (integer) from the function: get_rttov_option_logical
+
+**August 21 2023 :: CAM-FV shell scripts. Tag v10.8.3**
+
+Performance improvements for CAM-FV shell scripts:
+
+- Avoid listing files if the CAM_PHIS file already exists.
+- Avoid using /var/tmp
+- RUNDIR defined after CIME_OUTPUT_ROOT change.
+- Warn if no inflation files found.
+
+**August 8 2023 :: MPAS-ATM constants and readthedocs fix. Tag v10.8.2**
+
+- MPAS-ATM constants updated to MPAS v5+
+- readthedocs build info updated.
+
+
+**July 27 2023 :: Bug-fixes for MOM6 and WRF. Tag v10.8.1**
+
+- bug-fixes:
+
+  - MOM6 read_model_time converts to dart time to match observation sequences.
+  - MOM6 salinity units converted to MSU during model_interpolate.
+  - WRF get_dist calculation fixed for observations with VERTISUNDEF.
+
+- doc-fixes:
+
+  - WOD and GTSPP converter documentation notes about salinity units.
+  - MOM6 documentation for setting the Gregorian calendar in CESM.
+  - comment fix in filter_mod.f90
+
+
 **June 27 2023 :: CAM-DART observation preprocessor. Tag v10.8.0**
 
 - Tool to remove observations above a given CAM level from an obs sequence file

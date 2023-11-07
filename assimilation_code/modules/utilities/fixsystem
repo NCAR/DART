@@ -39,7 +39,7 @@
 #
 
 # default file list, and both marker strings must exist in these files
-export FLIST="mpi_utilities_mod.f90 null_mpi_utilities_mod.f90"
+export FLIST="mpi_utilities_mod.f90 null_mpi_utilities_mod.f90 mpif08_utilities_mod.f90 "
 export STRINGS_REQUIRED=1
 
 # compiler name required.  additional filenames optional.

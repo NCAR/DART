@@ -9,6 +9,48 @@ Instructions for using MOM6 in CESM are available on the `MOM_interface GitHub W
 
 This DART-MOM6 interface was developed for `MOM6 <https://github.com/NCAR/MOM6>`_ within the CESM framework.
 
+MOM6 time
+---------
+
+The default in CESM is to run with no leap years.
+To assimilate real observations, we need to switch to the Gregorian 
+calendar to account for leap years.
+
+.. code-block:: text
+
+    ./xmlchange CALENDAR=GREGORIAN
+
+To illustrate what happens if you do not set CALENDAR=GREGORIAN, here is
+an example where the RUN_STARTDATE is set to 2015-02-01 and MOM6 is run for 10 days.
+
+.. code-block:: text
+
+    ./xmlchange RUN_STARTDATE=2015-02-01
+
+The MOM6 restart file has the following meta data, where Time is days from year 1.
+
+.. code-block:: text
+
+    double Time(Time) ;
+                    Time:long_name = "Time" ;
+                    Time:units = "days" ;
+                    Time:axis = "T" ;
+    ...
+    // global attributes:
+    		:filename = "./c.T62_g16.ens3.mom6.r.2015-02-11-00000._0001.nc" ;
+    data:
+    
+     Time = 735151 ;
+    }
+
+
+The absence of leap years gives you inconsistent time information when comparing 
+to observation times in YYYY-MM-DD:
+
+- Restart filename has the time 2015-02-11-00000.
+- The Time variable is Time = 735151 days, which is 2013/10/11
+
+
 MOM6 checksum of restart files
 ------------------------------
 

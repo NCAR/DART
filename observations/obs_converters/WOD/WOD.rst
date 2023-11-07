@@ -38,6 +38,15 @@ NCAR staff have prepared datasets already converted to DART's obs_seq file
 format for the World Ocean Database 2013 (WOD13) and the World Ocean Database
 2009 (WOD09).
 
+.. Warning::  
+
+   The WOD data is in PSU, the dart observation converter ``wod_to_obs`` converts the observations to MSU.
+ 
+   | PSU = g/kg
+   | MSU = PSU/1000 = kg/kg
+   
+   The WOD observation sequence files availiable from NCAR's RDA are in MSU.
+
 WOD13
 ~~~~~
 
