@@ -8,9 +8,9 @@ set -ex
 
 caseroot=$1
 
-dart_build_dir=/glade/scratch/hkershaw/DART/MOM6/DART/models/MOM6/work
+dart_build_dir=/glade/derecho/scratch/hkershaw/MOM6/DART/models/MOM6/work
 comp_name=OCN
-obs_dir=/glade/scratch/hkershaw/DART/MOM6/Observations/
+obs_dir=/glade/p/cisl/dares/Observations/WOD13
 ntasks=512  # should pull this from CIME
 
 echo "DART dart_build_dir" $dart_build_dir
