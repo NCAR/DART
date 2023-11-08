@@ -63,7 +63,7 @@ one dimensional array. The tracer particle in the figure lands on a predefined g
 point at t\ :sup:`n+1`. The trajectory of this tracer particle is then integrated 
 backwards by one time step to time t\ :sup:`n`, often landing between grid points. 
 Then, due to advection without diffusion, the concentration of tracer at time
- t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which 
+t\ :sup:`n+1` is simply the concentration of tracer at time t\ :sup:`n`, which 
 can be determined by interpolating concentrations of the surrounding grids [3]_.
 
 Once the coupled Lorenz 96 and semi-Lagrangian is run with a source of strength

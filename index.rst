@@ -121,6 +121,8 @@ If you are planning to run one of the larger models and want to use the Lorenz
 63 model as a test, run ``./quickbuild.sh``. It will build filter and any
 other MPI-capable executables with MPI.
 
+``./quickbuild.sh help`` will print out the quickbuild.sh usage.
+
 .. important::
 
    The ``mpif90`` command you use must have been built with the same version of
@@ -293,6 +295,7 @@ References
    observations/obs_converters/AIRS/convert_airs_L2
    observations/obs_converters/AIRS/convert_amsu_L1
    observations/obs_converters/AVISO/AVISO
+   observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
    observations/obs_converters/cice/cice_to_obs
@@ -414,6 +417,7 @@ References
    models/rose/readme
    models/simple_advection/readme
    models/sqg/readme
+   models/template/new_model
    models/tiegcm/readme
    models/wrf_hydro/readme
    models/wrf/readme
@@ -491,7 +495,7 @@ References
    assimilation_code/modules/observations/obs_kind_mod
    assimilation_code/modules/observations/DEFAULT_obs_kind_mod
    assimilation_code/modules/observations/obs_sequence_mod
-   assimilation_code/modules/assimilation/assim_readme
+   assimilation_code/modules/assimilation/assim_model_mod
    assimilation_code/modules/assimilation/assim_tools_mod
    assimilation_code/modules/assimilation/cov_cutoff_mod
    assimilation_code/modules/assimilation/obs_model_mod

@@ -42,7 +42,7 @@ integer :: seq_number = -1
 
 ! the following routines were transcribed from C to F90, originally
 ! from the GNU scientific library:  init_ran, ran_unif, ran_gauss,
-! ran_gamma
+! ran_gamma, ran_twist
 
 integer, parameter :: N = 624   ! period parameters
 integer, parameter :: M = 397

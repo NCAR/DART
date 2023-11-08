@@ -45,11 +45,11 @@ EXTRA=""
 function print_usage() {
   echo ""
   echo " Usage:   "
-  echo "  buildconverter.sh               : build everything"
-  echo "  buildconverter.sh clean         : clean the build" 
-  echo "  buildconverter.sh help          : print help message"
+  echo "  quickbuild.sh               : build everything"
+  echo "  quickbuild.sh clean         : clean the build"
+  echo "  quickbuild.sh help          : print help message"
   echo "   " 
-  echo "  buildconverter.sh [program]     : build a single program"
+  echo "  quickbuild.sh [program]     : build a single program"
   echo "   " 
   exit
 }
@@ -120,15 +120,19 @@ local obserrsrc=$DART/observations/obs_converters/obs_error/$OBS_ERROR"_obs_err_
 
 # remove null/mpi from list
 local mpi="$DART"/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+local mpif08="$DART"/assimilation_code/modules/utilities/mpif08_utilities_mod.f90
 local nullmpi="$DART"/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 local nullwin="$DART"/assimilation_code/modules/utilities/null_win_mod.f90
 local craywin="$DART"/assimilation_code/modules/utilities/cray_win_mod.f90
 local nocraywin="$DART"/assimilation_code/modules/utilities/no_cray_win_mod.f90
+local no_cray_winf08="$DART"/assimilation_code/modules/utilities/no_cray_winf08_mod.f90
 
 if [ "$mpisrc" == "mpi" ]; then
 
    core=${core//$nullmpi/}
    core=${core//$nullwin/}
+   core=${core//$mpif08/}
+   core=${core//$no_cray_winf08/}
    if [ "$windowsrc" == "craywin" ]; then
        core=${core//$nocraywin/}
    else #nocraywin
@@ -137,7 +141,9 @@ if [ "$mpisrc" == "mpi" ]; then
 else #nompi
 
    core=${core//$mpi/}
+   core=${core//$mpif08/}
    core=${core//$nocraywin/}
+   core=${core//$no_cray_winf08/}
    core=${core//$craywin/}
 fi
 
