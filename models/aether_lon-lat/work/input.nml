@@ -164,7 +164,7 @@
 
 &model_nml
    debug             = 100
-   filter_inout_dir  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   filter_io_dir  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
    estimate_f10_7 = .false.
    f10_7_file_name = 'f10_7.nc'
    variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
@@ -185,9 +185,15 @@
          Vertical\ Wind 
 
 &aether_to_dart_nml
-   aether_restart_input_dirname = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   aether_restart_dirname = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
    aether_to_dart_output_file = 'filter_input.nc'
    /
+
+&dart_to_aether_nml
+   aether_restart_dirname  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   filter_io_root = 'filter_output',
+   /
+! 4 digit member number and .nc will be appended to this.
 
 &cov_cutoff_nml
    select_localization = 1

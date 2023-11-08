@@ -92,7 +92,7 @@ use netcdf_utilities_mod, only : nc_synchronize_file, nc_add_global_attribute,  
                                  nc_add_global_creation_time, nc_begin_define_mode,      &
                                  nc_define_dimension, nc_end_define_mode,                &
                                  nc_put_variable,nc_add_attribute_to_variable,           &
-                                 nc_define_real_variable,                                &
+                                 nc_define_real_variable, nc_open_file_readwrite,        &
                                  nc_check, nc_open_file_readonly, nc_get_dimension_size, &
                                  nc_close_file, nc_get_variable,                         &
                                  nc_get_dimension_size, nc_create_file,                  &
@@ -132,6 +132,7 @@ public :: adv_1step,              &
 ! block_file_name creates an Aether restart file name,
 ! which is useful for read_model_time calls, and others.
 public :: restart_files_to_netcdf, &
+          netcdf_to_restart_files, &
           block_file_name
 
 ! version controlled file description for error handling, do not edit
@@ -250,6 +251,7 @@ character(len=*), parameter :: ALT_VAR_NAME = 'alt'
 !                  the number of blocks comes from UAM.in
 ! nzPerBlock  is the number of altitudes, which does not depend on block
 ! nGhost is the halo region width in the block(subdomain) files.
+! TODO: change nGhost to nhalo?
 ! TODO: n[xyz]PerBlock should probably come from a namelist (aether_to_dart.nml;
 !       can that be used for dart_to_aether?)
 
@@ -409,10 +411,11 @@ end function block_file_name
 !> is orthogonal and rectangular but can have irregular spacing along
 !> any or all of the three dimensions.
 
-subroutine restart_files_to_netcdf(restart_dirname, member, netcdf_output_file)
+subroutine restart_files_to_netcdf(restart_dirname, member, filter_io_file)
 
+! TODO: Does restart_files_to_netcdf need restart_dir?
 character(len=*), intent(in)  :: restart_dirname
-character(len=*), intent(in)  :: netcdf_output_file
+character(len=*), intent(in)  :: filter_io_file
 integer, intent(in) :: member
 
 integer :: ncid
@@ -427,7 +430,7 @@ end if
 
 call static_init_blocks(restart_dirname)
 
-ncid = nc_create_file(netcdf_output_file)
+ncid = nc_create_file(filter_io_file)
 
 ! DONE: This should probably be replaced by  nc_write_model_atts(ncid).
 !       That may require renaming some dimension variables.
@@ -450,6 +453,41 @@ call restarts_to_filter(restart_dirname, ncid, member, define=.false.)
 call nc_close_file(ncid)
 
 end subroutine restart_files_to_netcdf
+
+!=================================================================
+! Writes the current time and state variables from a dart state
+! vector (1d array) into a gitm netcdf restart file.
+
+subroutine netcdf_to_restart_files(nc_file, member, output_dirname)
+
+character(len=*), intent(in) :: nc_file
+character(len=*), intent(in) :: output_dirname
+integer, intent(in) :: member
+
+integer :: ncid
+
+character(len=*), parameter :: routine = 'netcdf_to_restart_files:'
+
+! sort the required fields into the order they exist in the
+! binary restart files and write out the state vector data
+! field by field.  when this routine returns all the data has
+! been written.
+
+if (module_initialized ) then
+    write(string1,*)'The gitm mod was already initialized but ',trim(routine),&
+      ' uses a separate initialization procedure'
+    call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
+
+call static_init_blocks(output_dirname)
+
+ncid = nc_open_file_readonly(nc_file, routine)
+
+call filter_to_restarts(output_dirname, ncid, member)
+
+call nc_close_file(ncid)
+
+end subroutine netcdf_to_restart_files
 
 !=================================================================
 
@@ -1005,7 +1043,7 @@ character(len=*), parameter :: routine = 'read_model_time'
 tsimulation = MISSING_I
 
 ncid = open_block_file(filename, 'read')
-call nc_get_variable(ncid, 'time', tsimulation, routine)
+call nc_get_variable(ncid, 'time', tsimulation, context=routine)
 call nc_close_file(ncid, routine, filename)
 
 ! Calculate the DART time of the file time.
@@ -1039,6 +1077,8 @@ end function read_model_time
 !===============================================================================
 ! Routines below here are private to the module
 !===============================================================================
+! Routines for initialization.
+!==================================================================
 
 ! Fill up the variable_table from the namelist item 'variables'
 ! The namelist item variables is where a user specifies
@@ -1181,9 +1221,9 @@ integer :: ncid
 
 ncid = nc_open_file_readonly(filter_io_filename, routine)
 
-call nc_get_variable(ncid, LON_VAR_NAME, lons, routine)
-call nc_get_variable(ncid, LAT_VAR_NAME, lats, routine)
-call nc_get_variable(ncid, ALT_VAR_NAME, alts, routine)
+call nc_get_variable(ncid, LON_VAR_NAME, lons, context=routine)
+call nc_get_variable(ncid, LAT_VAR_NAME, lats, context=routine)
+call nc_get_variable(ncid, ALT_VAR_NAME, alts, context=routine)
 
 call nc_close_file(ncid)
 
@@ -1466,6 +1506,8 @@ endif
 end function read_in_real
 
 !=================================================================
+! Routines for aether_to_dart.
+!==================================================================
 
 ! open enough of the restart files to read in the lon, lat, alt arrays
 
@@ -1556,25 +1598,18 @@ print*,'counts = ',xcount,ycount,zcount
 ! go across the south-most block row picking up all longitudes
 do nb = 1, nBlocksLon
 
+   ! filename is trimmed by passage to open_block_file + "len=*" there.
    filename = block_file_name('grid', -1, nb-1)
-   ncid = open_block_file(trim(filename), 'read')
+   ncid = open_block_file(filename, 'read')
 
 ! Read 3D array and extract the longitudes of the non-halo data of this block.
-!  This gets nc_get_double_3d, even though the fields are float.
-!? Is there some environment setting that says float = double?
-! ERROR This yields Start+count exceeds dimension bound
-!     call nc_get_variable(ncid, 'Longitude', temp, routine)
-! ERROR: this yields Index exceeds dimension bound
 ! The restart files have C-indexing (fastest changing dim is the last),
 ! So invert the dimension bounds.
      call nc_get_variable(ncid, 'Longitude', &
           temp(starts(3):ends(3),starts(2):ends(2),starts(1):ends(1)), &
-          routine, &
+          context=routine, &
         nc_count=(/zcount,ycount,xcount/))
-! Shouldn't need to specify default values         nc_start=(/1,1,1/), &
 
-!           temp(1:zcount,1:ycount,1:xcount), &
-!        nc_start=(/starts(1),starts(2),starts(3)/), &
 ! TODO: nc_get_variable stops on error conditions, does not pass back ios.
 !    if ( ios /= 0 ) then
 !       print *,'size:',size(temp(1-nGhost:nxPerBlock+nGhost))
@@ -1598,11 +1633,11 @@ do nb = 1, nBlocksLat
    !       any lon=const column. 
    nboff = ((nb - 1) * nBlocksLon)
    filename = block_file_name('grid', -1, nboff)
-   ncid = open_block_file(trim(filename), 'read')
+   ncid = open_block_file(filename, 'read')
 
      call nc_get_variable(ncid, 'Latitude', &
           temp(starts(3):ends(3),starts(2):ends(2),starts(1):ends(1)), &
-          routine, nc_count=(/zcount,ycount,xcount/))
+          context=routine, nc_count=(/zcount,ycount,xcount/))
         
 !    if ( ios /= 0 ) then
 !       write(string1,*)'ERROR reading file ', trim(filename)
@@ -1623,12 +1658,12 @@ enddo
 ! if this is not the case, this code has to change.
 
 filename = block_file_name('grid', -1, 0)
-ncid = open_block_file(trim(filename), 'read')
+ncid = open_block_file(filename, 'read')
 
 temp = MISSING_R8
 call nc_get_variable(ncid, 'Altitude', &
      temp(starts(3):ends(3),starts(2):ends(2),starts(1):ends(1)), &
-     routine, nc_count=(/zcount,ycount,xcount/))
+     context=routine, nc_count=(/zcount,ycount,xcount/))
 
 alts(1:nzPerBlock) = temp(1:nzPerBlock,1,1)
 ! print*,'temp = ',temp(:,1,1)
@@ -1665,23 +1700,33 @@ end subroutine get_grid_from_blocks
 
 function open_block_file(filename,rw)
 
+! filename is trimmed by this definition
 character(len=*), intent(in) :: filename
 character(len=*), intent(in)  :: rw   ! 'read' or 'readwrite'
 integer :: open_block_file
 
 character(len=*), parameter :: routine = 'open_block_file'
 
-if ( rw == 'read' .and. .not. file_exist(trim(filename)) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'open_block_file',string1,source,revision,revdate)
+if ( .not. file_exist(filename) ) then
+   write(string1,*) 'cannot open file ', filename,' for ',rw
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
 
 if (debug > 0) then
-   write(string1,*) 'Opening file ', trim(filename), ' for ', trim(rw)
+   write(string1,*) 'Opening file ', trim(filename), ' for ', rw
    call error_handler(E_MSG,'open_block_file',string1,source,revision,revdate)
 end if
 
-open_block_file = nc_open_file_readonly(trim(filename), routine)
+
+if (rw == 'read') then
+   open_block_file = nc_open_file_readonly(filename, routine)
+else if (rw == 'readwrite') then
+   open_block_file = nc_open_file_readwrite(filename, routine)
+else
+   string1 = ': must be called with rw={read,readwrite}, not '//rw
+   call error_handler(E_ERR,'open_block_file',string1,source,revision,revdate)
+endif
+
 
 if (debug > 80) then
    write(string1,*) 'Returned file descriptor is ', open_block_file
@@ -1999,7 +2044,7 @@ allocate(density_ion_e(1:nzPerBlock, &
 
 file_root = variable_table(1,VT_ORIGININDX)
 filename = block_file_name(file_root, member, nb)
-ncid_input = open_block_file(trim(filename), 'read')
+ncid_input = open_block_file(filename, 'read')
 
 print*,'block_to_filter_io: nfields_neutral = ',nfields_neutral
 do ivar = 1, nfields_neutral
@@ -2033,7 +2078,7 @@ do ivar = 1, nfields_neutral
    else if (file_root == 'neutrals') then
    ! Read 3D array and extract the non-halo data of this block.
 ! TODO: There are no 2D or 1D fields in ions or neutrals, but there could be; different temp array.
-      call nc_get_variable(ncid_input, varname, temp3d, routine)
+      call nc_get_variable(ncid_input, varname, temp3d, context=routine)
       print*,'block_to_filter_io: temp3d = ',temp3d(1,1,1),temp3d(15,15,15),variable_table(ivar,VT_VARNAMEINDX)
       print*,'block_to_filter_io: define = ',define
       call write_filter_io(temp3d, ivar, block, ncid_output)
@@ -2048,7 +2093,7 @@ call nc_close_file(ncid_input)
 
 file_root = variable_table(nfields_neutral+1,VT_ORIGININDX)
 filename = block_file_name(file_root, member, nb)
-ncid_input = open_block_file(trim(filename), 'read')
+ncid_input = open_block_file(filename, 'read')
 
 print*,'block_to_filter_io: nfields_ion = ',nfields_ion
 do ivar = nfields_neutral +1,nfields_neutral + nfields_ion
@@ -2066,7 +2111,7 @@ do ivar = nfields_neutral +1,nfields_neutral + nfields_ion
       print*,routine,': defined ivar, varname = ', ivar, varname 
 
    else if (file_root == 'ions') then
-      call nc_get_variable(ncid_input, varname, temp3d, routine)
+      call nc_get_variable(ncid_input, varname, temp3d, context=routine)
       call write_filter_io(temp3d, ivar, block, ncid_output)
    else
       write(string1,*) 'Trying to read ions, but variable_table(',ivar,VT_ORIGININDX, &
@@ -2098,7 +2143,7 @@ call nc_close_file(ncid_input)
 !       ! convert temp2d to TEC units
 !       temp2d = temp2d/1e16_r8
 !    end if
-!    call unpack_data2d(temp2d, ivals(1), block, ncid, define) 
+!    call write_block_to_filter2d(temp2d, ivals(1), block, ncid, define) 
 ! end if
 
 ! TODO: Does Aether need f10_7 to be calculated or processed? Yes
@@ -2106,13 +2151,13 @@ call nc_close_file(ncid_input)
 ! !gitm_index = get_index_start(domain_id, 'VerticalVelocity')
 ! call get_index_from_gitm_varname('f107', inum, ivals)
 ! if (inum > 0) then
-!   call unpack_data0d(temp0d, ivals(1), ncid, define) !see comments in the body of the subroutine
+!   call write_block_to_filter0d(temp0d, ivals(1), ncid, define) !see comments in the body of the subroutine
 ! endif
 ! 
 ! read(iunit)  temp3d
 ! call get_index_from_gitm_varname('Rho', inum, ivals)
 ! if (inum > 0) then
-!    call write_filter_io(temp3d, ivals(1), block, ncid)
+!    call write_block_to_filter(temp3d, ivals(1), block, ncid, define)
 ! endif
 
 !print *, 'calling dealloc'
@@ -2131,7 +2176,7 @@ end subroutine block_to_filter_io
 ! !> f107 values from all other blocks (hopefully they are the same).
 ! !> written by alex
 ! 
-! subroutine unpack_data0d(data0d, ivar, ncid, define)
+! subroutine write_block_to_filter0d(data0d, ivar, ncid, define)
 ! 
 ! real(r8), intent(in)    :: data0d
 ! integer,  intent(in)    :: ivar         ! index into state structure
@@ -2139,7 +2184,7 @@ end subroutine block_to_filter_io
 ! logical,  intent(in)    :: define
 ! 
 ! 
-! character(len=*), parameter :: routine = 'unpack_data0d'
+! character(len=*), parameter :: routine = 'write_block_to_filter0d'
 ! 
 ! if (define) then
 !   
@@ -2161,13 +2206,13 @@ end subroutine block_to_filter_io
 ! 
 ! end if
 ! 
-! end subroutine unpack_data0d
+! end subroutine write_block_to_filter0d
 ! 
 ! !==================================================================
 ! 
 ! ! put the requested data into a netcdf variable
 ! 
-! subroutine unpack_data2d(data2d, ivar, block, ncid, define)
+! subroutine write_block_to_filter2d(data2d, ivar, block, ncid, define)
 ! 
 ! real(r8), intent(in)    :: data2d(1-nGhost:nxPerBlock+nGhost, &
 !                                   1-nGhost:nyPerBlock+nGhost)
@@ -2179,7 +2224,7 @@ end subroutine block_to_filter_io
 ! 
 ! integer :: ib, jb
 ! integer :: starts(2)
-! character(len=*), parameter :: routine = 'unpack_data2d'
+! character(len=*), parameter :: routine = 'write_block_to_filter2d'
 ! 
 ! if (define) then
 !   
@@ -2210,7 +2255,7 @@ end subroutine block_to_filter_io
 !       nc_count=(/nxPerBlock,nyPerBlock/))
 ! end if
 ! 
-! end subroutine unpack_data2d
+! end subroutine write_block_to_filter2d
 
 !==================================================================
 
@@ -2228,10 +2273,10 @@ integer,  intent(in)    :: ncid
 
 integer :: ib, jb
 integer :: starts(3)
-character(len=*), parameter :: routine = 'unpack_data'
+character(len=*), parameter :: routine = 'write_filter_io'
 character(len=NF90_MAX_NAME) :: varname
 
-print*,'unpack_data: data3d = ',data3d(1,1,1),data3d(15,15,15)
+print*,routine,': data3d = ',data3d(1,1,1),data3d(15,15,15)
 
 write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
 
@@ -2247,9 +2292,441 @@ call nc_put_variable(ncid, varname, &
    data3d(1:nzPerBlock,1:nyPerBlock,1:nxPerBlock), &
    context=routine, nc_start=starts, &
    nc_count=(/nzPerBlock,nyPerBlock,nxPerBlock/))
-print*,'unpack_data: filled varname = ', varname 
+print*,routine,': filled varname = ', varname 
 
 end subroutine write_filter_io
+
+!==================================================================
+! Routines for dart_to_aether.
+!==================================================================
+
+! open all restart files and write out the requested data item
+
+subroutine filter_to_restarts(dirnameout, ncid, member)
+! TODO: Does filter_to_restarts need dirname and dirnameout?
+
+character(len=*), intent(in) :: dirnameout
+integer,          intent(in) :: member, ncid
+
+real(r4), allocatable :: fulldom1d(:), fulldom3d(:,:,:)
+character(len=256) :: file_root
+integer :: ivar
+
+character(len=NF90_MAX_NAME):: varname
+character(len=*), parameter :: routine = 'filter_to_restarts'
+
+! Space for full domain field (read from filter_output.nc)
+! and halo around the full domain
+allocate(fulldom3d(1:nalt, &
+                   1-nGhost:nlat+nGhost, &
+                   1-nGhost:nlon+nGhost))
+
+! get the dirname, construct the filenames inside open_block_file
+
+
+do ivar = 1, nfields_neutral
+   varname   = trim(variable_table(ivar,VT_VARNAMEINDX))
+   print*,routine,': How long is varname after assignment with trim? ',varname,' end'
+   file_root = trim(variable_table(ivar,VT_ORIGININDX))
+
+   if (file_root == 'neutrals') then
+      fulldom3d = MISSING_R4
+      call nc_get_variable(ncid, varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
+                           nc_count=(/nalt,nlat,nlon/),context=routine)
+      !? ncount not needed?  Reading the whole field.
+
+      ! Copy updated field values to full domain halo.
+      ! Block domains+halos will be easily read from this.
+      call add_halo_fulldom3d(fulldom3d)
+
+      call filter_io_to_blocks(fulldom3d, varname, file_root, member)
+   else
+      ! TODO: error; varname is inconsistent with VT_ORIGININDX
+   endif
+
+enddo
+
+do ivar = nfields_neutral+1, nfields_neutral + nfields_ion
+   varname   = trim(variable_table(ivar,VT_VARNAMEINDX))
+   file_root = trim(variable_table(ivar,VT_ORIGININDX))
+   print*,routine,': varname, fileroot = ',varname, fileroot 
+
+   if (file_root == 'ions') then
+      call nc_get_variable(ncid, varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
+                           nc_count=(/nalt,nlat,nlon/),context=routine)
+      !? ncount not needed?  Reading the whole field.
+
+      ! Copy updated field values to full domain halo.
+      ! Block domains+halos will be easily read from this.
+      call add_halo_fulldom3d(fulldom3d)
+
+      call filter_io_to_blocks(fulldom3d, varname, file_root, member)
+
+   else
+      ! TODO: error; varname is inconsistent with VT_ORIGININDX
+   endif
+enddo
+
+deallocate(fulldom3d)
+!, fulldom1d
+
+end subroutine filter_to_restarts
+
+!==================================================================
+
+subroutine add_halo_fulldom3d(fulldom3d)
+
+! Space for full domain field (read from filter_output.nc)
+! and halo around the full domain
+real(r4), intent(inout) :: fulldom3d(1:nzPerBlock,         &
+                                     1-nGhost:nlat+nGhost, &
+                                     1-nGhost:nlon+nGhost)  
+
+character(len=*), parameter :: routine = 'add_halo_fulldom3d'
+integer :: g, i,j, haflat,haflon
+real(r4), allocatable ::  normed(:,:)
+character(len=16) :: debug_format
+
+! An array for debugging by renormalizing an altitude of fulldom3d.
+allocate(normed(1-nGhost:nlat+nGhost, &
+                1-nGhost:nlon+nGhost))
+
+haflat = nlat/2
+haflon = nlon/2
+
+TODO: this is incorrect.  Some sort of interpolation is done, instead of copying values.
+      Email from Aaron should point the way.
+
+do g = 1,nGhost
+   ! left; reach around the date line.
+   !         There's no data at the ends of the halos for this copy.
+   fulldom3d  (:,1:nlat,     1-g) &
+   = fulldom3d(:,1:nlat,nlon+1-g)
+
+   ! right
+   fulldom3d  (:,1:nlat,nlon+g) &
+   = fulldom3d(:,1:nlat,g)
+
+   ! bottom; reach over the S Pole for halo values.
+   !         There is data at the ends of the halos for these.)
+
+   fulldom3d  (:,1-g ,1-nGhost       :haflon) &
+   = fulldom3d(:,  g ,1-nGhost+haflon:nlon)
+   fulldom3d  (:,1-g ,haflon+1:nlon) &
+   = fulldom3d(:,  g ,1       :haflon)
+   ! Last 2 (halo) points on the right edge (at the bottom)
+   fulldom3d  (:,1-g ,  nlon+1:  nlon+nGhost) &
+   = fulldom3d(:,  g ,haflon+1:haflon+nGhost)
+
+   ! top
+   fulldom3d  (:,nlat  +g ,1-nGhost       :haflon) &
+   = fulldom3d(:,nlat+1-g ,1-nGhost+haflon:nlon)
+   fulldom3d  (:,nlat  +g ,haflon+1:nlon) &
+   = fulldom3d(:,nlat+1-g ,1       :haflon)
+   ! Last 2 (halo) points on the right edge (at the top)
+   fulldom3d  (:,nlat  +g ,  nlon+1:  nlon+nGhost) &
+   = fulldom3d(:,nlat+1-g ,haflon+1:haflon+nGhost)
+enddo
+
+if (any(fulldom3d == MISSING_R4)) then
+   string1 = 'ERROR: some fulldom3d contain MISSING_R4 after halos'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
+
+! TODO: Keep halo corners check for future use?
+!       Then add debug conditional .  Also, more robust rescaling.
+! Debug; print the 4x4 arrays (corners & middle) 
+! to see whether values are copied correctly
+! Level 44 values range from 800-eps to 805.  I don't want to see the 80.
+! For O+ range from 0 to 7e+11, but are close to 1.1082e+10 near the corners.
+if (fulldom3d(44,10,10) > 1.e+10) then
+   normed = fulldom3d(44,:,:) - 1.1092e+10
+   debug_format = '(3(4E10.4,2X))'
+else if (fulldom3d(44,10,10) < 1000._r4) then
+   normed = fulldom3d(44,:,:) - 800._r4
+   debug_format = '(3(4F10.5,2X))'
+endif
+
+! Debug HDF5 
+print*,'normed_field(10,nlat+1,nlon+2) = ',normed(nlat+1,nlon+2)
+
+! 17 format debug_format
+print*,'top'
+do j = nlat+2,nlat-1, -1
+   write(*,debug_format) (normed(j,i),i=      -1,       2), &
+                         (normed(j,i),i=haflon-1,haflon+2), &
+                         (normed(j,i),i=  nlon-1,  nlon+2)
+enddo
+print*,'middle'
+do j = haflat+2,haflat-1, -1
+   write(*,debug_format) (normed(j,i),i=      -1,       2), &
+                         (normed(j,i),i=haflon-1,haflon+2), &
+                         (normed(j,i),i=  nlon-1,  nlon+2)
+enddo
+print*,'bottom'
+do j = 2,-1, -1
+   write(*,debug_format) (normed(j,i),i=      -1,       2), &
+                         (normed(j,i),i=haflon-1,haflon+2), &
+                         (normed(j,i),i=  nlon-1,  nlon+2)
+enddo
+
+deallocate(normed)
+
+end subroutine add_halo_fulldom3d
+
+!==================================================================
+
+! Transfer part of the full field into a block restart file.
+
+subroutine filter_io_to_blocks(fulldom3d, varname, file_root, member)
+
+real(r4), intent(in) :: fulldom3d(1:nzPerBlock,         &
+                                  1-nGhost:nlat+nGhost, &
+                                  1-nGhost:nlon+nGhost)  
+character(len=*), intent(in) :: varname
+character(len=*), intent(in) :: file_root
+integer,          intent(in) :: member
+
+! Don't collect velocity components (6 of them)
+!   real(r4) :: temp0d 
+! , temp1d(:)   ?
+! , temp4d(:,:,:,:),
+integer :: ncid_output
+integer :: ib, jb, nb
+integer :: starts(3),ends(3), xcount, ycount, zcount
+character(len=256) :: block_file
+character(len=*), parameter :: routine = 'filter_io_to_blocks'
+
+! a temp array large enough to hold any of the
+! Lon,Lat or Alt array from a block plus ghost cells
+! allocate(temp1d(1-nGhost:max(nxPerBlock,nyPerBlock,nzPerBlock)+nGhost))
+
+
+print*,routine,'; How long is varname after passing to a subroutine? ',varname,' end'
+
+zcount = nzPerBlock
+ycount = nyPerBlock + 2*nGhost
+xcount = nxPerBlock + 2*nGhost
+
+! temp array large enough to hold velocity vect, etc
+! TODO: Aether has 6 velocity components, but we're treating them
+!       as unrelated fields for reading and writing (for now).
+! maxsize = max(3, nSpecies)
+! allocate(temp4d(1-nGhost:nxPerBlock+nGhost, 1-nGhost:nyPerBlock+nGhost, &
+!    1-nGhost:nzPerBlock+nGhost, maxsize))
+
+if (debug > 0) then
+   write(string1,'(A,I0,A,I0,A)') 'Now putting the data for ',nBlocksLon, &
+        ' blocks lon by ',nBlocksLat,' blocks lat'
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+end if
+
+starts(3) = 1
+ends(3)   = nzPerBlock
+
+do jb = 1, nBlocksLat
+   starts(2) = (jb-1)*nyPerBlock - nGhost + 1
+   ends(2)   =  jb   *nyPerBlock + nGhost
+
+   do ib = 1, nBlocksLon
+      starts(1) = (ib-1)*nxPerBlock - nGhost + 1
+      ends(1)   =  ib   *nxPerBlock + nGhost
+
+      nb = (jb-1) * nBlocksLon + ib - 1
+
+      block_file = block_file_name(trim(file_root), member, nb)
+      ncid_output = open_block_file(block_file, 'readwrite')
+   
+      ! TODO: error checking; does the block file have the field in it?
+
+      print*,' '
+      print*,'block, ib, jb = ',nb, ib, jb
+      print*,'starts = ',starts
+      print*,'ends = ',ends
+      print*,'counts = ',xcount,ycount,zcount
+
+
+      call nc_put_variable(ncid_output, trim(varname), &
+           fulldom3d(starts(3):ends(3), starts(2):ends(2), starts(1):ends(1)), &
+           context=routine, nc_count=(/zcount,ycount,xcount/) )
+
+      call nc_close_file(ncid_output)
+
+   enddo
+enddo
+
+! !print *, 'reading in temp4d for ivel'
+! read(iunit) temp4d(:,:,:,1:3)
+! call get_index_from_gitm_varname('IVelocity', inum, ivals)
+! if (inum > 0) then
+!    ! one or more items in the state vector need to replace the
+!    ! data in the output file.  loop over the index list in order.
+!    j = 1
+!    do i = 1, 3
+!       if (j <= inum) then
+!          if (i == gitmvar(ivals(j))%gitm_index) then
+!             print *,'now writing:',trim(gitmvar(ivals(j))%varname)
+!             ! read from input but write from state vector
+!             data3d = temp4d(:,:,:,i)
+!             call read_filter_io_block(ncid, ivals(j), block, data3d)
+!             temp4d(:,:,:,i) = data3d
+!             j = j + 1
+!          endif
+!       endif
+!    enddo
+! endif
+! write(ounit) temp4d(:,:,:,1:3)
+! 
+! !alex begin: added f107 and Rho to the restart files:
+! read(iunit) temp0d
+! data0d = temp0d
+! call get_index_from_gitm_varname('f107', inum, ivals)
+! if (inum > 0) then
+!    call read_filter_io_block0d(ncid, ivals(1), data0d)
+!    if (data0d < 0.0_r8) data0d = 60.0_r8 !alex
+!    write(ounit) data0d
+! else
+!    write(ounit) temp0d
+! endif
+
+end subroutine filter_io_to_blocks
+
+!==================================================================
+
+! put the state vector data into a 3d array
+
+subroutine read_filter_io_block(ncid, ivar, block, data3d)
+
+integer,  intent(in)    :: ncid
+integer,  intent(in)    :: ivar         ! index into state structure
+integer,  intent(in)    :: block(2)
+real(r8), intent(inout) :: data3d(1:nzPerBlock,                  &
+                                  1-nGhost:nxPerBlock+nGhost, &
+                                  1-nGhost:nyPerblock+nGhost)
+integer :: ib, jb
+integer :: starts(3)
+integer :: ends(3)
+integer :: local_starts(3)
+integer :: local_ends(3)
+integer :: counts(3)
+integer :: maxvals(3)
+integer :: i, j
+
+character(len=*), parameter :: routine = 'read_filter_io_block'
+character(len=NF90_MAX_NAME) :: varname
+ 
+write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+
+ib = block(1)
+jb = block(2)
+
+! to compute the start, consider (ib-1)*nxPerBlock+1
+starts(1) = (ib-1)*nxPerBlock + 1 - nGhost
+  ends(1) =     ib*nxPerBlock +     nGhost
+starts(2) = (jb-1)*nyPerBlock + 1 - nGhost
+  ends(2) =     jb*nyPerBlock +     nGhost
+starts(3) = 0                 + 1
+  ends(3) = nzPerBlock
+
+maxvals = (/nlon,nlat,nalt/)
+
+! KDR It looks like blocks bordering the dateline do not have halos on the dateline edge.
+do i=1,2
+   if (starts(i) < 1) then
+      starts(i)       = 1
+      local_starts(i) = 1
+   else
+      local_starts(i) = 1-nGhost
+   end if
+end do
+local_starts(3) = 1
+
+do i=1,3
+   if (ends(i) > maxvals(i)) then
+      ends(i)         = maxvals(i)
+   end if
+end do
+
+counts = ends-starts+1
+
+local_ends = local_starts + counts - 1
+
+if (debug > 10) then
+   if (ivar == 1) then
+      write(string1,'(12(A,I0),A)') 'Now reading netCDF indices (',starts(1),':',ends(1),') and (',starts(2),':',ends(2),') ' // &
+         'in the block (',ib,',',jb,') for local (',local_starts(1),':',local_ends(1),') and (',&
+         local_starts(2),':',local_ends(2),') for size (',counts(1),',',counts(2),')'
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   end if
+end if
+
+if (debug > 200) then
+   ! KDR; in GITM this assumed this is being called to "pack" the dimensions
+   !      and the user wanted to see level 3 of ivar=3 (Altitude) (?).
+   !      This is upgraded to explicitly check for the variable name.
+   !      Untested.
+   if (varname == 'Altitude') then
+      print *,'before reading:'
+      do i=1-nGhost,nxPerBlock+nGhost
+         do j=1-nGhost,nyPerBlock+nGhost
+            write(*,'(A,A,I0,A,I0,A,F8.3)') trim(varname), &
+               ' at level 3 (',i,',',j,'): ',data3D(3,j,i)
+         end do
+      end do
+   end if
+end if
+
+! KDR starts and ends include the halo.  
+!     Halos were not written explicitly to the DART netcdf file
+!     but the data is there; a complete state vector, 
+!     so we can grab halos and central subdomains from it.
+call nc_get_variable(ncid, varname, &
+      data3d(local_starts(3):local_ends(3), &
+             local_starts(2):local_ends(2), &
+             local_starts(1):local_ends(1)), &
+      context="read_filter_io_block", nc_start=starts, nc_count=counts)
+
+if (debug > 200) then
+   if (varname == 'Altitude') then
+      print *,'after reading:'
+      do i=1-nGhost,nxPerBlock+nGhost
+         do j=1-nGhost,nyPerBlock+nGhost
+            write(*,'(A,A,I0,A,I0,A,F8.3)') trim(varname), &
+               ' at level 3 (',i,',',j,'): ',data3D(3,j,i)
+         end do
+      end do
+   end if
+end if
+
+end subroutine read_filter_io_block
+
+
+!==================================================================
+
+!> put the f107 estimate (scalar) from the statevector into a 0d container
+!> the only trick this routine does is give all blocks the same f107 (the
+!> f107 value from block 1 state vector goes to block 1,2,3,4 restart files)
+!> so no matter what, always grab the f107 from block 1 (manipulate
+!> the block variable).
+!> written by alex
+
+subroutine read_filter_io_block0d(ncid, ivar, data0d)
+
+integer,  intent(in)    :: ncid
+integer,  intent(in)    :: ivar         ! index into state structure
+real(r8), intent(inout) :: data0d
+
+character(len=NF90_MAX_NAME) :: varname
+ 
+write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+
+call nc_get_variable(ncid, varname, data0d,&
+   context="read_filter_io_block0d")
+
+end subroutine read_filter_io_block0d
+
+
+!==================================================================
 
 
 !==================================================================
