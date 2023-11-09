@@ -23,10 +23,10 @@ inputs:
     required: false
     default: ''
   use-mpi:
-    description: 'specify whether to run program with MPI or not'
-    type: boolean
+    description: 'specify whether to run program without MPI, with MPI, or with MPIF08'
+    type: string
     required: true
-    default: true
+    default: mpi
   mpi-n-tasks:
     description: 'specify number of mpi tasks to run with program if mpi is used'
     type: number
@@ -44,21 +44,40 @@ runs:
         echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
       shell: bash
     # Steps to compile and build model
-    - name: Building ${{ inputs.model }} model
+    - name: Building ${{ inputs.model }} model (use-mpi=nompi)
+      if: ${{ inputs.use-mpi == 'nompi' }}
+      run: |
+        cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
+        ./quickbuild.sh nompi
+      shell: bash
+    - name: Building ${{ inputs.model }} model (use-mpi=mpi)
+      if: ${{ inputs.use-mpi == 'mpi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
         ./quickbuild.sh
       shell: bash
+    - name: Building ${{ inputs.model }} model (use-mpi=mpif08)
+      if: ${{ inputs.use-mpi == 'mpif08' }}
+      run: |
+        cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
+        ./quickbuild.sh mpif08
+      shell: bash
     # Steps to run the specified run-program with mpi options
-    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=true)
-      if: ${{ inputs.use-mpi }} 
+    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=nompi)
+      if: ${{ inputs.use-mpi == 'nompi' }}
+      run: |
+        cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
+        ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
+      shell: bash
+    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=mpi)
+      if: ${{ inputs.use-mpi == 'mpi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
         mpirun -n ${{ inputs.mpi-n-tasks }} --allow-run-as-root ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
       shell: bash
-    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=false)
-      if: ${{ !inputs.use-mpi }}
+    - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=mpif08)
+      if: ${{ inputs.use-mpi == 'mpif08' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
-        ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
+        mpirun -n ${{ inputs.mpi-n-tasks }} --allow-run-as-root ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
       shell: bash

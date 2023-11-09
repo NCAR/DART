@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 9 2023 :: Github Actions MPIf08 Check. Tag v10.9.1**
+
+- Adds a new check to the Github Actions workflow that uses the
+  mpif08 module (compiles with ./quickbuild mpif08 and runs
+  filter on 2 mpi tasks with the lorenz_96 model).
+
 **November 7 2023 :: MPI f08 quickbuild option. Tag v10.9.0**
 
 - quickbuild.sh mpif08 option to build using the mpi_f08 module
