@@ -148,7 +148,7 @@
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'none'
+   write_nml   = 'file'
    /
 
 &preprocess_nml

@@ -11,7 +11,7 @@ caseroot=$1
 dart_build_dir=/glade/derecho/scratch/hkershaw/MOM6/DART/models/MOM6/work
 comp_name=OCN
 obs_dir=/glade/p/cisl/dares/Observations/WOD13
-ntasks=512  # should pull this from CIME
+ntasks=1152  # should pull this from CIME
 
 echo "DART dart_build_dir" $dart_build_dir
 
@@ -130,7 +130,7 @@ setup_template_files() {
 
 ln -sf $(head -1 filter_input_list.txt) mom6.r.nc
 
-ln -sf $(ls $case.mom6.static* | head -1) mom6.static.nc
+ln -sf $(ls $case.mom6.h.static* | head -1) mom6.static.nc
 }
 
 #-------------------------------
@@ -162,6 +162,7 @@ date_stamp_output() {
 
 mv obs_seq.final "$case".obs_seq.final.${YYYYMMDD}
 mv dart_log.out "$case".dart_log.out.${YYYYMMDD}
+mv dart_log.nml "$case".dart_log.nml.${YYYYMMDD}
 
 # possible dart output files:
 netcdf=(\
