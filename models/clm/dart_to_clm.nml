@@ -6,6 +6,8 @@
    repartition_vhist_file = 'clm_vector_history.nc'
    repartition_analysis_file = 'dart_posterior_vector.nc'
    history_update = 0
+   history_file            = 'clm_history.nc'
+   history_analysis_file   = 'dart_posterior_history.nc'
    verbose                 = 0
    /
 
