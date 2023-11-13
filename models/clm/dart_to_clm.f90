@@ -79,6 +79,8 @@ integer            :: repartition_swe = 0
 character(len=256) :: repartition_vhist_file = 'clm_vector_history.nc'
 character(len=256) :: repartition_analysis_file = 'dart_posterior_vector.nc'
 integer            :: history_update = 0
+character(len=256) :: history_file = 'clm_history.nc'
+character(len=256) :: history_analysis_file = 'dart_posterior_history.nc'
 integer            :: verbose = 0
 
 namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
@@ -87,13 +89,15 @@ namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
                            repartition_vhist_file, &
                            repartition_analysis_file, &
                            history_update, &
+                           history_file, &
+                           history_analysis_file, &
                            verbose
 
 !----------------------------------------------------------------------
 
 integer            :: iunit, io, dom_restart, dom_history, ivar, rank, irank
 integer            :: nlevsno, ICE_varsize(2)
-integer            :: ncid_dart, ncid_clm
+integer            :: ncid_dart, ncid_clm, ncid_dart_hist, ncid_clm_hist
 type(time_type)    :: dart_time, clm_time
 
 character(len=512) :: string1, string2, string3
@@ -205,26 +209,97 @@ enddo UPDATE
 
   endif
 
- ! Default is for history files not to be updated, 
- ! but there are rare cases when updating history variables is useful.
- ! This allows for the manual selection of history variable update
+call nc_close_file(ncid_clm,  source)
+call nc_close_file(ncid_dart, source)
+
+! BMR
+
+ write(string1,*)'restart ncid_dart: ', ncid_dart
+ call error_handler(E_MSG, source, string1, source)
+  
+ write(string1,*)'restart ncid_clm: ', ncid_clm
+ call error_handler(E_MSG, source, string1, source)
+
+
+
+! Default is for history files not to be updated, 
+! but there are rare cases when updating history variables is useful.
+! This allows for the manual selection of history variable updates.
+
+  
+if (history_update > 0) then
 
 dom_history = 2
+ncid_dart_hist = nc_open_file_readonly( history_analysis_file,  'opening to read posterior')
+ncid_clm_hist  = nc_open_file_readwrite(history_file,           'opening to write history')
+
+write(string1,*)'reading updated values from DART history file "'//trim(history_analysis_file)//'"'
+write(string2,*)'and writing to CLM history file "'//trim(history_file)//'"'
+call error_handler(E_MSG,source,string1,text2=string2)
 
 UPDATE2 : do ivar=1, get_num_variables(dom_history) 
 
-  if (history_update > 0) then
-
    varname = get_variable_name(dom_history,ivar)
+   
+   ! BMR   
+   write(string1,*)'Entered History UPDATE, current varname: ', varname
+   call error_handler(E_MSG, source, string1, source)
+
+   write(string1,*)'Current ncid_dart: ', ncid_dart
+   call error_handler(E_MSG, source, string1, source)
+
+   write(string1,*)'Current ncid_clm: ', ncid_clm
+   call error_handler(E_MSG, source, string1, source)
+
+     write(string1,*)'Current ncid_dart_hist: ', ncid_dart_hist
+   call error_handler(E_MSG, source, string1, source)
+
+   write(string1,*)'Current ncid_clm_hist: ', ncid_clm_hist
+   call error_handler(E_MSG, source, string1, source)
+
+
    select case (varname)
       case ('GPP')
+
+           ! BMR   
+           write(string1,*)'Entered case GPP, current varname: ', varname
+           call error_handler(E_MSG, source, string1, source)
+
+               
+
                rank = get_num_dims(dom_history,ivar)
 
-             if (rank == 1) then
-                 call replace_values_1D(dom_history, ivar, ncid_dart, ncid_clm)
+           ! BMR   
+           write(string1,*)'Past get_num_dims rank call '
+           call error_handler(E_MSG, source, string1, source)         
 
+             if (rank == 1) then
+
+             ! BMR   
+             write(string1,*)'Entered rank 1 '
+             call error_handler(E_MSG, source, string1, source)
+
+                 call replace_values_1D(dom_history, ivar, ncid_dart_hist, ncid_clm_hist)
+                
              elseif (rank == 2) then
-                   call replace_values_2D(dom_history, ivar, ncid_dart, ncid_clm)
+             
+             ! BMR
+             write(string1,*)'Entered rank 2 '
+             call error_handler(E_MSG, source, string1, source)
+            
+             write(string1,*)'replace_values_2D variable dom_history: ',dom_history
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_2D variable ivar:  ', ivar
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_2D variable ncid_dart_hist:  ', ncid_dart_hist
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_2D variable ncid_clm_hist:  ', ncid_clm_hist
+             call error_handler(E_MSG, source, string1, source)
+
+                   call replace_values_2D(dom_history, ivar, ncid_dart_hist, ncid_clm_hist)
 
             else
                 write(string1, *) 'no support for data array of dimension ', rank
@@ -234,14 +309,13 @@ UPDATE2 : do ivar=1, get_num_variables(dom_history)
      case default
       ! do nothing -- do not update this history variable
    end select
-   endif
   
 enddo UPDATE2
+endif
 
 
-
-call nc_close_file(ncid_clm,  source)
-call nc_close_file(ncid_dart, source)
+call nc_close_file(ncid_clm_hist,  source)
+call nc_close_file(ncid_dart_hist, source)
 
 ! Log what we think we're doing, and exit.
 
@@ -330,6 +404,15 @@ if (get_has_missing_value(dom_id,ivar)) call get_missing_value(dom_id,ivar,speci
 if (get_has_missing_value(dom_id,ivar)) call get_FillValue(    dom_id,ivar,special)
 
 ! Make sure variables in both files are identical in shape, etc.
+ 
+ ! BMR
+ write(string1,*)'Compatible_Variables variable varname:  ', varname
+ call error_handler(E_MSG, source, string1, source)
+
+ write(string1,*)'Compatible_Variables variable varsize:  ', varsize
+ call error_handler(E_MSG, source, string1, source)
+
+
 call Compatible_Variables(varname, ncid_dart, ncid_clm, varsize)
 
 allocate(dart_array(varsize(1),varsize(2)), clm_array(varsize(1),varsize(2)))

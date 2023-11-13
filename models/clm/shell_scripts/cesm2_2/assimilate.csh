@@ -4,14 +4,12 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# This script performs an assimilation by directly reading and writing to
-# the CLM restart file.
+# The default behavior of this script performs an assimilation by
+# reading and writing to the CLM restart file.
 #
-# NOTE: 'dart_to_clm' does not currently support updating the 
-# prognostic snow variables based on posterior SWE values.
-# Consequently, snow DA is not currently supported.
-# Implementing snow DA is high on our list of priorities. 
-
+# The CLM history file can also be written to through the dart_to_clm
+# namelist option history_update
+#
 #=========================================================================
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
@@ -329,16 +327,20 @@ echo "`date` -- END FILTER"
 #=========================================================================
 # Block 7: Put the DART posterior into the CLM restart file. The CLM
 # restart file is also the prior for the next forecast.
+# Optional to put DART posterior into the CLM history file.
 #=========================================================================
 # Unlink any potentially pre-existing links
 unlink clm_restart.nc
 unlink dart_posterior.nc
 
-# Identify if SWE re-partitioning is necessary
+# Identify if SWE re-partitioning or history updates are on
 set  REPARTITION = `grep repartition_swe input.nml`
 set  REPARTITION = `echo $REPARTITION | sed -e "s/repartition_swe//g"`
 set  REPARTITION = `echo $REPARTITION | sed -e "s/=//g"`
 
+set  HISTORY = `grep history_update input.nml`
+set  HISTORY = `echo $HISTORY | sed -e "s/history_update//g"`
+set  HISTORY = `echo $HISTORY | sed -e "s/=//g"`
 
 if ($REPARTITION != 0) then
 unlink clm_vector_history   
@@ -354,7 +356,7 @@ unlink clm_vector_history
      # Confirm that H2OSNO prior/posterior files exist
 
      if (! -e $POSTERIOR_VECTOR || ! -e $CLM_VECTOR) then
-        echo "ERROR: assimilate.csh could not find $POSTERIOR_VECTOR or $CLM_VECTOR"
+        echo "ERROR: assimilate.csh could not find either $POSTERIOR_VECTOR or $CLM_VECTOR"
         echo "When SWE re-partitioning is enabled H2OSNO must be"
         echo "within vector history file (h2). Also the analysis"
         echo "stage must be output in 'stages_to_write' within filter_nml"
@@ -366,6 +368,29 @@ unlink clm_vector_history
      ${LINK} $RESTART   clm_restart.nc
      ${LINK} $CLM_VECTOR   clm_vector_history.nc
 
+     if ($HISTORY != 0) then
+
+        unlink clm_history.nc
+
+        set POSTERIOR_HISTORY = `printf analysis_member_00%02d_d02.nc $enscount`
+        set CLM_HISTORY        = `printf ${CASE}.clm2_00%02d.h0.${LND_DATE_EXT}.nc $enscount`
+
+        # Confirm the necessary history files exist
+
+        if (! -e $POSTERIOR_HISTORY || ! -e $CLM_HISTORY) then
+           echo "ERROR: assimilate.csh could not find either $POSTERIOR_HISTORY or $CLM_HISTORY"
+           echo "When the history_update is enabled the history file (h0)"
+           echo "must exist for each assimilation time step.  Also the analysis"
+           echo "stage must be output in 'stages_to_write' within filter_nml"
+           exit 8
+        endif
+
+        ${LINK} $POSTERIOR_HISTORY  dart_posterior_history.nc
+        ${LINK} $CLM_HISTORY   clm_history.nc
+
+     endif
+      
+     
      ${EXEROOT}/dart_to_clm >& /dev/null
 
      if ($status != 0) then
@@ -378,18 +403,49 @@ unlink clm_vector_history
 
              unlink $LIST
      end
+     
+     if ($HISTORY != 0) then
+        unlink dart_history_posterior.nc
+        unlink clm_history.nc
+     endif
+
      @ enscount ++
   end
-
+  
 
 else
 
-foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
+@ enscount = 1
 
+foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
+   
    set POSTERIOR = `echo $RESTART | sed -e "s/${CASE}.//"`
 
    ${LINK} $POSTERIOR dart_posterior.nc
    ${LINK} $RESTART   clm_restart.nc
+
+   
+   if ($HISTORY != 0) then
+ 
+      unlink clm_history.nc
+
+      set POSTERIOR_HISTORY = `printf analysis_member_00%02d_d02.nc $enscount`
+      set CLM_HISTORY        = `printf ${CASE}.clm2_00%02d.h0.${LND_DATE_EXT}.nc $enscount`
+
+      # Confirm the necessary history files exist
+
+      if (! -e $POSTERIOR_HISTORY || ! -e $CLM_HISTORY) then
+         echo "ERROR: assimilate.csh could not find either $POSTERIOR_HISTORY or $CLM_HISTORY"
+         echo "When the history_update is enabled the history file (h0)"
+         echo "must exist for each assimilation time step.  Also the analysis"
+         echo "stage must be output in 'stages_to_write' within filter_nml"
+         exit 8
+      endif
+
+      ${LINK} $POSTERIOR_HISTORY  dart_posterior_history.nc
+      ${LINK} $CLM_HISTORY   clm_history.nc
+
+   endif
 
    ${EXEROOT}/dart_to_clm >& /dev/null
 
@@ -400,9 +456,17 @@ foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
 
    unlink dart_posterior.nc
    unlink clm_restart.nc
+
+   if ($HISTORY != 0) then
+      unlink dart_posterior_history.nc
+      unlink clm_history.nc
+   end
+@ enscount ++
 end
 
 endif
+
+
 
 # Remove the copies that we no longer need. The posterior values are
 # in the DART diagnostic files for the appropriate 'stage'.
