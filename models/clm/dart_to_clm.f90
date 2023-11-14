@@ -43,7 +43,7 @@ use time_manager_mod, only : time_type, print_time, print_date, operator(/=)
 use        model_mod, only : static_init_model, read_model_time
 
 use   state_structure_mod, only : get_num_variables, &
-                                  get_num_dims, get_dim_name,         &
+                                  get_num_dims, get_io_num_dims, get_dim_name, &
                                   get_dim_length, get_variable_name,  &
                                   do_io_update, get_variable_size,    &
                                   get_model_variable_indices,         &
@@ -212,15 +212,6 @@ enddo UPDATE
 call nc_close_file(ncid_clm,  source)
 call nc_close_file(ncid_dart, source)
 
-! BMR
-
- write(string1,*)'restart ncid_dart: ', ncid_dart
- call error_handler(E_MSG, source, string1, source)
-  
- write(string1,*)'restart ncid_clm: ', ncid_clm
- call error_handler(E_MSG, source, string1, source)
-
-
 
 ! Default is for history files not to be updated, 
 ! but there are rare cases when updating history variables is useful.
@@ -241,65 +232,39 @@ UPDATE2 : do ivar=1, get_num_variables(dom_history)
 
    varname = get_variable_name(dom_history,ivar)
    
-   ! BMR   
-   write(string1,*)'Entered History UPDATE, current varname: ', varname
-   call error_handler(E_MSG, source, string1, source)
-
-   write(string1,*)'Current ncid_dart: ', ncid_dart
-   call error_handler(E_MSG, source, string1, source)
-
-   write(string1,*)'Current ncid_clm: ', ncid_clm
-   call error_handler(E_MSG, source, string1, source)
-
-     write(string1,*)'Current ncid_dart_hist: ', ncid_dart_hist
-   call error_handler(E_MSG, source, string1, source)
-
-   write(string1,*)'Current ncid_clm_hist: ', ncid_clm_hist
-   call error_handler(E_MSG, source, string1, source)
-
-
    select case (varname)
       case ('GPP')
 
-           ! BMR   
-           write(string1,*)'Entered case GPP, current varname: ', varname
-           call error_handler(E_MSG, source, string1, source)
-
-               
-
-               rank = get_num_dims(dom_history,ivar)
-
-           ! BMR   
-           write(string1,*)'Past get_num_dims rank call '
-           call error_handler(E_MSG, source, string1, source)         
+               rank = get_io_num_dims(dom_history,ivar)
 
              if (rank == 1) then
-
-             ! BMR   
-             write(string1,*)'Entered rank 1 '
-             call error_handler(E_MSG, source, string1, source)
 
                  call replace_values_1D(dom_history, ivar, ncid_dart_hist, ncid_clm_hist)
                 
              elseif (rank == 2) then
              
-             ! BMR
-             write(string1,*)'Entered rank 2 '
-             call error_handler(E_MSG, source, string1, source)
-            
-             write(string1,*)'replace_values_2D variable dom_history: ',dom_history
-             call error_handler(E_MSG, source, string1, source)
-
-             write(string1,*)'replace_values_2D variable ivar:  ', ivar
-             call error_handler(E_MSG, source, string1, source)
-
-             write(string1,*)'replace_values_2D variable ncid_dart_hist:  ', ncid_dart_hist
-             call error_handler(E_MSG, source, string1, source)
-
-             write(string1,*)'replace_values_2D variable ncid_clm_hist:  ', ncid_clm_hist
-             call error_handler(E_MSG, source, string1, source)
-
                    call replace_values_2D(dom_history, ivar, ncid_dart_hist, ncid_clm_hist)
+             
+             elseif (rank == 3) then
+
+             ! BMR
+             write(string1,*)'Entered rank 3 '
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_3D variable dom_history: ',dom_history
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_3D variable ivar:  ', ivar
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_3D variable ncid_dart_hist:  ', ncid_dart_hist
+             call error_handler(E_MSG, source, string1, source)
+
+             write(string1,*)'replace_values_3D variable ncid_clm_hist:  ', ncid_clm_hist
+             call error_handler(E_MSG, source, string1, source)
+
+                   call replace_values_3D(dom_history, ivar, ncid_dart_hist, ncid_clm_hist)
+
 
             else
                 write(string1, *) 'no support for data array of dimension ', rank
@@ -405,14 +370,6 @@ if (get_has_missing_value(dom_id,ivar)) call get_FillValue(    dom_id,ivar,speci
 
 ! Make sure variables in both files are identical in shape, etc.
  
- ! BMR
- write(string1,*)'Compatible_Variables variable varname:  ', varname
- call error_handler(E_MSG, source, string1, source)
-
- write(string1,*)'Compatible_Variables variable varsize:  ', varsize
- call error_handler(E_MSG, source, string1, source)
-
-
 call Compatible_Variables(varname, ncid_dart, ncid_clm, varsize)
 
 allocate(dart_array(varsize(1),varsize(2)), clm_array(varsize(1),varsize(2)))
@@ -427,6 +384,62 @@ call nc_put_variable(ncid_clm, varname, clm_array, routine)
 deallocate(dart_array, clm_array)
 
 end subroutine replace_values_2D
+
+
+!------------------------------------------------------------------
+!>
+!> The DART posterior has had all the DART MISSING_R8 values replaced by
+!> the CLM declared '_FillValue' and the clamping values have been honored. 
+!> Get the 'original' variable from the netcdf file.
+
+subroutine replace_values_3D(dom_id, ivar, ncid_dart, ncid_clm)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: ivar
+integer, intent(in) :: ncid_dart
+integer, intent(in) :: ncid_clm
+
+character(len=*), parameter :: routine = 'replace_values_3D'
+
+character(len=NF90_MAX_NAME) :: varname
+real(r8), allocatable :: dart_array(:,:,:)
+real(r8), allocatable :: clm_array(:,:,:)
+real(r8) :: special
+integer  :: varsize(3)
+
+varname = get_variable_name(dom_id,ivar)
+
+! If it has both, the core DART routines have already made sure they are identical
+! The problem here is that if only the missing_value -or- FillValue is used, the
+! other may have a bogus value. We only have one logical query routine.  
+if (get_has_missing_value(dom_id,ivar)) call get_missing_value(dom_id,ivar,special)
+if (get_has_missing_value(dom_id,ivar)) call get_FillValue(    dom_id,ivar,special)
+
+! Make sure variables in both files are identical in shape, etc.
+
+ ! BMR
+ write(string1,*)'Compatible_Variables variable varname:  ', varname
+ call error_handler(E_MSG, source, string1, source)
+
+
+call Compatible_Variables(varname, ncid_dart, ncid_clm, varsize)
+
+ write(string1,*)'Compatible_Variables variable varsize:  ', varsize
+ call error_handler(E_MSG, source, string1, source)
+
+
+allocate(dart_array(varsize(1),varsize(2),varsize(3)), clm_array(varsize(1),varsize(2),varsize(3)))
+
+call nc_get_variable(ncid_clm,  varname,  clm_array)
+call nc_get_variable(ncid_dart, varname, dart_array)
+
+where(dart_array /= special) clm_array = dart_array
+
+call nc_put_variable(ncid_clm, varname, clm_array, routine)
+
+deallocate(dart_array, clm_array)
+
+end subroutine replace_values_3D
 
 !------------------------------------------------------------------
 
