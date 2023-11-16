@@ -276,11 +276,11 @@ UPDATE2 : do ivar=1, get_num_variables(dom_history)
    end select
   
 enddo UPDATE2
-endif
-
 
 call nc_close_file(ncid_clm_hist,  source)
 call nc_close_file(ncid_dart_hist, source)
+
+endif
 
 ! Log what we think we're doing, and exit.
 
