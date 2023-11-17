@@ -151,6 +151,11 @@ set     LND_RESTART_FILENAME = ${CASE}.clm2_0001.r.${LND_DATE_EXT}.nc
 set     LND_HISTORY_FILENAME = ${CASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
 set LND_VEC_HISTORY_FILENAME = ${CASE}.clm2_0001.h2.${LND_DATE_EXT}.nc
 
+# BMR troubleshooting.  Archiving original restart and history files
+
+${COPY} ${LND_RESTART_FILENAME} ${LND_RESTART_FILENAME}.original
+${COPY} ${LND_HISTORY_FILENAME} ${LND_HISTORY_FILENAME}.original
+
 # remove any potentially pre-existing links
 unlink clm_restart.nc
 unlink clm_history.nc
@@ -460,7 +465,7 @@ foreach RESTART ( ${CASE}.clm2_*.r.${LND_DATE_EXT}.nc )
    if ($HISTORY != 0) then
       unlink dart_posterior_history.nc
       unlink clm_history.nc
-   end
+   endif
 @ enscount ++
 end
 

@@ -93,6 +93,9 @@
    repartition_swe         = 0
    repartition_vhist_file = 'clm_vector_history.nc'
    repartition_analysis_file = 'dart_posterior_vector.nc'
+   history_update          = 1
+   history_file            = 'clm_history.nc'
+   history_analysis_file   = 'dart_posterior_history.nc'
    verbose                 = 0
    /
 
@@ -210,14 +213,14 @@
    assimilation_period_seconds  = 3600
    calendar                     = 'Gregorian'
    debug                        = 0
-   clm_variables  = 'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                    'frac_sno',    'QTY_SNOWCOVER_FRAC',         '0.0', '1.', 'restart' , 'NO_COPY_BACK',
-                    'SNOW_DEPTH',  'QTY_SNOW_THICKNESS',         '0.0', 'NA', 'restart' , 'NO_COPY_BACK',
-                    'H2OSOI_LIQ',  'QTY_SOIL_LIQUID_WATER',      '0.0', 'NA', 'restart' , 'UPDATE',
-                    'H2OSOI_ICE',  'QTY_SOIL_ICE',               '0.0', 'NA', 'restart' , 'UPDATE',
-                    'T_SOISNO',    'QTY_TEMPERATURE',            '0.0', 'NA', 'restart' , 'UPDATE',
-                    'livestemc',   'QTY_LIVE_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
-                    'deadstemc',   'QTY_DEAD_STEM_CARBON',       '0.0', 'NA', 'restart' , 'UPDATE',
+   clm_variables  = 'leafc',       'QTY_LEAF_CARBON',             '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frac_sno',    'QTY_SNOWCOVER_FRAC',          '0.0', '1.', 'restart' , 'NO_COPY_BACK',
+                    'SNOW_DEPTH',  'QTY_SNOW_THICKNESS',          '0.0', 'NA', 'restart' , 'NO_COPY_BACK',
+                    'H2OSOI_LIQ',  'QTY_SOIL_LIQUID_WATER',       '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_ICE',  'QTY_SOIL_ICE',                '0.0', 'NA', 'restart' , 'UPDATE',
+                    'T_SOISNO',    'QTY_TEMPERATURE',             '0.0', 'NA', 'restart' , 'UPDATE',
+                    'livestemc',   'QTY_LIVE_STEM_CARBON',        '0.0', 'NA', 'restart' , 'UPDATE',
+                    'deadstemc',   'QTY_DEAD_STEM_CARBON',        '0.0', 'NA', 'restart' , 'UPDATE',
                     'NEP',         'QTY_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
                     'H2OSOI',      'QTY_SOIL_MOISTURE',          '0.0', 'NA', 'history' , 'NO_COPY_BACK',
                     'SMINN_vr',    'QTY_SOIL_MINERAL_NITROGEN',  '0.0', 'NA', 'history' , 'NO_COPY_BACK',
