@@ -1,5 +1,32 @@
 &aether_to_dart_nml
-   aether_restart_input_dirname = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   aether_restart_dirname = 
+      '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1'
    aether_to_dart_output_file = 'filter_input.nc'
+   variables = 
+     'Temperature',    'QTY_TEMPERATURE',       '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'O+',    
+        'QTY_DENSITY_ION_OP',  'NA', 'NA', 'ions', 'UPDATE'
+     'Temperature\ \(O+\)',                             
+        'QTY_TEMPERATURE_ION', 'NA', 'NA', 'ions', 'UPDATE',
+     'Parallel\ Ion\ Velocity\ \(Zonal\)\ \(O+\)', 
+        'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
+     'Parallel\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+        'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
+     'Parallel\ Ion\ Velocity\ \(Vertical\)\ \(O+\)',   
+        'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE',
+     'Perp.\ Ion\ Velocity\ \(Zonal\)\ \(O+\)',  
+        'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
+     'Perp.\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+        'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
+     'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
+        'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
    /
-
+ 
+! TODO: Or could use these.  What's the difference?
+! Would it be useful to use 1 type for Parallel and the other for Perp.?
+      QTY_VELOCITY_U 
+      QTY_VELOCITY_V 
+      QTY_VELOCITY_W 
+      QTY_VERTICAL_VELOCITY
+      ...

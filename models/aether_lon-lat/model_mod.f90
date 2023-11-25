@@ -1,7 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
 
 ! This module was copied from models/tiegcm 
 ! but has restart reading and writing routines from ../gitm,
@@ -14,6 +13,12 @@
 ! The model_mod.nml initially has the namelists from both tiegcm and gitm.
 ! Parts of both may be useful and will be merged into a new aether_lon-lat nml.
 
+! The module is organized into sections:
+! Routines in this section (down to "private") are public.
+! Routines below here are private to the module
+! Routines for initialization.
+! Routines for aether_to_dart.
+! Routines for dart_to_aether.
 
 module model_mod
 
@@ -155,7 +160,7 @@ character(len=128), parameter :: revdate  = ''
 character(len=256) :: filter_io_dir = '.'
 ! TODO; remove GITM namelist vars
 ! TODO: if filter_io_filename is in global storage it doesn't need to be in (some?) arg lists.
-character(len=256) :: filter_io_filename = 'no_file_specified.nc'
+character(len=256) :: filter_io_filename = 'filter_input_0001.nc'
 integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
 character(len=256) :: f10_7_file_name = 'f10_7.nc'
@@ -187,6 +192,19 @@ namelist /model_nml/ filter_io_dir, &
                      f10_7_file_name, calendar, assimilation_period_seconds, &
                      model_res
                      
+!-----------------------------------------------------------------------
+! aether_to_dart namelist parameters with default values.
+!-----------------------------------------------------------------------
+
+character(len=256) :: aether_restart_dirname    = 'none'
+! TODO: the calling script will need to move this to a name with $member in it,
+!       or use filter_nml:input_state_file_list
+! TODO: Create the filter filename from filter_root, as in dart_to_aether.
+character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
+
+namelist /aether_to_dart_nml/ aether_restart_dirname,        &
+                              aether_to_dart_output_file, variables
+
 !-------------------------------------------------------------------------------
 ! define model parameters for creating the state NetCDF file 
 ! and handling interpolation, get_close, ...
@@ -213,7 +231,7 @@ integer, parameter :: VT_MAXVALINDX   = 4 ! maximum value if any
 integer, parameter :: VT_ORIGININDX   = 5 ! file of origin
 integer, parameter :: VT_STATEINDX    = 6 ! update (state) or not
 
-character(len=obstypelength) :: variable_table(MAX_NUM_VARIABLES, MAX_NUM_COLUMNS)
+character(len=64) :: variable_table(MAX_NUM_VARIABLES, MAX_NUM_COLUMNS)
 
 type(time_type) :: state_time ! module-storage declaration of current model time
 
@@ -308,7 +326,7 @@ allocate(alts(nalt))
 
 !---------------------------------------------------------------
 ! get grid dimensions and values
-call get_grid_from_netcdf(filter_io_filename, lons, lats, alts)
+call get_grid_from_netcdf(lons, lats, alts)
 
 !---------------------------------------------------------------
 
@@ -411,11 +429,9 @@ end function block_file_name
 !> is orthogonal and rectangular but can have irregular spacing along
 !> any or all of the three dimensions.
 
-subroutine restart_files_to_netcdf(restart_dirname, member, filter_io_file)
+subroutine restart_files_to_netcdf(member)
 
 ! TODO: Does restart_files_to_netcdf need restart_dir?
-character(len=*), intent(in)  :: restart_dirname
-character(len=*), intent(in)  :: filter_io_file
 integer, intent(in) :: member
 
 integer :: ncid
@@ -428,9 +444,17 @@ if (module_initialized ) then
     call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-call static_init_blocks(restart_dirname)
+call static_init_blocks()
 
-ncid = nc_create_file(filter_io_file)
+call error_handler(E_MSG, '', '')
+write(string1,*) 'converting Aether restart files in directory ', &
+                 "'"//trim(aether_restart_dirname)//"'"
+write(string2,*) ' to the NetCDF file ', "'"//trim(aether_to_dart_output_file)//"'"
+call error_handler(E_MSG, routine, string1, text2=string2)
+call error_handler(E_MSG, '', '')
+
+write(filter_io_filename,'(A,I0.4,A3)') 'filter_input_',member+1,'.nc'
+ncid = nc_create_file(filter_io_filename)
 
 ! DONE: This should probably be replaced by  nc_write_model_atts(ncid).
 !       That may require renaming some dimension variables.
@@ -438,19 +462,26 @@ ncid = nc_create_file(filter_io_file)
 ! Enters and exits define mode;
 call nc_write_model_atts(ncid, 0)
 
-call restarts_to_filter(restart_dirname, ncid, member, define=.true.)
+call restarts_to_filter(aether_restart_dirname, ncid, member, define=.true.)
 
 ! TODO: add_nc_dimvars has not been activated because the functionality is in nc_write_model_atts
 !       but maybe it shouldn't be.  Also, we haven't settled on the mechanism for identifying
 !       the state vector field names and source.
 ! call add_nc_dimvars(ncid)
 
-call restarts_to_filter(restart_dirname, ncid, member, define=.false.)
+call restarts_to_filter(aether_restart_dirname, ncid, member, define=.false.)
 
 ! TODO: this needs to be updated to write to which file?
 ! call write_model_time(ncid, state_time)
 
 call nc_close_file(ncid)
+
+call error_handler(E_MSG, '', '')
+write(string1,*) 'Successfully converted the Aether restart files to ', &
+                 "'"//trim(aether_to_dart_output_file)//"'"
+call error_handler(E_MSG, routine, string1)
+call error_handler(E_MSG, '', '')
+
 
 end subroutine restart_files_to_netcdf
 
@@ -479,7 +510,7 @@ if (module_initialized ) then
     call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-call static_init_blocks(output_dirname)
+call static_init_blocks()
 
 ncid = nc_open_file_readonly(nc_file, routine)
 
@@ -1208,9 +1239,8 @@ end subroutine make_variable_table
 
 ! Read the lon, lat, and alt arrays from the ncid
 
-subroutine get_grid_from_netcdf(filter_io_filename, lons, lats, alts )
+subroutine get_grid_from_netcdf(lons, lats, alts )
 
-character(len=*), intent(in)    :: filter_io_filename
 real(r8),         intent(inout) :: lons(:)
 real(r8),         intent(inout) :: lats(:)
 real(r8),         intent(inout) :: alts(:)
@@ -1231,9 +1261,8 @@ end subroutine get_grid_from_netcdf
 
 !=================================================================
 
-subroutine static_init_blocks(restart_dirname)
+subroutine static_init_blocks()
 
-character(len=*), intent(in)  :: restart_dirname
 character(len=128) :: aether_filename
 
 character(len=*), parameter :: routine = 'static_init_blocks'
@@ -1247,26 +1276,24 @@ if (module_initialized) return ! only need to do this once
 ! This prevents subroutines called from here from calling static_init_mod.
 module_initialized = .true.
 
-! Read the namelist entry for model_mod from input.nml
-call read_model_namelist()
+!----------------------------------------------------------------------
+! Read the aether_to_dart namelist
+!----------------------------------------------------------------------
+! NEWIC; a2d will now read 'variables' from its own namelist.
+!        I think/hope that a2d doesn't need any other variables from model_nml.
 
-! error-check, convert namelist input to variable_table, and build the state structure
-call make_variable_table()
+! TODO: filter_io_dir from here instead of redundant entry in model_mod_nml?
+call find_namelist_in_file("input.nml", "aether_to_dart_nml", iunit)
+read(iunit, nml = aether_to_dart_nml, iostat = io)
+call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(nmlfileunit, nml=model_nml)
-if (do_nml_term()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=aether_to_dart_nml)
+if (do_nml_term()) write(     *     , nml=aether_to_dart_nml)
 
-! TODO: Reading aether_to_dart_nml is done only in aether_to_dart?
-!       filter_io_dir from here instead of redundant entry in model_mod_nml?
-! ! Read the DART namelist for this model
-! call find_namelist_in_file('input.nml', 'aether_to_dart_nml', iunit)
-! read(iunit, nml = aether_to_dart_nml, iostat = io)
-! call check_namelist_read(iunit, io, 'aether_to_dart_nml')
-! 
-! ! Record the namelist values used for the run
-! if (do_nml_file()) write(nmlfileunit, nml=aether_to_dart_nml)
-! if (do_nml_term()) write(     *     , nml=aether_to_dart_nml)
+! error-check, convert namelist input to variable_table, and build the state structure
+! 'variables' comes from aether_to_dart_nml
+call make_variable_table()
 
 !---------------------------------------------------------------
 ! Set the time step ... causes gitm namelists to be read.
@@ -1281,7 +1308,7 @@ call set_calendar_type( calendar )   ! comes from model_mod_nml
 ! 2) allocate space for the grids
 ! 3) read them from the block restart files, could be stretched ...
 
-call get_grid_info_from_blocks(restart_dirname, nlon, nlat, nalt, nBlocksLon, &
+call get_grid_info_from_blocks(aether_restart_dirname, nlon, nlat, nalt, nBlocksLon, &
                nBlocksLat, nBlocksAlt, LatStart, LatEnd, LonStart)
 print*,'static_init_blocks: post-get_grid_info_from_blocks; nfields_neutral = ', nfields_neutral
 
@@ -1291,7 +1318,7 @@ if( debug  > 0 ) then
 endif
 
 ! Opens and closes the grid block file, but not the filter netcdf file.
-call get_grid_from_blocks(restart_dirname, nBlocksLon, nBlocksLat, nBlocksAlt, &
+call get_grid_from_blocks(aether_restart_dirname, nBlocksLon, nBlocksLat, nBlocksAlt, &
    nxPerBlock, nyPerBlock, nzPerBlock, lons, lats, alts )
 
 ! Convert the Aether reference date (not calendar day = 0 date)
@@ -1302,7 +1329,7 @@ call get_time(aeth_ref_time,aeth_ref_nsecs,aeth_ref_ndays)
 
 ! Get the model time from a restart file.
 aether_filename = block_file_name(variable_table(1,VT_ORIGININDX), 0, 0)
-state_time = read_model_time(trim(restart_dirname)//'/'//trim(aether_filename))
+state_time = read_model_time(trim(aether_restart_dirname)//'/'//trim(aether_filename))
 
 ! TODO: Replace with aether variables check? (OR is that done when trying to read them?) 
 ! call verify_block_variables( gitm_block_variables, nfields )
@@ -1509,6 +1536,121 @@ end function read_in_real
 ! Routines for aether_to_dart.
 !==================================================================
 
+!-----------------------------------------------------------------------------
+! Translate an Aether field name (not CF-compliant) into a form filter likes.
+! E.g.  'Perp.\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', ->
+!       'Opos_Perp_Ion_Velocity_Meridional' 
+
+function aeth_name_to_dart(varname)
+
+! TODO: NF90_MAX_NAME was not usable in the test program.  Usable in model_mod?
+! character(len=NF90_MAX_NAME), intent(in) :: varname
+character(len=256), intent(in) :: varname
+
+! character(len=NF90_MAX_NAME) :: aeth
+character(len=256) :: aeth
+character(len=128) :: aeth_name_to_dart
+character(len=64)  :: parts(8), var_root
+integer :: char_num, first, i_parts, aeth_len, end_str
+
+aeth     = trim(varname)
+aeth_len = len_trim(varname)
+parts = ''
+
+! Look for the last ' '.  The characters after that are the species.
+! If there's no ' ', the whole string is the species.
+char_num = 0
+char_num = scan(trim(aeth),' ',back=.true.)
+var_root = aeth(char_num+1:aeth_len)
+! purge_chars removes unwanted [()\] 
+parts(1) = purge_chars( trim(var_root),')(\', plus_minus=.true.)
+print*,'var_root, parts(1) = ',var_root, parts(1) 
+end_str  = char_num
+
+! Tranform remaining pieces of varname into DART versions.
+char_num = MISSING_I
+first = 1
+i_parts = 2
+do
+   ! This returns the position of the first blank *within the substring* passed in.
+   char_num = scan(aeth(first:end_str),' ',back=.false.)
+   if (char_num > 0 .and. first < aeth_len) then
+      parts(i_parts) = purge_chars(aeth(first:first+char_num-1), '.)(\', plus_minus=.true.)
+
+      first   = first + char_num 
+      i_parts = i_parts + 1
+   else
+      exit
+   endif
+enddo
+
+! Construct the DART field name from the parts
+aeth_name_to_dart = trim(parts(1))
+i_parts = 2
+do
+if (trim(parts(i_parts)) /= '') then
+   aeth_name_to_dart = trim(aeth_name_to_dart)//'_'//trim(parts(i_parts))
+   i_parts = i_parts + 1
+else
+   exit
+endif
+enddo
+
+end function aeth_name_to_dart
+
+!-----------------------------------------------------------------
+! Replace undesirable characters with better.
+
+function purge_chars(ugly_string, chars, plus_minus)
+
+character (len=*), intent(in) :: ugly_string, chars
+logical, intent(in) :: plus_minus
+character (len=64) :: purge_chars
+character (len=256) :: temp_str
+
+integer :: char_num, end_str, pm_num
+
+! Trim is not needed here
+temp_str = ugly_string
+end_str  = len_trim(temp_str)
+print*,'len_trim(str), ugly_string = ',end_str, ugly_string,'||end' 
+print*,'temp_str = ',temp_str,'||end'
+char_num = MISSING_I
+do 
+   ! Returns 0 if chars are not found
+   char_num = scan(temp_str,chars)
+   print*,'char_num, temp_str = ',char_num, trim(temp_str)
+   ! Need to change it to a char that won't be found by scan in the next iteration,
+   ! and can be easily removed.
+   if (char_num > 0) then
+      ! Squeeze out the character
+      temp_str(char_num:end_str-1) = temp_str(char_num+1:end_str)
+      temp_str(end_str:end_str) = ''
+!       temp_str(char_num:char_num) = ' '
+   else
+      exit
+   endif
+enddo
+
+! Replace + and - with pos and neg.  Assume there's only 1.
+temp_str = trim(adjustl(temp_str))
+end_str  = len_trim(temp_str)
+pm_num   = scan(trim(temp_str),'+-',back=.false.)
+if (pm_num == 0 .or. .not. plus_minus) then
+   purge_chars = trim(temp_str)
+else
+   if (temp_str(pm_num:pm_num) == '+') then
+      purge_chars = temp_str(1:pm_num-1)//'pos'
+   else if (temp_str(pm_num:pm_num) == '-') then
+      purge_chars = temp_str(1:pm_num-1)//'neg'
+   endif
+   if (pm_num+1 <= end_str) &
+      purge_chars = trim(purge_chars)//temp_str(pm_num+1:end_str)
+endif
+
+end function purge_chars
+
+!-----------------------------------------------------------------
 ! open enough of the restart files to read in the lon, lat, alt arrays
 
 subroutine get_grid_from_blocks(dirname, nBlocksLon, nBlocksLat, nBlocksAlt, &
@@ -1915,7 +2057,7 @@ logical :: no_idensity
 character(len=*), parameter :: routine = 'block_to_filter_io'
 character(len=128) :: file_root 
 character(len=256) :: filename
-character(len=NF90_MAX_NAME) :: varname
+character(len=NF90_MAX_NAME) :: varname, dart_varname
 
 block(1) = ib
 block(2) = jb
@@ -2048,7 +2190,13 @@ ncid_input = open_block_file(filename, 'read')
 
 print*,'block_to_filter_io: nfields_neutral = ',nfields_neutral
 do ivar = 1, nfields_neutral
-   write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+! TODO: the nf90 functions cannot read the variable names with the '\'s in them.
+!    write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+   varname = purge_chars(trim(variable_table(ivar,VT_VARNAMEINDX)), '\', plus_minus=.false.)
+   print*,routine,'varname = ',varname
+! NEWIC; 
+! Translate the Aether field name into a DART field name.
+   dart_varname = aeth_name_to_dart(varname)
 
    ! TODO: Given the subroutine name, perhaps these definition sections should be 
    !       one call higher up, with the same loop around it.
@@ -2057,31 +2205,31 @@ do ivar = 1, nfields_neutral
    ! The calling routine entered define mode.
 
       if (debug > 10) then 
-         write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',varname
+         write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',dart_varname
          call error_handler(E_MSG,routine,string1,source,revision,revdate)
       end if
    
-      call nc_define_real_variable(ncid_output, varname, &
+      call nc_define_real_variable(ncid_output, dart_varname, &
            (/ ALT_DIM_NAME, LAT_DIM_NAME, LON_DIM_NAME /) )
-      print*,routine,': defined ivar, varname = ', ivar, varname 
+      print*,routine,': defined ivar, dart_varname = ', ivar, dart_varname 
 ! TODO: does the filter_input.nc file need all these attributes?  TIEGCM doesn't add them.
       !    They are not available from the restart files.
       !    Add them to the ions section too.
-      ! call nc_add_attribute_to_variable(ncid, varname, 'long_name',    gitmvar(ivar)%long_name)
-      ! call nc_add_attribute_to_variable(ncid, varname, 'units',        gitmvar(ivar)%units)
-      ! !call nc_add_attribute_to_variable(ncid, varname, 'storder',     gitmvar(ivar)%storder)
-      ! call nc_add_attribute_to_variable(ncid, varname, 'gitm_varname', gitmvar(ivar)%gitm_varname)
-      ! call nc_add_attribute_to_variable(ncid, varname, 'gitm_dim',     gitmvar(ivar)%gitm_dim)
-      ! call nc_add_attribute_to_variable(ncid, varname, 'gitm_index',   gitmvar(ivar)%gitm_index)
+      ! call nc_add_attribute_to_variable(ncid, dart_varname, 'long_name',    gitmvar(ivar)%long_name)
+      ! call nc_add_attribute_to_variable(ncid, dart_varname, 'units',        gitmvar(ivar)%units)
+      ! !call nc_add_attribute_to_variable(ncid, dart_varname, 'storder',     gitmvar(ivar)%storder)
+      ! call nc_add_attribute_to_variable(ncid, dart_varname, 'gitm_varname', gitmvar(ivar)%gitm_varname)
+      ! call nc_add_attribute_to_variable(ncid, dart_varname, 'gitm_dim',     gitmvar(ivar)%gitm_dim)
+      ! call nc_add_attribute_to_variable(ncid, dart_varname, 'gitm_index',   gitmvar(ivar)%gitm_index)
 
 
    else if (file_root == 'neutrals') then
    ! Read 3D array and extract the non-halo data of this block.
 ! TODO: There are no 2D or 1D fields in ions or neutrals, but there could be; different temp array.
       call nc_get_variable(ncid_input, varname, temp3d, context=routine)
-      print*,'block_to_filter_io: temp3d = ',temp3d(1,1,1),temp3d(15,15,15),variable_table(ivar,VT_VARNAMEINDX)
+      print*,'block_to_filter_io: temp3d = ',temp3d(1,1,1),temp3d(15,15,15),varname
       print*,'block_to_filter_io: define = ',define
-      call write_filter_io(temp3d, ivar, block, ncid_output)
+      call write_filter_io(temp3d, dart_varname, block, ncid_output)
    else
       write(string1,*) 'Trying to read neutrals, but variable_table(',ivar,VT_ORIGININDX, &
                        ') /= "neutrals"'
@@ -2097,22 +2245,28 @@ ncid_input = open_block_file(filename, 'read')
 
 print*,'block_to_filter_io: nfields_ion = ',nfields_ion
 do ivar = nfields_neutral +1,nfields_neutral + nfields_ion
-   write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+!    write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+   print*,'Purging \ from aether name'
+   varname = purge_chars(trim(variable_table(ivar,VT_VARNAMEINDX)), '\', plus_minus=.false.)
+! NEWIC; 
+! Translate the Aether field name into a DART field name.
+   print*,'Converting aether name ',trim(varname)
+   dart_varname = aeth_name_to_dart(varname)
 
    if (define) then
 
       if (debug > 10) then 
-         write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',varname
+         write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',dart_varname
          call error_handler(E_MSG,routine,string1,source,revision,revdate)
       end if
    
-      call nc_define_real_variable(ncid_output, varname, &
+      call nc_define_real_variable(ncid_output, dart_varname, &
            (/ ALT_DIM_NAME, LAT_DIM_NAME, LON_DIM_NAME /) )
-      print*,routine,': defined ivar, varname = ', ivar, varname 
+      print*,routine,': defined ivar, dart_varname = ', ivar, dart_varname 
 
    else if (file_root == 'ions') then
       call nc_get_variable(ncid_input, varname, temp3d, context=routine)
-      call write_filter_io(temp3d, ivar, block, ncid_output)
+      call write_filter_io(temp3d, dart_varname, block, ncid_output)
    else
       write(string1,*) 'Trying to read ions, but variable_table(',ivar,VT_ORIGININDX, &
                        ') /= "ions"'
@@ -2261,24 +2415,23 @@ end subroutine block_to_filter_io
 
 ! put the requested data into a netcdf variable
 
-subroutine write_filter_io(data3d, ivar, block, ncid)
+subroutine write_filter_io(data3d, varname, block, ncid)
 
 real(r4), intent(in)    :: data3d(1:nzPerBlock, &
                                   1-nGhost:nyPerBlock+nGhost, &
                                   1-nGhost:nxPerBlock+nGhost)
 
-integer,  intent(in)    :: ivar         ! variable index
+character(len=NF90_MAX_NAME), intent(in)    :: varname
 integer,  intent(in)    :: block(2)
 integer,  intent(in)    :: ncid
 
 integer :: ib, jb
 integer :: starts(3)
 character(len=*), parameter :: routine = 'write_filter_io'
-character(len=NF90_MAX_NAME) :: varname
 
 print*,routine,': data3d = ',data3d(1,1,1),data3d(15,15,15)
 
-write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
+! write(varname,'(A)') trim(variable_table(ivar,VT_VARNAMEINDX))
 
 ib = block(1)
 jb = block(2)
@@ -2323,17 +2476,24 @@ allocate(fulldom3d(1:nalt, &
 
 ! get the dirname, construct the filenames inside open_block_file
 
-
+! >>> TODO: Not all fields have halos suitable for calculating gradients.  
+!     These do (2023-11-8): neutral temperature, O, O2, N2, and the horizontal winds. 
+!     The current model_mod will fill all neutral halos anyway, 
+!     since that's simpler and won't break the model.
+!     TODO: add an attribute to the variable_table (?) to denote whether a field 
+!           should have its halo filled.
 do ivar = 1, nfields_neutral
    varname   = trim(variable_table(ivar,VT_VARNAMEINDX))
    print*,routine,': How long is varname after assignment with trim? ',varname,' end'
    file_root = trim(variable_table(ivar,VT_ORIGININDX))
 
    if (file_root == 'neutrals') then
-      fulldom3d = MISSING_R4
+      ! fulldom3d = MISSING_R4
+      ! Assuming that this parameter is available through the `use netcdf` command.
+      fulldom3d = NF90_FILL_REAL
       call nc_get_variable(ncid, varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
                            nc_count=(/nalt,nlat,nlon/),context=routine)
-      !? ncount not needed?  Reading the whole field.
+      ! TODO: ncount not needed?  Reading the whole field.
 
       ! Copy updated field values to full domain halo.
       ! Block domains+halos will be easily read from this.
@@ -2349,16 +2509,20 @@ enddo
 do ivar = nfields_neutral+1, nfields_neutral + nfields_ion
    varname   = trim(variable_table(ivar,VT_VARNAMEINDX))
    file_root = trim(variable_table(ivar,VT_ORIGININDX))
-   print*,routine,': varname, fileroot = ',varname, fileroot 
+   print*,routine,': varname, file_root = ',varname, file_root 
 
    if (file_root == 'ions') then
+      fulldom3d = NF90_FILL_REAL
       call nc_get_variable(ncid, varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
                            nc_count=(/nalt,nlat,nlon/),context=routine)
       !? ncount not needed?  Reading the whole field.
 
       ! Copy updated field values to full domain halo.
       ! Block domains+halos will be easily read from this.
-      call add_halo_fulldom3d(fulldom3d)
+      ! 2023-11: ions do not have real or used data in their halos.
+      !          Make this clear by leaving the halos filled with MISSING_R4
+      !          TODO: Will this be translated into NetCDF missing_value?
+      ! call add_halo_fulldom3d(fulldom3d)
 
       call filter_io_to_blocks(fulldom3d, varname, file_root, member)
 
@@ -2393,9 +2557,6 @@ allocate(normed(1-nGhost:nlat+nGhost, &
 
 haflat = nlat/2
 haflon = nlon/2
-
-TODO: this is incorrect.  Some sort of interpolation is done, instead of copying values.
-      Email from Aaron should point the way.
 
 do g = 1,nGhost
    ! left; reach around the date line.

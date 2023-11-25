@@ -1,4 +1,3 @@
-! TIEGCM:  (Any variables from GITM?)
 &model_nml
    debug                       = 100
    filter_io_dir         = 'testdata1/restartOut.Sphere.1member'
@@ -10,6 +9,9 @@
    assimilation_period_seconds = 3600
    /
 ! >>> Don't code these until we get new CF-compliant field names from Aaron. <<<
+! >>> Not all fields have halos suitable for calculating gradients.  These do (2023-11-8):
+!     neutral temperature, O, O2, N2, and the horizontal winds. 
+!     The current model_mod will fill all halos anyway, since that's simpler and won't break the model.
 ! Other neutrals from restart files, which Aaron identified as important:
          Zonal\ Wind 
          Meridional\ Wind 

@@ -44,18 +44,19 @@ character(len=128), parameter :: revdate  = "$Date$"
 character(len=512) :: string1, string2
 character(len=*), parameter :: program_name = 'aether_to_dart'
 
-!-----------------------------------------------------------------------
-! namelist parameters with default values.
-!-----------------------------------------------------------------------
-
-character(len=256) :: aether_restart_input_dirname    = 'none'
-! TODO: the calling script will need to move this to a name with $member in it,
-!       or use filter_nml:input_state_file_list
-character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
-
-namelist /aether_to_dart_nml/ aether_restart_input_dirname,        &
-                              aether_to_dart_output_file
-
+! !-----------------------------------------------------------------------
+! ! namelist parameters with default values.
+! !-----------------------------------------------------------------------
+! 
+! character(len=256) :: aether_restart_input_dirname    = 'none'
+! ! TODO: the calling script will need to move this to a name with $member in it,
+! !       or use filter_nml:input_state_file_list
+! ! TODO: Create the filter filename from filter_root, as in dart_to_aether.
+! character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
+! 
+! namelist /aether_to_dart_nml/ aether_restart_input_dirname,        &
+!                               aether_to_dart_output_file, variables
+! 
 !----------------------------------------------------------------------
 ! global storage
 !----------------------------------------------------------------------
@@ -66,13 +67,16 @@ integer               :: iunit, io, member
 
 call initialize_utilities(program_name)
 
-!----------------------------------------------------------------------
-! Read the namelist
-!----------------------------------------------------------------------
-
-call find_namelist_in_file("input.nml", "aether_to_dart_nml", iunit)
-read(iunit, nml = aether_to_dart_nml, iostat = io)
-call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
+! !----------------------------------------------------------------------
+! ! Read the namelist
+! !----------------------------------------------------------------------
+! 
+! call find_namelist_in_file("input.nml", "aether_to_dart_nml", iunit)
+! read(iunit, nml = aether_to_dart_nml, iostat = io)
+! call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
+! 
+! ! error-check, convert namelist input to variable_table, and build the state structure
+! call make_variable_table()
 
 !----------------------------------------------------------------------
 ! Get the ensemble member
@@ -86,21 +90,20 @@ print*,'aether_to_dart: member = ',member
 ! Convert the files
 !----------------------------------------------------------------------
 
-call error_handler(E_MSG, '', '')
-write(string1,*) 'converting aether restart files in directory ', &
-                 "'"//trim(aether_restart_input_dirname)//"'"
-write(string2,*) ' to the NetCDF file ', "'"//trim(aether_to_dart_output_file)//"'"
-call error_handler(E_MSG, program_name, string1, text2=string2)
-call error_handler(E_MSG, '', '')
+! call error_handler(E_MSG, '', '')
+! write(string1,*) 'converting aether restart files in directory ', &
+!                  "'"//trim(aether_restart_input_dirname)//"'"
+! write(string2,*) ' to the NetCDF file ', "'"//trim(aether_to_dart_output_file)//"'"
+! call error_handler(E_MSG, program_name, string1, text2=string2)
+! call error_handler(E_MSG, '', '')
 
-call restart_files_to_netcdf(aether_restart_input_dirname, member, &
-                             aether_to_dart_output_file)
+call restart_files_to_netcdf(member)
 
-call error_handler(E_MSG, '', '')
-write(string1,*) 'Successfully converted the GITM restart files to ', &
-                 "'"//trim(aether_to_dart_output_file)//"'"
-call error_handler(E_MSG, program_name, string1)
-call error_handler(E_MSG, '', '')
+! call error_handler(E_MSG, '', '')
+! write(string1,*) 'Successfully converted the GITM restart files to ', &
+!                  "'"//trim(aether_to_dart_output_file)//"'"
+! call error_handler(E_MSG, program_name, string1)
+! call error_handler(E_MSG, '', '')
 
 !----------------------------------------------------------------------
 ! Finish up
