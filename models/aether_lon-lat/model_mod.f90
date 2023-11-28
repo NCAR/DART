@@ -199,11 +199,14 @@ namelist /model_nml/ filter_io_dir, &
 character(len=256) :: aether_restart_dirname    = 'none'
 ! TODO: the calling script will need to move this to a name with $member in it,
 !       or use filter_nml:input_state_file_list
-! TODO: Create the filter filename from filter_root, as in dart_to_aether.
-character(len=256) :: aether_to_dart_output_file    = 'filter_input.nc'
+character (len = 64) :: filter_io_root = 'filter_input'
 
-namelist /aether_to_dart_nml/ aether_restart_dirname,        &
-                              aether_to_dart_output_file, variables
+namelist /aether_to_dart_nml/ aether_restart_dirname, filter_io_root, variables
+
+! dart_to_aether namelist parameters with default values.
+!-----------------------------------------------------------------------
+
+namelist /dart_to_aether_nml/ aether_restart_dirname, filter_io_root, variables
 
 !-------------------------------------------------------------------------------
 ! define model parameters for creating the state NetCDF file 
@@ -320,6 +323,7 @@ write(string1,'(3A)') "Now reading filter_io file ",trim(filter_io_filename),&
    " for grid information"
 call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
+! TODO; do these need to be deallocated somewhere?
 allocate(lons(nlon))
 allocate(lats(nlat))
 allocate(alts(nalt))
@@ -444,17 +448,17 @@ if (module_initialized ) then
     call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-call static_init_blocks()
+call static_init_blocks("aether_to_dart_nml")
+
+write(filter_io_filename,'(2A,I0.4,A3)') trim(filter_io_root),'_',member+1,'.nc'
+ncid = nc_create_file(filter_io_filename)
 
 call error_handler(E_MSG, '', '')
 write(string1,*) 'converting Aether restart files in directory ', &
                  "'"//trim(aether_restart_dirname)//"'"
-write(string2,*) ' to the NetCDF file ', "'"//trim(aether_to_dart_output_file)//"'"
+write(string2,*) ' to the NetCDF file ', "'"//trim(filter_io_filename)//"'"
 call error_handler(E_MSG, routine, string1, text2=string2)
 call error_handler(E_MSG, '', '')
-
-write(filter_io_filename,'(A,I0.4,A3)') 'filter_input_',member+1,'.nc'
-ncid = nc_create_file(filter_io_filename)
 
 ! DONE: This should probably be replaced by  nc_write_model_atts(ncid).
 !       That may require renaming some dimension variables.
@@ -478,7 +482,7 @@ call nc_close_file(ncid)
 
 call error_handler(E_MSG, '', '')
 write(string1,*) 'Successfully converted the Aether restart files to ', &
-                 "'"//trim(aether_to_dart_output_file)//"'"
+                 "'"//trim(filter_io_filename)//"'"
 call error_handler(E_MSG, routine, string1)
 call error_handler(E_MSG, '', '')
 
@@ -489,14 +493,11 @@ end subroutine restart_files_to_netcdf
 ! Writes the current time and state variables from a dart state
 ! vector (1d array) into a gitm netcdf restart file.
 
-subroutine netcdf_to_restart_files(nc_file, member, output_dirname)
+subroutine netcdf_to_restart_files(member)
 
-character(len=*), intent(in) :: nc_file
-character(len=*), intent(in) :: output_dirname
 integer, intent(in) :: member
 
 integer :: ncid
-
 character(len=*), parameter :: routine = 'netcdf_to_restart_files:'
 
 ! sort the required fields into the order they exist in the
@@ -510,11 +511,26 @@ if (module_initialized ) then
     call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-call static_init_blocks()
+call static_init_blocks("dart_to_aether_nml")
 
-ncid = nc_open_file_readonly(nc_file, routine)
+write(filter_io_filename,'(2A,I0.4,A3)') trim(filter_io_root),'_',member+1,'.nc'
 
-call filter_to_restarts(output_dirname, ncid, member)
+call error_handler(E_MSG,routine,'','',revision,revdate)
+write(string1,*) 'Extracting fields from DART file ', "'"//trim(filter_io_filename)//"'"
+write(string2,*) 'into Aether restart files in directory ', "'"//trim(aether_restart_dirname)//"'"
+call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+
+ncid = nc_open_file_readonly(filter_io_filename, routine)
+
+call filter_to_restarts(ncid, member)
+
+!----------------------------------------------------------------------
+! Log what we think we're doing, and exit.
+!----------------------------------------------------------------------
+call error_handler(E_MSG,routine,'','',revision,revdate)
+write(string1,*) 'Successfully converted to the Aether restart files in directory'
+write(string2,*) "'"//trim(aether_restart_dirname)//"'"
+call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 
 call nc_close_file(ncid)
 
@@ -1261,7 +1277,9 @@ end subroutine get_grid_from_netcdf
 
 !=================================================================
 
-subroutine static_init_blocks()
+subroutine static_init_blocks(nml)
+
+character(len=*), intent(in) :: nml
 
 character(len=128) :: aether_filename
 
@@ -1283,13 +1301,20 @@ module_initialized = .true.
 !        I think/hope that a2d doesn't need any other variables from model_nml.
 
 ! TODO: filter_io_dir from here instead of redundant entry in model_mod_nml?
-call find_namelist_in_file("input.nml", "aether_to_dart_nml", iunit)
-read(iunit, nml = aether_to_dart_nml, iostat = io)
-call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
+call find_namelist_in_file("input.nml", trim(nml), iunit)
+if (trim(nml) == 'aether_to_dart_nml') then
+   read(iunit, nml = aether_to_dart_nml, iostat = io)
+   ! Record the namelist values used for the run
+   if (do_nml_file()) write(nmlfileunit, nml=aether_to_dart_nml)
+   if (do_nml_term()) write(     *     , nml=aether_to_dart_nml)
+else if (trim(nml) == 'dart_to_aether_nml') then
+   read(iunit, nml = dart_to_aether_nml, iostat = io)
+   ! Record the namelist values used for the run
+   if (do_nml_file()) write(nmlfileunit, nml=dart_to_aether_nml)
+   if (do_nml_term()) write(     *     , nml=dart_to_aether_nml)
+endif
+call check_namelist_read(iunit, io, trim(nml)) ! closes, too.
 
-! Record the namelist values used for the run
-if (do_nml_file()) write(nmlfileunit, nml=aether_to_dart_nml)
-if (do_nml_term()) write(     *     , nml=aether_to_dart_nml)
 
 ! error-check, convert namelist input to variable_table, and build the state structure
 ! 'variables' comes from aether_to_dart_nml
@@ -1699,6 +1724,7 @@ call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
 ! This is also done in gitm's static_init_model, which is not called by aether_to_dart,
 ! so it's not redundant.
+! TODO; do these need to be deallocated somewhere?
 allocate( lons( nlon ))
 allocate( lats( nlat ))
 allocate( alts( nalt ))
@@ -2455,17 +2481,15 @@ end subroutine write_filter_io
 
 ! open all restart files and write out the requested data item
 
-subroutine filter_to_restarts(dirnameout, ncid, member)
-! TODO: Does filter_to_restarts need dirname and dirnameout?
+subroutine filter_to_restarts(ncid, member)
 
-character(len=*), intent(in) :: dirnameout
 integer,          intent(in) :: member, ncid
 
 real(r4), allocatable :: fulldom1d(:), fulldom3d(:,:,:)
 character(len=256) :: file_root
 integer :: ivar
 
-character(len=NF90_MAX_NAME):: varname
+character(len=NF90_MAX_NAME):: varname, dart_varname
 character(len=*), parameter :: routine = 'filter_to_restarts'
 
 ! Space for full domain field (read from filter_output.nc)
@@ -2483,15 +2507,18 @@ allocate(fulldom3d(1:nalt, &
 !     TODO: add an attribute to the variable_table (?) to denote whether a field 
 !           should have its halo filled.
 do ivar = 1, nfields_neutral
-   varname   = trim(variable_table(ivar,VT_VARNAMEINDX))
-   print*,routine,': How long is varname after assignment with trim? ',varname,' end'
-   file_root = trim(variable_table(ivar,VT_ORIGININDX))
+   varname = purge_chars(trim(variable_table(ivar,VT_VARNAMEINDX)), '\', plus_minus=.false.)
+   print*,routine,'varname = ',varname
+! NEWIC; 
+! Translate the Aether field name into a DART field name.
+   dart_varname = aeth_name_to_dart(varname)
 
+   file_root = trim(variable_table(ivar,VT_ORIGININDX))
    if (file_root == 'neutrals') then
       ! fulldom3d = MISSING_R4
       ! Assuming that this parameter is available through the `use netcdf` command.
       fulldom3d = NF90_FILL_REAL
-      call nc_get_variable(ncid, varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
+      call nc_get_variable(ncid, dart_varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
                            nc_count=(/nalt,nlat,nlon/),context=routine)
       ! TODO: ncount not needed?  Reading the whole field.
 
@@ -2507,13 +2534,18 @@ do ivar = 1, nfields_neutral
 enddo
 
 do ivar = nfields_neutral+1, nfields_neutral + nfields_ion
-   varname   = trim(variable_table(ivar,VT_VARNAMEINDX))
+   varname = purge_chars(trim(variable_table(ivar,VT_VARNAMEINDX)), '\', plus_minus=.false.)
+! NEWIC; 
+! Translate the Aether field name into a DART field name.
+   dart_varname = aeth_name_to_dart(varname)
+
    file_root = trim(variable_table(ivar,VT_ORIGININDX))
-   print*,routine,': varname, file_root = ',varname, file_root 
+   print*,routine,': varname, dart_varname, file_root = ', &
+          trim(varname), trim(dart_varname), file_root 
 
    if (file_root == 'ions') then
       fulldom3d = NF90_FILL_REAL
-      call nc_get_variable(ncid, varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
+      call nc_get_variable(ncid, dart_varname, fulldom3d(1:nalt,1:nlat,1:nlon), &
                            nc_count=(/nalt,nlat,nlon/),context=routine)
       !? ncount not needed?  Reading the whole field.
 

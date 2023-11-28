@@ -34,18 +34,6 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=*),   parameter :: progname = 'dart_to_aether'
 
-!-----------------------------------------------------------------------
-! namelist parameters with default values.
-!-----------------------------------------------------------------------
-
-character (len = 256) :: aether_restart_dirname  = 'none'
-character (len = 64) :: filter_io_root = 'filter_output'
-character (len = 64) :: filter_io_name 
-
-namelist /dart_to_aether_nml/   &
-     aether_restart_dirname,    &
-     filter_io_root
-
 !----------------------------------------------------------------------
 ! global storage
 !----------------------------------------------------------------------
@@ -62,41 +50,16 @@ member = -88
 read '(I3)', member
 print*,'dart_to_aether: member = ',member
 
-write(filter_io_name,'(2A,I0.4,A3)') trim(filter_io_root),'_',member,'.nc'
-
 !======================================================================
 
 call initialize_utilities(progname=progname)
-
-!----------------------------------------------------------------------
-! Read the namelist
-!----------------------------------------------------------------------
-
-call find_namelist_in_file("input.nml", "dart_to_aether_nml", iunit)
-read(iunit, nml = dart_to_aether_nml, iostat = io)
-call check_namelist_read(iunit, io, "dart_to_aether_nml") ! closes, too.
-
-print*,'After namelist; aether_restart_dirname = ',aether_restart_dirname
-
-call error_handler(E_MSG,progname,'','',revision,revdate)
-write(string1,*) 'Extracting fields from DART file ', "'"//trim(filter_io_name)//"'"
-write(string2,*) 'into Aether restart files in directory ', "'"//trim(aether_restart_dirname)//"'"
-call error_handler(E_MSG,progname,string1,source,revision,revdate,text2=string2)
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
 !----------------------------------------------------------------------
 
 ! TODO: netcdf_to_restart_files; need all these file and dir names?
-call netcdf_to_restart_files(filter_io_name, member, aether_restart_dirname)
-
-!----------------------------------------------------------------------
-! Log what we think we're doing, and exit.
-!----------------------------------------------------------------------
-call error_handler(E_MSG,progname,'','',revision,revdate)
-write(string1,*) 'Successfully converted to the Aether restart files in directory'
-write(string2,*) "'"//trim(aether_restart_dirname)//"'"
-call error_handler(E_MSG,progname,string1,source,revision,revdate,text2=string2)
+call netcdf_to_restart_files(member)
 
 ! end - close the log, etc
 call finalize_utilities()
