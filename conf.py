@@ -17,11 +17,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'DART'
-copyright = '2022, University Corporation for Atmospheric Research'
+copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '10.9.1'
+release = '10.9.2'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
@@ -71,7 +71,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
 #
 html_theme = 'sphinx_rtd_theme'
 html_show_sphinx = False
-html_logo = 'guide/_static/ncar-dart-logo-navy.svg'
+html_logo = 'guide/_static/nsf-ncar-dart.png'
 html_theme_options = {
     'logo_only': True,
     'includehidden': False
