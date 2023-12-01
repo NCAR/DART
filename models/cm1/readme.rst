@@ -9,8 +9,8 @@ non-hydrostatic numerical model in Cartesian 3D coordinates designed for the
 study of micro-to-mesoscale atmospheric phenomena in idealized to
 semi-idealized simulations.
 
-The CM1 model was developed and is maintained by George Bryan at the National
-Center for Atmospheric Research (NCAR) Mesoscale and Microscale Meteorology
+The CM1 model was developed and is maintained by George Bryan at the NSF National
+Center for Atmospheric Research (NSF NCAR) Mesoscale and Microscale Meteorology
 Laboratory (MMM).
 
 The model code is freely available from the `CM1 website <http://www2.mmm.ucar.edu/people/bryan/cm1/>`_

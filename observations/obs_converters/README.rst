@@ -61,7 +61,7 @@ Data Sources and Formats
 See the various subdirectories here, which generally include information
 on where the example data was obtained and in what format it is
 distributed. Most data is available for download off the web. The Data
-Support Section (DSS) at NCAR has large data repositories, the MADIS
+Support Section (DSS) at NSF NCAR has large data repositories, the MADIS
 data center distributes observations in NetCDF format, GTS real-time
 weather data is available from various sources. For new converters, if
 you can find what format the data is distributed in you may be able to
@@ -406,8 +406,8 @@ In addition the following external program produces DART observation
 sequence files:
 
 -  `Observation Processing And Wind Synthesis
-   (OPAWS) <http://code.google.com/p/opaws/>`__: OPAWS can process NCAR
-   Dorade (sweep) and NCAR EOL Foray (netcdf) radar data. It analyzes
+   (OPAWS) <http://code.google.com/p/opaws/>`__: OPAWS can process NSF NCAR
+   Dorade (sweep) and NSF NCAR EOL Foray (netcdf) radar data. It analyzes
    (grids) data in either two-dimensions (on the conical surface of each
    sweep) or three-dimensions (Cartesian). Analyses are output in
    netcdf, Vis5d, and/or DART (Data Assimilation Research Testbed)
