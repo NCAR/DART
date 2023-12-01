@@ -41,7 +41,6 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=512) :: string1, string2
 character(len=*), parameter :: program_name = 'aether_to_dart'
 
 ! !-----------------------------------------------------------------------
@@ -61,22 +60,11 @@ character(len=*), parameter :: program_name = 'aether_to_dart'
 ! global storage
 !----------------------------------------------------------------------
 
-integer               :: iunit, io, member
+integer :: member
 
 !======================================================================
 
 call initialize_utilities(program_name)
-
-! !----------------------------------------------------------------------
-! ! Read the namelist
-! !----------------------------------------------------------------------
-! 
-! call find_namelist_in_file("input.nml", "aether_to_dart_nml", iunit)
-! read(iunit, nml = aether_to_dart_nml, iostat = io)
-! call check_namelist_read(iunit, io, "aether_to_dart_nml") ! closes, too.
-! 
-! ! error-check, convert namelist input to variable_table, and build the state structure
-! call make_variable_table()
 
 !----------------------------------------------------------------------
 ! Get the ensemble member
