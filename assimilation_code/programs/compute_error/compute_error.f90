@@ -27,10 +27,10 @@ use types_mod,     only : r8, metadatalength
 
 use utilities_mod, only : initialize_utilities, &
                           error_handler, nmlfileunit, E_MSG, E_ERR,  &
-                          find_namelist_in_file, nc_check,           &
+                          find_namelist_in_file,                     &
                           check_namelist_read, finalize_utilities,   &
                           do_nml_file, do_nml_term
-                                
+use    netcdf_utilities_mod, only : nc_check                                
 use netcdf
 
 implicit none

@@ -11,7 +11,7 @@ program model_mod_check
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8, digits12, metadatalength, MISSING_R8, rad2deg
-use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check, &
+use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              open_file, close_file, find_namelist_in_file, &
                              check_namelist_read, nmlfileunit, do_nml_file, do_nml_term, &
                              E_MSG, E_ERR, error_handler, get_unit
@@ -44,7 +44,7 @@ use        model_mod, only : static_init_model, get_model_size, get_state_meta_d
                              get_model_analysis_filename, analysis_file_to_statevector, &
                              statevector_to_analysis_file, get_analysis_time,            &
                              write_model_time, get_grid_dims
-
+use   netcdf_utilities_mod, only : nc_check
 use netcdf
 use typesizes
 
