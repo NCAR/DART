@@ -640,7 +640,7 @@ integer,  intent(in)  :: owner    ! task in the window that owns the memory
 integer,  intent(in)  :: window   ! window object
 integer,  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: num_rows ! number of rows in the window
-real(r8), intent(out) :: x(:)     ! result
+real(r8), intent(out) :: x(num_rows) ! result
 
 call error_handler(E_ERR,'get_from_fwd', 'cannot be used in serial mode', source)
 

@@ -12,8 +12,8 @@ simulate land surface processes. Combined with DART, the facility is called
 *HydroDART*.
 
 The development of HydroDART was a collaboration between **James McCreight**
-of the Research Applications Laboratory of NCAR and **Moha Gharamti** of
-the Data Assimilation Research Section of NCAR.
+of the Research Applications Laboratory of NSF NCAR and **Moha Gharamti** of
+the Data Assimilation Research Section of NSF NCAR.
 
 Streamflow assimilation is an active area of research and provides many
 interesting research challenges. 
