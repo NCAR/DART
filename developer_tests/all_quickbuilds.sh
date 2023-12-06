@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# PBS -I
+# PBS -l select=4;ncpus=128:mpiprocs=32
+# PBS -l walltime=01:00:00
+# PBS -q main
+# PBS -A P86850054
+
+# # qsub -I -l select=4:ncpus=128:mpiprocs=32 -l walltime=01:00:00 -q main -A P86850054
 
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -36,20 +43,6 @@ echo "$current_date" > "$FAILURE_LOGFILE"
 # Function to run quickbuild.sh for specific compilers
 function compiler_operation {
   FC="$1"
-  # Set up DART environment variable and do a cleanup in case DART already exists
-  export DART="/glade/derecho/scratch/$USER/tmp/$FC/DART"
-  if [[ -n $FC ]]; then
-    rm -rf /glade/derecho/scratch/$USER/tmp/$FC
-  fi
-  # Create new tmp directory for a specific compiler and clone DART
-  mkdir /glade/derecho/scratch/$USER/tmp/"$FC"
-  git clone 'https://github.com/NCAR/DART.git' "$DART"
-
-  # Check if DART directory exists. If not, return an error
-  if [[ ! -d $DART ]]; then 
-    echo "No DART directory: $DART"
-    return 1
-  fi
 
   # Specify the mkmf template for each compiler
   if [[ $FC == "intel" ]]; then
@@ -65,9 +58,32 @@ function compiler_operation {
     echo "$FC is not a valid argument. Compiler is not supported on Derecho."
     return 1
   fi
+    
+  # Set up DART environment variable and do a cleanup in case DART already exists
+  export DART="/glade/derecho/scratch/$USER/tmp/$FC/DART"
+  if [[ -n $FC ]]; then
+    rm -rf /glade/derecho/scratch/$USER/tmp/$FC
+  fi
+  # Create new tmp directory for a specific compiler and clone DART
+  mkdir /glade/derecho/scratch/$USER/tmp/"$FC"
+  git clone 'https://github.com/NCAR/DART.git' "$DART"
+
+  # Check if DART directory exists. If not, return an error
+  if [[ ! -d $DART ]]; then 
+    echo "No DART directory: $DART"
+    return 1
+  fi
 
   # Log the compiler being processed
   printf '\nProcessing %s\n' "$FC"
+
+  #Module load gcc if gnu compiler argument is passed
+
+  if [[ $FC == "gnu" ]]; then
+	  module load gcc
+  else
+	  module load $FC
+  fi
 
   # Copy appropriate mkmf template to build_templates directory in DART
   cp "$DART/build_templates/$template_name" $DART/build_templates/mkmf.template
@@ -102,8 +118,14 @@ function compiler_operation {
 
   # Iterate over each file to and run quickbuild.sh
   for f in "${files_to_process[@]}"; do
-    # cd to */quickbuild.sh file and run quickbuild.sh in the background
-    cd $f; ./quickbuild.sh & 
+      # cd to */quickbuild.sh file and run quickbuild.sh in the background
+      # add mpif08 argument for gnu compiler
+      if [[ $FC == "gnu" ]]; then
+	  cd $f; ./quickbuild.sh mpif08 &
+      else
+	  cd $f; ./quickbuild.sh &
+      fi
+
     # Record the PID and directory of the each process then cd back to starting directory
     pids+=( "$!" )
     dirs+=( "$f" )
