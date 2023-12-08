@@ -1,5 +1,13 @@
 #!/bin/bash
 
+declare -a arr=("gcc" "intel" "nvhpc")
+
+for compiler in "${arr[@]}"; do
+
+outfile=build_with_$compiler.sh
+
+cat <<EOF > $outfile
+#!/bin/bash
 #PBS -A P86850054
 #PBS -N build-everything
 #PBS -j oe
@@ -11,4 +19,10 @@
 export TMPDIR=/glade/derecho/scratch/$USER/temp
 mkdir -p $TMPDIR
 
-time ./run_all_quickbuilds.sh nvhpc
+time ./run_all_quickbuilds.sh $compiler
+
+EOF
+
+qsub $outfile
+
+done
