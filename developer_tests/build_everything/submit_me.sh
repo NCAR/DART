@@ -11,4 +11,4 @@
 export TMPDIR=/glade/derecho/scratch/$USER/temp
 mkdir -p $TMPDIR
 
-time ./run_all_quickbuilds.sh
+time ./run_all_quickbuilds.sh nvhpc

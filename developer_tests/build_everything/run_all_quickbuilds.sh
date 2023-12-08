@@ -14,12 +14,12 @@ fi
 compiler=$1
 
 # Check if the script is running in a batch job or interactive session
-#if [[ -z $PBS_ENVIRONMENT ]]; then
-#  echo "ERROR: You must run this in a batch job"
-#  echo "       qsub submit_me.sh"
-#  echo "       or an interactive session"
-#  exit 2
-#fi
+if [[ -z $PBS_ENVIRONMENT ]]; then
+  echo "ERROR: You must run this in a batch job"
+  echo "       qsub submit_me.sh"
+  echo "       or an interactive session"
+  exit 2
+fi
 
 # Specify the mkmf template for each compiler
 if [[ $compiler == "intel" ]]; then
@@ -79,12 +79,10 @@ files_to_process=( $(find $DART -executable -type f -name quickbuild.sh | sed -E
 
 # Iterate over each file to and run quickbuild.sh
 for f in "${files_to_process[@]}"; do
-    if [[ $compiler == "gcc" ]]; then  # HK this should be needed for nvhpc too
-        #cd $f; ./quickbuild.sh mpif08 &
-        echo "running $f"
+    if [[ $compiler == "gcc" ]]; then
+        cd $f; ./quickbuild.sh mpif08 &
     else
-        #cd $f; ./quickbuild.sh &
-        echo "running $f"
+        cd $f; ./quickbuild.sh &
     fi
 
     # Record the PID and directory of the each process then cd back to starting directory
