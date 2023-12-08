@@ -4,69 +4,56 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# Log results of all quickbuilds and compilers
-LOGFILE="all_quickbuilds_results.log"
-# Log results of failed builds only
-FAILURE_LOGFILE="all_quickbuilds_failures.log"
+# Usage: run_all_quickbuilds.sh compiler [gcc intel nvhpc]
 
 if [ $# -ne 1 ]; then
    echo "ERROR: expecting 1 argument"
    exit 1
 fi
 
+compiler=$1
+
 # Check if the script is running in a batch job or interactive session
-if [[ -z $PBS_ENVIRONMENT ]]; then
-  echo "ERROR: You must run this in a batch job"
-  echo "       qsub submit_me.sh"
-  echo "       or an interactive session"
+#if [[ -z $PBS_ENVIRONMENT ]]; then
+#  echo "ERROR: You must run this in a batch job"
+#  echo "       qsub submit_me.sh"
+#  echo "       or an interactive session"
+#  exit 2
+#fi
+
+# Specify the mkmf template for each compiler
+if [[ $compiler == "intel" ]]; then
+  mkmf_template="mkmf.template.intel.linux"
+elif [[ $compiler == "gcc" ]]; then
+  mkmf_template="mkmf.template.gfortran"
+elif [[ $compiler == "cce" ]]; then
+  mkmf_template="mkmf.template.cce"
+elif [[ $compiler == "nvhpc" ]]; then
+  mkmf_template="mkmf.template.nvhpc"
+else
+  echo "$compiler is not a valid argument"
+  exit 1
+fi
+  
+
+test_dir="/glade/derecho/scratch/$USER/build_everything/$compiler"
+if [[ -d $test_dir ]]; then
+  echo "Directory exists: $test_dir"
   exit 2
 fi
 
-# Include current date/time to log files
-current_date="$(printf '\n%s\n' "$(date)")"
-echo "$current_date" > "$LOGFILE"
-echo "$current_date" > "$FAILURE_LOGFILE"
+mkdir -p $test_dir
+cd $test_dir
+git clone 'https://github.com/NCAR/DART.git'
+cd DART
+export DART=$(git rev-parse --show-toplevel)
 
-# Specify the mkmf template for each compiler
-if [[ $FC == "intel" ]]; then
-  template_name="mkmf.template.intel.linux"
-elif [[ $FC == "gcc" ]]; then
-  template_name="mkmf.template.gfortran"
-elif [[ $FC == "cce" ]]; then
-  template_name="mkmf.template.cce"
-elif [[ $FC == "nvhpc" ]]; then
-  template_name="mkmf.template.nvhpc"
-else
-  # Return an error for invalid arguments
-  echo "$FC is not a valid argument. Compiler is not supported on Derecho."
-  return 1
-fi
-  
-# Set up DART environment variable and do a cleanup in case DART already exists
-export DART="/glade/derecho/scratch/$USER/tmp/$FC/DART"
-if [[ -n $FC ]]; then
-  rm -rf /glade/derecho/scratch/$USER/tmp/$FC
-fi
-# Create new tmp directory for a specific compiler and clone DART
-mkdir /glade/derecho/scratch/$USER/tmp/"$FC"
-git clone 'https://github.com/NCAR/DART.git' "$DART"
-
-# Check if DART directory exists. If not, return an error
-if [[ ! -d $DART ]]; then 
-  echo "No DART directory: $DART"
-  return 1
-fi
-
-# Log the compiler being processed
-printf '\nProcessing %s\n' "$FC"
-
-module load $FC
-
-cd $DART
-cp build_templates/$template_name build_templates/mkmf.template
+# mkmf for chosen compiler
+module load $compiler
+cp build_templates/$mkmf_template build_templates/mkmf.template
 
 # Run fixsystem to avoid all make commands from altering mpi_*_utilities_mod.f90 simultaneously
-cd assimilation_code/modules/utilities; ./fixsystem $FC
+cd assimilation_code/modules/utilities; ./fixsystem $compiler
 cd -
 
 # Build preprocess once
@@ -92,10 +79,12 @@ files_to_process=( $(find $DART -executable -type f -name quickbuild.sh | sed -E
 
 # Iterate over each file to and run quickbuild.sh
 for f in "${files_to_process[@]}"; do
-    if [[ $FC == "gcc" ]]; then  # HK this should be needed for nvhpc too
-        cd $f; ./quickbuild.sh mpif08 &
+    if [[ $compiler == "gcc" ]]; then  # HK this should be needed for nvhpc too
+        #cd $f; ./quickbuild.sh mpif08 &
+        echo "running $f"
     else
-        cd $f; ./quickbuild.sh &
+        #cd $f; ./quickbuild.sh &
+        echo "running $f"
     fi
 
     # Record the PID and directory of the each process then cd back to starting directory
@@ -115,12 +104,14 @@ i=0
 for st in ${status[@]}; do
   # Display failed vs. passed processes
   if [[ ${st} -ne 0 ]]; then
-    log_msg=$(printf '%s\n' "$FC RESULT: $i ${dirs[$i]} FAILED")
+    log_msg=$(printf '%s\n' "$compiler RESULT: $i ${dirs[$i]} FAILED")
     echo "$log_msg"
     # Indicate at least one failure
     OVERALL_EXIT=1
   else
-    echo "$FC RESULT: $i ${dirs[$i]} PASSED"
+    echo "$compiler RESULT: $i ${dirs[$i]} PASSED"
   fi
   ((i+=1))
 done
+
+mv $test_dir  $test_dir.$(date +"%FT%H%M")
