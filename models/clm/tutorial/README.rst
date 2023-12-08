@@ -114,7 +114,7 @@ custom initial conditions and observation sequence files for your own work.
 
 .. Important ::
 
-  We have provided tutorial instructions for the NCAR
+  We have provided tutorial instructions for the NSF NCAR
   supercomputer Cheyenne, however, if using your own machine you will need to 
   customize the setup scripts in order to properly compile DART (see Step 4:
   Compiling DART). These system-specific setup steps may take a good deal of 
@@ -144,7 +144,7 @@ Step 1: Download CLM5
 ---------------------
 
 CLM is continually being updated by the model developer and user community
-consisting of both NCAR and university scientists and researchers.
+consisting of both NSF NCAR and university scientists and researchers.
 In contrast, DART is maintained by a relatively small group that supports
 numerous earth system models (20+) including CLM. Therefore the DART team
 focuses on only supporting official released versions of CLM.  This documentation
@@ -186,7 +186,7 @@ SourceMods see the main :doc:`CLM-DART documentation. <../readme>`
 Compiling CLM5
 --------------
 
-Compiling CLM5 on the NCAR machine Cheyenne is straightforward because the 
+Compiling CLM5 on the NSF NCAR machine Cheyenne is straightforward because the 
 run and build environment settings are already defined within the ``config_machines.xml``
 file located within the CESM installation: ``<cesmroot>/cime/config/cesm/machines``. If
 you are using your own machine please follow the porting instructions located 

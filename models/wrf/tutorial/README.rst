@@ -63,8 +63,8 @@ observations will then be performed at 06:00 UTC, at which time analysis
 files will be generated to begin a new ensemble forecast. The WRF model
 will be advanced for 6 hours and a final assimilation cycle will be
 performed at 12:00 UTC. This process could then continue in order to
-investigate the strong rain and wind event. For what it’s worth, on
-NCAR’s *Cheyenne* under the default test configuration for this case, it
+investigate the strong rain and wind event. For what it's worth, on
+NSF NCAR's *Cheyenne* under the default test configuration for this case, it
 can take an hour to complete a forecast/assimilation cycle. Since the
 tutorial runs for two cycles, it can take twice as long.
 
@@ -75,14 +75,14 @@ However, you will need to do additional work before you can expect to
 have a fully functional WRF/DART system, as some of the steps involved
 in this tutorial (in particular, the perturbation bank and the
 observation sequence files) are provided for you in order to simplify
-the process. Furthermore, if you are not running on the UCAR/NCAR
+the process. Furthermore, if you are not running on the NSF NCAR
 Cheyenne supercomputing system, you will likely need to customize the
 assimilation scripts to match the details of your particular system.
 
 
 .. important ::
 
-  We have provided instructions for the NCAR supercomputer
+  We have provided instructions for the NSF NCAR supercomputer
   Cheyenne, so you may need to tailor these instructions to your system if
   you are not using Cheyenne. These system-specific setup steps may take a
   good deal of effort, especially if you are unfamiliar with details such
@@ -632,15 +632,15 @@ To (again, *optionally*) reproduce the observation sequence files in the
       ./quickbuild.sh
 
 -  Download the PREPBUFR observations for your desired time. Go to the
-   `NCAR/UCAR Research Data
+   `NSF NCAR Research Data
    Archive <https://rda.ucar.edu/datasets/ds090.0/>`__ page for the
-   NCEP/NCAR Global Reanalysis Products. Register on the site, click on
+   NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
    the "Data Access" tab, and follow either the instructions for
-   external users or NCAR internal users.
+   external users or NSF NCAR internal users.
 
 -  The downloaded *.tar* file will often be COS-blocked. If so, the file
    will appear corrupted if you attempt to untar it without converting
-   the data. See the `NCAR COS-block <https://rda.ucar.edu/#!cosb>`__
+   the data. See the `NSF NCAR COS-block <https://rda.ucar.edu/#!cosb>`__
    page for more information on how to strip the COS-blocking off of
    your downloaded file.
 
@@ -837,7 +837,7 @@ scripts is necessary to glue all of the pieces together. A set of
 scripts is provided with the tutorial tarball to provide you a starting
 point for your own WRF/DART system. You will need to edit these scripts,
 perhaps extensively, to run them within your particular computing
-environment. If you will run on NCAR's Cheyenne environment, fewer edits
+environment. If you will run on NSF NCAR's Cheyenne environment, fewer edits
 may be needed, but you should familiarize yourself with `running jobs on
 Cheyenne <https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/quick-start-cheyenne>`__
 if necessary. A single forecast/assimilation cycle of this tutorial can
@@ -951,7 +951,7 @@ In some cases there could be multiple obs_epoch*.nc files, but in general, the u
 should use the obs_epoch file appended with the largest numeric value as it
 contains the most complete set of observations.  The diagnostic scripts used here 
 are included within the DART package, and require a license of Matlab to run.  The 
-commands shown below to run the diagnostics use NCAR's Cheyenne, but a user could
+commands shown below to run the diagnostics use NSF NCAR's Cheyenne, but a user could
 also run on their local machine.
 
 First explore the obs_epoch*.nc file and identify the variety of observations included

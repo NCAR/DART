@@ -6,8 +6,8 @@ Welcome to the Data Assimilation Research Testbed
 The Data Assimilation Research Testbed (DART) is an open-source, freely
 available community facility for ensemble data assimilation (DA). [1]_ DART is
 developed and maintained by the `Data Assimilation Research Section
-(DAReS) <https://dart.ucar.edu/about/>`_ at the `National Center
-for Atmospheric Research (NCAR) <https://ncar.ucar.edu>`_.
+(DAReS) <https://dart.ucar.edu/about/>`_ at the NSF `National Center
+for Atmospheric Research (NSF NCAR) <https://ncar.ucar.edu>`_.
 
 +------------------------------+------------------------------+
 | |spaghetti_square|           | |assim_anim|                 |
