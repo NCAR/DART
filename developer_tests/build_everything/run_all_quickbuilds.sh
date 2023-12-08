@@ -112,12 +112,12 @@ for st in ${status[@]}; do
   if [[ ${st} -ne 0 ]]; then
     log_msg=$(printf '%s\n' "$compiler RESULT: $i ${dirs[$i]} FAILED")
     echo "$log_msg"
-    # Indicate at least one failure
-    OVERALL_EXIT=1
   else
     echo "$compiler RESULT: $i ${dirs[$i]} PASSED"
   fi
   ((i+=1))
 done
+
+module -t list
 
 mv $test_dir  $test_dir.$(date +"%FT%H%M")

@@ -1,3 +1,5 @@
 Run all quickbuilds.sh in the DART Repo at once
 
 Usage: ./submit_jobs.sh
+
+grep -a FAILED build-everything-nvhpc.o2633030
