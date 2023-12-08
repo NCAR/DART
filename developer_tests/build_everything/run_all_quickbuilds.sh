@@ -79,6 +79,11 @@ files_to_process=( $(find $DART -executable -type f -name quickbuild.sh | sed -E
 
 # Iterate over each file to and run quickbuild.sh
 for f in "${files_to_process[@]}"; do
+
+    if [[ $f == *"template"* ]]; then
+       continue  # template model not for compiling
+    fi
+
     if [[ $compiler == "gcc" ]]; then
        case "$f" in
            *obs_converters* ) cd $f; ./quickbuild.sh & ;;
