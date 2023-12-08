@@ -80,7 +80,10 @@ files_to_process=( $(find $DART -executable -type f -name quickbuild.sh | sed -E
 # Iterate over each file to and run quickbuild.sh
 for f in "${files_to_process[@]}"; do
     if [[ $compiler == "gcc" ]]; then
-        cd $f; ./quickbuild.sh mpif08 &
+       case "$f" in
+           *obs_converters* ) cd $f; ./quickbuild.sh & ;;
+                          * ) cd $f; ./quickbuild.sh mpif08 & ;;
+       esac
     else
         cd $f; ./quickbuild.sh &
     fi
