@@ -19,7 +19,7 @@ cat <<EOF > $outfile
 export TMPDIR=/glade/derecho/scratch/$USER/temp
 mkdir -p $TMPDIR
 
-time ./run_all_quickbuilds.sh $compiler
+time ./run_all_quickbuilds.sh $compiler $1
 
 EOF
 

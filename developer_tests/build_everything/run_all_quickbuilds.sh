@@ -6,12 +6,13 @@
 
 # Usage: run_all_quickbuilds.sh compiler [gcc intel nvhpc cce]
 
-if [ $# -ne 1 ]; then
-   echo "ERROR: expecting 1 argument"
+if [ $# -eq 0 ]; then
+   echo "ERROR: expecting at least one argument"
    exit 1
 fi
 
 compiler=$1
+branch=${2:-main} # checkout branch if given, or use main
 
 # Check if the script is running in a batch job or interactive session
 if [[ -z $PBS_ENVIRONMENT ]]; then
@@ -32,14 +33,14 @@ elif [[ $compiler == "nvhpc" ]]; then
   mkmf_template="mkmf.template.nvhpc"
 else
   echo "$compiler is not a valid argument"
-  exit 1
+  exit 3
 fi
   
 
 test_dir="/glade/derecho/scratch/$USER/build_everything/$compiler"
 if [[ -d $test_dir ]]; then
   echo "Directory exists: $test_dir"
-  exit 2
+  exit 4
 fi
 
 mkdir -p $test_dir
@@ -47,6 +48,11 @@ cd $test_dir
 git clone 'https://github.com/NCAR/DART.git'
 cd DART
 export DART=$(git rev-parse --show-toplevel)
+git checkout $branch
+if [[ $? -ne 0 ]]; then
+   echo "unknown branch"
+   exit 5
+fi
 
 # mkmf for chosen compiler
 module load $compiler
@@ -118,5 +124,6 @@ for st in ${status[@]}; do
 done
 
 module -t list
+echo "branch : " $(git branch --show-current)
 
 mv $test_dir  $test_dir.$(date +"%FT%H%M")
