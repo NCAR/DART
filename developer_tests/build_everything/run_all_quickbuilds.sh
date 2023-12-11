@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# Usage: run_all_quickbuilds.sh compiler [gcc intel nvhpc]
+# Usage: run_all_quickbuilds.sh compiler [gcc intel nvhpc cce]
 
 if [ $# -ne 1 ]; then
    echo "ERROR: expecting 1 argument"
@@ -110,8 +110,7 @@ i=0
 for st in ${status[@]}; do
   # Display failed vs. passed processes
   if [[ ${st} -ne 0 ]]; then
-    log_msg=$(printf '%s\n' "$compiler RESULT: $i ${dirs[$i]} FAILED")
-    echo "$log_msg"
+    echo "$compiler RESULT: $i ${dirs[$i]} FAILED"
   else
     echo "$compiler RESULT: $i ${dirs[$i]} PASSED"
   fi
