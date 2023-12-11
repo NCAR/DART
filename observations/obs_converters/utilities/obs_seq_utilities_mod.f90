@@ -45,7 +45,6 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
                              set_copy_meta_data, set_qc_meta_data,             &
                              destroy_obs, destroy_obs_sequence,                &
                              get_num_key_range, get_obs_key
-use    netcdf_utilities_mod, only : nc_check
 
 use netcdf
 

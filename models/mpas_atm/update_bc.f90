@@ -37,8 +37,8 @@ use state_structure_mod, only : get_num_variables, get_domain_size
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
-                                 nc_get_dimension_size,   &   ! Ha
-                                 nc_close_file, nc_check
+                                 nc_get_dimension_size,   &
+                                 nc_close_file
 
 use netcdf
 

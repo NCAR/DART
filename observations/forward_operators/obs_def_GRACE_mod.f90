@@ -72,7 +72,6 @@ use  assim_model_mod, only : interpolate
 
 use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
-use    netcdf_utilities_mod, only : nc_check
 use typesizes
 use netcdf
 

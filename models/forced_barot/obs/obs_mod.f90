@@ -18,7 +18,6 @@ use    utilities_mod, only : file_exist, open_file, close_file,            &
                              register_module, error_handler, E_ERR, E_MSG, &
                              nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, do_output
-use    netcdf_utilities_mod, only : nc_check
 
 implicit none
 private

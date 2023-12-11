@@ -74,7 +74,6 @@ use        model_mod, only : static_init_model, get_grid_dims, get_xland, &
                              cell_ok_to_interpolate, is_global_grid,      &
                              get_bdy_mask, get_cell_center_coords
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
-use    netcdf_utilities_mod, only : nc_check
 use           netcdf
 
 implicit none
