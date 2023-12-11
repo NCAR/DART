@@ -2,4 +2,5 @@ Run all quickbuilds.sh in the DART Repo at once
 
 Usage: ./submit_jobs.sh
 
+Find failed builds in logfile, e.g.:
 grep -a FAILED build-everything-nvhpc.o2633030
