@@ -23,8 +23,10 @@ if [[ -z $PBS_ENVIRONMENT ]]; then
 fi
 
 # Specify the mkmf template for each compiler
-if [[ $compiler == "intel" ]]; then
+if [[ $compiler == "ifort" ]]; then
   mkmf_template="mkmf.template.intel.linux"
+elif [[ $compiler == "ifx" ]]; then
+  mkmf_template="mkmf.template.ifx.linux"
 elif [[ $compiler == "gcc" ]]; then
   mkmf_template="mkmf.template.gfortran"
 elif [[ $compiler == "cce" ]]; then
@@ -55,11 +57,23 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # mkmf for chosen compiler
-module load $compiler
+case $compiler in
+   ifx   ) module load intel-oneapi ;;
+   ifort ) module load intel-classic ;;
+     *   ) module load $compiler ;;
+esac
+
 cp build_templates/$mkmf_template build_templates/mkmf.template
 
 # Run fixsystem to avoid all make commands from altering mpi_*_utilities_mod.f90 simultaneously
-cd assimilation_code/modules/utilities; ./fixsystem $compiler
+cd assimilation_code/modules/utilities
+case $compiler in
+   ifort ) ./fixsystem ifort ;;
+     gcc ) ./fixsystem gfortran ;;
+     cce ) ./fixsystem ftn ;;
+   nvhpc ) ./fixsystem nvfortran ;;
+     ifx ) ./fixsystem ifx ;;
+esac
 cd -
 
 # Build preprocess once
