@@ -16,8 +16,7 @@ cat <<EOF > $outfile
 #PBS -l walltime=00:20:00
 #PBS -l select=1:ncpus=128:mpiprocs=128
 
-export TMPDIR=/glade/derecho/scratch/$USER/temp
-mkdir -p $TMPDIR
+export TMPDIR=/tmp/
 
 time ./run_all_quickbuilds.sh $compiler $1
 
