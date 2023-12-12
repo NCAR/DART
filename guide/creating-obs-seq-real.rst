@@ -114,7 +114,7 @@ Data sources and formats
 See the various subdirectories here, which generally include information on
 where the example data was obtained and in what format it is distributed. Most
 data is available for download off the web. The Data Support Section (DSS) at
-NCAR has large data repositories, the MADIS data center distributes observations
+NSF NCAR has large data repositories, the MADIS data center distributes observations
 in netCDF format, GTS real-time weather data is available from various sources.
 For new converters, if you can find what format the data is distributed in you
 may be able to adapt one of the existing converters here for your own use.

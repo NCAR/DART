@@ -59,8 +59,8 @@ In addition the following external program produces DART observation sequence
 files:
 
 -  `Observation Processing And Wind Synthesis
-   (OPAWS) <http://code.google.com/p/opaws/>`__: OPAWS can process NCAR Dorade
-   (sweep) and NCAR EOL Foray (netCDF) radar data. It analyzes (grids) data in
+   (OPAWS) <http://code.google.com/p/opaws/>`__: OPAWS can process NSF NCAR Dorade
+   (sweep) and NSF NCAR EOL Foray (netCDF) radar data. It analyzes (grids) data in
    either two-dimensions (on the conical surface of each sweep) or
    three-dimensions (Cartesian). Analyses are output in netCDF, Vis5d, and/or
    DART (Data Assimilation Research Testbed) formats.
