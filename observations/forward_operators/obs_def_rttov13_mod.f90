@@ -2343,6 +2343,8 @@ DO imem = 1, ens_size
    if (allocated(atmos % wfetch)) then
       ! Wind fetch over the ocean (m)
       runtime % profiles(imem) % s2m % wfetc = atmos % wfetch(imem)  
+   else
+      runtime % profiles(imem) % s2m % wfetc = 100000.0_r8
    end if
    
    ! Surface type (0=land, 1=sea, 2=sea-ice)
