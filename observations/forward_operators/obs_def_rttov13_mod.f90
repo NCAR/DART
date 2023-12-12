@@ -2211,6 +2211,7 @@ DO imem = 1, ens_size
          end if
 
          ! depending on the vertical velocity and land type, classify clouds the way RTTOV wants 
+         runtime % profiles(imem) % cloud(:,:) = 0.0_jprb
          if (.not. is_cumulus) then
             ! stratus
             if (surftype == 0) then
