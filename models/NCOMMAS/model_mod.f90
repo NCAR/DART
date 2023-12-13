@@ -30,7 +30,7 @@ use     location_mod, only : location_type, get_dist, query_location,          &
 
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output, to_upper,                    &
+                             do_output, to_upper,                              &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text
@@ -43,6 +43,8 @@ use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,   &
 use mpi_utilities_mod, only: my_task_id
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+
+use    netcdf_utilities_mod, only : nc_check
 
 use typesizes
 use netcdf 
