@@ -12,8 +12,7 @@ module model_mod
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
 
-use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type,  &
-                             print_time
+use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type
 
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
