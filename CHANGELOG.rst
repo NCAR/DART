@@ -22,6 +22,19 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 13 2023 :: Developer tests and bug fixes. Tag v10.10.0** 
+
+- new developer tests to run all builds for all compilers on NSF NCAR machine
+  Derecho.
+- removed redundant nc_check routine from utilities_mod in favor of 
+  netcdf_utilities_mod::nc_check
+- Improved default thinning options for AIRS L2 converter.
+
+bug-fixes:
+
+- AIRS L2 converter message prints correct number of obs.
+- MOM6 model_mod .eqv. used for logical comparison to conform to Fortran standard.
+
 **December 1 2023 :: Bringing DART documentation in accordance with NSF Policy. Tag v10.9.2**
 
 - doc-fixes:
