@@ -18,17 +18,17 @@
 !   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
 
 &convert_airs_L2_nml
-   l2_files           = ''
-   l2_file_list       = 'l2_files_to_process'
+   l2_files           = 'AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
+   l2_file_list       = ''
    outputfile         = 'obs_seq.test'
    min_MMR_threshold  = 1.0e-30
    top_pressure_level = 0.0001
-   along_track_thin   = 1
-   cross_track_thin   = 1
+   along_track_thin   = 0
+   cross_track_thin   = 0
    lon1               =   0.0
    lon2               = 360.0
-   lat1               = -60.0
-   lat2               =  60.0
+   lat1               = -90.0
+   lat2               =  90.0
   /
 
 
