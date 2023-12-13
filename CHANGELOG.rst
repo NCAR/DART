@@ -22,6 +22,34 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 13 2023 :: Developer tests and bug fixes. Tag v10.10.0** 
+
+- new developer tests to run all builds for all compilers on NSF NCAR machine
+  Derecho.
+- removed redundant nc_check routine from utilities_mod in favor of 
+  netcdf_utilities_mod::nc_check
+- Improved default thinning options for AIRS L2 converter.
+
+bug-fixes:
+
+- AIRS L2 converter message prints correct number of obs.
+- MOM6 model_mod .eqv. used for logical comparison to conform to Fortran standard.
+
+**December 1 2023 :: Bringing DART documentation in accordance with NSF Policy. Tag v10.9.2**
+
+- doc-fixes:
+
+  - Brings DART documentation in accordance with the November 2023,
+    "Official Policy on Brand Standards of the U.S. National Science
+    Foundation." Changes instances of "NCAR" to "NSF NCAR" and adds
+    NSF logo to the DART logo in the navigation menu.
+
+**November 9 2023 :: Github Actions MPIf08 Check. Tag v10.9.1**
+
+- Adds a new check to the Github Actions workflow that uses the
+  mpif08 module (compiles with ./quickbuild mpif08 and runs
+  filter on 2 mpi tasks with the lorenz_96 model).
+
 **November 7 2023 :: MPI f08 quickbuild option. Tag v10.9.0**
 
 - quickbuild.sh mpif08 option to build using the mpi_f08 module

@@ -9,7 +9,7 @@ It can provide constant valued inflation in state or observation space, consiste
 provide spatially-constant, time-varying adaptive inflation. It can provide spatially-varying, time-varying adaptive
 inflation and it can provide temporally-varying observation space inflation. And finally, it can provide adaptive damped
 inflation, which decreases inflation through time when observation density varies. Diagnostic output and restart files
-are available. Several papers on the NCAR `DART <https://dart.ucar.edu/publications/>`__ website document the
+are available. Several papers on the NSF NCAR `DART <https://dart.ucar.edu/publications/>`__ website document the
 algorithms in detail. The ``DART/tutorial/section12`` chapter has more information.
 
 Details on controlling the inflation options are contained in the documentation for the filter. The filter_nml controls

@@ -21,7 +21,7 @@ An interface to MPAS is being developed (contact us about the current status).
 The flexibility of the DART environment has led to its use
 by graduate students, post-graduates, and scientists at universities and
 research labs to conduct data assimilation research. Others are using the
-products of data assimilation (analyses), which were produced here at NCAR
+products of data assimilation (analyses), which were produced at NSF NCAR
 using CESM+DART, to conduct related research. 
 The latest reanalysis is described in the DART |CAM6_Rean|_
 
@@ -117,14 +117,14 @@ Reanalyses
 
 There have been two large-scale reanalysis efforts using CAM-FV and DART. 
 The **CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
-is archived in the NCAR Research Data Archive 
+is archived in the NSF NCAR Research Data Archive 
 `DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ .
 (See the |CAM6_Rean|_ ).
 It contains just under 120Tb (yes Tb) of data:
 
    These CAM6+DART Reanalysis data 
    products are designed to facilitate a broad variety of research using 
-   NCAR's CESM2 models, ranging from model evaluation to (ensemble) 
+   NSF NCAR's CESM2 models, ranging from model evaluation to (ensemble) 
    hindcasting (initial conditions), data assimilation experiments, and sensitivity studies. 
    They come from an 80 member ensemble reanalysis of the global 
    troposphere and stratosphere using CAM6-FV from CESM2.1. 
@@ -138,7 +138,7 @@ It contains just under 120Tb (yes Tb) of data:
 An earlier, more limited dataset can be found in the 
 `**Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis** 
 <https://github.com/NCAR/DART/wiki/2-degree-DATM-ensemble-for-CESM-experiments-(1998-thru-2010)>`__
-is archived in the NCAR Research Data Archive 
+is archived in the NSF NCAR Research Data Archive 
 `DS199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__ .
 It contains about 1.5Tb of data:
 
@@ -147,7 +147,7 @@ It contains about 1.5Tb of data:
    Research Testbed (DART) using the Community Atmosphere Model Version 
    4 with the finite volume core (CAM4-FV) at 1.9 degree by 2.5 degree 
    resolution. The observations assimilated include all those used in 
-   the NCEP/NCAR reanalysis (temperature and wind components from 
+   the NCEP/NSF NCAR reanalysis (temperature and wind components from 
    radiosondes, aircraft, and satellite drift winds) plus radio 
    occultation observations from the COSMIC satellites starting in late 
    2006. These files are intended to be used as 'DATM stream files' 
@@ -164,13 +164,13 @@ The CAM6+DART Reanalysis used "observation sequence files"
 which contain the types of observations in the table below
 ("T" = temperature, "U" = zonal wind, "V" = meridional wind,
 "Q" = specific humidity, "refractivity" = the bending of light by density variations).
-These files are available on NCAR's glade file system:
+These files are available on NSF NCAR's glade file system:
 /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10.
 Versions of these files, which also have the results of the reanalysis in them,
 are available from the RDA ds345.0 linked above.
 
 NCEP
-   NCEP's PREPBUFR files (prepqm) in NCAR's Research Data Archive:
+   NCEP's PREPBUFR files (prepqm) in NSF NCAR's Research Data Archive:
    (https://rda.ucar.edu/datasets/ds090.0/)
 
 COSMIC

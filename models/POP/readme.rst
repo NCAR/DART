@@ -13,7 +13,7 @@ of POP:
   (CESM POP2; Smith et al. 2010 [1]_).
 
 This document also provides `Detailed instructions for using DART and CESM POP2
-on NCAR's supercomputer`_, including information about the availability of
+on NSF NCAR's supercomputer`_, including information about the availability of
 restart files for `Creating an initial ensemble`_ of model states and
 `Observation sequence files`_ for assimilation.
 
@@ -30,7 +30,7 @@ In years subsequent to the initial development of the DART interface, the
 Computer, Computational, and Statistical Sciences Division at LANL transitioned
 from using POP as their primary ocean model to using the Model for Prediction
 Across Scales-Ocean (MPAS-Ocean). Thus it became difficult for staff in the
-Data Assimilation Research Section (DAReS) at NCAR to maintain access to the
+Data Assimilation Research Section (DAReS) at NSF NCAR to maintain access to the
 `LANL POP <https://climatemodeling.science.energy.gov/projects/climate-ocean-and-sea-ice-modeling-cosim>`_
 source code. As a result, LANL POP has been tested using DART's Lanai framework
 but has not been tested using DART's Manhattan framework. If you intend to use
@@ -40,10 +40,10 @@ dart@ucar.edu.
 CESM POP2
 ~~~~~~~~~
 
-The NCAR implementation of POP, `CESM POP2
+The NSF NCAR implementation of POP, `CESM POP2
 <https://ncar.github.io/POP/doc/build/html/index.html>`_, has been used
-extensively with DART throughout multiple generations of NCAR's supercomputer 
-(Bluefire, Yellowstone & Cheyenne) and multiple iterations of NCAR's earth
+extensively with DART throughout multiple generations of NSF NCAR's supercomputer 
+(Bluefire, Yellowstone & Cheyenne) and multiple iterations of NSF NCAR's earth
 system model (CCSM4, CESM1 and CESM2). CESM POP2 is supported under DART's
 Manhattan framework.
 
@@ -52,24 +52,24 @@ to manage the ensemble and the Flux Coupler is responsible for stopping POP2 at
 the times required to perform an assimilation. CESM runs continuously and all
 of the DART routines run at each assimilation time.
 
-Detailed instructions for using DART and CESM POP2 on NCAR's supercomputer
---------------------------------------------------------------------------
+Detailed instructions for using DART and CESM POP2 on NSF NCAR's supercomputer
+------------------------------------------------------------------------------
 
-If you're using NCAR's supercomputer, you can run the setup scripts after
+If you're using NSF NCAR's supercomputer, you can run the setup scripts after
 making minor edits to set details that are specific to your project. The setup
 scripts create a CESM case in which POP is configured using a 1° horizontal
 grid, and uses the eddy parametrization of  Gent and McWilliams (1990). [2]_
 The CICE model is active and atmospheric forcing is provided by the `CAM6 DART
 Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_.
 
-The filesystem attached to NCAR's supercomputer is known as the Globally
+The filesystem attached to NSF NCAR's supercomputer is known as the Globally
 Accessible Data Environment (GLADE). All filepaths on GLADE have the structure:
 
 .. code-block::
 
    /glade/*
 
-If you aren't using NCAR's supercomputer, take note of when the ``/glade/``
+If you aren't using NSF NCAR's supercomputer, take note of when the ``/glade/``
 filepath is present in the setup scripts, since this will indicate sections
 that you must alter in order to get the scripts to work on your supercomputer.
 Additionally, you'll need to generate your own initial condition and
@@ -80,7 +80,7 @@ staff by emailing dart@ucar.edu for assistance.
 Summary
 -------
 
-To use DART and CESM POP2 on NCAR's supercomputer, you will need to complete
+To use DART and CESM POP2 on NSF NCAR's supercomputer, you will need to complete
 the following steps.
 
 #. Configure the scripts for your specific experiment by editing
@@ -134,8 +134,8 @@ access to this directory by CISL. Use the `Service Desk
 you're unable to get permission, contact DAReS staff for assistance by emailing
 dart@ucar.edu.
 
-Filepaths beginning with ``/glade/campaign/*`` can't be accessed from NCAR's 
-supercomputer nodes. You must log on to NCAR's data visualization computer to
+Filepaths beginning with ``/glade/campaign/*`` can't be accessed from NSF NCAR's 
+supercomputer nodes. You must log on to NSF NCAR's data visualization computer to
 copy files from ``/glade/campaign/*``.
 
 This python script was created by *Dan Amrhein*. Thanks Dan!
@@ -147,13 +147,13 @@ This python script was created by *Dan Amrhein*. Thanks Dan!
 |                               | g210.G_JRA.v14.gx1v7.01 experiment that are saved in      |
 |                               | campaign storage. You must be granted access to the CGD   |
 |                               | Ocean Section campaign storage directory and be logged on |
-|                               | to NCAR's data visualization computer in order to run     |
+|                               | to NSF NCAR's data visualization computer in order to run |
 |                               | this script. The assignment of the ``stagedir`` variable  |
 |                               | in this script should match the assignment of the         |
 |                               | ``stagedir`` variable in ``DART_params.csh``.             |
 +-------------------------------+-----------------------------------------------------------+
 
-In order to use this script, log in to NCAR's data visualization computer and
+In order to use this script, log in to NSF NCAR's data visualization computer and
 use python to run the script. For example:
 
 .. code-block::
@@ -420,7 +420,7 @@ References
 
 .. [1] Smith, R., and Coauthors, 2010: The Parallel Ocean Program (POP)
        Reference Manual Ocean Component of the Community Climate System Model
-       (CCSM) and Community Earth System Model (CESM). National Center for
+       (CCSM) and Community Earth System Model (CESM). NSF National Center for
        Atmospheric Research,
        `http://www.cesm.ucar.edu/ models/cesm1.0/pop2/doc/sci/POPRefManual.pdf <http://www.cesm.ucar.edu/ models/cesm1.0/pop2/doc/sci/POPRefManual.pdf>`_.
 
