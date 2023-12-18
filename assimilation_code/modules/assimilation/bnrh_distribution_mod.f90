@@ -382,7 +382,7 @@ real(r8), intent(out) :: x(ens_size)
 
 integer :: region, i, j
 real(r8) :: lower_state, upper_state, lower_mass, upper_mass, target_mass
-real(r8) :: q(ens_size), curr_q, lower_q, upper_q, del_q, fract, amp_adj
+real(r8) :: q(ens_size), curr_q, lower_q, upper_q, del_q, fract
 
 ! Quantile increment between ensemble members for bnrh
 del_q = 1.0_r8 / (ens_size + 1.0_r8)
