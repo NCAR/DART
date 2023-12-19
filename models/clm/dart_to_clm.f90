@@ -415,7 +415,7 @@ real(r8) :: dart_H2OLIQ(nlevel,ncolumn)
 real(r8) :: dart_H2OICE(nlevel,ncolumn)
 
 real(r8) :: clm_H2OSNO(ncolumn)  !(column,time) for vector history
-real(r8) :: clm_SNLSNO(ncolumn)
+integer  :: clm_SNLSNO(ncolumn)
 real(r8) :: clm_SNOWDP(ncolumn)
 real(r8) :: clm_DZSNO(nlevsno,ncolumn)
 real(r8) :: clm_ZSNO(nlevsno,ncolumn)
@@ -423,7 +423,7 @@ real(r8) :: clm_ZISNO(nlevsno,ncolumn)
 real(r8) :: clm_H2OLIQ(nlevel,ncolumn)
 real(r8) :: clm_H2OICE(nlevel,ncolumn)
 
-real(r8) :: snlsno(ncolumn)
+integer  :: snlsno(ncolumn)
 real(r8) :: h2osno_pr(ncolumn)
 real(r8) :: h2osno_po(ncolumn)
 real(r8) :: snowdp_pr(ncolumn)
