@@ -748,7 +748,7 @@ PARTITION: do icolumn = 1,ncolumn
       ! and recieved an H2OSNO adjustment.  This eliminates operating
       ! on columns that do not require re-partitioning
       if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) & 
-          > 0.0_r8 .and. snlsno(icolumn) < 0.0_r8) then
+          > 0.0_r8 .and. snlsno(icolumn) < 0) then
          snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(nlevsno+1+snlsno(icolumn):nlevsno,icolumn))
       else
          snowdp_po(icolumn) = snowdp_pr(icolumn)
