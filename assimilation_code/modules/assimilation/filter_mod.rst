@@ -360,8 +360,8 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | ensemble member which returns a non-zero  |
 |                              |                     | return code, a line will be written to    |
 |                              |                     | this file. Each line will have three      |
-|                              |                     | values listed: the observation number,    |
-|                              |                     | the ensemble member number, and the       |
+|                              |                     | values listed: the ensemble member number,|
+|                              |                     | the (local) observation number, and the   |
 |                              |                     | istatus return code. Be cautious when     |
 |                              |                     | turning this option on. The number of     |
 |                              |                     | lines in this file can be up to the       |
