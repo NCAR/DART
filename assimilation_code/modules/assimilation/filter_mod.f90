@@ -50,7 +50,7 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
-                                  print_ens_handle, get_my_vars
+                                  print_ens_handle
 
 use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
                                   inflate_ens, adaptive_inflate_init,                 &

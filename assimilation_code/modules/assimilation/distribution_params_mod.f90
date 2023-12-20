@@ -2,7 +2,7 @@ module distribution_params_mod
 
 ! Provides data structure and tools to represent probability distribution families for DART
 
-use types_mod, only : r8, missing_r8
+use types_mod, only : r8
 
 implicit none
 private
