@@ -98,7 +98,7 @@ setenv SourceModDir   ~/SourceMods_release-cesm2.2.01/SourceMods
 #              not be on a scratch partition unless the long-term archiver is 
 #              invoked to move these files to permanent storage.
 
-setenv cesmdata         /glade/p/cesmdata/cseg/inputdata
+setenv cesmdata         /glade/campaign/cesm/cesmdata/cseg/inputdata
 setenv cesmroot         /glade/work/${USER}/CESM/${cesmtag}
 setenv caseroot         /glade/work/${USER}/cases/${cesmtag}/${CASE}
 setenv cime_output_root /glade/scratch/${USER}/${cesmtag}/${CASE}
@@ -116,9 +116,9 @@ setenv archdir          ${cime_output_root}/archive
 # ==============================================================================
 
 setenv dartroot               /glade/work/${USER}/git/DART_public
-setenv baseobsdir             /glade/p/cisl/dares/Observations/land
-setenv pmo_input_baseobsdir   /glade/p/cisl/dares/Observations/land/pmo/input
-setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
+setenv baseobsdir             /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land
+setenv pmo_input_baseobsdir   /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/input
+setenv pmo_output_baseobsdir  /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/output
 
 # ==============================================================================
 # configure settings:
@@ -142,7 +142,7 @@ setenv reftod       00000
 setenv refdate      ${refyear}-${refmon}-${refday}
 setenv reftimestamp ${refyear}-${refmon}-${refday}-${reftod}
 
-setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
+setenv stagedir /glade/campaign/cisl/dares/glade-p-dares-Oct2023/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
 
 # In a hybrid configuration, you can set the startdate to whatever you want.
 # It does not have to match the reference (although changing the month/day seems bad).

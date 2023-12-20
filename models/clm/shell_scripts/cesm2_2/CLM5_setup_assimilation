@@ -259,7 +259,7 @@ while ( $inst <= $num_instances )
    set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr_${inst_string}
    set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr_${inst_string}
    set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux_${inst_string}
-   set DOMAINFILE = '/glade/p/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
+   set DOMAINFILE = '/glade/campaign/cesm/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
 
    echo "domainfile = '${DOMAINFILE}'" >> ${fname}
    echo "streams = '$FILE1 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
