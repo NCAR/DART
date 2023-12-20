@@ -101,7 +101,7 @@ setenv SourceModDir   ~/SourceMods_release-cesm2.2.01/SourceMods
 setenv cesmdata         /glade/campaign/cesm/cesmdata/cseg/inputdata
 setenv cesmroot         /glade/work/${USER}/CESM/${cesmtag}
 setenv caseroot         /glade/work/${USER}/cases/${cesmtag}/${CASE}
-setenv cime_output_root /glade/scratch/${USER}/${cesmtag}/${CASE}
+setenv cime_output_root /glade/derecho/scratch/${USER}/${cesmtag}/${CASE}
 setenv rundir           ${cime_output_root}/run
 setenv exeroot          ${cime_output_root}/bld
 setenv archdir          ${cime_output_root}/archive
@@ -196,12 +196,13 @@ setenv stream_year_last  2019
 # machine-specific commands:
 
 setenv project      P86850054
-setenv machine      cheyenne
+setenv machine      derecho
 
 # The CESM compile step takes enough resource that Cheyenne requires a wrapper
 # If your platform does not have this restriction, set BUILD_WRAPPER to '' 
 # setenv BUILD_WRAPPER ''
 setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A $project --"
+# setenv BUILD_WRAPPER "qcmd -q main -l select=2:ncpus=128:mpiprocs=32:ompthreads=4 -A $project --"
 setenv nodes_per_instance 2
 setenv number_of_threads 1
 
