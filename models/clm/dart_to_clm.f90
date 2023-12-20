@@ -686,7 +686,10 @@ PARTITION: do icolumn = 1,ncolumn
             ! Apply the increment for liquid, ice and depth for each layer.
             h2oliq_po(ilevel,icolumn) = h2oliq_pr(ilevel,icolumn) + gain_h2oliq
             h2oice_po(ilevel,icolumn) = h2oice_pr(ilevel,icolumn) + gain_h2oice
-            
+
+            if (h2oliq_po(ilevel,icolumn) < 0.0_r8) h2oliq_po(ilevel,icolumn) = 0.00000001_r8
+            if (h2oice_po(ilevel,icolumn) < 0.0_r8) h2oice_po(ilevel,icolumn) = 0.00000001_r8
+
             ! Important to update snow layer dimensions because CLM code relies
             ! on snow layer thickness for compaction/aggregation snow algorithm
             ! to function properly            
@@ -695,7 +698,8 @@ PARTITION: do icolumn = 1,ncolumn
             if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) > 0.0_r8) then
                 
                 dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
-             
+                if (dzsno_po(ilevel,icolumn) < 0.0_r8) dzsno_po(ilevel,icolumn) = 0.00000001_r8
+
                 ! For consistency  with updated dzsno_po (thickness)
                 ! also update zsno_po (middle depth) and zisno (top interface depth)
              
@@ -754,6 +758,7 @@ PARTITION: do icolumn = 1,ncolumn
          snowdp_po(icolumn) = snowdp_pr(icolumn)
       endif
 
+      if (snowdp_po(icolumn) < 0.0_r8) snowdp_po(icolumn) = 0.00000001_r8
 
    endif
 
