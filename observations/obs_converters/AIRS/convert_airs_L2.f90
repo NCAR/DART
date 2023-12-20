@@ -9,7 +9,8 @@ program convert_airs_L2
 use        types_mod, only : r8, deg2rad, PI
 
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
-                             static_init_obs_sequence, destroy_obs_sequence
+                             static_init_obs_sequence, destroy_obs_sequence, &
+                             print_obs_seq_summary
 
 use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
@@ -118,6 +119,9 @@ enddo
 
 ! write the sequence to a disk file
 call write_obs_seq(seq, outputfile) 
+
+! and print out what it did
+call print_obs_seq_summary(seq)
  
 ! release the sequence memory
 call destroy_obs_sequence(seq)

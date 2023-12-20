@@ -315,11 +315,12 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
    enddo colloop
 enddo rowloop
 
-! Print a little summary
-write(msgstring,*) 'obs used = ', obs_num - 1
-call error_handler(E_MSG, ' ', msgstring)
-
-call print_obs_seq_summary(seq)
+! Print a little summary to debug
+if (DEBUG) then
+   write(msgstring,*) 'obs used = ', obs_num - 1
+   call error_handler(E_MSG, ' ', msgstring)
+   call print_obs_seq_summary(seq)
+endif
 
 end subroutine make_obs_sequence
 
