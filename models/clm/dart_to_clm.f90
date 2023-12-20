@@ -611,7 +611,7 @@ PARTITION: do icolumn = 1,ncolumn
       ! Leave layer aggregation/initialization to CLM
       do ilevel=1,-snlsno(icolumn)
 
-         h2oliq_po(ilevel,icolumn) = 0.0_r8
+         h2oliq_po(ilevel,icolumn) = 0.00000001_r8
          h2oice_po(ilevel,icolumn) = 0.00000001_r8
           dzsno_po(ilevel,icolumn) = 0.00000001_r8   
 
