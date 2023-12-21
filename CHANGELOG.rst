@@ -32,6 +32,8 @@ Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
 
 - User interface changes:
 
+  - filter_kind is now a per-qty option through QCEFF table.
+
   - Two new required namelists (add to input.nml files):
 
     - probit_transform_nml
