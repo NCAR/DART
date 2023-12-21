@@ -95,8 +95,6 @@ public :: filter_assim, &
           set_assim_tools_trace, &
           test_state_copies, &
           update_ens_from_weights
-! Test functions
-public :: test_get_state_meta_data, test_close_obs_dist
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
