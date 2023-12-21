@@ -22,6 +22,55 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January XX 2024 :: QCEFF. Tag v11.0.0**
+
+Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+
+- Adds a Quantile-Conserving Ensemble Filtering Framework (QCEFF) to DART.
+  Publications: `QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_,
+  `QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.  
+
+- User interface changes:
+
+  - Two new required namelists (add to input.nml files):
+
+    - probit_transform_nml
+    - algorithm_info_nml
+
+  - assim_tools_mod namelist
+  
+    - sort_obs_inc namelist option applied to ENKF only, so default is now .true.
+    - ``spread_restoration`` is not supported in this version
+
+  - algorithm_info_mod QCEFF options read at runtime from .csv or .txt file
+
+
+- New probability distribution modules:
+
+  - beta_distribution_mod *contributed by Chris Riedel*
+  - bnrh_distribution_mod (bounded normal rank histogram)
+  - gamma_distribution_mod
+  - normal_distribution_mod
+
+  -  probit_transform_mod 
+  -  distribution_params_mod
+
+- Update to lorenz_96_tracer_advection:
+
+  - positive_tracer
+  - more tracer namelist options available and changed defaults
+  - updated perturbation routine
+
+- Fix: obs_def_1d_state_mod (oned forward operators):
+
+  -  For non-integer powers, fix up values for negative bases
+
+- Documentation:
+
+  - main page section on Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+  - QCEFF instructions: Quantile-Conserving Ensemble Filter Framework
+  - Example to work through: QCEFF: Examples with the Lorenz 96 Tracer Model
+
 **December 13 2023 :: Developer tests and bug fixes. Tag v10.10.0** 
 
 - new developer tests to run all builds for all compilers on NSF NCAR machine
