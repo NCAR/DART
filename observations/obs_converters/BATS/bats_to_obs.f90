@@ -46,33 +46,33 @@ integer :: max_lines, read_starting_at_line, date_firstcol, hourminute_firstcol
 integer :: lat_cols(2), lon_cols(2), vert_cols(2)
 integer :: scalar_obs_cols(2, NUM_SCALAR_OBS)
 real(r8) :: obs_uncertainties(NUM_SCALAR_OBS)
-logical :: debug
+logical :: smoothing_only, debug
 
 namelist /bats_to_obs_nml/ text_input_file, max_lines, read_starting_at_line, date_firstcol, &
                            hourminute_firstcol, lat_cols, lon_cols, vert_cols, scalar_obs_cols, &
-                           obs_uncertainties, obs_out_dir, debug
+                           obs_uncertainties, obs_out_dir, smoothing_only, debug
 
 ! local variables
 character (len=294) :: input_line, obs_out_file
 character (len=6)   :: daystr
 
-integer :: oday, day_bin, day_bin_old, osec, rcio, iunit, otype, line_number, otype_index
+integer :: oday, clim_oday, day_bin, day_bin_old, osec, rcio, iunit, otype, line_number, otype_index
 integer :: year, month, day, hour, minute, second, hourminute_raw, date_raw
 integer :: num_copies, num_qc, max_obs
 integer :: num_processed(NUM_SCALAR_OBS)
 
-logical  :: file_exist, first_obs, new_obs_seq
+logical :: file_exist, first_obs, new_obs_seq
+logical :: clim_first_obs(365)
 
 real(r8) :: temp, terr, qc, wdir, wspeed, werr, obs_err
 real(r8) :: lat, lon, vert, uwnd, uerr, vwnd, verr, ovalue
 real(r8) :: running_sum(NUM_SCALAR_OBS), running_sqsum(NUM_SCALAR_OBS), &
             maxvals(NUM_SCALAR_OBS), minvals(NUM_SCALAR_OBS)
 
-! the uncertainties corresponding to the observations above
-
 type(obs_sequence_type) :: obs_seq
+type(obs_sequence_type) :: clim_obs_seq(365)
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: ref_day0, time_obs, prev_time
+type(time_type)         :: ref_day0, time_obs, clim_time_obs, prev_time
 
 
 ! start of executable code
@@ -121,6 +121,22 @@ do otype_index = 1, NUM_SCALAR_OBS
    maxvals(otype_index)       = 0.0_r8
    minvals(otype_index)       = 100000.0_r8
 end do
+
+! for smoothing mode, we initialize 365 obs-sequence files to represent a climatology with daily resolution
+if(smoothing_only) then
+   ! create a new, empty obs_seq file for each day of the year
+   do day = 1, 365
+      print *, "initiating obs_seq file for day ",(day - 1),"/364"
+      call init_obs_sequence(clim_obs_seq(day), num_copies, num_qc, max_obs)
+
+      ! the first one needs to contain the string 'observation' and the
+      ! second needs the string 'QC'.
+      call set_copy_meta_data(clim_obs_seq(day), 1, 'observation')
+      call set_qc_meta_data(clim_obs_seq(day), 1, 'Data QC')
+
+      clim_first_obs(day) = .true.
+   end do
+end if
 
 obsloop: do    ! no end limit - have the loop break when input ends
    ! read in entire text line into a buffer
@@ -242,6 +258,16 @@ obsloop: do    ! no end limit - have the loop break when input ends
          print *, "     observation value: ",ovalue
       end if
 
+      if(smoothing_only) then
+         ! for ensemble smoothing, each observation is considered to be a measurement
+         ! of the same climatological "year", which is arbitrarily labeled as year 1601
+         ! (the first year in DART's internal calendar). Observations are given identical
+         ! hour/minute timestamps so as to avoid time-ordering errors in the obs-seq file.
+         
+         clim_time_obs = set_date(1601, month, day, hours=0, minutes=0)
+         call get_time(clim_time_obs, osec, days=clim_oday)
+      end if
+
       num_processed(otype_index) = num_processed(otype_index) + 1
       running_sum(otype_index)   = running_sum(otype_index) + ovalue
       running_sqsum(otype_index) = running_sqsum(otype_index) + ovalue**2
@@ -255,7 +281,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
       day_bin_old = day_bin
 
       ! if necessary, saving the old observation sequence and beginning a new one.
-      if(new_obs_seq) then
+      if((.not. smoothing_only) .and. new_obs_seq) then
          ! dumping the observations so far into their own file
          if ( (.not. first_obs) .and. (get_num_obs(obs_seq) > 0) ) then
             if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
@@ -278,21 +304,21 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
       obs_err = max(obs_uncertainties(otype_index)*ovalue, MIN_OBS_ERROR)
 
-      call create_3d_obs(31.0_r8, 64.0_r8, vert, VERTISHEIGHT, &
-                         ovalue, OTYPE_ORDERING(otype_index), obs_err, &
-                         oday, osec, qc, obs)
+      if(smoothing_only) then
+         call create_3d_obs(31.0_r8, 64.0_r8, vert, VERTISHEIGHT, &
+                           ovalue, OTYPE_ORDERING(otype_index), obs_err, &
+                           clim_oday, osec, qc, obs)
 
-      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+         call add_obs_to_seq(clim_obs_seq(clim_oday + 1), obs, time_obs, prev_obs, prev_time, clim_first_obs(clim_oday + 1))
+      else
+         call create_3d_obs(31.0_r8, 64.0_r8, vert, VERTISHEIGHT, &
+                           ovalue, OTYPE_ORDERING(otype_index), obs_err, &
+                           oday, osec, qc, obs)
+
+         call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+      end if
    end do otype_loop
 end do obsloop
-
-! putting any remaining observations into an obs sequence file
-
-if ( (.not. first_obs) .and. (get_num_obs(obs_seq) > 0) ) then
-   if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
-   call write_obs_seq(obs_seq, obs_out_file)
-   call destroy_obs_sequence(obs_seq)
-endif
 
 print *, ""
 print *, "SUMMARY:"
@@ -308,6 +334,28 @@ do otype_index = 1, NUM_SCALAR_OBS
    print *, "    minimum value:      ",minvals(otype_index)
    print *, ""
 end do
+
+if(smoothing_only) then
+   do day = 1, 365
+      if ( (.not. clim_first_obs(day)) .and. (get_num_obs(clim_obs_seq(day)) > 0) ) then
+         print *, "writing obs_seq file for day ",(day - 1),", obs_count = ", get_num_obs(clim_obs_seq(day))
+
+         write(daystr, "(I0.3)") (day - 1)
+         obs_out_file = trim(obs_out_dir)//"/clim_BATS_"//trim(daystr)//".out"
+
+         call write_obs_seq(clim_obs_seq(day), obs_out_file)
+         call destroy_obs_sequence(clim_obs_seq(day))
+      endif
+   end do
+else
+   ! putting any remaining observations into an obs sequence file
+
+   if ( (.not. first_obs) .and. (get_num_obs(obs_seq) > 0) ) then
+      if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+      call write_obs_seq(obs_seq, obs_out_file)
+      call destroy_obs_sequence(obs_seq)
+   end if
+end if
 
 ! end of main program
 call finalize_utilities()

@@ -21,6 +21,7 @@
                            0.2,
                            0.2,
    obs_out_dir           = '../obs_seq_files',
+   smoothing_only        = .true.,
    debug                 = .true.
   /
 
