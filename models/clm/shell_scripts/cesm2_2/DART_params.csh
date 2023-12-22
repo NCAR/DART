@@ -115,7 +115,7 @@ setenv archdir          ${cime_output_root}/archive
 #              month. 'baseobsdir' will be inserted into the appropriate scripts.
 # ==============================================================================
 
-setenv dartroot               /glade/work/${USER}/git/DART_public
+setenv dartroot               /glade/work/${USER}/DART
 setenv baseobsdir             /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land
 setenv pmo_input_baseobsdir   /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/input
 setenv pmo_output_baseobsdir  /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/output
@@ -190,19 +190,13 @@ setenv resubmit     0
 
 setenv stream_year_align 2011
 setenv stream_year_first 2011
-setenv stream_year_last  2019
+setenv stream_year_last  2020
 
 # ==============================================================================
 # machine-specific commands:
 
 setenv project      P86850054
 setenv machine      derecho
-
-# The CESM compile step takes enough resource that Cheyenne requires a wrapper
-# If your platform does not have this restriction, set BUILD_WRAPPER to '' 
-# setenv BUILD_WRAPPER ''
-setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A $project --"
-# setenv BUILD_WRAPPER "qcmd -q main -l select=2:ncpus=128:mpiprocs=32:ompthreads=4 -A $project --"
 setenv nodes_per_instance 2
 setenv number_of_threads 1
 
