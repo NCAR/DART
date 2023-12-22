@@ -17,7 +17,7 @@ use         types_mod, only : r8, missing_r8
 
 use      location_mod, only : VERTISHEIGHT
 
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
+use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               nmlfileunit, do_nml_file, do_nml_term, &
                               find_namelist_in_file, check_namelist_read, &
                               error_handler, E_ERR, E_MSG, find_textfile_dims, &
@@ -39,7 +39,7 @@ use obs_def_streamflow_mod, only : set_streamflow_metadata
 
 use obs_utilities_mod, only : getvar_real, getvar_int, get_or_fill_QC, add_obs_to_seq, &
                               create_3d_obs, getvar_int, getdimlen, set_missing_name
-
+use    netcdf_utilities_mod, only : nc_check
 use netcdf
 
 implicit none
