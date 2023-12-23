@@ -159,7 +159,7 @@ checking out ``release-cesm2.2.03`` which is compatible with both DART and Derec
 
   ::
 
-    git clone https://github.com/escomp/cesm.git cesm_dart
+    git clone https://github.com/ESCOMP/CTSM.git cesm_dart
     cd cesm_dart
     git checkout release-cesm2.2.03
     ./manage_externals/checkout_externals
