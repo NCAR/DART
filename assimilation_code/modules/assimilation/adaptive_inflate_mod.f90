@@ -275,9 +275,7 @@ if(.not. initialized) then
    if (do_nml_term()) write(     *     , nml=adaptive_inflate_nml)
 
    ! Make sure selected options are okay
-   call validate_inflate_options(flavor, damping, initial_mean_from_restart, &
-      initial_sd_from_restart, deterministic, sd_max_change,            &
-      do_prior_inflate, do_posterior_inflate, output_inflation)
+   call validate_inflate_options(do_prior_inflate, do_posterior_inflate, output_inflation)
 
    initialized = .true.
 endif
@@ -452,18 +450,8 @@ end function deterministic_inflate
 !-------------------------------------------------------------------------------
 !> Make sure the combination of inflation options are legal
 
-subroutine validate_inflate_options(flavor, damping, initial_mean_from_restart, &
-                    initial_sd_from_restart, deterministic, sd_max_change, &
-                    do_prior_inflate, do_posterior_inflate, output_inflation)
+subroutine validate_inflate_options(do_prior_inflate, do_posterior_inflate, output_inflation)
 
-! DONT PASS NAMELIST GLOBALS AS ARGUMENTS
-
-integer,  intent(in)    :: flavor(2)
-real(r8), intent(inout) :: damping(2)
-logical,  intent(inout) :: initial_mean_from_restart(2)
-logical,  intent(inout) :: initial_sd_from_restart(2)
-logical,  intent(inout) :: deterministic(2)
-real(r8), intent(in)    :: sd_max_change(2)
 logical,  intent(out)   :: do_prior_inflate
 logical,  intent(out)   :: do_posterior_inflate
 logical,  intent(out)   :: output_inflation 
