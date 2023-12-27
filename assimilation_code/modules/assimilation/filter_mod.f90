@@ -745,10 +745,10 @@ AdvanceTime : do
    if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
-      if (prior_inflate%inf_damping /= 1.0_r8) then
+      if (prior_inflate%damping /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            prior_inflate%inf_damping * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
+            prior_inflate%damping * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
@@ -846,10 +846,10 @@ AdvanceTime : do
 
       call trace_message('Before posterior inflation damping')
 
-      if (post_inflate%inf_damping /= 1.0_r8) then
+      if (post_inflate%damping /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            post_inflate%inf_damping * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
+            post_inflate%damping * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
       call trace_message('After  posterior inflation damping')
@@ -951,8 +951,8 @@ AdvanceTime : do
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
-      if ((post_inflate%sd >= 0.0_r8) .or. &
-           post_inflate%sd_from_restart) then
+      if ((post_inflate%initial_sd >= 0.0_r8) .or. &
+           post_inflate%initial_sd_from_restart) then
 
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
@@ -1521,7 +1521,7 @@ do group = 1, num_groups
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
 
          !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = post_inflate%inflate
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = post_inflate%initial_mean
 
          do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
@@ -2336,7 +2336,7 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; must save the prior ensemble spread in a different copy
-if ( post_inflate%inflation_flavor == RELAXATION_TO_PRIOR_SPREAD ) then
+if ( post_inflate%flavor == RELAXATION_TO_PRIOR_SPREAD ) then
 !!!if ( inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif
@@ -2394,16 +2394,16 @@ else
 endif
 
 if ( do_prior_inflate ) then
-   if ( prior_inflate%mean_from_restart ) &
+   if ( prior_inflate%initial_mean_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   if ( prior_inflate%sd_from_restart ) &
+   if ( prior_inflate%initial_sd_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
-   if ( post_inflate%mean_from_restart ) &
+   if ( post_inflate%initial_mean_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   if ( post_inflate%sd_from_restart ) &
+   if ( post_inflate%initial_sd_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
