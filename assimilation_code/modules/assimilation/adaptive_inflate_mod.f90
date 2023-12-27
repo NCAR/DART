@@ -64,13 +64,16 @@ integer, parameter :: ENHANCED_SS_INFLATION      = 5
 
 ! Type to keep track of information for inflation
 type adaptive_inflate_type
-   private
+   !!! TEMPORARY UN_PRIVATE FOR DEVELOPMENT: PUT BACK IN WITH INTERFACES
+   !!!private
    integer               :: inflation_flavor
+   !!! THIS IS WEIRD: NEED TO CLEAN IT UP
    integer               :: inflation_sub_flavor
    logical               :: output_restart = .false.
    logical               :: deterministic
    real(r8)              :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
    real(r8)              :: sd_max_change
+   real(r8)              :: inf_damping
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
    real(r8)              :: minmax_mean(2), minmax_sd(2)
@@ -296,6 +299,7 @@ inflate_handle%inf_lower_bound      = inf_lower_bound(prior_post)
 inflate_handle%inf_upper_bound      = inf_upper_bound(prior_post)
 inflate_handle%sd_lower_bound       = inf_sd_lower_bound(prior_post)
 inflate_handle%sd_max_change        = inf_sd_max_change(prior_post)
+inflate_handle%inf_damping          = inf_damping(prior_post)
 inflate_handle%mean_from_restart    = inf_initial_from_restart(prior_post)
 inflate_handle%sd_from_restart      = inf_sd_initial_from_restart(prior_post)
 

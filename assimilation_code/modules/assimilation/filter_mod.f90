@@ -235,22 +235,6 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
                       adv_ens_command       = './advance_model.csh'
 
-! The inflation algorithm variables are defined in adaptive_inflate_mod.
-! We use the integer parameters for PRIOR_INF and POSTERIOR_INF from 
-! adaptive_inflate_mod to index these 'length 2' arrays.
-
-integer  :: inf_flavor(2)                  = 0
-logical  :: inf_initial_from_restart(2)    = .false.
-logical  :: inf_sd_initial_from_restart(2) = .false.
-logical  :: inf_deterministic(2)           = .true.
-real(r8) :: inf_initial(2)                 = 1.0_r8
-real(r8) :: inf_sd_initial(2)              = 0.0_r8
-real(r8) :: inf_sd_max_change(2)           = 1.05_r8
-real(r8) :: inf_damping(2)                 = 1.0_r8
-real(r8) :: inf_lower_bound(2)             = 1.0_r8
-real(r8) :: inf_upper_bound(2)             = 1000000.0_r8
-real(r8) :: inf_sd_lower_bound(2)          = 0.0_r8
-
 ! Some models are allowed to have MISSING_R8 values in the DART state vector.
 ! If they are encountered, it is not necessarily a FATAL error.
 ! Most of the time, if a MISSING_R8 is encountered, DART should die.
@@ -280,17 +264,6 @@ namelist /filter_nml/ async,     &
    trace_execution,              &
    output_forward_op_errors,     &
    output_timestamps,            &
-   inf_flavor,                   &
-   inf_initial_from_restart,     &
-   inf_sd_initial_from_restart,  &
-   inf_sd_max_change,            & 
-   inf_deterministic,            &
-   inf_damping,                  &
-   inf_initial,                  &
-   inf_sd_initial,               &
-   inf_lower_bound,              &
-   inf_upper_bound,              &
-   inf_sd_lower_bound,           &
    silence,                      &
    distributed_state,            &
    single_file_in,               &
@@ -391,10 +364,6 @@ call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
-
-call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
-   inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
-   do_prior_inflate, do_posterior_inflate, output_inflation)
 
 !!! NEED TO DEAL WITH compute_posterior false and posterior inflation illegal below
 ! Cannot select posterior options if not computing posterior
@@ -776,10 +745,10 @@ AdvanceTime : do
    if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
-      if (inf_damping(PRIOR_INF) /= 1.0_r8) then
+      if (prior_inflate%inf_damping /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(PRIOR_INF) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
+            prior_inflate%inf_damping * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
@@ -877,10 +846,10 @@ AdvanceTime : do
 
       call trace_message('Before posterior inflation damping')
 
-      if (inf_damping(POSTERIOR_INF) /= 1.0_r8) then
+      if (post_inflate%inf_damping /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(POSTERIOR_INF) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
+            post_inflate%inf_damping * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
       call trace_message('After  posterior inflation damping')
@@ -982,8 +951,8 @@ AdvanceTime : do
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
-      if ((inf_sd_initial(POSTERIOR_INF) >= 0.0_r8) .or. &
-           inf_sd_initial_from_restart(POSTERIOR_INF)) then
+      if ((post_inflate%sd >= 0.0_r8) .or. &
+           post_inflate%sd_from_restart) then
 
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
@@ -1552,7 +1521,7 @@ do group = 1, num_groups
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
 
          !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = inf_initial(POSTERIOR_INF)
+         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = post_inflate%inflate
 
          do j = 1, ens_handle%my_num_vars
             call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
@@ -2367,7 +2336,8 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; must save the prior ensemble spread in a different copy
-if ( inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
+if ( post_inflate%inflation_flavor == RELAXATION_TO_PRIOR_SPREAD ) then
+!!!if ( inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif
 
@@ -2424,16 +2394,16 @@ else
 endif
 
 if ( do_prior_inflate ) then
-   if ( inf_initial_from_restart(PRIOR_INF)    ) &
+   if ( prior_inflate%mean_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(PRIOR_INF) ) &
+   if ( prior_inflate%sd_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
-   if ( inf_initial_from_restart(POSTERIOR_INF)    ) &
+   if ( post_inflate%mean_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   if ( inf_sd_initial_from_restart(POSTERIOR_INF) ) &
+   if ( post_inflate%sd_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
