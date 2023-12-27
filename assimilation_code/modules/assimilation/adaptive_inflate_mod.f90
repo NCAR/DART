@@ -11,7 +11,9 @@ module adaptive_inflate_mod
 
 use types_mod,            only : r8, PI, MISSING_R8
 use time_manager_mod,     only : time_type, get_time
-use utilities_mod,        only : open_file, close_file, error_handler, E_ERR, E_MSG
+use utilities_mod,        only : open_file, close_file, error_handler, E_ERR, E_MSG, &
+                                 nmlfileunit, do_nml_file, do_nml_term,              &
+                                 check_namelist_read, find_namelist_in_file
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_to
@@ -31,8 +33,7 @@ public :: update_inflation,                                 do_obs_inflate,     
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
           get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
           print_inflation_restart_filename,                                           &
-          PRIOR_INF, POSTERIOR_INF, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
-          SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
+          PRIOR_INF, POSTERIOR_INF, NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
@@ -49,10 +50,6 @@ character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
 integer, parameter :: PRIOR_INF = 1
 integer, parameter :: POSTERIOR_INF = 2
-
-!>@todo Eventually the namelist options corresponding to inflation should move from 
-!> filter into this module and then possibly become two different namelists so we
-!> don't have these arrays of length (2).
 
 ! Encode the different inflation options
 ! OBS_INFLATION is currently deprecated.
@@ -76,7 +73,6 @@ type adaptive_inflate_type
    real(r8)              :: sd_max_change
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
-   logical               :: allow_missing_in_clm
    real(r8)              :: minmax_mean(2), minmax_sd(2)
    logical               :: mean_from_restart
    logical               :: sd_from_restart
@@ -98,6 +94,34 @@ logical :: initialized = .false.
 
 ! Used for precision tests in inflation update routines
 real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaNs/Inf
+
+
+!----------------------------------------------------------------
+! Namelist input with default values
+!
+integer  :: inf_flavor(2)                  = 0
+logical  :: inf_initial_from_restart(2)    = .false.
+logical  :: inf_sd_initial_from_restart(2) = .false.
+logical  :: inf_deterministic(2)           = .true.
+real(r8) :: inf_initial(2)                 = 1.0_r8
+real(r8) :: inf_sd_initial(2)              = 0.0_r8
+real(r8) :: inf_sd_max_change(2)           = 1.05_r8
+real(r8) :: inf_damping(2)                 = 1.0_r8
+real(r8) :: inf_lower_bound(2)             = 1.0_r8
+real(r8) :: inf_upper_bound(2)             = 1000000.0_r8
+real(r8) :: inf_sd_lower_bound(2)          = 0.0_r8
+
+namelist /adaptive_inflate_nml/ inf_flavor, &
+   inf_initial_from_restart,                &
+   inf_sd_initial_from_restart,             &
+   inf_sd_max_change,                       &
+   inf_deterministic,                       &
+   inf_damping,                             &
+   inf_initial,                             &
+   inf_sd_initial,                          &
+   inf_lower_bound,                         &
+   inf_upper_bound,                         &
+   inf_sd_lower_bound
 
 
 !===============================================================================
@@ -217,56 +241,63 @@ end function do_ss_inflate
 !-------------------------------------------------------------------------------
 !> Initializes an adaptive_inflate_type 
 
-subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
-   sd_from_restart, output_inflation, deterministic, & 
-   inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, sd_max_change, missing_ok, label)
+subroutine adaptive_inflate_init(inflate_handle, prior_post, output_inflation)
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
-integer,                     intent(in)    :: inf_flavor
-logical,                     intent(in)    :: mean_from_restart
-logical,                     intent(in)    :: sd_from_restart
-logical,                     intent(in)    :: output_inflation
-logical,                     intent(in)    :: deterministic
-real(r8),                    intent(in)    :: inf_initial, sd_initial
-real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
-real(r8),                    intent(in)    :: sd_lower_bound
-real(r8),                    intent(in)    :: sd_max_change
-logical,                     intent(in)    :: missing_ok
-character(len = *),          intent(in)    :: label
+integer,                     intent(in)    :: prior_post
+logical,                     intent(out)    :: output_inflation
 
 ! random value
 integer, save :: salt = 139
+integer       :: iunit, io
+
+! These logicals are intent out from validate_inflate; this needs to 
+! get propagated up eventually
+logical  :: do_prior_inflate, do_posterior_inflate
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
+
+   ! Read the namelist settings for prior and posterior inflation
+   call find_namelist_in_file("input.nml", "adaptive_inflate_nml", iunit)
+   read(iunit, nml = adaptive_inflate_nml, iostat = io)
+   call check_namelist_read(iunit, io, "adpative_inflate_nml")
+   
+   ! Record the namelist values used for the run ...
+   if (do_nml_file()) write(nmlfileunit, nml=adaptive_inflate_nml)
+   if (do_nml_term()) write(     *     , nml=adaptive_inflate_nml)
+
+   ! Make sure selected options are okay
+   call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
+      inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
+      do_prior_inflate, do_posterior_inflate, output_inflation)
+
    initialized = .true.
 endif
 
-! If non-deterministic inflation is being done, need to initialize random sequence.
-! use the task id number (plus 1 since they start at 0) to set the initial seed.
-! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
-!> this used to set the same seed for prior & posterior - add a constant value
-!> in case it's called a second time.
-if(.not. deterministic) then
-   call init_random_seq(inflate_handle%ran_seq, my_task_id()+1 + salt)
-   salt = salt + 1000 
+! Load up the structure first to keep track of all details of this inflation type
+
+! Initializing for prior or posterior?
+if (prior_post == PRIOR_INF) then 
+   inflate_handle%prior     = .true.
+   inflate_handle%posterior = .false.
+else if (prior_post == POSTERIOR_INF) then
+   inflate_handle%prior     = .false.
+   inflate_handle%posterior = .true.
 endif
 
-! Load up the structure first to keep track of all details of this inflation type
-inflate_handle%inflation_flavor     = inf_flavor
-inflate_handle%inflation_sub_flavor = inf_flavor    ! see code below
+inflate_handle%inflation_flavor     = inf_flavor(prior_post)
+inflate_handle%inflation_sub_flavor = inf_flavor(prior_post)    ! see code below
 inflate_handle%output_restart       = output_inflation
-inflate_handle%deterministic        = deterministic
-inflate_handle%inflate              = inf_initial
-inflate_handle%sd                   = sd_initial
-inflate_handle%inf_lower_bound      = inf_lower_bound
-inflate_handle%inf_upper_bound      = inf_upper_bound
-inflate_handle%sd_lower_bound       = sd_lower_bound
-inflate_handle%sd_max_change        = sd_max_change
-inflate_handle%allow_missing_in_clm = missing_ok
-inflate_handle%mean_from_restart    = mean_from_restart
-inflate_handle%sd_from_restart      = sd_from_restart
+inflate_handle%deterministic        = inf_deterministic(prior_post)
+inflate_handle%inflate              = inf_initial(prior_post)
+inflate_handle%sd                   = inf_sd_initial(prior_post)
+inflate_handle%inf_lower_bound      = inf_lower_bound(prior_post)
+inflate_handle%inf_upper_bound      = inf_upper_bound(prior_post)
+inflate_handle%sd_lower_bound       = inf_sd_lower_bound(prior_post)
+inflate_handle%sd_max_change        = inf_sd_max_change(prior_post)
+inflate_handle%mean_from_restart    = inf_initial_from_restart(prior_post)
+inflate_handle%sd_from_restart      = inf_sd_initial_from_restart(prior_post)
 
 !Overwriting the initial value of inflation with 1.0
 !as in other inflation flavors (usually start from 1). 
@@ -275,19 +306,26 @@ inflate_handle%sd_from_restart      = sd_from_restart
 !parameter, say alpha: 
 !RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
 !where; sd_b (sd_a): prior (posteriro) spread
-if(inf_flavor == RELAXATION_TO_PRIOR_SPREAD) inflate_handle%inflate = 1.0_r8
-
-! Prior and posterior are intialized to false
-if (trim(label)=='Prior') inflate_handle%prior = .true.
-if (trim(label)=='Posterior') inflate_handle%posterior = .true.
+if(inflate_handle%inflation_flavor == RELAXATION_TO_PRIOR_SPREAD) inflate_handle%inflate = 1.0_r8
 
 ! ENHANCED_SS_INFLATION is a subset of VARYING_SS_INFLATION. modify the main flavor here.
-if (inf_flavor == ENHANCED_SS_INFLATION) then
+! WHAT IS GOING ON HERE?
+if (inflate_handle%inflation_flavor == ENHANCED_SS_INFLATION) then
    inflate_handle%inflation_flavor = VARYING_SS_INFLATION
 endif
 
+! If non-deterministic inflation is being done, need to initialize random sequence.
+! use the task id number (plus 1 since they start at 0) to set the initial seed.
+! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
+!> this used to set the same seed for prior & posterior - add a constant value
+!> in case it's called a second time.
+if(.not. inflate_handle%deterministic) then
+   call init_random_seq(inflate_handle%ran_seq, my_task_id()+1 + salt)
+   salt = salt + 1000 
+endif
+
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
-if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
+if(.not. inflate_handle%deterministic .and. inflate_handle%inf_lower_bound < 1.0_r8) then
    write(string1, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
    call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
 endif
@@ -300,7 +338,7 @@ inflate_handle%minmax_sd(:)   = MISSING_R8
 ! State space inflation is read in the IO routine read_state.
 
 ! Read type 1 (observation space inflation)
-if(inf_flavor == OBS_INFLATION) then
+if(inflate_handle%inflation_flavor == OBS_INFLATION) then
 
    write(string1,  *) 'No longer supporting observation space inflation ', &
                         '(i.e. inf_flavor = 1).'
@@ -408,8 +446,7 @@ end function deterministic_inflate
 
 subroutine validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
                     inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change, &
-                    do_prior_inflate, do_posterior_inflate, output_inflation, &
-                    compute_posterior)
+                    do_prior_inflate, do_posterior_inflate, output_inflation)
 
 integer,  intent(in)    :: inf_flavor(2)
 real(r8), intent(inout) :: inf_damping(2)
@@ -420,7 +457,6 @@ real(r8), intent(in)    :: inf_sd_max_change(2)
 logical,  intent(out)   :: do_prior_inflate
 logical,  intent(out)   :: do_posterior_inflate
 logical,  intent(out)   :: output_inflation 
-logical,  intent(in)    :: compute_posterior
 
 integer :: i
 character(len=32) :: string(2)
@@ -466,13 +502,6 @@ if(inf_flavor(PRIOR_INF) == OBS_INFLATION .or. &
 if(inf_flavor(PRIOR_INF) == RELAXATION_TO_PRIOR_SPREAD) &
    call error_handler(E_ERR, 'validate_inflate_options', &
    'RTPS inflation (type 4) only supported for Posterior inflation', source)
-
-! Cannot select posterior options if not computing posterior
-if(.not. compute_posterior .and. inf_flavor(POSTERIOR_INF) /= NO_INFLATION) then
-   write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
-   call error_handler(E_ERR,'validate_inflate_options', string1, source, &
-           text2='"compute_posterior" is false; posterior inflation flavor must be 0')
-endif
 
 ! RTPS needs a single parameter from namelist: inf_initial(2).  
 ! Do not read in any files.  Also, no damping.  
@@ -533,11 +562,9 @@ real(r8), optional,          intent(in)    :: fsprd, asprd
 integer  :: i, ens_size
 real(r8) :: rand_sd, var, sd_inflate
 
-! it's possible to have MISSING_R8s in the state vector now.  
-! so we need to be able to avoid changing MISSING_R8 values by inflation here.
-if (inflate_handle%allow_missing_in_clm) then
-   if (any(ens == MISSING_R8)) return
-endif
+! This used to be restricted to case where clm supports missing
+! For now, if there is a missing_r8 in any ensemble, don't do anything and return
+if (any(ens == MISSING_R8)) return
 
 if(inflate_handle%deterministic) then
 

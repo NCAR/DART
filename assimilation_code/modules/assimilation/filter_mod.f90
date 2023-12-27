@@ -58,9 +58,8 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   log_inflation_info, set_inflation_sd_copy,          &
                                   get_minmax_task_zero, do_rtps_inflate,              &
                                   validate_inflate_options, PRIOR_INF, POSTERIOR_INF, &
-                                  NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION,  &
-                                  SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD,    &
-                                  ENHANCED_SS_INFLATION
+                                  NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
+                                  
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -113,7 +112,7 @@ integer :: trace_level, timestamp_level
 ! Defining whether diagnostics are for prior or posterior
 integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 
-! Determine if inflation it turned on or off for reading and writing
+! Determine if inflation is turned on or off for reading and writing
 ! inflation restart files
 logical :: output_inflation = .false.
 
@@ -395,51 +394,20 @@ call trace_message('Before initializing inflation')
 
 call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
-   do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
+   do_prior_inflate, do_posterior_inflate, output_inflation)
+
+!!! NEED TO DEAL WITH compute_posterior false and posterior inflation illegal below
+! Cannot select posterior options if not computing posterior
+!!!if(.not. compute_posterior .and. inf_flavor(POSTERIOR_INF) /= NO_INFLATION) then
+   !!!write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
+   !!!call error_handler(E_ERR,'validate_inflate_options', string1, source, &
+           !!!text2='"compute_posterior" is false; posterior inflation flavor must be 0')
+!!!endif
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, &
-                           inf_flavor(PRIOR_INF), &
-                           inf_initial_from_restart(PRIOR_INF), & 
-                           inf_sd_initial_from_restart(PRIOR_INF), &
-                           output_inflation, &
-                           inf_deterministic(PRIOR_INF), &
-                           inf_initial(PRIOR_INF), &
-                           inf_sd_initial(PRIOR_INF), &
-                           inf_lower_bound(PRIOR_INF), &
-                           inf_upper_bound(PRIOR_INF), &
-                           inf_sd_lower_bound(PRIOR_INF), &
-                           inf_sd_max_change(PRIOR_INF), &
-                           allow_missing, 'Prior')
+call adaptive_inflate_init(prior_inflate, PRIOR_INF, output_inflation)
 
-call adaptive_inflate_init(post_inflate, &
-                           inf_flavor(POSTERIOR_INF), &
-                           inf_initial_from_restart(POSTERIOR_INF), &
-                           inf_sd_initial_from_restart(POSTERIOR_INF), &
-                           output_inflation, &
-                           inf_deterministic(POSTERIOR_INF), &
-                           inf_initial(POSTERIOR_INF), &
-                           inf_sd_initial(POSTERIOR_INF), &
-                           inf_lower_bound(POSTERIOR_INF), &
-                           inf_upper_bound(POSTERIOR_INF), &
-                           inf_sd_lower_bound(POSTERIOR_INF), &
-                           inf_sd_max_change(POSTERIOR_INF), &
-                           allow_missing, 'Posterior')
-
-if (do_output()) then
-   if (inf_flavor(PRIOR_INF) > NO_INFLATION .and. &
-            inf_damping(PRIOR_INF) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', &
-                                      inf_damping(PRIOR_INF), ' will be used'
-      call error_handler(E_MSG,'filter_main:', msgstring)
-   endif
-   if (inf_flavor(POSTERIOR_INF) > NO_INFLATION .and. &
-            inf_damping(POSTERIOR_INF) < 1.0_r8) then
-      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', &
-                                      inf_damping(POSTERIOR_INF), ' will be used'
-      call error_handler(E_MSG,'filter_main:', msgstring)
-   endif
-endif
+call adaptive_inflate_init(post_inflate, POSTERIOR_INF, output_inflation)
 
 call trace_message('After  initializing inflation')
 
