@@ -21,6 +21,7 @@
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
      'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
+   debug = 0
    /
  
 ! TODO: Or could use these.  What's the difference?

@@ -26,12 +26,9 @@ program aether_to_dart
 use        types_mod, only : r8
 
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
-                             find_namelist_in_file, check_namelist_read, &
                              error_handler, E_MSG
 
 use        model_mod, only : restart_files_to_netcdf
-
-use time_manager_mod, only : time_type, print_time, print_date
 
 implicit none
 

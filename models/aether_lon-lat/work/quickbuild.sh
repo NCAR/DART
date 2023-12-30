@@ -27,6 +27,7 @@ obs_seq_to_netcdf
 
 model_serial_programs=(
 aether_to_dart
+transform_names
 dart_to_aether)
 
 arguments "$@"
@@ -44,7 +45,7 @@ buildpreprocess
 buildit
 
 # clean up
-\rm -f -- *.o *.mod
+# \rm -f -- *.o *.mod
 
 }
 

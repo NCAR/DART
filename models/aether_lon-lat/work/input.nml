@@ -163,14 +163,12 @@
 #    /
 
 &model_nml
-   debug             = 100
-   filter_io_dir  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
-   estimate_f10_7 = .false.
-   f10_7_file_name = 'f10_7.nc'
+   filter_io_filename  = 'filter_input_0001.nc'
    variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
-               'O+',          'QTY_DENSITY_ION_OP',      'NA',      'NA',      'ions',        'UPDATE'
-   calendar = 'Gregorian'
-   assimilation_period_seconds = 3600
+               'Opos',           'QTY_DENSITY_ION_OP',   'NA',      'NA',      'ions',        'UPDATE'
+   time_step_days = 0
+   time_step_seconds = 3600
+   debug             = 10
    /
 ! >>> Don't code these until we get new CF-compliant field names from Aaron. <<<
 ! Other neutrals from restart files, which Aaron identified as important:
@@ -185,13 +183,13 @@
          Vertical\ Wind 
 
 &aether_to_dart_nml
-   aether_restart_dirname = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   aether_restart_dirname = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata3'
    filter_io_root = 'filter_input'
    variables = 
-     'Temperature',    'QTY_TEMPERATURE',       '1000.0', 'NA', 'neutrals', 'UPDATE',
-     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'Temperature',    'QTY_TEMPERATURE',       'NA', '10000.0', 'neutrals', 'UPDATE',
+     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  'NA',      'NA', 'neutrals', 'UPDATE',
      'O+',    
-        'QTY_DENSITY_ION_OP',  'NA', 'NA', 'ions', 'UPDATE'
+        'QTY_DENSITY_ION_OP',  '0.', 'NA', 'ions', 'UPDATE'
      'Temperature\ \(O+\)',                             
         'QTY_TEMPERATURE_ION', 'NA', 'NA', 'ions', 'UPDATE',
      'Parallel\ Ion\ Velocity\ \(Zonal\)\ \(O+\)', 
@@ -206,10 +204,11 @@
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
      'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
+     debug = 5
    /
 
 &dart_to_aether_nml
-   aether_restart_dirname  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata1/restartOut.Sphere.1member'
+   aether_restart_dirname  = '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata3'
    filter_io_root = 'filter_output',
    variables = 
      'Temperature',    'QTY_TEMPERATURE',       '1000.0', 'NA', 'neutrals', 'UPDATE',
@@ -230,6 +229,7 @@
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
      'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
+     debug = 5
    /
 ! 4 digit member number and .nc will be appended to this.
 
@@ -249,8 +249,8 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'CHAMP_DENSITY', 'GPS_VTEC_EXTRAP', 'GPS_PROFILE', 'COSMIC_ELECTRON_DENSITY'
-   evaluate_these_obs_types   = 'GND_GPS_VTEC'
+   assimilate_these_obs_types = 'GPS_VTEC_EXTRAP', 'GPS_PROFILE', 'COSMIC_ELECTRON_DENSITY'
+   evaluate_these_obs_types   = ''
    /
 
 &location_nml
@@ -290,6 +290,7 @@
    logfilename = 'dart_log.out'
    nmlfilename = 'dart_log.nml'
    write_nml   = 'file'
+   print_debug = .true.
    /
 
 &mpi_utilities_nml
@@ -375,21 +376,49 @@
    max_lon           = 360.0
    /
 
+ test 6 produces an exhaustive list of metadata for EVERY element in the DART state vector. 
+ num_ens must = 1
+ x_ind is for test3.  The default (-1) will fail.
+ interp_test_dX are the model grid resolutions, 
+    or numbers to use as such in the testing.
+    _d[xyz] is for cartesian grids, 
+    _d{lon,lat,vert} is for spherical grids
+    interp_test_d[xyz] take precedence over d{lon,lat,vert}
+       all 3 must be specified.
+    aether (54 levels) dz ranges from ~1500 in the low levels to ~15,000 at the top.
+ interp_test_{lon,lat,vert}range; model domain limits (or a subdomain?)
+ Aether longitudes; in the filter_input_#.nc some are not whole numbers.; 75.00001
+ Doc error: web page says run_tests uses entries from test1thru,
+   but that has test 0, which is not an option in model_mod_check.
+   tests_to_run is not dimensioned '(0:'.
+
 &model_mod_check_nml
-   input_state_files     = "tiegcm_restart_p.nc", "tiegcm_s.nc"
-   output_state_files    = "mmc_output_p.nc", "mmc_output_s.nc"
-   test1thru             = 7
-   run_tests             = 0,1,2,3,4,5,7
-   x_ind                 = 1
-   loc_of_interest       = 240.0, 12.49, 200000.0
+   num_ens               = 1
+   single_file           = .FALSE.
+   input_state_files     = 'filter_input_0001.nc'
+   output_state_files    = 'filter_output_0001.nc'
    quantity_of_interest  = 'QTY_DENSITY_ION_OP'
-   interp_test_dlon      = 5 
-   interp_test_dlat      = 5 
-   interp_test_dvert     = 50000.0
+   all_metadata_file     = 'test6_metadata.txt'
+   x_ind                 = 1234
+   loc_of_interest       =  15.0, -2.5, 100000.
+   interp_test_dlon      =   10.0
+   interp_test_dlat      =    5.0
+   interp_test_dvert     = 1500.0
    interp_test_lonrange  = 0,  360 
    interp_test_latrange  = -87.5,   87.5
-   interp_test_vertrange = 200000.0, 300000.0
+   interp_test_vertrange = 96952.5625, 436360.25
+   interp_test_dx        = -888888.0
+   interp_test_dy        = -888888.0
+   interp_test_dz        = -888888.0
+   interp_test_xrange    = -888888.0, -888888.0
+   interp_test_yrange    = -888888.0, -888888.0
+   interp_test_zrange    = -888888.0, -888888.0
    interp_test_vertcoord = 'VERTISHEIGHT'
-   verbose               = .false.
-   /
+   test1thru             = -1
+   run_tests             = 1,2,3,4,5,7
+   verbose               = .FALSE.
+  /
 
+&quad_interpolate_nml
+    debug = 999
+/
