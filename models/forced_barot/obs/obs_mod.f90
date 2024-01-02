@@ -17,7 +17,7 @@ use loc_and_dist_mod, only : loc_type, set_loc, get_loc
 use    utilities_mod, only : file_exist, open_file, close_file,            &
                              register_module, error_handler, E_ERR, E_MSG, &
                              nmlfileunit, find_namelist_in_file,           &
-                             check_namelist_read, nc_check, do_output
+                             check_namelist_read, do_output
 
 implicit none
 private
