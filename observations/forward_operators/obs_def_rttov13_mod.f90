@@ -708,6 +708,8 @@ logical              :: use_htfrtc           = .false.  ! use HTFRTC of Havemann
 integer              :: htfrtc_n_pc          = -1       ! number of PCs to use (HTFRTC only, max 300)
 logical              :: htfrtc_simple_cloud  = .false.  ! use simple-cloud scattering (HTFRTC only)
 logical              :: htfrtc_overcast      = .false.  ! calculate overcast radiances (HTFRTC only)
+real(r8)             :: wfetc_value          = 100000.0_r8 ! Real wfetc Wind fetch (m) (length of water over which the wind has blown, typical
+                                                           ! value 100000m for open ocean). Used if wfetc not provided by model.
 
 namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               first_lvl_is_sfc,       &
@@ -779,7 +781,8 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               use_htfrtc,             &
                               htfrtc_n_pc,            &
                               htfrtc_simple_cloud,    &
-                              htfrtc_overcast
+                              htfrtc_overcast,        &
+                              wfetc_value
 
 type(atmos_profile_type)     :: atmos
 type(trace_gas_profile_type) :: trace_gas
@@ -2344,7 +2347,7 @@ DO imem = 1, ens_size
       ! Wind fetch over the ocean (m)
       runtime % profiles(imem) % s2m % wfetc = atmos % wfetch(imem)  
    else
-      runtime % profiles(imem) % s2m % wfetc = 100000.0_r8
+      runtime % profiles(imem) % s2m % wfetc = wfetc_value
    end if
    
    ! Surface type (0=land, 1=sea, 2=sea-ice)
