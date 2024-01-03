@@ -32,7 +32,6 @@ C
 C   SUBPROGRAMS CALLED: (LIST ALL CALLED FROM ANYWHERE IN CODES)
 C     UNIQUE:    - lenbufr
 C     LIBRARY:
-C       System   - getarg stat
 C       W3LIB    - errexit gbyte sbyte
 C
 C   EXIT STATES:
@@ -51,7 +50,7 @@ C$$$
       character,allocatable :: cbuf(:)
       CHARACTER(len=80) :: infile,outfile
       character(len=4) :: bufr='BUFR',ctemp,csec0
-      INTEGER(4)       narg,iargc,JSTAT(100)
+      INTEGER(4)       narg,JSTAT(100)
       integer findbufr, i, INDEXVAL, rc
       character*1 byte(8)
       integer :: STAT
@@ -63,18 +62,18 @@ C
 c liu 03/16/2005
 C  GET Filename ARGUMENTS
 C
-C  if your machine does not support the iargc or getarg functions
+C  if your machine does not support the Fortran 2003 intrinsics,
 C  comment this section out and use the hardcoded filenames below.
-      NARG=IARGC()
+      NARG=COMMAND_ARGUMENT_COUNT()
       IF(NARG.NE.2) THEN
         PRINT *,'grabbufr:  Incorrect usage'
         PRINT *,'Usage: grabbufr inputBUFRfile ouputBUFRfile'
         CALL EXIT(2)
       ENDIF
 
-      call getarg(1,infile)
+      call GET_COMMAND_ARGUMENT(1,infile)
       infile = TRIM(infile)//CHAR(0)
-      call getarg(2,outfile)
+      call GET_COMMAND_ARGUMENT(2,outfile)
       outfile = TRIM(outfile)//CHAR(0)
 
 C  hardcoded filenames are the alternative to getting the filenames from

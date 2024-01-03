@@ -61,7 +61,7 @@ logical, parameter :: use_input_qc = .false.
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-integer  :: ncid, varid, ios
+integer  :: ncid, varid, ios, length
 integer  :: ntime, n, i, oday, osec, nused, idx
 integer  :: iyear, imonth, iday, ihour, imin, isec
 logical  :: first_obs
@@ -89,9 +89,9 @@ character(len=512) :: string1, string2, string3
 call initialize_utilities('convert_aviso')
 
 ! command line argument
-call getarg(1, input_file)
+call GET_COMMAND_ARGUMENT(1, input_file, length, ios)
 
-if (input_file == '') then
+if (input_file == '' .or. ios .ne. 0) then
    write(string1,*)'..  Require a command-line argument specifying the input file.'
    write(string2,*)'Must be a fully-qualified file name.'
    write(string3,*)'USAGE: convert_aviso  <input_file_name>'

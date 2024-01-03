@@ -35,7 +35,6 @@ C     unit 6   - console output
 C
 C   SUBPROGRAMS CALLED: (LIST ALL CALLED FROM ANYWHERE IN CODES)
 C     LIBRARY:
-C       System   - getarg stat
 C       W3LIB    - errexit 
 C
 C   EXIT STATES:
@@ -52,7 +51,7 @@ C   MACHINE:  IBM SP
 C
 C$$$
       CHARACTER(len=80) :: infile
-      INTEGER(4)        :: narg,iargc,JSTAT(100)
+      INTEGER(4)        :: narg,JSTAT(100)
       integer           :: i, KBYTES, rc
       integer           :: STAT
 
@@ -62,17 +61,17 @@ C  GET Filename ARGUMENTS from command line.
 C  IF THIS DOES NOT WORK, comment this entire section out and use the
 C  hardcoded filenames below.
 C
-      NARG=IARGC()
+      NARG=COMMAND_ARGUMENT_COUNT()
       IF(NARG.NE.1) THEN
         PRINT *,'stat_test:  Incorrect usage'
         PRINT *,'Usage: stat_test inputBUFRfile'
         CALL EXIT(2)
       ENDIF
 
-      call getarg(1,infile)
+      call GET_COMMAND_ARGUMENT(1,infile)
       infile = TRIM(infile)//CHAR(0)
 
-C  If your system does not support IARGC and getarg(), comment out from
+C  If your system does not support Fortran 2003 intrinsics, comment out from
 C  the previous comment to here, and comment in the following line.
 C  Then link or rename your input BUFR files to match the name.
 
