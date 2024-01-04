@@ -24,7 +24,7 @@ Build the DART executables for the Lorenz 96 tracer advection model:
 
 The new quantile options are set using a :ref:`qceff table <QCEFF>` given as a namelist
 option ``qceff_table_filename`` to &algorithm_info_nml. The examples below show how to change the quantile options
-using various qceff tables. You can find the .csv files for these four example in the directory
+using various QCEFF tables. You can find the .csv files for these four examples in the directory
 ``DART/models/lorenz_96_tracer_advection/work``
 
 
@@ -34,9 +34,9 @@ using various qceff tables. You can find the .csv files for these four example i
 
    * - example
      - description
-     - .cvs filename 
+     - .csv filename 
    * - Example A 
-     - boundend normal rank histogram
+     - bounded normal rank histogram
      - all_bnrhf_qceff_table.csv
    * - Example B
      - Ensemble Adjustment Kalman filters
