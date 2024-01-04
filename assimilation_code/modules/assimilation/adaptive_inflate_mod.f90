@@ -79,6 +79,7 @@ type adaptive_inflate_type
    real(r8)              :: sd_lower_bound 
    real(r8)              :: sd_max_change
    real(r8)              :: damping
+   real(r8)              :: rtps_relaxation
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
    real(r8)              :: minmax_mean(2), minmax_sd(2)
@@ -117,6 +118,7 @@ real(r8) :: mean_upper_bound(2)             = 1000000.0_r8
 real(r8) :: sd_lower_bound(2)               = 0.0_r8
 real(r8) :: sd_max_change(2)                = 1.05_r8
 real(r8) :: damping(2)                      = 1.0_r8
+real(r8) :: rtps_relaxation                 = 1.0_r8
 
 namelist /adaptive_inflate_nml/ flavor, &
    initial_mean_from_restart,           &
@@ -124,11 +126,12 @@ namelist /adaptive_inflate_nml/ flavor, &
    sd_max_change,                       &
    deterministic,                       &
    damping,                             &
-   initial_mean,                             &
+   initial_mean,                        &
    initial_sd,                          &
-   mean_lower_bound,                         &
-   mean_upper_bound,                         &
-   sd_lower_bound
+   mean_lower_bound,                    &
+   mean_upper_bound,                    &
+   sd_lower_bound,                      &
+   rtps_relaxation
 
 
 !===============================================================================
@@ -304,15 +307,7 @@ inflate_handle%sd_max_change        = sd_max_change(prior_post)
 inflate_handle%damping              = damping(prior_post)
 inflate_handle%initial_mean_from_restart    = initial_mean_from_restart(prior_post)
 inflate_handle%initial_sd_from_restart      = initial_sd_from_restart(prior_post)
-
-!Overwriting the initial value of inflation with 1.0
-!as in other inflation flavors (usually start from 1). 
-!This is required for RTPS because initial_mean(2)
-!is not really the inflation factor but rather the weighting
-!parameter, say alpha: 
-!RTPS: lambda = alpha * (sd_b - sd_a) / sd_a + 1
-!where; sd_b (sd_a): prior (posteriro) spread
-if(inflate_handle%flavor == RELAXATION_TO_PRIOR_SPREAD) inflate_handle%initial_mean = 1.0_r8
+inflate_handle%rtps_relaxation      = rtps_relaxation
 
 ! ENHANCED_SS_INFLATION is a subset of VARYING_SS_INFLATION. modify the main flavor here.
 ! WHAT IS GOING ON HERE?
@@ -565,16 +560,19 @@ real(r8) :: rand_sd, var, sd_inflate
 if (any(ens == MISSING_R8)) return
 
 if(inflate_handle%deterministic) then
-
    if ( do_rtps_inflate(inflate_handle)) then
       if ( .not. present(fsprd) .or. .not. present(asprd)) then 
          write(string1, *) 'missing arguments for RTPS inflation, should not happen'
          call error_handler(E_ERR,'inflate_ens',string1,source) 
       endif 
       ! only inflate if spreads are > 0
-      if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
-          inflate = 1.0_r8 + inflate * ((fsprd-asprd) / asprd) 
-          ens = ens * inflate + mean * (1.0_r8 - inflate)
+      if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) then
+          ! Saving inflate for possible diagnostics
+          inflate = 1.0_r8 + inflate_handle%rtps_relaxation * ((fsprd-asprd) / asprd) 
+      else
+          inflate = 1.0_r8
+      endif
+      ens = ens * inflate + mean * (1.0_r8 - inflate)
    else 
 
       ! Spread the ensemble out linearly for deterministic

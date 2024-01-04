@@ -58,7 +58,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   log_inflation_info, set_inflation_sd_copy,          &
                                   get_minmax_task_zero, do_rtps_inflate,              &
                                   validate_inflate_options, PRIOR_INF, POSTERIOR_INF, &
-                                  NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
+                                  NO_INFLATION
                                   
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
@@ -1486,12 +1486,12 @@ end subroutine filter_set_window_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY, &
+subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate_handle, ENS_MEAN_COPY, &
                                    SPARE_PRIOR_SPREAD, ENS_SD_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: inflate_copy, ENS_MEAN_COPY
-type(adaptive_inflate_type), intent(inout) :: inflate
+type(adaptive_inflate_type), intent(inout) :: inflate_handle
 integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
@@ -1515,16 +1515,13 @@ do group = 1, num_groups
    ! Compute the mean for this group
    call compute_copy_mean(ens_handle, grp_bot, grp_top, ENS_MEAN_COPY)
 
-   if ( do_rtps_inflate(inflate)) then 
+   if ( do_rtps_inflate(inflate_handle)) then 
       if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
          write(msgstring, *) ' doing RTPS inflation'
          call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
 
-         !Reset the RTPS factor to the given input.nml value
-         ens_handle%copies(inflate_copy, 1:ens_handle%my_num_vars) = post_inflate%initial_mean
-
          do j = 1, ens_handle%my_num_vars
-            call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
+            call inflate_ens(inflate_handle, ens_handle%copies(grp_bot:grp_top, j), &
                ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
                ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
          end do 
@@ -1551,7 +1548,7 @@ do group = 1, num_groups
          ! Compute the ensemble mean in transformed space
          probit_ens_mean = sum(probit_ens(1:grp_size)) / grp_size
          ! Inflate in probit space
-         call inflate_ens(inflate, probit_ens(1:grp_size), probit_ens_mean, &
+         call inflate_ens(inflate_handle, probit_ens(1:grp_size), probit_ens_mean, &
             ens_handle%copies(inflate_copy, j))
          ! Transform back from probit space
          call transform_from_probit(grp_size, probit_ens(1:grp_size), &
@@ -2218,7 +2215,7 @@ end subroutine store_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size, post_inflate, prior_inflate) result(num_copies)
+function count_state_ens_copies(ens_size, prior_inflate, post_inflate) result(num_copies)
 
 integer,                     intent(in) :: ens_size
 type(adaptive_inflate_type), intent(in) :: prior_inflate
@@ -2336,8 +2333,7 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! then we need an extra copy to hold (save) the prior ensemble spread
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; must save the prior ensemble spread in a different copy
-if ( post_inflate%flavor == RELAXATION_TO_PRIOR_SPREAD ) then
-!!!if ( inf_flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD ) then
+if ( do_rtps_inflate(post_inflate) ) then
    SPARE_PRIOR_SPREAD = next_copy_number(cnum)
 endif
 
