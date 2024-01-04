@@ -1,0 +1,9 @@
+This atm_comp_mod.F90 forces CAM to use the CAM initial conditions file while 
+all other model components are using restart files. This allows us to use 
+CONTINUE_RUN = TRUE, but this also means we have to write out CAM restart 
+files because we need to use the information CAM sends to the coupler to 
+avoid lagging the ocean by a day. At present, this atm_comp_mod.F90 has
+some debug statements in it, and will not work properly (I suspect) if we
+do not stop at midnight only. This is an interim product.
+-- TJH Mon Apr  8 16:22:58 MDT 2013
+
