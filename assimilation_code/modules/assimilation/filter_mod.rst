@@ -362,7 +362,7 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | this file. Each line will list the        |
 |                              |                     | following values: the ensemble member     |
 |                              |                     | number, local observation number, the key |
-|                              |                     | for the local observation, and then the   |
+|                              |                     | for the observation, and then the         |
 |                              |                     | istatus return code. Be cautious when     |
 |                              |                     | turning this option on. The number of     |
 |                              |                     | lines in this file can be up to the       |
