@@ -56,8 +56,7 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
-                                 update_inflation, update_single_state_space_inflation,   &
-                                 update_varying_state_space_inflation,                    &
+                                 update_inflation, update_varying_state_space_inflation,  &
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
@@ -718,9 +717,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if(local_single_ss_inflate) then
       ! Update for each group separately
       do group = 1, num_groups
-         call update_single_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
+         call update_varying_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
             ens_handle%copies(ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
-            orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
+            orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, 1.0_r8, 1.0_r8, inflate_only)
       end do
    endif
   

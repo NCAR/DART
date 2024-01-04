@@ -22,8 +22,8 @@ implicit none
 private
 
 public :: update_inflation,                                 do_obs_inflate,           &
-          update_single_state_space_inflation, update_varying_state_space_inflation,  &
-          do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,              &
+          update_varying_state_space_inflation, do_varying_ss_inflate,                &
+          do_orig_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,         &
           adaptive_inflate_init,    adaptive_inflate_type,                            &
                                     deterministic_inflate,  solve_quadratic,          &
           log_inflation_info,       get_minmax_task_zero,   mean_from_restart,        &
@@ -53,7 +53,6 @@ integer, parameter :: POSTERIOR_INF = 2
 
 ! Encode the different inflation options
 ! OBS_INFLATION is currently deprecated.
-! ENHANCED_SS_INFLATION is an extension of VARYING_SS_INFLATION
 
 integer, parameter :: NO_INFLATION               = 0
 integer, parameter :: OBS_INFLATION              = 1
@@ -67,8 +66,6 @@ type adaptive_inflate_type
    !!! TEMPORARY UN_PRIVATE FOR DEVELOPMENT: PUT BACK IN WITH INTERFACES
    !!!private
    integer               :: flavor
-   !!! THIS IS WEIRD: NEED TO CLEAN IT UP
-   integer               :: sub_flavor
    logical               :: initial_mean_from_restart
    logical               :: initial_sd_from_restart
    logical               :: deterministic
@@ -89,10 +86,6 @@ type adaptive_inflate_type
    integer               :: input_sd_copy   = -1
    logical               :: output_restart = .false.
 end type adaptive_inflate_type
-
-! types for updating the inflation
-integer, parameter :: GHA2017 = 1
-integer, parameter :: AND2009 = 2
 
 ! Module storage for writing error messages
 character(len=512) :: string1, string2
@@ -238,7 +231,8 @@ type(adaptive_inflate_type), intent(in) :: inflation
 logical :: do_ss_inflate
 
 if (do_single_ss_inflate(inflation) .or. &
-    do_varying_ss_inflate(inflation) .or. &
+    do_orig_varying_ss_inflate(inflation) .or. &
+    do_enhanced_varying_ss_inflate(inflation) .or. &
     do_rtps_inflate(inflation)) then
    do_ss_inflate = .true.
 else
@@ -246,6 +240,27 @@ else
 endif
 
 end function do_ss_inflate
+
+
+!-------------------------------------------------------------------------------
+!>
+
+function do_varying_ss_inflate(inflation)
+
+! Returns true for any of the spatially varying inflations
+! ALL OF THESE NEED TO BE REMOVED FROM THIS MODULE
+
+type(adaptive_inflate_type), intent(in) :: inflation
+logical :: do_varying_ss_inflate
+
+if (do_enhanced_varying_ss_inflate(inflation) .or. &
+    do_orig_varying_ss_inflate(inflation)) then
+   do_varying_ss_inflate = .true.
+else
+   do_varying_ss_inflate = .false.
+endif
+
+end function do_varying_ss_inflate
 
 
 !-------------------------------------------------------------------------------
@@ -295,7 +310,6 @@ else if (prior_post == POSTERIOR_INF) then
 endif
 
 inflate_handle%flavor               = flavor(prior_post)
-inflate_handle%sub_flavor           = flavor(prior_post)    ! see code below
 inflate_handle%output_restart       = output_inflation
 inflate_handle%deterministic        = deterministic(prior_post)
 inflate_handle%initial_mean         = initial_mean(prior_post)
@@ -309,12 +323,6 @@ inflate_handle%initial_mean_from_restart    = initial_mean_from_restart(prior_po
 inflate_handle%initial_sd_from_restart      = initial_sd_from_restart(prior_post)
 inflate_handle%rtps_relaxation      = rtps_relaxation
 
-! ENHANCED_SS_INFLATION is a subset of VARYING_SS_INFLATION. modify the main flavor here.
-! WHAT IS GOING ON HERE?
-if (inflate_handle%flavor == ENHANCED_SS_INFLATION) then
-   inflate_handle%flavor = VARYING_SS_INFLATION
-endif
-
 ! If non-deterministic inflation is being done, need to initialize random sequence.
 ! use the task id number (plus 1 since they start at 0) to set the initial seed.
 ! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
@@ -325,7 +333,7 @@ if(.not. inflate_handle%deterministic) then
    salt = salt + 1000 
 endif
 
-! Cannot support non-determistic inflation and an mean_lower_bound < 1
+! Cannot support non-determistic inflation and a mean_lower_bound < 1
 if(.not. inflate_handle%deterministic .and. inflate_handle%mean_lower_bound < 1.0_r8) then
    write(string1, *) 'Cannot have non-deterministic inflation and mean_lower_bound < 1'
    call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
@@ -375,14 +383,14 @@ end function do_obs_inflate
 !-------------------------------------------------------------------------------
 !> Returns true if this inflation type indicates varying state space inflation
 
-function do_varying_ss_inflate(inflate_handle)
+function do_orig_varying_ss_inflate(inflate_handle)
 
-logical                                 :: do_varying_ss_inflate
+logical                                 :: do_orig_varying_ss_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_varying_ss_inflate = (inflate_handle%flavor == VARYING_SS_INFLATION)
+do_orig_varying_ss_inflate = (inflate_handle%flavor == VARYING_SS_INFLATION)
 
-end function do_varying_ss_inflate
+end function do_orig_varying_ss_inflate
 
 
 !-------------------------------------------------------------------------------
@@ -418,15 +426,14 @@ end function do_rtps_inflate
 !> Returns true if this inflation sub type indicates enhanced state space inflation
 !> Moha Gharamti, 2017
 
-function do_enhanced_ss_inflate(inflate_handle)
+function do_enhanced_varying_ss_inflate(inflate_handle)
 
-logical                                 :: do_enhanced_ss_inflate
+logical                                 :: do_enhanced_varying_ss_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-do_enhanced_ss_inflate = ((inflate_handle%flavor == VARYING_SS_INFLATION) .and. &
-                          (inflate_handle%sub_flavor == ENHANCED_SS_INFLATION))
+do_enhanced_varying_ss_inflate = (inflate_handle%flavor == ENHANCED_SS_INFLATION)
 
-end function do_enhanced_ss_inflate
+end function do_enhanced_varying_ss_inflate
 
 
 !-------------------------------------------------------------------------------
@@ -649,16 +656,9 @@ if(inflate_sd <= 0.0_r8) return
 ! A lower bound on the updated inflation sd and an upper bound
 ! on the inflation itself are provided in the inflate_handle. 
 
-! select which method to update with
-if (do_enhanced_ss_inflate(inflate_handle)) then
-   inf_type = GHA2017
-else
-   inf_type = AND2009
-endif
-
 ! Use bayes theorem to update
 call bayes_cov_inflate(ens_size, inf_type, prior_mean, prior_var, obs, obs_var, inflate, &
-   inflate_sd, gamma_corr, inflate_handle%sd_lower_bound, inflate_handle%sd_max_change, &
+   inflate_sd, gamma_corr, inflate_handle, &
    new_inflate, new_inflate_sd)
 
 ! Make sure inflate satisfies constraints
@@ -671,58 +671,6 @@ inflate_sd = new_inflate_sd
 if(inflate_sd < inflate_handle%sd_lower_bound) inflate_sd = inflate_handle%sd_lower_bound
 
 end subroutine update_inflation
-
-!-------------------------------------------------------------------------------
-!> Computes updated inflation mean and inflation sd for single state space inflation
-
-subroutine update_single_state_space_inflation(inflate, inflate_mean, inflate_sd, &
-   ss_inflate_base, orig_obs_prior_mean, orig_obs_prior_var, obs, obs_err_var, &
-   ens_size, inflate_only)
-
-type(adaptive_inflate_type), intent(in)    :: inflate
-real(r8),                   intent(inout)  :: inflate_mean
-real(r8),                   intent(inout)  :: inflate_sd
-real(r8),                   intent(in)     :: ss_inflate_base
-real(r8),                   intent(in)     :: orig_obs_prior_mean
-real(r8),                   intent(in)     :: orig_obs_prior_var
-real(r8),                   intent(in)     :: obs
-real(r8),                   intent(in)     :: obs_err_var
-integer,                    intent(in)     :: ens_size
-logical,                    intent(in)     :: inflate_only
-
-real(r8) :: gamma, ens_var_deflate, r_var, r_mean
-
-! If either inflation or sd is not positive, not really doing inflation
-if(inflate_mean <= 0.0_r8 .or. inflate_sd <= 0.0_r8) return
-
-! For case with single spatial inflation, use gamma = 1.0_r8
-gamma = 1.0_r8
-! Deflate the inflated variance; required for efficient single pass
-! This is one of many places that assumes linear state/obs relation
-! over range of ensemble; Essentially, we are removing the inflation
-! which has already been applied in filter to see what inflation should
-! have been needed.
-ens_var_deflate = orig_obs_prior_var / &
-   (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
-
-! If this is inflate_only (i.e. posterior) remove impact of this obs.
-! This is simulating independent observation by removing its impact.
-if(inflate_only .and. &
-      ens_var_deflate               > small .and. &
-      obs_err_var                   > small .and. &
-      obs_err_var - ens_var_deflate > small ) then
-   r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-   r_mean = r_var *(orig_obs_prior_mean / ens_var_deflate - obs / obs_err_var)
-else
-   r_var = ens_var_deflate
-   r_mean = orig_obs_prior_mean
-endif
-
-! Update the inflation mean value and standard deviation
-call update_inflation(inflate, inflate_mean, inflate_sd, &
-   r_mean, r_var, ens_size, obs, obs_err_var, gamma)
-
-end subroutine update_single_state_space_inflation
 
 !-------------------------------------------------------------------------------
 !> Computes updated inflation mean and inflation sd for varying state space inflation
@@ -784,12 +732,13 @@ end subroutine update_varying_state_space_inflation
 !> distribution of inflation:  Anderson 2007, 2009 or Gharamti 2017
 
 subroutine bayes_cov_inflate(ens_size, inf_type, x_p, sigma_p_2, y_o, sigma_o_2, &
-                 lambda_mean, lambda_sd, gamma_corr, sd_lower_bound_in, &
-                 sd_max_change_in, new_cov_inflate, new_cov_inflate_sd)
+                 lambda_mean, lambda_sd, gamma_corr, inflate_handle, &
+                 new_cov_inflate, new_cov_inflate_sd)
 
 integer , intent(in)  :: ens_size, inf_type
 real(r8), intent(in)  :: x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd
-real(r8), intent(in)  :: gamma_corr, sd_lower_bound_in, sd_max_change_in
+real(r8), intent(in)  :: gamma_corr
+type(adaptive_inflate_type), intent(in) :: inflate_handle
 real(r8), intent(out) :: new_cov_inflate, new_cov_inflate_sd
 
 real(r8) :: dist_2, rate, shape_old, shape_new, rate_new
@@ -868,7 +817,9 @@ dist_2 = (y_o - x_p)**2
 !      !write(*, *) 'old, orig mode is ', lambda_mean, new_cov_inflate
 !   endif
 
-if (inf_type == AND2009) then
+! NOTE THAT THE SINGLE CASE CAN NOW COME THROUGH HERE
+if (do_orig_varying_ss_inflate(inflate_handle) .or. &
+    do_single_ss_inflate(inflate_handle)) then
 
    ! Approximate with Taylor series for likelihood term
    call linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma_corr, &
@@ -882,7 +833,7 @@ if (inf_type == AND2009) then
    ! errors may be because of the conversion between ascii, single precision
    ! and double precision.)  In any case, the test was changed to return if
    ! the value is within TINY of the limit.
-   if(abs(lambda_sd - sd_lower_bound_in) <= TINY(0.0_r8)) then
+   if(abs(lambda_sd - inflate_handle%sd_lower_bound) <= TINY(0.0_r8)) then
       new_cov_inflate_sd = lambda_sd
       return
    else
@@ -925,7 +876,7 @@ if (inf_type == AND2009) then
    
    endif
 
-else if (inf_type == GHA2017) then
+else if (do_enhanced_varying_ss_inflate(inflate_handle)) then
 
    ! Transform Gaussian prior to Inverse Gamma
    call change_GA_IG(lambda_mean, lambda_sd_2, rate)
@@ -936,7 +887,7 @@ else if (inf_type == GHA2017) then
 
    ! Bail out to save cost when lower bound is reached on lambda standard deviation
    ! See comment in Anderson case for why we use abs and TINY for this comparison.
-   if(abs(lambda_sd - sd_lower_bound_in) <= TINY(0.0_r8)) then
+   if(abs(lambda_sd - inflate_handle%sd_lower_bound) <= TINY(0.0_r8)) then
       new_cov_inflate_sd = lambda_sd
       return 
    else
@@ -981,7 +932,7 @@ else if (inf_type == GHA2017) then
       ! If the updated variance is more than xx% the prior variance, keep the prior unchanged 
       ! for stability reasons. Also, if the updated variance is NaN (not sure why this
       ! can happen; never did when developing this code), keep the prior variance unchanged. 
-      if ( new_cov_inflate_sd > sd_max_change_in*lambda_sd .OR. &
+      if ( new_cov_inflate_sd > inflate_handle%sd_max_change*lambda_sd .OR. &
            new_cov_inflate_sd /= new_cov_inflate_sd) then
          new_cov_inflate_sd = lambda_sd
          return
@@ -1322,13 +1273,13 @@ endif
 if (inflation_handle%minmax_sd(2) > 0.0_r8) then
   tadapt = ' time-adaptive,'
    if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(2) .or. &
-       inflation_handle%sub_flavor == ENHANCED_SS_INFLATION) then
+       inflation_handle%flavor == ENHANCED_SS_INFLATION) then
       tadapt = trim(tadapt) // ' time-rate adaptive,'
    endif
 else
   tadapt = ' time-constant,'
 endif
-if (inflation_handle%sub_flavor == ENHANCED_SS_INFLATION) then
+if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
   tadapt = ' enhanced' //trim(tadapt)
 endif
 
@@ -1338,6 +1289,9 @@ select case(inflation_handle%flavor)
       akind = ' observation-space'
    case (VARYING_SS_INFLATION)
       sadapt = ' spatially-varying,'
+      akind = ' state-space '
+   case (ENHANCED_SS_INFLATION)
+      sadapt = 'enhanced spatially-varying,'
       akind = ' state-space '
    case (SINGLE_SS_INFLATION)
       sadapt = ' spatially-constant,'
@@ -1382,7 +1336,7 @@ else
 endif
 call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source)
 
-if (inflation_handle%sub_flavor == ENHANCED_SS_INFLATION) then
+if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
    write(string1, '(A, F8.3)') &
             'inf stddev max change: ', inflation_handle%sd_max_change
    call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
@@ -1422,6 +1376,8 @@ integer :: nvalues_to_log
 
 if ((inflation_handle%flavor == SINGLE_SS_INFLATION) .or. &
     (inflation_handle%flavor == VARYING_SS_INFLATION .and. &
+     from_string == 'from namelist') .or. &
+    (inflation_handle%flavor == ENHANCED_SS_INFLATION .and. &
      from_string == 'from namelist')) then
    nvalues_to_log = 1
 else
