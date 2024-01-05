@@ -225,7 +225,7 @@
    test1thru            = 0,
    run_tests            = 1,2,3,4,5,6,7
    x_ind                = 261
-   loc_of_interest      = 1.11, 0.54, 500.0
+   loc_of_interest      = 1.11, 0.54, 45.0
    quantity_of_interest = 'QTY_DISSOLVED_ORGANIC_NITROGEN'
    interp_test_dx       = 0.02
    interp_test_xrange   = 0.0, 1.0

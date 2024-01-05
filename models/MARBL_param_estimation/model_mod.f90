@@ -86,6 +86,7 @@ integer :: model_size
 type(time_type) :: assimilation_time_step
 real(r8), parameter :: geolon = 360 - 64.0
 real(r8), parameter :: geolat = 31.0
+logical,  parameter :: debug_interpolation = .false.
 
 ! parameters to be used in specifying the DART internal state
 integer, parameter :: modelvar_table_height = 13
@@ -246,6 +247,15 @@ if ( .not. module_initialized ) call static_init_model
 
 ! extracting the the depths at which climatological averages are available
 
+if (debug_interpolation) then
+    print *, "==================================================================="
+    print *, "model_interpolate"
+    print *, "==================================================================="
+    print *, ""
+    print *, "querying layer depths from climatology file..."
+    print *, ""
+end if
+
 depth_id = get_varid_from_kind(state_dom_id, QTY_COLUMN_DEPTH)
 
 do layer_index = 1, nz
@@ -254,6 +264,10 @@ do layer_index = 1, nz
     
     ! gridpoint depths are identical across ensemble members, so we only need to query the first member.
     depths(layer_index) = state_qty_tmp(1)
+
+    if (debug_interpolation) then
+        print *, "    layer: ",layer_index,", depth: ",depths(layer_index)
+    end if
 end do
 
 ! extracting the requested depth value from `location`
@@ -266,10 +280,26 @@ requested_depth = loc_temp(3)
 layer_above = 1
 layer_below = 1
 
-do while(depths(layer_below) <= requested_depth)
+do while((depths(layer_below) <= requested_depth) .and. (layer_below < nz))
+    ! This executes as long as the requested depth is not shallower than the shallowest
+    ! layer in the climatology.
     layer_below = layer_below + 1
     layer_above = layer_below - 1
 end do
+
+if (depths(layer_below) <= requested_depth) then
+    ! this executes if the requested depth was deeper than the deepest layer in the climatology.
+    layer_above = layer_below
+end if
+
+if (debug_interpolation) then
+    print *, ""
+    print *, "interpolating to depth:    ",requested_depth
+    print *, "nearest layer index above: ",layer_above
+    print *, "nearest layer index below: ",layer_below
+    print *, "interpolating..."
+    print *, ""
+end if
 
 ! determining the ensemble values above and below the requested depth
 
@@ -279,15 +309,28 @@ qty_index  = get_dart_vector_index(layer_above, 1, 1, state_dom_id, qty_id)
 vals_above = get_state(qty_index, state_handle)
 
 qty_index  = get_dart_vector_index(layer_below, 1, 1, state_dom_id, qty_id)
-vals_above = get_state(qty_index, state_handle)
+vals_below = get_state(qty_index, state_handle)
 
 ! linear interpolation
 
 do ens_index = 1, ens_size
     istatus(ens_index) = 0
 
-    theta                   = (depths(layer_below) - requested_depth)/(depths(layer_below) - depths(layer_above))
-    expected_obs(ens_index) = theta*vals_above(ens_index) + (1 - theta)*vals_below(ens_index)
+    if (layer_above < layer_below) then
+        theta                   = (depths(layer_below) - requested_depth)/(depths(layer_below) - depths(layer_above))
+        expected_obs(ens_index) = theta*vals_above(ens_index) + (1 - theta)*vals_below(ens_index)
+    else
+        ! This block of code gets executed when the requested depth is shallower than the shallowest layer
+        ! in the climatology, or deeper than the deepest layer in the climatology. In either case, the "interpolated"
+        ! value is just the value of the closest layer, which is either the top layer or the bottom one.
+
+        expected_obs(ens_index) = vals_below(ens_index)
+    end if
+
+    if (debug_interpolation) then
+        print *, "    member: ",ens_index,", value above: ",vals_above(ens_index),", &
+                 value below: ",vals_below(ens_index),", interpolation: ",expected_obs(ens_index)
+    end if
 end do
 
 end subroutine model_interpolate
