@@ -1610,8 +1610,6 @@ subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
    obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
 !
-! Revised 14 November 2008
-!
 ! Does observation space update by approximating the prior distribution by
 ! a rank histogram. Prior and posterior are assumed to have 1/(n+1) probability
 ! mass between each ensemble member. The tails are assumed to be gaussian with
@@ -1636,9 +1634,6 @@ subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
 ! A product of the approximate prior and approximate posterior is taken
 ! and new ensemble members are located so that 1/(n+1) of the mass is between
 ! each member and on the tails.
-
-! This code is still under development. Please contact Jeff Anderson at
-! jla@ucar.edu if you are interested in trying it.
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size), prior_var, obs, obs_var
@@ -1698,8 +1693,6 @@ if(gaussian_likelihood_tails) then
    new_mean_left  = var_ratio * (left_mean  + prior_var*obs / obs_var)
    ! REMEMBER, this product has an associated weight which must be taken into account
    ! See Anderson and Anderson for this weight term (or tutorial kernel filter)
-   ! NOTE: The constant term has been left off the likelihood so we don't have
-   ! to divide by sqrt(2 PI) in this expression
    prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / prior_var + &
          obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
          sqrt(prior_var + obs_var) / sqrt(2.0_r8 * PI)
@@ -1711,8 +1704,6 @@ if(gaussian_likelihood_tails) then
    new_var_right = var_ratio * prior_var
    new_sd_right = sqrt(new_var_right)
    new_mean_right  = var_ratio * (right_mean  + prior_var*obs / obs_var)
-   ! NOTE: The constant term has been left off the likelihood so we don't have
-   ! to divide by sqrt(2 PI) in this expression
    prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / prior_var + &
          obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
          sqrt(prior_var + obs_var) / sqrt(2.0_r8 * PI)
