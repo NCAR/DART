@@ -196,7 +196,7 @@ Description of each namelist entry
 
    If true, the final increments from obs_increment are sorted so that the mean increment value is as small as possible.
    Applies to ENKF only.
-   ``sort_ob_inc`` minimizes regression errors when non-deterministic filters or error correction algorithms are applied. HOWEVER,
+   ``sort_obs_inc`` minimizes regression errors when non-deterministic filters or error correction algorithms are applied. HOWEVER,
    when using deterministic filters with no inflation or a combination of a determinstic filter
    and deterministic inflation (filter_nml:inf_deterministic = .TRUE.) sorting the increments is both unnecessary and
    expensive. 

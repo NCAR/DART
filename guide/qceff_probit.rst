@@ -114,7 +114,7 @@ Available filter kinds
 
    * EAKF (default)
    * ENKF
-   * UNBOUNDED_RH
+   * UNBOUNDED_RHF
    * GAMMA_FILTER
    * BOUNDED_NORMAL_RHF
 
