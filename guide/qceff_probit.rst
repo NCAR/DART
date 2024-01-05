@@ -71,7 +71,7 @@ There is a complete table with all 25 columns in `Google Sheets <https://docs.go
 
 To add a quantity, add a row to the table.
 For any quantity not listed in the table, the :ref:`Default values` values will be used for all 25 options. 
-You only have to add rows for quantitiies that use non-default values for any of the input options.
+You only have to add rows for quantities that use non-default values for any of the input options.
 Ensure that there are no empty rows in between the quantities listed in the spreadsheet.
 Save your spreadsheet as a .csv file. 
 
@@ -148,5 +148,7 @@ are used:
   * lower_bound    (default -888888)
   * upper_bound    (default -888888)
 
-Note -888888 is a missing value in DART.
+.. note::
+
+   -888888 is a missing value in DART.
 

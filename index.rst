@@ -64,18 +64,24 @@ research labs.
 Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
 -----------------------------------------------------------------
 
-The default DART algorithms assume a normal distribution to compute ensemble increments 
-for the observed quantity (this is the ensemble adjustment Kalman filter, or EAKF) and 
-then linearly regress the observation increments onto each state variable.
+One of the historical drawbacks of ensemble data assimilation techniques is the
+assumption that the quantities being assimilated obey a normal distribution.
+While this is often a safe assumption -- distributions of temperature and
+pressure can be approximated using a normal distribution -- many quantities
+such as precipitation, snow depth and tracer concentration, as well as many
+model parameters aren't normally distributed.
 
+Applying traditional ensemble data assimilation techniques in situations where
+assumptions of gaussianity are invalid can lead to poor forecast skill and
+inconclusive results.
 
-DART now implements a Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCEFF>`.
-The QCEFF provides a very general method of computing increments for the prior ensemble of 
-an observed quantity by allowing the use of arbitrary distributions for the prior and the 
-observation error. This is especially useful for bounded quantities like tracer concentrations, 
-depths of things like snow or ice, and estimating model parameters that have a restricted range.
-See this Monthly Weather Review article for details,
-`QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_.
+To overcome these problems, DART now implements a novel data assimilation
+technique that no longer requires quantities to be normally distributed. The
+Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCEFF>`
+provides a general method of computing increments for the prior ensemble of an
+observed quantity by allowing the use of arbitrary distributions for the prior
+and the observation error. For a detailed description of the QCEFF, see
+Anderson (2022). [2]_ 
 
 While the QCEFF for computing observation increments can lead to significant improvements in 
 analysis estimates for observed variables, those improvements can be lost when using standard 
@@ -85,8 +91,8 @@ Doing the regression of observation quantile increments in the transformed space
 that the posterior ensembles for state variables also retain the advantages of the observation space
 quantile conserving posteriors. For example, if state variables are bounded, then posterior 
 ensembles will respect the bounds. The posterior ensembles also respect other aspects of the 
-continuous prior distributions. See this Monthly Weather Review article for details, 
-`QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.
+continuous prior distributions. For a detailed description of this process, see
+Anderson (2023). [3]_
 
 Inflation and localization, methods that improve the quality of ensemble DA, can also negate 
 the advantages of the QCEFF methods. For this reason, both localization and inflation can be 
@@ -258,6 +264,13 @@ References
        Facility. *Bulletin of the American Meteorological Society*, **90**,
        1283-1296, `doi:10.1175/2009BAMS2618.1
        <http://dx.doi.org/10.1175/2009BAMS2618.1>`_
+.. [2] Anderson, J. L., 2022: A Quantile-Conserving Ensemble Filter Framework.
+       Part I: Updating an Observed Variable. *Monthly Weather Review*, **150**,
+       1061–1074, `doi:10.1175/MWR-D-21-0229.1 <http://n2t.net/ark:/85065/d7mk6hm4>`_
+.. [3] Anderson, J. L., 2023: A Quantile-Conserving Ensemble Filter Framework.
+       Part II: Regression of Observation Increments in a Probit and
+       Probability Integral Transformed Space. *Monthly Weather Review*,
+       **151**, 2759–2777, `doi:10.1175/MWR-D-23-0065.1 <http://n2t.net/ark:/85065/d7nv9pbt>`_ 
 
 .. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
    :width: 100%
