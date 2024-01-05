@@ -1,4 +1,4 @@
-MARBL_joint_estimation
+MARBL_param_estimation
 =======================
 
 .. attention::

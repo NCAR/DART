@@ -177,7 +177,6 @@ if(estimate_params) then
 end if
 
 call read_num_layers     ! setting the value of nz
-call read_ocean_geometry ! determining the basin depth
 
 end subroutine static_init_model
 
@@ -239,9 +238,9 @@ integer,             intent(in) :: qty
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
-integer     :: qty_id, depth_id, ens_index, depth_index, layer_index, layer_above, layer_below
+integer     :: qty_id, depth_id, qty_index, depth_index, ens_index, layer_index, layer_above, layer_below
 real(8)     :: requested_depth, theta
-real(8)     :: loc_temp(3), depths(nz), vals_above(ens_size), vals_below(ens_size)
+real(8)     :: loc_temp(3), depths(nz), state_qty_tmp(ens_size), vals_above(ens_size), vals_below(ens_size)
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -250,16 +249,17 @@ if ( .not. module_initialized ) call static_init_model
 depth_id = get_varid_from_kind(state_dom_id, QTY_COLUMN_DEPTH)
 
 do layer_index = 1, nz
-    depth_index = get_dart_vector_index(layer_index, 1, 1, state_dom_id, depth_id)
-    depths(layer_index) = get_state(depth_index, state_handle)
+    depth_index         = get_dart_vector_index(layer_index, 1, 1, state_dom_id, depth_id)
+    state_qty_tmp       = get_state(depth_index, state_handle)
+    
+    ! gridpoint depths are identical across ensemble members, so we only need to query the first member.
+    depths(layer_index) = state_qty_tmp(1)
 end do
 
 ! extracting the requested depth value from `location`
 
 loc_temp = get_location(location)
 requested_depth = loc_temp(3)
-
-print *, "REQUESTED DEPTH = ",requested_depth
 
 ! figuring out the nearest layers above and below the requested depth
 
@@ -550,7 +550,7 @@ character(len=*), parameter :: routine = 'read_num_layers'
 
 ncid = nc_open_file_readonly(template_file(1))
 
-call nc_get_variable_size(ncid, 'Depth', nz)
+call nc_get_variable_size(ncid, 'Layer', nz)
 
 call nc_close_file(ncid)
 

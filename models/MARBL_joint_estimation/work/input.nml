@@ -45,7 +45,7 @@
    write_all_stages_at_end = .true.,
 
    ens_size = 80,
-   num_groups                   = 2,
+   num_groups                   = 1,
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 1e-2,
    distributed_state            = .true.,
@@ -53,8 +53,8 @@
    async                        = 0,
    adv_ens_command              = "./advance_model.csh",
 
-   obs_sequence_in_name ='/glade/u/home/rarmstrong/work/BATS_joint_estimation_obsseq/BATS_joint_estimation_147612.out',
-   obs_sequence_out_name ='/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/output/147612/obs_seq.final',
+   obs_sequence_in_name ='/glade/u/home/rarmstrong/work/DART/observations/obs_converters/BATS/obs_seq_files/BATS_149468.out',
+   obs_sequence_out_name ='/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/output/149468/obs_seq.final',
    num_output_obs_members = 80,
    init_time_days               = -1,
    init_time_seconds            = -1,
@@ -128,18 +128,19 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'POLY_ELECTRODE_OXYGEN',
-                                'TITRATION_ALKALINITY',
-                                'CATALYTIC_CARBON',
-                                'UV_OXY_NITROGEN',
-				                    'CFA_SILICATE',
-				                    'CFA_PHOSPHATE',
-                                'CFA_NITRATE'
-   evaluate_these_obs_types   = ''
+   assimilate_these_obs_types = ''
+   evaluate_these_obs_types   = 'BATS_OXYGEN',
+                                'BATS_ALKALINITY',
+                                'BATS_INORGANIC_CARBON',
+				                    'BATS_SILICATE',
+				                    'BATS_PHOSPHATE',
+                                'BATS_NITRATE',
+                                'BATS_ORGANIC_CARBON',
+                                'BATS_NITROGEN'
    /
 
 &model_nml
-   template_file         = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/INPUT/marbl_params.nc',
+   template_file         = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/INPUT/marbl_params.nc'
    time_step_days        = 1,
    time_step_seconds     = 0,
    model_state_variables = 'NO3      ', 'QTY_NITRATE_CONCENTRATION     ', '0.0', 'NA', 'UPDATE      ',
@@ -156,34 +157,8 @@
                            'mesozooC ', 'QTY_MESOZOOPLANKTON_CARBON    ', '0.0', 'NA', 'UPDATE      ',
                            'h        ', 'QTY_LAYER_THICKNESS           ', '0.0', 'NA', 'NO_COPY_BACK'
    estimate_params       = .true.
-   model_parameters      = 'autotroph_settings(1)%kCO2 ', 'QTY_PARAM_AUTOTROPH1_KCO2 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kDOP ', 'QTY_PARAM_AUTOTROPH1_KDOP ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kFe  ', 'QTY_PARAM_AUTOTROPH1_KFE  ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kNH4 ', 'QTY_PARAM_AUTOTROPH1_KNH4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kNO3 ', 'QTY_PARAM_AUTOTROPH1_KNO3 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kPO4 ', 'QTY_PARAM_AUTOTROPH1_KPO4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kSiO3', 'QTY_PARAM_AUTOTROPH1_KSIO3', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kCO2 ', 'QTY_PARAM_AUTOTROPH2_KCO2 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kDOP ', 'QTY_PARAM_AUTOTROPH2_KDOP ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kFe  ', 'QTY_PARAM_AUTOTROPH2_KFE  ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kNH4 ', 'QTY_PARAM_AUTOTROPH2_KNH4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kNO3 ', 'QTY_PARAM_AUTOTROPH2_KNO3 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kPO4 ', 'QTY_PARAM_AUTOTROPH2_KPO4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(2)%kSiO3', 'QTY_PARAM_AUTOTROPH2_KSIO3', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kCO2 ', 'QTY_PARAM_AUTOTROPH3_KCO2 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kDOP ', 'QTY_PARAM_AUTOTROPH3_KDOP ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kFe  ', 'QTY_PARAM_AUTOTROPH3_KFE  ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kNO3 ', 'QTY_PARAM_AUTOTROPH3_KNO3 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kNH4 ', 'QTY_PARAM_AUTOTROPH3_KNH4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kPO4 ', 'QTY_PARAM_AUTOTROPH3_KPO4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(3)%kSiO3', 'QTY_PARAM_AUTOTROPH3_KSIO3', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kCO2 ', 'QTY_PARAM_AUTOTROPH4_KCO2 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kDOP ', 'QTY_PARAM_AUTOTROPH4_KDOP ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kFe  ', 'QTY_PARAM_AUTOTROPH4_KFE  ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kNO3 ', 'QTY_PARAM_AUTOTROPH4_KNO3 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kNH4 ', 'QTY_PARAM_AUTOTROPH4_KNH4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kPO4 ', 'QTY_PARAM_AUTOTROPH4_KPO4 ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(4)%kSiO3', 'QTY_PARAM_AUTOTROPH4_KSIO3', '0.0', 'NA', 'UPDATE'
+   model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_PARAM_AUTOTROPH1_KDOP ', '0.0', 'NA', 'UPDATE',
+                           'autotroph_settings(1)%kNH4 ', 'QTY_PARAM_AUTOTROPH1_KNH4 ', '0.0', 'NA', 'UPDATE'
    /
 
 &utilities_nml
@@ -216,9 +191,9 @@
 
 &obs_diag_nml
    obs_sequence_name     = ''
-   obs_sequence_list     = 'obs_diag_files/obs_seq_list.txt'
+   obs_sequence_list     = 'obs_seq_list.txt'
    first_bin_center      =  2005, 2, 24, 0, 0, 0
-   last_bin_center       =  2006, 2, 22, 0, 0, 0
+   last_bin_center       =  2010, 2, 28, 0, 0, 0
    bin_separation        =     0, 0, 1, 0, 0, 0
    bin_width             =     0, 0, 1, 0, 0, 0
    time_to_skip          =     0, 0, 0, 0, 0, 0
@@ -246,8 +221,8 @@
    /
 
 &model_mod_check_nml
-   input_state_files    = '../ensemble/baseline/RESTART/MOM.res.nc'
-   output_state_files   = 'testing/model_mod_check_output/output.nc'
+   input_state_files    = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/INPUT/marbl_params.nc'
+   output_state_files   = 'output.nc'
    test1thru            = 0,
    run_tests            = 1,2,3,4,5,6,7
    x_ind                = 261
