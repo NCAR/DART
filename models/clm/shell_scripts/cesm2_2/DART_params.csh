@@ -41,9 +41,9 @@ else
 endif
 
 # ==============================================================================
-# SourceMods for different versions of CESM are available at
-# http://www.image.ucar.edu/pub/DART/CESM. Download the tar file that matches
-# your CESM version and install the sourcefiles.
+# DART SourceMods for different versions of CESM are available as
+# part of the DART package at ${dartroot}/models/clm/DART_SourceMods/ 
+# where dartroot is the location of your DART installation
 #
 # SourceMods may be handled in one of two ways. If you have your own GIT clone of
 # the repository, you may simply commit your changes to your GIT repo and 
@@ -74,9 +74,10 @@ endif
 #                                    Normally, only 'PARVEGLN' is output.
 #
 # biogeophys/CanopyFluxesMod.F90,PhotosynthesisMod.F90 calculate SIF
-
+#
+setenv dartroot       /glade/work/${USER}/DART
 setenv use_SourceMods TRUE
-setenv SourceModDir   ~/SourceMods_release-cesm2.2.01/SourceMods
+setenv SourceModDir   ${dartroot}/DART_SourceMods/cesm2_2_0/SourceMods
 
 # ==============================================================================
 # Directories:
@@ -108,14 +109,12 @@ setenv archdir          ${cime_output_root}/archive
 
 # ==============================================================================
 # Set the variables needed for the DART configuration.
-# dartroot     Location of the root of _your_ DART installation
 # baseobsdir   Part of the directory name containing the observation sequence 
 #              files to be used in the assimilation. The observations are presumed
 #              to be stored in sub-directories with names built from the year and
 #              month. 'baseobsdir' will be inserted into the appropriate scripts.
 # ==============================================================================
 
-setenv dartroot               /glade/work/${USER}/DART
 setenv baseobsdir             /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land
 setenv pmo_input_baseobsdir   /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/input
 setenv pmo_output_baseobsdir  /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/output

@@ -645,8 +645,6 @@ if ( ${use_SourceMods} == TRUE ) then
    else
       echo "ERROR - DART_params.csh use_SourceMods = ${use_SourceMods}"
       echo "ERROR - but there are no SourceMods in ${SourceModDir}"
-      echo "        See discussion in DART_params.csh for information on"
-      echo "        where to get a tar file of SourceMods for DART." 
       exit 7
    endif
 endif

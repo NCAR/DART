@@ -174,14 +174,8 @@ balance checks in CLM5 for the time step immediately after the assimilation
 update step.  These sourcecode modifications are brought in 
 through the SourceMod mechanism in CLM where modifications overwrite
 the template sourcecode during the compilation step. The SourceMods
-are located as tar files `here. <http://www.image.ucar.edu/pub/DART/CESM>`__
-For this tutorial retrieve the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
-and untar it on your local machine as:  
+are included within the DART package which is downloaded in Step 2.
 
-::
- 
-  wget https://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm2_2_0_2021_07_02.tar
-  tar -xvf DART_SourceMods_cesm2_2_0_2021_07_02.tar
 
 For more information on the 
 SourceMods see the main :doc:`CLM-DART documentation. <../readme>`
@@ -209,8 +203,6 @@ DART repository on the `main branch <https://github.com/NCAR/DART>`__.
   cd /glade/work/$USER/
   git clone https://github.com/NCAR/DART.git
   cd DART
-
-
 
 
 Step 3: Navigating DART Scripts
