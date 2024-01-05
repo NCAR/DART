@@ -146,7 +146,7 @@ type(time_type), intent(inout) :: time
 
 real(r8)    :: velocity, target_loc, frac, ratio
 integer(r8) :: low, hi, up, down, i
-real(i8), dimension(grid_size) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
+real(r8), dimension(grid_size) :: x1, x2, x3, x4, x_new, dx, inter, q_diff, q_new, q
 
 ! Test for tracer with upper bound of 1; Subtract 1 when entering here, then add it back on
 if(bound_above_is_one) x(grid_size + 1:2*grid_size) = x(grid_size + 1:2*grid_size) - 1.0_r8
