@@ -572,13 +572,13 @@ integer :: row
 if (use_qty_defaults) return
 
 call error_handler(E_MSG, '', '', source) !Writing blank line to log
-call error_handler(E_MSG, 'log_qceff_table_data:', 'Logging the data in the QCF Table', source)
+call error_handler(E_MSG, 'log_qceff_table_data:', 'Logging the data in the QCEFF Table', source)
 
 ! Write the table headers to the dart_log and terminal
-write(log_msg, '(A4, A6, A9, A)') header1(:)
+write(log_msg, '(2A6, A9, A)') header1(:)
 call error_handler(E_MSG, 'log_qceff_table_data:', trim(log_msg), source)
 
-write(log_msg,'(3A14, 2A12, 3(A10, 2A14, 2A12), A12, 2A14, 2A12)') header2(:)
+write(log_msg,'(A10, 2A14, 2A12, 3(A10, 2A14, 2A12), A12, 2A14, 2A12)') header2(:)
 call error_handler(E_MSG, 'log_qceff_table_data:', trim(log_msg), source)
 
 ! Write the table data to the dart_log and terminal
