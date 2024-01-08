@@ -1358,8 +1358,6 @@ More Resources
 
 -  `Check or Submit DART Issues <https://github.com/NCAR/DART/issues>`__
 -  `DAReS website <ttp://dart.ucar.edu>`__
--  `Register for
-   DART <https://www2.cisl.ucar.edu/software/dart/download>`__
 -  `Preparing
    MATLAB <https://dart.ucar.edu/pages/Getting_Started.html#matlab>`__
    to use with DART.
