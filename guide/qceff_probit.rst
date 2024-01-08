@@ -43,8 +43,8 @@ options as columns of the qceff_table:
      * distribution (one of :ref:`Distributions`)
      * bounded_below (default .false.)
      * bounded_above (default .false.)
-     * lower_bound
-     * upper_bound
+     * lower_bound    (default -888888)
+     * upper_bound    (default -888888)
 
 
 * Observation increment information
@@ -52,8 +52,8 @@ options as columns of the qceff_table:
      * filter_kind (one of :ref:`Filter kinds`)
      * bounded_below (default .false.)
      * bounded_above (default .false.)
-     * lower_bound
-     * upper_bound
+     * lower_bound    (default -888888)
+     * upper_bound    (default -888888)
 
 
 
