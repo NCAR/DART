@@ -85,7 +85,7 @@ Anderson (2022). [2]_
 
 While the QCEFF for computing observation increments can lead to significant improvements in 
 analysis estimates for observed variables, those improvements can be lost when using standard 
-linear regression of observation increments to update other state variables. The QCEFF also 
+linear regression of observation increments to update state variables. The QCEFF also 
 implements a capability to do regression in a probit probability integral transformed space. 
 Doing the regression of observation quantile increments in the transformed space guarantees 
 that the posterior ensembles for state variables also retain the advantages of the observation space
