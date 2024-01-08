@@ -25,7 +25,8 @@ options as columns of the qceff_table:
 
 * Observation error information
 
-   Used to compute sample for this observation when using perfect_model_obs
+   Provides information about boundedness constraints that control the likelihood
+   distribution associated with an observed variable when using perfect_model_obs
    to generate noisy observations.
    
      * bounded_below (default .false.) 
