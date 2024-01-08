@@ -111,7 +111,7 @@ usually 0. This is a particularly tough test for ensemble methods.
 
       ``./filter``
 
-#. Examine the output with your favorite tools. Looking at the analysis ensemble 
+#. Examine the output with your favorite tool(s) (e.g. plot_ens_time_series.m). Looking at the analysis ensemble 
    for the tracer_concentration variables with indices near the source (location 1)
    and far downstream from the source (location 35) is interesting. Note that the
    source estimation capabilities of the model and filters are not being tested here.
