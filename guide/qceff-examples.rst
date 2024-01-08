@@ -113,8 +113,11 @@ usually 0. This is a particularly tough test for ensemble methods.
 
 #. Examine the output with your favorite tool(s) (e.g. plot_ens_time_series.m). Looking at the analysis ensemble 
    for the tracer_concentration variables with indices near the source (location 1)
-   and far downstream from the source (location 35) is interesting. Note that the
-   source estimation capabilities of the model and filters are not being tested here.
+   and far downstream from the source (location 35) is interesting.
+   Near the source, the true concentration and the ensemble estimates are all non-zero while far from the source
+   there are times when the true concentration and many ensemble members are zero. For further detail
+   see Anderson et al. (2023). [1]_
+   Note that the source estimation capabilities of the model and filters are not being tested here.
 
 
 Example B 
@@ -182,3 +185,12 @@ test.
 
 
 #. Repeat steps 3-6 from Test A.
+
+References
+----------
+
+.. [1] Anderson, J. L., Riedel, C., Wieringa, M., Ishraque, F., Smith, M., Kershaw, H.
+       2023: A Quantile-Conserving
+       Ensemble Filter Framework. Part III: Data Assimilation for Mixed Distributions
+       with Application to a Low-Order Tracer Advection Model. *Monthly Weather Review*
+       `[Manuscript submitted for publication] <../_static/papers/QCEFF_3_submitted.pdf>`_

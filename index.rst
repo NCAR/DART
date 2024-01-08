@@ -92,7 +92,7 @@ that the posterior ensembles for state variables also retain the advantages of t
 quantile conserving posteriors. For example, if state variables are bounded, then posterior 
 ensembles will respect the bounds. The posterior ensembles also respect other aspects of the 
 continuous prior distributions. For a detailed description of this process, see
-Anderson (2023). [3]_
+Anderson (2023) [3]_ and Anderson et al. (2023). [4]_
 
 Inflation and localization, methods that improve the quality of ensemble DA, can also negate 
 the advantages of the QCEFF methods. For this reason, both localization and inflation can be 
@@ -271,6 +271,11 @@ References
        Part II: Regression of Observation Increments in a Probit and
        Probability Integral Transformed Space. *Monthly Weather Review*,
        **151**, 2759–2777, `doi:10.1175/MWR-D-23-0065.1 <http://n2t.net/ark:/85065/d7nv9pbt>`_ 
+.. [4] Anderson, J. L., Riedel, C., Wieringa, M., Ishraque, F., Smith, M., Kershaw, H.
+       2023: A Quantile-Conserving
+       Ensemble Filter Framework. Part III: Data Assimilation for Mixed Distributions
+       with Application to a Low-Order Tracer Advection Model. *Monthly Weather Review*
+       `[Manuscript submitted for publication] <_static/papers/QCEFF_3_submitted.pdf>`_
 
 .. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
    :width: 100%
