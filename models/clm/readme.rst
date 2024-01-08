@@ -65,10 +65,10 @@ SourceMods
 ~~~~~~~~~~
 
 While we strive to keep DART requirements out of the model code, there are a few 
-SourceMods needed to run DART for CLM from within CESM. Appropriate SourceMods 
-for each CESM version are available as tar files at 
-http://www.image.ucar.edu/pub/DART/CESM
-They will create a directory with the appropriate SourceMods structure. 
+SourceMods needed to run DART for CLM from within CESM. 
+DART SourceMods for different versions of CESM are available as
+part of the DART package at ${dartroot}/models/clm/DART_SourceMods/ 
+where dartroot is the location of your DART installation.
 It is up to you to either use them 'as is' or put them under version control 
 in your CESM source code installation. The DART scripting allows you to specify
 a directory containing the SourceMods - and then copies those SourceMods to
