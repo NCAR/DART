@@ -73,6 +73,22 @@ Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
   - QCEFF instructions: Quantile-Conserving Ensemble Filter Framework
   - Example to work through: QCEFF: Examples with the Lorenz 96 Tracer Model
 
+**January 9 2024 :: Derecho CLM-DART. Tag v10.10.1**
+
+- CLM-DART scripting updated for Derecho.
+- CLM-DART SourceMods packaged with DART.
+- Reinstituted both 'complete' and 'single_year' datm streamlist files in shell scripts
+  due to delays when initializing the CAM reanalysis files through campaign/collections directory.
+
+bug-fixes:
+
+- Fixed format statement in assert_mod to conform to Fortran standards.
+- Fixed debugging output for failed forward operators.
+
+doc-fixes:
+
+- Remove broken link for register for dart.
+
 **December 13 2023 :: Developer tests and bug fixes. Tag v10.10.0** 
 
 - new developer tests to run all builds for all compilers on NSF NCAR machine

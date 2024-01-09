@@ -9,7 +9,7 @@ Overview
 
 This is the DART interface to the 
 `CESM2 Community Land Model. <https://www.cesm.ucar.edu/models/cesm2/land/>`__
-Specifically, CESM **release-cesm2.2.0** using CLM **release-cesm2.2.01**
+Specifically, CESM **release-cesm2.2.0** using CTSM **release-cesm2.2.03**
 
 This document is most useful if the user has a prior understanding of running CESM
 and also running CLM-DART.  For this reason **we strongly recommend the following
@@ -41,7 +41,7 @@ changes to the CLM source code that are useful in a data assimilation context.
 CLM is a rapidly-moving target and DART is developed and maintained by a small
 group of people. Consequently, we have focused on supporting *released* versions
 of CLM. This documentation and scripting were tested using the CESM 
-tag **release-cesm2.2.0** and CLM tag **release-cesm2.2.01** following the download
+tag **release-cesm2.2.0** and CTSM tag **release-cesm2.2.03** following the download
 instructions from https://github.com/ESCOMP/CESM .
 
 CLM-DART has been used to assimilate snow data, soil moisture, leaf area index, 
@@ -65,10 +65,10 @@ SourceMods
 ~~~~~~~~~~
 
 While we strive to keep DART requirements out of the model code, there are a few 
-SourceMods needed to run DART for CLM from within CESM. Appropriate SourceMods 
-for each CESM version are available as tar files at 
-http://www.image.ucar.edu/pub/DART/CESM
-They will create a directory with the appropriate SourceMods structure. 
+SourceMods needed to run DART for CLM from within CESM. 
+DART SourceMods for different versions of CESM are available as
+part of the DART package at ${dartroot}/models/clm/DART_SourceMods/ 
+where dartroot is the location of your DART installation.
 It is up to you to either use them 'as is' or put them under version control 
 in your CESM source code installation. The DART scripting allows you to specify
 a directory containing the SourceMods - and then copies those SourceMods to
