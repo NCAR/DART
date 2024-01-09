@@ -223,8 +223,8 @@ do row = 1, size(qceff_table_data)
          qceff_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
-      case ('PARTICLE_FILTER_DISTRIBUTION')
-         qceff_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      !!!case ('PARTICLE_FILTER_DISTRIBUTION')
+         !!!qceff_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
          write(errstring, *) 'Invalid distribution type for probit inflation: ', trim(dist_type_string_probit_inflation(row))
          call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
@@ -246,8 +246,8 @@ do row = 1, size(qceff_table_data)
          qceff_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
-      case ('PARTICLE_FILTER_DISTRIBUTION')
-         qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      !!!case ('PARTICLE_FILTER_DISTRIBUTION')
+         !!!qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
          write(errstring, *) 'Invalid distribution type for probit state: ', trim(dist_type_string_probit_state(row))
          call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
@@ -268,8 +268,8 @@ do row = 1, size(qceff_table_data)
          qceff_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
-      case ('PARTICLE_FILTER_DISTRIBUTION')
-         qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
+      !!!case ('PARTICLE_FILTER_DISTRIBUTION')
+         !!!qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
          write(errstring, *) 'Invalid distribution type for probit extended state: ', trim(dist_type_string_probit_extended_state(row))
          call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
@@ -383,7 +383,7 @@ integer :: QTY_loc(1)
 ! Selects the appropriate transform, which is specified in the QCF input table per QTY. 
 ! At present, the options are NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, 
 ! GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION,
-! UNIFORM_DISTRIBUTION, and PARTICLE_FILTER_DISTRIBUTION.
+! UNIFORM_DISTRIBUTION
 ! If the BNRH is selected then information about the bounds must also be set.
 ! For example, if qty corresponds to a sea ice fraction then an appropriate choice
 ! would be:
