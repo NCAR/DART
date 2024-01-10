@@ -10,30 +10,28 @@ module adaptive_inflate_mod
 !> @{
 
 use types_mod,            only : r8, PI, MISSING_R8
-use time_manager_mod,     only : time_type, get_time
-use utilities_mod,        only : open_file, close_file, error_handler, E_ERR, E_MSG, &
+use utilities_mod,        only : error_handler, E_ERR, E_MSG, &
                                  nmlfileunit, do_nml_file, do_nml_term,              &
                                  check_namelist_read, find_namelist_in_file
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
-use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_to
+use mpi_utilities_mod,    only : my_task_id, send_minmax_to
 
 implicit none
 private
 
-public :: update_inflation,                                 do_obs_inflate,           &
+public :: update_inflation, do_obs_inflate,           &
           update_varying_state_space_inflation, do_varying_ss_inflate,                &
           do_orig_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,         &
           adaptive_inflate_init,    adaptive_inflate_type,                            &
-                                    deterministic_inflate,  solve_quadratic,          &
-          log_inflation_info,       get_minmax_task_zero,   mean_from_restart,        &
-          sd_from_restart,                                                            &
-          output_inf_restart,       get_inflate_mean,       get_inflate_sd,           &
-          get_is_prior,             get_is_posterior,       do_ss_inflate,            &
+          deterministic_inflate,  solve_quadratic,          &
+          log_inflation_info,       get_minmax_task_zero,                             &
+          get_inflate_mean,       get_inflate_sd,           &
+          do_ss_inflate,            &
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
-          get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
+          get_inflation_sd_copy,    do_rtps_inflate,         &
           print_inflation_restart_filename,                                           &
-          PRIOR_INF, POSTERIOR_INF, NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
+          NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
@@ -43,13 +41,6 @@ character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 ! a single fixed state space adaptive inflation,
 ! and a spatially-varying state space inflation that carries
 ! a mean and variance for the state space inflation at each point. 
-
-! There are many length 2 variables declared to hold items. Some of them 
-! refer to the concept of prior and posterior. Those that do can be referenced
-! with the PRIOR_INF and POSTERIOR_INF - which MUST have values 1 and 2, do not change.
-
-integer, parameter :: PRIOR_INF = 1
-integer, parameter :: POSTERIOR_INF = 2
 
 ! Encode the different inflation options
 ! OBS_INFLATION is currently deprecated.
@@ -66,8 +57,6 @@ type adaptive_inflate_type
    !!! TEMPORARY UN_PRIVATE FOR DEVELOPMENT: PUT BACK IN WITH INTERFACES
    !!!private
    integer               :: flavor
-   logical               :: initial_mean_from_restart
-   logical               :: initial_sd_from_restart
    logical               :: deterministic
    real(r8)              :: initial_mean
    real(r8)              :: initial_sd 
@@ -80,8 +69,6 @@ type adaptive_inflate_type
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
    real(r8)              :: minmax_mean(2), minmax_sd(2)
-   logical               :: prior = .false.
-   logical               :: posterior = .false.
    integer               :: input_mean_copy = -1 !!todo NO_COPY_PRESENT
    integer               :: input_sd_copy   = -1
    logical               :: output_restart = .false.
@@ -100,22 +87,18 @@ real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaN
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer  :: flavor(2)                       = 0
-logical  :: initial_mean_from_restart(2)    = .false.
-logical  :: initial_sd_from_restart(2)      = .false.
-logical  :: deterministic(2)                = .true.
-real(r8) :: initial_mean(2)                 = 1.0_r8
-real(r8) :: initial_sd(2)                   = 0.0_r8
-real(r8) :: mean_lower_bound(2)             = 1.0_r8
-real(r8) :: mean_upper_bound(2)             = 1000000.0_r8
-real(r8) :: sd_lower_bound(2)               = 0.0_r8
-real(r8) :: sd_max_change(2)                = 1.05_r8
-real(r8) :: damping(2)                      = 1.0_r8
-real(r8) :: rtps_relaxation                 = 1.0_r8
+integer  :: flavor                       = 0
+logical  :: deterministic                = .true.
+real(r8) :: initial_mean                 = 1.0_r8
+real(r8) :: initial_sd                   = 0.0_r8
+real(r8) :: mean_lower_bound             = 1.0_r8
+real(r8) :: mean_upper_bound             = 1000000.0_r8
+real(r8) :: sd_lower_bound               = 0.0_r8
+real(r8) :: sd_max_change                = 1.05_r8
+real(r8) :: damping                      = 1.0_r8
+real(r8) :: rtps_relaxation              = 1.0_r8
 
 namelist /adaptive_inflate_nml/ flavor, &
-   initial_mean_from_restart,           &
-   initial_sd_from_restart,             &
    sd_max_change,                       &
    deterministic,                       &
    damping,                             &
@@ -130,45 +113,6 @@ namelist /adaptive_inflate_nml/ flavor, &
 !===============================================================================
 
 contains
-
-!-------------------------------------------------------------------------------
-!> Accessor functions for adaptive inflate type
-
-function mean_from_restart(inflation)
-
-type(adaptive_inflate_type) :: inflation
-logical :: mean_from_restart
-
-mean_from_restart = inflation%initial_mean_from_restart
-
-end function mean_from_restart
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function sd_from_restart(inflation)
-
-type(adaptive_inflate_type) :: inflation
-logical :: sd_from_restart
-
-sd_from_restart = inflation%initial_sd_from_restart
-
-end function sd_from_restart
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function output_inf_restart(inflation)
-
-type(adaptive_inflate_type) :: inflation
-logical :: output_inf_restart
-
-output_inf_restart = inflation%output_restart
-
-end function
-
 
 !-------------------------------------------------------------------------------
 !>
@@ -194,32 +138,6 @@ real(r8)  :: get_inflate_sd
 get_inflate_sd = inflation%initial_sd
 
 end function
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function get_is_prior(inflation)
-
-type(adaptive_inflate_type) :: inflation
-logical :: get_is_prior
-
-get_is_prior = inflation%prior
-
-end function get_is_prior
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function get_is_posterior(inflation)
-
-type(adaptive_inflate_type) :: inflation
-logical :: get_is_posterior
-
-get_is_posterior = inflation%posterior
-
-end function get_is_posterior
 
 
 !-------------------------------------------------------------------------------
@@ -266,19 +184,13 @@ end function do_varying_ss_inflate
 !-------------------------------------------------------------------------------
 !> Initializes an adaptive_inflate_type 
 
-subroutine adaptive_inflate_init(inflate_handle, prior_post, output_inflation)
+subroutine adaptive_inflate_init(inflate_handle)
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
-integer,                     intent(in)    :: prior_post
-logical,                     intent(out)    :: output_inflation
 
 ! random value
 integer, save :: salt = 139
 integer       :: iunit, io
-
-! These logicals are intent out from validate_inflate; this needs to 
-! get propagated up eventually
-logical  :: do_prior_inflate, do_posterior_inflate
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -292,36 +204,24 @@ if(.not. initialized) then
    if (do_nml_file()) write(nmlfileunit, nml=adaptive_inflate_nml)
    if (do_nml_term()) write(     *     , nml=adaptive_inflate_nml)
 
-   ! Make sure selected options are okay
-   call validate_inflate_options(do_prior_inflate, do_posterior_inflate, output_inflation)
 
    initialized = .true.
 endif
 
 ! Load up the structure first to keep track of all details of this inflation type
-
-! Initializing for prior or posterior?
-if (prior_post == PRIOR_INF) then 
-   inflate_handle%prior     = .true.
-   inflate_handle%posterior = .false.
-else if (prior_post == POSTERIOR_INF) then
-   inflate_handle%prior     = .false.
-   inflate_handle%posterior = .true.
-endif
-
-inflate_handle%flavor               = flavor(prior_post)
-inflate_handle%output_restart       = output_inflation
-inflate_handle%deterministic        = deterministic(prior_post)
-inflate_handle%initial_mean         = initial_mean(prior_post)
-inflate_handle%initial_sd           = initial_sd(prior_post)
-inflate_handle%mean_lower_bound     = mean_lower_bound(prior_post)
-inflate_handle%mean_upper_bound     = mean_upper_bound(prior_post)
-inflate_handle%sd_lower_bound       = sd_lower_bound(prior_post)
-inflate_handle%sd_max_change        = sd_max_change(prior_post)
-inflate_handle%damping              = damping(prior_post)
-inflate_handle%initial_mean_from_restart    = initial_mean_from_restart(prior_post)
-inflate_handle%initial_sd_from_restart      = initial_sd_from_restart(prior_post)
+inflate_handle%flavor               = flavor
+inflate_handle%deterministic        = deterministic
+inflate_handle%initial_mean         = initial_mean
+inflate_handle%initial_sd           = initial_sd
+inflate_handle%mean_lower_bound     = mean_lower_bound
+inflate_handle%mean_upper_bound     = mean_upper_bound
+inflate_handle%sd_lower_bound       = sd_lower_bound
+inflate_handle%sd_max_change        = sd_max_change
+inflate_handle%damping              = damping
 inflate_handle%rtps_relaxation      = rtps_relaxation
+
+! Make sure selected options are okay
+call validate_inflate_options(inflate_handle)
 
 ! If non-deterministic inflation is being done, need to initialize random sequence.
 ! use the task id number (plus 1 since they start at 0) to set the initial seed.
@@ -333,18 +233,10 @@ if(.not. inflate_handle%deterministic) then
    salt = salt + 1000 
 endif
 
-! Cannot support non-determistic inflation and a mean_lower_bound < 1
-if(.not. inflate_handle%deterministic .and. inflate_handle%mean_lower_bound < 1.0_r8) then
-   write(string1, *) 'Cannot have non-deterministic inflation and mean_lower_bound < 1'
-   call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
-endif
-
 ! give these distinctive values; if inflation is being used
 ! (e.g. flavor > 0) then they should be set in all cases.
 inflate_handle%minmax_mean(:) = MISSING_R8
 inflate_handle%minmax_sd(:)   = MISSING_R8
-
-! State space inflation is read in the IO routine read_state.
 
 ! Read type 1 (observation space inflation)
 if(inflate_handle%flavor == OBS_INFLATION) then
@@ -452,96 +344,49 @@ end function deterministic_inflate
 !-------------------------------------------------------------------------------
 !> Make sure the combination of inflation options are legal
 
-subroutine validate_inflate_options(do_prior_inflate, do_posterior_inflate, output_inflation)
+subroutine validate_inflate_options(inflation_handle)
 
-logical,  intent(out)   :: do_prior_inflate
-logical,  intent(out)   :: do_posterior_inflate
-logical,  intent(out)   :: output_inflation 
+type(adaptive_inflate_type), intent(inout) :: inflation_handle
 
 integer :: i
-character(len=32) :: string(2)
+character(len=32) :: string
 
-do_prior_inflate     = .false.
-do_posterior_inflate = .false.
-output_inflation     = .false.
+if(inflation_handle%flavor < NO_INFLATION .or. inflation_handle%flavor > ENHANCED_SS_INFLATION) then
+   write(string1, *) 'flavor=', inflation_handle%flavor, ' Must be 0, 1, 2, 3, 4, or 5 '
+   call error_handler(E_ERR,'validate_inflate_options', string1, source, &
+                          text2='Inflation type for '//string)
+endif
 
-! for error messages
-string(PRIOR_INF)     = 'Prior'
-string(POSTERIOR_INF) = 'Posterior'
-
-do i = PRIOR_INF, POSTERIOR_INF
-   if(flavor(i) < NO_INFLATION .or. flavor(i) > ENHANCED_SS_INFLATION) then
-      write(string1, *) 'flavor=', flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
-      call error_handler(E_ERR,'validate_inflate_options', string1, source, &
-                                text2='Inflation type for '//string(i))
-   endif
-
-   if(damping(i) < 0.0_r8 .or. damping(i) > 1.0_r8) then
-      write(string1, *) 'damping=', damping(i), ' Must be 0.0 <= d <= 1.0'
-      call error_handler(E_ERR,'validate_inflate_options', string1, source, &
-                                text2='Inflation damping for '//string(i))
-   endif
-end do
-
-! Check to see if state space inflation is turned on
-if (flavor(PRIOR_INF)     /= NO_INFLATION .and. &
-    flavor(PRIOR_INF)     /= OBS_INFLATION)  do_prior_inflate     = .true.
-if (flavor(POSTERIOR_INF) /= NO_INFLATION .and. &
-    flavor(POSTERIOR_INF) /= OBS_INFLATION)  do_posterior_inflate = .true.
-
-if (do_prior_inflate .or. do_posterior_inflate) output_inflation = .true.
+if(inflation_handle%damping < 0.0_r8 .or. inflation_handle%damping > 1.0_r8) then
+   write(string1, *) 'damping=', inflation_handle%damping, ' Must be 0.0 <= d <= 1.0'
+   call error_handler(E_ERR,'validate_inflate_options', string1, source, &
+                             text2='Inflation damping for '//string)
+endif
 
 ! Observation space inflation not currently supported
-if(flavor(PRIOR_INF) == OBS_INFLATION .or. &
-   flavor(POSTERIOR_INF) == OBS_INFLATION) &
+if(inflation_handle%flavor == OBS_INFLATION)             &
    call error_handler(E_ERR, 'validate_inflate_options', &
    'observation space inflation (type 1) not currently supported', source, &
    text2='contact DART developers if you are interested in using it.')
 
-! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(flavor(PRIOR_INF) == RELAXATION_TO_PRIOR_SPREAD) &
-   call error_handler(E_ERR, 'validate_inflate_options', &
-   'RTPS inflation (type 4) only supported for Posterior inflation', source)
-
-! RTPS needs a single parameter from namelist: initial_mean(2).  
-! Do not read in any files.  Also, no damping.  
-! Warn the user if they try to set different values in the namelist.
-if (flavor(POSTERIOR_INF) == RELAXATION_TO_PRIOR_SPREAD) then
-   if (initial_mean_from_restart(POSTERIOR_INF) .or. initial_sd_from_restart(POSTERIOR_INF)) &
-      call error_handler(E_MSG, 'validate_inflate_options:', &
-         'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
-         text2='posterior inflation standard deviation value not used in RTPS')
-
-   ! Get parameter from namelist initial_mean(2), not from file
-   ! inf_sd not used in this algorithm
-      initial_mean_from_restart(POSTERIOR_INF) = .false.
-   initial_sd_from_restart(POSTERIOR_INF) = .false.
-
-   if (.not. deterministic(POSTERIOR_INF)) &
-      call error_handler(E_MSG, 'validate_inflate_options:', &
-              'RTPS inflation (type 4) overrides posterior deterministic with .true.')
-   deterministic(POSTERIOR_INF) = .true.  ! this algorithm is deterministic
-
-   if (damping(POSTERIOR_INF) /= 1.0_r8) &
-      call error_handler(E_MSG, 'validate_inflate_options:', &
-                        'RTPS inflation (type 4) disables posterior damping')
-   damping(POSTERIOR_INF) = 1.0_r8  ! no damping
-endif
-
 ! enhanced inflation checks - this is before we set the subflavor in the structure.
-if (flavor(PRIOR_INF)     == ENHANCED_SS_INFLATION .or. &
-    flavor(POSTERIOR_INF) == ENHANCED_SS_INFLATION) then
+if (inflation_handle%flavor     == ENHANCED_SS_INFLATION) then
 
    ! check sd_max_change() for valid range
-   do i=PRIOR_INF, POSTERIOR_INF
-      if (sd_max_change(i) < 1.0_r8 .or. sd_max_change(i) > 2.0_r8) then
-         write(string1, *) 'sd_max_change=', sd_max_change(i), &
-                           ' Must be 1.0 <= X <= 2.0'
-         call error_handler(E_ERR,'validate_inflate_options', string1, source, &
-                                   text2='Inflation stddev max change for '//string(i))
-      endif
-   enddo
+   if (inflation_handle%sd_max_change < 1.0_r8 .or. inflation_handle%sd_max_change > 2.0_r8) then
+      write(string1, *) 'sd_max_change=', inflation_handle%sd_max_change, &
+                        ' Must be 1.0 <= X <= 2.0'
+      call error_handler(E_ERR,'validate_inflate_options', string1, source, &
+                                text2='Inflation stddev max change for '//string)
+   endif
 endif
+
+! Cannot support non-determistic inflation and a mean_lower_bound < 1
+if(.not. inflation_handle%deterministic .and. inflation_handle%mean_lower_bound < 1.0_r8) then
+   write(string1, *) 'Cannot have non-deterministic inflation and mean_lower_bound < 1'
+   call error_handler(E_ERR, 'validate_inflate_options', string1, source)
+endif
+
 
 end subroutine validate_inflate_options
 
@@ -1315,26 +1160,7 @@ call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
 
 ! do this twice - for mean and sd
 
-! combination file, individual file or namelist
-call set_from_string(inflation_handle%initial_mean_from_restart, single_file, from)
-if (nvalues_to_log(inflation_handle, from) == 1) then
-   write(string1,  '(A, F8.3)') &
-         'inf mean   '//trim(from)//', value: ', inflation_handle%minmax_mean(1)
-else
-   write(string1,  '(A, 2F8.3)') &
-         'inf mean   '//trim(from)//', min/max values: ', inflation_handle%minmax_mean
-endif
-call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source)
-
-call set_from_string(inflation_handle%initial_sd_from_restart, single_file, from)
-if (nvalues_to_log(inflation_handle, from) == 1) then
-   write(string1,  '(A, F8.3)') &
-         'inf stddev '//trim(from)//', value: ', inflation_handle%minmax_sd(1)
-else
-   write(string1,  '(A, 2F8.3)') &
-         'inf stddev '//trim(from)//', min/max values: ', inflation_handle%minmax_sd
-endif
-call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source)
+! NEED TO REPLACE OUTPUT OF THE MINMAX INFO THAT WAS HERE
 
 if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
    write(string1, '(A, F8.3)') &
@@ -1348,65 +1174,13 @@ end subroutine log_inflation_info
 !-------------------------------------------------------------------------------
 !>
 
-subroutine set_from_string(from_restart, single_file, from_string)
-logical,          intent(in)  :: from_restart
-logical,          intent(in)  :: single_file
-character(len=*), intent(out) :: from_string
-
-if (from_restart) then
-   if (single_file) then
-      from_string = 'variable from input file'
-   else
-      from_string = 'restart file'
-   endif
-else
-   from_string = 'from namelist'
-endif
-
-end subroutine set_from_string
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function nvalues_to_log(inflation_handle, from_string)
-type(adaptive_inflate_type), intent(in) :: inflation_handle
-character(len=*),            intent(in) :: from_string
-integer :: nvalues_to_log
-
-if ((inflation_handle%flavor == SINGLE_SS_INFLATION) .or. &
-    (inflation_handle%flavor == VARYING_SS_INFLATION .and. &
-     from_string == 'from namelist') .or. &
-    (inflation_handle%flavor == ENHANCED_SS_INFLATION .and. &
-     from_string == 'from namelist')) then
-   nvalues_to_log = 1
-else
-   nvalues_to_log = 2
-endif
-
-end function nvalues_to_log
-
-
-!-------------------------------------------------------------------------------
-!>
-
 subroutine print_inflation_restart_filename(inflation_handle, fname, which)
 type(adaptive_inflate_type), intent(in) :: inflation_handle
 character(len=*), intent(in) :: fname
 character(len=*), intent(in) :: which
 
-character(len=32) :: label
-
-if (inflation_handle%prior) then
-   label = "Prior"
-elseif (inflation_handle%posterior) then
-   label = "Posterior"
-else
-   label = ""
-endif
-
 write(string1,*) trim(which)//' read from restart file: ' // trim(fname)
-call error_handler(E_MSG, trim(label) // ' inflation:', trim(string1), source)
+call error_handler(E_MSG, ' inflation:', trim(string1), source)
 
 end subroutine print_inflation_restart_filename
 
@@ -1430,32 +1204,33 @@ real(r8) :: minmax_mean(2), minmax_sd(2), global_val(2)
 ! if not using inflation, return now
 if (inflation_handle%flavor <= NO_INFLATION) return
 
-if (inflation_handle%initial_mean_from_restart) then
+! NEED TO ???? REPLACE THIS AS APPROPRIATE???
+!!!if (inflation_handle%initial_mean_from_restart) then
 
    ! find min and max on each processor
-   minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
-   minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
+   !!!minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
+   !!!minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
 
    ! collect on pe 0
-   call send_minmax_to(minmax_mean, map_pe_to_task(ens_handle, 0), global_val)
-   if (ens_handle%my_pe == 0) inflation_handle%minmax_mean = global_val
+   !!!call send_minmax_to(minmax_mean, map_pe_to_task(ens_handle, 0), global_val)
+   !!!if (ens_handle%my_pe == 0) inflation_handle%minmax_mean = global_val
 
-else 
-   inflation_handle%minmax_mean = inflation_handle%initial_mean
-endif
+!!!else 
+   !!!inflation_handle%minmax_mean = inflation_handle%initial_mean
+!!!endif
 
-if (inflation_handle%initial_sd_from_restart) then
+!!!if (inflation_handle%initial_sd_from_restart) then
 
    ! find min and max on each processor
-   minmax_sd(1) = minval(ens_handle%copies(ss_inflate_sd_index, :))
-   minmax_sd(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
+   !!!minmax_sd(1) = minval(ens_handle%copies(ss_inflate_sd_index, :))
+   !!!minmax_sd(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
 
    ! collect on pe 0
-   call send_minmax_to(minmax_sd, map_pe_to_task(ens_handle, 0), global_val)
-   if (ens_handle%my_pe == 0) inflation_handle%minmax_sd = global_val
-else
-   inflation_handle%minmax_sd = inflation_handle%initial_sd 
-endif
+   !!!call send_minmax_to(minmax_sd, map_pe_to_task(ens_handle, 0), global_val)
+   !!!if (ens_handle%my_pe == 0) inflation_handle%minmax_sd = global_val
+!!!else
+   !!!inflation_handle%minmax_sd = inflation_handle%initial_sd 
+!!!endif
 
 end subroutine get_minmax_task_zero
 

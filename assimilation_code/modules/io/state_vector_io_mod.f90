@@ -27,10 +27,10 @@ module state_vector_io_mod
 !> create_ensemble_from_single_file()
 !> is then called in filter to generate the ensemble.
 
-use adaptive_inflate_mod, only : adaptive_inflate_type, mean_from_restart, sd_from_restart, &
+use adaptive_inflate_mod, only : adaptive_inflate_type, &
                                  do_single_ss_inflate, &
                                  get_inflate_mean, get_inflate_sd, do_ss_inflate, &
-                                 get_is_prior, get_is_posterior, get_inflation_mean_copy, &
+                                 get_inflation_mean_copy, &
                                  get_inflation_sd_copy, print_inflation_restart_filename
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
@@ -369,12 +369,14 @@ if (.not. do_single_ss_inflate(prior_inflate_handle) .and. &
 return_me = .true.
 ! Return if not reading any state space inflation values from files
 if ( do_single_ss_inflate(prior_inflate_handle)) then
-   if (mean_from_restart(prior_inflate_handle)) return_me = .false.
-   if (sd_from_restart(prior_inflate_handle))   return_me = .false.
+   ! No longer available from adaptive_inflate_mod, just skip temporarily
+   !!!if (mean_from_restart(prior_inflate_handle)) return_me = .false.
+   !!!if (sd_from_restart(prior_inflate_handle))   return_me = .false.
 endif
 if ( do_single_ss_inflate(post_inflate_handle)) then
-   if (mean_from_restart(post_inflate_handle)) return_me = .false.
-   if (sd_from_restart(post_inflate_handle))   return_me = .false.
+   ! No longer available from adaptive_inflate_mod, just skip temporarily
+   !!!if (mean_from_restart(post_inflate_handle)) return_me = .false.
+   !!!if (sd_from_restart(post_inflate_handle))   return_me = .false.
 endif
 if (return_me) return
 
@@ -474,21 +476,26 @@ if (.not. do_ss_inflate(inflate_handle)) then
    return
 endif
 
-if(get_is_prior(inflate_handle)) then
-   label = "Prior"
-else if (get_is_posterior(inflate_handle)) then
-   label = "Posterior"
-else
-   write(msgstring, *) "state space inflation but neither prior or posterior"
-   call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, source)
-endif
+! No longer available from adaptive_inflate_mod, skip whole block
+!!!if(get_is_prior(inflate_handle)) then
+   !!!label = "Prior"
+!!!else if (get_is_posterior(inflate_handle)) then
+   !!!label = "Posterior"
+!!!else
+   !!!write(msgstring, *) "state space inflation but neither prior or posterior"
+   !!!call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, source)
+!!!endif
 
-if (.not. mean_from_restart(inflate_handle)) then
+! No longer available from adaptive_inflate_mod, just do true for now
+if (.true.) then
+!!!if (.not. mean_from_restart(inflate_handle)) then
    inf_initial = get_inflate_mean(inflate_handle)
    ens_handle%copies(INF_MEAN_COPY, :) = inf_initial
 endif
 
-if (.not. sd_from_restart(inflate_handle)) then
+! No longer available from adaptive_inflate_mod, just do true for now
+if (.true.) then
+!!!if (.not. sd_from_restart(inflate_handle)) then
    sd_initial = get_inflate_sd(inflate_handle)
    ens_handle%copies(INF_SD_COPY, :) = sd_initial
 endif
@@ -560,23 +567,25 @@ type(stage_metadata_type) :: restart_files
 ! do this once
 restart_files = get_stage_metadata(file_info)
 
-if (do_ss_inflate(inflate_handle)) then
-   if (mean_from_restart(inflate_handle)) then
-      INF_MEAN_COPY = get_inflation_mean_copy(inflate_handle)
-      do idom = 1, get_num_domains()
-         fname = get_restart_filename(restart_files, INF_MEAN_COPY, idom)   
-         call print_inflation_restart_filename(inflate_handle, fname, 'mean')
-      enddo
-   endif
 
-   if (sd_from_restart(inflate_handle)) then  
-      INF_SD_COPY = get_inflation_sd_copy(inflate_handle)
-      do idom = 1, get_num_domains()
-         fname = get_restart_filename(restart_files, INF_SD_COPY, idom)   
-         call print_inflation_restart_filename(inflate_handle, fname, 'stddev')
-      enddo
-   endif
-endif
+! No longer available from adaptive_inflate_mod; skip whole block for now
+!!!if (do_ss_inflate(inflate_handle)) then
+   !!!if (mean_from_restart(inflate_handle)) then
+      !!!INF_MEAN_COPY = get_inflation_mean_copy(inflate_handle)
+      !!!do idom = 1, get_num_domains()
+         !!!fname = get_restart_filename(restart_files, INF_MEAN_COPY, idom)   
+         !!!call print_inflation_restart_filename(inflate_handle, fname, 'mean')
+      !!!enddo
+   !!!endif
+
+   !!!if (sd_from_restart(inflate_handle)) then  
+      !!!INF_SD_COPY = get_inflation_sd_copy(inflate_handle)
+      !!!do idom = 1, get_num_domains()
+         !!!fname = get_restart_filename(restart_files, INF_SD_COPY, idom)   
+         !!!call print_inflation_restart_filename(inflate_handle, fname, 'stddev')
+      !!!enddo
+   !!!endif
+!!!endif
 
 end subroutine print_inflation_source
 

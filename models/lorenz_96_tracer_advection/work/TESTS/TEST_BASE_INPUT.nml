@@ -78,17 +78,15 @@
    /
 
 &adaptive_inflate_nml
-   flavor                     = 5,                       T_POST_INF_FLAVOR,
-   initial_mean_from_restart  = .false.,                 .false.,
-   initial_sd_from_restart    = .false.,                 .false.,
-   deterministic              = .true.,                  .true.,
-   initial_mean               = 1.0,                     1.0,
-   initial_sd                 = 0.6,                     0.6,
-   mean_lower_bound           = 0.0,                     0.0,
-   mean_upper_bound           = 1000.0,                  1000.0,
-   sd_lower_bound             = 0.6,                     0.6,
-   sd_max_change              = 1.05,                    1.05
-   damping                    = 0.9,                     0.9,
+   flavor                     = 5
+   deterministic              = .true.
+   initial_mean               = 1.0
+   initial_sd                 = 0.6
+   mean_lower_bound           = 0.0
+   mean_upper_bound           = 1000.0
+   sd_lower_bound             = 0.6
+   sd_max_change              = 1.05
+   damping                    = 0.9
    rtps_relaxation            = 1.0
 /
 

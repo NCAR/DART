@@ -52,13 +52,12 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
                                   print_ens_handle
 
-use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
+use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
                                   adaptive_inflate_type, set_inflation_mean_copy ,    &
                                   log_inflation_info, set_inflation_sd_copy,          &
                                   get_minmax_task_zero, do_rtps_inflate,              &
-                                  validate_inflate_options, PRIOR_INF, POSTERIOR_INF, &
-                                  NO_INFLATION
+                                  NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
                                   
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
@@ -374,9 +373,16 @@ call trace_message('Before initializing inflation')
 !!!endif
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, PRIOR_INF, output_inflation)
+call adaptive_inflate_init(prior_inflate)
 
-call adaptive_inflate_init(post_inflate, POSTERIOR_INF, output_inflation)
+! Quick fix to avoid illegal use of RTPS with prior inflation
+if(do_rtps_inflate(prior_inflate)) prior_inflate%flavor = NO_INFLATION
+
+call adaptive_inflate_init(post_inflate)
+
+!!! TEMPORARY TO GET OUTPUT, used to get set by validate adaptive
+do_prior_inflate = .true.
+do_posterior_inflate = .true.
 
 call trace_message('After  initializing inflation')
 
@@ -951,8 +957,10 @@ AdvanceTime : do
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
-      if ((post_inflate%initial_sd >= 0.0_r8) .or. &
-           post_inflate%initial_sd_from_restart) then
+      ! No longer available in the adaptive_inflate_type
+      if(.true.) then
+      !!!if ((post_inflate%initial_sd >= 0.0_r8) .or. &
+           !!!post_inflate%initial_sd_from_restart) then
 
          call     trace_message('Before computing posterior state space inflation')
          call timestamp_message('Before computing posterior state space inflation')
@@ -2140,12 +2148,16 @@ if( output_mean ) then
    if (query_copy_present( INPUT_COPIES(ENS_MEAN)) ) &
       ens_handle%copies(   INPUT_COPIES(ENS_MEAN), :) = ens_handle%copies(ENS_MEAN_COPY, :)
 
-   if ( do_prior_inflate .and. .not. mean_from_restart( prior_inflate) ) then
+! Not available from adaptive_inflate_mod, remove for noe
+   !!!if ( do_prior_inflate .and. .not. mean_from_restart( prior_inflate) ) then
+   if ( do_prior_inflate) then
      if (query_copy_present( INPUT_COPIES(PRIORINF_MEAN)) ) &
         ens_handle%copies(   INPUT_COPIES(PRIORINF_MEAN), :) = ens_handle%copies(PRIOR_INF_COPY, :)
    endif 
 
-   if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
+! Not available from adaptive_inflate_mod, remove for noe
+   !!!if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
+   if ( do_posterior_inflate) then
       if (query_copy_present( INPUT_COPIES(POSTINF_MEAN)) ) &
          ens_handle%copies(   INPUT_COPIES(POSTINF_MEAN), :) = ens_handle%copies(POST_INF_COPY, :)
    endif
@@ -2158,13 +2170,17 @@ if( output_sd ) then
       ens_handle%copies(   INPUT_COPIES(ENS_SD), :) = ens_handle%copies(ENS_SD_COPY, :)
    endif
 
-   if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) then
+   ! No longer supported in adaptive_inflate_mod
+   !!!if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) then
+   if ( do_prior_inflate  ) then
       if (query_copy_present( INPUT_COPIES(PRIORINF_SD)) ) then
          ens_handle%copies(   INPUT_COPIES(PRIORINF_SD), :) = ens_handle%copies(PRIOR_INF_SD_COPY, :)
       endif
    endif
 
-   if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
+   !!!if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) then
+   !!!if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
+   if ( do_posterior_inflate ) then
       if (query_copy_present( INPUT_COPIES(POSTINF_SD)) ) then
          ens_handle%copies(   INPUT_COPIES(POSTINF_SD), :)  = ens_handle%copies(POST_INF_SD_COPY, :)
       endif
@@ -2255,20 +2271,28 @@ if (write_all_stages_at_end) then
       !   INPUT_SD  
       if (output_mean) then
          INPUT_COPIES(ENS_MEAN) = next_copy_number(cnum)
-         if ( do_prior_inflate .and. .not. mean_from_restart(prior_inflate) ) then
+         ! No longer available from adaptive_inflate_mod
+         !!!if ( do_prior_inflate .and. .not. mean_from_restart(prior_inflate) ) then
+         if ( do_prior_inflate) then
             INPUT_COPIES(PRIORINF_MEAN) = next_copy_number(cnum)
          endif
-         if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
+         ! No longer available from adaptive_inflate_mod
+         !!!if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
+         if ( do_posterior_inflate) then
             INPUT_COPIES(POSTINF_MEAN)  = next_copy_number(cnum)
          endif
       endif
 
       if (output_sd) then
          INPUT_COPIES(ENS_SD) = next_copy_number(cnum)
-         if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) then
+         ! No longer supported in adaptive_inflate_mod
+         !!!if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) then
+         if ( do_prior_inflate ) then
             INPUT_COPIES(PRIORINF_SD) = next_copy_number(cnum)
          endif
-         if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
+         ! No longer supported in adaptive_inflate_mod
+         !!!if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
+         if ( do_posterior_inflate ) then
             INPUT_COPIES(POSTINF_SD)  = next_copy_number(cnum)
          endif
       endif
@@ -2294,20 +2318,28 @@ else
    !   INPUT_SD  
    if (output_mean) then
       INPUT_COPIES(ENS_MEAN) = ENS_MEAN_COPY
-      if ( do_prior_inflate     .and. .not. mean_from_restart(prior_inflate) ) then
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_prior_inflate     .and. .not. mean_from_restart(prior_inflate) ) then
+      if ( do_prior_inflate ) then
          INPUT_COPIES(PRIORINF_MEAN) = PRIOR_INF_COPY
       endif
-      if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) then
+      if ( do_posterior_inflate ) then
          INPUT_COPIES(POSTINF_MEAN)  = POST_INF_COPY
       endif
    endif
 
    if (output_sd) then
       INPUT_COPIES(ENS_SD) = ENS_SD_COPY
-      if ( do_prior_inflate     .and. .not. sd_from_restart(prior_inflate) ) then
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_prior_inflate     .and. .not. sd_from_restart(prior_inflate) ) then
+      if ( do_prior_inflate ) then
          INPUT_COPIES(PRIORINF_SD) = PRIOR_INF_SD_COPY
       endif
-      if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) then
+      if ( do_posterior_inflate ) then
          INPUT_COPIES(POSTINF_SD)  = POST_INF_SD_COPY
       endif
    endif
@@ -2390,16 +2422,24 @@ else
 endif
 
 if ( do_prior_inflate ) then
-   if ( prior_inflate%initial_mean_from_restart ) &
+   ! No longer avalailable from adaptive_inflate_type
+   !!!if ( prior_inflate%initial_mean_from_restart ) &
+   if(.false.) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   if ( prior_inflate%initial_sd_from_restart ) &
+   ! No longer avalailable from adaptive_inflate_type
+   if(.false.) &
+   !!!if ( prior_inflate%initial_sd_from_restart ) &
       call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
-   if ( post_inflate%initial_mean_from_restart ) &
+   ! No longer avalailable from adaptive_inflate_type
+   !!!if ( post_inflate%initial_mean_from_restart ) &
+   if(.false.) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   if ( post_inflate%initial_sd_from_restart ) &
+   ! No longer avalailable from adaptive_inflate_type
+   !!!if ( post_inflate%initial_sd_from_restart ) &
+   if(.false.) &
       call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
@@ -2408,20 +2448,28 @@ if(single_file_in) then
    if (output_mean) then
      call set_io_copy_flag(file_info,    STAGE_COPIES(ENS_MEAN),  WRITE_COPY, inherit_units=.true.)
 
-      if ( do_prior_inflate .and. .not. mean_from_restart(prior_inflate) ) &
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_prior_inflate .and. .not. mean_from_restart(prior_inflate) ) &
+      if ( do_prior_inflate ) &
         call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, inherit_units=.false.)
 
-      if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) &
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) &
+      if ( do_posterior_inflate ) &
         call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, inherit_units=.false.)
    endif
    
    if (output_sd) then
      call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),    WRITE_COPY, inherit_units=.true.)
 
-      if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) &
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) &
+      if ( do_prior_inflate ) &
         call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD), WRITE_COPY, inherit_units=.false.)
 
-      if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) &
+      ! No longer available from adaptive_inflate_mod
+      !!!if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) &
+      if ( do_posterior_inflate  ) &
         call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, inherit_units=.false.)
    endif
 endif
