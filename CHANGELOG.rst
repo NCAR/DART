@@ -22,6 +22,60 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 11 2024 :: QCEFF. Tag v11.0.0**
+
+Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+
+- Adds a Quantile-Conserving Ensemble Filtering Framework (QCEFF) to DART.
+  Publications: `QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_,
+  `QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.  
+
+- The default QCEFF options are EAKF, normal distribution (no bounds).
+
+- User interface changes:
+
+  - filter_kind is now a per-qty option through QCEFF table.
+
+  - Two new required namelists (add to input.nml files):
+
+    - probit_transform_nml
+    - algorithm_info_nml
+
+  - assim_tools_mod namelist:
+  
+    - sort_obs_inc namelist option applied to ENKF only, so default is now .true.
+    - ``spread_restoration`` is not supported in this version
+
+  - algorithm_info_mod QCEFF options read at runtime from .csv or .txt file
+
+
+- New probability distribution modules:
+
+  - beta_distribution_mod *contributed by Chris Riedel*
+  - bnrh_distribution_mod (bounded normal rank histogram)
+  - gamma_distribution_mod
+  - normal_distribution_mod
+
+  -  probit_transform_mod 
+  -  distribution_params_mod
+
+- Update to lorenz_96_tracer_advection:
+
+  - positive_tracer
+  - more tracer namelist options available and changed defaults
+  - updated perturbation routine
+  - bug-fix: real(r8) rather than real(i8)
+
+- Fix: obs_def_1d_state_mod (oned forward operators):
+
+  -  For non-integer powers, fix up values for negative bases
+
+- Documentation:
+
+  - main page section on Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+  - QCEFF instructions: Quantile-Conserving Ensemble Filter Framework
+  - Example to work through: QCEFF: Examples with the Lorenz 96 Tracer Model
+
 **January 9 2024 :: Derecho CLM-DART. Tag v10.10.1**
 
 - CLM-DART scripting updated for Derecho.
@@ -74,13 +128,26 @@ bug-fixes:
 bug-fixes:
 
 - filter_mod.dopperlerfold in sync with filter_mod
-- unnecessary loop removed from Mersenne twister developer test
+- unnecessary loop removed from Mersenne twister developer test 
 
 doc-fixes:
 
 - rename assim_model_mod.rst to match the module
-- fix various Sphinx warnings and broken link
+- fix various Sphinx warnings and broken link 
 
+**November 2 2023 :: QCEFF Input Table. Tag v11.1.0-alpha**
+
+- The QCEFF input table allows for the specification of QCEFF/probit
+  input options, per QTY, at runtime.
+- This replaces the functionality of using an algorithm_info_mod specific
+  to the model, which meant editing algorithm_info_mod.f90 to specify
+  which distribution should be used for which quantity.
+- The algorithm_info_mod files for the lorenz_96_tracer_advection model
+  examples have been replaced with set QCF tables (all_bnrhf_qcf_table.csv,
+  all_eakf_qcf_table.csv, state_eakf_tracer_bnrhf_qcf_table.csv,
+  neg_qcf_table.csv) and can be found in lorenz_96_tracer_advection/work.
+- Removed the ‘global’ version of filter_kind from assim_tools_mod.f90
+  and the &assim_tools_nml
 
 **October 5 2023 :: WRF-DART tutorial diagnostic section. Tag v10.8.5**
 
