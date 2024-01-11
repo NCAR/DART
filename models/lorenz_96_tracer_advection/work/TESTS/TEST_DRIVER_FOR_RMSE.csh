@@ -73,6 +73,7 @@ HERE
       vi input.nml << HERE
 :1,\$s/T_QCEFF_TABLE_FILENAME/$csv_file/
 :1,\$s/T_READ_INPUT_STATE_FROM_FILE/.true./
+:1,\$s/T_DO_POSTERIOR_INFLATE/.true./
 :1,\$s/T_FILTER_INPUT/perfect_input.nc/
 :1,\$s/T_ENS_SIZE/$ens_size/
 :1,\$s/T_PERTURB_FROM_SINGLE_INSTANCE/.true./

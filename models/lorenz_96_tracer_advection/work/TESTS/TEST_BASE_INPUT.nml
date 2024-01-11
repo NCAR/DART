@@ -35,6 +35,8 @@
    /
 
 &filter_nml
+   do_prior_inflate             = .true.,
+   do_posterior_inflate         = T_DO_POSTERIOR_INFLATE
    single_file_in               = .true.,
    input_state_files            = 'T_FILTER_INPUT'
    input_state_file_list        = ''

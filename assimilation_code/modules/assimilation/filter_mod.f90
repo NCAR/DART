@@ -46,7 +46,7 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                  map_pe_to_task, prepare_to_update_copies,  &
+                                  map_pe_to_task,                                             &
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
@@ -149,8 +149,6 @@ integer ::  ANALYSIS_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
 integer :: SPARE_PRIOR_SPREAD              = COPY_NOT_PRESENT
 
 ! Module Global Variables for inflation
-logical :: do_prior_inflate     = .false.
-logical :: do_posterior_inflate = .false.
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 logical :: has_cycling          = .false. ! filter will advance the model
@@ -164,6 +162,8 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
+logical :: do_prior_inflate     = .false.
+logical :: do_posterior_inflate = .false.
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -241,7 +241,10 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 logical  :: allow_missing_clm = .false.
 
 
-namelist /filter_nml/ async,     &
+namelist /filter_nml/            &
+   do_prior_inflate,             &
+   do_posterior_inflate,         &
+   async,                        &
    adv_ens_command,              &
    ens_size,                     &
    tasks_per_model_advance,      &
@@ -362,8 +365,6 @@ call error_handler(E_MSG,'filter_main:', msgstring, source)
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
-call trace_message('Before initializing inflation')
-
 !!! NEED TO DEAL WITH compute_posterior false and posterior inflation illegal below
 ! Cannot select posterior options if not computing posterior
 !!!if(.not. compute_posterior .and. inf_flavor(POSTERIOR_INF) /= NO_INFLATION) then
@@ -374,17 +375,15 @@ call trace_message('Before initializing inflation')
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate)
+! Turn it off if not requested in namelist
+if(.not. do_prior_inflate) prior_inflate%flavor = NO_INFLATION
 
-! Quick fix to avoid illegal use of RTPS with prior inflation
+! JLA Quick fix to avoid illegal use of RTPS with prior inflation; Should throw an error?
 if(do_rtps_inflate(prior_inflate)) prior_inflate%flavor = NO_INFLATION
 
 call adaptive_inflate_init(post_inflate)
-
-!!! TEMPORARY TO GET OUTPUT, used to get set by validate adaptive
-do_prior_inflate = .true.
-do_posterior_inflate = .true.
-
-call trace_message('After  initializing inflation')
+! Turn it off if not requested in namelist
+if(.not. do_posterior_inflate) post_inflate%flavor = NO_INFLATION
 
 ! for now, set 'has_cycling' to match 'single_file_out' since we're only supporting
 ! multi-file output for a single pass through filter, and allowing cycling if we're
@@ -410,7 +409,7 @@ if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 call parse_stages_to_write(stages_to_write)
 
 ! Count and set up State copy numbers
-num_state_ens_copies = count_state_ens_copies(ens_size, prior_inflate, post_inflate)
+num_state_ens_copies = count_state_ens_copies(ens_size)
 num_extras           = num_state_ens_copies - ens_size
 
 ! Observation
@@ -752,7 +751,6 @@ AdvanceTime : do
       call trace_message('Before prior inflation damping and prep')
 
       if (prior_inflate%damping /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
             prior_inflate%damping * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
@@ -763,7 +761,7 @@ AdvanceTime : do
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-      call trace_message('After  prior inflation damping and prep')
+      call trace_message('After prior inflation damping and prep')
    endif
 
    ! if relaxation-to-prior-spread inflation, save the prior spread in SPARE_PRIOR_SPREAD
@@ -853,7 +851,6 @@ AdvanceTime : do
       call trace_message('Before posterior inflation damping')
 
       if (post_inflate%damping /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             post_inflate%damping * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
@@ -902,7 +899,7 @@ AdvanceTime : do
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-      call trace_message('After  posterior inflation applied to state')
+      call trace_message('After posterior inflation applied to state')
 
    endif
 
@@ -1511,9 +1508,6 @@ logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
 integer  :: dist_type
 
-! Assumes that the ensemble is copy complete
-call prepare_to_update_copies(ens_handle)
-
 ! Inflate each group separately;  Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
 
@@ -1539,9 +1533,7 @@ do group = 1, num_groups
       endif 
    else 
 
-      ! This is an initial test of doing inflation in probit space
-      ! Note that this appears to work with adaptive inflation, but more research would be good
-      ! Probably also shouldn't be used with groups for now although it is coded to do so
+      ! Doing inflation in probit space; do probit probability integral transform as requested
       do j = 1, ens_handle%my_num_vars
          call get_state_meta_data(ens_handle%my_vars(j), my_state_loc, my_state_kind)    
 
@@ -2231,11 +2223,9 @@ end subroutine store_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size, prior_inflate, post_inflate) result(num_copies)
+function count_state_ens_copies(ens_size) result(num_copies)
 
 integer,                     intent(in) :: ens_size
-type(adaptive_inflate_type), intent(in) :: prior_inflate
-type(adaptive_inflate_type), intent(in) :: post_inflate
 integer :: num_copies
 
 integer :: cnum = 0

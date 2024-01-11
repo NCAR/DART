@@ -7,7 +7,7 @@ rm test_output
 cd ..
 
 # Compile with mpi
-#quickbuild.sh
+quickbuild.sh
 
 # Create a single step obs_sequenc
 create_obs_sequence < TESTS/create_obs_sequence_input
@@ -18,13 +18,14 @@ create_fixed_network_seq < TESTS/create_fixed_network_seq_in
 cp TESTS/one_below_qceff_table.csv .
 
 # List of CSV files
-set csv_file_list = ('all_eakf_qceff_table.csv' 'all_bnrhf_qceff_table.csv' 'one_below_qceff_table.csv')
+set csv_file_list = ('all_eakf_qceff_table.csv' 'all_bnrhf_qceff_table.csv' 'one_below_qceff_table.csv' 'one_below_qceff_table.csv')
 @ low_csv_file  = 1
-@ high_csv_file = 3
+@ high_csv_file = 4
 
 # Appropriate model namelist settings for the positive_tracer and bounded_above
-set positive_tracer = ('.true.' '.true.' '.false.')
-set bounded_above = ('.false.' '.false.' '.true.')
+set positive_tracer = ('.true.' '.true.' '.false.' '.false.')
+set bounded_above = ('.false.' '.false.' '.true.' '.true.')
+set do_post_inf = ('.false.' '.false.' '.false.' '.true.')
 
 @ csv_file_index = $low_csv_file
 while($csv_file_index <= $high_csv_file)
@@ -33,6 +34,9 @@ while($csv_file_index <= $high_csv_file)
    # Set the values of the tracer params
    set POSITIVE_TRACER_VAL = $positive_tracer[$csv_file_index]
    set BOUNDED_ABOVE_VAL = $bounded_above[$csv_file_index]
+   set DO_POSTERIOR_INFLATE = $do_post_inf[$csv_file_index]
+
+   echo $csv_file DO_POSTERIOR_INFLATE is $DO_POSTERIOR_INFLATE >> TESTS/test_output
 
    # The list  of ensemble sizes to test
    set ens_size_list = (12 17 20 33 40 57 80 111 160)
@@ -42,7 +46,7 @@ while($csv_file_index <= $high_csv_file)
    # The list of PE counts to test
    set pe_count_list = (1 2 3 7)
    @ low_pe_count = 1
-   @ high_pe_count = 1
+   @ high_pe_count = 4
 
    # Set up input.nml to do the initial perfect_model_obs run
    cp TESTS/TEST_BASE_INPUT.NML input.nml
@@ -64,6 +68,7 @@ HERE
    vi input.nml << HERE
 :1,\$s/T_QCEFF_TABLE_FILENAME/$csv_file/
 :1,\$s/T_READ_INPUT_STATE_FROM_FILE/.true./
+:1,\$s/T_DO_POSTERIOR_INFLATE/$DO_POSTERIOR_INFLATE/
 :1,\$s/T_FILTER_INPUT/perfect_input.nc/
 :1,\$s/T_ENS_SIZE/160/
 :1,\$s/T_PERTURB_FROM_SINGLE_INSTANCE/.true./
@@ -96,6 +101,7 @@ HERE
          vi input.nml << HERE
 :1,\$s/T_QCEFF_TABLE_FILENAME/$csv_file/
 :1,\$s/T_READ_INPUT_STATE_FROM_FILE/.true./
+:1,\$s/T_DO_POSTERIOR_INFLATE/$DO_POSTERIOR_INFLATE/
 :1,\$s/T_FILTER_INPUT/filter_input.nc/
 :1,\$s/T_ENS_SIZE/$ens_size/
 :1,\$s/T_PERTURB_FROM_SINGLE_INSTANCE/.false./
