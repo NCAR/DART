@@ -34,7 +34,7 @@ Data sources
 Use already existing obs_seq files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-NCAR staff have prepared datasets already converted to DART's obs_seq file 
+NSF NCAR staff have prepared datasets already converted to DART's obs_seq file 
 format for the World Ocean Database 2013 (WOD13) and the World Ocean Database
 2009 (WOD09).
 
@@ -45,7 +45,7 @@ format for the World Ocean Database 2013 (WOD13) and the World Ocean Database
    | PSU = g/kg
    | MSU = PSU/1000 = kg/kg
    
-   The WOD observation sequence files availiable from NCAR's RDA are in MSU.
+   The WOD observation sequence files availiable from NSF NCAR's RDA are in MSU.
 
 WOD13
 ~~~~~
@@ -101,10 +101,10 @@ Download WOD from NCEI
 Data from each of the WOD releases can be downloaded interactively from the 
 `WOD website <https://www.ncei.noaa.gov/products/world-ocean-atlas>`__.
 
-Download WOD from NCAR
-^^^^^^^^^^^^^^^^^^^^^^
+Download WOD from NSF NCAR
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-WOD09 can also be downloaded from NCAR's `research data archive (RDA) dataset 
+WOD09 can also be downloaded from NSF NCAR's `research data archive (RDA) dataset 
 285.0 <https://rda.ucar.edu/datasets/ds285.0/>`__.
 
 Programs
