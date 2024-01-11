@@ -3,11 +3,6 @@
 Welcome to the Data Assimilation Research Testbed
 =================================================
 
-.. warning::
-
-  Pre-release version of DART: Quantile-Conserving Ensemble Filter Framework
-	
-
 The Data Assimilation Research Testbed (DART) is an open-source, freely
 available community facility for ensemble data assimilation (DA). [1]_ DART is
 developed and maintained by the `Data Assimilation Research Section

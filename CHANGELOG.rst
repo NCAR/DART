@@ -22,13 +22,15 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**January XX 2024 :: QCEFF. Tag v11.0.0**
+**January 11 2024 :: QCEFF. Tag v11.0.0**
 
 Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
 
 - Adds a Quantile-Conserving Ensemble Filtering Framework (QCEFF) to DART.
   Publications: `QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_,
   `QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.  
+
+- The default QCEFF options are EAKF, normal distribution (no bounds).
 
 - User interface changes:
 
@@ -39,7 +41,7 @@ Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
     - probit_transform_nml
     - algorithm_info_nml
 
-  - assim_tools_mod namelist
+  - assim_tools_mod namelist:
   
     - sort_obs_inc namelist option applied to ENKF only, so default is now .true.
     - ``spread_restoration`` is not supported in this version
@@ -62,6 +64,7 @@ Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
   - positive_tracer
   - more tracer namelist options available and changed defaults
   - updated perturbation routine
+  - bug-fix: real(r8) rather than real(i8)
 
 - Fix: obs_def_1d_state_mod (oned forward operators):
 
