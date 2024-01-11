@@ -16,7 +16,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'DART quantile pre-release'
+project = 'DART'
 copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
@@ -73,7 +73,7 @@ html_theme = 'sphinx_rtd_theme'
 html_show_sphinx = False
 html_logo = 'guide/_static/nsf-ncar-dart.png'
 html_theme_options = {
-    'logo_only': False,
+    'logo_only': True,
     'includehidden': False
 }
 
