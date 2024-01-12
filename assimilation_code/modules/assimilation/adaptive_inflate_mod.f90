@@ -411,21 +411,29 @@ real(r8) :: rand_sd, var, sd_inflate
 ! For now, if there is a missing_r8 in any ensemble, don't do anything and return
 if (any(ens == MISSING_R8)) return
 
-if(inflate_handle%deterministic) then
-   if ( do_rtps_inflate(inflate_handle)) then
-      if ( .not. present(fsprd) .or. .not. present(asprd)) then 
-         write(string1, *) 'missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'inflate_ens',string1,source) 
-      endif 
-      ! only inflate if spreads are > 0
-      if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) then
-          ! Saving inflate for possible diagnostics
-          inflate = 1.0_r8 + inflate_handle%rtps_relaxation * ((fsprd-asprd) / asprd) 
-      else
-          inflate = 1.0_r8
-      endif
-      ens = ens * inflate + mean * (1.0_r8 - inflate)
-   else 
+! Damp the inflation if requested; 
+! JLA DEVELOPMENT NOTE: ENFORCE DAMPING OF 1.0 for ALL FLAVORS IT CAN"T BE USED WITH
+! DONE by tools that access the adaptive_inflate_type.
+! FOR NOW FILTER IS ONLY CALLING TO HERE IF do_ss_inflate
+if(inflate_handle%damping /= 1.0_r8) then
+   inflate = 1.0_r8 + inflate_handle%damping * (inflate - 1.0_r8)     
+endif 
+
+if ( do_rtps_inflate(inflate_handle)) then
+   if ( .not. present(fsprd) .or. .not. present(asprd)) then 
+      write(string1, *) 'missing arguments for RTPS inflation, should not happen'
+      call error_handler(E_ERR,'inflate_ens',string1,source) 
+   endif 
+   ! only inflate if spreads are > 0
+   if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) then
+       ! Saving inflate for possible diagnostics
+       inflate = 1.0_r8 + inflate_handle%rtps_relaxation * ((fsprd-asprd) / asprd) 
+   else
+       inflate = 1.0_r8
+   endif
+   ens = ens * inflate + mean * (1.0_r8 - inflate)
+else 
+   if(inflate_handle%deterministic) then
 
       ! Spread the ensemble out linearly for deterministic
       ! Following line can lead to inflation of 1.0 changing ens on some compilers
@@ -434,40 +442,38 @@ if(inflate_handle%deterministic) then
       sd_inflate = sqrt(inflate) 
       ens = ens * sd_inflate + mean * (1.0_r8 - sd_inflate)
 
-   endif
-
-else
-   ! Use a stochastic algorithm to spread out.
-   ens_size = size(ens)
-
-   ! If var is not present, go ahead and compute it here.
-   if(.not. present(var_in)) then
-      var = sum((ens - mean)**2) / (ens_size - 1)
    else
-      var = var_in
-   endif
-   
-   ! To increase the variance of the prior ensemble to the appropriate level
-   ! probably want to keep the mean fixed by shifting AND do a sort
-   ! on the final prior/posterior increment pairs to avoid large regression
-   ! error as per stochastic filter algorithms. This might help to avoid
-   ! problems with generating gravity waves in the Bgrid model, for instance.
+      ! Use a stochastic algorithm to spread out.
+      ens_size = size(ens)
 
-   ! The following code does not do the sort.
+      ! If var is not present, go ahead and compute it here.
+      if(.not. present(var_in)) then
+         var = sum((ens - mean)**2) / (ens_size - 1)
+      else
+         var = var_in
+      endif
+      
+      ! To increase the variance of the prior ensemble to the appropriate level
+      ! probably want to keep the mean fixed by shifting AND do a sort
+      ! on the final prior/posterior increment pairs to avoid large regression
+      ! error as per stochastic filter algorithms. This might help to avoid
+      ! problems with generating gravity waves in the Bgrid model, for instance.
    
-   ! Figure out required sd for random noise being added
-   ! Don't allow covariance deflation in this version
-   if(inflate > 1.0_r8) then
-      rand_sd = sqrt(inflate*var - var)
-      ! Add random sample from this noise into the ensemble
-      do i = 1, ens_size
-         ens(i) = random_gaussian(inflate_handle%ran_seq, ens(i), rand_sd)
-      end do
-      ! Adjust the mean back to the original value
-      ens = ens - (sum(ens) / ens_size - mean)
+      ! The following code does not do the sort.
+      
+      ! Figure out required sd for random noise being added
+      ! Don't allow covariance deflation in this version
+      if(inflate > 1.0_r8) then
+         rand_sd = sqrt(inflate*var - var)
+         ! Add random sample from this noise into the ensemble
+         do i = 1, ens_size
+            ens(i) = random_gaussian(inflate_handle%ran_seq, ens(i), rand_sd)
+         end do
+         ! Adjust the mean back to the original value
+         ens = ens - (sum(ens) / ens_size - mean)
+      endif
    endif
 endif
-
 end subroutine inflate_ens
 
 

@@ -146,7 +146,7 @@ integer ::  PREASSIM_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
 integer :: POSTASSIM_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
 integer ::  ANALYSIS_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
 
-integer :: SPARE_PRIOR_SPREAD              = COPY_NOT_PRESENT
+integer :: RTPS_PRIOR_SPREAD              = COPY_NOT_PRESENT
 
 ! Module Global Variables for inflation
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
@@ -748,12 +748,6 @@ AdvanceTime : do
    endif
 
    if(do_ss_inflate(prior_inflate)) then
-      call trace_message('Before prior inflation damping and prep')
-
-      if (prior_inflate%damping /= 1.0_r8) then
-         state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            prior_inflate%damping * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
-      endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
                                    ENS_MEAN_COPY)
@@ -761,13 +755,12 @@ AdvanceTime : do
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-      call trace_message('After prior inflation damping and prep')
    endif
 
-   ! if relaxation-to-prior-spread inflation, save the prior spread in SPARE_PRIOR_SPREAD
+   ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD
    if ( do_rtps_inflate(post_inflate) ) &
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, &
-                                   SPARE_PRIOR_SPREAD)
+                                   RTPS_PRIOR_SPREAD)
 
    call     trace_message('Before computing prior observation values')
    call timestamp_message('Before computing prior observation values')
@@ -844,24 +837,9 @@ AdvanceTime : do
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-   ! This block applies posterior inflation
-
-   if(do_ss_inflate(post_inflate)) then
-
-      call trace_message('Before posterior inflation damping')
-
-      if (post_inflate%damping /= 1.0_r8) then
-         state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            post_inflate%damping * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
-      endif
-
-      call trace_message('After  posterior inflation damping')
-
-   endif
-
-
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
-   ! and potentially damped posterior inflation and updated prior inflation.
+   ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
+   
    if (get_stage_to_write('postassim')) then
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
@@ -882,24 +860,14 @@ AdvanceTime : do
       endif
    endif
 
-   ! This block applies posterior inflation
+   ! This block applies posterior inflation including RTPS if selected
 
    if(do_ss_inflate(post_inflate)) then
-
-      call trace_message('Before posterior inflation applied to state')
-
-      if (do_rtps_inflate(post_inflate)) then   
-         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
-                       ENS_MEAN_COPY, SPARE_PRIOR_SPREAD, ENS_SD_COPY)
-      else
-         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
-                       ENS_MEAN_COPY)
-      endif
+      call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
+                       ENS_MEAN_COPY, RTPS_PRIOR_SPREAD, ENS_SD_COPY)
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-      call trace_message('After posterior inflation applied to state')
 
    endif
 
@@ -1492,12 +1460,12 @@ end subroutine filter_set_window_time
 !-------------------------------------------------------------------------
 
 subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate_handle, ENS_MEAN_COPY, &
-                                   SPARE_PRIOR_SPREAD, ENS_SD_COPY)
+                                   RTPS_PRIOR_SPREAD, ENS_SD_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: inflate_copy, ENS_MEAN_COPY
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
-integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
+integer, optional,           intent(in)    :: RTPS_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
 type(location_type) :: my_state_loc
@@ -1518,22 +1486,14 @@ do group = 1, num_groups
    call compute_copy_mean(ens_handle, grp_bot, grp_top, ENS_MEAN_COPY)
 
    if ( do_rtps_inflate(inflate_handle)) then 
-      if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
-         write(msgstring, *) ' doing RTPS inflation'
-         call error_handler(E_MSG,'filter_ensemble_inflate:',msgstring,source)
-
-         do j = 1, ens_handle%my_num_vars
-            call inflate_ens(inflate_handle, ens_handle%copies(grp_bot:grp_top, j), &
-               ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
-               ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
-         end do 
-      else 
-         write(msgstring, *) 'internal error: missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source)
-      endif 
+      do j = 1, ens_handle%my_num_vars
+         call inflate_ens(inflate_handle, ens_handle%copies(grp_bot:grp_top, j), &
+            ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
+            ens_handle%copies(RTPS_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
+      end do 
    else 
 
-      ! Doing inflation in probit space; do probit probability integral transform as requested
+      ! Doing inflation in probit space; do probit probability integral transform
       do j = 1, ens_handle%my_num_vars
          call get_state_meta_data(ens_handle%my_vars(j), my_state_loc, my_state_kind)    
 
@@ -2356,7 +2316,7 @@ CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
 ! ENS_SD_COPY will be overwritten with the posterior spread before
 ! applying the inflation algorithm; must save the prior ensemble spread in a different copy
 if ( do_rtps_inflate(post_inflate) ) then
-   SPARE_PRIOR_SPREAD = next_copy_number(cnum)
+   RTPS_PRIOR_SPREAD = next_copy_number(cnum)
 endif
 
 num_copies = cnum
