@@ -20,7 +20,8 @@ use utilities_mod,     only : do_nml_file, do_nml_term, &
 
 use time_manager_mod,  only : time_type, set_time
 use mpi_utilities_mod, only : task_count, my_task_id, send_to, receive_from, &
-                              task_sync, broadcast_send, broadcast_recv
+                              task_sync, broadcast_send, broadcast_recv,     &
+                              send_minmax_to
 use sort_mod,          only : index_sort
 
 
@@ -42,7 +43,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           prepare_to_update_copies,   print_ens_handle,         set_current_time,           &
           map_task_to_pe,             map_pe_to_task,           get_current_time,           &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
-          deallocate_single_copy
+          deallocate_single_copy,     get_minmax_task_zero
 
 character(len=*), parameter :: source = 'ensemble_manager_mod.f90'
 
@@ -1940,6 +1941,38 @@ type(time_type),       intent(out) :: t
 t = ens_handle%current_time 
 
 end subroutine get_current_time
+
+!---------------------------------------------------------------------------------
+
+!> Collect the min and max and mean values of an ensemble member or other copy
+!> this block handles communicating the min/max local values to PE 0
+!> This was implemented specifically for inflation in the adaptive_inflate_mod
+!> but it belongs here in a more generic form here.
+
+          
+subroutine get_minmax_task_zero(ens_handle, copy, min_val, max_val)
+          
+type(ensemble_type),         intent(in)    :: ens_handle
+integer,                     intent(in)    :: copy
+real(r8),                    intent(out)   :: min_val, max_val
+
+real(r8) :: minmax(2), global_val(2)
+
+
+! Find mean on each 
+minmax(1) = minval(ens_handle%copies(copy, :))
+minmax(2) = maxval(ens_handle%copies(copy, :))
+
+! collect on pe 0
+call send_minmax_to(minmax, map_pe_to_task(ens_handle, 0), global_val)
+if (ens_handle%my_pe == 0) then
+   min_val = global_val(1)
+   max_val = global_val(2)
+endif
+
+end subroutine get_minmax_task_zero
+
+
 
 !---------------------------------------------------------------------------------
 

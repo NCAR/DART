@@ -14,8 +14,7 @@ use utilities_mod,        only : error_handler, E_ERR, E_MSG, &
                                  nmlfileunit, do_nml_file, do_nml_term,              &
                                  check_namelist_read, find_namelist_in_file
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
-use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
-use mpi_utilities_mod,    only : my_task_id, send_minmax_to
+use mpi_utilities_mod,    only : my_task_id
 
 implicit none
 private
@@ -25,7 +24,7 @@ public :: update_inflation, do_obs_inflate,           &
           do_orig_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,         &
           adaptive_inflate_init,    adaptive_inflate_type,                            &
           deterministic_inflate,  solve_quadratic,          &
-          log_inflation_info,       get_minmax_task_zero,                             &
+          log_inflation_info,       &
           get_inflate_mean,       get_inflate_sd,           &
           do_ss_inflate,            &
           set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
@@ -68,10 +67,8 @@ type adaptive_inflate_type
    real(r8)              :: rtps_relaxation
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
-   real(r8)              :: minmax_mean(2), minmax_sd(2)
    integer               :: input_mean_copy = -1 !!todo NO_COPY_PRESENT
    integer               :: input_sd_copy   = -1
-   logical               :: output_restart = .false.
 end type adaptive_inflate_type
 
 ! Module storage for writing error messages
@@ -232,11 +229,6 @@ if(.not. inflate_handle%deterministic) then
    call init_random_seq(inflate_handle%ran_seq, my_task_id()+1 + salt)
    salt = salt + 1000 
 endif
-
-! give these distinctive values; if inflation is being used
-! (e.g. flavor > 0) then they should be set in all cases.
-inflate_handle%minmax_mean(:) = MISSING_R8
-inflate_handle%minmax_sd(:)   = MISSING_R8
 
 ! Read type 1 (observation space inflation)
 if(inflate_handle%flavor == OBS_INFLATION) then
@@ -1115,20 +1107,8 @@ if(inflation_handle%deterministic) then
 else
   det = 'random-noise,'
 endif
-if (inflation_handle%minmax_sd(2) > inflation_handle%sd_lower_bound) then
-   det = trim(det) // ' variance adaptive,'
-endif
 if (inflation_handle%mean_lower_bound < 1.0_r8) then
    det = trim(det) // ' deflation permitted,'
-endif
-if (inflation_handle%minmax_sd(2) > 0.0_r8) then
-  tadapt = ' time-adaptive,'
-   if (inflation_handle%sd_lower_bound < inflation_handle%minmax_sd(2) .or. &
-       inflation_handle%flavor == ENHANCED_SS_INFLATION) then
-      tadapt = trim(tadapt) // ' time-rate adaptive,'
-   endif
-else
-  tadapt = ' time-constant,'
 endif
 if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
   tadapt = ' enhanced' //trim(tadapt)
@@ -1189,57 +1169,6 @@ write(string1,*) trim(which)//' read from restart file: ' // trim(fname)
 call error_handler(E_MSG, ' inflation:', trim(string1), source)
 
 end subroutine print_inflation_restart_filename
-
-
-!-------------------------------------------------------------------------------
-!> Collect the min and max of inflation on task 0
-!> this block handles communicating the min/max local values to PE 0
-!> if running with MPI, or just sets the min/max directly if reading
-!> from a namelist.
-
-subroutine get_minmax_task_zero(inflation_handle, ens_handle, &
-                       ss_inflate_index, ss_inflate_sd_index)
-
-type(adaptive_inflate_type), intent(inout) :: inflation_handle
-type(ensemble_type),         intent(in)    :: ens_handle
-integer,                     intent(in)    :: ss_inflate_index
-integer,                     intent(in)    :: ss_inflate_sd_index
-
-real(r8) :: minmax_mean(2), minmax_sd(2), global_val(2)
-
-! if not using inflation, return now
-if (inflation_handle%flavor <= NO_INFLATION) return
-
-! NEED TO ???? REPLACE THIS AS APPROPRIATE???
-!!!if (inflation_handle%initial_mean_from_restart) then
-
-   ! find min and max on each processor
-   !!!minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
-   !!!minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
-
-   ! collect on pe 0
-   !!!call send_minmax_to(minmax_mean, map_pe_to_task(ens_handle, 0), global_val)
-   !!!if (ens_handle%my_pe == 0) inflation_handle%minmax_mean = global_val
-
-!!!else 
-   !!!inflation_handle%minmax_mean = inflation_handle%initial_mean
-!!!endif
-
-!!!if (inflation_handle%initial_sd_from_restart) then
-
-   ! find min and max on each processor
-   !!!minmax_sd(1) = minval(ens_handle%copies(ss_inflate_sd_index, :))
-   !!!minmax_sd(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
-
-   ! collect on pe 0
-   !!!call send_minmax_to(minmax_sd, map_pe_to_task(ens_handle, 0), global_val)
-   !!!if (ens_handle%my_pe == 0) inflation_handle%minmax_sd = global_val
-!!!else
-   !!!inflation_handle%minmax_sd = inflation_handle%initial_sd 
-!!!endif
-
-end subroutine get_minmax_task_zero
-
 
 !-------------------------------------------------------------------------------
 !>

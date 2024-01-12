@@ -56,7 +56,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
                                   adaptive_inflate_type, set_inflation_mean_copy ,    &
                                   log_inflation_info, set_inflation_sd_copy,          &
-                                  get_minmax_task_zero, do_rtps_inflate,              &
+                                  do_rtps_inflate,              &
                                   NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
                                   
 
@@ -508,11 +508,8 @@ call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, &
                 prior_inflate, post_inflate, perturb_from_single_instance)
 
 ! This must be after read_state
-call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior', single_file_in)
-call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', single_file_in)
-
 
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'filter_main:', &
