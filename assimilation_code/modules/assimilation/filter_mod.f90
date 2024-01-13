@@ -54,9 +54,8 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
 
 use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
-                                  adaptive_inflate_type, set_inflation_mean_copy ,    &
-                                  log_inflation_info, set_inflation_sd_copy,          &
-                                  do_rtps_inflate,              &
+                                  adaptive_inflate_type, log_inflation_info,          &
+                                  do_rtps_inflate, set_inflate_flavor,                &
                                   NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
                                   
 
@@ -376,14 +375,14 @@ allow_missing = get_missing_ok_status()
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate)
 ! Turn it off if not requested in namelist
-if(.not. do_prior_inflate) prior_inflate%flavor = NO_INFLATION
+if(.not. do_prior_inflate) call set_inflate_flavor(prior_inflate, NO_INFLATION)
 
-! JLA Quick fix to avoid illegal use of RTPS with prior inflation; Should throw an error?
-if(do_rtps_inflate(prior_inflate)) prior_inflate%flavor = NO_INFLATION
+! Avoid illegal use of RTPS with prior inflation; Should throw an error?
+if(do_rtps_inflate(prior_inflate)) call set_inflate_flavor(prior_inflate, NO_INFLATION)
 
 call adaptive_inflate_init(post_inflate)
 ! Turn it off if not requested in namelist
-if(.not. do_posterior_inflate) post_inflate%flavor = NO_INFLATION
+if(.not. do_posterior_inflate) call set_inflate_flavor(post_inflate, NO_INFLATION)
 
 ! for now, set 'has_cycling' to match 'single_file_out' since we're only supporting
 ! multi-file output for a single pass through filter, and allowing cycling if we're
@@ -499,12 +498,8 @@ call initialize_file_information(num_state_ens_copies ,                     &
 
 call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
-call set_inflation_mean_copy( prior_inflate, PRIOR_INF_COPY )
-call set_inflation_sd_copy(   prior_inflate, PRIOR_INF_SD_COPY )
-call set_inflation_mean_copy( post_inflate,  POST_INF_COPY )
-call set_inflation_sd_copy(   post_inflate,  POST_INF_SD_COPY )
-
-call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, &
+call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
+                PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                 prior_inflate, post_inflate, perturb_from_single_instance)
 
 ! This must be after read_state

@@ -24,22 +24,13 @@ public :: update_inflation, do_obs_inflate,           &
           do_orig_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,         &
           adaptive_inflate_init,    adaptive_inflate_type,                            &
           deterministic_inflate,  solve_quadratic,          &
-          log_inflation_info,       &
+          log_inflation_info, set_inflate_flavor,       &
           get_inflate_mean,       get_inflate_sd,           &
           do_ss_inflate,            &
-          set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
-          get_inflation_sd_copy,    do_rtps_inflate,         &
-          print_inflation_restart_filename,                                           &
+          do_rtps_inflate,         &
           NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
-
-! Manages both observation space and state space inflation
-! Handles initial values and restarts, diagnostic output, and computations
-! Algorithm options at present include a single fixed observation space,
-! a single fixed state space adaptive inflation,
-! and a spatially-varying state space inflation that carries
-! a mean and variance for the state space inflation at each point. 
 
 ! Encode the different inflation options
 ! OBS_INFLATION is currently deprecated.
@@ -51,10 +42,9 @@ integer, parameter :: SINGLE_SS_INFLATION        = 3
 integer, parameter :: RELAXATION_TO_PRIOR_SPREAD = 4
 integer, parameter :: ENHANCED_SS_INFLATION      = 5
 
-! Type to keep track of information for inflation
+! Type that defines the parameter setting for an application of inflation
 type adaptive_inflate_type
-   !!! TEMPORARY UN_PRIVATE FOR DEVELOPMENT: PUT BACK IN WITH INTERFACES
-   !!!private
+   private
    integer               :: flavor
    logical               :: deterministic
    real(r8)              :: initial_mean
@@ -67,8 +57,6 @@ type adaptive_inflate_type
    real(r8)              :: rtps_relaxation
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
-   integer               :: input_mean_copy = -1 !!todo NO_COPY_PRESENT
-   integer               :: input_sd_copy   = -1
 end type adaptive_inflate_type
 
 ! Module storage for writing error messages
@@ -110,6 +98,19 @@ namelist /adaptive_inflate_nml/ flavor, &
 !===============================================================================
 
 contains
+
+!-------------------------------------------------------------------------------
+!>
+
+subroutine set_inflate_flavor(inflation_handle, flavor)
+
+type(adaptive_inflate_type) :: inflation_handle
+integer, intent(in)         :: flavor
+
+! No error checking done on value
+inflation_handle%flavor = flavor
+
+end subroutine set_inflate_flavor
 
 !-------------------------------------------------------------------------------
 !>
@@ -340,7 +341,6 @@ subroutine validate_inflate_options(inflation_handle)
 
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
 
-integer :: i
 character(len=32) :: string
 
 if(inflation_handle%flavor < NO_INFLATION .or. inflation_handle%flavor > ENHANCED_SS_INFLATION) then
@@ -1089,7 +1089,7 @@ integer,                     intent(in) :: mype
 character(len = *),          intent(in) :: label
 logical,                     intent(in) :: single_file
 
-character(len = 128) :: det, tadapt, sadapt, akind, from
+character(len = 128) :: det, tadapt, sadapt, akind
 
 ! nothing to do if not task 0
 if (mype /= 0) return
@@ -1155,67 +1155,6 @@ if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
 endif
 
 end subroutine log_inflation_info
-
-
-!-------------------------------------------------------------------------------
-!>
-
-subroutine print_inflation_restart_filename(inflation_handle, fname, which)
-type(adaptive_inflate_type), intent(in) :: inflation_handle
-character(len=*), intent(in) :: fname
-character(len=*), intent(in) :: which
-
-write(string1,*) trim(which)//' read from restart file: ' // trim(fname)
-call error_handler(E_MSG, ' inflation:', trim(string1), source)
-
-end subroutine print_inflation_restart_filename
-
-!-------------------------------------------------------------------------------
-!>
-
-subroutine set_inflation_mean_copy(inflation_handle, c)
-type(adaptive_inflate_type), intent(inout) :: inflation_handle
-integer,                     intent(in)    :: c
-
-inflation_handle%input_mean_copy = c
-
-end subroutine set_inflation_mean_copy
-
-
-!-------------------------------------------------------------------------------
-!>
-
-subroutine set_inflation_sd_copy(inflation_handle, c)
-type(adaptive_inflate_type), intent(inout) :: inflation_handle
-integer,                     intent(in)    :: c
-
-inflation_handle%input_sd_copy = c
-
-end subroutine set_inflation_sd_copy
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function get_inflation_mean_copy(inflation_handle) result (c)
-type(adaptive_inflate_type), intent(in) :: inflation_handle
-integer :: c
-
-c = inflation_handle%input_mean_copy
-
-end function get_inflation_mean_copy
-
-
-!-------------------------------------------------------------------------------
-!>
-
-function get_inflation_sd_copy(inflation_handle) result (c)
-type(adaptive_inflate_type), intent(in) :: inflation_handle
-integer :: c
-
-c = inflation_handle%input_sd_copy
-
-end function get_inflation_sd_copy
 
 
 !===============================================================================

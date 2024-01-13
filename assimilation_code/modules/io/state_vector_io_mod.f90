@@ -29,9 +29,7 @@ module state_vector_io_mod
 
 use adaptive_inflate_mod, only : adaptive_inflate_type, &
                                  do_single_ss_inflate, &
-                                 get_inflate_mean, get_inflate_sd, do_ss_inflate, &
-                                 get_inflation_mean_copy, &
-                                 get_inflation_sd_copy, print_inflation_restart_filename
+                                 get_inflate_mean, get_inflate_sd, do_ss_inflate
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
                                  read_single_file, write_augmented_state, &
@@ -158,12 +156,15 @@ end subroutine state_vector_io_init
 
 
 subroutine read_state(state_ens_handle, file_info, read_time_from_file, model_time, &
+            PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,     &
             prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
 type(file_info_type),        intent(in)    :: file_info
 logical,                     intent(in)    :: read_time_from_file ! state time
 type(time_type),             intent(inout) :: model_time
+integer,                     optional, intent(in) :: PRIOR_INF_COPY, PRIOR_INF_SD_COPY
+integer,                     optional, intent(in) :: POST_INF_COPY,  POST_INF_SD_COPY
 type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
 logical,                     optional, intent(in) :: perturb_from_single_copy
@@ -200,13 +201,17 @@ if (inflation_handles) then
    call print_inflation_source(file_info, post_inflate_handle,  'Posterior')
 
    ! If inflation is single state space read from a file, the copies array is filled here.
-   call fill_single_inflate_val_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
+   call fill_single_inflate_val_from_read(state_ens_handle, PRIOR_INF_COPY, &
+      PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,                   &
+      prior_inflate_handle, post_inflate_handle)
 
    ! If inflation is from a namelist value it is set here.
    !>@todo FIXME: ditto here - the output should be from a routine
    !> in the adaptive_inflate_mod.f90 code
-   call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle)
-   call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle)
+   call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle, &
+      PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+   call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle, &
+      POST_INF_COPY, POST_INF_SD_COPY)
 
 endif
 
@@ -345,9 +350,12 @@ end subroutine write_restart_direct
 
 !>@todo We need to refactor this, not sure where it is being used
 subroutine fill_single_inflate_val_from_read(ens_handle, &
+                PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                 prior_inflate_handle, post_inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
+integer,                     intent(in)    :: PRIOR_INF_COPY, PRIOR_INF_SD_COPY
+integer,                     intent(in)    :: POST_INF_COPY,  POST_INF_SD_COPY
 type(adaptive_inflate_type), intent(in)    :: prior_inflate_handle
 type(adaptive_inflate_type), intent(in)    :: post_inflate_handle
 
@@ -390,11 +398,6 @@ allocate(inf_array(inf_count)) ! for sending and recveiving inflation values
 ! Find out who owns the first element of vars array
 first_element = 1
 call get_var_owner_index(ens_handle, first_element, owner, owners_index)
-
-PRIOR_INF_MEAN  = get_inflation_mean_copy(prior_inflate_handle)
-PRIOR_INF_SD    = get_inflation_sd_copy(  prior_inflate_handle)
-POST_INF_MEAN   = get_inflation_mean_copy(post_inflate_handle)
-POST_INF_SD     = get_inflation_sd_copy(  post_inflate_handle)
 
 if (ens_handle%my_pe == owner) then
    if (do_single_ss_inflate(prior_inflate_handle) .and. &
@@ -456,17 +459,14 @@ end subroutine fill_single_inflate_val_from_read
 !> fill copies array with namelist values for inflation if they do.
 
 
-subroutine fill_inf_from_namelist_value(ens_handle, inflate_handle)
+subroutine fill_inf_from_namelist_value(ens_handle, inflate_handle, &
+   INF_MEAN_COPY, INF_SD_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
+integer,                     intent(in)    :: INF_MEAN_COPY, INF_SD_COPY
 
 character(len=32)  :: label
-integer            :: INF_MEAN_COPY, INF_SD_COPY
-real(r8)           :: inf_initial, sd_initial
-
-INF_MEAN_COPY = get_inflation_mean_copy(inflate_handle)
-INF_SD_COPY   = get_inflation_sd_copy(  inflate_handle)
 
 ! To match Lanai filter_state_space_diagnostics, 
 ! if not doing inflation set inf_mean = 1, inf_sd = 0
@@ -489,15 +489,13 @@ endif
 ! No longer available from adaptive_inflate_mod, just do true for now
 if (.true.) then
 !!!if (.not. mean_from_restart(inflate_handle)) then
-   inf_initial = get_inflate_mean(inflate_handle)
-   ens_handle%copies(INF_MEAN_COPY, :) = inf_initial
+   ens_handle%copies(INF_MEAN_COPY, :) = get_inflate_mean(inflate_handle)
 endif
 
 ! No longer available from adaptive_inflate_mod, just do true for now
 if (.true.) then
 !!!if (.not. sd_from_restart(inflate_handle)) then
-   sd_initial = get_inflate_sd(inflate_handle)
-   ens_handle%copies(INF_SD_COPY, :) = sd_initial
+   ens_handle%copies(INF_SD_COPY, :) = get_inflate_sd(inflate_handle)
 endif
 
 end subroutine fill_inf_from_namelist_value
