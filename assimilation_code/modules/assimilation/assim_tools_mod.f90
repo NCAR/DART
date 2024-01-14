@@ -58,7 +58,7 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_in
                                  do_varying_ss_inflate,                                   &
                                  update_inflation, update_varying_state_space_inflation,  &
                                  inflate_ens, adaptive_inflate_type,                      &
-                                 deterministic_inflate, solve_quadratic
+                                 do_deterministic_inflate, solve_quadratic
 
 use time_manager_mod,     only : time_type, get_time
 
@@ -939,7 +939,7 @@ if(do_obs_inflate(inflate)) then
    inflate_inc = ens - ens_in
 
    ! Need to recompute variance if non-deterministic inflation (mean is unchanged)
-   if(.not. deterministic_inflate(inflate)) &
+   if(.not. do_deterministic_inflate(inflate)) &
       prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
 

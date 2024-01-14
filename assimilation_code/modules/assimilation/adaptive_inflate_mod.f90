@@ -2,7 +2,10 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-!> Operations and storage required for various adaptive inflation algorithms
+!> Implements adaptive inflation algorithms. Defines a type that keeps trace of 
+! algorithm parameter settings. Implements constant state space inflation, single
+! value adaptive state space inflation, spatially-varying state space inflation
+! via the legacy algorithm of Anderson and the enhanced algorithm of Gharamti. 
 
 module adaptive_inflate_mod
 
@@ -23,9 +26,9 @@ public :: update_inflation, do_obs_inflate,           &
           update_varying_state_space_inflation, do_varying_ss_inflate,                &
           do_orig_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,         &
           adaptive_inflate_init,    adaptive_inflate_type,                            &
-          deterministic_inflate,  solve_quadratic,          &
+          do_deterministic_inflate,  solve_quadratic,          &
           log_inflation_info, set_inflate_flavor,       &
-          get_inflate_mean,       get_inflate_sd,           &
+          get_inflate_initial_mean,       get_inflate_initial_sd,           &
           do_ss_inflate,            &
           do_rtps_inflate,         &
           NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
@@ -72,7 +75,7 @@ real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaN
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer  :: flavor                       = 0
+integer  :: flavor                       = NO_INFLATION
 logical  :: deterministic                = .true.
 real(r8) :: initial_mean                 = 1.0_r8
 real(r8) :: initial_sd                   = 0.0_r8
@@ -115,12 +118,12 @@ end subroutine set_inflate_flavor
 !-------------------------------------------------------------------------------
 !>
 
-function get_inflate_mean(inflation)
+function get_inflate_initial_mean(inflation)
 
 type(adaptive_inflate_type) :: inflation
-real(r8)  :: get_inflate_mean
+real(r8)  :: get_inflate_initial_mean
 
-get_inflate_mean = inflation%initial_mean
+get_inflate_initial_mean = inflation%initial_mean
 
 end function
 
@@ -128,12 +131,12 @@ end function
 !-------------------------------------------------------------------------------
 !>
 
-function get_inflate_sd(inflation)
+function get_inflate_initial_sd(inflation)
 
 type(adaptive_inflate_type) :: inflation
-real(r8)  :: get_inflate_sd
+real(r8)  :: get_inflate_initial_sd
 
-get_inflate_sd = inflation%initial_sd
+get_inflate_initial_sd = inflation%initial_sd
 
 end function
 
@@ -324,14 +327,14 @@ end function do_enhanced_varying_ss_inflate
 !-------------------------------------------------------------------------------
 !> Returns true if deterministic inflation is indicated
 
-function deterministic_inflate(inflate_handle)
+function do_deterministic_inflate(inflate_handle)
 
-logical :: deterministic_inflate
+logical :: do_deterministic_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-deterministic_inflate = inflate_handle%deterministic
+do_deterministic_inflate = inflate_handle%deterministic
 
-end function deterministic_inflate
+end function do_deterministic_inflate
 
 
 !-------------------------------------------------------------------------------

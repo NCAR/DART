@@ -29,7 +29,7 @@ module state_vector_io_mod
 
 use adaptive_inflate_mod, only : adaptive_inflate_type, &
                                  do_single_ss_inflate, &
-                                 get_inflate_mean, get_inflate_sd, do_ss_inflate
+                                 get_inflate_initial_mean, get_inflate_initial_sd, do_ss_inflate
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
                                  read_single_file, write_augmented_state, &
@@ -489,13 +489,13 @@ endif
 ! No longer available from adaptive_inflate_mod, just do true for now
 if (.true.) then
 !!!if (.not. mean_from_restart(inflate_handle)) then
-   ens_handle%copies(INF_MEAN_COPY, :) = get_inflate_mean(inflate_handle)
+   ens_handle%copies(INF_MEAN_COPY, :) = get_inflate_initial_mean(inflate_handle)
 endif
 
 ! No longer available from adaptive_inflate_mod, just do true for now
 if (.true.) then
 !!!if (.not. sd_from_restart(inflate_handle)) then
-   ens_handle%copies(INF_SD_COPY, :) = get_inflate_sd(inflate_handle)
+   ens_handle%copies(INF_SD_COPY, :) = get_inflate_initial_sd(inflate_handle)
 endif
 
 end subroutine fill_inf_from_namelist_value
