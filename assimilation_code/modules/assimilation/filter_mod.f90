@@ -348,9 +348,6 @@ if (task_count() == 1) distributed_state = .true.
 call set_debug_fwd_op(output_forward_op_errors)
 call set_trace(trace_execution, output_timestamps, silence)
 
-call     trace_message('Filter start')
-call timestamp_message('Filter start')
-
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
 if(ens_size < 2) then
    write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
@@ -424,32 +421,8 @@ OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 
 TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 
-!>@todo FIXME turn trace/timestamp calls into:  
-!>
-!> integer, parameter :: T_BEFORE = 1
-!> integer, parameter :: T_AFTER  = 2
-!> integer, parameter :: P_TIME   = 1
-!>
-!>  call progress(string, T_BEFORE)  ! simple trace msg
-!>  call progress(string, T_AFTER)
-!>
-!>  call progress(string, T_BEFORE, P_TIME)  ! trace plus timestamp
-!>  call progress(string, T_AFTER,  P_TIME)
-
-!> DO NOT timestamp every trace message because some are
-!> so quick that the timestamps don't impart any info.  
-!> we should be careful to timestamp logical *sections* instead.
-
-call     trace_message('Before setting up space for observations')
-call timestamp_message('Before setting up space for observations')
-
 ! Initialize the obs_sequence; every pe gets a copy for now
 call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, compute_posterior)
-
-call timestamp_message('After  setting up space for observations')
-call     trace_message('After  setting up space for observations')
-
-call trace_message('Before setting up space for ensembles')
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
@@ -467,8 +440,6 @@ if (task_count() > 1) &
 
 call set_num_extra_copies(state_ens_handle, num_extras)
 
-call trace_message('After  setting up space for ensembles')
-
 ! Don't currently support number of processes > model_size
 if(task_count() > model_size) then 
    write(msgstring, *) 'number of MPI processes = ', task_count(), &
@@ -484,9 +455,6 @@ endif
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
-
-call     trace_message('Before reading in ensemble restart files')
-call timestamp_message('Before reading in ensemble restart files')
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
@@ -518,25 +486,14 @@ else
       'Reading in initial condition/restart data for all ensemble members from file(s)')
 endif
 
-call timestamp_message('After  reading in ensemble restart files')
-call     trace_message('After  reading in ensemble restart files')
-
 ! see what our stance is on missing values in the state vector
 allow_missing = get_missing_ok_status()
-
-call     trace_message('Before initializing output files')
-call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
 call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index, &
       compute_posterior)
-
-call timestamp_message('After  initializing output files')
-call     trace_message('After  initializing output files')
-
-call trace_message('Before trimming obs seq if start/stop time specified')
 
 ! Need to find first obs with appropriate time, delete all earlier ones
 if(first_obs_seconds > 0 .or. first_obs_days > 0) then
@@ -561,8 +518,6 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    endif
 endif
 
-call trace_message('After  trimming obs seq if start/stop time specified')
-
 ! Time step number is used to do periodic diagnostic output
 time_step_number = -1
 curr_ens_time = set_time(0, 0)
@@ -574,9 +529,6 @@ call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_C
 
 ! Write out the mean and sd for the input files if requested
 if (get_stage_to_write('input')) then
-
-   call     trace_message('Before input state space output')
-   call timestamp_message('Before input state space output')
 
    if (write_all_stages_at_end) then
       call store_input(state_ens_handle, prior_inflate, post_inflate)
@@ -596,21 +548,11 @@ if (get_stage_to_write('input')) then
         call write_state(state_ens_handle, file_info_mean_sd)
      endif
    endif
-
-   call timestamp_message('After  input state space output')
-   call     trace_message('After  input state space output')
-
 endif
 
 
 AdvanceTime : do
-   call trace_message('Top of main advance time loop')
-
    time_step_number = time_step_number + 1
-   write(msgstring , '(A,I5)') &
-      'Main assimilation loop, starting iteration', time_step_number
-   call trace_message(' ', ' ', -1)
-   call trace_message(msgstring, 'filter: ', -1)
 
    ! Check the time before doing the first model advance.  Not all tasks
    ! might have a time, so only check on PE0 if running multitask.
@@ -628,12 +570,9 @@ AdvanceTime : do
    ! include the next available observation.  recent change is
    ! curr_ens_time in move_ahead() is intent(inout) and doesn't get changed
    ! even if there are no more obs.
-   call trace_message('Before move_ahead checks time of data and next obs')
 
    call move_ahead(state_ens_handle, ens_size, seq, last_key_used, window_time, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
-
-   call trace_message('After  move_ahead checks time of data and next obs')
 
    ! Only processes with an ensemble copy know to exit;
    ! For now, let process 0 broadcast its value of key_bounds
@@ -644,7 +583,6 @@ AdvanceTime : do
                               curr_ens_time, next_ens_time)
 
    if(key_bounds(1) < 0) then
-      call trace_message('No more obs to assimilate, exiting main loop', 'filter:', -1)
       exit AdvanceTime
    endif
 
@@ -659,10 +597,7 @@ AdvanceTime : do
              text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
 
-      call trace_message('Ready to run model to advance data ahead in time', 'filter:', -1)
-      call print_ens_time(state_ens_handle, 'Ensemble data time before advance')
-      call     trace_message('Before running model')
-      call timestamp_message('Before running model', sync=.true.)
+      call task_sync()
 
       ! make sure storage is allocated in ensemble manager for vars.
       call allocate_vars(state_ens_handle)
@@ -684,17 +619,9 @@ AdvanceTime : do
 
       ! only need to sync here since we want to wait for the
       ! slowest task to finish before outputting the time.
-      call timestamp_message('After  running model', sync=.true.)
-      call     trace_message('After  running model')
-      call print_ens_time(state_ens_handle, 'Ensemble data time after  advance')
-   else
-      call trace_message('Model does not need to run; data already at required time', 'filter:', -1)
+      call task_sync()
    endif
 
-   call trace_message('Before setup for next group of observations')
-   write(msgstring, '(A,I7)') 'Number of observations to be assimilated', &
-      num_obs_in_set
-   call trace_message(msgstring)
    call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
    call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
@@ -715,16 +642,11 @@ AdvanceTime : do
    ! Is there a way to distribute this?
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
-   call trace_message('After  setup for next group of observations')
-
    ! Write out forecast file(s). This contains the incoming ensemble members and potentially
    ! mean, sd, inflation values if requested.
    if (get_stage_to_write('forecast')) then
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         call     trace_message('Before forecast state space output')
-         call timestamp_message('Before forecast state space output')
 
          ! save or output the data
          if (write_all_stages_at_end) then
@@ -732,10 +654,6 @@ AdvanceTime : do
          else
             call write_state(state_ens_handle, file_info_forecast)
          endif
-
-         call timestamp_message('After  forecast state space output')
-         call     trace_message('After  forecast state space output')
-
       endif
    endif
 
@@ -754,9 +672,6 @@ AdvanceTime : do
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, &
                                    RTPS_PRIOR_SPREAD)
 
-   call     trace_message('Before computing prior observation values')
-   call timestamp_message('Before computing prior observation values')
-
    ! Compute the ensemble of prior observations, load up the obs_err_var
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
@@ -770,17 +685,11 @@ AdvanceTime : do
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
 
-   call timestamp_message('After  computing prior observation values')
-   call     trace_message('After  computing prior observation values')
-
    ! Write out preassim diagnostic files if requested.  This contains potentially 
    ! damped prior inflation values and the inflated ensemble.
    if (get_stage_to_write('preassim')) then
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         call     trace_message('Before preassim state space output')
-         call timestamp_message('Before preassim state space output')
 
          ! save or output the data
          if (write_all_stages_at_end) then
@@ -788,14 +697,8 @@ AdvanceTime : do
          else
             call write_state(state_ens_handle, file_info_preassim)
          endif
-
-         call timestamp_message('After  preassim state space output')
-         call     trace_message('After  preassim state space output')
-
       endif
    endif
-
-   call trace_message('Before observation space diagnostics')
 
    ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
@@ -807,14 +710,6 @@ AdvanceTime : do
            prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
            OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
            OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
-   call trace_message('After  observation space diagnostics')
-
-
-   write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
-   call trace_message(msgstring, 'filter:', -1)
-
-   call     trace_message('Before observation assimilation')
-   call timestamp_message('Before observation assimilation')
 
    call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
       ens_size, num_groups, obs_val_index, prior_inflate, &
@@ -822,9 +717,6 @@ AdvanceTime : do
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
-
-   call timestamp_message('After  observation assimilation')
-   call     trace_message('After  observation assimilation')
 
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -836,19 +728,12 @@ AdvanceTime : do
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
 
-         call     trace_message('Before postassim state space output')
-         call timestamp_message('Before postassim state space output')
-
          ! save or output the data
          if (write_all_stages_at_end) then
             call store_copies(state_ens_handle, POSTASSIM_COPIES)
          else
             call write_state(state_ens_handle, file_info_postassim)
          endif
-
-         call timestamp_message('After  postassim state space output')
-         call     trace_message('After  postassim state space output')
-
       endif
    endif
 
@@ -866,9 +751,6 @@ AdvanceTime : do
    ! this block recomputes the expected obs values for the obs_seq.final file
 
    if (compute_posterior) then
-      call     trace_message('Before computing posterior observation values')
-      call timestamp_message('Before computing posterior observation values')
-   
       ! Compute the ensemble of posterior observations, load up the obs_err_var
       ! and obs_values.  ens_size is the number of regular ensemble members,
       ! not the number of copies
@@ -881,12 +763,6 @@ AdvanceTime : do
    
       call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
    
-      call timestamp_message('After  computing posterior observation values')
-      call     trace_message('After  computing posterior observation values')
-   
-   
-      call trace_message('Before posterior obs space diagnostics')
-   
       ! Write posterior observation space diagnostics
       ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
       call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
@@ -895,8 +771,6 @@ AdvanceTime : do
               posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
               OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
               OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
-   
-      call trace_message('After  posterior obs space diagnostics')
    else
       ! call this alternate routine to collect any updated QC values that may
       ! have been set in the assimilation loop and copy them to the outgoing obs seq
@@ -919,17 +793,11 @@ AdvanceTime : do
       !!!if ((post_inflate%initial_sd >= 0.0_r8) .or. &
            !!!post_inflate%initial_sd_from_restart) then
 
-         call     trace_message('Before computing posterior state space inflation')
-         call timestamp_message('Before computing posterior state space inflation')
-
          call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
                  ens_size, num_groups, obs_val_index, post_inflate, &
                  ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                  OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
                  OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
-
-         call timestamp_message('After  computing posterior state space inflation')
-         call     trace_message('After  computing posterior state space inflation')
 
          ! recalculate standard deviation since this was overwritten in filter_assim
          call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -944,19 +812,12 @@ AdvanceTime : do
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
 
-         call     trace_message('Before analysis state space output')
-         call timestamp_message('Before analysis state space output')
-
          ! save or output the data
          if (write_all_stages_at_end) then
             call store_copies(state_ens_handle, ANALYSIS_COPIES)
          else
             call write_state(state_ens_handle, file_info_analysis)
          endif
-
-         call timestamp_message('After  analysis state space output')
-         call     trace_message('After  analysis state space output')
-
       endif
    endif
 
@@ -964,15 +825,10 @@ AdvanceTime : do
    ! writing the obs_seq file here will be slow - but if filter crashes
    ! you can get partial results by enabling this flag.
    if (write_obs_every_cycle) then
-      call     trace_message('Before writing in-progress output sequence file')
-      call timestamp_message('Before writing in-progress output sequence file')
       ! Only pe 0 outputs the observation space diagnostic file
       if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
-      call timestamp_message('After  writing in-progress output sequence file')
-      call     trace_message('After  writing in-progress output sequence file')
    endif
 
-   call trace_message('Near bottom of main loop, cleaning up obs space')
    ! Deallocate storage used for keys for each set
    deallocate(keys)
 
@@ -983,47 +839,26 @@ AdvanceTime : do
    call end_ensemble_manager(obs_fwd_op_ens_handle)
    call end_ensemble_manager(qc_ens_handle)
 
-   call trace_message('Bottom of main advance time loop')
-
 end do AdvanceTime
-
-call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
 ! Output the adjusted ensemble. If cycling only the last timestep is writen out
 if (get_stage_to_write('output')) then
-      call     trace_message('Before state space output')
-      call timestamp_message('Before state space output')
-
       ! will write outside loop
       if (.not. write_all_stages_at_end) &
          call write_state(state_ens_handle, file_info_output)
-   
-      call timestamp_message('After  state space output')
-      call     trace_message('After  state space output')
-
 endif
 
-call     trace_message('Before writing output sequence file')
-call timestamp_message('Before writing output sequence file')
 ! Only pe 0 outputs the observation space diagnostic file
 if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
-call timestamp_message('After  writing output sequence file')
-call     trace_message('After  writing output sequence file')
 
 ! Output all restart files if requested
 if (write_all_stages_at_end) then
-   call     trace_message('Before writing all state restart files at end')
-   call timestamp_message('Before writing all state restart files at end')
-
    file_info_all = combine_file_info( &
                     (/file_info_input, file_info_mean_sd, file_info_forecast, &
                       file_info_preassim, file_info_postassim, file_info_analysis, &
                       file_info_output/) )
 
    call write_state(state_ens_handle, file_info_all)
-
-   call timestamp_message('After  writing all state restart files at end')
-   call     trace_message('After  writing all state restart files at end')
 endif
 
 ! close the diagnostic/restart netcdf files
@@ -1046,22 +881,15 @@ if (single_file_out) then
 endif
 
 ! Give the model_mod code a chance to clean up.
-call trace_message('Before end_model call')
 call end_assim_model()
-call trace_message('After  end_model call')
 
 ! deallocate qceff_table_data structures
 call end_algorithm_info_mod()
 
-call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(state_ens_handle)
 
 ! Free up the obs sequence
 call destroy_obs_sequence(seq)
-call trace_message('After  ensemble and obs memory cleanup')
-
-call     trace_message('Filter done')
-call timestamp_message('Filter done')
 if(my_task_id() == 0) then
    write(logfileunit,*)'FINISHED filter.'
    write(logfileunit,*)
@@ -1166,8 +994,6 @@ end subroutine filter_generate_copy_meta_data
 
 subroutine filter_initialize_modules_used()
 
-call trace_message('Before filter_initialize_module_used call')
-
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
 
@@ -1178,8 +1004,6 @@ call initialize_qc()
 
 ! Initialize algorothm_info_mod and read in QCF table data
 call init_algorithm_info_mod()
-
-call trace_message('After filter_initialize_module_used call')
 
 end subroutine filter_initialize_modules_used
 
@@ -1769,52 +1593,6 @@ call set_obs_model_trace(trace_level, timestamp_level)
 call set_assim_tools_trace(trace_level, timestamp_level)
 
 end subroutine set_trace
-
-!-------------------------------------------------------------------------
-
-subroutine trace_message(msg, label, threshold)
-
-character(len=*), intent(in)           :: msg
-character(len=*), intent(in), optional :: label
-integer,          intent(in), optional :: threshold
-
-! Write message to stdout and log file.
-integer :: t
-
-t = 0
-if (present(threshold)) t = threshold
-
-if (trace_level <= t) return
-
-if (.not. do_output()) return
-
-if (present(label)) then
-   call error_handler(E_MSG,trim(label),trim(msg))
-else
-   call error_handler(E_MSG,' filter trace:',trim(msg))
-endif
-
-end subroutine trace_message
-
-!-------------------------------------------------------------------------
-
-subroutine timestamp_message(msg, sync)
-
-character(len=*), intent(in) :: msg
-logical, intent(in), optional :: sync
-
-! Write current time and message to stdout and log file.
-! if sync is present and true, sync mpi jobs before printing time.
-
-if (timestamp_level <= 0) return
-
-if (present(sync)) then
-  if (sync) call task_sync()
-endif
-
-if (do_output()) call timestamp(' '//trim(msg), pos='brief')
-
-end subroutine timestamp_message
 
 !-------------------------------------------------------------------------
 !>  call progress(string, T_BEFORE, P_TIME, label, threshold, sync)  ! trace plus timestamp
