@@ -77,7 +77,7 @@ endif
 #
 setenv dartroot       /glade/work/${USER}/DART
 setenv use_SourceMods TRUE
-setenv SourceModDir   ${dartroot}/DART_SourceMods/cesm2_2_0/SourceMods
+setenv SourceModDir   ${dartroot}/models/clm/DART_SourceMods/cesm2_2_0/SourceMods
 
 # ==============================================================================
 # Directories:
