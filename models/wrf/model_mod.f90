@@ -66,6 +66,7 @@ use obs_kind_mod, only : get_index_for_quantity, &
                          QTY_SKIN_TEMPERATURE, &
                          QTY_SURFACE_TYPE, &
                          QTY_2M_TEMPERATURE, &
+                         QTY_2M_POTENTIAL_TEMPERATURE, &
                          QTY_2M_SPECIFIC_HUMIDITY, &
                          QTY_RAINWATER_MIXING_RATIO,    &
                          QTY_GRAUPEL_MIXING_RATIO,      &
@@ -855,8 +856,8 @@ read(tstring(18:19),'(i2)') second
 end subroutine get_wrf_date
 
 !------------------------------------------------------------------
-! Verify that the namelist was filled in correctly, and check
-! that there are valid entries for the dart_kind.
+! Verify that the namelist was filled in correctly
+! and check there are valid entries for the dart qty.
 subroutine verify_state_variables(nvar, varname, qty, update, in_domain)
 
 integer,           intent(out) :: nvar
@@ -887,12 +888,21 @@ varloop: do i = 1, MAX_STATE_VARIABLES
    ! Make sure DART qty is valid
    qty(i) = get_index_for_quantity(qty_str)
    if( qty(i)  < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(qty_str)
+      write(string1,'(''there is no QTY <'',a,''> in obs_kind_mod.f90'')') trim(qty_str)
       call error_handler(E_ERR,'verify_state_variables',string1)
    endif
    
    ! Force QTY_TEMPERATURE to  QTY_POTENTIAL_TEMPERATURE
    if (qty(i) == QTY_TEMPERATURE) qty(i) = QTY_POTENTIAL_TEMPERATURE
+
+   select case (varname(i))  !HK do we need to worry about case sensitivity?
+      case ('MU');   qty(i) = QTY_SURFACE_PRESSURE
+      case ('PSFC'); qty(i) = QTY_SURFACE_PRESSURE
+      case ('T2');   qty(i) = QTY_2M_TEMPERATURE
+      case ('TH2');  qty(i) = QTY_2M_POTENTIAL_TEMPERATURE
+      case ('Q2');   qty(i) = QTY_2M_SPECIFIC_HUMIDITY  !Q2 is actually a mixing ratio, not a specific humidity
+   end select
+
    ! Make sure the update variable has a valid name
    select case (update_str)
       case ('UPDATE')
@@ -1556,7 +1566,7 @@ integer :: var_id_mu, var_id_ph, e
 
 ! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
 
-var_id_mu = get_varid_from_varname(wrf_dom(id), 'MU')
+var_id_mu = get_varid_from_varname(wrf_dom(id), 'MU') !HK @todo MU and PSFC must be present
 var_id_ph = get_varid_from_kind(wrf_dom(id), QTY_GEOPOTENTIAL_HEIGHT)
 
 do e = 1, ens_size
@@ -2169,7 +2179,7 @@ elseif( qty == QTY_10M_U_WIND_COMPONENT .or. &
    model_height = stat_dat(id)%hgt(i,j) + 10.0_r8
 
 elseif( qty == QTY_2M_TEMPERATURE  .or. &
-        !qty == QTY_POTENTIAL_TEMPERATURE .or. & ! TH2 POT TEMP at 2 M
+        qty == QTY_2M_POTENTIAL_TEMPERATURE .or. & ! TH2 POT TEMP at 2 M
         qty == QTY_2M_SPECIFIC_HUMIDITY ) then  ! Q2 QV at 2 M
 
    model_height = stat_dat(id)%hgt(i,j) + 2.0_r8
@@ -2958,8 +2968,7 @@ select case (qty)
       able_to_interpolate_qty = .true.  ! terrain height HGT is static data
 
    case (QTY_TEMPERATURE, QTY_POTENTIAL_TEMPERATURE)
-      able_to_interpolate_qty = qty_in_domain(id, QTY_TEMPERATURE) .or. &
-                                qty_in_domain(id, QTY_POTENTIAL_TEMPERATURE)
+      able_to_interpolate_qty = qty_in_domain(id, QTY_POTENTIAL_TEMPERATURE)
 
    case default
      able_to_interpolate_qty = qty_in_domain(id, qty)
