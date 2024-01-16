@@ -896,7 +896,7 @@ varloop: do i = 1, MAX_STATE_VARIABLES
    if (qty(i) == QTY_TEMPERATURE) qty(i) = QTY_POTENTIAL_TEMPERATURE
 
    select case (varname(i))  !HK do we need to worry about case sensitivity?
-      case ('MU');   qty(i) = QTY_SURFACE_PRESSURE
+      case ('MU');   qty(i) = QTY_PRESSURE  !HK this is a hack to avoid 2 QTY_SURFACE_PRESSUREs
       case ('PSFC'); qty(i) = QTY_SURFACE_PRESSURE
       case ('T2');   qty(i) = QTY_2M_TEMPERATURE
       case ('TH2');  qty(i) = QTY_2M_POTENTIAL_TEMPERATURE
