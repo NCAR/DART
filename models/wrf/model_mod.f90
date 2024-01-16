@@ -1262,6 +1262,12 @@ integer :: var_idv, var_idt, e
 
 var_idv = get_varid_from_kind(wrf_dom(id), QTY_VAPOR_MIXING_RATIO)
 var_idt = get_varid_from_kind(wrf_dom(id), QTY_POTENTIAL_TEMPERATURE) ! HK original code type_t is this always QTY_POTENTIAL_TEMPERATURE
+
+if (var_idv < 0 .or. var_idt < 0 ) then
+   call error_handler(E_ERR, 'model_pressure_t:', 'BOTH QVAPOR and T must be in state vector to compute total pressure', source)
+endif
+
+
 do e = 1, ens_size
   iqv = get_dart_vector_index(i,j,k(e), wrf_dom(id), var_idv)
   it  = get_dart_vector_index(i,j,k(e), wrf_dom(id), var_idt)
