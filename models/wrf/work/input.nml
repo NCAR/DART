@@ -201,18 +201,18 @@
 
 &model_nml
    default_state_variables = .false.,
-   wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'TYPE_U',    'UPDATE','999',
-                         'V',     'QTY_V_WIND_COMPONENT',     'TYPE_V',    'UPDATE','999',
-                         'W',     'QTY_VERTICAL_VELOCITY',    'TYPE_W',    'UPDATE','999',
-                         'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'TYPE_GZ',   'UPDATE','999',
-                         'T',     'QTY_POTENTIAL_TEMPERATURE','TYPE_T',    'UPDATE','999',
-                         'MU',    'QTY_PRESSURE',             'TYPE_MU',   'UPDATE','999',
-                         'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'TYPE_QV',   'UPDATE','999',
-                         'PSFC',  'QTY_SURFACE_PRESSURE',     'TYPE_PSFC', 'UPDATE','999',
+   wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'UPDATE','2',
+                         'V',     'QTY_V_WIND_COMPONENT',     'UPDATE','999',
+                         'W',     'QTY_VERTICAL_VELOCITY',    'UPDATE','999',
+                         'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'UPDATE','999',
+                         'T',     'QTY_POTENTIAL_TEMPERATURE','UPDATE','999',
+                         'MU',    'QTY_PRESSURE',             'UPDATE','999',
+                         'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'UPDATE','12',
+                         'PSFC',  'QTY_SURFACE_PRESSURE',     'UPDATE','1',
    wrf_state_bounds    = 'QVAPOR','0.0','NULL','CLAMP',
                          'QRAIN', '0.0','NULL','CLAMP',
                          'QCLOUD','0.0','NULL','CLAMP',
-   num_domains                 = 1,
+   num_domains                 = 2,
    calendar_type               = 3,
    assimilation_period_seconds = 21600,
    vert_localization_coord     = 3,
@@ -543,11 +543,11 @@
 &model_mod_check_nml
    input_state_files     = 'wrfinput_d01', 'wrfinput_d02'
    output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc'
-   test1thru             = 0
+   test1thru             = 4
    run_tests             = 1,2,3,4,5
    x_ind                 = 87370
-   loc_of_interest       = 231.0, 40.0, 10.0
-   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   loc_of_interest       = 231.0, 40.0, 500.0
+   quantity_of_interest  = 'QTY_POTENTIAL_TEMPERATURE'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 1000.0
