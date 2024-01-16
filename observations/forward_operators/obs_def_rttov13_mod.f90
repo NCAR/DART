@@ -592,7 +592,7 @@ end type rttov_platform_type
 type(rttov_platform_type), pointer :: platforms(:)
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_def_rttov_mod.f90'
+character(len=*), parameter :: source   = 'obs_def_rttov13_mod.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
@@ -629,7 +629,7 @@ character(len=512)   :: rttov_sensor_db_file = 'unspecified'
 ! -----------------------------------------------------------------------------
 ! DART/RTTOV options in the input.nml namelist.
 ! 
-! DART exposes all of the RTTOV 12.3 options available and passes them to 
+! DART exposes all of the RTTOV 13 options available and passes them to 
 ! RTTOV with little to no additional checking for consistency. The default in 
 ! most cases can be used and need not be specified in the namelist. 
 !
