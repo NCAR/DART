@@ -1566,8 +1566,12 @@ integer :: var_id_mu, var_id_ph, e
 
 ! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
 
-var_id_mu = get_varid_from_varname(wrf_dom(id), 'MU') !HK @todo MU and PSFC must be present
+var_id_mu = get_varid_from_varname(wrf_dom(id), 'MU') 
 var_id_ph = get_varid_from_kind(wrf_dom(id), QTY_GEOPOTENTIAL_HEIGHT)
+
+if (var_id_mu < 0 .or. var_id_ph < 0) then
+   call error_handler(E_ERR, 'model_rho_t:', 'BOTH MU and PH must be in state vector to compute total density', source)
+endif
 
 do e = 1, ens_size
    imu   = get_dart_vector_index(i,j,1,      wrf_dom(id), var_id_mu)
