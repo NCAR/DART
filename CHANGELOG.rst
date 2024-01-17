@@ -22,6 +22,18 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 17 2024 :: CLM bug-fixes. Tag v11.0.1**
+
+- CLM5-DART SourceMods path variable correction
+
+- dart_to_clm:
+
+  - Resolved compiler error by changing the arrays for number of snow layers (snlsno and clm_SNLSNO) to integer types 
+
+  - Forcing h2oliq_po to be slightly larger than zero to be consistent with h2oice_po and dzsno_po
+
+  - Adding checks to ensure that the values for h2oliq_po, h2oice_po, dzsno_po, and snowdp_po are never negative 
+
 **January 11 2024 :: QCEFF. Tag v11.0.0**
 
 Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
