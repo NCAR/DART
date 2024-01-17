@@ -1347,7 +1347,7 @@ real(r8)              :: model_pressure_s(ens_size)
 
 integer(i8) :: ips, imu
 integer     :: var_id_psfc, var_id_mu
-real(r8)    :: x_imu(1), x_ips(1)
+real(r8)    :: x_imu(ens_size), x_ips(ens_size)
 
 var_id_psfc = get_varid_from_varname(wrf_dom(id), 'PSFC')
 var_id_mu = get_varid_from_varname(wrf_dom(id), 'MU')
@@ -2984,12 +2984,18 @@ logical :: within_bounds_horizontal
 
 integer :: var_id, qty
 
-! Force QTY_TEMPERATURE to QTY_POTENTIAL_TEMPERATURE
-if (qty_in == QTY_TEMPERATURE) then
-   qty = QTY_POTENTIAL_TEMPERATURE
-else
-   qty = qty_in
-endif
+! Some qtys we can interpolate, but the qty is not in the state.
+! using QTY_POTENTIAL_TEMPERATURE because this is on the mass grid.
+! internal to model_mod, QTY_TEMPERATURE is QTY_POTENTIAL_TEMPERATURE
+select case (qty_in)
+
+   case (QTY_SURFACE_TYPE); qty = QTY_POTENTIAL_TEMPERATURE ! uses land mask XLAND which is static data on mass grid
+   case (QTY_LANDMASK); qty = QTY_POTENTIAL_TEMPERATURE ! land mask XLAND is static data on mass grid
+   case (QTY_SURFACE_ELEVATION); qty = QTY_POTENTIAL_TEMPERATURE ! terrain height HGT is static data on mass grid
+   case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! Force QTY_TEMPERATURE to QTY_POTENTIAL_TEMPERATURE
+   case default
+      qty = qty_in
+end select
 
 var_id = get_varid_from_kind(wrf_dom(id), qty) 
 
