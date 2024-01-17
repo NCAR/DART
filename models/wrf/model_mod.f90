@@ -142,7 +142,7 @@ logical :: module_initialized = .false.
 
 integer, parameter :: MAX_STATE_VARIABLES = 100
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 4
-integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 4
+integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 3
  
 integer, allocatable :: wrf_dom(:) ! This needs a better name, it is the id from add_domain
                                    ! for each wrf_domain added to the state
@@ -150,7 +150,7 @@ integer, allocatable :: wrf_dom(:) ! This needs a better name, it is the id from
 !-- Namelist with default values --
 logical :: default_state_variables = .true.
 character(len=NF90_MAX_NAME) :: wrf_state_variables(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS) = 'NULL'
-character(len=NF90_MAX_NAME) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
+character(len=NF90_MAX_NAME) :: wrf_state_bounds(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES) = 'NULL'
 integer :: num_domains = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
@@ -252,9 +252,11 @@ integer  :: iunit, io
 character(len=NF90_MAX_NAME) :: varname(MAX_STATE_VARIABLES)
 integer :: state_qty(MAX_STATE_VARIABLES)
 logical :: update_var(MAX_STATE_VARIABLES)
+real(r8) :: bounds(MAX_STATE_VARIABLES, 2) ! lower, upper
+real(r8) :: lower(MAX_STATE_VARIABLES), upper(MAX_STATE_VARIABLES)
 character(len=9) :: in_domain(MAX_STATE_VARIABLES) ! assumes <=9 or 999
 
-integer :: nfields
+integer :: nfields, n
 logical, allocatable :: domain_mask(:)
 integer :: i, field ! loop indices
 character (len=1)     :: idom ! assumes <=9
@@ -274,21 +276,26 @@ call set_calendar_type(calendar_type)
 allocate(wrf_dom(num_domains), grid(num_domains), stat_dat(num_domains))
 
 call verify_state_variables(nfields, varname, state_qty, update_var, in_domain)
-
 allocate(domain_mask(nfields))
+bounds(:,:) = MISSING_R8 ! default to no clamping
 
 do i = 1, num_domains
 
   do field = 1, nfields
      domain_mask(field) = variable_is_on_domain(in_domain(field), i)
+     call get_variable_bounds(varname(field),lower(field),upper(field))
   end do
+
+  n = count(domain_mask)
+  bounds(1:n, 1) = pack(lower(1:nfields),domain_mask)
+  bounds(1:n, 2) = pack(upper(1:nfields),domain_mask)
 
   write( idom , '(I1)') i
   wrf_dom(i) = add_domain('wrfinput_d0'//idom, &
-                          num_vars=count(domain_mask), &
+                          num_vars = n, &
                           var_names = pack(varname(1:nfields), domain_mask), &
                           kind_list = pack(state_qty(1:nfields), domain_mask), &
-                          !clamp_vals  = &
+                          clamp_vals  = bounds(1:n,:), &
                           update_list = pack(update_var(1:nfields), domain_mask) )
    
 enddo
@@ -920,6 +927,48 @@ varloop: do i = 1, MAX_STATE_VARIABLES
 enddo varloop
 
 end subroutine verify_state_variables
+
+!------------------------------------------------------------------
+! matches WRF variable name in bounds table to input name, and assigns
+! the bounds and if the variable is in the state
+subroutine get_variable_bounds(var_name, lower, upper)
+
+character(len=*), intent(in)    :: var_name
+real(r8),         intent(out)   :: lower,upper  ! bounds
+character(len=50)               :: bound_trim
+integer :: ivar
+
+! defualt to no bounds
+lower = MISSING_R8
+upper = MISSING_R8
+
+ivar = 1
+do while ( trim(wrf_state_bounds(1,ivar)) /= 'NULL' )
+
+  if ( trim(wrf_state_bounds(1,ivar)) == trim(var_name) ) then
+
+     bound_trim = trim(wrf_state_bounds(2,ivar))
+     if ( bound_trim  /= 'NULL' ) then
+        read(bound_trim,'(d16.8)') lower
+     else
+        lower = MISSING_R8
+     endif
+
+     bound_trim = trim(wrf_state_bounds(3,ivar))
+     if ( bound_trim  /= 'NULL' ) then
+        read(bound_trim,'(d16.8)') upper
+     else
+        upper = MISSING_R8
+     endif
+
+  endif
+
+  ivar = ivar + 1
+
+enddo
+
+end subroutine get_variable_bounds
+
 
 !------------------------------------------------------------------
 ! This is assuming that the number of domains <=9
