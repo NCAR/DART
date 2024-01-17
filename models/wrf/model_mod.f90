@@ -2038,7 +2038,7 @@ do ob = 1, num
    call toGrid(xloc,i,dx,dxm)
    call toGrid(yloc,j,dy,dym)
    
-   if ( .not. within_bounds_horizontal(i, j, id, loc_qtys(ob)) ) then
+   if ( .not. within_bounds_horizontal(i, j, id, QTY_POTENTIAL_TEMPERATURE) ) then ! HK origianal code mass grid qty
       call set_vertical(locs(ob), MISSING_R8, which_vert)
       istatus(ob) = FAILED_BOUNDS_CHECK
       cycle
