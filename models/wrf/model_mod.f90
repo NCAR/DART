@@ -198,7 +198,6 @@ center_spline_grid_scale, &
 vert_localization_coord, &
 allow_perturbed_ics, &
 allow_obs_below_vol, &
-allow_obs_below_vol, &
 log_horz_interpM, &
 log_horz_interpQ
 
@@ -1195,10 +1194,11 @@ select case (which_vert)
       do e = 1, ens_size
          call pres_to_zk(lon_lat_vert(3), v_p(:,e), grid(id)%bt, zloc(e), level_below(e), lev0, fail)
          if (fail) return
-         if (lev0) then
-            print*, "pressure obs below lowest sigma"
-            fail = .true.
-            return
+         if (lev0) then ! pressure obs below lowest sigma
+            if (.not. allow_obs_below_vol) then
+               fail = .true.
+               return
+            endif
          endif
       enddo
    case(VERTISHEIGHT)
@@ -1206,10 +1206,11 @@ select case (which_vert)
       do e = 1, ens_size
          call height_to_zk(lon_lat_vert(3), v_h(:, e), grid(id)%bt, zloc(e), level_below(e), lev0, fail)
          if (fail) return
-         if (lev0) then
-            print*, "height obs below lowest sigma"
+         if (lev0) then ! height obs below lowest sigma
+            if (.not. allow_obs_below_vol) then
                fail = .true.
-            return
+               return
+            endif
          endif
       enddo
    case(VERTISSURFACE)
