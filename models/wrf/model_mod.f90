@@ -763,7 +763,7 @@ if (.not. is_vertical(location,"SURFACE")) then
    return
 endif
 
-select case (qty)
+select case (qty_in)
 
    case (QTY_U_WIND_COMPONENT); qty = QTY_10M_U_WIND_COMPONENT
    case (QTY_V_WIND_COMPONENT); qty = QTY_10M_V_WIND_COMPONENT
@@ -771,6 +771,7 @@ select case (qty)
    case (QTY_SPECIFIC_HUMIDITY); qty = QTY_2M_SPECIFIC_HUMIDITY
    case (QTY_VAPOR_MIXING_RATIO); qty = QTY_2M_SPECIFIC_HUMIDITY  ! Vapor Mixing Ratio (QV, Q2)
    case (QTY_PRESSURE); qty = QTY_SURFACE_PRESSURE
+   case default; qty = qty_in
 
 end select
 
