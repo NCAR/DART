@@ -161,8 +161,12 @@ logical, parameter :: P_TIME    = .true.
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
+! Set of values to control the application of prior and posterior inflation
 logical :: do_prior_inflate     = .false.
 logical :: do_posterior_inflate = .false.
+logical :: prior_inflate_from_restart = .false.
+logical :: posterior_inflate_from_restart = .false.
+
 integer  :: async = 0, ens_size = 20
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -243,6 +247,8 @@ logical  :: allow_missing_clm = .false.
 namelist /filter_nml/            &
    do_prior_inflate,             &
    do_posterior_inflate,         &
+   prior_inflate_from_restart,   &
+   posterior_inflate_from_restart, &
    async,                        &
    adv_ens_command,              &
    ens_size,                     &
@@ -2141,56 +2147,35 @@ else
    call set_io_copy_flag(file_info, STAGE_COPIES(MEM_START), STAGE_COPIES(MEM_START)+num_ens-1, READ_COPY)
 endif
 
-if ( do_prior_inflate ) then
-   ! No longer avalailable from adaptive_inflate_type
-   !!!if ( prior_inflate%initial_mean_from_restart ) &
-   if(.false.) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   ! No longer avalailable from adaptive_inflate_type
-   if(.false.) &
-   !!!if ( prior_inflate%initial_sd_from_restart ) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
+if ( do_prior_inflate .and. prior_inflate_from_restart) then
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
-if ( do_posterior_inflate ) then
-   ! No longer avalailable from adaptive_inflate_type
-   !!!if ( post_inflate%initial_mean_from_restart ) &
-   if(.false.) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   ! No longer avalailable from adaptive_inflate_type
-   !!!if ( post_inflate%initial_sd_from_restart ) &
-   if(.false.) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
+if ( do_posterior_inflate .and. posterior_inflate_from_restart) then
+   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
 ! This is for single file augmented state mean and sd if requested
 if(single_file_in) then
+   ! Inflation needs to be written if used
+   if ( do_prior_inflate .and. .not. prior_inflate_from_restart ) then
+      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, inherit_units=.false.)
+      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD), WRITE_COPY, inherit_units=.false.)
+   endif
+
+   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart ) then
+        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, inherit_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, inherit_units=.false.)
+   endif
+
    if (output_mean) then
      call set_io_copy_flag(file_info,    STAGE_COPIES(ENS_MEAN),  WRITE_COPY, inherit_units=.true.)
-
-      ! No longer available from adaptive_inflate_mod
-      !!!if ( do_prior_inflate .and. .not. mean_from_restart(prior_inflate) ) &
-      if ( do_prior_inflate ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, inherit_units=.false.)
-
-      ! No longer available from adaptive_inflate_mod
-      !!!if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) &
-      if ( do_posterior_inflate ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, inherit_units=.false.)
    endif
    
    if (output_sd) then
      call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),    WRITE_COPY, inherit_units=.true.)
-
-      ! No longer available from adaptive_inflate_mod
-      !!!if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) &
-      if ( do_prior_inflate ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD), WRITE_COPY, inherit_units=.false.)
-
-      ! No longer available from adaptive_inflate_mod
-      !!!if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) &
-      if ( do_posterior_inflate  ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, inherit_units=.false.)
    endif
 endif
 
