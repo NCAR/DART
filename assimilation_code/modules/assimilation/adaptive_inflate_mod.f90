@@ -22,16 +22,13 @@ use mpi_utilities_mod,    only : my_task_id
 implicit none
 private
 
-public :: update_inflation, do_obs_inflate,           &
-          update_varying_state_space_inflation, do_varying_ss_inflate,                &
-          do_orig_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,         &
-          adaptive_inflate_init,    adaptive_inflate_type,                            &
-          do_deterministic_inflate,  solve_quadratic,          &
-          log_inflation_info, set_inflate_flavor,       &
-          get_inflate_initial_mean,       get_inflate_initial_sd,           &
-          do_ss_inflate,            &
-          do_rtps_inflate,         &
-          NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
+public :: adaptive_inflate_type, adaptive_inflate_init, log_inflation_info,         &
+          update_inflation, update_varying_state_space_inflation,                   &
+          inflate_ens, solve_quadratic,                                             & 
+          set_inflate_flavor, get_inflate_initial_mean, get_inflate_initial_sd,     &
+          do_varying_ss_inflate, do_single_ss_inflate, do_obs_inflate,              &
+          do_deterministic_inflate, do_ss_inflate, do_rtps_inflate,                 &
+          NO_INFLATION
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
@@ -227,14 +224,14 @@ call validate_inflate_options(inflate_handle)
 ! If non-deterministic inflation is being done, need to initialize random sequence.
 ! use the task id number (plus 1 since they start at 0) to set the initial seed.
 ! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
-!> this used to set the same seed for prior & posterior - add a constant value
-!> in case it's called a second time.
+! The use of the saved variable salt means that multiple calls to the initialization
+! will use different seeds so there is no danger of unexpected correlations.
 if(.not. inflate_handle%deterministic) then
    call init_random_seq(inflate_handle%ran_seq, my_task_id()+1 + salt)
    salt = salt + 1000 
 endif
 
-! Read type 1 (observation space inflation)
+! Not currently supporting observation space inflation
 if(inflate_handle%flavor == OBS_INFLATION) then
 
    write(string1,  *) 'No longer supporting observation space inflation ', &
@@ -258,7 +255,6 @@ type(adaptive_inflate_type), intent(in) :: inflate_handle
 
 do_obs_inflate = (inflate_handle%flavor == OBS_INFLATION)
 
-!>@todo I am not sure you can get here given the check in adaptive_inflate_init()
 if (do_obs_inflate) then
   write(string1,  *) 'observation space inflation not suppported (i.e. flavor = 1)'
   write(string2, *) 'please contact dart if you would like to use this functionality'
@@ -309,7 +305,6 @@ end function do_rtps_inflate
 
 
 !-------------------------------------------------------------------------------
-!> *private* accessor routine for the subtype
 !>
 !> Returns true if this inflation sub type indicates enhanced state space inflation
 !> Moha Gharamti, 2017
@@ -407,16 +402,13 @@ real(r8) :: rand_sd, var, sd_inflate
 if (any(ens == MISSING_R8)) return
 
 ! Damp the inflation if requested; 
-! JLA DEVELOPMENT NOTE: ENFORCE DAMPING OF 1.0 for ALL FLAVORS IT CAN"T BE USED WITH
-! DONE by tools that access the adaptive_inflate_type.
-! FOR NOW FILTER IS ONLY CALLING TO HERE IF do_ss_inflate
 if(inflate_handle%damping /= 1.0_r8) then
    inflate = 1.0_r8 + inflate_handle%damping * (inflate - 1.0_r8)     
 endif 
 
 if ( do_rtps_inflate(inflate_handle)) then
    if ( .not. present(fsprd) .or. .not. present(asprd)) then 
-      write(string1, *) 'missing arguments for RTPS inflation, should not happen'
+      write(string1, *) 'missing arguments for RTPS inflation'
       call error_handler(E_ERR,'inflate_ens',string1,source) 
    endif 
    ! only inflate if spreads are > 0
@@ -439,10 +431,10 @@ else
 
    else
       ! Use a stochastic algorithm to spread out.
-      ens_size = size(ens)
 
       ! If var is not present, go ahead and compute it here.
       if(.not. present(var_in)) then
+         ens_size = size(ens)
          var = sum((ens - mean)**2) / (ens_size - 1)
       else
          var = var_in
@@ -1085,80 +1077,59 @@ end subroutine change_GA_IG
 !-------------------------------------------------------------------------------
 !> Write to log file what kind of inflation is being used.  
 
-subroutine log_inflation_info(inflation_handle, mype, label, single_file)
+subroutine log_inflation_info(inflation_handle)
 
 type(adaptive_inflate_type), intent(in) :: inflation_handle
-integer,                     intent(in) :: mype
-character(len = *),          intent(in) :: label
-logical,                     intent(in) :: single_file
 
 character(len = 128) :: det, tadapt, sadapt, akind
-
-! nothing to do if not task 0
-if (mype /= 0) return
-
-! if inflation is off, say so and return now
-if (inflation_handle%flavor <= NO_INFLATION) then
-   call error_handler(E_MSG, trim(label) // ' inflation:', 'None', source)
-   return
-endif
-
-! construct english language version of our complicated combinations
-! of inflation-related parameters.
-if(inflation_handle%deterministic) then
-  det = 'deterministic,'
-else
-  det = 'random-noise,'
-endif
-if (inflation_handle%mean_lower_bound < 1.0_r8) then
-   det = trim(det) // ' deflation permitted,'
-endif
-if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
-  tadapt = ' enhanced' //trim(tadapt)
-endif
-
+write(*, *) 'flaor ', inflation_handle%flavor
 select case(inflation_handle%flavor)
+   case(NO_INFLATION)
+      call error_handler(E_MSG, 'log_inflation_info', 'No inflation is being applied')
+      return
    case (OBS_INFLATION)
-      sadapt = ' (deprecated),'
-      akind = ' observation-space'
+      call error_handler(E_MSG, 'log_inflation_info', 'Observation space inflation was selected but is deprecated')
+      return
    case (VARYING_SS_INFLATION)
-      sadapt = ' spatially-varying,'
-      akind = ' state-space '
+      call error_handler(E_MSG, 'log_inflation_info', 'Original Anderson spatially-varying adaptive inflation selected')
    case (ENHANCED_SS_INFLATION)
-      sadapt = 'enhanced spatially-varying,'
-      akind = ' state-space '
+      call error_handler(E_MSG, 'log_inflation_info', 'Gharamti enhanced spatially-varying adaptive inflation selected')
    case (SINGLE_SS_INFLATION)
-      sadapt = ' spatially-constant,'
-      akind = ' state-space'
+      call error_handler(E_MSG, 'log_inflation_info', 'Single value time adaptive inflation selected')
    case (RELAXATION_TO_PRIOR_SPREAD)
-      tadapt = ' time-adaptive,'    ! IS THIS TRUE??
-      sadapt = ' spatially-varying relaxation-to-prior-spread,'
-      akind = ' state-space'
+      call error_handler(E_MSG, 'log_inflation_info', 'Relatation to prior spread inflation selected')
+      write(string1, *) 'Relaxation coefficient is ', rtps_relaxation
+      call error_handler(E_MSG, 'log_inflation_info', string1)
+      return
    case default
-      write(string1, *) 'Illegal inflation value for ', label
-      call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
+      write(string1, *) 'Illegal inflation value for '
+      call error_handler(E_ERR, 'log_inflation_info', string1, source)
 end select
 
-! say what basic kind of inflation was selected.
-write(string1, '(4A)') trim(det), trim(tadapt), trim(sadapt), trim(akind)
-call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
+! For spatially varying, add other details
+if(inflation_handle%deterministic) then
+   call error_handler(E_MSG, 'log_inflation_info', 'Inflation is deterministic')
+else
+   call error_handler(E_MSG, 'log_inflation_info', 'Inflation is not deterministic')
+endif
+write(string1, *) 'Inflation mean lower bound is ', inflation_handle%mean_lower_bound
+call error_handler(E_MSG, 'log_inflation_info', string1)
 
-! print out details about the type of inflation selected.
-! inflation flavor 2 has min/max values if from restart,
-! flavor 2 from namelist and flavor 3 only a single value
+write(string1, *) 'Inflation mean upper bound is ', inflation_handle%mean_upper_bound
+call error_handler(E_MSG, 'log_inflation_info', string1)
 
-! do this twice - for mean and sd
+write(string1, *) 'Inflation sd lower bound is ', inflation_handle%sd_lower_bound
+call error_handler(E_MSG, 'log_inflation_info', string1)
 
-! NEED TO REPLACE OUTPUT OF THE MINMAX INFO THAT WAS HERE
-
-if (inflation_handle%flavor == ENHANCED_SS_INFLATION) then
-   write(string1, '(A, F8.3)') &
-            'inf stddev max change: ', inflation_handle%sd_max_change
-   call error_handler(E_MSG, trim(label) // ' inflation:', string1, source)
+if(inflation_handle%flavor == ENHANCED_SS_INFLATION) then
+   write(string1, *) 'Inflation sd max change is ', inflation_handle%sd_max_change
+   call error_handler(E_MSG, 'log_inflation_info', string1)
 endif
 
-end subroutine log_inflation_info
+write(string1, *) 'Inflation_damping is ', inflation_handle%damping
+call error_handler(E_MSG, 'log_inflation_info', string1)
 
+end subroutine log_inflation_info
 
 !===============================================================================
 ! end module adaptive_inflate_mod

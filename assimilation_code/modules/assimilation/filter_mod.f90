@@ -56,11 +56,11 @@ use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
                                   adaptive_inflate_type, log_inflation_info,          &
                                   do_rtps_inflate, set_inflate_flavor,                &
-                                  NO_INFLATION, RELAXATION_TO_PRIOR_SPREAD
+                                  NO_INFLATION
                                   
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
-                                  task_count
+                                  task_count, iam_task0
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
@@ -476,9 +476,14 @@ call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,  
                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                 prior_inflate, post_inflate, perturb_from_single_instance)
 
-! This must be after read_state
-call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior', single_file_in)
-call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', single_file_in)
+if(iam_task0()) then
+   if(prior_inflate_from_restart) &
+      call error_handler(E_MSG, 'filter_mod', 'Prior inflation from restart')
+   if(posterior_inflate_from_restart) &
+      call error_handler(E_MSG, 'filter_mod', 'Posterior inflation from restart')
+   ! Print out info for posterior inflation handle because it can include rtps
+   call log_inflation_info(post_inflate)
+endif
 
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'filter_main:', &
