@@ -9,18 +9,27 @@ function new_varname_file(data_dir, member, nblocks)
 %
 % Files are version=2,netcdf=4.9.0,hdf5=1.12.2
 
+% DAI/Aether/Aaron_names/restartOut.Sphere.1member
 % neut_old = ["N_4S" "O2" "N2" "NO" "He" "N_2D" "N_2P" "H" "O_1D" "CO2" ...
-%             "Zonal Wind"    "Meridional Wind" "Vertical Wind"]
-neut_old = ["N_4S" "Zonal Wind"];
-neut_new = ["N"    "velocity_east"];
 % neut_new = ["N"    "O2" "N2" "NO" "He" "N_2D" "N_2P" "H" "O_1D" "CO2" ...
-%             "velocity_east" "velocity_north"  "velocity_up"]
-ions_old = ["O+2P"  "Temperature (bulk ion)" ];
-ions_new = ["O+_2P" "Temperature_bulk_ion"   ];
+% testdata2 (ensemble from Aaron)
+neut_old = ["O" "N" "O2" "N2" "NO" "He" "N_2D" "N_2P" "H" "O_1D" "CO2" ...
+            "Temperature" "Zonal Wind"    "Meridional Wind" "Vertical Wind"]
+neut_new = ["O" "N" "O2" "N2" "NO" "He" "N_2D" "N_2P" "H" "O_1D" "CO2" ...
+            "Temperature" "velocity_east" "velocity_north"  "velocity_up"]
+% neut_old = ["N_4S" "Zonal Wind"];
+% neut_new = ["N"    "velocity_east"];
+
+% ions_old = ["O+2P"  "Temperature (bulk ion)" ];
+% ions_new = ["O+_2P" "Temperature_bulk_ion"   ];
+% DAI/Aether/Aaron_names/restartOut.Sphere.1member
 % ions_old = ["O+" "O2+" "N2+" "NO+" "N+" "He+" "O+2D"  "O+2P"  ...
-%             "Temperature (bulk ion)" "Temperature (electron)"]
 % ions_new = ["O+" "O2+" "N2+" "NO+" "N+" "He+" "O+_2D" "O+_2P" ...
-%             "Temperature_bulk_ion"   "Temperature_electron"]
+% testdata2
+ions_old = ["O+" "O2+" "N2+" "NO+" "N+" "He+" "O+_2D" "O+_2P"  ...
+            "Temperature (bulk ion)" "Temperature (electron)"]
+ions_new = ["O+" "O2+" "N2+" "NO+" "N+" "He+" "O+_2D" "O+_2P" ...
+            "Temperature_bulk_ion"   "Temperature_electron"]
 
 global fname_old  fname
 format compact
@@ -49,7 +58,7 @@ function create_file_skel()
 
    global fname_old  fname ncid_old ncid_new
 
-   ncid_old = netcdf.open(fname_old,'NOWRITE')
+   ncid_old = netcdf.open(fname_old,'NOWRITE');
 %    ncdisp(fname_old)
    [ndims_old,nvars_old,ngatts_old,unlimdimid] = netcdf.inq(ncid_old);
 
