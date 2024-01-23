@@ -141,6 +141,7 @@ end function
 !-------------------------------------------------------------------------------
 !>
 
+! Returns true if any of the adaptive state space inflations are in use
 function do_ss_inflate(inflation)
 
 type(adaptive_inflate_type), intent(in) :: inflation
@@ -148,8 +149,7 @@ logical :: do_ss_inflate
 
 if (do_single_ss_inflate(inflation) .or. &
     do_orig_varying_ss_inflate(inflation) .or. &
-    do_enhanced_varying_ss_inflate(inflation) .or. &
-    do_rtps_inflate(inflation)) then
+    do_enhanced_varying_ss_inflate(inflation) then
    do_ss_inflate = .true.
 else
    do_ss_inflate = .false.

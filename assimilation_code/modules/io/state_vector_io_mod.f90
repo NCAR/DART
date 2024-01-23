@@ -29,7 +29,8 @@ module state_vector_io_mod
 
 use adaptive_inflate_mod, only : adaptive_inflate_type, &
                                  do_single_ss_inflate, &
-                                 get_inflate_initial_mean, get_inflate_initial_sd, do_ss_inflate
+                                 get_inflate_initial_mean, get_inflate_initial_sd, &
+                                 do_ss_inflate, do_rtps_inflate
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
                                  read_single_file, write_augmented_state, &
@@ -192,13 +193,6 @@ if (present(prior_inflate_handle) .and. present(post_inflate_handle)) inflation_
 !>@todo FIXME understand this ... what is it doing and why.
 ! Filling copies array for single state space inflation values if required.
 if (inflation_handles) then
-
-   !>@todo just a print at the moment
-   !>@todo FIXME: the print code should all be in the inflation module.
-   !> this code may be needed to figure out the filename but the actual
-   !> output should come from a routine in adaptive_inflate_mod.f90
-   call print_inflation_source(file_info, prior_inflate_handle, 'Prior')
-   call print_inflation_source(file_info, post_inflate_handle,  'Posterior')
 
    ! If inflation is single state space read from a file, the copies array is filled here.
    call fill_single_inflate_val_from_read(state_ens_handle, PRIOR_INF_COPY, &
@@ -470,7 +464,7 @@ character(len=32)  :: label
 
 ! To match Lanai filter_state_space_diagnostics, 
 ! if not doing inflation set inf_mean = 1, inf_sd = 0
-if (.not. do_ss_inflate(inflate_handle)) then
+if (.not. do_ss_inflate(inflate_handle) .and. .not. do_rtps_inflate(inflate_handle)) then
    ens_handle%copies(INF_MEAN_COPY, :) = 1.0_r8
    ens_handle%copies(INF_SD_COPY, :)   = 0.0_r8
    return
@@ -545,47 +539,6 @@ do i = 1, nstages
 enddo
 
 end function get_stage_to_write
-
-!-----------------------------------------------------------------------
-
-
-subroutine print_inflation_source(file_info, inflate_handle, label)
-
-type(file_info_type),        intent(in) :: file_info
-type(adaptive_inflate_type), intent(in) :: inflate_handle
-character(len=*),            intent(in) :: label  
-
-integer :: INF_MEAN_COPY
-integer :: INF_SD_COPY
-integer :: idom
-character(len=256) :: fname
-
-type(stage_metadata_type) :: restart_files
-
-! do this once
-restart_files = get_stage_metadata(file_info)
-
-
-! No longer available from adaptive_inflate_mod; skip whole block for now
-!!!if (do_ss_inflate(inflate_handle)) then
-   !!!if (mean_from_restart(inflate_handle)) then
-      !!!INF_MEAN_COPY = get_inflation_mean_copy(inflate_handle)
-      !!!do idom = 1, get_num_domains()
-         !!!fname = get_restart_filename(restart_files, INF_MEAN_COPY, idom)   
-         !!!call print_inflation_restart_filename(inflate_handle, fname, 'mean')
-      !!!enddo
-   !!!endif
-
-   !!!if (sd_from_restart(inflate_handle)) then  
-      !!!INF_SD_COPY = get_inflation_sd_copy(inflate_handle)
-      !!!do idom = 1, get_num_domains()
-         !!!fname = get_restart_filename(restart_files, INF_SD_COPY, idom)   
-         !!!call print_inflation_restart_filename(inflate_handle, fname, 'stddev')
-      !!!enddo
-   !!!endif
-!!!endif
-
-end subroutine print_inflation_source
 
 !-----------------------------------------------------------------------
 !> @}

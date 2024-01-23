@@ -367,14 +367,6 @@ call error_handler(E_MSG,'filter_main:', msgstring, source)
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
-!!! NEED TO DEAL WITH compute_posterior false and posterior inflation illegal below
-! Cannot select posterior options if not computing posterior
-!!!if(.not. compute_posterior .and. inf_flavor(POSTERIOR_INF) /= NO_INFLATION) then
-   !!!write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
-   !!!call error_handler(E_ERR,'validate_inflate_options', string1, source, &
-           !!!text2='"compute_posterior" is false; posterior inflation flavor must be 0')
-!!!endif
-
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate)
 ! Turn it off if not requested in namelist
@@ -386,6 +378,13 @@ if(do_rtps_inflate(prior_inflate)) call set_inflate_flavor(prior_inflate, NO_INF
 call adaptive_inflate_init(post_inflate)
 ! Turn it off if not requested in namelist
 if(.not. do_posterior_inflate) call set_inflate_flavor(post_inflate, NO_INFLATION)
+
+! Cannot select state space posterior inflation options if not computing posterior
+if(.not. compute_posterior .and. do_ss_inflate(post_inflate)) then
+   write(string1, *) 'cannot use posterior state space inflation if compute_posterior is false'
+   call error_handler(E_ERR,'filter_main', string1, source, &
+           text2='"compute_posterior" is false; cannot have posterior state_space inflation')
+endif
 
 ! for now, set 'has_cycling' to match 'single_file_out' since we're only supporting
 ! multi-file output for a single pass through filter, and allowing cycling if we're
@@ -750,7 +749,7 @@ AdvanceTime : do
 
    ! This block applies posterior inflation including RTPS if selected
 
-   if(do_ss_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate)) then
       call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
                        ENS_MEAN_COPY, RTPS_PRIOR_SPREAD, ENS_SD_COPY)
 
@@ -797,24 +796,15 @@ AdvanceTime : do
    ! CSS added condition: Don't update posterior inflation if relaxing to prior spread
    if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then
 
-      ! If not reading the sd values from a restart file and the namelist initial
-      !  sd < 0, then bypass this entire code block altogether for speed.
-      ! No longer available in the adaptive_inflate_type
-      if(.true.) then
-      !!!if ((post_inflate%initial_sd >= 0.0_r8) .or. &
-           !!!post_inflate%initial_sd_from_restart) then
+      call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
+              ens_size, num_groups, obs_val_index, post_inflate, &
+              ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
+              OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
+              OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
 
-         call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-                 ens_size, num_groups, obs_val_index, post_inflate, &
-                 ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
-                 OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
-                 OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
+      ! recalculate standard deviation since this was overwritten in filter_assim
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-         ! recalculate standard deviation since this was overwritten in filter_assim
-         call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-
-      endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
 
    ! Write out analysis diagnostic files if requested.  This contains the 
