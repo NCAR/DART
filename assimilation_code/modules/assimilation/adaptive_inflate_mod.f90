@@ -149,7 +149,7 @@ logical :: do_ss_inflate
 
 if (do_single_ss_inflate(inflation) .or. &
     do_orig_varying_ss_inflate(inflation) .or. &
-    do_enhanced_varying_ss_inflate(inflation) then
+    do_enhanced_varying_ss_inflate(inflation)) then
    do_ss_inflate = .true.
 else
    do_ss_inflate = .false.

@@ -4,6 +4,12 @@
 # Change to work directory (one level up)
 cd ..
 
+# Remove old perfect_model_obs and filter and output to avoid apparent success
+rm filter
+rm perfect_model_obs
+rm preassim.nc
+rm true_state.nc
+
 # Compile without mpi
 quickbuild.sh nompi
 

@@ -381,8 +381,8 @@ if(.not. do_posterior_inflate) call set_inflate_flavor(post_inflate, NO_INFLATIO
 
 ! Cannot select state space posterior inflation options if not computing posterior
 if(.not. compute_posterior .and. do_ss_inflate(post_inflate)) then
-   write(string1, *) 'cannot use posterior state space inflation if compute_posterior is false'
-   call error_handler(E_ERR,'filter_main', string1, source, &
+   write(msgstring, *) 'cannot use posterior state space inflation if compute_posterior is false'
+   call error_handler(E_ERR,'filter_main', msgstring, source, &
            text2='"compute_posterior" is false; cannot have posterior state_space inflation')
 endif
 
