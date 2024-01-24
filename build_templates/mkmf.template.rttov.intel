@@ -4,143 +4,33 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# typical use with mkmf
-# mkmf -t mkmf.template.xxxx ...
-#
-# FFLAGS   useful for DEBUGGING. NOTE: The intel compiler can provide a lot more
-#          information if you LEAVE the object and module files intact.
-#          Do not remove the *.o and *.mod files when debugging code.
-#
-#     -g       include debugging information.  these are all synonyms.
-#     -debug full
-#     -debug all
-#     -O0      setting -g will make this the default (no optimization).
-#              it is possible to set -g and then explicitly set -O2 if
-#              the behavior being debugged depends on optimization changes.
-#     -ftrapuv   traps if a local variable is used before being set
-#     -C       enables all runtime checks.  -C and -check all are synonyms.
-#     -check all
-#     -check <keywords>    enables/disables more specific runtime checks.
-#           keywords:  [arg_temp_created,bounds,overflow,format,pointers,uninit]
-#     -warn <keywords>  the level of warning messages issued.
-#           keywords:  [alignments, argument_checking, declarations,
-#                      errors, fileopt, general, ignore_loc,
-#                      stderrors, truncated_source, uncalled,
-#                      uninitialized, unused, usage, all]
-#     -fp-stack-check  catches conditions where the FP stack is not correct.
-#           Typically this is when a real function is called as if it were a
-#           subroutine, OR a subroutine is called as if it were a function (return
-#           values left of FP stack OR too much data is taken off the FP stack)
-#     -vec-reportN  controls how much diagnostic output is printed about
-#                   loops vectorized by the compiler. N = 0 is silent,
-#                   N can have values up to 5.
-#     -traceback    tells the compiler to generate extra information in the
-#                   object file to provide source file traceback information
-#                   when a severe error occurs at run time
-#
-# FFLAGS   useful for bitwise reproducibility and accuracy control
-#          (these will slow down performance to various degrees)
-#     -fp-model precise    control how floating point roundoff is done so it is
-#                          reproducible from run to run.  in simple tests this
-#                          flag alone was enough to create bitwise reproducible
-#                          code but slowed execution significantly.
-#     -ftz        'flush to zero' underflows result in zero.  set by default if
-#                 any -O other than -O0 set, or if -fpe0 or -fpe1 set.
-#     -fpeN       controls floating point exception handling.  -fpe0 rounds underflow
-#                 to zero and traps on any other exception type.
-#     -pc80       set internal FPU precision to 64 bit significand
-#                 (default is -pc64 with 53 internal bits)
-#
-# FFLAGS   useful for production
-#     -O2        default.  optimize without too much unrepeatable numerical games
-#     -O3        more aggressive optimizations.  check numerical differences
-#                before using this indiscriminately.
-#     -O1        if you get compile-time errors about out of memory or unable to
-#                complete compilation because of complexity, try lowering the
-#                optimization level on the offending source files.
-#     -ipo       enable optimizations between routines in separate source files
-#     -heap-arrays 10    allocate large arrays from the heap instead of putting them
-#                on the stack.  the number is the limit in KB for when arrays
-#                move from the stack to the heap.  this can help if you get stack
-#                overflow errors and cannot increase the stack size more.
-#                allocating from the stack is faster, but it's usually a smaller
-#                size than the heap.
-#     -x, -m, -ax, -mcode, -march   all these flags tell the compiler to generate
-#                processor-specific or vector instructions.  either 'man ifort' or
-#                ifort --help to see what the current list of options are and
-#                which have priority over the others.
-#                (for those running on yellowstone, -axavx will enable the advanced
-#                vector instructions available on the sandy bridge processors.)
-#     -assume buffered_io  allows the runtime library to buffer up individual
-#                writes before calling the operating system.  in particular, we
-#                write our observation sequence files as a series of many individual
-#                calls to the write() routine.  when debugging you do not want to
-#                buffer so you can see the last output before the program dies.
-#                for production, however, you want to batch up writes into larger
-#                blocks before stopping to do i/o to disk.  an alternative at
-#                runtime is to set FORT_BUFFERED to 'true' in your environment.
-#                (e.g. csh family: setenv FORT_BUFFERED true    or
-#                ksh family: export FORT_BUFFERED=true).  
-#
-# FFLAGS   possibly useful, not normally used by DART
-#     -fpp     run Fortran preprocessor on source files prior to compilation
-#     -free    interpret source as free-format, regardless of file extension
-#     -r8      specify default real size.  note that for DART we use explicit
-#              types on all our real values so this will not change anything
-#              inside DART.   see DART/common/types_mod.f90 if you must run
-#              with single precision reals.
-#     -convert big_endian         useful if you're on the wrong architecture.
-#              however this controls both reading and writing so you can't
-#              use it as a conversion mechanism unless you write files out
-#              in ascii format.  applies to all unformatted fortran i/o.
-#     -assume  byterecl ... more 'industry-standard' direct-access behavior
-#              controls what units the RECL (record length) specifier returns.
-#
-# Runtime environment variables that influence the compiler behavior:
-#
-# Make output lines for fortran write statements longer without wrapping:
-#   setenv FORT_FMT_RECL 512  (or any length)
-#
-# IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
-
 MPIFC = mpif90
 MPILD = mpif90
 FC = ifort
 LD = ifort
 
-# DISCUSSION ABOUT RTTOV. DART is designed to work with RTTOV v12.3.
-# There have been non-backwards compatible changes throughout the 
-# life-cycle of RTTOV (and more to be expected), so changing the
-# RTTOV version will required additional effort to get running.
-# You should install RTTOV 12.3 with HDF support. See 
-# https://www.nwpsaf.eu/site/software/rttov/
-# for more information on installing RTTOV.
-
 # MODIFY THE FOLLOWING VARIABLES FOR YOUR SYSTEM:
-# If your NETCDF, HDFEOS5, or RTTOV environment variables are not set,
+# If your NETCDF, HDF5, or RTTOV environment variables are not set,
 # uncomment the following line and set value to where lib and include
 # are found for the netcdf files that match this compiler.
 # Since netCDF can be built with HDF5, many systems have the HDF5
 # installation in the same place as netCDF.
 #
 # NETCDF = /opt/local
-# HDFEOS5 = $(NETCDF)
-# RTTOV = ~/research/satellite/rttov
+# HDF5 = $(NETCDF)
+# RTTOV = /glade/campaign/cisl/dares/libraries/rttov132_intel/
 
-RTTOV_VERSION = 12
-
-HDFEOS5 = /glade/u/apps/ch/opt/hdf-eos5/5.1.16/intel/19.0.5
-
-# You will likely not need to modify below this line
+RTTOV_VERSION = 13
 
 RTLIBS = -lrttov$(RTTOV_VERSION)_wrapper    -lrttov$(RTTOV_VERSION)_mw_scatt -lrttov$(RTTOV_VERSION)_brdf_atlas \
          -lrttov$(RTTOV_VERSION)_emis_atlas -lrttov$(RTTOV_VERSION)_other    -lrttov$(RTTOV_VERSION)_parallel \
          -lrttov$(RTTOV_VERSION)_coef_io    -lrttov$(RTTOV_VERSION)_hdf      -lrttov$(RTTOV_VERSION)_main 
 
-INCS = -I$(NETCDF)/include -I$(HDFEOS5)/include -I$(RTTOV)/include -I$(RTTOV)/mod
+INCS = -I$(NETCDF)/include -I$(HDF5)/include -I$(RTTOV)/include -I$(RTTOV)/mod
 
+# Note some version of hdf5 need -lhdf5hl_fortran instead of -lhdf5_hl_fortran
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf \
-       -L$(HDFEOS5)/lib -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 \
+       -L$(HDF5)/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 \
        -L$(RTTOV)/lib  $(RTLIBS) 
 
 FFLAGS  = -O2 -assume buffered_io $(INCS)
