@@ -30,29 +30,24 @@ module state_vector_io_mod
 use adaptive_inflate_mod, only : adaptive_inflate_type, &
                                  do_single_ss_inflate, &
                                  get_inflate_initial_mean, get_inflate_initial_sd, &
-                                 do_ss_inflate, do_rtps_inflate
+                                 do_ss_inflate, do_rtps_inflate, do_no_inflate
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
-                                 read_single_file, write_augmented_state, &
-                                 initialize_single_file_io, finalize_single_file_io
+                                 read_single_file, initialize_single_file_io
 
 
-use types_mod,            only : r8, i4, i8, MISSING_R8
+use types_mod,            only : r8, i8
 
 use mpi_utilities_mod,    only : my_task_id, &
                                  broadcast_send, broadcast_recv
 
-use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
-                                 map_task_to_pe, &
-                                 get_allow_transpose, &
-                                 all_copies_to_all_vars, all_vars_to_all_copies, &
-                                 get_var_owner_index
+use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 
 use utilities_mod,        only : error_handler, check_namelist_read, &
                                  find_namelist_in_file, nmlfileunit, do_nml_file, &
                                  do_nml_term, to_upper,  E_MSG, E_ERR
 
-use time_manager_mod,     only : time_type, get_time
+use time_manager_mod,     only : time_type
 
 use io_filenames_mod,     only : get_restart_filename, file_info_type, &
                                  get_single_file, get_cycling, get_stage_metadata, &
@@ -158,7 +153,9 @@ end subroutine state_vector_io_init
 
 subroutine read_state(state_ens_handle, file_info, read_time_from_file, model_time, &
             PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,     &
-            prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
+            prior_inflate_handle, post_inflate_handle,                              &
+            prior_inflate_from_restart, posterior_inflate_from_restart,             &
+            perturb_from_single_copy)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
 type(file_info_type),        intent(in)    :: file_info
@@ -168,44 +165,45 @@ integer,                     optional, intent(in) :: PRIOR_INF_COPY, PRIOR_INF_S
 integer,                     optional, intent(in) :: POST_INF_COPY,  POST_INF_SD_COPY
 type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
+logical,                     optional, intent(in) :: prior_inflate_from_restart
+logical,                     optional, intent(in) :: posterior_inflate_from_restart
 logical,                     optional, intent(in) :: perturb_from_single_copy
 
-logical :: inflation_handles = .false.
+logical :: read_inflation = .false.
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 ! check whether file_info handle is initialized
 call assert_file_info_initialized(file_info, 'read_state')
 
-! check that we either have both inflation handles or neither:
-if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
-   call error_handler(E_ERR, 'read_state', &
-           'must have both inflation handles or neither', source)
+!>@todo all-or-nothing WHY?
+! For now, either all optionals are present (filter call) or none (perfect_model_obs)
+if(present(prior_inflate_handle)) then
+   if(do_no_inflate(prior_inflate_handle) .and. do_no_inflate(post_inflate_handle)) then
+      read_inflation = .false.
+   else
+      read_inflation = .true.
+   endif
 endif
 
-!>@todo all-or-nothing WHY?
-if (present(prior_inflate_handle) .and. present(post_inflate_handle)) inflation_handles = .true.
-
 ! inflation read from netcdf files only for state_space_inflation
-! Ideally would only do a read transpose for VARYING state_space_inflation
-!>@todo FIXME do we need a separate file_info for inflation
 
-!>@todo FIXME understand this ... what is it doing and why.
 ! Filling copies array for single state space inflation values if required.
-if (inflation_handles) then
+if (read_inflation) then
 
    ! If inflation is single state space read from a file, the copies array is filled here.
    call fill_single_inflate_val_from_read(state_ens_handle, PRIOR_INF_COPY, &
       PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,                   &
-      prior_inflate_handle, post_inflate_handle)
+      prior_inflate_handle, post_inflate_handle,                            &
+      prior_inflate_from_restart, posterior_inflate_from_restart)
 
    ! If inflation is from a namelist value it is set here.
    !>@todo FIXME: ditto here - the output should be from a routine
    !> in the adaptive_inflate_mod.f90 code
    call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle, &
-      PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+      prior_inflate_from_restart, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
    call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle, &
-      POST_INF_COPY, POST_INF_SD_COPY)
+      posterior_inflate_from_restart, POST_INF_COPY, POST_INF_SD_COPY)
 
 endif
 
@@ -342,16 +340,18 @@ end subroutine write_restart_direct
 !> or sd is read from file.  If one is set from a namelist the copies 
 !> array is overwritten in fill_inf_from_namelist_value()
 
-!>@todo We need to refactor this, not sure where it is being used
 subroutine fill_single_inflate_val_from_read(ens_handle, &
                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
-                prior_inflate_handle, post_inflate_handle)
+                prior_inflate_handle, post_inflate_handle,                          &
+                prior_inflate_from_restart, posterior_inflate_from_restart)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: PRIOR_INF_COPY, PRIOR_INF_SD_COPY
 integer,                     intent(in)    :: POST_INF_COPY,  POST_INF_SD_COPY
 type(adaptive_inflate_type), intent(in)    :: prior_inflate_handle
 type(adaptive_inflate_type), intent(in)    :: post_inflate_handle
+logical,                     intent(in)    :: prior_inflate_from_restart
+logical,                     intent(in)    :: posterior_inflate_from_restart
 
 integer :: owner, owners_index
 integer(i8) :: first_element
@@ -371,14 +371,10 @@ if (.not. do_single_ss_inflate(prior_inflate_handle) .and. &
 return_me = .true.
 ! Return if not reading any state space inflation values from files
 if ( do_single_ss_inflate(prior_inflate_handle)) then
-   ! No longer available from adaptive_inflate_mod, just skip temporarily
-   !!!if (mean_from_restart(prior_inflate_handle)) return_me = .false.
-   !!!if (sd_from_restart(prior_inflate_handle))   return_me = .false.
+   if(prior_inflate_from_restart) return_me = .false.
 endif
 if ( do_single_ss_inflate(post_inflate_handle)) then
-   ! No longer available from adaptive_inflate_mod, just skip temporarily
-   !!!if (mean_from_restart(post_inflate_handle)) return_me = .false.
-   !!!if (sd_from_restart(post_inflate_handle))   return_me = .false.
+   if(posterior_inflate_from_restart) return_me = .false.
 endif
 if (return_me) return
 
@@ -454,15 +450,15 @@ end subroutine fill_single_inflate_val_from_read
 
 
 subroutine fill_inf_from_namelist_value(ens_handle, inflate_handle, &
-   INF_MEAN_COPY, INF_SD_COPY)
+   inflation_from_restart, INF_MEAN_COPY, INF_SD_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
+logical,                     intent(in)    :: inflation_from_restart
 integer,                     intent(in)    :: INF_MEAN_COPY, INF_SD_COPY
 
 character(len=32)  :: label
 
-! To match Lanai filter_state_space_diagnostics, 
 ! if not doing inflation set inf_mean = 1, inf_sd = 0
 if (.not. do_ss_inflate(inflate_handle) .and. .not. do_rtps_inflate(inflate_handle)) then
    ens_handle%copies(INF_MEAN_COPY, :) = 1.0_r8
@@ -470,25 +466,8 @@ if (.not. do_ss_inflate(inflate_handle) .and. .not. do_rtps_inflate(inflate_hand
    return
 endif
 
-! No longer available from adaptive_inflate_mod, skip whole block
-!!!if(get_is_prior(inflate_handle)) then
-   !!!label = "Prior"
-!!!else if (get_is_posterior(inflate_handle)) then
-   !!!label = "Posterior"
-!!!else
-   !!!write(msgstring, *) "state space inflation but neither prior or posterior"
-   !!!call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, source)
-!!!endif
-
-! No longer available from adaptive_inflate_mod, just do true for now
-if (.true.) then
-!!!if (.not. mean_from_restart(inflate_handle)) then
+if (.not. inflation_from_restart) then
    ens_handle%copies(INF_MEAN_COPY, :) = get_inflate_initial_mean(inflate_handle)
-endif
-
-! No longer available from adaptive_inflate_mod, just do true for now
-if (.true.) then
-!!!if (.not. sd_from_restart(inflate_handle)) then
    ens_handle%copies(INF_SD_COPY, :) = get_inflate_initial_sd(inflate_handle)
 endif
 

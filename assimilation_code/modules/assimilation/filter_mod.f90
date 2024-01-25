@@ -473,7 +473,9 @@ call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
-                prior_inflate, post_inflate, perturb_from_single_instance)
+                prior_inflate, post_inflate,                                        &
+                prior_inflate_from_restart, posterior_inflate_from_restart,         &
+                perturb_from_single_instance)
 
 if(iam_task0()) then
    if(prior_inflate_from_restart) &

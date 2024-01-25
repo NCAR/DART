@@ -1096,7 +1096,7 @@ subroutine log_inflation_info(inflation_handle)
 type(adaptive_inflate_type), intent(in) :: inflation_handle
 
 character(len = 128) :: det, tadapt, sadapt, akind
-write(*, *) 'flaor ', inflation_handle%flavor
+write(*, *) 'flavor ', inflation_handle%flavor
 select case(inflation_handle%flavor)
    case(NO_INFLATION)
       call error_handler(E_MSG, 'log_inflation_info', 'No inflation is being applied')
