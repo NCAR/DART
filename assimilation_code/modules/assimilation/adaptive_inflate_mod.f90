@@ -28,7 +28,7 @@ public :: adaptive_inflate_type, adaptive_inflate_init, log_inflation_info,     
           set_inflate_flavor, get_inflate_initial_mean, get_inflate_initial_sd,     &
           do_varying_ss_inflate, do_single_ss_inflate, do_obs_inflate,              &
           do_deterministic_inflate, do_ss_inflate, do_rtps_inflate,                 &
-          NO_INFLATION
+          do_no_inflate, NO_INFLATION
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
@@ -157,6 +157,20 @@ endif
 
 end function do_ss_inflate
 
+
+!-------------------------------------------------------------------------------
+!>
+
+function do_no_inflate(inflation)
+
+! Returns true if no inflation is requested
+
+type(adaptive_inflate_type), intent(in) :: inflation
+logical :: do_no_inflate
+
+do_no_inflate = (inflation%flavor == NO_INFLATION)
+
+end function do_no_inflate
 
 !-------------------------------------------------------------------------------
 !>
