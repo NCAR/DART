@@ -3771,7 +3771,7 @@ integer :: PERIODIC_XVarID, POLARVarID
 
 integer :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
      MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, hgtVarID , LatuVarID, &
-     LatvVarID, LonuVarID, LonvVarID, ZNWVarID
+     LatvVarID, LonuVarID, LonvVarID, ZNWVarID, C1HVarID, C2HVarID
 
 integer :: TimeDimID
 
@@ -4047,7 +4047,7 @@ call nc_check(nf90_put_att(ncid, DNWVarID, 'units', &
                  ''), &
                  'nc_write_model_atts','def_var DNW'//' units')
 
-if (wrf%dom(dom_id)%hybrid_opt == VERT_HYBRID) then
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
    call nc_check(nf90_def_var(ncid, name='C1H', xtype=nf90_real, &
                     dimids= btDimID, varid=C1HVarID), &
                     'nc_write_model_atts','def_var C1H')
