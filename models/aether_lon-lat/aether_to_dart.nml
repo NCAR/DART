@@ -1,33 +1,40 @@
 &aether_to_dart_nml
    aether_restart_dirname = 
-      '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata2'
+      '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata3'
    filter_io_root = 'filter_input'
    variables = 
-     'Temperature',    'QTY_TEMPERATURE',       '1000.0', 'NA', 'neutrals', 'UPDATE',
-     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'Temperature',    'QTY_TEMPERATURE',      '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'velocity_east',  'QTY_U_WIND_COMPONENT'  '1000.0', 'NA', 'neutrals', 'UPDATE',
      'O+',    
         'QTY_DENSITY_ION_OP',  'NA', 'NA', 'ions', 'UPDATE'
      'Temperature\ \(O+\)',                             
         'QTY_TEMPERATURE_ION', 'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Zonal\)\ \(O+\)', 
+     'velocity_parallel_east\ \(O+\)', 
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_parallel_north\ \(O+\)', 
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Vertical\)\ \(O+\)',   
+     'velocity_parallel_up\ \(O+\)',   
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Zonal\)\ \(O+\)',  
+     'velocity_perp_east\ \(O+\)',  
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_perp_north\ \(O+\)', 
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
+     'velocity_perp_up\ \(O+\)', 
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
    debug = 0
    /
+! Neutrals from restart files, which Aaron identified as important:
+         Temperature     QTY_TEMPERATURE
+         velocity_east   QTY_U_WIND_COMPONENT
+         velocity_north  QTY_V_WIND_COMPONENT
+         (velocity_up)   QTY_VERTICAL_VELOCITY
+! Ions from restart files, which Aaron identified as important:
+         O+              QTY_DENSITY_ION_OP
+         O2+             QTY_DENSITY_ION_O2P 
+         O+2D            QTY_DENSITY_ION_O2DP  ?
+         O+2P            QTY_DENSITY_ION_O2PP  ?
+         N2+             QTY_DENSITY_ION_N2P   ?
  
-! TODO: Or could use these.  What's the difference?
-! Would it be useful to use 1 type for Parallel and the other for Perp.?
-      QTY_VELOCITY_U 
-      QTY_VELOCITY_V 
-      QTY_VELOCITY_W 
-      QTY_VERTICAL_VELOCITY
-      ...
+See ./issue_QTYs for complete lists of variables and potential QTYs
+
+

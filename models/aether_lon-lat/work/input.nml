@@ -40,7 +40,7 @@
 &filter_nml
    single_file_in               = .false.,
    input_state_files            = ''
-   input_state_file_list        = 'restart_p_files.txt', 'secondary_files.txt'
+   input_state_file_list        = 'filter_inputs.txt'
    init_time_days               = 153131,
    init_time_seconds            = 0,
    perturb_from_single_instance = .true.,
@@ -50,7 +50,7 @@
 
    single_file_out              = .false.,
    output_state_files           = ''
-   output_state_file_list       = 'out_restart_p_files.txt', 'out_secondary_files.txt'
+   output_state_file_list       = 'filter_outputs.txt'
    output_interval              = 1,
    output_members               = .true.
    num_output_state_members     = 0,
@@ -170,7 +170,14 @@
    time_step_seconds = 3600
    debug             = 10
    /
-! >>> Don't code these until we get new CF-compliant field names from Aaron. <<<
+! The most CF-compliant field names we'll get from Aaron are transformed for DART into:
+  velocity_east (U component of neutral wind)
+  Opos_velocity_parallel_east
+  Opos_velocity_parallel_north
+  Opos_velocity_parallel_up
+  Opos_velocity_perp_east
+  Opos_velocity_perp_north
+  Opos_velocity_perp_up
 ! Other neutrals from restart files, which Aaron identified as important:
          Zonal\ Wind 
          Meridional\ Wind 
@@ -187,22 +194,22 @@
    filter_io_root = 'filter_input'
    variables = 
      'Temperature',    'QTY_TEMPERATURE',       'NA', '10000.0', 'neutrals', 'UPDATE',
-     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  'NA',      'NA', 'neutrals', 'UPDATE',
+     'velocity_east',  'QTY_U_WIND_COMPONENT'  '1000.0', 'NA', 'neutrals', 'UPDATE',
      'O+',    
-        'QTY_DENSITY_ION_OP',  '0.', 'NA', 'ions', 'UPDATE'
+        'QTY_DENSITY_ION_OP',  'NA', 'NA', 'ions', 'UPDATE'
      'Temperature\ \(O+\)',                             
         'QTY_TEMPERATURE_ION', 'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Zonal\)\ \(O+\)', 
+     'velocity_parallel_east\ \(O+\)', 
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_parallel_north\ \(O+\)', 
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Vertical\)\ \(O+\)',   
+     'velocity_parallel_up\ \(O+\)',   
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Zonal\)\ \(O+\)',  
+     'velocity_perp_east\ \(O+\)',  
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_perp_north\ \(O+\)', 
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
+     'velocity_perp_up\ \(O+\)', 
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
      debug = 5
    /
@@ -212,22 +219,22 @@
    filter_io_root = 'filter_output',
    variables = 
      'Temperature',    'QTY_TEMPERATURE',       '1000.0', 'NA', 'neutrals', 'UPDATE',
-     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  '1000.0', 'NA', 'neutrals', 'UPDATE',
-     'O+',    
+     'velocity_east'  'QTY_U_WIND_COMPONENT'  '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'O+',
         'QTY_DENSITY_ION_OP',  'NA', 'NA', 'ions', 'UPDATE'
-     'Temperature\ \(O+\)',                             
+     'Temperature (O+)',
         'QTY_TEMPERATURE_ION', 'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Zonal\)\ \(O+\)', 
+     'velocity_parallel_east (O+)',
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_parallel_north (O+)',
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Vertical\)\ \(O+\)',   
+     'velocity_parallel_up (O+)',
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Zonal\)\ \(O+\)',  
+     'velocity_perp_east (O+)',
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_perp_north (O+)',
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
+     'velocity_perp_up (O+)',
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
      debug = 5
    /

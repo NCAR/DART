@@ -1,0 +1,169 @@
+
+I'm confused by the selection of QTYs that can be associated
+with the Aether variables.  I made some choices in the early rush
+to get something working, but now I'd like to figure out if they were good choices.
+I don't even know how to decide whether it matters (much).
+
+My first problem is interpretting what the available QTY's represent.
+I haven't found a key to decipher the parts of, e.g.  QTY_DENSITY_ION_O2DP .
+O2 could mean 'oxygen molecule', D could mean an extra or missing electron
+from the D orbital, P could be similar, or mean 'positive'.
+Or O could mean 'oxygen atom' with 2D or 2DP meaning something.
+Comments in space_quantities_mod.f90 or in a docs.dart page would be helpful.
+
+The Aether variable 'velocity_parallel_up\ \(O+\)'
+could potentially have these existing QTYs associated with it:
+QTY_VELOCITY_W 
+QTY_VELOCITY_W_ION 
+QTY_VERTICAL_VELOCITY
+or maybe it should have a new QTY like the existing QTY_VELOCITY_VERTICAL_O2:
+QTY_VELOCITY_PARALLEL_VERTICAL_OP 
+This last seems safest, since each ion has its own 2 vertical velocities.
+But I don't know how they'll be used, so maybe a simple, generic QTY 
+for all the ions is fine.
+ 
+2024-1 (final full set) Neutrals
+   Temperature, N, O2, N2, NO, He, N_2D, N_2P, H, O_1D, CO2, 
+   velocity_east, velocity_north, velocity_up
+     Temperature, 
+     O
+     N
+     O2    QTY_DENSITY_NEUTRAL_O2
+     N2    QTY_DENSITY_NEUTRAL_N2 
+     NO
+     He
+     N_2D
+     N_2P
+     H
+     O_1D
+     CO2
+     Temperature ; QTY_TEMPERATURE
+     velocity_east ; QTY_U_WIND_COMPONENT
+     velocity_north ; QTY_V_WIND_COMPONENT
+     velocity_up ; QTY_VERTICAL_VELOCITY
+   
+2024-1 (final full set) ions (e- is missing)
+     O+
+       Temperature\ \(O+\)
+       velocity_parallel_east\ \(O+\)
+       velocity_parallel_north\ \(O+\)
+       velocity_parallel_up\ \(O+\)
+       velocity_perp_east\ \(O+\)
+       velocity_perp_north\ \(O+\)
+       velocity_perp_up\ \(O+\)
+   Repeat the associated vars for:
+     O2+
+     N2+
+     NO+
+     N+
+     He+
+     O+_2D
+     O+_2P
+     Temperature_bulk_ion
+     Temperature_electron
+
+
+! These were harvested from the obs_kind_mod.f90 created from
+    quantity_files = 
+       '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90', 
+       '../../../assimilation_code/modules/observations/space_quantities_mod.f90',
+       '../../../assimilation_code/modules/observations/chemistry_quantities_mod.f90'
+! There might be additional relevant QTYs in other quantities_mod.f90
+
+! TODO: Or could use these.  What's the difference?
+! Would it be useful to use 1 type for Parallel and the other for Perp.?
+      QTY_VELOCITY_U 
+      QTY_VELOCITY_V 
+      QTY_VELOCITY_W 
+      QTY_VERTICAL_VELOCITY
+      ...
+! Note; there are QTYs available for vertical velocity for individual species.
+      QTY_VELOCITY_VERTICAL_O2 
+! But not for the other components
+
+! or more specific QTYs (but maybe not a complete set?)
+! There seems to be choice for for some chemicals,
+! which will be guided by which 
+! assimilation_code/modules/observations/*quantities_mod.f90
+! defines them.
+! The chosen files need to be added to the preprocess_nml.
+! Full (assembled for my case by preprocess) list: 
+! (copy candidates to actual names, above)
+---
+QTY_TEMPERATURE_ION 
+QTY_VELOCITY_U_ION 
+QTY_VELOCITY_V_ION 
+QTY_VELOCITY_W_ION 
+---
+
+QTY_DENSITY_ION_E 0
+QTY_ELECTRON_DENSITY 
+QTY_TEMPERATURE_ELECTRON 
+
+QTY_VERTICAL_TEC 
+---
+QTY_ATOMIC_OXYGEN_MIXING_RATIO 
+? QTY_DENSITY_NEUTRAL_O1D 
+
+QTY_ION_O_MIXING_RATIO 
+QTY_DENSITY_ION_OP 
+---
+QTY_MOLEC_OXYGEN_MIXING_RATIO 
+QTY_DENSITY_NEUTRAL_O2
+QTY_VELOCITY_VERTICAL_O2 
+
+QTY_DENSITY_ION_O2P 
+QTY_DENSITY_ION_O2DP 
+QTY_DENSITY_ION_O2PP 
+---
+
+QTY_NITROGEN 
+QTY_DENSITY_NEUTRAL_N2 
+QTY_DENSITY_NEUTRAL_N2D 
+QTY_DENSITY_NEUTRAL_N2P 
+QTY_VELOCITY_VERTICAL_N2 
+
+QTY_DENSITY_ION_N2P 
+---
+
+QTY_O_N2_COLUMN_DENSITY_RATIO 
+---
+
+QTY_DENSITY_ION_NP 
+---
+
+QTY_O3 
+QTY_DENSITY_NEUTRAL_O3P 
+QTY_VELOCITY_VERTICAL_O3P 
+---
+
+QTY_DENSITY_NEUTRAL_N4S 
+QTY_VELOCITY_VERTICAL_N4S
+---
+
+QTY_NO 
+QTY_DENSITY_NEUTRAL_NO 
+QTY_VELOCITY_VERTICAL_NO 
+
+? QTY_DENSITY_ION_NOP 
+---
+
+QTY_DENSITY_NEUTRAL_H 
+QTY_ATOMIC_H_MIXING_RATIO 
+
+QTY_DENSITY_ION_HP 
+---
+
+QTY_DENSITY_NEUTRAL_HE 
+
+QTY_DENSITY_ION_HEP 
+---
+
+QTY_GND_GPS_VTEC 
+
+Not needed:
+QTY_DENSITY_ION_O4SP
+QTY_CO 
+QTY_DENSITY_NEUTRAL_CO2 
+QTY_NO2 
+QTY_N2O 

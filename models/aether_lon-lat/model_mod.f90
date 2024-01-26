@@ -35,9 +35,9 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_get_dimension_size, nc_create_file, &
                                  nc_close_file, nc_get_variable, nc_define_dimension, &
-                                 nc_define_real_variable, nc_open_file_readwrite, &
+                                 nc_define_real_variable, nc_define_real_scalar, nc_open_file_readwrite, &
                                  nc_add_attribute_to_variable, nc_put_variable, &
-                                 nc_define_unlimited_dimension, NF90_FILL_REAL
+                                 nc_get_attribute_from_variable, NF90_FILL_REAL
 
 use        quad_utils_mod, only : quad_interp_handle, init_quad_interp, set_quad_coords, &
                                   quad_lon_lat_locate, quad_lon_lat_evaluate, &
@@ -512,19 +512,38 @@ call nc_add_global_creation_time(ncid, routine)
 
 call nc_add_global_attribute(ncid, "model_source", source, routine)
 call nc_add_global_attribute(ncid, "model", "aether", routine)
+! TODO KDR Shouldn't the calendar type be defined here?
+!      It's defined in the time variable = good enough for write_model_time.
+
+! call nc_end_define_mode(ncid)
+
+end subroutine nc_write_model_atts
+
+!------------------------------------------------------------------
+! Add dimension variable contents to the file.
+
+subroutine def_fill_dimvars(ncid)
+
+integer, intent(in) :: ncid
+
+character(len=*), parameter :: routine = 'def_fill_dimvars'
+
+! call nc_begin_define_mode(ncid)
+
+! Global atts for aether_to_dart and dart_to_aether.
+call nc_add_global_creation_time(ncid, routine)
+call nc_add_global_attribute(ncid, "model_source", source, routine)
+call nc_add_global_attribute(ncid, "model", "aether", routine)
 
 ! define grid dimensions
-
-
-
 call nc_define_dimension(ncid, trim(LEV_DIM_NAME),  nlev,  routine)
 call nc_define_dimension(ncid, trim(LAT_DIM_NAME),  nlat,  routine)
 call nc_define_dimension(ncid, trim(LON_DIM_NAME),  nlon,  routine)
 ! TODO: UNLIMITED (time ) should be the last dimension. Document it?
-call nc_define_unlimited_dimension(ncid, trim(TIME_DIM_NAME), routine)
+!       NO. The file should have no time dimension, just a scalar time variable
+! call nc_define_unlimited_dimension(ncid, trim(TIME_DIM_NAME), routine)
 
 ! define grid variables
-
 ! z
 call nc_define_real_variable(     ncid, trim(LEV_VAR_NAME), (/ trim(LEV_DIM_NAME) /), routine)
 call nc_add_attribute_to_variable(ncid, trim(LEV_VAR_NAME), 'units',     'm', routine)
@@ -541,29 +560,25 @@ call nc_add_attribute_to_variable(ncid, trim(LON_VAR_NAME), 'units', 'degrees_ea
 call nc_add_attribute_to_variable(ncid, trim(LON_VAR_NAME), 'long_name', 'longitude',  routine)
 
 ! Dimension 'time' will no longer be created by write_model_time,
-! since it's explicitly done by nc_define_unlimited_dimension.
-! longitude
-call nc_define_real_variable(     ncid, trim(TIME_VAR_NAME), (/ trim(TIME_VAR_NAME) /), routine)
+! or by nc_define_unlimited_dimension.  It will be a scalar variable.
+! time
+call nc_define_real_scalar(       ncid, trim(TIME_VAR_NAME), routine)
 call nc_add_attribute_to_variable(ncid, trim(TIME_VAR_NAME), 'calendar', 'gregorian', routine)
 call nc_add_attribute_to_variable(ncid, trim(TIME_VAR_NAME), 'units', 'days since 1601-01-01 00:00:00', routine)
 call nc_add_attribute_to_variable(ncid, trim(TIME_VAR_NAME), 'long_name', 'gregorian_days',  routine)
 
-
 call nc_end_define_mode(ncid)
 
-! TODO: Should nc_write_model_atts write dimension contents, not just atts?
-! Gitm had a separate routine for filling the dimensions:
-! - - - - - - - - - - -
-! subroutine add_nc_dimvars(ncid)
 call nc_put_variable(ncid, trim(LEV_VAR_NAME),  levs,  routine)
 call nc_put_variable(ncid, trim(LAT_VAR_NAME),  lats,  routine)
 call nc_put_variable(ncid, trim(LON_VAR_NAME),  lons,  routine)
+! time will be written elsewhere.
 print*,routine,': passed putting the dimensions'
 
 ! Flush the buffer and leave netCDF file open
 call nc_synchronize_file(ncid)
 
-end subroutine nc_write_model_atts
+end subroutine def_fill_dimvars
 
 !------------------------------------------------------------------
 ! Read dimension information from the template file and use 
@@ -920,26 +935,27 @@ subroutine restart_files_to_netcdf(member)
     call error_handler(E_MSG, routine, error_string_1, text2=error_string_2)
     call error_handler(E_MSG, '', '')
 
-! Debug time UNLIM
-    ! Enters and exits define mode;
-    ! nc_write_model_atts puts it in define mode.  Is it already there?
-    !   Then it takes it out of define and leaves file open.
-    call nc_write_model_atts(ncid, 0)
+    ! Aether_to_dart and dart_to_aether want only a few lines from 
+    ! nc_write_model_atts -> static_init_model,
+    ! not domain definition, etc.  Put those lines in def_fill_dimvars.
+    ! TODO: I may need to copy some bits from static_init_model into static_init_blocks
+    
+    ! TODO: we haven't settled on the mechanism for identifying the state vector field names and source.
+    ! TODO: def_fill_dimvars functionality was in nc_write_model_atts but shouldn't have been.  
+    !       I separated nc_write_model_atts into to parts and this is one of them.
+    !       Is this a good place for the call?  It's in the "define" section for the filter_input file.
+    call def_fill_dimvars(ncid)
     
     ! Write_model_time will make a time variable, if needed, which it is not.
     ! write_model_time does not open the file, 
     call write_model_time(ncid, state_time)
     
+    ! Define (non-time) variables
     call restarts_to_filter(aether_restart_dirname, ncid, member, define=.true.)
     
-    ! TODO: add_nc_dimvars has not been activated because the functionality is in nc_write_model_atts
-    !       but maybe it shouldn't be.  Also, we haven't settled on the mechanism for identifying
-    !       the state vector field names and source.
-    ! call add_nc_dimvars(ncid)
-    
+    ! Read and convert (non-time) variables
     call restarts_to_filter(aether_restart_dirname, ncid, member, define=.false.)
     ! subr. called by this routine closes the file only if define = .true.
-    
     call nc_close_file(ncid)
     
     call error_handler(E_MSG, '', '')
@@ -1676,15 +1692,14 @@ subroutine write_filter_io(data3d, varname, block, ncid)
 
    real(r4), intent(in)    :: data3d(1:nz_per_block, &
                                      1-nghost:ny_per_block+nghost, &
-                                     1-nghost:nx_per_block+nghost, &
-                                     1)
+                                     1-nghost:nx_per_block+nghost)
    
    character(len=vtablenamelength), intent(in) :: varname
    integer,  intent(in)    :: block(2)
    integer,  intent(in)    :: ncid
    
    integer :: ib, jb
-   integer :: starts(4)
+   integer :: starts(3)
    character(len=*), parameter :: routine = 'write_filter_io'
    
    
@@ -1697,16 +1712,15 @@ subroutine write_filter_io(data3d, varname, block, ncid)
    starts(1) = 1
    starts(2) = (jb-1)*ny_per_block+1
    starts(3) = (ib-1)*nx_per_block+1
-   starts(4) = 1
    ! TODO: convert to error_msg
    ! print*,routine,'; starts = ',starts
    ! print*,routine,'; counts = ',nz_per_block,ny_per_block,nx_per_block,1
    
 !       data3d(1:nz_per_block,1:ny_per_block,1:nx_per_block), &
    call nc_put_variable(ncid, varname, &
-      data3d(1:nz_per_block,1:ny_per_block,1:nx_per_block,1), &
+      data3d(1:nz_per_block,1:ny_per_block,1:nx_per_block), &
       context=routine, nc_start=starts, &
-      nc_count=(/nz_per_block,ny_per_block,nx_per_block,1/))
+      nc_count=(/nz_per_block,ny_per_block,nx_per_block/))
     ! TODO: convert to error_msg
     ! print*,routine,': filled varname = ', varname 
    
@@ -1722,7 +1736,7 @@ subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
    integer,  intent(in) :: member
    logical,  intent(in) :: define
    
-   real(r4), allocatable :: temp1d(:), temp2d(:,:), temp3d(:,:,:,:)
+   real(r4), allocatable :: temp1d(:), temp2d(:,:), temp3d(:,:,:)
    real(r4), allocatable :: alt1d(:), density_ion_e(:,:,:)
    real(r4) :: temp0d !Alex: single parameter has "zero dimensions"
    integer :: i, j, maxsize, ivar, nb, ncid_input
@@ -1731,6 +1745,7 @@ subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
    logical :: no_idensity
    
    character(len=*), parameter :: routine = 'block_to_filter_io'
+   character(len=32) :: att_val 
    character(len=128) :: file_root 
    character(len=256) :: filename
    character(len=vtablenamelength) :: varname, dart_varname
@@ -1760,8 +1775,7 @@ subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
    ! temp array large enough to hold 1 species, temperature, etc
    allocate(temp3d(1:nz_per_block, &
                    1-nghost:ny_per_block+nghost, &
-                   1-nghost:nx_per_block+nghost, &
-                   1))
+                   1-nghost:nx_per_block+nghost))
    
    ! save density_ion_e to compute TEC
    allocate(density_ion_e(1:nz_per_block, &
@@ -1886,25 +1900,17 @@ subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
          end if
       
          call nc_define_real_variable(ncid_output, dart_varname, &
-              (/ LEV_DIM_NAME, LAT_DIM_NAME, LON_DIM_NAME, TIME_DIM_NAME /) )
-   ! TODO: does the filter_input.nc file need all these attributes?  TIEGCM doesn't add them.
-         !    They are not available from the restart files.
-         !    Add them to the ions section too.
-         ! call nc_add_attribute_to_variable(ncid, dart_varname, 'long_name',    gitmvar(ivar)%long_name)
-         ! call nc_add_attribute_to_variable(ncid, dart_varname, 'units',        gitmvar(ivar)%units)
-         ! !call nc_add_attribute_to_variable(ncid, dart_varname, 'storder',     gitmvar(ivar)%storder)
-         ! call nc_add_attribute_to_variable(ncid, dart_varname, 'gitm_varname', gitmvar(ivar)%gitm_varname)
-         ! call nc_add_attribute_to_variable(ncid, dart_varname, 'gitm_dim',     gitmvar(ivar)%gitm_dim)
-         ! call nc_add_attribute_to_variable(ncid, dart_varname, 'gitm_index',   gitmvar(ivar)%gitm_index)
-   
-   
+              (/ LEV_DIM_NAME, LAT_DIM_NAME, LON_DIM_NAME/) )
+         call nc_get_attribute_from_variable(ncid_input, varname, 'units', att_val, routine)
+         call nc_add_attribute_to_variable(ncid_output, dart_varname, 'units',att_val, routine)
+
       else if (file_root == 'neutrals') then
       ! Read 3D array and extract the non-halo data of this block.
    ! TODO: There are no 2D or 1D fields in ions or neutrals, but there could be; different temp array.
          call nc_get_variable(ncid_input, varname, temp3d, context=routine)
          if (debug >= 100 .and. do_output()) then
             ! TODO convert to error_handler?
-            print*,'block_to_filter_io: temp3d = ',temp3d(1,1,1,1),temp3d(15,15,15,1),varname
+            print*,'block_to_filter_io: temp3d = ',temp3d(1,1,1),temp3d(15,15,15),varname
             print*,'block_to_filter_io: define = ',define
          endif
          call write_filter_io(temp3d, dart_varname, block, ncid_output)
@@ -1939,8 +1945,10 @@ subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
          end if
       
          call nc_define_real_variable(ncid_output, dart_varname, &
-              (/ LEV_DIM_NAME, LAT_DIM_NAME, LON_DIM_NAME, TIME_DIM_NAME /) )
-         print*,routine,': defined ivar, dart_varname = ', ivar, dart_varname 
+              (/ LEV_DIM_NAME, LAT_DIM_NAME, LON_DIM_NAME/) )
+         call nc_get_attribute_from_variable(ncid_input, varname, 'units', att_val, routine)
+         call nc_add_attribute_to_variable(ncid_output, dart_varname, 'units',att_val, routine)
+         print*,routine,': defined ivar, dart_varname, att = ', ivar, dart_varname,att_val
    
       else if (file_root == 'ions') then
          call nc_get_variable(ncid_input, varname, temp3d, context=routine)
@@ -2171,7 +2179,7 @@ subroutine add_halo_fulldom3d(fulldom3d)
       endif
       
       ! Debug HDF5 
-      write(error_string_1,'("normed_field(10,nlat+1,nlon+2) = ",3(1x,i5))'),normed(nlat+1,nlon+2)
+      write(error_string_1,'("normed_field(10,nlat+1,nlon+2) = ",3(1x,i5))') normed(nlat+1,nlon+2)
       call error_handler(E_MSG,routine,error_string_1,source,revision,revdate)
       
       ! 17 format debug_format
@@ -2255,9 +2263,9 @@ subroutine add_halo_fulldom3d(fulldom3d)
             ! TODO: error checking; does the block file have the field in it?
             !       convert prints to error_handler
             if ( debug > 0 .and. do_output()) then
-	      write(error_string_1,'(/,"block, ib, jb = ", 3(2X,i5))') nb, ib, jb
+	      write(error_string_1,'(A,3(2X,i5))') "block, ib, jb = ", nb, ib, jb
               call error_handler(E_MSG,routine,error_string_1,source,revision,revdate)
-              write(error_string_1,'(3(A,i5),2(1X,i5))') &
+              write(error_string_1,'(3(A,3i5))') &
                    'starts = ',starts, 'ends = ',ends, '[xyz]counts = ',xcount,ycount,zcount
               call error_handler(E_MSG,routine,error_string_1,source,revision,revdate)
             endif      

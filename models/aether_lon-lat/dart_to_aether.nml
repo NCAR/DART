@@ -1,27 +1,37 @@
 &dart_to_aether_nml
    aether_restart_dirname  = 
-     '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata2'
+     '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata3'
    filter_io_root = 'filter_output',
    variables = 
-     'Temperature',    'QTY_TEMPERATURE',       '1000.0', 'NA', 'neutrals', 'UPDATE',
-     'Zonal\ Wind',    'QTY_VERTICAL_VELOCITY'  '1000.0', 'NA', 'neutrals', 'UPDATE',
-     'O+',    
+     'Temperature',  'QTY_TEMPERATURE',     '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'velocity_east' 'QTY_U_WIND_COMPONENT' '1000.0', 'NA', 'neutrals', 'UPDATE',
+     'O+',
         'QTY_DENSITY_ION_OP',  'NA', 'NA', 'ions', 'UPDATE'
-     'Temperature\ \(O+\)',                             
+     'Temperature (O+)',
         'QTY_TEMPERATURE_ION', 'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Zonal\)\ \(O+\)', 
+     'velocity_parallel_east (O+)',
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_parallel_north (O+)',
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Parallel\ Ion\ Velocity\ \(Vertical\)\ \(O+\)',   
+     'velocity_parallel_up (O+)',
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Zonal\)\ \(O+\)',  
+     'velocity_perp_east (O+)',
         'QTY_VELOCITY_U_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Meridional\)\ \(O+\)', 
+     'velocity_perp_north (O+)',
         'QTY_VELOCITY_V_ION',  'NA', 'NA', 'ions', 'UPDATE',
-     'Perp.\ Ion\ Velocity\ \(Vertical\)\ \(O+\)', 
+     'velocity_perp_up (O+)',
         'QTY_VELOCITY_W_ION',  'NA', 'NA', 'ions', 'UPDATE'
    debug = 0
    /
 
-! 4 digit member number and .nc will be appended to this.
+! 4 digit member number and .nc will be appended to filter_io_root.
+
+Neutrals
+   Temperature, N, O2, N2, NO, He, N_2D, N_2P, H, O_1D, CO2, 
+   velocity_east, velocity_north, velocity_up
+   QTY_[UV]_WIND_COMPONENT,       QTY_VERTICAL_VELOCITY
+
+Ions
+   O+, O2+, N2+, NO+, N+, He+, O+_2D, O+_2P, ...?
+   with the same temperature and velocity components as O+
+
