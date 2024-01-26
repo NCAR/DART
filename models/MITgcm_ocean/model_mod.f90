@@ -256,12 +256,16 @@ integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf f
 ! standard MITgcm namelist and filled in here.
 
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
-integer :: comp3d=-1 ! size of commpressed variables
+integer :: comp2d = -1, comp3d=-1, comp3dU = -1, comp3dV = -1 ! size of commpressed variables
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 real(r4), allocatable :: XC_sq(:), YC_sq(:), XG_sq(:), YG_sq(:)
 real(r8), allocatable :: ZC_sq(:)
+
+integer, allocatable :: Xc_Ti(:), Yc_Ti(:), Zc_Ti(:)
+integer, allocatable :: Xc_Ui(:), Yc_Ui(:), Zc_Ui(:)
+integer, allocatable :: Xc_Vi(:), Yc_Vi(:), Zc_Vi(:) 
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -295,7 +299,7 @@ namelist /model_nml/ assimilation_period_days,     &
 logical :: go_to_dart    = .false.
 logical :: do_bgc        = .false.
 logical :: log_transform = .false.
-logical :: compress = .false.
+logical :: compress      = .false.
 
 namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform, compress
 
@@ -535,8 +539,11 @@ domain_id = add_domain(model_shape_file, nvars, &
 
 if (compress) then ! read in compressed coordinates
 
-   ncid = nc_open_file_readonly(model_shape_file)
-   comp3d = nc_get_dimension_size(ncid, 'comp3d', 'static_init_model', model_shape_file)
+   ncid    = nc_open_file_readonly(model_shape_file)
+   comp2d  = nc_get_dimension_size(ncid, 'comp2d' , 'static_init_model', model_shape_file)
+   comp3d  = nc_get_dimension_size(ncid, 'comp3d' , 'static_init_model', model_shape_file)
+   comp3dU = nc_get_dimension_size(ncid, 'comp3dU', 'static_init_model', model_shape_file)
+   comp3dV = nc_get_dimension_size(ncid, 'comp3dV', 'static_init_model', model_shape_file)
 
    allocate(XC_sq(comp3d))
    allocate(YC_sq(comp3d))
@@ -545,12 +552,36 @@ if (compress) then ! read in compressed coordinates
    allocate(XG_sq(comp3d))
    allocate(YG_sq(comp3d))
 
+   allocate(Xc_Ti(comp3d))
+   allocate(Yc_Ti(comp3d))
+   allocate(Zc_Ti(comp3d))
+
+   allocate(Xc_Ui(comp3dU))
+   allocate(Yc_Ui(comp3dU))
+   allocate(Zc_Ui(comp3dU))
+
+   allocate(Xc_Vi(comp3dV))
+   allocate(Yc_Vi(comp3dV))
+   allocate(Zc_Vi(comp3dV))
+
    call nc_get_variable(ncid, 'XCcomp', XC_sq)
    call nc_get_variable(ncid, 'YCcomp', YC_sq)
    call nc_get_variable(ncid, 'ZCcomp', ZC_sq)
 
    call nc_get_variable(ncid, 'XGcomp', XG_sq)
    call nc_get_variable(ncid, 'YGcomp', YG_sq)
+
+   call nc_get_variable(ncid, 'Xcomp_ind', Xc_Ti)
+   call nc_get_variable(ncid, 'Ycomp_ind', Yc_Ti)
+   call nc_get_variable(ncid, 'Zcomp_ind', Zc_Ti)
+
+   call nc_get_variable(ncid, 'Xcomp_indU', Xc_Ui)
+   call nc_get_variable(ncid, 'Ycomp_indU', Yc_Ui)
+   call nc_get_variable(ncid, 'Zcomp_indU', Zc_Ui)
+
+   call nc_get_variable(ncid, 'Xcomp_indV', Xc_Vi)
+   call nc_get_variable(ncid, 'Ycomp_indV', Yc_Vi)
+   call nc_get_variable(ncid, 'Zcomp_indV', Zc_Vi)
 
    call nc_close_file(ncid)
 
@@ -991,70 +1022,49 @@ integer, intent(in) :: iloc, jloc, kloc
 integer, intent(in) :: dom_id, var_id
 integer(i8)         :: get_compressed_dart_vector_index
 
-real(r4)            :: lon, lat
-real(r8)            :: depth
-integer             :: i    ! loop counter
-logical             :: lon_found, lat_found, depth_found
-integer             :: qty
-
+integer     :: i    ! loop counter
+integer     :: qty
 integer(i8) :: offset
-logical :: is_2d
 
 offset = get_index_start(dom_id, var_id)
 
-lon = XC(iloc)   !lon
-lat = YC(jloc)   !lat
-depth = ZC(kloc) !depth
-
 qty = get_kind_index(dom_id, var_id)
-if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
-if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)
-
-is_2d = .false.
-
-if (qty == QTY_SEA_SURFACE_HEIGHT .or. qty == QTY_SURFACE_CHLOROPHYLL ) then
-   depth = ZC(1)
-   is_2d = .true.
-endif
 
 get_compressed_dart_vector_index = -1
 
-! Find the index in the compressed state
-! HK you could read in {X,Y,Z}comp_ind if you did not want to do this search
-do i=1, comp3d
-   lon_found = .false.
-   lat_found = .false.
-   depth_found = .false.
+! MEG: Using the already established compressed indices
+!
+! 2D compressed variables
+if (qty == QTY_SEA_SURFACE_HEIGHT .or. qty == QTY_SURFACE_CHLOROPHYLL ) then
+   do i = 1, comp2d
+      if (Xc_Ti(i) == iloc .and. Yc_Ti(i) == jloc .and. Zc_Ti(i) == 1) then
+         get_compressed_dart_vector_index = offset + i - 1
+      endif
+   enddo
+   return
+endif
 
-   if (qty == QTY_U_CURRENT_COMPONENT) then
-      if ( XG_sq(i) == lon ) then
-         lon_found = .true.
-      endif
-   else
-      if ( XC_sq(i) == lon ) then
-         lon_found = .true.
-      endif
-   endif
+! 3D compressed variables
+if (qty == QTY_U_CURRENT_COMPONENT) then 
+   do i = 1, comp3dU
+      if (Xc_Ui(i) == iloc .and. Yc_Ui(i) == jloc .and. Zc_Ui(i) == kloc) then 
+         get_compressed_dart_vector_index = offset + i - 1
+      endif  
+   enddo
+elseif (qty == QTY_V_CURRENT_COMPONENT) then
+   do i = 1, comp3dV
+      if (Xc_Vi(i) == iloc .and. Yc_Vi(i) == jloc .and. Zc_Vi(i) == kloc) then 
+         get_compressed_dart_vector_index = offset + i - 1
+      endif  
+   enddo
+else
+   do i = 1, comp3d
+      if (Xc_Ti(i) == iloc .and. Yc_Ti(i) == jloc .and. Zc_Ti(i) == kloc) then 
+         get_compressed_dart_vector_index = offset + i - 1
+      endif  
+   enddo
+endif
 
-   if (qty == QTY_V_CURRENT_COMPONENT) then
-      if (YG_sq(i) == lat) then
-         lat_found = .true.
-      endif
-   else
-      if ( YC_sq(i) == lat ) then
-         lat_found = .true.
-      endif
-   endif
-
-   if ( ZC_sq(i) == depth ) then
-      depth_found = .true.
-   endif
- 
-   if (lon_found .and. lat_found .and. depth_found )then
-      get_compressed_dart_vector_index = offset + i - 1
-      return
-   endif
-enddo
 
 end function get_compressed_dart_vector_index
 
