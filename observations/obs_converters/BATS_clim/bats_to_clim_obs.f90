@@ -5,9 +5,10 @@
 ! $Id$
 
 ! This file is meant to read a text file containing bottle data from the
-! Bermuda Atlantic Time-Series Study (https://bats.bios.asu.edu/).
+! Bermuda Atlantic Time-Series Study (https://bats.bios.asu.edu/), which
+! is converted to climatological estimates with monthly resolution.
 
-program bats_to_obs
+program bats_to_clim_obs
 
 use         types_mod, only : r8, PI, DEG2RAD
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
@@ -42,51 +43,43 @@ real(r8), parameter :: MIN_OBS_ERROR = 0.1_r8
 
 ! namelist variables, changeable at runtime
 character(len=256) :: text_input_file, obs_out_dir
-integer :: max_lines, read_starting_at_line, date_firstcol, hourminute_firstcol
-integer :: lat_cols(2), lon_cols(2), vert_cols(2)
-integer :: scalar_obs_cols(2, NUM_SCALAR_OBS)
-real(r8) :: obs_uncertainties(NUM_SCALAR_OBS)
+integer :: max_lines
 logical :: debug
 
-namelist /bats_to_obs_nml/ text_input_file, max_lines, read_starting_at_line, date_firstcol, &
-                           hourminute_firstcol, lat_cols, lon_cols, vert_cols, scalar_obs_cols, &
-                           obs_uncertainties, obs_out_dir, debug
+namelist /bats_to_clim_obs_nml/ text_input_file, max_lines, obs_out_dir, debug
 
 ! local variables
 character (len=294) :: input_line, obs_out_file
-character (len=6)   :: daystr
+character (len=6)   :: month_str
 
-integer :: oday, day_bin, day_bin_old, osec, rcio, iunit, otype, line_number, otype_index
-integer :: year, month, day, hour, minute, second, hourminute_raw, date_raw
-integer :: num_copies, num_qc, max_obs
-integer :: num_processed(NUM_SCALAR_OBS)
+integer :: oday, osec, rcio, iunit, otype, char_index, comma_index, line_number, otype_index, &
+           year, month, month_old, day, hour, minute, second, num_copies, num_qc, max_obs
+integer :: comma_locs(4)
 
-logical  :: file_exist, first_obs, new_obs_seq
+logical  :: first_obs, new_obs_seq
 
-real(r8) :: temp, terr, qc, wdir, wspeed, werr, obs_err
-real(r8) :: lat, lon, vert, uwnd, uerr, vwnd, verr, ovalue
-real(r8) :: running_sum(NUM_SCALAR_OBS), running_sqsum(NUM_SCALAR_OBS), &
-            maxvals(NUM_SCALAR_OBS), minvals(NUM_SCALAR_OBS)
+real(r8) :: qc, obs_err
+real(r8) :: lat, lon, vert, ovalue
 
 ! the uncertainties corresponding to the observations above
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: ref_day0, time_obs, prev_time
+type(time_type)         :: time_obs, prev_time
 
 
 ! start of executable code
 
-call initialize_utilities('bats_to_obs')
+call initialize_utilities('bats_to_clim_obs')
 
 ! Read the namelist entries
-call find_namelist_in_file("input.nml", "bats_to_obs_nml", iunit)
-read(iunit, nml = bats_to_obs_nml, iostat = rcio)
-call check_namelist_read(iunit, rcio, "bats_to_obs_nml")
+call find_namelist_in_file("input.nml", "bats_to_clim_obs_nml", iunit)
+read(iunit, nml = bats_to_clim_obs_nml, iostat = rcio)
+call check_namelist_read(iunit, rcio, "bats_to_clim_obs_nml")
 
 ! Record the namelist values used for the run 
-if (do_nml_file()) write(nmlfileunit, nml=bats_to_obs_nml)
-if (do_nml_term()) write(     *     , nml=bats_to_obs_nml)
+if (do_nml_file()) write(nmlfileunit, nml=bats_to_clim_obs_nml)
+if (do_nml_term()) write(     *     , nml=bats_to_clim_obs_nml)
 
 ! time setup
 call set_calendar_type(GREGORIAN)
@@ -110,180 +103,128 @@ first_obs = .true.
 qc = 0.0_r8
 
 ! used later to manage splitting of data into obs-sequence files
-day_bin_old = 0
+month_old = 0
 
 line_number = 0 ! counts the number of lines that have been read so far
-
-do otype_index = 1, NUM_SCALAR_OBS
-   running_sum(otype_index)   = 0.0_r8      ! these arrays will be used to compute means,
-   running_sqsum(otype_index) = 0.0_r8      ! variances, mins, and max's of observation values.
-   num_processed(otype_index) = 0
-   maxvals(otype_index)       = 0.0_r8
-   minvals(otype_index)       = 100000.0_r8
-end do
 
 obsloop: do    ! no end limit - have the loop break when input ends
    ! read in entire text line into a buffer
    read(iunit, "(A)", iostat=rcio) input_line
    line_number = line_number + 1
 
-   if(line_number < read_starting_at_line) then
-      cycle obsloop
-   end if
-
    if (rcio /= 0) then 
       if (debug) print *, 'got bad read code from input file at line ',line_number,', rcio = ', rcio
       exit obsloop
    endif
 
-   ! extracting the date when the observation was taken
+   ! finding the locations of commas within the string
 
-   read(input_line(date_firstcol:(date_firstcol + 7)), *, iostat=rcio) date_raw
-   if(rcio /= 0) then
-      if(debug) print *, "got bad read code getting date at line ",line_number,", rcio = ",rcio
-      exit obsloop
+   comma_index = 0
+   char_index  = 0
 
-   else if(date_raw == -999) then
-      cycle obsloop ! missing date
+   do while(comma_index < 4)
+      char_index = char_index + 1
 
-   end if
+      if(input_line(char_index:char_index) ==  ',') then
+         comma_index = comma_index + 1
+         comma_locs(comma_index) = char_index
+      end if
+   end do
 
-   read(input_line(date_firstcol:(date_firstcol + 3)), *, iostat=rcio) year
-   if(rcio /= 0) then
-      if(debug) print *, "got bad read code getting year at line ",line_number,", rcio = ",rcio
-      exit obsloop
-   end if
+   ! reading the month value of this line
 
-   read(input_line((date_firstcol + 4):(date_firstcol + 5)), *, iostat=rcio) month
+   read(input_line(1:(comma_locs(1) - 1)), *, iostat=rcio) month
    if(rcio /= 0) then
       if(debug) print *, "got bad read code getting month at line ",line_number,", rcio = ",rcio
       exit obsloop
    end if
 
-   read(input_line((date_firstcol + 6):(date_firstcol + 7)), *, iostat=rcio) day
+   ! reading the observation type
+
+   read(input_line((comma_locs(1) + 1):(comma_locs(2) - 1)), *, iostat=rcio) otype_index
    if(rcio /= 0) then
-      if(debug) print *, "got bad read code getting day at line ",line_number,", rcio = ",rcio
+      if(debug) print *, "got bad read code getting obs type at line ",line_number,", rcio = ",rcio
       exit obsloop
    end if
 
-   if((month == 02) .and. (day == 29)) then  ! we do not assimilate data taken on leap days
-      cycle obsloop
-   end if
+   ! reading the observation depth
 
-   ! extracting the time of day when the observation was taken
-
-   read(input_line(hourminute_firstcol:(hourminute_firstcol + 3)), *, iostat=rcio) hourminute_raw
-   if(rcio /= 0) then
-      if(debug) print *, "got bad read code parsing raw hour-minute at line ",line_number,", rcio = ",rcio
-      exit obsloop
-
-   else if(hourminute_raw == -999) then
-      cycle obsloop  ! missing timestamp
-
-   else if(hourminute_raw < 60) then
-      hour = 0
-
-   else
-      read(input_line(hourminute_firstcol:(hourminute_firstcol + 1)), *, iostat=rcio) hour
-
-      if(rcio /= 0) then
-         if(debug) print *, "got bad read code getting hour at line ",line_number,", rcio = ",rcio
-         exit obsloop
-
-      end if
-   end if
-
-   read(input_line((hourminute_firstcol + 2):(hourminute_firstcol + 3)), *, iostat=rcio) minute
-   if(rcio /= 0) then
-      if(debug) print *, "got bad read code getting minute at line ",line_number,", rcio = ",rcio
-      exit obsloop
-   end if
-
-   ! extracting the observation location
-
-   read(input_line(vert_cols(1):vert_cols(2)), *, iostat=rcio) vert
+   read(input_line((comma_locs(2) + 1):(comma_locs(3) - 1)), *, iostat=rcio) vert
    if(rcio /= 0) then
       if(debug) print *, "got bad read code getting vert at line ",line_number,", rcio = ",rcio
       exit obsloop
-
-   else if(abs(vert + 999.0) < 1.0d-8) then
-      cycle obsloop  ! missing vertical coordinate
-
-   else
-      vert = -vert   ! MOM6 depth coordinate becomes negative as you increase depth
    end if
 
-   ! extracting the observation values
+   ! reading the observtaion value
 
-   otype_loop : do otype_index = 1, NUM_SCALAR_OBS
-      read(input_line(scalar_obs_cols(1, otype_index):scalar_obs_cols(2, otype_index)), *, iostat=rcio) ovalue
-      
-      if(rcio /= 0) then
-         if(debug) print *, "got bad read code getting observation type ",otype_index," at line ",line_number,", rcio = ",rcio
-         exit obsloop
+   read(input_line((comma_locs(3) + 1):(comma_locs(4) - 1)), *, iostat=rcio) ovalue
+   if(rcio /= 0) then
+      if(debug) print *, "got bad read code getting observation value at line ",line_number,", rcio = ",rcio
+      exit obsloop
+   end if
 
-      else if(abs(ovalue + 999.0) < 1.0d-8) then
-         cycle otype_loop ! missing observation
+   ! reading the observtaion uncertainty
 
-      end if
+   read(input_line((comma_locs(4) + 1):len(input_line)), *, iostat=rcio) obs_err
+   if(rcio /= 0) then
+      if(debug) print *, "got bad read code getting observation uncertainty at line ",line_number,", rcio = ",rcio
+      exit obsloop
+   end if
 
-      ! unit corrections from BATS to MARBL
-      if((OTYPE_ORDERING(otype_index) == BATS_ALKALINITY) .or. (OTYPE_ORDERING(otype_index) == BATS_INORGANIC_CARBON)) then
-         ovalue = ovalue*1.026
-      end if
+   ! unit corrections from BATS to MARBL
 
-      time_obs = set_date(year, month, day, hours=hour, minutes=minute)
-      call get_time(time_obs, osec, days=oday)
+   if((OTYPE_ORDERING(otype_index) == BATS_ALKALINITY) .or. (OTYPE_ORDERING(otype_index) == BATS_INORGANIC_CARBON)) then
+      ovalue  = ovalue*1.026
+      obs_err = obs_err*1.026**2    ! check with Helen to make sure that obs_err is a variance and not a standard deviation
+   end if
 
-      if(debug) then
-         call print_date(time_obs, "adding observation taken on")
-         print *, " \__ observation type:  ",OTYPE_ORDERING(otype_index)
-         print *, "     vert:              ",vert
-         print *, "     observation value: ",ovalue
-      end if
+   if(debug) then
+      print *, "adding climatological mean for month ",month
+      print *, " \__ type:        ",OTYPE_ORDERING(otype_index)
+      print *, "     vert:        ",vert
+      print *, "     value:       ",ovalue
+      print *, "     uncertainty: ",obs_err
+   end if
 
-      num_processed(otype_index) = num_processed(otype_index) + 1
-      running_sum(otype_index)   = running_sum(otype_index) + ovalue
-      running_sqsum(otype_index) = running_sqsum(otype_index) + ovalue**2
-      maxvals(otype_index)       = max(maxvals(otype_index), ovalue)
-      minvals(otype_index)       = min(minvals(otype_index), ovalue)
+   ! For ensemble smoothing, each observation is considered to be a measurement
+   ! of the same climatological "year", which is arbitrarily labeled as year 1601
+   ! (the first year in DART's internal calendar). Observations are given identical
+   ! day/hour/minute timestamps to avoid time-ordering errors in the obs-seq file.
 
-      ! determining which obs-sequence file to put this observation into
-      day_bin = oday
-      if(osec > 43200) day_bin = day_bin + 1
-      new_obs_seq = (first_obs .or. (day_bin /= day_bin_old))
-      day_bin_old = day_bin
+   time_obs = set_date(1601, month, 1, hours=0, minutes=0)
+   call get_time(time_obs, osec, days=oday)
 
-      ! if necessary, saving the old observation sequence and beginning a new one.
-      if(new_obs_seq) then
-         ! dumping the observations so far into their own file
-         if ( (.not. first_obs) .and. (get_num_obs(obs_seq) > 0) ) then
-            if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
-            call write_obs_seq(obs_seq, obs_out_file)
-            call destroy_obs_sequence(obs_seq)
-            first_obs = .true.
-         endif
+   new_obs_seq = (first_obs .or. (month /= month_old))
+   month_old   = month
 
-         write(daystr, "(I6)") day_bin
-         obs_out_file = trim(obs_out_dir)//"/BATS_"//daystr//".out"
+   ! if necessary, saving the old observation sequence and beginning a new one.
+   if(new_obs_seq) then
+      ! dumping the observations so far into their own file
+      if ( (.not. first_obs) .and. (get_num_obs(obs_seq) > 0) ) then
+         if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+         call write_obs_seq(obs_seq, obs_out_file)
+         call destroy_obs_sequence(obs_seq)
+         first_obs = .true.
+      endif
 
-         ! create a new, empty obs_seq file.
-         call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
+      write(month_str, "(I0.2)") month
+      obs_out_file = trim(obs_out_dir)//"/BATS_clim_"//trim(month_str)//".out"
 
-         ! the first one needs to contain the string 'observation' and the
-         ! second needs the string 'QC'.
-         call set_copy_meta_data(obs_seq, 1, 'observation')
-         call set_qc_meta_data(obs_seq, 1, 'Data QC')
-      end if
+      ! create a new, empty obs_seq file.
+      call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
 
-      obs_err = max(obs_uncertainties(otype_index)*ovalue, MIN_OBS_ERROR)
+      ! the first one needs to contain the string 'observation' and the
+      ! second needs the string 'QC'.
+      call set_copy_meta_data(obs_seq, 1, 'observation')
+      call set_qc_meta_data(obs_seq, 1, 'Data QC')
+   end if
 
-      call create_3d_obs(31.0_r8, 64.0_r8, vert, VERTISHEIGHT, &
+   ! adding the observation
+   call create_3d_obs(31.0_r8, 64.0_r8, vert, VERTISHEIGHT, &
                          ovalue, OTYPE_ORDERING(otype_index), obs_err, &
                          oday, osec, qc, obs)
 
-      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-   end do otype_loop
+   call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 end do obsloop
 
 ! putting any remaining observations into an obs sequence file
@@ -293,21 +234,6 @@ if ( (.not. first_obs) .and. (get_num_obs(obs_seq) > 0) ) then
    call write_obs_seq(obs_seq, obs_out_file)
    call destroy_obs_sequence(obs_seq)
 endif
-
-print *, ""
-print *, "SUMMARY:"
-print *, ""
-
-do otype_index = 1, NUM_SCALAR_OBS
-   print *, "observation type: ",OTYPE_ORDERING(otype_index)
-   print *, "\__ total observations: ",num_processed(otype_index)
-   print *, "    mean:               ",running_sum(otype_index)/num_processed(otype_index)
-   print *, "    variance:           ",running_sqsum(otype_index)/num_processed(otype_index) &
-                                           - (running_sum(otype_index)/num_processed(otype_index))**2
-   print *, "    maximum value:      ",maxvals(otype_index)
-   print *, "    minimum value:      ",minvals(otype_index)
-   print *, ""
-end do
 
 ! end of main program
 call finalize_utilities()
@@ -424,7 +350,7 @@ prev_time = obs_time
 
 end subroutine add_obs_to_seq
 
-end program bats_to_obs
+end program bats_to_clim_obs
 
 ! <next few lines under version control, do not edit>
 ! $URL$

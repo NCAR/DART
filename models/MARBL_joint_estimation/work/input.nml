@@ -90,7 +90,7 @@
    post_inf_mean     = 1.00,
    post_inf_sd       = 0.6,
 
-   input_state_files = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/INPUT/marbl_params.nc',
+   input_state_files = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/marbl_params.nc',
    single_file       = .false.,
    verbose           = .false.
    /
@@ -128,19 +128,18 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = ''
-   evaluate_these_obs_types   = 'BATS_OXYGEN',
+   assimilate_these_obs_types = 'BATS_OXYGEN',
                                 'BATS_ALKALINITY',
                                 'BATS_INORGANIC_CARBON',
 				                    'BATS_SILICATE',
 				                    'BATS_PHOSPHATE',
-                                'BATS_NITRATE',
-                                'BATS_ORGANIC_CARBON',
+                                'BATS_NITRATE'
+   evaluate_these_obs_types   = 'BATS_ORGANIC_CARBON',
                                 'BATS_NITROGEN'
    /
 
 &model_nml
-   template_file         = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/INPUT/marbl_params.nc'
+   template_file         = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/marbl_params.nc',
    time_step_days        = 1,
    time_step_seconds     = 0,
    model_state_variables = 'NO3      ', 'QTY_NITRATE_CONCENTRATION     ', '0.0', 'NA', 'UPDATE      ',
@@ -157,8 +156,7 @@
                            'mesozooC ', 'QTY_MESOZOOPLANKTON_CARBON    ', '0.0', 'NA', 'UPDATE      ',
                            'h        ', 'QTY_LAYER_THICKNESS           ', '0.0', 'NA', 'NO_COPY_BACK'
    estimate_params       = .true.
-   model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_PARAM_AUTOTROPH1_KDOP ', '0.0', 'NA', 'UPDATE',
-                           'autotroph_settings(1)%kNH4 ', 'QTY_PARAM_AUTOTROPH1_KNH4 ', '0.0', 'NA', 'UPDATE'
+   model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_PARAM_AUTOTROPH1_KDOP ', '0.0', 'NA', 'UPDATE'
    /
 
 &utilities_nml
@@ -221,13 +219,13 @@
    /
 
 &model_mod_check_nml
-   input_state_files    = '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/RESTART/MOM.res.nc', '/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/member_0001/INPUT/marbl_params.nc'
-   output_state_files   = 'output.nc'
+   input_state_files    = '../ensemble/baseline/RESTART/MOM.res.nc'
+   output_state_files   = 'testing/model_mod_check_output/output.nc'
    test1thru            = 0,
    run_tests            = 1,2,3,4,5,6,7
    x_ind                = 261
    loc_of_interest      = 1.11, 0.54, -500.0
-   quantity_of_interest = 'QTY_DISSOLVED_ORGANIC_NITROGEN'
+   quantity_of_interest = 'BATS_NITROGEN'
    interp_test_dx       = 0.02
    interp_test_xrange   = 0.0, 1.0
    verbose              = .true.

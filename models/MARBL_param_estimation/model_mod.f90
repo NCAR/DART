@@ -76,7 +76,6 @@ public :: get_model_size,         &
 
 
 character(len=256), parameter :: source = "model_mod.f90"
-character(len=256), parameter :: ocean_geometry = "/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_param_estimation/ensemble/baseline/ocean_geometry.nc"
 logical :: module_initialized = .false.
 integer :: state_dom_id  ! used to access the state structure
 integer :: param_dom_id  ! used to access MARBL internal parameters
@@ -86,7 +85,7 @@ integer :: model_size
 type(time_type) :: assimilation_time_step
 real(r8), parameter :: geolon = 360 - 64.0
 real(r8), parameter :: geolat = 31.0
-logical,  parameter :: debug_interpolation = .false.
+logical,  parameter :: verbose_interpolation = .false.    ! set this to .true. if you need to debug model_interpolate
 
 ! parameters to be used in specifying the DART internal state
 integer, parameter :: modelvar_table_height = 13
@@ -247,7 +246,7 @@ if ( .not. module_initialized ) call static_init_model
 
 ! extracting the the depths at which climatological averages are available
 
-if (debug_interpolation) then
+if (verbose_interpolation) then
     print *, "==================================================================="
     print *, "model_interpolate"
     print *, "==================================================================="
@@ -265,7 +264,7 @@ do layer_index = 1, nz
     ! gridpoint depths are identical across ensemble members, so we only need to query the first member.
     depths(layer_index) = state_qty_tmp(1)
 
-    if (debug_interpolation) then
+    if (verbose_interpolation) then
         print *, "    layer: ",layer_index,", depth: ",depths(layer_index)
     end if
 end do
@@ -292,7 +291,7 @@ if (depths(layer_below) <= requested_depth) then
     layer_above = layer_below
 end if
 
-if (debug_interpolation) then
+if (verbose_interpolation) then
     print *, ""
     print *, "interpolating to depth:    ",requested_depth
     print *, "nearest layer index above: ",layer_above
@@ -327,7 +326,7 @@ do ens_index = 1, ens_size
         expected_obs(ens_index) = vals_below(ens_index)
     end if
 
-    if (debug_interpolation) then
+    if (verbose_interpolation) then
         print *, "    member: ",ens_index,", value above: ",vals_above(ens_index),", &
                  value below: ",vals_below(ens_index),", interpolation: ",expected_obs(ens_index)
     end if
