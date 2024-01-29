@@ -14,10 +14,12 @@ with the concepts of CLM5-DART in order to design an assimilation for their own
 research interests.
 
 This tutorial was assembled to be compatible with CLM5.0.34 as part
-of CESM (release-cesm2.2.01) and the latest release on the ``main`` branch of the
+of CESM (release-cesm2.2.01) or CTSM (release-cesm2.2.03) and the latest release on the ``main`` branch of the
 the `DART repository. <https://github.com/NCAR/DART.git>`__
 Other combinations of CLM and DART (prior to DART version 9.13.0) may not be compatible
-with this tutorial.
+with this tutorial. Currently, only the CTSM (release-cesm2.2.03) is fully compatible with Derecho.
+If you are using other tags you may need to modify the external scripting to be compatible
+with Derecho.
 
 
 It is not recommended to use this tutorial without prior experience
@@ -115,7 +117,7 @@ custom initial conditions and observation sequence files for your own work.
 .. Important ::
 
   We have provided tutorial instructions for the NSF NCAR
-  supercomputer Cheyenne, however, if using your own machine you will need to 
+  supercomputer Derecho, however, if using your own machine you will need to 
   customize the setup scripts in order to properly compile DART (see Step 4:
   Compiling DART). These system-specific setup steps may take a good deal of 
   effort, especially if you are unfamiliar with details such as compilers, MPI,
@@ -126,7 +128,7 @@ custom initial conditions and observation sequence files for your own work.
 
   Other required files to run the tutorial include the meteorology (Step 5), 
   reference case (Step 6), and observation files (Step 7).  These are all readily available
-  if you are using Cheyenne.  If you are using your own machine you need 
+  if you are using Derecho.  If you are using your own machine you need 
   use the following links to download these files directly:
                       
   1. `CAM6 Reanalysis Meteorology <https://rda.ucar.edu/datasets/ds345.0/>`__,
@@ -148,17 +150,18 @@ consisting of both NSF NCAR and university scientists and researchers.
 In contrast, DART is maintained by a relatively small group that supports
 numerous earth system models (20+) including CLM. Therefore the DART team
 focuses on only supporting official released versions of CLM.  This documentation
-and scripting was tested using the CESM tag ``release-cesm2.2.0`` following
+and scripting was tested using the CESM tag ``release-cesm2.2.0`` and
+``release-cesm2.2.03`` following
 the download instructions `here <https://github.com/ESCOMP/CESM>`__.
 
 Although the DART code may work with more recent versions of CESM (CLM) we recommend
-checking out ``release-cesm2.2.0``.
+checking out ``release-cesm2.2.03`` which is compatible with both DART and Derecho
 
   ::
 
-    git clone https://github.com/escomp/cesm.git cesm_dart
+    git clone https://github.com/ESCOMP/CTSM.git cesm_dart
     cd cesm_dart
-    git checkout release-cesm2.2.0
+    git checkout release-cesm2.2.03
     ./manage_externals/checkout_externals
 
 
@@ -171,14 +174,8 @@ balance checks in CLM5 for the time step immediately after the assimilation
 update step.  These sourcecode modifications are brought in 
 through the SourceMod mechanism in CLM where modifications overwrite
 the template sourcecode during the compilation step. The SourceMods
-are located as tar files `here. <http://www.image.ucar.edu/pub/DART/CESM>`__
-For this tutorial retrieve the most recent tar file ``DART_SourceMods_cesm2_2_0_2021_07_02.tar``
-and untar it on your local machine as:  
+are included within the DART package which is downloaded in Step 2.
 
-::
- 
-  wget https://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm2_2_0_2021_07_02.tar
-  tar -xvf DART_SourceMods_cesm2_2_0_2021_07_02.tar
 
 For more information on the 
 SourceMods see the main :doc:`CLM-DART documentation. <../readme>`
@@ -186,7 +183,7 @@ SourceMods see the main :doc:`CLM-DART documentation. <../readme>`
 Compiling CLM5
 --------------
 
-Compiling CLM5 on the NSF NCAR machine Cheyenne is straightforward because the 
+Compiling CLM5 on the NSF NCAR machine Derecho is straightforward because the 
 run and build environment settings are already defined within the ``config_machines.xml``
 file located within the CESM installation: ``<cesmroot>/cime/config/cesm/machines``. If
 you are using your own machine please follow the porting instructions located 
@@ -206,8 +203,6 @@ DART repository on the `main branch <https://github.com/NCAR/DART>`__.
   cd /glade/work/$USER/
   git clone https://github.com/NCAR/DART.git
   cd DART
-
-
 
 
 Step 3: Navigating DART Scripts
@@ -270,20 +265,20 @@ Step 4: Compiling DART
 Similar to CLM, it is necessary to compile the DART code before an assimilation
 can be performed.  The DART code includes a variety of build template scripts that provide
 the appropriate compiler and library settings depending upon your system environment.
-This is an example of the default system environment for Cheyenne (e.g. ``module list``), 
+This is an example of the system environment for Derecho (e.g. ``module list``), 
 which was used to perform this tutorial:
 
 ::
 
  Currently Loaded Modules:
-   1) ncarenv/1.3   2) intel/19.0.5   3) ncarcompilers/0.5.0   4) mpt/2.22   5) netcdf/4.7.4 
+   1) ncarenv/23.06 (S)   2) intel/19.0.5   3) ncarcompilers/1.0.0   4) hdf5/1.12.2   5) netcdf/4.9.2 
 
 
 Please note in this example we used the ``intel`` fortran compiler with ``netcdf`` libraries
 to support the netcdf file format and the ``mpt`` libraries to support the ``mpi`` tasks.  
       
 Below are instructions on how to modify the DART template script ``mkmf_template``
-to properly compile DART on Cheyenne:
+to properly compile DART on Derecho:
 
 
 ::
@@ -379,9 +374,9 @@ and 2011-2020 `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__.
 For this tutorial we will use the January 2011 CAM6 reanalysis (ds345.0) only.  
 To make sure the scripts can locate the weather data first make sure
 the ``DART_params.csh``  variable ``dartroot`` is set to the path of your
-DART installation. For example, if you have a Cheyenne account and you
+DART installation. For example, if you have a Derecho account and you
 followed the DART cloning instructions in Step 2 above your ``dartroot``
-variable will be: ``/<your Cheyenne work directory>/DART``. Make sure you update
+variable will be: ``/<your Derecho work directory>/DART``. Make sure you update
 the default ``dartroot`` as shown below. 
 
  ::
@@ -427,7 +422,7 @@ and ``State3hr``.
             doma_mask     mask
          </variableNames>
          <filePath>
-            /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+            /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/NINST
          </filePath>
          <fileNames>
             f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.RUNYEAR.nc
@@ -445,7 +440,7 @@ and ``State3hr``.
             a2x3h_Faxa_lwdn      lwdn
          </variableNames>
          <filePath>
-              /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+              /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/NINST
          </filePath>
          <offset>
             1800
@@ -539,7 +534,7 @@ ensemble spinup (at time 1-1-2011) are used as the initial conditions for the as
  setenv reftod       00000
  ...
  ...
- setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
+ setenv stagedir /glade/campaign/cisl/dares/glade-p-dares-Oct2023/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
  ...
  ...
  setenv start_year    2011
@@ -576,11 +571,11 @@ assimilation through an observation sequence file whose format is described
 
 First confirm that the ``baseobsdir`` variable within ``DART_params.csh``
 is pointed to the directory where the observation sequence files are 
-located. In Cheyenne they are located in the directory as:
+located. In Derecho they are located in the directory as:
 
 ::
  
- setenv baseobsdir             /glade/p/cisl/dares/Observations/land
+ setenv baseobsdir             /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land
 
 In this tutorial we have several observation types that are to be
 assimilated, including ``SOIL_TEMPERATURE``, ``MODIS_SNOWCOVER_FRAC``,
@@ -1201,21 +1196,21 @@ environment, especially ``cesmroot``, ``caseroot``, ``cime_output_root``,
 
 ::
 
- setenv cesmdata         /glade/p/cesmdata/cseg/inputdata
+ setenv cesmdata         /glade/campaign/cesmdata/cseg/inputdata
  setenv cesmroot         /glade/work/${USER}/CESM/${cesmtag}
  setenv caseroot         /glade/work/${USER}/cases/${cesmtag}/${CASE}
- setenv cime_output_root /glade/scratch/${USER}/${cesmtag}/${CASE}
+ setenv cime_output_root /glade/derecho/scratch/${USER}/${cesmtag}/${CASE}
  setenv rundir           ${cime_output_root}/run
  setenv exeroot          ${cime_output_root}/bld
  setenv archdir          ${cime_output_root}/archive
  ..
  ..
- setenv dartroot         /glade/work/${USER}/git/DART_public
- setenv baseobsdir       /glade/p/cisl/dares/Observations/land
+ setenv dartroot         /glade/work/${USER}/DART
+ setenv baseobsdir       /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land
  ..
  ..
  setenv project      <insert project number>
- setenv machine      cheyenne
+ setenv machine      derecho
 
 
 
@@ -1235,9 +1230,6 @@ It takes approximately 7-10 minutes for the script to create the assimilation ca
 which includes compiling the CESM executable.  The script is submitted to 
 a login node where it performs low-intensive tasks including the execution of
 ``case_setup``, and ``preview_namelist`` and stages the appropriate files in the ``rundir``.
-However, compiling CESM is more resource intensive, thus the ``case_build`` command is
-automatically submitted using ``qcmd`` which starts a non-interactive job on a single
-batch node in the Cheyenne "regular" queue for a default time of 1 hour.   
 
 .. Caution::
 
@@ -1321,7 +1313,7 @@ the assimilation run:
  > cd <caseroot>
  > ./case.submit
 
-Check the status of the job on Cheyenne using PBS commands to determine if job
+Check the status of the job on Derecho using PBS commands to determine if job
 is queued (Q), running (R) or completed.
 
 ::
@@ -1365,7 +1357,7 @@ of the file with ``case.run success`` at the end:
 
  2022-01-14 14:21:11: case.submit starting 
  ---------------------------------------------------
- 2022-01-14 14:21:18: case.submit success case.run:2465146.chadmin1.ib0.cheyenne.ucar.edu
+ 2022-01-14 14:21:18: case.submit success case.run:2684631.desched1
  ---------------------------------------------------
  2022-01-14 14:21:28: case.run starting 
  ---------------------------------------------------
@@ -1388,16 +1380,16 @@ will look like this:
  2022-01-14 14:24:58: model execution starting 
  ---------------------------------------------------
  2022-01-14 14:25:08: model execution error 
- ERROR: Command: 'mpiexec_mpt -p "%g:"  -np 360  omplace -tm open64 
- /glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/bld/cesm.exe 
+ ERROR: Command: 'mpiexec -p "%g:" 
+ /glade/derecho/scratch/bmraczka/ctsm_cesm2.2.03/clm5_assim_e5/bld/cesm.exe 
  >> cesm.log.$LID 2>&1 ' failed with error '' from dir 
- '/glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/run'
+ '/glade/derecho/scratch/bmraczka/ctsm_cesm2.2.03/clm5_assim_e5/run'
  ---------------------------------------------------
  2022-01-14 14:25:08: case.run error 
- ERROR: RUN FAIL: Command 'mpiexec_mpt -p "%g:"  -np 360  omplace -tm open64
- /glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/bld/cesm.exe   >> 
+ ERROR: RUN FAIL: Command 'mpiexec -p "%g:" 
+ /glade/derecho/scratch/bmraczka/ctsm_cesm2.2.03/clm5_assim_e5/bld/cesm.exe   >> 
  cesm.log.$LID 2>&1 ' failed See log file for details: 
- /glade/scratch/bmraczka/cesm2.2.0/clm5_SWE0_MissingVal/run/cesm.log.2465146.chadmin1.ib0.cheyenne.ucar.edu.220114-142457
+ /glade/derecho/scratch/bmraczka/ctsm_cesm2.2.03/clm5_assim_e5/run/cesm.log.2684631.desched1.231222-142931
 
 If the case ran successfully proceed to the next step in the tutorial, **but if 
 the case did not run successfully** locate the log file details which describe
@@ -1647,7 +1639,7 @@ and the ``obsname`` variable are customizable.
 
 
 .. Tip::
- When remotley logged into  Cheyenne there is a time delay when the Matlab figures are rendering,
+ When remotely logged into Derecho there is a time delay when the Matlab figures are rendering,
  and also when interacting with the figures.  For the purposes of this tutorial this
  delay is minimal. However, to improve responsiveness for your own research you may find it
  convenient to port your diagnostic files (e.g. obs_diag_output.nc) and run the Matlab diagnostics

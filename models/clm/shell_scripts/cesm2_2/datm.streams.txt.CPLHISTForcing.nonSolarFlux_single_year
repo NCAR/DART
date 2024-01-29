@@ -4,7 +4,7 @@
          Two CAM-DART Ensemble Reanalysis efforts have been completed and provide
          DATM forcing files particularly appropriate for CESM experiments.
 
-         NCAR RDA ds199.1 | DOI: 10.5065/38ED-RZ08
+         NSF NCAR RDA ds199.1 | DOI: 10.5065/38ED-RZ08
          Spans 1998_01-2010_12 at 1.875x2.5 degrees resolution every 6 hours
          a2x6h_Faxa_rainc long_name = "Convective precipitation rate" ;
          a2x6h_Faxa_rainl long_name = "Large-scale (stable) precipitation rate" ;
@@ -12,7 +12,7 @@
          a2x6h_Faxa_snowl long_name = "Large-scale (stable) snow rate (water equivalent)" ;
          a2x6h_Faxa_lwdn  long_name = "Downward longwave heat flux" ;
 
-         NCAR RDA ds345.0 | DOI: 10.5065/JG1E-8525
+         NSF NCAR RDA ds345.0 | DOI: 10.5065/JG1E-8525
          Spans 2010_07-2019_12 at 0.9x1.25 degree resolution
          a2x3h_Faxa_rainc long_name = "Convective precipitation rate" ;
          a2x3h_Faxa_rainl long_name = "Large-scale (stable) precipitation rate" ;
@@ -20,8 +20,8 @@
          a2x3h_Faxa_snowl long_name = "Large-scale (stable) snow rate (water equivalent)" ;
          a2x3h_Faxa_lwdn  long_name = "Downward longwave heat flux" ;
 
-         The RDA collections are on spinning disk at NCAR:
-         /glade/collections/rda/data/ds345.0/cpl_unzipped/----/{CASENAME}.cpl_----.ha2x*.YYYY.nc
+         The NSF NCAR RDA collections are located:
+         /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/----/{CASENAME}.cpl_----.ha2x*.YYYY.nc
       </general_comment>
 <stream>
       <comment>
@@ -41,7 +41,7 @@
             doma_mask     mask
          </variableNames>
          <filePath>
-            /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+            /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/NINST
          </filePath>
          <fileNames>
           f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.RUNYEAR.nc
@@ -56,7 +56,7 @@
             a2x3h_Faxa_lwdn      lwdn
          </variableNames>
          <filePath>
-            /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+            /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/NINST
          </filePath>
          <offset>
             1800

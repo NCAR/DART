@@ -44,6 +44,7 @@ DART includes:
 - Extensive documentation of its source code.
 - Interfaces to a variety of models and observation sets that can be used to
   introduce new users or graduate students to ensemble DA.
+- Nonlinear and Non-Gaussian DA Capabilities
 
 DART is also designed to facilitate the combination of assimilation algorithms,
 models, and real or synthetic observations to allow increased
@@ -54,6 +55,56 @@ removing the implementation-specific peculiarities of one-off DA systems.
 These tools are intended for use by the full range of geosciencies community:
 beginners and experts; students and teachers; national centers and university
 research labs.
+
+Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+-----------------------------------------------------------------
+
+One of the historical drawbacks of ensemble data assimilation techniques is the
+assumption that the quantities being assimilated obey a normal distribution.
+While this is often a safe assumption -- distributions of temperature and
+pressure can be approximated using a normal distribution -- many quantities
+such as precipitation, snow depth and tracer concentration, as well as many
+model parameters aren't normally distributed.
+
+Applying traditional ensemble data assimilation techniques in situations where
+assumptions of gaussianity are invalid can lead to poor forecast skill and
+inconclusive results.
+
+To overcome these problems, DART now implements a novel data assimilation
+technique that no longer requires quantities to be normally distributed. The
+Quantile-Conserving Ensemble Filtering Framework :ref:`(QCEFF) <QCEFF>`
+provides a general method of computing increments for the prior ensemble of an
+observed quantity by allowing the use of arbitrary distributions for the prior
+and the observation error. For a detailed description of the QCEFF, see
+Anderson (2022). [2]_ 
+
+While the QCEFF for computing observation increments can lead to significant improvements in 
+analysis estimates for observed variables, those improvements can be lost when using standard 
+linear regression of observation increments to update state variables. The QCEFF also 
+implements a capability to do regression in a probit probability integral transformed space. 
+Doing the regression of observation quantile increments in the transformed space guarantees 
+that the posterior ensembles for state variables also retain the advantages of the observation space
+quantile conserving posteriors. For example, if state variables are bounded, then posterior 
+ensembles will respect the bounds. The posterior ensembles also respect other aspects of the 
+continuous prior distributions. For a detailed description of this process, see
+Anderson (2023) [3]_ and Anderson et al. (2023). [4]_
+
+Inflation and localization, methods that improve the quality of ensemble DA, can also negate 
+the advantages of the QCEFF methods. For this reason, both localization and inflation can be 
+done in the probit-transformed quantile space as well.  Combining these new methods can 
+significantly improve data assimilation for non-Gaussian quantities in Earth system models by 
+extending the capabilities of ensemble DA to general non-Gaussian and nonlinear distributions. 
+Transformative improvements in DA can result for many applications. The largest improvements are 
+found for bounded variables like tracer concentrations, snow and ice depth, soil moisture, and 
+similar quantities in other parts of the Earth system. Model parameters can also be estimated 
+with DA and large improvements can occur for bounded parameters. Variables that have distinctly 
+non-Gaussian prior distributions can also see large improvements. Examples can include atmospheric 
+quantities like moisture and cloud amount in the presence of convection, and many land surface variables.
+
+For instructions on how to use these tools, see :ref:`QCEFF`.
+
+For step-by-step examples of the QCEFF tools, you can work through 
+:ref:`examples with the Lorenz 96 tracer model <quantile tracer>`
 
 Organization of the documentation
 ---------------------------------
@@ -208,6 +259,18 @@ References
        Facility. *Bulletin of the American Meteorological Society*, **90**,
        1283-1296, `doi:10.1175/2009BAMS2618.1
        <http://dx.doi.org/10.1175/2009BAMS2618.1>`_
+.. [2] Anderson, J. L., 2022: A Quantile-Conserving Ensemble Filter Framework.
+       Part I: Updating an Observed Variable. *Monthly Weather Review*, **150**,
+       1061–1074, `doi:10.1175/MWR-D-21-0229.1 <http://n2t.net/ark:/85065/d7mk6hm4>`_
+.. [3] Anderson, J. L., 2023: A Quantile-Conserving Ensemble Filter Framework.
+       Part II: Regression of Observation Increments in a Probit and
+       Probability Integral Transformed Space. *Monthly Weather Review*,
+       **151**, 2759–2777, `doi:10.1175/MWR-D-23-0065.1 <http://n2t.net/ark:/85065/d7nv9pbt>`_ 
+.. [4] Anderson, J. L., Riedel, C., Wieringa, M., Ishraque, F., Smith, M., Kershaw, H.
+       2023: A Quantile-Conserving
+       Ensemble Filter Framework. Part III: Data Assimilation for Mixed Distributions
+       with Application to a Low-Order Tracer Advection Model. *Monthly Weather Review*
+       `[Manuscript submitted for publication] <_static/papers/QCEFF_3_submitted.pdf>`_
 
 .. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
    :width: 100%
@@ -244,6 +307,7 @@ References
    guide/high-level-da-workflows
    guide/dart-design-philosophy
    guide/important-capabilities-dart
+   guide/qceff_probit
 
 .. toctree::
    :maxdepth: 2
@@ -361,6 +425,7 @@ References
    guide/DART_LAB/DART_LAB
    CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
+   guide/qceff-examples.rst
    
 .. toctree::
    :maxdepth: 2

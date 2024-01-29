@@ -8,18 +8,15 @@
 # enabling sampling error correction is generally beneficial
 # the default file is in assimilation_code/programs/gen_sampling_err_table/work
 
-# With a deterministic filter (filter_kind == 1 or 8)
-# and a deterministic inflation (filter_nml:inf_deterministic == .true.)
-# sort_obs_inc is not needed and is expensive. Should be .false.
+# sort_obs_inc applies to ENKF only.
 
 # specify special localization items in the same order
 # in both lists, the same number of items
 
 &assim_tools_nml
-   filter_kind                       = 1
    cutoff                            = 0.2
    distribute_mean                   = .false.
-   sort_obs_inc                      = .false.
+   sort_obs_inc                      = .true.
    spread_restoration                = .false.
    sampling_error_correction         = .false.
    adaptive_localization_threshold   = -1

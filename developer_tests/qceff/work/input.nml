@@ -1,0 +1,28 @@
+&utilities_nml
+   TERMLEVEL = 1,
+   module_details = .false.
+   logfilename = 'dart_log.out'  
+   /
+
+# pick a random set of inputs
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                            '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                            '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                            '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                            '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                            '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                            '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                            '../../../observations/forward_operators/obs_def_vortex_mod.f90',
+                            '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                            '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90'
+   quantity_files         = '../../../assimilation_code/modules/observations/default_quantities_mod.f90',
+   /
+
+&obs_kind_nml
+/

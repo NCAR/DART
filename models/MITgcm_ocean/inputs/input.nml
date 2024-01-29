@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &location_nml
    horiz_dist_only                 = .true.
    nlon                            = 71

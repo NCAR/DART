@@ -359,9 +359,10 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | in the current directory. For each        |
 |                              |                     | ensemble member which returns a non-zero  |
 |                              |                     | return code, a line will be written to    |
-|                              |                     | this file. Each line will have three      |
-|                              |                     | values listed: the observation number,    |
-|                              |                     | the ensemble member number, and the       |
+|                              |                     | this file. Each line will list the        |
+|                              |                     | following values: the ensemble member     |
+|                              |                     | number, local observation number, the key |
+|                              |                     | for the observation, and then the         |
 |                              |                     | istatus return code. Be cautious when     |
 |                              |                     | turning this option on. The number of     |
 |                              |                     | lines in this file can be up to the       |

@@ -1,7 +1,15 @@
 &model_nml
-   model_size        = 120,
-   forcing           = 8.00,
-   delta_t           = 0.05,
-   time_step_days    = 0,
-   time_step_seconds = 3600  /
+   model_size               = 120,
+   forcing                  = 8.0,
+   delta_t                  = 0.05,
+   mean_velocity            = 0.0,
+   pert_velocity_multiplier = 5.0,
+   diffusion_coef           = 0.0,
+   e_folding                = 0.25,
+   sink_rate                = 0.1,
+   source_rate              = 100.0,
+   point_tracer_source_rate = 5.0,
+   positive_tracer          = .true.,
+   time_step_days           = 0,
+   time_step_seconds        = 3600 /
 

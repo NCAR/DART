@@ -1,5 +1,11 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &assim_tools_nml
-   filter_kind                     = 1
    cutoff                          = 0.03
    sort_obs_inc                    = .false.
    spread_restoration              = .false.

@@ -1,0 +1,12 @@
+These are everyones sourcemods for cesm1_1_1 ... 
+
+Each file has the parent filename near the top of the modified file so you can check
+the differences. 
+
+The cesm1_1_1 POP build namelist mechanism had a bug in it.
+Use the one for cesm1_2_beta04 instead. This can be accomplished (amazingly) by
+putting the build-namlist in our SourceMods/src.pop2 section.
+
+ xxdiff /glade/p/cesm/cseg/collections/cesm1_1_1/models/ocn/pop2/bld/build-namelist  \
+   /glade/p/cesm/cseg/collections/cesm1_2_beta04/models/ocn/pop2/bld/build-namelist 
+

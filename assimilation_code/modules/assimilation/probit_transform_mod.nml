@@ -1,0 +1,6 @@
+&probit_transform_nml
+   fix_bound_violations        = .false.,
+   use_logit_instead_of_probit = .false.,
+   do_inverse_check            = .false.
+   /
+

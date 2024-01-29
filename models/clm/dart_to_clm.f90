@@ -415,7 +415,7 @@ real(r8) :: dart_H2OLIQ(nlevel,ncolumn)
 real(r8) :: dart_H2OICE(nlevel,ncolumn)
 
 real(r8) :: clm_H2OSNO(ncolumn)  !(column,time) for vector history
-real(r8) :: clm_SNLSNO(ncolumn)
+integer  :: clm_SNLSNO(ncolumn)
 real(r8) :: clm_SNOWDP(ncolumn)
 real(r8) :: clm_DZSNO(nlevsno,ncolumn)
 real(r8) :: clm_ZSNO(nlevsno,ncolumn)
@@ -423,7 +423,7 @@ real(r8) :: clm_ZISNO(nlevsno,ncolumn)
 real(r8) :: clm_H2OLIQ(nlevel,ncolumn)
 real(r8) :: clm_H2OICE(nlevel,ncolumn)
 
-real(r8) :: snlsno(ncolumn)
+integer  :: snlsno(ncolumn)
 real(r8) :: h2osno_pr(ncolumn)
 real(r8) :: h2osno_po(ncolumn)
 real(r8) :: snowdp_pr(ncolumn)
@@ -611,7 +611,7 @@ PARTITION: do icolumn = 1,ncolumn
       ! Leave layer aggregation/initialization to CLM
       do ilevel=1,-snlsno(icolumn)
 
-         h2oliq_po(ilevel,icolumn) = 0.0_r8
+         h2oliq_po(ilevel,icolumn) = 0.00000001_r8
          h2oice_po(ilevel,icolumn) = 0.00000001_r8
           dzsno_po(ilevel,icolumn) = 0.00000001_r8   
 
@@ -686,7 +686,10 @@ PARTITION: do icolumn = 1,ncolumn
             ! Apply the increment for liquid, ice and depth for each layer.
             h2oliq_po(ilevel,icolumn) = h2oliq_pr(ilevel,icolumn) + gain_h2oliq
             h2oice_po(ilevel,icolumn) = h2oice_pr(ilevel,icolumn) + gain_h2oice
-            
+
+            if (h2oliq_po(ilevel,icolumn) < 0.0_r8) h2oliq_po(ilevel,icolumn) = 0.00000001_r8
+            if (h2oice_po(ilevel,icolumn) < 0.0_r8) h2oice_po(ilevel,icolumn) = 0.00000001_r8
+
             ! Important to update snow layer dimensions because CLM code relies
             ! on snow layer thickness for compaction/aggregation snow algorithm
             ! to function properly            
@@ -695,7 +698,8 @@ PARTITION: do icolumn = 1,ncolumn
             if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) > 0.0_r8) then
                 
                 dzsno_po(ilevel,icolumn) =  dzsno_pr(ilevel,icolumn) + gain_dzsno(ilevel,icolumn)
-             
+                if (dzsno_po(ilevel,icolumn) < 0.0_r8) dzsno_po(ilevel,icolumn) = 0.00000001_r8
+
                 ! For consistency  with updated dzsno_po (thickness)
                 ! also update zsno_po (middle depth) and zisno (top interface depth)
              
@@ -748,12 +752,13 @@ PARTITION: do icolumn = 1,ncolumn
       ! and recieved an H2OSNO adjustment.  This eliminates operating
       ! on columns that do not require re-partitioning
       if (abs(h2osno_po(icolumn) - h2osno_pr(icolumn)) & 
-          > 0.0_r8 .and. snlsno(icolumn) < 0.0_r8) then
+          > 0.0_r8 .and. snlsno(icolumn) < 0) then
          snowdp_po(icolumn) = snowdp_pr(icolumn) + sum(gain_dzsno(nlevsno+1+snlsno(icolumn):nlevsno,icolumn))
       else
          snowdp_po(icolumn) = snowdp_pr(icolumn)
       endif
 
+      if (snowdp_po(icolumn) < 0.0_r8) snowdp_po(icolumn) = 0.00000001_r8
 
    endif
 

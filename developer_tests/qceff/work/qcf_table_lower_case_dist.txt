@@ -1,0 +1,3 @@
+QCF table version: 1
+QTY_TEMPLATE: bounded_below bounded_above lower_bound upper_bound dist_type bounded_below bounded_above lower_bound upper_bound dist_type bounded_below bounded_above lower_bound upper_bound dist_type bounded_below bounded_above lower_bound upper_bound filter_kind bounded_below bounded_above lower_bound upper_bound
+QTY_STATE_VARIABLE .false. .false. -888888.0 -888888.0 BOUNDED_NORMAL_RH_DISTRIBUTION .false. .false. -888888.0 -888888.0 BOUNDED_normal_RH_DISTRIBUTION .false. .false. -888888.0 -888888.0 BOUNDED_NORMAL_RH_DISTRIBUTION .false. .false. -888888.0 -888888.0 BOUNDED_NORMAL_RHF .false. .false. -888888.0 -888888.0 

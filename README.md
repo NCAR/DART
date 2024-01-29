@@ -1,5 +1,6 @@
 [![GitHub forks](https://img.shields.io/github/forks/NCAR/DART?style=social)](https://github.com/NCAR/DART/network)
 [![GitHub release](https://img.shields.io/github/v/release/NCAR/DART)](https://github.com/NCAR/DART/releases/latest)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Documentation Status](https://readthedocs.org/projects/dart-documentation/badge/?version=latest)](https://dart-documentation.readthedocs.io/en/latest/?badge=latest)
 
 ![DARTlogo](guide/images/Dartboard7.png)
@@ -22,8 +23,6 @@ DART is available through GitHub. To download the latest version of DART:
 ```
 git clone https://github.com/NCAR/DART.git
 ```
-
-To register for DART and view the terms of use, click on [register for DART](https://www2.cisl.ucar.edu/software/dart/download).
 
 #### Citing DART
 

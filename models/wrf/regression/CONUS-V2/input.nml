@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",

@@ -35,7 +35,7 @@ use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,           
                                   set_multiple_filename_lists, find_textfile_dims
 
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
-                                  end_assim_model,  pert_model_copies
+                                  end_assim_model,  pert_model_copies, get_state_meta_data
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
@@ -85,6 +85,14 @@ use state_structure_mod,   only : get_num_domains
 use forward_operator_mod,  only : get_obs_ens_distrib_state
 
 use quality_control_mod,   only : initialize_qc
+
+use location_mod,          only : location_type
+
+use probit_transform_mod,  only : transform_to_probit, transform_from_probit
+
+use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_algorithm_info_mod
+
+use distribution_params_mod, only : distribution_params_type
 
 !------------------------------------------------------------------------------
 
@@ -1140,6 +1148,9 @@ call trace_message('Before end_model call')
 call end_assim_model()
 call trace_message('After  end_model call')
 
+! deallocate qceff_table_data structures
+call end_algorithm_info_mod()
+
 call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(state_ens_handle)
 
@@ -1262,6 +1273,10 @@ call static_init_obs_sequence()
 call static_init_assim_model()
 call state_vector_io_init()
 call initialize_qc()
+
+! Initialize algorothm_info_mod and read in QCF table data
+call init_algorithm_info_mod()
+
 call trace_message('After filter_initialize_module_used call')
 
 end subroutine filter_initialize_modules_used
@@ -1543,6 +1558,13 @@ type(adaptive_inflate_type), intent(inout) :: inflate
 integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
+type(location_type) :: my_state_loc
+integer :: my_state_kind
+type(distribution_params_type) :: dist_params
+real(r8) :: probit_ens(ens_size), probit_ens_mean
+logical  :: bounded_below, bounded_above
+real(r8) :: lower_bound,   upper_bound
+integer  :: dist_type
 
 ! Assumes that the ensemble is copy complete
 call prepare_to_update_copies(ens_handle)
@@ -1574,9 +1596,29 @@ do group = 1, num_groups
          call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source)
       endif 
    else 
+
+      ! This is an initial test of doing inflation in probit space
+      ! Note that this appears to work with adaptive inflation, but more research would be good
+      ! Probably also shouldn't be used with groups for now although it is coded to do so
       do j = 1, ens_handle%my_num_vars
-         call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
-            ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
+         call get_state_meta_data(ens_handle%my_vars(j), my_state_loc, my_state_kind)    
+
+         ! Need to specify what kind of prior to use for each
+         call probit_dist_info(my_state_kind, .true., .true., dist_type, &
+            bounded_below, bounded_above, lower_bound, upper_bound)
+
+         call transform_to_probit(grp_size, ens_handle%copies(grp_bot:grp_top, j), &
+            dist_type, dist_params, probit_ens(1:grp_size), .false., &
+               bounded_below, bounded_above, lower_bound, upper_bound)
+
+         ! Compute the ensemble mean in transformed space
+         probit_ens_mean = sum(probit_ens(1:grp_size)) / grp_size
+         ! Inflate in probit space
+         call inflate_ens(inflate, probit_ens(1:grp_size), probit_ens_mean, &
+            ens_handle%copies(inflate_copy, j))
+         ! Transform back from probit space
+         call transform_from_probit(grp_size, probit_ens(1:grp_size), &
+            dist_params, ens_handle%copies(grp_bot:grp_top, j))
       end do
    endif
 end do
@@ -2024,7 +2066,7 @@ endif
 ! qc_ens_handle is a real representing an integer; values /= 0 get written out
 do i = 1, ens_size
    do j = 1, qc_ens_handle%my_num_vars
-      if(nint(qc_ens_handle%copies(i, j)) /= 0) write(forward_unit, *) i, keys(j), nint(qc_ens_handle%copies(i, j))
+      if(nint(qc_ens_handle%copies(i, j)) /= 0) write(forward_unit, *) i, j, keys(qc_ens_handle%my_vars(j)), nint(qc_ens_handle%copies(i, j))
    end do
 end do
 

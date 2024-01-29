@@ -42,15 +42,17 @@ endif
 # job settings:
 #
 # run_queue, run_time, st_archive_queue, st_archive_time may be changed at any time
+# Derecho only has one 'main' queue, priority can be regular/economy/premium
 
-setenv run_queue regular
-setenv run_time 00:30:00
+setenv run_queue main
+setenv run_priority premium
+setenv run_time 01:00:00
 
 # the short-term archiver is turned off (initially?) to let you explore the
 # run directory
 
 setenv short_term_archiver off
-setenv st_archive_queue share
+setenv st_archive_queue main
 setenv st_archive_time 06:00:00
 
 # ==============================================================================
@@ -179,7 +181,6 @@ endif
 # By computing task counts like we do below, we guarantee each instance uses
 # a whole number of nodes which is the recommended configuration.
 # CIME interprets a negative task count as representing the number of nodes.
-# On Cheyenne (at least) using multiple threads is not recommended.
 
 @ nthreads = ${number_of_threads}
 
@@ -204,6 +205,7 @@ endif
 ./xmlchange ROOTPE_ESP=0,NTHRDS_ESP=$nthreads,NTASKS_ESP=$esp_tasks
 
 ./xmlchange --subgroup case.run --id JOB_QUEUE          --val ${run_queue}
+./xmlchange JOB_PRIORITY=${run_priority}
 ./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME --val ${run_time}
 
 echo "setting up the case ... "
@@ -230,12 +232,20 @@ endif
 ./xmlchange INFO_DBUG=0
 
 # ==============================================================================
-# Use the stream template that has all CAM reanalysis years available.
+# If the experiment only spans one year, copy a stream template for a single year
+# otherwise, use 'all' the years.
 
+if (${stream_year_first} == ${stream_year_last}) then
+   set STREAMFILE_SOLAR        = datm.streams.txt.CPLHISTForcing.Solar_single_year
+   set STREAMFILE_STATE1HR     = datm.streams.txt.CPLHISTForcing.State1hr_single_year
+   set STREAMFILE_STATE3HR     = datm.streams.txt.CPLHISTForcing.State3hr_single_year
+   set STREAMFILE_NONSOLARFLUX = datm.streams.txt.CPLHISTForcing.nonSolarFlux_single_year
+else
    set STREAMFILE_SOLAR        = datm.streams.txt.CPLHISTForcing.Solar_complete
    set STREAMFILE_STATE1HR     = datm.streams.txt.CPLHISTForcing.State1hr_complete
    set STREAMFILE_STATE3HR     = datm.streams.txt.CPLHISTForcing.State3hr_complete
    set STREAMFILE_NONSOLARFLUX = datm.streams.txt.CPLHISTForcing.nonSolarFlux_complete
+endif
 
 # ==============================================================================
 # Modify namelist templates for each instance.
@@ -259,7 +269,7 @@ while ( $inst <= $num_instances )
    set FILE2 = datm.streams.txt.CPLHISTForcing.State1hr_${inst_string}
    set FILE3 = datm.streams.txt.CPLHISTForcing.State3hr_${inst_string}
    set FILE4 = datm.streams.txt.CPLHISTForcing.nonSolarFlux_${inst_string}
-   set DOMAINFILE = '/glade/p/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
+   set DOMAINFILE = '/glade/campaign/cesm/cesmdata/cseg/inputdata/share/domains/domain.lnd.fv0.9x1.25_gx1v7.151020.nc'
 
    echo "domainfile = '${DOMAINFILE}'" >> ${fname}
    echo "streams = '$FILE1 $stream_year_align $stream_year_first $stream_year_last',"  >> ${fname}
@@ -635,13 +645,16 @@ if ( ${use_SourceMods} == TRUE ) then
    else
       echo "ERROR - DART_params.csh use_SourceMods = ${use_SourceMods}"
       echo "ERROR - but there are no SourceMods in ${SourceModDir}"
-      echo "        See discussion in DART_params.csh for information on"
-      echo "        where to get a tar file of SourceMods for DART." 
       exit 7
    endif
 endif
 
-${BUILD_WRAPPER} ./case.build || exit 9
+# Derecho should be able to handle the CESM build step through a login node
+# If your platform has restrictions on computational load consider submitting
+# as a batch job (e.q. qsub)
+
+
+./case.build || exit 9
 
 # ==============================================================================
 # What to do next

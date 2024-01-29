@@ -6,6 +6,8 @@
 !> Aim: collection of assertions for use in test code
 module assert_mod
 
+use types_mod, only : r8, r4, i8
+
 implicit none
 
 public
@@ -37,7 +39,7 @@ contains
 !-------------------------------
 subroutine assert_equal_real(a, b, message)
 
-real, intent(in) :: a, b
+real(r4), intent(in) :: a, b
 character(len=*), intent(in) :: message
 
 if (a /= b) print*, 'FAIL: ', trim(message),' assertion ', a, '==', b, 'failed'
@@ -67,7 +69,7 @@ end subroutine assert_equal_int
 !-------------------------------
 subroutine assert_equal_int8(a, b, message)
 
-integer*8,        intent(in) :: a, b
+integer(i8),        intent(in) :: a, b
 character(len=*), intent(in) :: message
 
 if (a /= b) print*, 'FAIL: ',  trim(message),' assertion ', a, '==', b, 'failed'
@@ -142,7 +144,7 @@ if (any(a .neqv. b)) then
 
    if (size(a) < 100) then
       do i = 1,size(a)
-         write(*,'(''       element('',i3,'') '',L,'' ?==? '',L)')i, a(i), b(i)
+         write(*,'(''       element('',i3,'') '',L1,'' ?==? '',L1)')i, a(i), b(i)
       enddo
    else
       print*, 'arrays too long to concisely specify where/how failed.'

@@ -45,7 +45,7 @@ setenv DATA_ASSIMILATION_CYCLES `./xmlquery DATA_ASSIMILATION_CYCLES --value`
 setenv TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE --value`
 
 # Most of this syntax can be determined from CASEROOT  ./preview_run
-setenv MPI_RUN_COMMAND "mpiexec_mpt -np $TOTALPES omplace -tm open64"
+setenv MPI_RUN_COMMAND "mpiexec -n $TOTALPES"
 
 cd ${RUNDIR}
 
