@@ -595,6 +595,7 @@ end subroutine def_fill_dimvars
 subroutine assign_dimensions(filter_io_filename, levs, lats, lons, nlev, nlat, nlon)
 
 character(len=*),      intent(in)  :: filter_io_filename
+! TODO: conflict between lons,... being global storage and passed to assign_dimensions?
 real(r8), allocatable, intent(out) :: levs(:), lats(:), lons(:)
 integer,               intent(out) :: nlev, nlat, nlon
 
@@ -1977,7 +1978,8 @@ do ivar = 1, nvar_neutral
       fulldom3d = NF90_FILL_REAL
       
       call nc_get_variable(ncid, dart_varname, fulldom3d(1:nlev,1:nlat,1:nlon), &
-                           nc_count=(/ nlev,nlat,nlon,1 /), context=routine)
+                           context=routine)
+      !                      nc_count=(/ nlev,nlat,nlon,1 /), context=routine)
       ! TODO: ncount not needed?  Reading the whole field.
 
       ! Copy updated field values to full domain halo.
@@ -2005,7 +2007,8 @@ do ivar = nvar_neutral + 1, nvar_neutral + nvar_ion
    if (file_root == 'ions') then
       fulldom3d = NF90_FILL_REAL
       call nc_get_variable(ncid, dart_varname, fulldom3d(1:nlev,1:nlat,1:nlon), &
-                           nc_count=(/ nlev,nlat,nlon,1 /), context=routine)
+                           context=routine)
+      !                      nc_count=(/ nlev,nlat,nlon,1 /), context=routine)
       !? ncount not needed?  Reading the whole field.
 
       ! 2023-11: ions do not have real or used data in their halos.

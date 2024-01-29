@@ -38,8 +38,7 @@ character(len=*),   parameter :: progname = 'dart_to_aether'
 ! global storage
 !----------------------------------------------------------------------
 
-integer               :: iunit, io, member
-character(len=512)    :: string1, string2
+integer               :: member
 
 !----------------------------------------------------------------------
 ! Get the ensemble member
