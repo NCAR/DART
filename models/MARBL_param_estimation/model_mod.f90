@@ -97,7 +97,6 @@ integer, parameter :: modelparams_table_width = 5
 character(len=256) :: template_file(2)
 integer            :: time_step_days
 integer            :: time_step_seconds
-logical            :: estimate_params
 character(len=vtablenamelength) &
    :: model_state_variables(modelvar_table_height * modelvar_table_width)
 character(len=vtablenamelength) &
@@ -107,7 +106,6 @@ namelist /model_nml/ template_file, &
                      time_step_days, &
                      time_step_seconds, &
                      model_state_variables, &
-                     estimate_params, &
                      model_parameters
 contains
 
@@ -165,16 +163,14 @@ call verify_state_variables(model_state_variables, nfields, variable_table, &
                               update_list = update_var_list(1:nfields))
 
 ! setting up the DART parameter vector
-if(estimate_params) then
-    call verify_state_variables(model_parameters, nfields, param_table, &
-                                param_qty_list, param_clamp_vals, update_param_list)
+call verify_state_variables(model_parameters, nfields, param_table, &
+                            param_qty_list, param_clamp_vals, update_param_list)
 
-    param_dom_id = add_domain(template_file(2), nfields, &
-                              var_names = param_table(1:nfields, 1), &
-                              kind_list = param_qty_list(1:nfields), &
-                              clamp_vals = param_clamp_vals, &
-                              update_list = update_param_list(1:nfields))
-end if
+param_dom_id = add_domain(template_file(2), nfields, &
+                            var_names = param_table(1:nfields, 1), &
+                            kind_list = param_qty_list(1:nfields), &
+                            clamp_vals = param_clamp_vals, &
+                            update_list = update_param_list(1:nfields))
 
 call read_num_layers     ! setting the value of nz
 

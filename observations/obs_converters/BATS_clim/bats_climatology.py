@@ -23,13 +23,13 @@ obs_val_columns = [[102, 107],  # O2
                    [158, 164],  # PO41
                    [166, 172]]  # Si1
 
-# layer interface depths for data in prog_z.nc output file from MARBL
+# layer interface depths for data in prog_z.nc output file from MARBL, run "ncdump -v "z_i" prog_z.nc" to generate.
 marbl_depths = [0, 5, 15, 25, 40, 62.5, 87.5, 112.5, 137.5, 175, 225, 275, 350, 450, 
                 550, 650, 750, 850, 950, 1050, 1150, 1250, 1350, 1450, 1625, 1875, 2250, 
                 2750, 3250, 3750, 4250, 4750, 5250, 5750, 6250]
 
 # set to 'True' in order to produce a histogram of BATS observation vs depth for each month
-plot_sample_hist = True
+plot_sample_hist = False
 
 # human-readable names of the variables being read from the file
 obs_names  = ["O2", "CO2", "Alk", "NO31", "PO41", "Si1"]
@@ -50,9 +50,6 @@ for line in bats_data.readlines():
 
     if(line_number < first_data_line):
         continue
-
-    if(line_number % 1000 == 0):
-        print("processing line",line_number,"...")
     
     # extracting the depth and month where this observation was taken
 
@@ -84,6 +81,8 @@ for line in bats_data.readlines():
             
             sample_counts[obs_type_index, month_index, depth_index] += 1
 
+            print("month =",month_index,", type =",obs_type_index,", depth =",marbl_depths[depth_index],", value =",obs_val)
+
 bats_data.close()
 
 # writing the climatology into a CSV file that will be readable by a DART data converter
@@ -100,11 +99,11 @@ for month_index in range(12):
                 mean    = clim_means[obs_type_index, month_index, depth_index]
                 sq_mean = sq_means[obs_type_index, month_index, depth_index]
 
-                variability = (sq_mean - mean**2)/samples
-                obs_error   = (.1*mean)**2
-                uq          = variability + obs_error
+                variability_err = (sq_mean - mean**2)/samples
+                obs_error       = (.1*mean)**2
+                uncertainty     = variability_err + obs_error
 
-                clim_file.write(str(month_index+1)+","+str(obs_type_index+1)+","+str(depth)+","+str(mean)+","+str(uq)+"\n")
+                clim_file.write(str(month_index+1)+","+str(obs_type_index+1)+","+str(depth)+","+str(mean)+","+str(uncertainty)+"\n")
 
 clim_file.close()
 

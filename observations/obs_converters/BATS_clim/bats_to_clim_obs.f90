@@ -175,7 +175,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
    if((OTYPE_ORDERING(otype_index) == BATS_ALKALINITY) .or. (OTYPE_ORDERING(otype_index) == BATS_INORGANIC_CARBON)) then
       ovalue  = ovalue*1.026
-      obs_err = obs_err*1.026**2    ! check with Helen to make sure that obs_err is a variance and not a standard deviation
+      obs_err = obs_err*1.026**2
    end if
 
    if(debug) then
