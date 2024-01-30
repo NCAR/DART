@@ -27,7 +27,6 @@ obs_seq_to_netcdf
 
 model_serial_programs=(
 aether_to_dart
-transform_names
 dart_to_aether)
 
 arguments "$@"
