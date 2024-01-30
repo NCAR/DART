@@ -156,11 +156,11 @@ assimilation_time_step = set_time(time_step_seconds, &
 call verify_state_variables(model_state_variables, nfields, variable_table, &
                             state_qty_list, state_clamp_vals, update_var_list)
 
-    state_dom_id = add_domain(template_file(1), nfields, &
-                              var_names = variable_table(1:nfields, 1), &
-                              kind_list = state_qty_list(1:nfields), &
-                              clamp_vals = state_clamp_vals, &
-                              update_list = update_var_list(1:nfields))
+state_dom_id = add_domain(template_file(1), nfields, &
+                            var_names = variable_table(1:nfields, 1), &
+                            kind_list = state_qty_list(1:nfields), &
+                            clamp_vals = state_clamp_vals, &
+                            update_list = update_var_list(1:nfields))
 
 ! setting up the DART parameter vector
 call verify_state_variables(model_parameters, nfields, param_table, &
@@ -177,27 +177,17 @@ call read_num_layers     ! setting the value of nz
 end subroutine static_init_model
 
 !------------------------------------------------------------------
-! Reads the simulation length from a netCDF file.
+! Reads the simulation length from a netCDF file. Because the netCDF
+! files in this model contain climatological data (not associated with
+! a particular time), this function returns a dummy "0, 0" timestamp.
 
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
-type(time_type) :: read_model_time
+type(time_type)              :: read_model_time
+character(len=*), parameter  :: routine = 'read_model_time'
 
-integer :: ncid
-character(len=*), parameter :: routine = 'read_model_time'
-real(r8) :: days
-integer :: clim_day
-
-ncid = nc_open_file_readonly(filename, routine)
-
-call nc_get_variable(ncid, 'Time', days, routine)
-
-call nc_close_file(ncid, routine)
-    
-clim_day = int(days)
-
-read_model_time = set_time(0,clim_day)
+read_model_time = set_time(0,0)
 
 end function read_model_time
 

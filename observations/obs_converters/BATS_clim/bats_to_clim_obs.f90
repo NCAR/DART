@@ -178,21 +178,23 @@ obsloop: do    ! no end limit - have the loop break when input ends
       obs_err = obs_err*1.026**2
    end if
 
+   ! For ensemble smoothing, each observation is considered to be a measurement
+   ! of the same climatological "year", which is arbitrarily labeled as year 1601
+   ! (the first year in DART's internal calendar). Observations are given identical
+   ! day/hour/minute timestamps to avoid time-ordering errors in the obs-seq file.
+
+   time_obs = set_date(1601, 1, 1, hours=0, minutes=0)
+   call get_time(time_obs, osec, days=oday)
+
    if(debug) then
       print *, "adding climatological mean for month ",month
       print *, " \__ type:        ",OTYPE_ORDERING(otype_index)
       print *, "     vert:        ",vert
       print *, "     value:       ",ovalue
       print *, "     uncertainty: ",obs_err
+      print *, "     oday:        ",oday
+      print *, "     osec:        ",osec
    end if
-
-   ! For ensemble smoothing, each observation is considered to be a measurement
-   ! of the same climatological "year", which is arbitrarily labeled as year 1601
-   ! (the first year in DART's internal calendar). Observations are given identical
-   ! day/hour/minute timestamps to avoid time-ordering errors in the obs-seq file.
-
-   time_obs = set_date(1601, month, 1, hours=0, minutes=0)
-   call get_time(time_obs, osec, days=oday)
 
    new_obs_seq = (first_obs .or. (month /= month_old))
    month_old   = month
