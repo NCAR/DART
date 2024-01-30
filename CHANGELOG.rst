@@ -22,6 +22,145 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 17 2024 :: CLM bug-fixes. Tag v11.0.1**
+
+- CLM5-DART SourceMods path variable correction
+
+- dart_to_clm:
+
+  - Resolved compiler error by changing the arrays for number of snow layers (snlsno and clm_SNLSNO) to integer types 
+
+  - Forcing h2oliq_po to be slightly larger than zero to be consistent with h2oice_po and dzsno_po
+
+  - Adding checks to ensure that the values for h2oliq_po, h2oice_po, dzsno_po, and snowdp_po are never negative 
+
+**January 11 2024 :: QCEFF. Tag v11.0.0**
+
+Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+
+- Adds a Quantile-Conserving Ensemble Filtering Framework (QCEFF) to DART.
+  Publications: `QCEFF part1 <http://n2t.net/ark:/85065/d7mk6hm4>`_,
+  `QCEFF part 2 <http://n2t.net/ark:/85065/d7nv9pbt>`_.  
+
+- The default QCEFF options are EAKF, normal distribution (no bounds).
+
+- User interface changes:
+
+  - filter_kind is now a per-qty option through QCEFF table.
+
+  - Two new required namelists (add to input.nml files):
+
+    - probit_transform_nml
+    - algorithm_info_nml
+
+  - assim_tools_mod namelist:
+  
+    - sort_obs_inc namelist option applied to ENKF only, so default is now .true.
+    - ``spread_restoration`` is not supported in this version
+
+  - algorithm_info_mod QCEFF options read at runtime from .csv or .txt file
+
+
+- New probability distribution modules:
+
+  - beta_distribution_mod *contributed by Chris Riedel*
+  - bnrh_distribution_mod (bounded normal rank histogram)
+  - gamma_distribution_mod
+  - normal_distribution_mod
+
+  -  probit_transform_mod 
+  -  distribution_params_mod
+
+- Update to lorenz_96_tracer_advection:
+
+  - positive_tracer
+  - more tracer namelist options available and changed defaults
+  - updated perturbation routine
+  - bug-fix: real(r8) rather than real(i8)
+
+- Fix: obs_def_1d_state_mod (oned forward operators):
+
+  -  For non-integer powers, fix up values for negative bases
+
+- Documentation:
+
+  - main page section on Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART
+  - QCEFF instructions: Quantile-Conserving Ensemble Filter Framework
+  - Example to work through: QCEFF: Examples with the Lorenz 96 Tracer Model
+
+**January 9 2024 :: Derecho CLM-DART. Tag v10.10.1**
+
+- CLM-DART scripting updated for Derecho.
+- CLM-DART SourceMods packaged with DART.
+- Reinstituted both 'complete' and 'single_year' datm streamlist files in shell scripts
+  due to delays when initializing the CAM reanalysis files through campaign/collections directory.
+
+bug-fixes:
+
+- Fixed format statement in assert_mod to conform to Fortran standards.
+- Fixed debugging output for failed forward operators.
+
+doc-fixes:
+
+- Remove broken link for register for dart.
+
+**December 13 2023 :: Developer tests and bug fixes. Tag v10.10.0** 
+
+- new developer tests to run all builds for all compilers on NSF NCAR machine
+  Derecho.
+- removed redundant nc_check routine from utilities_mod in favor of 
+  netcdf_utilities_mod::nc_check
+- Improved default thinning options for AIRS L2 converter.
+
+bug-fixes:
+
+- AIRS L2 converter message prints correct number of obs.
+- MOM6 model_mod .eqv. used for logical comparison to conform to Fortran standard.
+
+**December 1 2023 :: Bringing DART documentation in accordance with NSF Policy. Tag v10.9.2**
+
+- doc-fixes:
+
+  - Brings DART documentation in accordance with the November 2023,
+    "Official Policy on Brand Standards of the U.S. National Science
+    Foundation." Changes instances of "NCAR" to "NSF NCAR" and adds
+    NSF logo to the DART logo in the navigation menu.
+
+**November 9 2023 :: Github Actions MPIf08 Check. Tag v10.9.1**
+
+- Adds a new check to the Github Actions workflow that uses the
+  mpif08 module (compiles with ./quickbuild mpif08 and runs
+  filter on 2 mpi tasks with the lorenz_96 model).
+
+**November 7 2023 :: MPI f08 quickbuild option. Tag v10.9.0**
+
+- quickbuild.sh mpif08 option to build using the mpi_f08 module
+- nvhpc mkmf.template for use on Derecho
+
+bug-fixes:
+
+- filter_mod.dopperlerfold in sync with filter_mod
+- unnecessary loop removed from Mersenne twister developer test 
+
+doc-fixes:
+
+- rename assim_model_mod.rst to match the module
+- fix various Sphinx warnings and broken link 
+
+**November 2 2023 :: QCEFF Input Table. Tag v11.1.0-alpha**
+
+- The QCEFF input table allows for the specification of QCEFF/probit
+  input options, per QTY, at runtime.
+- This replaces the functionality of using an algorithm_info_mod specific
+  to the model, which meant editing algorithm_info_mod.f90 to specify
+  which distribution should be used for which quantity.
+- The algorithm_info_mod files for the lorenz_96_tracer_advection model
+  examples have been replaced with set QCF tables (all_bnrhf_qcf_table.csv,
+  all_eakf_qcf_table.csv, state_eakf_tracer_bnrhf_qcf_table.csv,
+  neg_qcf_table.csv) and can be found in lorenz_96_tracer_advection/work.
+- Removed the ‘global’ version of filter_kind from assim_tools_mod.f90
+  and the &assim_tools_nml
+
 **October 5 2023 :: WRF-DART tutorial diagnostic section. Tag v10.8.5**
 
 - Improvements:

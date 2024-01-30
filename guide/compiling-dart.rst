@@ -8,7 +8,51 @@ To build DART executables you will need to
 #. Create an mkmf.template with appropriate compiler and library flags.
 #. Choose which model you want to use with DART, and cd into that work directory. 
    For example, if you want to build DART for the lorenz_63 model, ``cd DART/models/lorenz_63/work``
-#. Build the DART executables with ``./quickbuild.sh``
+#. Build the DART executables with ``./quickbuild.sh``.
+
+   ``./quickbuild.sh help`` will show the usage options.
+
+   For models:
+
+   .. code-block:: text
+   
+    ./quickbuild.sh help
+
+    Usage:
+     quickbuild.sh                     : build everything
+     quickbuild.sh clean               : clean the build
+     quickbuild.sh help                : print help message
+   
+     quickbuild.sh [mpi/nompi/mpif08] [program]   : optional arguments
+                                                    [mpi]     build with mpi (default)
+                                                    [nompi]   build without mpi
+                                                    [mpif08]  build with mpi using mpi_f08
+                                                    [program] build a single program
+  
+     Example 1. Build filter without mpi:
+              quickbuild.sh nompi filter
+   
+     Example 2. Build perfect_model_obs with mpi
+              quickbuild.sh perfect_model_obs
+   
+     Example 3. Build perfect_model_obs with mpi using the mpi_f08 bindings
+              quickbuild.sh mpif08 perfect_model_obs
+
+
+   For observation converters:
+
+
+   .. code-block:: text
+
+    ./quickbuild.sh help
+
+    Usage:   
+     quickbuild.sh               : build everything
+     quickbuild.sh clean         : clean the build
+     quickbuild.sh help          : print help message
+      
+     quickbuild.sh [program]     : build a single program
+
 
 
 For more detail on how quickbuild.sh works see :ref:`DART build system`.

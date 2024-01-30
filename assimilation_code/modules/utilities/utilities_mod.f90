@@ -38,7 +38,6 @@ public :: get_unit, &
           error_handler, &
           to_upper, &
           squeeze_out_blanks, &
-          nc_check, &    ! remove this; moved to netcdf_utils
           next_file, &   ! deprecate this
           logfileunit, &
           nmlfileunit, &
@@ -1320,39 +1319,6 @@ single_task = .false.
 task_number = tasknum
 
 end subroutine set_tasknum
-
-!-----------------------------------------------------------------------
-
-!>@todo FIXME: remove this once all other code is calling
-!>this from the netcdf_utilities_mod instead.
-
-subroutine nc_check(istatus, subr_name, context)
-
-use netcdf
-
-integer, intent (in)                   :: istatus
-character(len=*), intent(in)           :: subr_name
-character(len=*), intent(in), optional :: context
-  
-! if no error, nothing to do here.  we are done.
-if(istatus == nf90_noerr) return
-
-
-! something wrong.  construct an error string and call the handler.
-
-! context is optional, but is very useful if specified.
-! if context + error code > 512, the assignment will truncate.
-if (present(context) ) then
-   msgstring1 = trim(context) // ': ' // trim(nf90_strerror(istatus))
-else
-   msgstring1 = nf90_strerror(istatus)
-endif
-
-! this does not return 
-call error_handler(E_ERR, 'nc_check', msgstring1, source, text2=subr_name)
-  
-end subroutine nc_check
-
 
 !-----------------------------------------------------------------------
 !> convert a string to upper case *in place*

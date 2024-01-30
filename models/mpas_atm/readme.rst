@@ -452,7 +452,7 @@ Compilation
 
 The DART interface for MPAS-ATM can be compiled with various fortran compilers
 such as (but not limited to) gfortran, pgf90, and intel. It has been tested on a
-Mac and NCAR IBM supercomputer (yellowstone).
+Mac and NSF NCAR IBM supercomputer (yellowstone).
 
 
 .. note::

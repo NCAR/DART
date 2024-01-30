@@ -21,7 +21,7 @@ module model_mod
   use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type, GREGORIAN
   use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                                 register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                                nmlfileunit, do_output, nc_check, do_nml_file, do_nml_term, logfileunit
+                                nmlfileunit, do_output, do_nml_file, do_nml_term, logfileunit
   use mpi_utilities_mod, only : my_task_id, task_count
   use location_mod,      only : location_type,      get_close_maxdist_init,      &
                                 get_close_obs_init, get_close_obs, set_location, &
@@ -33,7 +33,7 @@ module model_mod
                                 get_index_for_type_of_obs, get_quantity_for_type_of_obs
                                 ! We'll need to add a kind_cloud_fraction to correspond to AM2 prog var
   use location_mod,      only:  VERTISSURFACE, VERTISLEVEL
-
+  use    netcdf_utilities_mod, only : nc_check
   implicit none
   private
 
