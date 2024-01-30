@@ -99,8 +99,6 @@ public :: restart_files_to_netcdf, &
           block_file_name
 
 character(len=256), parameter :: source   = 'aether_lon-lat/model_mod.f90'
-character(len=32 ), parameter :: revision = ''
-character(len=32 ), parameter :: revdate  = ''
 
 logical :: module_initialized = .false.
 integer :: dom_id ! used to access the state structure
@@ -240,9 +238,6 @@ integer  :: iunit, io
 
 module_initialized = .true.
 
-! Print module information to log file and stdout.
-call register_module(source)
-
 call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
@@ -341,7 +336,7 @@ which_vert = nint(query_location(location))
 
 IF (debug > 85) then
    write(error_string_1,'(A,3F15.4)')  'requesting interpolation at ', llon, llat, lvert
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 end if
 
 ! Only height and level for vertical location type is supported at this point
@@ -368,7 +363,7 @@ if (status1 /= 0) then
    if(debug > 12) then
       write(error_string_1,'(A,I5,A)') 'Did not find observation quantity ', qty, &
            ' in the state vector'
-      call error_handler(E_WARN, routine, error_string_1, source, revision, revdate)
+      call error_handler(E_WARN, routine, error_string_1, source)
    endif
    istatus(:) = status1   ! this quantity not in the state vector
    return
@@ -664,7 +659,7 @@ MY_LOOP : do i = 1, size(variables,2)
       error_string_1 = 'model_nml: variable list not fully specified'
       error_string_2 = 'reading from "'//trim(filter_io_filename)//'"'
       call error_handler(E_ERR, routine, error_string_1, &
-                         source, revision, revdate, text2=error_string_2)
+                         source, text2=error_string_2)
    endif
 
    ! The internal DART routines check if the variable name is valid.
@@ -674,7 +669,7 @@ MY_LOOP : do i = 1, size(variables,2)
    if( quantity < 0 ) then
       write(error_string_1,'(''there is no obs_kind "'',a,''" in obs_kind_mod.f90'')') &
            trim(dartstr)
-      call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+      call error_handler(E_ERR, routine, error_string_1, source)
    endif
 
    ! All good to here - fill the output variables
@@ -702,7 +697,7 @@ enddo MY_LOOP
 if (nvar == MAX_STATE_VARIABLES) then
    error_string_1 = 'WARNING: you may need to increase "MAX_STATE_VARIABLES"'
    write(error_string_2,'(''you have specified at least '',i4,'' perhaps more.'')') nvar
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate, text2=error_string_2)
+   call error_handler(E_MSG, routine, error_string_1, source, text2=error_string_2)
 endif
 
 end subroutine verify_variables
@@ -743,7 +738,7 @@ if ( which_vert == VERTISHEIGHT ) then
 else
     istatus(:) = INVALID_VERT_COORD_ERROR_CODE
     write(error_string_1, *) 'unsupported vertical type: ', which_vert
-    call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+    call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 ! we have all the indices and fractions we could ever want.
@@ -757,7 +752,7 @@ if (varid > 0) then
                                lev1, lev2, vert_fract, varid, quad_vals, istatus)
 else 
     write(error_string_1, *) 'unsupported variable: ', varid
-    call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+    call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 if (any(istatus /= 0)) return
@@ -817,7 +812,7 @@ do icorner = 1, 4
       write(error_string_1,'(A)') 'Could not find dart state index from '
       write(error_string_2,'(A,3F15.4)') 'lon, lat, and lev1 index :', &
            four_lons(icorner), four_lats(icorner), lev1
-      call error_handler(E_ERR, routine, error_string_1, source, revision, revdate, &
+      call error_handler(E_ERR, routine, error_string_1, source, &
                          text2=error_string_2)
       return
    endif
@@ -831,7 +826,7 @@ do icorner = 1, 4
       write(error_string_1,'(A)') 'Could not find dart state index from '
       write(error_string_2,'(A,3F15.4)') 'lon, lat, and lev2 index :', &
            four_lons(icorner), four_lats(icorner), lev2
-      call error_handler(E_ERR, routine, error_string_1, source, revision, revdate, &
+      call error_handler(E_ERR, routine, error_string_1, source, &
                          text2=error_string_2)
       return
    endif
@@ -918,7 +913,7 @@ character(len=*), parameter :: routine = 'restart_files_to_netcdf'
 if (module_initialized ) then
     write(error_string_1,'(3A)')'The aether static_init_model was already initialized but ', &
          trim(routine), ' uses a separate initialization procedure'
-    call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+    call error_handler(E_ERR, routine, error_string_1, source )
 end if
 
 call static_init_blocks("aether_to_dart_nml")
@@ -978,18 +973,18 @@ character(len=*), parameter :: routine = 'netcdf_to_restart_files:'
 if (module_initialized ) then
     write(error_string_1,'(3A)')'The aether mod was already initialized but ', &
       trim(routine), ' uses a separate initialization procedure'
-    call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+    call error_handler(E_ERR, routine, error_string_1, source )
 end if
 
 call static_init_blocks("dart_to_aether_nml")
 
 write(filter_io_filename,'(2A,I0.4,A3)') trim(filter_io_root),'_',member + 1,'.nc'
 
-call error_handler(E_MSG, routine, '', '', revision, revdate)
+call error_handler(E_MSG, routine, '', '')
 write(error_string_1,'(3A)') 'Extracting fields from DART file ', "'"//trim(filter_io_filename)//"'"
 write(error_string_2,'(3A)') 'into Aether restart files in directory ', &
      "'"//trim(aether_restart_dirname)//"'"
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate, text2=error_string_2)
+call error_handler(E_MSG, routine, error_string_1, source, text2=error_string_2)
 
 ncid = nc_open_file_readonly(filter_io_filename, routine)
 
@@ -998,10 +993,10 @@ call filter_to_restarts(ncid, member)
 !----------------------------------------------------------------------
 ! Log what we think we're doing, and exit.
 !----------------------------------------------------------------------
-call error_handler(E_MSG, routine,'','', revision, revdate)
+call error_handler(E_MSG, routine,'','')
 write(error_string_1,'(3A)') 'Successfully converted to the Aether restart files in directory'
 write(error_string_2,'(3A)') "'"//trim(aether_restart_dirname)//"'"
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate, text2=error_string_2)
+call error_handler(E_MSG, routine, error_string_1, source, text2=error_string_2)
 
 call nc_close_file(ncid)
     
@@ -1028,7 +1023,7 @@ block_file_name = trim(block_file_name)//'.nc'
 if ( debug > 0 ) then
    write(error_string_1,'("filename, memnum, blocknum = ",A,2(1x,i5))') &
         trim(block_file_name), memnum, blocknum
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 endif
     
 end function block_file_name
@@ -1094,7 +1089,7 @@ call get_grid_info_from_blocks(aether_restart_dirname, nlon, nlat, nlev, nblocks
 
 if( debug  > 0 ) then
     write(error_string_1,'(A,3I5)') 'grid dims are ', nlon, nlat, nlev
-    call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+    call error_handler(E_MSG, routine, error_string_1, source)
 endif
 
 ! Opens and closes the grid block file, but not the filter netcdf file.
@@ -1114,7 +1109,7 @@ state_time = read_aether_time(trim(aether_restart_dirname)//'/'//trim(aether_fil
 
 if ( debug > 0 ) then
   write(error_string_1,'("grid: nlon, nlat, nlev =",3(1x,i5))') nlon, nlat, nlev
-  call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+  call error_handler(E_MSG, routine, error_string_1, source)
 endif
     
 end subroutine static_init_blocks
@@ -1157,7 +1152,7 @@ write(file_loc,'(a,''/'',a)') trim(restart_dirname), trim(filename)
 
 if (debug > 4) then
 write(error_string_1,'(3A)') 'Now opening Aether UAM file: ', trim(file_loc)
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 end if
 
 
@@ -1171,7 +1166,7 @@ if (ios /= 0) then
 ! If we get to the end of the file or hit a read error without
 ! finding what we need, die.
 write(error_string_1,'(3A)') 'cannot find #GRID in ', trim(file_loc)
-call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 if (c_line(1:5) .ne. "#GRID") cycle UAMREAD
@@ -1189,19 +1184,19 @@ enddo UAMREAD
 
 if (debug > 4) then
 write(error_string_1,'(3A)') 'Successfully read Aether UAM grid file:', trim(file_loc)
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,I5)') '   nblocks_lon:', nblocks_lon
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,I5)') '   nblocks_lat:', nblocks_lat
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,I5)') '   nblocks_lev:', nblocks_lev
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,F15.4)') '   lat_start:', lat_start
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,F15.4)') '   lat_end:', lat_end
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,F15.4)') '   lon_start:', lon_start
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 end if
 
 call close_file(iunit)
@@ -1250,11 +1245,11 @@ nlat = nblocks_lat * ny_per_block
 nlev = nblocks_lev * nz_per_block     
 
 write(error_string_1,'(A,I5)')  'nlon = ', nlon
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,I5)')  'nlat = ', nlat
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 write(error_string_1,'(A,I5)')  'nlev = ', nlev
-call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+call error_handler(E_MSG, routine, error_string_1, source)
 
 ! TODO; do these need to be deallocated somewhere?
 !       Probably not; this is only done once, and these arrays are needed
@@ -1265,13 +1260,13 @@ allocate( levs( nlev ))
 
 if (debug > 4) then
    write(error_string_1,'(2A)') 'Successfully read Aether grid file:', trim(filename)
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,I5)') '   nx_per_block:', nx_per_block
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,I5)') '   ny_per_block:', ny_per_block
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,I5)') '   nz_per_block:', nz_per_block
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 endif
 
 ! A temp array large enough to hold any of the 3D
@@ -1294,7 +1289,7 @@ zcount = nz_per_block
 if ( debug > 0 ) then
    write(error_string_1,'(2(A,3i5),A,3(1X,i5))') &
         'starts = ',starts, 'ends = ',ends, '[xyz]counts = ',xcount,ycount,zcount
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 endif
 
 ! go across the south-most block row picking up all longitudes
@@ -1369,11 +1364,11 @@ endif
 
 if ( debug > 1 ) then ! Check dimension limits
    write(error_string_1,'(A,2F15.4)') 'LON range ', minval(lons), maxval(lons)
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,2F15.4)') 'LAT range ', minval(lats), maxval(lats)
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,2F15.4)') 'ALT range ', minval(levs), maxval(levs)
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 endif
 
 end subroutine get_grid_from_blocks
@@ -1413,11 +1408,11 @@ if (do_output()) &
 
 if (debug > 8) then
    write(error_string_1,'(A,I5)')'tsimulation ', tsimulation
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,I5)')'ndays       ', ndays
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    write(error_string_1,'(A,I5)')'nsecs       ', nsecs
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 
    call print_date(aether_ref_time, routine//':model base date')
    call print_time(aether_ref_time, routine//':model base time')
@@ -1548,12 +1543,12 @@ character(len=*), parameter :: routine = 'open_block_file'
 
 if ( .not. file_exist(filename) ) then
    write(error_string_1,'(4A)') 'cannot open file ', filename,' for ', rw
-   call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 if (debug > 0) then
    write(error_string_1,'(4A)') 'Opening file ', trim(filename), ' for ', rw
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 end if
 
 
@@ -1563,13 +1558,13 @@ else if (rw == 'readwrite') then
    open_block_file = nc_open_file_readwrite(filename, routine)
 else
    error_string_1 = ': must be called with rw={read,readwrite}, not '//rw
-   call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 
 if (debug > 80) then
    write(error_string_1,'(4A)') 'Returned file descriptor is ', open_block_file
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 end if
     
 end function open_block_file
@@ -1636,7 +1631,7 @@ character(len=*), parameter :: routine = 'read_in_real'
 read(iunit,'(a)',iostat=ios) c_line
 if (ios /= 0) then
    write(error_string_1,'(4A)') 'cannot find '//trim(varname)//' in '//trim(filter_io_filename)
-   call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 ! Remove anything after a space or TAB
@@ -1648,7 +1643,7 @@ read(c_line,*,iostat=ios) read_in_real
 
 if(ios /= 0) then
    write(error_string_1,'(4A)')'unable to read '//trim(varname)//' in '//trim(filter_io_filename)
-   call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_ERR, routine, error_string_1, source)
 endif
         
 end function read_in_real
@@ -1671,7 +1666,7 @@ character(len=*), parameter :: routine = 'read_in_int'
 read(iunit,'(a)',iostat=ios) c_line
 if (ios /= 0) then
    write(error_string_1,'(4A)') 'cannot find '//trim(varname)//' in '//trim(filter_io_filename)
-   call error_handler(E_ERR,'get_grid_dims', error_string_1, source, revision, revdate)
+   call error_handler(E_ERR,'get_grid_dims', error_string_1, source)
 endif
 
 ! Remove anything after a space or TAB
@@ -1682,7 +1677,7 @@ read(c_line,*,iostat=ios) read_in_int
 
 if(ios /= 0) then
    write(error_string_1,'(4A)')'unable to read '//trim(varname)//' in '//trim(filter_io_filename)
-   call error_handler(E_ERR, routine, error_string_1, source, revision, revdate, &
+   call error_handler(E_ERR, routine, error_string_1, source, &
                       text2=c_line)
 endif
     
@@ -1837,7 +1832,7 @@ do ivar = 1, nvar_neutral
 
       if (debug > 10 .and. do_output()) then
          write(error_string_1,'(A,I0,2A)') 'Defining ivar = ', ivar,':', dart_varname
-         call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+         call error_handler(E_MSG, routine, error_string_1, source)
       end if
    
       call nc_define_real_variable(ncid_output, dart_varname, &
@@ -1858,7 +1853,7 @@ do ivar = 1, nvar_neutral
    else
       write(error_string_1,'(A,I3,A)') 'Trying to read neutrals, but variables(', &
            VT_ORIGININDX,ivar , ') /= "neutrals"'
-      call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+      call error_handler(E_ERR, routine, error_string_1, source)
    endif
 
 enddo
@@ -1877,7 +1872,7 @@ do ivar = nvar_neutral +1, nvar_neutral + nvar_ion
 
       if (debug > 10 .and. do_output()) then
          write(error_string_1,'(A,I0,2A)') 'Defining ivar = ', ivar,':', dart_varname
-         call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+         call error_handler(E_MSG, routine, error_string_1, source)
       end if
    
       call nc_define_real_variable(ncid_output, dart_varname, &
@@ -1892,7 +1887,7 @@ do ivar = nvar_neutral +1, nvar_neutral + nvar_ion
    else
       write(error_string_1,'(A,I3,A)') 'Trying to read ions, but variables(', &
            VT_ORIGININDX,ivar , ') /= "ions"'
-      call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+      call error_handler(E_ERR, routine, error_string_1, source)
    endif
 
 enddo
@@ -1907,7 +1902,7 @@ if (define) call nc_close_file(ncid_input)
 ! 
 ! if (no_idensity) then
 !    write(error_string_1,*) 'Cannot compute the VTEC without the electron density'
-!    call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+!    call error_handler(E_ERR, routine, error_string_1, source)
 ! end if
 ! 
 !       temp2d = 0._r8
@@ -1968,7 +1963,7 @@ do ivar = 1, nvar_neutral
    varname = purge_chars(trim(variables(VT_VARNAMEINDX,ivar)), '\', plus_minus=.false.)
    if (debug >= 0 .and. do_output()) then
       write(error_string_1,'("varname = ",A)') trim(varname)
-      call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+      call error_handler(E_MSG, routine, error_string_1, source)
    endif
    dart_varname = aether_name_to_dart(varname)
 
@@ -2001,7 +1996,7 @@ do ivar = nvar_neutral + 1, nvar_neutral + nvar_ion
    if (debug >= 0 .and. do_output()) then
       write(error_string_1,'("varname, dart_varname, file_root = ",3(2x,A))') &
              trim(varname), trim(dart_varname), file_root 
-      call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+      call error_handler(E_MSG, routine, error_string_1, source)
    endif
 
    if (file_root == 'ions') then
@@ -2090,7 +2085,7 @@ enddo
 
 if (any(fulldom3d == MISSING_R4)) then
    error_string_1 = 'ERROR: some fulldom3d contain MISSING_R4 after halos'
-   call error_handler(E_ERR, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_ERR, routine, error_string_1, source)
 endif
 
 ! TODO: Keep halo corners check for future use?
@@ -2111,7 +2106,7 @@ if (debug >= 100 .and. do_output()) then
    
    ! Debug HDF5 
    write(error_string_1,'("normed_field(10,nlat+1,nlon+2) = ",3(1x,i5))') normed(nlat+1,nlon+2)
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
    
    ! 17 format debug_format
    print*,'top'
@@ -2173,7 +2168,7 @@ xcount = nx_per_block + (2 * nghost)
 if (debug > 0 .and. do_output()) then
    write(error_string_1,'(A,I0,A,I0,A)') 'Now putting the data for ', nblocks_lon, &
         ' blocks lon by ',nblocks_lat,' blocks lat'
-   call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+   call error_handler(E_MSG, routine, error_string_1, source)
 end if
 
 starts(1) = 1
@@ -2195,10 +2190,10 @@ do jb = 1, nblocks_lat
       ! TODO: error checking; does the block file have the field in it?
       if ( debug > 0 .and. do_output()) then
         write(error_string_1,'(A,3(2X,i5))') "block, ib, jb = ", nb, ib, jb
-        call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+        call error_handler(E_MSG, routine, error_string_1, source)
         write(error_string_1,'(3(A,3i5))') &
              'starts = ',starts, 'ends = ',ends, '[xyz]counts = ',xcount,ycount,zcount
-        call error_handler(E_MSG, routine, error_string_1, source, revision, revdate)
+        call error_handler(E_MSG, routine, error_string_1, source)
       endif      
 
       call nc_put_variable(ncid_output, trim(varname), &
