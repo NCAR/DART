@@ -53,7 +53,8 @@ use obs_kind_mod, only : get_index_for_quantity
 
 use state_structure_mod, only : &
     add_domain, get_dart_vector_index, get_domain_size, &
-    get_model_variable_indices, get_varid_from_kind
+    get_model_variable_indices, get_varid_from_kind, &
+    state_structure_info
 
 use distributed_state_mod, only : get_state
 
@@ -270,7 +271,10 @@ assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
 ! Define which variables are in the model state
 ! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(filter_io_filename, nvar, var_names, var_qtys, var_ranges, var_update)
+dom_id = add_domain(filter_io_filename, nvar, var_names(1:nvar), var_qtys(1:nvar), var_ranges(1:nvar,:), var_update(1:nvar))
+
+call state_structure_info(dom_id)
+
 
 call init_quad_interp(GRID_QUAD_FULLY_REGULAR, nlon, nlat,                    &
                       QUAD_LOCATED_CELL_CENTERS,                              &

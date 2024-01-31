@@ -46,7 +46,7 @@
    input_state_file_list        = 'filter_inputs.txt'
    init_time_days               = 153131,
    init_time_seconds            = 0,
-   perturb_from_single_instance = .true.,
+   perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
 
    stages_to_write              = 'output'
@@ -56,7 +56,7 @@
    output_state_file_list       = 'filter_outputs.txt'
    output_interval              = 1,
    output_members               = .true.
-   num_output_state_members     = 0,
+   num_output_state_members     = 20,
    output_mean                  = .true.
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
@@ -132,8 +132,8 @@
 
 &model_nml
    filter_io_filename  = 'filter_input_0001.nc'
-   variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
-               'Opos',           'QTY_DENSITY_ION_OP',   'NA',      'NA',      'ions',        'UPDATE'
+   variables = 'Temperature',    'QTY_TEMPERATURE',      'NA',  'NA',      'neutrals',    'UPDATE',
+               'Opos',           'QTY_DENSITY_ION_OP',   'NA',  'NA',      'ions',        'UPDATE'
    time_step_days = 0
    time_step_seconds = 3600
    debug             = 10
