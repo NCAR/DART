@@ -522,7 +522,10 @@ call nc_add_global_attribute(ncid, "model", "aether", routine)
 ! TODO Shouldn't the calendar type be defined here?
 !      It's defined in the time variable = good enough for write_model_time.
 
-! call nc_end_define_mode(ncid)
+call nc_end_define_mode(ncid)
+
+! Flush the buffer and leave netCDF file open
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
