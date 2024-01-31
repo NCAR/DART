@@ -32,7 +32,7 @@ use utilities_mod, only : &
     find_namelist_in_file, check_namelist_read, to_upper, &
     find_enclosing_indices
 
-use obs_kind_mod, only : QTY_GEOMETRIC_HEIGHT
+use obs_kind_mod, only : get_index_for_quantity, QTY_GEOMETRIC_HEIGHT
 
 use netcdf_utilities_mod, only : &
     nc_add_global_attribute, nc_synchronize_file, &
@@ -48,8 +48,6 @@ use quad_utils_mod, only : &
     quad_interp_handle, init_quad_interp, set_quad_coords, &
     quad_lon_lat_locate, quad_lon_lat_evaluate, &
     GRID_QUAD_FULLY_REGULAR, QUAD_LOCATED_CELL_CENTERS
-
-use obs_kind_mod, only : get_index_for_quantity
 
 use state_structure_mod, only : &
     add_domain, get_dart_vector_index, get_domain_size, &
@@ -77,6 +75,7 @@ private
 ! TODO: Is nc_write_model_vars no longer mandatory?
 !       Tiegcm has it listed, but it's just a pass-through to-from default_model_mod
 !       which has a do-nothing version, and a note "currently unused".
+! TODO: Why does this work for aether_to_dart when restart_files_to_netcdf is not in the list?
 public :: get_model_size,         &
           get_state_meta_data,    &
           model_interpolate,      &

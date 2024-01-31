@@ -18,6 +18,11 @@ QTY_VELOCITY_W_ION
 QTY_VERTICAL_VELOCITY
 or maybe it should have a new QTY like the existing QTY_VELOCITY_VERTICAL_O2:
 QTY_VELOCITY_PARALLEL_VERTICAL_OP 
+                              ^  
+Note; the size of these parameters may be limited to 31 (types_mod.f90)
+      Develop abbreviations?  VELOCITY -> VEL
+      especially for easily recognized words, leaving more characters for
+         the unusal parts of the names.
 This last seems safest, since each ion has its own 2 vertical velocities.
 But I don't know how they'll be used, so maybe a simple, generic QTY 
 for all the ions is fine.
