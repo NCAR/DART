@@ -24,4 +24,4 @@ https://www.image.ucar.edu/pub/DART/MPD/MPD.tar.gz
 
 For more details of the retrieval and quality control process, and
 inquire about data availability for your research project, please
-contact Tammy Weckwerth at EOL, NCAR.
+contact Tammy Weckwerth at EOL, NSF NCAR.

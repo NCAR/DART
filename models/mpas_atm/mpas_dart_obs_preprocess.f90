@@ -32,7 +32,7 @@ program mpas_dart_obs_preprocess
 
 use        types_mod, only : r8, missing_r8, earth_radius, RAD2DEG, DEG2RAD, i8
 use    utilities_mod, only : error_handler, E_MSG, find_namelist_in_file, &
-                             check_namelist_read, nc_check, initialize_utilities, &
+                             check_namelist_read, initialize_utilities, &
                              finalize_utilities
 use time_manager_mod, only : time_type, operator(>=), operator(<), operator(>), operator(<=), &
                              increment_time, decrement_time, operator(-), operator(+), &
@@ -74,7 +74,6 @@ use        model_mod, only : static_init_model, get_grid_dims, get_xland, &
                              cell_ok_to_interpolate, is_global_grid,      &
                              get_bdy_mask, get_cell_center_coords
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
-
 use           netcdf
 
 implicit none

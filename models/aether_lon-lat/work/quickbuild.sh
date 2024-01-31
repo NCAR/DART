@@ -45,7 +45,7 @@ buildpreprocess
 buildit
 
 # clean up
-# \rm -f -- *.o *.mod
+\rm -f -- *.o *.mod
 
 }
 
