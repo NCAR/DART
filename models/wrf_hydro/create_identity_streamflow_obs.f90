@@ -18,7 +18,7 @@ use         types_mod, only : r8, missing_r8, i8
 
 use      location_mod, only : VERTISHEIGHT, location_type, get_location
 
-use     utilities_mod, only : nc_check, nmlfileunit, do_nml_file, do_nml_term, &
+use     utilities_mod, only : nmlfileunit, do_nml_file, do_nml_term, &
                               initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read, &
                               error_handler, E_ERR, E_MSG, &
@@ -47,7 +47,7 @@ use         model_mod, only : static_init_model, get_state_meta_data, &
                               get_number_of_links
 
 use          sort_mod, only : index_sort
-
+use    netcdf_utilities_mod, only : nc_check
 use netcdf
 
 implicit none
