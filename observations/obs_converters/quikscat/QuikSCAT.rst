@@ -70,7 +70,8 @@ simple need to load the module with ``module load hdf``.
 
 After successfully building HDF, add the appropriate library flags to your mkmf.template file,
 or for Derecho users, use the already available files at 
-``/DART/build_templates/mkmf.template.quikscat.intel/gfortran``. Below is a snippet from an
+*/DART/build_templates/mkmf.template.quikscat.intel* or 
+*/DART/build_templates/mkmf.template.quikscat.gfortran*. Below is a snippet from an
 mkmf.template file used to link to both NetCDF and HDF4.   
 
 .. code:: text

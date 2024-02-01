@@ -9,6 +9,11 @@ AIRS and AMSU
    for the necessary libraries. An example build script (`AIRS/Build_HDF-EOS.sh`)
    is intended to provide some guidance.
 
+   Note that if you are running on Derecho, the libraries will not need to be 
+   installed. You will simply need to load the hdf module and use the mkmf.template
+   file at */DART/build_templates/mkmf.template.AIRS.intel* or 
+   */DART/build_templates/mkmf.template.AIRS.gfortran*
+
 This directory covers two observation converters:
 
 - :doc:`./convert_airs_L2` for temperature and moisture retrievals.
