@@ -39,9 +39,22 @@ in cloud phase (ice versus water) makes a much larger difference.  Trace gases a
 may be important for actual observation system experiments using visible/infrared; this may
 depend on the precise frequencies you wish to use.
 
+For RTTOV 13 DART has a ``wfetch_value`` namelist option. This allows you to set a wfetch value
+to use when ``use_wfetch = .true.`` if the model you are using does not provide QTY_WIND_FETCH.
+
 Although a model may not have the necessary inputs by itself,
 the defaults in RTTOV based on climatology can be used.
 The impact on the quality of the results should be investigated.
+
+The quanities for each observation type are defined in obs_def_rttov{13}_mod.f90, like so:
+
+.. code::
+
+   ! HIMAWARI_8_AHI_RADIANCE,      QTY_RADIANCE
+
+If you want to change the quantity associated with an observation, for example, if you want
+to assimilate HIMAWARI_8_AHI_RADIANCE as QTY_BRIGHTNESS_TEMPERATURE, edit the QTY
+in obs_def_rttov{13}_mod.f90 and rerun quickbuild.sh.
 
 
 Known issues:
