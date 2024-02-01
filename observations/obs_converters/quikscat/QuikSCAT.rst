@@ -59,9 +59,8 @@ convert_L2b.f90
 ~~~~~~~~~~~~~~~
 
 ``convert_L2b`` converts the HDF files distributed by JPL to an obs_sequence file.
-To build ``convert_l2b`` using ``quickbuild.sh`` you will first need to build the HDF4 library.
-Note that if you are running on Derecho, you will not nned to build the HDF4 library but will
-simple need to load the module with ``module load hdf``.
+To build ``convert_l2b`` using ``quickbuild.sh`` you will need the HDF4 library.
+HDF4 is available on the NSF NCAR machine Derecho: ``module load hdf``.
 
 .. warning::
 
