@@ -16,7 +16,7 @@ jobs:
       options: "--cap-add=SYS_PTRACE"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
       - name: Build and run lorenz_96 with mpi
@@ -35,7 +35,7 @@ jobs:
       options: '--cap-add=SYS_PTRACE'
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
       - name: Build and run lorenz_63 with no mpi
@@ -53,7 +53,7 @@ jobs:
       options: '--cap-add=SYS_PTRACE'
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
       - name: Build and run lorenz_96 with mpif08
