@@ -16,6 +16,7 @@ The restart fields are divided among 2 types of files: neutrals and ions.
 They are further divided into "blocks", which are subdomains of the globe.
 Blocks start in the southwest corner of the lat/lon grid and go east first, 
 then to the west end of the next row north and end in the northeast corner. 
+Each block has a halo around it filled with field values from neighboring blocks.
 All of these need to be combined to make a single state vector for filter.
 There's a unique set of these files for each member.
 The restart file names reflect this information:  
@@ -24,13 +25,13 @@ The restart file names reflect this information:
 |   MMMM = ensemble member (0-based)
 |   BBBB = block number (0-based)
 
-These files do not have grid information in them, which must be read from
+The restart files do not have grid information in them, which must be read from
    grid_gBBBB.nc
 
 Aether_to_dart and dart_to_aether read the same namelist; transform_state_nml.
 The fields chosen to be part of the model state are specified in ``variables``.
-Program aether_to_dart will read the specified fields from all the restart 
-and grid files for a member and repackage them into an ensemble state vector 
+Program aether_to_dart will read the specified fields, from all the restarts
+for a member plus grid files, and repackage them into an ensemble state vector file
 (filter_input.nc), which has a single domain and no halos.
 The field names will be transformed into CF-compliant names in filter_input.nc.
 
@@ -104,28 +105,48 @@ transform_state_nml
 model_nml
 .........
 
-The fields listed in ``variables`` must be the *translated* names,
-as found in the filter_input.nc files.  
-In general the transformation does the following
+filter_io_filename  
+   = 'if other than filter_input_0001.nc'
 
-   - Remove all '\', '(', and ')'
-   - Replace blanks with underscores
-   - Replace '+' with 'pos' and '-' with 'neg'
-   - For ions, move the ion name from the end to the beginning.
+variables
+   Each field to be included in the state vector requires 5 descriptors:
+   
+      1) field name (transformed to CF-compliant)
+      #) DART "quantity" to be associated with the field
+      #) min value
+      #) max value
+      #) update the field in the restart file? {UPDATE,NO_COPY_BACK}
 
-For example 'velocity_parallel_east\ \(O+_2D\)' becomes
-'Opos_2D_velocity_parallel_east'.
+   The field names listed in ``variables`` must be the *transformed* names,
+   as found in the filter_input.nc files (see :ref:`Usage`).  
+   In general the transformation does the following
+   
+      - Remove all '\\', '(', and ')'
+      - Replace blanks with underscores
+      - Replace '+' with 'pos' and '-' with 'neg'
+      - For ions, move the ion name from the end to the beginning.
+   
+   For example 'velocity_parallel_east\\ \\(O+_2D\\)' becomes 'Opos_2D_velocity_parallel_east'.
+   
+time_step_days, time_step_seconds
+   = 0, 3600  The hindcast period between assimilations.
 
-The ``variables`` in ``model_nml`` requires more information
+.. _Usage:
 
-   1) Aether field name
-   #) DART "quantity" to be associated with the field
-   #) max value
-   #) min value
-   #) >>>>>>>>  Fix this in code (filter doesn't need it)
-   #) which file contains the field ("neutrals" or "ions")
-   #) whether the field should be updated in the assimilation
+Usage
+-----
 
-   &model_nml 
-    /
+To test the transformation of files for member 0:
+::
+
+> cd {aether_restart_dirname}
+> mkdir Orig
+> cp *m0000* Orig
+> ./aether_to_dart  0
+> cp filter_input_0001.nc filter_output_0001.nc
+> ./dart_to_aether  0
+
+| The filter\_ files now contain the CF-compliant field names which must be used in model_nml:variables.
+| Compare the modified Aether restart files with those in Orig.
+| (Some halo regions may have no data in them because Aether currently (2024-2) does not use those regions.)
 
