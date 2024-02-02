@@ -1,17 +1,8 @@
-TODO? Ben's: namelist 
-      /model_nml/ filter_io_filename, time_step_days, time_step_seconds, debug, variables
-
-Future?:
-x  estimate_f10_7 = .false.
-x  f10_7_file_name = 'f10_7.nc'
-Not namelist (recompile for a big change like this): 
-x  calendar = 'Gregorian'
-
 &model_nml
-   filter_io_filename         = 'other than filter_input_0001.nc'
-   debug                       = 100
-   variables = 'Temperature',    'QTY_TEMPERATURE',      '1000.0',  'NA',      'neutrals',    'UPDATE',
-               'Opos',          'QTY_DENSITY_ION_OP',      'NA',      'NA',      'ions',        'UPDATE'
+   filter_io_filename  = 'if other than filter_input_0001.nc'
+   debug               = 0
+   variables = 'Temperature',   'QTY_TEMPERATURE',      '1000.0',  'NA',      'UPDATE',
+               'Opos',          'QTY_DENSITY_ION_OP',   'NA',      'NA',      'UPDATE'
    time_step_days    = 0
    time_step_seconds = 3600
    /
@@ -30,4 +21,8 @@ x  calendar = 'Gregorian'
      N2+ 
 ! Other neutrals
      Vertical\ Wind 
+
+Future?:
+x  estimate_f10_7 = .false.
+x  f10_7_file_name = 'f10_7.nc'
 
