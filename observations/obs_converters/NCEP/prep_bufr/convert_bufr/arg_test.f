@@ -29,6 +29,7 @@ C
 C   SUBPROGRAMS CALLED: (LIST ALL CALLED FROM ANYWHERE IN CODES)
 C     UNIQUE:  
 C     LIBRARY:
+C       System   - getarg
 C       W3LIB    - errexit
 C
 C   EXIT STATES:
@@ -45,23 +46,23 @@ C   MACHINE:  IBM SP
 C
 C$$$
       CHARACTER(len=80) :: infile,outfile
-      INTEGER(4)        :: narg
+      INTEGER(4)        :: narg,iargc
 
 C
 C  GET Filename ARGUMENTS
 C
-C  if your machine does not support the Fortran 2003 intrinsics,
+C  if your machine does not support the iargc or getarg functions
 C  comment this section out and use the hardcoded filenames below.
-      NARG=COMMAND_ARGUMENT_COUNT()
+      NARG=IARGC()
       IF(NARG.NE.2) THEN
         PRINT *,'arg_test:  Incorrect usage'
         PRINT *,'Usage: arg_test inputBUFRfile ouputBUFRfile'
         CALL EXIT(2)
       ENDIF
 
-      call GET_COMMAND_ARGUMENT(1,infile)
+      call getarg(1,infile)
       infile = TRIM(infile)//CHAR(0)
-      call GET_COMMAND_ARGUMENT(2,outfile)
+      call getarg(2,outfile)
       outfile = TRIM(outfile)//CHAR(0)
 
 C  hardcoded filenames are the alternative to getting the filenames from
