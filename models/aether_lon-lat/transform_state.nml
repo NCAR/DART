@@ -1,0 +1,34 @@
+&transform_state_nml
+   aether_restart_dirname = 
+      '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata3'
+   variables = 
+     'Temperature',    'neutrals',
+     'velocity_east',  'neutrals',
+     'O+',                             'ions',
+     'Temperature\ \(O+\)',            'ions',
+     'velocity_parallel_east\ \(O+\)', 'ions',
+     'velocity_parallel_north\ \(O+\)','ions',
+     'velocity_parallel_up\ \(O+\)',   'ions',
+     'velocity_perp_east\ \(O+\)',     'ions',
+     'velocity_perp_north\ \(O+\)',    'ions',
+     'velocity_perp_up\ \(O+\)',       'ions',
+   nblocks_lon = 2
+   nblocks_lat = 2
+   nblocks_lev = 1
+   debug = 0
+   /
+! Neutrals from restart files, which Aaron identified as important:
+         Temperature     QTY_TEMPERATURE
+         velocity_east   QTY_U_WIND_COMPONENT
+         velocity_north  QTY_V_WIND_COMPONENT
+         (velocity_up)   QTY_VERTICAL_VELOCITY
+! Ions from restart files, which Aaron identified as important:
+         O+              QTY_DENSITY_ION_OP
+         O2+             QTY_DENSITY_ION_O2P 
+         O+2D            QTY_DENSITY_ION_O2DP  ?
+         O+2P            QTY_DENSITY_ION_O2PP  ?
+         N2+             QTY_DENSITY_ION_N2P   ?
+ 
+See ./issue_QTYs for complete lists of variables and potential QTYs
+
+
