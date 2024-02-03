@@ -112,7 +112,17 @@ integer  :: debug = 0
 !     to diagnostics).
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
 integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
-character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' ' 
+character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
+
+type :: var_type
+    integer :: count
+    character(len=64), allocatable :: names(:)
+    integer, allocatable :: qtys(:)
+    real(r8), allocatable :: clamp_values(:, :)
+    logical, allocatable :: updates(:)
+end type var_type
+
+type(var_type) :: var
 
 namelist /model_nml/ filter_io_filename, time_step_days, time_step_seconds, debug, variables
 
@@ -153,12 +163,6 @@ real(r8) :: lon_start, lon_delta, lat_start, lat_delta, lat_end
 
 !-----------------------------------------------------------------------
 ! to be assigned in the verify_variables subroutine
-integer  :: nvar
-
-character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES)
-real(r8)                        :: var_ranges(MAX_STATE_VARIABLES,2)
-logical                         :: var_update(MAX_STATE_VARIABLES)
-integer                         :: var_qtys(MAX_STATE_VARIABLES)
 
 type(quad_interp_handle) :: quad_interp
 
@@ -204,7 +208,7 @@ lon_delta = lons(2) - lons(1)
 lat_start = lats(1)
 lat_delta = lats(2) - lats(1)
 
-call verify_variables(variables, filter_io_filename, nvar, var_names, var_qtys, var_ranges, var_update)
+var = assign_var(variables, MAX_STATE_VARIABLES)
 
 ! This time is both the minimum time you can ask the model to advance
 ! (for models that can be advanced by filter) and it sets the assimilation
@@ -215,8 +219,8 @@ assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
 ! Define which variables are in the model state
 ! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(filter_io_filename, nvar, var_names(1:nvar), var_qtys(1:nvar), &
-                    var_ranges(1:nvar,:), var_update(1:nvar))
+dom_id = add_domain(filter_io_filename, var%count, var%names, var%qtys, &
+                    var%clamp_values, var%updates)
 
 call state_structure_info(dom_id)
 
@@ -516,84 +520,54 @@ end subroutine assign_dimensions
 !-----------------------------------------------------------------------
 ! Parse the table of variables' characteristics into arrays for easier access.
 
-subroutine verify_variables(variables, file, nvar, &
-                            var_names, var_qtys, var_ranges, var_update)
+function assign_var(variables, MAX_STATE_VARIABLES) result(var)
 
-character(len=*), intent(in)    :: variables(:,:)
-character(len=*), intent(inout) :: file
-integer,          intent(out)   :: nvar
-character(len=*), intent(out)   :: var_names(:)
-real(r8),         intent(out)   :: var_ranges(:,:)
-logical,          intent(out)   :: var_update(:)
-integer,          intent(out)   :: var_qtys(:)
+   character(len=vtablenamelength), intent(in) :: variables(:, :)
+   integer, intent(in)                         :: MAX_STATE_VARIABLES
 
-character(len=*), parameter :: routine = 'verify_variables'
+   type(var_type) :: var
 
-integer  :: io, i, quantity
-real(r8) :: minvalue, maxvalue
+   integer        :: ivar
 
-character(len=vtablenamelength) :: varname
-character(len=vtablenamelength) :: dartstr
-character(len=vtablenamelength) :: minvalstring
-character(len=vtablenamelength) :: maxvalstring
-character(len=vtablenamelength) :: state_or_aux
+   ! Loop through the variables array to get the actual count of the number of variables
+   do ivar = 1, MAX_STATE_VARIABLES
+      ! If the element is an empty string, the loop has exceeded the extent of the variables
+      if (variables(1, ivar) == '') then
+          var%count = ivar-1
+          exit
+      endif 
+   enddo
+  
+   ! Allocate the arrays in the var derived type
+   allocate(var%names(var%count), var%qtys(var%count), var%clamp_values(var%count, 2), var%updates(var%count))
+  
+   do ivar = 1, var%count
+   
+      var%names(ivar) = trim(variables(1, ivar))
+  
+      var%qtys(ivar) = get_index_for_quantity(variables(2, ivar))
+  
+      if (variables(3, ivar) /= 'NA') then
+          read(variables(3, ivar), '(d16.8)') var%clamp_values(ivar,1)
+      else
+          var%clamp_values(ivar,1) = MISSING_R8
+      endif
+  
+      if (variables(4, ivar) /= 'NA') then
+          read(variables(4, ivar), '(d16.8)') var%clamp_values(ivar,2)
+      else
+          var%clamp_values(ivar,2) = MISSING_R8
+      endif
+  
+      if (variables(5, ivar) == 'UPDATE') then
+          var%updates(ivar) = .true.
+      else
+          var%updates(ivar) = .false.
+      endif
+   
+   enddo
 
-nvar = 0
-MY_LOOP : do i = 1, size(variables,2)
-
-! TODO Why define these intermediate strings?  Is the code clearer or faster?
-   varname      = variables(VT_VARNAMEINDX,i)
-   dartstr      = variables(VT_KINDINDX,i)
-   minvalstring = variables(VT_MINVALINDX,i)
-   maxvalstring = variables(VT_MAXVALINDX,i)
-   state_or_aux = variables(VT_STATEINDX,i)
-
-   if ( varname == ' ' .and. dartstr == ' ' ) exit MY_LOOP ! Found end of list.
-
-   if ( varname == ' ' .or.  dartstr == ' ' ) then
-      error_string_1 = 'model_nml: variable list not fully specified'
-      error_string_2 = 'reading from "'//trim(file)//'"'
-      call error_handler(E_ERR, routine, error_string_1, &
-                         source, text2=error_string_2)
-   endif
-
-   ! The internal DART routines check if the variable name is valid.
-
-   ! Make sure DART kind is valid
-   quantity = get_index_for_quantity(dartstr)
-   if( quantity < 0 ) then
-      write(error_string_1,'(''there is no obs_kind "'',a,''" in obs_kind_mod.f90'')') &
-           trim(dartstr)
-      call error_handler(E_ERR, routine, error_string_1, source)
-   endif
-
-   ! All good to here - fill the output variables
-
-   nvar = nvar + 1
-   var_names( nvar)   = varname
-   var_qtys(  nvar)   = quantity
-   var_ranges(nvar,:) = (/ MISSING_R8, MISSING_R8 /)
-   var_update(nvar)   = .false.   ! at least initially
-
-   ! convert the [min,max]valstrings to numeric values if possible
-   read(minvalstring,*,iostat=io) minvalue
-   if (io == 0) var_ranges(nvar,1) = minvalue
-
-   read(maxvalstring,*,iostat=io) maxvalue
-   if (io == 0) var_ranges(nvar,2) = maxvalue
-
-   call to_upper(state_or_aux)
-   if (state_or_aux == 'UPDATE') var_update(nvar) = .true.
-
-enddo MY_LOOP
-
-if (nvar == MAX_STATE_VARIABLES) then
-   error_string_1 = 'WARNING: you may need to increase "MAX_STATE_VARIABLES"'
-   write(error_string_2,'(''you have specified at least '',i4,'' perhaps more.'')') nvar
-   call error_handler(E_MSG, routine, error_string_1, source, text2=error_string_2)
-endif
-
-end subroutine verify_variables
+end function assign_var
 
 !-----------------------------------------------------------------------
 ! Extract state values needed by the interpolation from all ensemble members.
