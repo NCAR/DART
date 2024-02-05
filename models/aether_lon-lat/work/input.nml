@@ -49,7 +49,7 @@
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
 
-   stages_to_write              = 'output'
+   stages_to_write              = 'preassim', 'analysis'
 
    single_file_out              = .false.,
    output_state_files           = ''
@@ -132,8 +132,8 @@
 
 &model_nml
    filter_io_filename  = 'filter_input_0001.nc'
-   variables = 'Temperature',    'QTY_TEMPERATURE',      'NA',  'NA',   'UPDATE',
-               'Opos',           'QTY_DENSITY_ION_OP',   'NA',  'NA',   'UPDATE'
+   variables           = 'Temperature',    'QTY_TEMPERATURE',      'NA',  'NA',   'UPDATE',
+                         'Opos',           'QTY_DENSITY_ION_OP',   'NA',  'NA',   'UPDATE'
    time_step_days = 0
    time_step_seconds = 3600
    debug             = 10
@@ -224,7 +224,7 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'GPS_VTEC_EXTRAP', 'GPS_PROFILE', 'COSMIC_ELECTRON_DENSITY'
+   assimilate_these_obs_types = 'AIRS_TEMPERATURE'
    evaluate_these_obs_types   = ''
    /
 
