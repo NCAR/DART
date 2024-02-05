@@ -211,8 +211,8 @@ allocate(temp2d(1-nghost:ny_per_block+nghost, &
 
 ! TODO: We need all altitudes, but there might be vertical blocks in the future.
 !       But there would be no vertical halos.
-!       Make nzcount adapt to whether there are blocks.
-!       And temp needs to have C-ordering, which is what the restart files have.
+!       Make transform_state_mod: zcount adapt to whether there are blocks.
+!       Temp needs to have C-ordering, which is what the restart files have.
 ! temp array large enough to hold 1 species, temperature, etc
 allocate(temp3d(1:nz_per_block, &
                 1-nghost:ny_per_block+nghost, &
@@ -255,7 +255,6 @@ allocate(temp3d(1:nz_per_block, &
 
 ! Handle the 2 restart file types (ions and neutrals).
 ! Each field has a file type associated with it: variables(VT_ORIGININDX,f_index)
-! TODO: for now require that all neutrals are listed in variables before the ions.
 
 file_root = variables(VT_ORIGININDX,1)
 filename = block_file_name(file_root, member, nb)
@@ -286,13 +285,7 @@ do ivar = 1, nvar_neutral
 
    else if (file_root == 'neutrals') then
    ! Read 3D array and extract the non-halo data of this block.
-! TODO: There are no 2D or 1D fields in ions or neutrals, but there could be; different temp array.
       call nc_get_variable(ncid_input, varname, temp3d, context=routine)
-      if (debug >= 100 .and. do_output()) then
-         ! TODO convert to error_handler?  Or diagnostics are no longer useful?
-         print*,'block_to_filter_io: temp3d = ', temp3d(1,1,1), temp3d(15,15,15), varname
-         print*,'block_to_filter_io: define = ', define
-      endif
       call write_filter_io(temp3d, dart_varname, ib, jb, ncid_output)
    else
       write(error_string_1,'(A,I3,A)') 'Trying to read neutrals, but variables(', &
@@ -398,16 +391,11 @@ character(len=*), parameter :: routine = 'write_filter_io'
 starts(1) = 1
 starts(2) = (jb-1) * ny_per_block + 1
 starts(3) = (ib-1) * nx_per_block + 1
-! TODO: convert to error_msg
-! print*, routine,'; starts = ', starts
-! print*, routine,'; counts = ', nz_per_block, ny_per_block, nx_per_block,1
 
 call nc_put_variable(ncid, varname, &
                      data3d(1:nz_per_block,1:ny_per_block,1:nx_per_block), &
                      context=routine, nc_start=starts, &
                      nc_count=(/nz_per_block,ny_per_block,nx_per_block/))
-! TODO: convert to error_msg
-! print*, routine,': filled varname = ', varname 
    
 end subroutine write_filter_io
 

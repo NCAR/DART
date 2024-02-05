@@ -137,17 +137,8 @@ if (do_nml_term()) write(     *     , nml=transform_state_nml)
 call check_namelist_read(iunit, io, 'transform_state_nml') ! closes, too.
 
 
-! error-check, convert namelist input to arrays.
-! 'variables' comes from the namelist in input.nml
-! TODO: we haven't settled on the mechanism for identifying the state vector field names and source.
-!       (defined type, arrays, named indices,...)
-! After splitting a2d and d2a routines out of model_mod, they can't use 
-! the model_mod:verify_variables.  This calls a new one.
+! error-check, convert namelist input 'variables' to global variables.
 call verify_variables(variables)
-
-!--------------------------------
-! TODO:  Set the time step 
-! Ensures model_advance_time is multiple of 'dynamics_timestep'
 
 ! Aether uses Julian time internally, andor a Julian calendar
 ! (days from the start of the calendar), depending on the context)
@@ -203,7 +194,13 @@ MY_LOOP : do i = 1, size(variables,2)
    if ( varname == ' ' .and. rootstr == ' ' ) exit MY_LOOP ! Found end of list.
 
    if ( varname == ' ' .or.  rootstr == ' ' ) then
-      error_string_1 = 'model_nml: variable list not fully specified'
+      error_string_1 = 'variable list not fully specified'
+      call error_handler(E_ERR, routine, error_string_1, source)
+   endif
+  
+   if (i > 1 .and. variables(VT_ORIGININDX,i-1) == 'ions' .and. rootstr /= 'ions'  ) then
+      write(error_string_1,'(A,I1,A)') ' File type (',i, &
+           ') in transform_state_nml:variables is out of order or invalid.'
       call error_handler(E_ERR, routine, error_string_1, source)
    endif
 
@@ -293,9 +290,9 @@ real(r4), allocatable :: temp(:,:,:)
 
 character(len=*), parameter :: routine = 'get_grid_from_blocks'
 
-! TODO: Here it needs to read the x,y,z  from a NetCDF block file(s),
-!       in order to calculate the n[xyz]_per_block dimensions. 
-!       grid_g0000.nc looks like a worthy candidate, but a restart could be used.
+! Read the x,y,z  from a NetCDF block file(s),
+! in order to calculate the n[xyz]_per_block dimensions. 
+! grid_g0000.nc looks like a worthy candidate, but a restart could be used.
 write (filename,'(2A)')  trim(dirname),'/grid_g0000.nc'
 ncid = nc_open_file_readonly(filename, routine)
 
@@ -312,9 +309,6 @@ nlev = nblocks_lev * nz_per_block
 write(error_string_1,'(3(A,I5))') 'nlon = ', nlon, 'nlat = ', nlat, 'nlev = ', nlev
 call error_handler(E_MSG, routine, error_string_1, source)
 
-! TODO; do these need to be deallocated somewhere?
-!       Probably not; this is only done once, and these arrays are needed
-!       through most of the a2d and d2a programs.
 allocate( lons( nlon ))
 allocate( lats( nlat ))
 allocate( levs( nlev ))
@@ -451,7 +445,6 @@ call nc_get_variable(ncid, 'time', tsimulation, context=routine)
 call nc_close_file(ncid, routine, filename)
 
 ! Calculate the DART time of the file time.
-! TODO: review calculation of ndays in read_aether_time
 ndays     = tsimulation / 86400
 nsecs     = tsimulation - (ndays * 86400)
 ! The ref day is not finished, but don't need to subtract 1 because 
@@ -502,8 +495,6 @@ char_num = scan(trim(aether),' ', back=.true.)
 var_root = aether(char_num+1:aether_len)
 ! purge_chars removes unwanted [()\] 
 parts(1) = purge_chars( trim(var_root),')(\', plus_minus=.true.)
-! TODO: keep aether_name_to_dart diagnostic?  Then add routine, error_handler.
-! print*,'var_root, parts(1) = ', var_root, parts(1) 
 end_str  = char_num
 
 ! Tranform remaining pieces of varname into DART versions.

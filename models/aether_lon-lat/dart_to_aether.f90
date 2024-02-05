@@ -33,7 +33,7 @@ use netcdf_utilities_mod, only :                                  &
     nc_add_global_attribute, nc_add_global_creation_time,         &
     nc_get_attribute_from_variable, nc_add_attribute_to_variable, &
     nc_define_real_variable, nc_define_real_scalar,               &
-    nc_get_variable, nc_put_variable,                             &
+    nc_get_variable, nc_put_variable, nc_variable_exists,         &
     nc_synchronize_file, NF90_FILL_REAL
 
 implicit none
@@ -123,13 +123,13 @@ allocate(fulldom3d(1:nlev, &
 
 ! get the dirname, construct the filenames inside open_block_file
 
-! >>> TODO: Not all fields have halos suitable for calculating gradients.  
-!     These do (2023-11-8): neutrals; temperature, O, O2, N2, and the horizontal winds. 
-!                           ions; none.
-!     The current model_mod will fill all neutral halos anyway, 
-!     since that's simpler and won't break the model.
-!     TODO: add an attribute to the variables (?) to denote whether a field 
-!           should have its halo filled.
+! Not all fields have halos suitable for calculating gradients.  
+! These do (2023-11-8): neutrals; temperature, O, O2, N2, and the horizontal winds. 
+!                       ions; none.
+! The current transform_state will fill all neutral halos anyway, 
+! since that's simpler and won't break the model.
+! TODO: add an attribute to the variables (?) to denote whether a field 
+!       should have its halo filled?
 do ivar = 1, nvar_neutral
    varname = purge_chars(trim(variables(VT_VARNAMEINDX,ivar)), '\', plus_minus=.false.)
    if (debug >= 0 .and. do_output()) then
@@ -151,7 +151,9 @@ do ivar = 1, nvar_neutral
 
       call filter_io_to_blocks(fulldom3d, varname, file_root, member)
    else
-      ! TODO: error; varname is inconsistent with VT_ORIGININDX
+      write(error_string_1,'(3A)') "file_root of varname = ",trim(varname), &
+           ' expected to be "neutrals"'
+      call error_handler(E_ERR, routine, error_string_1, source)
    endif
 
 enddo
@@ -179,7 +181,9 @@ do ivar = nvar_neutral + 1, nvar_neutral + nvar_ion
       call filter_io_to_blocks(fulldom3d, varname, file_root, member)
 
    else
-      ! TODO: error; varname is inconsistent with VT_ORIGININDX
+      write(error_string_1,'(3A)') "file_root of varname = ",trim(varname), &
+           ' expected to be "ions"'
+      call error_handler(E_ERR, routine, error_string_1, source)
    endif
 enddo
 
@@ -256,8 +260,7 @@ endif
 
 ! TODO: Keep halo corners check for future use?
 !       Add more robust rescaling.
-! Debug; print the 4x4 arrays (corners & middle) 
-! to see whether values are copied correctly
+! Print the 4x4 arrays (corners & middle) to see whether values are copied correctly.
 ! Level 44 values range from 800-eps to 805.  I don't want to see the 80.
 ! For O+ range from 0 to 7e+11, but are close to 1.1082e+10 near the corners.
 ! 2023-12-20; Aaron sent new files with 54 levels.
@@ -350,8 +353,11 @@ do jb = 1, nblocks_lat
 
       block_file = block_file_name(trim(file_root), member, nb)
       ncid_output = open_block_file(block_file, 'readwrite')
-   
-      ! TODO: error checking; does the block file have the field in it?
+      if (.not.nc_variable_exists(ncid_output,varname)) then
+         write(error_string_1,'(4A)') 'variable ', varname, ' does not exist in ',block_file
+         call error_handler(E_ERR, routine, error_string_1, source)
+      endif
+
       if ( debug > 0 .and. do_output()) then
         write(error_string_1,'(A,3(2X,i5))') "block, ib, jb = ", nb, ib, jb
         call error_handler(E_MSG, routine, error_string_1, source)

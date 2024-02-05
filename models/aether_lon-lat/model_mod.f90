@@ -97,19 +97,11 @@ type(time_type) :: assimilation_time_step
 
 !-----------------------------------------------------------------------
 ! Default values for namelist
-! TODO: replace model_nml:filter_io_filename with filter_io_root, 
-!            so that namelist doesn't need to be changed for each member
 character(len=256) :: filter_io_filename = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 integer  :: debug = 0
 
-! TODO: Should this be defined here, or does it come from netcdf_utilities_mod.f90?
-!     It's a public parameter from that module, which gets it from the netcdf module
-!     https://docs.unidata.ucar.edu/netcdf-fortran/current/f90-variables.html#f90-variables-introduction
-!     integer, parameter :: NF90_MAX_NAME = 256
-!     This module uses vtablenamelength instead (which is shorter = less white space output 
-!     to diagnostics).
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
 integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
 character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
@@ -137,12 +129,6 @@ integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
 !-----------------------------------------------------------------------
 ! Dimensions
 
-! TODO: using length * causes(?) a problem when calling nc_define_var_real_Nd
-! with the list of dim_names in this order.  nc_define also uses size * 
-! and apparently looks at the first one, sees that it's size 3, and assumes that for all.
-!   routine: nc_define_var_real_Nd
-!   message:  "Temperature" inquire dimension id for dim "tim": 
-!   errcode      -46= NetCDF: Invalid dimension ID or name
 character(len=4), parameter :: LEV_DIM_NAME = 'alt'
 character(len=4), parameter :: LAT_DIM_NAME = 'lat'
 character(len=4), parameter :: LON_DIM_NAME = 'lon'
@@ -200,7 +186,7 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar)
 
-call assign_dimensions(filter_io_filename, levs, lats, lons, nlev, nlat, nlon)
+call assign_dimensions(filter_io_filename)
 
 ! Dimension start and deltas needed for set_quad_coords
 lon_start = lons(1)
@@ -472,8 +458,6 @@ call nc_add_global_creation_time(ncid, routine)
 
 call nc_add_global_attribute(ncid, "model_source", source, routine)
 call nc_add_global_attribute(ncid, "model", "aether", routine)
-! TODO Shouldn't the calendar type be defined here?
-!      It's defined in the time variable = good enough for write_model_time.
 
 call nc_end_define_mode(ncid)
 
@@ -486,12 +470,9 @@ end subroutine nc_write_model_atts
 ! Read dimension information from the template file and use 
 ! it to assign values to variables.
 
-subroutine assign_dimensions(filter_io_filename, levs, lats, lons, nlev, nlat, nlon)
+subroutine assign_dimensions(filter_io_filename)
 
 character(len=*),      intent(in)  :: filter_io_filename
-! TODO: conflict between lons,... being global storage and passed to assign_dimensions?
-real(r8), allocatable, intent(out) :: levs(:), lats(:), lons(:)
-integer,               intent(out) :: nlev, nlat, nlon
 
 integer  :: ncid
 character(len=24), parameter :: routine = 'assign_dimensions'
