@@ -37,9 +37,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           get_copy,                   put_copy,                 all_vars_to_all_copies,     &
           all_copies_to_all_vars,     allocate_vars,            deallocate_vars,            &
           compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
-          broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
-          prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
-          prepare_to_update_copies,   print_ens_handle,         set_current_time,           &
+          broadcast_copy,             print_ens_handle,         set_current_time,           &
           map_task_to_pe,             map_pe_to_task,           get_current_time,           &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
           deallocate_single_copy
@@ -439,94 +437,6 @@ else
 endif
 
 end subroutine broadcast_copy
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_write_to_vars(ens_handle)
-
-! Warn ens manager that we're going to directly update the %vars array
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!ens_handle%valid = VALID_VARS
-
-end subroutine prepare_to_write_to_vars
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_write_to_copies(ens_handle)
-
-! Warn ens manager that we're going to directly update the %copies array
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!ens_handle%valid = VALID_COPIES
-
-end subroutine prepare_to_write_to_copies
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_read_from_vars(ens_handle)
-
-! Check to be sure that the vars array is current
-
-type(ensemble_type), intent(in) :: ens_handle
-
-!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_read_from_vars', &
- !       'last access not var-complete', source)
-!endif
-
-end subroutine prepare_to_read_from_vars
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_read_from_copies(ens_handle)
-
-! Check to be sure that the copies array is current
-
-type(ensemble_type), intent(in) :: ens_handle
-
-!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_read_from_copies', &
-!        'last access not copy-complete', source)
-!endif
-
-end subroutine prepare_to_read_from_copies
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_update_vars(ens_handle)
-
-! We need read/write access, so it has to start valid for vars or both,
-! and then is going to be vars only going out.
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_update_vars', &
- !       'last access not var-complete', source)
-!endif
-!ens_handle%valid = VALID_VARS
-
-end subroutine prepare_to_update_vars
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_update_copies(ens_handle)
-
-! We need read/write access, so it has to start valid for copies or both,
-! and then is going to be copies only going out.
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_update_copies', &
-!        'last access not copy-complete', source)
-!endif
-!ens_handle%valid = VALID_COPIES
-
-end subroutine prepare_to_update_copies
 
 !-----------------------------------------------------------------
 
