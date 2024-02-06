@@ -119,14 +119,6 @@ type(var_type) :: var
 namelist /model_nml/ filter_io_filename, time_step_days, time_step_seconds, debug, variables
 
 !-----------------------------------------------------------------------
-! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
-integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
-integer, parameter :: VT_KINDINDX     = 2 ! ... DART kind
-integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
-integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
-integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
-
-!-----------------------------------------------------------------------
 ! Dimensions
 
 character(len=4), parameter :: LEV_DIM_NAME = 'alt'
@@ -510,6 +502,14 @@ function assign_var(variables, MAX_STATE_VARIABLES) result(var)
 
    integer        :: ivar
 
+   !-----------------------------------------------------------------------
+   ! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
+   integer, parameter :: NAME_INDEX      = 1 ! ... variable name
+   integer, parameter :: QTY_INDEX       = 2 ! ... DART kind
+   integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
+   integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
+   integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
+
    ! Loop through the variables array to get the actual count of the number of variables
    do ivar = 1, MAX_STATE_VARIABLES
       ! If the element is an empty string, the loop has exceeded the extent of the variables
@@ -524,23 +524,23 @@ function assign_var(variables, MAX_STATE_VARIABLES) result(var)
   
    do ivar = 1, var%count
    
-      var%names(ivar) = trim(variables(1, ivar))
+      var%names(ivar) = trim(variables(NAME_INDEX, ivar))
   
-      var%qtys(ivar) = get_index_for_quantity(variables(2, ivar))
+      var%qtys(ivar) = get_index_for_quantity(variables(QTY_INDEX, ivar))
   
-      if (variables(3, ivar) /= 'NA') then
-          read(variables(3, ivar), '(d16.8)') var%clamp_values(ivar,1)
+      if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
+          read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
       else
           var%clamp_values(ivar,1) = MISSING_R8
       endif
   
-      if (variables(4, ivar) /= 'NA') then
-          read(variables(4, ivar), '(d16.8)') var%clamp_values(ivar,2)
+      if (variables(MAX_VAL_INDEX, ivar) /= 'NA') then
+          read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
       else
           var%clamp_values(ivar,2) = MISSING_R8
       endif
   
-      if (variables(5, ivar) == 'UPDATE') then
+      if (variables(UPDATE_INDEX, ivar) == 'UPDATE') then
           var%updates(ivar) = .true.
       else
           var%updates(ivar) = .false.
