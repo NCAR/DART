@@ -167,13 +167,12 @@
 
 &model_nml
    filter_io_filename  = 'filter_input_0001.nc'
-   variables  = 
-      'Temperature',    'QTY_TEMPERATURE',      'NA',  'NA',   'UPDATE',
-      'Opos',           'QTY_DENSITY_ION_OP',   'NA',  'NA',   'UPDATE'
-   time_step_days    = 0
-   time_step_seconds = 3600
-   debug             = 10
+   variables           = 'Temperature',    'QTY_TEMPERATURE',      'NA',  'NA',   'UPDATE',
+                         'Opos',           'QTY_DENSITY_ION_OP',   'NA',  'NA',   'UPDATE'
+   time_step_days      = 0
+   time_step_seconds   = 3600
    /
+
 ! Aether ion variable names need transformation for DART into (O+ example):
     Opos          QTY_DENSITY_ION_OP
     Opos_Temperature

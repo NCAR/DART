@@ -100,7 +100,6 @@ type(time_type) :: assimilation_time_step
 character(len=256) :: filter_io_filename = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
-integer  :: debug = 0
 
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
 integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
@@ -116,7 +115,7 @@ end type var_type
 
 type(var_type) :: var
 
-namelist /model_nml/ filter_io_filename, time_step_days, time_step_seconds, debug, variables
+namelist /model_nml/ filter_io_filename, time_step_days, time_step_seconds, variables
 
 !-----------------------------------------------------------------------
 ! Dimensions
@@ -265,11 +264,6 @@ llat       = loc_array(2)
 lvert      = loc_array(3)
 which_vert = nint(query_location(location))
 
-IF (debug > 85) then
-   write(error_string_1,'(A,3F15.4)')  'requesting interpolation at ', llon, llat, lvert
-   call error_handler(E_MSG, routine, error_string_1, source)
-end if
-
 ! Only height and level for vertical location type is supported at this point
 if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEVEL")) THEN
      istatus = INVALID_VERT_COORD_ERROR_CODE
@@ -289,16 +283,7 @@ endif
 
 ! do we know how to interpolate this quantity?
 call ok_to_interpolate(qty, varid, status1)
-
-if (status1 /= 0) then
-   if(debug > 12) then
-      write(error_string_1,'(A,I5,A)') 'Did not find observation quantity ', qty, &
-           ' in the state vector'
-      call error_handler(E_WARN, routine, error_string_1, source)
-   endif
-   istatus(:) = status1   ! this quantity not in the state vector
-   return
-endif
+istatus = status1
 
 ! get the indices for the 4 corners of the quad in the horizontal, plus
 ! the fraction across the quad for the obs location
@@ -443,7 +428,6 @@ if ( .not. module_initialized ) call static_init_model
 ! OR NOT, if called by create_and_open_state_output
 call nc_begin_define_mode(ncid)
 
-! Debug global att creation time; This requires being in define mode.
 ! nc_write_model_atts is called by create_and_open_state_output,
 !   which calls nf90_enddef before it.
 call nc_add_global_creation_time(ncid, routine)
