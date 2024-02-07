@@ -470,24 +470,14 @@ call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,  
                 perturb_from_single_instance)
 
 if(iam_task0()) then
-   if(prior_inflate_from_restart) &
-      call error_handler(E_MSG, 'filter_mod', 'Prior inflation from restart')
-   if(posterior_inflate_from_restart) &
-      call error_handler(E_MSG, 'filter_mod', 'Posterior inflation from restart')
    ! Print out info for posterior inflation handle because it can include rtps
    call log_inflation_info(post_inflate)
 endif
 
 if (perturb_from_single_instance) then
-   call error_handler(E_MSG,'filter_main:', &
-      'Reading in a single member and perturbing data for the other ensemble members')
-
    ! Only zero has the time, so broadcast the time to all other copy owners
    call broadcast_time_across_copy_owners(state_ens_handle, time1)
    call create_ensemble_from_single_file(state_ens_handle)
-else
-   call error_handler(E_MSG,'filter_main:', &
-      'Reading in initial condition/restart data for all ensemble members from file(s)')
 endif
 
 ! see what our stance is on missing values in the state vector
@@ -531,37 +521,15 @@ call filter_set_window_time(window_time)
 AdvanceTime : do
    time_step_number = time_step_number + 1
 
-   ! Check the time before doing the first model advance.  Not all tasks
-   ! might have a time, so only check on PE0 if running multitask.
-   ! This will get broadcast (along with the post-advance time) to all
-   ! tasks so everyone has the same times, whether they have copies or not.
-   ! If smoothing, we need to know whether the move_ahead actually advanced
-   ! the model or not -- the first time through this loop the data timestamp
-   ! may already include the first observation, and the model will not need
-   ! to be run.  Also, last time through this loop, the move_ahead call
-   ! will determine if there are no more obs, not call the model, and return
-   ! with no keys in the list, which is how we know to exit.  In both of
-   ! these cases, we must not advance the times on the lags.
-
-   ! Figure out how far model needs to move data to make the window
-   ! include the next available observation.  recent change is
-   ! curr_ens_time in move_ahead() is intent(inout) and doesn't get changed
-   ! even if there are no more obs.
-
+   ! Determine how far to advance model to make the window include the next available observation.
    call move_ahead(state_ens_handle, ens_size, seq, last_key_used, window_time, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
-   ! Only processes with an ensemble copy know to exit;
-   ! For now, let process 0 broadcast its value of key_bounds
-   ! This will synch the loop here and allow everybody to exit
-   ! Need to clean up and have a broadcast that just sends a single integer???
-   ! PAR For now, can only broadcast real arrays
+   ! Process 0 broadcast its value of key_bounds so exit condition of no keys can be checked
    call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, &
                               curr_ens_time, next_ens_time)
 
-   if(key_bounds(1) < 0) then
-      exit AdvanceTime
-   endif
+   if(key_bounds(1) < 0) exit AdvanceTime
 
    ! if model state data not at required time, advance model
    if (curr_ens_time /= next_ens_time) then
@@ -573,12 +541,14 @@ AdvanceTime : do
              source, text2='support will be added in subsequent releases', &
              text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
-
+ 
+      ! Is this sync still needed given the filter_sync call above
       call task_sync()
 
       ! make sure storage is allocated in ensemble manager for vars.
       call allocate_vars(state_ens_handle)
 
+      ! Transpose to var complete so models can run on a single process
       call all_copies_to_all_vars(state_ens_handle)
 
       call advance_state(state_ens_handle, ens_size, next_ens_time, async, &
@@ -595,9 +565,27 @@ AdvanceTime : do
       ! slowest task to finish before outputting the time.
       call task_sync()
    endif
-
+   
    call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
    call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
+
+   ! Write out forecast diagnostic file(s). 
+   call do_stage_output('forecast', output_interval, time_step_number, write_all_stages_at_end, &
+      state_ens_handle, FORECAST_COPIES, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   
+   ! Apply prior inflation 
+   if(do_ss_inflate(prior_inflate)) &
+      call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
+                                   ENS_MEAN_COPY)
+
+   ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD
+   if ( do_rtps_inflate(post_inflate) ) &
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, &
+                                   RTPS_PRIOR_SPREAD)
+
+   ! Write out preassim diagnostic files if requested.
+   call do_stage_output('preassim', output_interval, time_step_number, write_all_stages_at_end, &
+      state_ens_handle, PREASSIM_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Create an ensemble for the observations from this time plus
    ! obs_error_variance, observed value, key from sequence, global qc,
@@ -616,18 +604,6 @@ AdvanceTime : do
    ! Is there a way to distribute this?
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
-   ! Write out forecast file(s). 
-   call do_stage_output('forecast', output_interval, time_step_number, write_all_stages_at_end, &
-      state_ens_handle, FORECAST_COPIES, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-   if(do_ss_inflate(prior_inflate)) &
-      call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
-                                   ENS_MEAN_COPY)
-
-   ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD
-   if ( do_rtps_inflate(post_inflate) ) &
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, &
-                                   RTPS_PRIOR_SPREAD)
 
    ! Compute the ensemble of prior observations, load up the obs_err_var
    ! and obs_values. ens_size is the number of regular ensemble members,
@@ -641,10 +617,6 @@ AdvanceTime : do
            OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
-
-   ! Write out preassim diagnostic files if requested.
-   call do_stage_output('preassim', output_interval, time_step_number, write_all_stages_at_end, &
-      state_ens_handle, PREASSIM_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
