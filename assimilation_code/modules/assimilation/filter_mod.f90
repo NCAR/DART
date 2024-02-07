@@ -11,46 +11,45 @@ use options_mod,           only : get_missing_ok_status, set_missing_ok_status
 
 use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                   get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
-                                  get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
-                                  write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
-                                  assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
+                                  get_obs_def, get_time_range_keys,                           &
+                                  write_obs_seq, init_obs,                                    &
+                                  assignment(=), get_num_copies, get_num_qc, set_qc,          &
                                   static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
-                                  set_qc_meta_data, get_first_obs, get_obs_time_range,        &
-                                  delete_obs_from_seq, delete_seq_head,                       &
+                                  set_qc_meta_data,                                           &
+                                  delete_seq_head,                                            &
                                   delete_seq_tail, replace_obs_values, replace_qc,            &
                                   destroy_obs_sequence, get_qc_meta_data, add_qc
                                  
-use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                                  get_obs_def_type_of_obs
+use obs_def_mod,           only : obs_def_type, get_obs_def_time
 
 use obs_def_utilities_mod, only : set_debug_fwd_op
 
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
 
-use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,                         &
-                                  logfileunit, nmlfileunit, timestamp,                        &
+use utilities_mod,         only : error_handler, E_ERR, E_MSG,                                &
+                                  logfileunit, nmlfileunit,                                   &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
-                                  set_multiple_filename_lists, find_textfile_dims
+                                  set_multiple_filename_lists
 
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
                                   end_assim_model,  pert_model_copies, get_state_meta_data
 
-use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, test_state_copies
+use assim_tools_mod,       only : filter_assim, set_assim_tools_trace
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
 
 use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,                &
-                                  ensemble_type, get_copy, get_my_num_copies, put_copy,       &
+                                  ensemble_type, get_copy, get_my_num_copies,                 &
                                   all_vars_to_all_copies, all_copies_to_all_vars,             &
                                   compute_copy_mean, compute_copy_mean_sd,                    &
-                                  compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
-                                  get_ensemble_time, set_ensemble_time, broadcast_copy,       &
+                                  get_copy_owner_index,                                       &
+                                  get_ensemble_time, set_ensemble_time,                       &
                                   map_pe_to_task,                                             &
-                                  copies_in_window, set_num_extra_copies, get_allow_transpose, &
-                                  all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
-                                  get_single_copy, put_single_copy, deallocate_single_copy,   &
-                                  print_ens_handle
+                                  set_num_extra_copies,                                       &
+                                  allocate_single_copy, allocate_vars,                        &
+                                  deallocate_single_copy
+                                  
 
 use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -72,10 +71,9 @@ use io_filenames_mod,      only : io_filenames_init, file_info_type, &
                                   set_member_file_metadata,  set_io_copy_flag, &
                                   check_file_info_variable_shape, &
                                   query_copy_present, COPY_NOT_PRESENT, &
-                                  READ_COPY, WRITE_COPY, READ_WRITE_COPY
+                                  READ_COPY, WRITE_COPY
 
-use direct_netcdf_mod,     only : finalize_single_file_io, write_augmented_state, &
-                                  nc_get_num_times
+use direct_netcdf_mod,     only : finalize_single_file_io
 
 use state_structure_mod,   only : get_num_domains
 
@@ -151,12 +149,6 @@ integer :: RTPS_PRIOR_SPREAD              = COPY_NOT_PRESENT
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 logical :: has_cycling          = .false. ! filter will advance the model
-
-! parms for trace/timing messages
-integer, parameter :: T_BEFORE  = 1
-integer, parameter :: T_AFTER   = 2
-integer, parameter :: T_NEITHER = 3
-logical, parameter :: P_TIME    = .true.
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -536,33 +528,6 @@ curr_ens_time = set_time(0, 0)
 next_ens_time = set_time(0, 0)
 call filter_set_window_time(window_time)
 
-! Compute mean and spread
-call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-! Write out the mean and sd for the input files if requested
-if (get_stage_to_write('input')) then
-
-   if (write_all_stages_at_end) then
-      call store_input(state_ens_handle, prior_inflate, post_inflate)
-   else
-      ! if there is only one timestep in your input file insert the mean and sd if requested
-      ntimes = nc_get_num_times(file_info_input%stage_metadata%filenames(1,1))
-      if (single_file_out) then
-        if ( ntimes == 1 ) then
-           call write_augmented_state(state_ens_handle, file_info_input)
-        else
-           call error_handler(E_ERR,'filter_main', &
-                   'can not insert mean or spread into input files that have multiple time steps',  &
-                   source, text2='please remove "input" from stages_to_write')
-        endif
-     else ! muti file case
-        ! write out input_mean.nc and input_sd.nc if requested
-        call write_state(state_ens_handle, file_info_mean_sd)
-     endif
-   endif
-endif
-
-
 AdvanceTime : do
    time_step_number = time_step_number + 1
 
@@ -654,20 +619,9 @@ AdvanceTime : do
    ! Is there a way to distribute this?
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
-   ! Write out forecast file(s). This contains the incoming ensemble members and potentially
-   ! mean, sd, inflation values if requested.
-   if (get_stage_to_write('forecast')) then
-      if ((output_interval > 0) .and. &
-          (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         ! save or output the data
-         if (write_all_stages_at_end) then
-            call store_copies(state_ens_handle, FORECAST_COPIES)
-         else
-            call write_state(state_ens_handle, file_info_forecast)
-         endif
-      endif
-   endif
+   ! Write out forecast file(s). 
+   call do_stage_output('forecast', output_interval, time_step_number, &
+      write_all_stages_at_end, state_ens_handle, FORECAST_COPIES, file_info_forecast)
 
    if(do_ss_inflate(prior_inflate)) then
 
@@ -697,20 +651,9 @@ AdvanceTime : do
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
 
-   ! Write out preassim diagnostic files if requested.  This contains potentially 
-   ! damped prior inflation values and the inflated ensemble.
-   if (get_stage_to_write('preassim')) then
-      if ((output_interval > 0) .and. &
-          (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         ! save or output the data
-         if (write_all_stages_at_end) then
-            call store_copies(state_ens_handle, PREASSIM_COPIES)
-         else
-            call write_state(state_ens_handle, file_info_preassim)
-         endif
-      endif
-   endif
+   ! Write out preassim diagnostic files if requested.
+   call do_stage_output('preassim', output_interval, time_step_number, &
+      write_all_stages_at_end, state_ens_handle, PREASSIM_COPIES, file_info_preassim)
 
    ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
@@ -735,22 +678,10 @@ AdvanceTime : do
 
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
-   
-   if (get_stage_to_write('postassim')) then
-      if ((output_interval > 0) .and. &
-          (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         ! save or output the data
-         if (write_all_stages_at_end) then
-            call store_copies(state_ens_handle, POSTASSIM_COPIES)
-         else
-            call write_state(state_ens_handle, file_info_postassim)
-         endif
-      endif
-   endif
+   call do_stage_output('postassim', output_interval, time_step_number, &
+      write_all_stages_at_end, state_ens_handle, POSTASSIM_COPIES, file_info_postassim)
 
    ! This block applies posterior inflation including RTPS if selected
-
    if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate)) then
       call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
                        ENS_MEAN_COPY, RTPS_PRIOR_SPREAD, ENS_SD_COPY)
@@ -811,18 +742,8 @@ AdvanceTime : do
 
    ! Write out analysis diagnostic files if requested.  This contains the 
    ! posterior inflated ensemble and updated {prior,posterior} inflation values
-   if (get_stage_to_write('analysis')) then
-      if ((output_interval > 0) .and. &
-          (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         ! save or output the data
-         if (write_all_stages_at_end) then
-            call store_copies(state_ens_handle, ANALYSIS_COPIES)
-         else
-            call write_state(state_ens_handle, file_info_analysis)
-         endif
-      endif
-   endif
+   call do_stage_output('analysis', output_interval, time_step_number, &
+      write_all_stages_at_end, state_ens_handle, ANALYSIS_COPIES, file_info_analysis)
 
    ! only intended for debugging when cycling inside filter.
    ! writing the obs_seq file here will be slow - but if filter crashes
@@ -1598,67 +1519,6 @@ call set_assim_tools_trace(trace_level, timestamp_level)
 end subroutine set_trace
 
 !-------------------------------------------------------------------------
-!>  call progress(string, T_BEFORE, P_TIME, label, threshold, sync)  ! trace plus timestamp
-!-------------------------------------------------------------------------
-
-subroutine progress(msg, when, dotime, label, threshold, sync)  ! trace plus timestamp
-
-character(len=*), intent(in)           :: msg
-integer,          intent(in)           :: when
-logical,          intent(in)           :: dotime
-character(len=*), intent(in), optional :: label
-integer,          intent(in), optional :: threshold
-logical,          intent(in), optional :: sync
-
-! Write message to stdout and log file.
-! optionally write timestamp.
-integer :: t, lastchar
-character(len=40) :: label_to_use
-
-t = 0
-if (present(threshold)) t = threshold
-
-if (trace_level <= t) return
-
-if (.not. do_output()) return
-
-if (present(label)) then
-   lastchar = min(len_trim(label), len(label_to_use))
-   label_to_use = label(1:lastchar)
-else
-   label_to_use = ' filter_trace: '
-endif
-
-select case (when)
-  case (T_BEFORE)
-    call error_handler(E_MSG, trim(label_to_use)//' Before ', trim(msg))
-  case (T_AFTER)
-    call error_handler(E_MSG, trim(label_to_use)//' After  ', trim(msg))
-  case default
-    call error_handler(E_MSG, trim(label_to_use), trim(msg))
-end select
-
-if (timestamp_level <= 0) return
-
-! if sync is present and true, sync mpi jobs before printing time.
-if (present(sync)) then
-  if (sync) call task_sync()
-endif
-
-if (do_output()) then
-   select case (when)
-     case (T_BEFORE)
-      call timestamp(' Before '//trim(msg), pos='brief')
-     case (T_AFTER)
-      call timestamp(' After  '//trim(msg), pos='brief')
-     case default
-      call timestamp(' '//trim(msg), pos='brief')
-   end select
-endif
-
-end subroutine progress
-
-!-------------------------------------------------------------------------
 
 subroutine print_ens_time(ens_handle, msg)
 
@@ -1857,56 +1717,6 @@ do copy_num = ens_size + 1, ens_handle%num_copies
 enddo
 
 end subroutine  set_time_on_extra_copies
-
-
-!------------------------------------------------------------------
-!> Copy the current mean, sd, inf_mean, inf_sd to spare copies
-!> Assuming that if the spare copy is there you should fill it
-
-subroutine store_input(ens_handle, prior_inflate, post_inflate)
-
-type(ensemble_type),         intent(inout) :: ens_handle
-type(adaptive_inflate_type), intent(in)    :: prior_inflate
-type(adaptive_inflate_type), intent(in)    :: post_inflate
-
-if( output_mean ) then
-   if (query_copy_present( INPUT_COPIES(ENS_MEAN)) ) &
-      ens_handle%copies(   INPUT_COPIES(ENS_MEAN), :) = ens_handle%copies(ENS_MEAN_COPY, :)
-
-   if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-     if (query_copy_present( INPUT_COPIES(PRIORINF_MEAN)) ) &
-        ens_handle%copies(   INPUT_COPIES(PRIORINF_MEAN), :) = ens_handle%copies(PRIOR_INF_COPY, :)
-   endif 
-
-   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-      if (query_copy_present( INPUT_COPIES(POSTINF_MEAN)) ) &
-         ens_handle%copies(   INPUT_COPIES(POSTINF_MEAN), :) = ens_handle%copies(POST_INF_COPY, :)
-   endif
-   
-endif
-
-if( output_sd ) then
-
-   if (query_copy_present( INPUT_COPIES(ENS_SD)) ) then
-      ens_handle%copies(   INPUT_COPIES(ENS_SD), :) = ens_handle%copies(ENS_SD_COPY, :)
-   endif
-
-   if ( do_prior_inflate .and. .not. prior_inflate_from_restart ) then
-      if (query_copy_present( INPUT_COPIES(PRIORINF_SD)) ) then
-         ens_handle%copies(   INPUT_COPIES(PRIORINF_SD), :) = ens_handle%copies(PRIOR_INF_SD_COPY, :)
-      endif
-   endif
-
-   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-      if (query_copy_present( INPUT_COPIES(POSTINF_SD)) ) then
-         ens_handle%copies(   INPUT_COPIES(POSTINF_SD), :)  = ens_handle%copies(POST_INF_SD_COPY, :)
-      endif
-   endif
-
-endif
-
-end subroutine store_input
-
 
 !------------------------------------------------------------------
 !> Copy the current mean, sd, inf_mean, inf_sd to spare copies
@@ -2451,6 +2261,36 @@ enddo
 close(iunit)
 
 end subroutine test_obs_copies
+
+!-------------------------------------------------------------------
+
+
+subroutine do_stage_output(stage_name, output_interval, time_step_number, &
+   write_all_stages_at_end, state_ens_handle, COPIES, file_info)
+
+character(len = *),   intent(in)    :: stage_name
+integer,              intent(in)    :: output_interval, time_step_number
+logical,              intent(in)    :: write_all_stages_at_end
+type(ensemble_type),  intent(inout) :: state_ens_handle
+integer,              intent(inout) :: COPIES(:)
+type(file_info_type), intent(inout) :: file_info
+
+
+
+if(get_stage_to_write(stage_name)) then
+   if((output_interval > 0) .and. &
+      (time_step_number / output_interval * output_interval == time_step_number)) then
+
+      ! Save or output the data
+      if (write_all_stages_at_end) then
+         call store_copies(state_ens_handle, COPIES)
+      else
+         call write_state(state_ens_handle, file_info)
+      endif
+   endif
+endif
+
+end subroutine do_stage_output
 
 !-------------------------------------------------------------------
 end module filter_mod
