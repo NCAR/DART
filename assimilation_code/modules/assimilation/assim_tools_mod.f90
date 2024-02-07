@@ -47,8 +47,8 @@ use         location_mod, only : location_type, get_close_type, query_location, 
                                  set_vertical_localization_coord
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             &
-                                 compute_copy_mean_var, get_var_owner_index,              &
-                                 map_pe_to_task
+                                 compute_copy_mean_var, compute_copy_mean,                &
+                                 get_var_owner_index, map_pe_to_task
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              &
                                  sum_across_tasks, task_count, start_mpi_timer,           &
@@ -401,6 +401,9 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
 
 ! Initialize assim_tools_module if needed
 if (.not. module_initialized) call assim_tools_init()
+
+! Compute the ensemble mean
+call compute_copy_mean(ens_handle, 1, ens_size, ENS_MEAN_COPY)
 
 !HK make window for mpi one-sided communication
 ! used for vertical conversion in get_close_obs

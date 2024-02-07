@@ -586,9 +586,6 @@ AdvanceTime : do
 
       call all_vars_to_all_copies(state_ens_handle)
 
-      ! updated mean and spread after the model advance
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
       ! update so curr time is accurate.
       curr_ens_time = next_ens_time
       state_ens_handle%current_time = curr_ens_time
@@ -620,18 +617,12 @@ AdvanceTime : do
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
    ! Write out forecast file(s). 
-   call do_stage_output('forecast', output_interval, time_step_number, &
-      write_all_stages_at_end, state_ens_handle, FORECAST_COPIES, file_info_forecast)
+   call do_stage_output('forecast', output_interval, time_step_number, write_all_stages_at_end, &
+      state_ens_handle, FORECAST_COPIES, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-   if(do_ss_inflate(prior_inflate)) then
-
+   if(do_ss_inflate(prior_inflate)) &
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
                                    ENS_MEAN_COPY)
-
-      ! Recompute the the mean and spread as required for diagnostics
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-   endif
 
    ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD
    if ( do_rtps_inflate(post_inflate) ) &
@@ -652,8 +643,8 @@ AdvanceTime : do
            isprior=.true., prior_qc_copy=prior_qc_copy)
 
    ! Write out preassim diagnostic files if requested.
-   call do_stage_output('preassim', output_interval, time_step_number, &
-      write_all_stages_at_end, state_ens_handle, PREASSIM_COPIES, file_info_preassim)
+   call do_stage_output('preassim', output_interval, time_step_number, write_all_stages_at_end, &
+      state_ens_handle, PREASSIM_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
@@ -673,23 +664,15 @@ AdvanceTime : do
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
 
-   ! Already transformed, so compute mean and spread for state diag as needed
-   call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
-   call do_stage_output('postassim', output_interval, time_step_number, &
-      write_all_stages_at_end, state_ens_handle, POSTASSIM_COPIES, file_info_postassim)
+   call do_stage_output('postassim', output_interval, time_step_number, write_all_stages_at_end, &
+      state_ens_handle, POSTASSIM_COPIES, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This block applies posterior inflation including RTPS if selected
-   if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate)) &
       call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
                        ENS_MEAN_COPY, RTPS_PRIOR_SPREAD, ENS_SD_COPY)
-
-      ! Recompute the mean or the mean and spread as required for diagnostics
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-   endif
 
    ! this block recomputes the expected obs values for the obs_seq.final file
 
@@ -723,35 +706,16 @@ AdvanceTime : do
    endif
 
    ! this block computes the adaptive state space posterior inflation
-   ! (it was applied earlier, this is computing the updated values for
-   ! the next cycle.)
-
-   ! CSS added condition: Don't update posterior inflation if relaxing to prior spread
-   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then
-
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) &
       call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
               ens_size, num_groups, obs_val_index, post_inflate, &
               ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
               OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
               OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
 
-      ! recalculate standard deviation since this was overwritten in filter_assim
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-   endif  ! if doing state space posterior inflate
-
-   ! Write out analysis diagnostic files if requested.  This contains the 
-   ! posterior inflated ensemble and updated {prior,posterior} inflation values
-   call do_stage_output('analysis', output_interval, time_step_number, &
-      write_all_stages_at_end, state_ens_handle, ANALYSIS_COPIES, file_info_analysis)
-
-   ! only intended for debugging when cycling inside filter.
-   ! writing the obs_seq file here will be slow - but if filter crashes
-   ! you can get partial results by enabling this flag.
-   if (write_obs_every_cycle) then
-      ! Only pe 0 outputs the observation space diagnostic file
-      if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
-   endif
+   ! Write out analysis diagnostic files if requested. 
+   call do_stage_output('analysis', output_interval, time_step_number, write_all_stages_at_end, &
+      state_ens_handle, ANALYSIS_COPIES, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Deallocate storage used for keys for each set
    deallocate(keys)
@@ -2264,9 +2228,8 @@ end subroutine test_obs_copies
 
 !-------------------------------------------------------------------
 
-
 subroutine do_stage_output(stage_name, output_interval, time_step_number, &
-   write_all_stages_at_end, state_ens_handle, COPIES, file_info)
+   write_all_stages_at_end, state_ens_handle, COPIES, file_info, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 character(len = *),   intent(in)    :: stage_name
 integer,              intent(in)    :: output_interval, time_step_number
@@ -2274,12 +2237,15 @@ logical,              intent(in)    :: write_all_stages_at_end
 type(ensemble_type),  intent(inout) :: state_ens_handle
 integer,              intent(inout) :: COPIES(:)
 type(file_info_type), intent(inout) :: file_info
-
-
+integer,              intent(in)    :: ens_size, ENS_MEAN_COPY, ENS_SD_COPY
 
 if(get_stage_to_write(stage_name)) then
    if((output_interval > 0) .and. &
       (time_step_number / output_interval * output_interval == time_step_number)) then
+
+      ! Compute the ensemble mean and standard deviation
+      ! For efficiency could make this optional in call
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
       ! Save or output the data
       if (write_all_stages_at_end) then
