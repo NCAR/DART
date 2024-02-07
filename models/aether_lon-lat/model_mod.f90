@@ -30,7 +30,7 @@ use utilities_mod, only : &
     find_namelist_in_file, check_namelist_read, to_upper, &
     find_enclosing_indices
 
-use obs_kind_mod, only : get_index_for_quantity, QTY_GEOMETRIC_HEIGHT
+use obs_kind_mod, only : get_index_for_quantity
 
 use netcdf_utilities_mod, only : &
     nc_add_global_attribute, nc_synchronize_file, &
@@ -269,20 +269,14 @@ if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEV
      return
 endif
 
-if (qty == QTY_GEOMETRIC_HEIGHT .and. is_vertical(location, "LEVEL")) then
-   if (nint(lvert) < 1 .or. nint(lvert) > size(levs,1)) then
-      expected_obs = MISSING_R8
-      istatus = 1
-   else
-      expected_obs = levs(nint(lvert))
-      istatus = 0
-   endif
-   return ! Early Return
-endif
+! See if the state contains the obs quantity
+varid = get_varid_from_kind(dom_id, qty)
 
-! do we know how to interpolate this quantity?
-call ok_to_interpolate(qty, varid, status1)
-istatus = status1
+if (varid > 0) then
+    istatus = 0
+else
+    istatus = UNKNOWN_OBS_QTY_ERROR_CODE
+endif
 
 ! get the indices for the 4 corners of the quad in the horizontal, plus
 ! the fraction across the quad for the obs location
@@ -622,37 +616,6 @@ enddo
 istatus = 0
 
 end subroutine get_four_state_values
-
-!-----------------------------------------------------------------------
-! return 0 (ok) if we know how to interpolate this quantity.
-! if it is a field in the state, return the variable id from
-! the state structure.  if not in the state, varid will return -1
-
-subroutine ok_to_interpolate(qty, varid, istatus)
-
-integer, intent(in)  :: qty
-integer, intent(out) :: varid
-integer, intent(out) :: istatus
-
-! See if the state contains the obs quantity
-varid = get_varid_from_kind(dom_id, qty)
-
-! in the state vector
-if (varid > 0) then
-   istatus = 0
-   return
-endif
-
-! add any quantities that can be interpolated to this list if they
-! are not in the state vector.
-select case (qty)
-   case (QTY_GEOMETRIC_HEIGHT)
-      istatus = 0
-   case default
-      istatus = UNKNOWN_OBS_QTY_ERROR_CODE
-end select
-    
-end subroutine ok_to_interpolate
 
 !-----------------------------------------------------------------------
 ! End of model_mod
