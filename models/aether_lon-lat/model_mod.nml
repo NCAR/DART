@@ -1,5 +1,5 @@
 &model_nml
-   filter_io_filename  = 'if other than filter_input_0001.nc'
+   template_filename  = 'if other than filter_input_0001.nc'
    debug               = 0
    variables = 'Temperature',   'QTY_TEMPERATURE',      '1000.0',  'NA',      'UPDATE',
                'Opos',          'QTY_DENSITY_ION_OP',   'NA',      'NA',      'UPDATE'

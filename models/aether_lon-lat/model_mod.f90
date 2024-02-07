@@ -96,7 +96,7 @@ type(time_type) :: assimilation_time_step
 
 !-----------------------------------------------------------------------
 ! Default values for namelist
-character(len=256) :: filter_io_filename = 'filter_input_0001.nc'
+character(len=256) :: template_filename = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 
@@ -114,7 +114,7 @@ end type var_type
 
 type(var_type) :: var
 
-namelist /model_nml/ filter_io_filename, time_step_days, time_step_seconds, variables
+namelist /model_nml/ template_filename, time_step_days, time_step_seconds, variables
 
 !-----------------------------------------------------------------------
 ! Dimensions
@@ -176,7 +176,7 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar)
 
-call assign_dimensions(filter_io_filename)
+call assign_dimensions(template_filename)
 
 ! Dimension start and deltas needed for set_quad_coords
 lon_start = lons(1)
@@ -195,7 +195,7 @@ assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
 ! Define which variables are in the model state
 ! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(filter_io_filename, var%count, var%names, var%qtys, &
+dom_id = add_domain(template_filename, var%count, var%names, var%qtys, &
                     var%clamp_values, var%updates)
 
 call state_structure_info(dom_id)
@@ -395,16 +395,16 @@ end subroutine nc_write_model_atts
 ! Read dimension information from the template file and use 
 ! it to assign values to variables.
 
-subroutine assign_dimensions(filter_io_filename)
+subroutine assign_dimensions(template_filename)
 
-character(len=*),      intent(in)  :: filter_io_filename
+character(len=*),      intent(in)  :: template_filename
 
 integer  :: ncid
 character(len=24), parameter :: routine = 'assign_dimensions'
 
-call error_handler(E_MSG, routine, 'reading filter input ['//trim(filter_io_filename)//']')
+call error_handler(E_MSG, routine, 'reading filter input ['//trim(template_filename)//']')
 
-ncid = nc_open_file_readonly(filter_io_filename, routine)
+ncid = nc_open_file_readonly(template_filename, routine)
 
 ! levels
 nlev = nc_get_dimension_size(ncid, trim(LEV_DIM_NAME), routine)

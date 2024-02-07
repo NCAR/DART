@@ -105,7 +105,7 @@ transform_state_nml
 model_nml
 .........
 
-filter_io_filename  
+template_filename  
    = 'if other than filter_input_0001.nc'
 
 variables

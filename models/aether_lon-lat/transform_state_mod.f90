@@ -116,7 +116,7 @@ contains
 
 subroutine static_init_blocks()
 
-character(len=128) :: aether_filter_io_filename
+character(len=128) :: aether_template_filename
 integer            :: iunit, io
 
 character(len=*), parameter :: routine = 'static_init_blocks'
@@ -163,8 +163,8 @@ aether_ref_time = set_date(aether_ref_date(1), aether_ref_date(2), aether_ref_da
 call get_time(aether_ref_time, aether_ref_nsecs, aether_ref_ndays)
 
 ! Get the model time from a restart file.
-aether_filter_io_filename = block_file_name(variables(VT_ORIGININDX,1), 0, 0)
-state_time = read_aether_time(trim(aether_restart_dirname)//'/'//trim(aether_filter_io_filename))
+aether_template_filename = block_file_name(variables(VT_ORIGININDX,1), 0, 0)
+state_time = read_aether_time(trim(aether_restart_dirname)//'/'//trim(aether_template_filename))
 
 if ( debug > 0 ) then
   write(error_string_1,'("grid: nlon, nlat, nlev =",3(1x,i5))') nlon, nlat, nlev

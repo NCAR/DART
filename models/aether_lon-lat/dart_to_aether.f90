@@ -46,7 +46,7 @@ integer :: member = MISSING_I, &
            num_args, ncid
 character(len=3)   :: char_mem
 character(len=31)  :: filter_io_root = 'filter_input'
-character(len=64)  :: filter_io_filename = ''
+character(len=64)  :: template_filename = ''
 character(len=512) :: error_string_1, error_string_2
 character(len=31),  parameter :: progname = 'dart_to_aether'
 character(len=256), parameter :: source   = 'aether_lon-lat/dart_to_aether..f90'
@@ -73,15 +73,15 @@ read(char_mem,'(I3)') member
 
 call static_init_blocks()
 
-write(filter_io_filename,'(2A,I0.4,A3)') trim(filter_io_root),'_',member + 1,'.nc'
+write(template_filename,'(2A,I0.4,A3)') trim(filter_io_root),'_',member + 1,'.nc'
 
 call error_handler(E_MSG, source, '', '')
-write(error_string_1,'(3A)') 'Extracting fields from DART file ',trim(filter_io_filename)
+write(error_string_1,'(3A)') 'Extracting fields from DART file ',trim(template_filename)
 write(error_string_2,'(A,I3,2A)') 'into Aether restart member ',member,' in directory ', trim(aether_restart_dirname)
 call error_handler(E_MSG, progname, error_string_1, text2=error_string_2)
 call error_handler(E_MSG, '', '')
 
-ncid = nc_open_file_readonly(filter_io_filename, source)
+ncid = nc_open_file_readonly(template_filename, source)
 
 call filter_to_restarts(ncid, member)
 
