@@ -19,8 +19,7 @@ use time_manager_mod, only : &
 
 use location_mod, only : &
     location_type, get_close_type, &
-    loc_get_close_obs => get_close_obs, &
-    loc_get_close_state => get_close_state, &
+    get_close_obs, get_close_state, &
     is_vertical, set_location, &
     VERTISHEIGHT, query_location, get_location
 
@@ -353,56 +352,6 @@ location = set_location(lons(lon_index), lats(lat_index), levs(lev_index), VERTI
 if (present(qty)) qty = my_qty
 
 end subroutine get_state_meta_data
-
-
-!-----------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-
-subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc            ! handle to a get_close structure
-integer,                       intent(in)    :: base_type     ! observation TYPE
-type(location_type),           intent(inout) :: base_loc      ! location of interest
-type(location_type),           intent(inout) :: locs(:)       ! obs locations
-integer,                       intent(in)    :: loc_qtys(:)   ! QTYS for obs
-integer,                       intent(in)    :: loc_types(:)  ! TYPES for obs
-integer,                       intent(out)   :: num_close     ! how many are close
-integer,                       intent(out)   :: close_ind(:)  ! incidies into the locs array
-real(r8),            optional, intent(out)   :: dist(:)       ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-! character(len=*), parameter :: routine = 'get_close_obs'
-
-call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                       num_close, close_ind, dist, ens_handle)
-
-end subroutine get_close_obs
-
-!-----------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-
-subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                           num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc           ! handle to a get_close structure
-type(location_type),           intent(inout) :: base_loc     ! location of interest
-integer,                       intent(in)    :: base_type    ! observation TYPE
-type(location_type),           intent(inout) :: locs(:)      ! state locations
-integer,                       intent(in)    :: loc_qtys(:)  ! QTYs for state
-integer(i8),                   intent(in)    :: loc_indx(:)  ! indices into DART state vector
-integer,                       intent(out)   :: num_close    ! how many are close
-integer,                       intent(out)   :: close_ind(:) ! indices into the locs array
-real(r8),            optional, intent(out)   :: dist(:)      ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-! character(len=*), parameter :: routine = 'get_close_state'
-
-
-call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                         num_close, close_ind, dist, ens_handle)
-
-end subroutine get_close_state
 
 !-----------------------------------------------------------------------
 ! Does any shutdown and clean-up needed for model. Can be a NULL
