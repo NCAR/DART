@@ -15,7 +15,7 @@ use types_mod, only : &
     r8, i8, MISSING_R8, vtablenamelength
 
 use time_manager_mod, only : &
-    time_type, set_calendar_type, set_time
+    time_type, set_time
 
 use location_mod, only : &
     location_type, get_close_type, &
@@ -148,7 +148,6 @@ integer, parameter :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
 integer, parameter :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
 
 type(time_type)    :: state_time ! module-storage declaration of current model time
-character(len=32)  :: calendar = 'GREGORIAN'
 character(len=512) :: error_string_1, error_string_2
 
 contains
@@ -172,8 +171,6 @@ call check_namelist_read(iunit, io, "model_nml")
 ! Record the namelist values used for the run 
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
-
-call set_calendar_type(calendar)
 
 call assign_dimensions(domain_template_file)
 

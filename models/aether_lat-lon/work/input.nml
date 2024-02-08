@@ -117,15 +117,9 @@
    print_every_nth_obs             = 0
    /
 
-! transform state
-! Each variable must have 2 entries.
-! 1: Aether variable name from {neutrals,ions}_mMMMM_gBBBB.nc
-! 2: which aether netcdf file contains the variable - neutrals or ions
-!    All neutrals must be listed before the ions.
-
 &transform_state_nml
    aether_restart_dirname = 
-      '/Users/raeder/DAI/Manhattan/models/aether_lon-lat/testdata3'
+      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/testdata3'
    variables = 
       'Temperature',    'neutrals',
       'O+',             'ions',
@@ -134,36 +128,6 @@
    nblocks_lev = 1
    debug = 0
    /
-! Neutrals from restart files, which Aaron identified as important:
-    Temperature     
-    velocity_east   
-    velocity_north  
-! Ion densities from restart files, which Aaron identified as important:
-    O+              
-    O2+             
-    O+_2D           
-    O+_2P           
-    N2+             
-! Other variables
-    velocity_up                        'neutrals
-    Velocity components of the ions, e.g.
-     'velocity_perp_east\ \(O+\)',     'ions',
-     'velocity_perp_north\ \(O+\)',    'ions',
-     'velocity_perp_up\ \(O+\)',       'ions',
-     'velocity_parallel_east\ \(O+\)', 'ions',
-     'velocity_parallel_north\ \(O+\)','ions',
-     'velocity_parallel_up\ \(O+\)',   'ions',
-
-! model_mod
-! Each variable must have 5 entries.
-! 1: CF-compliant variable name found in filter_input_####.nc
-! 2: DART KIND (QTY)
-! 3: minimum value - as a character string - if none, use 'NA'
-! 4: maximum value - as a character string - if none, use 'NA'
-! 5: does the updated variable need to be written to the restart files?
-!    'UPDATE' =>        updated variable written to file
-!    'anything else' => variable not written to file
-!    all these variables will be updated INTERNALLY IN DART.
 
 &model_nml
    filter_io_filename  = 'filter_input_0001.nc'
@@ -174,25 +138,6 @@
    time_step_seconds = 3600
    debug             = 10
    /
-! Aether ion variable names need transformation for DART into (O+ example):
-    Opos          QTY_DENSITY_ION_OP
-    Opos_Temperature
-    Opos_velocity_parallel_east
-    Opos_velocity_parallel_north
-    Opos_velocity_parallel_up
-    Opos_velocity_perp_east
-    Opos_velocity_perp_north
-    Opos_velocity_perp_up
-! Other variables
-    velocity_up   QTY_VERTICAL_VELOCITY
-    O2pos         QTY_DENSITY_ION_O2P 
-    N2pos         QTY_DENSITY_ION_N2P   ?
-    O2pos_2D      QTY_DENSITY_ION_O2DP  ?
-    O2pos_2P      QTY_DENSITY_ION_O2PP  ?
-    NOpos
-    Npos
-    Hepos
-! See ./issue_QTYs for complete lists of variables and potential QTYs
 
 &cov_cutoff_nml
    select_localization = 1

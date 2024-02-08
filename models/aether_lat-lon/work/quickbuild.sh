@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=aether_lon-lat
+MODEL=aether_lat-lon
 LOCATION=threed_sphere
 
 programs=(
