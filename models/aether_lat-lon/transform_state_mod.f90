@@ -45,7 +45,7 @@ public :: static_init_blocks, &
           aether_restart_dirname, &
           purge_chars, debug
 
-character(len=256), parameter :: source   = 'aether_lon-lat/transform_state_mod.f90'
+character(len=256), parameter :: source   = 'aether_lat-lon/transform_state_mod.f90'
 
 logical :: module_initialized = .false.
 

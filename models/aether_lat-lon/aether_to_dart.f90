@@ -53,7 +53,7 @@ character(len=31)  :: filter_io_root = 'filter_input'
 character(len=64)  :: filter_io_filename = ''
 character(len=512) :: error_string_1, error_string_2
 character(len=31),  parameter :: progname = 'aether_to_dart'
-character(len=256), parameter :: source   = 'aether_lon-lat/aether_to_dart.f90'
+character(len=256), parameter :: source   = 'aether_lat-lon/aether_to_dart.f90'
 
 character(len=4), parameter :: LEV_DIM_NAME = 'alt'
 character(len=4), parameter :: LAT_DIM_NAME = 'lat'

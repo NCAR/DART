@@ -89,7 +89,7 @@ public :: get_model_size,         &
           shortest_time_between_assimilations, &
           write_model_time
 
-character(len=256), parameter :: source   = 'aether_lon-lat/model_mod.f90'
+character(len=256), parameter :: source   = 'aether_lat-lon/model_mod.f90'
 
 logical :: module_initialized = .false.
 integer :: dom_id ! used to access the state structure

@@ -5,9 +5,9 @@ Overview
 --------
 
 The `Aether` ("eether") space weather model can be implemented 
-on a logically rectangular grid "lon-lat", 
+on a logically rectangular grid "lat-lon", 
 or on an the cubed-sphere grid (see ../aether_cubed_shere).
-This is the interface to the lon-lat version.
+This is the interface to the lat-lon version.
 
 .. Aether: https://aetherdocumentation.readthedocs.io/en/latest/
 
