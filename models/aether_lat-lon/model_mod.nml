@@ -1,32 +1,9 @@
 &model_nml
-   filter_io_filename  = 'if other than filter_input_0001.nc'
+   domain_template_file  = 'if other than filter_input_0001.nc'
    debug               = 0
    variables = 'Temperature',   'QTY_TEMPERATURE',      '1000.0',  'NA',      'UPDATE',
                'Opos',          'QTY_DENSITY_ION_OP',   'NA',      'NA',      'UPDATE'
    time_step_days    = 0
    time_step_seconds = 3600
    /
-! Aether ion variable names need transformation for DART into (O+ example):
-    Opos          QTY_DENSITY_ION_OP
-    Opos_Temperature
-    Opos_velocity_parallel_east
-    Opos_velocity_parallel_north
-    Opos_velocity_parallel_up
-    Opos_velocity_perp_east
-    Opos_velocity_perp_north
-    Opos_velocity_perp_up
-! Other variables
-    velocity_up   QTY_VERTICAL_VELOCITY
-    O2pos         QTY_DENSITY_ION_O2P 
-    N2pos         QTY_DENSITY_ION_N2P   ?
-    O2pos_2D      QTY_DENSITY_ION_O2DP  ?
-    O2pos_2P      QTY_DENSITY_ION_O2PP  ?
-    NOpos
-    Npos
-    Hepos
-! See ./issue_QTYs for complete lists of variables and potential QTYs
-
-Future?:
-x  estimate_f10_7 = .false.
-x  f10_7_file_name = 'f10_7.nc'
 

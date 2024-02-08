@@ -4,12 +4,12 @@ Aether Rectangular Grid Interface
 Overview
 --------
 
-The `Aether` ("eether") space weather model can be implemented 
+The `Aether`_ ("eether") space weather model can be implemented 
 on a logically rectangular grid "lat-lon", 
 or on an the cubed-sphere grid (see ../aether_cubed_shere).
 This is the interface to the lat-lon version.
 
-.. Aether: https://aetherdocumentation.readthedocs.io/en/latest/
+.. _Aether: https://aetherdocumentation.readthedocs.io/en/latest/
 
 Aether writes history and restart files, with some overlap of the fields (?).
 The restart fields are divided among 2 types of files: neutrals and ions.
@@ -59,7 +59,9 @@ transform_state_nml
 
    nblocks_lon, nblocks_lat, nblocks_lev 
       Number of Aether domain "blocks" in the longitudinal, latitudinal, 
-      and vertical directions.  (vertical is always 1 as of 2024-2)
+      and vertical directions.  Vertical is always 1 (2024-2).
+      The total number of blocks (nblocks_lon x nblocks_lat x nblocks_lev)
+      is defined by the number of processors used by Aether.
 
    variables
       The Aether fields to be included in the model state are specified
@@ -75,7 +77,7 @@ transform_state_nml
       in ./aether_to_dart.nml.
       
       The neutrals restart files contain the following fields.
-      The most important fields are **highlighted**
+      The most important fields are **noted in bold text**
       
       |  **Temperature**, **velocity_east**, **velocity_north**, 
       |  velocity_up, N, O2, N2, NO, He, N_2D, N_2P, H, O_1D, CO2
@@ -97,15 +99,16 @@ transform_state_nml
          - velocity_perp_up\ \(O+\)
 
 .. WARNING:: 
-   As of this writing (2024-1-30) the electron density is not available 
-   through the restart files, even though electron temperature is.
-   It can be written to the history files.
+   As of this writing (2024-1-30) the electron density and solar radiation
+   parameter "f10.7" are not available through the restart files, 
+   even though electron temperature is.
+   They may be available in the history files.
       
 
 model_nml
 .........
 
-filter_io_filename  
+domain_template_file  
    = 'if other than filter_input_0001.nc'
 
 variables
@@ -128,6 +131,37 @@ variables
    
    For example 'velocity_parallel_east\\ \\(O+_2D\\)' becomes 'Opos_2D_velocity_parallel_east'.
    
+   The DART QTY associated with each variable is an open question,
+   depending on the forward operators required for the available observations
+   and on the scientific objective.   The default choices are not necessarily correct
+   for your assimilation.  For the fields identified as most important
+   in early Aether assimilation experiments, these are the defaults::
+==============   ====================
+variable         quantity (kind)
+==============   ====================
+Temperature      QTY_TEMPERATURE
+velocity_east    QTY_U_WIND_COMPONENT
+velocity_north   QTY_V_WIND_COMPONENT
+Opos             QTY_DENSITY_ION_OP
+O2pos            QTY_DENSITY_ION_O2P
+N2pos            QTY_DENSITY_ION_N2P
+O2pos_2D         QTY_DENSITY_ION_O2DP
+O2pos_2P         QTY_DENSITY_ION_O2PP
+==============   ====================
+      
+   Some variables could have one of several QTYs associated with them.  
+   For example, the variable 'Opos_velocity_parallel_up'
+   could potentially have these existing QTYs associated with it::
+     - QTY_VELOCITY_W 
+     - QTY_VELOCITY_W_ION 
+     - QTY_VERTICAL_VELOCITY
+   It's possible that several variables could have the same QTY.
+   A third possibility is that the experiment may require the creation of a new QTY.
+   The example above may require something like QTY_VEL_PARALLEL_VERT_OP.
+
+.. WARNING:: 
+   The size of these parameters may be limited to 31 characters (``types_mod.f90``)
+
 time_step_days, time_step_seconds
    = 0, 3600  The hindcast period between assimilations.
 
@@ -141,12 +175,17 @@ To test the transformation of files for member 0:
 
 > cd {aether_restart_dirname}
 > mkdir Orig
-> cp *m0000* Orig
+> cp *m0000* Orig/
 > ./aether_to_dart  0
 > cp filter_input_0001.nc filter_output_0001.nc
 > ./dart_to_aether  0
 
-| The filter\_ files now contain the CF-compliant field names which must be used in model_nml:variables.
+| The filter\_ files will contain the CF-compliant field names which must be used in model_nml:variables.
 | Compare the modified Aether restart files with those in Orig.
-| (Some halo regions may have no data in them because Aether currently (2024-2) does not use those regions.)
+.. NOTE:
+   Some halo parts may have no data in them because Aether currently (2024-2) 
+   does not use those regions.
+.. WARNING:
+   The restart files have dimensions ordered such that common viewing tools 
+   (e.g. ncview) may display the pictures transposed from what is expected.
 

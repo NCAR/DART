@@ -9,22 +9,3 @@
    nblocks_lev = 1
    debug = 0
    /
-! Neutrals from restart files, which Aaron identified as important:
-    Temperature     
-    velocity_east   
-    velocity_north  
-! Ion densities from restart files, which Aaron identified as important:
-    O+              
-    O2+             
-    O+_2D           
-    O+_2P           
-    N2+             
-! Other variables
-    velocity_up                        'neutrals
-    Velocity components of the ions, e.g.
-     'velocity_perp_east\ \(O+\)',     'ions',
-     'velocity_perp_north\ \(O+\)',    'ions',
-     'velocity_perp_up\ \(O+\)',       'ions',
-     'velocity_parallel_east\ \(O+\)', 'ions',
-     'velocity_parallel_north\ \(O+\)','ions',
-     'velocity_parallel_up\ \(O+\)',   'ions',

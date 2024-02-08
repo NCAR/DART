@@ -68,9 +68,6 @@ implicit none
 private
 
 ! routines required by DART code - will be called from filter and other DART executables.
-! TODO: Is nc_write_model_vars no longer mandatory?
-!       Tiegcm has it listed, but it's just a pass-through to-from default_model_mod
-!       which has a do-nothing version, and a note "currently unused".
 public :: get_model_size,         &
           get_state_meta_data,    &
           model_interpolate,      &
@@ -97,7 +94,7 @@ type(time_type) :: assimilation_time_step
 
 !-----------------------------------------------------------------------
 ! Default values for namelist
-character(len=256) :: filter_io_filename = 'filter_input_0001.nc'
+character(len=256) :: domain_template_file = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 integer  :: debug = 0
@@ -109,14 +106,14 @@ character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_V
 type :: var_type
     integer :: count
     character(len=64), allocatable :: names(:)
-    integer, allocatable :: qtys(:)
-    real(r8), allocatable :: clamp_values(:, :)
-    logical, allocatable :: updates(:)
+    integer,           allocatable :: qtys(:)
+    real(r8),          allocatable :: clamp_values(:, :)
+    logical,           allocatable :: updates(:)
 end type var_type
 
 type(var_type) :: var
 
-namelist /model_nml/ filter_io_filename, time_step_days, time_step_seconds, debug, variables
+namelist /model_nml/ domain_template_file, time_step_days, time_step_seconds, debug, variables
 
 !-----------------------------------------------------------------------
 ! Dimensions
@@ -178,7 +175,7 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar)
 
-call assign_dimensions(filter_io_filename)
+call assign_dimensions(domain_template_file)
 
 ! Dimension start and deltas needed for set_quad_coords
 lon_start = lons(1)
@@ -197,7 +194,7 @@ assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
 ! Define which variables are in the model state
 ! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(filter_io_filename, var%count, var%names, var%qtys, &
+dom_id = add_domain(domain_template_file, var%count, var%names, var%qtys, &
                     var%clamp_values, var%updates)
 
 call state_structure_info(dom_id)
@@ -462,16 +459,16 @@ end subroutine nc_write_model_atts
 ! Read dimension information from the template file and use 
 ! it to assign values to variables.
 
-subroutine assign_dimensions(filter_io_filename)
+subroutine assign_dimensions(domain_template_file)
 
-character(len=*),      intent(in)  :: filter_io_filename
+character(len=*),      intent(in)  :: domain_template_file
 
 integer  :: ncid
 character(len=24), parameter :: routine = 'assign_dimensions'
 
-call error_handler(E_MSG, routine, 'reading filter input ['//trim(filter_io_filename)//']')
+call error_handler(E_MSG, routine, 'reading filter input ['//trim(domain_template_file)//']')
 
-ncid = nc_open_file_readonly(filter_io_filename, routine)
+ncid = nc_open_file_readonly(domain_template_file, routine)
 
 ! levels
 nlev = nc_get_dimension_size(ncid, trim(LEV_DIM_NAME), routine)
