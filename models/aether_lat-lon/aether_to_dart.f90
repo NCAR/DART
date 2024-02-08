@@ -50,7 +50,7 @@ integer :: member = MISSING_I, &
            num_args, ncid
 character(len=3)   :: char_mem
 character(len=31)  :: filter_io_root = 'filter_input'
-character(len=64)  :: filter_io_filename = ''
+character(len=64)  :: filter_io_file = ''
 character(len=512) :: error_string_1, error_string_2
 character(len=31),  parameter :: progname = 'aether_to_dart'
 character(len=256), parameter :: source   = 'aether_lat-lon/aether_to_dart.f90'
@@ -88,16 +88,16 @@ read(char_mem,'(I3)') member
 call static_init_blocks()
 
 ! Must be after static_init_blocks, which provides filter_io_root from the namelist.
-write(filter_io_filename,'(2A, I0.4, A3)') trim(filter_io_root),'_', member + 1,'.nc'
+write(filter_io_file,'(2A, I0.4, A3)') trim(filter_io_root),'_', member + 1,'.nc'
 call error_handler(E_MSG, '', '')
 write(error_string_1,'(A,I3,2A)') 'Converting Aether member ',member, &
-     ' restart files to the NetCDF file ', trim(filter_io_filename)
+     ' restart files to the NetCDF file ', trim(filter_io_file)
 write(error_string_2,'(3A)') ' in directory ', trim(aether_restart_dirname)
 call error_handler(E_MSG, progname, error_string_1, text2=error_string_2)
 call error_handler(E_MSG, '', '')
 
 ! nc_create_file does not leave define mode.
-ncid = nc_create_file(filter_io_filename)
+ncid = nc_create_file(filter_io_file)
 ! def_fill_dimvars does leave define mode.
 call def_fill_dimvars(ncid)
 
@@ -115,7 +115,7 @@ call nc_close_file(ncid)
 
 call error_handler(E_MSG, '', '')
 write(error_string_1,'(3A)') 'Successfully converted the Aether restart files to ', &
-     "'"//trim(filter_io_filename)//"'"
+     "'"//trim(filter_io_file)//"'"
 call error_handler(E_MSG, progname, error_string_1)
 call error_handler(E_MSG, '', '')
     

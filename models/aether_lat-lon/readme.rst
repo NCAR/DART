@@ -108,7 +108,7 @@ transform_state_nml
 model_nml
 .........
 
-domain_template_file  
+template_file  
    = 'if other than filter_input_0001.nc'
 
 variables

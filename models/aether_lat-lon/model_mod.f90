@@ -19,8 +19,7 @@ use time_manager_mod, only : &
 
 use location_mod, only : &
     location_type, get_close_type, &
-    loc_get_close_obs => get_close_obs, &
-    loc_get_close_state => get_close_state, &
+    get_close_obs, get_close_state, &
     is_vertical, set_location, &
     VERTISHEIGHT, query_location, get_location
 
@@ -31,7 +30,7 @@ use utilities_mod, only : &
     find_namelist_in_file, check_namelist_read, to_upper, &
     find_enclosing_indices
 
-use obs_kind_mod, only : get_index_for_quantity, QTY_GEOMETRIC_HEIGHT
+use obs_kind_mod, only : get_index_for_quantity
 
 use netcdf_utilities_mod, only : &
     nc_add_global_attribute, nc_synchronize_file, &
@@ -94,10 +93,9 @@ type(time_type) :: assimilation_time_step
 
 !-----------------------------------------------------------------------
 ! Default values for namelist
-character(len=256) :: domain_template_file = 'filter_input_0001.nc'
+character(len=256) :: template_file = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
-integer  :: debug = 0
 
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
 integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
@@ -113,7 +111,7 @@ end type var_type
 
 type(var_type) :: var
 
-namelist /model_nml/ domain_template_file, time_step_days, time_step_seconds, debug, variables
+namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
 !-----------------------------------------------------------------------
 ! Dimensions
@@ -172,7 +170,7 @@ call check_namelist_read(iunit, io, "model_nml")
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
-call assign_dimensions(domain_template_file)
+call assign_dimensions()
 
 ! Dimension start and deltas needed for set_quad_coords
 lon_start = lons(1)
@@ -191,7 +189,7 @@ assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
 ! Define which variables are in the model state
 ! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(domain_template_file, var%count, var%names, var%qtys, &
+dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
                     var%clamp_values, var%updates)
 
 call state_structure_info(dom_id)
@@ -259,39 +257,19 @@ llat       = loc_array(2)
 lvert      = loc_array(3)
 which_vert = nint(query_location(location))
 
-IF (debug > 85) then
-   write(error_string_1,'(A,3F15.4)')  'requesting interpolation at ', llon, llat, lvert
-   call error_handler(E_MSG, routine, error_string_1, source)
-end if
-
 ! Only height and level for vertical location type is supported at this point
 if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEVEL")) THEN
      istatus = INVALID_VERT_COORD_ERROR_CODE
      return
 endif
 
-if (qty == QTY_GEOMETRIC_HEIGHT .and. is_vertical(location, "LEVEL")) then
-   if (nint(lvert) < 1 .or. nint(lvert) > size(levs,1)) then
-      expected_obs = MISSING_R8
-      istatus = 1
-   else
-      expected_obs = levs(nint(lvert))
-      istatus = 0
-   endif
-   return ! Early Return
-endif
+! See if the state contains the obs quantity
+varid = get_varid_from_kind(dom_id, qty)
 
-! do we know how to interpolate this quantity?
-call ok_to_interpolate(qty, varid, status1)
-
-if (status1 /= 0) then
-   if(debug > 12) then
-      write(error_string_1,'(A,I5,A)') 'Did not find observation quantity ', qty, &
-           ' in the state vector'
-      call error_handler(E_WARN, routine, error_string_1, source)
-   endif
-   istatus(:) = status1   ! this quantity not in the state vector
-   return
+if (varid > 0) then
+    istatus = 0
+else
+    istatus = UNKNOWN_OBS_QTY_ERROR_CODE
 endif
 
 ! get the indices for the 4 corners of the quad in the horizontal, plus
@@ -363,56 +341,6 @@ if (present(qty)) qty = my_qty
 
 end subroutine get_state_meta_data
 
-
-!-----------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-
-subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc            ! handle to a get_close structure
-integer,                       intent(in)    :: base_type     ! observation TYPE
-type(location_type),           intent(inout) :: base_loc      ! location of interest
-type(location_type),           intent(inout) :: locs(:)       ! obs locations
-integer,                       intent(in)    :: loc_qtys(:)   ! QTYS for obs
-integer,                       intent(in)    :: loc_types(:)  ! TYPES for obs
-integer,                       intent(out)   :: num_close     ! how many are close
-integer,                       intent(out)   :: close_ind(:)  ! incidies into the locs array
-real(r8),            optional, intent(out)   :: dist(:)       ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-! character(len=*), parameter :: routine = 'get_close_obs'
-
-call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                       num_close, close_ind, dist, ens_handle)
-
-end subroutine get_close_obs
-
-!-----------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-
-subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                           num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc           ! handle to a get_close structure
-type(location_type),           intent(inout) :: base_loc     ! location of interest
-integer,                       intent(in)    :: base_type    ! observation TYPE
-type(location_type),           intent(inout) :: locs(:)      ! state locations
-integer,                       intent(in)    :: loc_qtys(:)  ! QTYs for state
-integer(i8),                   intent(in)    :: loc_indx(:)  ! indices into DART state vector
-integer,                       intent(out)   :: num_close    ! how many are close
-integer,                       intent(out)   :: close_ind(:) ! indices into the locs array
-real(r8),            optional, intent(out)   :: dist(:)      ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-! character(len=*), parameter :: routine = 'get_close_state'
-
-
-call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                         num_close, close_ind, dist, ens_handle)
-
-end subroutine get_close_state
-
 !-----------------------------------------------------------------------
 ! Does any shutdown and clean-up needed for model. Can be a NULL
 ! INTERFACE if the model has no need to clean up storage, etc.
@@ -437,7 +365,6 @@ if ( .not. module_initialized ) call static_init_model
 ! OR NOT, if called by create_and_open_state_output
 call nc_begin_define_mode(ncid)
 
-! Debug global att creation time; This requires being in define mode.
 ! nc_write_model_atts is called by create_and_open_state_output,
 !   which calls nf90_enddef before it.
 call nc_add_global_creation_time(ncid, routine)
@@ -456,16 +383,14 @@ end subroutine nc_write_model_atts
 ! Read dimension information from the template file and use 
 ! it to assign values to variables.
 
-subroutine assign_dimensions(domain_template_file)
-
-character(len=*),      intent(in)  :: domain_template_file
+subroutine assign_dimensions()
 
 integer  :: ncid
 character(len=24), parameter :: routine = 'assign_dimensions'
 
-call error_handler(E_MSG, routine, 'reading filter input ['//trim(domain_template_file)//']')
+call error_handler(E_MSG, routine, 'reading filter input ['//trim(template_file)//']')
 
-ncid = nc_open_file_readonly(domain_template_file, routine)
+ncid = nc_open_file_readonly(template_file, routine)
 
 ! levels
 nlev = nc_get_dimension_size(ncid, trim(LEV_DIM_NAME), routine)
@@ -683,37 +608,6 @@ enddo
 istatus = 0
 
 end subroutine get_four_state_values
-
-!-----------------------------------------------------------------------
-! return 0 (ok) if we know how to interpolate this quantity.
-! if it is a field in the state, return the variable id from
-! the state structure.  if not in the state, varid will return -1
-
-subroutine ok_to_interpolate(qty, varid, istatus)
-
-integer, intent(in)  :: qty
-integer, intent(out) :: varid
-integer, intent(out) :: istatus
-
-! See if the state contains the obs quantity
-varid = get_varid_from_kind(dom_id, qty)
-
-! in the state vector
-if (varid > 0) then
-   istatus = 0
-   return
-endif
-
-! add any quantities that can be interpolated to this list if they
-! are not in the state vector.
-select case (qty)
-   case (QTY_GEOMETRIC_HEIGHT)
-      istatus = 0
-   case default
-      istatus = UNKNOWN_OBS_QTY_ERROR_CODE
-end select
-    
-end subroutine ok_to_interpolate
 
 !-----------------------------------------------------------------------
 ! End of model_mod

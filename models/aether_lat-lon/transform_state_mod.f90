@@ -116,7 +116,7 @@ contains
 
 subroutine static_init_blocks()
 
-character(len=128) :: aether_filter_io_filename
+character(len=128) :: aether_filename
 integer            :: iunit, io
 
 character(len=*), parameter :: routine = 'static_init_blocks'
@@ -163,8 +163,8 @@ aether_ref_time = set_date(aether_ref_date(1), aether_ref_date(2), aether_ref_da
 call get_time(aether_ref_time, aether_ref_nsecs, aether_ref_ndays)
 
 ! Get the model time from a restart file.
-aether_filter_io_filename = block_file_name(variables(VT_ORIGININDX,1), 0, 0)
-state_time = read_aether_time(trim(aether_restart_dirname)//'/'//trim(aether_filter_io_filename))
+aether_filename = block_file_name(variables(VT_ORIGININDX,1), 0, 0)
+state_time = read_aether_time(trim(aether_restart_dirname)//'/'//trim(aether_filename))
 
 if ( debug > 0 ) then
   write(error_string_1,'("grid: nlon, nlat, nlev =",3(1x,i5))') nlon, nlat, nlev
@@ -198,10 +198,12 @@ MY_LOOP : do i = 1, size(variables,2)
       call error_handler(E_ERR, routine, error_string_1, source)
    endif
   
-   if (i > 1 .and. variables(VT_ORIGININDX,i-1) == 'ions' .and. rootstr /= 'ions'  ) then
+   if (i > 1) then
+   if (variables(VT_ORIGININDX,i-1) == 'ions' .and. rootstr /= 'ions'  ) then
       write(error_string_1,'(A,I1,A)') ' File type (',i, &
            ') in transform_state_nml:variables is out of order or invalid.'
       call error_handler(E_ERR, routine, error_string_1, source)
+   endif
    endif
 
    ! The internal DART routines check if the variable name is valid.
