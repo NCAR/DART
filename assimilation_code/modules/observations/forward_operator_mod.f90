@@ -73,7 +73,7 @@ subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, &
    qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
    OBS_ERR_VAR_COPY,   OBS_VAL_COPY,   OBS_KEY_COPY, &
    OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_COPY, &
-   OBS_VAR_COPY, isprior, prior_qc_copy)
+   OBS_VAR_COPY, prior_qc_copy, isprior)
 
 type(ensemble_type),     intent(inout) :: ens_handle  !! state ensemble handle
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !! observation forward operator handle
@@ -89,8 +89,8 @@ integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY  !! ensemble copy n
 integer,                 intent(in)    :: OBS_EXTRA_QC_COPY  !! ensemble copy number for ??
 integer,                 intent(in)    :: OBS_MEAN_COPY  !! ensemble copy number for obs mean values
 integer,                 intent(in)    :: OBS_VAR_COPY  !! ensemble copy number for obs variance 
-logical,                 intent(in)    :: isprior  !! true for prior eval; false for posterior
 real(r8),                intent(inout) :: prior_qc_copy(:)  !! array instead of ensemble copy ??
+logical,                 intent(in)    :: isprior  !! true for prior eval; false for posterior
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var
 
