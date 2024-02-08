@@ -90,7 +90,7 @@ logical,  parameter :: verbose_interpolation = .false.    ! set this to .true. i
 ! parameters to be used in specifying the DART internal state
 integer, parameter :: modelvar_table_height = 13
 integer, parameter :: modelvar_table_width = 5
-integer, parameter :: modelparams_table_height = 2
+integer, parameter :: modelparams_table_height = 1
 integer, parameter :: modelparams_table_width = 5
 
 ! defining the variables that will be read from the namelist

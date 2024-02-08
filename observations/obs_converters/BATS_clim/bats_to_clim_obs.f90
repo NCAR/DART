@@ -163,7 +163,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
       exit obsloop
    end if
 
-   ! reading the observtaion uncertainty
+   ! reading the observtaion uncertainty (standard deviation)
 
    read(input_line((comma_locs(4) + 1):len(input_line)), *, iostat=rcio) obs_err
    if(rcio /= 0) then

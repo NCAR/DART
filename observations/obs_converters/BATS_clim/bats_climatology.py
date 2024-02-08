@@ -1,4 +1,6 @@
+import os
 import numpy as np
+import netCDF4 as nc
 import matplotlib.pyplot as plt
 
 #################################################################
@@ -6,8 +8,9 @@ import matplotlib.pyplot as plt
 #################################################################
 
 # input and output datafiles
-input_file  = 'data/bats_bottle.txt'
-output_file = 'data/bats_climatology.txt'
+input_file_path = 'data/bats_bottle.txt'
+output_txt_path = 'data/bats_climatology.txt'
+output_nc_path  = 'data/bats_climatology.nc'
 
 first_data_line = 61        # file is read starting at this line (so that header information is ignored)
 month_columns   = [18, 19]  # first and last columns in the data file containing month values
@@ -42,7 +45,7 @@ clim_means    = np.zeros((num_obs_types, 12, len(marbl_depths)))
 sq_means      = np.zeros((num_obs_types, 12, len(marbl_depths)))
 sample_counts = np.zeros((num_obs_types, 12, len(marbl_depths)), dtype=int)
 
-bats_data   = open(input_file, "r")
+bats_data   = open(input_file_path, "r")
 line_number = 0
 
 for line in bats_data.readlines():
@@ -85,14 +88,31 @@ for line in bats_data.readlines():
 
 bats_data.close()
 
-# writing the climatology into a CSV file that will be readable by a DART data converter
+# setting up a CSV file to write the climatology into; this will be read by the DART data converter.
 
-clim_file = open(output_file, "w")
+os.system("rm -f "+output_txt_path)
+output_txt = open(output_txt_path, "w")
+
+# setting up a netCDF file to write the climatology into; this will be useful for creating MARBL-DART diagnostics.
+
+os.system("rm -f "+output_nc_path)
+output_nc = nc.Dataset(output_nc_path, "w")
+
+output_nc.createDimension("Month")
+output_nc.createDimension("Layer")
+output_nc.createVariable("Depth", "double", ("Layer",))
+output_nc["Depth"][:] = marbl_depths
+
+for obs_type_index in range(num_obs_types):
+    output_nc.createVariable(obs_names[obs_type_index]+"_value", "double", ("Month", "Layer",))
+    output_nc.createVariable(obs_names[obs_type_index]+"_error_sd", "double", ("Month", "Layer",))
+    output_nc.createVariable(obs_names[obs_type_index]+"_samples", "int", ("Month", "Layer",))
 
 for month_index in range(12):
     for obs_type_index in range(num_obs_types):
         for depth_index in range(len(marbl_depths)):
             samples = sample_counts[obs_type_index, month_index, depth_index]
+            output_nc[obs_names[obs_type_index]+"_samples"][month_index, depth_index] = samples
 
             if(samples > 0):
                 depth   = marbl_depths[depth_index]
@@ -101,15 +121,19 @@ for month_index in range(12):
 
                 variability_err = (sq_mean - mean**2)/samples
                 obs_error       = (.1*mean)**2
-                uncertainty     = variability_err + obs_error
+                uncertainty     = np.sqrt(variability_err + obs_error)
 
-                clim_file.write(str(month_index+1)+","+str(obs_type_index+1)+","+str(depth)+","+str(mean)+","+str(uncertainty)+"\n")
+                output_txt.write(str(month_index+1)+","+str(obs_type_index+1)+","+str(depth)+","+str(mean)+","+str(uncertainty)+"\n")
 
-clim_file.close()
+                output_nc[obs_names[obs_type_index]+"_value"][month_index, depth_index] = mean
+                output_nc[obs_names[obs_type_index]+"_error_sd"][month_index, depth_index] = uncertainty
+
+output_txt.close()
+output_nc.close()
 
 if(plot_sample_hist):
-    month_plot  = 12*[None]
     month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    month_plot  = 12*[None]
 
     fig = plt.figure(figsize = (6, 70))
 
