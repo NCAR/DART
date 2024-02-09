@@ -348,8 +348,6 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
    ! Ok, this task does need to advance something. 
    need_advance = 1
 
-   call prepare_to_update_vars(ens_handle)
-
    ! Increment number of ensemble member copies I have.
    my_num_state_copies = my_num_state_copies + 1
 
