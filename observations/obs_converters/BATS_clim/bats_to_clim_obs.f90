@@ -43,10 +43,11 @@ real(r8), parameter :: MIN_OBS_ERROR = 0.1_r8
 
 ! namelist variables, changeable at runtime
 character(len=256) :: text_input_file, obs_out_dir
-integer :: max_lines
-logical :: debug
+integer  :: max_lines
+real(r8) :: obs_err_var_inflation
+logical  :: debug
 
-namelist /bats_to_clim_obs_nml/ text_input_file, max_lines, obs_out_dir, debug
+namelist /bats_to_clim_obs_nml/ text_input_file, max_lines, obs_err_var_inflation, obs_out_dir, debug
 
 ! local variables
 character (len=294) :: input_line, obs_out_file
@@ -171,11 +172,15 @@ obsloop: do    ! no end limit - have the loop break when input ends
       exit obsloop
    end if
 
+   ! inflating the observation error according to the number of cycles in MARBL-DART
+
+   obs_err = obs_err*sqrt(obs_err_var_inflation)
+
    ! unit corrections from BATS to MARBL
 
    if((OTYPE_ORDERING(otype_index) == BATS_ALKALINITY) .or. (OTYPE_ORDERING(otype_index) == BATS_INORGANIC_CARBON)) then
       ovalue  = ovalue*1.026
-      obs_err = obs_err*1.026**2
+      obs_err = obs_err*1.026
    end if
 
    ! For ensemble smoothing, each observation is considered to be a measurement
