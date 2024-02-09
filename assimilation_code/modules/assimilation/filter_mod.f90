@@ -46,11 +46,10 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                  map_pe_to_task, prepare_to_update_copies,  &
-                                  copies_in_window, set_num_extra_copies, get_allow_transpose, &
-                                  all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
-                                  get_single_copy, put_single_copy, deallocate_single_copy,   &
-                                  print_ens_handle
+                                  map_pe_to_task, copies_in_window, set_num_extra_copies,     &
+                                  get_allow_transpose, all_copies_to_all_vars,                &
+                                  allocate_single_copy, allocate_vars, get_single_copy,       &
+                                  put_single_copy, deallocate_single_copy, print_ens_handle
 
 use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
                                   inflate_ens, adaptive_inflate_init,                 &
