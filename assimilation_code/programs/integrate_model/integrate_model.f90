@@ -20,8 +20,8 @@ use utilities_mod,       only : error_handler, E_MSG, nmlfileunit, &
 use assim_model_mod,     only : static_init_assim_model, get_model_size
 
 use obs_model_mod,        only : advance_state
-use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
-                                 prepare_to_write_to_vars
+use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
+
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                  task_count, iam_task0
 
@@ -119,7 +119,6 @@ model_size = get_model_size()
 
 ! Initialize an ensemble manager type with a single copy
 call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size, transpose_type_in = 2)
-call prepare_to_write_to_vars(ens_handle)
 
    !------------------- Read restart from file ----------------------
    

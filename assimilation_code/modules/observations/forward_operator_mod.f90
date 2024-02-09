@@ -125,11 +125,6 @@ allocate(my_copy_indices(num_copies_to_calc))
 istatus = 999123
 expected_obs = MISSING_R8
 
-! FIXME: these no longer do anything?
-! call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
-! call prepare_to_write_to_vars(qc_ens_handle)
-! call prepare_to_read_from_vars(ens_handle)
-
 ! Set up access to the state
 call create_state_window(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle)
 
