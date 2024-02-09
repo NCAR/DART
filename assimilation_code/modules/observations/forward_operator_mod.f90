@@ -30,8 +30,6 @@ use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, &
 use obs_kind_mod,          only : assimilate_this_type_of_obs, evaluate_this_type_of_obs
 
 use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_var, &
-                                  prepare_to_read_from_vars,            &
-                                  prepare_to_write_to_vars,             &
                                   get_my_num_copies, copies_in_window,  &
                                   get_allow_transpose, all_vars_to_all_copies, &
                                   all_copies_to_all_vars, allocate_single_copy, &
