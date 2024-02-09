@@ -464,8 +464,6 @@ AdvanceTime: do
 
    call trace_message('After  setup for next group of observations')
 
-   call prepare_to_read_from_vars(ens_handle)
-
    ! Output the true state to the netcdf file
    if((output_interval > 0) .and. &
       (time_step_number / output_interval * output_interval == time_step_number)) then
