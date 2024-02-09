@@ -77,7 +77,7 @@ use direct_netcdf_mod,     only : finalize_single_file_io
 
 use state_structure_mod,   only : get_num_domains
 
-use forward_operator_mod,  only : get_obs_ens_distrib_state
+use forward_operator_mod,  only : get_obs_ens_distrib_state, forward_operators
 
 use quality_control_mod,   only : initialize_qc
 
@@ -104,9 +104,6 @@ character(len=*), parameter :: source = 'filter_mod.f90'
 character(len=512)      :: msgstring
 
 integer :: trace_level, timestamp_level
-
-! Defining whether diagnostics are for prior or posterior
-integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 
 ! Determine if inflation is turned on or off for reading and writing
 ! inflation restart files
@@ -592,7 +589,7 @@ AdvanceTime : do
       seq, ens_size, num_obs_in_set, keys, key_bounds, obs_val_index, input_qc_index,      &
       prior_obs_mean_index, prior_obs_spread_index, DART_qc_index, num_output_obs_members, &
       in_obs_copy+1, TOTAL_OBS_COPIES, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY,       &
-      OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, PRIOR_DIAG, OBS_MEAN_START, OBS_VAR_START,    &
+      OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START,    &
       compute_posterior, prior_qc_copy, isprior = .true.) 
 
    call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
@@ -624,7 +621,7 @@ AdvanceTime : do
          seq, ens_size, num_obs_in_set, keys, key_bounds, obs_val_index, input_qc_index,      &
          posterior_obs_mean_index, posterior_obs_spread_index, DART_qc_index, num_output_obs_members, &
          in_obs_copy+2, TOTAL_OBS_COPIES, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY,       &
-         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, POSTERIOR_DIAG, OBS_MEAN_START, OBS_VAR_START,    &
+         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START,    &
          compute_posterior, prior_qc_copy, isprior = .false.) 
    else
       ! call this alternate routine to collect any updated QC values that may
@@ -634,7 +631,7 @@ AdvanceTime : do
    endif
 
    ! Free up the obs number dependent allocated storage
-   call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
+   deallocate(prior_qc_copy)
 
    ! this block computes the adaptive state space posterior inflation
    if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) &
@@ -1156,111 +1153,6 @@ end subroutine filter_ensemble_inflate
 
 !-------------------------------------------------------------------------
 
-subroutine obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
-   seq, keys, prior_post, num_output_members, members_index, &
-   obs_val_index, OBS_KEY_COPY, &
-   ens_mean_index, ens_spread_index, num_obs_in_set, &
-   OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
-   OBS_ERR_VAR_COPY, DART_qc_index, do_post)
-
-! Do observation space diagnostics on the set of obs corresponding to keys
-
-type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle, qc_ens_handle
-integer,                 intent(in)    :: ens_size
-integer,                 intent(in)    :: num_obs_in_set
-integer,                 intent(in)    :: keys(num_obs_in_set), prior_post
-integer,                 intent(in)    :: num_output_members, members_index
-integer,                 intent(in)    :: obs_val_index
-integer,                 intent(in)    :: OBS_KEY_COPY
-integer,                 intent(in)    :: ens_mean_index, ens_spread_index
-type(obs_sequence_type), intent(inout) :: seq
-integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
-integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
-integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
-logical,                 intent(in)    :: do_post
-
-integer               :: j, k, ens_offset, copy_factor
-integer               :: ivalue, io_task, my_task
-real(r8), allocatable :: obs_temp(:)
-real(r8)              :: rvalue(1)
-
-! Do verbose forward operator output if requested
-if(output_forward_op_errors) call verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
-
-! this is a query routine to return which task has 
-! logical processing element 0 in this ensemble.
-io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
-my_task = my_task_id()
-
-! single value per member if no posterior, else 2
-if (do_post) then
-   copy_factor = 2
-else
-   copy_factor = 1
-endif
-
-! Make var complete for get_copy() calls below.
-! Optimize: Could we use a gather instead of a transpose and get copy?
-call all_copies_to_all_vars(obs_fwd_op_ens_handle)
-
-! allocate temp space for sending data only on the task that will
-! write the obs_seq.final file
-if (my_task == io_task) then
-   allocate(obs_temp(num_obs_in_set))
-else ! TJH: this change became necessary when using Intel 19.0.5 ...
-   allocate(obs_temp(1))
-endif
-
-! Update the ensemble mean
-call get_copy(io_task, obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
-if(my_task == io_task) then
-   do j = 1, obs_fwd_op_ens_handle%num_vars
-      rvalue(1) = obs_temp(j)
-      call replace_obs_values(seq, keys(j), rvalue, ens_mean_index)
-     end do
-  endif
-
-! Update the ensemble spread
-call get_copy(io_task, obs_fwd_op_ens_handle, OBS_VAR_START, obs_temp)
-if(my_task == io_task) then
-   do j = 1, obs_fwd_op_ens_handle%num_vars
-      if (obs_temp(j) /= missing_r8) then
-         rvalue(1) = sqrt(obs_temp(j))
-      else
-         rvalue(1) = obs_temp(j)
-      endif
-      call replace_obs_values(seq, keys(j), rvalue, ens_spread_index)
-   end do
-endif
-
-! Update any requested ensemble members
-ens_offset = members_index + 2*copy_factor
-do k = 1, num_output_members
-   call get_copy(io_task, obs_fwd_op_ens_handle, k, obs_temp)
-   if(my_task == io_task) then
-      ivalue = ens_offset + copy_factor * (k - 1)
-      do j = 1, obs_fwd_op_ens_handle%num_vars
-         rvalue(1) = obs_temp(j)
-         call replace_obs_values(seq, keys(j), rvalue, ivalue)
-      end do
-   endif
-end do
-
-! Update the qc global value
-call get_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
-if(my_task == io_task) then
-   do j = 1, obs_fwd_op_ens_handle%num_vars
-      rvalue(1) = obs_temp(j)
-      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
-   end do
-endif
-
-deallocate(obs_temp)
-
-end subroutine obs_space_diagnostics
-
-!-------------------------------------------------------------------------
-
 subroutine obs_space_sync_QCs(obs_fwd_op_ens_handle,  &
    seq, keys, num_obs_in_set, OBS_GLOBAL_QC_COPY, DART_qc_index)
 
@@ -1460,41 +1352,6 @@ if (do_output()) then
 endif
 
 end subroutine print_obs_time
-
-!-------------------------------------------------------------------------
-!> write out failed forward operators
-!> This was part of obs_space_diagnostics
-
-subroutine verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
-
-type(ensemble_type), intent(inout) :: qc_ens_handle
-integer,             intent(in)    :: prior_post
-integer,             intent(in)    :: ens_size
-integer,             intent(in)    :: keys(:) ! I think this is still var size
-
-character(len=12) :: task
-integer :: j, i
-integer :: forward_unit
-
-write(task, '(i6.6)') my_task_id()
-
-! all tasks open file?
-if(prior_post == PRIOR_DIAG) then
-   forward_unit = open_file('prior_forward_ope_errors' // task, 'formatted', 'append')
-else
-   forward_unit = open_file('post_forward_ope_errors' // task, 'formatted', 'append')
-endif
-
-! qc_ens_handle is a real representing an integer; values /= 0 get written out
-do i = 1, ens_size
-   do j = 1, qc_ens_handle%my_num_vars
-      if(nint(qc_ens_handle%copies(i, j)) /= 0) write(forward_unit, *) i, keys(j), nint(qc_ens_handle%copies(i, j))
-   end do
-end do
-
-call close_file(forward_unit)
-
-end subroutine verbose_forward_op_output
 
 !------------------------------------------------------------------
 !> Produces an ensemble by copying my_vars of the 1st ensemble member
@@ -2188,67 +2045,6 @@ if(get_stage_to_write(stage_name)) then
 endif
 
 end subroutine do_stage_output
-
-!-------------------------------------------------------------------
-
-subroutine forward_operators(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-   seq, ens_size, num_obs_in_set, keys, key_bounds, obs_val_index, input_qc_index,   &
-   obs_mean_index, obs_spread_index, DART_qc_index, num_output_obs_members,          &
-   obs_copy_offset, TOTAL_OBS_COPIES, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY,  &
-   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, DIAG_INDEX, OBS_MEAN_START, OBS_VAR_START, &
-   compute_posterior, prior_qc_copy, isprior)
-
-type(ensemble_type),     intent(inout) :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
-type(obs_sequence_type), intent(inout) :: seq
-integer,                 intent(in)    :: ens_size, num_obs_in_set
-integer, allocatable,    intent(inout) :: keys(:)
-integer,                 intent(in)    :: key_bounds(2)
-integer,                 intent(in)    :: obs_val_index, input_qc_index
-integer,                 intent(in)    :: obs_mean_index, obs_spread_index, DART_qc_index
-integer,                 intent(in)    :: num_output_obs_members, obs_copy_offset
-integer,                 intent(in)    :: TOTAL_OBS_COPIES
-integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY
-integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, DIAG_INDEX
-integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
-logical,                 intent(in)    :: compute_posterior
-real(r8), allocatable,   intent(inout) :: prior_qc_copy(:)
-logical,                 intent(in)    :: isprior
-
-! Compute forward operators and handle data structures for the observations and the qc
-
-! Initialization required only for prior observation operator computation
-if(isprior) then
-   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, &
-                              int(num_obs_in_set,i8), 1, transpose_type_in = 2)
-
-   ! Also need a qc field for copy of each observation
-   call init_ensemble_manager(qc_ens_handle, ens_size, &
-                              int(num_obs_in_set,i8), 1, transpose_type_in = 2)
-
-   ! Allocate storage for the keys for this number of observations
-   allocate(keys(num_obs_in_set)) ! This is still var size for writing out the observation sequence
-
-   ! Get all the keys associated with this set of observations
-   ! Is there a way to distribute this?
-   call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-
-   ! allocate() space for the prior qc copy
-   call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
-endif
-
-call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle,     &
-   seq, keys, obs_val_index, input_qc_index, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
-   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START,                   &
-   prior_qc_copy, isprior)
-
-! This is where the mean obs ! copy ( + others ) is moved to task 0 so task 0 can update seq.
-! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
-! Do prior observation space diagnostics and associated quality control
-call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, seq, keys, &
-   DIAG_INDEX, num_output_obs_members, obs_copy_offset, obs_val_index, OBS_KEY_COPY,  &
-   obs_mean_index, obs_spread_index, num_obs_in_set, OBS_MEAN_START, OBS_VAR_START,   &
-   OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)             
-end subroutine forward_operators
 
 !-------------------------------------------------------------------
 end module filter_mod
