@@ -808,7 +808,6 @@ AdvanceTime : do
       call trace_message('Before prior inflation damping and prep')
 
       if (inf_damping(PRIOR_INF) /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
             inf_damping(PRIOR_INF) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
@@ -909,7 +908,6 @@ AdvanceTime : do
       call trace_message('Before posterior inflation damping')
 
       if (inf_damping(POSTERIOR_INF) /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             inf_damping(POSTERIOR_INF) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
@@ -1564,9 +1562,6 @@ real(r8) :: probit_ens(ens_size), probit_ens_mean
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
 integer  :: dist_type
-
-! Assumes that the ensemble is copy complete
-call prepare_to_update_copies(ens_handle)
 
 ! Inflate each group separately;  Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
