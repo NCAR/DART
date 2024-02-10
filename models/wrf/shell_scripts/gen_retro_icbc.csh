@@ -42,7 +42,7 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 
 set datea     = 2017042700
 set datefnl   = 2017042712 # set this appropriately #%%%#
-set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
+set paramfile = /glade/derecho/scratch/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
 
 source $paramfile
 
@@ -171,22 +171,23 @@ EOF
      #if ( -e rsl.out.0000 )  cat rsl.out.0000 >> out.real.exe
 
       rm script.sed real_done rsl.*
-      echo "2i\"                                      >! script.sed
-      echo "#======================================\" >> script.sed
-      echo "#PBS -N run_real\"                        >> script.sed
-      echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"      >> script.sed
-      echo "#PBS -l walltime=00:05:00\"               >> script.sed
-      echo "#PBS -q ${ADVANCE_QUEUE}\"                >> script.sed
-      echo "#PBS -o run_real.out\"                    >> script.sed
-      echo "#PBS -j oe\"                              >> script.sed
-      echo "#PBS -k eod\"                             >> script.sed
-      echo "#PBS -l select=3:ncpus=36:mpiprocs=36\"   >> script.sed
-      echo "#PBS -V\"                                 >> script.sed
-      echo "#======================================\" >> script.sed
-      echo "\"                                        >> script.sed
-      echo ""                                         >> script.sed
-      echo 's%${1}%'"${paramfile}%g"                  >> script.sed
-      sed -f script.sed ${SHELL_SCRIPTS_DIR}/real.csh >! real.csh
+      echo "2i\"                                       >! script.sed
+      echo "#======================================\"  >> script.sed
+      echo "#PBS -N run_real\"                         >> script.sed
+      echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"       >> script.sed
+      echo "#PBS -l walltime=00:05:00\"                >> script.sed
+      echo "#PBS -q ${ADVANCE_QUEUE}\"                 >> script.sed
+      echo "#PBS -l job_priority=${ADVANCE_PRIORITY}\" >> script.sed
+      echo "#PBS -o run_real.out\"                     >> script.sed
+      echo "#PBS -j oe\"                               >> script.sed
+      echo "#PBS -k eod\"                              >> script.sed
+      echo "#PBS -l select=1:ncpus=128:mpiprocs=128\"  >> script.sed
+      echo "#PBS -V\"                                  >> script.sed
+      echo "#======================================\"  >> script.sed
+      echo "\"                                         >> script.sed
+      echo ""                                          >> script.sed
+      echo 's%${1}%'"${paramfile}%g"                   >> script.sed
+      sed -f script.sed ${SHELL_SCRIPTS_DIR}/real.csh  >! real.csh
 
       qsub real.csh
 

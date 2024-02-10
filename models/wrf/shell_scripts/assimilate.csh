@@ -29,14 +29,13 @@ if ( $SUPER_PLATFORM == 'yellowstone' ) then
    setenv FORT_BUFFERED true
    mpirun.lsf ./filter || exit 1
 
-else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+else if ( $SUPER_PLATFORM == 'derecho' ) then
 
-# TJH MPI_SHEPHERD TRUE may be a very bad thing
    setenv MPI_SHEPHERD FALSE
 
    setenv TMPDIR  /dev/shm
    limit stacksize unlimited
-   mpiexec_mpt dplace -s 1 ./filter || exit 1
+   mpiexec -n 256 -ppn 128 ./filter || exit 1
 
 endif
 

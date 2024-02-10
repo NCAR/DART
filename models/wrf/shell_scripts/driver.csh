@@ -82,9 +82,9 @@ while ( 1 == 1 )
       set ic_queue = caldera
       set logfile = "${RUN_DIR}/ic_gen.log"
       set sub_command = "bsub -q ${ic_queue} -W 00:05 -o ${logfile} -n 1 -P ${COMPUTER_CHARGE_ACCOUNT}"
-   else if ( $SUPER_PLATFORM == 'cheyenne' ) then
-      set ic_queue = "economy"
-      set sub_command = "qsub -l select=1:ncpus=2:mpiprocs=36:mem=5GB -l walltime=00:03:00 -q ${ic_queue} -A ${COMPUTER_CHARGE_ACCOUNT} -j oe -k eod -N icgen "
+   else if ( $SUPER_PLATFORM == 'derecho' ) then
+      set ic_queue = "main"
+      set sub_command = "qsub -l select=1:ncpus=128:mpiprocs=128:mem=5GB -l walltime=00:03:00 -q ${ic_queue} -A ${COMPUTER_CHARGE_ACCOUNT} -j oe -k eod -N icgen "
    endif
 
    echo "this platform is $SUPER_PLATFORM and the job submission command is $sub_command"
@@ -120,7 +120,7 @@ while ( 1 == 1 )
 
    set n = 1
    while ( $n <= $NUM_ENS )
-      if ( $SUPER_PLATFORM == 'cheyenne' ) then   # can't pass along arguments in the same way
+      if ( $SUPER_PLATFORM == 'derecho' ) then   # can't pass along arguments in the same way
          $sub_command -v mem_num=${n},date=${datep},domain=${domains},paramf=${paramfile} ${SHELL_SCRIPTS_DIR}/prep_ic.csh
       else
          $sub_command " ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} ${paramfile} "
@@ -147,9 +147,8 @@ while ( 1 == 1 )
             @ loop++
             if ( $loop > 60 ) then    # wait 5 minutes for the ic file to be ready, else run manually
                echo "gave up on ic member $n - redo"
-               # TJH this is not the command for cheyenne, why not $sub_command from above
                ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} ${paramfile}
-               # TJH the job queued above is still queued and should be killed ...
+               # If manual execution of script, shouldn't queued job be killed?
             endif
          endif
       end
@@ -241,7 +240,7 @@ while ( 1 == 1 )
       endif
       set this_filter_runtime = $FILTER_TIME
 
-   else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+   else if ( $SUPER_PLATFORM == 'derecho' ) then
 
       echo "2i\"                                                                          >! script.sed
       echo "#=================================================================\"          >> script.sed
@@ -250,6 +249,7 @@ while ( 1 == 1 )
       echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"                                          >> script.sed
       echo "#PBS -l walltime=${FILTER_TIME}\"                                             >> script.sed
       echo "#PBS -q ${FILTER_QUEUE}\"                                                     >> script.sed
+      echo "#PBS -l job_priority=${FILTER_PRIORITY}\"                                     >> script.sed
       echo "#PBS -m ae\"                                                                  >> script.sed
       echo "#PBS -M ${EMAIL}\"                                                            >> script.sed
       echo "#PBS -k eod\"                                                                 >> script.sed
@@ -407,7 +407,7 @@ while ( 1 == 1 )
             bsub < assim_advance_mem${n}.csh
          endif
 
-      else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+      else if ( $SUPER_PLATFORM == 'derecho' ) then
 
          echo "2i\"                                                                             >! script.sed
          echo "#=================================================================\"             >> script.sed
@@ -416,6 +416,7 @@ while ( 1 == 1 )
          echo "#PBS -A ${COMPUTER_CHARGE_ACCOUNT}\"                                             >> script.sed
          echo "#PBS -l walltime=${ADVANCE_TIME}\"                                               >> script.sed
          echo "#PBS -q ${ADVANCE_QUEUE}\"                                                       >> script.sed
+         echo "#PBS -l job_priority=${ADVANCE_PRIORITY}\"                                       >> script.sed
          echo "#PBS -m a\"                                                                      >> script.sed
          echo "#PBS -M ${EMAIL}\"                                                               >> script.sed
          echo "#PBS -k eod\"                                                                    >> script.sed
@@ -470,7 +471,7 @@ while ( 1 == 1 )
 
                endif
 
-            else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+            else if ( $SUPER_PLATFORM == 'derecho' ) then
 
                if ( `qstat -wa | grep assim_advance_${n} | wc -l` == 0 ) then
 
@@ -511,7 +512,7 @@ while ( 1 == 1 )
                      bsub < assim_advance_mem${n}.csh
       	          endif
 
-               else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+               else if ( $SUPER_PLATFORM == 'derecho' ) then
 
                   qsub assim_advance_mem${n}.csh
 

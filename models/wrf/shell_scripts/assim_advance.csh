@@ -60,7 +60,7 @@ $yyyy $mm $dd $hh $nn $ss
 mpirun.lsf ./wrf.exe
 EOF
 
-else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+else if ( $SUPER_PLATFORM == 'derecho' ) then
 
 # module load openmpi
 cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
@@ -68,7 +68,7 @@ ${gdatef[2]}  ${gdatef[1]}
 ${gdate[2]}   ${gdate[1]}
 $yyyy $mm $dd $hh $nn $ss
            $domains
- mpiexec_mpt dplace -s 1  ./wrf.exe
+ mpiexec -n 128 -ppn 128  ./wrf.exe
 EOF
 
 endif
