@@ -8,22 +8,22 @@ Introduction
 
 This document will describe how to get started with your own Weather
 Research and Forecasting (WRF) data assimilation experiments using DART
-and only covers the  WRF-specific aspects of couplig with DART.
-It is not wise to try to run WRF-DART if you have no experience with WRF
-and/or no experience with DART.
+and only covers the  WRF-specific aspects of coupling with DART.
+It is not wise to try to run WRF-DART if you have no experience with
+either WRF or DART.
 
-This tutorial was assembled to be compatible with WRF V3.9.1 and was
-tested with the DARTv11.0.2. Other releases of WRF may or may not be
+This tutorial was designed to be compatible with WRF V3.9.1 and was
+tested with DART V11.0.2. Other releases of WRF may or may not be
 backwards or forwards compatible with this tutorial.
 Prior to running this tutorial, we urge the users to familarize themselves with the
-`WRF system <http://www2.mmm.ucar.edu/wrf/users/download/get_source.html>`__
+`WRF system <https://www2.mmm.ucar.edu/wrf/users/model_overview.html>`__
 (WRF_ARW, WPS and WRFDA), and to read through the `WRFv3.9  User's Guide
 <https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/user_guide_V3.9/contents.html>`__
 and the `WRF model tutorials <https://www2.mmm.ucar.edu/wrf/users/tutorial/tutorial.html>`__
 
 The DART team is not responsible for and does not maintain the WRF code. For WRF related issues check out the
 `WRF User Forum <https://forum.mmm.ucar.edu/>`__
-or `WRF github page <https://github.com/wrf-model>`__
+or the `WRF github page. <https://github.com/wrf-model>`__
 
 If you are new to DART, we recommend that you become familiar with DART
 by working through the :doc:`../../../theory/readme` and then
@@ -64,7 +64,7 @@ the bias and RMSE between the posterior model state and the observations.
 
 Finally, if you are not running on the NSF NCAR Derecho (PBS) supercomputing system, you will
 need to customize the assimilation scripts to match the details of your particular system. 
-Specifically, you will need to edit the WRF csh scripting to match your system settings
+Specifically, you will need to edit the DART csh scripting to match your system settings
 whether that be, for example, a PBS, SLURM or LSF HPC system.  Although the DART team can
 offer advice on how to customize the scripting to accomodate your HPC system, your
 HPC system administrator is likely the best resource to resolve these issues.
@@ -101,13 +101,10 @@ packages can be automatically loaded using the following commands:
    ::
 
      module load nco
-     module load ncl
+     module load ncl/6.6.2
 
 These commands are provided by default with the param.csh script. More details
-are provided below.
-
-
-There are multiple phases for the setup: building the DART executables,
+are provided below.  There are multiple phases for the setup: building the DART executables,
 downloading the initial WRF boundary conditions, building (or using
 existing) WRF executables, and configuring and staging the scripting
 needed to perform an experiment.
@@ -146,7 +143,7 @@ might need for an experiment with that model.
 
 .. Important ::
 
-   When using gfortan to compile DART on Derecho, a successful configuration 
+   If using gfortan to compile DART on Derecho, a successful configuration 
    of the ``mkmf.template`` includes using the ``mkmf.template.gfortan`` script 
    and customizing the compiler flags as follows:
    FFLAGS  = -O2 -ffree-line-length-none -fallow-argument-mismatch -fallow-invalid-boz $(INCS)
@@ -276,7 +273,7 @@ required to actually *run da_wrfvar.exe* but it needs to be in the
 ``WRF_RUN`` directory for the tutorial.
 
 WRF and WRFDA should be built with the "dmpar" option, while WPS can be
-built "serial"ly. See the WRF/WRFDA documentation for more information
+built "serial"ly. See the WRF documentation for more information
 about building these packages. 
 
 .. Warning::
@@ -287,7 +284,7 @@ about building these packages.
  *params.csh* script in the next step. If using gfortran to compile WRF on Derecho
  we recommend using option 34 (gnu dmpar) to configure WRF, option 1 (gnu serial) to 
  configure WPS, and option 34 (gnu dmpar) to configure WRFDA. You will need the location
- of the WRF and WRFDA builds to customize the *params.csh* script in the next step.
+ of the WRF, WPS,and WRFDA builds to customize the *params.csh* script in the next step.
 
  Using the gfortan compiler on Derecho required custom flag settings to successfully
  compile the WRF, WPS and WRFDA executables. For more information please see  
@@ -449,7 +446,7 @@ find the following scripts:
 +-----------------------+-------------------------------------------------------------------------------------------+
 | new_advance_model.csh | advances the WRF model after running DART in a cycling context.                           |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| param.csh             | Contains most of the key settings to run the WRF/DART system.                             |
+| param.csh             | Contains most of the key settings to run the WRF-DART system.                             |
 +-----------------------+-------------------------------------------------------------------------------------------+
 | prep_ic.csh           | Prepares the initial conditions for a single ensemble member.                             |
 +-----------------------+-------------------------------------------------------------------------------------------+
@@ -593,13 +590,13 @@ Step 3: Prepare observations [OPTIONAL]
 ---------------------------------------
 
 For the tutorial exercise, observation sequence files are provided to
-enable you to quickly get started running a test WRF/DART system. If you
+enable you to quickly get started running a test WRF-DART system. If you
 want to run with the example observations, you can skip to Step
 4.
 
 However, observation processing is critical to the success of running
 DART and was covered in :ref:`Getting Started <Welcome page>`. In
-brief, to add your own observations to WRF/DART you will need to
+brief, to add your own observations to WRF-DART you will need to
 understand the relationship between observation definitions and
 observation sequences, observation types and observation quantities, and
 understand how observation converters extract observations from their
@@ -611,7 +608,7 @@ contain a wide array of observation types from many platforms within a
 single file.
 
 If you wanted to generate your own observation sequence files from
-PREPBUFR for an experiment with WRF/DART, you should follow the guidance
+PREPBUFR for an experiment with WRF-DART, you should follow the guidance
 on the
 `prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
 page to build the bufr conversion programs, get observation files for
@@ -1361,12 +1358,12 @@ Additional materials from previous in-person tutorials
 
 -  Introduction - `DART Lab
    materials <../../../guide/DART_LAB/DART_LAB.html>`__
--  WRF/DART basic building blocks
+-  WRF-DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
    (some material is outdated)
 -  Computing environment support
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_computing_environment.pdf>`__
--  WRF/DART application examples
+-  WRF-DART application examples
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_application_examples.pdf>`__
    (some material is outdated)
 -  Observation processing
