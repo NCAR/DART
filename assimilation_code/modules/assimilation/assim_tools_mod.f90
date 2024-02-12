@@ -27,7 +27,7 @@ use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_num_copies, ge
 use          obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time,    &
                                  get_obs_def_error_variance, get_obs_def_type_of_obs
 
-use         obs_kind_mod, only : get_num_types_of_obs, get_index_for_type_of_obs,                   &
+use         obs_kind_mod, only : get_num_types_of_obs, get_index_for_type_of_obs,         &
                                  get_quantity_for_type_of_obs, assimilate_this_type_of_obs
 
 use       cov_cutoff_mod, only : comp_cov_factor
@@ -49,6 +49,8 @@ use         location_mod, only : location_type, get_close_type, query_location, 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             &
                                  compute_copy_mean_var, compute_copy_mean,                &
                                  get_var_owner_index, map_pe_to_task
+
+use forward_operator_mod, only : forward_op_info_type
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              &
                                  sum_across_tasks, task_count, start_mpi_timer,           &
@@ -301,12 +303,11 @@ end subroutine assim_tools_init
 
 !-------------------------------------------------------------
 
-subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,           &
+subroutine filter_assim(ens_handle, obs_ens_handle, f, obs_seq, keys,           &
    ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-   ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY,          &
-   OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,            &
-   OBS_PRIOR_VAR_END, inflate_only)
+   ENS_INF_COPY, ENS_INF_SD_COPY, inflate_only)
 
+type(forward_op_info_type),  intent(in)    :: f
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
@@ -318,9 +319,6 @@ integer,                     intent(in)    :: ens_size, num_groups, obs_val_inde
 type(adaptive_inflate_type), intent(inout) :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
 integer,                     intent(in)    :: ENS_INF_SD_COPY
-integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
-integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
-integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 logical,                     intent(in)    :: inflate_only
 
 ! changed the ensemble sized things here to allocatable
@@ -478,9 +476,9 @@ if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
       call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
                                 my_obs_kind, my_obs_type, get_vertical_localization_coord(), vstatus)
       do i = 1, obs_ens_handle%my_num_vars
-         if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
-            !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
-            if (vstatus(i) /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
+         if (good_dart_qc(nint(obs_ens_handle%copies(f%GLOBAL_QC_COPY, i)))) then
+            !> @todo Can I just use the GLOBAL_QC_COPY? Is it ok to skip the loop?
+            if (vstatus(i) /= 0) obs_ens_handle%copies(f%GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
          endif
       enddo
    endif 
@@ -517,8 +515,8 @@ endif
 ! Important that these be from before any observations have been used
 if(local_ss_inflate) then
    do group = 1, num_groups
-      obs_mean_index = OBS_PRIOR_MEAN_START + group - 1
-      obs_var_index  = OBS_PRIOR_VAR_START  + group - 1
+      obs_mean_index = f%MEAN_START + group - 1
+      obs_var_index  = f%VAR_START  + group - 1
          call compute_copy_mean_var(obs_ens_handle, grp_beg(group), grp_end(group), &
            obs_mean_index, obs_var_index)
    end do
@@ -529,7 +527,7 @@ endif
 ! WOULD NEED AN OBSERVATION ERROR VARIANCE IN PROBIT SPACE SOMEHOW. IS THAT POSSIBLE???
 
 do i = 1, my_num_obs
-   obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)
+   obs_qc = obs_ens_handle%copies(f%GLOBAL_QC_COPY, i)
    ! Only do conversion of qc if forward operator is good
    if(nint(obs_qc) == 0) then
       ! Need to specify what kind of prior to use for each
@@ -623,15 +621,15 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          whichvert_obs_in_localization_coord = 0
       endif
 
-      obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
+      obs_qc = obs_ens_handle%copies(f%GLOBAL_QC_COPY, owners_index)
 
       ! Only value of 0 for DART QC field should be assimilated
       IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
          ! Note that these are before DA starts, so can be different from current obs_prior
-         orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
-            OBS_PRIOR_MEAN_END, owners_index)
-         orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
-            OBS_PRIOR_VAR_END, owners_index)
+         orig_obs_prior_mean = obs_ens_handle%copies(f%MEAN_START: &
+            f%MEAN_END, owners_index)
+         orig_obs_prior_var  = obs_ens_handle%copies(f%VAR_START:  &
+            f%VAR_END, owners_index)
 
          ! If QC is okay, convert this observation ensemble from probit to regular space
          call transform_from_probit(ens_size, obs_ens_handle%copies(1:ens_size, owners_index) , &

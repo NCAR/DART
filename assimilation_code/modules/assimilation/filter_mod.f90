@@ -77,7 +77,7 @@ use direct_netcdf_mod,     only : finalize_single_file_io
 
 use state_structure_mod,   only : get_num_domains
 
-use forward_operator_mod,  only : get_obs_ens_distrib_state, forward_operators
+use forward_operator_mod,  only : forward_operators, forward_op_info_type
 
 use quality_control_mod,   only : initialize_qc
 
@@ -293,6 +293,7 @@ subroutine filter_main()
 
 type(ensemble_type)         :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
 type(obs_sequence_type)     :: seq
+type(forward_op_info_type)  :: forward_op_ens_info
 type(time_type)             :: time1, first_obs_time, last_obs_time
 type(time_type)             :: curr_ens_time, next_ens_time, window_time
 
@@ -401,19 +402,6 @@ call parse_stages_to_write(stages_to_write)
 ! Count and set up State copy numbers
 num_state_ens_copies = count_state_ens_copies(ens_size)
 num_extras           = num_state_ens_copies - ens_size
-
-! Observation
-OBS_ERR_VAR_COPY     = ens_size + 1
-OBS_VAL_COPY         = ens_size + 2
-OBS_KEY_COPY         = ens_size + 3
-OBS_GLOBAL_QC_COPY   = ens_size + 4
-OBS_EXTRA_QC_COPY    = ens_size + 5
-OBS_MEAN_START       = ens_size + 6
-OBS_MEAN_END         = OBS_MEAN_START + num_groups - 1
-OBS_VAR_START        = OBS_MEAN_START + num_groups
-OBS_VAR_END          = OBS_VAR_START + num_groups - 1
-
-TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 
 ! Initialize the obs_sequence; every pe gets a copy for now
 call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, compute_posterior)
@@ -572,32 +560,25 @@ AdvanceTime : do
    
    ! Apply prior inflation 
    if(do_ss_inflate(prior_inflate)) &
-      call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, &
-                                   ENS_MEAN_COPY)
+      call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
 
    ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD
    if ( do_rtps_inflate(post_inflate) ) &
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, &
-                                   RTPS_PRIOR_SPREAD)
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, RTPS_PRIOR_SPREAD)
 
    ! Write out preassim diagnostic files if requested.
    call do_stage_output('preassim', output_interval, time_step_number, write_all_stages_at_end, &
       state_ens_handle, PREASSIM_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Compute the forward operators and fill data structures
-   call forward_operators(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle,          &
-      seq, ens_size, num_obs_in_set, keys, key_bounds, obs_val_index, input_qc_index,      &
-      prior_obs_mean_index, prior_obs_spread_index, DART_qc_index, num_output_obs_members, &
-      in_obs_copy+1, TOTAL_OBS_COPIES, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY,       &
-      OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START,    &
-      compute_posterior, prior_qc_copy, isprior = .true.) 
+   call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle,          &
+      qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds, obs_val_index, &
+      input_qc_index, prior_obs_mean_index, prior_obs_spread_index, DART_qc_index,               &
+      num_output_obs_members, in_obs_copy+1, compute_posterior, prior_qc_copy, isprior = .true.) 
 
-   call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-      ens_size, num_groups, obs_val_index, prior_inflate, &
-      ENS_MEAN_COPY, ENS_SD_COPY, &
-      PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-      OBS_VAR_END, inflate_only = .false.)
+   call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, forward_op_ens_info, seq, keys, &
+      ens_size, num_groups, obs_val_index, prior_inflate, ENS_MEAN_COPY, ENS_SD_COPY,         &
+      PRIOR_INF_COPY, PRIOR_INF_SD_COPY, inflate_only = .false.)
 
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
@@ -605,41 +586,32 @@ AdvanceTime : do
       state_ens_handle, POSTASSIM_COPIES, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This block applies posterior inflation including RTPS if selected
-   if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate)) &
+   if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
       call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
                        ENS_MEAN_COPY, RTPS_PRIOR_SPREAD, ENS_SD_COPY)
 
    ! this block recomputes the expected obs values for the obs_seq.final file
-
    if (compute_posterior) then
-      ! Compute the ensemble of posterior observations, load up the obs_err_var
-      ! and obs_values.  ens_size is the number of regular ensemble members,
-      ! not the number of copies
-
       ! Compute the forward operators and fill data structures
-      call forward_operators(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle,          &
-         seq, ens_size, num_obs_in_set, keys, key_bounds, obs_val_index, input_qc_index,      &
-         posterior_obs_mean_index, posterior_obs_spread_index, DART_qc_index, num_output_obs_members, &
-         in_obs_copy+2, TOTAL_OBS_COPIES, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY,       &
-         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START,    &
-         compute_posterior, prior_qc_copy, isprior = .false.) 
+      call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle,          &
+         qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds, obs_val_index, &
+         input_qc_index, posterior_obs_mean_index, posterior_obs_spread_index, DART_qc_index,       &
+         num_output_obs_members, in_obs_copy+2, compute_posterior, prior_qc_copy, isprior = .false.) 
    else
       ! call this alternate routine to collect any updated QC values that may
       ! have been set in the assimilation loop and copy them to the outgoing obs seq
-      call obs_space_sync_QCs(obs_fwd_op_ens_handle, seq, keys, num_obs_in_set, &
-                              OBS_GLOBAL_QC_COPY, DART_qc_index)
+      call obs_space_sync_QCs(forward_op_ens_info, obs_fwd_op_ens_handle, &
+         seq, keys, num_obs_in_set, DART_qc_index)
    endif
 
    ! Free up the obs number dependent allocated storage
    deallocate(prior_qc_copy)
 
    ! this block computes the adaptive state space posterior inflation
-   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) &
-      call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
-              ens_size, num_groups, obs_val_index, post_inflate, &
-              ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
-              OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
-              OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) )                 &
+      call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, forward_op_ens_info, seq, keys, &
+         ens_size, num_groups, obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY,          &
+         POST_INF_COPY, POST_INF_SD_COPY, inflate_only = .true.)
 
    ! Deallocate storage used for keys for each set
    deallocate(keys)
@@ -1153,15 +1125,14 @@ end subroutine filter_ensemble_inflate
 
 !-------------------------------------------------------------------------
 
-subroutine obs_space_sync_QCs(obs_fwd_op_ens_handle,  &
-   seq, keys, num_obs_in_set, OBS_GLOBAL_QC_COPY, DART_qc_index)
+subroutine obs_space_sync_QCs(f, obs_fwd_op_ens_handle,  &
+   seq, keys, num_obs_in_set, DART_qc_index)
 
-
+type(forward_op_info_type), intent(in) :: f
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
 integer,                 intent(in)    :: num_obs_in_set
 integer,                 intent(in)    :: keys(num_obs_in_set)
 type(obs_sequence_type), intent(inout) :: seq
-integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY
 integer,                 intent(in)    :: DART_qc_index
 
 integer               :: j
@@ -1185,7 +1156,7 @@ endif
 call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
 ! Update the qc global value
-call get_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
+call get_copy(io_task, obs_fwd_op_ens_handle, f%GLOBAL_QC_COPY, obs_temp)
 if(my_task == io_task) then
    do j = 1, obs_fwd_op_ens_handle%num_vars
       rvalue(1) = obs_temp(j)
@@ -1988,33 +1959,7 @@ endif
 
 end subroutine set_copies
 
-!==================================================================
-! TEST FUNCTIONS BELOW THIS POINT
 !------------------------------------------------------------------
-!> dump out obs_copies to file
-subroutine test_obs_copies(obs_fwd_op_ens_handle, information)
-
-type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
-character(len=*),    intent(in) :: information
-
-character(len=20)  :: task_str !! string to hold the task number
-character(len=256) :: file_obscopies !! output file name
-integer :: i, iunit
-
-write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe
-file_obscopies = TRIM('obscopies_' // TRIM(ADJUSTL(information)) // TRIM(ADJUSTL(task_str)))
-
-iunit = open_file(file_obscopies, 'formatted', 'append')
-
-do i = 1, obs_fwd_op_ens_handle%num_copies - 4
-   write(iunit, *) obs_fwd_op_ens_handle%copies(i,:)
-enddo
-
-close(iunit)
-
-end subroutine test_obs_copies
-
-!-------------------------------------------------------------------
 
 subroutine do_stage_output(stage_name, output_interval, time_step_number, &
    write_all_stages_at_end, state_ens_handle, COPIES, file_info, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
