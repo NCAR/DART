@@ -28,7 +28,14 @@ use utilities_mod, only :                                    &
 
 use default_model_mod, only : write_model_time
 
-use transform_state_mod
+use transform_state_mod, only :                              &
+    static_init_blocks, aether_name_to_dart,                 &
+    nghost, open_block_file, aether_restart_dirname,         &
+    VT_ORIGININDX, VT_VARNAMEINDX, nvar_neutral,  nvar_ion,  &
+    nx_per_block, ny_per_block, nz_per_block,                &
+    nblocks_lon, nblocks_lat, variables,                     &
+    lats, levs, lons, debug, state_time,                     &
+    block_file_name, nlat, nlon, nlev, purge_chars
 
 use netcdf_utilities_mod, only :                                  &
     nc_create_file, nc_close_file,                                &

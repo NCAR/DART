@@ -6,12 +6,12 @@ Overview
 
 The `Aether`_ ("eether") space weather model can be implemented 
 on a logically rectangular grid "lat-lon", 
-or on an the cubed-sphere grid (see ../aether_cubed_shere).
+or on an the cubed-sphere grid.
 This is the interface to the lat-lon version.
 
 .. _Aether: https://aetherdocumentation.readthedocs.io/en/latest/
 
-Aether writes history and restart files, with some overlap of the fields (?).
+Aether writes history and restart files, with some overlap of the fields.
 The restart fields are divided among 2 types of files: neutrals and ions.
 They are further divided into "blocks", which are subdomains of the globe.
 Blocks start in the southwest corner of the lat/lon grid and go east first, 
@@ -19,20 +19,21 @@ then to the west end of the next row north and end in the northeast corner.
 Each block has a halo around it filled with field values from neighboring blocks.
 All of these need to be combined to make a single state vector for filter.
 There's a unique set of these files for each member.
-The restart file names reflect this information:  
+The restart file names reflect this information ::  
 
-|   {neutrals,ions}_mMMMM_gBBBB.nc
-|   MMMM = ensemble member (0-based)
-|   BBBB = block number (0-based)
+  |   {neutrals,ions}_mMMMM_gBBBB.nc
+  |   MMMM = ensemble member (0-based)
+  |   BBBB = block number (0-based)
 
-The restart files do not have grid information in them, which must be read from
+The restart files do not have grid information in them. 
+Grid information must be read from
    grid_gBBBB.nc
 
 Aether_to_dart and dart_to_aether read the same namelist; transform_state_nml.
 The fields chosen to be part of the model state are specified in ``variables``.
 Program aether_to_dart will read the specified fields, from all the restarts
 for a member plus grid files, and repackage them into an ensemble state vector file
-(filter_input.nc), which has a single domain and no halos.
+(filter_input.nc).  Filter_input.nc has a single domain and no halos.
 The field names will be transformed into CF-compliant names in filter_input.nc.
 
 Filter will read the ensemble of filter_input.nc files, assimilate, 
@@ -72,9 +73,21 @@ transform_state_nml
          2) which file contains the field ("neutrals" or "ions")
       
       Aether field names are not CF-compliant and are translated 
-      to CF-compliant forms by aether_to_dart.
-      The suggested DART quantity to associate with some fields are listed
-      in ./aether_to_dart.nml.
+      to CF-compliant forms by aether_to_dart.  
+
+.. TIP:: 
+   If you have a set of files with older Aether variable names and want to convert
+   them to newer, still-non-compliant names, you may be able to use (or modify)
+   ``./matlab/new_varname_file.m``.  As of 2024-2 the following 
+   could not handle the non-compliant names::
+   - NetCDF fortran interface, 
+   - NCO's ``ncrename``,
+   - Matlab's ``netcdf.rename`` 
+
+      There is no association of DART "quantities" (QTY\_*) with variables in 
+      ``transform_state_nml``.  Those associations are made in ``model_nml`` for use by ``filter``.
+      See the :ref:`QTY` section, below.
+      
       
       The neutrals restart files contain the following fields.
       The most important fields are **noted in bold text**
@@ -131,6 +144,8 @@ variables
    
    For example 'velocity_parallel_east\\ \\(O+_2D\\)' becomes 'Opos_2D_velocity_parallel_east'.
    
+.. _QTY:
+
    The DART QTY associated with each variable is an open question,
    depending on the forward operators required for the available observations
    and on the scientific objective.   The default choices are not necessarily correct
@@ -182,10 +197,10 @@ To test the transformation of files for member 0:
 
 | The filter\_ files will contain the CF-compliant field names which must be used in model_nml:variables.
 | Compare the modified Aether restart files with those in Orig.
-.. NOTE:
+.. NOTE::
    Some halo parts may have no data in them because Aether currently (2024-2) 
    does not use those regions.
-.. WARNING:
+.. WARNING::
    The restart files have dimensions ordered such that common viewing tools 
    (e.g. ncview) may display the pictures transposed from what is expected.
 

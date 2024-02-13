@@ -24,7 +24,13 @@ use utilities_mod, only :                                    &
 
 use default_model_mod, only : write_model_time
 
-use transform_state_mod
+use transform_state_mod, only :                                   &
+    debug, aether_restart_dirname, nblocks_lat,                   &
+    nblocks_lon, nghost, nlat, nlon, nlev,                        &
+    nx_per_block, ny_per_block, nz_per_block,                     &
+    nvar_ion, nvar_neutral, VT_ORIGININDX, VT_VARNAMEINDX,        &
+    block_file_name, open_block_file, aether_name_to_dart,        &
+    variables, purge_chars, static_init_blocks
 
 use netcdf_utilities_mod, only :                                  &
     nc_open_file_readonly, nc_close_file,                         &
@@ -49,7 +55,7 @@ character(len=31)  :: filter_io_root = 'filter_input'
 character(len=64)  :: filter_io_file = ''
 character(len=512) :: error_string_1, error_string_2
 character(len=31),  parameter :: progname = 'dart_to_aether'
-character(len=256), parameter :: source   = 'aether_lat-lon/dart_to_aether..f90'
+character(len=256), parameter :: source   = 'aether_lat-lon/dart_to_aether.f90'
 
 !======================================================================
 
@@ -108,7 +114,7 @@ subroutine filter_to_restarts(ncid, member)
 
 integer, intent(in) :: member, ncid
 
-real(r4), allocatable           :: fulldom1d(:), fulldom3d(:,:,:)
+real(r4), allocatable           :: fulldom3d(:,:,:)
 character(len=256)              :: file_root
 integer                         :: ivar
 character(len=vtablenamelength) :: varname, dart_varname
@@ -188,7 +194,6 @@ do ivar = nvar_neutral + 1, nvar_neutral + nvar_ion
 enddo
 
 deallocate(fulldom3d)
-!, fulldom1d
    
 end subroutine filter_to_restarts
 
@@ -265,8 +270,8 @@ endif
 ! For O+ range from 0 to 7e+11, but are close to 1.1082e+10 near the corners.
 ! 2023-12-20; Aaron sent new files with 54 levels.
 if (debug >= 100 .and. do_output()) then
-   if (fulldom3d(54,10,10) > 1.e+10) then
-      normed = fulldom3d(54,:,:) - 1.1092e+10
+   if (fulldom3d(54,10,10) > 1.e+10_r4) then
+      normed = fulldom3d(54,:,:) - 1.1092e+10_r4
       debug_format = '(3(4E10.4,2X))'
    else if (fulldom3d(54,10,10) < 1000._r4) then
       normed = fulldom3d(54,:,:) - 800._r4
