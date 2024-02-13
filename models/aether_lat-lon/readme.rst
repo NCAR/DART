@@ -21,25 +21,27 @@ All of these need to be combined to make a single state vector for filter.
 There's a unique set of these files for each member.
 The restart file names reflect this information ::  
 
-  |   {neutrals,ions}_mMMMM_gBBBB.nc
-  |   MMMM = ensemble member (0-based)
-  |   BBBB = block number (0-based)
+  {neutrals,ions}_mMMMM_gBBBB.nc
+  MMMM = ensemble member (0-based)
+  BBBB = block number (0-based)
 
 The restart files do not have grid information in them. 
-Grid information must be read from
-   grid_gBBBB.nc
+Grid information must be read from ::
 
-Aether_to_dart and dart_to_aether read the same namelist; transform_state_nml.
-The fields chosen to be part of the model state are specified in ``variables``.
-Program aether_to_dart will read the specified fields, from all the restarts
+  grid_gBBBB.nc
+
+Programs ``aether_to_dart`` and ``dart_to_aether`` read the same namelist; 
+``transform_state_nml``.
+The fields chosen to be part of the model state are specified in 'variables'.
+``Aether_to_dart`` will read the specified fields, from all the restarts
 for a member plus grid files, and repackage them into an ensemble state vector file
 (filter_input.nc).  Filter_input.nc has a single domain and no halos.
 The field names will be transformed into CF-compliant names in filter_input.nc.
 
-Filter will read the ensemble of filter_input.nc files, assimilate, 
+``Filter`` will read the ensemble of filter_input.nc files, assimilate, 
 and write an ensemble of filter_output.nc files.
 
-Dart_to_aether will convert the fields' names to the CF-compliant filter names,
+``Dart_to_aether`` will convert the fields' names to the CF-compliant filter names,
 find those names in filter_output.nc, extract the updated field data, 
 and overwrite those fields in the appropriate Aether restart files.
 
@@ -66,7 +68,7 @@ transform_state_nml
 
    variables
       The Aether fields to be included in the model state are specified
-      in the ``variables`` namelist variable in transform_state_nml.
+      in the 'variables' namelist variable in transform_state_nml.
       The following information must be provided for each field
       
          1) Aether field name
@@ -75,30 +77,30 @@ transform_state_nml
       Aether field names are not CF-compliant and are translated 
       to CF-compliant forms by aether_to_dart.  
 
-.. TIP:: 
-   If you have a set of files with older Aether variable names and want to convert
-   them to newer, still-non-compliant names, you may be able to use (or modify)
-   ``./matlab/new_varname_file.m``.  As of 2024-2 the following 
-   could not handle the non-compliant names::
-   - NetCDF fortran interface, 
-   - NCO's ``ncrename``,
-   - Matlab's ``netcdf.rename`` 
+        TIP: 
+        If you have a set of files with older Aether field names and want to convert
+        them to newer, still-non-compliant names, you may be able to use (or modify)
+        ``./matlab/new_varname_file.m``.  As of 2024-2 the following 
+        could not handle the non-compliant names::
 
-      There is no association of DART "quantities" (QTY\_*) with variables in 
-      ``transform_state_nml``.  Those associations are made in ``model_nml`` for use by ``filter``.
-      See the :ref:`QTY` section, below.
-      
+        - NetCDF fortran interface, 
+        - NCO's ``ncrename``,
+        - Matlab's ``netcdf.rename`` 
+
+      In ``transform_state_nml`` there is no association of DART "quantities" 
+      (QTY\_\*) with fields.  Those associations are made in ``model_nml`` 
+      for use by ``filter``.  See the :ref:`QTY<QTY>` section, below.
       
       The neutrals restart files contain the following fields.
       The most important fields are **noted in bold text**
       
-      |  **Temperature**, **velocity_east**, **velocity_north**, 
-      |  velocity_up, N, O2, N2, NO, He, N_2D, N_2P, H, O_1D, CO2
+        |  **Temperature**, **velocity_east**, **velocity_north**, 
+        |  velocity_up, N, O2, N2, NO, He, N_2D, N_2P, H, O_1D, CO2
       
       Similarly for the ions restart files
       
-      |  **O+**, **O+_2D**, **O+_2P**, **O2+**, **N2+**, NO+, N+, He+,
-      |  Temperature_bulk_ion, Temperature_electron
+        |  **O+**, **O+_2D**, **O+_2P**, **O2+**, **N2+**, NO+, N+, He+,
+        |  Temperature_bulk_ion, Temperature_electron
 
       In addition, there are 7 (independent) fields associated with *each* ion density
       ::
@@ -122,7 +124,7 @@ model_nml
 .........
 
 template_file  
-   = 'if other than filter_input_0001.nc'
+   = 'filter_input_0001.nc' is the default
 
 variables
    Each field to be included in the state vector requires 5 descriptors:
@@ -133,7 +135,7 @@ variables
       #) max value
       #) update the field in the restart file? {UPDATE,NO_COPY_BACK}
 
-   The field names listed in ``variables`` must be the *transformed* names,
+   The field names listed in 'variables' must be the *transformed* names,
    as found in the filter_input.nc files (see :ref:`Usage`).  
    In general the transformation does the following
    
@@ -146,13 +148,14 @@ variables
    
 .. _QTY:
 
-   The DART QTY associated with each variable is an open question,
+   The DART QTY associated with each field is an open question,
    depending on the forward operators required for the available observations
    and on the scientific objective.   The default choices are not necessarily correct
    for your assimilation.  For the fields identified as most important
-   in early Aether assimilation experiments, these are the defaults::
+   in early Aether assimilation experiments, these are the defaults:
+
 ==============   ====================
-variable         quantity (kind)
+variables        quantity (kind)
 ==============   ====================
 Temperature      QTY_TEMPERATURE
 velocity_east    QTY_U_WIND_COMPONENT
@@ -164,13 +167,15 @@ O2pos_2D         QTY_DENSITY_ION_O2DP
 O2pos_2P         QTY_DENSITY_ION_O2PP
 ==============   ====================
       
-   Some variables could have one of several QTYs associated with them.  
-   For example, the variable 'Opos_velocity_parallel_up'
+   Some fields could have one of several QTYs associated with them.  
+   For example, the field 'Opos_velocity_parallel_up'
    could potentially have these existing QTYs associated with it::
-     - QTY_VELOCITY_W 
-     - QTY_VELOCITY_W_ION 
-     - QTY_VERTICAL_VELOCITY
-   It's possible that several variables could have the same QTY.
+
+   - QTY_VELOCITY_W 
+   - QTY_VELOCITY_W_ION 
+   - QTY_VERTICAL_VELOCITY
+
+   It's possible that several fields could have the same QTY.
    A third possibility is that the experiment may require the creation of a new QTY.
    The example above may require something like QTY_VEL_PARALLEL_VERT_OP.
 
@@ -197,6 +202,7 @@ To test the transformation of files for member 0:
 
 | The filter\_ files will contain the CF-compliant field names which must be used in model_nml:variables.
 | Compare the modified Aether restart files with those in Orig.
+
 .. NOTE::
    Some halo parts may have no data in them because Aether currently (2024-2) 
    does not use those regions.
