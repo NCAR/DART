@@ -304,14 +304,14 @@ end subroutine assim_tools_init
 !-------------------------------------------------------------
 
 subroutine filter_assim(ens_handle, obs_ens_handle, f, obs_seq, keys,           &
-   ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
+   ens_size, num_groups, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
    ENS_INF_COPY, ENS_INF_SD_COPY, inflate_only)
 
 type(forward_op_info_type),  intent(in)    :: f
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
-integer,                     intent(in)    :: ens_size, num_groups, obs_val_index
+integer,                     intent(in)    :: ens_size, num_groups
 ! JLA: At present, this only needs to be inout because of the possible use of
 ! non-determinstic obs_space adaptive inflation that is not currently supported.
 ! Implementing that would require communication of the info about the inflation
@@ -602,7 +602,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       call get_state_meta_data(-1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
    endif
    ! Get the value of the observation
-   call get_obs_values(observation, obs, obs_val_index)
+   call get_obs_values(observation, obs, f%obs_val_index)
 
    ! Find out who has this observation and where it is
    call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)

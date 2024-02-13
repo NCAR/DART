@@ -11,7 +11,7 @@
 module forward_operator_mod
 
 
-use types_mod,             only : r8, i8, missing_r8
+use types_mod,             only : r8, i8, missing_r8, metadatalength
 
 use time_manager_mod,      only : time_type
 
@@ -23,7 +23,11 @@ use obs_sequence_mod,      only : init_obs, destroy_obs, obs_sequence_type, &
                                   obs_type, get_obs_values, get_qc,         &
                                   get_obs_def, get_obs_from_key,            &
                                   get_time_range_keys, replace_obs_values,  &
-                                  replace_qc
+                                  replace_qc, read_obs_seq_header,          &
+                                  get_qc_meta_data, add_qc, get_num_qc,     &
+                                  get_copy_meta_data, get_num_copies,       &
+                                  read_obs_seq, set_qc_meta_data,           &
+                                  set_copy_meta_data
 
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, &
                                   get_expected_obs_from_def_distrib_state,  &
@@ -54,20 +58,29 @@ private
 ! This type keeps track of meta data associated with the ensemble of forward operators
 ! Explicitly deals with possible group filter application
 type forward_op_info_type
-   integer :: ERR_VAR_COPY
-   integer :: VAL_COPY
-   integer :: KEY_COPY
-   integer :: GLOBAL_QC_COPY
-   integer :: EXTRA_QC_COPY
-   integer :: MEAN_START
-   integer :: MEAN_END
-   integer :: VAR_START
-   integer :: VAR_END
-   integer :: TOTAL_COPIES
+   integer               :: in_obs_copy
+   integer               :: obs_val_index
+   integer               :: input_qc_index
+   integer               :: DART_qc_index
+   integer               :: prior_obs_mean_index
+   integer               :: posterior_obs_mean_index
+   integer               :: prior_obs_spread_index
+   integer               :: posterior_obs_spread_index
+   real(r8), allocatable :: prior_qc_copy(:)
+   integer               :: ERR_VAR_COPY
+   integer               :: VAL_COPY
+   integer               :: KEY_COPY
+   integer               :: GLOBAL_QC_COPY
+   integer               :: EXTRA_QC_COPY
+   integer               :: MEAN_START
+   integer               :: MEAN_END
+   integer               :: VAR_START
+   integer               :: VAR_END
+   integer               :: TOTAL_COPIES
 end type forward_op_info_type
 
-public :: get_obs_ens_distrib_state, get_expected_obs_distrib_state, forward_operators, &
-          forward_op_info_type 
+public :: get_expected_obs_distrib_state, forward_operators, forward_op_info_type, &
+          obs_space_sync_QCs, filter_setup_obs_sequence
 
 character(len=*), parameter :: source = 'forward_operator_mod.f90'
 
@@ -84,7 +97,7 @@ contains
 !> 
 !------------------------------------------------------------------------------
 subroutine get_obs_ens_distrib_state(f, ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-   seq, keys, obs_val_index, input_qc_index, prior_qc_copy, isprior)
+   seq, keys, isprior)
 
 type(forward_op_info_type), intent(inout) :: f
 type(ensemble_type),        intent(inout) :: ens_handle  !! state ensemble handle
@@ -92,9 +105,6 @@ type(ensemble_type),        intent(inout) :: obs_fwd_op_ens_handle  !! observati
 type(ensemble_type),        intent(inout) :: qc_ens_handle  !! quality control handle
 type(obs_sequence_type),    intent(in)    :: seq  !! the observation sequence
 integer,                    intent(in)    :: keys(:)  !! observation key numbers
-integer,                    intent(in)    :: obs_val_index  !! copy index for observation value 
-integer,                    intent(in)    :: input_qc_index  !! qc index for incoming QC value
-real(r8),                   intent(inout) :: prior_qc_copy(:)  !! array instead of ensemble copy ??
 logical,                    intent(in)    :: isprior  !! true for prior eval; false for posterior
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var
@@ -147,10 +157,10 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distributed
       call get_obs_from_key(seq, keys(j), observation)
       call get_obs_def(observation, obs_def)
       ! Check to see if this observation fails input qc test
-      call get_qc(observation, input_qc, input_qc_index)
+      call get_qc(observation, input_qc, f%input_qc_index)
 
       ! Get the observation value and error variance
-      call get_obs_values(observation, obs_value(1:1), obs_val_index)
+      call get_obs_values(observation, obs_value(1:1), f%obs_val_index)
       obs_err_var = get_obs_def_error_variance(obs_def)
 
       ! Loop through all copies stored by this process and set values as needed
@@ -255,7 +265,7 @@ else ! distributed state
 
    ! Get the information on this observation by placing it in temporary
    ! storage. Check to see if this observation fails input qc test
-   call get_qc(observation, input_qc, input_qc_index)
+   call get_qc(observation, input_qc, f%input_qc_index)
 
    if (isprior) then
       ! this should only need to be done once, in the prior, right?
@@ -276,7 +286,7 @@ else ! distributed state
    endif
 
    ! Get the observation value and error variance
-   call get_obs_values(observation, obs_value(1:1), obs_val_index)
+   call get_obs_values(observation, obs_value(1:1), f%obs_val_index)
 
    obs_err_var = get_obs_def_error_variance(obs_def)
 
@@ -373,7 +383,7 @@ QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
 
 end do QC_LOOP
 
-if (isprior) call get_single_copy(obs_fwd_op_ens_handle, f%GLOBAL_QC_COPY, prior_qc_copy)
+if (isprior) call get_single_copy(obs_fwd_op_ens_handle, f%GLOBAL_QC_COPY, f%prior_qc_copy)
 
 deallocate(expected_obs, istatus, my_copy_indices)
 
@@ -507,7 +517,8 @@ end subroutine assim_or_eval
 !>   * Negative istatus
 !> This routine calls the error handler (E_ERR) if either of these happen.
 
-subroutine check_forward_operator_istatus(num_fwd_ops, assimilate_ob, evaluate_ob, istatus, expected_obs, thiskey)
+subroutine check_forward_operator_istatus(num_fwd_ops, assimilate_ob, evaluate_ob, &
+   istatus, expected_obs, thiskey)
 
 integer,  intent(in) :: num_fwd_ops
 logical,  intent(in) :: assimilate_ob
@@ -544,9 +555,8 @@ end subroutine check_forward_operator_istatus
 !------------------------------------------------------------------------------
 
 subroutine forward_operators(f, state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-   seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds, obs_val_index,          &
-   input_qc_index, obs_mean_index, obs_spread_index, DART_qc_index,                     &
-   num_output_obs_members, obs_copy_offset, compute_posterior, prior_qc_copy, isprior)
+   seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds, num_output_obs_members, &
+   compute_posterior, isprior)
 
 type(forward_op_info_type), intent(inout) :: f
 type(ensemble_type),        intent(inout) :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
@@ -554,14 +564,12 @@ type(obs_sequence_type),    intent(inout) :: seq
 integer,                    intent(in)    :: ens_size, num_groups, num_obs_in_set
 integer, allocatable,       intent(inout) :: keys(:)
 integer,                    intent(in)    :: key_bounds(2)
-integer,                    intent(in)    :: obs_val_index, input_qc_index
-integer,                    intent(in)    :: obs_mean_index, obs_spread_index, DART_qc_index
-integer,                    intent(in)    :: num_output_obs_members, obs_copy_offset
+integer,                    intent(in)    :: num_output_obs_members
 logical,                    intent(in)    :: compute_posterior
-real(r8), allocatable,      intent(inout) :: prior_qc_copy(:)
 logical,                    intent(in)    :: isprior
 
 ! Compute forward operators and handle data structures for the observations and the qc
+integer :: obs_mean_index, obs_spread_index, obs_copy_offset
 
 ! Initialization required only for prior observation operator computation
 if(isprior) then
@@ -592,39 +600,50 @@ if(isprior) then
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
    ! allocate() space for the prior qc copy
-   call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
+   call allocate_single_copy(obs_fwd_op_ens_handle, f%prior_qc_copy)
 
 endif 
 
 call get_obs_ens_distrib_state(f, state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-   seq, keys, obs_val_index, input_qc_index, prior_qc_copy, isprior)
+   seq, keys, isprior)
       
 ! This is where the mean obs ! copy ( + others ) is moved to task 0 so task 0 can update seq.
 ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
+if(isprior) then
+   obs_mean_index = f%prior_obs_mean_index
+   obs_spread_index = f%prior_obs_spread_index
+   obs_copy_offset = f%in_obs_copy + 1
+else
+   obs_mean_index = f%posterior_obs_mean_index
+   obs_spread_index = f%posterior_obs_spread_index
+   obs_copy_offset = f%in_obs_copy + 2
+endif
+
 ! Do prior observation space diagnostics and associated quality control
 call obs_space_diagnostics(f, obs_fwd_op_ens_handle, qc_ens_handle, ens_size, seq, keys, &
-   isprior, num_output_obs_members, obs_copy_offset, obs_val_index, &
-   obs_mean_index, obs_spread_index, num_obs_in_set, DART_qc_index, compute_posterior)
+   isprior, num_output_obs_members, obs_copy_offset, &
+   obs_mean_index, obs_spread_index, num_obs_in_set, compute_posterior)
+
+! Free up the prior_qc_copy if this is being called fopr posterior (all done with it)
+if(.not. isprior) deallocate(f%prior_qc_copy)
 
 end subroutine forward_operators
 
 !------------------------------------------------------------------------------
 subroutine obs_space_diagnostics(f, obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
-   seq, keys, isprior, num_output_members, members_index, obs_val_index,            &
-   ens_mean_index, ens_spread_index, num_obs_in_set, DART_qc_index, do_post)
+   seq, keys, isprior, num_output_members, members_index, &
+   ens_mean_index, ens_spread_index, num_obs_in_set, do_post)
 
 ! Do observation space diagnostics on the set of obs corresponding to keys
 
-type(forward_op_info_type), intent(in)    :: f
+type(forward_op_info_type), intent(inout) :: f
 type(ensemble_type),        intent(inout) :: obs_fwd_op_ens_handle, qc_ens_handle
 integer,                    intent(in)    :: ens_size
 integer,                    intent(in)    :: num_obs_in_set
 logical,                    intent(in)    :: isprior
 integer,                    intent(in)    :: keys(num_obs_in_set)
 integer,                    intent(in)    :: num_output_members, members_index
-integer,                    intent(in)    :: obs_val_index
 integer,                    intent(in)    :: ens_mean_index, ens_spread_index
-integer,                    intent(in)    :: DART_qc_index
 type(obs_sequence_type),    intent(inout) :: seq
 logical,                    intent(in)    :: do_post
 
@@ -701,7 +720,7 @@ call get_copy(io_task, obs_fwd_op_ens_handle, f%GLOBAL_QC_COPY, obs_temp)
 if(my_task == io_task) then
    do j = 1, obs_fwd_op_ens_handle%num_vars
       rvalue(1) = obs_temp(j)
-      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
+      call replace_qc(seq, keys(j), rvalue, f%DART_qc_index)
    end do
 endif
 
@@ -744,8 +763,348 @@ end do
 call close_file(forward_unit)     
                                   
 end subroutine verbose_forward_op_output
+   
+!-------------------------------------------------------------------------
+      
+subroutine obs_space_sync_QCs(f, obs_fwd_op_ens_handle, seq, keys, num_obs_in_set)
+   
+type(forward_op_info_type), intent(inout) :: f
+type(ensemble_type),        intent(inout) :: obs_fwd_op_ens_handle
+integer,                    intent(in)    :: num_obs_in_set
+integer,                    intent(in)    :: keys(num_obs_in_set)
+type(obs_sequence_type),    intent(inout) :: seq
+      
+integer               :: j
+integer               :: io_task, my_task 
+real(r8), allocatable :: obs_temp(:)
+real(r8)              :: rvalue(1)
+   
+! this is a query routine to return which task has 
+! logical processing element 0 in this ensemble.
+io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
+my_task = my_task_id()            
+   
+! create temp space for QC values
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else 
+   allocate(obs_temp(1))
+endif
+                                  
+! Optimize: Could we use a gather instead of a transpose and get copy?
+call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
+! Update the qc global value
+call get_copy(io_task, obs_fwd_op_ens_handle, f%GLOBAL_QC_COPY, obs_temp)
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      rvalue(1) = obs_temp(j)
+      call replace_qc(seq, keys(j), rvalue, f%DART_qc_index)
+   end do
+endif
+
+deallocate(obs_temp)
+
+end subroutine obs_space_sync_QCs
+
+!-------------------------------------------------------------------------
+
+subroutine filter_setup_obs_sequence(f, seq, num_output_obs_members, &
+   obs_sequence_in_name, do_post)
+
+type(forward_op_info_type), intent(inout) :: f
+type(obs_sequence_type),    intent(inout) :: seq
+integer,                    intent(in)    :: num_output_obs_members
+character(len = *),         intent(in)    :: obs_sequence_in_name
+logical,                    intent(in)    :: do_post
+   
+character(len=metadatalength) :: no_qc_meta_data = 'No incoming data QC'
+character(len=metadatalength) :: dqc_meta_data   = 'DART quality control'
+character(len=129) :: obs_seq_read_format
+integer :: obs_seq_file_id, copies_num_inc, qc_num_inc
+integer :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs
+integer :: my_task, io_task
+logical :: pre_I_format
+   
+! Input file can have one qc field, none, or more.  note that read_obs_seq_header
+! does NOT return the actual metadata values, which would be helpful in trying
+! to decide if we need to add copies or qcs.
+call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, &
+   obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
+   
+! return the original number of copies in the obs_seq file
+! before we add any copies for diagnostics.
+f%in_obs_copy = tnum_copies
+
+! FIXME: this should be called from inside obs_space_diagnostics the first
+! time that routine is called, so it has an ensemble handle to query for 
+! exactly which task is pe0 (or use a different pe number).  here we 
+! have to assume task 0 == pe 0 which is currently true but someday
+! we would like to be able to change.
+io_task = 0
+my_task = my_task_id()
+
+! only the task writing the obs_seq.final file needs space for the
+! additional copies/qcs.  for large numbers of individual members
+! in the final file this takes quite a bit of memory. 
+
+if (my_task == io_task) then
+   ! Determine the number of output obs space fields
+   if (do_post) then
+      ! 4 is for prior/posterior mean and spread, plus
+      ! prior/posterior values for all requested members
+      copies_num_inc = 4 + (2 * num_output_obs_members)
+   else
+      ! 2 is for prior mean and spread, plus
+      ! prior values for all requested members
+      copies_num_inc = 2 + (1 * num_output_obs_members)
+   endif
+else
+   copies_num_inc = 0
+endif
+
+! if there are less than 2 incoming qc fields, we will need
+! to make at least 2 (one for the dummy data qc and one for
+! the dart qc) on task 0.  other tasks just need 1 for incoming qc.
+if (tnum_qc < 2) then
+   if (my_task == io_task) then
+      qc_num_inc = 2 - tnum_qc
+   else
+      qc_num_inc = 1 - tnum_qc
+   endif
+else
+   qc_num_inc = 0
+endif
+
+! Read in with enough space for diagnostic output values and add'l qc field(s)
+! ONLY ADD SPACE ON TASK 0.  everyone else just read in the original obs_seq file.
+call read_obs_seq(obs_sequence_in_name, copies_num_inc, qc_num_inc, 0, seq)
+
+! check to be sure that we have an incoming qc field.  if not, look for
+! a blank qc field
+f%input_qc_index = get_obs_qc_index(seq)
+if (f%input_qc_index < 0) then
+   f%input_qc_index = get_blank_qc_index(seq)
+   if (f%input_qc_index < 0) then
+      ! Need 1 new qc field for dummy incoming qc
+      call add_qc(seq, 1)
+      f%input_qc_index = get_blank_qc_index(seq)
+      if (f%input_qc_index < 0) then
+         call error_handler(E_ERR,'filter_setup_obs_sequence', &
+           'error adding blank qc field to sequence; should not happen', source)
+      endif
+   endif
+   ! Since we are constructing a dummy QC, label it as such
+   call set_qc_meta_data(seq, f%input_qc_index, no_qc_meta_data)
+endif
+
+! check to be sure we either find an existing dart qc field and
+! reuse it, or we add a new one. only on task 0.
+f%DART_qc_index = get_obs_dartqc_index(seq)
+if (f%DART_qc_index < 0 .and. my_task == io_task) then
+   f%DART_qc_index = get_blank_qc_index(seq)
+   if (f%DART_qc_index < 0) then
+      ! Need 1 new qc field for the DART quality control
+      call add_qc(seq, 1)
+      f%DART_qc_index = get_blank_qc_index(seq)
+      if (f%DART_qc_index < 0) then
+         call error_handler(E_ERR,'filter_setup_obs_sequence', &
+           'error adding blank qc field to sequence; should not happen', source)
+      endif
+   endif
+   call set_qc_meta_data(seq, f%DART_qc_index, dqc_meta_data)
+endif
+
+! Determine which copy has actual obs value and return it.
+f%obs_val_index = get_obs_copy_index(seq)
+
+! Initialize the output sequences and state files and set their meta data
+call filter_generate_copy_meta_data(f, seq, num_output_obs_members, do_post) 
+
+end subroutine filter_setup_obs_sequence
 
 !------------------------------------------------------------------------------
-end module forward_operator_mod
+                                  
+function get_obs_qc_index(seq)
 
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_obs_qc_index
+                                  
+integer :: i                      
+
+! Determine which qc, if any, has the incoming obs qc
+! this is tricky because we have never specified what string
+! the metadata has to have.  look for 'qc' or 'QC' and the
+! first metadata that matches (much like 'observation' above)
+! is the winner.
+   
+do i = 1, get_num_qc(seq)  
+   get_obs_qc_index = i           
+                                  
+   ! Need to avoid 'QC metadata not initialized'
+   if(index(get_qc_meta_data(seq, i), 'QC metadata not initialized') > 0) cycle               
+                                  
+   ! Need to look for 'QC' or 'qc'
+   if(index(get_qc_meta_data(seq, i), 'QC') > 0) return                                       
+   if(index(get_qc_meta_data(seq, i), 'qc') > 0) return 
+   if(index(get_qc_meta_data(seq, i), 'Quality Control') > 0) return
+   if(index(get_qc_meta_data(seq, i), 'QUALITY CONTROL') > 0) return
+end do
+! Falling off end means 'QC' string not found; not fatal!
+                                  
+get_obs_qc_index = -1             
+                                  
+end function get_obs_qc_index     
+
+!-------------------------------------------------------------------------
+   
+function get_obs_dartqc_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_obs_dartqc_index
+
+integer :: i
+                                  
+! Determine which qc, if any, has the DART qc
+                                  
+do i = 1, get_num_qc(seq)         
+   get_obs_dartqc_index = i       
+   ! Need to look for 'DART quality control'
+   if(index(get_qc_meta_data(seq, i), 'DART quality control') > 0) return                     
+end do                            
+! Falling off end means 'DART quality control' not found; not fatal!
+                                 
+get_obs_dartqc_index = -1  
+
+end function get_obs_dartqc_index 
+
+!-------------------------------------------------------------------------
+                                  
+function get_blank_qc_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_blank_qc_index
+                                  
+integer :: i                      
+
+! Determine which qc, if any, is blank
+                                  
+do i = 1, get_num_qc(seq)
+   get_blank_qc_index = i
+   ! Need to look for 'QC metadata not initialized'
+   if(index(get_qc_meta_data(seq, i), 'QC metadata not initialized') > 0) return
+end do
+! Falling off end means unused slot not found; not fatal!
+
+get_blank_qc_index = -1
+
+end function get_blank_qc_index
+
+!-------------------------------------------------------------------------
+
+function get_obs_copy_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_obs_copy_index
+
+integer :: i 
+
+! Determine which copy in sequence has actual obs
+
+do i = 1, get_num_copies(seq)
+   get_obs_copy_index = i
+   ! Need to look for 'observation'
+   if(index(get_copy_meta_data(seq, i), 'observation') > 0) return
+end do
+! Falling of end means 'observations' not found; die
+call error_handler(E_ERR,'get_obs_copy_index', &
+   'Did not find observation copy with metadata "observation"', source)
+
+end function get_obs_copy_index
+
+!-------------------------------------------------------------------------
+
+subroutine filter_generate_copy_meta_data(f, seq, num_output_obs_members, &
+   do_post)
+
+type(forward_op_info_type),  intent(inout) :: f
+type(obs_sequence_type),     intent(inout) :: seq
+integer,                     intent(in)    :: num_output_obs_members
+logical,                     intent(in)    :: do_post
+
+! Figures out the strings describing the output copies for the observation sequence.
+
+character(len=metadatalength) :: prior_meta_data, posterior_meta_data
+integer :: i, num_obs_copies
+
+! only PE0 (here task 0) will allocate space for the obs_seq.final
+!
+! all other tasks should NOT allocate all this space.
+! instead, set the copy numbers to an illegal value
+! so we'll trap if they're used, and return early.
+if (my_task_id() /= 0) then
+   f%prior_obs_mean_index  = -1
+   f%posterior_obs_mean_index = -1
+   f%prior_obs_spread_index  = -1
+   f%posterior_obs_spread_index = -1
+   return
+endif
+
+! Set the metadata for the observations.
+
+! Set up obs ensemble mean
+num_obs_copies = f%in_obs_copy
+
+num_obs_copies = num_obs_copies + 1
+prior_meta_data = 'prior ensemble mean'
+call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+f%prior_obs_mean_index = num_obs_copies
+
+if (do_post) then
+   num_obs_copies = num_obs_copies + 1
+   posterior_meta_data = 'posterior ensemble mean'
+   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   f%posterior_obs_mean_index = num_obs_copies
+endif
+
+
+! Set up obs ensemble spread
+num_obs_copies = num_obs_copies + 1
+prior_meta_data = 'prior ensemble spread'
+call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+f%prior_obs_spread_index = num_obs_copies
+
+if (do_post) then
+   num_obs_copies = num_obs_copies + 1
+   posterior_meta_data = 'posterior ensemble spread'
+   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   f%posterior_obs_spread_index = num_obs_copies
+endif
+
+! Make sure there are not too many copies requested - 
+! proposed: make this magic number set in 1 place with an accessor
+! routine so all parts of the code agree on max values.
+if(num_output_obs_members > 10000) then
+   write(string1, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
+                      num_output_obs_members
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',string1,source)
+endif
+
+! Set up obs ensemble members as requested
+do i = 1, num_output_obs_members
+   num_obs_copies = num_obs_copies + 1
+   write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
+   call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+   if (do_post) then
+      num_obs_copies = num_obs_copies + 1
+      write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
+      call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   endif
+end do
+
+
+end subroutine filter_generate_copy_meta_data
+
+!-------------------------------------------------------------------------
+
+end module forward_operator_mod
