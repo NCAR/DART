@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 13 2024 :: Fortran Standards. Tag v11.0.3**
+
+- Replace f2kcli with Fortran intrinsics for command line arguments.
+- AIRS and quikscat mkmf.templates with appropriate HDF, HDFEOS, RTTOV library flags.
+- Simplified noah_hydro_mod.f90 number of non-zero element counts.
+- WRF pert_sounding_module random iseed now integer.
+
 **February 1 2024 :: RTTOV13 cloud bug-fix. Tag v11.0.2**
 
 - Initialize RTTOV13 profile cloud arrays to zero for profiles.
