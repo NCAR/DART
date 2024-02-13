@@ -158,6 +158,10 @@ ssec_satwnd
 gts_to_dart
 littler_tf_dart
 rad_3dvar_to_dart
+L1_AMSUA_to_netcdf
+convert_airs_L2
+convert_amsu_L1
+convert_L2b
 
 # Test programs built by developer_tests
 rttov_test
