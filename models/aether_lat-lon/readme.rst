@@ -9,7 +9,7 @@ on a logically rectangular grid "lat-lon",
 or on an the cubed-sphere grid.
 This is the interface to the lat-lon version.
 
-.. _Aether: https://aetherdocumentation.readthedocs.io/en/latest/
+Aether is available on GitHub https://github.com/AetherModel/Aether
 
 Aether writes history and restart files, with some overlap of the fields.
 The restart fields are divided among 2 types of files: neutrals and ions.

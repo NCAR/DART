@@ -592,7 +592,7 @@ end type rttov_platform_type
 type(rttov_platform_type), pointer :: platforms(:)
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'obs_def_rttov_mod.f90'
+character(len=*), parameter :: source   = 'obs_def_rttov13_mod.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
@@ -629,7 +629,7 @@ character(len=512)   :: rttov_sensor_db_file = 'unspecified'
 ! -----------------------------------------------------------------------------
 ! DART/RTTOV options in the input.nml namelist.
 ! 
-! DART exposes all of the RTTOV 12.3 options available and passes them to 
+! DART exposes all of the RTTOV 13 options available and passes them to 
 ! RTTOV with little to no additional checking for consistency. The default in 
 ! most cases can be used and need not be specified in the namelist. 
 !
@@ -708,6 +708,8 @@ logical              :: use_htfrtc           = .false.  ! use HTFRTC of Havemann
 integer              :: htfrtc_n_pc          = -1       ! number of PCs to use (HTFRTC only, max 300)
 logical              :: htfrtc_simple_cloud  = .false.  ! use simple-cloud scattering (HTFRTC only)
 logical              :: htfrtc_overcast      = .false.  ! calculate overcast radiances (HTFRTC only)
+real(r8)             :: wfetc_value          = 100000.0_r8 ! Real wfetc Wind fetch (m) (length of water over which the wind has blown, typical
+                                                           ! value 100000m for open ocean). Used if wfetc not provided by model.
 
 namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               first_lvl_is_sfc,       &
@@ -779,7 +781,8 @@ namelist / obs_def_rttov_nml/ rttov_sensor_db_file,   &
                               use_htfrtc,             &
                               htfrtc_n_pc,            &
                               htfrtc_simple_cloud,    &
-                              htfrtc_overcast
+                              htfrtc_overcast,        &
+                              wfetc_value
 
 type(atmos_profile_type)     :: atmos
 type(trace_gas_profile_type) :: trace_gas
@@ -2211,6 +2214,7 @@ DO imem = 1, ens_size
          end if
 
          ! depending on the vertical velocity and land type, classify clouds the way RTTOV wants 
+         runtime % profiles(imem) % cloud(:,:) = 0.0_jprb
          if (.not. is_cumulus) then
             ! stratus
             if (surftype == 0) then
@@ -2342,6 +2346,8 @@ DO imem = 1, ens_size
    if (allocated(atmos % wfetch)) then
       ! Wind fetch over the ocean (m)
       runtime % profiles(imem) % s2m % wfetc = atmos % wfetch(imem)  
+   else
+      runtime % profiles(imem) % s2m % wfetc = wfetc_value
    end if
    
    ! Surface type (0=land, 1=sea, 2=sea-ice)
