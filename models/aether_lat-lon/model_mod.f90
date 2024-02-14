@@ -109,8 +109,6 @@ type :: var_type
     logical,           allocatable :: updates(:)
 end type var_type
 
-type(var_type) :: var
-
 namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
 !-----------------------------------------------------------------------
@@ -159,6 +157,7 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
+type(var_type) :: var
 
 module_initialized = .true.
 
