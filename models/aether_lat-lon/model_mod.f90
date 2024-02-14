@@ -422,7 +422,7 @@ integer        :: ivar
 !-----------------------------------------------------------------------
 ! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
 integer, parameter :: NAME_INDEX      = 1 ! ... variable name
-integer, parameter :: QTY_INDEX       = 2 ! ... DART kind
+integer, parameter :: QTY_INDEX       = 2 ! ... DART qty
 integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
 integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
 integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
