@@ -4,18 +4,20 @@ Aether Rectangular Grid Interface
 Overview
 --------
 
-The `Aether`_ ("eether") space weather model can be implemented 
-on a logically rectangular grid "lat-lon", 
-or on an the cubed-sphere grid.
+The Aether ("eether") space weather model can be implemented 
+on a logically rectangular grid "lat-lon", or on an the cubed-sphere grid.
 This is the interface to the lat-lon version.
+The model code is available on 
+`GitHub <https://github.com/AetherModel/Aether>`_ .
+Additional documentation can be found 
+`here <https://aetherdocumentation.readthedocs.io/en/latest/>`_ .
 
-Aether is available on GitHub https://github.com/AetherModel/Aether
-
-Aether writes history and restart files, with some overlap of the fields.
+Aether writes history and restart files.
 The restart fields are divided among 2 types of files: neutrals and ions.
 They are further divided into "blocks", which are subdomains of the globe.
-Blocks start in the southwest corner of the lat/lon grid and go east first, 
-then to the west end of the next row north and end in the northeast corner. 
+The numbering of blocks starts in the southwest corner of the lat-lon grid 
+and goes east first, then to the west end of the next row north,
+and ends in the northeast corner. 
 Each block has a halo around it filled with field values from neighboring blocks.
 All of these need to be combined to make a single state vector for filter.
 There's a unique set of these files for each member.
