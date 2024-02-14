@@ -412,58 +412,58 @@ end subroutine assign_dimensions
 
 function assign_var(variables, MAX_STATE_VARIABLES) result(var)
 
-   character(len=vtablenamelength), intent(in) :: variables(:, :)
-   integer, intent(in)                         :: MAX_STATE_VARIABLES
+character(len=vtablenamelength), intent(in) :: variables(:, :)
+integer, intent(in)                         :: MAX_STATE_VARIABLES
 
-   type(var_type) :: var
+type(var_type) :: var
 
-   integer        :: ivar
+integer        :: ivar
 
-   !-----------------------------------------------------------------------
-   ! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
-   integer, parameter :: NAME_INDEX      = 1 ! ... variable name
-   integer, parameter :: QTY_INDEX       = 2 ! ... DART kind
-   integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
-   integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
-   integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
+!-----------------------------------------------------------------------
+! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
+integer, parameter :: NAME_INDEX      = 1 ! ... variable name
+integer, parameter :: QTY_INDEX       = 2 ! ... DART kind
+integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
+integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
+integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
 
-   ! Loop through the variables array to get the actual count of the number of variables
-   do ivar = 1, MAX_STATE_VARIABLES
-      ! If the element is an empty string, the loop has exceeded the extent of the variables
-      if (variables(1, ivar) == '') then
-          var%count = ivar-1
-          exit
-      endif 
-   enddo
-  
-   ! Allocate the arrays in the var derived type
-   allocate(var%names(var%count), var%qtys(var%count), var%clamp_values(var%count, 2), var%updates(var%count))
-  
-   do ivar = 1, var%count
-   
-      var%names(ivar) = trim(variables(NAME_INDEX, ivar))
-  
-      var%qtys(ivar) = get_index_for_quantity(variables(QTY_INDEX, ivar))
-  
-      if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
-          read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
-      else
-          var%clamp_values(ivar,1) = MISSING_R8
-      endif
-  
-      if (variables(MAX_VAL_INDEX, ivar) /= 'NA') then
-          read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
-      else
-          var%clamp_values(ivar,2) = MISSING_R8
-      endif
-  
-      if (variables(UPDATE_INDEX, ivar) == 'UPDATE') then
-          var%updates(ivar) = .true.
-      else
-          var%updates(ivar) = .false.
-      endif
-   
-   enddo
+! Loop through the variables array to get the actual count of the number of variables
+do ivar = 1, MAX_STATE_VARIABLES
+   ! If the element is an empty string, the loop has exceeded the extent of the variables
+   if (variables(1, ivar) == '') then
+      var%count = ivar-1
+      exit
+   endif 
+enddo
+
+! Allocate the arrays in the var derived type
+allocate(var%names(var%count), var%qtys(var%count), var%clamp_values(var%count, 2), var%updates(var%count))
+
+do ivar = 1, var%count
+ 
+   var%names(ivar) = trim(variables(NAME_INDEX, ivar))
+
+   var%qtys(ivar) = get_index_for_quantity(variables(QTY_INDEX, ivar))
+
+   if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
+      read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
+   else
+      var%clamp_values(ivar,1) = MISSING_R8
+   endif
+
+   if (variables(MAX_VAL_INDEX, ivar) /= 'NA') then
+      read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
+   else
+      var%clamp_values(ivar,2) = MISSING_R8
+   endif
+
+   if (variables(UPDATE_INDEX, ivar) == 'UPDATE') then
+      var%updates(ivar) = .true.
+   else
+      var%updates(ivar) = .false.
+   endif
+
+enddo
 
 end function assign_var
 
