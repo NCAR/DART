@@ -408,7 +408,7 @@ call nc_get_variable(ncid, trim(LON_VAR_NAME), lons, routine)
 end subroutine assign_dimensions
 
 !-----------------------------------------------------------------------
-! Parse the table of variables' characteristics into arrays for easier access.
+! Parse the table of variables characteristics into arrays for easier access.
 
 function assign_var(variables, MAX_STATE_VARIABLES) result(var)
 
