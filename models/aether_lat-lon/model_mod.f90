@@ -324,7 +324,6 @@ integer, optional ,  intent(out) :: qty
 
 integer :: lat_index, lon_index, lev_index
 integer :: my_var_id, my_qty
-! character(len=*), parameter :: routine = 'get_state_meta_data'
 
 if ( .not. module_initialized ) call static_init_model
 
