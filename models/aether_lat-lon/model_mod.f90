@@ -15,7 +15,7 @@ use types_mod, only : &
     r8, i8, MISSING_R8, vtablenamelength
 
 use time_manager_mod, only : &
-    time_type, set_time
+    time_type, set_time, set_calendar_type
 
 use location_mod, only : &
     location_type, get_close_type, &
@@ -164,6 +164,8 @@ module_initialized = .true.
 call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
+
+call set_calendar_type('GREGORIAN')
 
 ! Record the namelist values used for the run 
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
