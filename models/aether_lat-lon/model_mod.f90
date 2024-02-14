@@ -416,8 +416,8 @@ character(len=vtablenamelength), intent(in) :: variables(:, :)
 integer, intent(in)                         :: MAX_STATE_VARIABLES
 
 type(var_type) :: var
-
 integer        :: ivar
+character(len=vtablenamelength) :: table_entry
 
 !-----------------------------------------------------------------------
 ! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
@@ -443,7 +443,10 @@ do ivar = 1, var%count
  
    var%names(ivar) = trim(variables(NAME_INDEX, ivar))
 
-   var%qtys(ivar) = get_index_for_quantity(variables(QTY_INDEX, ivar))
+   table_entry = variables(QTY_INDEX, ivar)
+   call to_upper(table_entry)
+
+   var%qtys(ivar) = get_index_for_quantity(table_entry)
 
    if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
       read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
@@ -457,7 +460,10 @@ do ivar = 1, var%count
       var%clamp_values(ivar,2) = MISSING_R8
    endif
 
-   if (variables(UPDATE_INDEX, ivar) == 'UPDATE') then
+   table_entry = variables(UPDATE_INDEX, ivar)
+   call to_upper(table_entry)
+
+   if (table_entry == 'UPDATE') then
       var%updates(ivar) = .true.
    else
       var%updates(ivar) = .false.
