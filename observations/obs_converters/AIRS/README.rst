@@ -32,6 +32,8 @@ appropriate mkmf.template for the compiler you are using.
     /glade/campaign/cisl/dares/libraries/hdf-eos_nvhpc
     /glade/campaign/cisl/dares/libraries/hdf-eos_cray
 
+hdf-eos requires HDF4. HDF4 is available on Derecho with ``module load hdf4``.
+
 ``convert_amsu_L1`` requires the RTTOV libraries.
 
 The following mkmf.templates, which are available in DART/build_templates have been used to compile the AIRS and AMSUA
@@ -41,5 +43,6 @@ observation converters on Derecho.
  
     mkmf.template.AIRS.gfortran
     mkmf.template.AIRS.intel
+
 
 

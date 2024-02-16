@@ -270,9 +270,3 @@ Instructions to download the AIRABRAD dataset
    AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf
 
 
-Actually converting to netCDF
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-
