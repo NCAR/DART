@@ -101,6 +101,17 @@ integer :: trace_level, timestamp_level
 ! inflation restart files
 logical :: output_inflation = .false.
 
+! Ensemble copy numbers; Initialized to not be output
+integer :: ENS_START_COPY                  = COPY_NOT_PRESENT
+integer :: ENS_END_COPY                    = COPY_NOT_PRESENT
+integer :: ENS_MEAN_COPY                   = COPY_NOT_PRESENT
+integer :: ENS_SD_COPY                     = COPY_NOT_PRESENT
+integer :: PRIOR_INF_COPY                  = COPY_NOT_PRESENT
+integer :: PRIOR_INF_SD_COPY               = COPY_NOT_PRESENT
+integer :: POST_INF_COPY                   = COPY_NOT_PRESENT
+integer :: POST_INF_SD_COPY                = COPY_NOT_PRESENT
+integer :: RTPS_PRIOR_SPREAD_COPY          = COPY_NOT_PRESENT
+
 ! Identifier for different copies for diagnostic files
 integer, parameter :: MEM_START     = 1
 integer, parameter :: MEM_END       = 2
@@ -113,26 +124,8 @@ integer, parameter :: POSTINF_SD    = 8
 
 ! Number of Stage Copies
 integer, parameter :: NUM_SCOPIES    = 8
-
-! Ensemble copy numbers
-integer :: ENS_MEM_START                   = COPY_NOT_PRESENT
-integer :: ENS_MEM_END                     = COPY_NOT_PRESENT
-integer :: ENS_MEAN_COPY                   = COPY_NOT_PRESENT
-integer :: ENS_SD_COPY                     = COPY_NOT_PRESENT
-integer :: PRIOR_INF_COPY                  = COPY_NOT_PRESENT
-integer :: PRIOR_INF_SD_COPY               = COPY_NOT_PRESENT
-integer :: POST_INF_COPY                   = COPY_NOT_PRESENT
-integer :: POST_INF_SD_COPY                = COPY_NOT_PRESENT
-
-integer :: INPUT_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
-
-integer ::   CURRENT_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
-integer ::  FORECAST_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
-integer ::  PREASSIM_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
-integer :: POSTASSIM_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
-integer ::  ANALYSIS_COPIES( NUM_SCOPIES ) = COPY_NOT_PRESENT
-
-integer :: RTPS_PRIOR_SPREAD              = COPY_NOT_PRESENT
+integer ::     INPUT_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
+integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 
 ! Module Global Variables for inflation
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
@@ -171,7 +164,6 @@ integer  :: num_groups          = 1
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
-logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
 logical  :: distributed_state = .true. ! Default to do distributed forward operators.
 
@@ -201,18 +193,9 @@ logical :: compute_posterior   = .true. ! set to false to not compute posterior 
 ! single-file:          forecast, preassim, postassim, analysis, output
 character(len=10)  :: stages_to_write(6) = (/"output    ", "null      ", "null      ", &
                                              "null      ", "null      ", "null      " /)
-
-!>@todo FIXME
-!> for preassim and postassim output it might be we should
-!> be controlling the writing of individual ensemble members
-!> by looking at the num_output_state_member value.  0 means
-!> don't write any members, otherwise it's a count.  and for
-!> completeness, there could be a count for pre and a count for post.
-
 logical :: output_members   = .true.
 logical :: output_mean      = .true.
 logical :: output_sd        = .true.
-logical :: write_all_stages_at_end = .false.
 
 character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
                       obs_sequence_out_name = "obs_seq.final",  &
@@ -266,8 +249,6 @@ namelist /filter_nml/            &
    input_state_file_list,        &
    output_mean,                  &
    output_sd,                    &
-   write_all_stages_at_end,      &
-   write_obs_every_cycle,        & 
    allow_missing_clm
 
 !----------------------------------------------------------------
@@ -362,14 +343,6 @@ endif
 ! writing to a single file.
 
 has_cycling = single_file_out
-
-! don't allow cycling and write all at end - might never be supported
-if (has_cycling .and. write_all_stages_at_end) then
-   call error_handler(E_ERR,'filter:', &
-         'advancing the model inside filter and writing all state data at end not supported', &
-          source, text2='delaying write until end only supported when advancing model outside filter', &
-          text3='set "write_all_stages_at_end=.false." to cycle and write data as it is computed')
-endif
 
 ! Setup the indices into the ensemble storage:
 
@@ -531,20 +504,20 @@ AdvanceTime : do
    endif
 
    ! Write out forecast diagnostic file(s). 
-   call do_stage_output('forecast', output_interval, time_step_number, write_all_stages_at_end, &
-      state_ens_handle, FORECAST_COPIES, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   call do_stage_output('forecast', output_interval, time_step_number, &
+      state_ens_handle, DIAG_FILE_COPIES, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
    
    ! Apply prior inflation 
    if(do_ss_inflate(prior_inflate)) &
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
 
-   ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD
+   ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD_COPY
    if ( do_rtps_inflate(post_inflate) ) &
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, RTPS_PRIOR_SPREAD)
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, RTPS_PRIOR_SPREAD_COPY)
 
    ! Write out preassim diagnostic files if requested.
-   call do_stage_output('preassim', output_interval, time_step_number, write_all_stages_at_end, &
-      state_ens_handle, PREASSIM_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   call do_stage_output('preassim', output_interval, time_step_number, &
+      state_ens_handle, DIAG_FILE_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Compute the forward operators and fill data structures
    call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
@@ -557,13 +530,13 @@ AdvanceTime : do
 
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
-   call do_stage_output('postassim', output_interval, time_step_number, write_all_stages_at_end, &
-      state_ens_handle, POSTASSIM_COPIES, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   call do_stage_output('postassim', output_interval, time_step_number, &
+      state_ens_handle, DIAG_FILE_COPIES, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This block applies posterior inflation including RTPS if selected
    if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
       call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, &
-                       ENS_MEAN_COPY, RTPS_PRIOR_SPREAD, ENS_SD_COPY)
+                       ENS_MEAN_COPY, RTPS_PRIOR_SPREAD_COPY, ENS_SD_COPY)
 
    ! this block recomputes the expected obs values for the obs_seq.final file
    if (compute_posterior) then
@@ -577,7 +550,7 @@ AdvanceTime : do
          seq, keys, num_obs_in_set)
    endif
 
-   ! this block computes the adaptive state space posterior inflation
+   ! Compute the adaptive state space posterior inflation
    if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) )                 &
       call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, forward_op_ens_info, seq, keys, &
          ens_size, num_groups, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY,                         &
@@ -589,30 +562,16 @@ AdvanceTime : do
    deallocate(keys)
 
    ! Write out analysis diagnostic files if requested. 
-   call do_stage_output('analysis', output_interval, time_step_number, write_all_stages_at_end, &
-      state_ens_handle, ANALYSIS_COPIES, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   call do_stage_output('analysis', output_interval, time_step_number, &
+      state_ens_handle, DIAG_FILE_COPIES, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 end do AdvanceTime
 
 ! Output the adjusted ensemble. If cycling only the last timestep is writen out
-if (get_stage_to_write('output')) then
-      ! will write outside loop
-      if (.not. write_all_stages_at_end) &
-         call write_state(state_ens_handle, file_info_output)
-endif
+if (get_stage_to_write('output')) call write_state(state_ens_handle, file_info_output)
 
 ! Only pe 0 outputs the observation space diagnostic file
 if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
-
-! Output all restart files if requested
-if (write_all_stages_at_end) then
-   file_info_all = combine_file_info( &
-                    (/file_info_input, file_info_mean_sd, file_info_forecast, &
-                      file_info_preassim, file_info_postassim, file_info_analysis, &
-                      file_info_output/) )
-
-   call write_state(state_ens_handle, file_info_all)
-endif
 
 ! close the diagnostic/restart netcdf files
 if (single_file_out) then
@@ -703,12 +662,12 @@ end subroutine filter_set_window_time
 !-------------------------------------------------------------------------
 
 subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate_handle, ENS_MEAN_COPY, &
-                                   RTPS_PRIOR_SPREAD, ENS_SD_COPY)
+                                   RTPS_PRIOR_SPREAD_COPY, ENS_SD_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: inflate_copy, ENS_MEAN_COPY
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
-integer, optional,           intent(in)    :: RTPS_PRIOR_SPREAD, ENS_SD_COPY
+integer, optional,           intent(in)    :: RTPS_PRIOR_SPREAD_COPY, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
 type(location_type) :: my_state_loc
@@ -732,7 +691,7 @@ do group = 1, num_groups
       do j = 1, ens_handle%my_num_vars
          call inflate_ens(inflate_handle, ens_handle%copies(grp_bot:grp_top, j), &
             ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
-            ens_handle%copies(RTPS_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
+            ens_handle%copies(RTPS_PRIOR_SPREAD_COPY, j), ens_handle%copies(ENS_SD_COPY, j)) 
       end do 
    else 
 
@@ -872,27 +831,6 @@ end subroutine set_trace
 
 !-------------------------------------------------------------------------
 
-subroutine print_ens_time(ens_handle, msg)
-
-type(ensemble_type), intent(in) :: ens_handle
-character(len=*), intent(in) :: msg
-
-! Write message to stdout and log file.
-type(time_type) :: mtime
-
-if (trace_level <= 0) return
-
-if (do_output()) then
-   if (get_my_num_copies(ens_handle) < 1) return
-   call get_ensemble_time(ens_handle, 1, mtime)
-   call print_time(mtime, ' filter trace: '//msg, logfileunit)
-   call print_time(mtime, ' filter trace: '//msg)
-endif
-
-end subroutine print_ens_time
-
-!-------------------------------------------------------------------------
-
 !> Produces an ensemble by copying my_vars of the 1st ensemble member
 !> and then perturbing the copies array.
 !> Mimicks the behaviour of pert_model_state:
@@ -1010,43 +948,6 @@ enddo
 end subroutine  set_time_on_extra_copies
 
 !------------------------------------------------------------------
-!> Copy the current mean, sd, inf_mean, inf_sd to spare copies
-!> Assuming that if the spare copy is there you should fill it
-
-subroutine store_copies(ens_handle, STAGE_COPIES)
-
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(inout) :: STAGE_COPIES(NUM_SCOPIES)
-
-integer :: i, offset
-
-if (query_copy_present( STAGE_COPIES(ENS_MEAN)) ) &
-   ens_handle%copies(   STAGE_COPIES(ENS_MEAN), :)      = ens_handle%copies(ENS_MEAN_COPY, :)
-
-if (query_copy_present( STAGE_COPIES(ENS_SD)) ) &
-   ens_handle%copies(   STAGE_COPIES(ENS_SD), :)        = ens_handle%copies(ENS_SD_COPY, :)
-
-if (query_copy_present( STAGE_COPIES(PRIORINF_MEAN)) ) &
-   ens_handle%copies(   STAGE_COPIES(PRIORINF_MEAN), :) = ens_handle%copies(PRIOR_INF_COPY, :)
-
-if (query_copy_present( STAGE_COPIES(PRIORINF_SD)) ) &
-   ens_handle%copies(   STAGE_COPIES(PRIORINF_SD), :)   = ens_handle%copies(PRIOR_INF_SD_COPY, :)
-
-if (query_copy_present( STAGE_COPIES(POSTINF_MEAN)) ) &
-   ens_handle%copies(   STAGE_COPIES(POSTINF_MEAN), :)  = ens_handle%copies(POST_INF_COPY, :)
-
-if (query_copy_present( STAGE_COPIES(POSTINF_SD)) ) &
-   ens_handle%copies(   STAGE_COPIES(POSTINF_SD), :)    = ens_handle%copies(POST_INF_SD_COPY, :)
-     
-do i = 1, num_output_state_members
-   offset = STAGE_COPIES(MEM_START) + i - 1
-   if ( query_copy_present(offset) ) ens_handle%copies(offset, :) = ens_handle%copies(i, :)
-enddo
-
-end subroutine store_copies
-
-
-!------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
 function count_state_ens_copies(ens_size) result(num_copies)
@@ -1054,120 +955,60 @@ function count_state_ens_copies(ens_size) result(num_copies)
 integer,                     intent(in) :: ens_size
 integer :: num_copies
 
-integer :: cnum = 0
-
-! Filter Ensemble Members
-!   ENS_MEM_XXXX
-ENS_MEM_START = next_copy_number(cnum)
-ENS_MEM_END   = next_copy_number(cnum, ens_size)
+! First ens_size entries are the actual ensemble members
+ENS_START_COPY = 1
+ENS_END_COPY   = ens_size
 
 ! Filter Extra Copies For Assimilation
-!    ENS_MEAN_COPY    
-!    ENS_SD_COPY      
-!    PRIOR_INF_COPY   
-!    PRIOR_INF_SD_COPY
-!    POST_INF_COPY    
-!    POST_INF_SD_COPY 
+ENS_MEAN_COPY     = ens_size + 1
+ENS_SD_COPY       = ens_size + 2
+PRIOR_INF_COPY    = ens_size + 3
+PRIOR_INF_SD_COPY = ens_size + 4
+POST_INF_COPY     = ens_size + 5
+POST_INF_SD_COPY  = ens_size + 6
+num_copies = ens_size + 6
 
-ENS_MEAN_COPY     = next_copy_number(cnum)
-ENS_SD_COPY       = next_copy_number(cnum)
-PRIOR_INF_COPY    = next_copy_number(cnum)
-PRIOR_INF_SD_COPY = next_copy_number(cnum)
-POST_INF_COPY     = next_copy_number(cnum)
-POST_INF_SD_COPY  = next_copy_number(cnum)
-
-! If there are no diagnostic files, we will need to store the
-! copies that would have gone in Prior_Diag.nc and Posterior_Diag.nc
-! in spare copies in the ensemble.
-
-if (write_all_stages_at_end) then
-   if (get_stage_to_write('input')) then
-      ! Option to Output Input Mean and SD
-      !   INPUT_MEAN
-      !   INPUT_SD  
-      if (output_mean) then
-         INPUT_COPIES(ENS_MEAN) = next_copy_number(cnum)
-         if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-            INPUT_COPIES(PRIORINF_MEAN) = next_copy_number(cnum)
-         endif
-         if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-            INPUT_COPIES(POSTINF_MEAN)  = next_copy_number(cnum)
-         endif
-      endif
-
-      if (output_sd) then
-         INPUT_COPIES(ENS_SD) = next_copy_number(cnum)
-         if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-            INPUT_COPIES(PRIORINF_SD) = next_copy_number(cnum)
-         endif
-         if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-            INPUT_COPIES(POSTINF_SD)  = next_copy_number(cnum)
-         endif
-      endif
-   endif
-
-   if (get_stage_to_write('forecast')) &
-      call set_copies( cnum, FORECAST_COPIES)
-
-   if (get_stage_to_write('preassim')) &
-      call set_copies( cnum, PREASSIM_COPIES)
-
-   if (get_stage_to_write('postassim')) &
-      call set_copies( cnum, POSTASSIM_COPIES)
-
-   if (get_stage_to_write('analysis')) &
-      call set_copies( cnum, ANALYSIS_COPIES)
-
-else
-
-   ! Write everything in stages
-   ! Option to Output Input Mean and SD
-   if (output_mean) then
-      INPUT_COPIES(ENS_MEAN) = ENS_MEAN_COPY
-      if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-         INPUT_COPIES(PRIORINF_MEAN) = PRIOR_INF_COPY
-      endif
-      if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-         INPUT_COPIES(POSTINF_MEAN)  = POST_INF_COPY
-      endif
-   endif
-
-   if (output_sd) then
-      INPUT_COPIES(ENS_SD) = ENS_SD_COPY
-      if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-         INPUT_COPIES(PRIORINF_SD) = PRIOR_INF_SD_COPY
-      endif
-      if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-         INPUT_COPIES(POSTINF_SD)  = POST_INF_SD_COPY
-      endif
-   endif
-  
-   FORECAST_COPIES   = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
-
-   PREASSIM_COPIES   = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
-
-   POSTASSIM_COPIES  = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
-
-   ANALYSIS_COPIES   = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
-                          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
-  
+! If Whitaker/Hamill (2012) relaxation-to-prior-spread (RTPS) inflation
+! then we need an extra copy to hold (save) the prior ensemble spread
+if ( do_rtps_inflate(post_inflate) ) then
+   RTPS_PRIOR_SPREAD_COPY = ens_size + 7
+   num_copies = ens_size + 7
 endif
 
-CURRENT_COPIES    = (/ ENS_MEM_START, ENS_MEM_END, ENS_MEAN_COPY, ENS_SD_COPY, &
+
+! Temporary test of how this all works
+!!!if(.not. do_posterior_inflate) then
+   !!!POST_INF_COPY    = COPY_NOT_PRESENT
+   !!!POST_INF_SD_COPY = COPY_NOT_PRESENT
+!!!endif
+
+! Figure out which copies need to be output for diagnostic files
+DIAG_FILE_COPIES   = (/ ENS_START_COPY, ENS_END_COPY, ENS_MEAN_COPY, ENS_SD_COPY, &
                        PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
-! If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation
-! then we need an extra copy to hold (save) the prior ensemble spread
-! ENS_SD_COPY will be overwritten with the posterior spread before
-! applying the inflation algorithm; must save the prior ensemble spread in a different copy
-if ( do_rtps_inflate(post_inflate) ) then
-   RTPS_PRIOR_SPREAD = next_copy_number(cnum)
+
+! Should we read in the prior and posterior inflation copies
+! Why is this controlled by the output selections?
+if (output_mean) then
+   INPUT_COPIES(ENS_MEAN) = ENS_MEAN_COPY
+   if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
+      INPUT_COPIES(PRIORINF_MEAN) = PRIOR_INF_COPY
+   endif
+   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
+      INPUT_COPIES(POSTINF_MEAN)  = POST_INF_COPY
+   endif
 endif
 
-num_copies = cnum
+if (output_sd) then
+   INPUT_COPIES(ENS_SD) = ENS_SD_COPY
+   if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
+      INPUT_COPIES(PRIORINF_SD) = PRIOR_INF_SD_COPY
+   endif
+   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
+      INPUT_COPIES(POSTINF_SD)  = POST_INF_SD_COPY
+   endif
+endif
+
 
 end function count_state_ens_copies
 
@@ -1327,25 +1168,6 @@ enddo
 end subroutine parse_stages_to_write
 
 !-----------------------------------------------------------
-!> checks the user input and informs the IO modules which files to write.
-
-
-function next_copy_number(cnum, ncopies)
-integer, intent(inout)        :: cnum
-integer, intent(in), optional :: ncopies
-integer :: next_copy_number
-
-if (present(ncopies)) then
-   next_copy_number = cnum + ncopies - 1
-else
-   next_copy_number = cnum + 1
-endif
-
-cnum = next_copy_number
-
-end function next_copy_number
-
-!-----------------------------------------------------------
 !> initialize file names and which copies should be read and or written
 
 
@@ -1426,25 +1248,25 @@ call io_filenames_init(file_info_output,                       &
 
 ! Set filename metadata information
 !   Input Files
-call set_filename_info(file_info_input,       'input',     ens_size,          CURRENT_COPIES )
+call set_filename_info(file_info_input,       'input',     ens_size,          DIAG_FILE_COPIES )
 
 !   Output Files
 if (get_stage_to_write('input')) &
    call set_filename_info(file_info_mean_sd,  'input',     0,                   INPUT_COPIES )
 if (get_stage_to_write('forecast')) &
-   call set_filename_info(file_info_forecast, 'forecast',  noutput_members,  FORECAST_COPIES )
+   call set_filename_info(file_info_forecast, 'forecast',  noutput_members,  DIAG_FILE_COPIES )
 if (get_stage_to_write('preassim')) &
-   call set_filename_info(file_info_preassim, 'preassim',  noutput_members,  PREASSIM_COPIES )
+   call set_filename_info(file_info_preassim, 'preassim',  noutput_members,  DIAG_FILE_COPIES )
 if (get_stage_to_write('postassim')) &
-   call set_filename_info(file_info_postassim,'postassim', noutput_members, POSTASSIM_COPIES ) 
+   call set_filename_info(file_info_postassim,'postassim', noutput_members, DIAG_FILE_COPIES ) 
 if (get_stage_to_write('analysis')) &
-   call set_filename_info(file_info_analysis, 'analysis',  noutput_members,  ANALYSIS_COPIES )
+   call set_filename_info(file_info_analysis, 'analysis',  noutput_members,  DIAG_FILE_COPIES )
 
-call set_filename_info(file_info_output,      'output',    ens_size,          CURRENT_COPIES )
+call set_filename_info(file_info_output,      'output',    ens_size,          DIAG_FILE_COPIES )
 
 ! Set file IO information
 !   Input Files
-call set_input_file_info( file_info_input, ens_size, CURRENT_COPIES ) 
+call set_input_file_info( file_info_input, ens_size, DIAG_FILE_COPIES ) 
 
 !   Output Files
 call set_output_file_info( file_info_mean_sd,           & 
@@ -1455,31 +1277,31 @@ call set_output_file_info( file_info_mean_sd,           &
 
 call set_output_file_info( file_info_forecast,             &
                            num_ens      = noutput_members, &
-                           STAGE_COPIES = FORECAST_COPIES, &
+                           STAGE_COPIES = DIAG_FILE_COPIES, &
                            do_clamping  = .false.,         &
                            force_copy   = .true. )
 
 call set_output_file_info( file_info_preassim,             &
                            num_ens      = noutput_members, &
-                           STAGE_COPIES = PREASSIM_COPIES, & 
+                           STAGE_COPIES = DIAG_FILE_COPIES, & 
                            do_clamping  = .false.,         &
                            force_copy   = .true. )
 
 call set_output_file_info( file_info_postassim,             &
                            num_ens      = noutput_members,  &
-                           STAGE_COPIES = POSTASSIM_COPIES, &
+                           STAGE_COPIES = DIAG_FILE_COPIES, &
                            do_clamping  = .false.,          &
                            force_copy   = .true. )
 
 call set_output_file_info( file_info_analysis,             &
                            num_ens      = noutput_members, &
-                           STAGE_COPIES = ANALYSIS_COPIES, &
+                           STAGE_COPIES = DIAG_FILE_COPIES, &
                            do_clamping  = .false.,         &
                            force_copy   = .true. )
 
 call set_output_file_info( file_info_output,              &
                            num_ens      = ens_size,       &
-                           STAGE_COPIES = CURRENT_COPIES, &
+                           STAGE_COPIES = DIAG_FILE_COPIES, &
                            do_clamping  = .true.,         &
                            force_copy   = .false. )
 
@@ -1487,54 +1309,12 @@ end subroutine initialize_file_information
 
 
 !-----------------------------------------------------------
-!> set copy numbers. this is for when writing all stages at end
-
-subroutine set_copies(cnum, STAGE_COPIES)
-integer, intent(inout) :: cnum
-integer, intent(inout) :: STAGE_COPIES(NUM_SCOPIES)
-
-! Option to Output Postassim Ensemble Members Before Posterior Inflation
-!   MEM_START
-!   MEM_END = MEM_START + num_output_state_members - 1
-STAGE_COPIES(MEM_START) = next_copy_number(cnum)
-STAGE_COPIES(MEM_END)   = next_copy_number(cnum, num_output_state_members)
-
-! Option to Output Input Mean and SD
-!   MEAN
-!   SD
-if (output_mean) then
-   STAGE_COPIES(ENS_MEAN) = next_copy_number(cnum)
-endif
-if (output_sd) then
-   STAGE_COPIES(ENS_SD)   = next_copy_number(cnum)
-endif
-
-if (output_inflation) then
-   ! Option to Output Infation with Damping
-   !    PRIORINF_MEAN
-   !    PRIORINF_SD
-   !    POSTINF_MEAN
-   !    POSTINF_SD
-   if (do_prior_inflate) then
-      STAGE_COPIES(PRIORINF_MEAN) = next_copy_number(cnum)
-      STAGE_COPIES(PRIORINF_SD)   = next_copy_number(cnum)
-   endif
-   if (do_posterior_inflate) then
-      STAGE_COPIES(POSTINF_MEAN)  = next_copy_number(cnum)
-      STAGE_COPIES(POSTINF_SD)    = next_copy_number(cnum)
-   endif
-endif
-
-end subroutine set_copies
-
-!------------------------------------------------------------------
 
 subroutine do_stage_output(stage_name, output_interval, time_step_number, &
-   write_all_stages_at_end, state_ens_handle, COPIES, file_info, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   state_ens_handle, COPIES, file_info, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 character(len = *),   intent(in)    :: stage_name
 integer,              intent(in)    :: output_interval, time_step_number
-logical,              intent(in)    :: write_all_stages_at_end
 type(ensemble_type),  intent(inout) :: state_ens_handle
 integer,              intent(inout) :: COPIES(:)
 type(file_info_type), intent(inout) :: file_info
@@ -1548,12 +1328,7 @@ if(get_stage_to_write(stage_name)) then
       ! For efficiency could make this optional in call
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-      ! Save or output the data
-      if (write_all_stages_at_end) then
-         call store_copies(state_ens_handle, COPIES)
-      else
-         call write_state(state_ens_handle, file_info)
-      endif
+      call write_state(state_ens_handle, file_info)
    endif
 endif
 
