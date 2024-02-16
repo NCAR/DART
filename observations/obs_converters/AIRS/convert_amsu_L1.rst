@@ -1,16 +1,8 @@
 Program ``convert_amsu_L1``
 ===========================
 
-.. caution:: 
-
-   Before you begin: Installing the libraries needed to read these files can be
-   fairly troublesome. The NASA Earthdata Data Access Services website is the
-   `download site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__
-   for the necessary libraries. An example build script (`AIRS/Build_HDF-EOS.sh`)
-   is intended to provide some guidance.
-
 Overview
---------
+---------
 
 There is a little bit of confusing history to be aware of for AMSU/A:
 
@@ -56,14 +48,36 @@ The citation information for this dataset is:
 NASA provides a `README.AIRABRAD.pdf <https://docserver.gesdisc.eosdis.nasa.gov/repository/Mission/AIRS/3.3_ScienceDataProductDocumentation/3.3.4_ProductGenerationAlgorithms/README.AIRABRAD.pdf>`__
 through the Goddard Earth Sciences Data and Information Services Center.
 
-convert_amsua_L1.f90
---------------------
+Advanced Microwave Sounding Unit (AMSU-A) L1B Brightness Temperatures
+---------------------------------------------------------------------
 
-``convert_amsua_L1`` converts the L1B AMSU-A Brightness
-Temperatures in netCDF format to the DART observation sequence file format.
-The native HDF-EOS2 format files must be converted to netCDF.
-The conversion from HDF-EOS2 to netCDF is easily performed by the 
-`h4tonccf_nc4 <http://hdfeos.org/software/h4cflib.php>`__ converter.
+Converting AMSU_L1 observations is a two-step process:
+
+- convert the data from HDF to netCDF
+- run ``convert_amsua_L1`` to convert the netCDF file to an obs_seq file.
+
+.. note::
+
+   The native HDF-EOS2 format files must be converted to netCDF before running
+   ``convert_amsua_L1``.
+
+To convert from HDF-EOS2 to netCDF use the
+`h4tonccf_nc4 <http://hdfeos.org/software/h4cflib.php>` from the HDF-EOS
+tools.
+
+
+The netCDF files have two global
+attributes that are exceedingly large and uninformative. If needed you can
+remove these attributes, you can use the ``ncatted`` command from
+`NCO <http://nco.sourceforge.net/nco.html>`_.
+
+::
+
+   h4tonccf_nc4 AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf bob.nc
+   ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, bob.nc bill.nc
+
+
+
 
 As you can imagine, you need to download each satellite’s data in a
 different way. Also, just for your information, AMSU/B has been replaced
@@ -73,10 +87,8 @@ identical.
 Namelist
 ~~~~~~~~
 
-DARTs design structure has the support for radiance observations (like brightness
-temperatures) provided by the :doc:`../../forward_operators/obs_def_rttov_mod`
-which depends on HDF5 libraries. Consequently, the ``obs_def_rttov_mod_nml`` namelist 
-must appear in the ``input.nml``. However, only two options are used when converting
+``convert_amsua_L1`` makes use of :doc:`../../forward_operators/obs_def_rttov_mod`
+Only two &obs_def_rttov_nml options are required when converting
 the observations: *use_zeeman* and *rttov_sensor_db_file*.
 
 Be aware that if the RTTOV namelist option ``use_zeeman = .true.``
@@ -221,21 +233,6 @@ are provided for reference only. The 'Documentation' values are from the
    +---------+---------+---------------+---------------+
 
 
-Known Bugs
-~~~~~~~~~~
-
-None.
-
-
-Future Plans
-~~~~~~~~~~~~
-
-None.
-
-
-----------
-
-
 .. _instructions-to-download-the-airabrad-dataset-1:
 
 Instructions to download the AIRABRAD dataset
@@ -273,106 +270,9 @@ Instructions to download the AIRABRAD dataset
    AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf
 
 
-Build
-^^^^^^
-
-See the :doc:`Dependencies Section<./README>` of the AIRS/README.
-
-Because the data are distributed in HDF-EOS format, and the RTTOV
-libraries require HDF5 (incompatible with HDF-EOS) a two-step conversion
-is necessary. The data must be converted from HDF to netCDF (which can
-be done without HDF5) and then the netCDF files can be converted to DART
-radiance observation format - which is the part that requires
-``obs_def_rttov_mod.f90``, which is the part that requires HDF5.
-
-The NASA Earthdata Data Access Services website is the `download
-site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__,
-at press time, the following packages were required to build HDF-EOS
-Release v2.20:
-
--  hdf-4.2.13.tar.gz
--  HDF-EOS2.20v1.00.tar.Z
--  HDF-EOS2.20v1.00_TestDriver.tar.Z
--  HDF-EOS_REF.pdf
--  HDF-EOS_UG.pdf
--  jpegsrc.v9b.tar.gz
--  zlib-1.2.11.tar.gz
-
-Similarly for HDF-EOS5 Release v5.1.16:
-
--  HDF-EOS5.1.16.tar.Z
--  HDF-EOS5.1.16_TESTDRIVERS.tar.Z
--  HDF-EOS5_REF.pdf
--  HDF-EOS5_UG.pdf
--  hdf5-1.8.19.tar.gz
--  szip-2.1.1.tar.gz
-
-DART provides a script ``DART/observations/obs_converters/AIRS/BUILD_HDF-EOS.sh`` 
-that may help provide support for these libraries. You *will* have to modify it for your
-system, and you *probably will* have to iterate on that process. The
-script takes the stance that if you have to build HDF4, HDF-EOS, HDF5 …
-you might as well build HDF-EOS5 too. The HDF-EOS5 is entirely optional.
-The HDF5 will be needed by RTTOV.
-
-Converting from HDF4 to netCDF
-------------------------------
-
-There are multiple ways to convert from HDF4 to netCDF. The HDF-EOS
-Tools and Information Center provides binaries for several common
-platforms as well as source code should you need to build your own.
-
-HDF4 CF CONVERSION TOOLKIT
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The HDF-EOS Tools and Information Center provides the `HDF4 CF
-CONVERSION TOOLKIT <http://hdfeos.org/software/h4cflib.php>`__
-
-   The HDF4 CF (H4CF) Conversion Toolkit can access various NASA HDF4
-   external and HDF-EOS2 external files by following the CF conventions
-   external. The toolkit includes a conversion library for application
-   developers and a conversion utility for NetCDF users. We have
-   translated the information obtained from various NASA HDF-EOS2 and
-   HDF4 files and the corresponding product documents into the
-   information required by CF into the conversion library. We also have
-   implemented an HDF4-to-NetCDF (either NetCDF-3 or NetCDF-4 classic)
-   conversion tool by using this conversion library. In this web page,
-   we will first introduce how to build the conversion library and the
-   tool from the source. Then, we will provide basic usage of the tool
-   and the conversion library APIs. The information for the supported
-   NASA HDF-EOS2 and HDF4 products and visualization screenshots of some
-   converted NetCDF files will also be presented.
-
-If you download a binary, it’s a good habit to verify the checksum.
-The download page has a link
-to a .pdf that has the known checksums. 
-`Here’s how to generate the checksum <https://security.stackexchange.com/questions/189000/how-to-verify-the-checksum-of-a-downloaded-file-pgp-sha-etc>`__.
-Be aware that when I downloaded the file (via Chrome or ‘wget’) on an
-OSX system, the checksum did not match. When I downloaded the file on a
-linux system, the checksum *did* match.
-
-If you download the source, the tar file comes with a ``README`` and an 
-``INSTALL``. Please become familiar with them. DART also has a build script:
-``AIRS/shell_scripts/Build_HDF_to_netCDF.csh`` that you can customize
-after you read the ``INSTALL`` document.
-
 Actually converting to netCDF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-While the converter creates very nice netCDF files, there are two global
-attributes that are exceedingly large and uninformative. Should you want
-to remove them, I suggest using the ``ncatted`` command from
-`NCO <http://nco.sourceforge.net/nco.html>`__.
 
-::
 
-   h4tonccf_nc4 AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf bob.nc
-   ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, bob.nc bill.nc
 
-The DART ``L1_AMSUA_to_netcdf.f90`` program
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Before I became aware of ``h4tonccf_nc4``, I was in the process of
-writing my own converter ``L1_AMSUA_to_netcdf.f90``. *It is not
-finished.* Furthermore, at this stage, I don’t know which variables are
-needed to be a viable DART observation sequence file, and I don’t see
-the point in converting EVERYTHING.

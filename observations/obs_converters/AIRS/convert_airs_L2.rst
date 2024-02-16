@@ -1,20 +1,13 @@
 Program ``convert_airs_L2`` 
 ===========================
 
-.. caution:: 
-
-   Before you begin: Installing the libraries needed to read these files can be
-   fairly troublesome. The NASA Earthdata Data Access Services website is the
-   `download site <https://wiki.earthdata.nasa.gov/display/DAS/Toolkit+Downloads>`__
-   for the necessary libraries. An example build script (`AIRS/Build_HDF-EOS.sh`)
-   is intended to provide some guidance.
-
-
 Overview
 --------
 
-The Atmospheric Infrared Sounder (AIRS) is a facility instrument aboard the second 
-Earth Observing System (EOS) polar-orbiting platform, EOS Aqua. In combination with 
+The Atmospheric Infrared Sounder `(AIRS) <http://airs.jpl.nasa.gov/>`_ is a facility
+instrument aboard the second Earth Observing System (EOS) polar-orbiting platform
+`Aqua <http://aqua.nasa.gov>`_. Aqua is one of a group of satellites flying close
+together in a polar orbit, collectively known as the “A-train”. In combination with
 the Advanced Microwave Sounding Unit (AMSU) and the Humidity Sounder for Brazil (HSB),
 AIRS constitutes an innovative atmospheric sounding group of visible, infrared, and 
 microwave sensors. AIRS data will be generated continuously. Global coverage will 
@@ -33,6 +26,12 @@ is AIRX2RET. (AIRS2RET is the same product but without the AMSU data.)
 
 Atmospheric Infrared Sounder (AIRS) Level 2 observations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+AIRS data includes atmospheric temperature in the troposphere, derived
+moisture profiles, land and ocean surface temperatures, surface
+emissivity, cloud fraction, cloud top height, and ozone burden in the
+atmosphere.
+
 
 Several types of AIRS data, with varying levels of processing, are available.
 The following descriptions are taken from the
@@ -108,13 +107,6 @@ region of interest throught the use of the namelist parameters. If you need a re
 that spans the Prime Meridian lon1 can be a larger number than lon2, for example, 
 a region from 300 E to 40 E and 60 S to 30 S (some of the South Atlantic), 
 would be *lon1 = 300, lon2 = 40, lat1 = -60, lat2 = -30*.
-
-The ``DART/observations/obs_converters/AIRS/shell_scripts`` directory includes scripts
-(``download_L2.sh`` and ``oneday_down.sh``) that make use of the fact that the AIRS data 
-is also archived on the NSF NCAR HPSS (tape library) in daily tar files. 
-``oneday_down.sh`` has options to download a day of granule files, convert them, merge them 
-into daily files, and remove the original data files and repeat the process for any 
-specified time period.
 
 
 Namelist
@@ -195,11 +187,6 @@ The default values are shown below. More realistic values are provided in
    | version            | integer                | The AIRS file format version.                                |
    +--------------------+------------------------+--------------------------------------------------------------+
 
-
-Dependencies
-~~~~~~~~~~~~
-
-See the :doc:`Dependencies Section<./README>` of the AIRS/README.
 
 Known Bugs
 ~~~~~~~~~~
