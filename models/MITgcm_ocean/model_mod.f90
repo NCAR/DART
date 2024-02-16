@@ -22,10 +22,12 @@ use     location_mod,      only : location_type, get_close_init, &
                                   convert_vertical_obs, convert_vertical_state
 
 use    utilities_mod,      only : error_handler, E_ERR, E_WARN, E_MSG, &
-                                  logfileunit, get_unit, nc_check, do_output, to_upper, &
+                                  logfileunit, get_unit, do_output, to_upper, &
                                   find_namelist_in_file, check_namelist_read, &
                                   open_file, file_exist, find_textfile_dims, file_to_text, &
                                   string_to_real, string_to_logical
+
+use  netcdf_utilities_mod, only : nc_check
 
 use     obs_kind_mod,      only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT,  &
                                   QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT,         &

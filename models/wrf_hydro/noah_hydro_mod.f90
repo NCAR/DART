@@ -654,10 +654,8 @@ do j=1,jxrt
 end do
 deallocate(CH_NETRT_in, LAKE_MSKRT_in, DIRECTION_in, ELRT_in)
 
-! This replaces a double for loop that counts NLINKS which can be removed from the
-! code inserted below.
 ! subset to the 1D channel network as presented in the hydro restart file.
-n_link = sum(CH_NETRT*0+1, mask = CH_NETRT >= 0)
+n_link = count(CH_NETRT>=0)
 
 ! allocate the necessary wrf_hydro variables with module scope 
 allocate(channelIndsX(n_link), channelIndsY(n_link))

@@ -1,0 +1,37 @@
+# Template for quikscat converter with Intel Fortran Compiler on Linux or OSX
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+
+MPIFC = mpif90
+MPILD = mpif90
+FC = h4fc
+LD = h4fc
+
+# If you get an error "ld: library not found for -lnetcdff" (note 2 f's),
+# remove it from the LIBS line. The same is true for any library. If 'ld'
+# does not complain - it worked.
+
+# If your NETCDF environment variable is not set correctly,
+# uncomment the following line and set value to where lib and include
+# are found for the netcdf files that match this compiler.
+#
+# NETCDF = /opt/local
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+FFLAGS  = -O -assume buffered_io $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# for development or debugging, use this instead:
+# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
+#          -fp-model precise  -ftrapuv -traceback \
+#          -warn declarations,uncalled,unused $(INCS)
+
+# Some optimized (BLAS, LAPACK) libraries may be available with:
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
+#
+# If you get this error: libimf.so: warning: warning: feupdateenv is not implemented
+# try adding: -limf -lm to your LIBS line.
