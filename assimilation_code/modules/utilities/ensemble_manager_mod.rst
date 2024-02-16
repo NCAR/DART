@@ -168,7 +168,6 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
          ! Time is only related to var complete
          type(time_type), pointer :: time(:)
          integer :: distribution_type
-         integer :: valid     ! copies modified last, vars modified last, both same
          integer :: id_num
          integer, allocatable :: task_to_pe_list(:) ! List of tasks
          integer, allocatable :: pe_to_task_list(:) ! List of tasks
