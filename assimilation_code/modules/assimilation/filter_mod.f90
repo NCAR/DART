@@ -124,7 +124,6 @@ integer, parameter :: POST_INF_SD   = 8
 
 ! Number of Stage Copies
 integer, parameter :: NUM_SCOPIES    = 8
-integer ::     INPUT_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 
 ! Module Global Variables for inflation
@@ -975,29 +974,6 @@ if ( do_rtps_inflate(post_inflate) ) then
    num_copies = ens_size + 7
 endif
 
-
-! Should we read in the prior and posterior inflation copies
-! Why is this controlled by the output selections?
-if (output_mean) then
-   INPUT_COPIES(ENS_MEAN) = ENS_MEAN_COPY
-   if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-      INPUT_COPIES(PRIOR_INF) = PRIOR_INF_COPY
-   endif
-   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-      INPUT_COPIES(POST_INF)  = POST_INF_COPY
-   endif
-endif
-
-if (output_sd) then
-   INPUT_COPIES(ENS_SD) = ENS_SD_COPY
-   if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-      INPUT_COPIES(PRIOR_INF_SD) = PRIOR_INF_SD_COPY
-   endif
-   if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-      INPUT_COPIES(POST_INF_SD)  = POST_INF_SD_COPY
-   endif
-endif
-
 ! Specifying copies to be output for diagnostics/restart
 DIAG_FILE_COPIES(ENS_START) = ENS_START_COPY
 DIAG_FILE_COPIES(ENS_END) = ENS_END_COPY
@@ -1027,12 +1003,7 @@ else
    DIAG_FILE_COPIES(POST_INF_SD) = COPY_NOT_PRESENT
 endif
 
-! Figure out which copies need to be output for diagnostic files
-!!!DIAG_FILE_COPIES   = (/ ENS_START_COPY, ENS_END_COPY, ENS_MEAN_COPY, ENS_SD_COPY, &
-                       !!!PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
-
 end function count_state_ens_copies
-
 
 !------------------------------------------------------------------
 !> Set file name information.  For members restarts can be read from
@@ -1288,12 +1259,6 @@ call set_filename_info(file_info_output,      'output',    ens_size,          DI
 call set_input_file_info( file_info_input, ens_size, DIAG_FILE_COPIES ) 
 
 !   Output Files
-call set_output_file_info( file_info_mean_sd,           & 
-                           num_ens      = 0,            &
-                           STAGE_COPIES = INPUT_COPIES, &
-                           do_clamping  = .false.,      &
-                           force_copy   = .true. )
-
 call set_output_file_info( file_info_forecast,             &
                            num_ens      = noutput_members, &
                            STAGE_COPIES = DIAG_FILE_COPIES, &
