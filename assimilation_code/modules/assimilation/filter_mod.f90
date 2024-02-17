@@ -113,14 +113,14 @@ integer :: POST_INF_SD_COPY                = COPY_NOT_PRESENT
 integer :: RTPS_PRIOR_SPREAD_COPY          = COPY_NOT_PRESENT
 
 ! Identifier for different copies for diagnostic files
-integer, parameter :: MEM_START     = 1
-integer, parameter :: MEM_END       = 2
+integer, parameter :: ENS_START     = 1
+integer, parameter :: ENS_END       = 2
 integer, parameter :: ENS_MEAN      = 3
 integer, parameter :: ENS_SD        = 4
-integer, parameter :: PRIORINF_MEAN = 5
-integer, parameter :: PRIORINF_SD   = 6
-integer, parameter :: POSTINF_MEAN  = 7
-integer, parameter :: POSTINF_SD    = 8
+integer, parameter :: PRIOR_INF     = 5
+integer, parameter :: PRIOR_INF_SD  = 6
+integer, parameter :: POST_INF      = 7
+integer, parameter :: POST_INF_SD   = 8
 
 ! Number of Stage Copies
 integer, parameter :: NUM_SCOPIES    = 8
@@ -976,39 +976,60 @@ if ( do_rtps_inflate(post_inflate) ) then
 endif
 
 
-! Temporary test of how this all works
-!!!if(.not. do_posterior_inflate) then
-   !!!POST_INF_COPY    = COPY_NOT_PRESENT
-   !!!POST_INF_SD_COPY = COPY_NOT_PRESENT
-!!!endif
-
-! Figure out which copies need to be output for diagnostic files
-DIAG_FILE_COPIES   = (/ ENS_START_COPY, ENS_END_COPY, ENS_MEAN_COPY, ENS_SD_COPY, &
-                       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
-
-
 ! Should we read in the prior and posterior inflation copies
 ! Why is this controlled by the output selections?
 if (output_mean) then
    INPUT_COPIES(ENS_MEAN) = ENS_MEAN_COPY
    if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-      INPUT_COPIES(PRIORINF_MEAN) = PRIOR_INF_COPY
+      INPUT_COPIES(PRIOR_INF) = PRIOR_INF_COPY
    endif
    if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-      INPUT_COPIES(POSTINF_MEAN)  = POST_INF_COPY
+      INPUT_COPIES(POST_INF)  = POST_INF_COPY
    endif
 endif
 
 if (output_sd) then
    INPUT_COPIES(ENS_SD) = ENS_SD_COPY
    if ( do_prior_inflate .and. .not. prior_inflate_from_restart) then
-      INPUT_COPIES(PRIORINF_SD) = PRIOR_INF_SD_COPY
+      INPUT_COPIES(PRIOR_INF_SD) = PRIOR_INF_SD_COPY
    endif
    if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart) then
-      INPUT_COPIES(POSTINF_SD)  = POST_INF_SD_COPY
+      INPUT_COPIES(POST_INF_SD)  = POST_INF_SD_COPY
    endif
 endif
 
+! Specifying copies to be output for diagnostics/restart
+DIAG_FILE_COPIES(ENS_START) = ENS_START_COPY
+DIAG_FILE_COPIES(ENS_END) = ENS_END_COPY
+if(output_mean) then
+   DIAG_FILE_COPIES(ENS_MEAN) = ENS_MEAN_COPY
+else
+   DIAG_FILE_COPIES(ENS_MEAN) = COPY_NOT_PRESENT
+endif
+if(output_sd) then
+   DIAG_FILE_COPIES(ENS_SD) = ENS_SD_COPY
+else
+   DIAG_FILE_COPIES(ENS_SD) = COPY_NOT_PRESENT
+endif
+if(do_prior_inflate) then
+   DIAG_FILE_COPIES(PRIOR_INF) = PRIOR_INF_COPY
+   DIAG_FILE_COPIES(PRIOR_INF_SD) = PRIOR_INF_SD_COPY
+else
+   DIAG_FILE_COPIES(PRIOR_INF) = COPY_NOT_PRESENT
+   DIAG_FILE_COPIES(PRIOR_INF_SD) = COPY_NOT_PRESENT
+endif
+
+if(do_posterior_inflate) then
+   DIAG_FILE_COPIES(POST_INF) = POST_INF_COPY
+   DIAG_FILE_COPIES(POST_INF_SD) = POST_INF_SD_COPY
+else
+   DIAG_FILE_COPIES(POST_INF) = COPY_NOT_PRESENT
+   DIAG_FILE_COPIES(POST_INF_SD) = COPY_NOT_PRESENT
+endif
+
+! Figure out which copies need to be output for diagnostic files
+!!!DIAG_FILE_COPIES   = (/ ENS_START_COPY, ENS_END_COPY, ENS_MEAN_COPY, ENS_SD_COPY, &
+                       !!!PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY /)
 
 end function count_state_ens_copies
 
@@ -1030,17 +1051,17 @@ character(len=*),     intent(in)    :: stage
 integer,              intent(in)    :: num_ens
 integer,              intent(inout) :: STAGE_COPIES(NUM_SCOPIES)
 
-call set_member_file_metadata(file_info, num_ens, STAGE_COPIES(MEM_START))
+call set_member_file_metadata(file_info, num_ens, STAGE_COPIES(ENS_START))
 
 
-STAGE_COPIES(MEM_END) = STAGE_COPIES(MEM_START) + num_ens - 1
+STAGE_COPIES(ENS_END) = STAGE_COPIES(ENS_START) + num_ens - 1
 
 call set_file_metadata(file_info, STAGE_COPIES(ENS_MEAN),      stage, 'mean',          'ensemble mean')
 call set_file_metadata(file_info, STAGE_COPIES(ENS_SD),        stage, 'sd',            'ensemble sd')
-call set_file_metadata(file_info, STAGE_COPIES(PRIORINF_MEAN), stage, 'priorinf_mean', 'prior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(PRIORINF_SD),   stage, 'priorinf_sd',   'prior inflation sd')
-call set_file_metadata(file_info, STAGE_COPIES(POSTINF_MEAN),  stage, 'postinf_mean',  'posterior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(POSTINF_SD),    stage, 'postinf_sd',    'posterior inflation sd')
+call set_file_metadata(file_info, STAGE_COPIES(PRIOR_INF),     stage, 'priorinf_mean', 'prior inflation mean')
+call set_file_metadata(file_info, STAGE_COPIES(PRIOR_INF_SD),   stage, 'priorinf_sd',   'prior inflation sd')
+call set_file_metadata(file_info, STAGE_COPIES(POST_INF),  stage, 'postinf_mean',  'posterior inflation mean')
+call set_file_metadata(file_info, STAGE_COPIES(POST_INF_SD),    stage, 'postinf_sd',    'posterior inflation sd')
 
 end subroutine set_filename_info
 
@@ -1053,21 +1074,21 @@ integer,              intent(in)    :: num_ens
 integer,              intent(in)    :: STAGE_COPIES(NUM_SCOPIES)
 
 if ( perturb_from_single_instance ) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(MEM_START), READ_COPY)
+   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), READ_COPY)
    !>@todo know whether we are perturbing or not
-   !#! call set_perturb_members(file_info, MEM_START, num_ens)
+   !#! call set_perturb_members(file_info, ENS_START, num_ens)
 else
-   call set_io_copy_flag(file_info, STAGE_COPIES(MEM_START), STAGE_COPIES(MEM_START)+num_ens-1, READ_COPY)
+   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), STAGE_COPIES(ENS_START)+num_ens-1, READ_COPY)
 endif
 
 if ( do_prior_inflate .and. prior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate .and. posterior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF),  READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
 ! This is for single file augmented state mean and sd if requested
@@ -1076,20 +1097,20 @@ if(single_file_in) then
      call set_io_copy_flag(file_info,    STAGE_COPIES(ENS_MEAN),  WRITE_COPY, inherit_units=.true.)
 
       if ( do_prior_inflate .and. .not. prior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, inherit_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), WRITE_COPY, inherit_units=.false.)
 
       if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, inherit_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF),  WRITE_COPY, inherit_units=.false.)
    endif
    
    if (output_sd) then
      call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),    WRITE_COPY, inherit_units=.true.)
 
       if ( do_prior_inflate .and. .not. prior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD), WRITE_COPY, inherit_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), WRITE_COPY, inherit_units=.false.)
 
       if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, inherit_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD),  WRITE_COPY, inherit_units=.false.)
    endif
 endif
 
@@ -1107,7 +1128,7 @@ logical,              intent(in)    :: force_copy
 
 !>@todo revisit if we should be clamping mean copy for file_info_output
 if ( num_ens > 0 .and. output_members ) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(MEM_START), STAGE_COPIES(MEM_START)+num_ens-1, WRITE_COPY, &
+   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), STAGE_COPIES(ENS_START)+num_ens-1, WRITE_COPY, &
                          num_output_ens=num_ens, clamp_vars=do_clamping, &
                          force_copy_back=force_copy)
 endif
@@ -1119,16 +1140,16 @@ if ( output_sd )            &
    call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),         WRITE_COPY, &
                          inherit_units=.true., force_copy_back=force_copy)
 if ( do_prior_inflate )     &
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN),  WRITE_COPY, &
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF),  WRITE_COPY, &
                          inherit_units=.false., force_copy_back=force_copy)
 if ( do_prior_inflate )     &
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),    WRITE_COPY, &
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD),    WRITE_COPY, &
                          inherit_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
-   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),   WRITE_COPY, &
+   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF),   WRITE_COPY, &
                          inherit_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
-   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),     WRITE_COPY, &
+   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD),     WRITE_COPY, &
                          inherit_units=.false., force_copy_back=force_copy)
 
 end subroutine set_output_file_info
@@ -1251,8 +1272,6 @@ call io_filenames_init(file_info_output,                       &
 call set_filename_info(file_info_input,       'input',     ens_size,          DIAG_FILE_COPIES )
 
 !   Output Files
-if (get_stage_to_write('input')) &
-   call set_filename_info(file_info_mean_sd,  'input',     0,                   INPUT_COPIES )
 if (get_stage_to_write('forecast')) &
    call set_filename_info(file_info_forecast, 'forecast',  noutput_members,  DIAG_FILE_COPIES )
 if (get_stage_to_write('preassim')) &
