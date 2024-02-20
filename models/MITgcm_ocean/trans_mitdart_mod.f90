@@ -521,6 +521,7 @@ end subroutine mit2dart
 subroutine dart2mit()
 
 integer :: ncid
+recl2d = Nx*Ny*8
 
 if (.not. module_initialized) call static_init_trans
 
@@ -559,6 +560,10 @@ if (compress) then
 endif
 
 !Fill the data
+iunit = get_unit()
+open(iunit, file='PICKUP.OUTPUT', form="UNFORMATTED", status='UNKNOWN', &
+            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
+
 call from_netcdf_to_mit_3d_pickup(ncid, 'UVEL', 1, MITgcm_3D_FIELD_U)
 call from_netcdf_to_mit_3d_pickup(ncid, 'VVEL', 2, MITgcm_3D_FIELD_V)
 call from_netcdf_to_mit_3d_pickup(ncid, 'PTMP', 3, MITgcm_3D_FIELD)
@@ -929,6 +934,8 @@ real(r8) :: var8(Nx,Ny)
 integer  :: varid
 real(r4) :: local_fval
 
+
+
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 
@@ -944,13 +951,11 @@ endif
 where (var == local_fval) var = binary_fill
 var8 = var
 
-iunit = get_unit()
-open(iunit, file='PICKUP.OUTPUT', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
+
 if (do_bgc) then
   write(iunit,rec=401) var8
 else
-  write(iunit,rec=351) var8
+  write(iunit,rec=481) var8
 endif
 close(iunit)
 
@@ -968,7 +973,8 @@ real(r8) :: var8(Nx,Ny,Nz)
 integer  :: varid, i
 real(r4) :: local_fval
 integer  :: LB, RB, RF
-   
+ 
+  
 call check( NF90_INQ_VARID(ncid,name,varid) )
 call check( nf90_get_att(ncid,varid,"_FillValue",local_fval))
 
@@ -984,12 +990,10 @@ endif
 where (var == local_fval) var = binary_fill
 var8 = var
 
-iunit = get_unit()
-open(iunit, file='PICKUP.OUTPUT', form="UNFORMATTED", status='UNKNOWN', &
-            access='DIRECT', recl=recl2d, convert='BIG_ENDIAN')
+
 
 LB = Nz * (lev-1) + 1
-RB = Nx * lev
+RB = Nz * lev
 RF = Nz * (lev-1)
 do i = LB, RB
    write(iunit,rec=i) var8(:, :, i - RF)
