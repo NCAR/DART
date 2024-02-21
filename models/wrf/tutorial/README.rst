@@ -89,8 +89,8 @@ WRFDA, and DART using gfortan with the following module environment:
    ::
 
      Currently Loaded Modules:
-      1) ncarenv/23.09 (S)   2) craype/2.7.23   3) intel/2023.2.1   4) ncarcompilers/1.0.0   
-      5) cray-mpich/8.1.27   6) hdf5/1.12.2   7) netcdf/4.9.2
+        1) ncarenv/23.09 (S)   3) udunits/2.2.28   5) ncarcompilers/1.0.0   7) cray-mpich/8.1.27   9) netcdf-mpi/4.9.2 
+        2) gcc/12.2.0          4) ncview/2.1.9     6) craype/2.7.23         8) hdf5-mpi/1.12.2    10) hdf/4.2.15
 
 In addition, you'll need to load the
 `nco <http://nco.sourceforge.net/>`__ and
