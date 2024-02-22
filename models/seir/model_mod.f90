@@ -80,22 +80,20 @@ real(r8)    :: sigma             = 0.05_r8     ! Vaccination inefficacy (e.g., 9
 real(r8)    :: beta              = 1.36e-9_r8  ! Transmission rate (per day)
 real(r8)    :: kappa             = 0.00308     ! Mortality rate  
 real(r8)    :: delta_t           = 0.04167_r8  ! Model time step; 1/24 := 1 hour
+integer(i8) :: num_pop           = 331996199   ! Population     
 
 real(r8)    :: gama, delta, lambda, rho 
 
 ! Other related model parameters
-integer, parameter :: num_pop = 331996199   ! Population
-
 real(r8), parameter :: E0 = 1.0_r8   ! Exposed (not yet infected)
 real(r8), parameter :: I0 = 1.0_r8   ! Infected (not yet quarantined)
 real(r8), parameter :: Q0 = 1.0_r8   ! Quarantined (confirmed and infected)
 real(r8), parameter :: R0 = 1.0_r8   ! Recovered
 real(r8), parameter :: D0 = 1.0_r8   ! Dead
 real(r8), parameter :: V0 = 1.0_r8   ! Vaccinated
-real(r8), parameter :: S0 = num_pop - E0 - I0 - Q0 - R0 - D0   ! Susceptible
 
 namelist /model_nml/ model_size, time_step_days, time_step_seconds, &
-                     delta_t, &
+                     delta_t, num_pop, &
                      t_incub, t_infec, t_recov, t_death, &
                      alpha, theta, beta, sigma, kappa, mu   
 
@@ -122,9 +120,11 @@ call initialize()
 allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
-! Example location following lorenz_96
+! The SEIR variables have no physical location, 
+! and so I'm placing all 7 variables at the same 
+! virtual point in space.
+x_loc = 0.5_r8  
 do i = 1, model_size
-   x_loc = (i - 1.0_r8) / model_size
    state_loc(i) =  set_location(x_loc)
 end do
 
@@ -212,7 +212,11 @@ end subroutine seir_eqns
 subroutine init_conditions(x)
 
 real(r8), dimension (model_size) :: x0
-real(r8), intent(out) :: x(:)
+real(r8), intent(out)            :: x(:)
+real(r8)                         :: S0 ! Susceptible
+
+S0 = num_pop - E0 - I0 - Q0 - R0 - D0 
+
 
 x0 = (/S0, E0, I0, Q0, R0, D0, V0/)
 x  = x0
