@@ -131,6 +131,7 @@
    time_step_days    = 0,
    time_step_seconds = 3600,
    num_pop           = 331996199,
+   pert_size         = 0.5, 
    t_incub           = 5.6,
    t_infec           = 3.8,
    t_recov           = 14.0,
@@ -140,7 +141,7 @@
    mu                = 0.000025,
    sigma             = 0.05,
    beta              = 0.00000000136,
-   kappa             = 0.00308, 
+   kappa             = 0.00308,
    /
 
 &utilities_nml

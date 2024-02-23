@@ -25,13 +25,17 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
 
 use         obs_kind_mod,  only : QTY_STATE_VARIABLE
 
-use ensemble_manager_mod,  only : ensemble_type
+use  mpi_utilities_mod,    only : my_task_id
+
+use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
+
+use ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain
 
-use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars
+use default_model_mod,     only : end_model, nc_write_model_vars
 
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
@@ -62,8 +66,8 @@ public :: pert_model_copies,      &
 character(len=256), parameter :: source   = "new_model.f90"
 
 type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
-
-type(time_type) :: time_step
+type(random_seq_type)            :: random_seq
+type(time_type)                  :: time_step
 
 ! Input parameters
 integer(i8) :: model_size        = 7
@@ -81,6 +85,7 @@ real(r8)    :: beta              = 1.36e-9_r8  ! Transmission rate (per day)
 real(r8)    :: kappa             = 0.00308     ! Mortality rate  
 real(r8)    :: delta_t           = 0.04167_r8  ! Model time step; 1/24 := 1 hour
 integer(i8) :: num_pop           = 331996199   ! Population     
+real(r8)    :: pert_size         = 1.0         ! Size of perturbation (lognormal pdf param)
 
 real(r8)    :: gama, delta, lambda, rho 
 
@@ -94,7 +99,7 @@ real(r8), parameter :: V0 = 1.0_r8   ! Vaccinated
 real(r8)            :: S0            ! Susceptible
 
 namelist /model_nml/ model_size, time_step_days, time_step_seconds, &
-                     delta_t, num_pop, &
+                     delta_t, num_pop, pert_size, &
                      t_incub, t_infec, t_recov, t_death, &
                      alpha, theta, beta, sigma, kappa, mu   
 
@@ -200,6 +205,53 @@ fx(6) = kappa * rho * x(4)
 fx(7) = alpha * x(1) - sigma * beta * x(7) * x(3) - mu * x(7)
 
 end subroutine seir_eqns
+
+!------------------------------------------------------------------
+! Perturbs a model state for generating initial ensembles.
+! Returning interf_provided .true. means this code has
+! added uniform small independent perturbations to a
+! single ensemble member to generate the full ensemble.
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,   intent(in) :: ens_size
+real(r8),  intent(in) :: pert_amp
+logical,  intent(out) :: interf_provided
+
+integer                  :: i,j, num_my_grid_points
+integer(i8), allocatable :: my_grid_points(:)
+type(location_type)      :: location
+integer                  :: var_type
+real(r8)                 :: rng
+
+interf_provided = .true.
+
+call init_random_seq(random_seq, my_task_id()+1)
+! if we are running with more than 1 task, then
+! we have all the ensemble members for a subset of
+! the model state.  which variables we have are determined
+! by looking at the global index number into the state vector.
+
+! how many grid points does my task have to work on?
+! and what are their indices into the full state vector?
+num_my_grid_points = get_my_num_vars(state_ens_handle)
+allocate(my_grid_points(num_my_grid_points))
+call get_my_vars(state_ens_handle, my_grid_points)
+
+do i=1,num_my_grid_points
+    call get_state_meta_data(my_grid_points(i), location, var_type)
+    
+    ! Lognormal Distribution
+    do j= 1, ens_size
+         rng = pert_size * random_gaussian(random_seq, 0.0_r8, 1.0_r8)
+         state_ens_handle%copies(j, i) = &
+            state_ens_handle%copies(j, i) * exp(rng)
+    end do
+end do
+
+deallocate(my_grid_points)
+
+end subroutine pert_model_copies
 
 !------------------------------------------------------------------
 ! Returns a model state vector, x, that is some sort of appropriate
