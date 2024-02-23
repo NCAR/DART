@@ -31,6 +31,11 @@ There are several parameters that can be changed to study different cases and re
   - :raw-math:`$\rho$`: Average days until death,
   - :raw-math:`$\sigma$`: Vaccine in-efficacy (:raw-math:`$0 \leq \sigma \leq 1$`).
 
+The SEIR model uses identity observations. Typical observations that can be assimilated
+are: 
+  *Recovered*, *Death* and *Vaccinated*. 
+
+
 Initial versions of the model were tested using DART_LAB. This was conducted by  
 **Shaniah Reece** as part of her SIParCS internship at NSF NCAR (2022).
 
