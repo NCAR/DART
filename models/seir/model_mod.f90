@@ -84,7 +84,7 @@ real(r8)    :: sigma             = 0.05_r8     ! Vaccination inefficacy (e.g., 9
 real(r8)    :: beta              = 1.36e-9_r8  ! Transmission rate (per day)
 real(r8)    :: kappa             = 0.00308     ! Mortality rate  
 real(r8)    :: delta_t           = 0.04167_r8  ! Model time step; 1/24 := 1 hour
-integer(i8) :: num_pop           = 331996199   ! Population     
+integer(i8) :: num_pop           = 331996199   ! Population (US)    
 real(r8)    :: pert_size         = 1.0         ! Size of perturbation (lognormal pdf param)
 
 real(r8)    :: gama, delta, lambda, rho 
@@ -192,6 +192,8 @@ end subroutine adv_1step
 ! https://dx.doi.org/10.3390/math9060636 
 
 subroutine seir_eqns(x, fx)
+
+! State: x = [S, E, I, Q, R, D, V]
 
 real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: fx(:)
