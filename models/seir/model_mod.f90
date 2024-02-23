@@ -91,6 +91,7 @@ real(r8), parameter :: Q0 = 1.0_r8   ! Quarantined (confirmed and infected)
 real(r8), parameter :: R0 = 1.0_r8   ! Recovered
 real(r8), parameter :: D0 = 1.0_r8   ! Dead
 real(r8), parameter :: V0 = 1.0_r8   ! Vaccinated
+real(r8)            :: S0            ! Susceptible
 
 namelist /model_nml/ model_size, time_step_days, time_step_seconds, &
                      delta_t, num_pop, &
@@ -213,10 +214,6 @@ subroutine init_conditions(x)
 
 real(r8), dimension (model_size) :: x0
 real(r8), intent(out)            :: x(:)
-real(r8)                         :: S0 ! Susceptible
-
-S0 = num_pop - E0 - I0 - Q0 - R0 - D0 
-
 
 x0 = (/S0, E0, I0, Q0, R0, D0, V0/)
 x  = x0
@@ -356,6 +353,9 @@ gama   = 1.0_r8 / t_incub
 delta  = 1.0_r8 / t_infec
 lambda = 1.0_r8 / t_recov
 rho    = 1.0_r8 / t_death
+
+! Compute initial value for S:
+S0 = num_pop - E0 - I0 - Q0 - R0 - D0
 
 end subroutine initialize
 
