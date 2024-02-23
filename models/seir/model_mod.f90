@@ -291,6 +291,9 @@ integer,              intent(in) :: iqty
 real(r8),            intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,             intent(out) :: istatus(ens_size)
 
+! Given the nature of the SEIR model, no interpolation 
+! is needed. Only identity observations are utilized.
+
 ! This should be the result of the interpolation of a
 ! given quantity (iqty) of variable at the given location.
 expected_obs(:) = MISSING_R8
