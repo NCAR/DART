@@ -81,6 +81,8 @@ use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_al
 
 use distribution_params_mod, only : distribution_params_type
 
+use filter_io_diag_mod,    only : create_ensemble_from_single_file, do_stage_output
+
 !------------------------------------------------------------------------------
 
 implicit none
@@ -279,7 +281,6 @@ logical                 :: read_time_from_file
 integer :: num_extras ! the extra ensemble copies
 
 type(file_info_type) :: file_info_input
-type(file_info_type) :: file_info_mean_sd
 type(file_info_type) :: file_info_forecast
 type(file_info_type) :: file_info_preassim
 type(file_info_type) :: file_info_postassim
@@ -353,8 +354,7 @@ if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 call parse_stages_to_write(stages_to_write)
 
 ! Count and set up State copy numbers
-num_state_ens_copies = count_state_ens_copies(ens_size)
-num_extras           = num_state_ens_copies - ens_size
+call count_state_ens_copies(ens_size, num_state_ens_copies, num_extras)
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
@@ -391,7 +391,7 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
 call initialize_file_information(num_state_ens_copies ,                     &
-                                 file_info_input      , file_info_mean_sd,  &
+                                 file_info_input      ,                      &
                                  file_info_forecast   , file_info_preassim, &
                                  file_info_postassim  , file_info_analysis, &
                                  file_info_output)
@@ -412,7 +412,8 @@ endif
 if (perturb_from_single_instance) then
    ! Only zero has the time, so broadcast the time to all other copy owners
    call broadcast_time_across_copy_owners(state_ens_handle, time1)
-   call create_ensemble_from_single_file(state_ens_handle)
+   call create_ensemble_from_single_file(state_ens_handle, ens_size, &
+      perturbation_amplitude, get_missing_ok_status())
 endif
 
 ! see what our stance is on missing values in the state vector
@@ -504,7 +505,7 @@ AdvanceTime : do
 
    ! Write out forecast diagnostic file(s). 
    call do_stage_output('forecast', output_interval, time_step_number, &
-      state_ens_handle, DIAG_FILE_COPIES, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+      state_ens_handle, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
    
    ! Apply prior inflation 
    if(do_ss_inflate(prior_inflate)) &
@@ -516,7 +517,7 @@ AdvanceTime : do
 
    ! Write out preassim diagnostic files if requested.
    call do_stage_output('preassim', output_interval, time_step_number, &
-      state_ens_handle, DIAG_FILE_COPIES, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+      state_ens_handle, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Compute the forward operators and fill data structures
    call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
@@ -530,7 +531,7 @@ AdvanceTime : do
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
    call do_stage_output('postassim', output_interval, time_step_number, &
-      state_ens_handle, DIAG_FILE_COPIES, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+      state_ens_handle, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This block applies posterior inflation including RTPS if selected
    if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
@@ -562,7 +563,7 @@ AdvanceTime : do
 
    ! Write out analysis diagnostic files if requested. 
    call do_stage_output('analysis', output_interval, time_step_number, &
-      state_ens_handle, DIAG_FILE_COPIES, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+      state_ens_handle, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 end do AdvanceTime
 
@@ -829,101 +830,6 @@ call set_assim_tools_trace(trace_level, timestamp_level)
 end subroutine set_trace
 
 !-------------------------------------------------------------------------
-
-!> Produces an ensemble by copying my_vars of the 1st ensemble member
-!> and then perturbing the copies array.
-!> Mimicks the behaviour of pert_model_state:
-!> pert_model_copies is called:
-!>   if no model perturb is provided, perturb_copies_task_bitwise is called.
-!> Note: Not enforcing a model_mod to produce a
-!> pert_model_copies that is bitwise across any number of
-!> tasks, although there is enough information in the
-!> ens_handle to do this.
-!>
-!> Some models allow missing_r8 in the state vector.  If missing_r8 is
-!> allowed the locations of missing_r8s are stored before the perturb,
-!> then the missing_r8s are put back in after the perturb.
-
-subroutine create_ensemble_from_single_file(ens_handle)
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-integer               :: i
-logical               :: interf_provided ! model does the perturbing
-logical, allocatable  :: miss_me(:)
-integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
-
-! Copy from ensemble member 1 to the other copies
-do i = 1, ens_handle%my_num_vars
-   ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
-enddo
-
-! If the state allows missing values, we have to record their locations
-! and restore them in all the new perturbed copies.
-
-if (get_missing_ok_status()) then
-   partial_state_on_my_task = size(ens_handle%copies,2)
-   allocate(miss_me(partial_state_on_my_task))
-   miss_me = .false.
-   where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
-endif
-
-call pert_model_copies(ens_handle, ens_size, perturbation_amplitude, interf_provided)
-if (.not. interf_provided) then
-   call perturb_copies_task_bitwise(ens_handle)
-endif
-
-! Restore the missing_r8
-if (get_missing_ok_status()) then
-   do i = 1, ens_size
-      where(miss_me) ens_handle%copies(i, :) = missing_r8
-   enddo
-   deallocate(miss_me)
-endif
-
-end subroutine create_ensemble_from_single_file
-
-
-!------------------------------------------------------------------
-! Perturb the copies array in a way that is bitwise reproducible
-! no matter how many task you run on.
-
-subroutine perturb_copies_task_bitwise(ens_handle)
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-integer               :: i, j ! loop variables
-type(random_seq_type) :: r(ens_size)
-real(r8)              :: random_array(ens_size) ! array of random numbers
-integer               :: local_index
-
-! Need ens_size random number sequences.
-do i = 1, ens_size
-   call init_random_seq(r(i), i)
-enddo
-
-local_index = 1 ! same across the ensemble
-
-! Only one task is going to update per i.  This will not scale at all.
-do i = 1, ens_handle%num_vars
-
-   do j = 1, ens_size
-     ! Can use %copies here because the random number
-     ! is only relevant to the task than owns element i.
-     random_array(j)  =  random_gaussian(r(j), ens_handle%copies(j, local_index), perturbation_amplitude)
-   enddo
-
-   if (ens_handle%my_vars(local_index) == i) then
-      ens_handle%copies(1:ens_size, local_index) = random_array(:)
-      local_index = local_index + 1 ! task is ready for the next random number
-      local_index = min(local_index, ens_handle%my_num_vars)
-   endif
-
-enddo
-
-end subroutine perturb_copies_task_bitwise
-
-!------------------------------------------------------------------
 !> Set the time on any extra copies that a pe owns
 !> Could we just set the time on all copies?
 
@@ -949,10 +855,10 @@ end subroutine  set_time_on_extra_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size) result(num_copies)
+subroutine count_state_ens_copies(ens_size, num_copies, num_extras)
 
-integer,                     intent(in) :: ens_size
-integer :: num_copies
+integer,   intent(in)  :: ens_size
+integer,   intent(out) :: num_copies, num_extras
 
 ! First ens_size entries are the actual ensemble members
 ENS_START_COPY = 1
@@ -973,6 +879,9 @@ if ( do_rtps_inflate(post_inflate) ) then
    RTPS_PRIOR_SPREAD_COPY = ens_size + 7
    num_copies = ens_size + 7
 endif
+
+! Copies in excess of ensemble
+num_extras = num_copies - ens_size
 
 ! Specifying copies to be output for diagnostics/restart
 DIAG_FILE_COPIES(ENS_START) = ENS_START_COPY
@@ -1003,7 +912,7 @@ else
    DIAG_FILE_COPIES(POST_INF_SD) = COPY_NOT_PRESENT
 endif
 
-end function count_state_ens_copies
+end subroutine count_state_ens_copies
 
 !------------------------------------------------------------------
 !> Set file name information.  For members restarts can be read from
@@ -1143,7 +1052,7 @@ do i = 1, nstages
    call to_upper(my_stage)
    if (trim(my_stage) /= trim('NULL')) then
    SELECT CASE (my_stage)
-      CASE ('INPUT', 'FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
+      CASE ('FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
          call set_stage_to_write(stages(i),.true.)
          write(msgstring,*)"filter will write stage : "//trim(stages(i))
          call error_handler(E_MSG,'parse_stages_to_write:',msgstring,source)
@@ -1163,15 +1072,11 @@ end subroutine parse_stages_to_write
 !> initialize file names and which copies should be read and or written
 
 
-subroutine initialize_file_information(ncopies, &
-                                       file_info_input,     file_info_mean_sd, &
-                                       file_info_forecast,  file_info_preassim, &
-                                       file_info_postassim, file_info_analysis, &
-                                       file_info_output)
+subroutine initialize_file_information(ncopies, file_info_input, file_info_forecast, &
+    file_info_preassim, file_info_postassim, file_info_analysis, file_info_output)
 
 integer,              intent(in)  :: ncopies
 type(file_info_type), intent(out) :: file_info_input
-type(file_info_type), intent(out) :: file_info_mean_sd
 type(file_info_type), intent(out) :: file_info_forecast
 type(file_info_type), intent(out) :: file_info_preassim
 type(file_info_type), intent(out) :: file_info_postassim
@@ -1222,7 +1127,6 @@ call io_filenames_init(file_info_input,                       &
                        root_name     = 'input')
 
 ! Output Files (we construct the filenames)
-call io_filenames_init(file_info_mean_sd,   ncopies, has_cycling, single_file_out, root_name='input')
 call io_filenames_init(file_info_forecast,  ncopies, has_cycling, single_file_out, root_name='forecast')
 call io_filenames_init(file_info_preassim,  ncopies, has_cycling, single_file_out, root_name='preassim')
 call io_filenames_init(file_info_postassim, ncopies, has_cycling, single_file_out, root_name='postassim')
@@ -1294,30 +1198,5 @@ end subroutine initialize_file_information
 
 !-----------------------------------------------------------
 
-subroutine do_stage_output(stage_name, output_interval, time_step_number, &
-   state_ens_handle, COPIES, file_info, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-character(len = *),   intent(in)    :: stage_name
-integer,              intent(in)    :: output_interval, time_step_number
-type(ensemble_type),  intent(inout) :: state_ens_handle
-integer,              intent(inout) :: COPIES(:)
-type(file_info_type), intent(inout) :: file_info
-integer,              intent(in)    :: ens_size, ENS_MEAN_COPY, ENS_SD_COPY
-
-if(get_stage_to_write(stage_name)) then
-   if((output_interval > 0) .and. &
-      (time_step_number / output_interval * output_interval == time_step_number)) then
-
-      ! Compute the ensemble mean and standard deviation
-      ! For efficiency could make this optional in call
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-      call write_state(state_ens_handle, file_info)
-   endif
-endif
-
-end subroutine do_stage_output
-
-!-------------------------------------------------------------------
 end module filter_mod
 
