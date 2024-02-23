@@ -12,7 +12,7 @@ use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_sd
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
-use io_filenames_mod,      only : file_info_type
+use io_filenames_mod,      only : file_info_type, COPY_NOT_PRESENT
 
 use assim_model_mod,       only : pert_model_copies
 
@@ -20,7 +20,25 @@ use state_vector_io_mod,   only : get_stage_to_write, write_state
 
 !------------------------------------------------------------------------------
 
-public ::  create_ensemble_from_single_file, do_stage_output
+! Identifier for different copies for diagnostic files
+integer, parameter :: ENS_START     = 1
+integer, parameter :: ENS_END       = 2
+integer, parameter :: ENS_MEAN      = 3
+integer, parameter :: ENS_SD        = 4
+integer, parameter :: PRIOR_INF     = 5
+integer, parameter :: PRIOR_INF_SD  = 6
+integer, parameter :: POST_INF      = 7
+integer, parameter :: POST_INF_SD   = 8
+
+! Data structure for different diag and output stages
+integer, parameter :: NUM_SCOPIES    = 8
+integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
+                                  
+!------------------------------------------------------------------------------
+
+public ::  create_ensemble_from_single_file, do_stage_output, &
+   ENS_START, ENS_END, ENS_MEAN, ENS_SD, PRIOR_INF, PRIOR_INF_SD, &
+   POST_INF, POST_INF_SD, NUM_SCOPIES, DIAG_FILE_COPIES
 
 !------------------------------------------------------------------------------
 contains

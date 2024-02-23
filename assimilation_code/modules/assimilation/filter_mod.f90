@@ -81,7 +81,10 @@ use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_al
 
 use distribution_params_mod, only : distribution_params_type
 
-use filter_io_diag_mod,    only : create_ensemble_from_single_file, do_stage_output
+use filter_io_diag_mod,    only : create_ensemble_from_single_file, do_stage_output, &
+                                  ENS_START, ENS_END, ENS_MEAN, ENS_SD, PRIOR_INF,   &
+                                  PRIOR_INF_SD, POST_INF, POST_INF_SD, NUM_SCOPIES,  &
+                                  DIAG_FILE_COPIES
 
 !------------------------------------------------------------------------------
 
@@ -113,20 +116,6 @@ integer :: PRIOR_INF_SD_COPY               = COPY_NOT_PRESENT
 integer :: POST_INF_COPY                   = COPY_NOT_PRESENT
 integer :: POST_INF_SD_COPY                = COPY_NOT_PRESENT
 integer :: RTPS_PRIOR_SPREAD_COPY          = COPY_NOT_PRESENT
-
-! Identifier for different copies for diagnostic files
-integer, parameter :: ENS_START     = 1
-integer, parameter :: ENS_END       = 2
-integer, parameter :: ENS_MEAN      = 3
-integer, parameter :: ENS_SD        = 4
-integer, parameter :: PRIOR_INF     = 5
-integer, parameter :: PRIOR_INF_SD  = 6
-integer, parameter :: POST_INF      = 7
-integer, parameter :: POST_INF_SD   = 8
-
-! Number of Stage Copies
-integer, parameter :: NUM_SCOPIES    = 8
-integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 
 ! Module Global Variables for inflation
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
@@ -390,14 +379,14 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
-call initialize_file_information(num_state_ens_copies ,                     &
-                                 file_info_input      ,                      &
-                                 file_info_forecast   , file_info_preassim, &
-                                 file_info_postassim  , file_info_analysis, &
-                                 file_info_output)
+
+call initialize_file_information(num_state_ens_copies , file_info_forecast, &
+   file_info_preassim, file_info_postassim, file_info_analysis, file_info_output)
 
 call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
+! Initialize and then read the input file
+call init_input_file_info(num_state_ens_copies, file_info_input)
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                 prior_inflate, post_inflate,                                        &
@@ -963,35 +952,12 @@ endif
 
 if ( do_prior_inflate .and. prior_inflate_from_restart) then
    call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD),   READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate .and. posterior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF),  READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD),    READ_COPY, inherit_units=.false.)
-endif
-
-! This is for single file augmented state mean and sd if requested
-if(single_file_in) then
-   if (output_mean) then
-     call set_io_copy_flag(file_info,    STAGE_COPIES(ENS_MEAN),  WRITE_COPY, inherit_units=.true.)
-
-      if ( do_prior_inflate .and. .not. prior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), WRITE_COPY, inherit_units=.false.)
-
-      if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF),  WRITE_COPY, inherit_units=.false.)
-   endif
-   
-   if (output_sd) then
-     call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),    WRITE_COPY, inherit_units=.true.)
-
-      if ( do_prior_inflate .and. .not. prior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), WRITE_COPY, inherit_units=.false.)
-
-      if ( do_posterior_inflate .and. .not. posterior_inflate_from_restart ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD),  WRITE_COPY, inherit_units=.false.)
-   endif
+   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF), READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD), READ_COPY, inherit_units=.false.)
 endif
 
 end subroutine set_input_file_info
@@ -1072,11 +1038,10 @@ end subroutine parse_stages_to_write
 !> initialize file names and which copies should be read and or written
 
 
-subroutine initialize_file_information(ncopies, file_info_input, file_info_forecast, &
+subroutine initialize_file_information(ncopies, file_info_forecast, &
     file_info_preassim, file_info_postassim, file_info_analysis, file_info_output)
 
 integer,              intent(in)  :: ncopies
-type(file_info_type), intent(out) :: file_info_input
 type(file_info_type), intent(out) :: file_info_forecast
 type(file_info_type), intent(out) :: file_info_preassim
 type(file_info_type), intent(out) :: file_info_postassim
@@ -1084,7 +1049,7 @@ type(file_info_type), intent(out) :: file_info_analysis
 type(file_info_type), intent(out) :: file_info_output
 
 integer :: noutput_members, ninput_files, noutput_files, ndomains
-character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:)
+character(len=256), allocatable :: file_array_output(:,:)
 
 ! local variable to shorten the name for function input
 noutput_members = num_output_state_members 
@@ -1096,13 +1061,8 @@ ninput_files    = ens_size ! number of incomming ensemble members
 if (single_file_in .or. perturb_from_single_instance)  ninput_files = 1
 if (single_file_out)                                  noutput_files = 1
 
-! Given either a vector of in/output_state_files or a text file containing
+! Given vector of output_state_files or a text file containing
 ! a list of files, return a vector of files containing the filenames.
-call set_multiple_filename_lists(input_state_files(:), &
-                                 input_state_file_list(:), &
-                                 ndomains, &
-                                 ninput_files,     &
-                                 'filter','input_state_files','input_state_file_list')
 call set_multiple_filename_lists(output_state_files(:), &
                                  output_state_file_list(:), &
                                  ndomains, &
@@ -1112,19 +1072,9 @@ call set_multiple_filename_lists(output_state_files(:), &
 ! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
 ! If perturbing from a single instance the number of input files does not have to
 ! be ens_size but rather a single file (or multiple files if more than one domain)
-allocate(file_array_input(ninput_files, ndomains), file_array_output(noutput_files, ndomains))
-
-file_array_input  = RESHAPE(input_state_files,  (/ninput_files,  ndomains/))
+allocate(file_array_output(noutput_files, ndomains))
 file_array_output = RESHAPE(output_state_files, (/noutput_files, ndomains/))
 
-
-! Allocate space for the filename handles
-call io_filenames_init(file_info_input,                       & 
-                       ncopies       = ncopies,               &
-                       cycling       = has_cycling,           &
-                       single_file   = single_file_in,        &
-                       restart_files = file_array_input,      &
-                       root_name     = 'input')
 
 ! Output Files (we construct the filenames)
 call io_filenames_init(file_info_forecast,  ncopies, has_cycling, single_file_out, root_name='forecast')
@@ -1141,11 +1091,6 @@ call io_filenames_init(file_info_output,                       &
                        root_name     = 'output',               &
                        check_output_compatibility = .true.)
 
-
-! Set filename metadata information
-!   Input Files
-call set_filename_info(file_info_input,       'input',     ens_size,          DIAG_FILE_COPIES )
-
 !   Output Files
 if (get_stage_to_write('forecast')) &
    call set_filename_info(file_info_forecast, 'forecast',  noutput_members,  DIAG_FILE_COPIES )
@@ -1157,10 +1102,6 @@ if (get_stage_to_write('analysis')) &
    call set_filename_info(file_info_analysis, 'analysis',  noutput_members,  DIAG_FILE_COPIES )
 
 call set_filename_info(file_info_output,      'output',    ens_size,          DIAG_FILE_COPIES )
-
-! Set file IO information
-!   Input Files
-call set_input_file_info( file_info_input, ens_size, DIAG_FILE_COPIES ) 
 
 !   Output Files
 call set_output_file_info( file_info_forecast,             &
@@ -1195,6 +1136,47 @@ call set_output_file_info( file_info_output,              &
 
 end subroutine initialize_file_information
 
+
+!-----------------------------------------------------------
+subroutine init_input_file_info(ncopies, file_info_input)
+
+integer,              intent(in)  :: ncopies
+type(file_info_type), intent(out) :: file_info_input
+
+character(len=256), allocatable :: file_array_input(:,:)
+integer :: ninput_files
+
+! This should have its own variant of DIAG_FILE_COPIES
+
+! Determine number of files
+if (single_file_in .or. perturb_from_single_instance)  then
+   ninput_files = 1
+else
+   ninput_files    = ens_size ! number of incomming ensemble members
+endif
+
+! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
+! If perturbing from a single instance the number of input files does not have to
+! be ens_size but rather a single file (or multiple files if more than one domain)
+allocate(file_array_input(ninput_files, get_num_domains()))
+file_array_input  = RESHAPE(input_state_files,  (/ninput_files,  get_num_domains()/))
+
+! Given vector of input_state_files or a text file containing
+! a list of files, return a vector of files containing the filenames.
+call set_multiple_filename_lists(input_state_files(:), input_state_file_list(:), &
+   get_num_domains(), ninput_files, 'filter', 'input_state_files', 'input_state_file_list')
+
+! Allocate space for the filename handles
+call io_filenames_init(file_info_input, ncopies, has_cycling, single_file_in, &
+   file_array_input, 'input')
+
+! Set filename metadata information
+call set_filename_info(file_info_input, 'input', ens_size, DIAG_FILE_COPIES )
+
+! Set file IO information
+call set_input_file_info( file_info_input, ens_size, DIAG_FILE_COPIES ) 
+
+end subroutine init_input_file_info
 
 !-----------------------------------------------------------
 
