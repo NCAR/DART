@@ -58,8 +58,7 @@ use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state,
                                   set_stage_to_write, get_stage_to_write
 
 use io_filenames_mod,      only : io_filenames_init, file_info_type, &
-                                  combine_file_info, set_file_metadata,  &
-                                  set_member_file_metadata,  set_io_copy_flag, &
+                                  combine_file_info, set_io_copy_flag, &
                                   check_file_info_variable_shape, &
                                   query_copy_present, COPY_NOT_PRESENT, &
                                   READ_COPY, WRITE_COPY
@@ -82,9 +81,13 @@ use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_al
 use distribution_params_mod, only : distribution_params_type
 
 use filter_io_diag_mod,    only : create_ensemble_from_single_file, do_stage_output, &
-                                  ENS_START, ENS_END, ENS_MEAN, ENS_SD, PRIOR_INF,   &
+                                  count_state_ens_copies, set_filename_info, init_input_file_info, &
+                                  ENS_START, ENS_MEAN, ENS_SD, PRIOR_INF,   &
                                   PRIOR_INF_SD, POST_INF, POST_INF_SD, NUM_SCOPIES,  &
-                                  DIAG_FILE_COPIES
+                                  DIAG_FILE_COPIES, ENS_START_COPY,                  &
+                                  ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY,        &
+                                  PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,&
+                                  RTPS_PRIOR_SPREAD_COPY
 
 !------------------------------------------------------------------------------
 
@@ -105,17 +108,6 @@ integer :: trace_level, timestamp_level
 ! Determine if inflation is turned on or off for reading and writing
 ! inflation restart files
 logical :: output_inflation = .false.
-
-! Ensemble copy numbers; Initialized to not be output
-integer :: ENS_START_COPY                  = COPY_NOT_PRESENT
-integer :: ENS_END_COPY                    = COPY_NOT_PRESENT
-integer :: ENS_MEAN_COPY                   = COPY_NOT_PRESENT
-integer :: ENS_SD_COPY                     = COPY_NOT_PRESENT
-integer :: PRIOR_INF_COPY                  = COPY_NOT_PRESENT
-integer :: PRIOR_INF_SD_COPY               = COPY_NOT_PRESENT
-integer :: POST_INF_COPY                   = COPY_NOT_PRESENT
-integer :: POST_INF_SD_COPY                = COPY_NOT_PRESENT
-integer :: RTPS_PRIOR_SPREAD_COPY          = COPY_NOT_PRESENT
 
 ! Module Global Variables for inflation
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
@@ -343,7 +335,8 @@ if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 call parse_stages_to_write(stages_to_write)
 
 ! Count and set up State copy numbers
-call count_state_ens_copies(ens_size, num_state_ens_copies, num_extras)
+call count_state_ens_copies(ens_size, output_mean, output_sd, do_prior_inflate, &
+   do_posterior_inflate, prior_inflate, post_inflate, num_state_ens_copies, num_extras)
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
@@ -386,7 +379,10 @@ call initialize_file_information(num_state_ens_copies , file_info_forecast, &
 call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
 ! Initialize and then read the input file
-call init_input_file_info(num_state_ens_copies, file_info_input)
+call init_input_file_info(num_state_ens_copies, ens_size, single_file_in,               &
+   perturb_from_single_instance, has_cycling, input_state_files, input_state_file_list, &
+   do_prior_inflate, prior_inflate_from_restart, do_posterior_inflate,                  &
+   posterior_inflate_from_restart, file_info_input)
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                 prior_inflate, post_inflate,                                        &
@@ -842,127 +838,6 @@ enddo
 end subroutine  set_time_on_extra_copies
 
 !------------------------------------------------------------------
-!> Count the number of copies to be allocated for the ensemble manager
-
-subroutine count_state_ens_copies(ens_size, num_copies, num_extras)
-
-integer,   intent(in)  :: ens_size
-integer,   intent(out) :: num_copies, num_extras
-
-! First ens_size entries are the actual ensemble members
-ENS_START_COPY = 1
-ENS_END_COPY   = ens_size
-
-! Filter Extra Copies For Assimilation
-ENS_MEAN_COPY     = ens_size + 1
-ENS_SD_COPY       = ens_size + 2
-PRIOR_INF_COPY    = ens_size + 3
-PRIOR_INF_SD_COPY = ens_size + 4
-POST_INF_COPY     = ens_size + 5
-POST_INF_SD_COPY  = ens_size + 6
-num_copies = ens_size + 6
-
-! If Whitaker/Hamill (2012) relaxation-to-prior-spread (RTPS) inflation
-! then we need an extra copy to hold (save) the prior ensemble spread
-if ( do_rtps_inflate(post_inflate) ) then
-   RTPS_PRIOR_SPREAD_COPY = ens_size + 7
-   num_copies = ens_size + 7
-endif
-
-! Copies in excess of ensemble
-num_extras = num_copies - ens_size
-
-! Specifying copies to be output for diagnostics/restart
-DIAG_FILE_COPIES(ENS_START) = ENS_START_COPY
-DIAG_FILE_COPIES(ENS_END) = ENS_END_COPY
-if(output_mean) then
-   DIAG_FILE_COPIES(ENS_MEAN) = ENS_MEAN_COPY
-else
-   DIAG_FILE_COPIES(ENS_MEAN) = COPY_NOT_PRESENT
-endif
-if(output_sd) then
-   DIAG_FILE_COPIES(ENS_SD) = ENS_SD_COPY
-else
-   DIAG_FILE_COPIES(ENS_SD) = COPY_NOT_PRESENT
-endif
-if(do_prior_inflate) then
-   DIAG_FILE_COPIES(PRIOR_INF) = PRIOR_INF_COPY
-   DIAG_FILE_COPIES(PRIOR_INF_SD) = PRIOR_INF_SD_COPY
-else
-   DIAG_FILE_COPIES(PRIOR_INF) = COPY_NOT_PRESENT
-   DIAG_FILE_COPIES(PRIOR_INF_SD) = COPY_NOT_PRESENT
-endif
-
-if(do_posterior_inflate) then
-   DIAG_FILE_COPIES(POST_INF) = POST_INF_COPY
-   DIAG_FILE_COPIES(POST_INF_SD) = POST_INF_SD_COPY
-else
-   DIAG_FILE_COPIES(POST_INF) = COPY_NOT_PRESENT
-   DIAG_FILE_COPIES(POST_INF_SD) = COPY_NOT_PRESENT
-endif
-
-end subroutine count_state_ens_copies
-
-!------------------------------------------------------------------
-!> Set file name information.  For members restarts can be read from
-!> an input_state_file_list or constructed using a stage name and
-!> num_ens.  The file_info handle knows whether or not there is an
-!> associated input_state_file_list. If no list is provided member
-!> filenames are written as :
-!>    stage_member_####.nc (ex. preassim_member_0001.nc)
-!> extra copies are stored as :
-!>    stage_basename.nc (ex. preassim_mean.nc)
-
-subroutine set_filename_info(file_info, stage, num_ens, STAGE_COPIES) 
-
-type(file_info_type), intent(inout) :: file_info
-character(len=*),     intent(in)    :: stage
-integer,              intent(in)    :: num_ens
-integer,              intent(inout) :: STAGE_COPIES(NUM_SCOPIES)
-
-call set_member_file_metadata(file_info, num_ens, STAGE_COPIES(ENS_START))
-
-
-STAGE_COPIES(ENS_END) = STAGE_COPIES(ENS_START) + num_ens - 1
-
-call set_file_metadata(file_info, STAGE_COPIES(ENS_MEAN),      stage, 'mean',          'ensemble mean')
-call set_file_metadata(file_info, STAGE_COPIES(ENS_SD),        stage, 'sd',            'ensemble sd')
-call set_file_metadata(file_info, STAGE_COPIES(PRIOR_INF),     stage, 'priorinf_mean', 'prior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(PRIOR_INF_SD),   stage, 'priorinf_sd',   'prior inflation sd')
-call set_file_metadata(file_info, STAGE_COPIES(POST_INF),  stage, 'postinf_mean',  'posterior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(POST_INF_SD),    stage, 'postinf_sd',    'posterior inflation sd')
-
-end subroutine set_filename_info
-
-!------------------------------------------------------------------
-
-subroutine set_input_file_info( file_info, num_ens, STAGE_COPIES )
-
-type(file_info_type), intent(inout) :: file_info
-integer,              intent(in)    :: num_ens
-integer,              intent(in)    :: STAGE_COPIES(NUM_SCOPIES)
-
-if ( perturb_from_single_instance ) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), READ_COPY)
-   !>@todo know whether we are perturbing or not
-   !#! call set_perturb_members(file_info, ENS_START, num_ens)
-else
-   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), STAGE_COPIES(ENS_START)+num_ens-1, READ_COPY)
-endif
-
-if ( do_prior_inflate .and. prior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), READ_COPY, inherit_units=.false.)
-endif
-
-if ( do_posterior_inflate .and. posterior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF), READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD), READ_COPY, inherit_units=.false.)
-endif
-
-end subroutine set_input_file_info
-
-!------------------------------------------------------------------
 
 subroutine set_output_file_info( file_info, num_ens, STAGE_COPIES, do_clamping, force_copy)
 
@@ -1135,48 +1010,6 @@ call set_output_file_info( file_info_output,              &
                            force_copy   = .false. )
 
 end subroutine initialize_file_information
-
-
-!-----------------------------------------------------------
-subroutine init_input_file_info(ncopies, file_info_input)
-
-integer,              intent(in)  :: ncopies
-type(file_info_type), intent(out) :: file_info_input
-
-character(len=256), allocatable :: file_array_input(:,:)
-integer :: ninput_files
-
-! This should have its own variant of DIAG_FILE_COPIES
-
-! Determine number of files
-if (single_file_in .or. perturb_from_single_instance)  then
-   ninput_files = 1
-else
-   ninput_files    = ens_size ! number of incomming ensemble members
-endif
-
-! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
-! If perturbing from a single instance the number of input files does not have to
-! be ens_size but rather a single file (or multiple files if more than one domain)
-allocate(file_array_input(ninput_files, get_num_domains()))
-file_array_input  = RESHAPE(input_state_files,  (/ninput_files,  get_num_domains()/))
-
-! Given vector of input_state_files or a text file containing
-! a list of files, return a vector of files containing the filenames.
-call set_multiple_filename_lists(input_state_files(:), input_state_file_list(:), &
-   get_num_domains(), ninput_files, 'filter', 'input_state_files', 'input_state_file_list')
-
-! Allocate space for the filename handles
-call io_filenames_init(file_info_input, ncopies, has_cycling, single_file_in, &
-   file_array_input, 'input')
-
-! Set filename metadata information
-call set_filename_info(file_info_input, 'input', ens_size, DIAG_FILE_COPIES )
-
-! Set file IO information
-call set_input_file_info( file_info_input, ens_size, DIAG_FILE_COPIES ) 
-
-end subroutine init_input_file_info
 
 !-----------------------------------------------------------
 
