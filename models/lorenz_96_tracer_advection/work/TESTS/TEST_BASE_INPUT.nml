@@ -43,8 +43,6 @@
    input_state_files            = 'T_FILTER_INPUT'
    input_state_file_list        = ''
 
-   stages_to_write  = 'preassim', 'analysis', 'output'
-
    single_file_out              = .true.,
    output_state_files           = 'filter_output.nc'
    output_state_file_list       = ''

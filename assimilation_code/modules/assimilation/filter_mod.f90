@@ -20,12 +20,11 @@ use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), o
 
 use utilities_mod,         only : error_handler, E_ERR, E_MSG,                                &
                                   logfileunit, nmlfileunit,                                   &
-                                  do_output, find_namelist_in_file, check_namelist_read,      &
-                                  open_file, close_file, do_nml_file, do_nml_term, to_upper,  &
-                                  set_multiple_filename_lists
+                                  find_namelist_in_file, check_namelist_read,      &
+                                  do_nml_file, do_nml_term
 
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
-                                  end_assim_model,  pert_model_copies, get_state_meta_data
+                                  end_assim_model, get_state_meta_data
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
@@ -38,30 +37,21 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   get_ensemble_time, set_ensemble_time,                       &
                                   map_pe_to_task,                                             &
                                   set_num_extra_copies,                                       &
-                                  allocate_single_copy, allocate_vars,                        &
-                                  deallocate_single_copy
+                                  allocate_vars
                                   
-
 use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
                                   adaptive_inflate_type, log_inflation_info,          &
                                   do_rtps_inflate, set_inflate_flavor,                &
                                   NO_INFLATION
-                                  
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count, iam_task0
 
-use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
+use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state
 
-use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state, &
-                                  set_stage_to_write, get_stage_to_write
-
-use io_filenames_mod,      only : io_filenames_init, file_info_type, &
-                                  combine_file_info, set_io_copy_flag, &
+use io_filenames_mod,      only : file_info_type, &
                                   check_file_info_variable_shape, &
-                                  query_copy_present, COPY_NOT_PRESENT, &
-                                  READ_COPY, WRITE_COPY
 
 use direct_netcdf_mod,     only : finalize_single_file_io
 
@@ -76,7 +66,7 @@ use location_mod,          only : location_type
 
 use probit_transform_mod,  only : transform_to_probit, transform_from_probit
 
-use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_algorithm_info_mod
+use algorithm_info_mod,    only : probit_dist_info, init_algorithm_info_mod, end_algorithm_info_mod
 
 use distribution_params_mod, only : distribution_params_type
 
@@ -168,11 +158,13 @@ logical  :: single_file_out = .false. ! all copies written to 1 file
 ! optimization option:
 logical :: compute_posterior   = .true. ! set to false to not compute posterior values
 
-! Stages to write.  Valid values are:
-! multi-file:    input, forecast, preassim, postassim, analysis, output
-! single-file:          forecast, preassim, postassim, analysis, output
-character(len=10)  :: stages_to_write(6) = (/"output    ", "null      ", "null      ", &
-                                             "null      ", "null      ", "null      " /)
+! Specify which diagnostic stages should be output
+logical :: output_forecast_diags  = .true.
+logical :: output_preassim_diags  = .true.
+logical :: output_postassim_diags = .true.
+logical :: output_analysis_diags  = .true.
+
+! What quantities go in the diagnostic files
 logical :: output_members   = .true.
 logical :: output_mean      = .true.
 logical :: output_sd        = .true.
@@ -222,11 +214,14 @@ namelist /filter_nml/            &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
    compute_posterior,            &
-   stages_to_write,              &
    input_state_files,            &
    output_state_files,           &
    output_state_file_list,       &
    input_state_file_list,        &
+   output_forecast_diags,        & 
+   output_preassim_diags,        &
+   output_postassim_diags,       &
+   output_analysis_diags,        &
    output_mean,                  &
    output_sd,                    &
    allow_missing_clm
@@ -328,9 +323,6 @@ has_cycling = single_file_out
 ! Can't output more ensemble members than exist
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
-
-! Set up stages to write : input, preassim, postassim, output
-call parse_stages_to_write(stages_to_write)
 
 ! Count and set up State copy numbers
 call count_state_ens_copies(ens_size, output_mean, output_sd, do_prior_inflate, &
@@ -568,28 +560,18 @@ AdvanceTime : do
 end do AdvanceTime
 
 ! Output the adjusted ensemble. If cycling only the last timestep is writen out
-if (get_stage_to_write('output')) call write_state(state_ens_handle, file_info_output)
+call write_state(state_ens_handle, file_info_output)
 
 ! Only pe 0 outputs the observation space diagnostic file
 if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
 
 ! close the diagnostic/restart netcdf files
 if (single_file_out) then
-
-   if (get_stage_to_write('forecast')) &
-      call finalize_single_file_io(file_info_forecast)
-
-   if (get_stage_to_write('preassim')) &
-      call finalize_single_file_io(file_info_preassim)
-
-   if (get_stage_to_write('postassim')) &
-      call finalize_single_file_io(file_info_postassim)
-
-   if (get_stage_to_write('analysis')) &
-      call finalize_single_file_io(file_info_analysis)
-
-   if (get_stage_to_write('output')) &
-      call finalize_single_file_io(file_info_output)
+   call finalize_single_file_io(file_info_output)
+   if(output_forecast_diags) call finalize_single_file_io(file_info_forecast)
+   if(output_preassim_diags) call finalize_single_file_io(file_info_preassim)
+   if(output_postassim_diags) call finalize_single_file_io(file_info_postassim)
+   if(output_analysis_diags) call finalize_single_file_io(file_info_analysis)
 endif
 
 ! Give the model_mod code a chance to clean up.
@@ -853,40 +835,6 @@ enddo
 end subroutine  set_time_on_extra_copies
 
 !------------------------------------------------------------------
-!> checks the user input and informs the IO modules which files to write.
-
-
-subroutine parse_stages_to_write(stages)
-
-character(len=*), intent(in) :: stages(:)
-
-integer :: nstages, i
-character (len=32) :: my_stage
-
-nstages = size(stages,1)
-
-do i = 1, nstages
-   my_stage = stages(i)
-   call to_upper(my_stage)
-   if (trim(my_stage) /= trim('NULL')) then
-   SELECT CASE (my_stage)
-      CASE ('FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
-         call set_stage_to_write(stages(i),.true.)
-         write(msgstring,*)"filter will write stage : "//trim(stages(i))
-         call error_handler(E_MSG,'parse_stages_to_write:',msgstring,source)
-      CASE DEFAULT
-         write(msgstring,*)"unknown stage : "//trim(stages(i))
-         call error_handler(E_ERR,'parse_stages_to_write:',msgstring,source, &
-                           text2="currently supported stages include :",&
-                           text3="input, forecast, preassim, postassim, analysis, output")
-   END SELECT
-
-   endif
-enddo
-
-end subroutine parse_stages_to_write
-
-!-----------------------------------------------------------
 
 end module filter_mod
 
