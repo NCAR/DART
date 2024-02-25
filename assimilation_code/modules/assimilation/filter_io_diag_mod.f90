@@ -57,10 +57,9 @@ integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 !------------------------------------------------------------------------------
 
 public ::  create_ensemble_from_single_file, do_stage_output, &
-   count_state_ens_copies, set_filename_info, init_input_file_info, &
-   ENS_START, ENS_MEAN, ENS_SD, PRIOR_INF, PRIOR_INF_SD, &
-   POST_INF, POST_INF_SD, NUM_SCOPIES, DIAG_FILE_COPIES, &
-   ENS_START_COPY, ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, &
+   count_state_ens_copies, init_input_file_info, &
+   initialize_file_information,    &
+   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, &
    PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, RTPS_PRIOR_SPREAD_COPY
 
 !------------------------------------------------------------------------------
@@ -380,6 +379,132 @@ if ( do_posterior_inflate .and. posterior_inflate_from_restart) then
 endif
 
 end subroutine set_input_file_info
+
+!------------------------------------------------------------------------------
+   
+subroutine set_output_file_info( file_info, num_ens, STAGE_COPIES, &
+   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, &
+   output_members, do_clamping, force_copy)
+
+type(file_info_type), intent(inout) :: file_info
+integer,              intent(in)    :: num_ens
+integer,              intent(in)    :: STAGE_COPIES(NUM_SCOPIES)
+logical,              intent(in)    :: output_mean, output_sd
+logical,              intent(in)    :: do_prior_inflate, do_posterior_inflate
+logical,              intent(in)    :: output_members
+logical,              intent(in)    :: do_clamping
+logical,              intent(in)    :: force_copy
+                           
+!>@todo revisit if we should be clamping mean copy for file_info_output
+if ( num_ens > 0 .and. output_members ) then
+   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), &
+      STAGE_COPIES(ENS_START)+num_ens-1, WRITE_COPY, num_ens, &
+      do_clamping, force_copy)
+endif                      
+                           
+if(output_mean) call set_io_copy_flag(file_info, STAGE_COPIES(ENS_MEAN), WRITE_COPY, &
+                   inherit_units=.true., clamp_vars=do_clamping, force_copy_back=force_copy)
+if(output_sd) call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD), WRITE_COPY, &
+                   inherit_units=.true., force_copy_back=force_copy)
+if(do_prior_inflate) call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), WRITE_COPY, &
+                        inherit_units=.false., force_copy_back=force_copy)
+if(do_prior_inflate) call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), &
+                        WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
+if (do_posterior_inflate) call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF), &
+                             WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
+if (do_posterior_inflate) call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD), &
+                             WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
+
+end subroutine set_output_file_info
+
+!------------------------------------------------------------------------------
+!> initialize file names and which copies should be read and or written
+
+subroutine initialize_file_information(ncopies, ens_size, file_info_forecast, &
+    file_info_preassim, file_info_postassim, file_info_analysis, file_info_output, &
+    output_state_files, output_state_file_list, single_file_out,   &
+    has_cycling, output_mean, output_sd,             &
+    output_members, do_prior_inflate, do_posterior_inflate)
+                                  
+integer,              intent(in)  :: ncopies
+integer,              intent(in)  :: ens_size
+type(file_info_type), intent(out) :: file_info_forecast
+type(file_info_type), intent(out) :: file_info_preassim
+type(file_info_type), intent(out) :: file_info_postassim
+type(file_info_type), intent(out) :: file_info_analysis
+type(file_info_type), intent(out) :: file_info_output
+character(len=256),   intent(inout)  :: output_state_files(:)
+character(len=256),   intent(in)  :: output_state_file_list(:)
+logical,              intent(in)  :: single_file_out
+logical,              intent(in)  :: has_cycling
+logical,              intent(in)  :: output_mean, output_sd, output_members
+logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
+   
+integer :: noutput_members, noutput_files, ndomains
+character(len=256), allocatable :: file_array_output(:,:)
+                
+! local variable to shorten the name for function input
+noutput_members = num_output_state_members 
+ndomains        = get_num_domains()
+noutput_files   = ens_size ! number of incomming ensemble members
+   
+! Assign the correct number of output files.
+if (single_file_out)                                  noutput_files = 1
+   
+! Given vector of output_state_files or a text file containing
+! a list of files, return a vector of files containing the filenames.
+call set_multiple_filename_lists(output_state_files(:), output_state_file_list(:), &
+   ndomains, noutput_files, 'filter', 'output_state_files', 'output_state_file_list')
+                                  
+! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
+allocate(file_array_output(noutput_files, ndomains))
+file_array_output = RESHAPE(output_state_files, (/noutput_files, ndomains/))
+
+! Output Files (we construct the filenames)
+call io_filenames_init(file_info_forecast,  ncopies, has_cycling, single_file_out, &
+   root_name='forecast')
+call io_filenames_init(file_info_preassim,  ncopies, has_cycling, single_file_out, root_name='preassim')
+call io_filenames_init(file_info_postassim, ncopies, has_cycling, single_file_out, root_name='postassim')
+call io_filenames_init(file_info_analysis,  ncopies, has_cycling, single_file_out, root_name='analysis')
+
+! Write restart from output_state_file_list if provided
+call io_filenames_init(file_info_output, ncopies, has_cycling, single_file_out, &
+   file_array_output, 'output', check_output_compatibility = .true.)
+
+!   Output Files
+if (get_stage_to_write('forecast')) &
+   call set_filename_info(file_info_forecast, 'forecast',  noutput_members,  DIAG_FILE_COPIES )
+if (get_stage_to_write('preassim')) &
+   call set_filename_info(file_info_preassim, 'preassim',  noutput_members,  DIAG_FILE_COPIES )
+if (get_stage_to_write('postassim')) &
+   call set_filename_info(file_info_postassim,'postassim', noutput_members, DIAG_FILE_COPIES )
+if (get_stage_to_write('analysis')) &
+   call set_filename_info(file_info_analysis, 'analysis',  noutput_members,  DIAG_FILE_COPIES )
+
+call set_filename_info(file_info_output,      'output',    ens_size,          DIAG_FILE_COPIES )
+
+!   Output Files
+call set_output_file_info( file_info_forecast, noutput_members, DIAG_FILE_COPIES,  &
+   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
+   do_clamping  = .false., force_copy = .true.)
+
+call set_output_file_info( file_info_preassim, noutput_members, DIAG_FILE_COPIES,  &
+   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
+   do_clamping  = .false., force_copy = .true.)
+
+call set_output_file_info( file_info_postassim, noutput_members, DIAG_FILE_COPIES, &
+   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
+   do_clamping  = .false., force_copy = .true.)
+
+call set_output_file_info( file_info_analysis, noutput_members, DIAG_FILE_COPIES,  &
+   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
+   do_clamping  = .false., force_copy = .true.)
+
+call set_output_file_info( file_info_output, ens_size, DIAG_FILE_COPIES, &
+   output_mean, output_sd, do_prior_inflate, do_posterior_inflate,       &
+   output_members = .true., do_clamping = .true., force_copy = .false. )
+
+end subroutine initialize_file_information
 
 !------------------------------------------------------------------------------
 
