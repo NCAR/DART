@@ -420,21 +420,65 @@ end subroutine set_output_file_info
 !------------------------------------------------------------------------------
 !> initialize file names and which copies should be read and or written
 
-subroutine initialize_file_information(ncopies, ens_size, file_info_forecast, &
-    file_info_preassim, file_info_postassim, file_info_analysis, file_info_output, &
+subroutine init_output_file_info(output_file_name, ncopies, ens_size, file_info, &
     output_state_files, output_state_file_list, single_file_out,   &
-    has_cycling, output_mean, output_sd,             &
-    output_members, do_prior_inflate, do_posterior_inflate)
+    has_cycling, do_prior_inflate, do_posterior_inflate)
                                   
+character(len=*),     intent(in)  :: output_file_name                                  
 integer,              intent(in)  :: ncopies
 integer,              intent(in)  :: ens_size
-type(file_info_type), intent(out) :: file_info_forecast
-type(file_info_type), intent(out) :: file_info_preassim
-type(file_info_type), intent(out) :: file_info_postassim
-type(file_info_type), intent(out) :: file_info_analysis
-type(file_info_type), intent(out) :: file_info_output
+type(file_info_type), intent(out) :: file_info
 character(len=256),   intent(inout)  :: output_state_files(:)
 character(len=256),   intent(in)  :: output_state_file_list(:)
+logical,              intent(in)  :: single_file_out
+logical,              intent(in)  :: has_cycling
+logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
+   
+integer :: noutput_members, noutput_files, ndomains
+character(len=256), allocatable :: file_array_output(:,:)
+                
+! local variable to shorten the name for function input
+ndomains        = get_num_domains()
+noutput_files   = ens_size ! number of incomming ensemble members
+   
+! Assign the correct number of output files.
+if (single_file_out) noutput_files = 1
+   
+! Given vector of output_state_files or a text file containing
+! a list of files, return a vector of files containing the filenames.
+call set_multiple_filename_lists(output_state_files(:), output_state_file_list(:), &
+   ndomains, noutput_files, 'filter', 'output_state_files', 'output_state_file_list')
+                                  
+! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
+allocate(file_array_output(noutput_files, ndomains))
+file_array_output = RESHAPE(output_state_files, (/noutput_files, ndomains/))
+
+! Write restart from output_state_file_list if provided
+call io_filenames_init(file_info, ncopies, has_cycling, single_file_out, &
+   file_array_output, output_file_name, check_output_compatibility = .true.)
+
+!   Output Files
+call set_filename_info(file_info, output_file_name, ens_size, DIAG_FILE_COPIES )
+
+!   Output Files
+call set_output_file_info(file_info, ens_size, DIAG_FILE_COPIES, &
+   .true., .true., do_prior_inflate, do_posterior_inflate, &
+   output_members = .true., do_clamping = .true., force_copy = .false. )
+
+end subroutine init_output_file_info
+
+!------------------------------------------------------------------------------
+!> initialize file names and which copies should be read and or written
+
+subroutine init_diag_file_info(diag_file_name, ncopies, ens_size, file_info, &
+    single_file_out,   &
+    has_cycling, output_mean, output_sd,             &
+    output_members, do_prior_inflate, do_posterior_inflate)
+
+character(len=*),     intent(in)  :: diag_file_name                                  
+integer,              intent(in)  :: ncopies
+integer,              intent(in)  :: ens_size
+type(file_info_type), intent(out) :: file_info
 logical,              intent(in)  :: single_file_out
 logical,              intent(in)  :: has_cycling
 logical,              intent(in)  :: output_mean, output_sd, output_members
@@ -449,62 +493,21 @@ ndomains        = get_num_domains()
 noutput_files   = ens_size ! number of incomming ensemble members
    
 ! Assign the correct number of output files.
-if (single_file_out)                                  noutput_files = 1
+if (single_file_out) noutput_files = 1
    
-! Given vector of output_state_files or a text file containing
-! a list of files, return a vector of files containing the filenames.
-call set_multiple_filename_lists(output_state_files(:), output_state_file_list(:), &
-   ndomains, noutput_files, 'filter', 'output_state_files', 'output_state_file_list')
-                                  
-! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
-allocate(file_array_output(noutput_files, ndomains))
-file_array_output = RESHAPE(output_state_files, (/noutput_files, ndomains/))
-
 ! Output Files (we construct the filenames)
-call io_filenames_init(file_info_forecast,  ncopies, has_cycling, single_file_out, &
-   root_name='forecast')
-call io_filenames_init(file_info_preassim,  ncopies, has_cycling, single_file_out, root_name='preassim')
-call io_filenames_init(file_info_postassim, ncopies, has_cycling, single_file_out, root_name='postassim')
-call io_filenames_init(file_info_analysis,  ncopies, has_cycling, single_file_out, root_name='analysis')
-
-! Write restart from output_state_file_list if provided
-call io_filenames_init(file_info_output, ncopies, has_cycling, single_file_out, &
-   file_array_output, 'output', check_output_compatibility = .true.)
+call io_filenames_init(file_info, ncopies, has_cycling, single_file_out, &
+   root_name = diag_file_name)
 
 !   Output Files
-if (get_stage_to_write('forecast')) &
-   call set_filename_info(file_info_forecast, 'forecast',  noutput_members,  DIAG_FILE_COPIES )
-if (get_stage_to_write('preassim')) &
-   call set_filename_info(file_info_preassim, 'preassim',  noutput_members,  DIAG_FILE_COPIES )
-if (get_stage_to_write('postassim')) &
-   call set_filename_info(file_info_postassim,'postassim', noutput_members, DIAG_FILE_COPIES )
-if (get_stage_to_write('analysis')) &
-   call set_filename_info(file_info_analysis, 'analysis',  noutput_members,  DIAG_FILE_COPIES )
-
-call set_filename_info(file_info_output,      'output',    ens_size,          DIAG_FILE_COPIES )
+call set_filename_info(file_info, diag_file_name,  noutput_members,  DIAG_FILE_COPIES )
 
 !   Output Files
-call set_output_file_info( file_info_forecast, noutput_members, DIAG_FILE_COPIES,  &
+call set_output_file_info(file_info, noutput_members, DIAG_FILE_COPIES,  &
    output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
    do_clamping  = .false., force_copy = .true.)
 
-call set_output_file_info( file_info_preassim, noutput_members, DIAG_FILE_COPIES,  &
-   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
-   do_clamping  = .false., force_copy = .true.)
-
-call set_output_file_info( file_info_postassim, noutput_members, DIAG_FILE_COPIES, &
-   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
-   do_clamping  = .false., force_copy = .true.)
-
-call set_output_file_info( file_info_analysis, noutput_members, DIAG_FILE_COPIES,  &
-   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
-   do_clamping  = .false., force_copy = .true.)
-
-call set_output_file_info( file_info_output, ens_size, DIAG_FILE_COPIES, &
-   output_mean, output_sd, do_prior_inflate, do_posterior_inflate,       &
-   output_members = .true., do_clamping = .true., force_copy = .false. )
-
-end subroutine initialize_file_information
+end subroutine init_diag_file_info
 
 !------------------------------------------------------------------------------
 

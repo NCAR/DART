@@ -81,8 +81,8 @@ use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_al
 use distribution_params_mod, only : distribution_params_type
 
 use filter_io_diag_mod,    only : create_ensemble_from_single_file, do_stage_output, &
-                                  count_state_ens_copies, init_input_file_info, &
-                                  initialize_file_information, &
+                                  count_state_ens_copies, init_input_file_info,      &
+                                  init_diag_file_info, init_output_file_info,        &
                                   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY,        &
                                   PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,&
                                   RTPS_PRIOR_SPREAD_COPY
@@ -371,10 +371,25 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
 
-call initialize_file_information(num_state_ens_copies, ens_size, file_info_forecast, &
-   file_info_preassim, file_info_postassim, file_info_analysis, file_info_output,    &
-   output_state_files, output_state_file_list, single_file_out, has_cycling, output_mean, &
-   output_sd, output_members, do_prior_inflate, do_posterior_inflate)
+call init_diag_file_info('forecast', num_state_ens_copies, ens_size, file_info_forecast, &
+   single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
+   do_prior_inflate, do_posterior_inflate)
+
+call init_diag_file_info('preassim', num_state_ens_copies, ens_size, file_info_preassim, &
+   single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
+   do_prior_inflate, do_posterior_inflate)
+
+call init_diag_file_info('postassim', num_state_ens_copies, ens_size, file_info_postassim, &
+   single_file_out, has_cycling, output_mean, output_sd, output_members,                   &
+   do_prior_inflate, do_posterior_inflate)
+
+call init_diag_file_info('analysis', num_state_ens_copies, ens_size, file_info_analysis, &
+   single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
+   do_prior_inflate, do_posterior_inflate)
+
+call init_output_file_info('output', num_state_ens_copies, ens_size, file_info_output, &
+   output_state_files, output_state_file_list, single_file_out, has_cycling,           &
+   do_prior_inflate, do_posterior_inflate)
 
 call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
