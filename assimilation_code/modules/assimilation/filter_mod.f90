@@ -70,7 +70,7 @@ use algorithm_info_mod,    only : probit_dist_info, init_algorithm_info_mod, end
 
 use distribution_params_mod, only : distribution_params_type
 
-use filter_io_diag_mod,    only : create_ensemble_from_single_file, do_stage_output, &
+use filter_io_diag_mod,    only : create_ensemble_from_single_file, &
                                   count_state_ens_copies, init_input_file_info,      &
                                   init_diag_file_info, init_output_file_info,        &
                                   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY,        &
@@ -480,12 +480,11 @@ AdvanceTime : do
    endif
 
    ! Write out forecast diagnostic file(s). 
-   if(.not. file_info_forecast%initialized) &
-      call init_diag_file_info('forecast', num_state_ens_copies, ens_size, file_info_forecast, &
-         single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
-         do_prior_inflate, do_posterior_inflate)
-   call do_stage_output('forecast', output_interval, time_step_number, &
-      state_ens_handle, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   if(output_forecast_diags .and. output_diag_now(output_interval, time_step_number)) &
+      call init_diag_file_info('forecast', state_ens_handle, num_state_ens_copies, ens_size, &
+         num_output_state_members, &
+         file_info_forecast, single_file_out, has_cycling, output_mean, output_sd,           &
+         output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
    
    ! Apply prior inflation 
    if(do_ss_inflate(prior_inflate)) &
@@ -496,12 +495,11 @@ AdvanceTime : do
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, RTPS_PRIOR_SPREAD_COPY)
 
    ! Write out preassim diagnostic files if requested.
-   if(.not. file_info_preassim%initialized) &
-      call init_diag_file_info('preassim', num_state_ens_copies, ens_size, file_info_preassim, &
-         single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
-         do_prior_inflate, do_posterior_inflate)
-   call do_stage_output('preassim', output_interval, time_step_number, &
-      state_ens_handle, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   if(output_preassim_diags .and. output_diag_now(output_interval, time_step_number)) &
+      call init_diag_file_info('preassim', state_ens_handle, num_state_ens_copies, ens_size, &
+         num_output_state_members, &
+         file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
+         output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Compute the forward operators and fill data structures
    call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
@@ -514,12 +512,11 @@ AdvanceTime : do
 
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
-   if(.not. file_info_postassim%initialized) &
-      call init_diag_file_info('postassim', num_state_ens_copies, ens_size, file_info_postassim, &
-         single_file_out, has_cycling, output_mean, output_sd, output_members,                   &
-         do_prior_inflate, do_posterior_inflate)
-   call do_stage_output('postassim', output_interval, time_step_number, &
-      state_ens_handle, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   if(output_postassim_diags .and. output_diag_now(output_interval, time_step_number)) &
+      call init_diag_file_info('postassim', state_ens_handle, num_state_ens_copies, ens_size, &
+         num_output_state_members, &
+         file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
+         output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! This block applies posterior inflation including RTPS if selected
    if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
@@ -550,12 +547,11 @@ AdvanceTime : do
    deallocate(keys)
 
    ! Write out analysis diagnostic files if requested. 
-   if(.not. file_info_analysis%initialized) &
-      call init_diag_file_info('analysis', num_state_ens_copies, ens_size, file_info_analysis, &
-         single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
-         do_prior_inflate, do_posterior_inflate)
-   call do_stage_output('analysis', output_interval, time_step_number, &
-      state_ens_handle, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   if(output_analysis_diags .and. output_diag_now(output_interval, time_step_number)) &
+      call init_diag_file_info('analysis', state_ens_handle, num_state_ens_copies, ens_size, &
+         num_output_state_members, &
+         file_info_analysis, single_file_out, has_cycling, output_mean, output_sd,           &
+         output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
 
 end do AdvanceTime
 
@@ -833,6 +829,18 @@ do copy_num = ens_size + 1, ens_handle%num_copies
 enddo
 
 end subroutine  set_time_on_extra_copies
+
+!------------------------------------------------------------------
+
+function output_diag_now(output_interval, time_step_number)
+
+logical             :: output_diag_now
+integer, intent(in) :: output_interval, time_step_number
+
+output_diag_now = ((output_interval > 0) .and. &  
+   (time_step_number / output_interval * output_interval == time_step_number)) 
+
+end function output_diag_now
 
 !------------------------------------------------------------------
 

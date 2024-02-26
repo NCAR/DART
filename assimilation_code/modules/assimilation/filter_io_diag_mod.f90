@@ -29,6 +29,9 @@ use state_structure_mod,   only : get_num_domains
 
 !------------------------------------------------------------------------------
 
+implicit none
+private
+
 ! Ensemble copy numbers; Initialized to not be output
 integer :: ENS_START_COPY         = COPY_NOT_PRESENT
 integer :: ENS_END_COPY           = COPY_NOT_PRESENT
@@ -56,9 +59,8 @@ integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
                                   
 !------------------------------------------------------------------------------
 
-public ::  create_ensemble_from_single_file, do_stage_output, &
-   count_state_ens_copies, init_input_file_info, &
-   initialize_file_information, &
+public ::  create_ensemble_from_single_file, &
+   count_state_ens_copies, init_input_file_info, init_diag_file_info, init_output_file_info, &
    ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, &
    PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, RTPS_PRIOR_SPREAD_COPY
 
@@ -163,28 +165,6 @@ do i = 1, ens_handle%num_vars
 enddo
 
 end subroutine perturb_copies_task_bitwise
-
-!------------------------------------------------------------------------------
-
-subroutine do_stage_output(stage_name, output_interval, time_step_number, &
-   state_ens_handle, file_info, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
-character(len = *),   intent(in)    :: stage_name
-integer,              intent(in)    :: output_interval, time_step_number
-type(ensemble_type),  intent(inout) :: state_ens_handle
-type(file_info_type), intent(inout) :: file_info
-integer,              intent(in)    :: ens_size, ENS_MEAN_COPY, ENS_SD_COPY
-
-if((output_interval > 0) .and. &
-   (time_step_number / output_interval * output_interval == time_step_number)) then
-
-   ! Compute the ensemble mean and standard deviation
-   ! For efficiency could make this optional in call
-   call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-   call write_state(state_ens_handle, file_info)
-endif
-
-end subroutine do_stage_output
 
 !------------------------------------------------------------------------------
 
@@ -478,41 +458,56 @@ end subroutine init_output_file_info
 !------------------------------------------------------------------------------
 !> initialize file names and which copies should be read and or written
 
-subroutine init_diag_file_info(diag_file_name, ncopies, ens_size, file_info, &
-    single_file_out, has_cycling, output_mean, output_sd,                    &
-    output_members, do_prior_inflate, do_posterior_inflate)
+subroutine init_diag_file_info(diag_file_name, state_ens_handle, ncopies, ens_size, &
+   num_output_state_members, &
+   file_info, single_file_out, has_cycling, output_mean, output_sd, output_members, &
+   do_prior_inflate, do_posterior_inflate, MEAN_COPY, SD_COPY)
 
 character(len=*),     intent(in)  :: diag_file_name                                  
+type(ensemble_type),  intent(inout) :: state_ens_handle
 integer,              intent(in)  :: ncopies
 integer,              intent(in)  :: ens_size
-type(file_info_type), intent(out) :: file_info
+integer,              intent(in)  :: num_output_state_members
+type(file_info_type), intent(inout) :: file_info
 logical,              intent(in)  :: single_file_out
 logical,              intent(in)  :: has_cycling
 logical,              intent(in)  :: output_mean, output_sd, output_members
 logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
+integer,              intent(in)  :: MEAN_COPY, SD_COPY
    
 integer :: noutput_members, noutput_files, ndomains
 character(len=256), allocatable :: file_array_output(:,:)
-                
-! local variable to shorten the name for function input
-noutput_members = num_output_state_members 
-ndomains        = get_num_domains()
-noutput_files   = ens_size ! number of incomming ensemble members
+           
+! Don't need to initialize if already done
+if(.not. file_info%initialized) then
+     
+   ! local variable to shorten the name for function input
+   noutput_members = num_output_state_members 
+   ndomains        = get_num_domains()
+   noutput_files   = ens_size ! number of incomming ensemble members
    
-! Assign the correct number of output files.
-if (single_file_out) noutput_files = 1
+   ! Assign the correct number of output files.
+   if (single_file_out) noutput_files = 1
    
-! Output Files (we construct the filenames)
-call io_filenames_init(file_info, ncopies, has_cycling, single_file_out, &
-   root_name = diag_file_name)
+   ! Output Files (we construct the filenames)
+   call io_filenames_init(file_info, ncopies, has_cycling, single_file_out, &
+      root_name = diag_file_name)
 
-!   Output Files
-call set_filename_info(file_info, diag_file_name,  noutput_members,  DIAG_FILE_COPIES )
+   !   Output Files
+   call set_filename_info(file_info, diag_file_name,  noutput_members,  DIAG_FILE_COPIES )
 
-!   Output Files
-call set_output_file_info(file_info, noutput_members, DIAG_FILE_COPIES,  &
-   output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
-   do_clamping  = .false., force_copy = .true.)
+   !   Output Files
+   call set_output_file_info(file_info, noutput_members, DIAG_FILE_COPIES,  &
+      output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
+      do_clamping  = .false., force_copy = .true.)
+
+endif
+
+! Compute the ensemble mean and standard deviation; for efficiency could make this optional
+call compute_copy_mean_sd(state_ens_handle, 1, ens_size, MEAN_COPY, SD_COPY)
+
+! Write state diagnostics to the netcdf file
+call write_state(state_ens_handle, file_info)
 
 end subroutine init_diag_file_info
 
