@@ -51,7 +51,7 @@ use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadca
 use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state
 
 use io_filenames_mod,      only : file_info_type, &
-                                  check_file_info_variable_shape, &
+                                  check_file_info_variable_shape
 
 use direct_netcdf_mod,     only : finalize_single_file_io
 
@@ -363,22 +363,6 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
 
-call init_diag_file_info('forecast', num_state_ens_copies, ens_size, file_info_forecast, &
-   single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
-   do_prior_inflate, do_posterior_inflate)
-
-call init_diag_file_info('preassim', num_state_ens_copies, ens_size, file_info_preassim, &
-   single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
-   do_prior_inflate, do_posterior_inflate)
-
-call init_diag_file_info('postassim', num_state_ens_copies, ens_size, file_info_postassim, &
-   single_file_out, has_cycling, output_mean, output_sd, output_members,                   &
-   do_prior_inflate, do_posterior_inflate)
-
-call init_diag_file_info('analysis', num_state_ens_copies, ens_size, file_info_analysis, &
-   single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
-   do_prior_inflate, do_posterior_inflate)
-
 call init_output_file_info('output', num_state_ens_copies, ens_size, file_info_output, &
    output_state_files, output_state_file_list, single_file_out, has_cycling,           &
    do_prior_inflate, do_posterior_inflate)
@@ -496,6 +480,10 @@ AdvanceTime : do
    endif
 
    ! Write out forecast diagnostic file(s). 
+   if(.not. file_info_forecast%initialized) &
+      call init_diag_file_info('forecast', num_state_ens_copies, ens_size, file_info_forecast, &
+         single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
+         do_prior_inflate, do_posterior_inflate)
    call do_stage_output('forecast', output_interval, time_step_number, &
       state_ens_handle, file_info_forecast, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
    
@@ -508,6 +496,10 @@ AdvanceTime : do
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, RTPS_PRIOR_SPREAD_COPY)
 
    ! Write out preassim diagnostic files if requested.
+   if(.not. file_info_preassim%initialized) &
+      call init_diag_file_info('preassim', num_state_ens_copies, ens_size, file_info_preassim, &
+         single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
+         do_prior_inflate, do_posterior_inflate)
    call do_stage_output('preassim', output_interval, time_step_number, &
       state_ens_handle, file_info_preassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -522,6 +514,10 @@ AdvanceTime : do
 
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
+   if(.not. file_info_postassim%initialized) &
+      call init_diag_file_info('postassim', num_state_ens_copies, ens_size, file_info_postassim, &
+         single_file_out, has_cycling, output_mean, output_sd, output_members,                   &
+         do_prior_inflate, do_posterior_inflate)
    call do_stage_output('postassim', output_interval, time_step_number, &
       state_ens_handle, file_info_postassim, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -554,6 +550,10 @@ AdvanceTime : do
    deallocate(keys)
 
    ! Write out analysis diagnostic files if requested. 
+   if(.not. file_info_analysis%initialized) &
+      call init_diag_file_info('analysis', num_state_ens_copies, ens_size, file_info_analysis, &
+         single_file_out, has_cycling, output_mean, output_sd, output_members,                 &
+         do_prior_inflate, do_posterior_inflate)
    call do_stage_output('analysis', output_interval, time_step_number, &
       state_ens_handle, file_info_analysis, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
