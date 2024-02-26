@@ -48,10 +48,9 @@ use adaptive_inflate_mod,  only : do_ss_inflate, &
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count, iam_task0
 
-use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state
+use state_vector_io_mod,   only : state_vector_io_init, write_state
 
-use io_filenames_mod,      only : file_info_type, &
-                                  check_file_info_variable_shape
+use io_filenames_mod,      only : file_info_type
 
 use direct_netcdf_mod,     only : finalize_single_file_io
 
@@ -71,8 +70,8 @@ use algorithm_info_mod,    only : probit_dist_info, init_algorithm_info_mod, end
 use distribution_params_mod, only : distribution_params_type
 
 use filter_io_diag_mod,    only : create_ensemble_from_single_file, &
-                                  count_state_ens_copies, init_input_file_info,      &
-                                  init_diag_file_info, init_output_file_info,        &
+                                  count_state_ens_copies, read_state_and_inflation,      &
+                                  output_diagnostics, init_output_file_info,        &
                                   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY,        &
                                   PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY,&
                                   RTPS_PRIOR_SPREAD_COPY
@@ -254,13 +253,12 @@ logical                 :: read_time_from_file
 
 integer :: num_extras ! the extra ensemble copies
 
-type(file_info_type) :: file_info_input
+type(file_info_type) :: file_info_read
 type(file_info_type) :: file_info_forecast
 type(file_info_type) :: file_info_preassim
 type(file_info_type) :: file_info_postassim
 type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
-type(file_info_type) :: file_info_all
 
 logical :: all_gone, allow_missing
 
@@ -363,22 +361,16 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
 
-call init_output_file_info('output', num_state_ens_copies, ens_size, file_info_output, &
-   output_state_files, output_state_file_list, single_file_out, has_cycling,           &
-   do_prior_inflate, do_posterior_inflate)
-
-call check_file_info_variable_shape(file_info_output, state_ens_handle)
+call init_output_file_info('output', state_ens_handle, num_state_ens_copies, ens_size, &
+   file_info_output, output_state_files, output_state_file_list, single_file_out,      &
+   has_cycling, do_prior_inflate, do_posterior_inflate)
 
 ! Initialize and then read the input file
-call init_input_file_info(num_state_ens_copies, ens_size, single_file_in,               &
+call read_state_and_inflation(num_state_ens_copies, state_ens_handle, ens_size, single_file_in, &
    perturb_from_single_instance, has_cycling, input_state_files, input_state_file_list, &
-   do_prior_inflate, prior_inflate_from_restart, do_posterior_inflate,                  &
-   posterior_inflate_from_restart, file_info_input)
-call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
-                PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
-                prior_inflate, post_inflate,                                        &
-                prior_inflate_from_restart, posterior_inflate_from_restart,         &
-                perturb_from_single_instance)
+   prior_inflate, do_prior_inflate, prior_inflate_from_restart,                          &
+   post_inflate, do_posterior_inflate, posterior_inflate_from_restart,              &
+   file_info_read, read_time_from_file, time1)
 
 if(iam_task0()) then
    ! Print out info for posterior inflation handle because it can include rtps
@@ -465,7 +457,7 @@ AdvanceTime : do
       call all_copies_to_all_vars(state_ens_handle)
 
       call advance_state(state_ens_handle, ens_size, next_ens_time, async, &
-              adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
+              adv_ens_command, tasks_per_model_advance, file_info_output, file_info_read)
 
       call all_vars_to_all_copies(state_ens_handle)
 
@@ -481,7 +473,7 @@ AdvanceTime : do
 
    ! Write out forecast diagnostic file(s). 
    if(output_forecast_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call init_diag_file_info('forecast', state_ens_handle, num_state_ens_copies, ens_size, &
+      call output_diagnostics('forecast', state_ens_handle, num_state_ens_copies, ens_size, &
          num_output_state_members, &
          file_info_forecast, single_file_out, has_cycling, output_mean, output_sd,           &
          output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -496,7 +488,7 @@ AdvanceTime : do
 
    ! Write out preassim diagnostic files if requested.
    if(output_preassim_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call init_diag_file_info('preassim', state_ens_handle, num_state_ens_copies, ens_size, &
+      call output_diagnostics('preassim', state_ens_handle, num_state_ens_copies, ens_size, &
          num_output_state_members, &
          file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
          output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -513,7 +505,7 @@ AdvanceTime : do
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
    if(output_postassim_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call init_diag_file_info('postassim', state_ens_handle, num_state_ens_copies, ens_size, &
+      call output_diagnostics('postassim', state_ens_handle, num_state_ens_copies, ens_size, &
          num_output_state_members, &
          file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
          output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -548,7 +540,7 @@ AdvanceTime : do
 
    ! Write out analysis diagnostic files if requested. 
    if(output_analysis_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call init_diag_file_info('analysis', state_ens_handle, num_state_ens_copies, ens_size, &
+      call output_diagnostics('analysis', state_ens_handle, num_state_ens_copies, ens_size, &
          num_output_state_members, &
          file_info_analysis, single_file_out, has_cycling, output_mean, output_sd,           &
          output_members, do_prior_inflate, do_posterior_inflate, ENS_MEAN_COPY, ENS_SD_COPY)
