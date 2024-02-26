@@ -34,6 +34,7 @@ model_programs=(
 )
 
 model_serial_programs=(
+aether_to_dart
 )
 
 # quickbuild arguments
