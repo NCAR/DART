@@ -10,16 +10,18 @@ use types_mod,             only : r8, missing_r8
 
 use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_sd
 
+use time_manager_mod,      only : time_type
+
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
 use io_filenames_mod,      only : file_info_type, set_member_file_metadata, &
                                   set_file_metadata, COPY_NOT_PRESENT, &
                                   io_filenames_init, set_io_copy_flag, &
-                                  READ_COPY, WRITE_COPY
+                                  check_file_info_variable_shape, READ_COPY, WRITE_COPY
 
 use assim_model_mod,       only : pert_model_copies
 
-use state_vector_io_mod,   only : write_state
+use state_vector_io_mod,   only : write_state, read_state
 
 use adaptive_inflate_mod,  only : do_rtps_inflate, adaptive_inflate_type
 
@@ -60,7 +62,7 @@ integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
 !------------------------------------------------------------------------------
 
 public ::  create_ensemble_from_single_file, &
-   count_state_ens_copies, init_input_file_info, init_diag_file_info, init_output_file_info, &
+   count_state_ens_copies, read_state_and_inflation, output_diagnostics, init_output_file_info, &
    ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, &
    PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, RTPS_PRIOR_SPREAD_COPY
 
@@ -269,27 +271,35 @@ end subroutine set_filename_info
 
 !------------------------------------------------------------------------------
 
-subroutine init_input_file_info(ncopies, ens_size, single_file_in, &
+subroutine read_state_and_inflation(ncopies, state_ens_handle, ens_size, single_file_in, &
    perturb_from_single_instance, has_cycling, input_state_files,   &
-   input_state_file_list, do_prior_inflate, prior_inflate_from_restart, &
-   do_posterior_inflate, posterior_inflate_from_restart, file_info_input)
+   input_state_file_list, prior_inflate, do_prior_inflate, prior_inflate_from_restart, &
+   posterior_inflate, do_posterior_inflate, posterior_inflate_from_restart, file_info_input, &
+   read_time_from_file, time1)
                                  
 integer,              intent(in)  :: ncopies
+type(ensemble_type),  intent(inout) :: state_ens_handle
 integer,              intent(in)  :: ens_size
 type(file_info_type), intent(out) :: file_info_input
 logical,              intent(in)  :: single_file_in
 logical,              intent(in)  :: perturb_from_single_instance
 logical,              intent(in)  :: has_cycling
 character(len=256),   intent(inout)  :: input_state_files(:)
+type(adaptive_inflate_type), intent(in) :: prior_inflate
 logical,              intent(in)  :: do_prior_inflate, prior_inflate_from_restart
+type(adaptive_inflate_type), intent(in) :: posterior_inflate
 logical,              intent(in)  :: do_posterior_inflate
 logical,              intent(in)  :: posterior_inflate_from_restart
 character(len=256),   intent(in)  :: input_state_file_list(:)
+logical,              intent(in)  :: read_time_from_file
+type(time_type),      intent(inout) :: time1
+
                                  
 character(len=256), allocatable :: file_array_input(:,:)
 integer :: ninput_files
 
-! This should have its own variant of DIAG_FILE_COPIES
+! Best to fail if already initialized
+!!!if(.not. file_info_input%initialized) then
 
 ! Determine number of files
 if (single_file_in .or. perturb_from_single_instance)  then
@@ -321,7 +331,14 @@ call set_input_file_info( file_info_input, ens_size, perturb_from_single_instanc
    do_prior_inflate, prior_inflate_from_restart, do_posterior_inflate,             &
    posterior_inflate_from_restart, DIAG_FILE_COPIES ) 
 
-end subroutine init_input_file_info
+! Do the reading
+call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
+                PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
+                prior_inflate, posterior_inflate,                                   &
+                prior_inflate_from_restart, posterior_inflate_from_restart,         &         
+                perturb_from_single_instance)
+
+end subroutine read_state_and_inflation
 
 !------------------------------------------------------------------------------
 
@@ -408,11 +425,12 @@ end subroutine set_output_file_info
 !------------------------------------------------------------------------------
 !> initialize file names and which copies should be read and or written
 
-subroutine init_output_file_info(output_file_name, ncopies, ens_size, file_info, &
-    output_state_files, output_state_file_list, single_file_out,   &
+subroutine init_output_file_info(output_file_name, state_ens_handle, ncopies, &
+   ens_size, file_info, output_state_files, output_state_file_list, single_file_out,   &
     has_cycling, do_prior_inflate, do_posterior_inflate)
                                   
 character(len=*),     intent(in)  :: output_file_name                                  
+type(ensemble_type),  intent(in)  :: state_ens_handle
 integer,              intent(in)  :: ncopies
 integer,              intent(in)  :: ens_size
 type(file_info_type), intent(out) :: file_info
@@ -422,7 +440,7 @@ logical,              intent(in)  :: single_file_out
 logical,              intent(in)  :: has_cycling
 logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
    
-integer :: noutput_members, noutput_files, ndomains
+integer :: noutput_files, ndomains
 character(len=256), allocatable :: file_array_output(:,:)
                 
 ! local variable to shorten the name for function input
@@ -453,12 +471,15 @@ call set_output_file_info(file_info, ens_size, DIAG_FILE_COPIES, &
    .true., .true., do_prior_inflate, do_posterior_inflate, &
    output_members = .true., do_clamping = .true., force_copy = .false. )
 
+! Make sure the size of the variables in the file and the ensemble storage are consistent
+call check_file_info_variable_shape(file_info, state_ens_handle)
+
 end subroutine init_output_file_info
 
 !------------------------------------------------------------------------------
-!> initialize file names and which copies should be read and or written
+!> initialize diagnostic file if needed and output current diagnostics from state ensemble
 
-subroutine init_diag_file_info(diag_file_name, state_ens_handle, ncopies, ens_size, &
+subroutine output_diagnostics(diag_file_name, state_ens_handle, ncopies, ens_size, &
    num_output_state_members, &
    file_info, single_file_out, has_cycling, output_mean, output_sd, output_members, &
    do_prior_inflate, do_posterior_inflate, MEAN_COPY, SD_COPY)
@@ -476,7 +497,6 @@ logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
 integer,              intent(in)  :: MEAN_COPY, SD_COPY
    
 integer :: noutput_members, noutput_files, ndomains
-character(len=256), allocatable :: file_array_output(:,:)
            
 ! Don't need to initialize if already done
 if(.not. file_info%initialized) then
@@ -509,7 +529,7 @@ call compute_copy_mean_sd(state_ens_handle, 1, ens_size, MEAN_COPY, SD_COPY)
 ! Write state diagnostics to the netcdf file
 call write_state(state_ens_handle, file_info)
 
-end subroutine init_diag_file_info
+end subroutine output_diagnostics
 
 !------------------------------------------------------------------------------
 
