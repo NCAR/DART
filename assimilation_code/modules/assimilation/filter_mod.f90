@@ -362,14 +362,12 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
 
-call init_output_file_info('output', state_ens_handle, ens_copies%num_state_ens_copies, &
-   ens_copies%ens_size, &
+call init_output_file_info('output', state_ens_handle, ens_copies, &
    file_info_output, output_state_files, output_state_file_list, single_file_out,      &
    has_cycling, do_prior_inflate, do_posterior_inflate)
 
 ! Initialize and then read the input file
-call read_state_and_inflation(ens_copies%num_state_ens_copies, state_ens_handle, &
-   ens_copies%ens_size, single_file_in, &
+call read_state_and_inflation(ens_copies, state_ens_handle, single_file_in, &
    perturb_from_single_instance, has_cycling, input_state_files, input_state_file_list, &
    prior_inflate, do_prior_inflate, prior_inflate_from_restart,                          &
    post_inflate, do_posterior_inflate, posterior_inflate_from_restart,              &
@@ -476,12 +474,10 @@ AdvanceTime : do
 
    ! Write out forecast diagnostic file(s). 
    if(output_forecast_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('forecast', state_ens_handle, ens_copies%num_state_ens_copies, &
-         ens_copies%ens_size, &
-         ens_copies%num_output_state_members, &
+      call output_diagnostics('forecast', state_ens_handle, ens_copies, & 
          file_info_forecast, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate, &
-         ens_copies%ENS_MEAN_COPY, ens_copies%ENS_SD_COPY)
+         output_members, do_prior_inflate, do_posterior_inflate)
+         
    
    ! Apply prior inflation 
    if(do_ss_inflate(prior_inflate)) &
@@ -495,12 +491,9 @@ AdvanceTime : do
 
    ! Write out preassim diagnostic files if requested.
    if(output_preassim_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('preassim', state_ens_handle, &
-         ens_copies%num_state_ens_copies, ens_copies%ens_size, &
-         ens_copies%num_output_state_members, &
+      call output_diagnostics('preassim', state_ens_handle, ens_copies, &
          file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate, &
-         ens_copies%ENS_MEAN_COPY, ens_copies%ENS_SD_COPY)
+         output_members, do_prior_inflate, do_posterior_inflate)
 
    ! Compute the forward operators and fill data structures
    call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
@@ -515,12 +508,9 @@ AdvanceTime : do
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
    if(output_postassim_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('postassim', state_ens_handle, ens_copies%num_state_ens_copies, &
-         ens_copies%ens_size, &
-         ens_copies%num_output_state_members, &
+      call output_diagnostics('postassim', state_ens_handle, ens_copies, & 
          file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate, &
-         ens_copies%ENS_MEAN_COPY, ens_copies%ENS_SD_COPY)
+         output_members, do_prior_inflate, do_posterior_inflate)
 
    ! This block applies posterior inflation including RTPS if selected
    if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
@@ -553,12 +543,9 @@ AdvanceTime : do
 
    ! Write out analysis diagnostic files if requested. 
    if(output_analysis_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('analysis', state_ens_handle, ens_copies%num_state_ens_copies, &
-         ens_copies%ens_size, &
-         ens_copies%num_output_state_members, &
+      call output_diagnostics('analysis', state_ens_handle, ens_copies, &
          file_info_analysis, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate, &
-         ens_copies%ENS_MEAN_COPY, ens_copies%ENS_SD_COPY)
+         output_members, do_prior_inflate, do_posterior_inflate)
 
 end do AdvanceTime
 

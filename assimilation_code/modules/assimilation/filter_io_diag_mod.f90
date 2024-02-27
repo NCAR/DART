@@ -331,38 +331,44 @@ end subroutine count_state_ens_copies
 !> extra copies are stored as :
 !>    stage_basename.nc (ex. preassim_mean.nc)
 
-subroutine set_filename_info(file_info, stage, num_ens, STAGE_COPIES)
+subroutine set_filename_info(file_info, stage, ens_copies, num_ens)
 
 type(file_info_type), intent(inout) :: file_info
 character(len=*),     intent(in)    :: stage
+type(ens_copies_type), intent(inout) :: ens_copies
 integer,              intent(in)    :: num_ens
-integer,              intent(inout) :: STAGE_COPIES(NUM_SCOPIES)
 
-call set_member_file_metadata(file_info, num_ens, STAGE_COPIES(ENS_START))
+call set_member_file_metadata(file_info, num_ens, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START))
 
 
-STAGE_COPIES(ENS_END) = STAGE_COPIES(ENS_START) + num_ens - 1
+ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_END) = &
+   ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START) + num_ens - 1
 
-call set_file_metadata(file_info, STAGE_COPIES(ENS_MEAN),      stage, 'mean',          'ensemble mean')
-call set_file_metadata(file_info, STAGE_COPIES(ENS_SD),        stage, 'sd',            'ensemble sd')
-call set_file_metadata(file_info, STAGE_COPIES(PRIOR_INF),     stage, 'priorinf_mean', 'prior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(PRIOR_INF_SD),   stage, 'priorinf_sd',   'prior inflation sd')
-call set_file_metadata(file_info, STAGE_COPIES(POST_INF),  stage, 'postinf_mean',  'posterior inflation mean')
-call set_file_metadata(file_info, STAGE_COPIES(POST_INF_SD),    stage, 'postinf_sd',    'posterior inflation sd')
+call set_file_metadata(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_MEAN), &
+   stage, 'mean', 'ensemble mean')
+call set_file_metadata(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_SD), &
+   stage, 'sd', 'ensemble sd')
+call set_file_metadata(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF), &
+   stage, 'priorinf_mean', 'prior inflation mean')
+call set_file_metadata(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF_SD), &
+   stage, 'priorinf_sd', 'prior inflation sd')
+call set_file_metadata(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF), &
+   stage, 'postinf_mean',  'posterior inflation mean')
+call set_file_metadata(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF_SD), &
+   stage, 'postinf_sd',    'posterior inflation sd')
 
 end subroutine set_filename_info
 
 !------------------------------------------------------------------------------
 
-subroutine read_state_and_inflation(ncopies, state_ens_handle, ens_size, single_file_in, &
+subroutine read_state_and_inflation(ens_copies, state_ens_handle, single_file_in, &
    perturb_from_single_instance, has_cycling, input_state_files,   &
    input_state_file_list, prior_inflate, do_prior_inflate, prior_inflate_from_restart, &
    posterior_inflate, do_posterior_inflate, posterior_inflate_from_restart, file_info_input, &
    read_time_from_file, time1)
-                                 
-integer,              intent(in)  :: ncopies
+                                
+type(ens_copies_type),intent(inout)  :: ens_copies 
 type(ensemble_type),  intent(inout) :: state_ens_handle
-integer,              intent(in)  :: ens_size
 type(file_info_type), intent(out) :: file_info_input
 logical,              intent(in)  :: single_file_in
 logical,              intent(in)  :: perturb_from_single_instance
@@ -388,7 +394,7 @@ integer :: ninput_files
 if (single_file_in .or. perturb_from_single_instance)  then
    ninput_files = 1               
 else
-   ninput_files    = ens_size ! number of incomming ensemble members
+   ninput_files    = ens_copies%ens_size ! number of incomming ensemble members
 endif
 
 ! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
@@ -403,20 +409,21 @@ call set_multiple_filename_lists(input_state_files(:), input_state_file_list(:),
    get_num_domains(), ninput_files, 'filter', 'input_state_files', 'input_state_file_list')
 
 ! Allocate space for the filename handles
-call io_filenames_init(file_info_input, ncopies, has_cycling, single_file_in, &
+call io_filenames_init(file_info_input, ens_copies%num_state_ens_copies, has_cycling, single_file_in, &
    file_array_input, 'input')
 
 ! Set filename metadata information
-call set_filename_info(file_info_input, 'input', ens_size, DIAG_FILE_COPIES )
+call set_filename_info(file_info_input, 'input', ens_copies, ens_copies%ens_size)
    
 ! Set file IO information
-call set_input_file_info( file_info_input, ens_size, perturb_from_single_instance, &
+call set_input_file_info( file_info_input, ens_copies%ens_size, perturb_from_single_instance, &
    do_prior_inflate, prior_inflate_from_restart, do_posterior_inflate,             &
-   posterior_inflate_from_restart, DIAG_FILE_COPIES ) 
+   posterior_inflate_from_restart, ens_copies%DIAG_FILE_COPIES ) 
 
 ! Do the reading
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
-                PRIOR_INF_COPY, PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
+                ens_copies%PRIOR_INF_COPY, ens_copies%PRIOR_INF_SD_COPY, &
+                ens_copies%POST_INF_COPY, ens_copies%POST_INF_SD_COPY, &
                 prior_inflate, posterior_inflate,                                   &
                 prior_inflate_from_restart, posterior_inflate_from_restart,         &         
                 perturb_from_single_instance)
@@ -508,14 +515,13 @@ end subroutine set_output_file_info
 !------------------------------------------------------------------------------
 !> initialize file names and which copies should be read and or written
 
-subroutine init_output_file_info(output_file_name, state_ens_handle, ncopies, &
-   ens_size, file_info, output_state_files, output_state_file_list, single_file_out,   &
-    has_cycling, do_prior_inflate, do_posterior_inflate)
+subroutine init_output_file_info(output_file_name, state_ens_handle, ens_copies, &
+   file_info, output_state_files, output_state_file_list, single_file_out,   &
+   has_cycling, do_prior_inflate, do_posterior_inflate)
                                   
 character(len=*),     intent(in)  :: output_file_name                                  
 type(ensemble_type),  intent(in)  :: state_ens_handle
-integer,              intent(in)  :: ncopies
-integer,              intent(in)  :: ens_size
+type(ens_copies_type),intent(inout)  :: ens_copies
 type(file_info_type), intent(out) :: file_info
 character(len=256),   intent(inout)  :: output_state_files(:)
 character(len=256),   intent(in)  :: output_state_file_list(:)
@@ -528,7 +534,7 @@ character(len=256), allocatable :: file_array_output(:,:)
                 
 ! local variable to shorten the name for function input
 ndomains        = get_num_domains()
-noutput_files   = ens_size ! number of incomming ensemble members
+noutput_files   = ens_copies%ens_size ! number of incomming ensemble members
    
 ! Assign the correct number of output files.
 if (single_file_out) noutput_files = 1
@@ -543,14 +549,14 @@ allocate(file_array_output(noutput_files, ndomains))
 file_array_output = RESHAPE(output_state_files, (/noutput_files, ndomains/))
 
 ! Write restart from output_state_file_list if provided
-call io_filenames_init(file_info, ncopies, has_cycling, single_file_out, &
+call io_filenames_init(file_info, ens_copies%num_state_ens_copies, has_cycling, single_file_out, &
    file_array_output, output_file_name, check_output_compatibility = .true.)
 
 !   Output Files
-call set_filename_info(file_info, output_file_name, ens_size, DIAG_FILE_COPIES )
+call set_filename_info(file_info, output_file_name, ens_copies, ens_copies%ens_size)
 
 !   Output Files
-call set_output_file_info(file_info, ens_size, DIAG_FILE_COPIES, &
+call set_output_file_info(file_info, ens_copies%ens_size, ens_copies%DIAG_FILE_COPIES, &
    .true., .true., do_prior_inflate, do_posterior_inflate, &
    output_members = .true., do_clamping = .true., force_copy = .false. )
 
@@ -562,22 +568,18 @@ end subroutine init_output_file_info
 !------------------------------------------------------------------------------
 !> initialize diagnostic file if needed and output current diagnostics from state ensemble
 
-subroutine output_diagnostics(diag_file_name, state_ens_handle, ncopies, ens_size, &
-   num_output_state_members, &
+subroutine output_diagnostics(diag_file_name, state_ens_handle, ens_copies, &
    file_info, single_file_out, has_cycling, output_mean, output_sd, output_members, &
-   do_prior_inflate, do_posterior_inflate, MEAN_COPY, SD_COPY)
+   do_prior_inflate, do_posterior_inflate)
 
 character(len=*),     intent(in)  :: diag_file_name                                  
 type(ensemble_type),  intent(inout) :: state_ens_handle
-integer,              intent(in)  :: ncopies
-integer,              intent(in)  :: ens_size
-integer,              intent(in)  :: num_output_state_members
+type(ens_copies_type), intent(inout) :: ens_copies
 type(file_info_type), intent(inout) :: file_info
 logical,              intent(in)  :: single_file_out
 logical,              intent(in)  :: has_cycling
 logical,              intent(in)  :: output_mean, output_sd, output_members
 logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
-integer,              intent(in)  :: MEAN_COPY, SD_COPY
    
 integer :: noutput_members, noutput_files, ndomains
            
@@ -585,29 +587,30 @@ integer :: noutput_members, noutput_files, ndomains
 if(.not. file_info%initialized) then
      
    ! local variable to shorten the name for function input
-   noutput_members = num_output_state_members 
+   noutput_members = ens_copies%num_output_state_members 
    ndomains        = get_num_domains()
-   noutput_files   = ens_size ! number of incomming ensemble members
+   noutput_files   = ens_copies%ens_size ! number of incomming ensemble members
    
    ! Assign the correct number of output files.
    if (single_file_out) noutput_files = 1
    
    ! Output Files (we construct the filenames)
-   call io_filenames_init(file_info, ncopies, has_cycling, single_file_out, &
+   call io_filenames_init(file_info, ens_copies%num_state_ens_copies, has_cycling, single_file_out, &
       root_name = diag_file_name)
 
    !   Output Files
-   call set_filename_info(file_info, diag_file_name,  noutput_members,  DIAG_FILE_COPIES )
+   call set_filename_info(file_info, diag_file_name,  ens_copies, noutput_members)
 
    !   Output Files
-   call set_output_file_info(file_info, noutput_members, DIAG_FILE_COPIES,  &
+   call set_output_file_info(file_info, noutput_members, ens_copies%DIAG_FILE_COPIES,  &
       output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
       do_clamping  = .false., force_copy = .true.)
 
 endif
 
 ! Compute the ensemble mean and standard deviation; for efficiency could make this optional
-call compute_copy_mean_sd(state_ens_handle, 1, ens_size, MEAN_COPY, SD_COPY)
+call compute_copy_mean_sd(state_ens_handle, 1, ens_copies%ens_size, &
+   ens_copies%ENS_MEAN_COPY, ens_copies%ENS_SD_COPY)
 
 ! Write state diagnostics to the netcdf file
 call write_state(state_ens_handle, file_info)
