@@ -34,6 +34,11 @@ use state_structure_mod,   only : get_num_domains
 implicit none
 private
 
+public ::  create_ensemble_from_single_file, ens_copies_type, &
+   count_state_ens_copies, read_state_and_inflation, output_diagnostics, init_output_file_info
+
+!------------------------------------------------------------------------------
+
 ! Ensemble copy numbers; Initialized to not be output
 integer :: ENS_START_COPY         = COPY_NOT_PRESENT
 integer :: ENS_END_COPY           = COPY_NOT_PRESENT
@@ -58,15 +63,43 @@ integer, parameter :: POST_INF_SD  = 8
 ! Data structure for different diag and output stages
 integer, parameter :: NUM_SCOPIES = 8
 integer :: DIAG_FILE_COPIES( NUM_SCOPIES )     = COPY_NOT_PRESENT
+
+type ens_copies_type
+   integer           :: ens_size 
+   integer           :: num_state_ens_copies
+   integer           :: num_extras
+   integer           :: num_output_state_members
+
+   logical           :: has_cycling
+
+   ! A list of all possible copies supported here 
+   integer           :: ENS_START_COPY         = COPY_NOT_PRESENT
+   integer           :: ENS_END_COPY           = COPY_NOT_PRESENT
+   integer           :: ENS_MEAN_COPY          = COPY_NOT_PRESENT
+   integer           :: ENS_SD_COPY            = COPY_NOT_PRESENT
+   integer           :: PRIOR_INF_COPY         = COPY_NOT_PRESENT
+   integer           :: PRIOR_INF_SD_COPY      = COPY_NOT_PRESENT
+   integer           :: POST_INF_COPY          = COPY_NOT_PRESENT
+   integer           :: POST_INF_SD_COPY       = COPY_NOT_PRESENT
+   integer           :: RTPS_PRIOR_SPREAD_COPY = COPY_NOT_PRESENT
+
+   ! Pointers to where different copies are stored in array
+   integer            :: ENS_START    = 1
+   integer            :: ENS_END      = 2
+   integer            :: ENS_MEAN     = 3
+   integer            :: ENS_SD       = 4
+   integer            :: PRIOR_INF    = 5
+   integer            :: PRIOR_INF_SD = 6
+   integer            :: POST_INF     = 7 
+   integer            :: POST_INF_SD  = 8 
+
+   ! Data structure for different diag and output stages
+   integer            :: NUM_SCOPIES = 8
+   integer            :: DIAG_FILE_COPIES(NUM_SCOPIES)     = COPY_NOT_PRESENT
+end type ens_copies_type
                                   
 !------------------------------------------------------------------------------
 
-public ::  create_ensemble_from_single_file, &
-   count_state_ens_copies, read_state_and_inflation, output_diagnostics, init_output_file_info, &
-   ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, &
-   PRIOR_INF_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, RTPS_PRIOR_SPREAD_COPY
-
-!------------------------------------------------------------------------------
 contains
 
 !------------------------------------------------------------------------------
@@ -173,19 +206,29 @@ end subroutine perturb_copies_task_bitwise
 ! Assign the indices to the storage in the ensemble manager
 ! Initialize indices for where diagnostic copies are found
 
-subroutine count_state_ens_copies(ens_size, output_mean, output_sd,          &
-   do_prior_inflate, do_posterior_inflate, prior_inflate, posterior_inflate, &
+subroutine count_state_ens_copies(ens_copies, ens_size, output_mean, output_sd,          &
+   do_prior_inflate, do_posterior_inflate, posterior_inflate, num_output_state_members,  &
    num_copies, num_extras)
 
+type(ens_copies_type),       intent(inout) :: ens_copies
 integer,                     intent(in)  :: ens_size
 logical,                     intent(in)  :: output_mean, output_sd
 logical,                     intent(in)  :: do_prior_inflate, do_posterior_inflate
-type(adaptive_inflate_type), intent(in)  :: prior_inflate, posterior_inflate
+type(adaptive_inflate_type), intent(in)  :: posterior_inflate
+integer,                     intent(in) :: num_output_state_members
 integer,                     intent(out) :: num_copies, num_extras
+
+! Initialize the fixed size information
+ens_copies%ens_size = ens_size
+
+ens_copies%num_output_state_members = min(num_output_state_members, ens_size)
 
 ! First ens_size entries are the actual ensemble members
 ENS_START_COPY = 1
 ENS_END_COPY   = ens_size
+
+ens_copies%ENS_START_COPY = 1
+ens_copies%ENS_END_COPY    = ens_size
 
 ! Filter Extra Copies For Assimilation
 ENS_MEAN_COPY     = ens_size + 1
@@ -196,15 +239,26 @@ POST_INF_COPY     = ens_size + 5
 POST_INF_SD_COPY  = ens_size + 6
 num_copies = ens_size + 6
 
+ens_copies%ENS_MEAN_COPY        = ens_size + 1
+ens_copies%ENS_SD_COPY          = ens_size + 2
+ens_copies%PRIOR_INF_COPY       = ens_size + 3
+ens_copies%PRIOR_INF_SD_COPY    = ens_size + 4
+ens_copies%POST_INF_COPY        = ens_size + 5
+ens_copies%POST_INF_SD_COPY     = ens_size + 6
+ens_copies%num_state_ens_copies = ens_size + 6
+
 ! If Whitaker/Hamill (2012) relaxation-to-prior-spread (RTPS) inflation
 ! then we need an extra copy to hold (save) the prior ensemble spread
 if ( do_rtps_inflate(posterior_inflate) ) then
    RTPS_PRIOR_SPREAD_COPY = ens_size + 7
    num_copies = ens_size + 7
+   ens_copies%RTPS_PRIOR_SPREAD_COPY = ens_size + 7
+   ens_copies%num_state_ens_copies = ens_size + 7
 endif                  
    
 ! Copies in excess of ensemble
 num_extras = num_copies - ens_size
+ens_copies%num_extras = num_copies - ens_size
 
 ! Specifying copies to be output for state diagnostics files
 DIAG_FILE_COPIES(ENS_START) = ENS_START_COPY
@@ -233,6 +287,35 @@ if(do_posterior_inflate) then
 else
    DIAG_FILE_COPIES(POST_INF) = COPY_NOT_PRESENT
    DIAG_FILE_COPIES(POST_INF_SD) = COPY_NOT_PRESENT
+endif
+
+! Specifying copies to be output for state diagnostics files
+ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START) = ens_copies%ENS_START_COPY
+ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_END)   = ens_copies%ENS_END_COPY
+if(output_mean) then
+   ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_MEAN) = ens_copies%ENS_MEAN_COPY
+else
+   ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_MEAN) = COPY_NOT_PRESENT
+endif
+if(output_sd) then
+   ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_SD) = ens_copies%ENS_SD_COPY
+else
+   ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_SD) = COPY_NOT_PRESENT
+endif
+if(do_prior_inflate) then
+   ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF)    = ens_copies%PRIOR_INF_COPY
+   ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF_SD) = ens_copies%PRIOR_INF_SD_COPY
+else
+   ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF)    = COPY_NOT_PRESENT
+   ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF_SD) = COPY_NOT_PRESENT
+endif
+
+if(do_posterior_inflate) then
+   ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF)    = ens_copies%POST_INF_COPY
+   ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF_SD) = ens_copies%POST_INF_SD_COPY
+else
+   ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF)    = COPY_NOT_PRESENT
+   ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF_SD) = COPY_NOT_PRESENT
 endif
 
 end subroutine count_state_ens_copies
