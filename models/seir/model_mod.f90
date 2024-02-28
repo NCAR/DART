@@ -421,7 +421,7 @@ call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
 
-call nc_add_global_attribute(ncid, "model", "template")
+call nc_add_global_attribute(ncid, "model", "seir")
 
 call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)
