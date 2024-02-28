@@ -248,10 +248,7 @@ integer,    allocatable :: keys(:)
 integer(i8)             :: model_size
 integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
 integer                 :: last_key_used, key_bounds(2)
-integer                 :: num_state_ens_copies
 logical                 :: read_time_from_file
-
-integer :: num_extras ! the extra ensemble copies
 
 type(file_info_type) :: file_info_read
 type(file_info_type) :: file_info_forecast
@@ -324,7 +321,7 @@ if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 ! Count and set up State copy numbers
 call count_state_ens_copies(ens_copies, ens_size, output_mean, output_sd, do_prior_inflate, &
-   do_posterior_inflate, post_inflate, num_output_state_members, num_state_ens_copies, num_extras)
+   do_posterior_inflate, post_inflate, num_output_state_members)
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
