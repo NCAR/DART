@@ -416,9 +416,9 @@ call io_filenames_init(file_info_input, ens_copies%num_state_ens_copies, has_cyc
 call set_filename_info(file_info_input, 'input', ens_copies, ens_copies%ens_size)
    
 ! Set file IO information
-call set_input_file_info( file_info_input, ens_copies%ens_size, perturb_from_single_instance, &
+call set_input_file_info( file_info_input, ens_copies, perturb_from_single_instance, &
    do_prior_inflate, prior_inflate_from_restart, do_posterior_inflate,             &
-   posterior_inflate_from_restart, ens_copies%DIAG_FILE_COPIES ) 
+   posterior_inflate_from_restart)
 
 ! Do the reading
 call read_state(state_ens_handle, file_info_input, read_time_from_file, time1,      &
@@ -432,36 +432,40 @@ end subroutine read_state_and_inflation
 
 !------------------------------------------------------------------------------
 
-subroutine set_input_file_info( file_info, num_ens, perturb_from_single_instance, &
+subroutine set_input_file_info( file_info, ens_copies, perturb_from_single_instance, &
    do_prior_inflate, prior_inflate_from_restart, &
-   do_posterior_inflate, posterior_inflate_from_restart, STAGE_COPIES )
+   do_posterior_inflate, posterior_inflate_from_restart)
                                   
 type(file_info_type), intent(inout) :: file_info
-integer,              intent(in)    :: num_ens
+type(ens_copies_type), intent(inout) :: ens_copies
 logical,              intent(in)    :: perturb_from_single_instance
 logical,              intent(in)    :: do_prior_inflate, prior_inflate_from_restart
 logical,              intent(in)    :: do_posterior_inflate
 logical,              intent(in)    ::  posterior_inflate_from_restart
-integer,              intent(in)    :: STAGE_COPIES(NUM_SCOPIES)                              
      
 if ( perturb_from_single_instance ) then
    ! Only reading a single ensemble member, the first one                             
-   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), READ_COPY)                       
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START), READ_COPY)                       
 else                              
    ! Will read all the ensemble members
-   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), STAGE_COPIES(ENS_START)+num_ens-1, READ_COPY)
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START), &
+      ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START) + ens_copies%ens_size - 1, READ_COPY)
 endif
 
 ! Reading prior inflation mean and sd from restart                                  
 if ( do_prior_inflate .and. prior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF), &
+       READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF_SD), &
+      READ_COPY, inherit_units=.false.)
 endif                             
 
 ! Reading posterior inflation mean and sd from restart                                  
 if ( do_posterior_inflate .and. posterior_inflate_from_restart) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF), READ_COPY, inherit_units=.false.)
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD), READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF), &
+      READ_COPY, inherit_units=.false.)
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF_SD), &
+      READ_COPY, inherit_units=.false.)
 endif
 
 end subroutine set_input_file_info
