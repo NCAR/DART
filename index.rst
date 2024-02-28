@@ -480,6 +480,7 @@ References
    models/POP/dart_pop_mod
    models/ROMS/readme
    models/rose/readme
+   models/seir/readme
    models/simple_advection/readme
    models/sqg/readme
    models/template/new_model
