@@ -227,14 +227,9 @@ call init_random_seq(random_seq, my_task_id()+1)
 ! the model state.  which variables we have are determined
 ! by looking at the global index number into the state vector.
 
-! how many grid points does my task have to work on?
-! and what are their indices into the full state vector?
 num_my_grid_points = get_my_num_vars(state_ens_handle)
-allocate(my_grid_points(num_my_grid_points))
-call get_my_vars(state_ens_handle, my_grid_points)
 
 do i=1,num_my_grid_points
-    call get_state_meta_data(my_grid_points(i), location, var_type)
     
     ! Lognormal Distribution
     do j= 1, ens_size
@@ -244,7 +239,6 @@ do i=1,num_my_grid_points
     end do
 end do
 
-deallocate(my_grid_points)
 
 end subroutine pert_model_copies
 
