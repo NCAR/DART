@@ -61,11 +61,14 @@ public :: get_unit, &
           scalar, &
           string_to_real, &
           string_to_integer, &
+          integer_to_string, &
           string_to_logical, &
           find_enclosing_indices, &
           find_first_occurrence, &
           array_dump, &
           dump_unit_attributes, &
+          zero_fill, &
+          pad_left, &
           ! lowest level routines follow.
           ! these need to be cautious about logging, error handlers, etc
           initialize_utilities, &
@@ -2054,6 +2057,21 @@ if (io /= 0) string_to_integer = MISSING_I
 
 end function string_to_integer
 
+!-----------------------------------------------------------------------
+!>
+
+function integer_to_string(input_integer)
+
+integer, intent(in) :: input_integer
+character(len=32) :: integer_to_string
+integer :: io
+
+! if the integer converts - great, if not, it's the
+! string equivalent of MISSING_I
+write(integer_to_string,'(I0)',iostat=io) input_integer
+if (io /= 0)  integer_to_string = '-888888'
+
+end function integer_to_string
 
 !-----------------------------------------------------------------------
 !>  if matching true or false, uppercase the string so any
@@ -2100,7 +2118,40 @@ end select
 
 end function string_to_logical
 
+!-----------------------------------------------------------------------
+!>
 
+function zero_fill(inputstring, desired_length)
+
+character(len=*), intent(in) :: inputstring
+integer, intent(in) :: desired_length
+character(len=max(len_trim(inputstring), desired_length)) :: zero_fill
+
+zero_fill = pad_left(inputstring, desired_length, '0')  
+
+end function zero_fill
+
+!-----------------------------------------------------------------------
+!>
+
+function pad_left(inputstring, desired_length, pad_with)
+
+character(len=*), intent(in) :: inputstring
+integer, intent(in) :: desired_length
+character(len=1), intent(in) :: pad_with
+character(len=max(len_trim(inputstring), desired_length)) :: pad_left
+integer :: i
+
+if (len_trim(inputstring) < desired_length) then
+   do i = 1, desired_length - len_trim(inputstring)
+      pad_left(i:i) = pad_with
+   end do
+   pad_left(desired_length - len_trim(inputstring) + 1 : len(pad_left)) = inputstring
+else
+   pad_left = inputstring
+end if      
+
+end function pad_left
 
 !-----------------------------------------------------------------------
 !> dump the contents of a 1d array with a max of N items per line.
