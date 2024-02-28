@@ -214,9 +214,6 @@ real(r8),  intent(in) :: pert_amp
 logical,  intent(out) :: interf_provided
 
 integer                  :: i,j, num_my_grid_points
-integer(i8), allocatable :: my_grid_points(:)
-type(location_type)      :: location
-integer                  :: var_type
 real(r8)                 :: rng
 
 interf_provided = .true.
