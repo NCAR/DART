@@ -107,11 +107,6 @@ contains
 
 !------------------------------------------------------------------
 !
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
-! Can be a NULL INTERFACE for the simplest models.
 
 subroutine static_init_model()
 
