@@ -353,7 +353,7 @@ end subroutine model_interpolate
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-subroutine get_state_meta_data(index_in, location, qty_type)
+subroutine get_state_meta_data(index_in, location, qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
