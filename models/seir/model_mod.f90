@@ -124,9 +124,7 @@ allocate(state_loc(model_size))
 ! and so I'm placing all 7 variables at the same 
 ! virtual point in space.
 x_loc = 0.5_r8  
-do i = 1, model_size
-   state_loc(i) =  set_location(x_loc)
-end do
+state_loc =  set_location(x_loc)
 
 ! This time is both the minimum time you can ask the model to advance
 ! and it sets the assimilation window. 
