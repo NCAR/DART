@@ -472,13 +472,13 @@ end subroutine set_input_file_info
 
 !------------------------------------------------------------------------------
    
-subroutine set_output_file_info( file_info, num_ens, STAGE_COPIES, &
+subroutine set_output_file_info( file_info, ens_copies, num_ens, &
    output_mean, output_sd, do_prior_inflate, do_posterior_inflate, &
    output_members, do_clamping, force_copy)
 
 type(file_info_type), intent(inout) :: file_info
+type(ens_copies_type), intent(inout) :: ens_copies
 integer,              intent(in)    :: num_ens
-integer,              intent(in)    :: STAGE_COPIES(NUM_SCOPIES)
 logical,              intent(in)    :: output_mean, output_sd
 logical,              intent(in)    :: do_prior_inflate, do_posterior_inflate
 logical,              intent(in)    :: output_members
@@ -487,30 +487,30 @@ logical,              intent(in)    :: force_copy
 
 ! Output file ensemble members                            
 if ( num_ens > 0 .and. output_members ) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(ENS_START), &
-      STAGE_COPIES(ENS_START)+num_ens-1, WRITE_COPY, num_ens, &
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START), &
+      ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START)+num_ens-1, WRITE_COPY, num_ens, &
       do_clamping, force_copy)
 endif                      
 
 ! Output file copies for the mean and sd if requested                           
-if(output_mean) call set_io_copy_flag(file_info, STAGE_COPIES(ENS_MEAN), WRITE_COPY, &
-                   inherit_units=.true., clamp_vars=do_clamping, force_copy_back=force_copy)
-if(output_sd) call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD), WRITE_COPY, &
-                   inherit_units=.true., force_copy_back=force_copy)
+if(output_mean) call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_MEAN), &
+   WRITE_COPY, inherit_units=.true., clamp_vars=do_clamping, force_copy_back=force_copy)
+if(output_sd) call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_SD), &
+   WRITE_COPY, inherit_units=.true., force_copy_back=force_copy)
 
 ! Output file copies for the prior inflation and sd
 if(do_prior_inflate) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF), &
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF), &
       WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIOR_INF_SD), &
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%PRIOR_INF_SD), &
       WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
 endif
 
 ! Output copies for the posterior inflation and sd
 if (do_posterior_inflate) then
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF), &
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF), &
       WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
-   call set_io_copy_flag(file_info, STAGE_COPIES(POST_INF_SD), &
+   call set_io_copy_flag(file_info, ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF_SD), &
       WRITE_COPY, inherit_units=.false., force_copy_back=force_copy)
 endif
 
@@ -560,7 +560,7 @@ call io_filenames_init(file_info, ens_copies%num_state_ens_copies, has_cycling, 
 call set_filename_info(file_info, output_file_name, ens_copies, ens_copies%ens_size)
 
 !   Output Files
-call set_output_file_info(file_info, ens_copies%ens_size, ens_copies%DIAG_FILE_COPIES, &
+call set_output_file_info(file_info, ens_copies, ens_copies%ens_size, &
    .true., .true., do_prior_inflate, do_posterior_inflate, &
    output_members = .true., do_clamping = .true., force_copy = .false. )
 
@@ -606,7 +606,7 @@ if(.not. file_info%initialized) then
    call set_filename_info(file_info, diag_file_name,  ens_copies, noutput_members)
 
    !   Output Files
-   call set_output_file_info(file_info, noutput_members, ens_copies%DIAG_FILE_COPIES,  &
+   call set_output_file_info(file_info, ens_copies, noutput_members, &
       output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
       do_clamping  = .false., force_copy = .true.)
 
