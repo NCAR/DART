@@ -129,10 +129,9 @@ do i = 1, model_size
 end do
 
 ! This time is both the minimum time you can ask the model to advance
-! (for models that can be advanced by filter) and it sets the assimilation
-! window.  All observations within +/- 1/2 this interval from the current
-! model time will be assimilated. If this isn't settable at runtime 
-! feel free to hardcode it and not add it to a namelist.
+! and it sets the assimilation window. 
+! All observations within +/- 1/2 this interval from the current
+! model time will be assimilated.
 time_step = set_time(time_step_seconds, time_step_days)
 
 ! Tell the DART I/O routines how large the model data is so they
