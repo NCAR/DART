@@ -62,8 +62,7 @@ public :: pert_model_copies,      &
           read_model_time, &
           write_model_time
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "new_model.f90"
+character(len=256), parameter :: source   = "seir/model_mod.f90"
 
 type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
 type(random_seq_type)            :: random_seq
