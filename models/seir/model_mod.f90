@@ -363,7 +363,7 @@ integer,             intent(out), optional :: qty_type
 
 ! these should be set to the actual location and state quantity
 location = state_loc(index_in)
-if (present(qty_type)) qty_type = QTY_STATE_VARIABLE 
+if (present(qty)) qty = QTY_STATE_VARIABLE 
 
 end subroutine get_state_meta_data
 
