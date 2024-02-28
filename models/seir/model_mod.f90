@@ -64,7 +64,7 @@ public :: pert_model_copies,      &
 
 character(len=256), parameter :: source   = "seir/model_mod.f90"
 
-type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
+type(location_type) :: state_loc ! state location, compute once and store for speed
 type(random_seq_type)            :: random_seq
 type(time_type)                  :: time_step
 
