@@ -98,6 +98,12 @@ Public interfaces
 \                       set_tasknum
 \                       set_output
 \                       do_output
+\                       string_to_real
+\                       string_to_integer
+\                       integer_to_string
+\                       string_to_logical
+\                       pad_left
+\                       zero_fill
 \                       E_DBG, DEBUG
 \                       E_MSG, MESSAGE
 \                       E_WARN, WARNING
@@ -581,6 +587,74 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
    ======= ======================================
    ``var`` True if this task should write output.
    ======= ======================================
+
+| 
+
+.. container:: routine
+
+   *resulting_string = integer_to_string(input_integer)*
+   
+   .. code-block::
+
+      integer, intent(in) :: input_integer
+      character(len=32) :: resulting_string
+
+.. container:: indent1
+
+   Takes an ``input_integer`` and returns a string analog of said integer.
+
+   ================= ===========
+   ``input_integer`` any integer
+   ================= ===========
+
+| 
+
+.. container:: routine
+
+   *resulting_string = pad_left(inputstring, desired_length, pad_with)*
+   
+   .. code-block::
+
+      character(len=*), intent(in) :: inputstring
+      integer, intent(in) :: desired_length
+      character(len=1), intent(in) :: pad_with
+      character(len=max(len_trim(inputstring), desired_length)) :: pad_left
+
+.. container:: indent1
+
+   Takes an inputstring and left-pads it with a specified character, ``pad_with``, to return
+   a string of ``desired_length``. If the length of ``inputstring`` is equal to longer than
+   ``desired_length``, ``inputstring`` is returned.
+
+   ================== ================================================
+   ``inputstring``    any character string
+   ``desired_length`` integer specifying length of returned string
+   ``pad_with``       single character used to pad the returned string
+   ================== ================================================
+
+| 
+
+.. container:: routine
+
+   *resulting_string = zero_fill(inputstring, desired_length)*
+
+   .. code-block::
+      
+      character(len=*), intent(in) :: inputstring
+      integer, intent(in) :: desired_length
+      character(len=max(len_trim(inputstring), desired_length)) :: resulting_string
+
+.. container:: indent1
+
+   Takes an inputstring and left-pads it with zeros to return a string of ``desired_length``.
+   If the length of ``inputstring`` is equal to longer than ``desired_length``,
+   ``inputstring`` is returned.
+
+
+   ================== ============================================
+   ``inputstring``    any character string
+   ``desired_length`` integer specifying length of returned string
+   ================== ============================================
 
 | 
 
