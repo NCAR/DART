@@ -48,7 +48,7 @@ Real radar observations
 Once you have ensured that your data are quality controlled, use the 
 `Observation Processing And Wind Synthesis (OPAWS) <http://code.google.com/p/opaws/>`__
 utility convert your data to `obs_seq` format. The OPAWS utility reads specific
-types of files as input, such as DORADE sweep files and NCAR EOL Foray data.
+types of files as input, such as DORADE sweep files and NSF NCAR EOL Foray data.
 
 OPAWS analyzes and grids data in either:
 

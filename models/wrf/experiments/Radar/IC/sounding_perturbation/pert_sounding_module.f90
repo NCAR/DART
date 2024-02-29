@@ -18,7 +18,7 @@ module pert_sounding_mod
 implicit none
 
 real, parameter  :: PI = 3.1415926535897932346
-real             :: iseed1, iseed2
+integer          :: iseed1, iseed2
 
 
 contains

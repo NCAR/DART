@@ -111,7 +111,7 @@ would be *lon1 = 300, lon2 = 40, lat1 = -60, lat2 = -30*.
 
 The ``DART/observations/obs_converters/AIRS/shell_scripts`` directory includes scripts
 (``download_L2.sh`` and ``oneday_down.sh``) that make use of the fact that the AIRS data 
-is also archived on the NCAR HPSS (tape library) in daily tar files. 
+is also archived on the NSF NCAR HPSS (tape library) in daily tar files. 
 ``oneday_down.sh`` has options to download a day of granule files, convert them, merge them 
 into daily files, and remove the original data files and repeat the process for any 
 specified time period.
