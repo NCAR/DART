@@ -17,11 +17,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'DART'
-copyright = '2023, University Corporation for Atmospheric Research'
+copyright = '2024, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '11.0.3'
+release = '11.0.4'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------

@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 29 2024 :: Add helper functions to utilities_mod. Tag v11.0.4**
+
+- Adds three functions to ``utilities_mod``: ``zero_fill``, ``pad_left`` and ``integer_to_string``.
+
 **February 13 2024 :: Fortran Standards. Tag v11.0.3**
 
 - Replace f2kcli with Fortran intrinsics for command line arguments.
