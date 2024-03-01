@@ -1,12 +1,10 @@
-.. role:: raw-math(raw)
-    :format: latex html
 SEIR
 ====
 
 Overview
 --------
 
-The extended SEIR Model with Vaccination was first proposed by Ghostine et al. (2021)
+The extended SEIR Model with Vaccination was first proposed by Ghostine et al. (2021) [1]_
 to simulate the novel coronavirus disease (COVID-19) spread. The model considers 7
 stages of infection:
 
@@ -20,19 +18,20 @@ stages of infection:
 
 There are several parameters that can be changed to study different cases and regions:
 
-  - :raw-math:`$\theta$`: New births and new residents per unit of time,
-  - :raw-math:`$\beta$`: Transmission rate divided by the population size,
-  - :raw-math:`$\alpha$`: Vaccination rate,
-  - :raw-math:`$\mu$`: Natural death rate,
-  - :raw-math:`$\gamma$`: Average latent time,
-  - :raw-math:`$\delta$`: Average quarantine time,
-  - :raw-math:`$\kappa$`: Mortality rate, 
-  - :raw-math:`$\lambda$`: Average days until recovery, 
-  - :raw-math:`$\rho$`: Average days until death,
-  - :raw-math:`$\sigma$`: Vaccine in-efficacy (:raw-math:`$0 \leq \sigma \leq 1$`).
+  - :math:`\theta`: New births and new residents per unit of time,
+  - :math:`\beta`: Transmission rate divided by the population size,
+  - :math:`\alpha`: Vaccination rate,
+  - :math:`\mu`: Natural death rate,
+  - :math:`\gamma`: Average latent time,
+  - :math:`\delta`: Average quarantine time,
+  - :math:`\kappa`: Mortality rate, 
+  - :math:`\lambda`: Average days until recovery, 
+  - :math:`\rho`: Average days until death,
+  - :math:`\sigma`: Vaccine in-efficacy (:math:`0 \leq \sigma \leq 1`).
 
 The SEIR model uses identity observations. Typical observations that can be assimilated
-are: 
+are:
+ 
   *Recovered*, *Death* and *Vaccinated*. 
 
 
@@ -93,16 +92,16 @@ Description of each namelist entry
 |                   |          | an ensemble using a lognormal pdf.        |  
 +-------------------+----------+-------------------------------------------+
 | t_incub           | real(r8) | Incubation period                         |
-|                   |          | :raw-math:`$\equiv 1/\gamma$`.            |  
+|                   |          | :math:`\equiv 1/\gamma`.                  |  
 +-------------------+----------+-------------------------------------------+
 | t_infec           | real(r8) | Infection time                            |   
-|                   |          | :raw-math:`$\equiv 1/\delta$`.            | 
+|                   |          | :math:`\equiv 1/\delta`.                  | 
 +-------------------+----------+-------------------------------------------+  
 | t_recov           | real(r8) | Recovery period                           |   
-|                   |          | :raw-math:`$\equiv 1/\lambda$`.           | 
+|                   |          | :math:`\equiv 1/\lambda`.                 | 
 +-------------------+----------+-------------------------------------------+
 | t_death           | real(r8) | Time until death                          |   
-|                   |          | :raw-math:`$\equiv 1/\rho$`.              | 
+|                   |          | :math:`\equiv 1/\rho`.                    | 
 +-------------------+----------+-------------------------------------------+  
 | alpha             | real(r8) | Vaccination rate. If study period         |
 |                   |          | starts before vaccination is              | 
@@ -114,7 +113,7 @@ Description of each namelist entry
 +-------------------+----------+-------------------------------------------+ 
 | sigma             | real(r8) | Vaccination inefficacy (e.g., if the      |
 |                   |          | vaccine is 95% effective, then            |
-|                   |          | :raw-math:`$\sigma = 1-0.95 = 0.05$`).    |   
+|                   |          | :math:`\sigma = 1-0.95 = 0.05`).          |   
 +-------------------+----------+-------------------------------------------+
 | beta              | real(r8) | Transmission rate divided by population   |
 |                   |          | size.                                     |

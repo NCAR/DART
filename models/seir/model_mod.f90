@@ -62,10 +62,9 @@ public :: pert_model_copies,      &
           read_model_time, &
           write_model_time
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "new_model.f90"
+character(len=256), parameter :: source   = "seir/model_mod.f90"
 
-type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
+type(location_type) :: state_loc ! state location, compute once and store for speed
 type(random_seq_type)            :: random_seq
 type(time_type)                  :: time_step
 
@@ -108,11 +107,6 @@ contains
 
 !------------------------------------------------------------------
 !
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
-! Can be a NULL INTERFACE for the simplest models.
 
 subroutine static_init_model()
 
@@ -123,22 +117,19 @@ integer  :: i, dom_id
 call initialize()
 
 ! Create storage for locations
-allocate(state_loc(model_size))
+!allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 ! The SEIR variables have no physical location, 
 ! and so I'm placing all 7 variables at the same 
 ! virtual point in space.
 x_loc = 0.5_r8  
-do i = 1, model_size
-   state_loc(i) =  set_location(x_loc)
-end do
+state_loc =  set_location(x_loc)
 
 ! This time is both the minimum time you can ask the model to advance
-! (for models that can be advanced by filter) and it sets the assimilation
-! window.  All observations within +/- 1/2 this interval from the current
-! model time will be assimilated. If this isn't settable at runtime 
-! feel free to hardcode it and not add it to a namelist.
+! and it sets the assimilation window. 
+! All observations within +/- 1/2 this interval from the current
+! model time will be assimilated.
 time_step = set_time(time_step_seconds, time_step_days)
 
 ! Tell the DART I/O routines how large the model data is so they
@@ -221,9 +212,6 @@ real(r8),  intent(in) :: pert_amp
 logical,  intent(out) :: interf_provided
 
 integer                  :: i,j, num_my_grid_points
-integer(i8), allocatable :: my_grid_points(:)
-type(location_type)      :: location
-integer                  :: var_type
 real(r8)                 :: rng
 
 interf_provided = .true.
@@ -234,14 +222,9 @@ call init_random_seq(random_seq, my_task_id()+1)
 ! the model state.  which variables we have are determined
 ! by looking at the global index number into the state vector.
 
-! how many grid points does my task have to work on?
-! and what are their indices into the full state vector?
 num_my_grid_points = get_my_num_vars(state_ens_handle)
-allocate(my_grid_points(num_my_grid_points))
-call get_my_vars(state_ens_handle, my_grid_points)
 
 do i=1,num_my_grid_points
-    call get_state_meta_data(my_grid_points(i), location, var_type)
     
     ! Lognormal Distribution
     do j= 1, ens_size
@@ -251,7 +234,6 @@ do i=1,num_my_grid_points
     end do
 end do
 
-deallocate(my_grid_points)
 
 end subroutine pert_model_copies
 
@@ -371,15 +353,15 @@ end subroutine model_interpolate
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-subroutine get_state_meta_data(index_in, location, qty_type)
+subroutine get_state_meta_data(index_in, location, qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: qty_type
+integer,             intent(out), optional :: qty
 
 ! these should be set to the actual location and state quantity
-location = state_loc(index_in)
-if (present(qty_type)) qty_type = QTY_STATE_VARIABLE 
+location = state_loc !(index_in)
+if (present(qty)) qty = QTY_STATE_VARIABLE 
 
 end subroutine get_state_meta_data
 
@@ -437,11 +419,11 @@ call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
 
-call nc_add_global_attribute(ncid, "model", "template")
+call nc_add_global_attribute(ncid, "model", "seir")
 
-call nc_write_location_atts(ncid, msize)
+!call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)
-call nc_write_location(ncid, state_loc, msize)
+!call nc_write_location(ncid, state_loc, msize)
 
 ! Flush the buffer and leave netCDF file open
 call nc_synchronize_file(ncid)
