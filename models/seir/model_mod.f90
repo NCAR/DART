@@ -117,7 +117,7 @@ integer  :: i, dom_id
 call initialize()
 
 ! Create storage for locations
-allocate(state_loc(model_size))
+!allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 ! The SEIR variables have no physical location, 
@@ -357,10 +357,10 @@ subroutine get_state_meta_data(index_in, location, qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: qty_type
+integer,             intent(out), optional :: qty
 
 ! these should be set to the actual location and state quantity
-location = state_loc(index_in)
+location = state_loc !(index_in)
 if (present(qty)) qty = QTY_STATE_VARIABLE 
 
 end subroutine get_state_meta_data
@@ -421,9 +421,9 @@ call nc_add_global_attribute(ncid, "model_source", source )
 
 call nc_add_global_attribute(ncid, "model", "seir")
 
-call nc_write_location_atts(ncid, msize)
+!call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)
-call nc_write_location(ncid, state_loc, msize)
+!call nc_write_location(ncid, state_loc, msize)
 
 ! Flush the buffer and leave netCDF file open
 call nc_synchronize_file(ncid)
