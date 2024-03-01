@@ -10,11 +10,18 @@ DART RTTOV observation module, including the observation operators for the two p
 RTTOV-observation types -- visible/infrared radiances and microwave 
 radiances/brightness temperatures.
 
-The obs_def_rttov_mod.f90 module acts as a pass-through for RTTOV version 12.3. For more information,
-see `the RTTOV site <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
+DART can be built with either RTTOV v12 *or* v13. Edit :ref:`&preprocess_nml <preprocess>` to select
+the appropriate obs_def:
 
-For RTTOV v13 use the obs_def_rttov13_mod.f90 module contributed by Lukas Kugler
-of the University of Vienna.
+- obs_def_rttov_mod.f90 for v12.3
+- obs_def_rttov13_mod.f90 for v13 (contributed by Lukas Kugler of the University of Vienna).  
+
+Note the namelist options for &obs_def_rttov_nml differ for v12 and v13.
+
+- `RTTOV v12 Namelist`_ &obs_def_rttov_nml
+- `RTTOV v13 Namelist`_ &obs_def_rttov_nml
+
+For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
 DART supports both RTTOV-direct for visible/infrared/microwave as well as RTTOV-scatt 
 for microwave computations. The code, in principle, supports all features of version 12.3 
@@ -32,9 +39,23 @@ in cloud phase (ice versus water) makes a much larger difference.  Trace gases a
 may be important for actual observation system experiments using visible/infrared; this may
 depend on the precise frequencies you wish to use.
 
+For RTTOV 13 DART has a ``wfetch_value`` namelist option. This allows you to set a wfetch value
+to use when ``use_wfetch = .true.`` if the model you are using does not provide QTY_WIND_FETCH.
+
 Although a model may not have the necessary inputs by itself,
 the defaults in RTTOV based on climatology can be used.
 The impact on the quality of the results should be investigated.
+
+The quanities for each observation type are defined in obs_def_rttov{13}_mod.f90, like so:
+
+.. code::
+
+   ! HIMAWARI_8_AHI_RADIANCE,      QTY_RADIANCE
+
+If you want to change the quantity associated with an observation, for example, if you want
+to assimilate HIMAWARI_8_AHI_RADIANCE as QTY_BRIGHTNESS_TEMPERATURE, edit the QTY
+in obs_def_rttov{13}_mod.f90 and rerun quickbuild.sh.
+
 
 Known issues:
 
@@ -45,199 +66,14 @@ Known issues:
    number of ensemble members. Using the maximum peak of the weighting function or the cloud-top may be appropriate.
    There are also other potential approaches being investigated.
 
-| Author and Contact information:
 
--  DART Code: Jeff Steward
--  Original DART/RTTOV work: Nancy Collins, Johnny Hendricks
-
-Backward compatibility note
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Other modules used
-------------------
-
-::
-
-   types_mod
-   utilities_mod
-   location_mod (threed_sphere)
-   assim_model_mod
-   obs_def_utilitie_mod
-   ensemble_manager_mod
-   utilities_mod
-   parkind1 (from RTTOV)
-   rttov_types (from RTTOV)
-   obs_kind_mod
-
-Public interfaces
------------------
-
-=============================== ========================
-*use obs_def_rttov_mod, only :* set_visir_metadata
-\                               set_mw_metadata
-\                               get_expected_radiance
-\                               get_rttov_option_logical
-=============================== ========================
-
-Namelist interface ``&obs_def_rttov_mod_nml`` is read from file ``input.nml``.
-
-A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
-
-| 
-
-.. container:: routine
-
-   *call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, & platform_id, sat_id, sensor_id, channel,
-   specularity)*
-   ::
-
-      integer,  intent(out) :: key
-      real(r8), intent(in)  :: sat_az
-      real(r8), intent(in)  :: sat_ze
-      real(r8), intent(in)  :: sun_az
-      real(r8), intent(in)  :: sun_ze
-      integer,  intent(in)  :: platform_id, sat_id, sensor_id, channel
-      real(r8), intent(in)  :: specularity
-
-.. container:: indent1
-
-   Visible / infrared observations have several auxillary metadata variables. Other than the key, which is standard DART
-   fare, the RTTOV satellite azimuth and satellite zenith angle must be specified. See the RTTOV user guide for more
-   information (in particular, see figure 4). If the ``addsolar`` namelist value is set to true, then the solar azimuth
-   and solar zenith angles must be specified - again see the RTTOV user guide. In addition to the platform/satellite/
-   sensor ID numbers, which are the RTTOV unique identifiers, the channel specifies the chanenl number in the RTTOV
-   coefficient file. Finally, if ``do_lambertian`` is true, specularity must be specified here. Again, see the RTTOV
-   user guide for more information.
-
-   =============== ================================================================
-   ``key``         The DART observation key.
-   ``sat_az``      The satellite azimuth angle.
-   ``sat_ze``      The satellite zenith angle.
-   ``sun_az``      The solar azimuth angle. Only relevant if addsolar is true.
-   ``sun_ze``      The solar zenith angle. Only relevant if addsolar is true.
-   ``platform_id`` The RTTOV platform ID.
-   ``sat_id``      The RTTOV satellite ID.
-   ``sensor_id``   The RTTOV sensor ID.
-   ``channel``     The RTTOV channel number.
-   ``specularity`` The surface specularity. Only relevant if do_lambertian is true.
-   =============== ================================================================
-
-| 
-
-.. container:: routine
-
-   *call set_mw_metadata(key, sat_az, sat_ze, platform_id, sat_id, sensor_id, channel, mag_field, cosbk, fastem_p1,
-   fastem_p2, fastem_p3, fastem_p4, fastem_p5)*
-   ::
-
-      integer,  intent(out) :: key
-      real(r8), intent(in)  :: sat_az
-      real(r8), intent(in)  :: sat_ze
-      integer,  intent(in)  :: platform_id, sat_id, sensor_id, channel
-      real(r8), intent(in)  :: mag_field
-      real(r8), intent(in)  :: cosbk
-      real(r8), intent(in)  :: fastem_p[1-5]
-
-.. container:: indent1
-
-   Microwave observations have several auxillary metadata variables. Other than the key, which is standard DART fare,
-   the RTTOV satellite azimuth and satellite zenith angle must be specified. See the RTTOV user guide for more
-   information (in particular, see figure 4). In addition to the platform/satellite/ sensor ID numbers, which are the
-   RTTOV unique identifiers, the channel specifies the chanenl number in the RTTOV coefficient file. In addition, if
-   ``use_zeeman`` is true, the magnetic field and cosine of the angle between the magnetic field and angle of
-   propagation must be specified. See the RTTOV user guide for more information. Finally, the fastem parameters for land
-   must be specified here. This may be difficult for observations to set, so default values (see table 21 in the RTTOV
-   user guide) can be used until a better solution is devised.
-
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``key``           | The DART observation key.                                                                       |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``sat_az``        | The satellite azimuth angle.                                                                    |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``sat_ze``        | The satellite zenith angle.                                                                     |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``platform_id``   | The RTTOV platform ID.                                                                          |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``sat_id``        | The RTTOV satellite ID.                                                                         |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``sensor_id``     | The RTTOV sensor ID.                                                                            |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``channel``       | The RTTOV channel number.                                                                       |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``mag_field``     | The strength of the magnetic field. Only relevant if add_zeeman is true.                        |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``cosbk``         | The cosine of the angle between the magnetic field and direction of EM propagation. Only        |
-   |                   | relevant if add_zeeman is true.                                                                 |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-   | ``fastem_p[1-5]`` | The five parameters used for fastem land/sea ice emissivities. For ocean emissivities, an       |
-   |                   | internal model is used based on the value of fastem_version.                                    |
-   +-------------------+-------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *call get_expected_radiance(obs_kind_ind, state_handle, ens_size, location, key, val, istatus)*
-   ::
-
-      integer,             intent(in)  :: obs_kind_ind
-      type(ensemble_type), intent(in)  :: state_handle
-      integer,             intent(in)  :: ens_size
-      type(location_type), intent(in)  :: location
-      integer,             intent(in)  :: key
-      real(r8),            intent(out) :: val(ens_size)
-      integer,             intent(out) :: istatus(ens_size)
-
-.. container:: indent1
-
-   Given a location and the state vector from one of the ensemble members, compute the model-predicted satellite
-   observation. This can be either in units of radiance (mW/cm-1/sr/sq.m) or a brightness temperature (in K), depending
-   on if this is a visible/infrared observation or a microwave observation.
-
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``obs_kind_ind`` | The index of the observation kind; since many observation kinds are handled by this module, this |
-   |                  | can be used to determine precisely which observation kind is being used.                         |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``state_handle`` | The ensemble of model states to be used for the observation operator calculations.               |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``location``     | Location of this observation                                                                     |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``key``          | Unique identifier associated with this satellite observation                                     |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``val``          | The returned observation in units of either radiance or brightness temperature.                  |
-   +------------------+--------------------------------------------------------------------------------------------------+
-   | ``istatus``      | Returned integer status code describing problems with applying forward operator. 0 is a good     |
-   |                  | value; any positive value indicates an error; negative values are reserved for internal DART use |
-   |                  | only.                                                                                            |
-   +------------------+--------------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *p = get_rttov_option_logical(field_name)*
-   ::
-
-      character(len=*),           intent(in)  :: field_name
-      logical,                    result      :: p
-
-.. container:: indent1
-
-   Return the logical value of the RTTOV parameter associated with the field_name.
-
-   ============== =======================================================
-   ``field_name`` The name of the RTTOV parameter from the namelist.
-   ``p``          The logical return value associated with the parameter.
-   ============== =======================================================
-
-| 
-
-Namelist
---------
-
-This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
+The namelist ``&obs_def_rttov_mod_nml`` is read from file ``input.nml``. Namelists start with an ampersand '&'
+and terminate with a slash '/'.
 Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
 namelist.
+
+RTTOV v12 Namelist
+------------------
 
 ::
 
@@ -540,62 +376,92 @@ namelist.
    |                        |                    | user guide).                                                         |
    +------------------------+--------------------+----------------------------------------------------------------------+
 
-| 
 
-Files
------
+RTTOV v13 namelist
+------------------
 
--  A DART observation sequence file containing Radar obs.
+.. code-block:: text
+
+  &obs_def_rttov_nml
+     first_lvl_is_sfc     = .true.   ! is level 1 the surface (true) or top of atmosphere (false)?
+     mw_clear_sky_only    = .false.  ! only use clear-sky for MW (plus clw emission if clw_data is true) or full RTTOV-SCATT (false)?
+     interp_mode          = 1        ! Interpolation mode: Rochon on OD (1), Log-linear (2), Rochon on log-linear OD (3), Rochon on WF (4), Rochon on log-linear WF (5)
+     do_checkinput        = .true.   ! check if profiles are within absolute and regression limits
+     apply_reg_limits     = .false.  ! clamp to min/max values
+     verbose              = .true.   ! if false, only fatal errors output 
+     fix_hgpl             = .true.   ! surface elevation assigned to 2m pressure (true) or surface pressure (true)
+     do_lambertian        = .false.  ! treat surface as Lambertian instead of specular? (all)
+     lambertian_fixed_angle = .true. ! use fixed angle for Lambertian calculations? (all, do_lambertian only)
+     rad_down_lin_tau     = .true.   ! use linear-in-tau approximation? (all)
+     max_zenith_angle     = 75.      ! maximum zenith angle to accept (in degrees) (all)
+     use_q2m              = .false.  ! use surface humidity? (all)
+     use_uv10m            = .false.  ! use u and v 10 meters? (all, used in sea surface emissivity and BRDF models)
+     use_wfetch           = .false.  ! use wind fetch (length of water wind has blown over in m)  (all, used in sea surface BRDF models)
+     use_water_type       = .false.  ! use water type (0 = fresh, ocean = 1) (all, used in surface BRDF atlas and models)
+     addrefrac            = .true.   ! enable atmospheric refraction (all) 
+     plane_parallel       = .false.  ! treat atmosphere as strictly plane-parallel? (all)
+     use_salinity         = .false.  ! use ocean salinity (in practical salinity units) (MW, FASTEM 4-6 and TESSEM2)
+     cfrac_data           = .false.  ! specify cloud fraction? (VIS/IR/MW)
+     clw_data             = .false.  ! specify non-precip cloud liquid water? (VIS/IR/MW)
+     rain_data            = .false.  ! specify precip cloud liquid water? (VIS/IR/MW)
+     ciw_data             = .false.  ! specify non-precip cloud ice? (VIS/IR)
+     snow_data            = .false.  ! specify precip cloud fluffy ice? (VIS/IR/MW)
+     graupel_data         = .false.  ! specify precip cloud soft-hail? (VIS/IR/MW)
+     hail_data            = .false.  ! specify precip cloud hard-hail? (VIS/IR/MW)
+     w_data               = .false.  ! specify vertical velocity (used for classifying clouds as cumulus versus stratus)? (VIS/IR)
+     clw_scheme           = 2        ! Liebe (1) or Rosenkranz (2) or TKC (3) (MW, clear-sky only)
+     clw_cloud_top        = 322.0_r8   ! lower hPa limit for clw calculations; clw at lower pressures is ignored (MW, clear-sky only)
+     fastem_version       = 6        ! MW sea-surface emissivity model to use (0-6). 1-6: FASTEM version 1-6, 0: TESSEM2 (MW)
+     supply_foam_fraction = .false.  ! include foam fraction in skin%foam_fraction? FASTEM only. (MW)
+     use_totalice         = .false.  ! Specify totalice instead of precip/non-precip ice (MW, RTTOV-SCATT only)
+     use_zeeman           = .false.  ! Simulate Zeeman effect (MW)
+     cc_threshold         = 0.001_r8   ! if effective cloud fraction below this value, treat simulation as clear-sky (MW, 0-1, RTTOV-SCATT only)
+     ozone_data           = .false.  ! specify ozone profiles? (VIS/IR)
+     co2_data             = .false.  ! specify CO2 profiles? (VIS/IR)
+     n2o_data             = .false.  ! specify N2O profiles? (VIS/IR)
+     co_data              = .false.  ! specify CO profiles? (VIS/IR)
+     ch4_data             = .false.  ! specify CH4 profiles? (VIS/IR)
+     so2_data             = .false.  ! specify SO2 profiles? (VIS/IR)
+     addsolar             = .false.  ! include solar calculations (VIS/IR)
+     rayleigh_single_scatt = .true.  ! if false, disable Rayleigh (VIS, addsolar only)
+     do_nlte_correction   = .false.  ! if true include non-LTE bias correction for hires sounders (VIS/IR)
+     solar_sea_brdf_model = 2        ! JONSWAP (1) or Elfouhaily (2) (VIS)
+     ir_sea_emis_model    = 2        ! ISEM (1) or IREMIS (2) (IR)
+     use_sfc_snow_frac    = .false.  ! use sfc snow cover (0-1) (IR, used in emis atlas)
+     add_aerosl           = .false.  ! enable aerosol scattering (VIS/IR)
+     aerosl_type          = 1        ! OPAC (1) or CAMS (2) (VIS/IR, add_aerosl only)
+     add_clouds           = .true.   ! enable cloud scattering (VIS/IR)
+     ice_scheme           = 1        ! SSEC (1) or Baran 2014 (2) or Baran 2018 (3) (VIS/IR, add_clouds only)
+     use_icede            = .false.  ! use ice effective diameter (IR, add_clouds, ice_scheme = 1) 
+     idg_scheme           = 2        ! Ou and Liou (1), Wyser (2), Boudala (3), McFarquar (2003) (VIS/IR, add_clouds only, ice_scheme = 1)
+     user_aer_opt_param   = .false.  ! specify aerosol scattering properties (VIS/IR, add_clouds only)
+     user_cld_opt_param   = .false.  ! specify cloud scattering properties (VIS/IR, add_clouds only)
+     grid_box_avg_cloud   = .true.   ! cloud concentrations are grid box averages. False = concentrations for cloudy layer only. (VIS/IR, add_clouds and not user_cld_opt_param only)
+     cldcol_threshold     = -1.0_r8    ! threshold for cloud stream weights for scattering (VIS/IR, add_clouds only)
+     cloud_overlap        = 1        ! default: 1 (max/random overlap)
+     cc_low_cloud_top     = 750.0_r8   ! cloud fraction maximum in layers from ToA down to specified hPa (VIS/IR, cloud_overlap only)
+     ir_scatt_model       = 2        ! DOM (1) or Chou-scaling (2) (IR, add_clouds or add_aerosl only)
+     vis_scatt_model      = 1        ! DOM (1), single scat (2), or MFASIS (3) (VIS, addsolar and add_clouds or add_aerosl only)
+     dom_nstreams         = 8        ! number of streams to use with DOM (VIS/IR, add_clouds or add_aerosl and DOM model only, must be >= 2 and even)
+     dom_accuracy         = 0.0_r8     ! convergence criteria for DOM (VIS/IR, add_clouds or addaerosol and DOM model only)
+     dom_opdep_threshold  = 0.0_r8     ! DOM ignores layers below this optical depth (VIS/IR, add_clouds or addaerosol and DOM model only)
+     addpc                = .false.  ! do principal component calculations? (VIS/IR)
+     npcscores            = -1       ! number of PC scores to use (VIS/IR, addpc only)
+     addradrec            = .false.  ! reconstruct the radiances (VIS/IR, addpc only)
+     ipcreg               = 1        ! number of predictors, see Table 29 of user guide (VIS/IR, addpc only)
+     use_htfrtc           = .false.  ! use HTFRTC of Havemann 2018  
+     htfrtc_n_pc          = -1       ! number of PCs to use (HTFRTC only, max 300)
+     htfrtc_simple_cloud  = .false.  ! use simple-cloud scattering (HTFRTC only)
+     htfrtc_overcast      = .false.  ! calculate overcast radiances (HTFRTC only)
+     wfetc_value          = 100000.0_r8 ! Real wfetc Wind fetch (m) (length of water over which the wind has blown, typical
+                                                              ! value 100000m for open ocean). Used if wfetc not provided by model.
+  /
 
 References
 ----------
 
 -  `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__
 
-Private components
-------------------
-
-=============================== ===============================
-*use obs_def_rttov_mod, only :* initialize_module
-\                               initialize_rttov_sensor_runtime
-\                               initialize_rttov_sensor_runtime
-=============================== ===============================
-
-| 
-
-.. container:: routine
-
-   *call initialize_module()*
-
-.. container:: indent1
-
-   Reads the namelist, allocates space for the auxiliary data associated wtih satellite observations, initializes the
-   constants used in subsequent computations (possibly altered by values in the namelist), and prints out the list of
-   constants and the values in use.
-
-| 
-
-.. container:: routine
-
-   *call initialize_rttov_sensor_runtime(sensor,ens_size,nlevels)*
-   ::
-
-      type(rttov_sensor_type), pointer    :: sensor
-      integer,                 intent(in) :: ens_size
-      integer,                 intent(in) :: nlevels
-
-.. container:: indent1
-
-   Initialize a RTTOV sensor runtime. A rttov_sensor_type instance contains information such as options and coefficients
-   that are initialized in a "lazy" fashion only when it will be used for the first time.
-
-   ============ ===============================================
-   ``sensor``   The sensor type to be initialized
-   ``ens_size`` The size of the ensemble
-   ``nlevels``  The number of vertical levels in the atmosphere
-   ============ ===============================================
-
-|
 
 
 Error codes and conditions

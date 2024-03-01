@@ -59,39 +59,28 @@ MPILD = mpif90
 FC = gfortran
 LD = gfortran
 
-# DISCUSSION ABOUT RTTOV. DART is designed to work with RTTOV v12.3.
-# There have been non-backwards compatible changes throughout the 
-# life-cycle of RTTOV (and more to be expected), so changing the
-# RTTOV version will required additional effort to get running.
-# You should install RTTOV 12.3 with HDF support. See 
-# https://www.nwpsaf.eu/site/software/rttov/
-# for more information on installing RTTOV.
-
 # MODIFY THE FOLLOWING VARIABLES FOR YOUR SYSTEM:
-# If your NETCDF, HDFEOS5, or RTTOV environment variables are not set,
+# If your NETCDF, HDF5, or RTTOV environment variables are not set,
 # uncomment the following line and set value to where lib and include
 # are found for the netcdf files that match this compiler.
 # Since netCDF can be built with HDF5, many systems have the HDF5
 # installation in the same place as netCDF.
 #
 # NETCDF = /usr/lib/x86_64-linux-gnu
-# HDFEOS5 = /usr/include/hdf5/serial
-# RTTOV = ~/research/satellite/rttov
+# HDF5 = $(NETCDF)
+# RTTOV = /glade/campaign/cisl/dares/libraries/rttov132_gfortran/
 
-RTTOV_VERSION = 12
-
-HDFEOS5 = /Users/thoar/gnu/gnu-9.2.0/
-
-# You will likely not need to modify below this line
+RTTOV_VERSION = 13
 
 RTLIBS = -lrttov$(RTTOV_VERSION)_wrapper    -lrttov$(RTTOV_VERSION)_mw_scatt -lrttov$(RTTOV_VERSION)_brdf_atlas \
          -lrttov$(RTTOV_VERSION)_emis_atlas -lrttov$(RTTOV_VERSION)_other    -lrttov$(RTTOV_VERSION)_parallel \
          -lrttov$(RTTOV_VERSION)_coef_io    -lrttov$(RTTOV_VERSION)_hdf      -lrttov$(RTTOV_VERSION)_main 
 
-INCS = -I$(NETCDF)/include -I$(HDFEOS5)/include -I$(RTTOV)/include -I$(RTTOV)/mod
+INCS = -I$(NETCDF)/include -I$(HDF5)/include -I$(RTTOV)/include -I$(RTTOV)/mod
 
+# Note some versions of hdf5 need -lhdf5hl_fortran instead of -lhdf5_hl_fortran
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf \
-       -L$(HDFEOS5)/lib -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 \
+       -L$(HDF5)/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 \
        -L$(RTTOV)/lib  $(RTLIBS) 
 
 FFLAGS  = -O2 -ffree-line-length-none $(INCS)

@@ -61,8 +61,6 @@ integer           :: ntimes_bdy, ntimes_ud, ntimes_next, itime
 
 integer, dimension(4) :: dims
 
-integer, external :: iargc
-
 real(r8), allocatable, dimension(:,:) :: tend2d, scnd2d, frst2d
 
 real(r8), allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d, full3d_next

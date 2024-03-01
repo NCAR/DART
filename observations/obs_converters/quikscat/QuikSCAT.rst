@@ -59,23 +59,27 @@ convert_L2b.f90
 ~~~~~~~~~~~~~~~
 
 ``convert_L2b`` converts the HDF files distributed by JPL to an obs_sequence file.
-To build ``convert_l2b`` using ``quickbuild.sh`` you will first need to build the HDF4 library.
+To build ``convert_l2b`` using ``quickbuild.sh`` you will need the HDF4 library.
+HDF4 is available on the NSF NCAR machine Derecho: ``module load hdf``.
 
 .. warning::
 
   To avoid conflicts with netCDF library required by DART, we recommend building HDF4 *without* 
   the HDF4 versions of the NetCDF API. 
 
-After successfully building HDF, add the appropriate library flags to your mkmf.template file. 
-Below is a snippet from an mkmf.template file used to link to both NetCDF and HDF4.   
+After successfully building HDF, add the appropriate library flags to your mkmf.template file,
+or for Derecho users, use the already available files at 
+*DART/build_templates/mkmf.template.quikscat.intel* or 
+*DART/build_templates/mkmf.template.quikscat.gfortran*. Below is a snippet from an
+mkmf.template file used to link to both NetCDF and HDF4.   
 
 .. code:: text
 
-   NETCDF = /glade/u/apps/ch/opt/netcdf/4.8.1/intel/19.1.1
-   HDF = /glade/p/cisl/dares/libraries/hdf
+   NETCDF = /glade/u/apps/derecho/23.06/spack/opt/spack/netcdf/4.9.2/oneapi/2023.0.0/iijr
+   HDF = /glade/u/apps/derecho/23.06/spack/opt/spack/hdf/4.2.15/oneapi/2023.0.0/yo2r
    
    INCS = -I$(NETCDF)/include -I$(HDF)/include
-   LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -L$(HDF)/lib -lmfhdf -ljpeg
+   LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -L$(HDF)/lib -lmfhdf -ljpeg -lz -ltirpc -lsz -ldf
    FFLAGS  = -O -assume buffered_io $(INCS)
    LDFLAGS = $(FFLAGS) $(LIBS)
 

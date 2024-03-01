@@ -22,7 +22,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=10) :: ccyymmddhh
 
-  nargum=iargc()
+  nargum=COMMAND_ARGUMENT_COUNT()
 
   if(nargum /= 2) then
      write(unit=*, fmt='(a)') &
@@ -34,7 +34,7 @@ character(len=128), parameter :: revdate  = "$Date$"
      do n=1,80
         argum(i)(n:n)=' '
      enddo
-     call getarg(i,argum(i))
+     call GET_COMMAND_ARGUMENT(i,argum(i))
   enddo
 
   ccyymmddhh = trim(argum(1))
