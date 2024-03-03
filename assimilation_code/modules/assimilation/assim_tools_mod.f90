@@ -87,6 +87,8 @@ use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_sha
 use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf, inv_bnrh_cdf_like
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params
+
+use filter_io_diag_mod,      only : ens_copies_type
                                
 
 implicit none
@@ -303,28 +305,26 @@ end subroutine assim_tools_init
 
 !-------------------------------------------------------------
 
-subroutine filter_assim(ens_handle, obs_ens_handle, f, obs_seq, keys,           &
-   ens_size, num_groups, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-   ENS_INF_COPY, ENS_INF_SD_COPY, inflate_only)
+subroutine filter_assim(ens_handle, ens_copies, obs_ens_handle, f, obs_seq, keys,           &
+   num_groups, inflate, ENS_INF_COPY, ENS_INF_SD_COPY, inflate_only)
 
-type(forward_op_info_type),  intent(in)    :: f
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
+type(ens_copies_type),       intent(in)    :: ens_copies
+type(forward_op_info_type),  intent(in)    :: f
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
-integer,                     intent(in)    :: ens_size, num_groups
+integer,                     intent(in)    :: num_groups
 ! JLA: At present, this only needs to be inout because of the possible use of
 ! non-determinstic obs_space adaptive inflation that is not currently supported.
 ! Implementing that would require communication of the info about the inflation
 ! values as each observation updated them.
 type(adaptive_inflate_type), intent(inout) :: inflate
-integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
+integer,                     intent(in)    :: ENS_INF_COPY
 integer,                     intent(in)    :: ENS_INF_SD_COPY
 logical,                     intent(in)    :: inflate_only
 
-! changed the ensemble sized things here to allocatable
-
-real(r8) :: obs_prior(ens_size), obs_inc(ens_size)
-real(r8) :: obs_post(ens_size), probit_obs_prior(ens_size), probit_obs_post(ens_size)
+real(r8) :: obs_prior(ens_copies%ens_size), obs_inc(ens_copies%ens_size)
+real(r8) :: obs_post(ens_copies%ens_size)
 real(r8) :: final_factor
 real(r8) :: net_a(num_groups), correl(num_groups)
 real(r8) :: obs(1), obs_err_var, my_inflate, my_inflate_sd
@@ -339,7 +339,7 @@ integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
 
-integer :: my_num_obs, i, j, owner, owners_index, my_num_state
+integer :: my_num_obs, i, j, owner, owners_index, my_num_state, ens_size
 integer :: obs_mean_index, obs_var_index
 integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer :: num_close_obs, obs_index, num_close_states
@@ -379,7 +379,11 @@ integer :: dist_for_state, dist_for_obs
 type(distribution_params_type) :: temp_dist_params
 logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
-real(r8) :: probit_ens(ens_size)
+real(r8) :: probit_ens(ens_copies%ens_size)
+real(r8) :: probit_obs_prior(ens_copies%ens_size), probit_obs_post(ens_copies%ens_size)
+
+! Ensemble size from structure
+ens_size = ens_copies%ens_size
 
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
@@ -401,12 +405,12 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
 if (.not. module_initialized) call assim_tools_init()
 
 ! Compute the ensemble mean
-call compute_copy_mean(ens_handle, 1, ens_size, ENS_MEAN_COPY)
+call compute_copy_mean(ens_handle, 1, ens_size, ens_copies%ENS_MEAN_COPY)
 
 !HK make window for mpi one-sided communication
 ! used for vertical conversion in get_close_obs
 ! Need to give create_mean_window the mean copy
-call create_mean_window(ens_handle, ENS_MEAN_COPY, distribute_mean)
+call create_mean_window(ens_handle, ens_copies%ENS_MEAN_COPY, distribute_mean)
 
 ! Open the localization diagnostics file
 if(output_localization_diagnostics .and. my_task_id() == 0) &
@@ -448,7 +452,7 @@ enddo
 
 ! Put initial value of state space inflation in copy normally used for SD
 ! This is to avoid weird storage footprint in filter
-ens_handle%copies(ENS_SD_COPY, :) = ens_handle%copies(ENS_INF_COPY, :)
+ens_handle%copies(ens_copies%ENS_SD_COPY, :) = ens_handle%copies(ENS_INF_COPY, :)
 
 ! For single state or obs space inflation, the inflation is like a token
 ! Gets passed from the processor with a given obs on to the next
@@ -719,7 +723,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Update for each group separately
       do group = 1, num_groups
          call update_varying_state_space_inflation(inflate, my_inflate, my_inflate_sd, &
-            ens_handle%copies(ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
+            ens_handle%copies(ens_copies%ENS_SD_COPY, 1), orig_obs_prior_mean(group), &
             orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, 1.0_r8, 1.0_r8, inflate_only)
       end do
    endif
@@ -780,7 +784,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             call update_varying_state_space_inflation(inflate,                     &
                ens_handle%copies(ENS_INF_COPY, state_index),                       &
                ens_handle%copies(ENS_INF_SD_COPY, state_index),                    &
-               ens_handle%copies(ENS_SD_COPY, state_index),                        &
+               ens_handle%copies(ens_copies%ENS_SD_COPY, state_index),                        &
                orig_obs_prior_mean(group), orig_obs_prior_var(group), obs(1),      &
                obs_err_var, grp_size, final_factor, correl(group), inflate_only)
          end do

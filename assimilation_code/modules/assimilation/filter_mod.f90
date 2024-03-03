@@ -245,7 +245,6 @@ type(time_type)             :: time1, first_obs_time, last_obs_time
 type(time_type)             :: curr_ens_time, next_ens_time, window_time
 
 integer,    allocatable :: keys(:)
-integer(i8)             :: model_size
 integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
 integer                 :: last_key_used, key_bounds(2)
 logical                 :: read_time_from_file
@@ -313,10 +312,7 @@ endif
 
 has_cycling = single_file_out
 
-! Setup the indices into the ensemble storage:
-
 ! Can't output more ensemble members than exist
-if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 ! Count and set up State copy numbers
@@ -324,26 +320,24 @@ call count_state_ens_copies(ens_copies, ens_size, output_mean, output_sd, do_pri
    do_posterior_inflate, post_inflate, num_output_state_members)
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
-model_size = get_model_size()
-
 if(distributed_state) then
-   call init_ensemble_manager(state_ens_handle, ens_copies%num_state_ens_copies, model_size)
+   call init_ensemble_manager(state_ens_handle, ens_copies%num_state_ens_copies, get_model_size())
    msgstring = 'running with distributed state; model states stay distributed across all tasks for the entire run'
 else
-   call init_ensemble_manager(state_ens_handle, ens_copies%num_state_ens_copies, model_size, &
+   call init_ensemble_manager(state_ens_handle, ens_copies%num_state_ens_copies, get_model_size(), &
       transpose_type_in = 2)
    msgstring = 'running without distributed state; model states are gathered by ensemble for forward operators'
 endif
+call set_num_extra_copies(state_ens_handle, ens_copies% num_extras)
+
 ! don't print if running single task.  transposes don't matter in this case.
 if (task_count() > 1) &
    call error_handler(E_MSG,'filter_main:', msgstring, source)
 
-call set_num_extra_copies(state_ens_handle, ens_copies% num_extras)
-
 ! Don't currently support number of processes > model_size
-if(task_count() > model_size) then 
+if(task_count() > get_model_size()) then 
    write(msgstring, *) 'number of MPI processes = ', task_count(), &
-                       ' while model size = ', model_size
+                       ' while model size = ', get_model_size()
    call error_handler(E_ERR,'filter_main', &
       'Cannot have number of processes > model size' ,source, text2=msgstring)
 endif
@@ -358,7 +352,6 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
-
 call init_output_file_info('output', state_ens_handle, ens_copies, &
    file_info_output, output_state_files, output_state_file_list, single_file_out,      &
    has_cycling, do_prior_inflate, do_posterior_inflate)
@@ -497,10 +490,9 @@ AdvanceTime : do
       qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds,       &
       num_output_obs_members, compute_posterior, isprior = .true.) 
 
-   call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, forward_op_ens_info, seq, keys, &
-      ens_copies%ens_size, num_groups, prior_inflate, ens_copies%ENS_MEAN_COPY, &
-      ens_copies%ENS_SD_COPY,         &
-      ens_copies%PRIOR_INF_COPY, ens_copies%PRIOR_INF_SD_COPY, inflate_only = .false.)
+   call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
+      seq, keys, num_groups, prior_inflate, ens_copies%PRIOR_INF_COPY, ens_copies%PRIOR_INF_SD_COPY, &
+      inflate_only = .false.)
 
    ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
    ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
@@ -527,10 +519,9 @@ AdvanceTime : do
    endif
 
    ! Compute the adaptive state space posterior inflation
-   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) )                 &
-      call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, forward_op_ens_info, seq, keys, &
-         ens_copies%ens_size, num_groups, post_inflate, ens_copies%ENS_MEAN_COPY, &
-         ens_copies%ENS_SD_COPY,                         &
+   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) )                  &
+      call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
+         seq, keys, num_groups, post_inflate, &
          ens_copies%POST_INF_COPY, ens_copies%POST_INF_SD_COPY, inflate_only = .true.)
 
    ! Free up all the allocated space associated with obs ensemble

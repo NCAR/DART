@@ -45,8 +45,6 @@ type ens_copies_type
    integer           :: num_extras
    integer           :: num_output_state_members
 
-   logical           :: has_cycling
-
    ! A list of all possible copies supported here 
    integer           :: ENS_START_COPY         = COPY_NOT_PRESENT
    integer           :: ENS_END_COPY           = COPY_NOT_PRESENT
@@ -269,7 +267,6 @@ type(ens_copies_type), intent(inout) :: ens_copies
 integer,              intent(in)    :: num_ens
 
 call set_member_file_metadata(file_info, num_ens, ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START))
-
 
 ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_END) = &
    ens_copies%DIAG_FILE_COPIES(ens_copies%ENS_START) + num_ens - 1
@@ -515,13 +512,12 @@ logical,              intent(in)  :: has_cycling
 logical,              intent(in)  :: output_mean, output_sd, output_members
 logical,              intent(in)  :: do_prior_inflate, do_posterior_inflate
    
-integer :: noutput_members, noutput_files, ndomains
+integer :: noutput_files, ndomains
            
 ! Don't need to initialize if already done
 if(.not. file_info%initialized) then
      
    ! local variable to shorten the name for function input
-   noutput_members = ens_copies%num_output_state_members 
    ndomains        = get_num_domains()
    noutput_files   = ens_copies%ens_size ! number of incomming ensemble members
    
@@ -533,10 +529,10 @@ if(.not. file_info%initialized) then
       root_name = diag_file_name)
 
    !   Output Files
-   call set_filename_info(file_info, diag_file_name,  ens_copies, noutput_members)
+   call set_filename_info(file_info, diag_file_name,  ens_copies, ens_copies%num_output_state_members)
 
    !   Output Files
-   call set_output_file_info(file_info, ens_copies, noutput_members, &
+   call set_output_file_info(file_info, ens_copies, ens_copies%num_output_state_members, &
       output_mean, output_sd, do_prior_inflate, do_posterior_inflate, output_members, &
       do_clamping  = .false., force_copy = .true.)
 
