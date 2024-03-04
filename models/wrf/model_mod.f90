@@ -5316,8 +5316,7 @@ ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
 ! now calculate rho = - mu / dphi/deta
 
 if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
-   model_rho_t_distrib(:) = - (wrf%dom(id)%c1h(k)*wrf%dom(id)%mub(i,j)+wrf%dom(id)%c2h(k) + &
-        wrf%dom(id)%c1h(k)*x_imu) / ph_e
+   model_rho_t_distrib(:) = - (wrf%dom(id)%c1h(k)*(wrf%dom(id)%mub(i,j)+x_imu) + wrf%dom(id)%c2h(k)) / ph_e
 else
    model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
 endif
