@@ -8,7 +8,9 @@ module filter_io_diag_mod
 
 use types_mod,             only : r8, missing_r8
 
-use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_sd
+use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_sd, &
+                                  init_ensemble_manager, set_num_extra_copies,&
+                                  allocate_vars
 
 use time_manager_mod,      only : time_type
 
@@ -19,7 +21,7 @@ use io_filenames_mod,      only : file_info_type, set_member_file_metadata, &
                                   io_filenames_init, set_io_copy_flag, &
                                   check_file_info_variable_shape, READ_COPY, WRITE_COPY
 
-use assim_model_mod,       only : pert_model_copies
+use assim_model_mod,       only : pert_model_copies, get_model_size
 
 use state_vector_io_mod,   only : write_state, read_state
 
@@ -35,10 +37,11 @@ implicit none
 private
 
 public ::  create_ensemble_from_single_file, ens_copies_type, &
-   count_state_ens_copies, read_state_and_inflation, output_diagnostics, init_output_file_info
+   init_state_ens, read_state_and_inflation, output_diagnostics, init_output_file_info
 
 !------------------------------------------------------------------------------
 
+! Some of these are redundant with variables in ensemble_type; that should be removed
 type ens_copies_type
    integer           :: ens_size 
    integer           :: num_state_ens_copies
@@ -178,16 +181,18 @@ end subroutine perturb_copies_task_bitwise
 ! Assign the indices to the storage in the ensemble manager
 ! Initialize indices for where diagnostic copies are found
 
-subroutine count_state_ens_copies(ens_copies, ens_size, output_mean, output_sd, &
-   do_prior_inflate, do_posterior_inflate, posterior_inflate, num_output_state_members)
+subroutine init_state_ens(ens_handle, ens_copies, ens_size, output_mean, output_sd, &
+   do_prior_inflate, do_posterior_inflate, posterior_inflate, num_output_state_members,     &
+   distributed_state)
    
-
+type(ensemble_type),         intent(inout) :: ens_handle
 type(ens_copies_type),       intent(inout) :: ens_copies
-integer,                     intent(in)  :: ens_size
-logical,                     intent(in)  :: output_mean, output_sd
-logical,                     intent(in)  :: do_prior_inflate, do_posterior_inflate
-type(adaptive_inflate_type), intent(in)  :: posterior_inflate
-integer,                     intent(in) :: num_output_state_members
+integer,                     intent(in)    :: ens_size
+logical,                     intent(in)    :: output_mean, output_sd
+logical,                     intent(in)    :: do_prior_inflate, do_posterior_inflate
+type(adaptive_inflate_type), intent(in)    :: posterior_inflate
+integer,                     intent(in)    :: num_output_state_members
+logical,                     intent(in)    :: distributed_state
 
 ! Initialize the fixed size information
 ens_copies%ens_size = ens_size
@@ -246,7 +251,19 @@ else
    ens_copies%DIAG_FILE_COPIES(ens_copies%POST_INF_SD) = COPY_NOT_PRESENT
 endif
 
-end subroutine count_state_ens_copies
+! Allocate model size storage and ens_size storage for metadata for outputting ensembles      
+if(distributed_state) then        
+   call init_ensemble_manager(ens_handle, ens_copies%num_state_ens_copies, get_model_size())
+else                              
+   call init_ensemble_manager(ens_handle, ens_copies%num_state_ens_copies, get_model_size(), &
+      transpose_type_in = 2)      
+endif
+call set_num_extra_copies(ens_handle, ens_copies% num_extras)
+
+! Allocate the storage if not already done
+call allocate_vars(ens_handle)
+
+end subroutine init_state_ens
 
 !------------------------------------------------------------------------------
 

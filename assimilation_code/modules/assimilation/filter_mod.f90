@@ -29,15 +29,13 @@ use assim_model_mod,       only : static_init_assim_model, get_model_size,      
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
 
-use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,                &
-                                  ensemble_type, get_copy, get_my_num_copies,                 &
+use ensemble_manager_mod,  only : end_ensemble_manager,                &
+                                  ensemble_type, get_my_num_copies,                 &
                                   all_vars_to_all_copies, all_copies_to_all_vars,             &
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   get_copy_owner_index,                                       &
                                   get_ensemble_time, set_ensemble_time,                       &
-                                  map_pe_to_task,                                             &
-                                  set_num_extra_copies,                                       &
-                                  allocate_vars
+                                  map_pe_to_task
                                   
 use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -70,7 +68,7 @@ use algorithm_info_mod,    only : probit_dist_info, init_algorithm_info_mod, end
 use distribution_params_mod, only : distribution_params_type
 
 use filter_io_diag_mod,    only : ens_copies_type, create_ensemble_from_single_file, &
-                                  count_state_ens_copies, read_state_and_inflation,      &
+                                  init_state_ens, read_state_and_inflation,      &
                                   output_diagnostics, init_output_file_info
 
 !------------------------------------------------------------------------------
@@ -316,23 +314,8 @@ has_cycling = single_file_out
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 ! Count and set up State copy numbers
-call count_state_ens_copies(ens_copies, ens_size, output_mean, output_sd, do_prior_inflate, &
-   do_posterior_inflate, post_inflate, num_output_state_members)
-
-! Allocate model size storage and ens_size storage for metadata for outputting ensembles
-if(distributed_state) then
-   call init_ensemble_manager(state_ens_handle, ens_copies%num_state_ens_copies, get_model_size())
-   msgstring = 'running with distributed state; model states stay distributed across all tasks for the entire run'
-else
-   call init_ensemble_manager(state_ens_handle, ens_copies%num_state_ens_copies, get_model_size(), &
-      transpose_type_in = 2)
-   msgstring = 'running without distributed state; model states are gathered by ensemble for forward operators'
-endif
-call set_num_extra_copies(state_ens_handle, ens_copies% num_extras)
-
-! don't print if running single task.  transposes don't matter in this case.
-if (task_count() > 1) &
-   call error_handler(E_MSG,'filter_main:', msgstring, source)
+call init_state_ens(state_ens_handle, ens_copies, ens_size, output_mean, output_sd, &
+   do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
 
 ! Don't currently support number of processes > model_size
 if(task_count() > get_model_size()) then 
@@ -340,11 +323,6 @@ if(task_count() > get_model_size()) then
                        ' while model size = ', get_model_size()
    call error_handler(E_ERR,'filter_main', &
       'Cannot have number of processes > model size' ,source, text2=msgstring)
-endif
-
-if(.not. compute_posterior) then
-   msgstring = 'skipping computation of posterior forward operators'
-   call error_handler(E_MSG,'filter_main:', msgstring, source)
 endif
 
 ! Set a time type for initial time if namelist inputs are not negative
@@ -438,11 +416,8 @@ AdvanceTime : do
              text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
  
-      ! Is this sync still needed given the filter_sync call above
+      ! Sync at this point
       call task_sync()
-
-      ! make sure storage is allocated in ensemble manager for vars.
-      call allocate_vars(state_ens_handle)
 
       ! Transpose to var complete so models can run on a single process
       call all_copies_to_all_vars(state_ens_handle)
@@ -467,7 +442,6 @@ AdvanceTime : do
       call output_diagnostics('forecast', state_ens_handle, ens_copies, & 
          file_info_forecast, single_file_out, has_cycling, output_mean, output_sd,           &
          output_members, do_prior_inflate, do_posterior_inflate)
-         
    
    ! Apply prior inflation 
    if(do_ss_inflate(prior_inflate)) &
