@@ -62,7 +62,7 @@ public :: pert_model_copies,      &
           read_model_time, &
           write_model_time
 
-character(len=256), parameter :: source   = "seir/model_mod.f90"
+character(len=*), parameter :: source   = "seir/model_mod.f90"
 
 type(location_type) :: state_loc ! state location, compute once and store for speed
 type(random_seq_type)            :: random_seq
@@ -115,9 +115,6 @@ integer  :: i, dom_id
 
 ! Do any initial setup needed, including reading the namelist values
 call initialize()
-
-! Create storage for locations
-!allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 ! The SEIR variables have no physical location, 
@@ -406,6 +403,7 @@ subroutine nc_write_model_atts(ncid, domain_id)
 
 integer, intent(in) :: ncid
 integer, intent(in) :: domain_id
+integer(i4)         :: offset
 
 ! put file into define mode.
 
@@ -417,13 +415,17 @@ call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
-call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_source", source)
 
 call nc_add_global_attribute(ncid, "model", "seir")
 
-!call nc_write_location_atts(ncid, msize)
+call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)
-!call nc_write_location(ncid, state_loc, msize)
+
+! Note that location for this model isn't used 
+do offset = 1, msize
+   call nc_write_location(ncid, state_loc, offset)
+enddo
 
 ! Flush the buffer and leave netCDF file open
 call nc_synchronize_file(ncid)
