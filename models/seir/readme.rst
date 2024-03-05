@@ -29,11 +29,22 @@ There are several parameters that can be changed to study different cases and re
   - :math:`\rho`: Average days until death,
   - :math:`\sigma`: Vaccine in-efficacy (:math:`0 \leq \sigma \leq 1`).
 
+Earth system models are often descritized in space. The state in these models represents
+variables at different spatial locations. The variables of the SEIR model describe the 
+stage/phase of the disease and they do not have a physical location. To this end, 
+techniques such as spatial localization are not applicable in this model. DART assumes 
+that all 7 variables belong to the same *virtual* point in space. Any assimilated 
+observation will impact all 7 variables.
+
 The SEIR model uses identity observations. Typical observations that can be assimilated
 are:
  
   *Recovered*, *Death* and *Vaccinated*. 
 
+Some agencies provide data for "*Confirmed*" cases. This can be used to compute and 
+assimilate the number of active (which is equivelant to quarantined) cases as shown: 
+
+*Active/Quarantined (Q) = Confirmed - Recovered (R) - Deaths (D)*
 
 Initial versions of the model were tested using DART_LAB. This was conducted by  
 **Shaniah Reece** as part of her SIParCS internship at NSF NCAR (2022).
