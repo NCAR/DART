@@ -10,9 +10,9 @@ use types_mod,             only : r8, missing_r8
 
 use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_sd, &
                                   init_ensemble_manager, set_num_extra_copies,&
-                                  allocate_vars
+                                  allocate_vars, get_copy_owner_index, map_pe_to_task
 
-use time_manager_mod,      only : time_type
+use time_manager_mod,      only : time_type, get_time, set_time, operator(>)
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
@@ -30,6 +30,8 @@ use adaptive_inflate_mod,  only : do_rtps_inflate, adaptive_inflate_type
 use utilities_mod,         only : set_multiple_filename_lists
 
 use state_structure_mod,   only : get_num_domains
+
+use mpi_utilities_mod,     only : broadcast_send, broadcast_recv
 
 !------------------------------------------------------------------------------
 
@@ -93,17 +95,21 @@ contains
 !> then the missing_r8s are put back in after the perturb.
 
 subroutine create_ensemble_from_single_file(ens_handle, ens_size, &
-   perturbation_amplitude, missing_ok)
+   perturbation_amplitude, time, missing_ok)
 
 type(ensemble_type), intent(inout) :: ens_handle
 integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: perturbation_amplitude
+type(time_type),     intent(in)    :: time
 logical,             intent(in)    :: missing_ok
 
 integer               :: i
 logical               :: interf_provided ! model does the perturbing
 logical, allocatable  :: miss_me(:)
 integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
+
+! Need to communicate the time to all members, too
+call broadcast_time_across_copy_owners(ens_handle, time)
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
@@ -563,6 +569,41 @@ call compute_copy_mean_sd(state_ens_handle, 1, ens_copies%ens_size, &
 call write_state(state_ens_handle, file_info)
 
 end subroutine output_diagnostics
+
+!------------------------------------------------------------------------------
+
+! Only copy 1 on task zero has the correct time after reading
+! when you read one instance using filter_read_restart.
+! perturb_from_single_instance = .true.
+! This routine makes the times consistent across the ensemble. 
+! Any task that owns one or more state vectors needs the time for
+! the move ahead call.     
+
+subroutine broadcast_time_across_copy_owners(ens_handle, ens_time)
+
+type(ensemble_type), intent(inout) :: ens_handle
+type(time_type),     intent(in)    :: ens_time
+                                  
+real(r8) :: rtime(2)              
+integer  :: days, secs            
+integer  :: copy1_owner, owner_index
+type(time_type) :: time_from_copy1
+
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
+                                  
+if(ens_handle%my_pe == copy1_owner) then
+   call get_time(ens_time, secs, days)
+   rtime(1) = secs                
+   rtime(2) = days
+   call broadcast_send(map_pe_to_task(ens_handle, copy1_owner), rtime)
+   ens_handle%time(1:ens_handle%my_num_copies) = ens_time
+else
+   call broadcast_recv(map_pe_to_task(ens_handle, copy1_owner), rtime)
+   time_from_copy1 = set_time(nint(rtime(1)), nint(rtime(2)))
+   if (ens_handle%my_num_copies > 0) ens_handle%time(1:ens_handle%my_num_copies) = time_from_copy1
+endif
+
+end subroutine broadcast_time_across_copy_owners
 
 !------------------------------------------------------------------------------
 

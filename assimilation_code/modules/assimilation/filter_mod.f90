@@ -304,16 +304,13 @@ if(.not. compute_posterior .and. do_ss_inflate(post_inflate)) then
            text2='"compute_posterior" is false; cannot have posterior state_space inflation')
 endif
 
-! for now, set 'has_cycling' to match 'single_file_out' since we're only supporting
-! multi-file output for a single pass through filter, and allowing cycling if we're
-! writing to a single file.
-
+! 'has_cycling' set to 'single_file_out'; only allowing cycling if writing to a single file.
 has_cycling = single_file_out
 
 ! Can't output more ensemble members than exist
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
-! Count and set up State copy numbers
+! Initialize the ensemble manager and the ens_copies index information
 call init_state_ens(state_ens_handle, ens_copies, ens_size, output_mean, output_sd, &
    do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
 
@@ -341,17 +338,9 @@ call read_state_and_inflation(ens_copies, state_ens_handle, single_file_in, &
    post_inflate, do_posterior_inflate, posterior_inflate_from_restart,              &
    file_info_read, read_time_from_file, time1)
 
-if(iam_task0()) then
-   ! Print out info for posterior inflation handle because it can include rtps
-   call log_inflation_info(post_inflate)
-endif
-
-if (perturb_from_single_instance) then
-   ! Only zero has the time, so broadcast the time to all other copy owners
-   call broadcast_time_across_copy_owners(state_ens_handle, time1)
+if (perturb_from_single_instance) &
    call create_ensemble_from_single_file(state_ens_handle, ens_size, &
-      perturbation_amplitude, get_missing_ok_status())
-endif
+      perturbation_amplitude, time1, get_missing_ok_status())
 
 ! see what our stance is on missing values in the state vector
 allow_missing = get_missing_ok_status()
@@ -696,42 +685,6 @@ endif
 ens_handle%current_time = time1
 
 end subroutine filter_sync_keys_time
-
-!-------------------------------------------------------------------------
-! Only copy 1 on task zero has the correct time after reading
-! when you read one instance using filter_read_restart.
-! perturb_from_single_instance = .true.
-! This routine makes the times consistent across the ensemble. 
-! Any task that owns one or more state vectors needs the time for
-! the move ahead call.
-!> @todo This is broadcasting the time to all tasks, not
-!> just the tasks that own copies.
-
-subroutine broadcast_time_across_copy_owners(ens_handle, ens_time)
-
-type(ensemble_type), intent(inout) :: ens_handle
-type(time_type),     intent(in)    :: ens_time
-
-real(r8) :: rtime(2)
-integer  :: days, secs
-integer  :: copy1_owner, owner_index
-type(time_type) :: time_from_copy1
-
-call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
-
-if( ens_handle%my_pe == copy1_owner) then
-   call get_time(ens_time, secs, days)
-   rtime(1) = secs
-   rtime(2) = days
-   call broadcast_send(map_pe_to_task(ens_handle, copy1_owner), rtime)
-   ens_handle%time(1:ens_handle%my_num_copies) = ens_time
-else
-   call broadcast_recv(map_pe_to_task(ens_handle, copy1_owner), rtime)
-   time_from_copy1 = set_time(nint(rtime(1)), nint(rtime(2)))
-   if (ens_handle%my_num_copies > 0) ens_handle%time(1:ens_handle%my_num_copies) = time_from_copy1
-endif
-
-end subroutine broadcast_time_across_copy_owners
 
 !-------------------------------------------------------------------------
 
