@@ -7,7 +7,7 @@ module filter_mod
 !------------------------------------------------------------------------------
 use types_mod,             only : r8, i8, missing_r8, metadatalength, MAX_NUM_DOMS, MAX_FILES
 
-use options_mod,           only : get_missing_ok_status, set_missing_ok_status
+use options_mod,           only : set_missing_ok_status
 
 use obs_sequence_mod,      only : obs_type, obs_sequence_type, write_obs_seq, & 
                                   static_init_obs_sequence, delete_seq_head,  &        
@@ -254,7 +254,7 @@ type(file_info_type) :: file_info_postassim
 type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
 
-logical :: all_gone, allow_missing
+logical :: all_gone
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -283,7 +283,6 @@ write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
 call error_handler(E_MSG,'filter_main:', msgstring, source)
 
 call set_missing_ok_status(allow_missing_clm)
-allow_missing = get_missing_ok_status()
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate)
@@ -340,10 +339,7 @@ call read_state_and_inflation(ens_copies, state_ens_handle, single_file_in, &
 
 if (perturb_from_single_instance) &
    call create_ensemble_from_single_file(state_ens_handle, ens_size, &
-      perturbation_amplitude, time1, get_missing_ok_status())
-
-! see what our stance is on missing values in the state vector
-allow_missing = get_missing_ok_status()
+      perturbation_amplitude, time1, allow_missing_clm)
 
 ! Initialize the obs_sequence and metadata; every pe gets a copy for now
 call filter_setup_obs_sequence(forward_op_ens_info, seq, num_output_obs_members, &

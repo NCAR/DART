@@ -10,8 +10,6 @@ module assim_tools_mod
 !> @{
 use      types_mod,       only : r8, i8, PI, missing_r8
 
-use    options_mod,       only : get_missing_ok_status
-
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
@@ -366,7 +364,6 @@ type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time
 
-logical :: allow_missing_in_state
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
@@ -574,8 +571,6 @@ if (close_obs_caching) then
    num_close_states_calls_made = 0
 endif
 
-allow_missing_in_state = get_missing_ok_status()
-
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Some compilers do not like mod by 0, so test first.
@@ -761,10 +756,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      if ( allow_missing_in_state ) then
-         ! Don't allow update of state ensemble with any missing values
-         if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
-      endif
+      ! Don't allow update of state ensemble with any missing values
+      if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
 
       ! Compute the covariance localization and adjust_obs_impact factors (module storage)
       final_factor = cov_and_impact_factors(base_obs_loc, base_obs_type, my_state_loc(state_index), &
