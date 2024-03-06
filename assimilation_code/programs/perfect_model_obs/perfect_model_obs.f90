@@ -25,7 +25,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
 
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                  get_obs_def_type_of_obs
-use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
+use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace, filter_sync_keys_time
 use    obs_kind_mod, only : get_quantity_for_type_of_obs
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  get_initial_condition
@@ -41,7 +41,7 @@ use ensemble_manager_mod, only : init_ensemble_manager,               &
                                  all_vars_to_all_copies, &
                                  all_copies_to_all_vars
 
-use           filter_mod, only : filter_set_initial_time, filter_sync_keys_time
+use           filter_mod, only : filter_set_initial_time
 
 use state_vector_io_mod,   only : state_vector_io_init, &
                                   read_state, write_state

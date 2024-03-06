@@ -27,15 +27,15 @@ use assim_model_mod,       only : static_init_assim_model, get_model_size,      
                                   end_assim_model, get_state_meta_data
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace
-use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
+use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace, &
+                                  filter_sync_keys_time
 
 use ensemble_manager_mod,  only : end_ensemble_manager,                &
                                   ensemble_type, get_my_num_copies,                 &
                                   all_vars_to_all_copies, all_copies_to_all_vars,             &
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   get_copy_owner_index,                                       &
-                                  get_ensemble_time, set_ensemble_time,                       &
-                                  map_pe_to_task
+                                  get_ensemble_time, set_ensemble_time
                                   
 use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -43,8 +43,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   do_rtps_inflate, set_inflate_flavor,                &
                                   NO_INFLATION
 
-use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
-                                  task_count, iam_task0
+use mpi_utilities_mod,     only : my_task_id, task_sync, task_count, iam_task0
 
 use state_vector_io_mod,   only : state_vector_io_init, write_state
 
@@ -76,9 +75,7 @@ use filter_io_diag_mod,    only : ens_copies_type, create_ensemble_from_single_f
 implicit none
 private
 
-public :: filter_sync_keys_time, &
-          filter_set_initial_time, &
-          filter_main
+public :: filter_set_initial_time, filter_main
 
 character(len=*), parameter :: source = 'filter_mod.f90'
 
@@ -613,48 +610,6 @@ do group = 1, num_groups
 end do
 
 end subroutine filter_ensemble_inflate
-
-!-------------------------------------------------------------------------
-
-subroutine filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, time1, time2)
-
-integer,             intent(inout)  :: key_bounds(2), num_obs_in_set
-type(time_type),     intent(inout)  :: time1, time2
-type(ensemble_type), intent(inout)     :: ens_handle
-
-! Have owner of copy 1 broadcast these values to all other tasks.
-! Only tasks which contain copies have this info; doing it this way
-! allows ntasks > nens to work.
-
-real(r8) :: rkey_bounds(2), rnum_obs_in_set(1)
-real(r8) :: rtime(4)
-integer  :: days, secs
-integer  :: copy1_owner, owner_index
-
-call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
-
-if( ens_handle%my_pe == copy1_owner) then
-   rkey_bounds = key_bounds
-   rnum_obs_in_set(1) = num_obs_in_set
-   call get_time(time1, secs, days)
-   rtime(1) = secs
-   rtime(2) = days
-   call get_time(time2, secs, days)
-   rtime(3) = secs
-   rtime(4) = days
-   call broadcast_send(map_pe_to_task(ens_handle, copy1_owner), rkey_bounds, rnum_obs_in_set, rtime)
-else
-   call broadcast_recv(map_pe_to_task(ens_handle, copy1_owner), rkey_bounds, rnum_obs_in_set, rtime)
-   key_bounds =     nint(rkey_bounds)
-   num_obs_in_set = nint(rnum_obs_in_set(1))
-   time1 = set_time(nint(rtime(1)), nint(rtime(2)))
-   time2 = set_time(nint(rtime(3)), nint(rtime(4)))
-endif
-
-! Every task gets the current time (necessary for the forward operator)
-ens_handle%current_time = time1
-
-end subroutine filter_sync_keys_time
 
 !-------------------------------------------------------------------------
 

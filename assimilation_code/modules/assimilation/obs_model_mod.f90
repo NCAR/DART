@@ -4,6 +4,7 @@
 
 module obs_model_mod
 
+use types_mod,            only : r8
 use utilities_mod,        only : error_handler, E_ERR, E_MSG, E_WARN, &
                                  get_unit, file_exist, set_output
 use assim_model_mod,      only : get_closest_state_time_to,         &
@@ -21,15 +22,17 @@ use time_manager_mod,     only : time_type, set_time, get_time,                 
                                  operator(/), operator(+), operator(<), operator(==), &
                                  operator(<=), operator(>=)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe, &
-                                 prepare_to_update_vars
+                                 prepare_to_update_vars, get_copy_owner_index, &
+                                 map_pe_to_task
 use mpi_utilities_mod,    only : my_task_id, task_sync, block_task, &
-                                 sum_across_tasks, shell_execute, my_task_id
+                                 sum_across_tasks, shell_execute, my_task_id, &
+                                 broadcast_send, broadcast_recv
 use io_filenames_mod,     only : file_info_type
 
 implicit none
 private
 
-public :: move_ahead, advance_state, set_obs_model_trace, have_members
+public :: move_ahead, advance_state, set_obs_model_trace, have_members, filter_sync_keys_time
 
 character(len=*), parameter :: source = 'obs_model_mod.f90'
 
@@ -619,6 +622,48 @@ endif
 have_members = ((ens_handle%my_num_copies >= 1) .and. (my_first_copy <= ens_size)) 
 
 end function have_members
+
+!--------------------------------------------------------------------
+      
+subroutine filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, time1, time2)
+             
+integer,             intent(inout)  :: key_bounds(2), num_obs_in_set
+type(time_type),     intent(inout)  :: time1, time2
+type(ensemble_type), intent(inout)     :: ens_handle
+      
+! Have owner of copy 1 broadcast these values to all other tasks.
+! Only tasks which contain copies have this info; doing it this way
+! allows ntasks > nens to work.
+   
+real(r8) :: rkey_bounds(2), rnum_obs_in_set(1)
+real(r8) :: rtime(4)
+integer  :: days, secs
+integer  :: copy1_owner, owner_index
+              
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
+      
+if( ens_handle%my_pe == copy1_owner) then
+   rkey_bounds = key_bounds
+   rnum_obs_in_set(1) = num_obs_in_set
+   call get_time(time1, secs, days) 
+   rtime(1) = secs
+   rtime(2) = days
+   call get_time(time2, secs, days)
+   rtime(3) = secs
+   rtime(4) = days
+   call broadcast_send(map_pe_to_task(ens_handle, copy1_owner), rkey_bounds, rnum_obs_in_set, rtime)
+else
+   call broadcast_recv(map_pe_to_task(ens_handle, copy1_owner), rkey_bounds, rnum_obs_in_set, rtime)
+   key_bounds =     nint(rkey_bounds)
+   num_obs_in_set = nint(rnum_obs_in_set(1))
+   time1 = set_time(nint(rtime(1)), nint(rtime(2)))
+   time2 = set_time(nint(rtime(3)), nint(rtime(4)))
+endif
+
+! Every task gets the current time (necessary for the forward operator)
+ens_handle%current_time = time1
+
+end subroutine filter_sync_keys_time
 
 !--------------------------------------------------------------------
 
