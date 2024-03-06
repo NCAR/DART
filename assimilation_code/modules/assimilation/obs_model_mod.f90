@@ -54,7 +54,7 @@ end subroutine initialize_module
 
 !-------------------------------------------------------------------------
 
-subroutine move_ahead(ens_handle, ens_size, seq, last_key_used, &
+subroutine move_ahead(ens_handle, ens_size, seq, &
    key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
 ! Based on the current ens time and the time of the next available
@@ -69,8 +69,8 @@ implicit none
 type(ensemble_type),     intent(inout) :: ens_handle
 integer,                 intent(in)    :: ens_size
 type(obs_sequence_type), intent(in)    :: seq
-integer,                 intent(in)    :: last_key_used
-integer,                 intent(out)   :: key_bounds(2), num_obs_in_set
+integer,                 intent(inout) :: key_bounds(2)
+integer,                 intent(out)   :: num_obs_in_set
 type(time_type),         intent(out)   :: curr_ens_time
 type(time_type),         intent(out)   :: next_ens_time
 
@@ -78,6 +78,7 @@ type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_ti
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
 logical            :: is_this_last, is_there_one, out_of_range, leaving_early
+integer            :: last_key_used
 
 ! Initialize if needed
 if(.not. module_initialized) then
@@ -86,6 +87,7 @@ if(.not. module_initialized) then
 endif
 
 ! Prepare values for 'early' returns
+last_key_used = key_bounds(2)
 num_obs_in_set  =   0
 key_bounds(1:2) = -99
 leaving_early   =   .false.

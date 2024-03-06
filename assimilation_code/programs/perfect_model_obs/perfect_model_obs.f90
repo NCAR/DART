@@ -148,7 +148,7 @@ integer                 :: i, j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies, forward_unit
 integer                 :: io, num_obs_in_set, nth_obs
-integer                 :: key_bounds(2), num_qc, last_key_used
+integer                 :: key_bounds(2), num_qc
 integer                 :: seed
 integer(i8)             :: model_size
 
@@ -355,7 +355,7 @@ if(first_obs_seconds > 0 .or. first_obs_days > 0) then
    endif
 endif
 
-last_key_used = -99
+key_bounds(1:2) = -99
 
 ! Also get rid of observations past the last_obs_time if requested
 if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
@@ -395,7 +395,7 @@ AdvanceTime: do
    ! PAR For now, can only broadcast real arrays
 
    ! Get the model to a good time to use a next set of observations
-   call move_ahead(ens_handle, 1, seq, last_key_used, &
+   call move_ahead(ens_handle, 1, seq, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
    call filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
@@ -614,9 +614,6 @@ AdvanceTime: do
 
    ! Deallocate the keys storage
    deallocate(keys)
-
-   ! The last key used is updated to move forward in the observation sequence
-   last_key_used = key_bounds(2)
 
 end do AdvanceTime
 

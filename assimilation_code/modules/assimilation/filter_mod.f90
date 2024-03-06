@@ -239,7 +239,7 @@ type(time_type)             :: curr_ens_time, next_ens_time
 
 integer,    allocatable :: keys(:)
 integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
-integer                 :: last_key_used, key_bounds(2)
+integer                 :: key_bounds(2)
 logical                 :: read_time_from_file
 
 type(file_info_type) :: file_info_read
@@ -351,7 +351,7 @@ if(first_obs_seconds > 0 .or. first_obs_days > 0) then
 endif
 
 ! Start assimilating at beginning of modified sequence
-last_key_used = -99
+key_bounds(1:2) = -99
 
 ! Also get rid of observations past the last_obs_time if requested
 if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
@@ -370,11 +370,8 @@ AdvanceTime : do
    time_step_number = time_step_number + 1
 
    ! Determine how far to advance model to make the window include the next available observation.
-   call move_ahead(state_ens_handle, ens_size, seq, last_key_used, &
+   call move_ahead(state_ens_handle, ens_size, seq, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
-
-   ! The last key used is updated to move forward in the observation sequence
-   last_key_used = key_bounds(2)
 
    ! Process 0 broadcast its value of key_bounds so exit condition of no keys can be checked
    call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, &
