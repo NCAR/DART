@@ -120,9 +120,6 @@ integer  :: first_obs_days      = -1
 integer  :: first_obs_seconds   = -1
 integer  :: last_obs_days       = -1
 integer  :: last_obs_seconds    = -1
-! Assimilation window; defaults to model timestep size.
-integer  :: obs_window_days     = -1
-integer  :: obs_window_seconds  = -1
 ! Control diagnostic output for state variables
 integer  :: num_output_state_members = 0
 integer  :: num_output_obs_members   = 0
@@ -195,8 +192,6 @@ namelist /filter_nml/            &
    first_obs_seconds,            &
    last_obs_days,                &
    last_obs_seconds,             &
-   obs_window_days,              &
-   obs_window_seconds,           &
    num_output_state_members,     &
    num_output_obs_members,       &
    output_interval,              &
@@ -240,7 +235,7 @@ type(ensemble_type)         :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_h
 type(obs_sequence_type)     :: seq
 type(forward_op_info_type)  :: forward_op_ens_info
 type(time_type)             :: time1, first_obs_time, last_obs_time
-type(time_type)             :: curr_ens_time, next_ens_time, window_time
+type(time_type)             :: curr_ens_time, next_ens_time
 
 integer,    allocatable :: keys(:)
 integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
@@ -370,15 +365,12 @@ endif
 
 ! Time step number is used to do periodic diagnostic output
 time_step_number = -1
-curr_ens_time = set_time(0, 0)
-next_ens_time = set_time(0, 0)
-call filter_set_window_time(window_time)
 
 AdvanceTime : do
    time_step_number = time_step_number + 1
 
    ! Determine how far to advance model to make the window include the next available observation.
-   call move_ahead(state_ens_handle, ens_size, seq, last_key_used, window_time, &
+   call move_ahead(state_ens_handle, ens_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
    ! The last key used is updated to move forward in the observation sequence
@@ -562,21 +554,6 @@ else
 endif
 
 end subroutine filter_set_initial_time
-
-!-------------------------------------------------------------------------
-
-subroutine filter_set_window_time(dart_time)
-
-type(time_type), intent(out) :: dart_time
-
-
-if(obs_window_days >= 0) then
-   dart_time = set_time(obs_window_seconds, obs_window_days)
-else
-   dart_time = set_time(0, 0)
-endif
-
-end subroutine filter_set_window_time
 
 !-------------------------------------------------------------------------
 

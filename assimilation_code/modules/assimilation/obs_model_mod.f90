@@ -54,7 +54,7 @@ end subroutine initialize_module
 
 !-------------------------------------------------------------------------
 
-subroutine move_ahead(ens_handle, ens_size, seq, last_key_used, window_time, &
+subroutine move_ahead(ens_handle, ens_size, seq, last_key_used, &
    key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
 ! Based on the current ens time and the time of the next available
@@ -70,9 +70,8 @@ type(ensemble_type),     intent(inout) :: ens_handle
 integer,                 intent(in)    :: ens_size
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: last_key_used
-type(time_type),         intent(in)    :: window_time
 integer,                 intent(out)   :: key_bounds(2), num_obs_in_set
-type(time_type),         intent(inout) :: curr_ens_time
+type(time_type),         intent(out)   :: curr_ens_time
 type(time_type),         intent(out)   :: next_ens_time
 
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
