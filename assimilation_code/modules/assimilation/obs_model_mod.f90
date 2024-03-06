@@ -23,7 +23,8 @@ use time_manager_mod,     only : time_type, set_time, get_time,                 
                                  operator(<=), operator(>=)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe, &
                                  prepare_to_update_vars, get_copy_owner_index, &
-                                 map_pe_to_task
+                                 map_pe_to_task, set_ensemble_time, all_copies_to_all_vars, &
+                                 all_vars_to_all_copies
 use mpi_utilities_mod,    only : my_task_id, task_sync, block_task, &
                                  sum_across_tasks, shell_execute, my_task_id, &
                                  broadcast_send, broadcast_recv
@@ -32,7 +33,8 @@ use io_filenames_mod,     only : file_info_type
 implicit none
 private
 
-public :: move_ahead, advance_state, set_obs_model_trace, have_members, filter_sync_keys_time
+public :: move_ahead, advance_state, set_obs_model_trace, have_members, &
+   filter_sync_keys_time, advance_model
 
 character(len=*), parameter :: source = 'obs_model_mod.f90'
 
@@ -54,6 +56,70 @@ subroutine initialize_module
 module_initialized = .true.
 
 end subroutine initialize_module
+
+!-------------------------------------------------------------------------
+
+subroutine advance_model(ens_handle, ens_size, seq, key_bounds, num_obs_in_set, &
+   curr_ens_time, next_ens_time, async, adv_ens_command, tasks_per_model_advance, &
+   file_info_output, file_info_read)
+
+type(ensemble_type),     intent(inout) :: ens_handle
+integer,                 intent(in)    :: ens_size
+type(obs_sequence_type), intent(in)    :: seq
+integer,                 intent(inout) :: key_bounds(2)
+integer,                 intent(out)   :: num_obs_in_set
+type(time_type),         intent(out)   :: curr_ens_time
+type(time_type),         intent(out)   :: next_ens_time
+integer,                 intent(in)    :: async
+character(len=*),        intent(in)    :: adv_ens_command
+integer,                 intent(in)    :: tasks_per_model_advance
+type(file_info_type),    intent(inout) :: file_info_output, file_info_read
+
+! Determine how far to advance model to make the window include the next available observation.
+call move_ahead(ens_handle, ens_size, seq, &
+   key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+
+! Process 0 broadcast its value of key_bounds so exit condition of no keys can be checked
+call filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, &       
+   curr_ens_time, next_ens_time)
+
+! If there are no observations left, return 
+if(key_bounds(1) < 0) return
+
+! if model state data not at required time, advance model
+if (curr_ens_time /= next_ens_time) then
+     
+   ! THIS ERROR SHOULD NOW BE DEALT WITH IN THE CALLING PROGRAMS                             
+   ! we are going to advance the model - make sure we're doing single file output  
+   !!!if (.not. has_cycling) then 
+      !!!call error_handler(E_ERR,'filter:', &
+          !!!'advancing the model inside filter and multiple file output not currently supported', &
+          !!!source, text2='support will be added in subsequent releases', &
+          !!!text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
+   !!!endif
+ 
+   ! Sync at this point
+   call task_sync()     
+   
+   ! Transpose to var complete so models can run on a single process
+   call all_copies_to_all_vars(ens_handle)
+
+   call advance_state(ens_handle, ens_size, next_ens_time, async, &
+           adv_ens_command, tasks_per_model_advance, file_info_output, file_info_read)
+
+   call all_vars_to_all_copies(ens_handle)
+
+   ! update so curr time is accurate.
+   curr_ens_time = next_ens_time
+   ens_handle%current_time = curr_ens_time
+   call set_time_on_extra_copies(ens_handle)
+
+   ! only need to sync here since we want to wait for the
+   ! slowest task to finish before outputting the time.
+   call task_sync()
+endif
+
+end subroutine advance_model
 
 !-------------------------------------------------------------------------
 
@@ -665,6 +731,30 @@ ens_handle%current_time = time1
 
 end subroutine filter_sync_keys_time
 
+!--------------------------------------------------------------------
+
+!> Set the time on any extra copies that a pe owns
+!> Could we just set the time on all copies?
+         
+subroutine set_time_on_extra_copies(ens_handle)
+             
+type(ensemble_type), intent(inout) :: ens_handle
+
+integer :: copy_num, owner, owners_index
+integer :: ens_size
+      
+ens_size = ens_handle%num_copies - ens_handle%num_extras
+      
+do copy_num = ens_size + 1, ens_handle%num_copies
+   ! Set time for a given copy of an ensemble
+   call get_copy_owner_index(ens_handle, copy_num, owner, owners_index)
+   if(ens_handle%my_pe == owner) then
+      call set_ensemble_time(ens_handle, owners_index, ens_handle%current_time)
+   endif
+enddo 
+
+end subroutine  set_time_on_extra_copies
+      
 !--------------------------------------------------------------------
 
 end module obs_model_mod

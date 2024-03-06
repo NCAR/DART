@@ -28,14 +28,10 @@ use assim_model_mod,       only : static_init_assim_model, get_model_size,      
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace, &
-                                  filter_sync_keys_time
+                                  filter_sync_keys_time, advance_model
 
-use ensemble_manager_mod,  only : end_ensemble_manager,                &
-                                  ensemble_type, get_my_num_copies,                 &
-                                  all_vars_to_all_copies, all_copies_to_all_vars,             &
-                                  compute_copy_mean, compute_copy_mean_sd,                    &
-                                  get_copy_owner_index,                                       &
-                                  get_ensemble_time, set_ensemble_time
+use ensemble_manager_mod,  only : end_ensemble_manager, ensemble_type, &
+                                  compute_copy_mean, compute_copy_mean_sd
                                   
 use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -43,7 +39,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, &
                                   do_rtps_inflate, set_inflate_flavor,                &
                                   NO_INFLATION
 
-use mpi_utilities_mod,     only : my_task_id, task_sync, task_count, iam_task0
+use mpi_utilities_mod,     only : my_task_id, task_count, iam_task0
 
 use state_vector_io_mod,   only : state_vector_io_init, write_state
 
@@ -367,46 +363,11 @@ AdvanceTime : do
    time_step_number = time_step_number + 1
 
    ! Determine how far to advance model to make the window include the next available observation.
-   call move_ahead(state_ens_handle, ens_size, seq, &
-      key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
-
-   ! Process 0 broadcast its value of key_bounds so exit condition of no keys can be checked
-   call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, &
-                              curr_ens_time, next_ens_time)
+   call advance_model(state_ens_handle, ens_size, seq, key_bounds, num_obs_in_set, &
+      curr_ens_time, next_ens_time, async, adv_ens_command, tasks_per_model_advance, &
+      file_info_output, file_info_read)
 
    if(key_bounds(1) < 0) exit AdvanceTime
-   
-   ! if model state data not at required time, advance model
-   if (curr_ens_time /= next_ens_time) then
-
-      ! we are going to advance the model - make sure we're doing single file output
-      if (.not. has_cycling) then
-         call error_handler(E_ERR,'filter:', &
-             'advancing the model inside filter and multiple file output not currently supported', &
-             source, text2='support will be added in subsequent releases', &
-             text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
-      endif
- 
-      ! Sync at this point
-      call task_sync()
-
-      ! Transpose to var complete so models can run on a single process
-      call all_copies_to_all_vars(state_ens_handle)
-
-      call advance_state(state_ens_handle, ens_size, next_ens_time, async, &
-              adv_ens_command, tasks_per_model_advance, file_info_output, file_info_read)
-
-      call all_vars_to_all_copies(state_ens_handle)
-
-      ! update so curr time is accurate.
-      curr_ens_time = next_ens_time
-      state_ens_handle%current_time = curr_ens_time
-      call set_time_on_extra_copies(state_ens_handle)
-
-      ! only need to sync here since we want to wait for the
-      ! slowest task to finish before outputting the time.
-      call task_sync()
-   endif
 
    ! Write out forecast diagnostic file(s). 
    if(output_forecast_diags .and. output_diag_now(output_interval, time_step_number)) &
@@ -642,29 +603,6 @@ call set_assim_tools_trace(trace_level, timestamp_level)
 end subroutine set_trace
 
 !-------------------------------------------------------------------------
-!> Set the time on any extra copies that a pe owns
-!> Could we just set the time on all copies?
-
-subroutine set_time_on_extra_copies(ens_handle)
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-integer :: copy_num, owner, owners_index
-integer :: ens_size
-
-ens_size = ens_handle%num_copies - ens_handle%num_extras
-
-do copy_num = ens_size + 1, ens_handle%num_copies
-   ! Set time for a given copy of an ensemble
-   call get_copy_owner_index(ens_handle, copy_num, owner, owners_index)
-   if(ens_handle%my_pe == owner) then
-      call set_ensemble_time(ens_handle, owners_index, ens_handle%current_time)
-   endif
-enddo
-
-end subroutine  set_time_on_extra_copies
-
-!------------------------------------------------------------------
 
 function output_diag_now(output_interval, time_step_number)
 
