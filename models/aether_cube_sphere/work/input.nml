@@ -196,5 +196,13 @@
 /
 
 &transform_state_nml
-   nfaces = 6
+   nblocks = 6
+   nhalos = 2
+   restart_directory = './'
+   restart_file_prefix = '3DALL_20110320_003000_m'
+   restart_file_middle = '_g'
+   restart_file_suffix = '.nc'
+   dart_directory = './'
+   dart_file_prefix = '3DALL_20110320_003000_m'
+   dart_file_suffix = '.nc'
    /
