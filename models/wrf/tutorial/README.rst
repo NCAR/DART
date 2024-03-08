@@ -625,19 +625,11 @@ the dates you plan to build an analysis for, and run the codes to
 generate an observation sequence file.
 
 The steps listed below to generate these observation
-sequence files are meant as a guidline for NSF NCAR Research Data
-Archive data file ds090.0. Be aware not all required software has been
-migrated to Derecho to perform this conversion.  
+sequence files are meant as a guideline for NSF NCAR Research Data
+Archive data file ds090.0. **Be aware not all required software has been
+migrated to Derecho to perform this conversion.**  
 See `bug report #634 <https://github.com/NCAR/DART/issues/634>`__
 for more updated information.
-
-.. Reminder::
-
-   The following steps are **not
-   necessary** for the tutorial as the processed PREPBUFR observation
-   sequence files have already been provided for you. However, these steps
-   are provided in order to help users get started with these observations
-   quickly for their own experiments.
 
 To reproduce the observation sequence files in the *output* directories, 
 you would do the following:
