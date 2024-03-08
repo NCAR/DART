@@ -84,7 +84,8 @@ Step 1: Setup
 
 There are several required dependencies for the executables and WRF-DART scripting
 components. On NSF NCAR's Derecho, users have reported success building WRF, WPS,
-WRFDA, and DART using gfortan with the following module environment:
+WRFDA, and DART using gfortan with the following module environment. Note: not all
+modules listed below are a requirement to compile and run the tutorial.
 
    ::
 
@@ -589,13 +590,21 @@ you when each ensemble member has finished.
 Step 3: Prepare observations [OPTIONAL]
 ---------------------------------------
 
-For the tutorial exercise, observation sequence files are provided to
-enable you to quickly get started running a test WRF-DART system. If you
-want to run with the example observations, you can skip to Step
-4.
+.. Warning::
 
-However, observation processing is critical to the success of running
-DART and was covered in :ref:`Getting Started <Welcome page>`. In
+   The observation sequence files to run this tutorial are already provided
+   for you. If you want to run with the provided tutorial observations, you 
+   can skip to Step 4 right now.  If you are interested in using custom
+   observations for a WRF experiment other than the tutorial you should read on. 
+   The remaining instructions provided below in Step 3 are meant as a guideline
+   to converting raw PREPBUFR data files into the required ``obs_seq`` format
+   required by DART. Be aware that there is ongoing discussion of the proper
+   archived data set (RDA ds090.0 or ds337.0) that should be used to obtain
+   the PREPBUFR data. See the discussion in `bug report #634 <https://github.com/NCAR/DART/issues/634>`__.  
+   If you have questions please contact the DART team.
+
+Observation processing is critical to the success of running
+DART and is covered in :ref:`Getting Started <Welcome page>`. In
 brief, to add your own observations to WRF-DART you will need to
 understand the relationship between observation definitions and
 observation sequences, observation types and observation quantities, and
@@ -615,19 +624,23 @@ page to build the bufr conversion programs, get observation files for
 the dates you plan to build an analysis for, and run the codes to
 generate an observation sequence file.
 
-For completeness, we list here how you could generate these observation
-sequence files yourself. 
+The steps listed below to generate these observation
+sequence files are meant as a guidline for NSF NCAR Research Data
+Archive data file ds090.0. Be aware not all required software has been
+migrated to Derecho to perform this conversion.  
+See `bug report #634 <https://github.com/NCAR/DART/issues/634>`__
+for more updated information.
 
-.. important::
+.. Reminder::
 
-   the following steps are **not
+   The following steps are **not
    necessary** for the tutorial as the processed PREPBUFR observation
    sequence files have already been provided for you. However, these steps
    are provided in order to help users get started with these observations
    quickly for their own experiments.
 
-To (again, *optionally*) reproduce the observation sequence files in the
-*output* directories, you would do the following:
+To reproduce the observation sequence files in the *output* directories, 
+you would do the following:
 
 -  Go into your DART prep_bufr observation converter directory and
    install the PREPBUFR utilities as follows:
