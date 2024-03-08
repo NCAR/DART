@@ -231,9 +231,9 @@ type(time_type)             :: time1, first_obs_time, last_obs_time
 type(time_type)             :: curr_ens_time, next_ens_time
 
 integer,    allocatable :: keys(:)
-integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
+integer                 :: iunit, io, time_step_number, num_obs_in_set
 integer                 :: key_bounds(2)
-logical                 :: read_time_from_file
+logical                 :: read_time_from_file, all_gone
 
 type(file_info_type) :: file_info_read
 type(file_info_type) :: file_info_forecast
@@ -242,75 +242,20 @@ type(file_info_type) :: file_info_postassim
 type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
 
-logical :: all_gone
-
 call filter_initialize_modules_used() ! static_init_model called in here
 
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "filter_nml", iunit)
-read(iunit, nml = filter_nml, iostat = io)
-call check_namelist_read(iunit, io, "filter_nml")
-
-! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
-if (do_nml_term()) write(     *     , nml=filter_nml)
-
-if (task_count() == 1) distributed_state = .true.
-
-call set_debug_fwd_op(output_forward_op_errors)
-call set_trace(trace_execution, output_timestamps, silence)
-
-! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
-if(ens_size < 2) then
-   write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
-   call error_handler(E_ERR,'filter_main', msgstring, source)
-endif
-
-! informational message to log
-write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
-call error_handler(E_MSG,'filter_main:', msgstring, source)
-
-call set_missing_ok_status(allow_missing_clm)
+! Read the nameslist and adjust control variables
+call process_namelist_entries()
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate)
-! Turn it off if not requested in namelist
-if(.not. do_prior_inflate) call set_inflate_flavor(prior_inflate, NO_INFLATION)
+call init_inflation_options()
 
-! Avoid illegal use of RTPS with prior inflation; Should throw an error?
-if(do_rtps_inflate(prior_inflate)) call set_inflate_flavor(prior_inflate, NO_INFLATION)
-
-call adaptive_inflate_init(post_inflate)
-! Turn it off if not requested in namelist
-if(.not. do_posterior_inflate) call set_inflate_flavor(post_inflate, NO_INFLATION)
-
-! Cannot select state space posterior inflation options if not computing posterior
-if(.not. compute_posterior .and. do_ss_inflate(post_inflate)) then
-   write(msgstring, *) 'cannot use posterior state space inflation if compute_posterior is false'
-   call error_handler(E_ERR,'filter_main', msgstring, source, &
-           text2='"compute_posterior" is false; cannot have posterior state_space inflation')
-endif
-
-! 'has_cycling' set to 'single_file_out'; only allowing cycling if writing to a single file.
-has_cycling = single_file_out
-
-! Can't output more ensemble members than exist
-if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
+! Set a time type for initial time if namelist inputs are not negative
+call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
 ! Initialize the ensemble manager and the ens_copies index information
 call init_state_ens(state_ens_handle, ens_copies, ens_size, output_mean, output_sd, &
    do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
-
-! Don't currently support number of processes > model_size
-if(task_count() > get_model_size()) then 
-   write(msgstring, *) 'number of MPI processes = ', task_count(), &
-                       ' while model size = ', get_model_size()
-   call error_handler(E_ERR,'filter_main', &
-      'Cannot have number of processes > model size' ,source, text2=msgstring)
-endif
-
-! Set a time type for initial time if namelist inputs are not negative
-call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
@@ -356,17 +301,15 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    endif
 endif
 
-! Time step number is used to do periodic diagnostic output
-time_step_number = -1
-
-AdvanceTime : do
-   time_step_number = time_step_number + 1
+! Loop through timesteps until observations are exhausted
+AdvanceTime : do time_step_number = 0, huge(time_step_number)
 
    ! Determine how far to advance model to make the window include the next available observation.
    call advance_model(state_ens_handle, ens_size, seq, key_bounds, num_obs_in_set, &
       curr_ens_time, next_ens_time, async, adv_ens_command, tasks_per_model_advance, &
       file_info_output, file_info_read)
 
+   ! No more observations available so exit the time loop
    if(key_bounds(1) < 0) exit AdvanceTime
 
    ! Write out forecast diagnostic file(s). 
@@ -613,6 +556,79 @@ output_diag_now = ((output_interval > 0) .and. &
    (time_step_number / output_interval * output_interval == time_step_number)) 
 
 end function output_diag_now
+
+!------------------------------------------------------------------
+
+subroutine init_inflation_options()
+
+! Initialize the adaptive inflation module
+call adaptive_inflate_init(prior_inflate)
+! Turn it off if not requested in namelist
+if(.not. do_prior_inflate) call set_inflate_flavor(prior_inflate, NO_INFLATION)
+   
+! Avoid illegal use of RTPS with prior inflation; Should throw an error?
+if(do_rtps_inflate(prior_inflate)) call set_inflate_flavor(prior_inflate, NO_INFLATION)
+                                  
+call adaptive_inflate_init(post_inflate)
+! Turn it off if not requested in namelist
+if(.not. do_posterior_inflate) call set_inflate_flavor(post_inflate, NO_INFLATION)
+
+! Cannot select state space posterior inflation options if not computing posterior
+if(.not. compute_posterior .and. do_ss_inflate(post_inflate)) then
+   write(msgstring, *) 'cannot use posterior state space inflation if compute_posterior is false'
+   call error_handler(E_ERR,'filter_main', msgstring, source, &
+           text2='"compute_posterior" is false; cannot have posterior state_space inflation')
+endif
+
+end subroutine init_inflation_options
+
+!------------------------------------------------------------------
+
+subroutine process_namelist_entries()
+
+integer :: io, iunit
+
+! Read the namelist entry         
+call find_namelist_in_file("input.nml", "filter_nml", iunit)
+read(iunit, nml = filter_nml, iostat = io)
+call check_namelist_read(iunit, io, "filter_nml")
+                              
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
+if (do_nml_term()) write(     *     , nml=filter_nml)
+                                  
+if (task_count() == 1) distributed_state = .true.
+
+call set_debug_fwd_op(output_forward_op_errors)
+call set_trace(trace_execution, output_timestamps, silence)
+
+! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
+if(ens_size < 2) then      
+   write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
+   call error_handler(E_ERR,'filter_main', msgstring, source)
+endif
+
+! informational message to log
+write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
+call error_handler(E_MSG,'filter_main:', msgstring, source)
+   
+call set_missing_ok_status(allow_missing_clm)
+   
+! 'has_cycling' set to 'single_file_out'; only allowing cycling if writing to a single file.
+has_cycling = single_file_out
+
+! Can't output more ensemble members than exist
+if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
+
+! Don't currently support number of processes > model_size
+if(task_count() > get_model_size()) then
+   write(msgstring, *) 'number of MPI processes = ', task_count(), &
+                       ' while model size = ', get_model_size()
+   call error_handler(E_ERR,'filter_main', &
+      'Cannot have number of processes > model size' ,source, text2=msgstring)
+endif
+
+end subroutine process_namelist_entries
 
 !------------------------------------------------------------------
 
