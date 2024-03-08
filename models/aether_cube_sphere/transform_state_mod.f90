@@ -81,7 +81,6 @@ subroutine model_to_dart()
    integer, dimension(nblocks+1) :: cumulative_nxs, cumulative_nys
 
    integer, dimension(4) :: time_x_y_z_dims
-   integer, dimension(3) :: x_y_z_dims
 
    ! The time variable in the block files is a double
    real(r8), allocatable, dimension(:) :: time_array
@@ -157,15 +156,12 @@ subroutine model_to_dart()
 
    dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'x', cumulative_nxs(nblocks+1), dart_dimid)
    time_x_y_z_dims(3) = dart_dimid
-   x_y_z_dims(3) = dart_dimid
 
    dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'y', cumulative_nys(nblocks+1), dart_dimid)
    time_x_y_z_dims(2) = dart_dimid
-   x_y_z_dims(2) = dart_dimid
 
    dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'z', nzs, dart_dimid)
    time_x_y_z_dims(1) = dart_dimid
-   x_y_z_dims(1) = dart_dimid
    
    ! Allocate all of the storage arrays
    allocate(time_array(ntimes))
@@ -180,9 +176,9 @@ subroutine model_to_dart()
          dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_x_y_z_dims(4), dart_varid)
       else if (trim(name) == 'z') then
          ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, 'alt', xtype, x_y_z_dims, dart_varid)
+         dart_file%ncstatus = nf90_def_var(dart_file%ncid, 'alt', xtype, time_x_y_z_dims(1:3), dart_varid)
       else if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, x_y_z_dims, dart_varid)
+         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_x_y_z_dims(1:3), dart_varid)
       else
          dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_x_y_z_dims, dart_varid)
       end if
@@ -210,26 +206,22 @@ subroutine model_to_dart()
 
    do varid = 1, block_files(1)%nVariables
       do iblock = 1, nblocks
-
          block_files(iblock)%ncstatus = nf90_inquire_variable(block_files(iblock)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
-
+         
          if (trim(name) == 'time') then
             ! This is a 1-D time array
             if (iblock == 1) then
                block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
             end if
-   
+
             if (iblock == nblocks) then
                dart_file%ncstatus = nf90_put_var(dart_file%ncid, varid, time_array)
             end if
          else
             ! All of the variables besides time can be read into the block array
             block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
-
-
             if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
                spatial_array(:, cumulative_nys(iblock)+1:cumulative_nys(iblock+1), cumulative_nxs(iblock)+1:cumulative_nxs(iblock+1)) = block_array(:, nhalos+1:nys_per_block-nhalos, nhalos+1:nxs_per_block-nhalos)
-            
                if (iblock == nblocks) then
                   dart_file%ncstatus = nf90_put_var(dart_file%ncid, varid, spatial_array)
                end if
@@ -240,6 +232,7 @@ subroutine model_to_dart()
                end if
             end if
          end if
+
       end do
    end do
 
@@ -253,7 +246,6 @@ subroutine dart_to_model()
    do iblock = 1, nblocks
       block_files(iblock)%ncid = nc_open_file_readwrite(block_files(iblock)%file_path)
    end do
-
    ! The dart file is read only
    dart_file%ncid = nc_open_file_readonly(dart_file%file_path)
 
@@ -297,15 +289,15 @@ function assign_block_files_array(nblocks, ensemble_member, restart_directory, &
    character(len=*), intent(in) :: restart_file_middle
    character(len=*), intent(in) :: restart_file_suffix
    type(file_type), allocatable, dimension(:) :: block_files
-   character(len=4) :: cube_face
-   integer :: iface
+   character(len=4) :: block_name
+   integer :: iblock
 
    allocate(block_files(nblocks))
 
-   do iface = 1, nblocks
-      cube_face = zero_fill(integer_to_string(iface-1), 4)
-      block_files(iface)%file_path = trim(restart_directory) // trim(restart_file_prefix) // &
-                               ensemble_member // trim(restart_file_middle) // cube_face // &
+   do iblock = 1, nblocks
+      block_name = zero_fill(integer_to_string(iblock-1), 4)
+      block_files(iblock)%file_path = trim(restart_directory) // trim(restart_file_prefix) // &
+                               ensemble_member // trim(restart_file_middle) // block_name // &
                                trim(restart_file_suffix)
    end do
 
