@@ -227,13 +227,12 @@ subroutine filter_main()
 type(ensemble_type)         :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
 type(obs_sequence_type)     :: seq
 type(forward_op_info_type)  :: forward_op_ens_info
-type(time_type)             :: time1, first_obs_time, last_obs_time
-type(time_type)             :: curr_ens_time, next_ens_time
+type(time_type)             :: time1, curr_ens_time, next_ens_time
 
 integer,    allocatable :: keys(:)
-integer                 :: iunit, io, time_step_number, num_obs_in_set
+integer                 :: time_step_number, num_obs_in_set
 integer                 :: key_bounds(2)
-logical                 :: read_time_from_file, all_gone
+logical                 :: read_time_from_file
 
 type(file_info_type) :: file_info_read
 type(file_info_type) :: file_info_forecast
@@ -278,28 +277,8 @@ if (perturb_from_single_instance) &
 call filter_setup_obs_sequence(forward_op_ens_info, seq, num_output_obs_members, &
    obs_sequence_in_name, compute_posterior)
 
-! Need to find first obs with appropriate time, delete all earlier ones
-if(first_obs_seconds > 0 .or. first_obs_days > 0) then
-   first_obs_time = set_time(first_obs_seconds, first_obs_days)
-   call delete_seq_head(first_obs_time, seq, all_gone)
-   if(all_gone) then
-      msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source)
-   endif
-endif
-
-! Start assimilating at beginning of modified sequence
-key_bounds(1:2) = -99
-
-! Also get rid of observations past the last_obs_time if requested
-if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
-   last_obs_time = set_time(last_obs_seconds, last_obs_days)
-   call delete_seq_tail(last_obs_time, seq, all_gone)
-   if(all_gone) then
-      msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
-      call error_handler(E_ERR,'filter_main',msgstring,source)
-   endif
-endif
+! Remove observations that are too early or too late to be assimilated 
+call trim_obs_sequence(seq, key_bounds)
 
 ! Loop through timesteps until observations are exhausted
 AdvanceTime : do time_step_number = 0, huge(time_step_number)
@@ -629,6 +608,41 @@ if(task_count() > get_model_size()) then
 endif
 
 end subroutine process_namelist_entries
+
+!------------------------------------------------------------------
+
+subroutine trim_obs_sequence(seq, key_bounds)
+
+type(obs_sequence_type), intent(inout) :: seq
+integer,                 intent(out)   :: key_bounds(2)
+
+type(time_type) :: first_obs_time, last_obs_time
+logical :: all_gone
+
+! Need to find first obs with appropriate time, delete all earlier ones
+if(first_obs_seconds > 0 .or. first_obs_days > 0) then
+   first_obs_time = set_time(first_obs_seconds, first_obs_days)
+   call delete_seq_head(first_obs_time, seq, all_gone)
+   if(all_gone) then
+      msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
+      call error_handler(E_ERR,'filter_main',msgstring,source)
+   endif
+endif
+
+! Start assimilating at beginning of modified sequence
+key_bounds(1:2) = -99
+
+! Also get rid of observations past the last_obs_time if requested
+if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
+   last_obs_time = set_time(last_obs_seconds, last_obs_days)
+   call delete_seq_tail(last_obs_time, seq, all_gone)
+   if(all_gone) then
+      msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
+      call error_handler(E_ERR,'filter_main',msgstring,source)
+   endif
+endif
+
+end subroutine trim_obs_sequence
 
 !------------------------------------------------------------------
 
