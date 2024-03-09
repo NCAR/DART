@@ -707,6 +707,10 @@ endif
 
 cstring = trim(str1)
 call to_upper(cstring)
+! KDR Diagnose need for loops in [gs]et_calendar*
+write(errstring,*)': before WhichCalendar calendar ',trim(cstring)
+call error_handler(E_MSG,'set_calendar_type_string',errstring,source)
+
 
 ! Using 'cstring' as the substring (2nd argument), we remove 
 ! the ambiguity of someone trying to use a calendar string
@@ -714,7 +718,15 @@ call to_upper(cstring)
 ! We must check for the gregorian_mars calendar before
 ! the gregorian calendar for similar reasons.
 
+! KDR Why does this loop over the calendar type indices?  
+!     i doesn't appear in the blocks, 
+!     and it exits after the 0th iteration (if there's a match)
+!     or repeats the same test 7 times and exits with no match.
 WhichCalendar : do i = 0, max_type 
+
+! KDR Diagnose need for loops in [gs]et_calendar*
+   write(errstring,*)': before if-test WhichCalendar i, calendar_type = ',i, calendar_type
+   call error_handler(E_MSG,'set_calendar_type_string',errstring,source)
 
    if     ( cstring == 'NO_CALENDAR' ) then
            calendar_type  = NO_CALENDAR
@@ -793,6 +805,11 @@ if ( .not. module_initialized ) call time_manager_init
 
 mystring = '  '
 
+! KDR Diagnose need for loops in [gs]et_calendar*
+!     Why the loop over cal types when they are individually referenced?
+!     It sets mystring to the same thing 7 times.
+write(errstring,*)': calendar_type = ',calendar_type
+call error_handler(E_MSG,'get_calendar_string',errstring,source)
 do i = 0,max_type
    if (calendar_type ==            JULIAN) mystring = 'JULIAN'
    if (calendar_type ==            NOLEAP) mystring = 'NOLEAP'
@@ -801,6 +818,10 @@ do i = 0,max_type
    if (calendar_type ==    GREGORIAN_MARS) mystring = 'GREGORIAN_MARS'
    if (calendar_type ==        SOLAR_MARS) mystring = 'SOLAR_MARS'
    if (calendar_type == THIRTY_DAY_MONTHS) mystring = 'THIRTY_DAY_MONTHS'
+! KDR Diagnose need for loops in [gs]et_calendar*
+   write(errstring,*)': in types loop i, mystring = ',i,trim(mystring)
+   call error_handler(E_MSG,'set_calendar_string',errstring,source)
+
 enddo
 
 if (len_trim(mystring) < 3) then
