@@ -40,7 +40,8 @@ for a member plus grid files, and repackage them into an ensemble state vector f
 (filter_input.nc).  Filter_input.nc has a single domain and no halos.
 The field names will be transformed into CF-compliant names in filter_input.nc.
 
-``Filter`` will read the ensemble of filter_input.nc files, assimilate, 
+``Filter`` will read a list of variables from ``model_nml`` (not ``transform_state_nml``),
+then read the ensemble of filter_input.nc files, assimilate, 
 and write an ensemble of filter_output.nc files.
 
 ``Dart_to_aether`` will convert the fields' names to the CF-compliant filter names,
@@ -69,7 +70,7 @@ transform_state_nml
       is defined by the number of processors used by Aether.
 
    variables
-      The Aether fields to be included in the model state are specified
+      The Aether fields to be transformed into a model state are specified
       in the 'variables' namelist variable in transform_state_nml.
       The following information must be provided for each field
       
@@ -90,8 +91,11 @@ transform_state_nml
         - Matlab's ``netcdf.rename`` 
 
       In ``transform_state_nml`` there is no association of DART "quantities" 
-      (QTY\_\*) with fields.  Those associations are made in ``model_nml`` 
-      for use by ``filter``.  See the :ref:`QTY<QTY>` section, below.
+      (QTY\_\*) with fields.  
+      A subset of the transformed variables to be included in the model state 
+      is specified in :ref:`model_nml:variables<model_nml>`, using the CF-compliant names.
+      That is where the associations with QTYs are made. 
+      See the :ref:`QTY<QTY>` section, below.
       
       The neutrals restart files contain the following fields.
       The most important fields are **noted in bold text**
@@ -121,6 +125,8 @@ transform_state_nml
    even though electron temperature is.
    They may be available in the history files.
       
+
+.. _model_nml:
 
 model_nml
 .........
@@ -192,18 +198,40 @@ time_step_days, time_step_seconds
 Usage
 -----
 
-To test the transformation of files for member 0:
+The workflow and scripting for fully cycling assimilation
+(ensemble hindcast, then assimilation, repeat as needed)
+has not been defined yet for Aether (2024-2),
+but we expect that all of the DART executables will be in a directory
+which is defined in the script.
+So the script will be able to run the programs using a full pathname.
+In addition, all of the Aether restart files will be in a "run" directory,
+which has plenty of space for the data.
+The DART executables will be run in this directory using their full pathnames.
+
+To run a more limited test (no assimilation),
+which is just the transformation of files for a member (0) 
+use the following steps.  
+These build the ``aether_to_dart`` and ``dart_to_aether`` executables
+in $DART/models/aether_lat-lon/work directory.
+Also in that directory, edit input.nml to set ``transform_state_nml:`` ``aether_restart_dirname``
+to be the full pathname of the directory where the Aether restart and grid files are.
+
 ::
 
+> set exec_dir = $DART/models/aether_lat-lon/work
+> cd $exec_dir
+> ./quick_build.sh
 > cd {aether_restart_dirname}
 > mkdir Orig
 > cp *m0000* Orig/
-> ./aether_to_dart  0
+> cp ${exec_dir}/input.nml .
+> ${exec_dir}/aether_to_dart  0
 > cp filter_input_0001.nc filter_output_0001.nc
-> ./dart_to_aether  0
+> ${exec_dir}/dart_to_aether  0
 
-| The filter\_ files will contain the CF-compliant field names which must be used in model_nml:variables.
 | Compare the modified Aether restart files with those in Orig.
+| The filter\_ files will contain the CF-compliant field names 
+  which must be used in ``model_nml:variables``.
 
 .. NOTE::
    Some halo parts may have no data in them because Aether currently (2024-2) 

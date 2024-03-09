@@ -119,7 +119,7 @@
 
 &transform_state_nml
    aether_restart_dirname = 
-      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/testdata3'
+      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/restart_files'
    variables = 
       'Temperature',    'neutrals',
       'O+',             'ions',

@@ -83,11 +83,12 @@ write(filter_io_file,'(2A,I0.4,A3)') trim(filter_io_root),'_',member + 1,'.nc'
 
 call error_handler(E_MSG, source, '', '')
 write(error_string_1,'(3A)') 'Extracting fields from DART file ',trim(filter_io_file)
-write(error_string_2,'(A,I3,2A)') 'into Aether restart member ',member,' in directory ', trim(aether_restart_dirname)
+write(error_string_2,'(A,I3,2A)') 'into Aether restart member ',member, &
+     ' in directory ', trim(aether_restart_dirname)
 call error_handler(E_MSG, progname, error_string_1, text2=error_string_2)
 call error_handler(E_MSG, '', '')
 
-ncid = nc_open_file_readonly(filter_io_file, source)
+ncid = nc_open_file_readonly(trim(aether_restart_dirname)//'/'//trim(filter_io_file), source)
 
 call filter_to_restarts(ncid, member)
 
@@ -115,7 +116,7 @@ subroutine filter_to_restarts(ncid, member)
 integer, intent(in) :: member, ncid
 
 real(r4), allocatable           :: fulldom3d(:,:,:)
-character(len=256)              :: file_root
+character(len=64)               :: file_root
 integer                         :: ivar
 character(len=vtablenamelength) :: varname, dart_varname
 
@@ -145,7 +146,7 @@ do ivar = 1, nvar_neutral
    dart_varname = aether_name_to_dart(varname)
 
    file_root = trim(variables(VT_ORIGININDX,ivar))
-   if (file_root == 'neutrals') then
+   if (trim(file_root) == 'neutrals') then
       ! This parameter is available through the `use netcdf` command.
       fulldom3d = NF90_FILL_REAL
       
@@ -171,11 +172,11 @@ do ivar = nvar_neutral + 1, nvar_neutral + nvar_ion
    file_root = trim(variables(VT_ORIGININDX,ivar))
    if (debug >= 0 .and. do_output()) then
       write(error_string_1,'("varname, dart_varname, file_root = ",3(2x,A))') &
-             trim(varname), trim(dart_varname), file_root 
+             trim(varname), trim(dart_varname), trim(file_root)
       call error_handler(E_MSG, routine, error_string_1, source)
    endif
 
-   if (file_root == 'ions') then
+   if (trim(file_root) == 'ions') then
       fulldom3d = NF90_FILL_REAL
       call nc_get_variable(ncid, dart_varname, fulldom3d(1:nlev,1:nlat,1:nlon), &
                            context=routine)
@@ -356,7 +357,8 @@ do jb = 1, nblocks_lat
 
       nb = (jb - 1) * nblocks_lon + ib - 1
 
-      block_file = block_file_name(trim(file_root), member, nb)
+      write(block_file,'(A,"/",A)') trim(aether_restart_dirname), &
+           trim(block_file_name(trim(file_root), member, nb))
       ncid_output = open_block_file(block_file, 'readwrite')
       if (.not.nc_variable_exists(ncid_output,varname)) then
          write(error_string_1,'(4A)') 'variable ', varname, ' does not exist in ',block_file

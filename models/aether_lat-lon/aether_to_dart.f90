@@ -104,7 +104,7 @@ call error_handler(E_MSG, progname, error_string_1, text2=error_string_2)
 call error_handler(E_MSG, '', '')
 
 ! nc_create_file does not leave define mode.
-ncid = nc_create_file(filter_io_file)
+ncid = nc_create_file(trim(aether_restart_dirname)//'/'//trim(filter_io_file))
 ! def_fill_dimvars does leave define mode.
 call def_fill_dimvars(ncid)
 
@@ -113,10 +113,10 @@ call def_fill_dimvars(ncid)
 call write_model_time(ncid, state_time)
 
 ! Define (non-time) variables
-call restarts_to_filter(aether_restart_dirname, ncid, member, define=.true.)
+call restarts_to_filter(ncid, member, define=.true.)
 
 ! Read and convert (non-time) variables
-call restarts_to_filter(aether_restart_dirname, ncid, member, define=.false.)
+call restarts_to_filter(ncid, member, define=.false.)
 ! subr. called by this routine closes the file only if define = .true.
 call nc_close_file(ncid)
 
@@ -139,9 +139,8 @@ contains
 ! .true.  define variables in the file or 
 ! .false. transfer the data from restart files to a filter_inpu.nc file.
 
-subroutine restarts_to_filter(dirname, ncid_output, member, define)
+subroutine restarts_to_filter(ncid_output, member, define)
 
-character(len=*), intent(in)  :: dirname
 integer,          intent(in)  :: ncid_output, member
 logical,          intent(in)  :: define
 
@@ -163,7 +162,7 @@ end if
 
 do jb = 1, jb_loop
    do ib = 1, ib_loop
-      call block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
+      call block_to_filter_io(ncid_output, ib, jb, member, define)
    enddo
 enddo
 
@@ -179,10 +178,9 @@ end subroutine restarts_to_filter
 ! define = .true.  define the NC variables in the filter_input.nc 
 ! define = .false. write the data from a block to the NC file using write_filter_io.
 
-subroutine block_to_filter_io(ncid_output, dirname, ib, jb, member, define)
+subroutine block_to_filter_io(ncid_output, ib, jb, member, define)
 
 integer,          intent(in) :: ncid_output
-character(len=*), intent(in) :: dirname
 integer,          intent(in) :: ib, jb
 integer,          intent(in) :: member
 logical,          intent(in) :: define
@@ -264,7 +262,8 @@ allocate(temp3d(1:nz_per_block, &
 ! Each field has a file type associated with it: variables(VT_ORIGININDX,f_index)
 
 file_root = variables(VT_ORIGININDX,1)
-filename = block_file_name(file_root, member, nb)
+write(filename,'(A,"/",A)') trim(aether_restart_dirname), &
+     trim(block_file_name(trim(file_root), member, nb))
 ncid_input = open_block_file(filename, 'read')
 
 do ivar = 1, nvar_neutral
@@ -304,7 +303,8 @@ enddo
 call nc_close_file(ncid_input)
 
 file_root = variables(VT_ORIGININDX,nvar_neutral+1)
-filename = block_file_name(file_root, member, nb)
+write(filename,'(A,"/",A)') trim(aether_restart_dirname), &
+     trim(block_file_name(trim(file_root), member, nb))
 ncid_input = open_block_file(filename, 'read')
 
 do ivar = nvar_neutral +1, nvar_neutral + nvar_ion

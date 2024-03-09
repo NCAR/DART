@@ -53,7 +53,7 @@ logical :: module_initialized = .false.
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=256) :: aether_restart_dirname    = 'none'
+character(len=256) :: aether_restart_dirname    = '.'
 ! An ensemble of file names is created using this root and $member in it,
 
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
@@ -149,7 +149,7 @@ call set_calendar_type( calendar )
 ! 2) allocate space for the grids
 ! 3) read them from the block restart files, could be stretched ...
 ! Opens and closes the grid block file, but not the filter netcdf file.
-call get_grid_from_blocks(aether_restart_dirname)
+call get_grid_from_blocks()
 
 if( debug  > 0 ) then
     write(error_string_1,'(A,3I5)') 'grid dims are ', nlon, nlat, nlev
@@ -281,13 +281,11 @@ end function block_file_name
 ! This grid is orthogonal and rectangular but can have irregular spacing along
 ! any of the three dimensions.
 
-subroutine get_grid_from_blocks(dirname)
-
-character(len=*), intent(in)  :: dirname
+subroutine get_grid_from_blocks()
 
 integer               :: nb, offset, ncid, nboff
 integer               :: starts(3), ends(3), xcount, ycount, zcount
-character(len=128)    :: filename
+character(len=256)    :: filename
 real(r4), allocatable :: temp(:,:,:)
 
 character(len=*), parameter :: routine = 'get_grid_from_blocks'
@@ -295,7 +293,7 @@ character(len=*), parameter :: routine = 'get_grid_from_blocks'
 ! Read the x,y,z  from a NetCDF block file(s),
 ! in order to calculate the n[xyz]_per_block dimensions. 
 ! grid_g0000.nc looks like a worthy candidate, but a restart could be used.
-write (filename,'(2A)')  trim(dirname),'/grid_g0000.nc'
+write (filename,'(2A)')  trim(aether_restart_dirname),'/grid_g0000.nc'
 ncid = nc_open_file_readonly(filename, routine)
 
 ! The grid (and restart) file variables have halos, so strip them off
@@ -308,7 +306,7 @@ nlon = nblocks_lon * nx_per_block
 nlat = nblocks_lat * ny_per_block
 nlev = nblocks_lev * nz_per_block     
 
-write(error_string_1,'(3(A,I5))') 'nlon = ', nlon, 'nlat = ', nlat, 'nlev = ', nlev
+write(error_string_1,'(3(A,I5))') 'nlon = ', nlon, ', nlat = ', nlat, ', nlev = ', nlev
 call error_handler(E_MSG, routine, error_string_1, source)
 
 allocate( lons( nlon ))
@@ -350,7 +348,7 @@ endif
 do nb = 1, nblocks_lon
 
    ! filename is trimmed by passage to open_block_file + "len=*" there.
-   filename = block_file_name('grid', -1, nb-1)
+   filename = trim(aether_restart_dirname)//'/'//block_file_name('grid', -1, nb-1)
    ncid = open_block_file(filename, 'read')
 
    ! Read 3D array and extract the longitudes of the non-halo data of this block.
@@ -373,7 +371,7 @@ do nb = 1, nblocks_lat
    ! Aether's block name counter start with 0, but the lat values can come from 
    ! any lon=const column of blocks. 
    nboff = ((nb - 1) * nblocks_lon)
-   filename = block_file_name('grid', -1, nboff)
+   filename = trim(aether_restart_dirname)//'/'//block_file_name('grid', -1, nboff)
    ncid = open_block_file(filename, 'read')
 
    call nc_get_variable(ncid, 'Latitude', &
@@ -392,7 +390,7 @@ enddo
 ! so we can read it from the first block.
 ! if this is not the case, this code has to change.
 
-filename = block_file_name('grid', -1, 0)
+filename = trim(aether_restart_dirname)//'/'//block_file_name('grid', -1, 0)
 ncid = open_block_file(filename, 'read')
 
 temp = MISSING_R8
