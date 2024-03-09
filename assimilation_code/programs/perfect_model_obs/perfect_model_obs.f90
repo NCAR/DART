@@ -237,8 +237,6 @@ call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
 ! Initialize the model now that obs_sequence is all set up
 model_size = get_model_size()
-write(msgstring,*)'Model size = ',model_size
-call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
 call init_ensemble_manager(ens_handle, ens_size, model_size)
@@ -250,8 +248,6 @@ call set_num_extra_copies(ens_handle, 0)
 has_cycling = single_file_out
 
 ! Initialize file names:
-
-! this routine allocates the second argument to be the correct length
 call parse_filenames(input_state_files,  input_filelist,  nfilesin)
 call parse_filenames(output_state_files, output_filelist, nfilesout)
 
@@ -295,38 +291,17 @@ call set_io_copy_flag( file_info_output, 1, 1, WRITE_COPY, num_output_ens=1)
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
 if (read_input_state_from_file) then
-
-   call error_handler(E_MSG,'perfect_read_restart:', 'reading input state from file')
    call read_state(ens_handle, file_info_input, read_time_from_file, time1)
-
 else ! model spin up
-
-   call error_handler(E_MSG,'perfect_read_restart:', &
-         'Using code in model_mod to initialize ensemble')
    call allocate_vars(ens_handle)
    if(ens_handle%my_pe == 0) call get_initial_condition(ens_handle%time(1), ens_handle%vars(:, 1))
    call all_vars_to_all_copies(ens_handle)
-
 endif
-
-! Temporary print of initial model time
-if (my_task_id() == 0) then
-   call get_time(ens_handle%time(1),secs,days)
-   write(msgstring, *) 'initial model time of perfect_model member (days,seconds) ',days,secs
-   call error_handler(E_DBG,'perfect_read_restart',msgstring,source)
-endif
-
 
 !>@todo FIXME this block must be supported in the single file loop with time dimension
 state_meta(1) = 'true state'
 
-! Get the time of the first observation in the sequence
-write(msgstring, *) 'total number of obs in sequence is ', get_num_obs(seq)
-call error_handler(E_MSG,'perfect_main',msgstring)
-
 num_qc = get_num_qc(seq)
-write(msgstring, *) 'number of qc values is ',num_qc
-call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Remove observations that are too early or too late to be assimilated
 call trim_obs_sequence(seq, key_bounds)

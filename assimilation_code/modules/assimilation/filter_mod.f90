@@ -27,8 +27,7 @@ use assim_model_mod,       only : static_init_assim_model, get_model_size,      
                                   end_assim_model, get_state_meta_data
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace
-use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace, &
-                                  filter_sync_keys_time, advance_model
+use obs_model_mod,         only : set_obs_model_trace, advance_model
 
 use ensemble_manager_mod,  only : end_ensemble_manager, ensemble_type, &
                                   compute_copy_mean, compute_copy_mean_sd
@@ -125,8 +124,6 @@ logical  :: silence                  = .false.
 logical  :: distributed_state = .true. ! Default to do distributed forward operators.
 
 ! IO options
-!>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
-!> ens1d1 ens1d2, ens1d1 ens2d2, etc   i like the latter better.
 character(len=256) ::  input_state_files(MAX_FILES) = '' 
 character(len=256) :: output_state_files(MAX_FILES) = '' 
 
@@ -283,7 +280,7 @@ call trim_obs_sequence(seq, key_bounds)
 ! Loop through timesteps until observations are exhausted
 AdvanceTime : do time_step_number = 0, huge(time_step_number)
 
-   ! Determine how far to advance model to make the window include the next available observation.
+   ! Advance the model to make the window include the next available observation.
    call advance_model(state_ens_handle, ens_size, seq, key_bounds, num_obs_in_set, &
       curr_ens_time, next_ens_time, async, adv_ens_command, tasks_per_model_advance, &
       file_info_output, file_info_read)
