@@ -71,7 +71,7 @@ use filter_io_diag_mod,    only : ens_copies_type, create_ensemble_from_single_f
 implicit none
 private
 
-public :: filter_set_initial_time, filter_main
+public :: filter_set_initial_time, filter_main, trim_obs_sequence
 
 character(len=*), parameter :: source = 'filter_mod.f90'
 
