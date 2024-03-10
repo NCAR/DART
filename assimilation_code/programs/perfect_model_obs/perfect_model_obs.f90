@@ -9,52 +9,40 @@ program perfect_model_obs
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
 use    utilities_mod,     only : error_handler, &
                                  find_namelist_in_file, check_namelist_read, &
-                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
-                                 do_nml_file, do_nml_term, logfileunit, &
-                                 open_file, close_file
-use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time,   &
-                                 generate_seed
+                                 E_ERR, E_MSG, nmlfileunit, timestamp, &
+                                 do_nml_file, do_nml_term, open_file, close_file
+use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), generate_seed
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,         &
                                  get_time_range_keys, set_obs_values, set_qc, set_obs,      &
                                  write_obs_seq, get_num_obs, init_obs, assignment(=),       &
-                                 static_init_obs_sequence, get_num_qc, read_obs_seq_header, &
-                                 set_qc_meta_data, delete_seq_head,       &
-                                 delete_seq_tail, destroy_obs, destroy_obs_sequence
-                                 
+                                 static_init_obs_sequence, read_obs_seq_header, &
+                                 set_qc_meta_data, destroy_obs, destroy_obs_sequence
 
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                  get_obs_def_type_of_obs
-use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace, filter_sync_keys_time
-use    obs_kind_mod, only : get_quantity_for_type_of_obs
+use    obs_model_mod,     only : set_obs_model_trace, advance_model
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  get_initial_condition
    
-use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities, &
-                                 finalize_mpi_utilities
+use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities
 
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
-use ensemble_manager_mod, only : init_ensemble_manager,               &
-                                 end_ensemble_manager, ensemble_type,  &
-                                 get_my_num_copies, get_ensemble_time, allocate_vars,  &
-                                 all_vars_to_all_copies, &
-                                 all_copies_to_all_vars
+use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager, ensemble_type,  &
+                                 allocate_vars,  all_vars_to_all_copies, all_copies_to_all_vars
 
 use           filter_mod, only : filter_set_initial_time, trim_obs_sequence
 
-use state_vector_io_mod,   only : state_vector_io_init, &
-                                  read_state, write_state
+use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state
 
-use io_filenames_mod,      only : io_filenames_init, file_info_type, file_info_dump, &
-                                  combine_file_info, set_file_metadata,  &
-                                  set_io_copy_flag, check_file_info_variable_shape, &
-                                  READ_COPY, WRITE_COPY
+use io_filenames_mod,      only : io_filenames_init, file_info_type, set_file_metadata,  &
+                                  set_io_copy_flag, READ_COPY, WRITE_COPY
                                   
 use direct_netcdf_mod,     only : finalize_single_file_io
 
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
-use ensemble_manager_mod,  only : set_num_extra_copies ! should this be through ensemble_manager?
+use ensemble_manager_mod,  only : set_num_extra_copies
 
 use distributed_state_mod, only : create_state_window, free_state_window
 
@@ -146,9 +134,8 @@ integer                 :: i, j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies, forward_unit
 integer                 :: io, num_obs_in_set, nth_obs
-integer                 :: key_bounds(2), num_qc
+integer                 :: key_bounds(2)
 integer                 :: seed
-integer(i8)             :: model_size
 
 integer                 :: istatus(1)
 
@@ -195,9 +182,6 @@ if (do_nml_term()) write(     *     , nml=perfect_model_obs_nml)
 ! set the level of output
 call set_trace(trace_execution, output_timestamps, silence)
 
-! Default to printing nothing
-nth_obs = -1
-
 !>@todo FIXME: copies and qc should be set using the meta data strings not hard
 ! coded. 
 
@@ -235,11 +219,8 @@ copy_meta_data(2) = 'truth'
 call set_copy_meta_data(seq, 1, copy_meta_data(1))
 call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
-! Initialize the model now that obs_sequence is all set up
-model_size = get_model_size()
-
 ! Set up the ensemble storage and read in the restart file
-call init_ensemble_manager(ens_handle, ens_size, model_size)
+call init_ensemble_manager(ens_handle, ens_size, get_model_size())
 
 call set_num_extra_copies(ens_handle, 0)
 
@@ -301,8 +282,6 @@ endif
 !>@todo FIXME this block must be supported in the single file loop with time dimension
 state_meta(1) = 'true state'
 
-num_qc = get_num_qc(seq)
-
 ! Remove observations that are too early or too late to be assimilated
 call trim_obs_sequence(seq, key_bounds)
 
@@ -317,43 +296,12 @@ next_ens_time = set_time(0, 0)
 ! Advance model to the closest time to the next available observations
 AdvanceTime: do time_step_number = 0, huge(time_step_number)
 
-   ! Only processes with an ensemble copy know to exit;
-   ! For now, let process 0 broadcast its value of key_bounds
-   ! This will synch the loop here and allow everybody to exit
-   ! Need to clean up and have a broadcast that just sends a single integer???
-   ! PAR For now, can only broadcast real arrays
-
-   ! Get the model to a good time to use a next set of observations
-   call move_ahead(ens_handle, 1, seq, &
-      key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
-
-   call filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+   ! Advance the model to make the window include the next available observation.
+   call advance_model(ens_handle, 1, seq, key_bounds, num_obs_in_set, &
+      curr_ens_time, next_ens_time, async, adv_ens_command, tasks_per_model_advance, &
+      file_info_output, file_info_input)
 
    if(key_bounds(1) < 0) exit AdvanceTime
-
-   if (curr_ens_time /= next_ens_time) then
-
-      ! we are going to advance the model - make sure we're doing single file output
-      if (.not. has_cycling) then
-         call error_handler(E_ERR,'filter:', &
-             'advancing the model inside PMO and multiple file output not currently supported', &
-             source, text2='support will be added in subsequent releases', &
-             text3='set "single_file_out=.true" for PMO to advance the model, or advance the model outside PMO')
-      endif
-
-      call allocate_vars(ens_handle)
-      call all_copies_to_all_vars(ens_handle)
-
-      if (ens_handle%my_pe == 0) call advance_state(ens_handle, 1, next_ens_time, async, &
-                    adv_ens_command, tasks_per_model_advance, file_info_true, file_info_input)
-
-      call all_vars_to_all_copies(ens_handle)
-
-      ! update so curr time is accurate.
-      curr_ens_time = next_ens_time
-      ens_handle%current_time = curr_ens_time
-
-   endif
 
    ! Initialize a repeatable random sequence for perturbations
    seed = generate_seed(next_ens_time)
@@ -585,95 +533,6 @@ endif
 call set_obs_model_trace(trace_level, timestamp_level)
 
 end subroutine set_trace
-
-!-------------------------------------------------------------------------
-
-subroutine trace_message(msg, label, threshold)
-
-character(len=*), intent(in)           :: msg
-character(len=*), intent(in), optional :: label
-integer,          intent(in), optional :: threshold
-
-! Write message to stdout and log file.
-integer :: t
-
-t = 0
-if (present(threshold)) t = threshold
-
-if (trace_level <= t) return
-
-if (present(label)) then
-   call error_handler(E_MSG,trim(label),trim(msg))
-else
-   call error_handler(E_MSG,'p_m_o trace:',trim(msg))
-endif
-
-end subroutine trace_message
-
-!-------------------------------------------------------------------------
-
-subroutine timestamp_message(msg, sync)
-
-character(len=*), intent(in) :: msg
-logical, intent(in), optional :: sync
-
-! Write current time and message to stdout and log file. 
-! if sync is present and true, sync mpi jobs before printing time.
-
-if (timestamp_level <= 0) return
-
-if (present(sync)) then
-  if (sync) call task_sync()
-endif
-
-call timestamp(' '//trim(msg), pos='brief')
-
-end subroutine timestamp_message
-
-!-------------------------------------------------------------------------
-
-subroutine print_ens_time(ens_handle, msg)
-
-type(ensemble_type), intent(in) :: ens_handle
-character(len=*), intent(in) :: msg
-
-! Write message to stdout and log file.
-type(time_type) :: mtime
-
-if (trace_level <= 0) return
-
-if (get_my_num_copies(ens_handle) < 1) return
-
-call get_ensemble_time(ens_handle, 1, mtime)
-call print_time(mtime, ' p_m_o trace: '//msg, logfileunit)
-call print_time(mtime, ' p_m_o trace: '//msg)
-
-end subroutine print_ens_time
-
-!-------------------------------------------------------------------------
-
-subroutine print_obs_time(seq, key, msg)
-
-type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: key
-character(len=*), intent(in), optional :: msg
-
-! Write time of an observation to stdout and log file.
-type(obs_type) :: obs
-type(obs_def_type) :: obs_def
-type(time_type) :: mtime
-
-if (trace_level <= 0) return
-
-call init_obs(obs, 0, 0)
-call get_obs_from_key(seq, key, obs)
-call get_obs_def(obs, obs_def)
-mtime = get_obs_def_time(obs_def)
-call print_time(mtime, ' p_m_o trace: '//msg, logfileunit)
-call print_time(mtime, ' p_m_o trace: '//msg)
-call destroy_obs(obs)
-
-end subroutine print_obs_time
 
 !-------------------------------------------------------------------------
 
