@@ -73,16 +73,12 @@ call check_namelist_read(iunit, io, 'L1_AMSUA_to_netcdf_nml')
 if (do_nml_file()) write(nmlfileunit, nml=L1_AMSUA_to_netcdf_nml)
 if (do_nml_term()) write(    *      , nml=L1_AMSUA_to_netcdf_nml)
 
-
-!if (iargc().ne.3) then
-    print *, "This code extracts a single profile from a specified"
-    print *, " input file to stdout. It requires exactly three "
-    print *, "arguments."
-    print *, "  1) scan line number [1, 45]"
-    print *, "  2) field-of-view number [1, 30]"
-    print *, "  3) file name"
-!    STOP
-! end if 
+print *, "This code extracts a single profile from a specified"
+print *, " input file to stdout. It requires exactly three "
+print *, "arguments."
+print *, "  1) scan line number [1, 45]"
+print *, "  2) field-of-view number [1, 30]"
+print *, "  3) file name"
 
 if (track.lt.1.OR.track.gt.45) then
   print *, "Error: along-track scan line number [1, 45]"
