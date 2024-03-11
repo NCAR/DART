@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 11 2024 :: SEIR model for infectious diseases. Tag v11.1.0**
+
+- Added SEIR model which simulates the spread of infectious diseases, for example COVID-19.
+
 **February 13 2024 :: Fortran Standards. Tag v11.0.3**
 
 - Replace f2kcli with Fortran intrinsics for command line arguments.
