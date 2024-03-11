@@ -66,31 +66,27 @@ end subroutine finalize_transform_state_mod
 subroutine model_to_dart()
 
    integer :: iblock
-   integer :: dimid, dart_dimid, dart_varid
+   integer :: dimid, dart_dimid
+   integer :: ix, iy, iz, icol
    integer :: varid
    character(len=NF90_MAX_NAME) :: name
    character(len=NF90_MAX_NAME) :: attribute
    integer :: length
    integer :: xtype, nDimensions, nAtts
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
-   integer :: ntimes = 0
-   integer :: nxs = 0
-   integer :: nys = 0
-   integer :: nzs = 0
-   integer :: nxs_per_block, nys_per_block
-   integer, dimension(nblocks+1) :: cumulative_nxs, cumulative_nys
+   integer :: ntimes
+   integer :: nxs_per_block, nys_per_block, truncated_nxs_per_block, truncated_nys_per_block, total_truncated_ncols
+   integer :: nzs
 
-   integer, dimension(4) :: time_x_y_z_dims
+   integer, dimension(3) :: time_lev_col_dims
+   integer, allocatable, dimension (:) :: dart_varids
 
    ! The time variable in the block files is a double
    real(r8), allocatable, dimension(:) :: time_array
    ! The other variables are floats
    real(r4), allocatable, dimension(:, :, :) :: block_array
-   real(r4), allocatable, dimension(:, :, :) :: spatial_array
-   real(r4), allocatable, dimension(:, :, :, :) :: variable_array
-
-   cumulative_nxs(1) = 0
-   cumulative_nys(1) = 0
+   real(r4), allocatable, dimension(:) :: spatial_array
+   real(r4), allocatable, dimension(:, :, :) :: variable_array
 
    ! The block files are read only
    do iblock = 1, nblocks
@@ -113,87 +109,81 @@ subroutine model_to_dart()
                                                   block_files(iblock)%unlimitedDimId, &
                                                   block_files(iblock)%formatNum)
       
-      do dimid = 1, block_files(iblock)%nDimensions
-         ! There doesn't seem to be a helper procedure corresponding to nf90_inquire_dimension that
-         ! assigns name and length in netcdf_utilities_mod so this uses the external function
-         ! directly from the netcdf library
-         block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, name, length)
+      if (iblock == 1) then
+         do dimid = 1, block_files(iblock)%nDimensions
+            ! There doesn't seem to be a helper procedure corresponding to nf90_inquire_dimension that
+            ! assigns name and length in netcdf_utilities_mod so this uses the external function
+            ! directly from the netcdf library
+            block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, name, length)
 
-         ! Incrementing the length of dimensions requires detailed logic detailed in 
-         ! in the comment in each statement
-         if ((trim(name) == 'time') .and. (iblock == 1)) then
-            ! The time dimension should only be incremented by the length of the time 
-            ! dimension in the first file because the block_files are all output for the same times.
-            ntimes = length
-         else if (trim(name) == 'x') then
-            ! The lon dimension should only be incremented by a length after
-            ! the halos are removed
-            nxs = nxs + (length-2*nhalos)
-            if (iblock == 1) then
+            if (trim(name) == 'time') then
+               ntimes = length
+            else if (trim(name) == 'x') then
+               truncated_nxs_per_block = length-2*nhalos
                nxs_per_block = length
-            end if
-            cumulative_nxs(iblock+1) = nxs
-         else if (trim(name) == 'y') then
-            ! The lat dimension should only be incremented by a length after
-            ! the halos are removed
-            nys = nys + (length-2*nhalos)
-            if (iblock == 1) then
+            else if (trim(name) == 'y') then
+               truncated_nys_per_block = length-2*nhalos
                nys_per_block = length
+            else if (trim(name) == 'z') then
+               nzs = length
             end if
-            cumulative_nys(iblock+1) = nys
-         else if ((trim(name) == 'z') .and. (iblock == 1)) then
-            ! The z dimension should only be incremented by the length of the z
-            ! dimension in the first file because the block_files are all output at the same height.
-            nzs = length
-         end if
-      end do
+         end do
+      end if
    end do
+
+   total_truncated_ncols = truncated_nxs_per_block*truncated_nys_per_block*nblocks
 
    ! All of the lengths have been counted properly, create each dimension in the dart_file and save
    ! the dimensions to the time_x_y_z and x_y_z arrays used during variable definition
    dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'time', ntimes, dart_dimid)
-   time_x_y_z_dims(4) = dart_dimid
-
-   dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'x', cumulative_nxs(nblocks+1), dart_dimid)
-   time_x_y_z_dims(3) = dart_dimid
-
-   dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'y', cumulative_nys(nblocks+1), dart_dimid)
-   time_x_y_z_dims(2) = dart_dimid
+   time_lev_col_dims(3) = dart_dimid
 
    dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'z', nzs, dart_dimid)
-   time_x_y_z_dims(1) = dart_dimid
-   
+   time_lev_col_dims(2) = dart_dimid
+
+   dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'col', total_truncated_ncols, dart_dimid)
+   time_lev_col_dims(1) = dart_dimid
+
    ! Allocate all of the storage arrays
    allocate(time_array(ntimes))
    allocate(block_array(nzs, nys_per_block, nxs_per_block))
-   allocate(spatial_array(nzs, cumulative_nys(nblocks+1), cumulative_nxs(nblocks+1)))
-   allocate(variable_array(nzs, cumulative_nys(nblocks+1), cumulative_nxs(nblocks+1), ntimes))
+   allocate(spatial_array(total_truncated_ncols))
+   allocate(variable_array(total_truncated_ncols, nzs, ntimes))
+   allocate(dart_varids(block_files(1)%nVariables))
+
+   block_array(:, :, :) = 0
+   spatial_array(:) = 0
+   variable_array(:, :, :) = 0
 
    ! The dart_file is still in define mode. Create all of the variables before entering data mode.
    do varid = 1, block_files(1)%nVariables
       block_files(1)%ncstatus = nf90_inquire_variable(block_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
       if (trim(name) == 'time') then
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_x_y_z_dims(4), dart_varid)
+         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_lev_col_dims(3), dart_varids(varid))
       else if (trim(name) == 'z') then
          ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, 'alt', xtype, time_x_y_z_dims(1:3), dart_varid)
+         dart_file%ncstatus = nf90_def_var(dart_file%ncid, 'alt', xtype, time_lev_col_dims(2), dart_varids(varid))
       else if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_x_y_z_dims(1:3), dart_varid)
+         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_lev_col_dims(1), dart_varids(varid))
       else
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_x_y_z_dims, dart_varid)
+         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_lev_col_dims, dart_varids(varid))
       end if
 
       ! In the block files, time does not have units
       if (trim(name) /= 'time') then
          block_files(iblock)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
-         dart_file%ncstatus = nf90_put_att(dart_file%ncid, dart_varid, 'units', attribute)
+         dart_file%ncstatus = nf90_put_att(dart_file%ncid, dart_varids(varid), 'units', attribute)
       end if
 
       ! In the block files, only lon, lat and z have long_name
       if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
          block_files(iblock)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'long_name', attribute)
-         dart_file%ncstatus = nf90_put_att(dart_file%ncid, dart_varid, 'long_name', attribute)
+         dart_file%ncstatus = nf90_put_att(dart_file%ncid, dart_varids(varid), 'long_name', attribute)
       end if
+
+      ! print *, 'name: ' // name
+      ! print *, 'dart_varids(varid): ' // integer_to_string(dart_varids(varid))
+
    end do
 
    call nc_end_define_mode(dart_file%ncid)
@@ -205,6 +195,7 @@ subroutine model_to_dart()
    ! inner loop.
 
    do varid = 1, block_files(1)%nVariables
+      icol = 0
       do iblock = 1, nblocks
          block_files(iblock)%ncstatus = nf90_inquire_variable(block_files(iblock)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
          
@@ -212,27 +203,44 @@ subroutine model_to_dart()
             ! This is a 1-D time array
             if (iblock == 1) then
                block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
+               dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), time_array)
             end if
-
-            if (iblock == nblocks) then
-               dart_file%ncstatus = nf90_put_var(dart_file%ncid, varid, time_array)
+         else if (trim(name) == 'z') then
+            if (iblock == 1) then
+               block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
+               dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), block_array(:,1,1))
             end if
          else
             ! All of the variables besides time can be read into the block array
             block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
-            if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
-               spatial_array(:, cumulative_nys(iblock)+1:cumulative_nys(iblock+1), cumulative_nxs(iblock)+1:cumulative_nxs(iblock+1)) = block_array(:, nhalos+1:nys_per_block-nhalos, nhalos+1:nxs_per_block-nhalos)
+            
+            if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
+               do iy = 1, truncated_nys_per_block
+                  do ix = 1, truncated_nxs_per_block
+                     icol = icol + 1
+                     spatial_array(icol) = block_array(1, nhalos+ix, nhalos+iy)
+                  end do
+               end do
+               
                if (iblock == nblocks) then
-                  dart_file%ncstatus = nf90_put_var(dart_file%ncid, varid, spatial_array)
+                  dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), spatial_array)
                end if
             else
-               variable_array(:, cumulative_nys(iblock)+1:cumulative_nys(iblock+1), cumulative_nxs(iblock)+1:cumulative_nxs(iblock+1), 1) = block_array(:, nhalos+1:nys_per_block-nhalos, nhalos+1:nxs_per_block-nhalos)
+               ! This is one of the other non-spatial variables
+               do iz = 1, nzs
+                  do iy = 1, truncated_nys_per_block
+                     do ix = 1, truncated_nxs_per_block
+                        icol = icol + 1
+                        variable_array(icol, iz, 1) = block_array(iz, nhalos+ix, nhalos+iy)
+                     end do
+                  end do
+               end do
+
                if (iblock == nblocks) then
-                  dart_file%ncstatus = nf90_put_var(dart_file%ncid, varid, variable_array)
+                  dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), variable_array)
                end if
             end if
          end if
-
       end do
    end do
 
