@@ -8,6 +8,12 @@ use utilities_mod,        only : open_file, close_file, find_namelist_in_file, &
                                  check_namelist_read, error_handler, E_ERR
 
 implicit none
+private
+
+public :: initialize_transform_state_mod, &
+          finalize_transform_state_mod, &
+          model_to_dart, &
+          dart_to_model
 
 character(len=4) :: ensemble_member
 integer :: nblocks, nhalos
