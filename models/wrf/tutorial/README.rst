@@ -63,7 +63,7 @@ generally uses the vast majority of the observations provided and minimizes
 the bias and RMSE between the posterior model state and the observations.
 
 Finally, if you are not running on the NSF NCAR Derecho (PBS) supercomputing system, you will
-need to customize the assimilation scripts to match the details of your particular system. 
+need to customize the assimilation scripts (located in /DART/models/wrf/shell_scripts/) to match the details of your particular system. 
 Specifically, you will need to edit the DART csh scripting to match your system settings
 whether that be, for example, a PBS, SLURM or LSF HPC system.  Although the DART team can
 offer advice on how to customize the scripting to accomodate your HPC system, your
