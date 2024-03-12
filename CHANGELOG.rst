@@ -22,6 +22,10 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 12 2024 :: Aether lat-lon. Tag v11.2.0**
+
+- Aether lat-lon interface added to DART.
+
 **March 11 2024 :: SEIR model for infectious diseases. Tag v11.1.0**
 
 - Added SEIR model which simulates the spread of infectious diseases, for example COVID-19.
