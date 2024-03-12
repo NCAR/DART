@@ -22,6 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 12 2024 :: MITgcm/N-BLING with Compressed Staggered Grids. Tag v11.3.0**
+
+- The DART-MITgcm code now supports compressed grids, especially suited for areas like 
+  the Red Sea where land occupies more than 90% of the domain.  
+  Built upon work *contributed by Jiachen Liu*.
+- Allows writing the BGC fields into MITgcm's pickup files.
+- Allows different compression for the regular and staggered grids.
+
 **March 12 2024 :: Aether lat-lon. Tag v11.2.0**
 
 - Aether lat-lon interface added to DART.
