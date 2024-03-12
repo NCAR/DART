@@ -1,0 +1,31 @@
+# Template for quikscat converter with GNU gfortran on Linux or Mac OSX
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+
+
+MPIFC = mpif90
+MPILD = mpif90
+FC = gfortran
+LD = h4fc
+
+# If you get an error "ld: library not found for -lnetcdff" (note 2 f's),
+# remove it from the LIBS line. The same is true for any library. If 'ld'
+# does not complain - it worked.
+
+# If your NETCDF environment variable is not set correctly,
+# uncomment the following line and set value to where lib and include
+# are found for the netcdf files that match this compiler.
+#
+# NETCDF = /opt/local
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+FFLAGS  = -O2 -ffree-line-length-none -fallow-argument-mismatch $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# for development or debugging, use this instead:
+# FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check \
+#          -fbacktrace -ffpe-trap=invalid,zero,overflow -fallow-argument-mismatch $(INCS)
