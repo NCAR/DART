@@ -981,7 +981,6 @@ integer, allocatable :: fromIndices(:)
 integer, allocatable :: fromIndsStart(:)
 integer, allocatable :: fromIndsEnd(:)
 integer, allocatable :: toIndex(:)
-!integer, allocatable :: num_up_links(:)
 
 ncid            = nc_open_file_readonly(filename, routine)
 database_length = nc_get_dimension_size(ncid,'index',     routine)
@@ -1010,14 +1009,10 @@ num_up_links = fromIndsEnd - fromIndsStart + 1
 
 !! Allocate these module variables
 allocate(linkLong(n_link), linkLat(n_link), linkAlt(n_link))
-!allocate(roughness(n_link))
-!allocate(linkID(n_link))
-!allocate(gageID(n_link))
 allocate(channelIndsX(n_link), channelIndsY(n_link))
 allocate(connections(n_link))
 
 do i = 1, n_link
-   !allocate(connections(i)%upstream_linkID(n_upstream))
    allocate(connections(i)%upstream_index(num_up_links(i)))
 enddo
 
@@ -1035,21 +1030,9 @@ allocate(BucketMask(n_link))
 call nc_get_variable(ncid,'lon',              linkLong,  routine)
 call nc_get_variable(ncid,'lat',              linkLat,   routine)
 call nc_get_variable(ncid,'alt',              linkAlt,   routine)
-!call nc_get_variable(ncid,'n',                roughness, routine)
-!call nc_get_variable(ncid,'link',             linkID,    routine)
 call nc_get_variable(ncid,'Length',           length,    routine)
 call nc_get_variable(ncid,'to',               to,        routine)
 call nc_get_variable(ncid,'bucket_comid_mask',BucketMask,routine)
-
-! no snappy accessor routine for character arrays
-! call nc_get_variable(ncid,'gages', gageID,    routine)
-
-!io = nf90_inq_varid(ncid,'gages', VarID)
-!call nc_check(io, routine, 'inq_varid', 'gages', filename)
-!io = nf90_get_var(ncid, VarID, gageID)
-!call nc_check(io, routine, 'get_var', 'gages', filename)
-
-!call nc_close_file(ncid, routine)
 
 ! Longitude [DART uses longitudes [0,360)]
 where(linkLong < 0.0_r8)    linkLong = linkLong + 360.0_r8
@@ -1059,11 +1042,10 @@ where(linkLong == 360.0_r8) linkLong = 0.0_r8
 channelIndsX = (/ (i, i=1,n_link) /)
 channelIndsY = (/ (i, i=1,n_link) /)
 
-call fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd, num_up_links)
+call fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
 
 if (debug > 99) then
    do i=1,n_link
-      !write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),gageID(i),roughness(i),linkID(i),BucketMask(i)
       write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),BucketMask(i)
    enddo
    write(*,*)'Longitude range is ',minval(linkLong),maxval(linkLong)
@@ -1071,8 +1053,6 @@ if (debug > 99) then
    write(*,*)'Altitude  range is ',minval(linkAlt),maxval(linkAlt)
 endif
 
-!deallocate(linkID)
-!deallocate(gageID)
 deallocate(length)
 deallocate(to)
 deallocate(toIndex)
@@ -1086,13 +1066,12 @@ end subroutine get_routelink_constants
 !-----------------------------------------------------------------------
 !> 
 
-subroutine fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd,num_up_links)
+subroutine fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
 
 integer, intent(in) :: toIndex(:)
 integer, intent(in) :: fromIndices(:)
 integer, intent(in) :: fromIndsStart(:)
 integer, intent(in) :: fromIndsEnd(:)
-integer, intent(inout) :: num_up_links(:)
 
 integer :: i, j, id, nfound
 integer, parameter :: MAX_UPSTREAM_LINKS = 5
@@ -1101,13 +1080,10 @@ integer, parameter :: MAX_UPSTREAM_LINKS = 5
 ! hydro_domain_offset = 0   !>@todo get the actual offset somehow
 
 do i = 1,n_link
-!   connections(i)%gageName               = gageID(i)
-!   connections(i)%linkID                 = linkID(i)
    connections(i)%linkLength             = length(i)
    connections(i)%domain_offset          = i
    connections(i)%downstream_linkID      = to(i)
    connections(i)%downstream_index       = toIndex(i)
-   !connections(i)%upstream_linkID(:)     = MISSING_I
    connections(i)%upstream_index(:)      = MISSING_I 
 enddo
 
@@ -1138,20 +1114,14 @@ where(num_up_links > MAX_UPSTREAM_LINKS) num_up_links = 0
 
 if (debug > 99) then
    write(string1,'("PE ",i3)') my_task_id()
-!  do i = 1,n_link
-   do i = 54034,54034
-   write(*,*)''
-   write(*,*)trim(string1),' connectivity for link : ',i
-   !write(*,*)trim(string1),' gageName              : ',connections(i)%gageName
-   !write(*,*)trim(string1),' linkID                : ',connections(i)%linkID
-   write(*,*)trim(string1),' linkLength            : ',connections(i)%linkLength
-   write(*,*)trim(string1),' domain_offset         : ',connections(i)%domain_offset
-   
-   write(*,*)trim(string1),' downstream_linkID     : ',connections(i)%downstream_linkID
-   write(*,*)trim(string1),' downstream_index      : ',connections(i)%downstream_index
-   
-   !write(*,*)trim(string1),' upstream_linkID       : ',connections(i)%upstream_linkID
-   write(*,*)trim(string1),' upstream_index        : ',connections(i)%upstream_index
+   do i = 1,n_link
+      write(*,*)''
+      write(*,*)trim(string1),' connectivity for link : ',i
+      write(*,*)trim(string1),' linkLength            : ',connections(i)%linkLength
+      write(*,*)trim(string1),' domain_offset         : ',connections(i)%domain_offset
+      write(*,*)trim(string1),' downstream_linkID     : ',connections(i)%downstream_linkID
+      write(*,*)trim(string1),' downstream_index      : ',connections(i)%downstream_index
+      write(*,*)trim(string1),' upstream_index        : ',connections(i)%upstream_index
    enddo
 endif
 
@@ -1199,9 +1169,9 @@ if (debug > 99) then
    write(*,*)trim(string1),' glt:task, nclose        ', nclose
    write(*,*)trim(string1),' glt:task, close_indices ', close_indices(1:nclose)
    write(*,*)trim(string1),' glt:task, distances     ', distances(1:nclose)
+   write(*, '(A, i5, f10.2, i8, i4, 5i8)') 'depth, distance, node, # upstream, up nodes: ', & 
+            depth, direct_length, my_index, num_up_links(my_index), connections(my_index)%upstream_index(:)
 endif
-
-!write(*, '(A, i5, f10.2, i8, i4, 5i8)') 'depth, distance, node, # upstream, up nodes: ', depth, direct_length, my_index, num_up_links(my_index), connections(my_index)%upstream_index(:)
 
 do iup = 1,num_up_links(my_index)
    call get_link_tree(connections(my_index)%upstream_index(iup), &

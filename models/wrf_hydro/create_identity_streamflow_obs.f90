@@ -668,7 +668,7 @@ call nc_check(io, routine, 'closing file "'//trim(input_file)//'"' )
 
 ! We need to know how many observations there may be.
 ! Specifying too many is not really a problem.
-! I am adding 20%
+! I am multiplying by 10.
 
 num_obs = 10.0_r8 * nobs * nfiles
 

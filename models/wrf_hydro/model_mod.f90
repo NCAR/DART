@@ -1402,36 +1402,6 @@ end subroutine configure_domains
 !> close_ind(:)		the list of desired indices ON MY TASK
 !> dist(:)		the corresponding distances of the desired indices
 
-!subroutine get_my_close(num_superset, superset_indices, superset_distances, &
-!                        my_task_indices, num_close, close_ind, dist)
-!
-!integer,          intent(in)  :: num_superset
-!integer(i8),      intent(in)  :: superset_indices(:)
-!real(r8),         intent(in)  :: superset_distances(:)
-!integer(i8),      intent(in)  :: my_task_indices(:)
-!integer,          intent(out) :: num_close
-!integer,          intent(out) :: close_ind(:)
-!real(r8),         intent(out) :: dist(:)
-!
-!integer :: itask, isuper
-!
-!num_close = 0
-!
-!do itask = 1,size(my_task_indices)
-!   do isuper = 1,num_superset
-!
-!      ! if stuff on my task ... equals ... global stuff I want ...
-!      if ( my_task_indices(itask) == superset_indices(isuper) ) then
-!          num_close            = num_close + 1
-!          close_ind(num_close) = itask
-!          dist(num_close)      = superset_distances(isuper)
-!      endif
-!
-!   enddo
-!enddo
-!
-!end subroutine get_my_close
-
 subroutine get_my_close(num_superset, superset_indices, superset_distances, &
                         my_task_indices, num_close, close_ind, dist)
 
