@@ -80,16 +80,6 @@ transform_state_nml
       Aether field names are not CF-compliant and are translated 
       to CF-compliant forms by aether_to_dart.  
 
-        TIP: 
-        If you have a set of files with older Aether field names and want to convert
-        them to newer, still-non-compliant names, you may be able to use (or modify)
-        ``./matlab/new_varname_file.m``.  As of 2024-2 the following 
-        could not handle the non-compliant names::
-
-        - NetCDF fortran interface, 
-        - NCO's ``ncrename``,
-        - Matlab's ``netcdf.rename`` 
-
       In ``transform_state_nml`` there is no association of DART "quantities" 
       (QTY\_\*) with fields.  
       A subset of the transformed variables to be included in the model state 

@@ -6,6 +6,8 @@
    /
 
 &quality_control_nml
+   input_qc_threshold   = 3.0
+   outlier_threshold    = 3.0
 /
 
 &state_vector_io_nml
@@ -14,7 +16,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = 'wrfinput_d01'
+   input_state_files          = 'pmo not ready for use'
    init_time_days             = -1
    init_time_seconds          = -1
 
@@ -80,7 +82,7 @@
    obs_window_days              = -1,
    obs_window_seconds           = -1,
 
-   inf_flavor                  = 0,                       0,
+   inf_flavor                  = 5,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
@@ -88,8 +90,8 @@
    inf_lower_bound             = 0.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_damping                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_sd_lower_bound          = 0.6,                     0.0
    inf_sd_max_change           = 1.05,                    1.05,
 
    trace_execution              = .false.,
@@ -119,7 +121,7 @@
 
 &transform_state_nml
    aether_restart_dirname = 
-      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/restart_files'
+      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/test4'
    variables = 
       'Temperature',    'neutrals',
       'O+',             'ions',
@@ -131,8 +133,8 @@
 
 &model_nml
    template_file  = 'filter_input_0001.nc'
-   variables      = 'Temperature',    'QTY_TEMPERATURE',      'NA',  'NA',   'UPDATE',
-                    'Opos',           'QTY_DENSITY_ION_OP',   'NA',  'NA',   'UPDATE'
+   variables      = 'Temperature',    'QTY_TEMPERATURE',      '0.0',  'NA',   'UPDATE',
+                    'Opos',           'QTY_DENSITY_ION_OP',   '0.0',  'NA',   'UPDATE'
    time_step_days      = 0
    time_step_seconds   = 3600
    /

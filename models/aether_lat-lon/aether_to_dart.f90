@@ -92,7 +92,7 @@ read(char_mem,'(I3)') member
 ! Convert the files
 !----------------------------------------------------------------------
 
-call static_init_blocks()
+call static_init_blocks(member)
 
 ! Must be after static_init_blocks, which provides filter_io_root from the namelist.
 write(filter_io_file,'(2A, I0.4, A3)') trim(filter_io_root),'_', member + 1,'.nc'
