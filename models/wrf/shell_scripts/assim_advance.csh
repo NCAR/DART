@@ -50,7 +50,7 @@ if ( -e $RUN_DIR/advance_temp${emember}/wrf.info ) then
 endif
 touch wrf.info
 
-if ( $SUPER_PLATFORM == 'yellowstone' ) then
+if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
 cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
 ${gdatef[2]}  ${gdatef[1]}

@@ -78,7 +78,7 @@ while ( 1 == 1 )
    #
    #  NOTE that multiple domains might be present, but only looking for domain 1
 
-   if ( $SUPER_PLATFORM == 'yellowstone' ) then
+   if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
       set ic_queue = caldera
       set logfile = "${RUN_DIR}/ic_gen.log"
       set sub_command = "bsub -q ${ic_queue} -W 00:05 -o ${logfile} -n 1 -P ${COMPUTER_CHARGE_ACCOUNT}"
@@ -209,7 +209,7 @@ while ( 1 == 1 )
 
    #  run filter to generate the analysis
    ${REMOVE} script.sed
-   if ( $SUPER_PLATFORM == 'yellowstone' ) then
+   if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
       # This is a most unusual application of 'sed' to insert the batch submission
       # directives into a file. The last backslash '\' before the quote is essential.
@@ -382,7 +382,7 @@ while ( 1 == 1 )
    set n = 1
    while ( $n <= $NUM_ENS )
 
-      if ( $SUPER_PLATFORM == 'yellowstone' ) then
+      if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
          echo "2i\"                                                                  >! script.sed
          echo "#==================================================================\" >> script.sed
@@ -457,7 +457,7 @@ while ( 1 == 1 )
          #  Wait for the script to start
          while ( ! -e ${RUN_DIR}/start_member_${n} )
 
-            if ( $SUPER_PLATFORM == 'yellowstone' ) then
+            if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
                if ( `bjobs -w | grep assim_advance_${n} | wc -l` == 0 ) then
 
@@ -503,7 +503,7 @@ while ( 1 == 1 )
       	       #  Obviously, the job crashed.  Resubmit to queue
       	       ${REMOVE} start_member_${n}
                echo "didn't find the member done file"
-               if ( $SUPER_PLATFORM == 'yellowstone' ) then
+               if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
                   if ( $?reservation ) then
                      echo "MEMBER ${n} USING RESERVATION," `/contrib/lsf/get_my_rsvid`

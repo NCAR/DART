@@ -23,7 +23,7 @@ if ( -e ${RUN_DIR}/obs_seq.final )  ${REMOVE} ${RUN_DIR}/obs_seq.final
 if ( -e ${RUN_DIR}/filter_done   )  ${REMOVE} ${RUN_DIR}/filter_done
 
 #  run data assimilation system
-if ( $SUPER_PLATFORM == 'yellowstone' ) then
+if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
    setenv TARGET_CPU_LIST -1
    setenv FORT_BUFFERED true
