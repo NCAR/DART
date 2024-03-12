@@ -5,12 +5,10 @@ Overview
 --------
 
 The Aether ("eether") space weather model can be implemented 
-on a logically rectangular grid "lat-lon", or on an the cubed-sphere grid.
+on a logically rectangular grid "lat-lon", or on a cubed-sphere grid.
 This is the interface to the lat-lon version.
 The model code is available on 
 `GitHub <https://github.com/AetherModel/Aether>`_ .
-Additional documentation can be found 
-`here <https://aetherdocumentation.readthedocs.io/en/latest/>`_ .
 
 Aether writes history and restart files.
 The restart fields are divided among 2 types of files: neutrals and ions.
@@ -200,7 +198,7 @@ The DART executables will be run in this directory using their full pathnames.
 
 To run a more limited test (no assimilation),
 which is just the transformation of files for a member (0) 
-use the following steps.  
+use the following csh commands, or equivalents in your preferred languange.  
 These build the ``aether_to_dart`` and ``dart_to_aether`` executables
 in $DART/models/aether_lat-lon/work directory.
 Also in that directory, edit input.nml to set ``transform_state_nml:`` ``aether_restart_dirname``
