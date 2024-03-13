@@ -38,7 +38,7 @@ endif
 
 touch wrf.info
 
-if ( $SUPER_PLATFORM == 'yellowstone' ) then
+if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
    cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
  ${gdatef[2]}  ${gdatef[1]}
@@ -48,11 +48,8 @@ if ( $SUPER_PLATFORM == 'yellowstone' ) then
  mpirun.lsf ./wrf.exe
 EOF
 
-else if ( $SUPER_PLATFORM == 'cheyenne' ) then
+else if ( $SUPER_PLATFORM == 'derecho' ) then
 
-   # TJH MPI_IB_CONGESTED, MPI_LAUNCH_TIMEOUT used after cheyenne O/S change in July 2019
-   # TJH setenv MPI_IB_CONGESTED 1
-   # TJH setenv MPI_LAUNCH_TIMEOUT 40
    setenv MPI_SHEPHERD false
 
    cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
@@ -60,7 +57,7 @@ else if ( $SUPER_PLATFORM == 'cheyenne' ) then
  ${gdate[2]}   ${gdate[1]}
  $yyyy $mm $dd $hh $nn $ss
            $domains
- mpiexec_mpt dplace -s 1 ./wrf.exe
+ mpiexec -n 128 -ppn 128 ./wrf.exe
 EOF
 
 endif
