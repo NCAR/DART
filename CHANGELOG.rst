@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 13 2024 :: Update WRF-DART scripts and bug template to Derecho; remove no-op routines in ensemble manager. Tag v11.3.1**
+
+- Updated the csh scripting templates used to run WRF-DART and WRF-DART tutorial from Cheyenne to Derecho
+- Updated bug report template to use Derecho instead of Cheyenne
+- Removed the following no-op routines from ensemble manager: prepare_to_write_to_vars, prepare_to_write_to_copies,
+  prepare_to_read_from_vars, prepare_to_read_from_copies, prepare_to_update_vars, prepare_to_update_copies
+
 **March 12 2024 :: MITgcm/N-BLING with Compressed Staggered Grids. Tag v11.3.0**
 
 - The DART-MITgcm code now supports compressed grids, especially suited for areas like 
