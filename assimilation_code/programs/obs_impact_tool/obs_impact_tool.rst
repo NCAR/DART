@@ -132,7 +132,7 @@ namelist.
 
 Filter Use
 --------
-To use the ``obs_impact_tool`` code during the filter, the following namelist options are required because ``obs_impact_tool`` is used to create the ``control_impact_runtime.txt`` file as specified above.   
+To use the output file from the ``obs_impact_tool`` during the run of filter, the following namelist options are required because ``obs_impact_tool`` is used to create the ``control_impact_runtime.txt`` file as specified above.   
 
 ::
 
