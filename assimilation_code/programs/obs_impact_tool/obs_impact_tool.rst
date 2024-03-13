@@ -30,14 +30,6 @@ between 0 and 1 to be specified.
 This tool allows related collections of observation types and state vector quantities to be named and then express the
 relationship of the named groups to each other in a concise way. It can also define relationships by exceptions.
 
-All the listed observation types and state vector quantities must be known by the system.
-If they are not, look at the
-&preprocess_nml :: input_items namelist which specifies which *obs_def_xxx_mod.f90* files 
-are included, which is where observation types are defined.
-Quantities for different regimes (atmosphere, ocean, land, etc.) are defined in
-``assimilation_code/modules/observations/xxx_quantities_mod.f90`` and explained in
-:doc:`../../modules/observations/obs_kind_mod`
-
 Format of the input file can be any combination of these types of sections:
 
 .. container::
@@ -167,6 +159,12 @@ To use the ``obs_impact_tool`` code during the filter, the following namelist op
    +-------------------+--------------------+-----------------------------------------------------------------------------+
 
 |
+
+Building
+--------
+In the quickbuild.sh script, add ``obs_impact_tool`` to the list of serial_programs.
+
+All the listed observation types and state vector quantities must be known by the system. If they are not, look at the &preprocess_nml :: input_items namelist which specifies which *obs_def_xxx_mod.f90* files are included, which is where observation types are defined. Quantities for different regimes (atmosphere, ocean, land, etc.) are defined in ``assimilation_code/modules/observations/xxx_quantities_mod.f90`` and explained in :doc:`../../modules/observations/obs_kind_mod`
 
 Examples
 --------
