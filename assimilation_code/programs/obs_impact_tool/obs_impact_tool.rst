@@ -136,7 +136,20 @@ namelist.
    | debug           | logical            | If true print out debugging info.                                           |
    +-----------------+--------------------+-----------------------------------------------------------------------------+
 
-| 
+|
+
+Filter Use
+--------
+The following namelist options are required to use the obs_impact_tool code during the filter because ''obs_impact_tool'' is used to create the ''control_impact_runtime.txt'' file.  
+
+::
+
+   &assim_tools_nml
+     adjust_obs_impact               = .true.
+     obs_impact_filename             = 'control_impact_runtime.txt'
+     /
+
+|
 
 Examples
 --------
