@@ -288,77 +288,11 @@ AdvanceTime : do time_step_number = 0, huge(time_step_number)
    ! No more observations available so exit the time loop
    if(key_bounds(1) < 0) exit AdvanceTime
 
-   ! Write out forecast diagnostic file(s). 
-   if(output_forecast_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('forecast', state_ens_handle, ens_copies, & 
-         file_info_forecast, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate)
-   
-   ! Apply prior inflation 
-   if(do_ss_inflate(prior_inflate)) &
-      call filter_ensemble_inflate(state_ens_handle, ens_copies%PRIOR_INF_COPY, prior_inflate, &
-         ens_copies%ENS_MEAN_COPY)
-
-   ! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD_COPY
-   if ( do_rtps_inflate(post_inflate) ) &
-      call compute_copy_mean_sd(state_ens_handle, 1, ens_copies%ens_size, &
-         ens_copies%ENS_MEAN_COPY, ens_copies%RTPS_PRIOR_SPREAD_COPY)
-
-   ! Write out preassim diagnostic files if requested.
-   if(output_preassim_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('preassim', state_ens_handle, ens_copies, &
-         file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate)
-
-   ! Compute the forward operators and fill data structures
-   call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
-      qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds,       &
-      num_output_obs_members, compute_posterior, isprior = .true.) 
-
-   call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
-      seq, keys, num_groups, prior_inflate, ens_copies%PRIOR_INF_COPY, ens_copies%PRIOR_INF_SD_COPY, &
-      inflate_only = .false.)
-
-   ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
-   ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
-   if(output_postassim_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('postassim', state_ens_handle, ens_copies, & 
-         file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate)
-
-   ! This block applies posterior inflation including RTPS if selected
-   if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
-      call filter_ensemble_inflate(state_ens_handle, ens_copies%POST_INF_COPY, post_inflate, &
-         ens_copies%ENS_MEAN_COPY, ens_copies%RTPS_PRIOR_SPREAD_COPY, ens_copies%ENS_SD_COPY)
-
-   ! this block recomputes the expected obs values for the obs_seq.final file
-   if (compute_posterior) then
-      ! Compute the forward operators and fill data structures
-      call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
-         qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds,       & 
-         num_output_obs_members, compute_posterior, isprior = .false.) 
-   else
-      ! Collect any updated QC values that may ! have been set in the assimilation loop
-      call obs_space_sync_QCs(forward_op_ens_info, obs_fwd_op_ens_handle, &
-         seq, keys, num_obs_in_set)
-   endif
-
-   ! Compute the adaptive state space posterior inflation
-   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) )                  &
-      call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
-         seq, keys, num_groups, post_inflate, &
-         ens_copies%POST_INF_COPY, ens_copies%POST_INF_SD_COPY, inflate_only = .true.)
-
-   ! Free up all the allocated space associated with obs ensemble
-   call end_ensemble_manager(obs_fwd_op_ens_handle)
-   call end_ensemble_manager(qc_ens_handle)
-   deallocate(keys)
-
-   ! Write out analysis diagnostic files if requested. 
-   if(output_analysis_diags .and. output_diag_now(output_interval, time_step_number)) &
-      call output_diagnostics('analysis', state_ens_handle, ens_copies, &
-         file_info_analysis, single_file_out, has_cycling, output_mean, output_sd,           &
-         output_members, do_prior_inflate, do_posterior_inflate)
+   call filter_update(state_ens_handle, ens_copies, prior_inflate, post_inflate, &
+      seq, forward_op_ens_info, num_obs_in_set, key_bounds, compute_posterior, &
+      file_info_forecast, file_info_preassim, file_info_postassim, file_info_analysis, &
+      output_forecast_diags, output_preassim_diags, output_postassim_diags, output_analysis_diags, &
+      has_cycling)
 
 end do AdvanceTime
 
@@ -387,10 +321,6 @@ call end_ensemble_manager(state_ens_handle)
 
 ! Free up the obs sequence
 call destroy_obs_sequence(seq)
-if(my_task_id() == 0) then
-   write(logfileunit,*)'FINISHED filter.'
-   write(logfileunit,*)
-endif
 
 end subroutine filter_main
 
@@ -640,6 +570,110 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
 endif
 
 end subroutine trim_obs_sequence
+
+!------------------------------------------------------------------
+
+! Does prior inflation, forward operators, assimilation, posterior inflation 
+
+subroutine filter_update(state_ens_handle, ens_copies, prior_inflate, post_inflate, &
+   seq, forward_op_ens_info, num_obs_in_set, key_bounds, compute_posterior, &
+   file_info_forecast, file_info_preassim, file_info_postassim, file_info_analysis, &
+   output_forecast_diags, output_preassim_diags, output_postassim_diags, output_analysis_diags, &
+   has_cycling)
+
+type(ensemble_type),         intent(inout) :: state_ens_handle
+type(ens_copies_type),       intent(inout) :: ens_copies
+type(adaptive_inflate_type), intent(inout) :: prior_inflate, post_inflate
+type(forward_op_info_type),  intent(inout) :: forward_op_ens_info
+type(obs_sequence_type),     intent(inout) :: seq
+integer,                     intent(in)    :: num_obs_in_set
+integer,                     intent(in)    :: key_bounds(2)
+logical,                     intent(in)    :: compute_posterior
+type(file_info_type),        intent(inout) :: file_info_forecast, file_info_preassim
+type(file_info_type),        intent(inout) :: file_info_postassim, file_info_analysis
+logical,                     intent(in)    :: output_forecast_diags, output_preassim_diags
+logical,                     intent(in)    :: output_postassim_diags, output_analysis_diags
+logical,                     intent(in)    :: has_cycling
+
+!----------
+type(ensemble_type)     :: obs_fwd_op_ens_handle, qc_ens_handle
+integer,    allocatable :: keys(:)
+integer                 :: ens_size
+
+ens_size = ens_copies%ens_size
+! Write out forecast diagnostic file(s). 
+if(output_forecast_diags) &
+   call output_diagnostics('forecast', state_ens_handle, ens_copies,            &
+      file_info_forecast, single_file_out, has_cycling, output_mean, output_sd, &
+      output_members, do_prior_inflate, do_posterior_inflate)
+   
+! Apply prior inflation 
+if(do_ss_inflate(prior_inflate)) &
+   call filter_ensemble_inflate(state_ens_handle, ens_copies%PRIOR_INF_COPY, prior_inflate, &
+      ens_copies%ENS_MEAN_COPY)
+
+! if relaxation-to-prior-spread inflation, save prior spread in copy RTPS_PRIOR_SPREAD_COPY
+if ( do_rtps_inflate(post_inflate) ) &
+   call compute_copy_mean_sd(state_ens_handle, 1, ens_copies%ens_size, &
+      ens_copies%ENS_MEAN_COPY, ens_copies%RTPS_PRIOR_SPREAD_COPY)
+
+! Write out preassim diagnostic files if requested.
+if(output_preassim_diags) &
+   call output_diagnostics('preassim', state_ens_handle, ens_copies, &
+      file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
+      output_members, do_prior_inflate, do_posterior_inflate)
+
+! Compute the forward operators and fill data structures
+call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
+   qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds,       &
+   num_output_obs_members, compute_posterior, isprior = .true.)
+
+call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
+   seq, keys, num_groups, prior_inflate, ens_copies%PRIOR_INF_COPY, ens_copies%PRIOR_INF_SD_COPY, &
+   inflate_only = .false.)
+
+! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
+! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
+if(output_postassim_diags) &
+   call output_diagnostics('postassim', state_ens_handle, ens_copies, &
+      file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
+      output_members, do_prior_inflate, do_posterior_inflate)
+
+! This block applies posterior inflation including RTPS if selected
+if(do_ss_inflate(post_inflate) .or. do_rtps_inflate(post_inflate))             &
+   call filter_ensemble_inflate(state_ens_handle, ens_copies%POST_INF_COPY, post_inflate, &
+      ens_copies%ENS_MEAN_COPY, ens_copies%RTPS_PRIOR_SPREAD_COPY, ens_copies%ENS_SD_COPY)
+
+! this block recomputes the expected obs values for the obs_seq.final file
+if (compute_posterior) then
+   ! Compute the forward operators and fill data structures
+   call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_handle, &
+      qc_ens_handle, seq, ens_size, num_groups, num_obs_in_set, keys, key_bounds,       &
+      num_output_obs_members, compute_posterior, isprior = .false.)
+else
+   ! Collect any updated QC values that may have been set in the assimilation loop
+   call obs_space_sync_QCs(forward_op_ens_info, obs_fwd_op_ens_handle, &
+      seq, keys, num_obs_in_set)
+endif
+      
+! Compute the adaptive state space posterior inflation
+if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) )                  &
+   call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
+      seq, keys, num_groups, post_inflate, &
+      ens_copies%POST_INF_COPY, ens_copies%POST_INF_SD_COPY, inflate_only = .true.)
+      
+! Free up all the allocated space associated with obs ensemble
+call end_ensemble_manager(obs_fwd_op_ens_handle)
+call end_ensemble_manager(qc_ens_handle)
+deallocate(keys)
+      
+! Write out analysis diagnostic files if requested. 
+if(output_analysis_diags) &
+   call output_diagnostics('analysis', state_ens_handle, ens_copies, &
+      file_info_analysis, single_file_out, has_cycling, output_mean, output_sd,           &
+      output_members, do_prior_inflate, do_posterior_inflate)
+
+end subroutine filter_update
 
 !------------------------------------------------------------------
 
