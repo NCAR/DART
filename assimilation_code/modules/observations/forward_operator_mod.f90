@@ -30,8 +30,6 @@ use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, &
 use obs_kind_mod,          only : assimilate_this_type_of_obs, evaluate_this_type_of_obs
 
 use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_var, &
-                                  prepare_to_read_from_vars,            &
-                                  prepare_to_write_to_vars,             &
                                   get_my_num_copies, copies_in_window,  &
                                   get_allow_transpose, all_vars_to_all_copies, &
                                   all_copies_to_all_vars, allocate_single_copy, &
@@ -126,11 +124,6 @@ allocate(my_copy_indices(num_copies_to_calc))
 
 istatus = 999123
 expected_obs = MISSING_R8
-
-! FIXME: these no longer do anything?
-! call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
-! call prepare_to_write_to_vars(qc_ens_handle)
-! call prepare_to_read_from_vars(ens_handle)
 
 ! Set up access to the state
 call create_state_window(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle)
