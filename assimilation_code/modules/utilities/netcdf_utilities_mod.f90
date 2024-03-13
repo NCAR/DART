@@ -63,7 +63,7 @@ public :: nc_check,                       &
           nc_begin_define_mode,           &
           nc_end_define_mode,             &
           nc_synchronize_file,            &
-          NF90_MAX_NAME, NF90_MAX_VAR_DIMS
+          NF90_MAX_NAME, NF90_MAX_VAR_DIMS, NF90_FILL_REAL
 
 
 ! note here that you only need to distinguish between
