@@ -221,12 +221,11 @@ contains
 !> * If you are not doing distributed forward operators state_ens_handle%vars is allocated
 subroutine filter_main()
 
-type(ensemble_type)         :: state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle
+type(ensemble_type)         :: state_ens_handle
 type(obs_sequence_type)     :: seq
 type(forward_op_info_type)  :: forward_op_ens_info
 type(time_type)             :: time1, curr_ens_time, next_ens_time
 
-integer,    allocatable :: keys(:)
 integer                 :: time_step_number, num_obs_in_set
 integer                 :: key_bounds(2)
 logical                 :: read_time_from_file
