@@ -289,7 +289,7 @@ Description of each namelist entry
    *type:* character(len=256)
 
    If adjust_obs_impact is true, the name of the file with the observation types and quantities and state quantities
-   that should have have an additional factor applied to the correlations during assimilation.
+   that should have an additional factor applied to the correlations during assimilation.
 
 ``allow_any_impact_values``
    *type:* logical

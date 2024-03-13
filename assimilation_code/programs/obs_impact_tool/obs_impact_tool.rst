@@ -140,7 +140,7 @@ namelist.
 
 Filter Use
 --------
-The following namelist options are required to use the obs_impact_tool code during the filter because ''obs_impact_tool'' is used to create the ''control_impact_runtime.txt'' file.  
+To use the ``obs_impact_tool`` code during the filter, the following namelist options are required because ``obs_impact_tool`` is used to create the ``control_impact_runtime.txt`` file as specified above.   
 
 ::
 
@@ -148,6 +148,23 @@ The following namelist options are required to use the obs_impact_tool code duri
      adjust_obs_impact               = .true.
      obs_impact_filename             = 'control_impact_runtime.txt'
      /
+
+|
+
+.. container::
+
+   +-------------------+--------------------+-----------------------------------------------------------------------------+
+   | Item              | Type               | Description                                                                 |
+   +===================+====================+=============================================================================+
+   | adjust_obs_impact | logical            | Name of an ascii text file which describes how the interaction of           |
+   |                   |                    | observations to state vector values and observations to other observations  |
+   |                   |                    | should be controlled. See the Overview section for details about the format |
+   |                   |                    | of the input file entries.                                                  |
+   +-------------------+--------------------+-----------------------------------------------------------------------------+
+   |obs_impact_filename| character(len=512) | If adjust_obs_impact is true, the name of the file with the observation     |
+   |                   |                    | types and quantities and state quantities that should have an additional    |
+   |                   |                    | factor applied to the correlations during assimilation.                     |
+   +-------------------+--------------------+-----------------------------------------------------------------------------+
 
 |
 
