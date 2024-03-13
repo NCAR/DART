@@ -8,49 +8,32 @@ Introduction
 
 This document will describe how to get started with your own Weather
 Research and Forecasting (WRF) data assimilation experiments using DART
-and only covers only the WRF-specific aspects of integrating with DART.
-It is not wise to try to run WRF/DART if you have no experience with WRF
-and/or no experience with DART.
+and only covers the  WRF-specific aspects of coupling with DART.
+It is not wise to try to run WRF-DART if you have no experience with
+either WRF or DART.
 
-This tutorial was assembled to be compatible with ~WRF V3.9.1 and the
-DART Manhattan release. Other releases of WRF may or may not be
+This tutorial was designed to be compatible with WRF V3.9.1 and was
+tested with DART V11.0.2. Other releases of WRF may or may not be
 backwards or forwards compatible with this tutorial.
+Prior to running this tutorial, we urge the users to familarize themselves with the
+`WRF system <https://www2.mmm.ucar.edu/wrf/users/model_overview.html>`__
+(WRF_ARW, WPS and WRFDA), and to read through the `WRFv3.9  User's Guide
+<https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/user_guide_V3.9/contents.html>`__
+and the `WRF model tutorials <https://www2.mmm.ucar.edu/wrf/users/tutorial/tutorial.html>`__
 
-You must already be comfortable running the
-`WRF <http://www2.mmm.ucar.edu/wrf/users/download/get_source.html>`__
-system (WPS, real_em build of WRF). If not, work through the `WRF model
-tutorial <https://www.mmm.ucar.edu/wrf-tutorial-0>`__
-first before trying to link WRF and DART together. Check the WRF user
-guide or the
-`WRFHELP <https://www.mmm.ucar.edu/wrf-user-support-contributor-information>`__
-forum for WRF-specific assistance.
+The DART team is not responsible for and does not maintain the WRF code. For WRF related issues check out the
+`WRF User Forum <https://forum.mmm.ucar.edu/>`__
+or the `WRF github page. <https://github.com/wrf-model>`__
 
 If you are new to DART, we recommend that you become familiar with DART
 by working through the :doc:`../../../theory/readme` and then
 understanding the :ref:`DART getting started <Welcome page>` documentation.
 
-before attempting the WRF/DART tutorial as you will find many helpful
-resources for learning the base DART configuration.
-
-*We do not claim that this is a “turnkey” or “black box” system.* Be
-mentally prepared to invest a reasonable amount of time on the learning
-curve. There are many outstanding research issues which have no easy
-answers. This is not a one week/grad student/naive user system. Even
-after you get the code up and running, you have to be able to interpret
-the results, which requires developing specific skills. There are a lot
-of ways to alter how the system works – localization, inflation, which
-variables and observations are assimilated, the assimilation window
-time, the model resolution, etc, etc. This is both good and bad - you
-have many ways of improving your results, but you have to take care on
-how you leave all the settings of these inputs. Getting a set of scripts
-that runs doesn’t mean the system is running well, or producing useful
-results. So - if you’re still reading: Let the adventure begin!
-
-This tutorial introduces a “canned” WRF/DART experiment involving an
+This tutorial is **not** a toy simulation, but represents a realistic WRF-DART
+assimilation for the continental United States. It uses a WRF
 ensemble of 50 members that will be initialized from GFS initial
-conditions at 2017/04/27 00:00 UTC using a domain of the continental
-United States. The data included in the tutorial lasts until 2017/04/30
-18:00 UTC. During this period, there was a strong rain and wind event
+conditions at 2017/04/27 00:00 UTC. The data included in the tutorial lasts
+until 2017/04/30 18:00 UTC. During this period, there was a strong rain and wind event
 that affected a large portion of the United States, causing record
 rains, localized flooding, and numerous tornadoes. For more information
 on the physical account of this case, see
@@ -63,46 +46,67 @@ observations will then be performed at 06:00 UTC, at which time analysis
 files will be generated to begin a new ensemble forecast. The WRF model
 will be advanced for 6 hours and a final assimilation cycle will be
 performed at 12:00 UTC. This process could then continue in order to
-investigate the strong rain and wind event. For what it's worth, on
-NSF NCAR's *Cheyenne* under the default test configuration for this case, it
-can take an hour to complete a forecast/assimilation cycle. Since the
-tutorial runs for two cycles, it can take twice as long.
+investigate the strong rain and wind event. On NSF NCAR's *Derecho*,
+the tutorial requires at least 30 minutes of run time, and can take 
+much longer (1-2 hours) depending upon the PBS queue wait time.
 
-The goals of this tutorial are to demonstrate how WRF/DART works. After
-running this tutorial, you will be able to understand the major steps
-involved in setting up your own data assimilation (DA) experiments.
-However, you will need to do additional work before you can expect to
-have a fully functional WRF/DART system, as some of the steps involved
+The goal of this tutorial is to demonstrate how WRF-DART works, and to provide an
+understanding of the major steps within a data assimilation (DA) experiment.
+However, you will need to do additional work before you can apply
+WRF-DART to your own research application, as some of the steps involved
 in this tutorial (in particular, the perturbation bank and the
 observation sequence files) are provided for you in order to simplify
-the process. Furthermore, if you are not running on the NSF NCAR
-Cheyenne supercomputing system, you will likely need to customize the
-assimilation scripts to match the details of your particular system.
+the process. We provide a diagnostic section at the end of the tutorial to
+assess the skill/success of the assimilation.  Be aware, an assimilation is
+not successful just because it runs to completion. A successful assimilation
+generally uses the vast majority of the observations provided and minimizes
+the bias and RMSE between the posterior model state and the observations.
+
+Finally, if you are not running on the NSF NCAR Derecho (PBS) supercomputing system, you will
+need to customize the assimilation scripts (located in /DART/models/wrf/shell_scripts/) to match the details of your particular system. 
+Specifically, you will need to edit the DART csh scripting to match your system settings
+whether that be, for example, a PBS, SLURM or LSF HPC system.  Although the DART team can
+offer advice on how to customize the scripting to accomodate your HPC system, your
+HPC system administrator is likely the best resource to resolve these issues.
 
 
-.. important ::
+.. Important ::
 
-  We have provided instructions for the NSF NCAR supercomputer
-  Cheyenne, so you may need to tailor these instructions to your system if
-  you are not using Cheyenne. These system-specific setup steps may take a
-  good deal of effort, especially if you are unfamiliar with details such
-  as MPI, NetCDF, etc. Furthermore, even after you get the code up and
-  running, you will need to properly interpret your results.
+  The tutorial scripting and instructions are based on the NSF NCAR supercomputer
+  Derecho, so you will need to edit the scripts and interpret the instructions for
+  other HPC systems. The scripting uses examples of a PBS queuing system (e.g. Derecho)
+  and LSF queuing system (e.g. decommissioned Yellowstone). You can use these as a 
+  template for your own system.  
 
 
 Step 1: Setup
 -------------
 
-There are several dependencies for the executables and scripting
-components. On Cheyennne, users have reported success building WRF, WPS,
-WRFDA, and DART with the default module environment including Intel
-compilers, MPT, and netCDF4. In addition, you'll need to load the
+There are several required dependencies for the executables and WRF-DART scripting
+components. On NSF NCAR's Derecho, users have reported success building WRF, WPS,
+WRFDA, and DART using gfortan with the following module environment. Note: not all
+modules listed below are a requirement to compile and run the tutorial.
+
+   ::
+
+     Currently Loaded Modules:
+        1) ncarenv/23.09 (S)   3) udunits/2.2.28   5) ncarcompilers/1.0.0   7) cray-mpich/8.1.27   9) netcdf-mpi/4.9.2 
+        2) gcc/12.2.0          4) ncview/2.1.9     6) craype/2.7.23         8) hdf5-mpi/1.12.2    10) hdf/4.2.15
+
+In addition, you'll need to load the
 `nco <http://nco.sourceforge.net/>`__ and
 `ncl <https://www.ncl.ucar.edu/>`__ modules to run the set of scripts
-that accompany the tutorial.
+that accompany the tutorial. For Derecho the nco and ncl
+packages can be automatically loaded using the following commands:
 
-There are multiple phases for the setup: building the DART executables,
-getting the initial WRF boundary conditions etc., building (or using
+   ::
+
+     module load nco
+     module load ncl/6.6.2
+
+These commands are provided by default with the param.csh script. More details
+are provided below.  There are multiple phases for the setup: building the DART executables,
+downloading the initial WRF boundary conditions, building (or using
 existing) WRF executables, and configuring and staging the scripting
 needed to perform an experiment.
 
@@ -137,6 +141,13 @@ might need for an experiment with that model.
    ``$DART_DIR/build_templates/mkmf.template`` file for your system. If
    not, you will need to do so now. See :ref:`Getting Started <Welcome page>`
    for more detail, if necessary.
+
+.. Important ::
+
+   If using gfortan to compile DART on Derecho, a successful configuration 
+   of the ``mkmf.template`` includes using the ``mkmf.template.gfortan`` script 
+   and customizing the compiler flags as follows:
+   FFLAGS  = -O2 -ffree-line-length-none -fallow-argument-mismatch -fallow-invalid-boz $(INCS)
 
 2. [OPTIONAL] Modify the DART code to use 32bit reals. Most WRF/DART
    users run both the WRF model and the DART assimilation code using
@@ -176,7 +187,7 @@ might need for an experiment with that model.
       cd $DART_DIR/models/wrf
       cp tutorial/template/input.nml.template work/input.nml
 
-4. Build the WRF/DART executables:
+4. Build the WRF-DART executables:
 
    ::
 
@@ -204,7 +215,8 @@ Preparing the experiment directory.
 Approximately 100Gb of space is needed to run the tutorial. Create a
 "work" directory someplace with a lot of free space. The rest of the
 instructions assume you have an environment variable called *BASE_DIR*
-that points to this directory.
+that points to this directory.  On Derecho it is convenient to use your
+scratch directory for this purpose.
 
 ===== ====================================================
 shell command
@@ -245,40 +257,50 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
        mkdir $BASE_DIR/scripts
        cp -R $DART_DIR/models/wrf/shell_scripts/* $BASE_DIR/scripts
 
-Build or locate WRF executables.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The
-`WRFDA <http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html>`__
-package is needed to generate a set of perturbed initial ensemble member
+Build or locate the WRF, WPS and WRFDA executables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Instruction for donwloading the WRF package is located
+`here. <https://www2.mmm.ucar.edu/wrf/users/download/get_source.html>`__
+The WRF package consists of 3 parts: the WRF atmospheric model WRF(ARW), the
+WRF Preprocessing System (WPS) and WRF Data Assimilation System (WRFDA).  
+
+Importantly, DART is used to perform the ensemble DA for this tutorial, however,
+the WRFDA package is required to generate a set of perturbed initial ensemble member
 files and also to generate perturbed boundary condition files. Since the
 tutorial provides a perturbation bank for a specific case, it is not
 required to actually *run da_wrfvar.exe* but it needs to be in the
 ``WRF_RUN`` directory for the tutorial.
 
-Build (or locate an appropriate build of) WRF, WPS and WRFDA.
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 WRF and WRFDA should be built with the "dmpar" option, while WPS can be
-built "serial"ly. See the WRF/WRFDA documentation for more information
+built "serial"ly. See the WRF documentation for more information
 about building these packages. 
 
-.. note::
+.. Warning::
 	
  For consistency and to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
  same compiler you use for NetCDF. Likewise MPI should use the same compiler.
  You will need the location of the WRF and WRFDA builds to customize the
- *params.csh* script in the next step.
+ *params.csh* script in the next step. If using gfortran to compile WRF on Derecho
+ we recommend using option 34 (gnu dmpar) to configure WRF, option 1 (gnu serial) to 
+ configure WPS, and option 34 (gnu dmpar) to configure WRFDA. You will need the location
+ of the WRF, WPS,and WRFDA builds to customize the *params.csh* script in the next step.
+
+ Using the gfortan compiler on Derecho required custom flag settings to successfully
+ compile the WRF, WPS and WRFDA executables. For more information please see  
+ NCAR/DART `github issue 627. <https://github.com/NCAR/DART/issues/627>`__ 
+   
 
 Configure ``$BASE_DIR/scripts/param.csh`` with proper paths, info, etc.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is a script that sets variables which will be read by other
-WRF/DART scripts. There are some specific parameters for either the
-Cheyenne supercomputing system using the
+WRF-DART scripts. There are some specific parameters for either the
+Derecho supercomputing system using the
 `PBS <https://www.pbsworks.com/>`__ queueing system or the
 (decommissioned) Yellowstone system which used the *LSF* queueing
-system. If you are not using Cheyenne, you may still want to use this
+system. If you are not using Derecho, you may still want to use this
 script to set your queueing-system specific parameters.
 
 .. important::
@@ -291,8 +313,6 @@ script to set your queueing-system specific parameters.
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  |     Script variable     |                                                                     Description                                                                     |
  +=========================+=====================================================================================================================================================+
- | module load mpt         | The Environment Modules MPI compiler to use (here the HPE MPI) compiler). Note that on Cheyenne the default compiler is Intel.                      |
- +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | module load nco         | The nco package.                                                                                                                                    |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | module load ncl/6.6.2   | The ncl package.                                                                                                                                    |
@@ -307,7 +327,7 @@ script to set your queueing-system specific parameters.
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | VAR_SRC_DIR             | The directory of the WRFDA installation.                                                                                                            |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | GEO_FILES_DIR           | The root directory of the WPS_GEOG files. NOTE: on Cheyenne these are available in the /glade/u/home/wrfhelp/WPS_GEOG directory                     |
+ | GEO_FILES_DIR           | The root directory of the WPS_GEOG files. NOTE: on Derecho these are available in the /glade/u/home/wrfhelp/WPS_GEOG directory                      |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | GRIB_DATA_DIR           | The root directory of the GRIB data input into ungrib.exe. For this tutorial the grib files are included, so use ${ICBC_DIR}/grib_data              |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -315,7 +335,7 @@ script to set your queueing-system specific parameters.
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | COMPUTER_CHARGE_ACCOUNT | The project account for supercomputing charges. See your supercomputing project administrator for more information.                                 |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | EMAIL                   | The e-mail address used by the queueing system to send job summary information.                                                                     |
+ | EMAIL                   | The e-mail address used by the queueing system to send job summary information. This is optional.                                                   |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
@@ -427,7 +447,7 @@ find the following scripts:
 +-----------------------+-------------------------------------------------------------------------------------------+
 | new_advance_model.csh | advances the WRF model after running DART in a cycling context.                           |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| param.csh             | Contains most of the key settings to run the WRF/DART system.                             |
+| param.csh             | Contains most of the key settings to run the WRF-DART system.                             |
 +-----------------------+-------------------------------------------------------------------------------------------+
 | prep_ic.csh           | Prepares the initial conditions for a single ensemble member.                             |
 +-----------------------+-------------------------------------------------------------------------------------------+
@@ -570,14 +590,22 @@ you when each ensemble member has finished.
 Step 3: Prepare observations [OPTIONAL]
 ---------------------------------------
 
-For the tutorial exercise, observation sequence files are provided to
-enable you to quickly get started running a test WRF/DART system. If you
-want to run with the example observations, you can skip to Step
-4.
+.. Warning::
 
-However, observation processing is critical to the success of running
-DART and was covered in :ref:`Getting Started <Welcome page>`. In
-brief, to add your own observations to WRF/DART you will need to
+   The observation sequence files to run this tutorial are already provided
+   for you. If you want to run with the provided tutorial observations, you 
+   can skip to Step 4 right now.  If you are interested in using custom
+   observations for a WRF experiment other than the tutorial you should read on. 
+   The remaining instructions provided below in Step 3 are meant as a guideline
+   to converting raw PREPBUFR data files into the required ``obs_seq`` format
+   required by DART. Be aware that there is ongoing discussion of the proper
+   archived data set (RDA ds090.0 or ds337.0) that should be used to obtain
+   the PREPBUFR data. See the discussion in `bug report #634 <https://github.com/NCAR/DART/issues/634>`__.  
+   If you have questions please contact the DART team.
+
+Observation processing is critical to the success of running
+DART and is covered in :ref:`Getting Started <Welcome page>`. In
+brief, to add your own observations to WRF-DART you will need to
 understand the relationship between observation definitions and
 observation sequences, observation types and observation quantities, and
 understand how observation converters extract observations from their
@@ -589,26 +617,22 @@ contain a wide array of observation types from many platforms within a
 single file.
 
 If you wanted to generate your own observation sequence files from
-PREPBUFR for an experiment with WRF/DART, you should follow the guidance
+PREPBUFR for an experiment with WRF-DART, you should follow the guidance
 on the
 `prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
 page to build the bufr conversion programs, get observation files for
 the dates you plan to build an analysis for, and run the codes to
 generate an observation sequence file.
 
-For completeness, we list here how you could generate these observation
-sequence files yourself. 
+The steps listed below to generate these observation
+sequence files are meant as a guideline for NSF NCAR Research Data
+Archive data file ds090.0. **Be aware not all required software has been
+migrated to Derecho to perform this conversion.**  
+See `bug report #634 <https://github.com/NCAR/DART/issues/634>`__
+for more updated information.
 
-.. important::
-
-   the following steps are **not
-   necessary** for the tutorial as the processed PREPBUFR observation
-   sequence files have already been provided for you. However, these steps
-   are provided in order to help users get started with these observations
-   quickly for their own experiments.
-
-To (again, *optionally*) reproduce the observation sequence files in the
-*output* directories, you would do the following:
+To reproduce the observation sequence files in the *output* directories, 
+you would do the following:
 
 -  Go into your DART prep_bufr observation converter directory and
    install the PREPBUFR utilities as follows:
@@ -835,18 +859,17 @@ necessary for ensemble data assimilation, for large models such as WRF
 that are run on a supercomputer queueing system, an additional layer of
 scripts is necessary to glue all of the pieces together. A set of
 scripts is provided with the tutorial tarball to provide you a starting
-point for your own WRF/DART system. You will need to edit these scripts,
+point for your own WRF-DART system. You will need to edit these scripts,
 perhaps extensively, to run them within your particular computing
-environment. If you will run on NSF NCAR's Cheyenne environment, fewer edits
+environment. If you will run on NSF NCAR's Derecho environment, fewer edits
 may be needed, but you should familiarize yourself with `running jobs on
-Cheyenne <https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/quick-start-cheyenne>`__
+Derecho <https://arc.ucar.edu/knowledge_base/74317833>`__
 if necessary. A single forecast/assimilation cycle of this tutorial can
-take an hour on Cheyenne - longer if debug options are enabled or the
-shared nodes are busy - shorter if more cores or a higher optimization
-level is acceptable.
+take up to 10 minutes on Derecho - longer if debug options are enabled or
+if there is a wait time during the queue submission.
 
 In this tutorial, we have previously edited the *param.csh* and other
-scripts. Throughout the WRF/DART scripts, there are many options to
+scripts. Throughout the WRF-DART scripts, there are many options to
 adjust cycling frequency, domains, ensemble size, etc., which are
 available when adapting this set of scripts for your own research. To
 become more famililar with this set of scripts and to eventually make
@@ -951,7 +974,7 @@ In some cases there could be multiple obs_epoch*.nc files, but in general, the u
 should use the obs_epoch file appended with the largest numeric value as it
 contains the most complete set of observations.  The diagnostic scripts used here 
 are included within the DART package, and require a license of Matlab to run.  The 
-commands shown below to run the diagnostics use NSF NCAR's Cheyenne, but a user could
+commands shown below to run the diagnostics use NSF NCAR's Derecho, but a user could
 also run on their local machine.
 
 First explore the obs_epoch*.nc file and identify the variety of observations included
@@ -1340,12 +1363,12 @@ Additional materials from previous in-person tutorials
 
 -  Introduction - `DART Lab
    materials <../../../guide/DART_LAB/DART_LAB.html>`__
--  WRF/DART basic building blocks
+-  WRF-DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
    (some material is outdated)
 -  Computing environment support
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_computing_environment.pdf>`__
--  WRF/DART application examples
+-  WRF-DART application examples
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_application_examples.pdf>`__
    (some material is outdated)
 -  Observation processing

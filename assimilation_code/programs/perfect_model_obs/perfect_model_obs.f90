@@ -36,9 +36,8 @@ use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
 use ensemble_manager_mod, only : init_ensemble_manager,               &
                                  end_ensemble_manager, ensemble_type,  &
-                                 get_my_num_copies, get_ensemble_time, prepare_to_write_to_vars,      &
-                                 prepare_to_read_from_vars, allocate_vars,  &
-                                 all_vars_to_all_copies, &
+                                 get_my_num_copies, get_ensemble_time,   &
+                                 allocate_vars, all_vars_to_all_copies,    &
                                  all_copies_to_all_vars
 
 use           filter_mod, only : filter_set_initial_time, filter_sync_keys_time
@@ -464,8 +463,6 @@ AdvanceTime: do
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
    call trace_message('After  setup for next group of observations')
-
-   call prepare_to_read_from_vars(ens_handle)
 
    ! Output the true state to the netcdf file
    if((output_interval > 0) .and. &
