@@ -2,5 +2,6 @@
    assimilation_period_days     = 7
    assimilation_period_seconds  = 0
    model_perturbation_amplitude = 0.2
+   model_shape_file             = 'mem01_reduced.nc'
   /
 
