@@ -288,10 +288,11 @@ AdvanceTime : do time_step_number = 0, huge(time_step_number)
    if(key_bounds(1) < 0) exit AdvanceTime
 
    call filter_update(state_ens_handle, ens_copies, prior_inflate, post_inflate, &
-      seq, forward_op_ens_info, num_obs_in_set, key_bounds, compute_posterior, &
-      file_info_forecast, file_info_preassim, file_info_postassim, file_info_analysis, &
-      output_forecast_diags, output_preassim_diags, output_postassim_diags, output_analysis_diags, &
-      has_cycling)
+      seq, forward_op_ens_info, num_obs_in_set, key_bounds, compute_posterior, has_cycling, &
+      output_forecast_diags,  'forecast',  file_info_forecast,  &
+      output_preassim_diags,  'preassim',  file_info_preassim,  &
+      output_postassim_diags, 'postassim', file_info_postassim, &
+      output_analysis_diags,  'analysis',  file_info_analysis)
 
 end do AdvanceTime
 
@@ -575,10 +576,11 @@ end subroutine trim_obs_sequence
 ! Does prior inflation, forward operators, assimilation, posterior inflation 
 
 subroutine filter_update(state_ens_handle, ens_copies, prior_inflate, post_inflate, &
-   seq, forward_op_ens_info, num_obs_in_set, key_bounds, compute_posterior, &
-   file_info_forecast, file_info_preassim, file_info_postassim, file_info_analysis, &
-   output_forecast_diags, output_preassim_diags, output_postassim_diags, output_analysis_diags, &
-   has_cycling)
+   seq, forward_op_ens_info, num_obs_in_set, key_bounds, compute_posterior, has_cycling, &
+   output_forecast_diags, filename_forecast, file_info_forecast, &
+   output_preassim_diags, filename_preassim, file_info_preassim, &
+   output_postassim_diags, filename_postassim, file_info_postassim, &
+   output_analysis_diags, filename_analysis, file_info_analysis)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
 type(ens_copies_type),       intent(inout) :: ens_copies
@@ -588,11 +590,13 @@ type(obs_sequence_type),     intent(inout) :: seq
 integer,                     intent(in)    :: num_obs_in_set
 integer,                     intent(in)    :: key_bounds(2)
 logical,                     intent(in)    :: compute_posterior
+logical,                     intent(in)    :: has_cycling
+character(len=*),            intent(in)    :: filename_forecast, filename_preassim
+character(len=*),            intent(in)    :: filename_postassim, filename_analysis
 type(file_info_type),        intent(inout) :: file_info_forecast, file_info_preassim
 type(file_info_type),        intent(inout) :: file_info_postassim, file_info_analysis
 logical,                     intent(in)    :: output_forecast_diags, output_preassim_diags
 logical,                     intent(in)    :: output_postassim_diags, output_analysis_diags
-logical,                     intent(in)    :: has_cycling
 
 !----------
 type(ensemble_type)     :: obs_fwd_op_ens_handle, qc_ens_handle
@@ -602,7 +606,7 @@ integer                 :: ens_size
 ens_size = ens_copies%ens_size
 ! Write out forecast diagnostic file(s). 
 if(output_forecast_diags) &
-   call output_diagnostics('forecast', state_ens_handle, ens_copies,            &
+   call output_diagnostics(filename_forecast, state_ens_handle, ens_copies,            &
       file_info_forecast, single_file_out, has_cycling, output_mean, output_sd, &
       output_members, do_prior_inflate, do_posterior_inflate)
    
@@ -618,7 +622,7 @@ if ( do_rtps_inflate(post_inflate) ) &
 
 ! Write out preassim diagnostic files if requested.
 if(output_preassim_diags) &
-   call output_diagnostics('preassim', state_ens_handle, ens_copies, &
+   call output_diagnostics(filename_preassim, state_ens_handle, ens_copies, &
       file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
       output_members, do_prior_inflate, do_posterior_inflate)
 
@@ -634,7 +638,7 @@ call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_o
 ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
 ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
 if(output_postassim_diags) &
-   call output_diagnostics('postassim', state_ens_handle, ens_copies, &
+   call output_diagnostics(filename_postassim, state_ens_handle, ens_copies, &
       file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
       output_members, do_prior_inflate, do_posterior_inflate)
 
@@ -668,7 +672,7 @@ deallocate(keys)
       
 ! Write out analysis diagnostic files if requested. 
 if(output_analysis_diags) &
-   call output_diagnostics('analysis', state_ens_handle, ens_copies, &
+   call output_diagnostics(filename_analysis, state_ens_handle, ens_copies, &
       file_info_analysis, single_file_out, has_cycling, output_mean, output_sd,           &
       output_members, do_prior_inflate, do_posterior_inflate)
 
