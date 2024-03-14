@@ -29,7 +29,7 @@
 
    trace_execution            = .false.,
    output_timestamps          = .false.,
-   print_every_nth_obs        = -1,
+   print_every_nth_obs        = 1000,
    output_forward_op_errors   = .false.,
    silence                    = .false.,
    /
@@ -39,7 +39,7 @@
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
 
-   stages_to_write  = 'preassim', 'analysis', 'output'
+   stages_to_write  = 'output'
 
    single_file_out              = .false.,
    output_state_files           = ''
@@ -51,7 +51,7 @@
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
 
-   ens_size                     = 20,
+   ens_size                     = 3,
    num_groups                   = 1,
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
@@ -82,7 +82,7 @@
    inf_sd_lower_bound          = 0.0,                     0.0,
    inf_sd_max_change           = 1.05,                    1.05,
 
-   trace_execution              = .false.,
+   trace_execution              = .true.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
    silence                      = .false.,
@@ -93,7 +93,7 @@
    /
 
 &assim_tools_nml
-   cutoff                          = 1000000.0
+   cutoff                          = 0.2
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -101,7 +101,7 @@
    distribute_mean                 = .false.
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0
+   print_every_nth_obs             = 1000
    /
 
 &cov_cutoff_nml
@@ -154,7 +154,7 @@
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'none'
+   write_nml   = 'file'
    /
 
 &preprocess_nml
