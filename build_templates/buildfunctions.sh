@@ -103,7 +103,6 @@ fi
 
 # Default to build with mpi  (non f08 version)
 mpisrc=mpi
-windowsrc=no_cray_win
 m="-w" # mkmf wrapper arg
 
 # if the first argument is help, nompi, mpi, mpif08, clean
@@ -114,20 +113,17 @@ case $1 in
 
   nompi)
     mpisrc="null_mpi"
-    windowsrc=""
     m=""
     shift 1
     ;;
 
   mpi)
     mpisrc="mpi"
-    windowsrc="no_cray_win"
     shift 1
     ;;  
 
   mpif08)
     mpisrc="mpif08"
-    windowsrc="no_cray_winf08"
     shift 1
     ;;
 
@@ -166,37 +162,29 @@ local mpi="$DART"/assimilation_code/modules/utilities/mpi_utilities_mod.f90
 local mpif08="$DART"/assimilation_code/modules/utilities/mpif08_utilities_mod.f90
 local nullmpi="$DART"/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 local nullwin="$DART"/assimilation_code/modules/utilities/null_win_mod.f90
-local craywin="$DART"/assimilation_code/modules/utilities/cray_win_mod.f90
-local nocraywin="$DART"/assimilation_code/modules/utilities/no_cray_win_mod.f90
-local no_cray_winf08="$DART"/assimilation_code/modules/utilities/no_cray_winf08_mod.f90
+local win="$DART"/assimilation_code/modules/utilities/win_mod.f90
+local winf08="$DART"/assimilation_code/modules/utilities/winf08_mod.f90
 
 if [ "$mpisrc" == "mpi" ]; then
 
    core=${core//$nullmpi/}
    core=${core//$nullwin/}
    core=${core//$mpif08/}
-   core=${core//$no_cray_winf08/}
-   if [ "$windowsrc" == "craywin" ]; then
-       core=${core//$nocraywin/}
-   else #nocraywin
-       core=${core//$craywin/}
-   fi
+   core=${core//$winf08/}
 
 elif [ "$mpisrc" == "mpif08" ]; then
 
    core=${core//$nullmpi/}
    core=${core//$nullwin/}
    core=${core//$mpi/}
-   core=${core//$craywin/}
-   core=${core//$nocraywin/}
+   core=${core//$win/}
 
 else  #nompi
 
    core=${core//$mpi/}
    core=${core//$mpif08/}
-   core=${core//$nocraywin/}
-   core=${core//$no_cray_winf08/}
-   core=${core//$craywin/}
+   core=${core//$win/}
+   core=${core//$winf08/}
 fi
 
 dartsrc="${core} ${modelsrc} ${loc} ${misc}"
@@ -279,7 +267,6 @@ if [ ! -z "$single_prog" ] ; then # build a single program
     elif [[ " ${serial_programs[*]} " =~ " ${single_prog} " ]]; then
        echo "building serial dart program " $single_prog
        mpisrc="null_mpi"
-       windowsrc=""
        m=""
        findsrc
        dartbuild $single_prog
@@ -292,7 +279,6 @@ if [ ! -z "$single_prog" ] ; then # build a single program
     elif [[ " ${model_serial_programs[*]} " =~ " ${single_prog} " ]];then 
        echo "building model program" $single_prog
        mpisrc="null_mpi"
-       windowsrc=""
        m=""
        findsrc
        modelbuild $single_prog
@@ -328,7 +314,6 @@ done
 [ $mpisrc == "mpi" ] && \rm -f *.o *.mod
 
 mpisrc="null_mpi"
-windowsrc=""
 m=""
 
 # Serial programs
