@@ -10,9 +10,7 @@ instrument aboard the second Earth Observing System (EOS) polar-orbiting platfor
 together in a polar orbit, collectively known as the “A-train”. In combination with
 the Advanced Microwave Sounding Unit (AMSU) and the Humidity Sounder for Brazil (HSB),
 AIRS constitutes an innovative atmospheric sounding group of visible, infrared, and 
-microwave sensors. AIRS data will be generated continuously. Global coverage will 
-be obtained twice daily (day and night) on a 1:30pm sun synchronous orbit from a 
-705-km altitude.
+microwave sensors. AIRS data will be generated continuously. 
 
 The AIRS Standard Retrieval Product consists of retrieved estimates of cloud 
 and surface properties, plus profiles of retrieved temperature, water vapor, 
@@ -21,22 +19,17 @@ quantities will also be part of the Standard Product. The temperature profile
 vertical resolution is 28 levels total between 1100 mb and 0.1 mb, while moisture 
 profile is reported at 14 atmospheric layers between 1100 mb and 50 mb. The 
 horizontal resolution is 50 km. An AIRS granule has been set as 6 minutes of data, 
-30 footprints cross track by 45 lines along track. The Shortname for this product 
-is AIRX2RET. (AIRS2RET is the same product but without the AMSU data.)
+There are 240 granules per day, with orbit repeat cycle of approximately 16 days.
 
-Atmospheric Infrared Sounder (AIRS) Level 2 observations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Overview of L1-L3 Atmospheric Infrared Sounder (AIRS) Observations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-AIRS data includes atmospheric temperature in the troposphere, derived
-moisture profiles, land and ocean surface temperatures, surface
-emissivity, cloud fraction, cloud top height, and ozone burden in the
-atmosphere.
+The ``convert_airs_L2`` converter is designed specifically for 
+**temperature and moisture retrievals for L2 observations** only. 
+For reference, we provide a brief description of the L1-L3 AIRS data
+products below. For more detailed information please see the 
+`AIRS documentation page: <https://disc.gsfc.nasa.gov/information/documents?title=AIRS%20Documentation>`_
 
-
-Several types of AIRS data, with varying levels of processing, are available.
-The following descriptions are taken from the
-`V5_Data_Release_UG <http://disc.sci.gsfc.nasa.gov/AIRS/documentation/v5_docs/AIRS_V5_Release_User_Docs/V5_Data_Release_UG.pdf>`__
-document:
 
    The L1B data product includes geolocated, calibrated observed microwave, 
    infrared and visible/near infrared radiances, as well as Quality Assessment 
@@ -54,21 +47,41 @@ document:
    There are three products: daily, 8-day and monthly. Each product provides separate 
    ascending (daytime) and descending (nighttime) binned data sets.
 
-The converter in this directory processes level 2 (L2) data files, using data 
-set ``AIRS_DP`` and data product ``AIRX2RET`` or ``AIRS2RET`` without ``HSB`` 
-(the instrument measuring humidity which failed).
 
-Getting the data currently means putting in a start/stop time at 
-`this web page <http://mirador.gsfc.nasa.gov/cgi-bin/mirador/homepageAlt.pl?keyword=AIRX2RET>`__.
-The keyword is ``AIRX2RET`` and put in the time range of interest and optionally a 
-geographic region. Each file contains 6 minutes of data, is about 2.3 Megabytes, 
-and globally there are 240 files/day (about 550 Megabytes/day). There are additional 
-options for getting only particular variables of interest, but the current reader 
-expects whole files to be present. Depending on your connection to the internet, 
-there are various options for downloading. We have chosen to download a ``wget`` 
-script which is created by the web page after adding the selected files to a 'cart' 
-and 'checking out'. The script has a series of ``wget`` commands which downloads 
-each file, one at a time, which is run on the machine where you want the data.
+Downloading Atmospheric Infrared Sounder (AIRS) L2 Observations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are several data file types and versions that contain L2
+observations for temperature and moisture profiles.  **We recommend the use of
+the AIRS2RET version 7 (AIRS2RETv7) data product.**  The ``AIRSRET`` data (AIRS data only)
+product is preferred to the ``AIRX2RET`` (AIRS/AMSU data) because the radiometric
+noise in several AMSU channels increased (since June 2007) degrading the
+``AIRXRET`` product. Furthermore, the version 7 product is higher quality than version 6
+because of an improved retrieval algorithm leading to significantly improved RMSE and bias statistics.
+See the `AIRSRETv7 documentation <https://disc.gsfc.nasa.gov/datasets/AIRS2RET_7.0/summary>`_ 
+for more information.
+
+Although we recommend ``AIRSRETv7``, the  `convert_airs_L2` converter is compatible
+with ``AIRS2RET`` and ``AIRX2RET`` versions 5-7. Version 5 is no longer available
+within the GES DISC database. For more information on these data products see the
+links below:
+
+`AIRSRETv6 <https://disc.gsfc.nasa.gov/datasets/AIRS2RET_006/summary>`_
+`AIRXRETv6 <https://disc.gsfc.nasa.gov/datasets/AIRX2RET_006/summary>`_
+`AIRXRETv7 <https://disc.gsfc.nasa.gov/datasets/AIRX2RET_007/summary>`_
+
+The AIRS data is located within the Goddard Earth Sciences Data and Information
+Services Center (GES DISC) `located here <https://disc.gsfc.nasa.gov/>`_. You need
+to create an Earthdata account before you can download data. As an example, to 
+access the AIRSRETv7 data, search on keyword ``AIRSRET`` and locate
+the AIRSRET 7.0 data set within your search results. Next, click on the 
+`Subset/Get Data` link, then refine your search results by 1) data range (time)
+and 2) spatial region. 
+
+There are various options for downloading, however,the most straightforward approach
+for macOS and Linux users is to use the ``wget`` command.  The ``download instructions``
+provide the proper wget flags/options.  The ``Download Links List`` provides 
+the AIRS file list based on your search results. 
 
 convert_airs_L2.f90
 -------------------
@@ -79,14 +92,9 @@ corresponding vertical pressure levels. However, the moisture obs are the mean f
 the layer, so the location in the vertical is the midpoint, in log space, of the 
 current layer and the layer above it. There is an alternative computation for the 
 moisture across the layer which may be more accurate, but requires a forward 
-operator subroutine to be written and for the observation to contain metadata. 
-The observation could be defined with a layer top, in pressure, and a number of 
-points to use for the integration across the layer. Then the forward operator would 
-query the model at each of the N points in the vertical for a given horizontal 
-location, and compute the mean moisture value. This code has not been implemented 
-yet, and would require a different QTY_xxx to distinguish it from the simple 
-location/value moisture obs. See the GPS non-local operator code for an example 
-of how this would need to be implemented.
+operator subroutine to be written and for the observation converter to include
+additional metadata to support this forward operator.  For more information see
+the `Future Plans` section below.
 
 The temperature observations are located on standard levels; there is a single array 
 of heights in each file and all temperature data is located on one of these levels. 
@@ -95,18 +103,18 @@ the levels; in their terminology the fixed heights are 'levels' and the space be
 them are 'layers'. The current converter locates the moisture obs at the midpoint, 
 in log space, between the levels.
 
-The hdf files need to be downloaded from the data server, in any manner you choose. 
-The converter program reads each hdf granule and outputs a DART obs_seq file 
+The converter program reads each AIRS hdf file granule and outputs a DART obs_seq file 
 containing up to 56700 observations. Only those with a quality control of 0 (Best) 
 are kept. The resulting obs_seq files can be merged with the 
 :doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool` into 
 larger time periods.
 
-It is possible to restrict the output observation sequence to contain data from a 
-region of interest throught the use of the namelist parameters. If you need a region 
-that spans the Prime Meridian lon1 can be a larger number than lon2, for example, 
-a region from 300 E to 40 E and 60 S to 30 S (some of the South Atlantic), 
-would be *lon1 = 300, lon2 = 40, lat1 = -60, lat2 = -30*.
+During the excecution of the obs converter, It is possible to restrict the output
+observation sequence to contain data from a region of interest throught the use of
+the namelist parameters (described in Namelist section below). If you need a region
+that spans the Prime Meridian, ``lon1`` can be a larger number than ``lon2``. 
+For example, a region from 300 E to 40 E and 60 S to 30 S (some of the South Atlantic), 
+would be ``lon1 = 300``, ``lon2 = 40``, ``lat1 = -60``, ``lat2 = -30``.
 
 
 Namelist
@@ -134,7 +142,7 @@ The default values are shown below. More realistic values are provided in
       cross_track_thin   = 0
       along_track_thin   = 0
       use_NCEP_errs      = .false.
-      version            = 6
+      version            = 7
    /
 
 | 
@@ -159,32 +167,33 @@ The default values are shown below. More realistic values are provided in
    +--------------------+------------------------+--------------------------------------------------------------+
    | outputfile         | character(len=256)     | The name of the output observation sequence file.            |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | lon1               | real(r8)               | the West-most longitude of interest in degrees. [0.0, 360]   |
+   | lon1               | real(r8)               | The West-most longitude of interest in degrees. [0.0, 360]   |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | lon2               | real(r8)               | the East-most longitude of interest in degrees. [0.0, 360]   |
+   | lon2               | real(r8)               | The East-most longitude of interest in degrees. [0.0, 360]   |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | lat1               | real(r8)               | the South-most latitude of interest in degrees. [-90.0,90.0] |
+   | lat1               | real(r8)               | The South-most latitude of interest in degrees. [-90.0,90.0] |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | lat2               | real(r8)               | the North-most latitude of interest in degrees. [-90.0,90.0] |
+   | lat2               | real(r8)               | The North-most latitude of interest in degrees. [-90.0,90.0] |
    +--------------------+------------------------+--------------------------------------------------------------+
    | min_MMR_threshold  | real(r8)               | The data files contains 'Retrieved Water Vapor Mass Mixing   |
-   |                    |                        | Ratio'. This is the minimum threshold, in gm/kg, that will   |
-   |                    |                        | be converted into a specific humidity observation.           |
+   |                    |                        | Ratio'. This is the minimum threshold (gm/kg) that will      |
+   |                    |                        | be converted into a specific humidity observation (kg/kg).   |
    +--------------------+------------------------+--------------------------------------------------------------+
    | top_pressure_level | real(r8)               | The highest pressure level of interest (in mb).              |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | cross_track_thin   | integer                | provides ability to thin the data by keeping every Nth data  |
+   | cross_track_thin   | integer                | Provides ability to thin the data by keeping every Nth data  |
    |                    |                        | value in the cross-track scan.   [0,30]                      |
    |                    |                        | e.g. 3 == keep every third value. 0 is no thinning.          |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | along_track_thin   | integer                | provides ability to thin the data by keeping every Nth data  |
+   | along_track_thin   | integer                | Provides ability to thin the data by keeping every Nth data  |
    |                    |                        | value in the along-track scan.   [0,45]                      |
    |                    |                        | e.g. 4 == keep only every 4th row. 0 is no thinning.         |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | use_NCEP_errs      | logical                | if .true. use the maximum observation error from either the  |
+   | use_NCEP_errs      | logical                | If .true. use the maximum observation error from either the  |
    |                    |                        | granule or the NCEP equivalent (from ``obs_error_mod.f90``)  |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | version            | integer                | The AIRS file format version.                                |
+   | version            | integer                | The AIRS file format version. Version 7 is recommended, but  |
+   |                    |                        | the converter is compatible with versions 5-7.               | 
    +--------------------+------------------------+--------------------------------------------------------------+
 
 
@@ -204,5 +213,13 @@ Future Plans
 ~~~~~~~~~~~~
 If a more accurate moisture observation was needed, the observation value
 could be computed by actually integrating multiple values between the levels.
-At this point it doesn't seem necessary.
+The observation could be defined with a layer top, in pressure, and a number of
+points to use for the integration across the layer. Then the forward operator would
+query the model at each of the N points in the vertical for a given horizontal
+location, and compute the mean moisture value. This code has not been implemented
+yet, and would require a different QTY_xxx to distinguish it from the simple
+location/value moisture obs. The observation converter would also have to bring
+in moisture observation metadata for this forward operator. See the 
+GPS non-local operator code (:doc:`../gps/gps`) for an example of how this
+would need to be implemented.
  
