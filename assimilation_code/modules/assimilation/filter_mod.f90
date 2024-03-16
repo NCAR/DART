@@ -80,18 +80,8 @@ character(len=512)      :: msgstring
 
 integer :: trace_level, timestamp_level
 
-! Determine if inflation is turned on or off for reading and writing
-! inflation restart files
-logical :: output_inflation = .false.
-
-! Module Global Variables for inflation
-type(adaptive_inflate_type) :: prior_inflate, post_inflate
-
-! Module global storage for state ensemble copies
-type(ens_copies_type) :: ens_copies
-type(ens_copies_type) :: lag_copies
-
-logical :: has_cycling          = .false. ! filter will advance the model
+! Set to true if forecasts will be made
+logical                 :: has_cycling = .false. ! filter will advance the model
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -223,32 +213,41 @@ contains
 !> * If you are not doing distributed forward operators state_ens_handle%vars is allocated
 subroutine filter_main()
 
-type(ensemble_type)         :: state_ens_handle
-type(ensemble_type)         :: lag_ens_handle
-type(ensemble_type)         :: obs_fwd_op_ens_handle
-type(obs_sequence_type)     :: seq
-type(forward_op_info_type)  :: forward_op_ens_info
-type(time_type)             :: time1, curr_ens_time, next_ens_time
+! Eventually namelist controlled?
+integer, parameter :: num_lags = 2
 
+! Ensembles of state, lagged state, and forward operators
+type(ensemble_type)         :: state_ens_handle
+type(ensemble_type)         :: lag_ens_handle(num_lags)
+type(ensemble_type)         :: obs_fwd_op_ens_handle
+! Metadata for ensemble copies
+type(ens_copies_type) :: ens_copies
+type(ens_copies_type) :: lag_copies
+
+! Prior and posterior inflation metadata
+type(adaptive_inflate_type) :: prior_inflate, post_inflate
 ! No inflation for smoothers, but still need a structure that indicates that for now
 type(adaptive_inflate_type) :: lag_inflate
 
-integer                 :: time_step_number, num_obs_in_set
-integer                 :: key_bounds(2)
-integer,    allocatable :: keys(:)
-logical                 :: read_time_from_file
+! Observation sequence and metadata for copies
+type(obs_sequence_type)     :: seq
+type(forward_op_info_type)  :: forward_op_ens_info
 
+! Structures to control output for each possible point in algorithms
 type(file_info_type) :: file_info_read
 type(file_info_type) :: file_info_forecast
 type(file_info_type) :: file_info_preassim
 type(file_info_type) :: file_info_postassim
 type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
+type(file_info_type) :: lag_info_preassim(num_lags)
+type(file_info_type) :: lag_info_postassim(num_lags)
 
-type(file_info_type) :: lag_info_forecast
-type(file_info_type) :: lag_info_preassim
-type(file_info_type) :: lag_info_postassim
-type(file_info_type) :: lag_info_analysis
+type(time_type)         :: time1, curr_ens_time, next_ens_time
+integer                 :: time_step_number, num_obs_in_set, i
+integer                 :: key_bounds(2)
+integer,    allocatable :: keys(:)
+logical                 :: read_time_from_file
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -256,7 +255,7 @@ call filter_initialize_modules_used() ! static_init_model called in here
 call process_namelist_entries()
 
 ! Initialize the adaptive inflation module
-call init_inflation_options()
+call init_inflation_options(prior_inflate, post_inflate)
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
@@ -265,8 +264,11 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 call init_state_ens(state_ens_handle, ens_copies, ens_size, output_mean, output_sd, &
    do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
 
-call init_state_ens(lag_ens_handle, lag_copies, ens_size, output_mean, output_sd, &
-   do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
+! Initialize all lags for fixed lag smoother
+do i = 1, num_lags
+   call init_state_ens(lag_ens_handle(i), lag_copies, ens_size, output_mean, output_sd, &
+      do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
+end do
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
@@ -292,6 +294,11 @@ call filter_setup_obs_sequence(forward_op_ens_info, seq, num_output_obs_members,
 ! Remove observations that are too early or too late to be assimilated 
 call trim_obs_sequence(seq, key_bounds)
 
+! Initiazlize lagged states
+do i = 1, num_lags
+   call duplicate_state_copies(state_ens_handle, lag_ens_handle(i), .true.)
+end do
+
 ! Loop through timesteps until observations are exhausted
 AdvanceTime : do time_step_number = 0, huge(time_step_number)
 
@@ -311,18 +318,24 @@ AdvanceTime : do time_step_number = 0, huge(time_step_number)
       output_analysis_diags,  'analysis',  file_info_analysis,  &
       obs_fwd_op_ens_handle)
 
-write(*, *) my_task_id(), 'before loop duplicate'
-write(*, *) my_task_id(), 'copies vars state ', state_ens_handle%my_num_copies, state_ens_handle%my_num_vars
-write(*, *) my_task_id(), 'copies vars lag ', lag_ens_handle%my_num_copies, lag_ens_handle%my_num_vars
-   call duplicate_state_copies(state_ens_handle, lag_ens_handle, .true.)
- 
-   call set_inflate_flavor(lag_inflate, NO_INFLATION) 
-   !!!call smoother_update(lag_ens_handle, lag_copies, lag_inflate, seq, forward_op_ens_info, &
-      !!!obs_fwd_op_ens_handle, num_obs_in_set, keys, key_bounds, has_cycling,         &
-      !!!output_preassim_diags,  'lag_preassim',  lag_info_preassim,             &
-      !!!output_postassim_diags, 'lag_postassim', lag_info_postassim)
+   ! Propoagate the lags
+   call duplicate_state_copies(state_ens_handle, lag_ens_handle(1), .true.)
+   do i = 2, num_lags
+      call duplicate_state_copies(lag_ens_handle(i-1), lag_ens_handle(i), .true.)
+   end do
 
-      deallocate(keys)
+   ! MOVE THIS LINE UP OUT OF ADVANCE LOOP 
+   call set_inflate_flavor(lag_inflate, NO_INFLATION) 
+
+   ! Let current observations impact each lag
+   do i = 1, num_lags
+      call smoother_update(lag_ens_handle(i), lag_copies, lag_inflate, seq, forward_op_ens_info, &
+         obs_fwd_op_ens_handle, num_obs_in_set, keys, key_bounds, i, has_cycling,         &
+         output_preassim_diags,  'lag_preassim',  lag_info_preassim(i),             &
+         output_postassim_diags, 'lag_postassim', lag_info_postassim(i))
+   end do
+
+   deallocate(keys)
 
 end do AdvanceTime
 
@@ -495,7 +508,9 @@ end function output_diag_now
 
 !------------------------------------------------------------------
 
-subroutine init_inflation_options()
+subroutine init_inflation_options(prior_inflate, post_inflate)
+
+type(adaptive_inflate_type), intent(inout) :: prior_inflate, post_inflate
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate)
@@ -664,9 +679,6 @@ call forward_operators(forward_op_ens_info, state_ens_handle, obs_fwd_op_ens_han
 ! Need to save the forward operator ensemble for smoothers
 call init_ensemble_manager(save_fwd_op_ens_handle, forward_op_ens_info%TOTAL_COPIES, &
    int(num_obs_in_set, i8), 1, transpose_type_in = 2)
-write(*, *) my_task_id(), 'before second duplicate'
-write(*, *) my_task_id(), 'copies vars ', obs_fwd_op_ens_handle%my_num_copies, obs_fwd_op_ens_handle%my_num_vars
-write(*, *) my_task_id(), 'copies vars ', save_fwd_op_ens_handle%my_num_copies, save_fwd_op_ens_handle%my_num_vars
 call duplicate_state_copies(obs_fwd_op_ens_handle, save_fwd_op_ens_handle, .true.)
 
 call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
@@ -720,8 +732,8 @@ end subroutine filter_update
 ! Does prior inflation, forward operators, assimilation, posterior inflation 
 
 subroutine smoother_update(state_ens_handle, ens_copies, inflate, seq, forward_op_ens_info, &
-   obs_fwd_op_ens_handle, num_obs_in_set, keys, key_bounds, has_cycling,                 &
-   output_preassim_diags,  filename_preassim,  file_info_preassim,                 &
+   obs_fwd_op_ens_handle, num_obs_in_set, keys, key_bounds, lag, has_cycling,               &
+   output_preassim_diags,  filename_preassim,  file_info_preassim,                          &
    output_postassim_diags, filename_postassim, file_info_postassim)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
@@ -733,46 +745,37 @@ type(ensemble_type),         intent(inout) :: obs_fwd_op_ens_handle
 integer,                     intent(in)    :: num_obs_in_set
 integer,                     intent(in)    :: keys(:)
 integer,                     intent(in)    :: key_bounds(2)
+integer,                     intent(in)    :: lag
 logical,                     intent(in)    :: has_cycling
 character(len=*),            intent(in)    :: filename_preassim, filename_postassim
 type(file_info_type),        intent(inout) :: file_info_preassim, file_info_postassim
 logical,                     intent(in)    :: output_preassim_diags, output_postassim_diags
 !----------
 
-integer :: i, j
+! Storage for filenames with lag extension
+character(len=512)      :: filename
+
+! Generate the preassim file name for this lag
+write(filename, '(A, I1)') trim(filename_preassim), lag
   
-write(*, *) 'entering smoother'
- 
 ! Write out preassim diagnostic files if requested.
 if(output_preassim_diags) &
-   call output_diagnostics(filename_preassim, state_ens_handle, ens_copies, &
+   call output_diagnostics(filename, state_ens_handle, ens_copies, &
       file_info_preassim, single_file_out, has_cycling, output_mean, output_sd,           &
       output_members, .false., .false.)
-
-write(*, *) 'done with preassim_diags'
-if(my_task_id() == 1) then
-   write(*, *) 'MY num copies ', state_ens_handle%my_num_copies, state_ens_handle%num_copies
-   write(*, *) 'MY num vars   ', state_ens_handle%my_num_vars, state_ens_handle%num_vars
-   do i = 1, state_ens_handle%num_copies
-      do j = 1, state_ens_handle%my_num_vars
-         write(*, *) i, j, state_ens_handle%copies(i, j)
-      end do
-   end do
-end if
 
 call filter_assim(state_ens_handle, ens_copies, obs_fwd_op_ens_handle, forward_op_ens_info, &
    seq, keys, num_groups, inflate, ens_copies%PRIOR_INF_COPY, ens_copies%PRIOR_INF_SD_COPY, &
    inflate_only = .false.)
-write(*, *) 'done with filter_assim'
 
+! Generate the preassim file name for this lag
+write(filename, '(A, I1)') trim(filename_postassim), lag
 ! Write out postassim diagnostic files if requested.  This contains the assimilated ensemble 
 ! JLA DEVELOPMENT: This used to output the damped inflation. NO LONGER.
 if(output_postassim_diags) &
-   call output_diagnostics(filename_postassim, state_ens_handle, ens_copies, &
+   call output_diagnostics(filename, state_ens_handle, ens_copies, &
       file_info_postassim, single_file_out, has_cycling, output_mean, output_sd,           &
       output_members, .false., .false.)
-
-write(*, *) 'done with postassim_diags'
 
 end subroutine smoother_update
 

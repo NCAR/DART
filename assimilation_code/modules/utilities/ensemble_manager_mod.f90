@@ -660,28 +660,19 @@ endif
 num_copies_1 = ens1%num_copies
 num_copies_2 = ens2%num_copies
 min_num_copies = min(num_copies_1, num_copies_2)
-write(*, *) 'num_copies ', num_copies_1, num_copies_2, min_num_copies
-write(*, *) 'size 1 ', size(ens1%copies, 1), size(ens1%copies, 2), &
-   size(ens2%copies, 1), size(ens2%copies, 2)
-! Need an error check to make sure that ens1 has as many copies than ens2
-!!!if(my_num_copies_1 < my_num_copies_2) then
-   !!!write(msgstring, *) 'my_num_copies in ens1', my_num_copies_1, &
-      !!!' is less than my_num_copies in ens2', my_num_copies_2
-   !!!call error_handler(E_ERR,'duplicate_state_copies', msgstring, source)
-!!!endif
+! Need an error check to make sure that ens1 has at least as many copies as ens2
+if(num_copies_1 < num_copies_2) then
+   write(msgstring, *) 'my_num_copies in ens1', num_copies_1, &
+      ' is less than my_num_copies in ens2', num_copies_2
+   call error_handler(E_ERR,'duplicate_state_copies', msgstring, source)
+endif
 
 ! Copy to fill up copies for ensemble 2
-
 ens2%copies(1:min_num_copies, :) = ens1%copies(1:min_num_copies, :)
+! ens2 has only gottenh the copies array
 ens2%valid = VALID_COPIES
-!!!if(my_task_id() == 0) then
-   !!!!!!write(*, *) 'copy info task ', my_task_id(), my_num_copies_2   
-   !!!write(*, *) 'copies ', ens2%copies(1:my_num_copies_2, :)
-!!!endif
 
 ! Duplicate time if requested
-write(*, *) 'size time ', size(ens1%time), size(ens2%time)
-!!!if(duplicate_time) ens2%time(1:min_num_copies) = ens1%time(1:min_num_copies)
 if(duplicate_time) ens2%current_time = ens1%current_time
 
 end subroutine duplicate_state_copies
