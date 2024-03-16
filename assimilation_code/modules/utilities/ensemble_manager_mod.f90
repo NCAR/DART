@@ -43,7 +43,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           prepare_to_update_copies,   print_ens_handle,         set_current_time,           &
           map_task_to_pe,             map_pe_to_task,           get_current_time,           &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
-          deallocate_single_copy,     get_minmax_task_zero
+          deallocate_single_copy,     get_minmax_task_zero,     duplicate_state_copies
 
 character(len=*), parameter :: source = 'ensemble_manager_mod.f90'
 
@@ -629,6 +629,62 @@ ens2%valid = VALID_VARS
 if(duplicate_time) ens2%time = ens1%time
 
 end subroutine duplicate_ens
+
+!-----------------------------------------------------------------
+
+subroutine duplicate_state_copies(ens1, ens2, duplicate_time)
+
+type(ensemble_type), intent(in)             :: ens1
+type(ensemble_type), intent(inout)          :: ens2
+logical,             intent(in)             :: duplicate_time
+
+integer :: num_copies_1, num_copies_2, min_num_copies
+
+! Should only be used if the ens1%copies storage is current (each pe has all copies
+! of subset of vars).
+! If duplicate_time is true, also copies the time information from ens1 to ens2. 
+
+! Check to make sure that the ensembles are compatible
+if(ens1%num_vars /= ens2%num_vars) then
+   write(msgstring, *) 'num_vars ', ens1%num_vars, ' and ', ens2%num_vars, &
+      'must be equal'
+   call error_handler(E_ERR,'duplicate_state_copies', msgstring, source)
+endif
+if(ens1%distribution_type /= ens2%distribution_type) then
+   write(msgstring, *) 'distribution_type ', ens1%distribution_type, ' and ', &
+      ens2%distribution_type, 'must be equal'
+   call error_handler(E_ERR,'duplicate_state_copies', msgstring, source)
+endif
+
+! Duplicate each copy that is stored locally on this process.
+num_copies_1 = ens1%num_copies
+num_copies_2 = ens2%num_copies
+min_num_copies = min(num_copies_1, num_copies_2)
+write(*, *) 'num_copies ', num_copies_1, num_copies_2, min_num_copies
+write(*, *) 'size 1 ', size(ens1%copies, 1), size(ens1%copies, 2), &
+   size(ens2%copies, 1), size(ens2%copies, 2)
+! Need an error check to make sure that ens1 has as many copies than ens2
+!!!if(my_num_copies_1 < my_num_copies_2) then
+   !!!write(msgstring, *) 'my_num_copies in ens1', my_num_copies_1, &
+      !!!' is less than my_num_copies in ens2', my_num_copies_2
+   !!!call error_handler(E_ERR,'duplicate_state_copies', msgstring, source)
+!!!endif
+
+! Copy to fill up copies for ensemble 2
+
+ens2%copies(1:min_num_copies, :) = ens1%copies(1:min_num_copies, :)
+ens2%valid = VALID_COPIES
+!!!if(my_task_id() == 0) then
+   !!!!!!write(*, *) 'copy info task ', my_task_id(), my_num_copies_2   
+   !!!write(*, *) 'copies ', ens2%copies(1:my_num_copies_2, :)
+!!!endif
+
+! Duplicate time if requested
+write(*, *) 'size time ', size(ens1%time), size(ens2%time)
+!!!if(duplicate_time) ens2%time(1:min_num_copies) = ens1%time(1:min_num_copies)
+if(duplicate_time) ens2%current_time = ens1%current_time
+
+end subroutine duplicate_state_copies
 
 !-----------------------------------------------------------------
 
