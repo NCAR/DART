@@ -86,6 +86,9 @@ logical                 :: has_cycling = .false. ! filter will advance the model
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
+! Number of lags for smoother; Currently no way to have no lags
+integer :: num_lags = 1
+
 ! Set of values to control the application of prior and posterior inflation
 logical :: do_prior_inflate     = .false.
 logical :: do_posterior_inflate = .false.
@@ -156,48 +159,49 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 logical  :: allow_missing_clm = .false.
 
 
-namelist /filter_nml/            &
-   do_prior_inflate,             &
-   do_posterior_inflate,         &
-   prior_inflate_from_restart,   &
+namelist /filter_nml/              &
+   num_lags,                       &
+   do_prior_inflate,               &
+   do_posterior_inflate,           &
+   prior_inflate_from_restart,     &
    posterior_inflate_from_restart, &
-   async,                        &
-   adv_ens_command,              &
-   ens_size,                     &
-   tasks_per_model_advance,      &
-   output_members,               &
-   obs_sequence_in_name,         &
-   obs_sequence_out_name,        &
-   init_time_days,               &
-   init_time_seconds,            &
-   first_obs_days,               &
-   first_obs_seconds,            &
-   last_obs_days,                &
-   last_obs_seconds,             &
-   num_output_state_members,     &
-   num_output_obs_members,       &
-   output_interval,              &
-   num_groups,                   &
-   trace_execution,              &
-   output_forward_op_errors,     &
-   output_timestamps,            &
-   silence,                      &
-   distributed_state,            &
-   single_file_in,               &
-   single_file_out,              &
-   perturb_from_single_instance, &
-   perturbation_amplitude,       &
-   compute_posterior,            &
-   input_state_files,            &
-   output_state_files,           &
-   output_state_file_list,       &
-   input_state_file_list,        &
-   output_forecast_diags,        & 
-   output_preassim_diags,        &
-   output_postassim_diags,       &
-   output_analysis_diags,        &
-   output_mean,                  &
-   output_sd,                    &
+   async,                          &
+   adv_ens_command,                &
+   ens_size,                       &
+   tasks_per_model_advance,        &
+   output_members,                 &
+   obs_sequence_in_name,           &
+   obs_sequence_out_name,          &
+   init_time_days,                 &
+   init_time_seconds,              &
+   first_obs_days,                 &
+   first_obs_seconds,              &
+   last_obs_days,                  &
+   last_obs_seconds,               &
+   num_output_state_members,       &
+   num_output_obs_members,         &
+   output_interval,                &
+   num_groups,                     &
+   trace_execution,                &
+   output_forward_op_errors,       &
+   output_timestamps,              &
+   silence,                        &
+   distributed_state,              &
+   single_file_in,                 &
+   single_file_out,                &
+   perturb_from_single_instance,   &
+   perturbation_amplitude,         &
+   compute_posterior,              &
+   input_state_files,              &
+   output_state_files,             &
+   output_state_file_list,         &
+   input_state_file_list,          &
+   output_forecast_diags,          & 
+   output_preassim_diags,          &
+   output_postassim_diags,         &
+   output_analysis_diags,          &
+   output_mean,                    &
+   output_sd,                      &
    allow_missing_clm
 
 !----------------------------------------------------------------
@@ -213,13 +217,10 @@ contains
 !> * If you are not doing distributed forward operators state_ens_handle%vars is allocated
 subroutine filter_main()
 
-! Eventually namelist controlled?
-integer, parameter :: num_lags = 2
-
 ! Ensembles of state, lagged state, and forward operators
-type(ensemble_type)         :: state_ens_handle
-type(ensemble_type)         :: lag_ens_handle(num_lags)
-type(ensemble_type)         :: obs_fwd_op_ens_handle
+type(ensemble_type)              :: state_ens_handle
+type(ensemble_type)              :: obs_fwd_op_ens_handle
+type(ensemble_type), allocatable :: lag_ens_handle(:)
 ! Metadata for ensemble copies
 type(ens_copies_type) :: ens_copies
 type(ens_copies_type) :: lag_copies
@@ -234,14 +235,14 @@ type(obs_sequence_type)     :: seq
 type(forward_op_info_type)  :: forward_op_ens_info
 
 ! Structures to control output for each possible point in algorithms
-type(file_info_type) :: file_info_read
-type(file_info_type) :: file_info_forecast
-type(file_info_type) :: file_info_preassim
-type(file_info_type) :: file_info_postassim
-type(file_info_type) :: file_info_analysis
-type(file_info_type) :: file_info_output
-type(file_info_type) :: lag_info_preassim(num_lags)
-type(file_info_type) :: lag_info_postassim(num_lags)
+type(file_info_type)              :: file_info_read
+type(file_info_type)              :: file_info_forecast
+type(file_info_type)              :: file_info_preassim
+type(file_info_type)              :: file_info_postassim
+type(file_info_type)              :: file_info_analysis
+type(file_info_type)              :: file_info_output
+type(file_info_type), allocatable :: lag_info_preassim(:)
+type(file_info_type), allocatable :: lag_info_postassim(:)
 
 type(time_type)         :: time1, curr_ens_time, next_ens_time
 integer                 :: time_step_number, num_obs_in_set, i
@@ -253,6 +254,7 @@ call filter_initialize_modules_used() ! static_init_model called in here
 
 ! Read the nameslist and adjust control variables
 call process_namelist_entries()
+allocate(lag_ens_handle(num_lags), lag_info_preassim(num_lags), lag_info_postassim(num_lags))
 
 ! Initialize the adaptive inflation module
 call init_inflation_options(prior_inflate, post_inflate)
@@ -269,6 +271,9 @@ do i = 1, num_lags
    call init_state_ens(lag_ens_handle(i), lag_copies, ens_size, output_mean, output_sd, &
       do_prior_inflate, do_posterior_inflate, post_inflate, num_output_state_members, distributed_state)
 end do
+
+! Inflation not currently supported in lagged smoother, but interfaces require this
+call set_inflate_flavor(lag_inflate, NO_INFLATION) 
 
 ! for now, assume that we only allow cycling if single_file_out is true.
 ! code in this call needs to know how to initialize the output files.
@@ -302,6 +307,12 @@ end do
 ! Loop through timesteps until observations are exhausted
 AdvanceTime : do time_step_number = 0, huge(time_step_number)
 
+   ! Propoagate the lags
+   do i = num_lags, 2, -1
+      call duplicate_state_copies(lag_ens_handle(i-1), lag_ens_handle(i), .true.)
+   end do
+   call duplicate_state_copies(state_ens_handle, lag_ens_handle(1), .true.)
+
    ! Advance the model to make the window include the next available observation.
    call advance_model(state_ens_handle, ens_size, seq, key_bounds, num_obs_in_set, &
       curr_ens_time, next_ens_time, async, adv_ens_command, tasks_per_model_advance, &
@@ -317,15 +328,6 @@ AdvanceTime : do time_step_number = 0, huge(time_step_number)
       output_postassim_diags, 'postassim', file_info_postassim, &
       output_analysis_diags,  'analysis',  file_info_analysis,  &
       obs_fwd_op_ens_handle)
-
-   ! Propoagate the lags
-   call duplicate_state_copies(state_ens_handle, lag_ens_handle(1), .true.)
-   do i = 2, num_lags
-      call duplicate_state_copies(lag_ens_handle(i-1), lag_ens_handle(i), .true.)
-   end do
-
-   ! MOVE THIS LINE UP OUT OF ADVANCE LOOP 
-   call set_inflate_flavor(lag_inflate, NO_INFLATION) 
 
    ! Let current observations impact each lag
    do i = 1, num_lags
