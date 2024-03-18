@@ -53,30 +53,32 @@ Downloading Atmospheric Infrared Sounder (AIRS) L2 Observations
 
 There are several data file types and versions that contain L2
 observations for temperature and moisture profiles.  **We recommend the use of
-the AIRS2RET version 7 (AIRS2RETv7) data product.**  The ``AIRSRET`` data (AIRS data only)
+the AIRS2RET version 7 (AIRS2RETv7) data product.**  The ``AIRS2RET`` data (AIRS data only)
 product is preferred to the ``AIRX2RET`` (AIRS/AMSU data) because the radiometric
 noise in several AMSU channels increased (since June 2007) degrading the
-``AIRXRET`` product. Furthermore, the version 7 product is higher quality than version 6
+``AIRX2RET`` product. Furthermore, the version 7 product is higher quality than version 6
 because of an improved retrieval algorithm leading to significantly improved RMSE and bias statistics.
-See the `AIRSRETv7 documentation <https://disc.gsfc.nasa.gov/datasets/AIRS2RET_7.0/summary>`_ 
+See the `AIRS2RETv7 documentation <https://disc.gsfc.nasa.gov/datasets/AIRS2RET_7.0/summary>`_ 
 for more information.
 
-Although we recommend ``AIRSRETv7``, the  `convert_airs_L2` converter is compatible
+Although we recommend ``AIRS2RETv7``, the  ``convert_airs_L2`` converter is compatible
 with ``AIRS2RET`` and ``AIRX2RET`` versions 5-7. Version 5 is no longer available
 within the GES DISC database. For more information on these data products see the
 links below:
 
-`AIRSRETv6 <https://disc.gsfc.nasa.gov/datasets/AIRS2RET_006/summary>`_
-`AIRXRETv6 <https://disc.gsfc.nasa.gov/datasets/AIRX2RET_006/summary>`_
-`AIRXRETv7 <https://disc.gsfc.nasa.gov/datasets/AIRX2RET_007/summary>`_
+- `AIRS2RETv6 <https://disc.gsfc.nasa.gov/datasets/AIRS2RET_006/summary>`_
+- `AIRX2RETv6 <https://disc.gsfc.nasa.gov/datasets/AIRX2RET_006/summary>`_
+- `AIRX2RETv7 <https://disc.gsfc.nasa.gov/datasets/AIRX2RET_007/summary>`_
 
 The AIRS data is located within the Goddard Earth Sciences Data and Information
 Services Center (GES DISC) `located here <https://disc.gsfc.nasa.gov/>`_. You need
 to create an Earthdata account before you can download data. As an example, to 
-access the AIRSRETv7 data, search on keyword ``AIRSRET`` and locate
-the AIRSRET 7.0 data set within your search results. Next, click on the 
-`Subset/Get Data` link, then refine your search results by 1) data range (time)
-and 2) spatial region. 
+access the AIRS2RETv7 data, search on keyword ``AIRS2RET`` and locate
+the AIRS2RET 7.0 data set within your search results. The full name is listed as
+**Aqua/AIRS L2 Standard Physical Retrieval (AIRS-only) V7.0 (AIRS2RET)**. Next, click on the 
+``Subset/Get Data`` link within the `Data Access` portion of the webpage. This will
+bring up a separate window that allows you to refine your search results 
+by 1) ``Refine range (time)`` and 2) `Refine region (spatial)`. 
 
 There are various options for downloading, however,the most straightforward approach
 for macOS and Linux users is to use the ``wget`` command.  The ``download instructions``
