@@ -195,6 +195,9 @@
    outlier_threshold        = -1.0,
 /
 
+&location_nml
+   /
+
 &transform_state_nml
    nblocks = 6
    nhalos = 2
@@ -205,4 +208,9 @@
    dart_directory = './'
    dart_file_prefix = '3DALL_20110320_003000_m'
    dart_file_suffix = '.nc'
+   grid_directory = './'
+   grid_centers_file_prefix = 'grid_g'
+   grid_centers_file_suffix = '.nc'
+   grid_corners_file_prefix = 'grid_corners_g'
+   grid_corners_file_suffix = '.nc'
    /
