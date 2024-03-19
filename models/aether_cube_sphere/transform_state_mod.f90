@@ -13,12 +13,27 @@ private
 public :: initialize_transform_state_mod, &
           finalize_transform_state_mod, &
           model_to_dart, &
-          dart_to_model
+          dart_to_model, &
+          integer_to_string, &
+          read_namelist, &
+          file_type, & 
+          zero_fill, &
+          nblocks, &
+          nhalos, &
+          grid_directory, &
+          grid_centers_file_prefix, &
+          grid_centers_file_suffix, &
+          grid_corners_file_prefix, &
+          grid_corners_file_suffix
+
 
 character(len=4) :: ensemble_member
 integer :: nblocks, nhalos
 character(len=256) :: restart_directory, restart_file_prefix, restart_file_middle, & 
                       restart_file_suffix, dart_directory, dart_file_prefix, dart_file_suffix
+
+character(len=256) :: grid_directory, grid_centers_file_prefix, grid_centers_file_suffix, &
+                      grid_corners_file_prefix, grid_corners_file_suffix
 
 type :: file_type
 character(len=256) :: file_path
@@ -37,7 +52,20 @@ namelist /transform_state_nml/ &
    restart_file_suffix, &
    dart_directory, &
    dart_file_prefix, &
-   dart_file_suffix
+   dart_file_suffix, &
+   grid_directory, &
+   grid_centers_file_prefix, &
+   grid_centers_file_suffix, &
+   grid_corners_file_prefix, &
+   grid_corners_file_suffix
+
+! namelist /geometry_nml/ &
+!    grid_directory, &
+!    grid_centers_file_prefix, &
+!    grid_centers_file_suffix, &
+!    grid_corners_file_prefix, &
+!    grid_corners_file_suffix
+
 
 contains
 
@@ -45,7 +73,7 @@ subroutine initialize_transform_state_mod()
 
    ensemble_member = get_ensemble_member_from_command_line()
 
-   call read_namelist()
+   call read_namelist('transform_state_nml')
 
    block_files = assign_block_files_array(nblocks, ensemble_member, restart_directory, &
                                           restart_file_prefix, restart_file_middle, &
@@ -224,7 +252,7 @@ subroutine model_to_dart()
                do iy = 1, truncated_nys_per_block
                   do ix = 1, truncated_nxs_per_block
                      icol = icol + 1
-                     spatial_array(icol) = block_array(1, nhalos+ix, nhalos+iy)
+                     spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix)
                   end do
                end do
                
@@ -237,7 +265,7 @@ subroutine model_to_dart()
                   do iy = 1, truncated_nys_per_block
                      do ix = 1, truncated_nxs_per_block
                         icol = icol + 1
-                        variable_array(icol, iz, 1) = block_array(iz, nhalos+ix, nhalos+iy)
+                        variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
                      end do
                   end do
                end do
@@ -283,14 +311,17 @@ function get_ensemble_member_from_command_line() result(ensemble_member)
 
 end function get_ensemble_member_from_command_line
 
-subroutine read_namelist()
+subroutine read_namelist(namelist)
+   character(len=*), intent(in) :: namelist
    integer :: io, iunit
 
-   call find_namelist_in_file('input.nml', 'transform_state_nml', iunit)
+   call find_namelist_in_file('input.nml', namelist, iunit)
    read(iunit, nml = transform_state_nml, iostat = io)
-   call check_namelist_read(iunit, io, 'transform_state_nml')
+   call check_namelist_read(iunit, io, namelist)
 
 end subroutine read_namelist
+
+
 
 function assign_block_files_array(nblocks, ensemble_member, restart_directory, &
                                   restart_file_prefix, restart_file_middle, restart_file_suffix) &
@@ -311,8 +342,8 @@ function assign_block_files_array(nblocks, ensemble_member, restart_directory, &
    do iblock = 1, nblocks
       block_name = zero_fill(integer_to_string(iblock-1), 4)
       block_files(iblock)%file_path = trim(restart_directory) // trim(restart_file_prefix) // &
-                               ensemble_member // trim(restart_file_middle) // block_name // &
-                               trim(restart_file_suffix)
+                                      ensemble_member // trim(restart_file_middle) // &
+                                      block_name // trim(restart_file_suffix)
    end do
 
 end function assign_block_files_array
