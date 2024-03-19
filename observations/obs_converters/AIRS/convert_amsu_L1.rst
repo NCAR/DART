@@ -63,45 +63,99 @@ Perform the following steps to convert the AMSU_L1 observations:
 
 - 1. Download the `h4tonccf_nc4 tool <http://hdfeos.org/software/h4cflib.php>`_ provided 
      from the hdf-eos website. Options are provided for Mac, Linux and Windows platforms. 
-
-- 2. Compile the the h4tonccf_nc4 tool following the instructions provided on the hdf-eos
-     site. Compiling requires both HDF4 and HDF-EOS2 libraries. For Derecho the HDF4
-     libraries are accessed through the ``module load hdf`` command.  HDF-EOS2 libaries are
-     provided at ``/glade/campaign/cisl/dares/libraries/``.     
-
-- 3. Convert the data format from HDF-EOS to netCDF using the h4tonccf_nc4 exectuable
-     generated from Step 2 as:
+     For example, the following command downloads the CentOS7 v1.3 executable that
+     works for Derecho:
 ::
 
-   h4tonccf_nc4 AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf AMSU.nc
+   wget  https://hdfeos.org/software/h4cflib/bin/linux/v1.3/CentOS7/h4tonccf_nc4
 
-- 3b. Optional: The netCDF files have two global attributes that are exceedingly large 
-  and uninformative. If needed you can remove these attributes, you can use the `
-  `ncatted`` command from
+- 2. Convert the AMSU data file from HDF-EOS to netCDF format using the ``h4tonccf_nc4``
+     exectuable as shown below. Be sure to provide execute permission first:
+::
+
+   chmod +x h4tonccf_nc4
+   ./h4tonccf_nc4 AMSU.hdf
+
+   Done with writing netcdf file AMSU.nc
+
+-  2b. Optional: The netCDF files have two global attributes that are exceedingly large 
+  and uninformative. If needed you can remove these attributes, you can use the 
+  ``ncatted`` command from
   `NCO <http://nco.sourceforge.net/nco.html>`_ through the following command:
 
 ::
 
+   module load nco
    ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, AMSU.nc AMSU_final.nc
 
 
-- 4. Run ``convert_amsua_L1`` to convert the netCDF file to the DART obs_seq format.
-     Important: Be sure to configure your namelist settings (below) before running the 
-     converter.
+- 3. Run ``convert_amsua_L1`` to convert the AMSU_final.nc file to the DART obs_seq format.
+     **Important: Be sure to configure your namelist settings (below) before running the 
+     converter.  Also be sure you have compiled the ``convert_amsua_L1`` executable using
+     the proper ~/DART/build_templates/mkmf.template that includes both RTTOV and HDF-EOS2
+     libraries as described here:** :doc:`./README`  
+       
+::
+ 
+  ./convert_amsua_L1 
 
+
+Check the completed ``obs_seq``. It should include brightness temperatures for
+the ``EOS_2_AMSUA_TB`` observation type.  The converter should also produce the
+following metadata underneath the ``mw`` (microwave) header as shown in the table
+below. For more information on the metadata see the
+`RTTOV documentation <https://www.nwpsaf.eu/site/software/rttov/documentation/>`_
+
+.. container::
+
+   +-----------------------+------------------------+
+   | Metadata variable Name| Description            | 
+   +=======================+========================+
+   | Sat_az                | Azimuth of satellite   |
+   |                       | position (degrees)     |
+   +-----------------------+------------------------+
+   | Sat_ze                | Aenith of satellite    |
+   |                       | position (degrees)     |
+   +-----------------------+------------------------+
+   | Platform_id           | EOS (9), RTTOV User    | 
+   |                       | Guide, Table 2         |
+   +-----------------------+------------------------+
+   | Sat_id                | (2), RTTOV User        | 
+   |                       | Guide, Table 2         | 
+   +-----------------------+------------------------+       
+   | Sensor_id             | AMSU-A (3), RTTOV User |                        
+   |                       | Guide, Table 2         | 
+   +-----------------------+------------------------+
+   | Channel               | Microwave frequency    |
+   |                       | channel (1-15)         | 
+   +-----------------------+------------------------+
+   | Mag_field             | Earth magnetic field   | 
+   |                       | strength (Gauss)       | 
+   +-----------------------+------------------------+
+   | cosbk                 | Cosine of angle between|                 
+   |                       | magnetic field and     | 
+   |                       | viewing direction      |
+   +-----------------------+------------------------+
+   | Fastem_p(1-5)         | Land/sea-ice parameters|                                        
+   |                       | 1-5 for FASTEM         | 
+   |                       | emissivity model       |
+   |                       | Table 21, RTTOV User   |
+   |                       | Guide                  |
+   +-----------------------+------------------------+
 
 
 
 Namelist
 ~~~~~~~~
 
-The ``convert_amsua_L1`` converter requries :doc:`../../forward_operators/obs_def_rttov_mod`
+The ``convert_amsua_L1`` converter requires :doc:`../../forward_operators/obs_def_rttov_mod`
 Only two ``&obs_def_rttov_nml`` options are required when converting
 the observations: ``use_zeeman`` and ``rttov_sensor_db_file``.
 
 Be aware that if the RTTOV namelist option ``use_zeeman = .true.``
 certain metadata must be available in the observation. This is not fully
-implemented in the AMSU-A observation converter. For more information,
+implemented in the AMSU-A observation converterm so we recommend setting
+``use_zeeman = .false.``. For more information,
 please see GitHub Issue 99 “`AIRS AMSUA observation converter … Zeeman
 coefficients and channels <https://github.com/NCAR/DART/issues/99>`__”
 
@@ -206,6 +260,13 @@ To facilitate the selection of channels, either the ``Integer`` or ``String`` va
 may be used to specify ``channel_list`` within ``&convert_amsua_L1_nml``. The 
 `Documentation` and `netCDF` values are provided for reference only.
 
+For example the following ``channel list`` settings are identical and
+specify the AMSU channels centered on 50.3 and 89 GHz:
+
+::
+
+ channel_list       = 3,15
+ channel_list       = 'A1-1','A1-13'
 
 .. container::
 
