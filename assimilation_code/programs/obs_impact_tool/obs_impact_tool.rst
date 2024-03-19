@@ -4,27 +4,23 @@ PROGRAM ``obs_impact_tool``
 Overview
 --------
 
-The standard DART algorithms compute increments for an observation and then compute corresponding increments for each
+Standard DART algorithms compute increments for an observation then compute corresponding increments for each
 model state variable due to that observation. To do this, DART computes a sample regression coefficient using the prior
 ensemble distributions of a state variable and the observation. The increments for each member of the observation are
-multiplied by this regression coefficient and then added to the corresponding prior ensemble member for the state
-variable. However, in many cases, it is appropriate to reduce the impact of an observation on a state variable; this is
-called localization. The standard DART algorithms allow users to specify a localization that is a function of the
+multiplied by this regression coefficient and added to the corresponding prior ensemble member for the state
+variable. However, it may be appropriate to use localization, to reduce the impact of an observation on a state variable. 
+The standard DART algorithms allow users to specify a localization that is a function of the
 horizontal (and optionally vertical) distance between the observation and the state variable. The localization is a
 value between 0 and 1 and multiplies the regression coefficient when updating state ensemble members.
+You may also want to do an additional localization that is a function of the type of observation and the state vector quantity. 
 
-Sometimes, it may be desirable to do an additional localization that is a function of the 
-type of observation and the
-state vector quantity. This program allows users to construct a table that is read by 
-filter at run-time to localize the
-impact of sets of observation types on sets of state vector quantities. Users can create 
-named sets of observation types
-and sets of state vector quantities and specify a localization for the impact of the 
-specified observation types on the state vector quantities.
+This program allows users to construct a table that is read by filter at run-time to localize the impact of sets of observation 
+types on sets of state vector quantities. Users can create named sets of observation types and sets of state vector quantities 
+and specify a localization for the impact of the specified observation types on the state vector quantities.
 
-An example would be to create a subset of observations of tracer concentration for a variety of tracers, and a subset of
-dynamic state variable quantities like temperatures and wind components. It has been common to set this localization
-value to 0 so that tracer observations have no impact on dynamic state quantities, however, the tool allows values
+An example would be to create a subset of observations of tracer concentration for a variety of tracers and a subset of
+dynamic state variable quantities like temperatures and wind components. It is common to set this localization
+value to 0 so that tracer observations have no impact on dynamic state quantities; however, the tool allows values
 between 0 and 1 to be specified.
 
 This tool allows related collections of observation types and state vector quantities to be named and then express the
