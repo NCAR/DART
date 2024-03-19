@@ -95,9 +95,9 @@ Next, you should create an input file, ``cross_correlations.txt``, where you def
 
 Namelist interface ``&obs_impact_tool_nml`` must be read from file ``input.nml``.
 
-Then, you should run the ``obs_impact_tool`` with the input file ``cross_correlations.txt`` to create an output file ``control_impact_runtime.txt``. For specific formatting, refer to the details in the Namelist subsection.
+Then, you should run the ``obs_impact_tool`` with the input file ``cross_correlations.txt`` to create an output file ``control_impact_runtime.txt``. For specific formatting, refer to the details in the `Namelist`_ subsection.
 
-After you have the output file to control the impact of observations on state vector items and other observation values, you can use this in your assimilation at filter run time by setting the ``obs_impact_filename`` field in ``assim_tools_nml`` to the name of your output file.
+After you have the output file to control the impact of observations on state vector items and other observation values, you can use this in your assimilation at filter run time by setting the ``obs_impact_filename`` field in ``assim_tools_nml`` to the name of your output file. Descriptions of these fields are available at :doc:`../../modules/assimilation/assim_tools_mod`.
 ::
 
    &assim_tools_nml
