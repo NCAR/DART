@@ -101,7 +101,15 @@ Namelist interface ``&obs_impact_tool_nml`` must be read from file ``input.nml``
 
 Then, you should run the ``obs_impact_tool`` with the input file ``cross_correlations.txt`` to create an output file ``control_impact_runtime.txt``. For specific formatting, refer to the details in the Namelist subsection.
 
-After you have the output file to control the impact of observations on state vector items and other observation values, you can use this in your assimilation at filter run time by setting the ``obs_impact_filename`` field in ``assim_tools_nml`` to the name of your output file. Specific syntax is provided in the Filter Use subsection.
+After you have the output file to control the impact of observations on state vector items and other observation values, you can use this in your assimilation at filter run time by setting the ``obs_impact_filename`` field in ``assim_tools_nml`` to the name of your output file.
+::
+
+   &assim_tools_nml
+     adjust_obs_impact               = .true.
+     obs_impact_filename             = 'control_impact_runtime.txt'
+     /
+
+|
 
 Namelist
 --------
@@ -140,36 +148,6 @@ namelist.
 
 |
 
-Filter Use
---------
-To use the output file from the ``obs_impact_tool`` during the run of filter, the following namelist options are required because ``obs_impact_tool`` is used to create the ``control_impact_runtime.txt`` file as specified above.   
-
-::
-
-   &assim_tools_nml
-     adjust_obs_impact               = .true.
-     obs_impact_filename             = 'control_impact_runtime.txt'
-     /
-
-|
-
-.. container::
-
-   +-------------------+--------------------+-----------------------------------------------------------------------------+
-   | Item              | Type               | Description                                                                 |
-   +===================+====================+=============================================================================+
-   | adjust_obs_impact | logical            | Name of an ascii text file which describes how the interaction of           |
-   |                   |                    | observations to state vector values and observations to other observations  |
-   |                   |                    | should be controlled. See the Overview section for details about the format |
-   |                   |                    | of the input file entries.                                                  |
-   +-------------------+--------------------+-----------------------------------------------------------------------------+
-   |obs_impact_filename| character(len=512) | If adjust_obs_impact is true, the name of the file with the observation     |
-   |                   |                    | types and quantities and state quantities that should have an additional    |
-   |                   |                    | factor applied to the correlations during assimilation.                     |
-   +-------------------+--------------------+-----------------------------------------------------------------------------+
-
-|
-
 Examples
 --------
 
@@ -191,23 +169,3 @@ The following is an example of an input file to prevent chemistry species from i
        chem   met    0.0
        met    chem   0.0
       END IMPACT
-
-Modules used
-------------
-
-::
-
-   types_mod
-   utilities_mod
-   parse_args_mod
-
-Files
------
-
--  two text files, one input and one output.
--  obs_impact_tool.nml
-
-References
-----------
-
--  none
