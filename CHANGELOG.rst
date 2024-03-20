@@ -22,6 +22,29 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 13 2024 :: Update WRF-DART scripts and bug template to Derecho; remove no-op routines in ensemble manager. Tag v11.3.1**
+
+- Updated the csh scripting templates used to run WRF-DART and WRF-DART tutorial from Cheyenne to Derecho
+- Updated bug report template to use Derecho instead of Cheyenne
+- Removed the following no-op routines from ensemble manager: prepare_to_write_to_vars, prepare_to_write_to_copies,
+  prepare_to_read_from_vars, prepare_to_read_from_copies, prepare_to_update_vars, prepare_to_update_copies
+
+**March 12 2024 :: MITgcm/N-BLING with Compressed Staggered Grids. Tag v11.3.0**
+
+- The DART-MITgcm code now supports compressed grids, especially suited for areas like 
+  the Red Sea where land occupies more than 90% of the domain.  
+  Built upon work *contributed by Jiachen Liu*.
+- Allows writing the BGC fields into MITgcm's pickup files.
+- Allows different compression for the regular and staggered grids.
+
+**March 12 2024 :: Aether lat-lon. Tag v11.2.0**
+
+- Aether lat-lon interface added to DART.
+
+**March 11 2024 :: SEIR model for infectious diseases. Tag v11.1.0**
+
+- Added SEIR model which simulates the spread of infectious diseases, for example COVID-19.
+
 **February 13 2024 :: Fortran Standards. Tag v11.0.3**
 
 - Replace f2kcli with Fortran intrinsics for command line arguments.

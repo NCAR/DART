@@ -439,6 +439,7 @@ References
    :hidden:
 
    models/9var/readme
+   models/aether_lat-lon/readme
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme
@@ -480,6 +481,7 @@ References
    models/POP/dart_pop_mod
    models/ROMS/readme
    models/rose/readme
+   models/seir/readme
    models/simple_advection/readme
    models/sqg/readme
    models/template/new_model
