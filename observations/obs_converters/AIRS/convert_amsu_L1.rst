@@ -61,43 +61,40 @@ Advanced Microwave Sounding Unit (AMSU-A) L1B Brightness Temperatures
 
 Perform the following steps to convert the AMSU_L1 observations:
 
-- 1. Download the `h4tonccf_nc4 tool <http://hdfeos.org/software/h4cflib.php>`_ provided 
-     from the hdf-eos website. Options are provided for Mac, Linux and Windows platforms. 
-     For example, the following command downloads the CentOS7 v1.3 executable that
-     works for Derecho:
-::
+1. Download the `h4tonccf_nc4 tool <http://hdfeos.org/software/h4cflib.php>`_ provided 
+   from the hdf-eos website. Options are provided for Mac, Linux and Windows platforms. 
+   For example, the following command downloads the CentOS7 v1.3 executable that
+   works for Derecho:
+   ::
+   
+     wget  https://hdfeos.org/software/h4cflib/bin/linux/v1.3/CentOS7/h4tonccf_nc4
 
-   wget  https://hdfeos.org/software/h4cflib/bin/linux/v1.3/CentOS7/h4tonccf_nc4
+2. Convert the AMSU data file from HDF-EOS to netCDF format using the ``h4tonccf_nc4``
+   exectuable as shown below. Be sure to provide execute permission first:
+   ::
+   
+      chmod +x h4tonccf_nc4
+      ./h4tonccf_nc4 AMSU.hdf
+   
+      Done with writing netcdf file AMSU.nc
 
-- 2. Convert the AMSU data file from HDF-EOS to netCDF format using the ``h4tonccf_nc4``
-     exectuable as shown below. Be sure to provide execute permission first:
-::
+2. b. Optional: The netCDF files have two global attributes that are exceedingly large and uninformative. If needed you can remove these attributes, you can use the 
+   ``ncatted`` command from
+   `NCO <http://nco.sourceforge.net/nco.html>`_ through the following command:
+   ::
 
-   chmod +x h4tonccf_nc4
-   ./h4tonccf_nc4 AMSU.hdf
+       module load nco
+       ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, AMSU.nc AMSU_final.nc
 
-   Done with writing netcdf file AMSU.nc
-
--  2b. Optional: The netCDF files have two global attributes that are exceedingly large 
-  and uninformative. If needed you can remove these attributes, you can use the 
-  ``ncatted`` command from
-  `NCO <http://nco.sourceforge.net/nco.html>`_ through the following command:
-
-::
-
-   module load nco
-   ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, AMSU.nc AMSU_final.nc
-
-
-- 3. Run ``convert_amsua_L1`` to convert the AMSU_final.nc file to the DART obs_seq format.
-     **Important: Be sure to configure your namelist settings (below) before running the 
-     converter.  Also be sure you have compiled the ``convert_amsua_L1`` executable using
-     the proper ~/DART/build_templates/mkmf.template that includes both RTTOV and HDF-EOS2
-     libraries as described here:** :doc:`./README`  
+3. Run ``convert_amsua_L1`` to convert the AMSU_final.nc file to the DART obs_seq format.
+   **Important:** Be sure to configure your namelist settings (below) before running the 
+   converter.  Also be sure you have compiled the ``convert_amsua_L1`` executable using
+   the proper ~/DART/build_templates/mkmf.template that includes both RTTOV and HDF-EOS2
+   libraries as described here: :doc:`./README`  
        
-::
+   ::
  
-  ./convert_amsua_L1 
+   ./convert_amsua_L1 
 
 
 Check the completed ``obs_seq``. It should include brightness temperatures for
