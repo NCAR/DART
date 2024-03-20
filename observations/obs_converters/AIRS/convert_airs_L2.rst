@@ -108,7 +108,7 @@ in log space, between the levels.
 The converter program reads each AIRS hdf file granule and outputs a DART obs_seq file 
 containing up to 56700 observations. Only those with a quality control of 0 (Best) 
 are kept. The resulting obs_seq files can be merged with the 
-:doc:`../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool` into 
+:ref:`obs sequence tool` into
 larger time periods.
 
 During the excecution of the obs converter, It is possible to restrict the output
@@ -222,6 +222,6 @@ location, and compute the mean moisture value. This code has not been implemente
 yet, and would require a different QTY_xxx to distinguish it from the simple
 location/value moisture obs. The observation converter would also have to bring
 in moisture observation metadata for this forward operator. See the 
-GPS non-local operator code (:doc:`../gps/gps`) for an example of how this
+GPS non-local operator code (:ref:`gps`)  for an example of how this
 would need to be implemented.
  

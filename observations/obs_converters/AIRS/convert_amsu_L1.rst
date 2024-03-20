@@ -145,7 +145,7 @@ below. For more information on the metadata see the
 Namelist
 ~~~~~~~~
 
-The ``convert_amsua_L1`` converter requires :doc:`../../forward_operators/obs_def_rttov_mod`
+The ``convert_amsua_L1`` converter requires :ref:`obs_def_rttov_mod`
 Only two ``&obs_def_rttov_nml`` options are required when converting
 the observations: ``use_zeeman`` and ``rttov_sensor_db_file``.
 
