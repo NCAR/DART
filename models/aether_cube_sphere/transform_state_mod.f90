@@ -20,6 +20,7 @@ public :: initialize_transform_state_mod, &
           zero_fill, &
           nblocks, &
           nhalos, &
+          dart_directory, &
           grid_directory, &
           grid_centers_file_prefix, &
           grid_centers_file_suffix, &

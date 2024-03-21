@@ -1,15 +1,24 @@
 program create_geometry_file
 
+use               netcdf
 use            types_mod, only : r8, RAD2DEG
-use         location_mod, only : location_type, get_dist, set_location, VERTISHEIGHT
+use         location_mod, only : location_type, get_dist, get_location, set_location, VERTISHEIGHT
 use        utilities_mod, only : initialize_utilities, finalize_utilities
-use netcdf_utilities_mod, only : nc_open_file_readonly, nc_get_variable_size, nc_get_variable
+use netcdf_utilities_mod, only : nc_open_file_readonly, nc_get_variable_size, nc_get_variable, &
+                                 nc_create_file, nc_end_define_mode, nc_close_file
 use  transform_state_mod, only : read_namelist, file_type, integer_to_string, zero_fill, nblocks, &
-                                 nhalos, grid_directory, grid_centers_file_prefix, &
+                                 nhalos, dart_directory, grid_directory, grid_centers_file_prefix, &
                                  grid_centers_file_suffix, grid_corners_file_prefix, &
                                  grid_corners_file_suffix
 
 implicit none
+
+! There will always be exactly 8 vertices on a cube sphere, regardless of how many blocks
+integer, parameter               :: nvertices = 8
+integer, parameter               :: nside_faces = 4
+integer, dimension(nvertices, 3) :: matrix_of_corner_indices
+logical                          :: is_a_cube_vertex
+integer, dimension(3)            :: corner_indices
 
 ! Declare variables for the center and corner netcdf files
 
@@ -20,7 +29,8 @@ integer :: nzs_per_centers_block, nys_per_centers_block, nxs_per_centers_block, 
            nzs_per_corners_block, nys_per_corners_block, nxs_per_corners_block
 
 integer :: truncated_nys_per_centers_block, truncated_nxs_per_centers_block, &
-           truncated_nys_per_corners_block, truncated_nxs_per_corners_block
+           truncated_nys_per_side_corners_block, truncated_nxs_per_side_corners_block, &
+           truncated_nys_per_top_bottom_corners_block, truncated_nxs_per_top_bottom_corners_block
 
 integer :: center_ncols, corner_ncols
 
@@ -28,20 +38,22 @@ real(r8), allocatable, dimension(:, :, :) :: center_lats_block, center_lons_bloc
                                              corner_lats_block, corner_lons_block
 
 real(r8), allocatable, dimension(:, :, :) :: center_lats_truncated, center_lons_truncated, &
-                                             corner_lats_truncated, corner_lons_truncated
+                                             corner_lats_side_truncated, corner_lons_side_truncated, &
+                                             corner_lats_top_bottom_truncated, corner_lons_top_bottom_truncated
+
+real(r8), allocatable, dimension(:)       :: center_lats_vector, center_lons_vector, &
+                                             cube_face_quad_lats_vector, cube_face_quad_lons_vector
+
+real(r8), dimension(nvertices)            :: vertex_triangle_lats_vector, vertex_triangle_lons_vector
+
+real(r8), dimension(3)                    :: location
 
 ! Declare variables for the geometry_file that will be output by this program
-real(r8)                         :: alt = 96343.08
-real(r8)                         :: max_lon = 360.0
-real(r8)                         :: min_lon = 0.0
-real(r8)                         :: max_lat = 90.0
-real(r8)                         :: min_lat = -90.0
-
-! There will always be exactly 8 vertices on a cube sphere, regardless of how many blocks
-integer, parameter               :: nvertices = 8
-integer, dimension(nvertices, 3) :: matrix_of_corner_indices
-logical                          :: is_a_cube_vertex
-integer, dimension(3)            :: corner_indices = [0, 0, 0]
+real(r8)                         :: alt
+real(r8)                         :: max_lon
+real(r8)                         :: min_lon
+real(r8)                         :: max_lat
+real(r8)                         :: min_lat
 
 type :: vertex_triangle
    type(location_type) :: loc
@@ -65,23 +77,36 @@ type(vertex_triangle), dimension(nvertices) :: vertex_triangles
 type(cube_face_quad), allocatable, dimension(:) :: cube_face_quads
 type(center_location), allocatable, dimension(:) :: center_locations
 
-integer                          :: ivertex_triangle = 0
-integer                          :: icube_face_quad = 0
+integer                          :: ivertex_triangle
+integer                          :: icube_face_quad
 
-integer :: icol, ix, iy, ncols
+integer :: icol, ix, iy, ncols, nx, ny
 real(r8), allocatable, dimension(:) :: distances_from_corners_to_centers
+
+! Assign initialized variables
+alt = 96343.08
+max_lon = 360.0
+min_lon = 0.0
+max_lat = 90.0
+min_lat = -90.0
+corner_indices = [0, 0, 0]
+location(:) = 0.0
+vertex_triangle_lats_vector(:) = 0
+vertex_triangle_lons_vector(:) = 0
 
 call initialize_utilities(progname='create_geometry_file')
 
 call read_namelist('transform_state_nml')
 
-call read_center_and_corner_blocks()
+call assign_triangles_and_quads()
+
+call output_triangles_and_quads_to_netcdf()
 
 call finalize_utilities('create_geometry_file')
 
 contains
 
-subroutine read_center_and_corner_blocks()
+subroutine assign_triangles_and_quads()
 
    type(file_type), allocatable, dimension(:) :: center_files
    type(file_type), allocatable, dimension(:) :: corner_files
@@ -141,8 +166,11 @@ subroutine read_center_and_corner_blocks()
          nys_per_corners_block = variable_size(2)
          nxs_per_corners_block = variable_size(3)
 
-         truncated_nys_per_corners_block = nys_per_corners_block-2*nhalos
-         truncated_nxs_per_corners_block = nxs_per_corners_block-2*nhalos
+         truncated_nys_per_side_corners_block = nys_per_corners_block-(2*nhalos+2)
+         truncated_nxs_per_side_corners_block = nxs_per_corners_block-(2*nhalos+1)
+
+         truncated_nys_per_top_bottom_corners_block = nys_per_corners_block-2*nhalos
+         truncated_nxs_per_top_bottom_corners_block = nxs_per_corners_block-2*nhalos
 
          allocate(corner_lons_block(nzs_per_corners_block, nys_per_corners_block, nxs_per_corners_block))
          corner_lons_block(:, :, :) = 0
@@ -150,25 +178,39 @@ subroutine read_center_and_corner_blocks()
          allocate(corner_lats_block(nzs_per_corners_block, nys_per_corners_block, nxs_per_corners_block))
          corner_lats_block(:, :, :) = 0
 
-         allocate(corner_lons_truncated(nblocks, truncated_nys_per_corners_block, truncated_nxs_per_corners_block))
-         corner_lons_truncated(:, :, :) = 0
+         allocate(corner_lons_side_truncated(nblocks, truncated_nys_per_side_corners_block, truncated_nxs_per_side_corners_block))
+         corner_lons_side_truncated(:, :, :) = 0
 
-         allocate(corner_lats_truncated(nblocks, truncated_nys_per_corners_block, truncated_nxs_per_corners_block))
-         corner_lats_truncated(:, :, :) = 0
+         allocate(corner_lats_side_truncated(nblocks, truncated_nys_per_side_corners_block, truncated_nxs_per_side_corners_block))
+         corner_lats_side_truncated(:, :, :) = 0
+
+         allocate(corner_lons_top_bottom_truncated(nblocks, truncated_nys_per_top_bottom_corners_block, truncated_nxs_per_top_bottom_corners_block))
+         corner_lons_top_bottom_truncated(:, :, :) = 0
+
+         allocate(corner_lats_top_bottom_truncated(nblocks, truncated_nys_per_top_bottom_corners_block, truncated_nxs_per_top_bottom_corners_block))
+         corner_lats_top_bottom_truncated(:, :, :) = 0
       end if
 
       call nc_get_variable(corner_files(iblock)%ncid, 'Longitude Corners', corner_lons_block)
-      corner_lons_truncated(iblock, :, :) = corner_lons_block(1, nhalos+1:nys_per_corners_block-nhalos, nhalos+1:nxs_per_corners_block-nhalos)
-
       call nc_get_variable(corner_files(iblock)%ncid, 'Latitude Corners', corner_lats_block)
-      corner_lats_truncated(iblock, :, :) = corner_lats_block(1, nhalos+1:nys_per_corners_block-nhalos, nhalos+1:nxs_per_corners_block-nhalos)
+
+      if (iblock <= nside_faces) then
+         corner_lons_side_truncated(iblock, :, :) = corner_lons_block(1, nhalos+2:nys_per_corners_block-(nhalos+1), nhalos+2:nxs_per_corners_block-nhalos)
+         corner_lats_side_truncated(iblock, :, :) = corner_lats_block(1, nhalos+2:nys_per_corners_block-(nhalos+1), nhalos+2:nxs_per_corners_block-nhalos)
+      else
+         corner_lons_top_bottom_truncated(iblock, :, :) = corner_lons_block(1, nhalos+1:nys_per_corners_block-nhalos, nhalos+1:nxs_per_corners_block-nhalos)
+         corner_lats_top_bottom_truncated(iblock, :, :) = corner_lats_block(1, nhalos+1:nys_per_corners_block-nhalos, nhalos+1:nxs_per_corners_block-nhalos)
+      end if
 
    end do
 
    center_ncols = nblocks*truncated_nys_per_centers_block*truncated_nxs_per_centers_block
-   corner_ncols = nblocks*truncated_nys_per_corners_block*truncated_nxs_per_corners_block
+   corner_ncols = nside_faces*truncated_nys_per_side_corners_block*truncated_nxs_per_side_corners_block + &
+                  (nblocks-nside_faces)*truncated_nys_per_top_bottom_corners_block*truncated_nxs_per_top_bottom_corners_block
 
    allocate(center_locations(center_ncols))
+   allocate(center_lats_vector(center_ncols))
+   allocate(center_lons_vector(center_ncols))
 
    icol = 0
    do iblock = 1, nblocks
@@ -180,32 +222,67 @@ subroutine read_center_and_corner_blocks()
             ! set_location, the aether coordinates in radians must be converted to degrees for the
             ! arguments before they are converted back to radians in the function
             center_locations(icol)%loc = set_location(max(min_lon, min(max_lon, center_lons_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, center_lats_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+            
+            location = get_location(center_locations(icol)%loc)
+            center_lons_vector(icol) = location(1)
+            center_lats_vector(icol) = location(2)
+
          end do
       end do
    end do
 
    matrix_of_corner_indices = create_matrix_of_corner_indices(nblocks, nvertices, &
-                                                              truncated_nys_per_corners_block, &
-                                                              truncated_nxs_per_corners_block)
+                                                              truncated_nys_per_top_bottom_corners_block, &
+                                                              truncated_nxs_per_top_bottom_corners_block)
 
    allocate(distances_from_corners_to_centers(center_ncols))
    allocate(cube_face_quads(corner_ncols-nvertices))
+   allocate(cube_face_quad_lats_vector(corner_ncols-nvertices))
+   allocate(cube_face_quad_lons_vector(corner_ncols-nvertices))
+
+   cube_face_quad_lats_vector(:) = 0.0
+   cube_face_quad_lons_vector(:) = 0.0
 
    ivertex_triangle = 0
    icube_face_quad = 0
    do iblock = 1, nblocks
-      do iy = 1, truncated_nys_per_corners_block
-         do ix = 1, truncated_nxs_per_corners_block
+      if (iblock <= nside_faces) then
+         ny = truncated_nys_per_side_corners_block
+         nx = truncated_nxs_per_side_corners_block
+      else
+         ny = truncated_nys_per_top_bottom_corners_block
+         nx = truncated_nxs_per_top_bottom_corners_block
+      end if
+      do iy = 1, ny
+         do ix = 1, nx
             corner_indices(1) = iblock
             corner_indices(2) = iy
             corner_indices(3) = ix
             is_a_cube_vertex = is_corner_a_cube_vertex(nvertices, matrix_of_corner_indices, corner_indices)
             if (is_a_cube_vertex .eqv. .true.) then
                ivertex_triangle = ivertex_triangle + 1
-               vertex_triangles(ivertex_triangle)%loc = set_location(max(min_lon, min(max_lon, corner_lons_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+               if (iblock <= nside_faces) then
+                  vertex_triangles(ivertex_triangle)%loc = set_location(max(min_lon, min(max_lon, corner_lons_side_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_side_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+               else
+                  vertex_triangles(ivertex_triangle)%loc = set_location(max(min_lon, min(max_lon, corner_lons_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+               end if
+
+               location = get_location(vertex_triangles(ivertex_triangle)%loc)
+               vertex_triangle_lons_vector(ivertex_triangle) = location(1)
+               vertex_triangle_lats_vector(ivertex_triangle) = location(2)
+               
             else
                icube_face_quad = icube_face_quad + 1
-               cube_face_quads(icube_face_quad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+               if (iblock <= nside_faces) then
+                  cube_face_quads(icube_face_quad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_side_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_side_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+               else
+                  cube_face_quads(icube_face_quad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+               end if
+
+               location = get_location(cube_face_quads(icube_face_quad)%loc)
+               cube_face_quad_lons_vector(icube_face_quad) = location(1)
+               cube_face_quad_lats_vector(icube_face_quad) = location(2)
+
             end if
          end do
       end do
@@ -233,7 +310,55 @@ subroutine read_center_and_corner_blocks()
 
    end do
 
-end subroutine read_center_and_corner_blocks
+end subroutine assign_triangles_and_quads
+
+subroutine output_triangles_and_quads_to_netcdf()
+
+   type(file_type) :: geometry_file
+   integer :: dim_id_vertex_columns, dim_id_cube_face_quad_columns, dim_id_center_columns
+   integer :: var_id_center_longitude, var_id_center_latitude
+   integer :: var_id_vertex_triangle_longitude, var_id_vertex_triangle_latitude
+   integer :: var_id_cube_face_quad_longitude, var_id_cube_face_quad_latitude
+   integer :: xtype
+
+   xtype = 5
+
+   geometry_file%file_path = trim(dart_directory) // 'geometry_file.nc'
+
+   geometry_file%ncid =  nc_create_file(geometry_file%file_path)
+
+   geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'vertex_columns', nvertices, dim_id_vertex_columns)
+
+   geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'cube_face_quad_columns', (corner_ncols-nvertices), dim_id_cube_face_quad_columns)
+
+   geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'center_columns', center_ncols, dim_id_center_columns)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'vertex_triangle_longitude', xtype, dim_id_vertex_columns, var_id_vertex_triangle_longitude)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'vertex_triangle_latitude', xtype, dim_id_vertex_columns, var_id_vertex_triangle_latitude)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'cube_face_quad_longitude', xtype, dim_id_cube_face_quad_columns, var_id_cube_face_quad_longitude)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'cube_face_quad_latitude', xtype, dim_id_cube_face_quad_columns, var_id_cube_face_quad_latitude)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'center_longitude', xtype, dim_id_center_columns, var_id_center_longitude)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'center_latitude', xtype, dim_id_center_columns, var_id_center_latitude)
+
+   call nc_end_define_mode(geometry_file%ncid)
+
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_longitude, center_lons_vector)
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_latitude, center_lats_vector)
+
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_vertex_triangle_longitude, vertex_triangle_lons_vector)
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_vertex_triangle_latitude, vertex_triangle_lats_vector)
+
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_cube_face_quad_longitude, cube_face_quad_lons_vector)
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_cube_face_quad_latitude, cube_face_quad_lats_vector)
+
+   call nc_close_file(geometry_file%ncid)
+
+end subroutine output_triangles_and_quads_to_netcdf
 
 function assign_grid_files_array(nblocks, grid_directory, grid_file_prefix, grid_file_suffix) result(grid_files)
 
