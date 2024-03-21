@@ -16,6 +16,8 @@ implicit none
 ! There will always be exactly 8 vertices on a cube sphere, regardless of how many blocks
 integer, parameter               :: nvertices = 8
 integer, parameter               :: nside_faces = 4
+integer, parameter               :: nvertex_triangle_neighbors = 3
+integer, parameter               :: ncube_face_quad_neighbors = 4
 integer, dimension(nvertices, 3) :: matrix_of_corner_indices
 logical                          :: is_a_cube_vertex
 integer, dimension(3)            :: corner_indices
@@ -43,6 +45,10 @@ real(r8), allocatable, dimension(:, :, :) :: center_lats_truncated, center_lons_
 
 real(r8), allocatable, dimension(:)       :: center_lats_vector, center_lons_vector, &
                                              cube_face_quad_lats_vector, cube_face_quad_lons_vector
+
+integer, allocatable, dimension(:, :)     :: cube_face_quad_neighbor_indices
+
+integer, dimension(nvertices, nvertex_triangle_neighbors) :: vertex_triangle_neighbor_indices
 
 real(r8), dimension(nvertices)            :: vertex_triangle_lats_vector, vertex_triangle_lons_vector
 
@@ -91,8 +97,9 @@ max_lat = 90.0
 min_lat = -90.0
 corner_indices = [0, 0, 0]
 location(:) = 0.0
-vertex_triangle_lats_vector(:) = 0
-vertex_triangle_lons_vector(:) = 0
+vertex_triangle_lats_vector(:) = 0.0
+vertex_triangle_lons_vector(:) = 0.0
+vertex_triangle_neighbor_indices(:, :) = 0
 
 call initialize_utilities(progname='create_geometry_file')
 
@@ -239,9 +246,11 @@ subroutine assign_triangles_and_quads()
    allocate(cube_face_quads(corner_ncols-nvertices))
    allocate(cube_face_quad_lats_vector(corner_ncols-nvertices))
    allocate(cube_face_quad_lons_vector(corner_ncols-nvertices))
+   allocate(cube_face_quad_neighbor_indices(corner_ncols-nvertices, ncube_face_quad_neighbors))
 
    cube_face_quad_lats_vector(:) = 0.0
    cube_face_quad_lons_vector(:) = 0.0
+   cube_face_quad_neighbor_indices(:, :) = 0
 
    ivertex_triangle = 0
    icube_face_quad = 0
@@ -295,7 +304,7 @@ subroutine assign_triangles_and_quads()
          distances_from_corners_to_centers(icol) = get_dist(vertex_triangles(ivertex_triangle)%loc, center_locations(icol)%loc)
       end do
 
-      call find_indices_of_n_smallest_elements_of_vector(distances_from_corners_to_centers, vertex_triangles(ivertex_triangle)%column_index_of_neighbors)
+      call find_indices_of_n_smallest_elements_of_vector(distances_from_corners_to_centers, vertex_triangle_neighbor_indices(ivertex_triangle, :))
 
    end do
 
@@ -306,7 +315,7 @@ subroutine assign_triangles_and_quads()
          distances_from_corners_to_centers(icol) = get_dist(cube_face_quads(icube_face_quad)%loc, center_locations(icol)%loc)
       end do
 
-      call find_indices_of_n_smallest_elements_of_vector(distances_from_corners_to_centers, cube_face_quads(icube_face_quad)%column_index_of_neighbors)
+      call find_indices_of_n_smallest_elements_of_vector(distances_from_corners_to_centers, cube_face_quad_neighbor_indices(icube_face_quad, :))
 
    end do
 
@@ -316,9 +325,10 @@ subroutine output_triangles_and_quads_to_netcdf()
 
    type(file_type) :: geometry_file
    integer :: dim_id_vertex_columns, dim_id_cube_face_quad_columns, dim_id_center_columns
+   integer :: dim_id_vertex_neighbors, dim_id_cube_face_quad_neighbors
    integer :: var_id_center_longitude, var_id_center_latitude
-   integer :: var_id_vertex_triangle_longitude, var_id_vertex_triangle_latitude
-   integer :: var_id_cube_face_quad_longitude, var_id_cube_face_quad_latitude
+   integer :: var_id_vertex_triangle_longitude, var_id_vertex_triangle_latitude, var_id_vertex_triangle
+   integer :: var_id_cube_face_quad_longitude, var_id_cube_face_quad_latitude, var_id_cube_face_quad
    integer :: xtype
 
    xtype = 5
@@ -329,7 +339,11 @@ subroutine output_triangles_and_quads_to_netcdf()
 
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'vertex_columns', nvertices, dim_id_vertex_columns)
 
+   geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'vertex_neighbors', nvertex_triangle_neighbors, dim_id_vertex_neighbors)
+
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'cube_face_quad_columns', (corner_ncols-nvertices), dim_id_cube_face_quad_columns)
+
+   geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'cube_face_quad_neighbors', ncube_face_quad_neighbors, dim_id_cube_face_quad_neighbors)
 
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'center_columns', center_ncols, dim_id_center_columns)
 
@@ -345,6 +359,12 @@ subroutine output_triangles_and_quads_to_netcdf()
 
    geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'center_latitude', xtype, dim_id_center_columns, var_id_center_latitude)
 
+   xtype = 4
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'vertex_triangle_neighbor_indices', xtype, [dim_id_vertex_columns, dim_id_vertex_neighbors], var_id_vertex_triangle)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'cube_face_quad_neighbor_indices', xtype, [dim_id_cube_face_quad_columns, dim_id_cube_face_quad_neighbors], var_id_cube_face_quad)
+
    call nc_end_define_mode(geometry_file%ncid)
 
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_longitude, center_lons_vector)
@@ -352,9 +372,11 @@ subroutine output_triangles_and_quads_to_netcdf()
 
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_vertex_triangle_longitude, vertex_triangle_lons_vector)
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_vertex_triangle_latitude, vertex_triangle_lats_vector)
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_vertex_triangle, vertex_triangle_neighbor_indices)
 
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_cube_face_quad_longitude, cube_face_quad_lons_vector)
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_cube_face_quad_latitude, cube_face_quad_lats_vector)
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_cube_face_quad, cube_face_quad_neighbor_indices)
 
    call nc_close_file(geometry_file%ncid)
 
