@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "To cite DART, please use the following metadata. Update the DART version and year as appropriate."
+title: "The Data Assimilation Research Testbed"
+version: "X.Y.Z"
+date-released: 2024
+doi: "http://doi.org/10.5065/D6WQ0202"
+authors:
+  - names: "UCAR/NCAR/CISL/DAReS"
+    city: "Boulder, Colorado"
