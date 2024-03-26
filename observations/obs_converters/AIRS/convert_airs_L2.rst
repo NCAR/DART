@@ -80,7 +80,7 @@ the AIRS2RET 7.0 data set within your search results. The full name is listed as
 bring up a separate window that allows you to refine your search results 
 by 1) ``Refine range (time)`` and 2) ``Refine region (spatial)``. 
 
-There are various options for downloading, however,the most straightforward approach
+There are various options for downloading, however, the most straightforward approach
 for macOS and Linux users is to use the ``wget`` command.  The ``download instructions``
 provide the proper wget flags/options.  The ``Download Links List`` provides 
 the AIRS file list based on your search results. 
