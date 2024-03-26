@@ -44,7 +44,7 @@ the **AIRS/Aqua L1B AMSU (A1/A2) geolocated and calibrated brightness temperatur
 Next, under the Data Access header, click on `Subset/Get Data`, then refine your
 search results by 1) data range (time) and 2) spatial region.
 
-There are various options for downloading, however,the most straightforward approach
+There are various options for downloading, however, the most straightforward approach
 for macOS and Linux users is to use the ``wget`` command.  The ``download instructions``
 provide the proper wget flags/options.  The ``Download Links List`` provides
 the AMSU-A file list based on your search results.
