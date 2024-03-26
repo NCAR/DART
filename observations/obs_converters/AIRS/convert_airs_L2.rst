@@ -159,6 +159,16 @@ The default values are shown below. More realistic values are provided in
    |                    |                        | each will be read and the results will be placed in a        |
    |                    |                        | separate file with an output filename constructed based on   |
    |                    |                        | the input filename.                                          |
+   |                    |                        |                                                              |
+   |                    |                        | Example value for a version 5 file:                          |
+   |                    |                        |    l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0|
+   |                    |                        |                .G08078150655.hdf'                            |
+   |                    |                        | Example value for a version 6 file:                          |
+   |                    |                        |    l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.|
+   |                    |                        |                31.1.G19058124823.hdf'                        |
+   |                    |                        | Example value for a version 7 file:                          |
+   |                    |                        |    l2_files = '../data/AIRS.2020.06.15.224.L2.RetStd_IR.v7.0.|
+   |                    |                        |                4.0.G20330033505.hdf'                         |
    +--------------------+------------------------+--------------------------------------------------------------+
    | l2_file_list       | character(len=256)     | The name of an ascii text file which contains one filename   |
    |                    |                        | per line, NOT including the directory. Each file will be     |
