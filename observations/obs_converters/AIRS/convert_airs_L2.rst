@@ -78,7 +78,7 @@ the AIRS2RET 7.0 data set within your search results. The full name is listed as
 **Aqua/AIRS L2 Standard Physical Retrieval (AIRS-only) V7.0 (AIRS2RET)**. Next, click on the 
 ``Subset/Get Data`` link within the `Data Access` portion of the webpage. This will
 bring up a separate window that allows you to refine your search results 
-by 1) ``Refine range (time)`` and 2) `Refine region (spatial)`. 
+by 1) ``Refine range (time)`` and 2) ``Refine region (spatial)``. 
 
 There are various options for downloading, however,the most straightforward approach
 for macOS and Linux users is to use the ``wget`` command.  The ``download instructions``
