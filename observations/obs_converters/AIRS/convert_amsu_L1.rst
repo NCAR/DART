@@ -86,15 +86,15 @@ Perform the following steps to convert the AMSU_L1 observations:
        module load nco
        ncatted -a coremetadata,global,d,,, -a StructMetadata_0,global,d,,, AMSU.nc AMSU_final.nc
 
-3. Run ``convert_amsua_L1`` to convert the AMSU_final.nc file to the DART obs_seq format.
+3. Run ``convert_amsu_L1`` to convert the AMSU_final.nc file to the DART obs_seq format.
    **Important:** Be sure to configure your namelist settings (below) before running the 
-   converter.  Also be sure you have compiled the ``convert_amsua_L1`` executable using
+   converter.  Also be sure you have compiled the ``convert_amsu_L1`` executable using
    the proper ~/DART/build_templates/mkmf.template that includes both RTTOV and HDF-EOS2
    libraries as described here: :doc:`./README`  
        
    ::
  
-   ./convert_amsua_L1 
+   ./convert_amsu_L1
 
 
 Check the completed ``obs_seq``. It should include brightness temperatures for
@@ -145,7 +145,7 @@ below. For more information on the metadata see the
 Namelist
 ~~~~~~~~
 
-The ``convert_amsua_L1`` converter requires :ref:`obs_def_rttov_mod`.
+The ``convert_amsu_L1`` converter requires :ref:`obs_def_rttov_mod`.
 Only two ``&obs_def_rttov_nml`` options are required when converting
 the observations: ``use_zeeman`` and ``rttov_sensor_db_file``.
 
@@ -165,7 +165,7 @@ The default values are shown below. More realistic values are provided in
 
 ::
 
-   &convert_amsua_L1_nml
+   &convert_amsu_L1_nml
       l1_files           = ''
       l1_file_list       = ''
       outputfile         = ''
@@ -254,7 +254,7 @@ Documentation->README Document `found here <https://disc.gsfc.nasa.gov/datasets/
 
 
 To facilitate the selection of channels, either the ``Integer`` or ``String`` values
-may be used to specify ``channel_list`` within ``&convert_amsua_L1_nml``. The 
+may be used to specify ``channel_list`` within ``&convert_amsu_L1_nml``. The 
 `Documentation` and `netCDF` values are provided for reference only.
 
 For example the following ``channel list`` settings are identical and
