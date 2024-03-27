@@ -1,7 +1,8 @@
 program create_geometry_file
 
 use               netcdf
-use            types_mod, only : r8, RAD2DEG
+use             sort_mod, only : index_sort
+use            types_mod, only : i8, r8, PI, RAD2DEG, DEG2RAD
 use         location_mod, only : location_type, get_dist, get_location, set_location, VERTISHEIGHT
 use        utilities_mod, only : initialize_utilities, finalize_utilities
 use netcdf_utilities_mod, only : nc_open_file_readonly, nc_get_variable_size, nc_get_variable, &
@@ -10,6 +11,7 @@ use  transform_state_mod, only : read_namelist, file_type, integer_to_string, ze
                                  nhalos, dart_directory, grid_directory, grid_centers_file_prefix, &
                                  grid_centers_file_suffix, grid_corners_file_prefix, &
                                  grid_corners_file_suffix
+use quad_utils_mod,       only : in_quad
 
 implicit none
 
@@ -108,6 +110,8 @@ call read_namelist('transform_state_nml')
 call assign_triangles_and_quads()
 
 call output_triangles_and_quads_to_netcdf()
+
+call sort_neighbors()
 
 call finalize_utilities('create_geometry_file')
 
@@ -461,5 +465,77 @@ function is_corner_a_cube_vertex(nvertices, matrix_of_corner_indices, corner_ind
    end do
 
 end function
+
+subroutine sort_neighbors()
+
+   real(r8), dimension(ncube_face_quad_neighbors)    :: atan2_results
+   real(r8), dimension(ncube_face_quad_neighbors)    :: offset_lons, offset_lats
+   integer,  dimension(ncube_face_quad_neighbors)    :: sorted_array
+   real(r8)  :: central_lon, central_lat
+   integer(i8), dimension(4) :: indices
+   integer(i8) :: nneighbors
+   integer :: ineighbor
+   logical :: in_first_quadrant, in_fourth_quadrant
+
+   ! Need to declare an additional integer equal to 4, since the interface defined for index sort,
+   ! when passed r8 values, requires an i8 length
+   nneighbors = ncube_face_quad_neighbors
+   atan2_results(:) = 0
+
+   do icube_face_quad = 1, (corner_ncols-nvertices)
+
+      central_lon = cube_face_quad_lons_vector(icube_face_quad)
+      central_lat = cube_face_quad_lats_vector(icube_face_quad)
+
+      ! Assign the offset_lons and offset_lats elements
+      do ineighbor = 1, ncube_face_quad_neighbors
+         offset_lats(ineighbor) = center_lats_vector(cube_face_quad_neighbor_indices(icube_face_quad, ineighbor))
+         offset_lons(ineighbor) = center_lons_vector(cube_face_quad_neighbor_indices(icube_face_quad, ineighbor)) 
+      end do
+
+      ! Check if the quad spans the prime meridian. It's definitely possible to perform this check
+      ! with only a single logical variable but using two makes the code more readable.
+      in_first_quadrant = .false.
+      in_fourth_quadrant = .false.
+
+      do ineighbor = 1, ncube_face_quad_neighbors
+         if (offset_lons(ineighbor) >= 0.0 .and. offset_lons(ineighbor) <= 90.0) then
+            in_first_quadrant = .true.
+         else if (offset_lons(ineighbor) >= 270.0 .and. offset_lons(ineighbor) <= 360.0) then
+            in_fourth_quadrant = .true.
+         end if
+      end do
+
+      if (in_first_quadrant .and. in_fourth_quadrant) then
+         central_lon = central_lon + 180.0
+         if (central_lon >= 360.0) then
+            central_lon = central_lon - 360.0
+         end if
+         ! The quad spans the prime meridian
+         do ineighbor = 1, ncube_face_quad_neighbors
+            offset_lons(ineighbor) = offset_lons(ineighbor) + 180.0
+            if (offset_lons(ineighbor) >= 360.0) then
+               offset_lons(ineighbor) = offset_lons(ineighbor) - 360.0
+            end if
+         end do
+      end if
+
+      do ineighbor = 1, ncube_face_quad_neighbors
+         offset_lons(ineighbor) = (central_lon-offset_lons(ineighbor))*DEG2RAD
+         offset_lats(ineighbor) = (central_lat-offset_lats(ineighbor))*DEG2RAD
+         atan2_results(ineighbor) = atan2(offset_lats(ineighbor), offset_lons(ineighbor))      
+      end do
+      
+      call index_sort(atan2_results, indices, nneighbors)
+
+      do ineighbor = 1, nneighbors
+         sorted_array(ineighbor) = cube_face_quad_neighbor_indices(icube_face_quad, indices(ineighbor))
+      end do
+
+      cube_face_quad_neighbor_indices(icube_face_quad, :) = sorted_array(:)
+
+   end do
+
+end subroutine sort_neighbors
 
 end program create_geometry_file
