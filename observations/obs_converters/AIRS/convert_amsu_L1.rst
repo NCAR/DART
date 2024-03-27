@@ -151,7 +151,7 @@ the observations: ``use_zeeman`` and ``rttov_sensor_db_file``.
 
 Be aware that if the RTTOV namelist option ``use_zeeman = .true.``
 certain metadata must be available in the observation. This is not fully
-implemented in the AMSU-A observation converterm so we recommend setting
+implemented in the AMSU-A observation converter, so we recommend setting
 ``use_zeeman = .false.``. For more information,
 please see GitHub Issue 99 “`AIRS AMSUA observation converter … Zeeman
 coefficients and channels <https://github.com/NCAR/DART/issues/99>`__”
