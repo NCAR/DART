@@ -198,10 +198,10 @@ The default values are shown below. More realistic values are provided in
    |                    |                        | the converter is compatible with versions 5-7.               | 
    +--------------------+------------------------+--------------------------------------------------------------+
 
-   Included here are some example values for the l2_files namelist option.
-   Example version 5 file: ``l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'``
-   Example version 6 file: ``l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'``
-   Example version 7 file: ``l2_files = '../data/AIRS.2020.06.15.224.L2.RetStd_IR.v7.0.4.0.G20330033505.hdf'``
+   | Included here are some example values for the l2_files namelist option.
+   | Version 5 file: ``l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'``
+   | Version 6 file: ``l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'``
+   | Version 7 file: ``l2_files = '../data/AIRS.2020.06.15.224.L2.RetStd_IR.v7.0.4.0.G20330033505.hdf'``
 
 Known Bugs
 ~~~~~~~~~~
