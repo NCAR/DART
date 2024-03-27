@@ -16,8 +16,8 @@ The AIRS Standard Retrieval Product consists of retrieved estimates of cloud
 and surface properties, plus profiles of retrieved temperature, water vapor, 
 ozone, carbon monoxide and methane. Estimates of the errors associated with these 
 quantities will also be part of the Standard Product. The temperature profile 
-vertical resolution is 28 levels total between 1100 mb and 0.1 mb, while moisture 
-profile is reported at 14 atmospheric layers between 1100 mb and 50 mb. The 
+vertical resolution is 28 levels total between 1100 and 0.1 hPa, while moisture 
+profile is reported at 14 atmospheric layers between 1100 hPa and 50 hPa. The 
 horizontal resolution is 50 km. An AIRS granule has been set as 6 minutes of data, 
 There are 240 granules per day, with orbit repeat cycle of approximately 16 days.
 
@@ -89,21 +89,22 @@ convert_airs_L2.f90
 -------------------
 
 The ``convert_airs_L2`` converter is for **temperature and moisture retrievals** from
-the L2 data. The temperature observations are at the 
-corresponding vertical pressure levels. However, the moisture obs are the mean for 
-the layer, so the location in the vertical is the midpoint, in log space, of the 
-current layer and the layer above it. There is an alternative computation for the 
-moisture across the layer which may be more accurate, but requires a forward 
-operator subroutine to be written and for the observation converter to include
-additional metadata to support this forward operator.  For more information see
-the `Future Plans` section below.
+the L2 data. 
+The vertical coordinate is pressure.
+The temperature observations are defined at standard pressure levels (see Overview).
+Those are defined in each file by the array 
+'StdPressureLev:L2_Standard_atmospheric&surface_product'.
+Between 2 levels is a "layer".
+A moisture observation is an average across the layer
+and is defined at the midpoint (in log(pressure)) of the layer.
+This choice makes half of the mass of the layer above the midpoint and half below.
+The midpoints are defined in 'H2OPressureLay:L2_Standard_atmospheric&surface_product'.
 
-The temperature observations are located on standard levels; there is a single array 
-of heights in each file and all temperature data is located on one of these levels. 
-The moisture observations, however, are an integrated quantity for the space between 
-the levels; in their terminology the fixed heights are 'levels' and the space between 
-them are 'layers'. The current converter locates the moisture obs at the midpoint, 
-in log space, between the levels.
+There is an alternative computation for the moisture across the layer
+which may be more accurate, but requires a forward operator subroutine
+to be written and for the observation converter to include additional metadata
+to support this forward operator.
+For more information see the Future Plans section below.
 
 The converter program reads each AIRS hdf file granule and outputs a DART obs_seq file 
 containing up to 56700 observations. Only those with a quality control of 0 (Best) 
@@ -154,18 +155,17 @@ The default values are shown below. More realistic values are provided in
    +--------------------+------------------------+--------------------------------------------------------------+
    | Contents           | Type                   | Description                                                  |
    +====================+========================+==============================================================+
-   | l2_files           | character(len=256),    | A list of one or more names of the HDF file(s) to read,      |
-   |                    | dimension(512)         | NOT including the directory. If multiple files are listed,   |
-   |                    |                        | each will be read and the results will be placed in a        |
-   |                    |                        | separate file with an output filename constructed based on   |
-   |                    |                        | the input filename.                                          |
+   | l2_files           | character(len=256),    | A list of one or more names of the HDF file(s) to read.      |
+   |                    | dimension(512)         | If multiple files are listed, each will be read and          |
+   |                    |                        | the results will be placed in a separate file with           |
+   |                    |                        | an output filename constructed based on the input filename.  |
    +--------------------+------------------------+--------------------------------------------------------------+
    | l2_file_list       | character(len=256)     | The name of an ascii text file which contains one filename   |
-   |                    |                        | per line, NOT including the directory. Each file will be     |
-   |                    |                        | read and the observations converted into an output file      |
-   |                    |                        | where the output filename is based on the input filename.    |
-   |                    |                        | Only one of 'l2_files' and 'l2_file_list' can be             |
-   |                    |                        | specified. The other must be ' ' (empty).                    |
+   |                    |                        | per line.  Each file will be read and the observations       |
+   |                    |                        | converted into an output file where the output filename      |
+   |                    |                        | is based on the input filename.                              |
+   |                    |                        | Only one of 'l2_files' and 'l2_file_list' can be  specified. |
+   |                    |                        | The other must be ' ' (empty).                               |
    +--------------------+------------------------+--------------------------------------------------------------+
    | outputfile         | character(len=256)     | The name of the output observation sequence file.            |
    +--------------------+------------------------+--------------------------------------------------------------+
@@ -177,11 +177,11 @@ The default values are shown below. More realistic values are provided in
    +--------------------+------------------------+--------------------------------------------------------------+
    | lat2               | real(r8)               | The North-most latitude of interest in degrees. [-90.0,90.0] |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | min_MMR_threshold  | real(r8)               | The data files contains 'Retrieved Water Vapor Mass Mixing   |
-   |                    |                        | Ratio'. This is the minimum threshold (gm/kg) that will      |
+   | min_MMR_threshold  | real(r8)               | The data files contain 'Retrieved Water Vapor Mass Mixing    |
+   |                    |                        | Ratio'. This is the minimum threshold (g/kg) that will       |
    |                    |                        | be converted into a specific humidity observation (kg/kg).   |
    +--------------------+------------------------+--------------------------------------------------------------+
-   | top_pressure_level | real(r8)               | The highest pressure level of interest (in mb).              |
+   | top_pressure_level | real(r8)               | The highest pressure level of interest (in hPa).             |
    +--------------------+------------------------+--------------------------------------------------------------+
    | cross_track_thin   | integer                | Provides ability to thin the data by keeping every Nth data  |
    |                    |                        | value in the cross-track scan.   [0,30]                      |
