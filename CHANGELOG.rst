@@ -22,6 +22,25 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 27 2024 :: WRF-Hydro Developments; AIRS converter documentation update; Add citation.cff file. Tag v11.4.0**
+
+- WRF-Hydro:
+  - Added a new perfect model obs experimental capability to HydroDART
+  - Modified the Streamflow obs converter to allow for better diagnostics: allows DART to 
+    compute obs space diagnostics on all gauges from the Routelink
+  - Enhanced performance in the model_mod and noah_hydro_mod when running a full CONUS domain
+  - Improved HydroDART Diagnostics with new capabilities (saves the hydrographs in a high-resolution
+    pdf, handles hybrid DA components, separate plots for the hybrid statistics, allows the openloop
+    to have different ens size and gauges than the DA runs)
+- AIRS and AMSU-A observation converters:
+  - Updated the documentation to use up-to-date build suggestions for the HDFEOS library
+  - Updated the AIRS converter code to be able to use version 7 of the AIRS data formats
+  - Removed unused and non-functional code: AIRS/BUILD_HDF-EOS.sh, AIRS/L1_AMSUA_to_netcdf.f90,
+    AIRS/shell_scripts/Build_HDF_to_netCDF.sh, AIRS/shell_scripts/Convert_HDF_to_netCDF.csh
+  - Removed the unnecessary entries from obs_def_rttov_nml in the input.nml
+- Added a citation.cff file to help users correctly cite DART software - creates a link to cite
+  the repository on the landing page sidebar on GitHub.
+
 **March 13 2024 :: Update WRF-DART scripts and bug template to Derecho; remove no-op routines in ensemble manager. Tag v11.3.1**
 
 - Updated the csh scripting templates used to run WRF-DART and WRF-DART tutorial from Cheyenne to Derecho
