@@ -88,7 +88,7 @@ type(center_location), allocatable, dimension(:) :: center_locations
 integer                          :: ivertex_triangle
 integer                          :: icube_face_quad
 
-integer :: icol, ix, iy, ncols, nx, ny
+integer :: icol, ix, iy, ncols, nx, ny, inorth_pole, isouth_pole
 real(r8), allocatable, dimension(:) :: distances_from_corners_to_centers
 
 ! Assign initialized variables
@@ -109,9 +109,11 @@ call read_namelist('transform_state_nml')
 
 call assign_triangles_and_quads()
 
-call output_triangles_and_quads_to_netcdf()
-
 call sort_neighbors()
+
+call check_if_point_in_quad()
+
+call output_triangles_and_quads_to_netcdf()
 
 call finalize_utilities('create_geometry_file')
 
@@ -369,6 +371,10 @@ subroutine output_triangles_and_quads_to_netcdf()
 
    geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'cube_face_quad_neighbor_indices', xtype, [dim_id_cube_face_quad_columns, dim_id_cube_face_quad_neighbors], var_id_cube_face_quad)
 
+   ! Add the indices of the north and south pole quad
+   geometry_file%ncstatus = nf90_put_att(geometry_file%ncid, NF90_GLOBAL, 'north_pole_quad', inorth_pole)
+   geometry_file%ncstatus = nf90_put_att(geometry_file%ncid, NF90_GLOBAL, 'south_pole_quad', isouth_pole)
+
    call nc_end_define_mode(geometry_file%ncid)
 
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_longitude, center_lons_vector)
@@ -465,6 +471,46 @@ function is_corner_a_cube_vertex(nvertices, matrix_of_corner_indices, corner_ind
    end do
 
 end function
+
+subroutine check_if_point_in_quad()
+
+   real(r8) :: lon, lat
+   real(r8), dimension(4) :: x_corners, y_corners
+   logical  :: inside
+   integer  :: num_outside, num_inside, num_poles
+   integer  :: iquad, icorner
+   real(r8) :: tolerance
+
+   tolerance = 0.00000314159_r8
+
+   num_outside = 0
+   num_inside = 0
+   num_poles = 0
+
+   do iquad=1, (corner_ncols-nvertices)
+      x_corners(:) = 0.0
+      y_corners(:) = 0.0
+      do icorner=1, ncube_face_quad_neighbors
+         x_corners(icorner) = center_lons_vector(cube_face_quad_neighbor_indices(iquad, icorner))
+         y_corners(icorner) = center_lats_vector(cube_face_quad_neighbor_indices(iquad, icorner))
+      end do
+
+      inside = in_quad(cube_face_quad_lons_vector(iquad), cube_face_quad_lats_vector(iquad), x_corners, y_corners)
+
+      if (inside) then
+         num_inside = num_inside + 1
+      else if (abs(-90.0-cube_face_quad_lats_vector(iquad)) < tolerance) then
+         isouth_pole = iquad
+         num_poles = num_poles + 1
+      else if (abs(90.0-cube_face_quad_lats_vector(iquad)) < tolerance) then
+         inorth_pole = iquad
+         num_poles = num_poles + 1
+      else
+         num_outside = num_outside + 1
+      end if
+   end do
+
+end subroutine check_if_point_in_quad
 
 subroutine sort_neighbors()
 
