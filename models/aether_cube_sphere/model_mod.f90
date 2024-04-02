@@ -9,7 +9,9 @@ module model_mod
 ! with the DART data assimilation infrastructure. Do not change the arguments
 ! for the public routines.
 
-use        types_mod, only : r8, i8, MISSING_R8, DEG2RAD, radius => earth_radius
+use           netcdf
+
+use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, radius => earth_radius
 
 use time_manager_mod, only : time_type, set_time
 
@@ -21,13 +23,18 @@ use     location_mod, only : location_type, get_close_type, &
 use    utilities_mod, only : register_module, error_handler, &
                              E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
-                             find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read, to_upper
+
+use obs_kind_mod,     only : get_index_for_quantity
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, &
-                                 nc_begin_define_mode, nc_end_define_mode
+                                 nc_begin_define_mode, nc_end_define_mode, nc_open_file_readonly, & 
+                                 nc_close_file
 
 use state_structure_mod, only : add_domain, get_domain_size
+
+use transform_state_mod, only : file_type
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -71,13 +78,31 @@ type(time_type) :: assimilation_time_step
 
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
+! Geometry variables that are used throughout the module
+
+integer :: inorth_pole, isouth_pole
+real(r8), allocatable, dimension(:)       :: center_lats_vector, center_lons_vector
+integer, allocatable, dimension(:, :)     :: cube_face_quad_neighbor_indices
+
 ! Example Namelist
 ! Use the namelist for options to be set at runtime.
 character(len=256) :: template_file = 'model_restart.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 
-namelist /model_nml/ template_file, time_step_days, time_step_seconds
+integer, parameter              :: MAX_STATE_VARIABLES     = 100
+integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
+character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
+
+type :: var_type
+    integer :: count
+    character(len=64), allocatable :: names(:)
+    integer,           allocatable :: qtys(:)
+    real(r8),          allocatable :: clamp_values(:, :)
+    logical,           allocatable :: updates(:)
+end type var_type
+
+namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
 contains
 
@@ -91,6 +116,7 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
+type(var_type) :: var
 
 module_initialized = .true.
 
@@ -113,9 +139,11 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
+var = assign_var(variables, MAX_STATE_VARIABLES)
 
 ! Define which variables are in the model state
-dom_id = add_domain(template_file, num_vars=2, var_names=(/'Temp', 'Wind'/))
+dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
+                    var%clamp_values, var%updates)
 
 end subroutine static_init_model
 
@@ -295,6 +323,72 @@ call nc_end_define_mode(ncid)
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
+
+!-----------------------------------------------------------------------
+! Parse the table of variables characteristics into arrays for easier access.
+
+function assign_var(variables, MAX_STATE_VARIABLES) result(var)
+
+character(len=vtablenamelength), intent(in) :: variables(:, :)
+integer, intent(in)                         :: MAX_STATE_VARIABLES
+
+type(var_type) :: var
+integer        :: ivar
+character(len=vtablenamelength) :: table_entry
+
+!-----------------------------------------------------------------------
+! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
+integer, parameter :: NAME_INDEX      = 1 ! ... variable name
+integer, parameter :: QTY_INDEX       = 2 ! ... DART qty
+integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
+integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
+integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
+
+! Loop through the variables array to get the actual count of the number of variables
+do ivar = 1, MAX_STATE_VARIABLES
+   ! If the element is an empty string, the loop has exceeded the extent of the variables
+   if (variables(1, ivar) == '') then
+      var%count = ivar-1
+      exit
+   endif 
+enddo
+
+! Allocate the arrays in the var derived type
+allocate(var%names(var%count), var%qtys(var%count), var%clamp_values(var%count, 2), var%updates(var%count))
+
+do ivar = 1, var%count
+   
+   var%names(ivar) = trim(variables(NAME_INDEX, ivar))
+
+   table_entry = variables(QTY_INDEX, ivar)
+   call to_upper(table_entry)
+
+   var%qtys(ivar) = get_index_for_quantity(table_entry)
+
+   if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
+      read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
+   else
+      var%clamp_values(ivar,1) = MISSING_R8
+   endif
+
+   if (variables(MAX_VAL_INDEX, ivar) /= 'NA') then
+      read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
+   else
+      var%clamp_values(ivar,2) = MISSING_R8
+   endif
+
+   table_entry = variables(UPDATE_INDEX, ivar)
+   call to_upper(table_entry)
+
+   if (table_entry == 'UPDATE') then
+      var%updates(ivar) = .true.
+   else
+      var%updates(ivar) = .false.
+   endif
+
+enddo
+   
+end function assign_var
 
 ! Barycentric procedures
 
