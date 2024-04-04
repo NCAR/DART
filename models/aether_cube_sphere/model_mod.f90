@@ -70,6 +70,7 @@ public :: get_model_size,         &
           shortest_time_between_assimilations, &
           write_model_time
 
+integer  :: iunit, io
 
 character(len=256), parameter :: source   = "model_mod.f90"
 logical :: module_initialized = .false.
@@ -79,10 +80,15 @@ type(time_type) :: assimilation_time_step
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
 ! Geometry variables that are used throughout the module
+integer                          :: ncenter_columns ! The number of center_columns is read from the geometry file
+integer, parameter               :: nvertex_columns = 8
+integer, parameter               :: nvertex_neighbors = 3
+integer                          :: nquad_columns ! The number of quad_columns is read from the geometry file
+integer, parameter               :: nquad_neighbors = 4
 
-integer :: inorth_pole, isouth_pole
-real(r8), allocatable, dimension(:)       :: center_lats_vector, center_lons_vector
-integer, allocatable, dimension(:, :)     :: cube_face_quad_neighbor_indices
+integer :: inorth_pole_quad_column, isouth_pole_quad_column
+real(r8), allocatable, dimension(:)       :: center_latitude, center_longitude
+integer, allocatable, dimension(:, :)     :: quad_neighbor_indices, vertex_neighbor_indices
 
 ! Example Namelist
 ! Use the namelist for options to be set at runtime.
@@ -115,7 +121,6 @@ contains
 
 subroutine static_init_model()
 
-integer  :: iunit, io
 type(var_type) :: var
 
 module_initialized = .true.
@@ -123,9 +128,9 @@ module_initialized = .true.
 ! Print module information to log file and stdout.
 call register_module(source)
 
-call find_namelist_in_file("input.nml", "model_nml", iunit)
+call find_namelist_in_file('input.nml', 'model_nml', iunit)
 read(iunit, nml = model_nml, iostat = io)
-call check_namelist_read(iunit, io, "model_nml")
+call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run 
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
@@ -140,6 +145,8 @@ assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
 var = assign_var(variables, MAX_STATE_VARIABLES)
+
+call read_geometry_file()
 
 ! Define which variables are in the model state
 dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
@@ -213,7 +220,6 @@ if ( .not. module_initialized ) call static_init_model
 shortest_time_between_assimilations = assimilation_time_step
 
 end function shortest_time_between_assimilations
-
 
 
 !------------------------------------------------------------------
@@ -389,6 +395,61 @@ do ivar = 1, var%count
 enddo
    
 end function assign_var
+
+subroutine read_geometry_file()
+
+   integer               :: dimid, varid
+   character(len=256)      :: name
+
+   type(file_type)       :: geometry_file
+   character(len=256)    :: restart_directory, grid_directory, filter_directory
+   namelist /directory_nml/ restart_directory, grid_directory, filter_directory
+
+   call find_namelist_in_file('input.nml', 'directory_nml', iunit)
+   read(iunit, nml = directory_nml, iostat = io)
+   call check_namelist_read(iunit, io, 'directory_nml')
+
+   geometry_file%file_path = trim(filter_directory) // 'geometry_file.nc'
+
+   print *, 'geometry_file%file_path'
+   print *, geometry_file%file_path
+
+   geometry_file%ncid = nc_open_file_readonly(geometry_file%file_path)
+
+   ! attributes
+   geometry_file%ncstatus = nf90_get_att(geometry_file%ncid, NF90_GLOBAL, 'index_of_north_pole_quad_column', inorth_pole_quad_column)
+   geometry_file%ncstatus = nf90_get_att(geometry_file%ncid, NF90_GLOBAL, 'index_of_south_pole_quad_column', isouth_pole_quad_column)
+
+   ! dimensions
+   geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'quad_columns', dimid)
+   geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, nquad_columns)
+
+   geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'center_columns', dimid)
+   geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, ncenter_columns)
+
+   ! allocate arrays
+   allocate(center_latitude(ncenter_columns))
+   allocate(center_longitude(ncenter_columns))
+
+   allocate(vertex_neighbor_indices(nvertex_columns, nvertex_neighbors))
+   allocate(quad_neighbor_indices(nquad_columns, nquad_neighbors))
+
+   ! variables
+   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_longitude', varid)
+   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_longitude)
+
+   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_latitude', varid)
+   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_latitude)
+
+   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'vertex_neighbor_indices', varid)
+   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, vertex_neighbor_indices)
+
+   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'quad_neighbor_indices', varid)
+   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, quad_neighbor_indices)
+
+   call nc_close_file(geometry_file%ncid)
+
+end subroutine read_geometry_file
 
 ! Barycentric procedures
 

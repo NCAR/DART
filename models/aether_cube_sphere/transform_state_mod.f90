@@ -15,26 +15,12 @@ public :: initialize_transform_state_mod, &
           model_to_dart, &
           dart_to_model, &
           integer_to_string, &
-          read_namelist, &
-          file_type, & 
-          zero_fill, &
-          nblocks, &
-          nhalos, &
-          dart_directory, &
-          grid_directory, &
-          grid_centers_file_prefix, &
-          grid_centers_file_suffix, &
-          grid_corners_file_prefix, &
-          grid_corners_file_suffix
+          file_type, &
+          zero_fill
 
+integer  :: iunit, io
 
 character(len=4) :: ensemble_member
-integer :: nblocks, nhalos
-character(len=256) :: restart_directory, restart_file_prefix, restart_file_middle, & 
-                      restart_file_suffix, dart_directory, dart_file_prefix, dart_file_suffix
-
-character(len=256) :: grid_directory, grid_centers_file_prefix, grid_centers_file_suffix, &
-                      grid_corners_file_prefix, grid_corners_file_suffix
 
 type :: file_type
 character(len=256) :: file_path
@@ -42,31 +28,16 @@ integer :: ncid, ncstatus, unlimitedDimId, nDimensions, nVariables, nAttributes,
 end type file_type
 
 type(file_type), allocatable, dimension(:) :: block_files
-type(file_type) :: dart_file
+type(file_type) :: filter_file
 
-namelist /transform_state_nml/ &
-   nblocks, &
-   nhalos, &
-   restart_directory, &
-   restart_file_prefix, &
-   restart_file_middle, &
-   restart_file_suffix, &
-   dart_directory, &
-   dart_file_prefix, &
-   dart_file_suffix, &
-   grid_directory, &
-   grid_centers_file_prefix, &
-   grid_centers_file_suffix, &
-   grid_corners_file_prefix, &
-   grid_corners_file_suffix
+integer :: nblocks, nhalos
+character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suffix, &
+                      filter_input_prefix, filter_input_suffix
+namelist /transform_state_nml/ nblocks, nhalos, restart_file_prefix, restart_file_middle, &
+                               restart_file_suffix, filter_input_prefix, filter_input_suffix
 
-! namelist /geometry_nml/ &
-!    grid_directory, &
-!    grid_centers_file_prefix, &
-!    grid_centers_file_suffix, &
-!    grid_corners_file_prefix, &
-!    grid_corners_file_suffix
-
+character(len=256) :: restart_directory, grid_directory, filter_directory
+namelist /directory_nml/ restart_directory, grid_directory, filter_directory
 
 contains
 
@@ -74,13 +45,15 @@ subroutine initialize_transform_state_mod()
 
    ensemble_member = get_ensemble_member_from_command_line()
 
-   call read_namelist('transform_state_nml')
+   call find_namelist_in_file('input.nml', 'transform_state_nml', iunit)
+   read(iunit, nml = transform_state_nml, iostat = io)
+   call check_namelist_read(iunit, io, 'transform_state_nml')
 
    block_files = assign_block_files_array(nblocks, ensemble_member, restart_directory, &
                                           restart_file_prefix, restart_file_middle, &
                                           restart_file_suffix)
 
-   dart_file = assign_dart_file(ensemble_member, dart_directory, dart_file_prefix, dart_file_suffix)
+   filter_file = assign_filter_file(ensemble_member, filter_directory, filter_input_prefix, filter_input_suffix)
 
 end subroutine initialize_transform_state_mod
 
@@ -94,7 +67,7 @@ subroutine finalize_transform_state_mod()
       call nc_close_file(block_files(iblock)%ncid)
    end do
 
-   call nc_close_file(dart_file%ncid)
+   call nc_close_file(filter_file%ncid)
 
 end subroutine finalize_transform_state_mod
 
@@ -129,7 +102,7 @@ subroutine model_to_dart()
    end do
 
    ! The dart file is create
-   dart_file%ncid = nc_create_file(dart_file%file_path)
+   filter_file%ncid = nc_create_file(filter_file%file_path)
 
    ! The first set of nested loops iterates through all of the block files and all of the dimensions
    ! of each block file and counts the lengths of each dimension.
@@ -168,15 +141,15 @@ subroutine model_to_dart()
 
    total_truncated_ncols = truncated_nxs_per_block*truncated_nys_per_block*nblocks
 
-   ! All of the lengths have been counted properly, create each dimension in the dart_file and save
+   ! All of the lengths have been counted properly, create each dimension in the filter_file and save
    ! the dimensions to the time_x_y_z and x_y_z arrays used during variable definition
-   dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'time', ntimes, dart_dimid)
+   filter_file%ncstatus = nf90_def_dim(filter_file%ncid, 'time', ntimes, dart_dimid)
    time_lev_col_dims(3) = dart_dimid
 
-   dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'z', nzs, dart_dimid)
+   filter_file%ncstatus = nf90_def_dim(filter_file%ncid, 'z', nzs, dart_dimid)
    time_lev_col_dims(2) = dart_dimid
 
-   dart_file%ncstatus = nf90_def_dim(dart_file%ncid, 'col', total_truncated_ncols, dart_dimid)
+   filter_file%ncstatus = nf90_def_dim(filter_file%ncid, 'col', total_truncated_ncols, dart_dimid)
    time_lev_col_dims(1) = dart_dimid
 
    ! Allocate all of the storage arrays
@@ -190,30 +163,30 @@ subroutine model_to_dart()
    spatial_array(:) = 0
    variable_array(:, :, :) = 0
 
-   ! The dart_file is still in define mode. Create all of the variables before entering data mode.
+   ! The filter_file is still in define mode. Create all of the variables before entering data mode.
    do varid = 1, block_files(1)%nVariables
       block_files(1)%ncstatus = nf90_inquire_variable(block_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
       if (trim(name) == 'time') then
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_lev_col_dims(3), dart_varids(varid))
+         filter_file%ncstatus = nf90_def_var(filter_file%ncid, name, xtype, time_lev_col_dims(3), dart_varids(varid))
       else if (trim(name) == 'z') then
          ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, 'alt', xtype, time_lev_col_dims(2), dart_varids(varid))
+         filter_file%ncstatus = nf90_def_var(filter_file%ncid, 'alt', xtype, time_lev_col_dims(2), dart_varids(varid))
       else if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_lev_col_dims(1), dart_varids(varid))
+         filter_file%ncstatus = nf90_def_var(filter_file%ncid, name, xtype, time_lev_col_dims(1), dart_varids(varid))
       else
-         dart_file%ncstatus = nf90_def_var(dart_file%ncid, name, xtype, time_lev_col_dims, dart_varids(varid))
+         filter_file%ncstatus = nf90_def_var(filter_file%ncid, name, xtype, time_lev_col_dims, dart_varids(varid))
       end if
 
       ! In the block files, time does not have units
       if (trim(name) /= 'time') then
          block_files(iblock)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
-         dart_file%ncstatus = nf90_put_att(dart_file%ncid, dart_varids(varid), 'units', attribute)
+         filter_file%ncstatus = nf90_put_att(filter_file%ncid, dart_varids(varid), 'units', attribute)
       end if
 
       ! In the block files, only lon, lat and z have long_name
       if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
          block_files(iblock)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'long_name', attribute)
-         dart_file%ncstatus = nf90_put_att(dart_file%ncid, dart_varids(varid), 'long_name', attribute)
+         filter_file%ncstatus = nf90_put_att(filter_file%ncid, dart_varids(varid), 'long_name', attribute)
       end if
 
       ! print *, 'name: ' // name
@@ -221,7 +194,7 @@ subroutine model_to_dart()
 
    end do
 
-   call nc_end_define_mode(dart_file%ncid)
+   call nc_end_define_mode(filter_file%ncid)
 
    ! The second set of nested loops has a different loop order. The outer loop is all of the
    ! variables while the inner loop is all of the blocks. The order is switched because all of the
@@ -238,12 +211,12 @@ subroutine model_to_dart()
             ! This is a 1-D time array
             if (iblock == 1) then
                block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
-               dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), time_array)
+               filter_file%ncstatus = nf90_put_var(filter_file%ncid, dart_varids(varid), time_array)
             end if
          else if (trim(name) == 'z') then
             if (iblock == 1) then
                block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
-               dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), block_array(:,1,1))
+               filter_file%ncstatus = nf90_put_var(filter_file%ncid, dart_varids(varid), block_array(:,1,1))
             end if
          else
             ! All of the variables besides time can be read into the block array
@@ -258,7 +231,7 @@ subroutine model_to_dart()
                end do
                
                if (iblock == nblocks) then
-                  dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), spatial_array)
+                  filter_file%ncstatus = nf90_put_var(filter_file%ncid, dart_varids(varid), spatial_array)
                end if
             else
                ! This is one of the other non-spatial variables
@@ -272,7 +245,7 @@ subroutine model_to_dart()
                end do
 
                if (iblock == nblocks) then
-                  dart_file%ncstatus = nf90_put_var(dart_file%ncid, dart_varids(varid), variable_array)
+                  filter_file%ncstatus = nf90_put_var(filter_file%ncid, dart_varids(varid), variable_array)
                end if
             end if
          end if
@@ -290,7 +263,7 @@ subroutine dart_to_model()
       block_files(iblock)%ncid = nc_open_file_readwrite(block_files(iblock)%file_path)
    end do
    ! The dart file is read only
-   dart_file%ncid = nc_open_file_readonly(dart_file%file_path)
+   filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
 
 end subroutine dart_to_model
 
@@ -311,18 +284,6 @@ function get_ensemble_member_from_command_line() result(ensemble_member)
    call get_command_argument(1, ensemble_member)
 
 end function get_ensemble_member_from_command_line
-
-subroutine read_namelist(namelist)
-   character(len=*), intent(in) :: namelist
-   integer :: io, iunit
-
-   call find_namelist_in_file('input.nml', namelist, iunit)
-   read(iunit, nml = transform_state_nml, iostat = io)
-   call check_namelist_read(iunit, io, namelist)
-
-end subroutine read_namelist
-
-
 
 function assign_block_files_array(nblocks, ensemble_member, restart_directory, &
                                   restart_file_prefix, restart_file_middle, restart_file_suffix) &
@@ -349,18 +310,18 @@ function assign_block_files_array(nblocks, ensemble_member, restart_directory, &
 
 end function assign_block_files_array
 
-function assign_dart_file(ensemble_member, dart_directory, dart_file_prefix, dart_file_suffix) &
-                          result(dart_file)
+function assign_filter_file(ensemble_member, filter_directory, filter_input_prefix, filter_input_suffix) &
+                          result(filter_file)
    
    character(len=4), intent(in) :: ensemble_member
-   character(len=*), intent(in) :: dart_directory
-   character(len=*), intent(in) :: dart_file_prefix
-   character(len=*), intent(in) :: dart_file_suffix
-   type(file_type)              :: dart_file
+   character(len=*), intent(in) :: filter_directory
+   character(len=*), intent(in) :: filter_input_prefix
+   character(len=*), intent(in) :: filter_input_suffix
+   type(file_type)              :: filter_file
    
-   dart_file%file_path = trim(dart_directory) // trim(dart_file_prefix) // ensemble_member // trim(dart_file_suffix)
+   filter_file%file_path = trim(filter_directory) // trim(filter_input_prefix) // ensemble_member // trim(filter_input_suffix)
 
-end function assign_dart_file
+end function assign_filter_file
 
 function integer_to_string(int) result(string)
 
