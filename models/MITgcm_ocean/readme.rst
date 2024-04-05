@@ -34,7 +34,13 @@ can be set in the ``&trans_mitdart_nml`` namelist in ``input.nml``.
    &trans_mitdart_nml
      do_bgc = .false.         ! change to .true. if doing bio-geo-chemistry
      log_transform = .false.  ! change to .true. if using log_transform
+     compress = .false.       ! change to .true. to compress the state vector
    /
+
+``compress = .true.`` can be used to generate netcdf files for use with DART which has missing values (land) removed.
+For some datasets this reduces the state vector size significantly. For example, the state vector size is
+reduced by approximately 90% for the Red Sea. The program ``expand_netcdf`` can be used to uncompress the netcdf
+file to view the data in a convenient form.
 
 
 .. Warning::

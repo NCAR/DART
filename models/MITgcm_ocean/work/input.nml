@@ -457,7 +457,7 @@
 #   quantity_of_interest = 'QTY_DENSITY'
 
 &model_mod_check_nml
-   input_state_files     = 'OUTPUT.nc'
+   input_state_files     = 'mem01_reduced.nc'
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0

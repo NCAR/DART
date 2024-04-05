@@ -1,3 +1,5 @@
+.. _gps: 
+
 GPS Observations
 ================
 

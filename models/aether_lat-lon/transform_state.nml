@@ -1,0 +1,11 @@
+&transform_state_nml
+   aether_restart_dirname = 
+      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/testdata4'
+   variables = 
+     'Temperature',    'neutrals',
+      'O+',             'ions',
+   nblocks_lon = 2
+   nblocks_lat = 2
+   nblocks_lev = 1
+   debug = 0
+   /
