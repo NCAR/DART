@@ -35,6 +35,8 @@ integer :: truncated_nys_per_centers_block, truncated_nxs_per_centers_block, &
 
 integer :: center_ncols, corner_ncols
 
+real(r8), allocatable, dimension(:, :, :) :: center_altitude_block
+
 real(r8), allocatable, dimension(:, :, :) :: center_lats_block, center_lons_block, & 
                                              corner_lats_block, corner_lons_block
 
@@ -54,7 +56,7 @@ real(r8), dimension(nvertex_columns)            :: vertex_latitude, vertex_longi
 real(r8), dimension(3)                    :: location
 
 ! Declare variables for the geometry_file that will be output by this program
-real(r8)                         :: alt
+real(r8)                         :: min_alt
 real(r8)                         :: max_lon
 real(r8)                         :: min_lon
 real(r8)                         :: max_lat
@@ -99,7 +101,6 @@ character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suf
 namelist /transform_state_nml/ nblocks, nhalos,restart_file_prefix, restart_file_middle, restart_file_suffix, filter_input_prefix, filter_input_suffix
 
 ! Assign initialized variables
-alt = 96343.08
 max_lon = 360.0
 min_lon = 0.0
 max_lat = 90.0
@@ -169,6 +170,9 @@ subroutine assign_triangles_and_quads()
 
          truncated_nys_per_centers_block = nys_per_centers_block-2*nhalos
          truncated_nxs_per_centers_block = nxs_per_centers_block-2*nhalos
+
+         allocate(center_altitude_block(nzs_per_centers_block, nys_per_centers_block, nxs_per_centers_block))
+         center_altitude_block(:, :, :) = 0
          
          allocate(center_lons_block(nzs_per_centers_block, nys_per_centers_block, nxs_per_centers_block))
          center_lons_block(:, :, :) = 0
@@ -182,6 +186,8 @@ subroutine assign_triangles_and_quads()
          allocate(center_lats_truncated(nblocks, truncated_nys_per_centers_block, truncated_nxs_per_centers_block))
          center_lats_truncated(:, :, :) = 0
       end if
+
+      call nc_get_variable(center_files(iblock)%ncid, 'Altitude', center_altitude_block)
 
       call nc_get_variable(center_files(iblock)%ncid, 'Longitude', center_lons_block)
       center_lons_truncated(iblock, :, :) = center_lons_block(1, nhalos+1:nys_per_centers_block-nhalos, nhalos+1:nxs_per_centers_block-nhalos)
@@ -248,6 +254,8 @@ subroutine assign_triangles_and_quads()
    allocate(center_latitude(center_ncols))
    allocate(center_longitude(center_ncols))
 
+   min_alt = center_altitude_block(1, 1, 1)
+
    icol = 0
    do iblock = 1, nblocks
       do iy = 1, truncated_nys_per_centers_block
@@ -257,7 +265,7 @@ subroutine assign_triangles_and_quads()
             ! and set_location requires the arguments to be in degrees. So, when invoking 
             ! set_location, the aether coordinates in radians must be converted to degrees for the
             ! arguments before they are converted back to radians in the function
-            center_locations(icol)%loc = set_location(max(min_lon, min(max_lon, center_lons_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, center_lats_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+            center_locations(icol)%loc = set_location(max(min_lon, min(max_lon, center_lons_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, center_lats_truncated(iblock, iy, ix)*RAD2DEG)), min_alt, VERTISHEIGHT)
             
             location = get_location(center_locations(icol)%loc)
             center_longitude(icol) = location(1)
@@ -300,9 +308,9 @@ subroutine assign_triangles_and_quads()
             if (is_a_vertex .eqv. .true.) then
                ivertex = ivertex + 1
                if (iblock <= nside_faces) then
-                  vertexs(ivertex)%loc = set_location(max(min_lon, min(max_lon, corner_lons_side_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_side_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+                  vertexs(ivertex)%loc = set_location(max(min_lon, min(max_lon, corner_lons_side_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_side_truncated(iblock, iy, ix)*RAD2DEG)), min_alt, VERTISHEIGHT)
                else
-                  vertexs(ivertex)%loc = set_location(max(min_lon, min(max_lon, corner_lons_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+                  vertexs(ivertex)%loc = set_location(max(min_lon, min(max_lon, corner_lons_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), min_alt, VERTISHEIGHT)
                end if
 
                location = get_location(vertexs(ivertex)%loc)
@@ -312,9 +320,9 @@ subroutine assign_triangles_and_quads()
             else
                iquad = iquad + 1
                if (iblock <= nside_faces) then
-                  quads(iquad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_side_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_side_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+                  quads(iquad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_side_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_side_truncated(iblock, iy, ix)*RAD2DEG)), min_alt, VERTISHEIGHT)
                else
-                  quads(iquad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), alt, VERTISHEIGHT)
+                  quads(iquad)%loc = set_location(max(min_lon, min(max_lon, corner_lons_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), max(min_lat, min(max_lat, corner_lats_top_bottom_truncated(iblock, iy, ix)*RAD2DEG)), min_alt, VERTISHEIGHT)
                end if
 
                location = get_location(quads(iquad)%loc)
@@ -353,8 +361,10 @@ end subroutine assign_triangles_and_quads
 subroutine output_triangles_and_quads_to_netcdf()
 
    type(file_type) :: geometry_file
+   integer :: dim_id_center_altitudes
    integer :: dim_id_vertex_columns, dim_id_quad_columns, dim_id_center_columns
    integer :: dim_id_vertex_neighbors, dim_id_quad_neighbors
+   integer :: var_id_center_altitude
    integer :: var_id_center_longitude, var_id_center_latitude
    integer :: var_id_vertex_longitude, var_id_vertex_latitude, var_id_vertex
    integer :: var_id_quad_longitude, var_id_quad_latitude, var_id_quad
@@ -366,6 +376,8 @@ subroutine output_triangles_and_quads_to_netcdf()
 
    geometry_file%ncid =  nc_create_file(geometry_file%file_path)
 
+   geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'center_altitudes', nzs_per_centers_block, dim_id_center_altitudes)
+
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'vertex_columns', nvertex_columns, dim_id_vertex_columns)
 
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'vertex_neighbors', nvertex_neighbors, dim_id_vertex_neighbors)
@@ -375,6 +387,8 @@ subroutine output_triangles_and_quads_to_netcdf()
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'quad_neighbors', nquad_neighbors, dim_id_quad_neighbors)
 
    geometry_file%ncstatus = nf90_def_dim(geometry_file%ncid, 'center_columns', center_ncols, dim_id_center_columns)
+
+   geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'center_altitude', xtype, dim_id_center_altitudes, var_id_center_altitude)
 
    geometry_file%ncstatus = nf90_def_var(geometry_file%ncid, 'vertex_longitude', xtype, dim_id_vertex_columns, var_id_vertex_longitude)
 
@@ -399,6 +413,8 @@ subroutine output_triangles_and_quads_to_netcdf()
    geometry_file%ncstatus = nf90_put_att(geometry_file%ncid, NF90_GLOBAL, 'index_of_south_pole_quad_column', isouth_pole_quad_column)
 
    call nc_end_define_mode(geometry_file%ncid)
+
+   geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_altitude, center_altitude_block(:, 1, 1))
 
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_longitude, center_longitude)
    geometry_file%ncstatus = nf90_put_var(geometry_file%ncid, var_id_center_latitude, center_latitude)
@@ -497,10 +513,10 @@ end function is_corner_a_vertex
 
 subroutine check_if_point_in_quad()
 
-   real(r8), dimension(4) :: x_corners, y_corners
+   real(r8), dimension(4) :: x_neighbors, y_neighbors
    logical  :: inside
    integer  :: num_outside, num_inside, num_poles
-   integer  :: iquad, icorner
+   integer  :: icolumn, ineighbor
    real(r8) :: tolerance
 
    tolerance = 0.00000314159_r8
@@ -509,23 +525,23 @@ subroutine check_if_point_in_quad()
    num_inside = 0
    num_poles = 0
 
-   do iquad=1, (corner_ncols-nvertex_columns)
-      x_corners(:) = 0.0
-      y_corners(:) = 0.0
-      do icorner=1, nquad_neighbors
-         x_corners(icorner) = center_longitude(quad_neighbor_indices(iquad, icorner))
-         y_corners(icorner) = center_latitude(quad_neighbor_indices(iquad, icorner))
+   do icolumn=1, (corner_ncols-nvertex_columns)
+      x_neighbors(:) = 0.0
+      y_neighbors(:) = 0.0
+      do ineighbor=1, nquad_neighbors
+         x_neighbors(ineighbor) = center_longitude(quad_neighbor_indices(icolumn, ineighbor))
+         y_neighbors(ineighbor) = center_latitude(quad_neighbor_indices(icolumn, ineighbor))
       end do
 
-      inside = in_quad(quad_longitude(iquad), quad_latitude(iquad), x_corners, y_corners)
+      inside = in_quad(quad_longitude(icolumn), quad_latitude(icolumn), x_neighbors, y_neighbors)
 
       if (inside) then
          num_inside = num_inside + 1
-      else if (abs(-90.0-quad_latitude(iquad)) < tolerance) then
-         isouth_pole_quad_column = iquad
+      else if (abs(-90.0-quad_latitude(icolumn)) < tolerance) then
+         isouth_pole_quad_column = icolumn
          num_poles = num_poles + 1
-      else if (abs(90.0-quad_latitude(iquad)) < tolerance) then
-         inorth_pole_quad_column = iquad
+      else if (abs(90.0-quad_latitude(icolumn)) < tolerance) then
+         inorth_pole_quad_column = icolumn
          num_poles = num_poles + 1
       else
          num_outside = num_outside + 1
