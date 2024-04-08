@@ -5,5 +5,5 @@ version: "X.Y.Z"
 date-released: "2024-03-13"
 doi: "10.5065/D6WQ0202"
 authors:
-  - name: "UCAR/NCAR/CISL/DAReS"
+  - name: "UCAR/NSF NCAR/CISL/DAReS"
     city: "Boulder, Colorado"
