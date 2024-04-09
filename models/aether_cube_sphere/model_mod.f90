@@ -18,12 +18,14 @@ use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
                              loc_get_close_state => get_close_state, &
-                             set_location, set_location_missing
+                             set_location, set_location_missing, VERTISHEIGHT, query_location, &
+                             get_location
 
 use    utilities_mod, only : register_module, error_handler, &
                              E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
-                             find_namelist_in_file, check_namelist_read, to_upper
+                             find_namelist_in_file, check_namelist_read, to_upper, &
+                             find_enclosing_indices
 
 use obs_kind_mod,     only : get_index_for_quantity
 
@@ -31,8 +33,9 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, &
                                  nc_begin_define_mode, nc_end_define_mode, nc_open_file_readonly, & 
                                  nc_close_file
-
-use state_structure_mod, only : add_domain, get_domain_size
+use distributed_state_mod, only : get_state
+use state_structure_mod, only : add_domain, get_dart_vector_index, get_domain_size, &
+                                get_model_variable_indices, get_varid_from_kind
 
 use transform_state_mod, only : file_type
 
@@ -46,6 +49,8 @@ use default_model_mod, only : pert_model_copies, read_model_time, write_model_ti
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
                               convert_vertical_obs, convert_vertical_state, adv_1step
+
+use quad_utils_mod,    only : in_quad, quad_bilinear_interp
 
 implicit none
 private
@@ -80,15 +85,24 @@ type(time_type) :: assimilation_time_step
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
 ! Geometry variables that are used throughout the module
-integer                          :: ncenter_columns ! The number of center_columns is read from the geometry file
+integer                          :: ncenter_columns, ncenter_altitudes ! The number of center_columns and altitudes are read from the geometry file
 integer, parameter               :: nvertex_columns = 8
 integer, parameter               :: nvertex_neighbors = 3
 integer                          :: nquad_columns ! The number of quad_columns is read from the geometry file
 integer, parameter               :: nquad_neighbors = 4
 
+! Just like in cam-se, the aether cube_sphere filter input files are created to have a horizonal
+! column dimension rather than being functions of latitude and longitude.
+integer                          :: no_third_dimension = -99
+
 integer :: inorth_pole_quad_column, isouth_pole_quad_column
-real(r8), allocatable, dimension(:)       :: center_latitude, center_longitude
+real(r8), allocatable, dimension(:)       :: center_latitude, center_longitude, center_altitude
 integer, allocatable, dimension(:, :)     :: quad_neighbor_indices, vertex_neighbor_indices
+
+! Error codes
+integer, parameter :: INVALID_VERT_COORD_ERROR_CODE = 15
+integer, parameter :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
+integer, parameter :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
 
 ! Example Namelist
 ! Use the namelist for options to be set at runtime.
@@ -189,21 +203,166 @@ integer,             intent(in) :: qty
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
+character(len=512) :: error_string_1
+
+! Location values stored in a vector
+real(r8), dimension(3)                           :: lon_lat_alt
+
+! Logical needed for quad_bilinear_interp
+logical                                          :: cyclic
+
+! Vertical interpolation variables
+integer(i8) :: state_index
+integer     :: below_index, above_index, enclosing_status, which_vertical
+real(r8)    :: fraction
+
+real(r8), dimension(nvertex_neighbors, ens_size) :: vertex_temp_values
+real(r8), dimension(nquad_neighbors, ens_size)   :: quad_temp_values
+real(r8), dimension(ens_size)                    :: above_values, below_values
+
+! Actual variables needed for this routine
+
+integer :: icolumn, ineighbor, iens
+
+logical :: inside
+
+real(r8), dimension(nvertex_neighbors, 3)        :: vertex_xyz
+real(r8), dimension(3)                           :: r
+real(r8), dimension(3)                           :: weights
+real(r8), dimension(nquad_neighbors)             :: x_neighbors_quad, y_neighbors_quad
+
+! Begin local variables for model_interpolate
+integer  :: varid
+
+! Begin variables for horiziontal interpolation
+
+! End variables for horizontal interpolation
+cyclic = .true.
+
+lon_lat_alt = get_location(location)
+which_vertical = nint(query_location(location))
+
+! See if the state contains the obs quantity
+varid = get_varid_from_kind(dom_id, qty)
+
+if (varid > 0) then
+    istatus = 0
+else
+    istatus = UNKNOWN_OBS_QTY_ERROR_CODE
+endif
+
 if ( .not. module_initialized ) call static_init_model
 
-! This should be the result of the interpolation of a
-! given kind (itype) of variable at the given location.
 expected_obs(:) = MISSING_R8
-
-! istatus for successful return should be 0. 
-! Any positive number is an error.
-! Negative values are reserved for use by the DART framework.
-! Using distinct positive values for different types of errors can be
-! useful in diagnosing problems.
 istatus(:) = 1
 
-end subroutine model_interpolate
+! Find the vertical levels
+if ( which_vertical == VERTISHEIGHT ) then
+   call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), below_index, &
+                               above_index, fraction, enclosing_status)
+   if (enclosing_status /= 0) then
+      istatus(:) = INVALID_ALTITUDE_VAL_ERROR_CODE
+   end if
+else
+   istatus(:) = INVALID_VERT_COORD_ERROR_CODE
+   write(error_string_1, *) 'unsupported vertical type: ', which_vertical
+   call error_handler(E_ERR, 'model_interpolate', error_string_1, source)
+end if
 
+! Find the enclosing triangle or quad
+inside = .false.
+
+do icolumn = 1, nvertex_columns
+   do ineighbor = 1, nvertex_neighbors
+      call latlon_to_xyz(center_latitude(vertex_neighbor_indices(icolumn, ineighbor)), &
+                         center_longitude(vertex_neighbor_indices(icolumn, ineighbor)), &
+                         vertex_xyz(ineighbor, 1), &
+                         vertex_xyz(ineighbor, 2), &
+                         vertex_xyz(ineighbor, 3))
+   end do
+
+   call latlon_to_xyz(lon_lat_alt(2), lon_lat_alt(1), r(1), r(2), r(3))
+
+   call inside_triangle(vertex_xyz(1, :), vertex_xyz(2, :), vertex_xyz(3, :), r, lon_lat_alt(2), lon_lat_alt(1), inside, weights)
+
+   if (inside) then
+
+      ! Do above level
+      do ineighbor = 1, nvertex_neighbors
+         state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
+         vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+      end do
+
+      above_values = barycentric_average(ens_size, weights, vertex_temp_values)
+
+      ! Do below level
+      do ineighbor = 1, nvertex_neighbors
+         state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
+         vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+      end do
+
+      below_values = barycentric_average(ens_size, weights, vertex_temp_values)
+
+      call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
+
+      exit
+   end if
+end do
+
+! If the location is not inside any of the vertex triangles, do the quad loop
+
+if (.not. inside) then
+
+   do icolumn = 1, nquad_columns
+      if (icolumn == inorth_pole_quad_column) then
+         inside = .true.
+      else if  (icolumn == isouth_pole_quad_column) then
+         inside = .true.
+      else
+         do ineighbor = 1, nquad_neighbors
+            x_neighbors_quad(ineighbor) = center_longitude(quad_neighbor_indices(icolumn, ineighbor))
+            y_neighbors_quad(ineighbor) = center_latitude(quad_neighbor_indices(icolumn, ineighbor))
+         end do
+
+         inside = in_quad(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, y_neighbors_quad)
+      end if
+
+      if (inside) then
+         
+         ! Get quad temp_values for the above level
+         do ineighbor = 1, nquad_neighbors
+            state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
+            quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+         end do
+
+         do iens = 1, ens_size
+            call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
+                                       y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
+                                       above_values(iens))
+         enddo
+
+         ! Get quad temp_values for the below level
+         do ineighbor =1, nquad_neighbors
+            state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
+            quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+         end do
+
+         do iens = 1, ens_size
+            call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
+                                       y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
+                                       below_values(iens))
+         enddo
+
+         call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
+
+         exit
+      end if
+
+   end do
+
+end if
+
+end subroutine model_interpolate
 
 
 !------------------------------------------------------------------
@@ -232,14 +391,21 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
+! Local variables
+
+integer :: lev_index, col_index
+integer :: my_var_id, my_qty
 
 if ( .not. module_initialized ) call static_init_model
 
+call get_model_variable_indices(index_in, lev_index, col_index, no_third_dimension, &
+                                var_id=my_var_id, kind_index=my_qty)
+
 ! should be set to the actual location using set_location()
-location = set_location_missing()
+location = set_location(center_longitude(col_index), center_latitude(col_index), center_altitude(lev_index), VERTISHEIGHT)
 
 ! should be set to the physical quantity, e.g. QTY_TEMPERATURE
-if (present(qty)) qty = 0  
+if (present(qty)) qty = my_qty
 
 end subroutine get_state_meta_data
 
@@ -411,9 +577,6 @@ subroutine read_geometry_file()
 
    geometry_file%file_path = trim(filter_directory) // 'geometry_file.nc'
 
-   print *, 'geometry_file%file_path'
-   print *, geometry_file%file_path
-
    geometry_file%ncid = nc_open_file_readonly(geometry_file%file_path)
 
    ! attributes
@@ -421,6 +584,9 @@ subroutine read_geometry_file()
    geometry_file%ncstatus = nf90_get_att(geometry_file%ncid, NF90_GLOBAL, 'index_of_south_pole_quad_column', isouth_pole_quad_column)
 
    ! dimensions
+   geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'center_altitudes', dimid)
+   geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, ncenter_altitudes)
+
    geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'quad_columns', dimid)
    geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, nquad_columns)
 
@@ -428,6 +594,7 @@ subroutine read_geometry_file()
    geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, ncenter_columns)
 
    ! allocate arrays
+   allocate(center_altitude(ncenter_altitudes))
    allocate(center_latitude(ncenter_columns))
    allocate(center_longitude(ncenter_columns))
 
@@ -435,6 +602,9 @@ subroutine read_geometry_file()
    allocate(quad_neighbor_indices(nquad_columns, nquad_neighbors))
 
    ! variables
+   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_altitude', varid)
+   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_altitude)
+
    geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_longitude', varid)
    geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_longitude)
 
@@ -611,8 +781,47 @@ subroutine latlon_to_xyz(lat, lon, x, y, z)
    
 end subroutine latlon_to_xyz
 
+!-----------------------------------------------------------------------
+! interpolate in the vertical between 2 arrays of items.
+
+! vert_fracts: 0 is 100% of the first level and 
+!              1 is 100% of the second level
+
+subroutine vert_interp(nitems, levs1, levs2, vert_fract, out_vals)
+
+   integer,  intent(in)  :: nitems
+   real(r8), intent(in)  :: levs1(nitems)
+   real(r8), intent(in)  :: levs2(nitems)
+   real(r8), intent(in)  :: vert_fract
+   real(r8), intent(out) :: out_vals(nitems)
+   
+   out_vals(:) = (levs1(:) * (1.0_r8 - vert_fract)) + &
+                 (levs2(:) *           vert_fract )
+   
+end subroutine vert_interp
+
+
+function barycentric_average(nitems, weights, vertex_temp_values) result (averaged_values)
+
+   integer, intent(in)                                        :: nitems
+   real(r8), dimension(nvertex_neighbors), intent(in)         :: weights
+   real(r8), dimension(nvertex_neighbors, nitems), intent(in) :: vertex_temp_values
+
+   real(r8), dimension(nitems)                :: averaged_values
+
+   integer :: iweight, iitem
+
+   averaged_values(:) = 0
+
+   do iitem = 1, nitems
+      do iweight = 1, nvertex_neighbors
+         averaged_values(iitem) = averaged_values(iitem) + weights(iweight)*vertex_temp_values(iweight, iitem)
+      end do
+   end do
+
+end function barycentric_average
+
 !===================================================================
 ! End of model_mod
 !===================================================================
 end module model_mod
-
