@@ -362,6 +362,9 @@ if (.not. inside) then
 
 end if
 
+! All good.
+istatus(:) = 0
+
 end subroutine model_interpolate
 
 
