@@ -401,7 +401,7 @@ integer :: my_var_id, my_qty
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, lev_index, col_index, no_third_dimension, &
+call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimension, &
                                 var_id=my_var_id, kind_index=my_qty)
 
 ! should be set to the actual location using set_location()
