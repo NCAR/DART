@@ -147,7 +147,7 @@ subroutine model_to_dart()
 
    ! All of the lengths have been counted properly, create each dimension in the filter_input_file and save
    ! the dimensions to the time_x_y_z and x_y_z arrays used during variable definition
-   filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'time', ntimes, dart_dimid)
+   filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'time', NF90_UNLIMITED, dart_dimid)
    time_lev_col_dims(3) = dart_dimid
 
    filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'z', nzs, dart_dimid)
