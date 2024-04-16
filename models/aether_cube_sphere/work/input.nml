@@ -196,7 +196,7 @@
    test1thru             = 0
    run_tests             = 1,2,3,4,5,6,7
    x_ind                 = 12
-   loc_of_interest       = 98.5, 85.5, 96343
+   loc_of_interest       = 98.5, 85.5, 96344
    quantity_of_interest  = 'QTY_TEMPERATURE'
    interp_test_dlon      = 4.0
    interp_test_lonrange  = 0.0, 360.0

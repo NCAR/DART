@@ -93,7 +93,6 @@ integer, parameter               :: nquad_neighbors = 4
 
 ! Just like in cam-se, the aether cube_sphere filter input files are created to have a horizonal
 ! column dimension rather than being functions of latitude and longitude.
-integer                          :: time_index = 1
 integer                          :: no_third_dimension = -99
 
 integer :: inorth_pole_quad_column, isouth_pole_quad_column
@@ -292,7 +291,7 @@ if (istatus(1) == 1) then
 
          ! Do above level
          do ineighbor = 1, nvertex_neighbors
-            state_index = get_dart_vector_index(1, vertex_neighbor_indices(icolumn, ineighbor), above_index, dom_id, varid)
+            state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
             vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
          end do
 
@@ -300,7 +299,7 @@ if (istatus(1) == 1) then
 
          ! Do below level
          do ineighbor = 1, nvertex_neighbors
-            state_index = get_dart_vector_index(1, vertex_neighbor_indices(icolumn, ineighbor), below_index, dom_id, varid)
+            state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
             vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
          end do
 
@@ -334,7 +333,7 @@ if (istatus(1) == 1) then
             ! Get quad temp_values for the above level
             do ineighbor = 1, nquad_neighbors
 
-               state_index = get_dart_vector_index(1, quad_neighbor_indices(icolumn, ineighbor), above_index, dom_id, varid)
+               state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
 
                quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
             end do
@@ -347,7 +346,7 @@ if (istatus(1) == 1) then
 
             ! Get quad temp_values for the below level
             do ineighbor =1, nquad_neighbors
-               state_index = get_dart_vector_index(1, quad_neighbor_indices(icolumn, ineighbor), below_index, dom_id, varid)
+               state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
                quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
             end do
 
@@ -409,8 +408,6 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimension, &
                                 var_id=my_var_id, kind_index=my_qty)
-! call get_model_variable_indices(index_in, time_index, col_index, lev_index, &
-!                                 var_id=my_var_id, kind_index=my_qty)
 
 ! should be set to the actual location using set_location()
 location = set_location(center_longitude(col_index), center_latitude(col_index), center_altitude(lev_index), VERTISHEIGHT)
