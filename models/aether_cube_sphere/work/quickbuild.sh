@@ -35,6 +35,8 @@ model_programs=(
 
 model_serial_programs=(
 aether_to_dart
+dart_to_aether
+create_geometry_file
 )
 
 # quickbuild arguments
@@ -49,7 +51,7 @@ cdl_to_netcdf
 # build and run preprocess before making any other DART executables
 buildpreprocess
 
-# build 
+# build
 buildit
 
 # clean up

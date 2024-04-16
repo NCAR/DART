@@ -5,7 +5,7 @@ use types_mod,            only : r4, r8, varnamelength
 use netcdf_utilities_mod, only : nc_open_file_readonly, nc_open_file_readwrite, nc_close_file, &
                                  nc_create_file, nc_end_define_mode
 use utilities_mod,        only : open_file, close_file, find_namelist_in_file, &
-                                 check_namelist_read, error_handler, E_ERR
+                                 check_namelist_read, error_handler, E_ERR, string_to_integer
 
 implicit none
 private
@@ -20,7 +20,7 @@ public :: initialize_transform_state_mod, &
 
 integer  :: iunit, io
 
-character(len=4) :: ensemble_member
+character(len=4) :: restart_ensemble_member, dart_ensemble_member
 
 type :: file_type
 character(len=256) :: file_path
@@ -32,9 +32,11 @@ type(file_type) :: filter_input_file, filter_output_file
 
 integer :: nblocks, nhalos
 character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suffix, &
-                      filter_input_prefix, filter_input_suffix
+                      filter_input_prefix, filter_input_suffix, filter_output_prefix, &
+                      filter_output_suffix
 namelist /transform_state_nml/ nblocks, nhalos, restart_file_prefix, restart_file_middle, &
-                               restart_file_suffix, filter_input_prefix, filter_input_suffix
+                               restart_file_suffix, filter_input_prefix, filter_input_suffix, &
+                               filter_output_prefix, filter_output_suffix
 
 character(len=256) :: restart_directory, grid_directory, filter_directory
 namelist /directory_nml/ restart_directory, grid_directory, filter_directory
@@ -43,7 +45,8 @@ contains
 
 subroutine initialize_transform_state_mod()
 
-   ensemble_member = get_ensemble_member_from_command_line()
+   restart_ensemble_member = get_ensemble_member_from_command_line()
+   dart_ensemble_member = zero_fill(integer_to_string(string_to_integer(restart_ensemble_member)+1), 4)
 
    call find_namelist_in_file('input.nml', 'transform_state_nml', iunit)
    read(iunit, nml = transform_state_nml, iostat = io)
@@ -53,7 +56,7 @@ subroutine initialize_transform_state_mod()
    read(iunit, nml = directory_nml, iostat = io)
    call check_namelist_read(iunit, io, 'directory_nml')
 
-   block_files = assign_block_files_array(nblocks, ensemble_member, restart_directory, &
+   block_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_directory, &
                                           restart_file_prefix, restart_file_middle, &
                                           restart_file_suffix)
 
@@ -98,7 +101,7 @@ subroutine model_to_dart()
    real(r4), allocatable, dimension(:) :: spatial_array
    real(r4), allocatable, dimension(:, :, :) :: variable_array
 
-   filter_input_file = assign_filter_file(ensemble_member, filter_directory, filter_input_prefix, filter_input_suffix)
+   filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, filter_input_prefix, filter_input_suffix)
 
    ! The block files are read only
    do iblock = 1, nblocks
@@ -239,10 +242,11 @@ subroutine model_to_dart()
                end if
             else
                ! This is one of the other non-spatial variables
-               do iz = 1, nzs
-                  do iy = 1, truncated_nys_per_block
-                     do ix = 1, truncated_nxs_per_block
-                        icol = icol + 1
+               
+               do iy = 1, truncated_nys_per_block
+                  do ix = 1, truncated_nxs_per_block
+                     icol = icol + 1
+                     do iz = 1, nzs
                         variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
                      end do
                   end do
@@ -262,7 +266,15 @@ end subroutine model_to_dart
 
 subroutine dart_to_model()
 
-   integer :: iblock, idim
+   integer :: iblock, icol, ix, iy, iz
+   integer :: ntimes, nxs, nys, nzs, ncols
+   integer :: filter_varid, block_varid, dimid
+   character(len=NF90_MAX_NAME) :: filter_name, block_name
+   integer :: filter_xtype, filter_nDimensions, filter_nAtts
+   integer, dimension(NF90_MAX_VAR_DIMS) :: filter_dimids
+   real(r4), allocatable, dimension(:, :, :) :: filter_array, block_array
+
+   filter_output_file = assign_filter_file(dart_ensemble_member, filter_directory, filter_output_prefix, filter_output_suffix)
 
    ! The block files are read/write
    do iblock = 1, nblocks
@@ -270,6 +282,70 @@ subroutine dart_to_model()
    end do
    ! The dart file is read only
    filter_output_file%ncid = nc_open_file_readonly(filter_output_file%file_path)
+
+   ! Get the variables list from the filter_output_file
+
+   filter_output_file%ncstatus = nf90_inquire(filter_output_file%ncid, &
+                                              filter_output_file%nDimensions, &
+                                              filter_output_file%nVariables, &
+                                              filter_output_file%nAttributes, &
+                                              filter_output_file%unlimitedDimId, &
+                                              filter_output_file%formatNum)
+
+   filter_output_file%ncstatus = nf90_inq_dimid(filter_output_file%ncid, 'time', dimid)
+   filter_output_file%ncstatus = nf90_inquire_dimension(filter_output_file%ncid, dimid, filter_name, ntimes)
+
+   filter_output_file%ncstatus = nf90_inq_dimid(filter_output_file%ncid, 'z', dimid)
+   filter_output_file%ncstatus = nf90_inquire_dimension(filter_output_file%ncid, dimid, filter_name, nzs)
+
+   filter_output_file%ncstatus = nf90_inq_dimid(filter_output_file%ncid, 'col', dimid)
+   filter_output_file%ncstatus = nf90_inquire_dimension(filter_output_file%ncid, dimid, filter_name, ncols)
+
+   allocate(filter_array(ncols, nzs, ntimes))
+   filter_array(:, :, :) = 0
+   
+   ! We need full blocks from the block files
+   do filter_varid = 1, filter_output_file%nVariables
+      icol = 0
+      filter_output_file%ncstatus = nf90_inquire_variable(filter_output_file%ncid, filter_varid, filter_name, filter_xtype, filter_nDimensions, filter_dimids, filter_nAtts)
+      
+      if (filter_name /= 'time') then
+
+         filter_output_file%ncstatus = nf90_get_var(filter_output_file%ncid, filter_varid, filter_array)
+         
+         do iblock = 1, nblocks
+
+            if (filter_varid == 1 .and. iblock == 1) then
+               block_files(iblock)%ncstatus = nf90_inq_dimid(block_files(iblock)%ncid, 'x', dimid)
+               block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, block_name, nxs)
+
+               block_files(iblock)%ncstatus = nf90_inq_dimid(block_files(iblock)%ncid, 'y', dimid)
+               block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, block_name, nys)
+
+               allocate(block_array(nzs, nys, nxs))
+               block_array(:, :, :) = 0
+            end if
+
+            block_files(iblock)%ncstatus = nf90_inq_varid(block_files(iblock)%ncid, filter_name, block_varid)
+            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, block_varid, block_array)
+
+            do iy = 1, nys-2*nhalos
+               do ix = 1, nxs-2*nhalos
+                  icol = icol + 1
+                  do iz = 1, nzs
+                     block_array(iz, nhalos+iy, nhalos+ix) = filter_array(icol, iz, 1)
+                  end do
+               end do
+            end do
+
+            block_files(iblock)%ncstatus = nf90_put_var(block_files(iblock)%ncid, block_varid, block_array)
+            print *, block_files(iblock)%ncstatus
+         
+         end do
+      end if
+   end do
+   
+   call nc_close_file(filter_output_file%ncid)
 
 end subroutine dart_to_model
 
