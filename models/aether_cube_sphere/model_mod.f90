@@ -93,6 +93,7 @@ integer, parameter               :: nquad_neighbors = 4
 
 ! Just like in cam-se, the aether cube_sphere filter input files are created to have a horizonal
 ! column dimension rather than being functions of latitude and longitude.
+integer                          :: time_index = 1
 integer                          :: no_third_dimension = -99
 
 integer :: inorth_pole_quad_column, isouth_pole_quad_column
@@ -269,101 +270,106 @@ else
    call error_handler(E_ERR, 'model_interpolate', error_string_1, source)
 end if
 
-! Find the enclosing triangle or quad
-inside = .false.
+! If the vertical location is acceptable, then do the horizontal interpolation
+if (istatus(1) == 1) then
 
-do icolumn = 1, nvertex_columns
-   do ineighbor = 1, nvertex_neighbors
-      call latlon_to_xyz(center_latitude(vertex_neighbor_indices(icolumn, ineighbor)), &
-                         center_longitude(vertex_neighbor_indices(icolumn, ineighbor)), &
-                         vertex_xyz(ineighbor, 1), &
-                         vertex_xyz(ineighbor, 2), &
-                         vertex_xyz(ineighbor, 3))
-   end do
-
-   call latlon_to_xyz(lon_lat_alt(2), lon_lat_alt(1), r(1), r(2), r(3))
-
-   call inside_triangle(vertex_xyz(1, :), vertex_xyz(2, :), vertex_xyz(3, :), r, lon_lat_alt(2), lon_lat_alt(1), inside, weights)
-
-   if (inside) then
-
-      ! Do above level
+   ! Find the enclosing triangle or quad
+   inside = .false.
+   do icolumn = 1, nvertex_columns
       do ineighbor = 1, nvertex_neighbors
-         state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
-         vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+         call latlon_to_xyz(center_latitude(vertex_neighbor_indices(icolumn, ineighbor)), &
+                           center_longitude(vertex_neighbor_indices(icolumn, ineighbor)), &
+                           vertex_xyz(ineighbor, 1), &
+                           vertex_xyz(ineighbor, 2), &
+                           vertex_xyz(ineighbor, 3))
       end do
 
-      above_values = barycentric_average(ens_size, weights, vertex_temp_values)
+      call latlon_to_xyz(lon_lat_alt(2), lon_lat_alt(1), r(1), r(2), r(3))
 
-      ! Do below level
-      do ineighbor = 1, nvertex_neighbors
-         state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
-         vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
-      end do
-
-      below_values = barycentric_average(ens_size, weights, vertex_temp_values)
-
-      call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
-
-      exit
-   end if
-end do
-
-! If the location is not inside any of the vertex triangles, do the quad loop
-
-if (.not. inside) then
-
-   do icolumn = 1, nquad_columns
-      if (icolumn == inorth_pole_quad_column) then
-         inside = .true.
-      else if  (icolumn == isouth_pole_quad_column) then
-         inside = .true.
-      else
-         do ineighbor = 1, nquad_neighbors
-            x_neighbors_quad(ineighbor) = center_longitude(quad_neighbor_indices(icolumn, ineighbor))
-            y_neighbors_quad(ineighbor) = center_latitude(quad_neighbor_indices(icolumn, ineighbor))
-         end do
-
-         inside = in_quad(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, y_neighbors_quad)
-      end if
+      call inside_triangle(vertex_xyz(1, :), vertex_xyz(2, :), vertex_xyz(3, :), r, lon_lat_alt(2), lon_lat_alt(1), inside, weights)
 
       if (inside) then
-         
-         ! Get quad temp_values for the above level
-         do ineighbor = 1, nquad_neighbors
-            state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
-            quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+
+         ! Do above level
+         do ineighbor = 1, nvertex_neighbors
+            state_index = get_dart_vector_index(1, vertex_neighbor_indices(icolumn, ineighbor), above_index, dom_id, varid)
+            vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
          end do
 
-         do iens = 1, ens_size
-            call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
-                                       y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
-                                       above_values(iens))
-         enddo
+         above_values = barycentric_average(ens_size, weights, vertex_temp_values)
 
-         ! Get quad temp_values for the below level
-         do ineighbor =1, nquad_neighbors
-            state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
-            quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+         ! Do below level
+         do ineighbor = 1, nvertex_neighbors
+            state_index = get_dart_vector_index(1, vertex_neighbor_indices(icolumn, ineighbor), below_index, dom_id, varid)
+            vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
          end do
 
-         do iens = 1, ens_size
-            call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
-                                       y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
-                                       below_values(iens))
-         enddo
+         below_values = barycentric_average(ens_size, weights, vertex_temp_values)
 
          call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
 
          exit
       end if
-
    end do
 
-end if
+   ! If the location is not inside any of the vertex triangles, do the quad loop
 
-! All good.
-istatus(:) = 0
+   if (.not. inside) then
+
+      do icolumn = 1, nquad_columns
+         if (icolumn == inorth_pole_quad_column) then
+            inside = .true.
+         else if  (icolumn == isouth_pole_quad_column) then
+            inside = .true.
+         else
+            do ineighbor = 1, nquad_neighbors
+               x_neighbors_quad(ineighbor) = center_longitude(quad_neighbor_indices(icolumn, ineighbor))
+               y_neighbors_quad(ineighbor) = center_latitude(quad_neighbor_indices(icolumn, ineighbor))
+            end do
+            inside = in_quad(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, y_neighbors_quad)
+         end if
+
+         if (inside) then
+            
+            ! Get quad temp_values for the above level
+            do ineighbor = 1, nquad_neighbors
+
+               state_index = get_dart_vector_index(1, quad_neighbor_indices(icolumn, ineighbor), above_index, dom_id, varid)
+
+               quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+            end do
+
+            do iens = 1, ens_size
+               call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
+                                          y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
+                                          above_values(iens))
+            enddo
+
+            ! Get quad temp_values for the below level
+            do ineighbor =1, nquad_neighbors
+               state_index = get_dart_vector_index(1, quad_neighbor_indices(icolumn, ineighbor), below_index, dom_id, varid)
+               quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+            end do
+
+            do iens = 1, ens_size
+               call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
+                                          y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
+                                          below_values(iens))
+            enddo
+
+            call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
+
+            exit
+         end if
+
+      end do
+
+   end if
+
+   ! All good.
+   istatus(:) = 0
+
+end if
 
 end subroutine model_interpolate
 
@@ -403,6 +409,8 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimension, &
                                 var_id=my_var_id, kind_index=my_qty)
+! call get_model_variable_indices(index_in, time_index, col_index, lev_index, &
+!                                 var_id=my_var_id, kind_index=my_qty)
 
 ! should be set to the actual location using set_location()
 location = set_location(center_longitude(col_index), center_latitude(col_index), center_altitude(lev_index), VERTISHEIGHT)

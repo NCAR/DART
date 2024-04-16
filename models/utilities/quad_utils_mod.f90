@@ -78,7 +78,10 @@ public :: quad_interp_handle,              & ! derived type which holds the grid
           QUAD_LOCATED_CELL_CORNERS,       &
           get_quad_grid_size,              &
           get_quad_global,                 &
-          print_quad_handle                ! debug
+          print_quad_handle,               & ! debug
+          in_quad,                         &
+          quad_bilinear_interp,            &
+          line_intercept
 
 
 ! version controlled file description for error handling, do not edit
