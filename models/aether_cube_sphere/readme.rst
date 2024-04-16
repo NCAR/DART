@@ -8,6 +8,9 @@ In addition to the standard DART programs associated with a given model, this in
 three additional programs for the Aether cube sphere: ``aether_to_dart``, ``dart_to_aether``, and 
 ``create_geometry_file``.
 
+Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_restart_files.zip>`_ to 
+download a set of Aether cube sphere restart files.
+
 aether_to_dart
 --------------
 
@@ -76,6 +79,9 @@ This program takes two sets of six Aether grid files:
 - ``grid_corners_g000?.nc``, where ``?`` corresponds to the six grid corner files, numbered 0-5, and
 - ``grid_g000?.nc``, where ``?`` corresponds to the six grid center files, numbered 0-5.
 
+Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_grid_files.zip>`_ to 
+download a set of Aether cube sphere grid files.
+
 Aether's model fields are defined at the grid centers. The grid corners are at locations 
 approximately equidistant from either three (if the grid corner is at at a cube vertex) or four 
 (if the grid corner is on a cube face) grid centers.
@@ -102,8 +108,8 @@ The two key compontents of the ``geometry_file.nc`` are:
    that can be read and used by the model mod to account for the special case where a quad encloses
    a pole.
 
-The header of the ``geometry_file.nc`` created by ``create_geometry_file``
-should resemble the following:
+The header of the ``geometry_file.nc`` created by ``create_geometry_file`` should resemble the
+following:
 
 .. code-block::
 
