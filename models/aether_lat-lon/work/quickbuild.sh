@@ -7,32 +7,41 @@
 main() {
 
 export DART=$(git rev-parse --show-toplevel)
-source "$DART"/build_templates/buildconvfunctions.sh
+source "$DART"/build_templates/buildfunctions.sh
 
-CONVERTER=AIRS
+MODEL=aether_lat-lon
 LOCATION=threed_sphere
-EXTRA="$DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90"
-
 
 programs=(
-advance_time
-convert_airs_L2
-convert_amsu_L1
-obs_sequence_tool
+filter
+model_mod_check
+perfect_model_obs
 )
 
-# build arguments
+serial_programs=(
+create_fixed_network_seq
+create_obs_sequence
+obs_diag
+obs_seq_to_netcdf
+)
+
+model_serial_programs=(
+aether_to_dart
+dart_to_aether)
+
 arguments "$@"
 
 # clean the directory
 \rm -f -- *.o *.mod Makefile .cppdefs
 
+# build any NetCDF files from .cdl files
+cdl_to_netcdf
+
 # build and run preprocess before making any other DART executables
 buildpreprocess
 
-# build 
-buildconv
-
+# build DART
+buildit
 
 # clean up
 \rm -f -- *.o *.mod

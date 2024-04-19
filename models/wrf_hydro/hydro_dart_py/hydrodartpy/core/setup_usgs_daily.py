@@ -27,7 +27,8 @@ def setup_usgs_daily(
     input_dir = usgs_daily_config['input_dir']
     output_dir = usgs_daily_config['output_dir']
     # Output directory: make if DNE
-    output_dir.mkdir(exist_ok=False, parents=True)
+    #output_dir.mkdir(exist_ok=False, parents=True)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     # converter: identity or regular obs converter?
     # Check that the desired obs converter is in the dart build
@@ -75,7 +76,8 @@ def setup_usgs_daily(
     run_dir = config['experiment']['run_dir']
     m0 = pickle.load(open(run_dir / "member_000/WrfHydroSim.pkl", 'rb'))
     route_link_f = run_dir / 'member_000' / m0.base_hydro_namelist['hydro_nlist']['route_link_f']
-    (output_dir / route_link_f.name).symlink_to(route_link_f)
+    if not route_link_f.is_file():
+        (output_dir / route_link_f.name).symlink_to(route_link_f)
     input_nml[converter_nml]['location_file'] = route_link_f.name
 
     #input.nml input_files: create a list of files in the start and end range.
@@ -101,27 +103,35 @@ def setup_usgs_daily(
     if usgs_daily_config['identity_obs']:
 
         hydro_rst_file = run_dir / 'member_000' / m0.base_hydro_namelist['hydro_nlist']['restart_file']
-        (output_dir / hydro_rst_file.name).symlink_to(hydro_rst_file)
+        if not hydro_rst_file.is_file():
+            (output_dir / hydro_rst_file.name).symlink_to(hydro_rst_file)
         input_nml['model_nml']['domain_order'] = 'hydro'
         input_nml['model_nml']['domain_shapefiles'] = str(hydro_rst_file.name)
 
         f90nml.Namelist(m0.base_hydro_namelist).write(output_dir / 'hydro.namelist', force=True)
         top_level_dir = get_top_level_dir_from_config(config, m0)
-        (output_dir / top_level_dir).symlink_to(config['wrf_hydro']['domain_src'] / top_level_dir)
+        nwm_dir = config['wrf_hydro']['domain_src'] / top_level_dir
+        if not nwm_dir.is_dir():
+            (output_dir / top_level_dir).symlink_to(config['wrf_hydro']['domain_src'] / top_level_dir)
 
     # Now we are done editing it, write the input.nml back out.
-    input_nml.write(output_dir / 'input.nml')
+    out_input = output_dir / 'input.nml'
+    if not out_input.is_file():
+        input_nml.write(output_dir / 'input.nml')
 
     # Symlink the config file into the output_dir so the default yaml file name
     # can be used by create_usgs_daily_obs_seq.
     if config_file is None:
         config_file = sorted(exp_dir.glob('original.*.yaml'))[0]
-    (output_dir / 'config_file.yaml').symlink_to(config_file)
+    if not config_file.is_file():
+        (output_dir / 'config_file.yaml').symlink_to(config_file)
 
     # Stage the file that does the batch processing.
     this_file = pathlib.Path(__file__)
     batcher_base = 'create_usgs_daily_obs_seq.py'
-    (output_dir / batcher_base).symlink_to(this_file.parent / batcher_base)
+    pyscript = this_file.parent / batcher_base
+    if not pyscript.is_file():
+        (output_dir / batcher_base).symlink_to(this_file.parent / batcher_base)
 
     # Setup the scheduled script.
     orig_submit_script = this_file.parent / 'submission_scripts/submit_usgs_daily_obs_converter.sh'
@@ -152,10 +162,11 @@ def setup_usgs_daily(
 
         # Select statement
         # Right now, only single node processing
-        select_stmt = 'select=1:ncpus={ncpus}:mpiprocs={mpiprocs}'.format(
+        select_stmt = 'select=1:ncpus={ncpus}:mpiprocs={mpiprocs}:mem={reqmem}GB'.format(
             **{
                 'ncpus': usgs_sched['ncpus'],
-                'mpiprocs': usgs_sched['mpiprocs']
+                'mpiprocs': usgs_sched['mpiprocs'],
+                'reqmem': usgs_sched['reqmem']
             }
         )
         replace_in_file(this_submit_script, 'PBS_SELECT_TEMPLATE', select_stmt)
@@ -191,6 +202,7 @@ def setup_usgs_daily(
     all_obs_dir = pathlib.PosixPath(config['observation_preparation']['all_obs_dir'])
     all_obs_seq = output_dir.glob('obs_seq.*')
     for oo in all_obs_seq:
-        (all_obs_dir / oo.name).symlink_to(oo)
+        if not oo.is_file():
+            (all_obs_dir / oo.name).symlink_to(oo)
 
     return 0
