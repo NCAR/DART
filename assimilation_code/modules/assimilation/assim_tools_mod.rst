@@ -1,3 +1,5 @@
+.. _assim_tools:
+
 MODULE assim_tools_mod
 ======================
 
