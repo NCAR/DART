@@ -50,7 +50,7 @@ def parallel_process_day(arg_dict):
 
     the_cmd = exe_cmd.format(
         **{
-            'cmd': './' + the_converter.name,
+            'cmd': './create_identity_streamflow_obs',
             'nproc': 1
         }
     )

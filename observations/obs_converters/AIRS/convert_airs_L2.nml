@@ -11,6 +11,6 @@
    cross_track_thin   = 0
    along_track_thin   = 0
    use_NCEP_errs      = .false.
-   version            = 6
+   version            = 7
 /
 

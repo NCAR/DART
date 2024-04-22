@@ -26,7 +26,8 @@ use         utilities_mod, only : register_module, error_handler, &
 
 use  netcdf_utilities_mod, only : nc_check, nc_add_global_attribute, &
                                   nc_synchronize_file, nc_end_define_mode, &
-                                  nc_add_global_creation_time, nc_begin_define_mode
+                                  nc_add_global_creation_time, nc_begin_define_mode, &
+                                  nc_get_dimension_size, nc_open_file_readonly
 
 use obs_def_utilities_mod, only : track_status
 
@@ -534,14 +535,19 @@ character(len=STRINGLENGTH), allocatable, dimension(:) :: datestring
 character(len=STRINGLENGTH)                            :: datestring_scalar
 integer :: year, month, day, hour, minute, second
 integer :: DimID, VarID, strlen, ntimes
-logical :: isLsmFile
+logical :: isLsmFile, isClimFile
 integer :: ncid, io
+integer :: c_link
 
 io = nf90_open(filename, NF90_NOWRITE, ncid)
 call nc_check(io,routine,'open',filename)
 
 ! Test if "Time" is a dimension in the file.
 isLsmFile = nf90_inq_dimid(ncid, 'Time', DimID) == NF90_NOERR
+
+! Test if "time" is a dimension 
+! Only read model time from the restart, use a dummy one here!
+isClimFile = nf90_inq_varid(ncid, 'static_time', VarID) == NF90_NOERR
 
 if(isLsmFile) then ! Get the time from the LSM restart file
 
@@ -575,6 +581,28 @@ if(isLsmFile) then ! Get the time from the LSM restart file
 
    io = nf90_get_var(ncid, VarID, datestring)
    call nc_check(io, routine, 'get_var','Times',filename)
+
+elseif (isClimFile) then 
+
+   ! Dummy time for static files
+   ntimes = 1
+   allocate(datestring(ntimes))
+   datestring(1) = '1980-01-01_00:00:00'
+
+   ! Also check if the state in the climatology is consistent 
+   ! with the state in the restarts
+   ncid   = nc_open_file_readonly(filename, routine)
+   c_link = nc_get_dimension_size(ncid, 'links', routine)
+
+   if ( c_link /= n_link ) then
+      write(string1,'(A)')'The size of the state in the climatology files is not consistent with the current domain size.'
+      write(string2, *   )'number of links: ', c_link, &
+                      ' from "'//trim(filename)//'"'
+      write(string3,*)'number of links: ',int(n_link,i8), &
+                      ' from "'//get_hydro_domain_filename()//'"'
+      call error_handler(E_ERR, routine, string1, &
+                 source, revision, revdate, text2=string2, text3=string3)
+   endif
 
 else ! Get the time from the hydro or parameter file
 
@@ -637,7 +665,7 @@ call get_model_variable_indices(index_in, iloc, jloc, kloc, varid, domid, var_ty
 
 location = domain_info(domid)%location(iloc,jloc,kloc)
 
-if (do_output() .and. debug > 99) then
+if (do_output() .and. debug > 1000) then
    call write_location(0,location,charstring=string1)
    write(*,*)'gsmd index,i,j,k = ',index_in, iloc, jloc, kloc, trim(string1)
 endif
@@ -1385,22 +1413,39 @@ integer,          intent(out) :: num_close
 integer,          intent(out) :: close_ind(:)
 real(r8),         intent(out) :: dist(:)
 
-integer :: itask, isuper
+integer, dimension(:), allocatable :: index_map
+integer :: i, idx, il, ir
 
 num_close = 0
 
-do itask = 1,size(my_task_indices)
-   do isuper = 1,num_superset
+! Determine the range of my_task_indices
+il = minval(my_task_indices)
+ir = maxval(my_task_indices)
 
-      ! if stuff on my task ... equals ... global stuff I want ...
-      if ( my_task_indices(itask) == superset_indices(isuper) ) then
-          num_close            = num_close + 1
-          close_ind(num_close) = itask
-          dist(num_close)      = superset_distances(isuper)
-      endif
+! Create a map for quick lookup
+allocate(index_map(il:ir))
+index_map = 0
+do i = 1, num_superset
+  idx = superset_indices(i)
+  if (idx >= il .and. idx <= ir) then
+    index_map(idx) = i
+  end if
+end do
 
-   enddo
-enddo
+! Loop over my_task_indices and find matches using the map
+do i = 1, size(my_task_indices)
+  idx = my_task_indices(i)
+  if (idx >= il .and. idx <= ir) then
+    if (index_map(idx) > 0) then
+      num_close = num_close + 1
+      close_ind(num_close) = i
+      dist(num_close) = superset_distances(index_map(idx))
+    end if
+  end if
+end do
+
+! Deallocate the map
+deallocate(index_map)
 
 end subroutine get_my_close
 
