@@ -11,11 +11,11 @@ of the ensemble are multiplied by this coefficient and then added to the corresp
 
 However, in many cases it is necessary to limit the influence of an observation on a variable; this is known as localization.
 DART provides a way to specify a localization, known as cutoff, based on the horizontal and vertical distance between the observation 
-and the variable.
+and the state variable.
 
 In some situations, you may want additional localization based on the type of observation and the state quanity. 
-``obs_impact_tool`` allows users to create a table that filter reads during runtime to localize the impact of certain types of 
-observations on specific state vector quantities. Users can define sets of observation types and state vector quantities, and 
+``obs_impact_tool`` allows you to create a table that filter reads during runtime to localize the impact of certain types of 
+observations on specific state vector quantities. You can define sets of observation types and state vector quantities, and 
 specify localization for the impact of those observation types on the state vector quantities.
 
 For example, you can create a subset of observations related to tracer concentration for various tracers, and a subset of 
