@@ -7,7 +7,7 @@ on:
 
 jobs:
   # Job 1
-  build-run-lorenz_96:
+  build-run-lorenz_96-mpi:
     # Runner instance OS
     runs-on: ubuntu-latest
     # Deploy container on top of runner instance
@@ -16,26 +16,26 @@ jobs:
       options: "--cap-add=SYS_PTRACE"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
-      - name: Build and run lorenz_96
+      - name: Build and run lorenz_96 with mpi
         uses: ./.github/actions/build_run_model 
         with: 
           model: lorenz_96
           run-program: ./filter
-          use-mpi: true
+          use-mpi: mpi
           mpi-n-tasks: 2
   
   # Job 2
-  build-run-lorenz_63:
+  build-run-lorenz_63-nompi:
     runs-on: ubuntu-latest
     container:
       image: hkershaw/dart-dep:1.0
       options: '--cap-add=SYS_PTRACE'
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
       - name: Build and run lorenz_63 with no mpi
@@ -43,4 +43,23 @@ jobs:
         with:
           model: lorenz_63
           run-program: ./filter
-          use-mpi: false
+          use-mpi: nompi
+
+  # Job 3
+  build-run-lorenz_96-mpif08:
+    runs-on: ubuntu-latest
+    container:
+      image: hkershaw/dart-dep:1.0
+      options: '--cap-add=SYS_PTRACE'
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Build and run lorenz_96 with mpif08
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_96
+          run-program: ./filter
+          use-mpi: mpif08
+          mpi-n-tasks: 2

@@ -1,5 +1,10 @@
 Run all quickbuilds.sh in the DART Repo at once
 
-Run with a fresh checkout of DART
-Edit  mkmf.template.compile_all to match the compiler you want to run with
-Recommend running on Cheyenne with submit_me.sh as run_all_quickbuilds.sh uses a lot of threads 
+Usage: ./submit_jobs.sh
+
+To run on a specific branch in DART:
+
+ ./submit_jobs.sh branch_name
+
+Find failed builds in logfile, e.g.:
+grep -a FAILED build-everything-nvhpc.o2633030

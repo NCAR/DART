@@ -34,7 +34,6 @@ use        types_mod, only : r8, gravity, t_kelvin, ps0, gas_constant, gas_const
 use    utilities_mod, only : error_handler, E_ERR, initialize_utilities, finalize_utilities
 use   random_seq_mod, only : random_gaussian, random_seq_type, init_random_seq
 use    netcdf
-use    f2kcli
 
 implicit none
 

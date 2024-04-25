@@ -41,9 +41,9 @@ else
 endif
 
 # ==============================================================================
-# SourceMods for different versions of CESM are available at
-# http://www.image.ucar.edu/pub/DART/CESM. Download the tar file that matches
-# your CESM version and install the sourcefiles.
+# DART SourceMods for different versions of CESM are available as
+# part of the DART package at ${dartroot}/models/clm/DART_SourceMods/ 
+# where dartroot is the location of your DART installation
 #
 # SourceMods may be handled in one of two ways. If you have your own GIT clone of
 # the repository, you may simply commit your changes to your GIT repo and 
@@ -74,9 +74,10 @@ endif
 #                                    Normally, only 'PARVEGLN' is output.
 #
 # biogeophys/CanopyFluxesMod.F90,PhotosynthesisMod.F90 calculate SIF
-
+#
+setenv dartroot       /glade/work/${USER}/DART
 setenv use_SourceMods TRUE
-setenv SourceModDir   ~/SourceMods_release-cesm2.2.01/SourceMods
+setenv SourceModDir   ${dartroot}/models/clm/DART_SourceMods/cesm2_2_0/SourceMods
 
 # ==============================================================================
 # Directories:
@@ -98,27 +99,25 @@ setenv SourceModDir   ~/SourceMods_release-cesm2.2.01/SourceMods
 #              not be on a scratch partition unless the long-term archiver is 
 #              invoked to move these files to permanent storage.
 
-setenv cesmdata         /glade/p/cesmdata/cseg/inputdata
+setenv cesmdata         /glade/campaign/cesm/cesmdata/cseg/inputdata
 setenv cesmroot         /glade/work/${USER}/CESM/${cesmtag}
 setenv caseroot         /glade/work/${USER}/cases/${cesmtag}/${CASE}
-setenv cime_output_root /glade/scratch/${USER}/${cesmtag}/${CASE}
+setenv cime_output_root /glade/derecho/scratch/${USER}/${cesmtag}/${CASE}
 setenv rundir           ${cime_output_root}/run
 setenv exeroot          ${cime_output_root}/bld
 setenv archdir          ${cime_output_root}/archive
 
 # ==============================================================================
 # Set the variables needed for the DART configuration.
-# dartroot     Location of the root of _your_ DART installation
 # baseobsdir   Part of the directory name containing the observation sequence 
 #              files to be used in the assimilation. The observations are presumed
 #              to be stored in sub-directories with names built from the year and
 #              month. 'baseobsdir' will be inserted into the appropriate scripts.
 # ==============================================================================
 
-setenv dartroot               /glade/work/${USER}/git/DART_public
-setenv baseobsdir             /glade/p/cisl/dares/Observations/land
-setenv pmo_input_baseobsdir   /glade/p/cisl/dares/Observations/land/pmo/input
-setenv pmo_output_baseobsdir  /glade/p/cisl/dares/Observations/land/pmo/output
+setenv baseobsdir             /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land
+setenv pmo_input_baseobsdir   /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/input
+setenv pmo_output_baseobsdir  /glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land/pmo/output
 
 # ==============================================================================
 # configure settings:
@@ -142,7 +141,7 @@ setenv reftod       00000
 setenv refdate      ${refyear}-${refmon}-${refday}
 setenv reftimestamp ${refyear}-${refmon}-${refday}-${reftod}
 
-setenv stagedir /glade/p/cisl/dares/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
+setenv stagedir /glade/campaign/cisl/dares/glade-p-dares-Oct2023/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
 
 # In a hybrid configuration, you can set the startdate to whatever you want.
 # It does not have to match the reference (although changing the month/day seems bad).
@@ -190,18 +189,13 @@ setenv resubmit     0
 
 setenv stream_year_align 2011
 setenv stream_year_first 2011
-setenv stream_year_last  2019
+setenv stream_year_last  2020
 
 # ==============================================================================
 # machine-specific commands:
 
 setenv project      P86850054
-setenv machine      cheyenne
-
-# The CESM compile step takes enough resource that Cheyenne requires a wrapper
-# If your platform does not have this restriction, set BUILD_WRAPPER to '' 
-# setenv BUILD_WRAPPER ''
-setenv BUILD_WRAPPER "qcmd -q share -l select=1 -A $project --"
+setenv machine      derecho
 setenv nodes_per_instance 2
 setenv number_of_threads 1
 

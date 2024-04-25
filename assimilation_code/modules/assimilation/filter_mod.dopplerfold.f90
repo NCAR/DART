@@ -46,11 +46,10 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                  map_pe_to_task, prepare_to_update_copies,  &
-                                  copies_in_window, set_num_extra_copies, get_allow_transpose, &
-                                  all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
-                                  get_single_copy, put_single_copy, deallocate_single_copy,   &
-                                  print_ens_handle
+                                  map_pe_to_task, copies_in_window, set_num_extra_copies,     &
+                                  get_allow_transpose, all_copies_to_all_vars,                &
+                                  allocate_single_copy, allocate_vars, get_single_copy,       &
+                                  put_single_copy, deallocate_single_copy, print_ens_handle
 
 use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -384,7 +383,6 @@ endif
 ! informational message to log
 write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
 call error_handler(E_MSG,'filter_main:', msgstring, source)
-
 
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
@@ -807,7 +805,6 @@ AdvanceTime : do
       call trace_message('Before prior inflation damping and prep')
 
       if (inf_damping(PRIOR_INF) /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
             inf_damping(PRIOR_INF) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
@@ -908,7 +905,6 @@ AdvanceTime : do
       call trace_message('Before posterior inflation damping')
 
       if (inf_damping(POSTERIOR_INF) /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             inf_damping(POSTERIOR_INF) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
@@ -982,6 +978,7 @@ AdvanceTime : do
       call timestamp_message('After  computing posterior observation values')
       call     trace_message('After  computing posterior observation values')
    
+   
       call trace_message('Before posterior obs space diagnostics')
    
       ! Write posterior observation space diagnostics
@@ -995,6 +992,10 @@ AdvanceTime : do
    
       call trace_message('After  posterior obs space diagnostics')
    else
+      ! call this alternate routine to collect any updated QC values that may
+      ! have been set in the assimilation loop and copy them to the outgoing obs seq
+      call obs_space_sync_QCs(obs_fwd_op_ens_handle, seq, keys, num_obs_in_set, &
+                              OBS_GLOBAL_QC_COPY, DART_qc_index)
       call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
    endif
 
@@ -1545,9 +1546,6 @@ integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
 
-! Assumes that the ensemble is copy complete
-call prepare_to_update_copies(ens_handle)
-
 ! Inflate each group separately;  Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
 
@@ -1593,7 +1591,7 @@ subroutine obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size,
    OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
    OBS_ERR_VAR_COPY, DART_qc_index, do_post)
 
-! Do prior observation space diagnostics on the set of obs corresponding to keys
+! Do observation space diagnostics on the set of obs corresponding to keys
 
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle, qc_ens_handle
 integer,                 intent(in)    :: ens_size
@@ -1698,6 +1696,52 @@ endif
 deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
+
+!-------------------------------------------------------------------------
+
+subroutine obs_space_sync_QCs(obs_fwd_op_ens_handle,  &
+   seq, keys, num_obs_in_set, OBS_GLOBAL_QC_COPY, DART_qc_index)
+
+
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
+integer,                 intent(in)    :: num_obs_in_set
+integer,                 intent(in)    :: keys(num_obs_in_set)
+type(obs_sequence_type), intent(inout) :: seq
+integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY
+integer,                 intent(in)    :: DART_qc_index
+
+integer               :: j
+integer               :: io_task, my_task
+real(r8), allocatable :: obs_temp(:)
+real(r8)              :: rvalue(1)
+
+! this is a query routine to return which task has 
+! logical processing element 0 in this ensemble.
+io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
+my_task = my_task_id()
+
+! create temp space for QC values
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else 
+   allocate(obs_temp(1))
+endif
+
+! Optimize: Could we use a gather instead of a transpose and get copy?
+call all_copies_to_all_vars(obs_fwd_op_ens_handle)
+
+! Update the qc global value
+call get_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      rvalue(1) = obs_temp(j)
+      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
+   end do
+endif
+
+deallocate(obs_temp)
+
+end subroutine obs_space_sync_QCs
 
 !-------------------------------------------------------------------------
 
@@ -2776,8 +2820,6 @@ logical             :: verbose
 ! if you want to see the updated values, make this true. 
 ! for quiet execution, set it to false.
 verbose = .true.
-
-call prepare_to_update_copies(obs_ens_handle)
 
 do j = 1, obs_ens_handle%my_num_vars
    ! get the key number associated with each of my subset of obs

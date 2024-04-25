@@ -12,23 +12,19 @@
                              '../../../../observations/forward_operators/obs_def_AIRS_mod.f90'
   /
 
-! version 5 file?:
-!   l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'
-! version 6 file?:
-!   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
-
 &convert_airs_L2_nml
-   l2_files           = ''
-   l2_file_list       = 'l2_files_to_process'
+   l2_files           = 'AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
+   l2_file_list       = ''
    outputfile         = 'obs_seq.test'
    min_MMR_threshold  = 1.0e-30
    top_pressure_level = 0.0001
-   along_track_thin   = 1
-   cross_track_thin   = 1
+   along_track_thin   = 0
+   cross_track_thin   = 0
    lon1               =   0.0
    lon2               = 360.0
-   lat1               = -60.0
-   lat2               =  60.0
+   lat1               = -90.0
+   lat2               =  90.0
+   version            = 7
   /
 
 
@@ -45,7 +41,6 @@
 # All these are identical:
 # channel_list       = 3,15
 # channel_list       = 'A1-1','A1-13'
-# channel_list       = 50.3,89
 
 &convert_amsu_L1_nml
    l1_files           = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.nc',
@@ -61,14 +56,6 @@
    lat1               = -90.0
    lat2               =  90.0
    verbose            = 1
-  /
-
-# The 'L1_AMSUA_to_netcdf.f90' program is not working yet.
-&L1_AMSUA_to_netcdf_nml
-   file_name  = '../data/AIRS.2019.06.22.236.L1B.AMSU_Rad.v5.0.0.0.G19174110442.hdf'
-   outputfile = 'amsua_bt.nc'
-   track      = 23
-   xtrack     = 30
   /
 
 
@@ -127,76 +114,6 @@
 
 &obs_def_rttov_nml
    rttov_sensor_db_file   = '../../../forward_operators/rttov_sensor_db.csv'
-   first_lvl_is_sfc       = .true.
-   mw_clear_sky_only      = .false.
-   interp_mode            = 1
-   do_checkinput          = .true.
-   apply_reg_limits       = .true.
-   verbose                = .true.
-   fix_hgpl               = .false.
-   do_lambertian          = .false.
-   lambertian_fixed_angle = .true.
-   rad_down_lin_tau       = .true.
-   use_q2m                = .true.
-   use_uv10m              = .true.
-   use_wfetch             = .false.
-   use_water_type         = .false.
-   addrefrac              = .false.
-   plane_parallel         = .false.
-   use_salinity           = .false.
-   do_lambertian          = .false.
-   apply_band_correction  = .true.
-   cfrac_data             = .true.
-   clw_data               = .true.
-   rain_data              = .true.
-   ciw_data               = .true.
-   snow_data              = .true.
-   graupel_data           = .true.
-   hail_data              = .false.
-   w_data                 = .true.
-   clw_scheme             = 1
-   clw_cloud_top          = 322.
-   fastem_version         = 6
-   supply_foam_fraction   = .false.
-   use_totalice           = .true.
    use_zeeman             = .false.
-   cc_threshold           = 0.05
-   ozone_data             = .false.
-   co2_data               = .false.
-   n2o_data               = .false.
-   co_data                = .false.
-   ch4_data               = .false.
-   so2_data               = .false.
-   addsolar               = .false.
-   rayleigh_single_scatt  = .true.
-   do_nlte_correction     = .false.
-   solar_sea_brdf_model   = 2
-   ir_sea_emis_model      = 2
-   use_sfc_snow_frac      = .false.
-   add_aerosl             = .false.
-   aerosl_type            = 1
-   add_clouds             = .true.
-   ice_scheme             = 1
-   use_icede              = .false.
-   idg_scheme             = 2
-   user_aer_opt_param     = .false.
-   user_cld_opt_param     = .false.
-   grid_box_avg_cloud     = .true.
-   cldstr_threshold       = -1.0
-   cldstr_simple          = .false.
-   cldstr_low_cloud_top   = 750.0
-   ir_scatt_model         = 2
-   vis_scatt_model        = 1
-   dom_nstreams           = 8
-   dom_accuracy           = 0.0
-   dom_opdep_threshold    = 0.0
-   addpc                  = .false.
-   npcscores              = -1
-   addradrec              = .false.
-   ipcreg                 = 1
-   use_htfrtc             = .false.
-   htfrtc_n_pc            = -1
-   htfrtc_simple_cloud    = .false.
-   htfrtc_overcast        = .false.
   /
 

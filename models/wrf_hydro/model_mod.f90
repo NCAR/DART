@@ -665,7 +665,7 @@ call get_model_variable_indices(index_in, iloc, jloc, kloc, varid, domid, var_ty
 
 location = domain_info(domid)%location(iloc,jloc,kloc)
 
-if (do_output() .and. debug > 99) then
+if (do_output() .and. debug > 1000) then
    call write_location(0,location,charstring=string1)
    write(*,*)'gsmd index,i,j,k = ',index_in, iloc, jloc, kloc, trim(string1)
 endif
@@ -1413,22 +1413,39 @@ integer,          intent(out) :: num_close
 integer,          intent(out) :: close_ind(:)
 real(r8),         intent(out) :: dist(:)
 
-integer :: itask, isuper
+integer, dimension(:), allocatable :: index_map
+integer :: i, idx, il, ir
 
 num_close = 0
 
-do itask = 1,size(my_task_indices)
-   do isuper = 1,num_superset
+! Determine the range of my_task_indices
+il = minval(my_task_indices)
+ir = maxval(my_task_indices)
 
-      ! if stuff on my task ... equals ... global stuff I want ...
-      if ( my_task_indices(itask) == superset_indices(isuper) ) then
-          num_close            = num_close + 1
-          close_ind(num_close) = itask
-          dist(num_close)      = superset_distances(isuper)
-      endif
+! Create a map for quick lookup
+allocate(index_map(il:ir))
+index_map = 0
+do i = 1, num_superset
+  idx = superset_indices(i)
+  if (idx >= il .and. idx <= ir) then
+    index_map(idx) = i
+  end if
+end do
 
-   enddo
-enddo
+! Loop over my_task_indices and find matches using the map
+do i = 1, size(my_task_indices)
+  idx = my_task_indices(i)
+  if (idx >= il .and. idx <= ir) then
+    if (index_map(idx) > 0) then
+      num_close = num_close + 1
+      close_ind(num_close) = i
+      dist(num_close) = superset_distances(index_map(idx))
+    end if
+  end if
+end do
+
+! Deallocate the map
+deallocate(index_map)
 
 end subroutine get_my_close
 

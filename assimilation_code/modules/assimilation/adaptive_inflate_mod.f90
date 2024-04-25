@@ -722,8 +722,6 @@ real(r8),                    intent(in)    :: correl
 logical,                     intent(in)    :: inflate_only
 
 real(r8) :: gamma, ens_var_deflate, r_var, r_mean
-real(r8) :: diff_sd, outlier_ratio
-logical  :: do_adapt_inf_update
 
 if(inflate_mean <= 0.0_r8 .or. inflate_sd <= 0.0_r8) return
 

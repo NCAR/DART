@@ -66,13 +66,12 @@ use          location_mod, only : location_type, get_close_type, get_dist, &
 use    utilities_mod, only : register_module, E_ERR, E_MSG, error_handler, &
                              check_namelist_read, find_namelist_in_file,   &
                              nmlfileunit, do_output, do_nml_file, do_nml_term, &
-                             nc_check, file_exist, is_longitude_between
+                             file_exist, is_longitude_between
 
 use  assim_model_mod, only : interpolate
 
 use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
-
 use typesizes
 use netcdf
 

@@ -34,5 +34,5 @@ If your code changes are available on GitHub, please provide the repository.
 
 ### Build information
 Please describe:  
- 1. The machine you are running on (e.g. windows laptop, NCAR supercomputer Cheyenne).   
+ 1. The machine you are running on (e.g. windows laptop, NSF NCAR supercomputer Derecho).   
  2. The compiler you are using (e.g. gnu, intel).  

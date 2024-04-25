@@ -1,3 +1,5 @@
+.. _assim_tools:
+
 MODULE assim_tools_mod
 ======================
 
@@ -9,25 +11,6 @@ include the standard sequential filter as described in Anderson 2001, 2003 along
 for both mean and spread. In addition, algorithms to do a variety of flavors of filters including the EAKF, ENKF,
 particle filter, and kernel filters are included. The parallel implementation that allows each observation to update all
 state variables that are close to it at the same time is described in Anderson and Collins, 2007.
-
-Filter types
-------------
-
-Available observation space filter types include:
-
--  1 = EAKF (Ensemble Adjustment Kalman Filter, see Anderson 2001)
--  2 = ENKF (Ensemble Kalman Filter)
--  3 = Kernel filter
--  4 = Observation Space Particle filter
--  5 = Random draw from posterior (contact dart@ucar.edu before using)
--  6 = Deterministic draw from posterior with fixed kurtosis (ditto)
--  7 = Boxcar kernel filter
--  8 = Rank Histogram filter (see Anderson 2010)
--  9 = Particle filter (see Poterjoy 2016)
-
-We recommend using type=1, the EAKF. Note that although the algorithm is expressed in a slightly different form, the
-EAKF is identical to the EnSRF (Ensemble Square Root Filter) described by Whitaker and Hamill in 2002. Highly
-non-gaussian distributions may get better results from type=8, Rank Histogram filter.
 
 Localization
 ------------
@@ -169,10 +152,9 @@ namelist.
 ::
 
    &assim_tools_nml
-      filter_kind                       = 1
       cutoff                            = 0.2
       distribute_mean                   = .false.
-      sort_obs_inc                      = .false.
+      sort_obs_inc                      = .true.
       spread_restoration                = .false.
       sampling_error_correction         = .false.
       adaptive_localization_threshold   = -1
@@ -195,36 +177,6 @@ namelist.
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``filter_kind``
-   *type:* integer
-
-   Selects the variant of filter to be used.
-
-   -  1 = EAKF (Ensemble Adjustment Kalman Filter, see Anderson 2001)
-   -  2 = ENKF (Ensemble Kalman Filter)
-   -  3 = Kernel filter
-   -  4 = Observation Space Particle filter
-   -  5 = Random draw from posterior (contact dart@ucar.edu before using)
-   -  6 = Deterministic draw from posterior with fixed kurtosis (ditto)
-   -  7 = Boxcar kernel filter
-   -  8 = Rank Histogram filter (see Anderson 2010)
-   -  9 = Particle filter (see Poterjoy 2016)
-
-   The EAKF is the most commonly used filter. Note that although the algorithm is expressed in a slightly different
-   form, the EAKF is identical to the EnSRF (Ensemble Square Root Filter) described by Whitaker and Hamill in 2002.
-
-   The Rank Histgram filter can be more successful for highly nongaussian distributions.
-
-   Jon Poterjoy's Particle filter is included with this code release. To use, it, overwrite ``assim_tools_mod.f90`` with
-   ``assim_tools_mod.pf.f90`` and rebuild filter.
-
-   ::
-
-
-      $ mv assimilation_code/modules/assimilation/assim_tools_mod.pf.f90 assimilation_code/modules/assimilation/assim_tools_mod.f90
-
-   There are additional namelist items in this version specific to the particle filter. Read the code for more details.
-
 ``cutoff``
    *type:* real(r8)
 
@@ -245,16 +197,22 @@ Description of each namelist entry
    *type:* logical
 
    If true, the final increments from obs_increment are sorted so that the mean increment value is as small as possible.
-   This minimizes regression errors when non-deterministic filters or error correction algorithms are applied. HOWEVER,
-   when using deterministic filters (filter_kind == 1 or 8) with no inflation or a combination of a determinstic filter
+   Applies to ENKF only.
+   ``sort_obs_inc`` minimizes regression errors when non-deterministic filters or error correction algorithms are applied. HOWEVER,
+   when using deterministic filters with no inflation or a combination of a determinstic filter
    and deterministic inflation (filter_nml:inf_deterministic = .TRUE.) sorting the increments is both unnecessary and
-   expensive. A warning is printed to stdout and the log and the sorting is skipped.
+   expensive. 
 
 ``spread_restoration``
    *type:* logical
 
    True turns on algorithm to restore amount of spread that would be expected to be lost if underlying obs/state
    variable correlation were really 0.
+
+.. Warning:: 
+
+    ``spread_restoration`` is not supported in this version, please reach out to the DAReS team dart@ucar.edu
+    if you need to use spread_restoration.
 
 ``sampling_error_correction``
    *type:* logical
@@ -307,12 +265,12 @@ Description of each namelist entry
 ``rectangular_quadrature``
    *type:* logical
 
-   Only relevant for filter type 8 and recommended to leave ``.true.``.
+   Only relevant for filter type UNBOUNDED_RHF and recommended to leave ``.true.``.
 
 ``gaussian_likelihood_tails``
    *type:* logical
 
-   Only relevant for filter type 8 and recommended to leave ``.false.``.
+   Only relevant for filter type UNBOUNDED_RHF and recommended to leave ``.false.``.
 
 ``close_obs_caching``
    *type:* logical
@@ -333,7 +291,7 @@ Description of each namelist entry
    *type:* character(len=256)
 
    If adjust_obs_impact is true, the name of the file with the observation types and quantities and state quantities
-   that should have have an additional factor applied to the correlations during assimilation.
+   that should have an additional factor applied to the correlations during assimilation.
 
 ``allow_any_impact_values``
    *type:* logical

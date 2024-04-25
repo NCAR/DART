@@ -89,7 +89,7 @@ character(len=512) :: string1, string2, string3
 call initialize_utilities('convert_aviso')
 
 ! command line argument
-call getarg(1, input_file)
+call GET_COMMAND_ARGUMENT(1, input_file)
 
 if (input_file == '') then
    write(string1,*)'..  Require a command-line argument specifying the input file.'
