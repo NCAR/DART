@@ -1136,11 +1136,6 @@ net_a = 0.0_r8
 ! Compute prior variance and mean from sample
 prior_mean = sum(ens) / ens_size
 
-if (present(hyb_ens_in) .and. filter_kind > 2) then 
-   ! hybrid is only support for the EnKF and EAKF
-   call error_handler(E_ERR,'filter_assim:', 'Hybrid scheme is only supported for EnKF and EAKF.')
-endif
-
 if (present(hyb_ens_in)) then 
    ens_size2 = size(hyb_ens_in)
    hyb_mean  = sum(hyb_ens_in)/ens_size2
