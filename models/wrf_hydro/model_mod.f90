@@ -615,6 +615,7 @@ else ! Get the time from the hydro or parameter file
    ntimes = 1
    allocate(datestring(ntimes))
    datestring(1) = datestring_scalar
+
 endif
 
 io = nf90_close(ncid)
@@ -628,7 +629,6 @@ if ( do_output() .and. debug > 0 ) write(*,*)'routine: Last time string is '//tr
 if ( do_output() .and. debug > 0 ) call print_date(read_model_time,' valid time is ')
 
 deallocate(datestring)
-
 
 end function read_model_time
 
