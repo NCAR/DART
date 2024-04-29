@@ -19,7 +19,7 @@ either WRF or DART.
   versions 11.4.0 and earlier because those older versions do not account
   for different coordinate systems including the sigma hybrid coordinates as 
   described in `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
-  Furthermore, older versions do not account for the prognosic temperature variable
+  Furthermore, older versions do not account for the prognostic temperature variable
   switch from T to the moist potential temperature (THM) as described in
   `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__.
 
