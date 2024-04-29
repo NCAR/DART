@@ -12,13 +12,30 @@ and only covers the  WRF-specific aspects of coupling with DART.
 It is not wise to try to run WRF-DART if you have no experience with
 either WRF or DART.
 
-This tutorial was designed to be compatible with WRF V3.9.1 and was
-tested with DART V11.0.2. Other releases of WRF may or may not be
-backwards or forwards compatible with this tutorial.
+.. Important ::
+
+  This tutorial was designed to be compatible with WRF Version 4 and was
+  tested with WRFv4.5.2. This tutorial should not be used with DART
+  versions 11.4.0 and earlier because those older versions do not account
+  for different coordinate systems including the sigma hybrid coordinates as 
+  described in `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
+  Furthermore, older versions do not account for the prognosic temperature variable
+  switch from T to the moist potential temperature (THM) as described in
+  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__.
+
+  Earlier version of WRF (v3.9) may run without errors with more recent versions of
+  DART (later than 11.4.0), but the assimilation performance will be deprecated.  
+  If you need to run with earlier versions of WRF, please review the changes required
+  to switch from WRFv4 to WRFv3 as documented within 
+  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__,
+  or contact the DART team.  Earlier WRF versions also require different settings
+  within the WRF ``namelist.input`` file to promote vertical stability for the tutorial 
+  example. These settings are also described in DART Issue #661.
+
 Prior to running this tutorial, we urge the users to familarize themselves with the
 `WRF system <https://www2.mmm.ucar.edu/wrf/users/model_overview.html>`__
-(WRF_ARW, WPS and WRFDA), and to read through the `WRFv3.9  User's Guide
-<https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/user_guide_V3.9/contents.html>`__
+(WRF_ARW, WPS and WRFDA), and to read through the `WRFv4.5  User's Guide
+<https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_v4/contents.html>`__
 and the `WRF model tutorials <https://www2.mmm.ucar.edu/wrf/users/tutorial/tutorial.html>`__
 
 The DART team is not responsible for and does not maintain the WRF code. For WRF related issues check out the
