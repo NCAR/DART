@@ -250,13 +250,16 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
    ::
 
        cd $BASE_DIR
-       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz
-       tar -xzvf wrf_dart_tutorial_23May2018_v3.tar.gz
+       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_29Apr2024.tar.gz
+       tar -xzvf wrf_dart_tutorial_29Apr2024.tar.gz
 
    After untarring the file you should see the following directories:
    *icbc, output, perts,* and *template.* The directory names (case
    sensitive) are important, as the scripts rely on these local paths
-   and file names.
+   and file names. Please note that the perturbation, surface and initial 
+   condition files were derived from an earlier version (pre-4.0) of WRF/WPS/WRFDA
+   but still maintains compatibility with the (post-4.0, post-11.4.0) 
+   WRF-DART versions recommended to run this WRF assimilation example.  
 
 2. You will need template WRF namelists from the
    ``$DART_DIR/models/wrf/tutorial/template`` directory:
