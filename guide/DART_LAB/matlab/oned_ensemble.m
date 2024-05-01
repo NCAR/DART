@@ -50,6 +50,8 @@ handles.ens_size         = 0;
 handles.ens_members      = 0;
 handles.h_obs_plot       = [];
 handles.h_update_ens     = [];
+handles.h_prior_pdf      = [];
+handles.h_post_pdf       = [];
 handles.h_ens_member     = [];
 handles.h_obs_ast        = [];
 handles.h_update_lines   = [];
@@ -491,6 +493,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old update points
         set(handles.h_update_ens,          'Visible', 'Off');
+        set(handles.h_prior_pdf,           'Visible', 'Off');
+        set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
         
@@ -625,6 +629,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old points
         set(handles.h_update_ens,     'Visible', 'Off');
+        set(handles.h_prior_pdf,      'Visible', 'Off');
+        set(handles.h_post_pdf,       'Visible', 'Off');
         set(handles.h_inf_up_ens,     'Visible', 'Off');
         set(handles.h_inf_ens_member, 'Visible', 'Off');
         
@@ -647,12 +653,22 @@ title('oned_ensemble','Interpreter','none')
             case 'EAKF'
                 [obs_increments, ~] = ...
                     obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
+
+                % Plot the continuous prior distribution
+                old_mean = mean(ensemble);
+                old_sd   = std(ensemble);
+                pdf_x = xlower:(xupper - xlower) / 1000: xupper;
+                pdf_y = normpdf(pdf_x, old_mean, old_sd);
+                handles.h_prior_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.green);
             case 'EnKF'
                 [obs_increments, ~] = ...
                     obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
+                % There is no prior distribution to plot for the EnKF, it's not a QCEF
             case 'RHF'
-                [obs_increments, ~] = ...
-                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
+                [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
+                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, xlower, xupper);
+                handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
+                handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
         end
         
         % Add on increments to get new ensemble
@@ -678,6 +694,17 @@ title('oned_ensemble','Interpreter','none')
         
         str1 = sprintf('Posterior SD = %.4f',new_sd);
         set(handles.ui_text_post_sd,   'String', str1, 'Visible', 'on');
+       
+        % Plot the posterior continuous distributions (except for EnKF) 
+        switch filter_type
+            case 'EAKF'
+                % Plot the continuous prior distribution
+                pdf_x = xlower:(xupper - xlower) / 1000: xupper;
+                pdf_y = normpdf(pdf_x, new_mean, new_sd);
+                handles.h_post_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.blue);
+            case 'EnKF'
+            case 'RHF'
+        end
         
         % If the checkbox isn't set, return now
         if(not(get(handles.ui_checkbox_inflation, 'Value')))
@@ -777,6 +804,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old updated points
         set(handles.h_update_ens,          'Visible', 'Off');
+        set(handles.h_prior_pdf,           'Visible', 'Off');
+        set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
         
@@ -858,6 +887,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old updated points
         set(handles.h_update_ens,     'Visible', 'Off');
+        set(handles.h_prior_pdf,      'Visible', 'Off');
+        set(handles.h_post_pdf,       'Visible', 'Off');
         set(handles.h_inf_up_ens,     'Visible', 'Off');
         set(handles.h_inf_ens_member, 'Visible', 'Off');
         
@@ -937,6 +968,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old updated points
         set(handles.h_update_ens,          'Visible', 'Off');
+        set(handles.h_prior_pdf,           'Visible', 'Off');
+        set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
         
