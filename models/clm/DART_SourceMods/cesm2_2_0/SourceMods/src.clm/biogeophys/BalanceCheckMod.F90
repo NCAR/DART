@@ -34,6 +34,7 @@ module BalanceCheckMod
   use landunit_varcon    , only : istdlak, istsoil,istcrop,istwet,istice_mec
   use column_varcon      , only : icol_roof, icol_sunwall, icol_shadewall
   use column_varcon      , only : icol_road_perv, icol_road_imperv
+  use clm_time_manager   , only : is_first_restart_step
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -71,7 +72,7 @@ contains
     !
     ! !USES:
     use spmdMod           , only : masterproc
-    use clm_time_manager  , only : get_step_size_real, is_first_restart_step
+    use clm_time_manager  , only : get_step_size_real
     ! !ARGUMENTS:
     !
     ! !LOCAL VARIABLES:
@@ -431,7 +432,8 @@ contains
        write(iulog,*)'BalanceCheckMod.f90 Values: ' 
        write(iulog,*)'nstep                     = ',nstep
        write(iulog,*)'skip_steps                = ',skip_steps  
-       write(iulog,*)'DAnstep                   = ',DAnstep 
+       write(iulog,*)'DAnstep                   = ',DAnstep
+       write(iulog,*)'is_first_restart_steps    = ',is_first_restart_step() 
        write(iulog,*)'    '
 
        if (errh2o_max_val > h2o_warning_thresh) then
@@ -445,7 +447,7 @@ contains
 
          ! DART SourceMod edits    
          !if ((errh2o_max_val > error_thresh) .and. (DAnstep > skip_steps)) then
-          if ((errh2o_max_val > error_thresh) .and. (.not. is_first_restart_step()) then    
+         if ((errh2o_max_val > error_thresh) .and. (.not. is_first_restart_step()) ) then    
               write(iulog,*)'clm urban model is stopping - error is greater than 1e-5 (mm)'
               write(iulog,*)'nstep                     = ',nstep
               write(iulog,*)'errh2o                    = ',errh2o(indexc)
@@ -555,7 +557,7 @@ contains
                  ' errh2osno= ',errh2osno(indexc)
 
             ! DART SourceMod edits
-             if ((errh2osno_max_val > error_thresh) .and. (.not. is_first_restart_step()) then
+            if ((errh2osno_max_val > error_thresh) .and. (.not. is_first_restart_step()) ) then
             !if ((errh2osno_max_val > error_thresh) .and. (DAnstep > skip_steps) ) then
                  write(iulog,*)'clm model is stopping - error is greater than 1e-5 (mm)'
                  write(iulog,*)'nstep              = ',nstep
