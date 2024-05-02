@@ -1,11 +1,15 @@
 function [xp, yp] = plot_rhf_pdf(x, ens_size, mass, left_mean, left_sd, left_amp, ...
-   right_mean, right_sd, right_amp, xlow, xhigh)
+   right_mean, right_sd, right_amp)
 
 % Creates the x and y point vectors to plot a rhf PDF
 % Bounds of plotting domain are given by xlow and xhigh
 % x is the ensemble values
 % mass is the amount of probability mass in each of the ens_size+1 bins
 % left_mean, left_sd, and left_amp are the left tail PDF, similar for right
+
+% Use the tail distributions to get 5 standard deviations on the plots
+xlow = left_mean - 5.0 * left_sd;
+xhigh = right_mean + 5.0 * right_sd;
 
 % Point spacing
 point_del = (xhigh - xlow) / 1000;

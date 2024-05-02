@@ -654,19 +654,15 @@ title('oned_ensemble','Interpreter','none')
                 [obs_increments, ~] = ...
                     obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
 
-                % Plot the continuous prior distribution
-                old_mean = mean(ensemble);
-                old_sd   = std(ensemble);
-                pdf_x = xlower:(xupper - xlower) / 1000: xupper;
-                pdf_y = normpdf(pdf_x, old_mean, old_sd);
-                handles.h_prior_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.green);
+                handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
+                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green);
             case 'EnKF'
                 [obs_increments, ~] = ...
                     obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
                 % There is no prior distribution to plot for the EnKF, it's not a QCEF
             case 'RHF'
                 [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
-                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, xlower, xupper);
+                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
                 handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
                 handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
         end
@@ -695,15 +691,10 @@ title('oned_ensemble','Interpreter','none')
         str1 = sprintf('Posterior SD = %.4f',new_sd);
         set(handles.ui_text_post_sd,   'String', str1, 'Visible', 'on');
        
-        % Plot the posterior continuous distributions (except for EnKF) 
-        switch filter_type
-            case 'EAKF'
-                % Plot the continuous prior distribution
-                pdf_x = xlower:(xupper - xlower) / 1000: xupper;
-                pdf_y = normpdf(pdf_x, new_mean, new_sd);
-                handles.h_post_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.blue);
-            case 'EnKF'
-            case 'RHF'
+        % Plot the posterior continuous for the EAKF
+        if(strcmp(filter_type, 'EAKF'))
+             handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
+             set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue);
         end
         
         % If the checkbox isn't set, return now

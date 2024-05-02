@@ -1,17 +1,9 @@
 function [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
-    obs_increment_rhf(ensemble, observation, obs_error_var, xlower, xupper) 
+    obs_increment_rhf(ensemble, observation, obs_error_var)
 
 %% obs_increment_rhf Computes increments for a rank histogram filter
 % Need to discuss the available options eventually
 % For now this implements the default options
-
-arguments
-   ensemble (1, :) double
-   observation (1, 1) double
-   obs_error_var (1, 1) double
-   xlower (1, 1) double = 9999
-   xupper (1, 1) double = -9999
-end
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -59,11 +51,10 @@ right_sd   = prior_sd;
 
 % Define the mass in each of the bins, uniform for prior
 mass(1:ens_size + 1) = 1 / (ens_size + 1);
-% Return the points to plot the prior PDF is bounds were passed in
-if(xlower < 9998) 
-   [xp_prior, yp_prior] = plot_rhf_pdf(x, ens_size, mass, left_mean, left_sd, 1.0, ...
-      right_mean, right_sd, 1.0, xlower, xupper);
-end
+
+% Get the points to plot the prior
+[xp_prior, yp_prior] = plot_rhf_pdf(x, ens_size, mass, left_mean, left_sd, 1.0, ...
+      right_mean, right_sd, 1.0);
 
 % Eventually want to support options, for now
 gaussian_likelihood_tails = false;
@@ -177,12 +168,9 @@ for i = 1:ens_size
    obs_increments(e_ind(i)) = new_ens(i) - x(i);
 end
 
-% Plot the posterior PDF
-if(xlower < 9998) 
-   [xp_post, yp_post] = plot_rhf_pdf(x, ens_size, nmass, left_mean, left_sd, left_amp, ...
-      right_mean, right_sd, right_amp, xlower, xupper);
-end
-
+% Get the points to plot the posterior PDF
+[xp_post, yp_post] = plot_rhf_pdf(x, ens_size, nmass, left_mean, left_sd, left_amp, ...
+   right_mean, right_sd, right_amp);
 
 %-----------------------------------------------
 
