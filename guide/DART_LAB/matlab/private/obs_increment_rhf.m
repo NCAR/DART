@@ -1,5 +1,5 @@
 function [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
-    obs_increment_rhf(ensemble, observation, obs_error_var)
+    obs_increment_rhf(ensemble, observation, obs_error_var, bounded_left)
 
 %% obs_increment_rhf Computes increments for a rank histogram filter
 % Need to discuss the available options eventually
@@ -44,17 +44,28 @@ left_mean = x(1) + dist_for_unit_sd * prior_sd;
 left_var  = prior_var;
 left_sd   = prior_sd;
 
+% If the distribution is bounded on the left, the amplitude is greater than one
+if(bounded_left)
+   cdf_at_ens = 1 / (ens_size + 1);
+   cdf_at_bound = normcdf(0, left_mean, left_sd);
+   left_prior_amp = cdf_at_ens / (cdf_at_ens - cdf_at_bound)
+else
+   left_prior_amp = 1;
+end
+
+
 % Same for the right tail
 right_mean = x(ens_size) - dist_for_unit_sd * prior_sd;
 right_var  = prior_var;
 right_sd   = prior_sd;
+right_prior_amp = 1;
 
 % Define the mass in each of the bins, uniform for prior
 mass(1:ens_size + 1) = 1 / (ens_size + 1);
 
 % Get the points to plot the prior
-[xp_prior, yp_prior] = plot_rhf_pdf(x, ens_size, mass, left_mean, left_sd, 1.0, ...
-      right_mean, right_sd, 1.0);
+[xp_prior, yp_prior] = plot_rhf_pdf(x, ens_size, mass, left_mean, left_sd, left_prior_amp, ...
+      right_mean, right_sd, right_prior_amp, bounded_left);
 
 % Eventually want to support options, for now
 gaussian_likelihood_tails = false;
@@ -104,7 +115,7 @@ nmass = mass / mass_sum;
 
 % Get the weight for the final normalized tail gaussians
 % This is the same as left_amp=(ens_size + 1)*nmass(1)
-left_amp = prod_weight_left / mass_sum;
+left_amp = left_prior_amp * prod_weight_left / mass_sum;
 % This is the same as right_amp=(ens_size + 1)*nmass(ens_size+1)
 right_amp = prod_weight_right / mass_sum;
 
@@ -127,9 +138,14 @@ for i = 1:ens_size
    % If it is in the inner or outer range have to use normal
    if(umass < cumul_mass(2))
       % It is in the left tail
-      % Get position of x in weighted gaussian where the cdf has value umass
-      new_ens(i) = weighted_norm_inv(left_amp, new_mean_left, ...
-         new_sd_left, umass);
+      if(bounded_left)
+         % Bounded, how much mass is in the tail normal to the left of the bound
+         lower_mass = left_amp * normcdf(0, new_mean_left, new_sd_left);
+         new_ens(i) = weighted_norm_inv(left_amp, new_mean_left, new_sd_left, umass + lower_mass);
+      else
+         % Get position of x in weighted gaussian where the cdf has value umass
+         new_ens(i) = weighted_norm_inv(left_amp, new_mean_left, new_sd_left, umass);
+      end
    elseif (umass > cumul_mass(ens_size + 1))
       % It's in the right tail
       % Get the position of x in weighted gaussian where the cdf has value umass
@@ -170,7 +186,7 @@ end
 
 % Get the points to plot the posterior PDF
 [xp_post, yp_post] = plot_rhf_pdf(x, ens_size, nmass, left_mean, left_sd, left_amp, ...
-   right_mean, right_sd, right_amp);
+   right_mean, right_sd, right_amp, bounded_left);
 
 %-----------------------------------------------
 

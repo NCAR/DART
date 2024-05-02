@@ -737,8 +737,9 @@ title('bounded_oned_ensemble','Interpreter','none')
                 % Get the posterior ensemble
                 new_ensemble = gaminv(prior_q, agamma_shape, agamma_scale);
             case 'RHF'
+                bounded_left = true;
                 [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
-                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
+                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, bounded_left);
                 handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
                 handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
 
@@ -805,7 +806,7 @@ title('bounded_oned_ensemble','Interpreter','none')
                     obs_increment_enkf(inf_ens, handles.observation, handles.obs_error_sd^2);
             case 'RHF'
                 [obs_increments, ~] = ...
-                    obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2);
+                    obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2, bounded_left);
         end
         
         % Add on increments to get new ensemble
