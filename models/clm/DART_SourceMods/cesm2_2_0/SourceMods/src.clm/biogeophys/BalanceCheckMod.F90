@@ -427,15 +427,6 @@ contains
        
        errh2o_max_val = maxval(abs(errh2o(bounds%begc:bounds%endc)))
 
-       ! BMR diagnostics for water, ice and energy balance checks
-       write(iulog,*)'    '
-       write(iulog,*)'BalanceCheckMod.f90 Values: ' 
-       write(iulog,*)'nstep                     = ',nstep
-       write(iulog,*)'skip_steps                = ',skip_steps  
-       write(iulog,*)'DAnstep                   = ',DAnstep
-       write(iulog,*)'is_first_restart_steps    = ',is_first_restart_step() 
-       write(iulog,*)'    '
-
        if (errh2o_max_val > h2o_warning_thresh) then
 
            indexc = maxloc( abs(errh2o(bounds%begc:bounds%endc)), 1 ) + bounds%begc -1
@@ -446,7 +437,6 @@ contains
              ' errh2o= ',errh2o(indexc)
 
          ! DART SourceMod edits    
-         !if ((errh2o_max_val > error_thresh) .and. (DAnstep > skip_steps)) then
          if ((errh2o_max_val > error_thresh) .and. (.not. is_first_restart_step()) ) then    
               write(iulog,*)'clm urban model is stopping - error is greater than 1e-5 (mm)'
               write(iulog,*)'nstep                     = ',nstep
@@ -558,7 +548,6 @@ contains
 
             ! DART SourceMod edits
             if ((errh2osno_max_val > error_thresh) .and. (.not. is_first_restart_step()) ) then
-            !if ((errh2osno_max_val > error_thresh) .and. (DAnstep > skip_steps) ) then
                  write(iulog,*)'clm model is stopping - error is greater than 1e-5 (mm)'
                  write(iulog,*)'nstep              = ',nstep
                  write(iulog,*)'errh2osno          = ',errh2osno(indexc)
@@ -647,7 +636,6 @@ contains
 
        ! DART SourceMods
 
-       !if  ((errsol_max_val > energy_warning_thresh) .and. (DAnstep > skip_steps)) then
        if  ((errsol_max_val > energy_warning_thresh) .and. (.not. is_first_restart_step()) ) then
 
            indexp = maxloc( abs(errsol(bounds%begp:bounds%endp)), 1 , mask = (errsol(bounds%begp:bounds%endp) /= spval) ) + bounds%begp -1
@@ -656,7 +644,6 @@ contains
            write(iulog,*)'nstep         = ',nstep
            write(iulog,*)'errsol        = ',errsol(indexp)
           
-           ! DART SourceMods  
 
            if (errsol_max_val > error_thresh) then
                write(iulog,*)'clm model is stopping - error is greater than 1e-5 (W/m2)'
@@ -680,7 +667,6 @@ contains
 
        ! DART SourceMods
 
-       !if ((errlon_max_val > energy_warning_thresh) .and. (DAnstep > skip_steps)) then
        if ((errlon_max_val > energy_warning_thresh) .and. (.not. is_first_restart_step()) ) then        
             indexp = maxloc( abs(errlon(bounds%begp:bounds%endp)), 1 , mask = (errlon(bounds%begp:bounds%endp) /= spval) ) + bounds%begp -1
             write(iulog,*)'indexp         = ',indexp
@@ -699,7 +685,6 @@ contains
  
        ! DART SourceMods
 
-       !if ((errseb_max_val > energy_warning_thresh) .and. (DAnstep > skip_steps)) then
        if ((errseb_max_val > energy_warning_thresh) .and. (.not. is_first_restart_step()) ) then
 
            indexp = maxloc( abs(errseb(bounds%begp:bounds%endp)), 1 ) + bounds%begp -1
@@ -745,7 +730,6 @@ contains
 
        ! DART SourceMods
 
-           !if ((errsoi_col_max_val > 1.e-4_r8) .and. (DAnstep > skip_steps)) then
            if ((errsoi_col_max_val > 1.e-4_r8) .and.  (.not. is_first_restart_step()) ) then
               write(iulog,*)'clm model is stopping'
               call endrun(decomp_index=indexc, clmlevel=namec, msg=errmsg(sourcefile, __LINE__))

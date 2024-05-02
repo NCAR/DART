@@ -1108,14 +1108,6 @@ contains
 
     DA_nstep = get_nstep_since_startup_or_lastDA_restart_or_pause()
 
-       ! BMR edits
-
-       write(iulog,*)'    '
-       write(iulog,*)'CNVegetationFacade Values '
-       write(iulog,*)'DA_nstep           = ',DA_nstep
-       write(iulog,*)'skip_steps         = ',skip_steps
-       write(iulog,*)'    '
-
     ! DART SourceMod edit
     ! Always call C and N balances, allow CNBalanceCheckMod subroutines to skip/perform balance checks
 
