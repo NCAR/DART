@@ -695,11 +695,8 @@ title('bounded_oned_ensemble','Interpreter','none')
             
             case 'EAKF'
                 % Plot the continuous prior distribution
-                old_mean = mean(ensemble);
-                old_sd   = std(ensemble);
-                pdf_x = xlower:(xupper - xlower) / 1000: xupper;
-                pdf_y = normpdf(pdf_x, old_mean, old_sd);
-                handles.h_prior_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.green);
+                handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
+                set(handles.h_prior_pdf, 'Color', atts.green, 'Linewidth', 2.0);
 
                 [obs_increments, ~] = ...
                     obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
@@ -707,11 +704,9 @@ title('bounded_oned_ensemble','Interpreter','none')
                 % Add on increments to get new ensemble
                 new_ensemble = ensemble + obs_increments;
 
-                % Plot the continuous posterio distribution
-                new_mean = mean(new_ensemble);
-                new_sd   = std(new_ensemble);
-                pdf_y = normpdf(pdf_x, new_mean, new_sd);
-                handles.h_post_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.blue);
+                % Plot the continuous posterior distribution
+                handles.h_post_pdf = plot_gaussian(mean(new_ensemble), std(new_ensemble), 1);
+                set(handles.h_post_pdf, 'Color', atts.blue, 'Linewidth', 2.0);
 
             case 'Gamma'
                 % Get the shape and scale of the likelihood
@@ -721,13 +716,12 @@ title('bounded_oned_ensemble','Interpreter','none')
                 lgamma_shape = lgamma_mean.^2 / lgamma_var;
                 lgamma_scale = lgamma_var / lgamma_mean; 
 
+                % Get the shape and scale of the prior
                 pgamma_params = gamfit(ensemble);
                 pgamma_shape = pgamma_params(1); pgamma_scale = pgamma_params(2);
-
                 % Plot the prior
-                xgamma = 0:xupper/1000:xupper;
-                ygamma = gampdf(xgamma, pgamma_shape, pgamma_scale);
-                handles.h_prior_pdf = plot(xgamma, ygamma, 'linewidth', 2, 'color', atts.green);
+                handles.h_prior_pdf = plot_gamma(pgamma_shape, pgamma_scale);
+                set(handles.h_prior_pdf, 'Color', atts.green, 'Linewidth', 2.0);
 
                 % Compute the quantiles of the prior ensemble members
                 prior_q = gamcdf(ensemble, pgamma_shape, pgamma_scale);
@@ -737,15 +731,14 @@ title('bounded_oned_ensemble','Interpreter','none')
                 agamma_scale = pgamma_scale * lgamma_scale / (pgamma_scale + lgamma_scale);          
 
                 % Plot the posterior (analysis)
-                xgamma = 0:xupper/1000:xupper;
-                ygamma = gampdf(xgamma, agamma_shape, agamma_scale);
-                handles.h_post_pdf = plot(xgamma, ygamma, 'linewidth', 2, 'color', atts.blue);
+                handles.h_post_pdf = plot_gamma(agamma_shape, agamma_scale);
+                set(handles.h_post_pdf, 'Color', atts.blue, 'Linewidth', 2.0);
 
                 % Get the posterior ensemble
                 new_ensemble = gaminv(prior_q, agamma_shape, agamma_scale);
             case 'RHF'
                 [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
-                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, xlower, xupper);
+                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
                 handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
                 handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
 
@@ -1111,23 +1104,20 @@ title('bounded_oned_ensemble','Interpreter','none')
        % Figure out which filter option is currently selected
        val = get(handles.ui_radio_button_group,'SelectedObject');
        filter_type = get(val,'String');
-          set(handles.h_obs_plot, 'Visible', 'Off');
+
+       % Turn the old obsevation likelihood plot off
+       set(handles.h_obs_plot, 'Visible', 'Off');
 
        % Gamma prior and likelihood       
        if(strcmp(filter_type, 'Gamma'))
-          set(handles.h_obs_plot, 'Visible', 'Off');
           gmean = handles.observation;
           gsd = handles.obs_error_sd;
           gvar = gsd .^ 2;
           gamma_shape = gmean.^2 / gvar;
           gamma_scale = gvar / gmean; 
-          xupper = handles.observation + 3*handles.obs_error_sd;
-          xgamma = 0:xupper/1000:xupper;
-          ygamma = gampdf(xgamma, gamma_shape, gamma_scale);
-          
-          handles.h_obs_plot = plot(xgamma, ygamma);
+
+          handles.h_obs_plot = plot_gamma(gamma_shape, gamma_scale);
        else
-          set(handles.h_obs_plot, 'Visible', 'Off');
           handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
        end
        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
