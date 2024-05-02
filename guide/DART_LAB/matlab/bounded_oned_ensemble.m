@@ -1,5 +1,6 @@
-function oned_ensemble
-%% ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
+function bounded_oned_ensemble
+
+%% BOUNDED_ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
 %
 %      Push on the 'Create New Ensemble' button to activate the interactive
 %      observation generation mechanism and lay down a set of 'observations'
@@ -38,7 +39,7 @@ function oned_ensemble
 %
 % DART $Id$
 
-help oned_ensemble
+help bounded_oned_ensemble
 
 atts = stylesheet; % get the default fonts and colors
 
@@ -73,7 +74,7 @@ figHeight = 500; % The height of the entire figure, in pixels
 
 handles.figure1 = figure('Position', [figXmin figYmin figWidth figHeight], ...
     'Units', 'Pixels', ...
-    'Name', 'oned_ensemble', ...
+    'Name', 'bounded_oned_ensemble', ...
     'Color', atts.background);
 
 %% -----------------------------------------------------------------------------
@@ -97,7 +98,7 @@ handles.ui_text_observation = uicontrol(handles.observation_panel, ...
     'Style', 'text', ...
     'Units', 'Normalized', ...
     'Position', [0.035 0.600 0.600 0.275], ...
-    'String', 'Observation' , ...
+    'String', 'Likelihood mean' , ...
     'BackgroundColor', atts.red, ...
     'ForegroundColor', 'White', ...
     'FontName', atts.fontname, ...
@@ -122,7 +123,7 @@ handles.ui_text_obs_error_sd = uicontrol(handles.observation_panel, ...
     'Style', 'text', ...
     'Units', 'Normalized', ...
     'Position', [0.035 0.100 0.600 0.275], ...
-    'String', 'Obs. Error SD', ...
+    'String', 'Likelihood SD', ...
     'BackgroundColor', atts.red,...
     'ForegroundColor', 'White', ...
     'FontName', atts.fontname, ...
@@ -260,20 +261,22 @@ handles.ui_radio_button_eakf = uicontrol(handles.ui_radio_button_group, ...
     'FontName', atts.fontname, ...
     'FontWeight','Bold', ...
     'FontSize', 0.5, ...
-    'HandleVisibility', 'On');
+    'HandleVisibility', 'On', ...
+    'Callback', @all_buttons_Callback);
 
-handles.ui_radio_button_enkf = uicontrol(handles.ui_radio_button_group, ...
+handles.ui_radio_button_gamma = uicontrol(handles.ui_radio_button_group, ...
     'Style', 'radio button', ...
     'Units', 'Normalized', ...
     'Position', [0.007 0.347 670 0.253], ...
-    'String', 'EnKF', ...
+    'String', 'Gamma', ...
     'BackgroundColor', atts.background, ...
     'Foreground', 'Black', ...
     'FontUnits', 'normalized', ...
     'FontName', atts.fontname, ...
     'FontWeight','Bold', ...
     'FontSize', 0.5, ...
-    'HandleVisibility', 'Off');
+    'HandleVisibility', 'Off', ...
+    'Callback', @all_buttons_Callback);
 
 handles.ui_radio_button_rhf = uicontrol(handles.ui_radio_button_group, ...
     'Style', 'radio button', ...
@@ -286,7 +289,8 @@ handles.ui_radio_button_rhf = uicontrol(handles.ui_radio_button_group, ...
     'FontName', atts.fontname, ...
     'FontWeight','Bold', ...
     'FontSize', 0.5, ...
-    'HandleVisibility', 'Off');
+    'HandleVisibility', 'Off', ...
+    'Callback', @all_buttons_Callback);
 
 %% -----------------------------------------------------------------------------
 
@@ -470,8 +474,11 @@ set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'FontSize', atts.fontsize)
 set(gca, 'XGrid', 'on')
 
+% Plot an axis line
 plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
-title('oned_ensemble','Interpreter','none')
+% Plot a vertical boundary at 0 since this is bounded
+plot([0 0], [0 0.7], 'k--', 'Linewidth', 3.0)
+title('bounded_oned_ensemble','Interpreter','none')
 
 %% -----------------------------------------------------------------------------
 
@@ -510,7 +517,10 @@ title('oned_ensemble','Interpreter','none')
         axis([xlower xupper ylower yupper]);
         
         set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
-        
+       
+        % Plot the observation distribution
+        update_obs_dist_plot();
+ 
         % Messages are centered in the middle.
         xmid = (xupper + xlower) / 2.0;
         h_click    = text(xmid,  0.6, {'Click inside graphics box to create member', ...
@@ -519,6 +529,9 @@ title('oned_ensemble','Interpreter','none')
         h_err_text = text(xmid, -0.15, 'An ensemble has to have at least 2 members.', ...
             'FontSize', atts.fontsize, 'Visible', 'on', 'HorizontalAlignment', 'center','Color', atts.red);
         
+        h_negative_text = text(xmid, -0.25, 'Ensemble members must be nonnegative.', ...
+            'FontSize', atts.fontsize, 'Visible', 'off', 'HorizontalAlignment', 'center','Color', atts.red);
+        
         h_finish   = text(xmid, -0.15, 'Click outside of plot to finish', ...
             'Fontsize', atts.fontsize, 'Visible', 'Off', 'HorizontalAlignment', 'center');
         
@@ -526,8 +539,9 @@ title('oned_ensemble','Interpreter','none')
         
         while ens_size < 100
             [xt, yt] = ginput(1);
-            
-            if(xt >= xlower && xt <= xupper && yt >= ylower && yt <= yupper)
+           
+            % Bounded below at 0, ensemble members must be nonnegative 
+            if(xt >= 0.0 && xt <= xupper && yt >= ylower && yt <= yupper)
                 ens_size = ens_size + 1;
                 x(ens_size) = xt; %#ok<AGROW>
                 y(ens_size) = 0; %#ok<AGROW>
@@ -541,11 +555,19 @@ title('oned_ensemble','Interpreter','none')
                 set(handles.ui_text_prior_mean, 'String', str1);
                 str1 = sprintf('Prior SD = %.4f', prior_sd);
                 set(handles.ui_text_prior_sd,   'String', str1);
+                % Turn off the warning about no negative members
+                set(h_negative_text, 'Visible', 'Off');
+
+            elseif(xt >= xlower && xt < 0.0 && yt >= ylower && yt <= yupper)
+              % This is a negative x value so not allowed
+              set(h_negative_text, 'Visible', 'On');
                 
             elseif (ens_size < 2)
                 set(h_err_text,'FontWeight','bold')
                 
             else
+                % This is the case to exit with 2 or more members; turn off the bounded message
+                set(h_negative_text, 'Visible', 'Off');
                 break;
                 
             end
@@ -600,7 +622,21 @@ title('oned_ensemble','Interpreter','none')
             set(handles.ui_text_inflated_prior_sd,   'Visible', 'Off');
             set(handles.ui_text_inflated_post_sd,    'Visible', 'Off');
         end
+
+
+        % Plot the updated distribution
+        update_obs_dist_plot();
+
     end
+
+%% -----------------------------------------------------------------------------
+
+   function all_buttons_Callback(~, ~)
+   
+        % Plot the updated distribution
+        update_obs_dist_plot();
+        
+   end
 
 %% -----------------------------------------------------------------------------
 
@@ -620,6 +656,10 @@ title('oned_ensemble','Interpreter','none')
         set(handles.ui_edit_obs_error_sd,     'Enable', 'On')
         set(handles.ui_button_create_new_ens, 'Enable', 'On')
         set(handles.ui_button_update_ens,     'Enable', 'On')
+
+
+        % Plot the updated distribution
+        update_obs_dist_plot();
         
     end
 
@@ -644,35 +684,75 @@ title('oned_ensemble','Interpreter','none')
         
         ensemble = handles.ens_members;
         
+        % Plot the updated distribution
+        update_obs_dist_plot();
+
         % Figure out which filter option is currently selected
         val = get(handles.ui_radio_button_group,'SelectedObject');
         filter_type = get(val,'String');
-        
+ 
         switch filter_type
             
             case 'EAKF'
-                [obs_increments, ~] = ...
-                    obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
-
                 % Plot the continuous prior distribution
                 old_mean = mean(ensemble);
                 old_sd   = std(ensemble);
                 pdf_x = xlower:(xupper - xlower) / 1000: xupper;
                 pdf_y = normpdf(pdf_x, old_mean, old_sd);
                 handles.h_prior_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.green);
-            case 'EnKF'
+
                 [obs_increments, ~] = ...
-                    obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
-                % There is no prior distribution to plot for the EnKF, it's not a QCEF
+                    obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
+
+                % Add on increments to get new ensemble
+                new_ensemble = ensemble + obs_increments;
+
+                % Plot the continuous posterio distribution
+                new_mean = mean(new_ensemble);
+                new_sd   = std(new_ensemble);
+                pdf_y = normpdf(pdf_x, new_mean, new_sd);
+                handles.h_post_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.blue);
+
+            case 'Gamma'
+                % Get the shape and scale of the likelihood
+                lgamma_mean = handles.observation;
+                lgamma_sd = handles.obs_error_sd;
+                lgamma_var = lgamma_sd .^ 2;
+                lgamma_shape = lgamma_mean.^2 / lgamma_var;
+                lgamma_scale = lgamma_var / lgamma_mean; 
+
+                pgamma_params = gamfit(ensemble);
+                pgamma_shape = pgamma_params(1); pgamma_scale = pgamma_params(2);
+
+                % Plot the prior
+                xgamma = 0:xupper/1000:xupper;
+                ygamma = gampdf(xgamma, pgamma_shape, pgamma_scale);
+                handles.h_prior_pdf = plot(xgamma, ygamma, 'linewidth', 2, 'color', atts.green);
+
+                % Compute the quantiles of the prior ensemble members
+                prior_q = gamcdf(ensemble, pgamma_shape, pgamma_scale);
+                
+                % Compute the posterior
+                agamma_shape = pgamma_shape + lgamma_shape - 1;
+                agamma_scale = pgamma_scale * lgamma_scale / (pgamma_scale + lgamma_scale);          
+
+                % Plot the posterior (analysis)
+                xgamma = 0:xupper/1000:xupper;
+                ygamma = gampdf(xgamma, agamma_shape, agamma_scale);
+                handles.h_post_pdf = plot(xgamma, ygamma, 'linewidth', 2, 'color', atts.blue);
+
+                % Get the posterior ensemble
+                new_ensemble = gaminv(prior_q, agamma_shape, agamma_scale);
             case 'RHF'
                 [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
                     obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, xlower, xupper);
                 handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
                 handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
+
+                % Add on increments to get new ensemble
+                new_ensemble = ensemble + obs_increments;
         end
         
-        % Add on increments to get new ensemble
-        new_ensemble = ensemble + obs_increments;
         
         y(1:size(ensemble)) = -0.1;
         handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
@@ -695,17 +775,6 @@ title('oned_ensemble','Interpreter','none')
         str1 = sprintf('Posterior SD = %.4f',new_sd);
         set(handles.ui_text_post_sd,   'String', str1, 'Visible', 'on');
        
-        % Plot the posterior continuous distributions (except for EnKF) 
-        switch filter_type
-            case 'EAKF'
-                % Plot the continuous prior distribution
-                pdf_x = xlower:(xupper - xlower) / 1000: xupper;
-                pdf_y = normpdf(pdf_x, new_mean, new_sd);
-                handles.h_post_pdf = plot(pdf_x, pdf_y, 'linewidth', 2, 'color', atts.blue);
-            case 'EnKF'
-            case 'RHF'
-        end
-        
         % If the checkbox isn't set, return now
         if(not(get(handles.ui_checkbox_inflation, 'Value')))
             return
@@ -738,7 +807,7 @@ title('oned_ensemble','Interpreter','none')
             case 'EAKF'
                 [obs_increments, ~] = ...
                     obs_increment_eakf(inf_ens, handles.observation, handles.obs_error_sd^2);
-            case 'EnKF'
+            case 'Gamma'
                 [obs_increments, ~] = ...
                     obs_increment_enkf(inf_ens, handles.observation, handles.obs_error_sd^2);
             case 'RHF'
@@ -860,9 +929,7 @@ title('oned_ensemble','Interpreter','none')
         
         
         % Plot the updated distribution
-        set(handles.h_obs_plot, 'Visible', 'Off');
-        handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+        update_obs_dist_plot()
         
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
@@ -870,8 +937,6 @@ title('oned_ensemble','Interpreter','none')
         ylower = -0.4;
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
-        
-        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
         
         set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
         
@@ -940,9 +1005,7 @@ title('oned_ensemble','Interpreter','none')
         set(handles.ui_text_obs_err_print,'Visible','Off')
         
         % Plot the updated distribution
-        set(handles.h_obs_plot, 'Visible', 'Off');
-        handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+        update_obs_dist_plot();
         
         % Move the observation asterisk
         set(handles.h_obs_ast, 'Visible', 'Off');
@@ -1022,11 +1085,8 @@ title('oned_ensemble','Interpreter','none')
         set(handles.ui_edit_obs_error_sd, 'BackgroundColor', 'White',  'FontWeight', 'Normal');
         set(handles.ui_text_obs_sd_err_print,'Visible','Off')
         
-        
         % Plot the updated distribution
-        set(handles.h_obs_plot, 'Visible', 'Off');
-        handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+        update_obs_dist_plot();
         
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
@@ -1035,14 +1095,43 @@ title('oned_ensemble','Interpreter','none')
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
         
-        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
-        
         set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
         
         hold on
         
         plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
         
+    end
+
+%% -----------------------------------------------------------------------------
+
+    function update_obs_dist_plot
+
+       % Plot the observation distribution
+       % Figure out which filter option is currently selected
+       val = get(handles.ui_radio_button_group,'SelectedObject');
+       filter_type = get(val,'String');
+          set(handles.h_obs_plot, 'Visible', 'Off');
+
+       % Gamma prior and likelihood       
+       if(strcmp(filter_type, 'Gamma'))
+          set(handles.h_obs_plot, 'Visible', 'Off');
+          gmean = handles.observation;
+          gsd = handles.obs_error_sd;
+          gvar = gsd .^ 2;
+          gamma_shape = gmean.^2 / gvar;
+          gamma_scale = gvar / gmean; 
+          xupper = handles.observation + 3*handles.obs_error_sd;
+          xgamma = 0:xupper/1000:xupper;
+          ygamma = gampdf(xgamma, gamma_shape, gamma_scale);
+          
+          handles.h_obs_plot = plot(xgamma, ygamma);
+       else
+          set(handles.h_obs_plot, 'Visible', 'Off');
+          handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
+       end
+       set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+
     end
 
 %% -----------------------------------------------------------------------------
