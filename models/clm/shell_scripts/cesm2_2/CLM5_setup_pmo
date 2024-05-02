@@ -528,7 +528,7 @@ if ( ${use_SourceMods} == TRUE ) then
    endif
 endif
 
-${BUILD_WRAPPER} ./case.build || exit 7
+./case.build || exit 7
 
 # ==============================================================================
 # What to do next
