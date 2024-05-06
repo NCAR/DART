@@ -717,9 +717,10 @@ title('oned_ensemble','Interpreter','none')
         end
         
         % Update mean and sd of old posterior
+        handles.inf_prior_mean = mean(inf_ens(1:handles.ens_size));
         handles.inf_prior_sd = std(inf_ens(1:handles.ens_size));
         
-        str1 = sprintf('Inflated = %.4f',handles.prior_mean);
+        str1 = sprintf('Inflated = %.4f',handles.inf_prior_mean);
         set(handles.ui_text_inflated_prior_mean,'String',str1,'Visible','on');
         str1 = sprintf('Inflated = %.4f',handles.inf_prior_sd);
         set(handles.ui_text_inflated_prior_sd,  'String',str1,'Visible','on');

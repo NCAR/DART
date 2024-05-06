@@ -773,24 +773,37 @@ title('bounded_oned_ensemble','Interpreter','none')
         if(not(get(handles.ui_checkbox_inflation, 'Value')))
             return
         end
-        
-        % Plot the inflated prior ensemble
-        y = -0.2;
-        handles.prior_mean = mean(handles.ens_members(1:handles.ens_size));
-        
+       
+        % Inflate the prior ensemble 
         inf_ens = zeros(1,handles.ens_size);
-        
-        for i = 1: handles.ens_size
-            inf_ens(i) = (handles.ens_members(i) - handles.prior_mean) * sqrt(handles.inflation) + ...
-                handles.prior_mean;
-            handles.h_inf_ens_member(i) = plot(inf_ens(i), y, '*', 'MarkerSize', 16, 'Color', atts.green,'LineWidth',2.0);
+        handles.prior_mean = mean(handles.ens_members(1:handles.ens_size));
+        switch filter_type
             
+           case 'EAKF'
+              for i = 1: handles.ens_size
+                  inf_ens(i) = (handles.ens_members(i) - handles.prior_mean) ...
+                     * sqrt(handles.inflation) + handles.prior_mean;
+              end
+      
+           case 'Gamma'
+              inf_ens = inflate_gamma(handles.ens_members, handles.ens_size, handles.inflation);
+
+           case 'RHF'
+              inf_ens(1:handles.ens_size) = handles.ens_members(1:handles.ens_size);
+
+        end
+
+        % Plot the inflated ensemble members
+        y = -0.2;
+        for i = 1:handles.ens_size
+            handles.h_inf_ens_member(i) = plot(inf_ens(i), y, '*', 'MarkerSize', 16, 'Color', atts.green,'LineWidth',2.0);
         end
         
         % Update mean and sd of old posterior
+        handles.inf_prior_mean = mean(inf_ens(1:handles.ens_size));
         handles.inf_prior_sd = std(inf_ens(1:handles.ens_size));
         
-        str1 = sprintf('Inflated = %.4f',handles.prior_mean);
+        str1 = sprintf('Inflated = %.4f',handles.inf_prior_mean);
         set(handles.ui_text_inflated_prior_mean,'String',str1,'Visible','on');
         str1 = sprintf('Inflated = %.4f',handles.inf_prior_sd);
         set(handles.ui_text_inflated_prior_sd,  'String',str1,'Visible','on');
