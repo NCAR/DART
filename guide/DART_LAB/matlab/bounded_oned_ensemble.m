@@ -801,16 +801,30 @@ title('bounded_oned_ensemble','Interpreter','none')
             case 'EAKF'
                 [obs_increments, ~] = ...
                     obs_increment_eakf(inf_ens, handles.observation, handles.obs_error_sd^2);
+                % Add on increments to get new ensemble
+                new_ensemble = inf_ens + obs_increments;
+
             case 'Gamma'
-                [obs_increments, ~] = ...
-                    obs_increment_enkf(inf_ens, handles.observation, handles.obs_error_sd^2);
+                % Get the shape and scale of the inflated prior
+                pgamma_params = gamfit(inf_ens);
+                pgamma_shape = pgamma_params(1); pgamma_scale = pgamma_params(2);
+
+                % Compute the quantiles of the prior ensemble members
+                prior_q = gamcdf(inf_ens, pgamma_shape, pgamma_scale);
+                
+                % Compute the posterior: Likelihood is still the same
+                agamma_shape = pgamma_shape + lgamma_shape - 1;
+                agamma_scale = pgamma_scale * lgamma_scale / (pgamma_scale + lgamma_scale);          
+
+                % Get the posterior ensemble
+                new_ensemble = gaminv(prior_q, agamma_shape, agamma_scale);
+
             case 'RHF'
                 [obs_increments, ~] = ...
                     obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2, bounded_left);
+                % Add on increments to get new ensemble
+                new_ensemble = inf_ens + obs_increments;
         end
-        
-        % Add on increments to get new ensemble
-        new_ensemble = inf_ens + obs_increments;
         
         y(1:size(ensemble)) = -0.3;
         handles.h_inf_up_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
