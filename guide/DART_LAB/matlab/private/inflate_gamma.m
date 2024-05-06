@@ -7,7 +7,7 @@ function [inf_ens] = inflate_gamma(ens, ens_size, var_inf)
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
-
+ens
 % The sd inflation
 inf = sqrt(var_inf);
 

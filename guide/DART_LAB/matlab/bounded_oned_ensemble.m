@@ -789,8 +789,8 @@ title('bounded_oned_ensemble','Interpreter','none')
               inf_ens = inflate_gamma(handles.ens_members, handles.ens_size, handles.inflation);
 
            case 'RHF'
-              inf_ens(1:handles.ens_size) = handles.ens_members(1:handles.ens_size);
-
+              inf_ens = inflate_bnrh(handles.ens_members, handles.ens_size, handles.inflation, ...
+                 true, false, 0, -99);
         end
 
         % Plot the inflated ensemble members
