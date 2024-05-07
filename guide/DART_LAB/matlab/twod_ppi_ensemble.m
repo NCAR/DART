@@ -213,14 +213,14 @@ handles.ui_edit_obs_error_sd = uicontrol(handles.ObservationPanel, ...
 % observation error sd
 handles.ui_text_error = uicontrol('Style', 'text', ...
     'Units', 'Normalized', ...
-    'Position', [0.220 0.550 0.20 0.20] , ...
+    'Position', [gpx(0.275), gpy(0.4), gpx(0.35), gpy(0.15)], ...
     'String', 'Error' , ...
     'BackgroundColor', 'white', ...
     'ForegroundColor', atts.red, ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
     'FontWeight', 'Bold', ...
-    'FontSize', 0.2, ...
+    'FontSize', 0.15, ...
     'Visible', 'Off');
 
 %Set up all the handles variables and create the graphs
@@ -242,10 +242,16 @@ plotposition = [ gpx(0.20) gpy(0.35) gpx(0.07), gpy(0.35) ; ...
 
 %% Create the axis for the unobserved marginal graphic
 
+% Set parameters for the initial x and y value ranges
+handles.xmin = -10;
+handles.xmax = 10;
+handles.ymin = -2;
+handles.ymax = 10;
+
 handles.h_unobMarginal = axes('Position', plotposition(1,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
-axis([0 1 -1 10]);
+axis([0 1 handles.ymin handles.ymax]);
 ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize);
 hold on
 
@@ -254,7 +260,8 @@ hold on
 handles.h_joint = axes('Position', plotposition(2,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
-axis([-10 10 -1 10]);
+
+axis([handles.xmin, handles.xmax, handles.ymin, handles.ymax]);
 grid on
 hold on
 title('Joint Distribution');
@@ -283,7 +290,7 @@ handles.h_correl = text(5, 9, ' ', 'Color', atts.green, 'FontWeight', 'Bold', ..
 handles.h_ppi_joint = axes('Position', plotposition(4,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
-axis([-10 10 -1 10]);
+axis([-3 3 -3 3]);
 grid on
 hold on
 title('Joint PPI SpaceDistribution');
@@ -299,7 +306,7 @@ handles.h_obMarginal = axes('Position', plotposition(3,:), ...
     'FontSize', atts.fontsize);
 
 % May want to mess with vertical axis for prior density
-axis([-10 10 0 1]);
+axis([handles.xmin handles.xmax 0 1]);
 hold on
 xlabel('Observed Quantity');
 handles.h_obs_marg = plot(observation, 0, '*', 'MarkerSize', 16, 'LineWidth', 2.0);
@@ -318,7 +325,7 @@ handles.h_obs_likelihood = axes( ...
 
 handles.h_marg_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
 
-axis([-10 10 -handles.y_max/5 1]);
+axis([handles.xmin handles.xmax -handles.y_max/5 1]);
 
 % Set the ticks
 set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
@@ -334,8 +341,8 @@ hold on
 handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16, 'LineWidth', 2.0);
 set(handles.h_obs_ast,'Color',atts.red)
 
-% Plot an axis; display is fixed from x = 0 to 10
-plot([-10 10], [0 0], 'k', 'LineWidth', 2);
+% Plot an axis; 
+plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
 
 %% ----------------------------------------------------------------------------
 
@@ -373,21 +380,32 @@ plot([-10 10], [0 0], 'k', 'LineWidth', 2);
         % Work in the joint distribution plot
         axes(handles.h_joint);
         hold on
+
+        % Prepare error message for negative y in case it's needed
+        h_neg_y   = text(0, 3, 'Unobserved variable must be nonnegative', ...
+            'FontSize', 16, 'HorizontalAlignment','center', 'visible', 'off');
         
         % Need to guarantee at least 2 ensemble members
         ens_size = 0;
         
         while ens_size < 1000
-            
             [xt, yt] = ginput(1);
             gca;
+
+            % Make sure negative y message is off
+            set(h_neg_y, 'visible', 'off');
+
             % Make sure that the click was in the correct set of axes
             % Terminate by clicking outside of graph range
-            if(xt < -10 || xt > 10 || yt < 0 || yt > 10 || gca ~= handles.h_joint)
+            if(xt < handles.xmin || xt > handles.xmax || yt < handles.ymin || ...
+                yt > handles.ymax || gca ~= handles.h_joint)
                 axes(handles.h_joint); %#ok<LAXES>
                 break;
+            elseif(yt<0 & yt >= handles.ymin)
+                % Still in grey shaded part of plot but value of y is negative
+                set(h_neg_y, 'visible', 'on');
             else
-                
+
                 ens_size = ens_size + 1;
                 x(1, ens_size) = xt; %#ok<AGROW>
                 x(2, ens_size) = yt; %#ok<AGROW>
@@ -579,12 +597,12 @@ plot([-10 10], [0 0], 'k', 'LineWidth', 2);
         if( isfinite( str2double(    get(handles.ui_edit_observation, 'String'))))
             observation = str2double(get(handles.ui_edit_observation, 'String'));
             
-            if (observation > 10)
-                set(handles.ui_edit_observation, 'String', '<10!');
+            if (observation > handles.xmax)
+                set(handles.ui_edit_observation, 'String', ['< ', num2str(handles.xmax)]);
                 input_error('observation');
                 return;
-            elseif (observation < 0)
-                set(handles.ui_edit_observation, 'String', '>0!');
+            elseif (observation < handles.xmin)
+                set(handles.ui_edit_observation, 'String', ['> ', num2str(handles.xmin)]);
                 input_error('observation');
                 return;
             end
@@ -673,7 +691,7 @@ plot([-10 10], [0 0], 'k', 'LineWidth', 2);
         handles.y_max = handles.y_max + 0.2;
         
         %Update the axis based on the new y_max
-        axis([0 10 -handles.y_max/5 handles.y_max]);
+        axis([handles.xmin handles.xmax -handles.y_max/5 handles.y_max]);
         
         set(gca,'YTickMode','auto')
         ticks    = get(gca,'YTick');
@@ -757,7 +775,9 @@ plot([-10 10], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_best_fit,               'Visible', 'Off');
                 set(handles.h_joint_update,           'Visible', 'Off');
                 set(handles.h_joint_inc,              'Visible', 'Off');
-                set(handles.ui_text_error,            'String' , 'Observation must be a number between 0 and 10');
+                msg_string = ['Observation must be a number between ', ...
+                   num2str(handles.xmin), ' and ', num2str(handles.xmax)];
+                set(handles.ui_text_error,            'String' , msg_string);
                 set(handles.ui_text_error,            'Visible', 'On');
                 
                 % Disable other input to guarantee only one error at a time!
