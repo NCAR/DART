@@ -11,6 +11,13 @@ function [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
 %
 % DART $Id$
 
+arguments
+   ensemble (1, :) double
+   observation (1, 1) double
+   obs_error_var (1, 1) double
+   bounded_left (1, 1) logical = false
+end
+
 % Set error return to default successful
 err = 0;
 
