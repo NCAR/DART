@@ -82,6 +82,8 @@ handles.ui_assimilation_buttons = uibuttongroup('Visible','off', ...
     'BackgroundColor', atts.background, ...
     'SelectionChangeFcn', @Assimilation_selection);
 
+set(handles.ui_assimilation_buttons, 'title', 'PPI DISTRIB.', 'fontsize', 16);
+
 % Positions are relative to the Button Group
 radioXmin   = 0.05;
 radioWidth  = 0.9;
@@ -93,7 +95,7 @@ handles.ui_radio_EAKF = uicontrol(handles.ui_assimilation_buttons, ...
     'Style','radiobutton', ...
     'Units' , 'Normalized', ...
     'Position',[radioXmin radioYmin radioWidth radioHeight], ...
-    'String','None', ...
+    'String','Normal', ...
     'BackgroundColor' , atts.background, ...
     'Foreground' , 'Black', ...
     'FontName', atts.fontname, ...
@@ -144,7 +146,7 @@ handles.ui_radio_BNRH = uicontrol(handles.ui_assimilation_buttons, ...
 % Make the uibuttongroup visible after creating child objects.
 set(handles.ui_assimilation_buttons, 'Visible','On');
 selected = get(handles.ui_assimilation_buttons,'SelectedObject');
-handles.filter_type = get(selected,'String');
+handles.state_dist_type = get(selected,'String');
 
 %% Create a red panel with two text boxes and two edit boxes next to them
 
@@ -372,6 +374,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_state_inc,    'Visible', 'off');
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
+        set(handles.h_ppi_prior,    'Visible', 'off');
+        set(handles.h_ppi_post,     'Visible', 'off');
+        set(handles.h_joint_ppi,    'Visible', 'off');
         
         % Clear out the old best fit line
         set(handles.h_best_fit, 'Visible', 'off');
@@ -501,6 +506,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_state_inc,    'Visible', 'off');
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
+        set(handles.h_ppi_prior,    'Visible', 'off');
+        set(handles.h_ppi_post,     'Visible', 'off');
+        set(handles.h_joint_ppi,    'Visible', 'off');
         
         prior_obs = handles.ens_members(1, :);
         prior_state = handles.ens_members(2, :);
@@ -516,21 +524,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
                obs_increment_eakf(prior_obs, observation, obs_error_sd^2);
             post_obs = prior_obs + obs_increments;
 
-            % Updating the state variables can require a transform
-            switch handles.filter_type
-                case 'None'
-                  % Figure out the increments for the unobserved variable
-                  covar = cov(prior_obs, prior_state);
-                  state_inc = obs_increments * covar(1, 2) / covar(1, 1);
-                  post_state = prior_state + state_inc;
-
-                case 'Gamma'
-                   % Do gamma transform
-                   [post_state, prior_obs_ppi, post_obs_ppi, prior_state_ppi, post_state_ppi]  = ...
-                       gamma_ppi_update(prior_obs, prior_state, post_obs);
-                case 'RHF'
-                case 'BNRH'
-            end
+            % Updating the state variables
+            [post_state, prior_obs_ppi, post_obs_ppi, prior_state_ppi, post_state_ppi]  = ...
+                ppi_update(prior_obs, prior_state, post_obs, handles.state_dist_type);
             
             %Set the y-coordinate of the ensembles, to be halfway between 0 and
             %the bottom of the graph;
@@ -627,6 +623,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
             set(handles.h_best_fit,     'Visible', 'On');
             set(handles.h_joint_update, 'Visible', 'On');
             set(handles.h_joint_inc,    'Visible', 'On');
+            set(handles.h_ppi_prior,    'Visible', 'On');
+            set(handles.h_ppi_post,     'Visible', 'On');
+            set(handles.h_joint_ppi,    'Visible', 'On');
         else
             set(handles.ui_edit_observation, 'String', '?');
             input_error('observation');
@@ -688,6 +687,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
             set(handles.h_best_fit,     'Visible', 'On');
             set(handles.h_joint_update, 'Visible', 'On');
             set(handles.h_joint_inc,    'Visible', 'On');
+            set(handles.h_ppi_prior,    'Visible', 'On');
+            set(handles.h_ppi_post,     'Visible', 'On');
+            set(handles.h_joint_ppi,    'Visible', 'On');
             
         else
             set(handles.ui_edit_obs_error_sd, 'String', '?');
@@ -758,6 +760,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         handles.h_marg_state    = [];
         handles.h_state_inc     = [];
         handles.h_joint_update  = [];
+        handles.h_ppi_prior     = [];
+        handles.h_ppi_post      = [];
+        handles.h_joint_ppi     = [];
         handles.h_joint_inc     = [];
         handles.h_correl        = [];
         handles.first_correl    = true;
@@ -775,7 +780,7 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         
         % Set the filter_type string to newest radiobutton Value
         
-        handles.filter_type = get(eventdata.NewValue,'String');
+        handles.state_dist_type = get(eventdata.NewValue,'String');
     end
 
 %% ----------------------------------------------------------------------------
@@ -788,6 +793,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_best_fit,               'Visible', 'Off');
                 set(handles.h_joint_update,           'Visible', 'Off');
                 set(handles.h_joint_inc,              'Visible', 'Off');
+                set(handles.h_ppi_prior,              'Visible', 'Off');
+                set(handles.h_ppi_post,               'Visible', 'Off');
+                set(handles.h_joint_ppi,              'Visible', 'Off');
                 msg_string = ['Observation must be a number between ', ...
                    num2str(handles.xmin), ' and ', num2str(handles.xmax)];
                 set(handles.ui_text_error,            'String' , msg_string);
@@ -805,6 +813,9 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_best_fit,     'Visible', 'Off');
                 set(handles.h_joint_update, 'Visible', 'Off');
                 set(handles.h_joint_inc,    'Visible', 'Off');
+                set(handles.h_ppi_prior,    'Visible', 'Off');
+                set(handles.h_ppi_post,     'Visible', 'Off');
+                set(handles.h_joint_ppi,    'Visible', 'Off');
                 set(handles.ui_text_error,  'String' , 'Observation Error SD must be a number greater than 0');
                 set(handles.ui_text_error,  'Visible', 'On');
                 
