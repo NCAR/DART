@@ -567,9 +567,19 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         
         %If ensemble is not empty
         if (size(prior_obs,2) > 0)
-            % The observation space updates are all done by standard EAKF 
-            [obs_increments, ~] = ...
-               obs_increment_eakf(prior_obs, observation, obs_error_sd^2);
+
+            % Observation space increment method is controlled by obs PPI distribution choide
+            if(strcmp(handles.obs_dist_type, 'Normal'))
+               % The observation space updates are standard EAKF 
+               [obs_increments, ~] = ...
+                  obs_increment_eakf(prior_obs, observation, obs_error_sd^2);
+            else
+               % Observation space updates by unbounded RHF
+               [obs_increments, ~] = ...
+                   obs_increment_rhf(prior_obs, observation, obs_error_sd^2, false);
+            end
+    
+            % Add on increments to get posterior
             post_obs = prior_obs + obs_increments;
 
             % Updating the state variables
