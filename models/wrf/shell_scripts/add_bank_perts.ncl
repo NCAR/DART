@@ -52,11 +52,9 @@ begin
  pert_in = addfile(pert_bank_path+"/"+pert_bank_file,"r")
  wrf_in  = addfile(wrf_file,"w")
  do n=0,nperts-1
-  temp_w = wrf_in->$pert_fields(n)$ 
   temp_w = wrf_in->$wrf_fields(n)$
   temp_p = pert_in->$pert_fields(n)$
   temp_c = temp_w+(temp_p * pert_scale(n))
-  wrf_in->$pert_fields(n)$ = temp_c
   wrf_in->$wrf_fields(n)$ = temp_c
   delete(temp_w)
   delete(temp_p)
