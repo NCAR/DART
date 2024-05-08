@@ -7465,7 +7465,7 @@ default_table(:,row) = (/ 'PH                        ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'T                         ', &
+default_table(:,row) = (/ 'THM                       ', &
                           'QTY_POTENTIAL_TEMPERATURE ', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &
