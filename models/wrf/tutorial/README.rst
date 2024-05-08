@@ -20,8 +20,11 @@ either WRF or DART.
   for different coordinate systems including the sigma hybrid coordinates as 
   described in `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
   Furthermore, older versions do not account for the prognostic temperature variable
-  switch from T to the moist potential temperature (THM) as described in
-  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__.
+  switch from ``T`` (perturbation potential temperature) to ``THM``, (either perturbation
+  potential temperature or perturbation moist potential temperature) as described in
+  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__. The current implementation
+  of the code sets ``T=THM`` because within &dynamics section of ``namelist.input``
+  ``use_theta_m=0``.
 
   Earlier version of WRF (v3.9) may run without errors with more recent versions of
   DART (later than 11.4.0), but the assimilation performance will be deprecated.  
@@ -943,10 +946,10 @@ between the background (prior) and the analysis (posterior) after running
 
 
 The ``analysis_increment.nc`` file includes the following atmospheric variables: 
-``MU, PH, PSFC, QRAIN, QCLOUD, QGRAUP, QICE, QNICE, QSNOW, QVAPOR, T`` and ``T2``.
-The example figure below shows the increments for temperature (T) only. You can 
-use **ncview** to advance through all 11 atmospheric pressure levels. You should
-see spatial patterns that look something like the meteorology of the day.
+``MU, PH, PSFC, QRAIN, QCLOUD, QGRAUP, QICE, QNICE, QSNOW, QVAPOR, THM`` and ``T2``.
+The example figure below shows the increments for THM (perturbation potential temperature)
+only. You can use **ncview** to advance through all 11 atmospheric pressure levels. 
+You should see spatial patterns that look something like the meteorology of the day.
 
 +--------------------------+--------------------------------+
 | |ncview1|                | |ncview2|                      |
