@@ -12,7 +12,11 @@ function oned_ensemble
 %      After you have an ensemble and an observation, click 'Update Ensemble'.
 %      The algorithm is applied and the Posterior (blue) is plotted below the
 %      Prior (green). The mean and standard deviation of the posterior are
-%      also printed on the plot.
+%      also printed on the plot. For the EAKF and RHF, the continuous prior distribution
+%      that best fits the prior ensemble (green) and the posterior continuous 
+%      ensemble from which the QCEFF algorithm determines the posterior ensemble
+%      members (blue) are also plotted. The EnKF is not a QCEFF filter and does
+%      not make use of a continuous prior distribution fit.  
 %
 %      The type of ensemble Kalman filter update can be chosen using the
 %      pulldown menu at the bottom.
@@ -23,13 +27,14 @@ function oned_ensemble
 %      inflated prior and posterior are plotted on an axis below the
 %      axis for the uninflated ensemble.
 %
-%      The 'EAKF' is a stochastic algorithm so repeated updates can be done
+%      The 'EnKF' is a stochastic algorithm so repeated updates can be done
 %      for the same prior and observation.
 %
-%      change the Observation Error SD, lay down an ensemble pretty far away
-%      from the observation - have fun with it.
+%      The mean and standard deviation of the likelihood
+%      can be changed in the red box. Change the Observation Error SD, lay down 
+%      an ensemble pretty far away from the observation - have fun with it.
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_model.m oned_model_inf.m
 %           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided

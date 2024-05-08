@@ -19,8 +19,20 @@ function twod_ensemble
 %      The increments are shown as red lines, the new Posterior estimates
 %      are in blue.
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
-%           run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%      The marginal distributions of the observed quantity and the 
+%      unobserved quantity are shown in the rectangular plots abutting the
+%      square joint distribution. The prior and posterior ensembles and
+%      the increments between them are highlighted in all three plots after
+%      the 'Update Ensemble' button is pushed. 
+%
+%      The plot at the lower right shows more detail of the update for the
+%      observed variable including the likelihood in red.
+%
+%      The mean and standard deviation of the likelihood can be 
+%      changed in the red box. 
+%
+% See also: twod_ppi_ensemgle.m gaussian_product.m oned_model.m oned_model_inf.m 
+%      oned_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

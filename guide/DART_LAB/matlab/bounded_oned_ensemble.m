@@ -1,6 +1,8 @@
 function bounded_oned_ensemble
 
-%% BOUNDED_ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
+%% BOUNDED_ONED_ENSEMBLE explore the details of ensemble data assimilation for a 
+% non-negative scalar variable.
+% 
 %
 %      Push on the 'Create New Ensemble' button to activate the interactive
 %      observation generation mechanism and lay down a set of 'observations'
@@ -10,28 +12,35 @@ function bounded_oned_ensemble
 %      have all the ensemble members you want, click in the grey area of
 %      the window outside of the white axis plot.
 %
-%      After you have an ensemble and an observation, click 'Update Ensemble'.
+%      After you have an ensemble, click 'Update Ensemble'.
 %      The algorithm is applied and the Posterior (blue) is plotted below the
 %      Prior (green). The mean and standard deviation of the posterior are
-%      also printed on the plot.
+%      also printed on the plot. Also plotted are the continuous prior distribution
+%      that best fits the prior ensemble (green) and the posterior continuous 
+%      ensemble from which the QCEFF algorithm determines the posterior ensemble
+%      members (blue). 
 %
-%      The type of ensemble Kalman filter update can be chosen using the
-%      pulldown menu at the bottom.
+%      The type of ensemble filter update can be chosen using the
+%      buttons at the bottom right. Options include the traditional EAKF which
+%      fits a normal distribution, a fit with a gamma distribution, and a bounded
+%      normal rank histogram distribution (BNRH). 
 %
 %      Checking the 'Show Inflation' box will also apply inflation to the
 %      prior before doing the update and will print the mean and standard
 %      deviation of the inflated prior and the resulting posterior. The
 %      inflated prior and posterior are plotted on an axis below the
-%      axis for the uninflated ensemble.
+%      axis for the uninflated ensemble. The inflation for the Gamma and BNRH
+%      distributions are computed in the Probit Probability Integral Transform (PPI)
+%      space so that the zero lower bound is respected.
 %
-%      The 'EAKF' is a stochastic algorithm so repeated updates can be done
-%      for the same prior and observation.
-%
-%      change the Observation Error SD, lay down an ensemble pretty far away
+%      The observation likelihood is normal for the EAKF and BNRH, but Gamma
+%      for the Gamma distribution. The mean and standard deviation of the likelihood
+%      can be changed in the red box. 
+%      Change the Observation Error SD, lay down an ensemble pretty far away
 %      from the observation - have fun with it.
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: gaussian_product.m oned_model.m oned_model_inf.m twod_ensemble.m
+%           twod_ppi_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -282,7 +291,7 @@ handles.ui_radio_button_rhf = uicontrol(handles.ui_radio_button_group, ...
     'Style', 'radio button', ...
     'Units', 'Normalized', ...
     'Position', [0.007 0.06 670 0.253], ...
-    'String', 'RHF', ...
+    'String', 'BNRHF', ...
     'BackgroundColor', atts.background, ...
     'Foreground', 'Black', ...
     'FontUnits', 'normalized', ...
@@ -736,7 +745,7 @@ title('bounded_oned_ensemble','Interpreter','none')
 
                 % Get the posterior ensemble
                 new_ensemble = gaminv(prior_q, agamma_shape, agamma_scale);
-            case 'RHF'
+            case 'BNRHF'
                 bounded_left = true;
                 [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
                     obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, bounded_left);
@@ -788,7 +797,7 @@ title('bounded_oned_ensemble','Interpreter','none')
            case 'Gamma'
               inf_ens = inflate_gamma(handles.ens_members, handles.ens_size, handles.inflation);
 
-           case 'RHF'
+           case 'BNRHF'
               inf_ens = inflate_bnrh(handles.ens_members, handles.ens_size, handles.inflation, ...
                  true, false, 0, -99);
         end
@@ -832,7 +841,7 @@ title('bounded_oned_ensemble','Interpreter','none')
                 % Get the posterior ensemble
                 new_ensemble = gaminv(prior_q, agamma_shape, agamma_scale);
 
-            case 'RHF'
+            case 'BNRHF'
                 [obs_increments, ~] = ...
                     obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2, bounded_left);
                 % Add on increments to get new ensemble

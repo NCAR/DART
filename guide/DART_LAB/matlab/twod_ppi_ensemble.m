@@ -1,26 +1,39 @@
 function twod_ppi_ensemble
-%% TWOD_ENSEMBLE demonstrates a powerful aspect of ensemble data assimilation.
-%      The ensemble makes it possible to estimate the impact of observations
-%      on unobserved state variables.
+%% TWOD_PPI_ENSEMBLE demonstrates capabilities of a variety of QCEFF filters
+%      for computing the impact of an observed variable on an unobserved
+%      variable. 
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive
-%      observation generation mechanism and lay down a set of ensemble
+%      ensemble generation mechanism and lay down a set of ensemble
 %      samples of an unobserved variable (vertical axis) and an observed
-%      variable (horizontal axis). The ensemble members are created by
-%      left clicking in the central portion of the figure window.
-%      Start out small, say 6 or so.
-%      In this case, some H() operator would generate the Observed Quantity.
-%      The Unobserved State Variable could simply be some portion of the
-%      model state.
+%      variable (horizontal axis). The unobserved variable is nonnegative.
+%      The ensemble members are created by
+%      left clicking in the central dark grey portion of the figure window.
 %
-%      After creating the ensemble, the correlation between the Observed
+%      As the ensemble is created, the correlation between the Observed
 %      Quantity and the Unobserved State Variable is calculated.
-%      Select an assimilation algorithm and click 'Update Ensemble'.
-%      The increments are shown as red lines, the new Posterior estimates
-%      are in blue.
+%      
+%      The push buttons at the bottom of the joint distribution plot select
+%      two different continuous distribution choices for a QCEFF for the
+%      observed variable, normal and BNRH. The push buttons at the right
+%      select the continuous distribution for the unobserved variable
+%      and include normal, Gamma, an unbounded BNRH (RHF) and a bounded
+%      BNRH. 
+%
+%      Clicking on 'Update Ensemble' results in an updated joint ensemble 
+%      along with updated marginals for both the observed and unobserved
+%      variables. The plot to the right is the joint distribution of the
+%      prior and posterior ensemble in the probit probability integral
+%      (PPI) transform space. 
+%
+%      The plot at the lower right shows more detail of the update for the
+%      observed variable including the likelihood in red.
+%
+%      The mean and standard deviation of the likelihood can be 
+%      changed in the red box. 
 %
 % See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
-%           run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           bounded_oned_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
