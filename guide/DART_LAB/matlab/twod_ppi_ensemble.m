@@ -502,31 +502,32 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
         
-        ensemble = handles.ens_members;
+        prior_obs = handles.ens_members(1, :);
+        prior_state = handles.ens_members(2, :);
         h_observation  = get(handles.ui_edit_observation);
         h_obs_error_sd = get(handles.ui_edit_obs_error_sd);
         observation    = str2double(h_observation.String);
         obs_error_sd   = str2double(h_obs_error_sd.String);
         
         %If ensemble is not empty
-        if (size(ensemble,2) > 0)
+        if (size(prior_obs,2) > 0)
             % The observation space updates are all done by standard EAKF 
             [obs_increments, ~] = ...
-               obs_increment_eakf(ensemble(1, :), observation, obs_error_sd^2);
-            new_ensemble = ensemble(1, :) + obs_increments;
+               obs_increment_eakf(prior_obs, observation, obs_error_sd^2);
+            post_obs = prior_obs + obs_increments;
 
             % Updating the state variables can require a transform
             switch handles.filter_type
                 case 'None'
                   % Figure out the increments for the unobserved variable
-                  covar = cov(ensemble');
+                  covar = cov(prior_obs, prior_state);
                   state_inc = obs_increments * covar(1, 2) / covar(1, 1);
-                  new_state = ensemble(2, :) + state_inc;
+                  post_state = prior_state + state_inc;
 
                 case 'Gamma'
                    % Do gamma transform
-                   [new_state, prior_obs_ppi, post_obs_ppi, prior_state_ppi, post_state_ppi]  = ...
-                       gamma_ppi_update(ensemble(1, :), ensemble(2, :), new_ensemble)
+                   [post_state, prior_obs_ppi, post_obs_ppi, prior_state_ppi, post_state_ppi]  = ...
+                       gamma_ppi_update(prior_obs, prior_state, post_obs);
                 case 'RHF'
                 case 'BNRH'
             end
@@ -535,7 +536,7 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
             %the bottom of the graph;
             y(1:handles.ens_size) = -handles.y_max/10;
             
-            handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+            handles.h_update_ens = plot(post_obs, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
 
             % Plot the PPI priors and posteriors
             axes(handles.h_ppi_joint);
@@ -554,36 +555,36 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
             axes(handles.h_obMarginal);
             
             % Need to sort ensemble to get nice ordering for increments
-            [~, sort_obs_ind] = sort(ensemble(1, :));
+            [~, sort_obs_ind] = sort(prior_obs);
             for i = 1:handles.ens_size
                 y(i) = i / (handles.ens_size + 1);
                 handles.h_marg_update(i) = ...
-                    plot(new_ensemble(sort_obs_ind(i)), y(i), '*', 'MarkerSize', 16, 'Color', atts.blue);
+                    plot(post_obs(sort_obs_ind(i)), y(i), '*', 'MarkerSize', 16, 'Color', atts.blue);
                 % Also plot a segment in blue
                 handles.h_marg_inc(i) = ...
-                    plot([ensemble(1, sort_obs_ind(i)), new_ensemble(1, sort_obs_ind(i))], ...
+                    plot([prior_obs(sort_obs_ind(i)), post_obs(sort_obs_ind(i))], ...
                     [y(i), y(i)], 'c');
             end
             
             axes(handles.h_unobMarginal);
             
             % Now need to sort the state variable ensemble to get nice ordering
-            [~, sort_ind] = sort(ensemble(2, :));
+            [~, sort_ind] = sort(prior_state);
             for i = 1:handles.ens_size
                 handles.h_marg_state(i) = ...
-                    plot(y(i), new_state(sort_ind(i)), '*', 'MarkerSize', 16, 'Color', atts.blue);
+                    plot(y(i), post_state(sort_ind(i)), '*', 'MarkerSize', 16, 'Color', atts.blue);
                 % Also plot a segment in blue
                 handles.h_state_inc(i) = plot([y(i), y(i)], ...
-                    [ensemble(2, sort_ind(i)), new_state(sort_ind(i))], 'c');
+                    [prior_state(sort_ind(i)), post_state(sort_ind(i))], 'c');
             end
             
             % Plot the updated joint distribution points
             axes(handles.h_joint);
             for i = 1:handles.ens_size
-                handles.h_joint_update(i) = plot(new_ensemble(i), new_state(i), ...
+                handles.h_joint_update(i) = plot(post_obs(i), post_state(i), ...
                     '*', 'MarkerSize', 16, 'Color', atts.blue);
-                handles.h_joint_inc(i) = plot([ensemble(1, i), new_ensemble(1, i)], ...
-                    [ensemble(2, i), new_state(i)], 'c');
+                handles.h_joint_inc(i) = plot([prior_obs(i), post_obs(i)], ...
+                    [prior_state(i), post_state(i)], 'c');
             end
             
             % Return the focus to the window with pushbuttons
