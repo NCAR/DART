@@ -510,26 +510,45 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         
         %If ensemble is not empty
         if (size(ensemble,2) > 0)
-            switch handles.filter_type
-                case 'EAKF'
-                    [obs_increments, ~] = ...
-                        obs_increment_eakf(ensemble(1, :), observation, obs_error_sd^2);
-                case 'EnKF'
-                    [obs_increments, ~] = ...
-                        obs_increment_enkf(ensemble(1, :), observation, obs_error_sd^2);
-                case 'RHF'
-                    [obs_increments, ~] = ...
-                        obs_increment_rhf(ensemble(1, :), observation, obs_error_sd^2);
-            end
-            
-            % Add on increments to get new ensemble
+            % The observation space updates are all done by standard EAKF 
+            [obs_increments, ~] = ...
+               obs_increment_eakf(ensemble(1, :), observation, obs_error_sd^2);
             new_ensemble = ensemble(1, :) + obs_increments;
+
+            % Updating the state variables can require a transform
+            switch handles.filter_type
+                case 'None'
+                  % Figure out the increments for the unobserved variable
+                  covar = cov(ensemble');
+                  state_inc = obs_increments * covar(1, 2) / covar(1, 1);
+                  new_state = ensemble(2, :) + state_inc;
+
+                case 'Gamma'
+                   % Do gamma transform
+                   [new_state, prior_obs_ppi, post_obs_ppi, prior_state_ppi, post_state_ppi]  = ...
+                       gamma_ppi_update(ensemble(1, :), ensemble(2, :), new_ensemble)
+                case 'RHF'
+                case 'BNRH'
+            end
             
             %Set the y-coordinate of the ensembles, to be halfway between 0 and
             %the bottom of the graph;
             y(1:handles.ens_size) = -handles.y_max/10;
             
             handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+
+            % Plot the PPI priors and posteriors
+            axes(handles.h_ppi_joint);
+            handles.h_ppi_prior = ...
+               plot(prior_obs_ppi, prior_state_ppi, '*', 'Markersize', 16, 'Color', atts.green);
+            handles.h_ppi_post = ...
+               plot(post_obs_ppi, post_state_ppi, '*', 'Markersize', 16, 'Color', atts.blue);
+            % Plot the connecting segments
+            for i = 1:handles.ens_size
+                cx = [prior_obs_ppi(i), post_obs_ppi(i)];
+                cy = [prior_state_ppi(i), post_state_ppi(i)];
+                handles.h_joint_ppi(i) = plot(cx, cy, 'c');
+            end
             
             % Plot the increments in the state marginal plot
             axes(handles.h_obMarginal);
@@ -546,14 +565,7 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
                     [y(i), y(i)], 'c');
             end
             
-            % Figure out the increments for the unobserved variable
-            
             axes(handles.h_unobMarginal);
-            
-            covar     = cov(ensemble');
-            state_inc = obs_increments * covar(1, 2) / covar(1, 1);
-            new_state = ensemble(2, :) + state_inc;
-            %>@ TODO POSSIBLE IMPROVEMENT ... annotate new marginal mean, sd
             
             % Now need to sort the state variable ensemble to get nice ordering
             [~, sort_ind] = sort(ensemble(2, :));
