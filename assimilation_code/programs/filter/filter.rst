@@ -160,10 +160,13 @@ The detailed execution flow inside the filter program is:
    -  If requested, compute and write the "postassim" netcdf diagnostic files (members, mean, spread). This is BEFORE
       any posterior inflation has been applied.
    -  Apply posterior inflation if requested.
+   -  If requested, compute and write the "analysis" netcdf diagnostic files (members, mean, spread). 
+      This is AFTER any posterior inflation has been applied.
    -  Compute ensemble of posterior observation values with forward operators.
    -  Compute posterior observation space diagnostics.
-   -  If requested, compute and write out the "output" netcdf diagnostic files (members, mean, spread). This is AFTER
-      any posterior inflation has been applied.
+   -  If requested (for debugging) write observations available at this time to the observation sequence file.
+   -  If requested, compute and write out the "output" netcdf diagnostic files (members, mean, spread). 
+      This is AFTER any posterior inflation has been applied.
    -  Loop until all observations in input file processed.
 
 -  Close diagnostic files.
