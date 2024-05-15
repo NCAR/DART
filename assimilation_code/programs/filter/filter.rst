@@ -157,19 +157,18 @@ The detailed execution flow inside the filter program is:
          -  Apply increments to any remaining unassimilated observations.
          -  Loop until all observations in window processed.
 
+   -  If requested, apply posterior inflation damping.
    -  If requested, compute and write the "postassim" netcdf diagnostic files (members, mean, spread). This is BEFORE
       any posterior inflation has been applied.
    -  Apply posterior inflation if requested.
-   -  If requested, compute and write the "analysis" netcdf diagnostic files (members, mean, spread). 
-      This is AFTER any posterior inflation has been applied.
    -  Compute ensemble of posterior observation values with forward operators.
    -  Compute posterior observation space diagnostics.
-   -  If requested (for debugging) write observations available at this time to the observation sequence file.
-   -  If requested, compute and write out the "output" netcdf diagnostic files (members, mean, spread). 
+   -  If requested, compute and write the "analysis" netcdf diagnostic files (members, mean, spread). 
       This is AFTER any posterior inflation has been applied.
-   -  Loop until all observations in input file processed.
+   -  Loop through assimilation windows until all observations in obs_seq.out have been processed.
 
--  Close diagnostic files.
+-  If requested, compute and write out the "output" netcdf diagnostic files (members, mean, spread). 
+   This is AFTER any posterior inflation has been applied.
 -  Write out final observation sequence file.
 -  Write out inflation restart files if requested.
 -  Write out final state vectors to model restart files if requested.
