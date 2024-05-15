@@ -525,7 +525,7 @@ while ( 1 == 1 )
       	       break
 
             endif
-            sleep 10    # this might need to be longer, though I moved the done flag lower in the
+            sleep 15    # this might need to be longer, though I moved the done flag lower in the
                         # advance_model.csh to hopefully avoid the file moves below failing
 
          end
