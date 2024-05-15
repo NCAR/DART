@@ -1320,9 +1320,9 @@ period of the assimilation.
    calendar       = 'Gregorian',
    first_bin_start =  1601, 1, 1, 0, 0, 0,
    first_bin_end   =  2999, 1, 1, 0, 0, 0,
-   last_bin_end   =  2999, 1, 1, 0, 0, 0,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 21600,
+   last_bin_end   =   2999, 1, 1, 0, 0, 0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true
    /
