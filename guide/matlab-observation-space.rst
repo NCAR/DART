@@ -2,6 +2,8 @@
 MATLAB observation space diagnostics
 ####################################
 
+.. _configMatlab:
+
 Configuring MATLAB
 ==================
 

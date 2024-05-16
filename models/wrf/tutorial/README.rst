@@ -1403,10 +1403,8 @@ More Resources
 --------------
 
 -  `Check or Submit DART Issues <https://github.com/NCAR/DART/issues>`__
--  `DAReS website <ttp://dart.ucar.edu>`__
--  `Preparing
-   MATLAB <https://dart.ucar.edu/pages/Getting_Started.html#matlab>`__
-   to use with DART.
+-  `DAReS website <http://dart.ucar.edu>`__
+-  :ref:`Preparing MATLAB<configMatlab>` to use with DART.
 -  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
 
 .. |ncview1| image:: ../../../guide/images/WRF_tutorial_ncview1.png
