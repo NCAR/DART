@@ -25,7 +25,7 @@ The changes are now listed with the most recent at the top.
 **May 16 2024 :: WRF v4. Tag v11.5.0**
 
 - WRF-DART and WRF-DART Tutorial updated to WRFv4. Note, not backwards compatible with WRFv3.9. 
-- local particle filter defualt value for pf_enkf_hybrid=.false. *contributed by Jon Poterjoy*
+- local particle filter default value for pf_enkf_hybrid=.false. *contributed by Jon Poterjoy*
 
 **April 23 2024 :: Bug-fix: WRF hybrid vertical coordinate. Tag v11.4.1**
 
