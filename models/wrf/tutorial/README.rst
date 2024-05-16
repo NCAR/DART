@@ -12,13 +12,33 @@ and only covers the  WRF-specific aspects of coupling with DART.
 It is not wise to try to run WRF-DART if you have no experience with
 either WRF or DART.
 
-This tutorial was designed to be compatible with WRF V3.9.1 and was
-tested with DART V11.0.2. Other releases of WRF may or may not be
-backwards or forwards compatible with this tutorial.
+.. Important ::
+
+  This tutorial was designed to be compatible with WRF Version 4 and was
+  tested with WRFv4.5.2. This tutorial should not be used with DART
+  versions 11.4.0 and earlier because those older versions do not account
+  for different coordinate systems including the sigma hybrid coordinates as 
+  described in `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
+  Furthermore, older versions do not account for the prognostic temperature variable
+  switch from ``T`` (perturbation potential temperature) to ``THM``, (either perturbation
+  potential temperature or perturbation moist potential temperature) as described in
+  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__. The current implementation
+  of the code sets ``T=THM`` because within &dynamics section of ``namelist.input``
+  ``use_theta_m=0``.
+
+  Earlier version of WRF (v3.9) may run without errors with more recent versions of
+  DART (later than 11.4.0), but the assimilation performance will be deprecated.  
+  If you need to run with earlier versions of WRF, please review the changes required
+  to switch from WRFv4 to WRFv3 as documented within 
+  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__,
+  or contact the DART team.  Earlier WRF versions also require different settings
+  within the WRF ``namelist.input`` file to promote vertical stability for the tutorial 
+  example. These settings are also described in DART Issue #661.
+
 Prior to running this tutorial, we urge the users to familarize themselves with the
 `WRF system <https://www2.mmm.ucar.edu/wrf/users/model_overview.html>`__
-(WRF_ARW, WPS and WRFDA), and to read through the `WRFv3.9  User's Guide
-<https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/user_guide_V3.9/contents.html>`__
+(WRF_ARW, WPS and WRFDA), and to read through the `WRFv4.5  User's Guide
+<https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_v4/contents.html>`__
 and the `WRF model tutorials <https://www2.mmm.ucar.edu/wrf/users/tutorial/tutorial.html>`__
 
 The DART team is not responsible for and does not maintain the WRF code. For WRF related issues check out the
@@ -233,13 +253,16 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
    ::
 
        cd $BASE_DIR
-       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz
-       tar -xzvf wrf_dart_tutorial_23May2018_v3.tar.gz
+       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_29Apr2024.tar.gz
+       tar -xzvf wrf_dart_tutorial_29Apr2024.tar.gz
 
    After untarring the file you should see the following directories:
    *icbc, output, perts,* and *template.* The directory names (case
    sensitive) are important, as the scripts rely on these local paths
-   and file names.
+   and file names. Please note that the perturbation, surface and initial 
+   condition files were derived from an earlier version (pre-4.0) of WRF/WPS/WRFDA
+   but still maintains compatibility with the (post-4.0, post-11.4.0) 
+   WRF-DART versions recommended to run this WRF assimilation example.  
 
 2. You will need template WRF namelists from the
    ``$DART_DIR/models/wrf/tutorial/template`` directory:
@@ -923,10 +946,10 @@ between the background (prior) and the analysis (posterior) after running
 
 
 The ``analysis_increment.nc`` file includes the following atmospheric variables: 
-``MU, PH, PSFC, QRAIN, QCLOUD, QGRAUP, QICE, QNICE, QSNOW, QVAPOR, T`` and ``T2``.
-The example figure below shows the increments for temperature (T) only. You can 
-use **ncview** to advance through all 11 atmospheric pressure levels. You should
-see spatial patterns that look something like the meteorology of the day.
+``MU, PH, PSFC, QRAIN, QCLOUD, QGRAUP, QICE, QNICE, QSNOW, QVAPOR, THM`` and ``T2``.
+The example figure below shows the increments for THM (perturbation potential temperature)
+only. You can use **ncview** to advance through all 11 atmospheric pressure levels. 
+You should see spatial patterns that look something like the meteorology of the day.
 
 +--------------------------+--------------------------------+
 | |ncview1|                | |ncview2|                      |
@@ -1297,9 +1320,9 @@ period of the assimilation.
    calendar       = 'Gregorian',
    first_bin_start =  1601, 1, 1, 0, 0, 0,
    first_bin_end   =  2999, 1, 1, 0, 0, 0,
-   last_bin_end   =  2999, 1, 1, 0, 0, 0,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 21600,
+   last_bin_end   =   2999, 1, 1, 0, 0, 0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true
    /
@@ -1380,10 +1403,8 @@ More Resources
 --------------
 
 -  `Check or Submit DART Issues <https://github.com/NCAR/DART/issues>`__
--  `DAReS website <ttp://dart.ucar.edu>`__
--  `Preparing
-   MATLAB <https://dart.ucar.edu/pages/Getting_Started.html#matlab>`__
-   to use with DART.
+-  `DAReS website <http://dart.ucar.edu>`__
+-  :ref:`Preparing MATLAB<configMatlab>` to use with DART.
 -  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
 
 .. |ncview1| image:: ../../../guide/images/WRF_tutorial_ncview1.png

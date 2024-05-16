@@ -697,7 +697,7 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
    wrf%dom(id)%type_v      = get_type_ind_from_type_string(id,'V')
    wrf%dom(id)%type_w      = get_type_ind_from_type_string(id,'W')
-   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'T')
+   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'THM')
    wrf%dom(id)%type_gz     = get_type_ind_from_type_string(id,'PH')
    wrf%dom(id)%type_qv     = get_type_ind_from_type_string(id,'QVAPOR')
    wrf%dom(id)%type_qr     = get_type_ind_from_type_string(id,'QRAIN')
@@ -7465,7 +7465,7 @@ default_table(:,row) = (/ 'PH                        ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'T                         ', &
+default_table(:,row) = (/ 'THM                       ', &
                           'QTY_POTENTIAL_TEMPERATURE ', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &
