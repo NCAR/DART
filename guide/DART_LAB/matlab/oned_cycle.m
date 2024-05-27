@@ -1,5 +1,5 @@
-function oned_ensemble
-%% ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
+function oned_cycle
+%% ONED_CYCLEthe details of ensemble data assimilation for a scalar.
 %
 %      Push on the 'Create New Ensemble' button to activate the interactive
 %      observation generation mechanism and lay down a set of 'observations'
@@ -43,7 +43,7 @@ function oned_ensemble
 %
 % DART $Id$
 
-help oned_ensemble
+help oned_cycle
 
 atts = stylesheet; % get the default fonts and colors
 
@@ -78,7 +78,7 @@ figHeight = 500; % The height of the entire figure, in pixels
 
 handles.figure1 = figure('Position', [figXmin figYmin figWidth figHeight], ...
     'Units', 'Pixels', ...
-    'Name', 'oned_ensemble', ...
+    'Name', 'oned_cycle', ...
     'Color', atts.background);
 
 %% -----------------------------------------------------------------------------
@@ -458,7 +458,7 @@ handles.ui_text_obs_sd_err_print = uicontrol('Style', 'text', ...
 % Go ahead and plot the initial observational error distribution
 
 handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 2.0);
+set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '-', 'Linewidth', 2.0);
 hold on
 
 % Plot an asterisk
@@ -476,7 +476,7 @@ set(gca, 'FontSize', atts.fontsize)
 set(gca, 'XGrid', 'on')
 
 plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
-title('oned_ensemble','Interpreter','none')
+title('oned_cycle','Interpreter','none')
 
 %% -----------------------------------------------------------------------------
 
@@ -652,6 +652,19 @@ title('oned_ensemble','Interpreter','none')
         % Figure out which filter option is currently selected
         val = get(handles.ui_radio_button_group,'SelectedObject');
         filter_type = get(val,'String');
+
+        % The true value is zero in this example; obs error sd comes from the box
+        % Generate a random observation
+        handles.observation = randn * handles.obs_error_sd;
+        
+        % Plot the updated distribution
+        set(handles.h_obs_plot, 'Visible', 'Off');
+        handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
+        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '-', 'Linewidth', 1.7);
+        
+        % Move the observation asterisk
+        set(handles.h_obs_ast, 'Visible', 'Off');
+        handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
         
         switch filter_type
             
@@ -689,6 +702,14 @@ title('oned_ensemble','Interpreter','none')
         % Add in a label of the updated mean and sd
         new_mean = mean(new_ensemble);
         new_sd   = std(new_ensemble);
+                
+        % Display the prior mean and sd
+        prior_mean = mean(handles.ens_members);
+        prior_sd   = std(handles.ens_members);
+        str1 = sprintf('Prior Mean = %.4f', prior_mean);
+        set(handles.ui_text_prior_mean, 'String', str1);
+        str1 = sprintf('Prior SD = %.4f', prior_sd);
+        set(handles.ui_text_prior_sd,   'String', str1);
         
         % Update mean and sd of old posterior
         str1 = sprintf('Posterior Mean = %.4f',new_mean);
@@ -702,84 +723,11 @@ title('oned_ensemble','Interpreter','none')
              handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
              set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue);
         end
-        
-        % If the checkbox isn't set, return now
-        if(not(get(handles.ui_checkbox_inflation, 'Value')))
-            return
-        end
-        
-        % Plot the inflated prior ensemble
-        y = -0.2;
-        handles.prior_mean = mean(handles.ens_members(1:handles.ens_size));
-        
-        inf_ens = zeros(1,handles.ens_size);
-        
-        for i = 1: handles.ens_size
-            inf_ens(i) = (handles.ens_members(i) - handles.prior_mean) * sqrt(handles.inflation) + ...
-                handles.prior_mean;
-            handles.h_inf_ens_member(i) = plot(inf_ens(i), y, '*', 'MarkerSize', 16, 'Color', atts.green,'LineWidth',2.0);
-            
-        end
-        
-        % Update mean and sd of old posterior
-        handles.inf_prior_mean = mean(inf_ens(1:handles.ens_size));
-        handles.inf_prior_sd = std(inf_ens(1:handles.ens_size));
-        
-        str1 = sprintf('Inflated = %.4f',handles.inf_prior_mean);
-        set(handles.ui_text_inflated_prior_mean,'String',str1,'Visible','on');
-        str1 = sprintf('Inflated = %.4f',handles.inf_prior_sd);
-        set(handles.ui_text_inflated_prior_sd,  'String',str1,'Visible','on');
-        
-        % Get the update for the inflated ensemble
-        switch filter_type
-            
-            case 'EAKF'
-                [obs_increments, ~] = ...
-                    obs_increment_eakf(inf_ens, handles.observation, handles.obs_error_sd^2);
-            case 'EnKF'
-                [obs_increments, ~] = ...
-                    obs_increment_enkf(inf_ens, handles.observation, handles.obs_error_sd^2);
-            case 'RHF'
-                [obs_increments, ~] = ...
-                    obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2, bounded_left);
-        end
-        
-        % Add on increments to get new ensemble
-        new_ensemble = inf_ens + obs_increments;
-        
-        y(1:size(ensemble)) = -0.3;
-        handles.h_inf_up_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
-        
-        % Plot lines connecting the prior and posterior ensemble members
-        for i = 1:size(ensemble, 2)
-            x_line = [inf_ens(i), new_ensemble(i)];
-            y_line = [-0.2, -0.3];
-            handles.h_inf_lines(i) = plot(x_line, y_line, 'k');
-            
-        end
-        
-        % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-        % Plus all inflated members
-        xlower = min(handles.observation - 3*handles.obs_error_sd, min(inf_ens));
-        xupper = max(handles.observation + 3*handles.obs_error_sd, max(inf_ens));
-        ylower = -0.4;
-        yupper = 1.0;
-        axis([xlower xupper ylower yupper]);
-        
-        % Plot the axes for the two priors
-        plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
-        handles.h_inf_axis = plot([xlower xupper], [-0.2 -0.2], 'k', 'Linewidth', 1.7);
-        
-        % Update mean and sd of old posterior
-        handles.update_inf_mean = mean(new_ensemble(1:handles.ens_size));
-        handles.update_inf_sd =   std (new_ensemble(1:handles.ens_size));
-        
-        str1 = sprintf('Inflated = %.4f',handles.update_inf_mean);
-        set(handles.ui_text_inflated_post_mean, 'String', str1, 'Visible','on');
-        
-        str1 = sprintf('Inflated = %.4f',handles.update_inf_sd);
-        set(handles.ui_text_inflated_post_sd, 'String', str1, 'Visible', 'on');
-        
+
+        % Update the ensemble for next cycle
+        growth_rate = 1.1;
+        handles.ens_members = new_ensemble * growth_rate;
+
     end
 
 %% -----------------------------------------------------------------------------
