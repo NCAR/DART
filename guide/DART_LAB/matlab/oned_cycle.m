@@ -51,6 +51,8 @@ handles.h_obs_plot       = [];
 handles.h_update_ens     = [];
 handles.h_prior_pdf      = [];
 handles.h_post_pdf       = [];
+handles.h_prior_cont_pdf = [];
+handles.h_post_cont_pdf = []
 handles.h_ens_member     = [];
 handles.h_obs_ast        = [];
 handles.h_update_lines   = [];
@@ -411,6 +413,8 @@ title('oned_cycle','Interpreter','none')
         set(handles.h_update_ens,          'Visible', 'Off');
         set(handles.h_prior_pdf,           'Visible', 'Off');
         set(handles.h_post_pdf,            'Visible', 'Off');
+        set(handles.h_prior_cont_pdf,      'Visible', 'Off');
+        set(handles.h_post_cont_pdf,       'Visible', 'Off');
         
         clear_ui_labels;
         
@@ -499,6 +503,8 @@ title('oned_cycle','Interpreter','none')
         set(handles.h_update_ens,     'Visible', 'Off');
         set(handles.h_prior_pdf,      'Visible', 'Off');
         set(handles.h_post_pdf,       'Visible', 'Off');
+        set(handles.h_prior_cont_pdf, 'Visible', 'Off');
+        set(handles.h_post_cont_pdf,  'Visible', 'Off');
         
         % Remove mean and sd of old posterior
         clear_ui_labels;
@@ -515,6 +521,12 @@ title('oned_cycle','Interpreter','none')
         post_cont_sd = sqrt(post_cont_var)
         post_cont_mean = post_cont_var * (handles.prior_cont_mean / handles.prior_cont_sd^2 + ...
            handles.observation / handles.obs_error_sd^2)
+
+        % Plot the prior and posterior continuous normal (KF) PDFs
+        handles.h_prior_cont_pdf = plot_gaussian(handles.prior_cont_mean, handles.prior_cont_sd, 1)
+        set(handles.h_prior_cont_pdf, 'Color', atts.green, 'Linestyle', '-', 'Linewidth', 1.7);
+        handles.h_post_cont_pdf  = plot_gaussian(post_cont_mean, post_cont_sd, 1);
+        set(handles.h_post_cont_pdf, 'Color', atts.blue, 'Linestyle', '-', 'Linewidth', 1.7);
        
         % Get the prior ensmeble members 
         ensemble = handles.ens_members;
@@ -539,17 +551,20 @@ title('oned_cycle','Interpreter','none')
                     obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
 
                 handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
-                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green);
+                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
             case 'EnKF'
                 [obs_increments, ~] = ...
                     obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
                 % There is no prior distribution to plot for the EnKF, it's not a QCEF
+                % However, here we can plot the fit to the ensemble anyway to show how it compares
+                handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
+                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
             case 'RHF'
                 bounded_left = false;
                 [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
                     obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, bounded_left);
-                handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
-                handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
+                handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
+                handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
         end
         
         % Add on increments to get new ensemble
@@ -601,10 +616,10 @@ title('oned_cycle','Interpreter','none')
         str1 = sprintf('Posterior Cont SD = %.4f', post_cont_sd);
         set(handles.ui_text_post_cont_sd,   'String', str1, 'Visible', 'on');
        
-        % Plot the posterior continuous for the EAKF
-        if(strcmp(filter_type, 'EAKF'))
+        % Plot the posterior continuous for the EAKF or ENKF
+        if(strcmp(filter_type, 'EAKF') | strcmp(filter_type, 'EnKF'))
              handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
-             set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue);
+             set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
         end
 
         % Update the continuous for the next cycle
@@ -639,6 +654,8 @@ title('oned_cycle','Interpreter','none')
         set(handles.h_update_ens,     'Visible', 'Off');
         set(handles.h_prior_pdf,      'Visible', 'Off');
         set(handles.h_post_pdf,       'Visible', 'Off');
+        set(handles.h_prior_cont_pdf, 'Visible', 'Off');
+        set(handles.h_post_cont_pdf,  'Visible', 'Off');
         
         % Remove mean and sd of old posterior
         clear_ui_labels;
@@ -693,6 +710,8 @@ title('oned_cycle','Interpreter','none')
         set(handles.h_update_ens,          'Visible', 'Off');
         set(handles.h_prior_pdf,           'Visible', 'Off');
         set(handles.h_post_pdf,            'Visible', 'Off');
+        set(handles.h_prior_cont_pdf,      'Visible', 'Off');
+        set(handles.h_post_cont_pdf,       'Visible', 'Off');
         
         % Remove mean and sd of old posterior
         clear_ui_labels;
