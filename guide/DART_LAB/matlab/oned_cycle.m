@@ -90,11 +90,11 @@ handles.observation_panel = uipanel('BackgroundColor',atts.red, ...
     'Units', 'Normalized', ...
     'Position',[0.66  0.744 0.325 0.2]);
 
-handles.ui_text_observation = uicontrol(handles.observation_panel, ...
+handles.ui_text_growth_rate = uicontrol(handles.observation_panel, ...
     'Style', 'text', ...
     'Units', 'Normalized', ...
     'Position', [0.035 0.600 0.600 0.275], ...
-    'String', 'Observation' , ...
+    'String', 'Growth Rate' , ...
     'BackgroundColor', atts.red, ...
     'ForegroundColor', 'White', ...
     'FontName', atts.fontname, ...
@@ -103,7 +103,7 @@ handles.ui_text_observation = uicontrol(handles.observation_panel, ...
     'FontWeight', 'Bold', ...
     'HorizontalAlignment', 'center');
 
-handles.ui_edit_observation = uicontrol(handles.observation_panel, ...
+handles.ui_edit_growth_rate= uicontrol(handles.observation_panel, ...
     'Style', 'edit', ...
     'Units', 'Normalized', ...
     'Position', [0.675 0.562 0.300 0.373], ...
@@ -112,8 +112,8 @@ handles.ui_edit_observation = uicontrol(handles.observation_panel, ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
     'FontSize', 0.6, ...
-    'Callback', @edit_observation_Callback);
-handles.observation = str2double(get(handles.ui_edit_observation,'String'));
+    'Callback', @edit_growth_rate_Callback);
+handles.growth_rate = str2double(get(handles.ui_edit_growth_rate,'String'));
 
 handles.ui_text_obs_error_sd = uicontrol(handles.observation_panel, ...
     'Style', 'text', ...
@@ -139,6 +139,9 @@ handles.ui_edit_obs_error_sd = uicontrol(handles.observation_panel, ...
     'FontSize', 0.6, ...
     'Callback', @edit_obs_error_sd_Callback);
 handles.obs_error_sd = str2double(get(handles.ui_edit_obs_error_sd,'String'));
+
+% The true observation value can be initialized to 0 for plotting
+handles.observation = 0;
 
 %% -----------------------------------------------------------------------------
 %  Try to center the boxes with what is on top.
@@ -351,10 +354,10 @@ set(handles.ui_text_post_cont_sd             , 'String',   'Posterior Cont SD = 
 % We create them and then turn them off. When we need to, IF we need to,
 % they can be turned back on.
 
-handles.ui_text_obs_err_print = uicontrol('Style', 'text', ...
+handles.ui_text_growth_rate_err_print = uicontrol('Style', 'text', ...
     'Units', 'Normalized', ...
     'Position', [40/figWidth 260/figHeight 400/figWidth 40/figHeight], ...
-    'String', 'ERROR: Observation value must be numeric.', ...
+    'String', 'ERROR: Growth Rate must be numeric.', ...
     'BackgroundColor', 'White', ...
     'ForegroundColor', atts.red, ...
     'FontSize', atts.fontsize, ...
@@ -373,23 +376,14 @@ handles.ui_text_obs_sd_err_print = uicontrol('Style', 'text', ...
     'FontName', atts.fontname, ...
     'Visible','Off');
 
-% Go ahead and plot the initial observational error distribution
-
-handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '-', 'Linewidth', 2.0);
-hold on
-
-% Plot an asterisk
-handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
-
 % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-xlower = handles.observation - 3*handles.obs_error_sd;
-xupper = handles.observation + 3*handles.obs_error_sd;
+xlower = - 3*handles.obs_error_sd;
+xupper = + 3*handles.obs_error_sd;
 ylower = -0.4;
 yupper = 1.0;
 axis([xlower xupper ylower yupper]);
 
-set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
+%set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'FontSize', atts.fontsize)
 set(gca, 'XGrid', 'on')
 
@@ -402,7 +396,7 @@ title('oned_cycle','Interpreter','none')
         
         % Disable the update ensemble button and all other active buttons
         set(handles.ui_button_cycle_da,     'Enable', 'Off');
-        set(handles.ui_edit_observation,      'Enable', 'Off');
+        set(handles.ui_edit_growth_rate,      'Enable', 'Off');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'Off');
         
         % Clear out any old ensemble members if they exist
@@ -487,7 +481,7 @@ title('oned_cycle','Interpreter','none')
         
         % Enable the update ensemble button
         set(handles.ui_button_cycle_da,     'Enable', 'On');
-        set(handles.ui_edit_observation,      'Enable', 'On');
+        set(handles.ui_edit_growth_rate,      'Enable', 'On');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'On');
         
     end
@@ -611,12 +605,11 @@ title('oned_cycle','Interpreter','none')
         end
 
         % Update the continuous for the next cycle
-        growth_rate = 1.1;
-        handles.prior_cont_mean = post_cont_mean * growth_rate;
-        handles.prior_cont_sd = post_cont_sd * growth_rate;
+        handles.prior_cont_mean = post_cont_mean * handles.growth_rate;
+        handles.prior_cont_sd = post_cont_sd * handles.growth_rate;
 
         % Update the ensemble for next cycle
-        handles.ens_members = new_ensemble * growth_rate;
+        handles.ens_members = new_ensemble * handles.growth_rate;
 
     end
 
@@ -637,7 +630,7 @@ title('oned_cycle','Interpreter','none')
 %% -----------------------------------------------------------------------------
 
 
-    function edit_observation_Callback(~, ~)
+    function edit_growth_rate_Callback(~, ~)
         
         % Turn Off any old updated points
         set(handles.h_update_ens,     'Visible', 'Off');
@@ -654,23 +647,23 @@ title('oned_cycle','Interpreter','none')
         set(handles.ui_edit_obs_error_sd,     'Enable', 'on')
         set(handles.ui_button_create_new_ens, 'Enable', 'on')
         
-        % Only enable the update ensemble pushbutton if an ensemble has been created
+        % Only enable the cycle DA pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
             set(handles.ui_button_cycle_da, 'Enable', 'on');
             
         end
         
-        % Get the value of the observation
-        if(isfinite(      str2double(get(handles.ui_edit_observation, 'String'))))
-            observation = str2double(get(handles.ui_edit_observation, 'String'));
+        % Get the value of the growth_rate
+        if(isfinite(      str2double(get(handles.ui_edit_growth_rate, 'String'))))
+            growth_rate = str2double(get(handles.ui_edit_growth_rate, 'String'));
             
         else
-            set(handles.ui_edit_observation, 'String', '??','FontWeight','Bold', ...
+            set(handles.ui_edit_growth_rate, 'String', '??','FontWeight','Bold', ...
                 'BackgroundColor', atts.red);
-            set(handles.ui_text_obs_err_print,'Visible','On')
+            set(handles.ui_text_growth_rate_err_print,'Visible','On')
             
-            fprintf('ERROR: Observation value must be numeric.\n')
-            fprintf('ERROR: Observation value must be numeric.\n')
+            fprintf('ERROR: Growth Rate value must be numeric.\n')
+            fprintf('ERROR: Growth Rate value must be numeric.\n')
             
             
             % Disable other input to guarantee only one error at a time!
@@ -683,30 +676,9 @@ title('oned_cycle','Interpreter','none')
         end
         
         % Update the global storage
-        handles.observation = observation;
-        set(handles.ui_edit_observation, 'BackgroundColor', 'White','FontWeight', 'Normal');
-        set(handles.ui_text_obs_err_print,'Visible','Off')
-        
-        % Plot the updated distribution
-        set(handles.h_obs_plot, 'Visible', 'Off');
-        handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
-        
-        % Move the observation asterisk
-        set(handles.h_obs_ast, 'Visible', 'Off');
-        handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
-        
-        % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-        xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
-        xupper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
-        ylower = -0.4;
-        yupper = 1.0;
-        axis([xlower xupper ylower yupper]);
-        
-        set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
-        
-        hold on
-        plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
+        handles.growth_rate = growth_rate;
+        set(handles.ui_edit_growth_rate, 'BackgroundColor', 'White','FontWeight', 'Normal');
+        set(handles.ui_text_growth_rate_err_print,'Visible','Off')
         
     end
 
@@ -726,7 +698,7 @@ title('oned_cycle','Interpreter','none')
         set(handles.h_update_lines,        'Visible', 'Off');
         
         % Enable things that an error might have turned Off
-        set(handles.ui_edit_observation,      'Enable', 'on')
+        set(handles.ui_edit_growth_rate,      'Enable', 'on')
         set(handles.ui_button_create_new_ens, 'Enable', 'on')
         
         % Only enable the update ensemble pushbutton if an ensemble has been created
@@ -751,7 +723,7 @@ title('oned_cycle','Interpreter','none')
             
             
             % Disable other input to guarantee only one error at a time!
-            set(handles.ui_edit_observation,      'Enable', 'Off')
+            set(handles.ui_edit_growth_rate,      'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
             set(handles.ui_button_cycle_da,     'Enable', 'Off')
             
