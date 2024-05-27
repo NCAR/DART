@@ -393,7 +393,12 @@ hold on
 set(gca, 'FontSize', atts.fontsize)
 set(gca, 'XGrid', 'on')
 
-plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
+% Add on a long black zero axis
+plot([-1000 1000], [0 0], 'k', 'Linewidth', 1.7);
+
+% Plot a marker at the truth value
+plot(0, 0, 'x', 'color', 'k', 'markersize', 16, 'linewidth', 4);
+
 title('oned_cycle','Interpreter','none')
 
 %% -----------------------------------------------------------------------------
