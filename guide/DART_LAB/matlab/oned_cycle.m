@@ -155,7 +155,7 @@ myleft = center - mywid/2.0;
 
 handles.ui_button_create_new_ens = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Position', [myleft 0.645 mywid 0.075], ...
+    'Position', [myleft 0.3 mywid 0.075], ...
     'String', 'Create New Ensemble', ...
     'BackgroundColor', 'White', ...
     'FontUnits', 'normalized', ...
@@ -168,7 +168,7 @@ myleft = center - mywid/2.0;
 handles.ui_button_cycle_da = uicontrol('style', 'pushbutton', ...
     'Units', 'Normalized', ...
     'Enable','On', ...
-    'Position', [myleft 0.549 mywid 0.075], ...
+    'Position', [myleft 0.6 mywid 0.075], ...
     'String', 'Cycle DA' , ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
@@ -416,6 +416,9 @@ title('oned_cycle','Interpreter','none')
         set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_prior_cont_pdf,      'Visible', 'Off');
         set(handles.h_post_cont_pdf,       'Visible', 'Off');
+
+        % Turn off legend
+        legend('hide');
         
         clear_ui_labels;
         
@@ -531,13 +534,16 @@ title('oned_cycle','Interpreter','none')
         % Plot the prior and posterior continuous normal (KF) PDFs
         handles.h_prior_cont_pdf = plot_gaussian(handles.prior_cont_mean, handles.prior_cont_sd, 1);
         set(handles.h_prior_cont_pdf, 'Color', atts.green, 'Linestyle', '-', 'Linewidth', 1.7, 'Visible', 'on');
+        handles.h_leg(2) = handles.h_prior_cont_pdf;
         handles.h_post_cont_pdf  = plot_gaussian(post_cont_mean, post_cont_sd, 1);
         set(handles.h_post_cont_pdf, 'Color', atts.blue, 'Linestyle', '-', 'Linewidth', 1.7);
+        handles.h_leg(3) = handles.h_post_cont_pdf;
         
         % Plot the updated distribution
         set(handles.h_obs_plot, 'Visible', 'Off');
         handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
         set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '-', 'Linewidth', 1.7);
+        handles.h_leg(1) = handles.h_obs_plot;
 
         % Display the prior cont mean and sd
         str1 = sprintf('Prior Cont Mean = %.4f', handles.prior_cont_mean);
@@ -554,9 +560,13 @@ title('oned_cycle','Interpreter','none')
         % Update the continuous for the next cycle
         handles.prior_cont_mean = post_cont_mean * handles.growth_rate;
         handles.prior_cont_sd = post_cont_sd * handles.growth_rate;
+
+        
+        %  Only plot this three entry legend if no ensemble has been created
+        ens_exists = handles.ens_size > 1;
+        if(~ens_exists) legend(handles.h_leg, 'Likelihood', 'Prior', 'Posterior'); end
         
         % If ensemble has been created, update an plot it also
-        ens_exists = handles.ens_size > 1;
         if(ens_exists) 
            % Get the prior ensmeble members 
            ensemble = handles.ens_members;
@@ -630,6 +640,11 @@ title('oned_cycle','Interpreter','none')
                 handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
                 set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
            end
+
+           handles.h_leg(4) = handles.h_prior_pdf;
+           handles.h_leg(5) = handles.h_post_pdf;
+
+           legend(handles.h_leg, 'Likelihood', 'Cont. Prior', 'Cont. Post', 'Ens. Prior', 'Ens. Post');
 
            % Update the ensemble for next cycle
            handles.ens_members = new_ensemble * handles.growth_rate;
