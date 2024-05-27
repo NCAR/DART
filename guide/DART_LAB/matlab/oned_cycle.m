@@ -160,16 +160,16 @@ handles.ui_button_create_new_ens = uicontrol('Style', 'pushbutton', ...
 
 mywid = 0.200;
 myleft = center - mywid/2.0;
-handles.ui_button_update_ens = uicontrol('style', 'pushbutton', ...
+handles.ui_button_cycle_da = uicontrol('style', 'pushbutton', ...
     'Units', 'Normalized', ...
     'Enable','Off', ...
     'Position', [myleft 0.549 mywid 0.075], ...
-    'String', 'Update Ensemble' , ...
+    'String', 'Cycle DA' , ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
     'FontSize', 0.4, ...
-    'Callback', @button_update_ens_Callback);
+    'Callback', @button_cycle_da_Callback);
 
 %% -----------------------------------------------------------------------------
 
@@ -177,7 +177,7 @@ handles.ui_button_update_ens = uicontrol('style', 'pushbutton', ...
 
 hlist = [handles.observation_panel,   ...
     handles.ui_button_create_new_ens,  ...
-    handles.ui_button_update_ens];
+    handles.ui_button_cycle_da];
 
 align(hlist,'Center','Distribute')
 
@@ -401,7 +401,7 @@ title('oned_cycle','Interpreter','none')
     function button_create_new_ens_Callback(~,~)
         
         % Disable the update ensemble button and all other active buttons
-        set(handles.ui_button_update_ens,     'Enable', 'Off');
+        set(handles.ui_button_cycle_da,     'Enable', 'Off');
         set(handles.ui_edit_observation,      'Enable', 'Off');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'Off');
         
@@ -486,7 +486,7 @@ title('oned_cycle','Interpreter','none')
         set(h_finish, 'Visible', 'Off');
         
         % Enable the update ensemble button
-        set(handles.ui_button_update_ens,     'Enable', 'On');
+        set(handles.ui_button_cycle_da,     'Enable', 'On');
         set(handles.ui_edit_observation,      'Enable', 'On');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'On');
         
@@ -495,9 +495,10 @@ title('oned_cycle','Interpreter','none')
 
 %% -----------------------------------------------------------------------------
 
-    function button_update_ens_Callback (~, ~)
+    function button_cycle_da_Callback (~, ~)
         
         % Turn Off any old points
+        set(handles.h_ens_member,     'Visible', 'Off');
         set(handles.h_update_ens,     'Visible', 'Off');
         set(handles.h_prior_pdf,      'Visible', 'Off');
         set(handles.h_post_pdf,       'Visible', 'Off');
@@ -556,7 +557,13 @@ title('oned_cycle','Interpreter','none')
         
         % Add on increments to get new ensemble
         new_ensemble = ensemble + obs_increments;
-        
+       
+        % Plot the prior and posterior ensemble members 
+        ens_size = size(ensemble, 2)
+        for i = 1:ens_size
+           handles.h_ens_member(i) = ...
+                    plot(handles.ens_members(i), 0, '*', 'MarkerSize', 16, 'Color', atts.green);
+        end
         y(1:size(ensemble)) = -0.1;
         handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
         
@@ -649,7 +656,7 @@ title('oned_cycle','Interpreter','none')
         
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
-            set(handles.ui_button_update_ens, 'Enable', 'on');
+            set(handles.ui_button_cycle_da, 'Enable', 'on');
             
         end
         
@@ -669,7 +676,7 @@ title('oned_cycle','Interpreter','none')
             % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_obs_error_sd,     'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
-            set(handles.ui_button_update_ens,     'Enable', 'Off')
+            set(handles.ui_button_cycle_da,     'Enable', 'Off')
             
             return
             
@@ -724,7 +731,7 @@ title('oned_cycle','Interpreter','none')
         
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
-            set(handles.ui_button_update_ens, 'Enable', 'on');
+            set(handles.ui_button_cycle_da, 'Enable', 'on');
         end
         
         % Get the value of the observation error sd
@@ -746,7 +753,7 @@ title('oned_cycle','Interpreter','none')
             % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_observation,      'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
-            set(handles.ui_button_update_ens,     'Enable', 'Off')
+            set(handles.ui_button_cycle_da,     'Enable', 'Off')
             
             return
             
