@@ -52,7 +52,7 @@ handles.h_update_ens     = [];
 handles.h_prior_pdf      = [];
 handles.h_post_pdf       = [];
 handles.h_prior_cont_pdf = [];
-handles.h_post_cont_pdf = []
+handles.h_post_cont_pdf  = [];
 handles.h_ens_member     = [];
 handles.h_obs_ast        = [];
 handles.h_update_lines   = [];
@@ -167,7 +167,7 @@ mywid = 0.200;
 myleft = center - mywid/2.0;
 handles.ui_button_cycle_da = uicontrol('style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Enable','Off', ...
+    'Enable','On', ...
     'Position', [myleft 0.549 mywid 0.075], ...
     'String', 'Cycle DA' , ...
     'BackgroundColor', 'White', ...
@@ -387,6 +387,7 @@ xupper = + 3*handles.obs_error_sd;
 ylower = -0.4;
 yupper = 1.0;
 axis([xlower xupper ylower yupper]);
+hold on
 
 %set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'FontSize', atts.fontsize)
@@ -486,7 +487,7 @@ title('oned_cycle','Interpreter','none')
         set(h_click,  'Visible', 'Off');
         set(h_finish, 'Visible', 'Off');
         
-        % Enable the update ensemble button
+        % Enable the cycle DA button
         set(handles.ui_button_cycle_da,     'Enable', 'On');
         set(handles.ui_edit_growth_rate,      'Enable', 'On');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'On');
@@ -497,7 +498,7 @@ title('oned_cycle','Interpreter','none')
 %% -----------------------------------------------------------------------------
 
     function button_cycle_da_Callback (~, ~)
-        
+
         % Turn Off any old points
         set(handles.h_ens_member,     'Visible', 'Off');
         set(handles.h_update_ens,     'Visible', 'Off');
@@ -515,119 +516,124 @@ title('oned_cycle','Interpreter','none')
         % The true value is zero in this example; obs error sd comes from the box
         % Generate a random observation
         handles.observation = randn * handles.obs_error_sd;
+        
+        % Move the observation asterisk
+        set(handles.h_obs_ast, 'Visible', 'Off');
+        handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
+        hold on;
 
         % Do the assimilation for the continuous normal distribution
         post_cont_var = 1 / (1 / handles.prior_cont_sd^2 + 1 / handles.obs_error_sd^2);
-        post_cont_sd = sqrt(post_cont_var)
+        post_cont_sd = sqrt(post_cont_var);
         post_cont_mean = post_cont_var * (handles.prior_cont_mean / handles.prior_cont_sd^2 + ...
-           handles.observation / handles.obs_error_sd^2)
+           handles.observation / handles.obs_error_sd^2);
 
         % Plot the prior and posterior continuous normal (KF) PDFs
-        handles.h_prior_cont_pdf = plot_gaussian(handles.prior_cont_mean, handles.prior_cont_sd, 1)
-        set(handles.h_prior_cont_pdf, 'Color', atts.green, 'Linestyle', '-', 'Linewidth', 1.7);
+        handles.h_prior_cont_pdf = plot_gaussian(handles.prior_cont_mean, handles.prior_cont_sd, 1);
+        set(handles.h_prior_cont_pdf, 'Color', atts.green, 'Linestyle', '-', 'Linewidth', 1.7, 'Visible', 'on');
         handles.h_post_cont_pdf  = plot_gaussian(post_cont_mean, post_cont_sd, 1);
         set(handles.h_post_cont_pdf, 'Color', atts.blue, 'Linestyle', '-', 'Linewidth', 1.7);
-       
-        % Get the prior ensmeble members 
-        ensemble = handles.ens_members;
-        
-        % Figure out which filter option is currently selected
-        val = get(handles.ui_radio_button_group,'SelectedObject');
-        filter_type = get(val,'String');
         
         % Plot the updated distribution
         set(handles.h_obs_plot, 'Visible', 'Off');
         handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
         set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '-', 'Linewidth', 1.7);
-        
-        % Move the observation asterisk
-        set(handles.h_obs_ast, 'Visible', 'Off');
-        handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
-        
-        switch filter_type
-            
-            case 'EAKF'
-                [obs_increments, ~] = ...
-                    obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
-
-                handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
-                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
-            case 'EnKF'
-                [obs_increments, ~] = ...
-                    obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
-                % There is no prior distribution to plot for the EnKF, it's not a QCEF
-                % However, here we can plot the fit to the ensemble anyway to show how it compares
-                handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
-                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
-            case 'RHF'
-                bounded_left = false;
-                [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
-                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, bounded_left);
-                handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
-                handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
-        end
-        
-        % Add on increments to get new ensemble
-        new_ensemble = ensemble + obs_increments;
-       
-        % Plot the prior and posterior ensemble members 
-        ens_size = size(ensemble, 2)
-        for i = 1:ens_size
-           handles.h_ens_member(i) = ...
-                    plot(handles.ens_members(i), 0, '*', 'MarkerSize', 16, 'Color', atts.green);
-        end
-        y(1:size(ensemble)) = -0.1;
-        handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
-        
-        % Plot lines connecting the prior and posterior ensemble members
-        for i = 1:size(ensemble, 2)
-            x_line = [handles.ens_members(i), new_ensemble(i)];
-            y_line = [0, -0.1];
-            handles.h_update_lines(i) = plot(x_line, y_line, 'k');
-        end
-        
-        % Add in a label of the updated mean and sd
-        new_mean = mean(new_ensemble);
-        new_sd   = std(new_ensemble);
-                
-        % Display the prior ens mean and sd
-        prior_ens_mean = mean(handles.ens_members);
-        prior_ens_sd   = std(handles.ens_members);
-        str1 = sprintf('Prior Ens Mean = %.4f', prior_ens_mean);
-        set(handles.ui_text_prior_ens_mean, 'String', str1, 'Visible', 'on');
-        str1 = sprintf('Prior Ens SD = %.4f', prior_ens_sd);
-        set(handles.ui_text_prior_ens_sd,   'String', str1, 'Visible', 'on');
 
         % Display the prior cont mean and sd
         str1 = sprintf('Prior Cont Mean = %.4f', handles.prior_cont_mean);
         set(handles.ui_text_prior_cont_mean, 'String', str1, 'Visible', 'on');
         str1 = sprintf('Prior Cont SD = %.4f', handles.prior_cont_sd);
         set(handles.ui_text_prior_cont_sd,   'String', str1, 'Visible', 'on');
-        
-        % Update mean and sd of old ens posterior
-        str1 = sprintf('Posterior Ens Mean = %.4f',new_mean);
-        set(handles.ui_text_post_ens_mean, 'String', str1, 'Visible', 'on');
-        str1 = sprintf('Posterior Ens SD = %.4f',new_sd);
-        set(handles.ui_text_post_ens_sd,   'String', str1, 'Visible', 'on');
        
         % Update mean and sd of old cont posterior
         str1 = sprintf('Posterior Cont Mean = %.4f', post_cont_mean);
         set(handles.ui_text_post_cont_mean, 'String', str1, 'Visible', 'on');
         str1 = sprintf('Posterior Cont SD = %.4f', post_cont_sd);
         set(handles.ui_text_post_cont_sd,   'String', str1, 'Visible', 'on');
-       
-        % Plot the posterior continuous for the EAKF or ENKF
-        if(strcmp(filter_type, 'EAKF') | strcmp(filter_type, 'EnKF'))
-             handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
-             set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
-        end
 
         % Update the continuous for the next cycle
         handles.prior_cont_mean = post_cont_mean * handles.growth_rate;
         handles.prior_cont_sd = post_cont_sd * handles.growth_rate;
+        
+        % If ensemble has been created, update an plot it also
+        ens_exists = handles.ens_size > 1;
+        if(ens_exists) 
+           % Get the prior ensmeble members 
+           ensemble = handles.ens_members;
+        
+           % Figure out which filter option is currently selected
+           val = get(handles.ui_radio_button_group,'SelectedObject');
+           filter_type = get(val,'String');
+        
+           switch filter_type
+            
+               case 'EAKF'
+                   [obs_increments, ~] = ...
+                       obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
 
-        % Update the ensemble for next cycle
-        handles.ens_members = new_ensemble * handles.growth_rate;
+                   handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
+                   set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
+               case 'EnKF'
+                   [obs_increments, ~] = ...
+                       obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
+                   % There is no prior distribution to plot for the EnKF, it's not a QCEF
+                   % However, here we can plot the fit to the ensemble anyway to show how it compares
+                   handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
+                   set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
+               case 'RHF'
+                   bounded_left = false;
+                   [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
+                       obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, bounded_left);
+                   handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green, 'Linestyle', '--');
+                   handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
+           end
+        
+           % Add on increments to get new ensemble
+           new_ensemble = ensemble + obs_increments;
+       
+           % Plot the prior and posterior ensemble members 
+           ens_size = size(ensemble, 2);
+           for i = 1:ens_size
+              handles.h_ens_member(i) = ...
+                       plot(handles.ens_members(i), 0, '*', 'MarkerSize', 16, 'Color', atts.green);
+           end
+           y(1:size(ensemble)) = -0.1;
+           handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+        
+           % Plot lines connecting the prior and posterior ensemble members
+           for i = 1:size(ensemble, 2)
+               x_line = [handles.ens_members(i), new_ensemble(i)];
+               y_line = [0, -0.1];
+               handles.h_update_lines(i) = plot(x_line, y_line, 'k');
+           end
+        
+           % Add in a label of the updated mean and sd
+           new_mean = mean(new_ensemble);
+           new_sd   = std(new_ensemble);
+                
+           % Display the prior ens mean and sd
+           prior_ens_mean = mean(handles.ens_members);
+           prior_ens_sd   = std(handles.ens_members);
+           str1 = sprintf('Prior Ens Mean = %.4f', prior_ens_mean);
+           set(handles.ui_text_prior_ens_mean, 'String', str1, 'Visible', 'on');
+           str1 = sprintf('Prior Ens SD = %.4f', prior_ens_sd);
+           set(handles.ui_text_prior_ens_sd,   'String', str1, 'Visible', 'on');
+        
+           % Update mean and sd of old ens posterior
+           str1 = sprintf('Posterior Ens Mean = %.4f',new_mean);
+           set(handles.ui_text_post_ens_mean, 'String', str1, 'Visible', 'on');
+           str1 = sprintf('Posterior Ens SD = %.4f',new_sd);
+           set(handles.ui_text_post_ens_sd,   'String', str1, 'Visible', 'on');
+       
+           % Plot the posterior sample continuous for the EAKF or ENKF
+           if(strcmp(filter_type, 'EAKF') | strcmp(filter_type, 'EnKF'))
+                handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
+                set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue, 'Linestyle', '--');
+           end
+
+           % Update the ensemble for next cycle
+           handles.ens_members = new_ensemble * handles.growth_rate;
+        end
 
     end
 
