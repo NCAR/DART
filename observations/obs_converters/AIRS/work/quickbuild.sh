@@ -15,7 +15,6 @@ EXTRA="$DART/observations/obs_converters/obs_error/ncep_obs_err_mod.f90"
 
 
 programs=(
-L1_AMSUA_to_netcdf
 advance_time
 convert_airs_L2
 convert_amsu_L1

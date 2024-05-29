@@ -9,6 +9,10 @@ DART interface module for the Weather Research and Forecasting
 `(WRF) <https://www.mmm.ucar.edu/weather-research-and-forecasting-model>`__
 model. This page documents the details of the
 module compiled into DART that interfaces with the WRF data in the state vector.
+**The WRF-DART interface is compatible with WRF versions 4 and later, and is 
+no longer backwards compatible with WRFv3.9 and earlier.**  
+For more information on the interface changes required between 
+different WRF versions see the WRF tutorial link in the next section.
 
 WRF+DART Tutorial
 -----------------
@@ -362,4 +366,4 @@ Files
 References
 ----------
 
-http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html
+https://www2.mmm.ucar.edu/wrf/users/docs/user_guide_v4/contents.html

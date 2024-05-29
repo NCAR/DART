@@ -46,11 +46,10 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                  map_pe_to_task, prepare_to_update_copies,  &
-                                  copies_in_window, set_num_extra_copies, get_allow_transpose, &
-                                  all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
-                                  get_single_copy, put_single_copy, deallocate_single_copy,   &
-                                  print_ens_handle
+                                  map_pe_to_task, copies_in_window, set_num_extra_copies,     &
+                                  get_allow_transpose, all_copies_to_all_vars,                &
+                                  allocate_single_copy, allocate_vars, get_single_copy,       &
+                                  put_single_copy, deallocate_single_copy, print_ens_handle
 
 use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
                                   inflate_ens, adaptive_inflate_init,                 &
@@ -806,7 +805,6 @@ AdvanceTime : do
       call trace_message('Before prior inflation damping and prep')
 
       if (inf_damping(PRIOR_INF) /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
             inf_damping(PRIOR_INF) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
@@ -907,7 +905,6 @@ AdvanceTime : do
       call trace_message('Before posterior inflation damping')
 
       if (inf_damping(POSTERIOR_INF) /= 1.0_r8) then
-         call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             inf_damping(POSTERIOR_INF) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
@@ -1548,9 +1545,6 @@ type(adaptive_inflate_type), intent(inout) :: inflate
 integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
-
-! Assumes that the ensemble is copy complete
-call prepare_to_update_copies(ens_handle)
 
 ! Inflate each group separately;  Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
@@ -2826,8 +2820,6 @@ logical             :: verbose
 ! if you want to see the updated values, make this true. 
 ! for quiet execution, set it to false.
 verbose = .true.
-
-call prepare_to_update_copies(obs_ens_handle)
 
 do j = 1, obs_ens_handle%my_num_vars
    ! get the key number associated with each of my subset of obs

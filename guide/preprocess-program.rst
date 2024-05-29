@@ -1,3 +1,5 @@
+.. _preprocess:
+
 How DART supports different types of observations: the preprocess program
 =========================================================================
 

@@ -83,6 +83,7 @@ EOF
 #PBS -A ${COMPUTER_CHARGE_ACCOUNT}
 #PBS -l walltime=${ADVANCE_TIME}
 #PBS -q ${ADVANCE_QUEUE}
+#PBS -l job_priority=${ADVANCE_PRIORITY}
 #PBS -m ae
 #PBS -M ${EMAIL}
 #PBS -k eod

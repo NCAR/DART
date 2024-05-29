@@ -246,8 +246,8 @@ Citing DART
 
 Cite DART using the following text:
 
-   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2019).
-   Boulder, Colorado: UCAR/NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
+   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2024).
+   Boulder, Colorado: UCAR/NSF NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
 
 Update the DART version and year as appropriate.
 
@@ -439,6 +439,7 @@ References
    :hidden:
 
    models/9var/readme
+   models/aether_lat-lon/readme
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme
@@ -480,6 +481,7 @@ References
    models/POP/dart_pop_mod
    models/ROMS/readme
    models/rose/readme
+   models/seir/readme
    models/simple_advection/readme
    models/sqg/readme
    models/template/new_model

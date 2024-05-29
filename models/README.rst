@@ -39,6 +39,7 @@ DART supported models:
 - :doc:`POP/readme`
 - :doc:`ROMS/readme`
 - :doc:`rose/readme`
+- :doc:`seir/readme`
 - :doc:`simple_advection/readme`
 - :doc:`sqg/readme`
 - :doc:`tiegcm/readme`

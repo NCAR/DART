@@ -22,6 +22,93 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 16 2024 :: WRF v4. Tag v11.5.0**
+
+- WRF-DART and WRF-DART Tutorial updated to WRFv4. Note, not backwards compatible with WRFv3.9. 
+- local particle filter default value for pf_enkf_hybrid=.false. *contributed by Jon Poterjoy*
+
+**April 23 2024 :: Bug-fix: WRF hybrid vertical coordinate. Tag v11.4.1**
+
+- DART now detects whether WRF is using Hybrid Vertical Coordinate (HVC) introduced in WRFv3.9 or terrain following (TF) system.
+  This fix is also compatible with pre WRFv3.9 versions which did not include explicit attribute information for vertical coordinate system.
+- Improved obs_impact_tool documentation.
+
+**March 27 2024 :: WRF-Hydro Developments; AIRS converter documentation update; Add citation.cff file. Tag v11.4.0**
+
+- WRF-Hydro:
+
+  - Added a new perfect model obs experimental capability to HydroDART
+  - Modified the Streamflow obs converter to allow for better diagnostics: allows DART to
+    compute obs space diagnostics on all gauges from the Routelink
+  - Enhanced performance in the model_mod and noah_hydro_mod when running a full CONUS domain
+  - Improved HydroDART Diagnostics with new capabilities (saves the hydrographs in a high-resolution
+    pdf, handles hybrid DA components, separate plots for the hybrid statistics, allows the openloop
+    to have different ens size and gauges than the DA runs)
+
+- AIRS and AMSU-A observation converters:
+
+  - Updated the documentation to use up-to-date build suggestions for the HDFEOS library
+  - Updated the AIRS converter code to be able to use version 7 of the AIRS data formats
+  - Removed unused and non-functional code: AIRS/BUILD_HDF-EOS.sh, AIRS/L1_AMSUA_to_netcdf.f90,
+    AIRS/shell_scripts/Build_HDF_to_netCDF.sh, AIRS/shell_scripts/Convert_HDF_to_netCDF.csh
+  - Removed the unnecessary entries from obs_def_rttov_nml in the input.nml
+
+- Added a citation.cff file to help users correctly cite DART software - creates a link to cite
+  the repository on the landing page sidebar on GitHub.
+
+**March 13 2024 :: Update WRF-DART scripts and bug template to Derecho; remove no-op routines in ensemble manager. Tag v11.3.1**
+
+- Updated the csh scripting templates used to run WRF-DART and WRF-DART tutorial from Cheyenne to Derecho
+- Updated bug report template to use Derecho instead of Cheyenne
+- Removed the following no-op routines from ensemble manager: prepare_to_write_to_vars, prepare_to_write_to_copies,
+  prepare_to_read_from_vars, prepare_to_read_from_copies, prepare_to_update_vars, prepare_to_update_copies
+
+**March 12 2024 :: MITgcm/N-BLING with Compressed Staggered Grids. Tag v11.3.0**
+
+- The DART-MITgcm code now supports compressed grids, especially suited for areas like 
+  the Red Sea where land occupies more than 90% of the domain.  
+  Built upon work *contributed by Jiachen Liu*.
+- Allows writing the BGC fields into MITgcm's pickup files.
+- Allows different compression for the regular and staggered grids.
+
+**March 12 2024 :: Aether lat-lon. Tag v11.2.0**
+
+- Aether lat-lon interface added to DART.
+
+**March 11 2024 :: SEIR model for infectious diseases. Tag v11.1.0**
+
+- Added SEIR model which simulates the spread of infectious diseases, for example COVID-19.
+
+**February 13 2024 :: Fortran Standards. Tag v11.0.3**
+
+- Replace f2kcli with Fortran intrinsics for command line arguments.
+- AIRS and quikscat mkmf.templates with appropriate HDF, HDFEOS, RTTOV library flags.
+- Simplified noah_hydro_mod.f90 number of non-zero element counts.
+- WRF pert_sounding_module random iseed now integer.
+
+**February 1 2024 :: RTTOV13 cloud bug-fix. Tag v11.0.2**
+
+- Initialize RTTOV13 profile cloud arrays to zero for profiles.
+- Updated docs with RTTOV13 namelist info.
+- New obs_def_rttov13_mod.f90 namelist option wfetch_value.
+- Updated mkmf.templates for RTTOV on Derecho: HDF5 library flags.
+
+GitHub actions changes:
+
+  - checkout action updated to v4.
+
+**January 17 2024 :: CLM bug-fixes. Tag v11.0.1**
+
+- CLM5-DART SourceMods path variable correction
+
+- dart_to_clm:
+
+  - Resolved compiler error by changing the arrays for number of snow layers (snlsno and clm_SNLSNO) to integer types 
+
+  - Forcing h2oliq_po to be slightly larger than zero to be consistent with h2oice_po and dzsno_po
+
+  - Adding checks to ensure that the values for h2oliq_po, h2oice_po, dzsno_po, and snowdp_po are never negative 
+
 **January 11 2024 :: QCEFF. Tag v11.0.0**
 
 Nonlinear and Non-Gaussian Data Assimilation Capabilities in DART

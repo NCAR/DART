@@ -1,0 +1,42 @@
+# Template for AIRS observation converter with Intel Fortran Compiler on Linux or OSX
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+
+MPIFC = mpif90
+MPILD = mpif90
+FC = h4fc
+LD = h4fc
+
+# MODIFY THE FOLLOWING VARIABLES FOR YOUR SYSTEM:
+# If your NETCDF, HDFEOS, or RTTOV environment variables are not set,
+# uncomment the following line and set value to where lib and include
+# are found for the netcdf files that match this compiler.
+#
+# NETCDF = /opt/local
+HDFEOS = /glade/campaign/cisl/dares/libraries/hdf-eos_intel/
+RTTOV = /glade/campaign/cisl/dares/libraries/rttov123_intel/
+
+RTTOV_VERSION = 12
+
+RTLIBS = -lrttov$(RTTOV_VERSION)_wrapper    -lrttov$(RTTOV_VERSION)_mw_scatt -lrttov$(RTTOV_VERSION)_brdf_atlas \
+         -lrttov$(RTTOV_VERSION)_emis_atlas -lrttov$(RTTOV_VERSION)_other    -lrttov$(RTTOV_VERSION)_parallel \
+         -lrttov$(RTTOV_VERSION)_coef_io    -lrttov$(RTTOV_VERSION)_hdf      -lrttov$(RTTOV_VERSION)_main 
+
+INCS = -I$(NETCDF)/include -I$(HDFEOS)/include -I$(RTTOV)/include -I$(RTTOV)/mod
+
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf \
+       -L$(HDFEOS)/lib -lhdfeos -lmfhdf -ldf -ljpeg -lz -lm -lsz -lGctp \
+       -L$(RTTOV)/lib  -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 $(RTLIBS) 
+
+FFLAGS  = -O2 -assume buffered_io $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# for development or debugging, use this instead:
+# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
+#          -fp-model precise  -ftrapuv -traceback \
+#          -warn declarations,uncalled,unused $(INCS)
+
+# Optimized (BLAS, LAPACK) libraries are available from the Intel Math Kernel Libraries:
+# -lmkl -lmkl_lapack -lguide -lpthread

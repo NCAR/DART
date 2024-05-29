@@ -1,0 +1,327 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
+&quality_control_nml
+   input_qc_threshold   = 3.0
+   outlier_threshold    = 3.0
+/
+
+&state_vector_io_nml
+   /
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.
+   single_file_in             = .false.
+   input_state_files          = 'pmo not ready for use'
+   init_time_days             = -1
+   init_time_seconds          = -1
+
+   write_output_state_to_file = .false.
+   single_file_out            = .false.
+   output_state_files         = 'perfect_output_d01.nc'
+   output_interval            = 1
+
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   async                      = 0
+   adv_ens_command            = "../shell_scripts/advance_model.csh"
+
+   trace_execution            = .true.
+   output_timestamps          = .false.
+   print_every_nth_obs        = -1
+   output_forward_op_errors   = .true.
+   silence                    = .false.
+   /
+
+&filter_nml
+   single_file_in               = .false.,
+   input_state_files            = ''
+   input_state_file_list        = 'filter_inputs.txt'
+   init_time_days               = 153131,
+   init_time_seconds            = 0,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2,
+
+   stages_to_write              = 'preassim', 'analysis'
+
+   single_file_out              = .false.,
+   output_state_files           = ''
+   output_state_file_list       = 'filter_outputs.txt'
+   output_interval              = 1,
+   output_members               = .true.
+   num_output_state_members     = 20,
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+   compute_posterior            = .true.
+
+   ens_size                     = 20,
+   num_groups                   = 1,
+   distributed_state            = .true.
+
+   async                        = 4,
+   adv_ens_command              = "./advance_model.csh",
+   tasks_per_model_advance      = 1
+
+   obs_sequence_in_name         = "obs_seq.out.1",
+   obs_sequence_out_name        = "obs_seq.final",
+   num_output_obs_members       = 20,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+   obs_window_days              = -1,
+   obs_window_seconds           = -1,
+
+   inf_flavor                  = 5,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                     1.0,
+   inf_lower_bound             = 0.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_sd_lower_bound          = 0.6,                     0.0
+   inf_sd_max_change           = 1.05,                    1.05,
+
+   trace_execution              = .false.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
+   silence                      = .false.,
+
+   allow_missing_clm            = .false.
+   /
+
+
+
+&ensemble_manager_nml
+   /
+
+&assim_tools_nml
+   cutoff                          = 0.2
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
+   print_every_nth_obs             = 0
+   /
+
+&transform_state_nml
+   aether_restart_dirname = 
+      '/Users/raeder/DAI/Manhattan/models/aether_lat-lon/test4'
+   variables = 
+      'Temperature',    'neutrals',
+      'O+',             'ions',
+   nblocks_lon = 2
+   nblocks_lat = 2
+   nblocks_lev = 1
+   debug = 0
+   /
+
+&model_nml
+   template_file  = 'filter_input_0001.nc'
+   variables      = 'Temperature',    'QTY_TEMPERATURE',      '0.0',  'NA',   'UPDATE',
+                    'Opos',           'QTY_DENSITY_ION_OP',   '0.0',  'NA',   'UPDATE'
+   time_step_days      = 0
+   time_step_seconds   = 3600
+   /
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = "reg_diagnostics"
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'AIRS_TEMPERATURE'
+   evaluate_these_obs_types   = ''
+   /
+
+&location_nml
+   horiz_dist_only             = .true.
+   vert_normalization_pressure = 100000.0
+   vert_normalization_height   = 10000.0
+   vert_normalization_level    = 20.0
+   approximate_distance        = .false.
+   nlon                        = 71
+   nlat                        = 36
+   output_box_info             = .false.
+   /
+
+&preprocess_nml
+           overwrite_output = .true.
+    input_obs_qty_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+      obs_type_files        = '../../../observations/forward_operators/obs_def_upper_atm_mod.f90',
+                              '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                             '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                             '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_vortex_mod.f90',
+                             '../../../observations/forward_operators/obs_def_gts_mod.f90'
+    quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90', 
+                              '../../../assimilation_code/modules/observations/space_quantities_mod.f90',
+                              '../../../assimilation_code//modules/observations/chemistry_quantities_mod.f90'
+   /
+
+&utilities_nml
+   TERMLEVEL = 1
+   module_details = .true.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+   write_nml   = 'file'
+   print_debug = .true.
+   /
+
+&mpi_utilities_nml
+   /
+
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+
+&obs_diag_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   first_bin_center =  2005, 9,  9, 0, 0, 0 
+   last_bin_center  =  2005, 9, 10, 0, 0, 0 
+   bin_separation   =     0, 0,  0, 1, 0, 0 
+   bin_width        =     0, 0,  0, 1, 0, 0 
+   time_to_skip     =     0, 0,  0, 1, 0, 0 
+   max_num_bins     = 1000
+   trusted_obs      = 'null'
+   Nregions   = 4
+   hlevel = 0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000
+   lonlim1    =   0.0,   0.0,   0.0, 235.0
+   lonlim2    = 360.0, 360.0, 360.0, 295.0
+   latlim1    =  20.0, -80.0, -20.0,  25.0
+   latlim2    =  80.0, -20.0,  20.0,  55.0
+   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
+   /
+
+# obs_seq_to_netcdf also requires the schedule_nml.
+# In this context, schedule_nml defines how many netcdf files get created.
+# Each 'bin' results in an obs_epoch_xxxx.nc file.
+# default is to put everything into one 'bin'.
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+&obs_sequence_tool_nml
+   num_input_files   = 1
+   filename_seq      = 'obs_seq.out'
+   filename_out      = 'obs_seq.processed'
+   first_obs_days    = -1
+   first_obs_seconds = -1
+   last_obs_days     = -1
+   last_obs_seconds  = -1
+   obs_types         = ''
+   keep_types        = .false.
+   print_only        = .false.
+   min_lat           = -90.0
+   max_lat           = 90.0
+   min_lon           = 0.0
+   max_lon           = 360.0
+   /
+
+ test 6 produces an exhaustive list of metadata for EVERY element in the DART state vector. 
+ num_ens must = 1
+ x_ind is for test3.  The default (-1) will fail.
+ interp_test_dX are the model grid resolutions, 
+    or numbers to use as such in the testing.
+    _d[xyz] is for cartesian grids, 
+    _d{lon,lat,vert} is for spherical grids
+    interp_test_d[xyz] take precedence over d{lon,lat,vert}
+       all 3 must be specified.
+    aether (54 levels) dz ranges from ~1500 in the low levels to ~15,000 at the top.
+ interp_test_{lon,lat,vert}range; model domain limits (or a subdomain?)
+ Aether longitudes; in the filter_input_#.nc some are not whole numbers.; 75.00001
+ Doc error: web page says run_tests uses entries from test1thru,
+   but that has test 0, which is not an option in model_mod_check.
+   tests_to_run is not dimensioned '(0:'.
+
+&model_mod_check_nml
+   num_ens               = 1
+   single_file           = .FALSE.
+   input_state_files     = 'filter_input_0001.nc'
+   output_state_files    = 'filter_output_0001.nc'
+   quantity_of_interest  = 'QTY_DENSITY_ION_OP'
+   all_metadata_file     = 'test6_metadata.txt'
+   x_ind                 = 1234
+   loc_of_interest       =  15.0, -2.5, 100000.
+   interp_test_dlon      =   10.0
+   interp_test_dlat      =    5.0
+   interp_test_dvert     = 1500.0
+   interp_test_lonrange  = 0,  360 
+   interp_test_latrange  = -87.5,   87.5
+   interp_test_vertrange = 96952.5625, 436360.25
+   interp_test_dx        = -888888.0
+   interp_test_dy        = -888888.0
+   interp_test_dz        = -888888.0
+   interp_test_xrange    = -888888.0, -888888.0
+   interp_test_yrange    = -888888.0, -888888.0
+   interp_test_zrange    = -888888.0, -888888.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   test1thru             = -1
+   run_tests             = 1,2,3,4,5,7
+   verbose               = .FALSE.
+  /
+
+&quad_interpolate_nml
+/
