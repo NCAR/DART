@@ -420,10 +420,11 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             prior_mean = mean(x, 2);
             prior_cov  = cov(x(1, :), x(2, :));
             slope      = prior_cov(1, 2) / var(x(1, :));
+            intercept  = prior_mean(2) - slope * prior_mean(1);
             
-            best_x = [0 10];
-            best_y(1) = prior_mean(2) - (prior_mean(1)) * slope;
-            best_y(2) = best_y(1) + 10 * slope;
+            best_x = [-1000 1000];
+            best_y = slope * best_x + intercept;
+ 
             handles.h_best_fit = plot(best_x, best_y, 'g', 'LineWidth', 2.0);
             set(handles.h_best_fit, 'Color', atts.green);
             
