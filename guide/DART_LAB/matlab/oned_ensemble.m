@@ -1,41 +1,52 @@
 function oned_ensemble
-%% ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
+%% ONED_ENSEMBLE explores different ensemble filter assimilation algorithms for a scalar.
 %
 %      Push on the 'Create New Ensemble' button to activate the interactive
-%      observation generation mechanism and lay down a set of 'observations'
-%      representative of your ensemble. (Think: Some H() operator has
-%      converted the model state to an expected observation.) This is done by
-%      placing the cursor near the axis in the plot and clicking. When you
-%      have all the ensemble members you want, click in the grey area of
-%      the window outside of the white axis plot.
+%      mechanism to generate a prior ensemble estimate of the observation.
+%      This is done by placing the cursor near the axis in the plot and clicking. 
+%      When you have all the ensemble members you want, click in the grey area of
+%      the window outside of the white axis plot. As you add ensemble members,
+%      the ensemble prior mean and prior standard deviation are updated in the upper
+%      left corner of the plot.
 %
-%      After you have an ensemble and an observation, click 'Update Ensemble'.
-%      The algorithm is applied and the Posterior (blue) is plotted below the
-%      Prior (green). The mean and standard deviation of the posterior are
-%      also printed on the plot. For the EAKF and RHF, the continuous prior distribution
-%      that best fits the prior ensemble (green) and the posterior continuous 
-%      ensemble from which the QCEFF algorithm determines the posterior ensemble
-%      members (blue) are also plotted. The EnKF is not a QCEFF filter and does
-%      not make use of a continuous prior distribution fit.  
+%      Once you have created a prior ensemble (green asterisks), click the 
+%      'Update Ensemble' button. With the default settings, this will apply the EAKF 
+%      algorithm to produce a posterior ensemble (blue asterisks) just below the axis. 
+%      The mean and standard deviation of the posterior are also printed on the plot. 
 %
-%      The type of ensemble Kalman filter update can be chosen using the
-%      pulldown menu at the bottom.
+%      Two other ensemble filter variants, the EnKF (sometimes referred to as 
+%      the perturbed observations ensemble Kalman filter) and the rank histogram 
+%      filter (RHF) can be selected with the pushbuttons at the lower right.
+%      Selecting one of these and pressing 'Update Ensemble' will produce
+%      the posterior ensemble and posterior statistics using the selected
+%      filter algorithm.
 %
-%      Checking the 'Show Inflation' box will also apply inflation to the
-%      prior before doing the update and will print the mean and standard
+%      For the EAKF and RHF, the continuous prior distribution (green)
+%      that is fit to the prior ensemble and the posterior continuous distribution 
+%      (blue) from which the QCEFF algorithm determines the posterior ensemble
+%      members are also plotted. The EnKF is not a QCEFF filter and does
+%      not directly make use of a continuous prior and posterior distribution fit.  
+%
+%      Checking the 'Apply Inflation' box will also apply inflation to the
+%      prior ensemble before doing the update and will print the mean and standard
 %      deviation of the inflated prior and the resulting posterior. The
 %      inflated prior and posterior are plotted on an axis below the
-%      axis for the uninflated ensemble.
+%      axis for the uninflated ensemble. The value of the covariance inflation
+%      applied can be adjusted using the slider or by typing in a value in the
+%      'Inflation Amount' box.
 %
 %      The 'EnKF' is a stochastic algorithm so repeated updates can be done
-%      for the same prior and observation.
+%      for the same prior and observation by repeatedly pressing 'Update Ensemble'.
+%      The 'EnKF' version implemented here adjusts the mean of the perturbed
+%      observations so that they are equal to the actual observation. This means
+%      that the posterior mean is the same for each repeat.
 %
-%      The mean and standard deviation of the likelihood
-%      can be changed in the red box. Change the Observation Error SD, lay down 
-%      an ensemble pretty far away from the observation - have fun with it.
+%      The mean and standard deviation of the observation likelihood
+%      can be changed in the red box. 
 %
-% See also: bounded_oned_ensemble.m gaussian_product.m oned_model.m oned_model_inf.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_model.m 
+%           oned_model_inf.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

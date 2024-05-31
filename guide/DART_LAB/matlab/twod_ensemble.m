@@ -1,23 +1,30 @@
 function twod_ensemble
-%% TWOD_ENSEMBLE demonstrates a powerful aspect of ensemble data assimilation.
-%      The ensemble makes it possible to estimate the impact of observations
-%      on unobserved state variables.
+%% TWOD_ENSEMBLE explores how and unobserved variable is updated by an
+%   observed variable in an ensemble filter.
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive
-%      observation generation mechanism and lay down a set of ensemble
-%      samples of an unobserved variable (vertical axis) and an observed
-%      variable (horizontal axis). The ensemble members are created by
-%      left clicking in the central portion of the figure window.
-%      Start out small, say 6 or so.
-%      In this case, some H() operator would generate the Observed Quantity.
-%      The Unobserved State Variable could simply be some portion of the
-%      model state.
+%      ensemble generation mechanism. Ensemble members are created by
+%      left clicking in the central portion of the plot on the left side
+%      of the panel. The horizontal axis is for an observed quantity, 
+%      and the vertical axis for an unobserved quantity. When you have all
+%      the ensemble members you want, click outside of the bivariate plot.
+%      As you add ensemble members, marginal plots for the observed and
+%      unobserved axes are created and the sample correlation is displayed.
 %
-%      After creating the ensemble, the correlation between the Observed
-%      Quantity and the Unobserved State Variable is calculated.
-%      Select an assimilation algorithm and click 'Update Ensemble'.
-%      The increments are shown as red lines, the new Posterior estimates
-%      are in blue.
+%      Once you have created a prior ensemble (green asterisks), click the 
+%      'Update Ensemble' button. With the default settings, this will apply the EAKF 
+%      algorithm to produce a posterior ensemble (blue asterisks) in the central
+%      bivariate plot and in the marginal plots. The prior and posteriors are 
+%      connected by cyan segments. 
+%
+%      Two other ensemble filter variants, the EnKF (sometimes referred to as 
+%      the perturbed observations ensemble Kalman filter) and the rank histogram 
+%      filter (RHF) can be selected with the pushbuttons at the lower right.
+%      Selecting one of these and pressing 'Update Ensemble' will produce
+%      the posterior ensemble and posterior statistics using the selected
+%      filter algorithm. The EnKF is a stochastic algorithm so repeated 
+%      updates can be done for the same prior and observation by repeatedly 
+%      pressing 'Update Ensemble'.
 %
 %      The marginal distributions of the observed quantity and the 
 %      unobserved quantity are shown in the rectangular plots abutting the
@@ -31,8 +38,9 @@ function twod_ensemble
 %      The mean and standard deviation of the likelihood can be 
 %      changed in the red box. 
 %
-% See also: twod_ppi_ensemgle.m gaussian_product.m oned_model.m oned_model_inf.m 
-%      oned_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model.m oned_model_inf.m run_lorenz_63.m run_lorenz_96.m 
+%           run_lorenz_96_inf.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

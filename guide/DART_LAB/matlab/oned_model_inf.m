@@ -1,42 +1,31 @@
 function oned_model_inf
-%% ONED_MODEL_INF simple ensemble data assimilation example.
+%% ONED_MODEL_INF extends the oned_model application to allow adaptive inflation.
+% 
+%      See the help for oned_model.m. Additional inflation options are added
+%      by a group of controls on the right. A toggle allows switching between 
+%      'Fixed Inflation' and 'Adaptive Inflation'. The adaptive inflation is
+%      controlled by five boxes. The minimum value of the inflation is set by
+%      'Inf Min' and the maximum by 'Inf Max'. The inflation damping is set by
+%      'Inf Damp'. The initial value of the inflation standard deviation is
+%      set by 'Inf Std Init' while the minimum standard deviation is set 
+%      by 'Inf Std Min'. 
 %
-%      There are no input arguments. Simply invoke by typing the name.
+%      All display panels are the same as in oned_model_mod.m except for the 
+%      third panel from the top in the right column which displays the time
+%      evolution of the inflation value. The value is indicated by a blue dot,
+%      its standard deviation by a bracketed range, and the values of the 
+%      mean (lambda) and standard deviation (sigma) are also printed in the 
+%      upper left of the panel.
+%      The inflation algorithm is described in: 
+%          El Gharamti, M., 2018: Enhanced Adaptive Inflation Algorithm for 
+%          Ensemble Filters. Mon. Wea. Rev., 146, 623–640.
 %
-%      ONED_MODEL_INF demonstrates the simplest possible case of ensemble data
-%      assimilation. It is possible to explore assimilation algorithms,
-%      ensemble sizes, model biases, etc. on-the-fly. The posterior
-%      of the state is indicated by blue asterisks, the states evolve along
-%      a trajectory indicated by the green lines to wind up at a prior state
-%      for the assimilation - indicated by the green asterisks. After the
-%      assimilation, the (posterior) state is indicated in blue and the
-%      process is ready to repeat.
+%      A log file 'oned_model_inf.log' is created when this application is run.
+%      It records parameters of the assimilation for each experiment run.
 %
-%      ONED_MODEL_INF opens a gui control window that plots
-%      the most recent prior, posterior, and observation,
-%      time sequences of the assimilation, the RMS error,
-%      spread and inflation, and prior and posterior rank histograms.
-%
-%      The top button alternates between "Advance Model" and "Assimilate" to
-%      single-step the model. The "Start Auto Run" button is useful to watch
-%      the system evolve and generate estimates from many assimilation cycles.
-%
-%      Since this is a 'perfect model' experiment, we know the true state,
-%      the amount of noise added to the observations, etc.; so it is possible to
-%      calculate the error of the ensemble in addition to the spread. The
-%      Truth is not (in general) the same as the observation!
-%
-%      This also introduces the concept of the 'rank histogram'. With N
-%      ensemble members, there will always be N+1 'bins' that encompass the
-%      state (to the left of the lowest ensemble member, to the right of the
-%      highest, and all the ones in-between). The rank histogram tracks the
-%      number of times the truth lies in each bin. With a good ensemble,
-%      (i.e. a good assimilation system) the true state will be
-%      indistinguishable from any of the ensemble members. This results
-%      in a flat rank histogram, given enough samples.
-%
-% See also: gaussian_product.m oned_model_inf.m oned_ensemble.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

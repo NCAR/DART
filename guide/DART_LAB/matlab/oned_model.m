@@ -1,42 +1,61 @@
 function oned_model
-%% ONED_MODEL simple ensemble data assimilation example.
+%% ONED_MODEL explores cycling ensemble data assimilation for a single variable
+%  model.
 %
-%      There are no input arguments. Simply invoke by typing the name.
+%      This application explores cycling data assimilation for a system that  
+%      has a true value that is always zero. A single observation is generated 
+%      for each assimilation cycle as a random draw from Normal(0, 1). 
 %
-%      ONED_MODEL demonstrates the simplest possible case of ensemble data
-%      assimilation. It is possible to explore assimilation algorithms,
-%      ensemble sizes, model biases, etc. on-the-fly. The posterior
-%      of the state is indicated by blue asterisks, the states evolve along
-%      a trajectory indicated by the green lines to wind up at a prior state
-%      for the assimilation - indicated by the green asterisks. After the
-%      assimilation, the (posterior) state is indicated in blue and the
-%      process is ready to repeat.
+%      The forecast model is a linear error growth with growth rate 2, a
+%      systematic bias term, and a nonlinear quadratic error term.
+%      The difference equation is:
+%      x(t+1) = x(t) + x(t) + bias + a * x(t) * |x(t)|. The values of the 
+%      model_bias and the nonlinear coefficient a are initially set to 0
+%      but can be changed using two of the boxes on the right side of the
+%      display.
 %
-%      ONED_MODEL opens a gui control window that plots
-%      the most recent prior, posterior, and observation,
-%      time sequences of the assimilation, the RMS error,
-%      spread and kurtosis, and prior and posterior rank histograms.
+%      The button in the upper left, initially labeled 'Advance Model' can 
+%      be used to step through alternating model advance and assimilation 
+%      steps; the button will be relabeled as "Assimilate Obs" to do the 
+%      assimilation. Pressing the 'Start Auto Run' will automatically do 
+%      alternating advance and assimilation steps. The button will be relabeled
+%      as 'Pause Auto Run' which can be pressed to pause the cycling.
 %
-%      The top button alternates between "Advance Model" and "Assimilate" to
-%      single-step the model. The "Start Auto Run" button is useful to watch
-%      the system evolve and generate estimates from many assimilation cycles.
+%      The ensemble size can be selected using the box on the right side.
+%      A constant multiplicative inflation value has a default of 1 (no 
+%      inflation) but can be changed with the box on the right. 
 %
-%      Since this is a 'perfect model' experiment, we know the true state,
-%      the amount of noise added to the observations, etc.; so it is possible to
-%      calculate the error of the ensemble in addition to the spread. The
-%      Truth is not (in general) the same as the observation!
+%      The Ensemble Adjustment Kalman filter (EAKF), perturbed obs ensemble 
+%      Kalman filter (EnKF), and the rank histogram filter (RHF) can be 
+%      selected with the pushbuttons at the bottom right.
 %
-%      This also introduces the concept of the 'rank histogram'. With N
-%      ensemble members, there will always be N+1 'bins' that encompass the
-%      state (to the left of the lowest ensemble member, to the right of the
-%      highest, and all the ones in-between). The rank histogram tracks the
-%      number of times the truth lies in each bin. With a good ensemble,
-%      (i.e. a good assimilation system) the true state will be
-%      indistinguishable from any of the ensemble members. This results
-%      in a flat rank histogram, given enough samples.
+%      Five panels of information are displayed about the assimilation.
+%      The upper left panel shows the prior ensemble members (green 
+%      asterisks), the posterior ensemble members (blue asterisks), the 
+%      observation (red asterisk), the likelihood distribution (red dashed 
+%      curve), and the truth (black) for the current assimilation cycle 
+%      plotted on a horizontal axis.
 %
-% See also: gaussian_product.m oned_model_inf.m oned_ensemble.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%      The upper right panel shows the time evolution of the ensemble on
+%      a vertical axis. The truth (zero axis, black dashed), the prior
+%      ensemble (green asterisks), posterior ensemble (blue asterisks), and 
+%      observation (red asterisk) are plotted, along with green line 
+%      segments connecting the posterior at the previous time to the prior
+%      at the next time.
+%
+%      The second panel in the left column shows the time evolution of
+%      ensemble mean error (blue) and ensemble spread (red) and the third
+%      panel shows the ensemble kurtosis.
+%
+%      The two bottom panels show the prior (left) and posterior (right)
+%      rank histograms with the most recent time's entry highlighted in 
+%      yellow. The 'Clear Hist' button on the lower right resets the rank
+%      histograms. The 'Reset' button restores the application to its
+%      initial state. 
+%
+%% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model_inf.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

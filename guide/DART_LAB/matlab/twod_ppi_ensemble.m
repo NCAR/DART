@@ -4,18 +4,19 @@ function twod_ppi_ensemble
 %      variable. 
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive
-%      ensemble generation mechanism and lay down a set of ensemble
-%      samples of an unobserved variable (vertical axis) and an observed
-%      variable (horizontal axis). The unobserved variable is nonnegative.
-%      The ensemble members are created by
-%      left clicking in the central dark grey portion of the figure window.
+%      ensemble generation mechanism. Ensemble members are created by
+%      left clicking in the central portion of the plot on the left side
+%      of the panel. The horizontal axis is for an observed quantity, 
+%      and the vertical axis for an unobserved quantity. The unobserved 
+%      quantity is nonnegative so ensemble members must not be below
+%      the axis. When you have all the ensemble members you want, click 
+%      outside of the grey plot area. As you add ensemble members, marginal 
+%      plots for the observed and unobserved axes are created and the 
+%      sample correlation is displayed.
 %
-%      As the ensemble is created, the correlation between the Observed
-%      Quantity and the Unobserved State Variable is calculated.
-%      
 %      The push buttons at the bottom of the joint distribution plot select
 %      two different continuous distribution choices for a QCEFF for the
-%      observed variable, normal and BNRH. The push buttons at the right
+%      observed variable, normal and RHF. The push buttons at the right
 %      select the continuous distribution for the unobserved variable
 %      and include normal, Gamma, an unbounded BNRH (RHF) and a bounded
 %      BNRH. 
@@ -32,8 +33,9 @@ function twod_ppi_ensemble
 %      The mean and standard deviation of the likelihood can be 
 %      changed in the red box. 
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
-%           bounded_oned_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model.m oned_model_inf.m run_lorenz_63.m run_lorenz_96.m 
+%           run_lorenz_96_inf.m twod_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

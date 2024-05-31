@@ -1,35 +1,52 @@
 function oned_cycle
-%% ONED_CYCLEthe details of ensemble data assimilation for a scalar.
+%% ONED_CYCLE explores the cycling Kalman Filter for a single variable and allows 
+%  comparison of the continuous KF to three ensemble filter algorithms. 
+%
+%      The system being explored has a true value that is always zero (marked by
+%      the black 'X' on the plot axis). The observation error standard deviation (SD) 
+%      is specified by the 'Obs. Error SD' entry in the red box. A single observation 
+%      is generated for each assimilation cycle as a random draw from Normal(0, SD). 
+%
+%      The forecast model is a linear error growth with growth rate (G) specified by the
+%      'Growth Rate' entry in the red box. The difference equation is 
+%      x(t+1) = Gx(t) where each integer value of t is the time of an assimilation.
+%
+%      The model state is a Gaussian distribution. The initial distribution has mean
+%      1 and standard deviation 2.  Pressing the 'Cycle DA' button 
+%      advances the model state to get the prior distribution (green) at the next 
+%      assimilation time and computes a Kalman filter update at that time to get a 
+%      posterior distribution (blue). The observation value at this time is plotted 
+%      as a red asterisk and the likelihood as a red curve. The prior and 
+%      posterior mean and standard deviation are plotted below the axis. 
+%
+%      With the growth rate set to the default value of 1, cycling is equivalent
+%      to assimilation a sequence of observations at a single time. 
+%
+%      The continuous Kalman filter can also be compared to three types of ensemble
+%      filters assimilating the same observations. The Ensemble Adjustment
+%      Kalman filter (EAKF), perturbed obs ensemble Kalman filter (EnKF), and the 
+%      rank histogram filter (RHF) can be selected with the pushbuttons at the 
+%      bottom right.
 %
 %      Push on the 'Create New Ensemble' button to activate the interactive
-%      observation generation mechanism and lay down a set of 'observations'
-%      representative of your ensemble. (Think: Some H() operator has
-%      converted the model state to an expected observation.) This is done by
-%      placing the cursor near the axis in the plot and clicking. When you
-%      have all the ensemble members you want, click in the grey area of
-%      the window outside of the white axis plot.
+%      mechanism to generate a prior ensemble estimate.
+%      This is done by placing the cursor near the axis in the plot and clicking. 
+%      When you have all the ensemble members you want, click in the grey area of
+%      the window outside of the white axis plot. As you add ensemble members,
+%      the ensemble prior mean and prior standard deviation are updated in the upper
+%      left corner of the plot.
 %
-%      After you have an ensemble and an observation, click 'Update Ensemble'.
-%      The algorithm is applied and the Posterior (blue) is plotted below the
-%      Prior (green). The mean and standard deviation of the posterior are
-%      also printed on the plot. For the EAKF and RHF, the continuous prior distribution
-%      that best fits the prior ensemble (green) and the posterior continuous 
-%      ensemble from which the QCEFF algorithm determines the posterior ensemble
-%      members (blue) are also plotted. The EnKF is not a QCEFF filter and does
-%      not make use of a continuous prior distribution fit.  
+%      Once an ensemble is created, the 'Cycle DA' button will also advance the
+%      ensemble to the next time and perform the selected ensemble assimilation.
+%      The prior and posterior distributions that are fit to the ensemble are 
+%      plotted by dashed curves for the EAKF and RHF. Prior and posterior normal
+%      fits to the EnKF ensemble are also plotted. The ensemble prior and posterior
+%      sample mean and standard deviation are plotted adjacent to their Kalman
+%      filter counterparts.
 %
-%      The type of ensemble Kalman filter update can be chosen using the
-%      pulldown menu at the bottom.
-%
-%      The 'EnKF' is a stochastic algorithm so repeated updates can be done
-%      for the same prior and observation.
-%
-%      The mean and standard deviation of the likelihood
-%      can be changed in the red box. Change the Observation Error SD, lay down 
-%      an ensemble pretty far away from the observation - have fun with it.
-%
-% See also: bounded_oned_ensemble.m gaussian_product.m oned_model.m oned_model_inf.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_ensemble.m oned_model.m 
+%           oned_model_inf.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
