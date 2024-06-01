@@ -444,6 +444,11 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         % Clear out the old best fit line
         set(handles.h_best_fit, 'Visible', 'off');
         set(handles.h_correl,   'Visible', 'off');
+
+        % Turn on the data entry messages
+        set(h_click, 'Visible', 'on');
+        set(h_finish, 'Visible', 'on');
+        set(h_err_text, 'Visible', 'on');
         
         % Work in the joint distribution plot
         axes(handles.h_joint);

@@ -7,7 +7,7 @@ function twod_ensemble
 %      left clicking in the central portion of the plot on the left side
 %      of the panel. The horizontal axis is for an observed quantity, 
 %      and the vertical axis for an unobserved quantity. When you have all
-%      the ensemble members you want, click outside of the bivariate plot.
+%      the ensemble members you want, click outside of the grey plot area.
 %      As you add ensemble members, marginal plots for the observed and
 %      unobserved axes are created and the sample correlation is displayed.
 %
@@ -262,10 +262,11 @@ axis([0 10 0 10]);
 grid on
 hold on
 title('Joint Distribution');
+set(gca, 'color', [0.8, 0.8, 0.8])
 
-h_click    = text(5, 9, {'Click inside Joint Distribution plot','to create member.'}, ...
+h_click    = text(5, 9, {'Click inside Joint Distribution plot','grey area to create member.'}, ...
     'FontSize', 16, 'HorizontalAlignment','center');
-h_finish   = text(5, 8, 'Click outside of plot to finish.', ...
+h_finish   = text(5, 8, 'Click outside of grey to finish.', ...
     'FontSize', 16, 'HorizontalAlignment','center');
 h_err_text = text(5, 4, 'An ensemble must have at least 2 members.', 'Color', atts.red, ...
     'FontSize', 16, 'HorizontalAlignment','center');
@@ -350,6 +351,11 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         % Clear out the old best fit line
         set(handles.h_best_fit, 'Visible', 'off');
         set(handles.h_correl,   'Visible', 'off');
+
+        % Turn on the data entry messages
+        set(h_click, 'Visible', 'on');
+        set(h_finish, 'Visible', 'on');
+        set(h_err_text, 'Visible', 'on');
         
         % Work in the joint distribution plot
         axes(handles.h_joint);

@@ -485,6 +485,7 @@ axis([xlower xupper ylower yupper]);
 set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'FontSize', atts.fontsize)
 set(gca, 'XGrid', 'on')
+set(gca, 'color', [0.8, 0.8, 0.8]);
 
 plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
 title('oned_ensemble','Interpreter','none')
@@ -529,13 +530,13 @@ title('oned_ensemble','Interpreter','none')
         
         % Messages are centered in the middle.
         xmid = (xupper + xlower) / 2.0;
-        h_click    = text(xmid,  0.6, {'Click inside graphics box to create member', ...
+        h_click    = text(xmid,  0.6, {'Click inside grey graphics box to create member', ...
             '(only X value is used)'}, 'FontSize', atts.fontsize, 'HorizontalAlignment', 'center');
         
         h_err_text = text(xmid, -0.15, 'An ensemble has to have at least 2 members.', ...
             'FontSize', atts.fontsize, 'Visible', 'on', 'HorizontalAlignment', 'center','Color', atts.red);
         
-        h_finish   = text(xmid, -0.15, 'Click outside of plot to finish', ...
+        h_finish   = text(xmid, -0.15, 'Click outside of grey to finish', ...
             'Fontsize', atts.fontsize, 'Visible', 'Off', 'HorizontalAlignment', 'center');
         
         ens_size = 0;
