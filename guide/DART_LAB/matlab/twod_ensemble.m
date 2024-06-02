@@ -250,7 +250,8 @@ handles.h_unobMarginal = axes('Position', plotposition(1,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
 axis([0 1 0 10]);
-ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize);
+set(gca, 'FontUnits', 'Normalized');
+ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
 %% Get a subplot for the joint
@@ -261,29 +262,30 @@ handles.h_joint = axes('Position', plotposition(2,:), ...
 axis([0 10 0 10]);
 grid on
 hold on
-title('Joint Distribution');
+title('Joint Distribution', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 set(gca, 'color', [0.8, 0.8, 0.8])
+set(gca, 'FontUnits', 'Normalized')
 
 h_click    = text(5, 9, {'Click inside Joint Distribution plot','grey area to create member.'}, ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 h_finish   = text(5, 8, 'Click outside of grey to finish.', ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 h_err_text = text(5, 4, 'An ensemble must have at least 2 members.', 'Color', atts.red, ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 
 handles.h_correl = text(5, 9, ' ', 'Color', atts.green, 'FontWeight', 'Bold', ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 
 %% Create a subplot for the observed variable marginal
 
 handles.h_obMarginal = axes('Position', plotposition(3,:), ...
-    'FontName', atts.fontname, ...
-    'FontSize', atts.fontsize);
+    'FontName', atts.fontname, 'FontSize', atts.fontsize);
 
 % May want to mess with vertical axis for prior density
 axis([0 10 0 1]);
 hold on
-xlabel('Observed Quantity');
+xlabel('Observed Quantity', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+set(gca, 'FontUnits', 'Normalized');
 handles.h_obs_marg = plot(observation, 0, '*', 'MarkerSize', 16, 'LineWidth', 2.0);
 set(handles.h_obs_marg,'Color',atts.red)
 
@@ -307,9 +309,10 @@ set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(handles.h_marg_obs_plot, 'Color', atts.red, ...
     'Linestyle', '--', ...
     'LineWidth', 2);
-xlabel('Observed Quantity',      'FontSize', atts.fontsize);
-ylabel('Observation Likelihood', 'FontSize', atts.fontsize);
-title('Marginal Distribution of Observation', 'FontSize', atts.fontsize);
+set(gca, 'FontUnits', 'Normalized');
+xlabel('Observed Quantity',      'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+ylabel('Observation Likelihood', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+title('Marginal Distribution of Observation', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
 % Plot an asterisk for the observed value

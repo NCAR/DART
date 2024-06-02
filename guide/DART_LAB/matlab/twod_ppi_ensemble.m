@@ -97,7 +97,8 @@ handles.ui_assimilation_buttons = uibuttongroup('Visible','off', ...
     'BackgroundColor', atts.background, ...
     'SelectionChangeFcn', @Assimilation_selection);
 
-set(handles.ui_assimilation_buttons, 'title', 'PPI DISTRIBUTION', 'fontsize', 16);
+set(handles.ui_assimilation_buttons, 'title', 'PPI DISTRIBUTION', 'fontsize', 16, ...
+   'FontUnits', 'Normalized');
 
 % Positions are relative to the Button Group
 radioXmin   = 0.05;
@@ -171,7 +172,8 @@ handles.ui_obs_ppi_buttons = uibuttongroup('Visible','off', ...
     'BackgroundColor', atts.background, ...
     'SelectionChangeFcn', @obs_ppi_selection);
 
-set(handles.ui_obs_ppi_buttons, 'title', 'PPI DISTRIBUTION', 'fontsize', 16);
+set(handles.ui_obs_ppi_buttons, 'title', 'PPI DISTRIBUTION', 'fontsize', 16, ...
+   'FontUnits', 'Normalized');
 
 % Positions are relative to the Button Group
 radioXmin   = 0.05;
@@ -317,7 +319,8 @@ handles.h_unobMarginal = axes('Position', plotposition(1,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
 axis([0 1 handles.ymin handles.ymax]);
-ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize);
+set(gca, 'FontUnits', 'Normalized');
+ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
 %% Get a subplot for the joint prior
@@ -329,8 +332,9 @@ handles.h_joint = axes('Position', plotposition(2,:), ...
 axis([handles.xmin, handles.xmax, handles.ymin, handles.ymax]);
 grid on
 hold on
-title('Joint Distribution');
+title('Joint Distribution', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 set(gca, 'color', [0.8, 0.8, 0.8])
+set(gca, 'FontUnits', 'Normalized');
 
 % Plot long axes at x and y = 0
 ax = [-1000, 1000];
@@ -341,14 +345,18 @@ ay = [-1000 1000];
 plot(ax, ay, 'k', 'linewidth', 2);
 
 h_click    = text(0, 8, {'Click inside Joint Distribution plot','grey area to create member.'}, ...
-    'FontSize', 16, 'HorizontalAlignment','center');
-h_finish   = text(0, 6, 'Click outside of grey to finish.', ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
+h_finish   = text(0, 6, 'Click outside of grey to finish.',...
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 h_err_text = text(0, 4, 'An ensemble must have at least 2 members.', 'Color', atts.red, ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 
 handles.h_correl = text(5, 9, ' ', 'Color', atts.green, 'FontWeight', 'Bold', ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
+% Prepare error message for negative y in case it's needed
+h_neg_y   = text(0, 3, 'Unobserved variable must be nonnegative', ...
+     'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'visible', 'off');
+        
 
 %% Get a subplot for the ppi joint prior
 
@@ -358,22 +366,23 @@ handles.h_ppi_joint = axes('Position', plotposition(4,:), ...
 axis([-3 3 -3 3]);
 grid on
 hold on
-title('Joint PPI SpaceDistribution');
+title('Joint PPI SpaceDistribution', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+set(gca, 'FontUnits', 'Normalized');
 
-xlabel('PPI Transformed Observed');
-ylabel('PPI Transformed Unobserved');
+xlabel('PPI Transformed Observed', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+ylabel('PPI Transformed Unobserved', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 
 
 %% Create a subplot for the observed variable marginal
 
 handles.h_obMarginal = axes('Position', plotposition(3,:), ...
-    'FontName', atts.fontname, ...
-    'FontSize', atts.fontsize);
+    'FontName', atts.fontname, 'FontSize', atts.fontsize);
 
 % May want to mess with vertical axis for prior density
 axis([handles.xmin handles.xmax 0 1]);
 hold on
-xlabel('Observed Quantity');
+xlabel('Observed Quantity', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+set(gca, 'FontUnits', 'Normalized');
 handles.h_obs_marg = plot(observation, 0, '*', 'MarkerSize', 16, 'LineWidth', 2.0);
 set(handles.h_obs_marg,'Color',atts.red)
 
@@ -397,9 +406,10 @@ set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(handles.h_marg_obs_plot, 'Color', atts.red, ...
     'Linestyle', '--', ...
     'LineWidth', 2);
-xlabel('Observed Quantity',      'FontSize', atts.fontsize);
-ylabel('Observation Likelihood', 'FontSize', atts.fontsize);
-title('Marginal Distribution of Observation', 'FontSize', atts.fontsize);
+set(gca, 'FontUnits', 'Normalized');
+xlabel('Observed Quantity',      'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+ylabel('Observation Likelihood', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+title('Marginal Distribution of Observation', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
 % Plot an asterisk for the observed value
@@ -454,10 +464,6 @@ plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
         axes(handles.h_joint);
         hold on
 
-        % Prepare error message for negative y in case it's needed
-        h_neg_y   = text(0, 3, 'Unobserved variable must be nonnegative', ...
-            'FontSize', 16, 'HorizontalAlignment','center', 'visible', 'off');
-        
         % Need to guarantee at least 2 ensemble members
         ens_size = 0;
         

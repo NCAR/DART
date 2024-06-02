@@ -251,6 +251,7 @@ align(hlist,'Center','Distribute')
 
 %%Plots an initial graph with the default values
 g_prod_plot(handles);
+set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
 
 %% ---------------------------------------------------------------------
 
@@ -260,6 +261,7 @@ g_prod_plot(handles);
         %handles. This is done through the function definition.
         
         [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         
         % If there is an error, zero out the posterior text values
         % don't try to do posterior computation
@@ -303,21 +305,25 @@ g_prod_plot(handles);
 
     function edit_prior_mean_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
     function edit_prior_sd_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
     function edit_observation_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
     function edit_obs_error_sd_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
