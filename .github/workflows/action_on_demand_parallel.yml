@@ -31,7 +31,7 @@ jobs:
           key: ${{ runner.os }}-dart-build-${{ hashFiles('**/quickbuild.sh') }}
           restore-keys: |
             ${{ runner.os }}-dart-build-
-
+            
       - name: Create mkmf.template
         # Copy gfortran mkmf.template only
         run: cp build_templates/mkmf.template.gfortran build_templates/mkmf.template
@@ -43,19 +43,20 @@ jobs:
           cd $DART/assimilation_code/modules/utilities
           ./fixsystem gfortran
           cd -
-
+          
       - name: Modify input.nml files
         # Update input.nml files to avoid race conditions when running preprocess
         run: |
           find $DART -name input.nml -exec sed -i -e "/^[[:space:]]*#/! s|.*output_obs_def_mod_file.*|output_obs_def_mod_file = './obs_def_mod.f90'|g" \
             -e "/^[[:space:]]*#/! s|.*output_obs_qty_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" \
             -e "/^[[:space:]]*#/! s|.*output_obs_kind_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" {} \;
+
       - name: Run quickbuild.sh scripts
         # Run quickbuild.sh scripts in parallel and log failures
         run: |
           touch $GITHUB_WORKSPACE/quickbuild-failures.txt
           find $DART -executable -type f -name quickbuild.sh | while read filepaths; do
-            (cd "$(dirname "$filepaths")" && ./quickbuild.sh || echo "$filepaths" >> $GITHUB_WORKSPACE/quickbuild-failures.txt) & 
+            (cd "$(dirname "$filepaths")" && ./quickbuild.sh) || echo "FAILED: $filepaths" >> $GITHUB_WORKSPACE/quickbuild-failures.txt &
           done
           wait
           # Collect any failures
