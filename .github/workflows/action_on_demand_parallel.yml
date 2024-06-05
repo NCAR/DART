@@ -54,12 +54,13 @@ jobs:
       - name: Run quickbuild.sh scripts
         # Run quickbuild.sh scripts in parallel and log failures
         run: |
+          touch $GITHUB_WORKSPACE/quickbuild-failures.txt
           find $DART -executable -type f -name quickbuild.sh | while read filepaths; do
-            (cd "$(dirname "$filepaths")" && ./quickbuild.sh) & 
+            (cd "$(dirname "$filepaths")" && ./quickbuild.sh || echo "$filepaths" >> $GITHUB_WORKSPACE/quickbuild-failures.txt) & 
           done
           wait
           # Collect any failures
-          if [ -f $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
+          if [ -s $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
             echo "Failed builds:"
             cat $GITHUB_WORKSPACE/quickbuild-failures.txt
             exit 1
