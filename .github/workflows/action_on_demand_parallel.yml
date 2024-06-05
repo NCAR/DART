@@ -17,59 +17,47 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set to safe directory
-        # Set the repo as safe directory
+      # Set the repo as safe directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
-      - name: Cache build dependencies
-        # Cache the build dependencies and artifacts
+      - name: Cache dependencies
+      # Cache .git folder
         uses: actions/cache@v4
         with:
-          path: |
-            ${{ github.workspace }}/assimilation_code/modules/utilities/.build
-            ${{ github.workspace }}/build_templates
-          # Define cache key
-          key: ${{ runner.os }}-dart-build-${{ hashFiles('**/quickbuild.sh') }}
+          path: ~/.cache
+          key: ${{ runner.os }}-dart-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-dart-build-
-            
+            ${{ runner.os }}-dart-
+
       - name: Create mkmf.template
-        # Copy gfortran mkmf.template only
-        run: cp build_templates/mkmf.template.gfortran build_templates/mkmf.template
+      # Copy gfortran mkmf.template only
+        run: |
+          # echo "RTTOV version ${{ github.event.inputs.rttov_version }}"
+          cp build_templates/mkmf.template.gfortran build_templates/mkmf.template
 
       - name: Run fixsystem
-        # Run fixsystem once
+      # Run fixsystem once
         run: |
           export DART=$(git rev-parse --show-toplevel)
           cd $DART/assimilation_code/modules/utilities
           ./fixsystem gfortran
-          cd -
-          
+          cd -  # Returns to the previous directory
+
       - name: Modify input.nml files
-        # Update input.nml files to avoid race conditions when running preprocess
+      # Update input.nml files to avoid race conditions when running preprocess
         run: |
           find $DART -name input.nml -exec sed -i -e "/^[[:space:]]*#/! s|.*output_obs_def_mod_file.*|output_obs_def_mod_file = './obs_def_mod.f90'|g" \
             -e "/^[[:space:]]*#/! s|.*output_obs_qty_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" \
             -e "/^[[:space:]]*#/! s|.*output_obs_kind_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" {} \;
 
       - name: Run quickbuild.sh scripts
-        # Run quickbuild.sh scripts in parallel and log failures
+      # Run quickbuild.sh scripts in parallel and log failures
+      # Run 4 commands due to Github Actions runner resources
         run: |
-          touch $GITHUB_WORKSPACE/quickbuild-failures.txt
-          find $DART -executable -type f -name quickbuild.sh | while read filepaths; do
-            (cd "$(dirname "$filepaths")" && ./quickbuild.sh) || echo "FAILED: $filepaths" >> $GITHUB_WORKSPACE/quickbuild-failures.txt &
-          done
-          wait
-          # Collect any failures
-          if [ -s $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
-            echo "Failed builds:"
-            cat $GITHUB_WORKSPACE/quickbuild-failures.txt
-            exit 1
-          else
-            echo "All runs passed"
-          fi
+          find $DART -executable -type f -name quickbuild.sh | xargs -P 4 -I {} bash -c '(cd "$(dirname "{}")" && ./quickbuild.sh) || echo "FAILED: {}" >> $GITHUB_WORKSPACE/quickbuild-failures.txt'
 
       - name: Report Failures
-        # Report all failed runs
+      # Report all failed runs
         run: |
           if [ -f $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
             echo "Failed builds:"
@@ -78,3 +66,15 @@ jobs:
           else
             echo "All runs passed"
           fi
+      # The following should be expected to fail:
+        # "./developer_tests/quad_interpolate/work/quickbuild.sh"
+        # "./developer_tests/forward_operators/work/quickbuild.sh"
+        # "./observations/obs_converters/GOES/work/quickbuild.sh"
+        # "./observations/obs_converters/GMI/work/quickbuild.sh"
+        # "./observations/obs_converters/NSIDC/work/quickbuild.sh"
+        # "./observations/obs_converters/gps/work/quickbuild.sh"
+        # "./observations/obs_converters/var/work/quickbuild.sh"
+        # "./observations/obs_converters/AIRS/work/quickbuild.sh"
+        # "./observations/obs_converters/quikscat/work/quickbuild.sh"
+        # "./observations/obs_converters/GSI2DART/work/quickbuild.sh"
+        # "./models/template/work/quickbuild.sh"
