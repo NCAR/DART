@@ -22,11 +22,12 @@ jobs:
 
       - name: Cache build dependencies
         # Cache the build dependencies and artifacts
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ${{ github.workspace }}/assimilation_code/modules/utilities/.build
             ${{ github.workspace }}/build_templates
+          # Define cache key
           key: ${{ runner.os }}-dart-build-${{ hashFiles('**/quickbuild.sh') }}
           restore-keys: |
             ${{ runner.os }}-dart-build-
@@ -41,7 +42,7 @@ jobs:
           export DART=$(git rev-parse --show-toplevel)
           cd $DART/assimilation_code/modules/utilities
           ./fixsystem gfortran
-          cd -  # Returns to the previous directory
+          cd -
 
       - name: Modify input.nml files
         # Update input.nml files to avoid race conditions when running preprocess
