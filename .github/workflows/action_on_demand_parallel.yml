@@ -1,0 +1,78 @@
+name: Build Everything On Demand
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container: 
+      image: hkershaw/dart-dep:1.0  
+      # Need new container to run with RTTOV
+      options: "--cap-add=SYS_PTRACE"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set to safe directory
+        # Set the repo as safe directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      - name: Cache build dependencies
+        # Cache the build dependencies and artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ github.workspace }}/assimilation_code/modules/utilities/.build
+            ${{ github.workspace }}/build_templates
+          key: ${{ runner.os }}-dart-build-${{ hashFiles('**/quickbuild.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-dart-build-
+
+      - name: Create mkmf.template
+        # Copy gfortran mkmf.template only
+        run: cp build_templates/mkmf.template.gfortran build_templates/mkmf.template
+
+      - name: Run fixsystem
+        # Run fixsystem once
+        run: |
+          export DART=$(git rev-parse --show-toplevel)
+          cd $DART/assimilation_code/modules/utilities
+          ./fixsystem gfortran
+          cd -  # Returns to the previous directory
+
+      - name: Modify input.nml files
+        # Update input.nml files to avoid race conditions when running preprocess
+        run: |
+          find $DART -name input.nml -exec sed -i -e "/^[[:space:]]*#/! s|.*output_obs_def_mod_file.*|output_obs_def_mod_file = './obs_def_mod.f90'|g" \
+            -e "/^[[:space:]]*#/! s|.*output_obs_qty_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" \
+            -e "/^[[:space:]]*#/! s|.*output_obs_kind_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" {} \;
+
+      - name: Run quickbuild.sh scripts
+        # Run quickbuild.sh scripts in parallel and log failures
+        run: |
+          find $DART -executable -type f -name quickbuild.sh | while read filepaths; do
+            (cd "$(dirname "$filepaths")" && ./quickbuild.sh) & 
+          done
+          wait
+          # Collect any failures
+          if [ -f $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
+            echo "Failed builds:"
+            cat $GITHUB_WORKSPACE/quickbuild-failures.txt
+            exit 1
+          else
+            echo "All runs passed"
+          fi
+
+      - name: Report Failures
+        # Report all failed runs
+        run: |
+          if [ -f $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
+            echo "Failed builds:"
+            cat $GITHUB_WORKSPACE/quickbuild-failures.txt
+            exit 1
+          else
+            echo "All runs passed"
+          fi
