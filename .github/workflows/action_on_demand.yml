@@ -1,0 +1,72 @@
+name: Build Everything On Demand
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container: 
+      image: hkershaw/dart-dep:1.0  
+      # Need new container to run with RTTOV
+      options: "--cap-add=SYS_PTRACE"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set to safe directory
+      # Set the repo as safe directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      - name: Create mkmf.template
+      # Copy gfortran mkmf.template only
+        run: |
+          # echo "RTTOV version ${{ github.event.inputs.rttov_version }}"
+          cp build_templates/mkmf.template.gfortran build_templates/mkmf.template
+
+      - name: Run fixsystem
+      # Run fixsystem once
+        run: |
+          export DART=$(git rev-parse --show-toplevel)
+          cd $DART/assimilation_code/modules/utilities
+          ./fixsystem gfortran
+          cd -  # Returns to the previous directory
+
+      - name: Modify input.nml files
+      # Update input.nm files to avoid race conditions when running preprocess
+        run: |
+          find $DART -name input.nml -exec sed -i -e "/^[[:space:]]*#/! s|.*output_obs_def_mod_file.*|output_obs_def_mod_file = './obs_def_mod.f90'|g" \
+            -e "/^[[:space:]]*#/! s|.*output_obs_qty_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" \
+            -e "/^[[:space:]]*#/! s|.*output_obs_kind_mod_file.*|output_obs_qty_mod_file = './obs_kind_mod.f90'|g" {} \;
+
+      - name: Run quickbuild.sh scripts
+      # Run quickbuild.sh scripts and log failures
+        run: |
+          find $DART -executable -type f -name quickbuild.sh | while read filepaths; do
+            (cd "$(dirname "$filepaths")" && ./quickbuild.sh) || echo "FAILED: $filepaths" >> $GITHUB_WORKSPACE/quickbuild-failures.txt
+          done
+      
+      - name: Report Failures
+      # Report all failed runs
+        run: |
+          if [ -f $GITHUB_WORKSPACE/quickbuild-failures.txt ]; then
+            echo "Failed builds:"
+            cat $GITHUB_WORKSPACE/quickbuild-failures.txt
+            exit 1
+          else
+            echo "All runs passed"
+          fi
+      # The following should be expected to fail:
+        # "./developer_tests/quad_interpolate/work/quickbuild.sh"
+        # "./developer_tests/forward_operators/work/quickbuild.sh"
+        # "./observations/obs_converters/GOES/work/quickbuild.sh"
+        # "./observations/obs_converters/GMI/work/quickbuild.sh"
+        # "./observations/obs_converters/NSIDC/work/quickbuild.sh"
+        # "./observations/obs_converters/gps/work/quickbuild.sh"
+        # "./observations/obs_converters/var/work/quickbuild.sh"
+        # "./observations/obs_converters/AIRS/work/quickbuild.sh"
+        # "./observations/obs_converters/quikscat/work/quickbuild.sh"
+        # "./observations/obs_converters/GSI2DART/work/quickbuild.sh"
+        # "./models/template/work/quickbuild.sh"
