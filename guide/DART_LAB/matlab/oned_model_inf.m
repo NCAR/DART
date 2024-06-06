@@ -1036,7 +1036,7 @@ fclose(logfileid);
         axes(handles.h_err_spread_evolution);
         
         L = legend('Error','Spread','Location', 'NorthWest');
-        set(L,'FontName', atts.fontname, 'FontSize', atts.fontsize, 'EdgeColor', 'w');
+        set(L, 'EdgeColor', 'w');
         
         if verLessThan('matlab','R2017a')
             % Convince Matlab to not autoupdate the legend with each new line.
@@ -1385,7 +1385,21 @@ fclose(logfileid);
                 axlims(1) = handles.time_step;
                 axlims(2) = handles.time_step + 10;
                 axis(axlims)
-                
+
+                % There are normalization issues with this legend when it is resized
+                % from large to small. No way to independently set legend normalized
+                % font size.
+                % plot the invisible stuff and capture a nice handle array for later.
+                h_truth     = plot(-1, 0, 'k--', 'Visible', 'on');
+                h_obs       = plot(-1, 0, 'r*' , 'Visible', 'on', 'MarkerSize', 10);
+                h_prior     = plot(-1, 0, 'g*-', 'Visible', 'on', 'MarkerSize', 10, ...
+                   'Color', atts.green);
+                h_posterior = plot(-1, 0, 'b*' , 'Visible', 'on', 'MarkerSize', 10);
+                h_evolution_handles = [h_truth h_obs h_prior h_posterior];
+
+                L = legend(h_evolution_handles, 'Truth', 'Observation', 'Prior', 'Posterior');
+                set(L, 'Box', 'on',  'Position',[0.821 0.770 0.118 0.148])
+
                 % Want the lower y limit to stay 0 for error spread
                 axes(handles.h_err_spread_evolution);
                 cla
@@ -1482,9 +1496,9 @@ fclose(logfileid);
             
             post_error = calculate_rmse(new_ens, 0.0);
             
-            h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
+            h_e = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.error, post_error]);
-            set(h,'Color', atts.blue, 'LineWidth', 2.0);
+            set(h_e,'Color', atts.blue, 'LineWidth', 2.0);
             
             handles.error = post_error;
             
@@ -1492,11 +1506,16 @@ fclose(logfileid);
             axes(handles.h_err_spread_evolution);
             
             post_spread = std(new_ens);
-            h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
+            h_s = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.spread, post_spread]);
-            set(h, 'Color', atts.red, 'LineWidth', 2.0);
+            set(h_s, 'Color', atts.red, 'LineWidth', 2.0);
             
             handles.spread = post_spread;
+
+            % Recreate legend when axes shift in time
+            if( mod(handles.time_step, 10) == 0)
+               L = legend([h_e h_s], 'Error', 'Spread', 'Location', 'NorthEast');
+            end
             
             time_range = [ handles.time_last_change, handles.time_step ];
             show_rms_on_plot(handles.error_hist, handles.spread_hist, time_range);
@@ -1793,10 +1812,10 @@ fclose(logfileid);
         plot([1 100000], [0 0], 'k--');
         
         % plot the invisible stuff and capture a nice handle array for later.
-        h_truth     = plot(1, 0, 'k--', 'Visible', 'on');
-        h_obs       = plot(1, 0, 'r*' , 'Visible', 'on', 'MarkerSize', 10);
-        h_prior     = plot(1, 0, 'g*-', 'Visible', 'on', 'MarkerSize', 10, 'Color', atts.green);
-        h_posterior = plot(1, 0, 'b*' , 'Visible', 'on', 'MarkerSize', 10);
+        h_truth     = plot(-1, 0, 'k--', 'Visible', 'on');
+        h_obs       = plot(-1, 0, 'r*' , 'Visible', 'on', 'MarkerSize', 10);
+        h_prior     = plot(-1, 0, 'g*-', 'Visible', 'on', 'MarkerSize', 10, 'Color', atts.green);
+        h_posterior = plot(-1, 0, 'b*' , 'Visible', 'on', 'MarkerSize', 10);
         h_evolution_handles = [h_truth h_obs h_prior h_posterior];
         
         % Want the y axis limits to take care of themselves
