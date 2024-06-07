@@ -695,8 +695,7 @@ h_finish   = text(0, -0.15, 'Click outside of grey to finish', ...
         
         % Add on increments to get new ensemble
         new_ensemble = ensemble + obs_increments;
-        
-        y(1:size(ensemble)) = -0.1;
+        y(1:size(ensemble,2)) = -0.1;
         handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
         
         % Plot lines connecting the prior and posterior ensemble members

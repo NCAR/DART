@@ -75,7 +75,7 @@ elseif(x > sort_ens(ens_size))
       else
          % Normal goes all the way to infinity, amplitude is 1, q at infinity is 1
          fract = (normcdf(x, tail_mean_right, tail_sd_right) - q_at_largest_ens) / ...
-            (1.0 -  q_at_largest_ens)
+            (1.0 -  q_at_largest_ens);
       end
 
       quantile = ens_size * del_q + fract * del_q;
