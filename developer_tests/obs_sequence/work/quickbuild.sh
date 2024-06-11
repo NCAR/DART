@@ -17,8 +17,7 @@ dev_test=1
 TEST="obs_sequence"
 
 programs=(
-test_obsseq_rw_space
-
+test_obsseq_rw
 )
 
 

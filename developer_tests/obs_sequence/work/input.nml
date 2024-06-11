@@ -1,3 +1,8 @@
+&test_obsseq_rw_nml
+        file_in  = '/Users/hkershaw/DART/Projects/Diagnostics/data/obs_seq.final.ascii.small'
+        file_out = 'obs_seq.final'
+/
+
 
 &preprocess_nml
    overwrite_output        = .true.
@@ -22,21 +27,12 @@
 /
 
 &obs_kind_nml
-	assimilate_these_obs_types = ''
-	evaluate_these_obs_types	= ''
 /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.
 /
 
-!&obs_rwtest_nml
-!   prompt_for_filenames = .false.
-!   filename_in   = '../data/obs_seq.binary.BE'
-!   filename_out  = 'obs_seq.xx'
-!   print_only    = .false.
-!   calendar      = 'no_calendar'
-!/
 
 &test_obsseq_rw_nml
 	file_in  = 'obs_seq_files/extended/10M_obs_seq.ready'

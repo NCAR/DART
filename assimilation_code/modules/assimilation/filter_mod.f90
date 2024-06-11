@@ -101,7 +101,11 @@ private
 public :: filter_sync_keys_time, &
           filter_set_initial_time, &
           filter_setup_obs_sequence, &
-          filter_main
+          filter_main, &
+          get_obs_qc_index, &
+          get_blank_qc_index, &
+          get_obs_dartqc_index, &
+          filter_generate_copy_meta_data
 
 character(len=*), parameter :: source = 'filter_mod.f90'
 
@@ -1211,6 +1215,7 @@ num_obs_copies = in_obs_copy
 
 num_obs_copies = num_obs_copies + 1
 prior_meta_data = 'prior ensemble mean'
+
 call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
 prior_obs_mean_index = num_obs_copies
 

@@ -2,8 +2,10 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
 
+SIParCS 2024:  test_obsseq_rw.f90  read and write obs_seq
+
+----
 test for reading both ascii and binary obs_seq files,
 and testing the writing out.
 
@@ -23,7 +25,3 @@ make a shell script to run some test cases, bravo.
 nsc
 11jul2016
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
