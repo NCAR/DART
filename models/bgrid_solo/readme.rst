@@ -27,10 +27,32 @@ model time step to maintain stability for larger model grids. The model state
 variables are the gridded surface pressure, temperature, and u and v wind
 components.
 
-The ``bgrid_solo`` directory has a ``work/workshop_setup.csh`` script that compiles 
-and runs an example. This example is intended to demonstrate that the same
-process used for a low-order model may be used for a much more 
-complex model and generates output for state-space or observation-space diagnostics. 
+The ``bgrid_solo`` directory has a ``work/workshop_setup.sh`` script that compiles
+and runs an example, producing a bgrid_solo netcdf file and perturbing it to get an
+ensemble. This example is intended to demonstrate that the same process used for a
+low-order model may be used for a much more complex model and generates output for
+state-space or observation-space diagnostics.
+
+Alternatively, the steps in the ``work/workshop_setup.sh`` script can be executed
+indivudally on the command line. These steps are as follows:
+
+1.  | ``./quickbuild.sh`` (or ``quickbuild.sh nompi`` if you are not building with mpi)
+    | This will create perfect_input.nc from the already available file
+      ``models/bgrid_solo/work/perfect_input.cdl``
+
+2.  | ``./perfect_model_obs``
+    | Creates a synthetic observation sequence from a hindcast model
+
+3.  | ``cp perfect_output.nc filter_input.nc``
+    | Copies the output from perfect_model_obs program to the input file for filter
+
+4.  | In ``work/input.nml``, set ``perturb_from_single_instance = .true.`` in the
+      &filter_nml
+    | This setting allows filter to generate an ensemble of perturbed ensemble member
+      restart files
+
+5.  | ``./filter``
+    | Runs the assimilation program
 
 Some examples of ways in which this model can be configured and modified to test
 DART assimilation capabilities are documented in Anderson et al. (2005). [3]_

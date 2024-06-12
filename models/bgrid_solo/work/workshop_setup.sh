@@ -39,11 +39,17 @@
 #----------------------------------------------------------------------
 
 # Build the DART programs 
-echo 'runing quickbuild.sh'
+echo 'running quickbuild.sh'
 ./quickbuild.sh nompi
 
 echo 'running perfect_model_obs'
 ./perfect_model_obs || exit 41
+
+echo 'copying the output from perfect_model_obs to the input file for filter'
+cp perfect_output.nc filter_input.nc
+
+echo 'changing the &filter_nml setting perturb_from_single_instance to .true. in ./input.nml'
+sed -i -e 's/perturb_from_single_instance = .false.,/perturb_from_single_instance = .true.,/g' ./input.nml
 
 echo 'running filter'
 ./filter            || exit 51
