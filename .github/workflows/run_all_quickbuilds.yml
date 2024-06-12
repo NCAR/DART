@@ -51,6 +51,7 @@ jobs:
       - name: Creating Makefile template
         run: |
           cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
           cp mkmf.template.gfortran mkmf.template
           echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
         shell: bash
