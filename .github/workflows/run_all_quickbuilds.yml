@@ -6,7 +6,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     container: 
-      image: hkershaw/dart-dep:1.0
+      image: hkershaw/dart-dep-external:2.0
       options: "--cap-add=SYS_PTRACE"    
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
@@ -37,7 +37,7 @@ jobs:
     needs: [ setup ]
     runs-on: ubuntu-latest
     container: 
-      image: hkershaw/dart-dep:1.0
+      image: hkershaw/dart-dep-external:2.0
       options: "--cap-add=SYS_PTRACE"    
     strategy:
       fail-fast: false 
@@ -51,8 +51,22 @@ jobs:
       - name: Creating Makefile template
         run: |
           cd build_templates
-          cp mkmf.template.gfortran mkmf.template
-          echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+          case ${{ matrix.value }} in
+            *quikscat*)
+              cp /home/mkmf.template.quikscat.gfortran mkmf.template
+              ;;
+            *AIRS*)
+              cp /home/mkmf.template.AIRS.gfortran mkmf.template
+              ;;
+            *GMI* | *GOES* | *forward_operators* | *NSIDC* )
+              cp /home/mkmf.template.rttov.gfortran  mkmf.template
+              ;;
+            *)
+              cp mkmf.template.gfortran mkmf.template
+              echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+              ;;
+          esac
         shell: bash
       - name: Run quickbuild.sh script
         run: |
