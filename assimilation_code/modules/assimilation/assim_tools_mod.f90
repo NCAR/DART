@@ -69,7 +69,7 @@ use assim_model_mod,      only : get_state_meta_data,                           
 
 use distributed_state_mod, only : create_mean_window, free_mean_window
 
-use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
+use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT, DARTQC_OUT_OF_BOUNDS
 
 use probit_transform_mod, only : transform_to_probit, transform_from_probit, &
                                    transform_all_from_probit
@@ -534,6 +534,15 @@ do i = 1, my_num_obs
       call probit_dist_info(my_obs_kind(i), .false., .false., dist_for_obs, &
          bounded_below, bounded_above, lower_bound, upper_bound)
    
+      if (bounded_below .and. any(obs_ens_handle%copies(1:ens_size,i) < lower_bound)) then
+            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_OUT_OF_BOUNDS
+            cycle
+      endif
+      if (bounded_above .and. any(obs_ens_handle%copies(1:ens_size,i) > upper_bound)) then
+            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_OUT_OF_BOUNDS
+            cycle
+      endif
+
       ! Convert all my obs (extended state) variables to appropriate probit space
       call transform_to_probit(ens_size, obs_ens_handle%copies(1:ens_size, i), dist_for_obs, &
          obs_dist_params(i), probit_ens, .false., &

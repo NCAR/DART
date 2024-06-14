@@ -36,7 +36,7 @@ public :: initialize_qc, input_qc_ok, get_dart_qc, check_outlier_threshold, &
           DARTQC_ASSIM_FAILED_POST_FOP, DARTQC_EVAL_FAILED_POST_FOP, &
           DARTQC_FAILED_FOP, DARTQC_NOT_IN_NAMELIST, &
           DARTQC_BAD_INCOMING_QC, DARTQC_FAILED_OUTLIER_TEST, &
-          DARTQC_FAILED_VERT_CONVERT
+          DARTQC_FAILED_VERT_CONVERT, DARTQC_OUT_OF_BOUNDS
 
 character(len=*), parameter :: source = 'quality_control_mod.f90'
 
@@ -51,7 +51,7 @@ integer, parameter :: DARTQC_BAD_INCOMING_QC       = 6
 integer, parameter :: DARTQC_FAILED_OUTLIER_TEST   = 7
 integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 8
 !integer, parameter :: DARTQC_OUTSIDE_DOMAIN        = 9  ! we have no way (yet) for the model_mod to signal this
-
+integer, parameter :: DARTQC_OUT_OF_BOUNDS         = 41
 !------------------------------------------------------------------------------
 ! namelist parameters
 !>@todo ... in the (upcoming) html ... mention that outlier_threshold = 3.0 is a good value
