@@ -35,7 +35,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,     &
                               write_obs_seq, init_obs_sequence, get_num_obs, &
                               set_copy_meta_data, set_qc_meta_data
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq, getdimlen
-use      obs_kind_mod, only : get_name_for_type_of_obs
+use      obs_kind_mod, only : get_name_for_type_of_obs, get_index_for_type_of_obs
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_check
 
@@ -45,16 +45,15 @@ implicit none
 
 character(len=*), parameter :: routine = 'seaicedata_to_obs_netcdf'
 
-integer :: n, k, t, oday, osec, rcio, iunit, otype, io
+integer :: n, k, t, oday, osec, rcio, iunit, otype, io, data_type
 integer :: num_copies, num_qc, max_obs, iacc, ialo, ncid, varid, data_type_int
-integer :: axdim, aydim, catdim, len_time
+integer :: axdim, aydim, catdim, len_loc
 integer :: along_base, across_base
-character(len=128) :: varname, obs_name
+character(len=128) :: varname
 
 logical  :: file_exist, first_obs
 
-real(r8) :: temp, qc, wdir, wspeed, werr, thiserr
-real(r8) :: uwnd, uerr, vwnd, verr
+real(r8) :: qc, thiserr
 real(r8) :: dlon, dlat, thislon, thislat, thiscat
 real(r8), allocatable :: lat(:), lon(:)
 real(r8), allocatable :: seaice_error(:,:)
@@ -67,13 +66,13 @@ type(time_type)         :: comp_day0, time_obs, prev_time
 ! namelist with default values
 integer  :: year      = 2000 ! beginning of desired reconstruction
 integer  :: doy       = 1    ! October 14th 
-integer  :: data_type = 12   ! integer index of desired data type, SIC by default
+character(len=256) :: obs_name = 'SAT_SEAICE_AGREG_CONCENTR'   ! integer index of desired data type, SIC by default
 character(len=256) :: seaice_input_file = 'seaicedata.input'
 character(len=256) :: obs_out_file      = 'obs_seq.out'
 logical  :: itd_ob = .false. ! set to .true. if observation has ITD dimension
 logical  :: debug = .false.  ! set to .true. to print info
 
-namelist /seaicedata_to_obs_netcdf_nml/  year, doy, data_type, seaice_input_file, &
+namelist /seaicedata_to_obs_netcdf_nml/  year, doy, obs_name, seaice_input_file, &
                                          obs_out_file, itd_ob, &
                                          debug
 
@@ -94,24 +93,23 @@ if (do_nml_term()) write(     *     , nml=seaicedata_to_obs_netcdf_nml)
 ncid = nc_open_file_readonly(seaice_input_file, routine)
 
 ! get dims along and across the swath path
-call getdimlen(ncid, 'time', len_time)
+call getdimlen(ncid, 'location', len_loc)
 if (itd_ob) then 
-   call getdimlen(ncid, 'nc', catdim)
+   call getdimlen(ncid, 'ncat', catdim)
 else 
    catdim = 1
 endif
 
 ! remember that when you ncdump the netcdf file, the dimensions are
 ! listed in C order.  when you allocate them for fortran, reverse the order.
-allocate(         lat(len_time))
-allocate(         lon(len_time))
-allocate( seaice_data(len_time, catdim))
-allocate(seaice_error(len_time, catdim))
+allocate(         lat(len_loc))
+allocate(         lon(len_loc))
+allocate( seaice_data(len_loc, catdim))
+allocate(seaice_error(len_loc, catdim))
 
-
-
-! get string name type of observation
-obs_name = get_name_for_type_of_obs(data_type)
+! get integer type of observation
+! obs_name = get_name_for_type_of_obs(data_type)
+data_type = get_index_for_type_of_obs(obs_name)
 
 ! get data
 varname = 'data'
@@ -154,7 +152,7 @@ call set_calendar_type(GREGORIAN)
 ! each observation in this series will have a single observation value
 ! and a quality control flag.  the max possible number of obs needs to
 ! be specified but it will only write out the actual number created.
-max_obs    = len_time*catdim
+max_obs    = len_loc*catdim
 num_copies = 1
 num_qc     = 1
 
@@ -185,7 +183,7 @@ qc = 0.0_r8     ! we will reject anything with a bad qc
    
 ! move through the observations and create a DART 3d observation if they pass
 ! quality control checks 
-do t = 1, len_time
+do t = 1, len_loc
    do k = 1, catdim
       
       if (debug) print *, 'start of main loop, ', iacc, ialo
@@ -196,7 +194,7 @@ do t = 1, len_time
       
       ! If the data values are outside acceptable bounds, skip them.
       if ( seaice_data(t, k) < 0.00_r8 .or.  seaice_data(t, k) > 25.0_r8) cycle
-      if (seaice_error(t, k) < 0.00_r8 .or. seaice_error(t, k)/seaice_data(t, k) > 0.25) cycle
+      if (seaice_error(t, k) < 0.00_r8 .or. seaice_error(t, k)/seaice_data(t, k) > 1) cycle
 
       ! assign latitude, longitude, category, and error of okay values
       thislat = lat(t)
