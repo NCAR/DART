@@ -27,10 +27,10 @@ buildpreprocess
 
 # build 
 
-dartbuildlib dart.a
+dartbuildlib libdart.a
 
 # clean up
-\rm -f -- *.o *.mod
+#\rm -f -- *.o *.mod
 
 }
 
