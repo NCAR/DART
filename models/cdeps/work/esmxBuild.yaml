@@ -1,0 +1,17 @@
+application:
+  link_packages: OpenMP
+
+components:
+
+  Lumo:
+
+  tawas:
+    source_dir: TaWaS
+    install_prefix: TaWaS
+
+  dart:
+    build_type: script
+    build_script: quickbuild.sh
+    source_dir: DART/models/cdeps/work
+    install_prefix: DART/models/cdeps/work
+
