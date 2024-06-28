@@ -130,10 +130,10 @@ LD = gfortran-9
 # uncomment the following line and set value to where lib and include
 # are found for the netcdf files that match this compiler.
 #
-NETCDF = /home/dev/stack/netcdf-4.7.4
+NETCDF = /home/dev/spack/opt/spack/linux-ubuntu20.04-aarch64/gcc-9.4.0/netcdf-fortran-4.4.5-iwk5z2hftdaqhqowqdmvo2bkxo64p3ad
 
 INCS = -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+LIBS = -L$(NETCDF)/lib -lnetcdff #-lnetcdf
 FFLAGS  = -O2 -ffree-line-length-none $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
