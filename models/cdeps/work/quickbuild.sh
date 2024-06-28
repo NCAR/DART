@@ -12,18 +12,6 @@ source "$DART"/build_templates/buildfunctions.sh
 MODEL=cdeps
 LOCATION=threed_sphere
 
-programs=(
-perfect_model_obs
-)
-
-serial_programs=(
-)
-
-model_programs=(
-)
-
-model_serial_programs=(
-)
 
 # quickbuild arguments
 arguments "$@"
@@ -38,7 +26,8 @@ cdl_to_netcdf
 buildpreprocess
 
 # build 
-buildit
+
+dartbuildlib dart.a
 
 # clean up
 \rm -f -- *.o *.mod

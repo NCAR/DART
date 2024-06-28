@@ -254,6 +254,16 @@ fi
 }
 
 #-------------------------
+# Build a library
+# 
+#-------------------------
+function dartbuildlib() {
+findsrc
+$DART/build_templates/mkmf -x -a $DART $m -p $1 \
+     $dartsrc \
+     $EXTRA
+}
+#-------------------------
 # Build a model specific program
 # looks in $DART/models/$MODEL/src/programs for {main}.f90 
 # Arguments:
