@@ -3,14 +3,14 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 
-program oned_converter_mod
+program threed_netcdf_converter_mod
 
-!> title = "Generalized 1D Temperature Observation Converter"
-!> institution = " NCAR" ;
+!> title = "Generalized 3D Cartesian NetCDF Observation Converter"
+!> institution = "NCAR" ;
 !> source = "NCAR/DAReS" ;
-!> comment = "Generalized converter for 1D temperature data from NetCDF files" ;
+!> comment = "Generalized converter for 3D cartesian data from NetCDF files" ;
 !> references = "http://www.image.ucar.edu/DAReS/DART/DART_download" ;
-!> dataset_title = "Generalized 1D Temperature Data" ;
+!> dataset_title = "Generalized 3D Cartesian NetCDF Data" ;
 
 use         types_mod, only : r8, digits12, MISSING_R8
 
@@ -24,17 +24,17 @@ use     utilities_mod, only : initialize_utilities, find_namelist_in_file, &
                               error_handler, E_ERR, E_MSG, &
                               finalize_utilities, do_nml_file, do_nml_term
                               
-use      location_mod, only : get_location, location_type, set_location, &
-                              VERTISSURFACE, VERTISHEIGHT, VERTISUNDEF
+use      location_mod, only : get_location, location_type, set_location, VERTISSURFACE, VERTISHEIGHT, VERTISUNDEF
 
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs, &
                               static_init_obs_sequence, init_obs_sequence, &
                               set_copy_meta_data, set_qc_meta_data, &
                               get_num_obs, write_obs_seq, destroy_obs_sequence
                               
-use obs_utilities_mod, only : add_obs_to_seq, create_1d_obs
+use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
-use obs_kind_mod, only : KIND_TEMPERATURE, get_kind_index
+! set the kind of observation here
+use obs_kind_mod, only : YOUR_OBS_KIND, get_kind_index
 
 use netcdf_utilities_mod, only : nc_check, nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_attribute_from_variable, &
@@ -47,13 +47,14 @@ implicit none
 character(len=*), parameter :: source   = & '$URL$'
 character(len=*), parameter :: revision = '$Revision$'
 character(len=*), parameter :: revdate  = '$Date$'
-character(len=*), parameter :: routine  = 'oned_converter_mod'
+character(len=*), parameter :: routine  = 'threed_converter_mod'
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-real(r8), parameter :: qc = 0.0_r8
+real(r8), parameter :: qc = 0.0_r8        ! default QC value
 
+! variables for file handling and observations
 character(len=256) :: output_file
 character(len=512) :: string1, string2
 
@@ -61,7 +62,7 @@ integer :: ncid, varid, io, iunit
 integer :: oday, osec, iday, isec
 integer :: year, month, day, hour, minutes, seconds
 integer :: num_new_obs, nmissing
-integer :: i, j, nlat, nlon, ndays
+integer :: i, j, k, nx, ny, nz, ndays
 integer :: itime
 
 logical :: first_obs
@@ -72,65 +73,74 @@ type(time_type)         :: obs_time, prev_time
 type(time_type)         :: base_time, delta_time
 
 real(digits12), allocatable :: time(:)
-real(r8), allocatable :: lat(:), lon(:)
-real(r8), allocatable :: temperature(:,:,:)
+real(r8), allocatable :: x(:), y(:), z(:)
+! declare name of variable here
+real(r8), allocatable :: your_variable(:,:,:)
 real(r8) :: missing_value
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
 
-! temp_error_std - instrument and representativeness error (std)
-
-real(r8)           :: temp_error_std    = 0.3_r8
-character(len=256) :: input_file       = '1234567.nc'
-character(len=256) :: output_file_base = 'obs_seq.temp'
+! your_variable_error_std - instrument and representativeness error (std)
+real(r8)           :: your_variable_error_std    = 0.3_r8
+character(len=256) :: input_file       = 'input.nc'
+character(len=256) :: output_file_base = 'obs_seq'
 logical            :: debug            = .false.
 integer            :: subsample_intv   = 1
 
-namelist /temp_to_obs_nml/ input_file, output_file_base, &
-                          debug, subsample_intv, temp_error_std
+namelist /netcdf_to_obs_nml/ input_file, output_file_base, &
+                              debug, subsample_intv, your_variable_error_std
 
 !------------------------------------------------------------------------
 ! Start of executable code
 !------------------------------------------------------------------------
 
-! Read and record standard parameters from input.nml
-
-call initialize_utilities('oned_converter_mod', .true., .true.)
-call find_namelist_in_file('input.nml', 'temp_to_obs_nml', iunit)
-read(iunit, nml = temp_to_obs_nml, iostat = io)
+! read and record standard parameters from input namelist
+call initialize_utilities('netcdf_to_obs', .true., .true.)
+call find_namelist_in_file('input.nml', 'netcdf_to_obs_nml', iunit)
+read(iunit, nml = netcdf_to_obs_nml, iostat = io)
 
 if (do_nml_file()) write(nmlfileunit, nml=temp_to_obs_nml)
 if (do_nml_term()) write(     *     , nml=temp_to_obs_nml)
 
 call set_calendar_type(GREGORIAN)
 
-ncid  = nc_open_file_readonly(input_file,   routine) 
+! open the NetCDF file and read dimension sizes
+ncid  = nc_open_file_readonly(input_file, routine) 
 ndays = nc_get_dimension_size(ncid, 'time', routine)
-nlat  = nc_get_dimension_size(ncid, 'lat',  routine)
-nlon  = nc_get_dimension_size(ncid, 'lon',  routine)
+nx    = nc_get_dimension_size(ncid, 'x', routine)
+ny    = nc_get_dimension_size(ncid, 'y', routine)
+nz    = nc_get_dimension_size(ncid, 'z', routine)
 
-allocate(time(ndays), lat(nlat), lon(nlon))
+! allocate arrays for time, x, y, and z
+allocate(time(ndays), x(nx), y(ny), z(nz))
 
+! read time, x, y, and z variables from NetCDF file
 call nc_get_variable(ncid, 'time', time, routine) 
-call nc_get_variable(ncid, 'lat',  lat,  routine) 
-call nc_get_variable(ncid, 'lon',  lon,  routine) 
+call nc_get_variable(ncid, 'x',  x,  routine) 
+call nc_get_variable(ncid, 'y',  y,  routine) 
+call nc_get_variable(ncid, 'z',  z,  routine) 
 
 ! ensure longitudes are [0,360] 
 where(lon < 0.0_r8) lon = lon + 360.0_r8
 
+! set the base time from the NetCDF file attributes
 base_time = set_base_time(ncid)
 
-num_new_obs = nlon*nlat
+num_new_obs = nx * ny * nz
 
-allocate(temperature(ndays, nlat, nlon))
+! allocate array for the variable of interest
+allocate(your_variable(nz, ny, nx))
 
+! initialize observation sequence
 call static_init_obs_sequence()
 
-io = nf90_inq_varid(ncid, 'temperature', varid) 
-call nc_check(io, routine, context='getting temperature variable ID',ncid=ncid)
-call nc_get_attribute_from_variable(ncid, 'temperature', 'missing_value', missing_value, routine)
+! get variable ID and missing value attribute from NetCDF file
+io = nf90_inq_varid(ncid, 'YOUR_VARIABLE', varid) 
+call nc_check(io, routine, context='getting YOUR_VARIABLE variable ID',ncid=ncid)
+call nc_get_attribute_from_variable(ncid, 'YOUR_VARIABLE', 'missing_value', missing_value, routine)
 
+! loop over each time step in the NetCDF file
 TIMELOOP: do itime = 1,ndays
 
    ! time is stored in the file 2 ways: as real(double) seconds since 1981/1/1,
@@ -143,44 +153,49 @@ TIMELOOP: do itime = 1,ndays
    delta_time = set_time(isec, iday)
    obs_time = base_time + delta_time
    call get_time(obs_time,  osec, oday)
-
-   ! call print_time(obs_time, str='obs time is ')
-   ! call print_date(obs_time, str='obs date is ')
-
+   
    call get_date(obs_time, year, month, day, hour, minutes, seconds)
 
    seconds = seconds + (hour*60 + minutes)*60
-
+   
+   ! generate output file name based on date and time
    write(string1,'(i4,''-'',i2.2,''-'',i2.2,''-'',i5.5)') year,month,day,seconds
    write(output_file,'(A)') trim(output_file_base)//'.'//trim(string1)
    write(*,*)'output file is ',trim(output_file)
 
-   io = nf90_get_var(ncid, varid, temperature(:,:,itime), start=(/1,1,itime/), count=(/nlon,nlat,1/))
-   call nc_check(io, routine, context='get_var temperature', ncid=ncid)
+   ! read the variable of interest for the current time step
+   io = nf90_get_var(ncid, varid, your_variable(:,:,itime), start=(/1,1,itime/), count=(/nlon,nlat,1/))
+   call nc_check(io, routine, context='get_var YOUR_VARIABLE', ncid=ncid)
 
    first_obs = .true.
    nmissing = 0
-   call init_obs(     obs, num_copies, num_qc)
+   call init_obs(obs, num_copies, num_qc)
    call init_obs(prev_obs, num_copies, num_qc)
    call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
-   call set_copy_meta_data(obs_seq, 1, 'Temperature observation')
-   call   set_qc_meta_data(obs_seq, 1, 'Temperature QC')
+   call set_copy_meta_data(obs_seq, 1, 'YOUR_VARIABLE observation')
+   call set_qc_meta_data(obs_seq, 1, 'YOUR_VARIABLE QC')
 
-   obslooplat: do j = 1, nlat, subsample_intv
-   obslooplon: do i = 1, nlon, subsample_intv
-  
-     if (temperature(itime,j,i) == missing_value) then
+   ! loop over each spatial point in the 3D grid
+   obsloopx: do j = 1, nx, subsample_intv
+   obsloopy: do i = 1, ny, subsample_intv
+   obsloopz: do k = 1, nz, subsample_intv
+   
+     ! skip missing values
+     if (your_variable(k,j,i) == missing_value) then
         nmissing = nmissing + 1
-        cycle obslooplon
+        cycle obsloopx
      endif
- 
-     call set_location(location, lat(j), lon(i), 0.0_r8)
-     call create_1d_obs(location, temperature(itime,j,i), VERTISSURFACE, obs_time, obs_seq, first_obs)
 
-   enddo obslooplon
-   enddo obslooplat
+     ! set observation location
+     call set_location(location, x(i), y(j), z(k))
+     ! create and add observation to sequence
+     call create_3d_obs(location, your_variable(k,j,i), VERTISUNDEF, obs_time, obs_seq, first_obs)
 
-   ! if we added any obs to the sequence, write it out to a file now.
+   enddo obsloopz
+   enddo obsloopy
+   enddo obsloopx
+
+   ! if we added obs to the sequence, write it out to a file
    if ( get_num_obs(obs_seq) > 0 ) then
       if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
       if (debug) print *, '                  skipping = ', nmissing
@@ -191,19 +206,19 @@ TIMELOOP: do itime = 1,ndays
       call error_handler(E_MSG, routine, string1, text2=string2)
    endif
 
+   ! destroy current observation sequence to prepare for the next time step
    call destroy_obs_sequence(obs_seq)
 
 end do TIMELOOP
 
+! close the NetCDF file
 call nc_close_file(ncid, routine)
- 
 call error_handler(E_MSG, routine, 'Finished successfully.')
 call finalize_utilities()
 
 contains
 
-!> 	time:units = "days since 1800-01-01 00:00:00" ;
-
+! Function to set the base time from the NetCDF file attributes
 function set_base_time(ncid)
 
 integer, intent(in) :: ncid
@@ -235,9 +250,8 @@ endif
 
 end function set_base_time
 
-!> Create 1D observation
-
-subroutine create_1d_obs(location, value, vert_coord, obs_time, obs_seq, first_obs)
+! subroutine to create and add a 3D observation to the sequence
+subroutine create_3d_obs(location, value, vert_coord, obs_time, obs_seq, first_obs)
    type(location_type), intent(in) :: location
    real(r8), intent(in) :: value
    integer, intent(in) :: vert_coord
@@ -249,16 +263,18 @@ subroutine create_1d_obs(location, value, vert_coord, obs_time, obs_seq, first_o
    type(obs_type) :: obs
    integer :: kind
 
-   call get_kind_index('TEMPERATURE', kind)
+   ! Get the kind index for the variable of interest
+   call get_kind_index('YOUR_VARIABLE_KIND', kind)
    call obs_def%initialize()
    call obs_def%set(location, kind, value)
 
    ! Set observation time
    call obs_def%set_time(obs_time)
 
+   ! Add observation to sequence
    call add_obs_to_seq(obs_seq, obs, obs_time, first_obs)
    first_obs = .false.
 
-end subroutine create_1d_obs
+end subroutine create_3d_obs
 
-end program oned_converter_mod
+end program threed_netcdf_converter_mod
