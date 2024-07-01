@@ -5,8 +5,12 @@ use mpi_utilities_mod, only: initialize_mpi_utilities, &
                              finalize_mpi_utilities, &
                              my_task_id
 
+use dart_comp_nuopc, only : SetServices, &
+                            SetVM
+
 implicit none
 public :: init, run, finalize
+
 contains
 
 !-----------------
