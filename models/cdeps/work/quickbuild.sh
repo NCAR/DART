@@ -11,7 +11,7 @@ source "$DART"/build_templates/buildfunctions.sh
 
 MODEL=cdeps
 LOCATION=threed_sphere
-#EXTRA=/home/dev/examples/nuopc-app-prototypes-8.6.1/ESMX_DartOcnProto/NUOPC_DART-code-development
+EXTRA=/home/dev/examples/nuopc-app-prototypes-8.6.1/ESMX_DartOcnProto/NUOPC_DART-code-development
 
 # quickbuild arguments
 arguments "$@"
