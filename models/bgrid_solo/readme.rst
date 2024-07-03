@@ -27,32 +27,41 @@ model time step to maintain stability for larger model grids. The model state
 variables are the gridded surface pressure, temperature, and u and v wind
 components.
 
-The ``bgrid_solo`` directory has a ``work/workshop_setup.sh`` script that compiles
-and runs an example, producing a bgrid_solo netcdf file and perturbing it to get an
-ensemble. This example is intended to demonstrate that the same process used for a
-low-order model may be used for a much more complex model and generates output for
-state-space or observation-space diagnostics.
+In the ``DART/models/bgrid_solo/work`` directory, an example "perfect model" experiment
+can be run in which a bgrid_solo netcdf file is produced and then perturbed
+to get an ensemble. This example is intended to demonstrate that the same
+process used for a low-order model may be used for a much more complex model
+and generates output for state-space or observation-space diagnostics.
 
-Alternatively, the steps in the ``work/workshop_setup.sh`` script can be executed
-indivudally on the command line. These steps are as follows:
+The steps to run this example are as follows:
 
 1.  | ``./quickbuild.sh`` (or ``quickbuild.sh nompi`` if you are not building with mpi)
-    | This will create perfect_input.nc from the already available file
-      ``models/bgrid_solo/work/perfect_input.cdl``
+    | Builds all DART executables and perfect_input.nc from the cdl file
+      ``perfect_input.cdl``
 
 2.  | ``./perfect_model_obs``
-    | Creates a synthetic observation sequence from a hindcast model
+    | Reads in an observation sequence file which has only observation definitions
+      (``obs_seq.in``) and generates synthetic observation values from a hindcast
+      model (``perfect_input.nc``). Results in an output observation sequence file
+      (``obs_seq.out``) to be assimilated by 'filter' and perfect_output.nc, the
+      output state vector file
 
 3.  | ``cp perfect_output.nc filter_input.nc``
-    | Copies the output from perfect_model_obs program to the input file for filter
+    | Copies the output from the perfect_model_obs program to the input file for
+      the filter program
 
 4.  | In ``work/input.nml``, set ``perturb_from_single_instance = .true.`` in the
-      &filter_nml
-    | This setting allows filter to generate an ensemble of perturbed ensemble member
-      restart files
+      ``&filter_nml``
+    | This setting causes filter to perturb a single restart file to generate an
+      ensemble
 
 5.  | ``./filter``
-    | Runs the assimilation program
+    | Runs the assimilation program, resulting in three main output files:
+    |    ``preassim.nc`` - the state of all ensemble members prior to the assimilation
+         (i.e. the forecast)
+    |    ``analysis.nc`` - the state of all ensemble members after the assimilation
+    |    ``obs_seq.final`` - the ensemble members' estimate of what the observations
+         should have been.
 
 Some examples of ways in which this model can be configured and modified to test
 DART assimilation capabilities are documented in Anderson et al. (2005). [3]_
@@ -79,6 +88,28 @@ pressure variable for the default model size (30x60) with an error variance of
 Program ``ps_rand_local`` generates a set of randomly located surface pressure
 observations with an interactively specified error variance. It also allows the
 observations to be confined to a rectangular subdomain.
+
+Diagnostics
+-----------
+
+The best method to determine the performance of an experiment in which you
+assimilate data from real-world sources is to compare the ensemble estimates of
+the observation to your real-world data. You can estimate the bias and error of
+the ensemble mean or gauge how many of the real-world observations are actually
+being assimilated. These diagnostics are known as observation-space diagnostics.
+DART provides the program ``obs_diag`` and MATLAB observation space diagnostics
+for you to use to quickly assess the performance of your experiment. 
+
+``obs_diag`` reads the ``obs_seq.final`` files and calculates several quantities,
+such as the root-mean-squared error, bias, and spread, for an arbitrary number of
+regions and levels. ``obs_diag`` outputs a netCDF file called ``obs_diag_output.nc``,
+which can then be used in the DART MATLAB routines located in
+``DART/diagnostics/matlab/``.
+
+For more detail on obs_diag and the MATLAB diagnostics, see `PROGRAM obs_diag
+(threed_sphere) <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs
+/obs_diag/threed_sphere/obs_diag.html>`_ and `MATLAB observation space diagnostics
+<https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`_
 
 Namelist
 --------
