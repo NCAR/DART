@@ -22,6 +22,12 @@ jobs:
             if [[ $item == *"template"* ]]; then
               continue  # template model not for compiling
             fi
+            if [[ $item == *"/var/"* ]] || [[ $item == *"/gps/"* ]]; then
+              # skipping these converters, out of the box quickbuild.sh fails
+              #    var needs wrf files
+              #    gps need prepbuffr bufrlib.a to be built
+              continue 
+            fi 
             # Append the quoted item and a comma to the string
             stripped_item=${item#/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/}  # removes /__w/DART/DART
             echo $stripped_item
@@ -53,7 +59,7 @@ jobs:
           cd build_templates
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
           case ${{ matrix.value }} in
-            *quikscat*)
+            *quikscat* | *GSI2DART* )
               cp /home/mkmf.template.quikscat.gfortran mkmf.template
               ;;
             *AIRS*)
