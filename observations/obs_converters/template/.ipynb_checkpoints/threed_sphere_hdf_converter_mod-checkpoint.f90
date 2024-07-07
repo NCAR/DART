@@ -3,16 +3,16 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 
-program oned_hdf_converter_mod
+program threed_hdf_converter_mod
 
-!> title = "Generalized 1D Temperature HDF Observation Converter"
-!> institution = " NCAR" ;
+!> title = "Generalized 3D Sphere HDF Observation Converter"
+!> institution = "NCAR" ;
 !> source = "NCAR/DAReS" ;
-!> comment = "Generalized converter for 1D temperature data from NetCDF files" ;
+!> comment = "Generalized converter for 3D sphere data from NetCDF files" ;
 !> references = "http://www.image.ucar.edu/DAReS/DART/DART_download" ;
-!> dataset_title = "Generalized 1D Temperature HDF Data" ;
+!> dataset_title = "Generalized 3D Sphere HDF Data" ;
 
-use types_mod, only : r8
+use types_mod, only : r8, deg2rad, PI
 
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence
@@ -41,41 +41,44 @@ type(obs_sequence_type) :: seq
 integer :: io, iunit, index
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = 'convert_1d_hdf.f90'
+character(len=*), parameter :: source   = 'convert_3d_sphere_hdf.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
 ! ----------------------------------------------------------------------
-
+        
 integer, parameter :: MAXFILES = 512
 
 character(len=256) :: hdf_files(MAXFILES) = ''
 character(len=256) :: hdf_file_list       = ''
 character(len=256) :: outputfile          = ''
 
-real(r8) :: min_position = -1.0e6_r8,  &   ! lower position bound
-            max_position =  1.0e6_r8       ! upper position bound
+real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
+            lon2 = 360.0_r8,  &   !  upper longitude bound 
+            lat1 = -90.0_r8,  &   !  lower latitude bound
+            lat2 =  90.0_r8       !  upper latitude bound
 
 real(r8) :: min_MMR_threshold = 1.0e-30
 real(r8) :: top_pressure_level = 0.0001    ! no obs higher than this
-integer  :: position_thin = 0
+integer  :: cross_track_thin = 0
+integer  :: along_track_thin = 0
 logical  :: use_NCEP_errs = .false.
 integer  :: version = 1    ! HDF file format version
 
-namelist /convert_1d_hdf_nml/ hdf_files, hdf_file_list, &
-                               outputfile, &
-                               min_position, max_position, &
-                               min_MMR_threshold, top_pressure_level, &
-                               position_thin, &
-                               use_NCEP_errs, version
+namelist /convert_3d_sphere_hdf_nml/ hdf_files, hdf_file_list, &
+                                      outputfile, &
+                                      lon1, lon2, lat1, lat2, &
+                                      min_MMR_threshold, top_pressure_level, &
+                                      cross_track_thin, along_track_thin, &
+                                      use_NCEP_errs, version
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
 ! ----------------------------------------------------------------------
 
-call initialize_utilities('convert_1d_hdf')
+call initialize_utilities('convert_3d_sphere_hdf')
 call register_module(source, revision, revdate)
 
 ! Initialize the obs_sequence module ...
@@ -85,20 +88,20 @@ call static_init_obs_sequence()
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file('input.nml', 'convert_1d_hdf_nml', iunit)
-read(iunit, nml = convert_1d_hdf_nml, iostat = io)
-call check_namelist_read(iunit, io, 'convert_1d_hdf_nml')
+call find_namelist_in_file('input.nml', 'convert_3d_sphere_hdf_nml', iunit)
+read(iunit, nml = convert_3d_sphere_hdf_nml, iostat = io)
+call check_namelist_read(iunit, io, 'convert_3d_sphere_hdf_nml')
 
 ! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=convert_1d_hdf_nml)
-if (do_nml_term()) write(    *      , nml=convert_1d_hdf_nml)
+if (do_nml_file()) write(nmlfileunit, nml=convert_3d_sphere_hdf_nml)
+if (do_nml_term()) write(    *      , nml=convert_3d_sphere_hdf_nml)
 
 ! When this routine returns, the hdf_files variable will have
 ! all the filenames, regardless of which way they were specified.
-filecount = set_filename_list(hdf_files, hdf_file_list, "convert_1d_hdf")
+filecount = set_filename_list(hdf_files, hdf_file_list, "convert_3d_sphere_hdf")
 
 ! Used to estimate the max size of the output sequence
-thin_factor = compute_thin_factor(position_thin, 1)
+thin_factor = compute_thin_factor(along_track_thin, cross_track_thin)
 
 ! Initialize an empty obs_seq to start
 seq = initialize_obs_sequence(filecount, thin_factor)
@@ -110,9 +113,10 @@ do index=1, filecount
    call hdf_ret_rdr(hdf_files(index), granule, version)   
 
    ! Convert derived type information to DART sequence
-   call make_obs_sequence(seq, granule, min_position, max_position, &
+   call make_obs_sequence(seq, granule, lon1, lon2, lat1, lat2, &
                           min_MMR_threshold, top_pressure_level, &
-                          position_thin, use_NCEP_errs, version)
+                          along_track_thin, cross_track_thin, &
+                          use_NCEP_errs, version)
 
 enddo
 
@@ -125,4 +129,4 @@ call destroy_obs_sequence(seq)
 call error_handler(E_MSG, source, 'Finished successfully.', source, revision, revdate)
 call finalize_utilities()
 
-end program oned_hdf_converter_mod
+end program threed_hdf_converter_mod

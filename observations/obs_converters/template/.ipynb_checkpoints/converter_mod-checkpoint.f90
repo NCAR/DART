@@ -3,14 +3,14 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 
-program oned_netcdf_converter_mod
+program converter_mod
 
-!> title = "Generalized 1D Temperature NetCDF Observation Converter"
-!> institution = " NCAR" ;
+!> title = "Generalized Temperature Observation Converter"
+!> institution = "NCAR" ;
 !> source = "NCAR/DAReS" ;
-!> comment = "Generalized converter for 1D temperature data from NetCDF files" ;
+!> comment = "Generalized converter for temperature data from NetCDF files" ;
 !> references = "http://www.image.ucar.edu/DAReS/DART/DART_download" ;
-!> dataset_title = "Generalized 1D Temperature NetCDF Data" ;
+!> dataset_title = "Generalized Temperature Data" ;
 
 use         types_mod, only : r8, digits12, MISSING_R8
 
@@ -24,15 +24,14 @@ use     utilities_mod, only : initialize_utilities, find_namelist_in_file, &
                               error_handler, E_ERR, E_MSG, &
                               finalize_utilities, do_nml_file, do_nml_term
                               
-use      location_mod, only : get_location, location_type, set_location, &
-                              VERTISSURFACE, VERTISHEIGHT, VERTISUNDEF
+use      location_mod, only : get_location, location_type, set_location, VERTISSURFACE, VERTISHEIGHT, VERTISUNDEF
 
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs, &
                               static_init_obs_sequence, init_obs_sequence, &
                               set_copy_meta_data, set_qc_meta_data, &
                               get_num_obs, write_obs_seq, destroy_obs_sequence
                               
-use obs_utilities_mod, only : add_obs_to_seq, create_1d_obs
+use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs, create_1d_obs
 
 use obs_kind_mod, only : KIND_TEMPERATURE, get_kind_index
 
@@ -47,7 +46,7 @@ implicit none
 character(len=*), parameter :: source   = & '$URL$'
 character(len=*), parameter :: revision = '$Revision$'
 character(len=*), parameter :: revdate  = '$Date$'
-character(len=*), parameter :: routine  = 'oned_converter_mod'
+character(len=*), parameter :: routine  = 'converter_mod'
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -79,7 +78,7 @@ real(r8) :: missing_value
 !------------------------------------------------------------------------
 !  Declare namelist parameters
 
-! temp_error_std - instrument and representativeness error (std)
+! temp_error_std ... instrument and representativeness error (std)
 
 real(r8)           :: temp_error_std    = 0.3_r8
 character(len=256) :: input_file       = '1234567.nc'
@@ -94,9 +93,9 @@ namelist /temp_to_obs_nml/ input_file, output_file_base, &
 ! Start of executable code
 !------------------------------------------------------------------------
 
-! Read and record standard parameters from input.nml
+! Read and record the standard parameters from input.nml
 
-call initialize_utilities('oned_converter_mod', .true., .true.)
+call initialize_utilities('template_converter_to_obs', .true., .true.)
 call find_namelist_in_file('input.nml', 'temp_to_obs_nml', iunit)
 read(iunit, nml = temp_to_obs_nml, iostat = io)
 
@@ -144,6 +143,9 @@ TIMELOOP: do itime = 1,ndays
    obs_time = base_time + delta_time
    call get_time(obs_time,  osec, oday)
 
+   ! call print_time(obs_time, str='obs time is ')
+   ! call print_date(obs_time, str='obs date is ')
+
    call get_date(obs_time, year, month, day, hour, minutes, seconds)
 
    seconds = seconds + (hour*60 + minutes)*60
@@ -171,8 +173,17 @@ TIMELOOP: do itime = 1,ndays
         cycle obslooplon
      endif
  
-     call set_location(location, lat(j), lon(i), 0.0_r8)
-     call create_1d_obs(location, temperature(itime,j,i), VERTISSURFACE, obs_time, obs_seq, first_obs)
+     select case (location_mod)
+     case ('oned')
+        call set_location(location, lat(j), lon(i), 0.0_r8)
+        call create_1d_obs(location, temperature(itime,j,i), VERTISSURFACE, obs_time, obs_seq, first_obs)
+     case ('threed_sphere')
+        call set_location(location, lat(j), lon(i), 0.0_r8)
+        call create_3d_obs(location, temperature(itime,j,i), VERTISUNDEF, obs_time, obs_seq, first_obs)
+     case ('threed_cartesian')
+        call set_location(location, lat(j), lon(i), 0.0_r8)
+        call create_3d_obs(location, temperature(itime,j,i), VERTISUNDEF, obs_time, obs_seq, first_obs)
+     end select
 
    enddo obslooplon
    enddo obslooplat
@@ -232,7 +243,7 @@ endif
 
 end function set_base_time
 
-!> Create 1D observation
+!> Create a 1D observation
 
 subroutine create_1d_obs(location, value, vert_coord, obs_time, obs_seq, first_obs)
    type(location_type), intent(in) :: location
@@ -250,7 +261,7 @@ subroutine create_1d_obs(location, value, vert_coord, obs_time, obs_seq, first_o
    call obs_def%initialize()
    call obs_def%set(location, kind, value)
 
-   ! Set observation time
+   ! Set the observation time
    call obs_def%set_time(obs_time)
 
    call add_obs_to_seq(obs_seq, obs, obs_time, first_obs)
@@ -258,4 +269,30 @@ subroutine create_1d_obs(location, value, vert_coord, obs_time, obs_seq, first_o
 
 end subroutine create_1d_obs
 
-end program oned_netcdf_converter_mod
+!> Create a 3D observation
+
+subroutine create_3d_obs(location, value, vert_coord, obs_time, obs_seq, first_obs)
+   type(location_type), intent(in) :: location
+   real(r8), intent(in) :: value
+   integer, intent(in) :: vert_coord
+   type(time_type), intent(in) :: obs_time
+   type(obs_sequence_type), intent(inout) :: obs_seq
+   logical, intent(inout) :: first_obs
+
+   type(obs_def_type) :: obs_def
+   type(obs_type) :: obs
+   integer :: kind
+
+   call get_kind_index('TEMPERATURE', kind)
+   call obs_def%initialize()
+   call obs_def%set(location, kind, value)
+
+   ! Set the observation time
+   call obs_def%set_time(obs_time)
+
+   call add_obs_to_seq(obs_seq, obs, obs_time, first_obs)
+   first_obs = .false.
+
+end subroutine create_3d_obs
+
+end program converter_mod

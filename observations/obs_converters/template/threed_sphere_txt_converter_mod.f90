@@ -5,12 +5,12 @@
 
 program threed_netcdf_converter_mod
 
-!> title = "Generalized 3D Cartesian NetCDF Observation Converter"
+!> title = "Generalized 3D Sphere NetCDF Observation Converter"
 !> institution = "NCAR" ;
 !> source = "NCAR/DAReS" ;
-!> comment = "Generalized converter for 3D cartesian data from NetCDF files" ;
+!> comment = "Generalized converter for 3D sphere data from NetCDF files" ;
 !> references = "http://www.image.ucar.edu/DAReS/DART/DART_download" ;
-!> dataset_title = "Generalized 3D Cartesian NetCDF Data" ;
+!> dataset_title = "Generalized 3D Sphere NetCDF Data" ;
 
 use         types_mod, only : r8, digits12, MISSING_R8
 
@@ -62,7 +62,7 @@ integer :: ncid, varid, io, iunit
 integer :: oday, osec, iday, isec
 integer :: year, month, day, hour, minutes, seconds
 integer :: num_new_obs, nmissing
-integer :: i, j, k, nx, ny, nz, ndays
+integer :: i, j, k, nlat, nlon, ndays
 integer :: itime
 
 logical :: first_obs
@@ -73,7 +73,7 @@ type(time_type)         :: obs_time, prev_time
 type(time_type)         :: base_time, delta_time
 
 real(digits12), allocatable :: time(:)
-real(r8), allocatable :: x(:), y(:), z(:)
+real(r8), allocatable :: lat(:), lon(:), level(:)
 ! declare name of variable here
 real(r8), allocatable :: your_variable(:,:,:)
 real(r8) :: missing_value
@@ -108,18 +108,18 @@ call set_calendar_type(GREGORIAN)
 ! open the NetCDF file and read dimension sizes
 ncid  = nc_open_file_readonly(input_file, routine) 
 ndays = nc_get_dimension_size(ncid, 'time', routine)
-nx    = nc_get_dimension_size(ncid, 'x', routine)
-ny    = nc_get_dimension_size(ncid, 'y', routine)
-nz    = nc_get_dimension_size(ncid, 'z', routine)
+nlat  = nc_get_dimension_size(ncid, 'lat', routine)
+nlon  = nc_get_dimension_size(ncid, 'lon', routine)
+nlev  = nc_get_dimension_size(ncid, 'level', routine) ! if levels are present
 
-! allocate arrays for time, x, y, and z
-allocate(time(ndays), x(nx), y(ny), z(nz))
+! allocate arrays for time, latitude, and longitude
+allocate(time(ndays), lat(nlat), lon(nlon), level(nlev))
 
-! read time, x, y, and z variables from NetCDF file
+! read time, latitude, and longitude variables from NetCDF file
 call nc_get_variable(ncid, 'time', time, routine) 
-call nc_get_variable(ncid, 'x',  x,  routine) 
-call nc_get_variable(ncid, 'y',  y,  routine) 
-call nc_get_variable(ncid, 'z',  z,  routine) 
+call nc_get_variable(ncid, 'lat',  lat,  routine) 
+call nc_get_variable(ncid, 'lon',  lon,  routine) 
+call nc_get_variable(ncid, 'level',  level,  routine) 
 
 ! ensure longitudes are [0,360] 
 where(lon < 0.0_r8) lon = lon + 360.0_r8
@@ -127,10 +127,10 @@ where(lon < 0.0_r8) lon = lon + 360.0_r8
 ! set the base time from the NetCDF file attributes
 base_time = set_base_time(ncid)
 
-num_new_obs = nx * ny * nz
+num_new_obs = nlon * nlat * nlev
 
 ! allocate array for the variable of interest
-allocate(your_variable(nz, ny, nx))
+allocate(your_variable(nlev, nlat, nlon))
 
 ! initialize observation sequence
 call static_init_obs_sequence()
@@ -176,24 +176,24 @@ TIMELOOP: do itime = 1,ndays
    call set_qc_meta_data(obs_seq, 1, 'YOUR_VARIABLE QC')
 
    ! loop over each spatial point in the 3D grid
-   obsloopx: do j = 1, nx, subsample_intv
-   obsloopy: do i = 1, ny, subsample_intv
-   obsloopz: do k = 1, nz, subsample_intv
+   obslooplat: do j = 1, nlat, subsample_intv
+   obslooplon: do i = 1, nlon, subsample_intv
+   obslooplevel: do k = 1, nlev, subsample_intv
    
      ! skip missing values
      if (your_variable(k,j,i) == missing_value) then
         nmissing = nmissing + 1
-        cycle obsloopx
+        cycle obslooplon
      endif
 
      ! set observation location
-     call set_location(location, x(i), y(j), z(k))
+     call set_location(location, lat(j), lon(i), level(k))
      ! create and add observation to sequence
      call create_3d_obs(location, your_variable(k,j,i), VERTISUNDEF, obs_time, obs_seq, first_obs)
 
-   enddo obsloopz
-   enddo obsloopy
-   enddo obsloopx
+   enddo obslooplevel
+   enddo obslooplon
+   enddo obslooplat
 
    ! if we added obs to the sequence, write it out to a file
    if ( get_num_obs(obs_seq) > 0 ) then
@@ -218,7 +218,7 @@ call finalize_utilities()
 
 contains
 
-! Function to set the base time from the NetCDF file attributes
+! function to set the base time from the NetCDF file attributes
 function set_base_time(ncid)
 
 integer, intent(in) :: ncid
@@ -263,15 +263,15 @@ subroutine create_3d_obs(location, value, vert_coord, obs_time, obs_seq, first_o
    type(obs_type) :: obs
    integer :: kind
 
-   ! Get the kind index for the variable of interest
+   ! get the kind index for the variable of interest
    call get_kind_index('YOUR_VARIABLE_KIND', kind)
    call obs_def%initialize()
    call obs_def%set(location, kind, value)
 
-   ! Set observation time
+   ! set observation time
    call obs_def%set_time(obs_time)
 
-   ! Add observation to sequence
+   ! add observation to sequence
    call add_obs_to_seq(obs_seq, obs, obs_time, first_obs)
    first_obs = .false.
 
