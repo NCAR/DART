@@ -538,8 +538,7 @@ Please note:
 | |image3|  | `Instructions for viewing the rank histogram with                                                        |
 |           | ncview <https://cirrus.ucsd.edu/ncview/>`__.                                                             |
 +-----------+----------------------------------------------------------------------------------------------------------+
-| |image4|  | `Instructions for viewing the rank histogram with                                                        |
-|           | Matlab <https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`__.                    |
+| |image4|  | :ref:`Instructions for viewing the rank histogram with Matlab<plotRankHistogram>`.                       |
 +-----------+----------------------------------------------------------------------------------------------------------+
 
 "trusted" observation types
