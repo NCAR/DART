@@ -197,9 +197,10 @@ The following values are specified in ``model_nml``.
 |                      |                    | default value.                            |
 +----------------------+--------------------+-------------------------------------------+
 | override             | logical            | If true, then the initial model date is   |
-|                      |                    | taken from namelist entry current_time,   |
-|                      |                    | even if an atmos_model.res file is found  |
-|                      |                    | in directory INPUT. For most DART         |
+|                      |                    | taken from namelist entry                 |
+|                      |                    | current_time, even if an                  |
+|                      |                    | ``atmos_model.res`` file is found         |
+|                      |                    | in the directory ``INPUT``. For most DART |
 |                      |                    | applications, atmospheric restart values  |
 |                      |                    | are coming from DART files and no INPUT   |
 |                      |                    | directory is used.                        |
@@ -220,12 +221,12 @@ The following values are specified in ``model_nml``.
 |                      |                    | model advance changes the time by         |
 |                      |                    | dt_bias. However, internally the bgrid    |
 |                      |                    | model is moving things forward by         |
-|                      |                    | dt_atmos. By running perfect_model_obs    |
+|                      |                    | dt_atmos. By running ``perfect_model_obs``|
 |                      |                    | with one time step for the internal bgrid |
-|                      |                    | clock (for instance dt_atmos = 3600,      |
-|                      |                    | dt_bias = 3600), and filter with another  |
-|                      |                    | (dt_atmos = 3000, and dt_bias = 3600)     |
-|                      |                    | model error is simulated.                 |
+|                      |                    | clock (for instance ``dt_atmos = 3600``,  |
+|                      |                    | ``dt_bias = 3600``), and ``filter`` with  |
+|                      |                    | another (``dt_atmos = 3000``, ``dt_bias = |
+|                      |                    | 3600``), model error is simulated.        |
 +----------------------+--------------------+-------------------------------------------+
 | state_variables(:,2) | character(len=129) | Strings that identify the bgrid_solo      |
 |                      |                    | variables that should be part of the DART |
@@ -236,19 +237,19 @@ The following values are specified in ``model_nml``.
 | template_file        | character(len=256) | This is the name of the file that         |
 |                      |                    | specifies the resolution of the variables |
 |                      |                    | DART uses to create the DART state        |
-|                      |                    | vector. If *template_file = "null"* the   |
-|                      |                    | *&bgrid_cold_start_nml* namelist          |
+|                      |                    | vector. If ``template_file = "null"`` the |
+|                      |                    | ``&bgrid_cold_start_nml`` namelist        |
 |                      |                    | variables are used to specify the         |
 |                      |                    | resolution. The actual input filenames    |
-|                      |                    | for *filter* and *perfect_model_obs* come |
-|                      |                    | from their respective namelists.          |
+|                      |                    | for ``filter`` and ``perfect_model_obs``  |
+|                      |                    | come from their respective namelists.     |
 |                      |                    | The resolutions in the file specified in  |
-|                      |                    | *template_file* must match the            |
+|                      |                    | ``template_file`` must match the          |
 |                      |                    | resolutions of the variables in the input |
 |                      |                    | filenames. To start an experiment with a  |
-|                      |                    | new model resolution, set template_file   |
-|                      |                    | to "null" and set the resolutions in      |
-|                      |                    | bgrid_cold_start_nml.                     | 
+|                      |                    | new model resolution, set ``template_file=|
+|                      |                    | "null"`` and set the resolutions in       |
+|                      |                    | in the ``&bgrid_cold_start_nml``.         | 
 +----------------------+--------------------+-------------------------------------------+
 
 The following values are specified in ``bgrid_cold_start_nml``.
