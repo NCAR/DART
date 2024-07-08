@@ -1,3 +1,5 @@
+.. _obs-diag-threed-sphere:
+
 PROGRAM ``obs_diag`` (for observations that use the threed_sphere location module)
 ==================================================================================
 

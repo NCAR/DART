@@ -106,10 +106,9 @@ regions and levels. ``obs_diag`` outputs a netCDF file called ``obs_diag_outp
 which can then be used in the DART MATLAB routines located in
 ``DART/diagnostics/matlab/``.
 
-For more detail on obs_diag and the MATLAB diagnostics, see `PROGRAM obs_diag
-(threed_sphere) <https://docs.dart.ucar.edu/en/latest/assimilation_code/programs
-/obs_diag/threed_sphere/obs_diag.html>`_ and `MATLAB observation space diagnostics
-<https://docs.dart.ucar.edu/en/latest/guide/matlab-observation-space.html>`_
+For more detail on obs_diag and the MATLAB diagnostics, see :ref:`PROGRAM obs_diag
+for the threed_sphere location module <obs-diag-threed-sphere>` and
+:ref:`MATLAB observation space diagnostics <configMatlab>`.
 
 Namelist
 --------
