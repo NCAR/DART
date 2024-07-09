@@ -43,11 +43,11 @@ The steps to run this example are as follows:
     | Reads in an observation sequence file which has only observation definitions
       (``obs_seq.in``) and generates synthetic observation values from a hindcast
       model (``perfect_input.nc``). Results in output state vector file (``perfect_output.nc``)
-      and an output observation sequence file (``obs_seq.out``) to be assimilated by 'filter'
+      and an output observation sequence file (``obs_seq.out``) to be assimilated by ``filter``
 
 3.  | ``cp perfect_output.nc filter_input.nc``
-    | Copies the output from the perfect_model_obs program to the input file for
-      the filter program
+    | Copies the output from the ``perfect_model_obs`` program to the input file for
+      the ``filter`` program
 
 4.  | In ``work/input.nml``, set ``perturb_from_single_instance = .true.`` in the
       ``&filter_nml``
