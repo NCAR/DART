@@ -36,15 +36,14 @@ and generates output for state-space or observation-space diagnostics.
 The steps to run this example are as follows:
 
 1.  | ``./quickbuild.sh`` (or ``quickbuild.sh nompi`` if you are not building with mpi)
-    | Builds all DART executables and perfect_input.nc from the cdl file
+    | Builds all DART executables and ``perfect_input.nc`` from the cdl file
       ``perfect_input.cdl``
 
 2.  | ``./perfect_model_obs``
     | Reads in an observation sequence file which has only observation definitions
       (``obs_seq.in``) and generates synthetic observation values from a hindcast
-      model (``perfect_input.nc``). Results in an output observation sequence file
-      (``obs_seq.out``) to be assimilated by 'filter' and perfect_output.nc, the
-      output state vector file
+      model (``perfect_input.nc``). Results in output state vector file (``perfect_output.nc``)
+      and an output observation sequence file (``obs_seq.out``) to be assimilated by 'filter'
 
 3.  | ``cp perfect_output.nc filter_input.nc``
     | Copies the output from the perfect_model_obs program to the input file for
@@ -58,10 +57,9 @@ The steps to run this example are as follows:
 5.  | ``./filter``
     | Runs the assimilation program, resulting in three main output files:
     |    ``preassim.nc`` - the state of all ensemble members prior to the assimilation
-         (i.e. the forecast)
+         (i.e. the forecast with any prior inflation applied)
     |    ``analysis.nc`` - the state of all ensemble members after the assimilation
-    |    ``obs_seq.final`` - the ensemble members' estimate of what the observations
-         should have been.
+    |    ``obs_seq.final`` - the ensemble members' estimate of the observations.
 
 Some examples of ways in which this model can be configured and modified to test
 DART assimilation capabilities are documented in Anderson et al. (2005). [3]_
@@ -73,21 +71,20 @@ interactive user input and create a text file that can be piped into program
 examples for users who are interested in designing their own custom obs_sequence
 files.
 
-Program ``column_rand`` creates an obs_sequence with randomly located columns of
-observations (essentially synthetic radiosondes) that observe surface pressure
-along with temperature and wind components at all model levels.
++ | Program ``column_rand`` creates an obs_sequence with randomly located columns of
+  | observations (essentially synthetic radiosondes) that observe surface pressure
+  | along with temperature and wind components at all model levels.
 
-Program ``id_set_def_stdin`` generates an obs_sequence file that observes every
-state variable with error variance of 10000 for surface pressure and 1.0 for
-temperature and wind components.
++ | Program ``id_set_def_stdin`` generates an obs_sequence file that observes every
+  | state variable with error variance of 10000 for surface pressure and 1.0 for
+  | temperature and wind components.
 
-Program ``ps_id_stdin`` generates an obs_sequence that observes every surface
-pressure variable for the default model size (30x60) with an error variance of
-100.
++ | Program ``ps_id_stdin`` generates an obs_sequence that observes every surface
+  | pressure variable for the default model size (30x60) with an error variance of 100.
 
-Program ``ps_rand_local`` generates a set of randomly located surface pressure
-observations with an interactively specified error variance. It also allows the
-observations to be confined to a rectangular subdomain.
++ | Program ``ps_rand_local`` generates a set of randomly located surface pressure
+  | observations with an interactively specified error variance. It also allows the
+  | observations to be confined to a rectangular subdomain.
 
 Diagnostics
 -----------
@@ -97,18 +94,18 @@ assimilate data from real-world sources is to compare the ensemble estimates of
 the observation to your real-world data. You can estimate the bias and error of
 the ensemble mean or gauge how many of the real-world observations are actually
 being assimilated. These diagnostics are known as observation-space diagnostics.
-DART provides the program ``obs_diag`` and MATLAB observation space diagnostics
+DART provides the program ``obs_diag`` and MATLAB observation space diagnostics
 for you to use to quickly assess the performance of your experiment. 
 
-``obs_diag`` reads the ``obs_seq.final`` files and calculates several quantities,
+``obs_diag`` reads the ``obs_seq.final`` files and calculates several quantities,
 such as the root-mean-squared error, bias, and spread, for an arbitrary number of
-regions and levels. ``obs_diag`` outputs a netCDF file called ``obs_diag_output.nc``,
+regions and levels. ``obs_diag`` outputs a netCDF file called ``obs_diag_output.nc``,
 which can then be used in the DART MATLAB routines located in
 ``DART/diagnostics/matlab/``.
 
-For more detail on obs_diag and the MATLAB diagnostics, see :ref:`PROGRAM obs_diag
-for the threed_sphere location module <obs-diag-threed-sphere>` and
-:ref:`MATLAB observation space diagnostics <configMatlab>`.
+For more detail on obs_diag and the MATLAB diagnostics, see 
+:ref:`PROGRAM obs_diag for the threed_sphere location module <obs-diag-threed-sphere>` 
+and :ref:`MATLAB observation space diagnostics <configMatlab>`.
 
 Namelist
 --------
@@ -190,20 +187,19 @@ The following values are specified in ``model_nml``.
 +======================+====================+===========================================+
 | current_time(4)      | integer            | Specifies the initial time of the Bgrid   |
 |                      |                    | model internal clock. The four integer    | 
-|                      |                    | values are the day, hour, minutes, and    |
-|                      |                    | seconds. The default version of the Bgrid |
+|                      |                    | values are the day, hour, minute, and     |
+|                      |                    | second. The default version of the Bgrid  |
 |                      |                    | model has neither a diurnal or seasonal   |
 |                      |                    | cycle, so these can all be set to 0, the  |
 |                      |                    | default value.                            |
 +----------------------+--------------------+-------------------------------------------+
 | override             | logical            | If true, then the initial model date is   |
-|                      |                    | taken from namelist entry                 |
-|                      |                    | current_time, even if an                  |
-|                      |                    | ``atmos_model.res`` file is found         |
-|                      |                    | in the directory ``INPUT``. For most DART |
-|                      |                    | applications, atmospheric restart values  |
-|                      |                    | are coming from DART files and no INPUT   |
-|                      |                    | directory is used.                        |
+|                      |                    | taken from namelist entry current_time,   |
+|                      |                    | even if an ``atmos_model.res`` file       |
+|                      |                    | is found in the directory ``INPUT``.      |
+|                      |                    | For most DART applications, atmospheric   |
+|                      |                    | restart values come from DART files and   |
+|                      |                    | no INPUT directory is used.               |
 +----------------------+--------------------+-------------------------------------------+
 | dt_atmos             | integer            | Model timestep in seconds.                |
 +----------------------+--------------------+-------------------------------------------+
