@@ -129,8 +129,8 @@ In the namelist each entry has two values. The first is for Prior inflation and 
 ``&filter_nml :: inf_sd_initial_from_restart``
    *valid values:* .true. or .false.
 
-   If true, read the inflation standard deviation values from an restart file named ``input_{prior,post}inf_sd{_d##.nc.`` See
-   the comments above about ``inflation_initial_from_restart``.
+   If true, read the inflation standard deviation values from an restart file named ``input_{prior,post}inf_sd{_d##}.nc.`` 
+   See the comments above about ``inflation_initial_from_restart``.
 
 ``&filter_nml :: inf_sd_initial``
    *valid values:* ≤ 0.0 to disable evolution of inflation, > 0.0 otherwise
