@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 11 2024 :: Bgrid documentation and scripting fix. Tag v11.5.1**
+
+- Updated Bgrid documentation and removed outdated scripts and files
+- Fixed obs_diag rank histogram documentation links
+- Improved inflation file documentation
+- GitHub action for running all quickbuilds in DART
+
 **May 16 2024 :: WRF v4. Tag v11.5.0**
 
 - WRF-DART and WRF-DART Tutorial updated to WRFv4. Note, not backwards compatible with WRFv3.9. 
