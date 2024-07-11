@@ -76,7 +76,6 @@ public :: get_model_size,         &
 
 
 character(len=256), parameter :: source = "model_mod.f90"
-character(len=256), parameter :: ocean_geometry = "/glade/work/rarmstrong/cesm/cesm2_3_alpha12b+mom6_marbl/components/mom/standalone/examples/single_column_MARBL/BATS_joint_estimation/ensemble/baseline/ocean_geometry.nc"
 logical :: module_initialized = .false.
 integer :: state_dom_id  ! used to access the state structure
 integer :: param_dom_id  ! used to access MARBL internal parameters
@@ -96,6 +95,7 @@ integer, parameter :: modelparams_table_width = 5
 
 ! defining the variables that will be read from the namelist
 character(len=256) :: template_file(2)
+character(len=256) :: ocean_geometry
 integer            :: time_step_days
 integer            :: time_step_seconds
 logical            :: estimate_params
@@ -105,6 +105,7 @@ character(len=vtablenamelength) &
    :: model_parameters(modelparams_table_height * modelparams_table_width)
 
 namelist /model_nml/ template_file, &
+                     ocean_geometry, &
                      time_step_days, &
                      time_step_seconds, &
                      model_state_variables, &
