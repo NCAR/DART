@@ -1204,7 +1204,7 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, obs_dist_type, &
 
    ! Applies a QCEF based on kernel density estimation & quadrature
 
-   real(r8) :: q
+   real(r8) :: u
    real(r8) :: p_lower_prior, p_int_prior, p_upper_prior
    real(r8) :: p_lower_post, p_int_post, p_upper_post
    real(r8) :: like_ens_mean ! ensemble mean of the likelihood
@@ -1225,8 +1225,8 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, obs_dist_type, &
    ! this function and so we are not trying to make it task-count invariant.
    if(first_inc_ran_call) then
       call random_seed()
-      call random_number(q)
-      i = int(q * 1000)
+      call random_number(unif)
+      i = int(unif * 1000)
       call init_random_seq(inc_ran_seq, my_task_id() + i)
       first_inc_ran_call = .false.
    endif
@@ -1290,40 +1290,41 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, obs_dist_type, &
    count_upper = 0
    unif = random_uniform(inc_ran_seq) / real(ens_size, r8)
    do i=1,ens_size
-      ! Map each ensemble member to a quantile using the prior cdf. Members
-      ! on the boundary get random quantiles.
+      ! Map each ensemble member to a probability u in [0,1] using the prior cdf. Members
+      ! on the boundary get random probabilities.
       if (bounded_below .and. (ens(i) .le. lower_bound)) then
          ! Rather than draw a random for each member on the boundary,
          ! I draw one random (above) then add 1/Nb to each subsequent value
-         q = unif + real(count_lower, r8) / real(ens_size, r8)
+         u = unif + real(count_lower, r8) / real(ens_size, r8)
          count_lower = count_lower + 1
-         write(*,*) 'lower boundary quantile ', q
+         write(*,*) 'lower boundary probability ', u
        elseif (bounded_above .and.  (ens(i) .ge. upper_bound)) then
          ! As above, I draw one random then add 1/Nb to each subsequent value
-         q = 1._r8 - (unif + real(count_upper, r8) / real(ens_size, r8))
+         u = 1._r8 - (unif + real(count_upper, r8) / real(ens_size, r8))
          count_upper = count_upper + 1
-         write(*,*) 'upper boundary quantile ', q
+         write(*,*) 'upper boundary probability ', u
        elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
-         ! Can't use kde with only one ensemble member (or identical ensemble members), so assign a random quantile
-         q = (p_int_prior * random_uniform(inc_ran_seq)) + p_lower_prior
+         ! Can't use kde with only one ensemble member (or identical ensemble members), so assign a
+         ! random probability
+         u = (p_int_prior * random_uniform(inc_ran_seq)) + p_lower_prior
       else ! Use the interior cdf obtained using kde.
-         q = kde_cdf_params(ens(i), params_interior_prior)
-         q = (p_int_prior * q) + p_lower_prior
+         u = kde_cdf_params(ens(i), params_interior_prior)
+         u = (p_int_prior * u) + p_lower_prior
       end if
       ! Invert the posterior kde cdf to get the updated ensemble member, then
       ! subtract to get the increment.
-      if (q .le. p_lower_post) then ! Posterior value on the lower boundary
+      if (u .le. p_lower_post) then ! Posterior value on the lower boundary
          obs_inc(i) = lower_bound - ens(i)
-      elseif (q .ge. (1._r8 - p_upper_post)) then ! Posterior value on the upper boundary
+      elseif (u .ge. (1._r8 - p_upper_post)) then ! Posterior value on the upper boundary
          obs_inc(i) = upper_bound - ens(i)
       elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
          ! posterior value in the interior, but there's only one prior ensemble member/value
          ! in the interior, so we just assign the posterior ensemble member equal to the prior one
          obs_inc(i) = ens_interior(1) - ens(i)
       else ! posterior value in the interior, can use kde
-         ! Rescale q to be between 0 and 1 before inverting interior cdf
-         q = (q - p_lower_post) / p_int_post
-         obs_inc(i) = inv_kde_cdf_params(q, params_interior_posterior)
+         ! Rescale u to be between 0 and 1 before inverting interior cdf
+         u = (u - p_lower_post) / p_int_post
+         obs_inc(i) = inv_kde_cdf_params(u, params_interior_posterior)
          obs_inc(i) = obs_inc(i) - ens(i)
       end if
    end do

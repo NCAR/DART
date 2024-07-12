@@ -18,7 +18,7 @@ contains
 
 !------------------------------------------------------------------------
 
-function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
+function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
 
    interface
       function cdf(x, p)
@@ -31,31 +31,32 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
    end interface
 
    interface
-      function first_guess(quantile, p)
+      function first_guess(u, p)
          use types_mod, only : r8
          use distribution_params_mod, only : distribution_params_type
          real(r8)                                   :: first_guess
-         real(r8), intent(in)                       :: quantile
+         real(r8), intent(in)                       :: u
          type(distribution_params_type), intent(in) :: p
       end function
    end interface
 
-   real(r8)                                   :: x
-   real(r8), intent(in)                       :: quantile_in
+   real(r8)                                   :: quantile
+   real(r8), intent(in)                       :: cdf_in
    type(distribution_params_type), intent(in) :: p
 
-   ! Given a quantile q, finds the value of x for which cdf(x) is approximately q
-   ! Starts with Newton's method using an approximate gradient until either convergence
+   ! Given a probability cdf_in, finds the value of x (i.e. the quantile) for which cdf(x)
+   ! is approximately cdf_in = u.
+   ! Starts with Newton's method using an approximate derivative until either convergence
    ! or overshoot. If it overshoots then it switches to the bisection-like ITP method
-   ! from Oliveira & Takahashi, ACM Trans Math Soft, 2020. Here f(x) = cdf(x) - quantile
+   ! from Oliveira & Takahashi, ACM Trans Math Soft, 2020. Here f(x) = cdf(x) - cdf_in
 
    ! Local variables:
    integer,  parameter :: max_iterations = 50 ! Limit on the total number of iterations.
-   real(r8), parameter :: min_quantile = 0.0_r8,  max_quantile = 0.999999999999999_r8
+   real(r8), parameter :: min_probability = 0.0_r8,  max_probability = 0.999999999999999_r8
    real(r8), parameter :: tol = epsilon(1._r8)**(0.75_r8) ! Absolute on q, relative on x
-   real(r8) :: quantile, q_err
+   real(r8) :: u, u_err
    real(r8) :: delta_x, delta_f
-   real(r8) :: x_guess, q_guess, x0, x1, f0, f1
+   real(r8) :: x_guess, u_guess, x0, x1, f0, f1
    real(r8) :: a, b, fa, fb
    integer  :: iter
 
@@ -66,59 +67,59 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
    bounded_below = p%bounded_below;   bounded_above = p%bounded_above
    lower_bound   = p%lower_bound;     upper_bound   = p%upper_bound
 
-   quantile = quantile_in
+   u = cdf_in
 
-   ! Do a test for illegal values on the quantile
-   if(quantile <  0.0_r8 .or. quantile > 1.0_r8) then
-      write(errstring, *) 'Illegal Quantile input', quantile
+   ! Do a test for illegal values on the probability u
+   if(u <  0.0_r8 .or. u > 1.0_r8) then
+      write(errstring, *) 'Illegal cdf input', u
       call error_handler(E_ERR, 'inv_cdf', errstring, source)
    endif
 
-   ! If the distribution is bounded, quantiles at the limits have values at the bounds
-   if(bounded_below .and. quantile == 0.0_r8) then
-      x = lower_bound
+   ! If the distribution is bounded, probabilities of 0 and 1 have values at the bounds
+   if(bounded_below .and. u == 0.0_r8) then
+      quantile = lower_bound
       return
    endif
-   if(bounded_above .and. quantile == 1.0_r8) then
-      x = upper_bound
+   if(bounded_above .and. u == 1.0_r8) then
+      quantile = upper_bound
       return
    endif
 
-   ! If input quantiles are outside the numerically supported range, move them to the extremes
-   quantile = min(quantile, max_quantile)
-   ! code tests stably for many distributions with min_quantile of 0.0, could remove this
-   quantile = max(quantile, min_quantile)
+   ! If input probabilities are outside the numerically supported range, move them to the extremes
+   u = min(u, max_probability)
+   ! code tests stably for many distributions with min_probability of 0.0, could remove this
+   u = max(u, min_probability)
 
    ! Get first guess from functional approximation
-   x_guess = first_guess(quantile, p)
+   x_guess = first_guess(u, p)
 
    ! Evaluate the cdf
-   q_guess = cdf(x_guess, p)
+   u_guess = cdf(x_guess, p)
 
    ! Check if first guess is close enough
-   q_err = quantile - q_guess
-   if (abs(q_err) .le. tol) then
-      x = x_guess
+   u_err = u - u_guess
+   if (abs(u_err) .le. tol) then
+      quantile = x_guess
       return
    end if
 
-   ! If bounded below and target quantile is between 0 and q_guess, go to ITP
-   if (bounded_below .and. (quantile .lt. q_guess)) then
+   ! If bounded below and target probability is between 0 and u_guess, go to ITP
+   if (bounded_below .and. (u .lt. u_guess)) then
       a  = lower_bound
       b  = x_guess
-      fa = 0._r8 - quantile
-      fb = q_guess - quantile
-      x  = inv_cdf_ITP(cdf, quantile, a, b, fa, fb, max_iterations, p)
+      fa = 0._r8 - u
+      fb = u_guess - u
+      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p)
       return
    end if
 
-   ! If bounded above and target quantile is between q_guess and 1, go to ITP
-   if (bounded_above .and. (q_guess .lt. quantile)) then
+   ! If bounded above and target probability is between u_guess and 1, go to ITP
+   if (bounded_above .and. (u_guess .lt. u)) then
       a  = x_guess
       b  = upper_bound
-      fa = q_guess
+      fa = u_guess
       fb = 1._r8
-      x  = inv_cdf_ITP(cdf, quantile, a, b, fa, fb, max_iterations, p)
+      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p)
       return
    end if
 
@@ -126,7 +127,7 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
    ! doing steps of the secant method, either until convergence or until we bracket
    ! the root. If we bracket the root then we finish using the ITP method.
    x0 = x_guess
-   f0 = q_guess - quantile
+   f0 = u_guess - u
    delta_x = max(1e-2_r8, 1e-2_r8 * abs(x_guess))
    if (f0 .gt. 0._r8) then
       delta_x = -delta_x
@@ -135,7 +136,7 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
       x1 = x_guess + delta_x
       if(bounded_below .and. (x1 .lt. lower_bound)) x1 = lower_bound
       if(bounded_above .and. (x1 .gt. upper_bound)) x1 = upper_bound
-      f1 = cdf(x1, p) - quantile
+      f1 = cdf(x1, p) - u
       delta_f = abs(f1 - f0)
       if (delta_f .le. 0._r8) then
          delta_x = 2._r8 * delta_x
@@ -150,18 +151,18 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
          b  = max(x0, x1)
          fa = min(f0, f1)
          fb = max(f0, f1)
-         x = inv_cdf_ITP(cdf, quantile, a, b, fa, fb, max_iterations - iter + 1, p)
+         quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations - iter + 1, p)
          return
       else ! Do a secant step
          delta_f = f1 - f0
          if (abs(delta_f) .eq. 0._r8) then ! Stop. Failed step: Flat CDF
-            write(errstring, *)  'Failed to converge; flat cdf for quantile ', quantile
+            write(errstring, *)  'Failed to converge; flat cdf'
             write(*,*) p%bounded_below, p%bounded_above
             write(*,*) 'More params:', p%more_params(:)
             write(*,*) 'iter, x0, x1, f0, f1:', iter, x0, x1, f0, f1
             write(*,*) 'ens:', p%ens(:)
             call error_handler(E_MSG, 'rootfinding_mod:inv_cdf', errstring, source)
-            x = x1
+            quantile = x1
             return
          else
             x_guess = x1 - f1 * delta_x / delta_f
@@ -171,8 +172,8 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
             f0 = f1
             x1 = x_guess
             delta_x = x1 - x0
-            f1 = cdf(x1, p) - quantile
-            x = x1
+            f1 = cdf(x1, p) - u
+            quantile = x1
          end if
       end if
 
@@ -185,7 +186,7 @@ function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
    ! For now, have switched a failed convergence to return the latest guess
    ! This has implications for stability of probit algorithms that require further study
    ! Not currently happening for any of the test cases on gfortran
-   write(errstring, *)  'Failed to converge for quantile ', quantile
+   write(errstring, *)  'Failed to converge for probability ', u
    call error_handler(E_MSG, 'inv_cdf', errstring, source)
    !!!call error_handler(E_ERR, 'inv_cdf', errstring, source)
 
@@ -193,7 +194,7 @@ end function inv_cdf
 
 !-----------------------------------------------------------------------
 
-function inv_cdf_ITP(cdf, quantile, a, b, fa, fb, max_iterations, p) result(x)
+function inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p) result(x)
    interface
       function cdf(x, p)
          use types_mod, only : r8
@@ -204,16 +205,15 @@ function inv_cdf_ITP(cdf, quantile, a, b, fa, fb, max_iterations, p) result(x)
       end function
    end interface
 
-   real(r8),                       intent(in) :: quantile
+   real(r8),                       intent(in) :: u
    real(r8),                    intent(inout) :: a, b, fa, fb
    integer,                        intent(in) :: max_iterations
    type(distribution_params_type), intent(in) :: p
    real(r8)                                   :: x
 
-   ! Given a quantile q, finds the value of x for which cdf(x) is approximately q
+   ! Given a probability u, finds the value of x for which cdf(x) is approximately u
    ! Uses the bisection-like ITP method from Oliveira & Takahashi, ACM Trans Math
-   ! Soft, 2020. Here f(x) = cdf(x) - quantile. Assumes f(a) < 0 and f(b) > 0 on
-   ! input.
+   ! Soft, 2020. Here f(x) = cdf(x) - u. Assumes f(a) < 0 and f(b) > 0 on input.
 
    ! Local variables:
    integer,  parameter :: n0 = 1._r8
@@ -248,7 +248,7 @@ function inv_cdf_ITP(cdf, quantile, a, b, fa, fb, max_iterations, p) result(x)
       else
          x = x_half - sign(r, x_half - x_f)
       end if
-      f_ITP = cdf(x, p) - quantile
+      f_ITP = cdf(x, p) - u
       if (abs(f_ITP) .le. tol) then
          return
       elseif (f_ITP .gt. 0._r8) then

@@ -467,7 +467,7 @@ subroutine to_probit_kde(ens_size, state_ens, p, probit_ens, use_input_p, &
    real(r8),                          intent(in) :: lower_bound,   upper_bound
 
    ! local variables
-   real(r8) :: quantile
+   real(r8) :: u
    integer  :: i
    real(r8) :: y = 0._r8         ! Dummy value, not used
    real(r8) :: obs_param = 1._r8 ! Dummy value, not used
@@ -526,21 +526,21 @@ subroutine to_probit_kde(ens_size, state_ens, p, probit_ens, use_input_p, &
       d_max = 0._r8
    endif
    do i=1,ens_size
-      ! Map each state_ens member to a quantile using the prior cdf. Members
+      ! Map each state_ens member to a probability u using the prior cdf. Members
       ! on the boundary map to p_lower and p_upper.
       if (bounded_below .and. (state_ens(i) .le. lower_bound + eps)) then
-         quantile = p_lower
+         u = p_lower
       elseif (bounded_above .and. (state_ens(i) .ge. upper_bound - eps)) then
-         quantile = 1._r8 - p_upper
+         u = 1._r8 - p_upper
       elseif ((ens_size_interior .le. 1) .or. (d_max .le. 0._r8)) then
          ! Can't use kde with only one ensemble member, so assign to middle of interior range
-         quantile = (p_int * 0.5_r8) + p_lower
+         u = (p_int * 0.5_r8) + p_lower
       else ! Use the interior cdf obtained using kde.
-         quantile = kde_cdf_params(state_ens(i), p_interior)
-         quantile = (p_int * quantile) + p_lower
+         u = kde_cdf_params(state_ens(i), p_interior)
+         u = (p_int * u) + p_lower
       endif
       ! Transform to probit/logit space
-      probit_ens(i) = probit_or_logit_transform(quantile)
+      probit_ens(i) = probit_or_logit_transform(u)
    end do
 
 end subroutine to_probit_kde
@@ -756,7 +756,7 @@ subroutine from_probit_kde(ens_size, probit_ens, p, state_ens)
 
    ! local variables
    integer :: i
-   real(r8) :: quantile
+   real(r8) :: u
    real(r8) :: ens(ens_size)     ! Ensemble that defines the transform
    real(r8) :: ens_interior(ens_size) ! Ensemble members that are not on the boundaries
    integer  :: ens_size_interior ! Number of ensemble members that are not on the boundaries
@@ -798,12 +798,12 @@ subroutine from_probit_kde(ens_size, probit_ens, p, state_ens)
 
    ! Transform each probit ensemble member back to physical space
    do i = 1, ens_size
-      ! First, invert the probit/logit to get quantiles
-      quantile = inv_probit_or_logit_transform(probit_ens(i))
+      ! First, invert the probit/logit to get probabilities u
+      u = inv_probit_or_logit_transform(probit_ens(i))
       ! Next invert the mixture CDF to get the physical space ensemble
-      if (p%bounded_below .and. (quantile .le. p_lower)) then
+      if (p%bounded_below .and. (u .le. p_lower)) then
          state_ens(i) = p%lower_bound
-      elseif (p%bounded_above .and. (quantile .ge. 1._r8-p_upper)) then
+      elseif (p%bounded_above .and. (u .ge. 1._r8-p_upper)) then
          state_ens(i) = p%upper_bound
       elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
          ! If there is only one interior ensemble member in the prior then any
@@ -811,8 +811,8 @@ subroutine from_probit_kde(ens_size, probit_ens, p, state_ens)
          ! one interior value from the prior.
          state_ens(i) = ens_interior(1)
       else
-         quantile = (quantile - p_lower) / p_int
-         state_ens(i) = inv_kde_cdf_params(quantile, p_interior)
+         u = (u - p_lower) / p_int
+         state_ens(i) = inv_kde_cdf_params(u, p_interior)
       endif
    end do
 
