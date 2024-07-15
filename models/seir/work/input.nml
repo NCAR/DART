@@ -1,0 +1,245 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.,
+   single_file_in             = .true.
+   input_state_files          = "perfect_input.nc"
+
+   write_output_state_to_file = .true.,
+   single_file_out            = .true.
+   output_state_files         = "perfect_output.nc"
+   output_interval            = 1,
+
+   async                      = 0,
+   adv_ens_command            = "./advance_model.csh",
+
+   obs_seq_in_file_name       = "obs_seq.in",
+   obs_seq_out_file_name      = "obs_seq.out",
+   init_time_days             = 0,
+   init_time_seconds          = 0,
+   first_obs_days             = -1,
+   first_obs_seconds          = -1,
+   last_obs_days              = -1,
+   last_obs_seconds           = -1,
+
+   trace_execution            = .false.,
+   output_timestamps          = .false.,
+   print_every_nth_obs        = -1,
+   output_forward_op_errors   = .false.,
+   silence                    = .false.,
+   /
+
+&filter_nml
+   single_file_in               = .true.,
+   input_state_files            = ''
+   input_state_file_list        = 'filter_input_list.txt'
+
+   stages_to_write  = 'preassim', 'analysis', 'output'
+
+   single_file_out              = .true.,
+   output_state_files           = ''
+   output_state_file_list       = 'filter_output_list.txt'
+   output_interval              = 1,
+   output_members               = .true.
+   num_output_state_members     = 20,
+   output_mean                  = .true.
+   output_sd                    = .true.
+
+   ens_size                     = 3,
+   num_groups                   = 1,
+   perturb_from_single_instance = .true.,
+   perturbation_amplitude       = 0.2,
+   distributed_state            = .true.
+
+   async                        = 0,
+   adv_ens_command              = "./advance_model.csh",
+
+   obs_sequence_in_name         = "obs_seq.out",
+   obs_sequence_out_name        = "obs_seq.final",
+   num_output_obs_members       = 20,
+   init_time_days               = 0,
+   init_time_seconds            = 0,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+
+   inf_flavor                  = 5,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                     1.0,
+   inf_lower_bound             = 0.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_sd_lower_bound          = 0.6,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
+
+   trace_execution              = .false.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
+   silence                      = .false.,
+   /
+
+
+&ensemble_manager_nml
+   /
+
+&assim_tools_nml
+   cutoff                          = 0.02,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 0,
+   rectangular_quadrature          = .true.,
+   gaussian_likelihood_tails       = .false.,
+   /
+
+&cov_cutoff_nml
+   select_localization = 1,
+   /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = "reg_diagnostics",
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.,
+   read_binary_file_format   = 'native'
+   /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
+   /
+
+&model_nml
+   model_size        = 7,
+   delta_t           = 0.04167,
+   time_step_days    = 0,
+   time_step_seconds = 3600,
+   num_pop           = 331996199,
+   pert_size         = 0.5, 
+   t_incub           = 5.6,
+   t_infec           = 3.8,
+   t_recov           = 14.0,
+   t_death           = 7.0,
+   alpha             = 0.000001,
+   theta             = 12467,
+   mu                = 0.000025,
+   sigma             = 0.05,
+   beta              = 0.00000000136,
+   kappa             = 0.00308,
+   /
+
+&utilities_nml
+   termlevel      = 1,
+   module_details = .false.,
+   logfilename    = 'dart_log.out',
+   nmlfilename    = 'dart_log.nml',
+   write_nml      = 'file',
+   print_debug    = .false.,
+   /
+
+&mpi_utilities_nml
+   /
+
+&preprocess_nml
+   overwrite_output        = .true.
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_1d_state_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/oned_quantities_mod.f90'
+   /
+
+&obs_sequence_tool_nml
+   filename_seq      = 'obs1.out', 'obs2.out',
+   filename_seq_list = '',
+   filename_out      = 'obs_seq.combined',
+   first_obs_days    = -1,
+   first_obs_seconds = -1,
+   last_obs_days     = -1,
+   last_obs_seconds  = -1,
+   print_only        = .false.,
+   gregorian_cal     = .false.,
+   /
+
+&obs_diag_nml
+   obs_sequence_name     = 'obs_seq.final',
+   bin_width_days        = -1,
+   bin_width_seconds     = -1,
+   init_skip_days        = 0,
+   init_skip_seconds     = 0,
+   Nregions              = 3,
+   trusted_obs           = 'null',
+   lonlim1               = 0.00, 0.00, 0.50
+   lonlim2               = 1.01, 0.50, 1.01
+   reg_names             = 'whole', 'lower', 'upper'
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .false.
+   /
+
+&schedule_nml
+   calendar        = 'Gregorian',
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
+   max_num_bins         = 1000,
+   print_table          = .true.
+   /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   append_to_netcdf  = .false.,
+   lonlim1    =    0.0,
+   lonlim2    =    1.0,
+   verbose    = .true.
+   /
+
+&state_vector_io_nml
+   /
+
+&quality_control_nml
+   input_qc_threshold       =  3.0,
+   outlier_threshold        = -1.0,
+   /
+
+&integrate_model_nml
+   trace_execution = .true.
+   ic_file_name    = 'temp_ic.nc'
+   ud_file_name    = 'temp_uc.nc'
+   /
+
+&model_mod_check_nml
+  input_state_files     = 'perfect_input.nc'
+  output_state_files    = 'mmc_output.nc'
+  num_ens               = 1
+  single_file           = .false.
+  test1thru             = 7
+  run_tests             = 1,2,3,4,5,6
+  x_ind                 = 4
+  loc_of_interest       = 0.3
+  quantity_of_interest  = 'QTY_STATE_VARIABLE'
+  interp_test_dx        = 0.02
+  interp_test_xrange    = 0.0, 1.0
+  verbose               = .true.
+  /

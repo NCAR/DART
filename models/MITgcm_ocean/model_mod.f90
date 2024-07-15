@@ -20,12 +20,14 @@ use     location_mod,      only : location_type, get_close_init, &
                                   get_close_state, get_close_obs, set_location, &
                                   VERTISHEIGHT, get_location, is_vertical, &
                                   convert_vertical_obs, convert_vertical_state
-
+! EL use only nc_check was here, deleted for now for testing
 use    utilities_mod,      only : error_handler, E_ERR, E_WARN, E_MSG, &
-                                  logfileunit, get_unit, nc_check, do_output, to_upper, &
+                                  logfileunit, get_unit, do_output, to_upper, &
                                   find_namelist_in_file, check_namelist_read, &
                                   open_file, file_exist, find_textfile_dims, file_to_text, &
                                   string_to_real, string_to_logical
+
+use  netcdf_utilities_mod, only : nc_check
 
 use     obs_kind_mod,      only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT,  &
                                   QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT,         &
@@ -54,7 +56,10 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_index_start, get_index_end, &
                                   get_dart_vector_index, get_num_variables, &
                                   get_domain_size, &
-                                  get_io_clamping_minval
+                                  get_io_clamping_minval, get_kind_index
+                                  
+use netcdf_utilities_mod,  only : nc_open_file_readonly, nc_get_variable, & 
+                                  nc_get_dimension_size, nc_close_file
 
 use netcdf
 
@@ -253,9 +258,16 @@ integer :: FVAL=-999.0 !SIVA: The FVAL is the fill value used for input netcdf f
 ! standard MITgcm namelist and filled in here.
 
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
+integer :: comp2d = -1, comp3d=-1, comp3dU = -1, comp3dV = -1 ! size of commpressed variables
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+real(r4), allocatable :: XC_sq(:), YC_sq(:), XG_sq(:), YG_sq(:)
+real(r8), allocatable :: ZC_sq(:)
+
+integer, allocatable :: Xc_Ti(:), Yc_Ti(:), Zc_Ti(:)
+integer, allocatable :: Xc_Ui(:), Yc_Ui(:), Zc_Ui(:)
+integer, allocatable :: Xc_Vi(:), Yc_Vi(:), Zc_Vi(:) 
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -275,7 +287,6 @@ integer, parameter :: MAX_STATE_VARIABLES = 20
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
 
-
 character(len=256) :: model_shape_file = ' '
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
@@ -290,8 +301,9 @@ namelist /model_nml/ assimilation_period_days,     &
 logical :: go_to_dart    = .false.
 logical :: do_bgc        = .false.
 logical :: log_transform = .false.
+logical :: compress      = .false.
 
-namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform
+namelist /trans_mitdart_nml/ go_to_dart, do_bgc, log_transform, compress
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -325,6 +337,7 @@ logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
 
 integer :: i, iunit, io
 integer :: ss, dd
+integer :: ncid ! for reading compressed coordinates
 
 ! The Plan:
 !
@@ -526,12 +539,61 @@ call parse_variable_input(mitgcm_variables, model_shape_file, nvars, &
 domain_id = add_domain(model_shape_file, nvars, &
                     var_names, quantity_list, clamp_vals, update_list )
 
+if (compress) then ! read in compressed coordinates
+
+   ncid    = nc_open_file_readonly(model_shape_file)
+   comp2d  = nc_get_dimension_size(ncid, 'comp2d' , 'static_init_model', model_shape_file)
+   comp3d  = nc_get_dimension_size(ncid, 'comp3d' , 'static_init_model', model_shape_file)
+   comp3dU = nc_get_dimension_size(ncid, 'comp3dU', 'static_init_model', model_shape_file)
+   comp3dV = nc_get_dimension_size(ncid, 'comp3dV', 'static_init_model', model_shape_file)
+
+   allocate(XC_sq(comp3d))
+   allocate(YC_sq(comp3d))
+   allocate(ZC_sq(comp3d))  ! ZC is r8
+
+   allocate(XG_sq(comp3d))
+   allocate(YG_sq(comp3d))
+
+   allocate(Xc_Ti(comp3d))
+   allocate(Yc_Ti(comp3d))
+   allocate(Zc_Ti(comp3d))
+
+   allocate(Xc_Ui(comp3dU))
+   allocate(Yc_Ui(comp3dU))
+   allocate(Zc_Ui(comp3dU))
+
+   allocate(Xc_Vi(comp3dV))
+   allocate(Yc_Vi(comp3dV))
+   allocate(Zc_Vi(comp3dV))
+
+   call nc_get_variable(ncid, 'XCcomp', XC_sq)
+   call nc_get_variable(ncid, 'YCcomp', YC_sq)
+   call nc_get_variable(ncid, 'ZCcomp', ZC_sq)
+
+   call nc_get_variable(ncid, 'XGcomp', XG_sq)
+   call nc_get_variable(ncid, 'YGcomp', YG_sq)
+
+   call nc_get_variable(ncid, 'Xcomp_ind', Xc_Ti)
+   call nc_get_variable(ncid, 'Ycomp_ind', Yc_Ti)
+   call nc_get_variable(ncid, 'Zcomp_ind', Zc_Ti)
+
+   call nc_get_variable(ncid, 'Xcomp_indU', Xc_Ui)
+   call nc_get_variable(ncid, 'Ycomp_indU', Yc_Ui)
+   call nc_get_variable(ncid, 'Zcomp_indU', Zc_Ui)
+
+   call nc_get_variable(ncid, 'Xcomp_indV', Xc_Vi)
+   call nc_get_variable(ncid, 'Ycomp_indV', Yc_Vi)
+   call nc_get_variable(ncid, 'Zcomp_indV', Zc_Vi)
+
+   call nc_close_file(ncid)
+
+endif
+
 model_size = get_domain_size(domain_id)
 
 if (do_output()) write(*,*) 'model_size = ', model_size
 
 end subroutine static_init_model
-
 
 function get_model_size()
 !------------------------------------------------------------------
@@ -952,6 +1014,63 @@ endif
 end function lon_dist
 
 
+function get_compressed_dart_vector_index(iloc, jloc, kloc, dom_id, var_id)
+!=======================================================================
+!
+
+! returns the dart vector index for the compressed state
+
+integer, intent(in) :: iloc, jloc, kloc
+integer, intent(in) :: dom_id, var_id
+integer(i8)         :: get_compressed_dart_vector_index
+
+integer     :: i    ! loop counter
+integer     :: qty
+integer(i8) :: offset
+
+offset = get_index_start(dom_id, var_id)
+
+qty = get_kind_index(dom_id, var_id)
+
+get_compressed_dart_vector_index = -1
+
+! MEG: Using the already established compressed indices
+!
+! 2D compressed variables
+if (qty == QTY_SEA_SURFACE_HEIGHT .or. qty == QTY_SURFACE_CHLOROPHYLL ) then
+   do i = 1, comp2d
+      if (Xc_Ti(i) == iloc .and. Yc_Ti(i) == jloc .and. Zc_Ti(i) == 1) then
+         get_compressed_dart_vector_index = offset + i - 1
+      endif
+   enddo
+   return
+endif
+
+! 3D compressed variables
+if (qty == QTY_U_CURRENT_COMPONENT) then 
+   do i = 1, comp3dU
+      if (Xc_Ui(i) == iloc .and. Yc_Ui(i) == jloc .and. Zc_Ui(i) == kloc) then 
+         get_compressed_dart_vector_index = offset + i - 1
+      endif  
+   enddo
+elseif (qty == QTY_V_CURRENT_COMPONENT) then
+   do i = 1, comp3dV
+      if (Xc_Vi(i) == iloc .and. Yc_Vi(i) == jloc .and. Zc_Vi(i) == kloc) then 
+         get_compressed_dart_vector_index = offset + i - 1
+      endif  
+   enddo
+else
+   do i = 1, comp3d
+      if (Xc_Ti(i) == iloc .and. Yc_Ti(i) == jloc .and. Zc_Ti(i) == kloc) then 
+         get_compressed_dart_vector_index = offset + i - 1
+      endif  
+   enddo
+endif
+
+
+end function get_compressed_dart_vector_index
+
+
 function get_val(lon_index, lat_index, level, var_id, state_handle,ens_size, masked)
 !=======================================================================
 !
@@ -969,24 +1088,28 @@ integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-state_index = get_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
-get_val = get_state(state_index,state_handle)
-
-! Masked returns false if the value is masked
-! A grid variable is assumed to be masked if its value is FVAL. 
-! Just to maintain legacy, we also assume that A grid variable is assumed 
-! to be masked if its value is exactly 0.
-! See discussion in lat_lon_interpolate.
-
-! MEG CAUTION: THE ABOVE STATEMENT IS INCORRECT
-! trans_mitdart already looks for 0.0 and makes them FVAL
-! So, in the condition below we don't need to check for zeros
-! The only mask is FVAL
 masked = .false.
-do i=1,ens_size
-!   if(get_val(i) == FVAL .or. get_val(i) == 0.0_r8 ) masked = .true.
-    if(get_val(i) == FVAL) masked = .true.
-enddo
+
+if (compress) then
+
+   state_index = get_compressed_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
+
+   if (state_index .ne. -1) then
+      get_val = get_state(state_index,state_handle)
+   else
+      masked = .true.
+   endif
+
+else
+
+   state_index = get_dart_vector_index(lon_index, lat_index, level, domain_id, var_id)
+   get_val = get_state(state_index,state_handle)
+
+   do i=1,ens_size  ! HK this is checking the whole ensemble, can you have different masks for each ensemble member?
+       if(get_val(i) == FVAL) masked = .true.
+   enddo
+
+endif
 
 end function get_val
 
@@ -1077,16 +1200,28 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, iloc, jloc, kloc, kind_index = qty)
 
-lon   = XC(iloc)
-lat   = YC(jloc)
-depth = ZC(kloc)
+if (compress) then ! all variables ae 1D
+   lon   = XC_sq(iloc)
+   lat   = YC_sq(iloc)
+   depth = ZC_sq(iloc)
+   ! Acounting for variables those on staggered grids
+   if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG_sq(iloc)
+   if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG_sq(iloc)
+else
 
-! Acounting for surface variables and those on staggered grids
+   lon   = XC(iloc)
+   lat   = YC(jloc)
+   depth = ZC(kloc)
+
+   ! Acounting for variables those on staggered grids
+   if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
+   if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)
+
+endif
+
 ! MEG: check chl's depth here
 if (qty == QTY_SEA_SURFACE_HEIGHT .or. &
     qty == QTY_SURFACE_CHLOROPHYLL) depth = 0.0_r8
-if (qty == QTY_U_CURRENT_COMPONENT) lon   = XG(iloc)
-if (qty == QTY_V_CURRENT_COMPONENT) lat   = YG(jloc)  
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
@@ -1295,6 +1430,8 @@ end subroutine nc_write_model_atts
 !------------------------------------------------------------------
 ! Create an ensemble of states from a single state.
 
+! Note if you perturb a compressed state, this will not be bitwise
+! with perturbing a non-compressed state.
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
 type(ensemble_type), intent(inout) :: state_ens_handle

@@ -150,6 +150,7 @@ integer,  allocatable, dimension(:) :: linkID ! Link ID (NHDFlowline_network COM
 real(r8), allocatable, dimension(:) :: length
 integer,  allocatable, dimension(:) :: to
 integer,  allocatable, dimension(:) :: BucketMask
+integer,  allocatable, dimension(:) :: num_up_links
 
 integer, parameter :: IDSTRLEN = 15 ! must match declaration in netCDF file
 character(len=IDSTRLEN), allocatable, dimension(:) :: gageID ! NHD Gage Event ID from SOURCE_FEA field in Gages feature class
@@ -456,127 +457,125 @@ real(r8), allocatable, dimension(:,:) :: hlatFlip  ! local dummies
 
 integer :: i, ii, jj, io
 integer :: ncid, DimID, VarID, numdims, dimlen, xtype
+integer, allocatable, dimension(:) :: col
 
-io = nf90_open(filename, NF90_NOWRITE, ncid)
-call nc_check(io, routine, 'open', filename)
-
-! The number of latitudes is dimension 'y'
-io = nf90_inq_dimid(ncid, 'y', DimID)
-call nc_check(io, routine, 'inq_dimid y', filename)
-
-io = nf90_inquire_dimension(ncid, DimID, len=n_hlat)
-call nc_check(io, routine,'inquire_dimension y',filename)
-
-! The number of longitudes is dimension 'x'
-io = nf90_inq_dimid(ncid, 'x', DimID)
-call nc_check(io, routine,'inq_dimid x',filename)
-
-io = nf90_inquire_dimension(ncid, DimID, len=n_hlong)
-call nc_check(io, routine,'inquire_dimension x',filename)
-
-!>@todo could just check the dimension lengths for LONGITUDE
-!> and use them for all ... removes the dependency on knowing
-!> the dimension names are 'y' and 'x' ... and the order.
-
-!! module allocation
-allocate(hlong(n_hlong, n_hlat))
-allocate( hlat(n_hlong, n_hlat)) 
-
-!! local allocation
-allocate(hlongFlip(n_hlong, n_hlat))
-allocate( hlatFlip(n_hlong, n_hlat))
-
-! Require that the xlong and xlat are the same shape.??
-io = nf90_inq_varid(ncid, 'LONGITUDE', VarID)
-call nc_check(io, routine,'inq_varid LONGITUDE',filename)
-
-io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, &
-                            ndims=numdims, xtype=xtype)
-call nc_check(io, routine, 'inquire_variable LONGITUDE',filename)
-
-! numdims = 2, these are all 2D fields
-! Form the start/count such that we always get the 'latest' time.
-ncstart(:) = 0
-nccount(:) = 0
-do i = 1,numdims
-   write(string1,'(''LONGITUDE inquire dimension '',i2,A)') i,trim(filename)
-   io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimlen)
-   call nc_check(io, routine, string1)
-   ncstart(i) = 1
-   nccount(i) = dimlen
-   if ((trim(dimname) == 'Time') .or. (trim(dimname) == 'time')) then
-      ncstart(i) = dimlen
-      nccount(i) = 1
-   endif
-enddo
-
-if (debug > 99) then
-   write(*,*)'DEBUG get_hydro_constants ncstart is',ncstart(1:numdims)
-   write(*,*)'DEBUG get_hydro_constants nccount is',nccount(1:numdims)
-endif
-
-!get the longitudes
-io = nf90_get_var(ncid, VarID, hlong, start=ncstart(1:numdims), &
-                                      count=nccount(1:numdims))
-call nc_check(io, routine, 'get_var LONGITUDE',filename)
-
-where(hlong <    0.0_r8) hlong = hlong + 360.0_r8
-where(hlong == 360.0_r8) hlong = 0.0_r8
-
-!get the latitudes
-io = nf90_inq_varid(ncid, 'LATITUDE', VarID)
-call nc_check(io, routine,'inq_varid LATITUDE',filename)
-io = nf90_get_var(ncid, VarID, hlat, start=ncstart(1:numdims), &
-                                     count=nccount(1:numdims))
-call nc_check(io, routine, 'get_var LATITUDE',filename)
-
-where (hlat < -90.0_r8) hlat = -90.0_r8
-where (hlat >  90.0_r8) hlat =  90.0_r8
-
-! Flip the longitues and latitudes
-do ii=1,n_hlong
-   do jj=1,n_hlat
-      hlongFlip(ii,jj) = hlong(ii,n_hlat-jj+1)
-       hlatFlip(ii,jj) =  hlat(ii,n_hlat-jj+1)
-   end do
-end do
-hlong = hlongFlip
-hlat  = hlatFlip
-deallocate(hlongFlip, hlatFlip)
-
-!get the channelgrid
-! i'm doing this exactly to match how it's done in the wrf_hydro code 
-! (line 1044 of /home/jamesmcc/WRF_Hydro/ndhms_wrf_hydro/trunk/NDHMS/Routing/module_HYDRO_io.F)
-! so that the output set of indices correspond to the grid in the Fulldom file 
-! and therefore these can be used to grab other channel attributes in that file. 
-! but the code is really long so I've put it in a module subroutine. 
-! Dont need to flip lat and lon in this (already done) but will flip other vars from Fulldom file.
-! Specify channel routing option: 1=Muskingam-reach, 2=Musk.-Cunge-reach, 3=Diff.Wave-gridded
-
+   !get the channelgrid
+   ! i'm doing this exactly to match how it's done in the wrf_hydro code 
+   ! (line 1044 of /home/jamesmcc/WRF_Hydro/ndhms_wrf_hydro/trunk/NDHMS/Routing/module_HYDRO_io.F)
+   ! so that the output set of indices correspond to the grid in the Fulldom file 
+   ! and therefore these can be used to grab other channel attributes in that file. 
+   ! but the code is really long so I've put it in a module subroutine. 
+   ! Dont need to flip lat and lon in this (already done) but will flip other vars from Fulldom file.
+   ! Specify channel routing option: 1=Muskingam-reach, 2=Musk.-Cunge-reach, 3=Diff.Wave-gridded
+   
 if ( chanrtswcrt == 1 ) then 
+   
+  if ( channel_option == 2) then
+   
+     call get_routelink_constants(route_link_f)
 
-   if ( channel_option == 2) then
+ else if ( channel_option == 3) then
+  
+     io = nf90_open(filename, NF90_NOWRITE, ncid)
+     call nc_check(io, routine, 'open', filename)
+     
+     ! The number of latitudes is dimension 'y'
+     io = nf90_inq_dimid(ncid, 'y', DimID)
+     call nc_check(io, routine, 'inq_dimid y', filename)
+     
+     io = nf90_inquire_dimension(ncid, DimID, len=n_hlat)
+     call nc_check(io, routine,'inquire_dimension y',filename)
+     
+     ! The number of longitudes is dimension 'x'
+     io = nf90_inq_dimid(ncid, 'x', DimID)
+     call nc_check(io, routine,'inq_dimid x',filename)
+     
+     io = nf90_inquire_dimension(ncid, DimID, len=n_hlong)
+     call nc_check(io, routine,'inquire_dimension x',filename)
+     
+     !>@todo could just check the dimension lengths for LONGITUDE
+     !> and use them for all ... removes the dependency on knowing
+     !> the dimension names are 'y' and 'x' ... and the order.
+     
+     !! module allocation
+     allocate(hlong(n_hlong, n_hlat), hlat(n_hlong, n_hlat))
+     
+     !! local allocation
+     !allocate(hlongFlip(n_hlong, n_hlat), hlatFlip(n_hlong, n_hlat))
+     allocate(col(n_hlat))
+     
+     ! Require that the xlong and xlat are the same shape.??
+     io = nf90_inq_varid(ncid, 'LONGITUDE', VarID)
+     call nc_check(io, routine,'inq_varid LONGITUDE',filename)
+     
+     io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, &
+                                 ndims=numdims, xtype=xtype)
+     call nc_check(io, routine, 'inquire_variable LONGITUDE',filename)
 
-       call get_routelink_constants(route_link_f)
+    ! numdims = 2, these are all 2D fields
+    ! Form the start/count such that we always get the 'latest' time.
+    ncstart(:) = 0
+    nccount(:) = 0
+    do i = 1,numdims
+       write(string1,'(''LONGITUDE inquire dimension '',i2,A)') i,trim(filename)
+       io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimlen)
+       call nc_check(io, routine, string1)
+       ncstart(i) = 1
+       nccount(i) = dimlen
+          if ((trim(dimname) == 'Time') .or. (trim(dimname) == 'time')) then 
+             ncstart(i) = dimlen
+             nccount(i) = 1
+          endif
+    enddo
+       
+    if (debug > 99) then 
+       write(*,*)'DEBUG get_hydro_constants ncstart is',ncstart(1:numdims)
+       write(*,*)'DEBUG get_hydro_constants nccount is',nccount(1:numdims)
+    endif
+       
+    !get the longitudes
+    io = nf90_get_var(ncid, VarID, hlong, start=ncstart(1:numdims), &
+                                             count=nccount(1:numdims))
+    call nc_check(io, routine, 'get_var LONGITUDE',filename)
+       
+    where(hlong <    0.0_r8) hlong = hlong + 360.0_r8
+    where(hlong == 360.0_r8) hlong = 0.0_r8
+       
+    !get the latitudes
+    io = nf90_inq_varid(ncid, 'LATITUDE', VarID)
+    call nc_check(io, routine,'inq_varid LATITUDE',filename)
+    io = nf90_get_var(ncid, VarID, hlat, start=ncstart(1:numdims), &
+                                            count=nccount(1:numdims))
+    call nc_check(io, routine, 'get_var LATITUDE',filename)
+       
+    where (hlat < -90.0_r8) hlat = -90.0_r8
+    where (hlat >  90.0_r8) hlat =  90.0_r8
+       
+    ! Flip the longitues and latitudes
+    do jj = 1, n_hlat
+       col(jj) = n_hlat-jj+1 
+    enddo
+    hlong = hlong(:, col) 
+    hlat  = hlat(:, col) 
+     
+    call getChannelGridCoords(filename, ncid, numdims, ncstart, nccount)
+    call get_basn_msk(        filename, ncid, numdims, ncstart, nccount, n_hlong, n_hlat)
 
-   else if ( channel_option == 3) then
-
-      call getChannelGridCoords(filename, ncid, numdims, ncstart, nccount)
-      call get_basn_msk(        filename, ncid, numdims, ncstart, nccount, n_hlong, n_hlat)
+    io = nf90_close(ncid)
+    call nc_check(io, routine, filename)
 
    else
        write(string1,'("channel_option ",i1," is not supported.")')channel_option
        call error_handler(E_ERR,routine,string1,source)
-
    endif
+
 else
+
    write(string1,'("CHANRTSWCRT ",i1," is not supported.")')chanrtswcrt
    write(string2,*)'This is specified in hydro.namelist'
    call error_handler(E_ERR,routine,string1,source)
-endif
 
-io = nf90_close(ncid)
-call nc_check(io, routine, filename)
+endif
 
 end subroutine get_hydro_constants
 
@@ -654,10 +653,8 @@ do j=1,jxrt
 end do
 deallocate(CH_NETRT_in, LAKE_MSKRT_in, DIRECTION_in, ELRT_in)
 
-! This replaces a double for loop that counts NLINKS which can be removed from the
-! code inserted below.
 ! subset to the 1D channel network as presented in the hydro restart file.
-n_link = sum(CH_NETRT*0+1, mask = CH_NETRT >= 0)
+n_link = count(CH_NETRT>=0)
 
 ! allocate the necessary wrf_hydro variables with module scope 
 allocate(channelIndsX(n_link), channelIndsY(n_link))
@@ -1000,25 +997,25 @@ allocate (fromIndices(database_length))
 allocate (fromIndsStart(       n_link))
 allocate (fromIndsEnd(         n_link))
 allocate (toIndex(             n_link))
+allocate (num_up_links(        n_link))
 
 call nc_get_variable(ncid,'fromIndices',  fromIndices,  routine)
 call nc_get_variable(ncid,'fromIndsStart',fromIndsStart,routine)
 call nc_get_variable(ncid,'fromIndsEnd',  fromIndsEnd,  routine)
 call nc_get_variable(ncid,'toIndex',      toIndex,      routine)
 
-n_upstream = maxval(fromIndsEnd - fromIndsStart) + 1
+n_upstream   = maxval(fromIndsEnd - fromIndsStart) + 1
+num_up_links = fromIndsEnd - fromIndsStart + 1
 
 !! Allocate these module variables
 allocate(linkLong(n_link), linkLat(n_link), linkAlt(n_link))
-allocate(roughness(n_link))
-allocate(linkID(n_link))
-allocate(gageID(n_link))
 allocate(channelIndsX(n_link), channelIndsY(n_link))
 allocate(connections(n_link))
+
 do i = 1, n_link
-   allocate(connections(i)%upstream_linkID(n_upstream))
-   allocate(connections(i)%upstream_index(n_upstream))
+   allocate(connections(i)%upstream_index(num_up_links(i)))
 enddo
+
 allocate(length(n_link))
 allocate(to(n_link))
 allocate(BucketMask(n_link))
@@ -1030,23 +1027,12 @@ allocate(BucketMask(n_link))
 ! length: Length (Stream length (m))
 !     to: "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)"
 
-call nc_get_variable(ncid,'lon',   linkLong,  routine)
-call nc_get_variable(ncid,'lat',   linkLat,   routine)
-call nc_get_variable(ncid,'alt',   linkAlt,   routine)
-call nc_get_variable(ncid,'n',     roughness, routine)
-call nc_get_variable(ncid,'link',  linkID,    routine)
-call nc_get_variable(ncid,'Length',length,    routine)
-call nc_get_variable(ncid,'to',    to,        routine)
+call nc_get_variable(ncid,'lon',              linkLong,  routine)
+call nc_get_variable(ncid,'lat',              linkLat,   routine)
+call nc_get_variable(ncid,'alt',              linkAlt,   routine)
+call nc_get_variable(ncid,'Length',           length,    routine)
+call nc_get_variable(ncid,'to',               to,        routine)
 call nc_get_variable(ncid,'bucket_comid_mask',BucketMask,routine)
-
-! no snappy accessor routine for character arrays
-! call nc_get_variable(ncid,'gages', gageID,    routine)
-io = nf90_inq_varid(ncid,'gages', VarID)
-call nc_check(io, routine, 'inq_varid', 'gages', filename)
-io = nf90_get_var(ncid, VarID, gageID)
-call nc_check(io, routine, 'get_var', 'gages', filename)
-
-call nc_close_file(ncid, routine)
 
 ! Longitude [DART uses longitudes [0,360)]
 where(linkLong < 0.0_r8)    linkLong = linkLong + 360.0_r8
@@ -1060,15 +1046,13 @@ call fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
 
 if (debug > 99) then
    do i=1,n_link
-      write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),gageID(i),roughness(i),linkID(i),BucketMask(i)
+      write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),BucketMask(i)
    enddo
    write(*,*)'Longitude range is ',minval(linkLong),maxval(linkLong)
    write(*,*)'Latitude  range is ',minval(linkLat),maxval(linkLat)
    write(*,*)'Altitude  range is ',minval(linkAlt),maxval(linkAlt)
 endif
 
-deallocate(linkID)
-deallocate(gageID)
 deallocate(length)
 deallocate(to)
 deallocate(toIndex)
@@ -1090,17 +1074,16 @@ integer, intent(in) :: fromIndsStart(:)
 integer, intent(in) :: fromIndsEnd(:)
 
 integer :: i, j, id, nfound
+integer, parameter :: MAX_UPSTREAM_LINKS = 5
+
 
 ! hydro_domain_offset = 0   !>@todo get the actual offset somehow
 
 do i = 1,n_link
-   connections(i)%gageName               = gageID(i)
-   connections(i)%linkID                 = linkID(i)
    connections(i)%linkLength             = length(i)
    connections(i)%domain_offset          = i
    connections(i)%downstream_linkID      = to(i)
    connections(i)%downstream_index       = toIndex(i)
-   connections(i)%upstream_linkID(:)     = MISSING_I
    connections(i)%upstream_index(:)      = MISSING_I 
 enddo
 
@@ -1116,32 +1099,29 @@ enddo
 UPSTREAM : do id = 1,n_link
 
    ! If there is nothing upstream ... already set to MISSING
-   if ( fromIndsStart(id) == 0 ) cycle UPSTREAM
+   if ( fromIndsStart(id) == 0 ) then 
+      num_up_links(id) = 0
+      cycle UPSTREAM
+   endif
+   connections(id)%upstream_index(:) = fromIndices(fromIndsStart(id):fromIndsEnd(id))
 
-   nfound = 0
-   do j = fromIndsStart(id),fromIndsEnd(id)  ! loops over dimension to query
-         nfound = nfound + 1
-         connections(id)%upstream_linkID(nfound) = linkID(fromIndices(j))
-         connections(id)%upstream_index(nfound)  =        fromIndices(j) 
-   enddo
 enddo UPSTREAM
+
+! Ignore links that have outlets at the lakes
+! This removes those having an extreme number of upstream links from 
+! the localization tree search 
+where(num_up_links > MAX_UPSTREAM_LINKS) num_up_links = 0
 
 if (debug > 99) then
    write(string1,'("PE ",i3)') my_task_id()
-!  do i = 1,n_link
-   do i = 54034,54034
-   write(*,*)''
-   write(*,*)trim(string1),' connectivity for link : ',i
-   write(*,*)trim(string1),' gageName              : ',connections(i)%gageName
-   write(*,*)trim(string1),' linkID                : ',connections(i)%linkID
-   write(*,*)trim(string1),' linkLength            : ',connections(i)%linkLength
-   write(*,*)trim(string1),' domain_offset         : ',connections(i)%domain_offset
-   
-   write(*,*)trim(string1),' downstream_linkID     : ',connections(i)%downstream_linkID
-   write(*,*)trim(string1),' downstream_index      : ',connections(i)%downstream_index
-   
-   write(*,*)trim(string1),' upstream_linkID       : ',connections(i)%upstream_linkID
-   write(*,*)trim(string1),' upstream_index        : ',connections(i)%upstream_index
+   do i = 1,n_link
+      write(*,*)''
+      write(*,*)trim(string1),' connectivity for link : ',i
+      write(*,*)trim(string1),' linkLength            : ',connections(i)%linkLength
+      write(*,*)trim(string1),' domain_offset         : ',connections(i)%domain_offset
+      write(*,*)trim(string1),' downstream_linkID     : ',connections(i)%downstream_linkID
+      write(*,*)trim(string1),' downstream_index      : ',connections(i)%downstream_index
+      write(*,*)trim(string1),' upstream_index        : ',connections(i)%upstream_index
    enddo
 endif
 
@@ -1189,13 +1169,13 @@ if (debug > 99) then
    write(*,*)trim(string1),' glt:task, nclose        ', nclose
    write(*,*)trim(string1),' glt:task, close_indices ', close_indices(1:nclose)
    write(*,*)trim(string1),' glt:task, distances     ', distances(1:nclose)
+   write(*, '(A, i5, f10.2, i8, i4, 5i8)') 'depth, distance, node, # upstream, up nodes: ', & 
+            depth, direct_length, my_index, num_up_links(my_index), connections(my_index)%upstream_index(:)
 endif
 
-do iup = 1,n_upstream
-   if ( connections(my_index)%upstream_index(iup) /= MISSING_I8 ) then
-      call get_link_tree( connections(my_index)%upstream_index(iup), &
-               reach_cutoff, depth+1, direct_length, nclose, close_indices, distances)
-   endif
+do iup = 1,num_up_links(my_index)
+   call get_link_tree(connections(my_index)%upstream_index(iup), &
+            reach_cutoff, depth+1, direct_length, nclose, close_indices, distances)
 enddo
 
 end subroutine get_link_tree
