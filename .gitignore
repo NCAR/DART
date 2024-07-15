@@ -158,6 +158,8 @@ ssec_satwnd
 gts_to_dart
 littler_tf_dart
 rad_3dvar_to_dart
+bats_to_clim_obs
+bats_to_obs
 
 # Test programs built by developer_tests
 rttov_test
