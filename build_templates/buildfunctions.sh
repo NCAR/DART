@@ -85,6 +85,7 @@ done
 
 \rm -f -- preprocess
 \rm -f -- libdart.a
+\rm -f -- libdart.so
 cleanpreprocess
 
 }
