@@ -118,7 +118,7 @@ How to Use the Automation Tool
 
 1. **Navigate to the DART/observations/obs_converters directory**: Open a terminal and navigate to the obs_converters directory where the new_converter script is located.
 
-2. **Run the new_converter script**: Use the script to create a new observation converter. Replace `OBSERVATION_NAME` with the name of your observations and `FILE_FORMAT` with the data format you are working with. Currently, only text, netCDF, HDF, HDF5, and CSV formats are supported. See `Data Sources and Formats <data_sources_and_formats>` if your file type is not supported.
+2. **Run the new_converter script**: Use the script to create a new observation converter. Replace `OBSERVATION_NAME` with the name of your observations and `FILE_FORMAT` with the data format you are working with. Currently, only text, netCDF, HDF, HDF5, and CSV formats are supported. See  :ref:`Data Sources and Formats <data_sources_and_formats>` if your file type is not supported.
 
    .. code-block:: sh
 
