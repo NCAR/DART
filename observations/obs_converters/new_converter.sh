@@ -40,8 +40,8 @@ case $data_format in
   hdf5)
     cp "template/threed_sphere_hdf5_converter_mod.f90" "$converter_name/${converter_name}_to_obs.f90"
     ;;
-  text)
-    cp "template/threed_sphere_text_converter_mod.f90" "$converter_name/${converter_name}_to_obs.f90"
+  csv)
+    cp "template/threed_sphere_csv_converter_mod.f90" "$converter_name/${converter_name}_to_obs.f90"
     ;;
   *)
     echo "$data_format is not a valid data format! Please use netcdf, hdf, hdf5, or text."
