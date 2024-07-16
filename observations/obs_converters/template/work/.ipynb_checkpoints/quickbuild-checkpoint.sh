@@ -11,6 +11,9 @@ source "$DART/build_templates/buildconvfunctions.sh"
 CONVERTER=$(basename "$(dirname "$PWD")")
 LOCATION=threed_sphere
 
+# build arguments
+arguments "$@"
+
 # Clean the directory
 \rm -f -- *.o *.mod Makefile .cppdefs
 

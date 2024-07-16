@@ -100,8 +100,8 @@ call initialize_utilities('netcdf_to_obs', .true., .true.)
 call find_namelist_in_file('input.nml', 'netcdf_to_obs_nml', iunit)
 read(iunit, nml = netcdf_to_obs_nml, iostat = io)
 
-if (do_nml_file()) write(nmlfileunit, nml=temp_to_obs_nml)
-if (do_nml_term()) write(     *     , nml=temp_to_obs_nml)
+if (do_nml_file()) write(nmlfileunit, nml=netcdf_to_obs_nml)
+if (do_nml_term()) write(     *     , nml=netcdf_to_obs_nml)
 
 call set_calendar_type(GREGORIAN)
 

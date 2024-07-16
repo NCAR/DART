@@ -1,0 +1,41 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This directory contains a very simple text input file
+to use as an example of reading in text data.  The observations
+are one per line, and the items on each line are space separated; 
+fixed width columns work well, too.
+
+In this simple example, the first item on each line is an observation 
+type code (1=temperature, 2=wind). 
+
+The next two are latitude/longitude locations.
+
+The next is the vertical elevation.  For temperature it is
+in meters, for winds it is in pressure.  Observations can
+use either type of vertical units.
+
+Then the time of the observation - year, month, day, hour, minute,
+second.  
+
+The last values are the actual observation values and an error
+estimate.  For temperature it is degrees kelvin, +/- 2 degrees.
+For wind, it is speed in m/s, direction in degrees, and an error
+estimate of 4 m/s.
+
+This is just an example that matches the read code in the
+converter - any variation of this is easy to support, with
+changes to the read lines to get the right information in
+the right places.  If there is no error estimate (a common
+problem), the converter can supply a reasonable fixed value.
+
+ 1 -45 270   10 2008 1 30 12  0 0  273 2
+ 2  30 300  998 2008 1 31  6 30 0  10 355 4
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
