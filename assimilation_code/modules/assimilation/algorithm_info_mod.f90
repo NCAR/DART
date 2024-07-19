@@ -250,7 +250,7 @@ do row = 1, size(qceff_table_data)
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
       case ('KDE_DISTRIBUTION')
-         qceff_table_data(row)%probit_inflation%dist_type = KDE_DISTRIBUTION
+         qceff_table_data(row)%probit_state%dist_type = KDE_DISTRIBUTION
       !!!case ('PARTICLE_FILTER_DISTRIBUTION')
          !!!qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
@@ -274,7 +274,7 @@ do row = 1, size(qceff_table_data)
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
       case ('KDE_DISTRIBUTION')
-         qceff_table_data(row)%probit_inflation%dist_type = KDE_DISTRIBUTION
+         qceff_table_data(row)%probit_extended_state%dist_type = KDE_DISTRIBUTION
       !!!case ('PARTICLE_FILTER_DISTRIBUTION')
          !!!qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default

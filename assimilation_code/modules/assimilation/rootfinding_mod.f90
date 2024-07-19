@@ -1,3 +1,11 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+! This module originally written by I. Grooms and described (briefly)
+! in "A Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation"
+! by Grooms & Riedel (Remote Sensing, 2024; DOI:10.3390/rs16132377).
+
 module rootfinding_mod
 
 use types_mod,               only : r8

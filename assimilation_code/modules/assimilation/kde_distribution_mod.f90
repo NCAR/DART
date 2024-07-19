@@ -1,3 +1,11 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+! This module originally written by I. Grooms and described (briefly)
+! in "A Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation"
+! by Grooms & Riedel (Remote Sensing, 2024; DOI:10.3390/rs16132377).
+
 module kde_distribution_mod
 
 use types_mod,               only : r8, missing_r8
@@ -5,6 +13,11 @@ use types_mod,               only : r8, missing_r8
 use utilities_mod,           only : E_ERR, E_MSG, error_handler
 
 use sort_mod,                only : sort
+
+use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, &
+                                 random_uniform
+
+use mpi_utilities_mod,    only : my_task_id
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params, &
                                     KDE_DISTRIBUTION
@@ -18,7 +31,7 @@ private
 
 public :: kde_cdf, kde_cdf_params, inv_kde_cdf, inv_kde_cdf_params,       &
           test_kde, obs_dist_types, likelihood_function, pack_kde_params, &
-          separate_ensemble
+          separate_ensemble, obs_increment_kde
 
 type available_obs_dist_types
    integer  :: uninformative, normal, binomial, gamma, &
@@ -30,6 +43,10 @@ available_obs_dist_types(uninformative=999, normal=998, binomial=997, &
    gamma=996, inv_gamma=995, lognormal=994, truncated_normal=993)
 character(len=512)          :: errstring
 character(len=*), parameter :: source = 'kde_distribution_mod.f90'
+
+! True if random sequence needs to be initialized
+logical                :: first_inc_ran_call = .true.
+type (random_seq_type) :: inc_ran_seq
 
 contains
 
@@ -742,6 +759,159 @@ subroutine separate_ensemble(ens, ens_size, bounded_below, bounded_above, &
    q_int   = 1._r8 - (q_lower + q_upper)
 
 end subroutine separate_ensemble
+
+!-----------------------------------------------------------------------
+
+subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
+   bounded_above, lower_bound, upper_bound, obs_inc)
+   integer,  intent(in)  :: ens_size
+   real(r8), intent(in)  :: ens(ens_size)
+   real(r8), intent(in)  :: y
+   real(r8), intent(in)  :: obs_param
+   logical,  intent(in)  :: bounded_below, bounded_above
+   real(r8), intent(in)  :: lower_bound,   upper_bound
+   real(r8), intent(out) :: obs_inc(ens_size)
+
+   ! Applies a QCEF based on kernel density estimation & quadrature
+   ! Assumes a truncated normal likelihood whose bounds are the
+   ! same as the state variable. If the state variable is unbounded
+   ! then it uses a normal likelihood. Obviously this assumtion is
+   ! limiting. It could eventually be replaced with logic based on
+   ! obs_kind, which would be added as an input argument.
+
+   real(r8) :: u
+   real(r8) :: p_lower_prior, p_int_prior, p_upper_prior
+   real(r8) :: p_lower_post, p_int_post, p_upper_post
+   real(r8) :: like_ens_mean ! ensemble mean of the likelihood
+   real(r8) :: ens_interior(ens_size)
+   real(r8) :: unif
+   real(r8) :: d(ens_size), d_max
+   type(distribution_params_type) :: params_interior_prior
+   type(distribution_params_type) :: params_interior_posterior
+   integer  :: ens_size_interior
+   integer  :: i, count_lower, count_upper
+   integer  :: obs_dist_type
+
+   if (bounded_below .or. bounded_above) then
+      obs_dist_type = obs_dist_types%truncated_normal
+   else
+      obs_dist_type = obs_dist_types%normal
+   endif
+
+   ! If this is first time through, need to initialize the random sequence.
+   ! This will reproduce exactly for multiple runs with the same task count,
+   ! but WILL NOT reproduce for a different number of MPI tasks.
+   ! To make it independent of the number of MPI tasks, it would need to
+   ! use the global ensemble number or something else that remains constant
+   ! as the processor count changes.  this is not currently an argument to
+   ! this function and so we are not trying to make it task-count invariant.
+   if (first_inc_ran_call) then
+      call random_seed()
+      call random_number(unif)
+      i = int(unif * 1000)
+      call init_random_seq(inc_ran_seq, my_task_id() + i)
+      first_inc_ran_call = .false.
+   endif
+
+   ! If all ensemble members are identical, then there is no update
+   d(:) = abs( ens(:) - ens(1) )
+   d_max = maxval(d)
+   if(d_max .le. 0.0_r8) then
+      obs_inc(:) = 0._r8
+      return
+   endif
+
+   ! Get mixture component probabilities for the prior, and the interior ensemble, and its params
+   call separate_ensemble(ens, ens_size, bounded_below, bounded_above, &
+      lower_bound, upper_bound, ens_interior, ens_size_interior, &
+      p_lower_prior, p_int_prior, p_upper_prior)
+   if (ens_size_interior .gt. 1) then
+      d(1:ens_size_interior) = abs( ens_interior(1:ens_size_interior) - ens_interior(1) )
+      d_max = maxval(d(1:ens_size_interior))
+      call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, upper_bound, &
+                           ens_interior, y, obs_param, obs_dist_types%uninformative, &
+                           params_interior_prior)
+      call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, upper_bound, &
+                           ens_interior, y, obs_param, obs_dist_type, &
+                           params_interior_posterior)
+   else
+      d_max = 0._r8
+   endif
+
+   ! Get mixture component probabilities for the posterior
+   if (bounded_below) then
+      p_lower_post = p_lower_prior * likelihood_function(lower_bound, y, obs_param, obs_dist_type)
+   else
+      p_lower_post  = 0._r8
+   end if
+   if (bounded_above) then
+      p_upper_post = p_upper_prior * likelihood_function(upper_bound, y, obs_param, obs_dist_type)
+   else
+      p_upper_post  = 0._r8
+   end if
+   p_int_post = 0._r8
+   do i=1,ens_size_interior
+      p_int_post = p_int_post + likelihood_function(ens_interior(i), y, obs_param, obs_dist_type)
+   end do
+   p_int_post = p_int_prior * p_int_post / real(ens_size_interior, r8)
+   ! Get prior ensemble mean of likelihood
+   like_ens_mean = p_lower_post + p_int_post + p_upper_post
+   ! If likelihood underflow, assume flat likelihood, so no increments
+   if(like_ens_mean .le. 0.0_r8) then
+      obs_inc(:) = 0.0_r8
+      return
+   else ! Finish getting mixture component probabilities for the posterior
+      p_lower_post = p_lower_post / like_ens_mean
+      p_upper_post = p_upper_post / like_ens_mean
+      p_int_post   = 1._r8 - p_lower_post - p_upper_post
+   end if
+
+   ! Update ensemble members -> get observation increments
+
+   count_lower = 0
+   count_upper = 0
+   unif = random_uniform(inc_ran_seq) / real(ens_size, r8)
+   do i=1,ens_size
+      ! Map each ensemble member to a probability u in [0,1] using the prior cdf. Members
+      ! on the boundary get random probabilities.
+      if (bounded_below .and. (ens(i) .le. lower_bound)) then
+         ! Rather than draw a random for each member on the boundary,
+         ! I draw one random (above) then add 1/Nb to each subsequent value
+         u = unif + real(count_lower, r8) / real(ens_size, r8)
+         count_lower = count_lower + 1
+         write(*,*) 'lower boundary probability ', u
+       elseif (bounded_above .and.  (ens(i) .ge. upper_bound)) then
+         ! As above, I draw one random then add 1/Nb to each subsequent value
+         u = 1._r8 - (unif + real(count_upper, r8) / real(ens_size, r8))
+         count_upper = count_upper + 1
+         write(*,*) 'upper boundary probability ', u
+       elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
+         ! Can't use kde with only one ensemble member (or identical ensemble members), so assign a
+         ! random probability
+         u = (p_int_prior * random_uniform(inc_ran_seq)) + p_lower_prior
+      else ! Use the interior cdf obtained using kde.
+         u = kde_cdf_params(ens(i), params_interior_prior)
+         u = (p_int_prior * u) + p_lower_prior
+      end if
+      ! Invert the posterior kde cdf to get the updated ensemble member, then
+      ! subtract to get the increment.
+      if (u .le. p_lower_post) then ! Posterior value on the lower boundary
+         obs_inc(i) = lower_bound - ens(i)
+      elseif (u .ge. (1._r8 - p_upper_post)) then ! Posterior value on the upper boundary
+         obs_inc(i) = upper_bound - ens(i)
+      elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
+         ! posterior value in the interior, but there's only one prior ensemble member/value
+         ! in the interior, so we just assign the posterior ensemble member equal to the prior one
+         obs_inc(i) = ens_interior(1) - ens(i)
+      else ! posterior value in the interior, can use kde
+         ! Rescale u to be between 0 and 1 before inverting interior cdf
+         u = (u - p_lower_post) / p_int_post
+         obs_inc(i) = inv_kde_cdf_params(u, params_interior_posterior)
+         obs_inc(i) = obs_inc(i) - ens(i)
+      end if
+   end do
+
+end subroutine obs_increment_kde
 
 !-----------------------------------------------------------------------
 
