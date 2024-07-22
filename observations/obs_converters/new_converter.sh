@@ -20,8 +20,6 @@ elif [[ -d "$converter_name" ]]; then
   exit 1
 fi
 
-mkdir -p "$converter_name/data"
-mkdir -p "$converter_name/shell_scripts"
 mkdir -p "$converter_name/work"
 
 cp "template/new_converter.rst" "$converter_name/${converter_name}_to_obs.rst"
@@ -50,7 +48,9 @@ case $data_format in
   txt)
     cp "template/text/text_to_obs.f90" "$converter_name/${converter_name}_to_obs.f90"
     cp "template/text/text_to_obs.rst" "$converter_name/${converter_name}_to_obs.rst"
+    mkdir -p "$converter_name/data"
     cp -r "template/text/data" "$converter_name"
+    mkdir -p "$converter_name/shell_scripts"
     cp -r "template/text/shell_scripts" "$converter_name"
     cp -r "template/text/work" "$converter_name"
     ;;
