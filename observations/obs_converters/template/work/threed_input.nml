@@ -1,5 +1,5 @@
 &preprocess_nml
-   overwrite_output        = .true.
+   overwrite_output        = .false.
    input_obs_qty_mod_file  = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
    output_obs_qty_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
    input_obs_def_mod_file  = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
@@ -13,10 +13,10 @@
                              '../../../../observations/forward_operators/obs_def_rel_humidity_mod.f90'
    /
 
-&temp_to_obs_nml
-   input_file       = 'path/to/your/threed_temperature_data.nc'
-   output_file_base = 'obs_seq.threed_temp'
-   temp_error_std   = 0.3_r8
+&data_to_obs_nml
+   input_file       = 'path/to/your/threed_data.nc'
+   output_file_base = 'obs_seq.threed_data'
+   data_error_std   = 0.3_r8
    subsample_intv   = 1
    debug            = .false.
    /

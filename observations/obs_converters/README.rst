@@ -139,7 +139,7 @@ How to Use the Automation Tool
 
 5. **Edit the Documentation**: Update `observation_name_to_obs.rst` with details specific to your new observation converter. This file serves as the documentation for your converter.
 
-6. **Set Up the Work Directory**: The `work` directory contains a `quickbuild.sh` script and an `input.nml` file. Adjust these as necessary for your environment and data.
+6. **Set Up the Work Directory**: The `work` directory contains a `quickbuild.sh` script and an `input.nml` file. Adjust these as necessary for your environment, the nature of your data, and the goals of your analysis.
 
 7. **Compile and Test**: Use the `quickbuild.sh` script to compile your new observation converter. Test it by running conversions on sample data and verifying the output.
 
