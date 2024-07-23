@@ -119,6 +119,7 @@ Available filter kinds
    * UNBOUNDED_RHF
    * GAMMA_FILTER
    * BOUNDED_NORMAL_RHF
+   * KERNEL_QCEF
 
 .. _Distributions:
 
@@ -131,7 +132,7 @@ Available distributions
   * BETA_DISTRIBUTION
   * LOG_NORMAL_DISTRIBUTION
   * UNIFORM_DISTRIBUTION
-
+  * KDE_DISTRIBUTION
 
 
 .. _Default values:
