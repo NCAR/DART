@@ -19,7 +19,7 @@ cp "$testdir"/mkmf.template.gfortran "$DART"/build_templates/mkmf.template
 # regular filter build - this goes first so test directories get *.nc and obs_seq.out input files
 cd "$DART"/models/lorenz_96/work
 ./quickbuild.sh clean
-./quickbuild.sh filter
+./quickbuild.sh mpif08 filter
 rm *.o *.mod
 
 #-----------------
@@ -33,7 +33,7 @@ cp -r "$DART"/models/lorenz_96/work staticlib
 # shared library build
 cd "$DART"/developer_tests/library/shared/work
 ./quickbuild.sh clean
-./quickbuild.sh
+./quickbuild.sh mpif08
 
 mpif90 -o filter "$DART"/assimilation_code/programs/filter/filter.f90 -I.  -L. -ldart
 
@@ -41,7 +41,7 @@ mpif90 -o filter "$DART"/assimilation_code/programs/filter/filter.f90 -I.  -L. -
 # static library build
 cd "$DART"/developer_tests/library/static/work
 ./quickbuild.sh clean
-./quickbuild.sh
+./quickbuild.sh mpif08
 
 mpif90 "$DART"/assimilation_code/programs/filter/filter.f90  -I. -L. -ldart  -L/$NETCDF_LIB -lnetcdff -o filter
 
@@ -50,7 +50,7 @@ mpif90 "$DART"/assimilation_code/programs/filter/filter.f90  -I. -L. -ldart  -L/
 cd "$testdir"/sharedlib
 rm filter
 cp "$DART"/developer_tests/library/shared/work/filter .
-cp "$DART"/developer_tests/library/shared/work/libdart.so .  # rather than setting library paths
+cp "$DART"/developer_tests/library/shared/work/libdart.so .
 
 cd "$testdir"/staticlib
 rm filter
@@ -62,6 +62,7 @@ cd "$testdir"/nolib/
 mpirun -n 4 ./filter
 
 cd "$testdir"/sharedlib/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd) 
 mpirun -n 4 ./filter
 
 cd "$testdir"/staticlib/

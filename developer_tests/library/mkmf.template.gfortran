@@ -10,7 +10,7 @@ MPILD = mpif90
 FC = gfortran
 LD = gfortran
 
-NETCDF = /opt/local
+#NETCDF = /opt/local
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
