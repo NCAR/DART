@@ -8,7 +8,7 @@
 
 module kde_distribution_mod
 
-use types_mod,               only : r8, missing_r8
+use types_mod,               only : r8, MISSING_R8
 
 use utilities_mod,           only : E_ERR, E_MSG, error_handler
 
@@ -82,7 +82,7 @@ function likelihood_function(x, y, obs_param, obs_dist_type, &
          ! For a normal obs distribution, like_param is the obs error variance
          if (obs_param <= 0._r8) then
             write(errstring, *) 'obs error sd <= 0', obs_param
-            call error_handler(E_MSG, 'kde_distribution_mod:likelihood', errstring, source)
+            call error_handler(E_ERR, 'kde_distribution_mod:likelihood', errstring, source)
          else
             l = exp( -0.5_r8 * (x - y)**2 / obs_param )
          end if
@@ -166,12 +166,8 @@ function likelihood_function(x, y, obs_param, obs_dist_type, &
          ! sigma * sqrt(2 * pi) is ignored.
          ! A zero observation error variance is a degenerate case
          if(obs_param <= 0.0_r8) then
-            if(x == y) then
-               l = 1.0_r8
-            else
-               l = 0.0_r8
-            endif
-            return
+            write(errstring, *) 'obs error sd <= 0', obs_param
+            call error_handler(E_ERR, 'kde_distribution_mod:likelihood', errstring, source)
          endif
 
          cdf = [0._r8, 1._r8]
@@ -193,7 +189,7 @@ function likelihood_function(x, y, obs_param, obs_dist_type, &
          l = exp( -0.5_r8 * (x - y)**2 / obs_param ) / (cdf(2) - cdf(1))
       case DEFAULT
          write(errstring, *) 'likelihood called with unrecognized obs_dist_type ', obs_dist_type
-         call error_handler(E_MSG, 'kde_distribution_mod:likelihood_function', errstring, source)
+         call error_handler(E_ERR, 'kde_distribution_mod:likelihood_function', errstring, source)
    end select
 
 end function likelihood_function

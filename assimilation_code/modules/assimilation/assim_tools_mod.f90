@@ -1034,7 +1034,7 @@ else
       call obs_increment_kde(ens, ens_size, obs, obs_var, bounded_below, &
          bounded_above, lower_bound, upper_bound, obs_inc)
    else
-       call error_handler(E_ERR,'obs_increment', &
+      call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind', source)
    endif
 endif
