@@ -477,7 +477,6 @@ subroutine to_probit_kde(ens_size, state_ens, p, probit_ens, use_input_p, &
    type(distribution_params_type) :: p_interior
    real(r8) :: d(ens_size), d_max
    real(r8) :: p_lower, p_int, p_upper
-   real(r8), parameter :: eps = 0._r8 !epsilon(1._r8)
 
    ! Get the ensemble that defines the transform
    if(use_input_p) then
@@ -528,9 +527,9 @@ subroutine to_probit_kde(ens_size, state_ens, p, probit_ens, use_input_p, &
    do i=1,ens_size
       ! Map each state_ens member to a probability u using the prior cdf. Members
       ! on the boundary map to p_lower and p_upper.
-      if (bounded_below .and. (state_ens(i) .le. lower_bound + eps)) then
+      if (bounded_below .and. (state_ens(i) .le. lower_bound)) then
          u = p_lower
-      elseif (bounded_above .and. (state_ens(i) .ge. upper_bound - eps)) then
+      elseif (bounded_above .and. (state_ens(i) .ge. upper_bound)) then
          u = 1._r8 - p_upper
       elseif ((ens_size_interior .le. 1) .or. (d_max .le. 0._r8)) then
          ! Can't use kde with only one ensemble member, so assign to middle of interior range

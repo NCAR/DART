@@ -10,7 +10,7 @@ module rootfinding_mod
 
 use types_mod,               only : r8
 
-use utilities_mod,           only : E_ERR, E_MSG, error_handler
+use utilities_mod,           only : E_ERR, E_MSG, E_ALLMSG, error_handler
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params
 
@@ -59,9 +59,9 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
    ! from Oliveira & Takahashi, ACM Trans Math Soft, 2020. Here f(x) = cdf(x) - cdf_in
 
    ! Local variables:
-   integer,  parameter :: max_iterations = 50 ! Limit on the total number of iterations.
-   real(r8), parameter :: min_probability = 0.0_r8,  max_probability = 0.999999999999999_r8
-   real(r8), parameter :: tol = epsilon(1._r8)**(0.75_r8) ! Absolute on q, relative on x
+   integer,  parameter :: MAX_ITERATIONS = 50 ! Limit on the total number of iterations.
+   real(r8), parameter :: MIN_PROBABILITY = 0.0_r8,  MAX_PROBABILITY = 0.999999999999999_r8
+   real(r8), parameter :: TOL = epsilon(1._r8)**(0.75_r8) ! Absolute on q, relative on x
    real(r8) :: u, u_err
    real(r8) :: delta_x, delta_f
    real(r8) :: x_guess, u_guess, x0, x1, f0, f1
@@ -94,9 +94,9 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
    endif
 
    ! If input probabilities are outside the numerically supported range, move them to the extremes
-   u = min(u, max_probability)
+   u = min(u, MAX_PROBABILITY)
    ! code tests stably for many distributions with min_probability of 0.0, could remove this
-   u = max(u, min_probability)
+   u = max(u, MIN_PROBABILITY)
 
    ! Get first guess from functional approximation
    x_guess = first_guess(u, p)
@@ -106,7 +106,7 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
 
    ! Check if first guess is close enough
    u_err = u - u_guess
-   if (abs(u_err) .le. tol) then
+   if (abs(u_err) .le. TOL) then
       quantile = x_guess
       return
    end if
@@ -117,7 +117,7 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
       b  = x_guess
       fa = 0._r8 - u
       fb = u_guess - u
-      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p)
+      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS, p)
       return
    end if
 
@@ -127,7 +127,7 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
       b  = upper_bound
       fa = u_guess
       fb = 1._r8
-      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p)
+      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS, p)
       return
    end if
 
@@ -152,14 +152,14 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
          exit
       end if
    end do
-   do iter = 1, max_iterations
+   do iter = 1, MAX_ITERATIONS
       ! If f0 * f1 < 0 then x0 and x1 bracket the root, so go to ITP
       if (f0 * f1 .lt. 0._r8 ) then
          a  = min(x0, x1)
          b  = max(x0, x1)
          fa = min(f0, f1)
          fb = max(f0, f1)
-         quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations - iter + 1, p)
+         quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS - iter + 1, p)
          return
       else ! Do a secant step
          delta_f = f1 - f0
@@ -169,7 +169,7 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
             write(*,*) 'More params:', p%more_params(:)
             write(*,*) 'iter, x0, x1, f0, f1:', iter, x0, x1, f0, f1
             write(*,*) 'ens:', p%ens(:)
-            call error_handler(E_MSG, 'rootfinding_mod:inv_cdf', errstring, source)
+            call error_handler(E_MSG, 'inv_cdf:', errstring, source)
             quantile = x1
             return
          else
@@ -186,7 +186,7 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
       end if
 
       ! Finished secant step. Check for convergence.
-      if (abs(delta_x) .le. tol * max(abs(x0), abs(x1)) .or. (abs(f1) .le. tol)) then
+      if (abs(delta_x) .le. TOL * max(abs(x0), abs(x1)) .or. (abs(f1) .le. TOL)) then
          return
       endif
    end do
@@ -195,7 +195,7 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
    ! This has implications for stability of probit algorithms that require further study
    ! Not currently happening for any of the test cases on gfortran
    write(errstring, *)  'Failed to converge for probability ', u
-   call error_handler(E_MSG, 'inv_cdf', errstring, source)
+   call error_handler(E_ALLMSG, 'inv_cdf', errstring, source)
    !!!call error_handler(E_ERR, 'inv_cdf', errstring, source)
 
 end function inv_cdf
@@ -224,10 +224,9 @@ function inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p) result(x)
    ! Soft, 2020. Here f(x) = cdf(x) - u. Assumes f(a) < 0 and f(b) > 0 on input.
 
    ! Local variables:
-   integer,  parameter :: n0 = 1._r8
-   real(r8), parameter :: kappa2 = 2._r8
-   real(r8), parameter :: phi = 0.5_r8 * (1._r8 + sqrt(5._r8)) ! Golden ratio
-   real(r8), parameter :: tol = epsilon(1._r8)**(0.75_r8) ! abs on f, rel on x
+   integer,  parameter :: N0 = 1._r8
+   real(r8), parameter :: KAPPA2 = 2._r8
+   real(r8), parameter :: TOL = epsilon(1._r8)**(0.75_r8) ! abs on f, rel on x
    real(r8) :: kappa1
    real(r8) :: delta
    real(r8) :: x_t, x_f, x_half, f_ITP
@@ -235,16 +234,16 @@ function inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p) result(x)
    integer  :: i, n_max, n_half
 
    kappa1 = 0.2_r8 / (b - a)
-   eps = tol * max(abs(a), abs(b))
+   eps = TOL * max(abs(a), abs(b))
    ! Max number of iterations is either (i) input max, or (ii) number of bisection
-   ! iterations (plus n0) needed to achieve the desired relative tolerance on x.
+   ! iterations (plus N0) needed to achieve the desired relative tolerance on x.
    n_half = max(0, ceiling(log(0.5_r8 * (b - a) / eps) / log(2._r8)))
-   n_max = min(max_iterations, n0 + n_half)
+   n_max = min(max_iterations, N0 + n_half)
 
    do i=1,n_max
       x_half = 0.5_r8 * (a + b) ! Bisection guess
       x_f    = (b* fa - a * fb) / (fa - fb) ! Secant/Regula-Falsi guess
-      delta  = kappa1 * abs(b - a)**kappa2
+      delta  = kappa1 * abs(b - a)**KAPPA2
       if (delta .le. abs(x_half - x_f)) then
          x_t = x_f + sign(delta, x_half - x_f)
       else
@@ -257,7 +256,7 @@ function inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p) result(x)
          x = x_half - sign(r, x_half - x_f)
       end if
       f_ITP = cdf(x, p) - u
-      if (abs(f_ITP) .le. tol) then
+      if (abs(f_ITP) .le. TOL) then
          return
       elseif (f_ITP .gt. 0._r8) then
          b  = x

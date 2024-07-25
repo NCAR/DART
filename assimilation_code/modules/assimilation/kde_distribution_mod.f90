@@ -118,7 +118,7 @@ function likelihood_function(x, y, obs_param, obs_dist_type, &
          else
             gamma_shape = 1._r8 / obs_param ! k
             gamma_scale = x * obs_param     ! theta
-            if (x .eq. 0._r8) then
+            if (x == 0._r8) then
                l = 0._r8 ! Technically x must be > 0, but just setting l=0 is convenient.
             else
                l = (y / gamma_scale)**gamma_shape * exp(-y / gamma_scale)
@@ -196,7 +196,7 @@ end function likelihood_function
 
 !---------------------------------------------------------------------------
 
-elemental function epanechnikov_kernel(x) ! The fact that this is elemental is not (yet) used
+elemental function epanechnikov_kernel(x)
    real(r8) :: epanechnikov_kernel
    real(r8), intent(in) :: x
    real(r8), parameter  :: norm_const = 3._r8 / 4._r8
@@ -206,7 +206,7 @@ end function epanechnikov_kernel
 
 !---------------------------------------------------------------------------
 
-elemental function epanechnikov_cdf(x) ! The fact that this is elemental is not (yet) used
+elemental function epanechnikov_cdf(x)
    real(r8) :: epanechnikov_cdf
    real(r8), intent(in) :: x
    real(r8), parameter  :: norm_const = 1._r8 / 4._r8
@@ -227,7 +227,6 @@ elemental subroutine boundary_correction(x, lx, mx)
    real(r8), intent(out) :: lx, mx
 
    ! Boundary correction for kde, from Jones (1993) and Jones & Foster (1996)
-   ! The fact that this is elemental is not (yet) used
 
    real(r8) :: denom
 
@@ -717,10 +716,6 @@ subroutine separate_ensemble(ens, ens_size, bounded_below, bounded_above, &
    ! local variables
    integer  :: i, j
    logical  :: is_interior(ens_size)
-   real(r8), parameter :: eps = 0._r8 !epsilon(1._r8)
-
-   ! Initialize
-   ens_interior(:) = missing_r8
 
    q_lower = 0._r8
    q_int   = 0._r8
@@ -729,13 +724,13 @@ subroutine separate_ensemble(ens, ens_size, bounded_below, bounded_above, &
    j = 0
    do i=1,ens_size
       if (bounded_below) then
-         if (ens(i) <= lower_bound + eps) then
+         if (ens(i) <= lower_bound) then
             q_lower        = q_lower + 1._r8
             is_interior(i) = .false.
          end if
       end if
       if (bounded_above) then
-         if (ens(i) >= upper_bound - eps) then
+         if (ens(i) >= upper_bound) then
             q_upper        = q_upper + 1._r8
             is_interior(i) = .false.
          end if
@@ -797,10 +792,6 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
    ! If this is first time through, need to initialize the random sequence.
    ! This will reproduce exactly for multiple runs with the same task count,
    ! but WILL NOT reproduce for a different number of MPI tasks.
-   ! To make it independent of the number of MPI tasks, it would need to
-   ! use the global ensemble number or something else that remains constant
-   ! as the processor count changes.  this is not currently an argument to
-   ! this function and so we are not trying to make it task-count invariant.
    if (first_inc_ran_call) then
       call random_seed()
       call random_number(unif)
@@ -933,6 +924,11 @@ subroutine test_kde
    write(*, *) 'abs difference in lx is ', abs(1.322997416020672_r8 - lx)
    write(*, *) 'abs difference in mx is ', abs(1.102497846683893_r8 - mx)
    write(*, *) 'abs differences should be less than 1e-15'
+   if ((abs(1.322997416020672_r8 - lx) > 1E-15) .or. (abs(1.102497846683893_r8 - mx) > 1E-15)) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test uninformative likelihood
    max_diff = -1.0_r8
@@ -948,6 +944,11 @@ subroutine test_kde
    write(*, *) 'Uninformative likelihood test'
    write(*, *) 'max difference in likelihood is ', max_diff
    write(*, *) 'max difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test normal likelihood
    x = 0.5_r8
@@ -955,10 +956,16 @@ subroutine test_kde
    obs_param = 1._r8
    obs_dist_type = obs_dist_types%normal
    like = likelihood_function(x, y, obs_param, obs_dist_type)
+   max_diff = abs(0.8824969025845955_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Normal likelihood test'
-   write(*, *) 'abs difference in likelihood is ', abs(0.8824969025845955_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test binomial obs distribution (beta likelihood)
    x = 0.25_r8
@@ -966,10 +973,16 @@ subroutine test_kde
    obs_param = 5._r8
    obs_dist_type = obs_dist_types%binomial
    like = likelihood_function(x, y, obs_param, obs_dist_type)
+   max_diff = abs(0.0087890625_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Binomial obs distribution test'
-   write(*, *) 'abs difference in likelihood is ', abs(0.0087890625_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test gamma obs distribution (inverse gamma likelihood)
    y = 1._r8
@@ -977,10 +990,16 @@ subroutine test_kde
    obs_param = 3._r8
    obs_dist_type = obs_dist_types%gamma
    like = likelihood_function(x, y, obs_param, obs_dist_type)
+   max_diff = abs(0.4658368455179406_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Gamma obs distribution test'
-   write(*, *) 'abs difference in likelihood is ', abs(0.4658368455179406_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test inverse gamma obs distribution (gamma likelihood)
    y = 3._r8
@@ -988,10 +1007,16 @@ subroutine test_kde
    obs_param = 4._r8
    obs_dist_type = obs_dist_types%inv_gamma
    like = likelihood_function(x, y, obs_param, obs_dist_type)
+   max_diff = abs(3.415489474106968_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Inverse gamma obs distribution test'
-   write(*, *) 'abs difference in likelihood is ', abs(3.415489474106968_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test lognormal obs distribution (normal likelihood)
    y = 1._r8
@@ -999,10 +1024,16 @@ subroutine test_kde
    obs_param = 4._r8
    obs_dist_type = obs_dist_types%lognormal
    like = likelihood_function(x, y, obs_param, obs_dist_type)
+   max_diff = abs(0.6065306597126334_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Lognormal obs distribution test'
-   write(*, *) 'abs difference in likelihood is ', abs(0.6065306597126334_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test truncated-normal obs distribution
    y = 1._r8
@@ -1011,22 +1042,40 @@ subroutine test_kde
    obs_dist_type = obs_dist_types%truncated_normal
    like = likelihood_function(x, y, obs_param, obs_dist_type, &
          bounded_above=.true.,bounded_below=.true.,upper_bound=4._r8,lower_bound=0._r8)
+   max_diff = abs(1.292676850528392_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Truncated-normal obs distribution test, doubly-bounded'
-   write(*, *) 'abs difference in likelihood is ', abs(1.292676850528392_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
    like = likelihood_function(x, y, obs_param, obs_dist_type, &
          bounded_above=.false.,bounded_below=.true.,upper_bound=4._r8,lower_bound=0._r8)
+   max_diff = abs(1.048912359301403_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Truncated-normal obs distribution test, bounded below'
-   write(*, *) 'abs difference in likelihood is ', abs(1.048912359301403_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
    like = likelihood_function(x, y, obs_param, obs_dist_type, &
          bounded_above=.true.,bounded_below=.false.,upper_bound=4._r8,lower_bound=0._r8)
+   max_diff = abs(1.048912359301403_r8 - like)
    write(*, *) '----------------------------'
    write(*, *) 'Truncated-normal obs distribution test, bounded above'
-   write(*, *) 'abs difference in likelihood is ', abs(1.048912359301403_r8 - like)
+   write(*, *) 'abs difference in likelihood is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test bandwidth selection
    target_bandwidths(:) = 2.462288826689833_r8 * [1._r8, 1._r8]
@@ -1038,9 +1087,16 @@ subroutine test_kde
    ! Compare computed bandwidths to exact
    write(*, *) '----------------------------'
    write(*, *) 'kde bandwidths test: Absolute value of differences should be less than 1e-15'
+   max_diff = 0._r8
    do i = 1, ens_size
+      max_diff = max(abs(bandwidths(i) - target_bandwidths(i)), max_diff)
       write(*, *) i, abs(bandwidths(i) - target_bandwidths(i))
    end do
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    ! Test the inversion of the cdf over the support of the pdf, unbounded
    write(*, *) '----------------------------'
@@ -1062,6 +1118,11 @@ subroutine test_kde
    ! The accuracy degrades near the boundary. The slope of the cdf goes to zero on the boundary
    ! But at least the second derivative is nonzero. So near the boundary it behaves like a
    ! double root, and the accuracy of the rootfinding degrades.
+   if (max_diff > 1E-8_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    call deallocate_distribution_params(p)
 
@@ -1086,6 +1147,11 @@ subroutine test_kde
 
    write(*, *) 'max difference in inversion is ', max_diff
    write(*, *) 'Errors should be small, max below 1E-8'
+   if (max_diff > 1E-8_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    call deallocate_distribution_params(p)
 
@@ -1111,6 +1177,11 @@ subroutine test_kde
 
    write(*, *) 'max difference in inversion is ', max_diff
    write(*, *) 'Errors should be small, max below 1E-8'
+   if (max_diff > 1E-8_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    call deallocate_distribution_params(p)
 
@@ -1135,6 +1206,11 @@ subroutine test_kde
 
    write(*, *) 'max difference in inversion is ', max_diff
    write(*, *) 'Errors should be small, max below 1E-8'
+   if (max_diff > 1E-8_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    call deallocate_distribution_params(p)
 
@@ -1148,10 +1224,16 @@ subroutine test_kde
    p%more_params(ens_size + 1) = 1._r8
 
    y = integrate_pdf(0._r8, p)
+   max_diff = abs(0.5_r8 - y)
    write(*, *) '----------------------------'
    write(*, *) 'test quadrature'
-   write(*, *) 'abs difference is ', abs(0.5_r8 - y)
+   write(*, *) 'abs difference is ', max_diff
    write(*, *) 'abs difference should be less than 1e-15'
+   if (max_diff > 1E-15_r8) then
+      write(*, *) 'FAIL'
+   else
+      write(*, *) 'PASS'
+   endif
 
    call deallocate_distribution_params(p)
 
