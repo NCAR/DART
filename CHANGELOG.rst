@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 26 2024 :: Library build tools for DART. Tag v11.6.0**
+
+- Buildtools for compiling DART as a shared or a static library.
+- Bugfix: correct order of arguments in count_state_ens_copies for 'input'
+  stages_to_write.
+
 **July 11 2024 :: Bgrid documentation and scripting fix. Tag v11.5.1**
 
 - Updated Bgrid documentation and removed outdated scripts and files
