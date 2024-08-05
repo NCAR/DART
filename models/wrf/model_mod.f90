@@ -1890,9 +1890,8 @@ else
       if (all(fld == missing_r8)) goto 200
 
     !-----------------------------------------------------
-   ! 1.f Specific Humidity (SH, SH2)
-   ! Look at me
-   ! Convert water vapor mixing ratio to specific humidity:
+   ! 1.f Specific Humidity (QV,Q2)
+   ! Water vapor mixing ratio is used to calculate specific humidity:
    else if( obs_kind == QTY_SPECIFIC_HUMIDITY ) then
 
       ! This is for 3D specific humidity -- surface spec humidity later
@@ -1910,9 +1909,9 @@ else
 
                   call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc ) ! HK why is this type_t
                   if ( rc .ne. 0 ) &
-                       print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
+                       print*, 'model_mod.f90 :: model_interpolate :: getCorners QV rc = ', rc
 
-                  ! Interpolation for SH field at level k
+                  ! Interpolation for QV field at level k
                   ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_qv)
                   iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_qv)
                   ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_qv)
@@ -1926,11 +1925,13 @@ else
                   do e = 1, ens_size
                      if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct k
                         a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) ! think this can go outside the k loop
+
+                        ! Vapor mixing ratio (QV) to specific humidity conversion
                         fld(1,e) = a1(e) /(1.0_r8 + a1(e))
                      endif
                   enddo
 
-                  ! Interpolation for SH field at level k+1
+                  ! Interpolation for QV field at level k+1
                   ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_qv)
                   iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_qv)
                   ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_qv)
@@ -1942,8 +1943,10 @@ else
                   x_iur = get_state(iur, state_handle)
 
                   do e = 1, ens_size
-                     if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct
+                     if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct k
                         a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
+                        ! Vapor mixing ratio (QV) to specific humidity conversion
                         fld(2,e) = a1(e) /(1.0_r8 + a1(e))
                      endif
                   enddo
@@ -1952,7 +1955,7 @@ else
 
          endif
 
-      ! This is for surface specific humidity (calculated from Q2)
+      ! This is for surface specific humidity calculated from vapor mixing ratio (Q2)
       else
          
          ! confirm that field is in the DART state vector
@@ -1966,7 +1969,7 @@ else
                if ( rc .ne. 0 ) &
                     print*, 'model_mod.f90 :: model_interpolate :: getCorners Q2 rc = ', rc
 
-               ! Interpolation for the SH2 field
+               ! Interpolation for the Q2 field
                ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_q2)
                iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_q2)
                ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_q2)
@@ -1978,6 +1981,8 @@ else
                x_ilr = get_state(ilr, state_handle)
 
                a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+               
+               ! Vapor mixing ratio (Q2) to specific humidity conversion
                fld(1,:) = a1 /(1.0_r8 + a1)
 
             endif
@@ -2002,11 +2007,10 @@ else
          endif
       endif
 
-      ! Don't accept negative water vapor amounts (?)
+      ! Don't accept negative water vapor amounts
      fld = max(0.0_r8, fld)
 
    else if (obs_kind == QTY_2M_SPECIFIC_HUMIDITY ) then
-      ! FIXME: Q2 is actually a mixing ratio, not a specific humidity
       if ( wrf%dom(id)%type_q2 >= 0 ) then
          ! Check to make sure retrieved integer gridpoints are in valid range
          if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -2017,7 +2021,7 @@ else
             if ( rc .ne. 0 ) &
                  print*, 'model_mod.f90 :: model_interpolate :: getCorners Q2 rc = ', rc
 
-            ! Interpolation for the SH2 field
+            ! Interpolation for the Q2 field
             ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_q2)
             iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_q2)
             ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_q2)
@@ -2029,7 +2033,10 @@ else
             x_ilr = get_state(ilr, state_handle)
 
             a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-            fld(1,:) = a1
+            
+            ! Vapor mixing ratio (Q2) to specific humidity conversion
+            fld(1,:) = a1/(1.0_r8 + a1)
+
          endif
       endif
 
