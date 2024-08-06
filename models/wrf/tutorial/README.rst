@@ -600,7 +600,7 @@ also want to modify this script to test running a single member first —
 just in case you have some debugging to do.
 
 However, be warned that to successfully complete the tutorial, including
-running the *driver.csh* script in Step 5, using a smaller ensemble 
+running the *driver.csh* script in Step 6, using a smaller ensemble 
 (e.g. < 20 members) can lead to spurious updates during the analysis step,
 causing the WRF simulation to fail. 
 
@@ -617,7 +617,7 @@ Step 3: Prepare observations [OPTIONAL]
 
    The observation sequence files to run this tutorial are already provided
    for you. If you want to run with the provided tutorial observations, you 
-   can skip to Step 4 right now.  If you are interested in using custom
+   can skip to Step 5 right now.  If you are interested in using custom
    observations for a WRF experiment other than the tutorial you should read on. 
    The remaining instructions provided below in Step 3 are meant as a guideline
    to converting raw PREPBUFR data files into the required ``obs_seq`` format
@@ -807,8 +807,230 @@ you would do the following:
    namelist options to consider, and you must provide a *wrfinput* file
    for the program to access the analysis domain information.
 
+Step 4: Overview of forward (observation) operators  
+---------------------------------------------------
 
-Step 4: Creating the first set of adaptive inflation files
+This section is for informational purposes only and does not include any 
+instructions to complete the tutorial. It provides a description of
+the DART settings thet control the forward operator which
+calculates the prior and posterior model estimates for the observations. 
+An introduction to important namelist variables that control the operation of the forward
+operator are located in the `WRF namelist documentation 
+<https://docs.dart.ucar.edu/en/latest/models/wrf/readme.html#namelist>`__
+
+
+
+
+The ``obs_seq.out`` file generated as described in Step 3 includes a total
+of 30 observation types. Here we examine an exerpt of that file, focusing
+on a single temperature observation to describe the process:
+
+::
+
+ obs_sequence
+ obs_kind_definitions
+           30
+           41 METAR_TEMPERATURE_2_METER
+ ..
+ ..
+   num_copies:            1  num_qc:            1
+   num_obs:        70585  max_num_obs:        70585
+ NCEP BUFR observation
+ NCEP QC index
+   first:            1  last:        70585
+  OBS        1
+    288.750000000000
+    1.00000000000000
+        -1       2          -1
+ obdef
+ loc3d
+      4.819552185804497        0.6141813398083548         518.0000000000000     -1
+ kind
+           41
+  43200     152057
+    3.06250000000000
+ ..
+ ..
+ ..
+
+
+A critical piece of observation metadata includes the observation type 
+(``METAR_TEMPERATURE_2_METER``) which is linked to the observation quantity
+(``QTY_2M_TEMPERATURE``) through the observation definition file 
+(``obs_def_metar_mod.f90``). This file is included within the 
+``&preprocess_nml`` section of the namelist file as:
+
+::
+
+ &preprocess_nml
+            overwrite_output = .true.
+      input_obs_qty_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+     output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+      input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+     output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+     quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90'
+     obs_type_files          = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                              '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
+     ..
+     ..
+     ..     
+
+During the DART compilation described  within Step 1 this information is 
+included within the ``obs_def_mod.f90`` which is read during the execution of
+``filter``.
+
+The vertical coordinate type is the 4th column beneath the loc3d header. In this example
+the value -1 indicates the vertical coordinate is ``VERTISSURFACE``. It defines the
+vertical units of the observation (e.g. pressure, meters above sea level, model levels etc).  
+This serves two purposes -- foremost it is required during the vertical spatial interpolation
+to calculate the precise location of the expected observation. 
+A second crtical function is that it defines whether it is a surface observation. 
+Observations with a vertical coordinate of ``VERTISSURFACE`` are defined as surface
+observations. All other coordinates are considered non-surface observations 
+(e.g. profile observations). Of note is that the vertical coordinate ``VERTISSURFACE`` and 
+``VERTISHEIGHT`` are functionally identical (i.e. meters above sea level), however
+only the ``VERTISSURFACE`` is a surface observation.
+
+For more information on the other metadata see the detailed structure of
+an `obs_seq file. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__
+
+In order to connect this observation to the appropriate WRF output variables
+the ``wrf_state_variables`` within``&model_nml`` defines the *WRF field name* and
+the *WRF TYPE* in the 1st and 3rd columns as shown in the tutorial example below:
+
+::
+
+ &model_nml
+   wrf_state_variables     = 'T2','QTY_TEMPERATURE','TYPE_T2','UPDATE','999'
+
+ ..
+ .. 
+
+For more information on the ``&model_nml`` variables see the `WRF documentation page 
+<https://docs.dart.ucar.edu/en/latest/models/wrf/readme.html#namelist>`__
+
+
+As described above, the linkage between the observation type and the WRF output field 
+is defined through the observation quantity, surface variable (observation
+vertical coordinate), and WRF TYPE.  The current design of the WRF ``model_mod.f90``
+is such that the observation quantity is a general classification (e.g. temperature, wind
+specific humidity), whereas the WRF TYPE classification is more precisely
+mapped to the WRF output field. Future DART versions may remove the need for the WRF TYPE.  
+The table below summarizes the dependency between the observation type and the WRF
+output field for a select number of observation types within the tutorial.
+
+.. Note::
+
+   The number of WRF output fields required to support an observation type can vary.  For
+   observation types where there is a direct analog to a WRF output field, the forward
+   operator consists of only spatial interpolation, thus requires only a single output 
+   variable (e.g. METAR_TEMPERATURE_2_METER).  For observation types that require multiple
+   WRF output fields, the forward operator is more complex than a simple spatial interpolation.
+   For more information see the notes below the table.  A rule of thumb is a surface 
+   observation should use a surface output field (e.g. T2, U10). WRF surface output fields
+   are appended by a numeric value indicating surface height in meters. It is possible to use
+   a non-surface WRF output field (3D field) to estimate a surface observation, however, this
+   requires a vertical interpolation of the 3D WRF field where the observed surface height does 
+   not coincide with the model levels.  This either requires a vertical interpolation or an
+   extrapolation which can be **inaccurate and is not recommended**.  
+
+
+
+
++--------------------------------+-----------------------------+-----------------+-----------------+
+| DART Observation Type          | DART Observation Quantities |   WRF Type      | WRF output field|
++================================+=============================+=================+=================+
+| ``METAR_TEMPERATURE_2_METER``  |   ``QTY_2M_TEMPERATURE``    |  ``TYPE_T2``    |     ``T2``      |
+|      (VERTISSURFACE)           |                             |                 |                 |
++--------------------------------+-----------------------------+-----------------+-----------------+
+|  ``RADIOSONDE_TEMPERATURE``    |``QTY_POTENTIAL_TEMPERATURE``|  ``TYPE_T``     |    ``THM``      |
+|     (VERTISPRESSURE)           |  ``QTY_VAPOR_MIXING_RATIO`` |  ``TYPE_QV``    |    ``QVAPOR``   |    
+|                                |      ``QTY_PRESSURE``       |  ``TYPE_MU``    |     ``MU``      |
+|                                |  ``QTY_GEOPOTENTIAL_HEIGHT``|  ``TYPE_GZ``    |     ``PH``      |
++--------------------------------+-----------------------------+-----------------+-----------------+
+| ``METAR_U_10_METER_WIND``      |  ``QTY_U_WIND_COMPONENT``   |  ``TYPE_U10``   |    ``U10``      |
+|      (VERTISSURFACE)           |  ``QTY_V_WIND_COMPONENT``   |  ``TYPE_V10``   |    ``V10``      |          
++--------------------------------+-----------------------------+-----------------+-----------------+
+| ``ACARS_U_WIND_COMPONENT``     |  ``QTY_U_WIND_COMPONENT``   |  ``TYPE_U``     |     ``U``       |
+|      (VERTISPRESSURE)          |  ``QTY_V_WIND_COMPONENT``   |  ``TYPE_V``     |     ``V``       |
++--------------------------------+-----------------------------+-----------------+-----------------+
+| ``METAR_DEWPOINT_2_METER``     |     ``QTY_DEWPOINT``        |                 |                 |
+|      (VERTISSURFACE)           | ``QTY_SPECIFIC_HUMIDITY``   |  ``TYPE_Q2``    |     ``Q2``      |
+|                                |     ``QTY_PRESSURE``        |  ``TYPE_PS``    |    ``PSFC``     |
++--------------------------------+-----------------------------+-----------------+-----------------+
+|``RADIOSONDE_SPECIFIC_HUMIDITY``|  ``QTY_SPECIFIC_HUMIDITY``  |  ``TYPE_QV``    |   ``QVAPOR``    |
+|      (VERTISPRESSURE)          |                             |                 |                 |
++--------------------------------+-----------------------------+-----------------+-----------------+
+
+
+
+Surface Temperature (e.g. METAR_TEMPERATURE_2_METER)
+----------------------------------------------------
+
+WRF output includes a direct analog for sensible temperature surface observations (e.g. T2), thus
+the forward operator requires only 1 variable to calculate the expected observation. 
+The calculation includes a horizontal interpolation of the 2D temperature variable (e.g. T2).
+
+
+Non-Surface Temperature (e.g. RADIOSONDE_TEMPERATURE)
+-----------------------------------------------------
+
+In contrast to surface temperature observations, non-surface temperature observations require 4 WRF 
+output fields. This is because observations are sensible temperature, whereas the 3D WRF 
+temperature field is provided in perturbation potential temperature. Thus, the forward
+operator first requires a physical conversion between perturbation potential temperature to
+sensible temperature, followed by a spatial interpolation (this includes horizontal interpolation
+on WRF levels k and k+1, followed by vertical interpolation).
+
+.. Important::
+
+   There are two different 3D temperature WRF output fields that can work to calculate non-
+   surface temperature observations (e.g. T or THM, T=THM when use_theta_m=0). However, and of
+   high importance is the variable THM is required to be within the ``&model_nml`` if the 
+   3D temperature field is to be updated in the ``filter`` step. **This is because the WRF field *T*
+   is a diagnostic variable with no impact on the forecast step, whereas the WRF field *THM* is
+   a prognostic field.**  
+
+
+Surface Wind (e.g. METAR_U_10_METER_WIND)
+-----------------------------------------
+
+Surface winds have a direct WRF output analog (e.g. U10)
+and requires horizontal interpolation of the 2D zonal wind field.  However, the
+meridional wind (e.g. V10) is also required in order to convert from modeled *gridded* winds to
+*true* wind observations. This requirement is an artifact of winds measured on a sphere being
+mapped on a 2D grid.
+
+
+Non-Surface Wind (e.g. ACARS_U_WIND_COMPONENT)
+----------------------------------------------
+
+This is identical to surface winds as described above, except the spatial interpolation requires
+horizontal interpolation on the k and k+1 WRF levels, followed by vertical interpolation.
+
+
+Surface Dewpoint (e.g. METAR_DEWPOINT_2_METER)
+----------------------------------------------
+
+The calculation of surface dewpoint requires a physical conversion using both surface
+pressure (PSFC) and surface vapor mixing ratio (Q2), follwed by horizontal interpolation.
+
+
+Non-Surface Specific Humidity (e.g. RADIOSONDE_SPECIFIC_HUMIDITY)
+-----------------------------------------------------------------
+
+Specific humidity observations require (water) vapor mixing ratio (QVAPOR) for the forward operator.  
+Although specific humidity and vapor mixing ratio are nearly identical, especially in dry
+air, they are actually two distinct physical properties -- the ratio of water mass to total air mass
+versus ratio of water vapor mass to dry air mass respectively. Therefore the forward operator
+includes this physical conversion followed by a spatial interpolation (i.e. horizontal interpolation of k and
+k+1 WRF vertical levels followed by vertical interpolation).
+
+
+
+Step 5: Creating the first set of adaptive inflation files
 ----------------------------------------------------------
 
 In this section we describe how to create initial adaptive inflation
@@ -874,7 +1096,7 @@ cycle.
 
 
 
-Step 5: Cycled analysis system
+Step 6: Cycled analysis system
 ------------------------------
 
 While the DART system provides executables to perform individual tasks
@@ -924,10 +1146,10 @@ continue to cycle until the final analysis time has been reached.
 
 
 
-Step 6: Diagnosing the assimilation results
+Step 7: Diagnosing the assimilation results
 -------------------------------------------
 
-Once you have successfully completed steps 1-5, it is important to
+Once you have successfully completed steps 1-6, it is important to
 check the quality of the assimilation. In order to do this, DART provides
 analysis system diagnostics in both state and observation space.
 
@@ -989,7 +1211,7 @@ The tools below provide methods to visualize the spatial patterns, statistics an
 failure mode for all observations.
 
 The observation diagnostics use the **obs_epoch*.nc** file as input.  This file is
-automatically generated by the **obs_diagnostic.csh** script within Step 5 of this
+automatically generated by the **obs_diagnostic.csh** script within Step 6 of this
 tutorial.
 
 The **obs_epoch*.nc** file is located in the output directory of each time step.
