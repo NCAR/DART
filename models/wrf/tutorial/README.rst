@@ -996,7 +996,7 @@ on WRF levels k and k+1, followed by vertical interpolation).
 
 
 Surface Wind (e.g. METAR_U_10_METER_WIND)
------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Surface winds have a direct WRF output analog (e.g. U10)
 and requires horizontal interpolation of the 2D zonal wind field.  However, the
@@ -1006,21 +1006,21 @@ mapped on a 2D grid.
 
 
 Non-Surface Wind (e.g. ACARS_U_WIND_COMPONENT)
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is identical to surface winds as described above, except the spatial interpolation requires
 horizontal interpolation on the k and k+1 WRF levels, followed by vertical interpolation.
 
 
 Surface Dewpoint (e.g. METAR_DEWPOINT_2_METER)
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The calculation of surface dewpoint requires a physical conversion using both surface
 pressure (PSFC) and surface vapor mixing ratio (Q2), follwed by horizontal interpolation.
 
 
 Non-Surface Specific Humidity (e.g. RADIOSONDE_SPECIFIC_HUMIDITY)
------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Specific humidity observations require the (water) vapor mixing ratio (QVAPOR) for the forward operator.  
 Although specific humidity and vapor mixing ratio are nearly identical, especially in dry
