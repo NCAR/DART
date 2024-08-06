@@ -20,32 +20,31 @@ with `DARTv11.5.0. <https://github.com/NCAR/DART/releases/tag/v11.5.0>`__
 Some important WRF-DART updates include:
 
 - Version 11.4.1: Detects use of the Hybrid Vertical Coordinate system
-  (terrain following at surface) and accounts for this in forward
+  (terrain following at surface) and accounts for this in the forward
   operator calculations.
 
 - Version 11.5.0: Improves compatibility with WRFv4+ versions and later
-  where prognostic 3D temperature variable is THM.
+  where the prognostic 3D temperature variable is THM.
 
-It is always recommended that you update your DART version to the `latest tag
-<https://github.com/NCAR/DART/release>`__ before beginning new research.
+It is always recommended that you update your DART version to the 
+`latest release <https://github.com/NCAR/DART/releases>`__ before beginning new research.
 
 WRF+DART Tutorial
 -----------------
 
 This tutorial provides a real-world example of assimilating a wide variety of atmospheric
 observations during an extreme storm event for the United States during April 2017.
-
-**It is strongly recommended that you also review and perform the tutorial documentation for 
+**It is strongly recommended that you also review and perform the tutorial for 
 running a WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/models/wrf/tutorial/README.html>`__
 
 
-Items of Note
+General Overview
 -------------
 
-- The ``model_mod`` reads WRF netCDF files directly to acquire the model state
-  data. The ``wrf_to_dart`` and ``dart_to_wrf`` programs are no longer
-  necessary.
-- A netCDF file named ``wrfinput_d01`` is required and must be at the same
+- The WRF ``model_mod.f90`` file reads WRF netCDF files directly to acquire the model state
+  data. Earlier version required ``wrf_to_dart`` and ``dart_to_wrf`` programs which
+  are no longer necessary.
+- A WRF file named ``wrfinput_d01`` is required and must be at the same
   resolution and have the same surface elevation data as the files converted to
   create the DART initial conditions. No data will be read from this file, but
   the grid information must match exactly.
@@ -80,11 +79,10 @@ coefficient based on the correlation between the distributions of the ensemble
 of state vector points and the ensemble of observation forward operator values.
 
 The fields from WRF that are copied into the DART state vector are controlled by
-namelist. See below for the documentation on the ``&model_nml`` entries. The state
-vector should include all fields needed to restart a WRF run. There may be
-additional fields needed depending on the microphysics scheme selected. See the
-ascii file ``wrf_state_variables_table`` in the ``models/wrf`` directory for a
-list of fields that are often included in the DART state.
+the namelist. See below for the documentation on the ``&model_nml`` entries within
+``input.nml``. The state vector should include all fields needed to restart a WRF run.
+There may be additional fields needed depending on the microphysics scheme selected. See the
+ascii file `wrf_state_variables_table  <https://github.com/NCAR/DART/blob/main/models/wrf/wrf_state_variables_table>`__that includes a list of fields that may be added to the DART state.
 
 Namelist
 --------
@@ -117,69 +115,6 @@ prematurely terminating the namelist.
       allow_perturbed_ics         = .false.   # testing purposes only
    /
 
-
-Notes for model_nml:
-
-(1) vert_localization_coord must be one of:
-           1 = model level
-           2 = pressure
-           3 = height
-           4 = scale height
-
-(2) See the bottom of this file for explanations of polar, periodic_x, 
-           periodic_y, and scm.
-
-(3) calendar = 3 is GREGORIAN, which is what WRF uses.
-(4) If 'default_state_variables' is .true. the model_mod.f90 code will
-    fill the state variable table with the following wrf vars: 
-            U, V, W, PH, T, MU
-    You must set it to false before you change the value 
-    of 'wrf_state_variables' and have it take effect.
-
-(5) The format for 'wrf_state_variables' is an array of 5 strings:
-    WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and '999' if the 
-    array is part of all domains.  otherwise, it is a string with the domain
-    numbers (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
-    example:
-
-.. code-block::
-       wrf_state_variables='U','QTY_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
-                           'V','QTY_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
-                           'W','QTY_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
-                           'THM','QTY_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
-                           'PH','QTY_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
-                           'MU','QTY_PRESSURE','TYPE_MU','UPDATE','999',
-                           'QVAPOR','QTY_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
-                           'QCLOUD','QTY_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
-                           'QRAIN','QTY_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
-                           'U10','QTY_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
-                           'V10','QTY_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
-                           'T2','QTY_TEMPERATURE','TYPE_T2','UPDATE','999',
-                           'TH2','QTY_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
-                           'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
-                           'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
-
-(6) The format for 'wrf_state_bounds' is an array of 4 strings:
-    WRF output field, minimum value, maximum value, and either
-    FAIL or CLAMP.  FAIL will halt the program if an out of range value
-    is detected.  CLAMP will set the out of range values to the min or max.
-    The special string 'NULL' will map to plus or minus infinity and will
-    not change the values.  Arrays not listed in this table will not
-    be changed as they are read or written.
-      
-      
-    Polar and periodic_x namelist values are used in global wrf. If polar is true,
-    the grid interpolation routines will wrap over the north and south poles.  
-    If periodic_x is true, when the east and west edges of the grid are
-    reached the interpolation will wrap.  Note this is a separate issue
-    from regional models which cross the GMT line. Those grids are marked
-    as having a negative offset and do not need to wrap. This flag controls
-    what happens when the edges of the grid are reached.
-
-    The scm flag is used for the 'single column model' version of WRF.
-    It needs the periodic_x and periodic_y flags set to true, in which
-    case the X and Y directions are periodic. There is no collapsing of the grid
-    into a single location like the 3d-spherical polar flag implies.
 
 Namelist Description
 ~~~~~~~~~~~~~~~~~~~~
@@ -371,8 +306,63 @@ Namelist Description
 |                               |                   | covered in :doc:`./tutorial/README`   |
 +-------------------------------+-------------------+---------------------------------------+
 
+Additional Namelist Information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+(1) If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
+    fill the state variable table with the following wrf vars:
+            U, V, W, PH, T, MU
+    You must set it to false before you change the value
+    of ``wrf_state_variables`` and have it take effect.
 
 
+(2) The format for ``wrf_state_variables`` is an array of 5 strings:
+    WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and 'XXX'. If XXX
+    is 999 the variable is part of all domains, otherwise it is limited
+    to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
+    example:
+
+.. code-block::
+
+       wrf_state_variables='U','QTY_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
+                           'V','QTY_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
+                           'W','QTY_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
+                           'THM','QTY_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+                           'PH','QTY_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
+                           'MU','QTY_PRESSURE','TYPE_MU','UPDATE','999',
+                           'QVAPOR','QTY_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+                           'QCLOUD','QTY_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
+                           'QRAIN','QTY_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
+                           'U10','QTY_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
+                           'V10','QTY_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
+                           'T2','QTY_TEMPERATURE','TYPE_T2','UPDATE','999',
+                           'TH2','QTY_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
+                           'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
+                           'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
+
+(3) The format for ``wrf_state_bounds`` is an array of 4 strings:
+    WRF output field, minimum value, maximum value, and either
+    FAIL or CLAMP.  FAIL will halt the program if an out of range value
+    is detected.  CLAMP will set the out of range values to the min or max.
+    The special string 'NULL' will map to plus or minus infinity and will
+    not change the values.  Arrays not listed in this table will not
+    be changed as they are read or written.
+
+
+
+(4) The ``Polar`` and ``periodic_x`` namelist values are used in global WRF simulations.
+    If ``polar`` is true, the grid interpolation routines will wrap over the north and south poles.
+    If ``periodic_x`` is true, when the east and west edges of the grid are
+    reached the interpolation will wrap.  Note this is a separate issue
+    from regional models which cross the GMT line. Those grids are marked
+    as having a negative offset and do not need to wrap. This flag controls
+    what happens when the edges of the grid are reached.
+
+(5) The scm flag is used for the ``single column model`` version of WRF.
+    It needs the periodic_x and periodic_y flags set to true, in which
+    case the X and Y directions are periodic. There is no collapsing of the grid
+    into a single location like the 3d-spherical polar flag implies.
+    
 References
 ----------
 
