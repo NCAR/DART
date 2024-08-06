@@ -4,23 +4,40 @@ WRF
 Overview
 --------
 
-
-DART interface module for the Weather Research and Forecasting
+The following is a description of the DART interface module for the 
+Weather Research and Forecasting model
 `(WRF) <https://www.mmm.ucar.edu/weather-research-and-forecasting-model>`__
-model. This page documents the details of the
-module compiled into DART that interfaces with the WRF data in the state vector.
+model. This page provides an overview of the module compiled into DART 
+that interfaces with the WRF data in the state vector.
 **The WRF-DART interface is compatible with WRF versions 4 and later, and is 
 no longer backwards compatible with WRFv3.9 and earlier.**  
 For more information on the interface changes required between 
-different WRF versions see the WRF tutorial link in the next section.
+different WRF versions, read through this documentation *and* the 
+WRF-DART tutorial link in the next section.  
+
+There have been several important updates to the WRF-DART interface starting
+with `DARTv11.5.0. <https://github.com/NCAR/DART/releases/tag/v11.5.0>`__ 
+Some important WRF-DART updates include:
+
+1) Version 11.4.1: Detects use of the Hybrid Vertical Coordinate system
+   (terrain following at surface) and accounts for this in forward
+   operator calculations.
+
+2) Version 11.5.0: Improves compatibility with WRFv4+ versions and later
+   where prognostic 3D temperature variable is THM.
+
+It is always recommended that you update your DART version to the `latest tag
+<https://github.com/NCAR/DART/release`__ before beginning new research.
 
 WRF+DART Tutorial
 -----------------
 
-**There is additional overview and tutorial documentation for running a WRF/DART
-assimilation in** :doc:`./tutorial/README`
+This tutorial provides a real-world example of assimilating a wide variety of atmospheric
+observations during an extreme storm event for the United States during April 2017.
 
-Please work through the tutorial in order to learn how to run WRF and DART.
+**It is strongly recommended that you also review and perform the tutorial documentation for 
+running a WRF-DART assimilation** `here <https://docs.dart.ucar.edu/en/latest/models/wrf/tutorial/README.html>`__
+
 
 Items of Note
 ~~~~~~~~~~~~~

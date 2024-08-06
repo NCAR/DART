@@ -130,7 +130,7 @@
                              'QNRAIN','QTY_RAIN_NUMBER_CONCENTR','TYPE_QNRAIN','UPDATE','999',
                              'U10','QTY_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
                              'V10','QTY_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
-                             'T2','QTY_2M_2M_TEMPERATURE','TYPE_T2','UPDATE','999',
+                             'T2','QTY_2M_TEMPERATURE','TYPE_T2','UPDATE','999',
                              'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
                              'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
 

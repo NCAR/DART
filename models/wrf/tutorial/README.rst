@@ -807,15 +807,15 @@ you would do the following:
    namelist options to consider, and you must provide a *wrfinput* file
    for the program to access the analysis domain information.
 
-Step 4: Overview of forward (observation) operators  
+Step 4: Overview of forward (observation) operators [OPTIONAL] 
 ---------------------------------------------------
 
 This section is for informational purposes only and does not include any 
 instructions to complete the tutorial. It provides a description of
-the DART settings thet control the forward operator which
+the DART settings that control the forward operator which
 calculates the prior and posterior model estimates for the observations. 
 An introduction to important namelist variables that control the operation of the forward
-operator are located in the `WRF namelist documentation 
+operator are located in the `WRF namelist documentation. 
 <https://docs.dart.ucar.edu/en/latest/models/wrf/readme.html#namelist>`__
 
 
@@ -881,8 +881,8 @@ During the DART compilation described  within Step 1 this information is
 included within the ``obs_def_mod.f90`` which is read during the execution of
 ``filter``.
 
-The vertical coordinate type is the 4th column beneath the loc3d header. In this example
-the value -1 indicates the vertical coordinate is ``VERTISSURFACE``. It defines the
+The vertical coordinate type is the 4th column beneath the loc3d header within ``obs_seq.out``.
+In this example the value -1 indicates the vertical coordinate is ``VERTISSURFACE``. It defines the
 vertical units of the observation (e.g. pressure, meters above sea level, model levels etc).  
 This serves two purposes -- foremost it is required during the vertical spatial interpolation
 to calculate the precise location of the expected observation. 
@@ -893,11 +893,11 @@ observations. All other coordinates are considered non-surface observations
 ``VERTISHEIGHT`` are functionally identical (i.e. meters above sea level), however
 only the ``VERTISSURFACE`` is a surface observation.
 
-For more information on the other metadata see the detailed structure of
+For more information on the vertical coordinate metadata see the detailed structure of
 an `obs_seq file. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__
 
 In order to connect this observation to the appropriate WRF output variables
-the ``wrf_state_variables`` within``&model_nml`` defines the *WRF field name* and
+the ``wrf_state_variables`` within ``&model_nml`` defines the *WRF field name* and
 the *WRF TYPE* in the 1st and 3rd columns as shown in the tutorial example below:
 
 ::
@@ -939,30 +939,31 @@ output field for a select number of observation types within the tutorial.
 
 
 
-+--------------------------------+-----------------------------+-----------------+-----------------+
-| DART Observation Type          | DART Observation Quantities |   WRF Type      | WRF output field|
-+================================+=============================+=================+=================+
-| ``METAR_TEMPERATURE_2_METER``  |   ``QTY_2M_TEMPERATURE``    |  ``TYPE_T2``    |     ``T2``      |
-|      (VERTISSURFACE)           |                             |                 |                 |
-+--------------------------------+-----------------------------+-----------------+-----------------+
-|  ``RADIOSONDE_TEMPERATURE``    |``QTY_POTENTIAL_TEMPERATURE``|  ``TYPE_T``     |    ``THM``      |
-|     (VERTISPRESSURE)           |  ``QTY_VAPOR_MIXING_RATIO`` |  ``TYPE_QV``    |    ``QVAPOR``   |    
-|                                |      ``QTY_PRESSURE``       |  ``TYPE_MU``    |     ``MU``      |
-|                                |  ``QTY_GEOPOTENTIAL_HEIGHT``|  ``TYPE_GZ``    |     ``PH``      |
-+--------------------------------+-----------------------------+-----------------+-----------------+
-| ``METAR_U_10_METER_WIND``      |  ``QTY_U_WIND_COMPONENT``   |  ``TYPE_U10``   |    ``U10``      |
-|      (VERTISSURFACE)           |  ``QTY_V_WIND_COMPONENT``   |  ``TYPE_V10``   |    ``V10``      |          
-+--------------------------------+-----------------------------+-----------------+-----------------+
-| ``ACARS_U_WIND_COMPONENT``     |  ``QTY_U_WIND_COMPONENT``   |  ``TYPE_U``     |     ``U``       |
-|      (VERTISPRESSURE)          |  ``QTY_V_WIND_COMPONENT``   |  ``TYPE_V``     |     ``V``       |
-+--------------------------------+-----------------------------+-----------------+-----------------+
-| ``METAR_DEWPOINT_2_METER``     |     ``QTY_DEWPOINT``        |                 |                 |
-|      (VERTISSURFACE)           | ``QTY_SPECIFIC_HUMIDITY``   |  ``TYPE_Q2``    |     ``Q2``      |
-|                                |     ``QTY_PRESSURE``        |  ``TYPE_PS``    |    ``PSFC``     |
-+--------------------------------+-----------------------------+-----------------+-----------------+
-|``RADIOSONDE_SPECIFIC_HUMIDITY``|  ``QTY_SPECIFIC_HUMIDITY``  |  ``TYPE_QV``    |   ``QVAPOR``    |
-|      (VERTISPRESSURE)          |                             |                 |                 |
-+--------------------------------+-----------------------------+-----------------+-----------------+
++----------------------------------+-------------------------------+--------------+-------------+
+|   DART Observation Type          | DART Observation Quantities   |  WRF Type    | WRF output  |
+|                                  |                               |              |   field     |
++==================================+===============================+==============+=============+
+| ``METAR_TEMPERATURE_2_METER``    |   ``QTY_2M_TEMPERATURE``      | ``TYPE_T2``  |   ``T2``    |
+|       (VERTISSURFACE)            |                               |              |             |
++----------------------------------+-------------------------------+--------------+-------------+
+|  ``RADIOSONDE_TEMPERATURE``      | ``QTY_POTENTIAL_TEMPERATURE`` | ``TYPE_T``   |   ``THM``   |
+|     (VERTISPRESSURE)             |  ``QTY_VAPOR_MIXING_RATIO``   | ``TYPE_QV``  |  ``QVAPOR`` |    
+|                                  |      ``QTY_PRESSURE``         | ``TYPE_MU``  |    ``MU``   |
+|                                  |  ``QTY_GEOPOTENTIAL_HEIGHT``  | ``TYPE_GZ``  |    ``PH``   |
++----------------------------------+-------------------------------+--------------+-------------+
+| ``METAR_U_10_METER_WIND``        |  ``QTY_U_WIND_COMPONENT``     | ``TYPE_U10`` |   ``U10``   |
+|      (VERTISSURFACE)             |  ``QTY_V_WIND_COMPONENT``     | ``TYPE_V10`` |   ``V10``   |          
++----------------------------------+-------------------------------+--------------+-------------+
+| ``ACARS_U_WIND_COMPONENT``       |  ``QTY_U_WIND_COMPONENT``     | ``TYPE_U``   |    ``U``    |
+|      (VERTISPRESSURE)            |  ``QTY_V_WIND_COMPONENT``     | ``TYPE_V``   |    ``V``    |
++----------------------------------+-------------------------------+--------------+-------------+
+| ``METAR_DEWPOINT_2_METER``       |     ``QTY_DEWPOINT``          |              |             |
+|      (VERTISSURFACE)             | ``QTY_SPECIFIC_HUMIDITY``     | ``TYPE_Q2``  |   ``Q2``    |
+|                                  |     ``QTY_PRESSURE``          | ``TYPE_PS``  |   ``PSFC``  |
++----------------------------------+-------------------------------+--------------+-------------+
+| ``RADIOSONDE_SPECIFIC_HUMIDITY`` |  ``QTY_SPECIFIC_HUMIDITY``    | ``TYPE_QV``  | ``QVAPOR``  |
+|      (VERTISPRESSURE)            |                               |              |             |
++----------------------------------+-------------------------------+--------------+-------------+
 
 
 
@@ -987,11 +988,11 @@ on WRF levels k and k+1, followed by vertical interpolation).
 .. Important::
 
    There are two different 3D temperature WRF output fields that can work to calculate non-
-   surface temperature observations (e.g. T or THM, T=THM when use_theta_m=0). However, and of
-   high importance is the variable THM is required to be within the ``&model_nml`` if the 
+   surface temperature observations (e.g. T or THM, T=THM when use_theta_m=0). However, and **of
+   utmost importance** is the variable THM is required to be within the ``&model_nml`` if the 
    3D temperature field is to be updated in the ``filter`` step. **This is because the WRF field *T*
    is a diagnostic variable with no impact on the forecast step, whereas the WRF field *THM* is
-   a prognostic field.**  
+   a prognostic field which will impact the forecast.**  
 
 
 Surface Wind (e.g. METAR_U_10_METER_WIND)
@@ -1021,7 +1022,7 @@ pressure (PSFC) and surface vapor mixing ratio (Q2), follwed by horizontal inter
 Non-Surface Specific Humidity (e.g. RADIOSONDE_SPECIFIC_HUMIDITY)
 -----------------------------------------------------------------
 
-Specific humidity observations require (water) vapor mixing ratio (QVAPOR) for the forward operator.  
+Specific humidity observations require the (water) vapor mixing ratio (QVAPOR) for the forward operator.  
 Although specific humidity and vapor mixing ratio are nearly identical, especially in dry
 air, they are actually two distinct physical properties -- the ratio of water mass to total air mass
 versus ratio of water vapor mass to dry air mass respectively. Therefore the forward operator
@@ -1433,7 +1434,7 @@ quite high (>90%). This high acceptance percentage is typical of a high-quality
 assimilation and consistent with the strong reduction in RMSE.
 
 
-The same plot as above is given below except for the observation type: 
+The same plot as above is given below excerpt for the observation type: 
 ``RADIOSONE_SPECIFIC_HUMIDITY``.
 
 +-------------------------------------------------------------+
