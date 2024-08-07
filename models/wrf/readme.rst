@@ -39,7 +39,7 @@ running a WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/m
 
 
 General WRF Interface Overview
--------------
+------------------------------
 
 - The WRF ``model_mod.f90`` file reads WRF netCDF files directly to acquire the model state
   data. Earlier versions required ``wrf_to_dart`` and ``dart_to_wrf`` programs which
@@ -93,7 +93,7 @@ start with an ampersand ``&`` and terminate with a slash ``/``. Character
 strings that contain a ``/`` must be enclosed in quotes to prevent them from
 prematurely terminating the namelist.
 
-.. code-block::
+::
 
    &model_nml
       default_state_variables     = .true.
@@ -114,7 +114,7 @@ prematurely terminating the namelist.
       periodic_y                  = .false.
       scm                         = .false.  
       allow_perturbed_ics         = .false.   # testing purposes only
-   /
+      /
 
 
 Namelist Description:
@@ -308,23 +308,24 @@ Namelist Description:
 |                               |                   | covered in :doc:`./tutorial/README`   |
 +-------------------------------+-------------------+---------------------------------------+
 
+
 Additional Namelist Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-(1) If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
+-   If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
     fill the state variable table with the following WRF variables:
             U, V, W, PH, T, MU
     You must set ``default_state_variables = .false.`` before changing the value
     of ``wrf_state_variables`` to have it take effect.
 
 
-(2) The format for ``wrf_state_variables`` is an array of 5 strings:
+-   The format for ``wrf_state_variables`` is an array of 5 strings:
     WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and a numerical
     string 'XXX'. If XXX=999 the variable is part of all domains, otherwise it is limited
     to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
     For example:
 
-.. code-block::
+::
 
        wrf_state_variables='U','QTY_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
                            'V','QTY_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
@@ -342,7 +343,7 @@ Additional Namelist Information
                            'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
                            'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
 
-(3) The format for ``wrf_state_bounds`` is an array of 4 strings:
+-   The format for ``wrf_state_bounds`` is an array of 4 strings:
     WRF output field, minimum value, maximum value, and either
     FAIL or CLAMP.  *FAIL* will halt the program if an out of range value
     is detected.  *CLAMP* will set the out of range values to the min or max.
@@ -352,7 +353,7 @@ Additional Namelist Information
 
 
 
-(4) The ``Polar`` and ``periodic_x`` namelist values are used in global WRF simulations.
+-   The ``Polar`` and ``periodic_x`` namelist values are used in global WRF simulations.
     If ``polar`` is true, the grid interpolation routines will wrap over the north and south poles.
     If ``periodic_x`` is true, when the east and west edges of the grid are
     reached the interpolation will wrap.  Note this is a separate issue
@@ -360,13 +361,13 @@ Additional Namelist Information
     as having a negative offset and do not need to wrap. This flag controls
     what happens when the edges of the grid are reached.
 
-(5) The ``scm`` flag is used for the single column model version of WRF.
+-   The ``scm`` flag is used for the single column model version of WRF.
     It needs the periodic_x and periodic_y flags set to true, in which
     case the X and Y directions are periodic. There is no collapsing of the grid
     into a single location like the 3d-spherical polar flag implies.
     
 
-(6) The intent of the ``sfc_elev_max_diff`` quality control check is to eliminate
+-   The intent of the ``sfc_elev_max_diff`` quality control check is to eliminate
     surface observations that are mismatched from the WRF model's surface elevation.
     Mismatch can occur if the WRF land surface elevation is not finely resolved (coarse grid)
     thus there is a significant representation mismatch between a point observation
@@ -376,7 +377,7 @@ Additional Namelist Information
     assigned to observations that use the ``VERTISSURFACE`` vertical coordinate
     defined in the ``obs_seq.out`` file.   
 
-(7) The ``allow_obs_below_vol`` enables vertical extrapolation in cases where the 
+-   The ``allow_obs_below_vol`` enables vertical extrapolation in cases where the 
     observation vertical location is below the lowest WRF model vertical layer, thus
     used as an alternative for the standard vertical interpolation routine. 
     The bottom WRF layer can vary based on total vertical levels, however, in general,
@@ -389,7 +390,7 @@ Additional Namelist Information
     surface output (e.g. T2, U10) instead of WRF 3D output (e.g. T, THM) to 
     avoid the need for extrapolation.
 
-(8) The vortex searching namelist options are only required during WRF simulations
+-   The vortex searching namelist options are only required during WRF simulations
     where the spatial domain of interest is dynamic such as with a hurricane.
 
 
