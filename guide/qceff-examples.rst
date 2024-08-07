@@ -9,13 +9,7 @@ as of version v11.
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences and is
 anxious to build scientific collaborations using these new capabilities.
 
-To get started, make sure that you are on the quantile_methods branch of DART: 
-
-.. code-block:: text
-
-   git checkout quantile_methods
-
-Build the DART executables for the Lorenz 96 tracer advection model:
+To get started, build the DART executables for the Lorenz 96 tracer advection model:
 
 .. code-block:: text
 
