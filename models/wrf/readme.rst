@@ -42,12 +42,11 @@ General Overview
 -------------
 
 - The WRF ``model_mod.f90`` file reads WRF netCDF files directly to acquire the model state
-  data. Earlier version required ``wrf_to_dart`` and ``dart_to_wrf`` programs which
+  data. Earlier versions required ``wrf_to_dart`` and ``dart_to_wrf`` programs which
   are no longer necessary.
 - A WRF file named ``wrfinput_d01`` is required and must be at the same
   resolution and have the same surface elevation data as the files converted to
-  create the DART initial conditions. No data will be read from this file, but
-  the grid information must match exactly.
+  create the initial conditions. 
 
 The model interface code supports WRF configurations with multiple domains. Data
 for all domains is read into the DART state vector. During the computation of
@@ -69,20 +68,22 @@ searched first, then ``wrfinput_d03``, ``wrfinput_d02``, and finally
    need help with these modifications please contact DART support.
 
 
-The forward operator is computed from the first domain grid that contains the
-lat/lon of the observation. During the assimilation phase, when the state values
-are adjusted based on the correlations and assimilation increments, all points
-in all domains that are within the localization radius are adjusted, regardless
-of domain. The impact of an observation on the state depends only on the
-distance between the observation and the state vector point, and the regression
-coefficient based on the correlation between the distributions of the ensemble
-of state vector points and the ensemble of observation forward operator values.
+In summary, the forward operator is computed from the first domain grid (searching from
+finest grid to coarsest grid) that contains the lat/lon of the observation. During the
+assimilation phase, however,  when the state values are adjusted based on the correlations
+and assimilation increments, all points in all domains that are within the 
+localization radius are adjusted, regardless of domain. The impact of an observation 
+on the state depends only on the distance between the observation and the state 
+vector point, and the regression coefficient based on the correlation between the 
+distributions of the ensemble of state vector points and the ensemble of observation 
+forward operator values.
 
 The fields from WRF that are copied into the DART state vector are controlled by
-the namelist. See below for the documentation on the ``&model_nml`` entries within
+the namelist within ``input.nml``. See below for the documentation on the ``&model_nml`` entries within
 ``input.nml``. The state vector should include all fields needed to restart a WRF run.
 There may be additional fields needed depending on the microphysics scheme selected. See the
-ascii file `wrf_state_variables_table  <https://github.com/NCAR/DART/blob/main/models/wrf/wrf_state_variables_table>`__that includes a list of fields that may be added to the DART state.
+ascii file `wrf_state_variables_table  <https://github.com/NCAR/DART/blob/main/models/wrf/wrf_state_variables_table>`__ 
+that includes a list of fields that may be added to the DART state.
 
 Namelist
 --------
@@ -116,8 +117,8 @@ prematurely terminating the namelist.
    /
 
 
-Namelist Description
-~~~~~~~~~~~~~~~~~~~~
+Namelist Description:
+~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------------------+-------------------+---------------------------------------+
 | Item                          | Type              | Description                           |
@@ -129,7 +130,7 @@ Namelist Description
 |                               |                   | *wrf_state_variables* namelist item   |
 |                               |                   | will be ignored.                      |
 +-------------------------------+-------------------+---------------------------------------+
-| wrf_state_variables           | character(:, 5)   | A 2D array of strings, 5 per wrf      |
+| wrf_state_variables           | character(:,5)    | A 2D array of strings, 5 per wrf      |
 |                               |                   | array to be added to the dart state   |
 |                               |                   | vector. If *default_state_variables*  |
 |                               |                   | is *.true.*, this is ignored. When    |
@@ -149,21 +150,22 @@ Namelist Description
 |                               |                   |    point, non-updatable fields may    |
 |                               |                   |    become part of the state vector.   |
 |                               |                   | #. A numeric string listing the       |
-|                               |                   |    domain numbers this array is part  |
-|                               |                   |    of. The special string 999 means   |
+|                               |                   |    domain(s) that include the WRF     |
+|                               |                   |    state variable.                    |
+|                               |                   |    The special string '999' means     |
 |                               |                   |    all domains. For example, '12'     |
 |                               |                   |    means domains 1 and 2, '13' means  |
 |                               |                   |    1 and 3.                           |
 +-------------------------------+-------------------+---------------------------------------+
-| wrf_state_bounds              | character(:, 4)   | A 2D array of strings, 4 per wrf      |
+| wrf_state_bounds              | character(:,4)    | A 2D array of strings, 4 per wrf      |
 |                               |                   | array. During the copy of data to and |
-|                               |                   | from the wrf netcdf file, variables   |
-|                               |                   | listed here will have minimum and     |
-|                               |                   | maximum values enforced. The 4        |
-|                               |                   | strings are:                          |
+|                               |                   | from the WRF (wrfinput*) file,        |
+|                               |                   | variables listed here will have       |
+|                               |                   | minimum and maximum values enforced.  |
+|                               |                   | The 4 strings are:                    |
 |                               |                   |                                       |
-|                               |                   | #. WRF field name - must match netcdf |
-|                               |                   |    name exactly                       |
+|                               |                   | #. WRF field name - must match        |
+|                               |                   |    WRF variable name exactly          |
 |                               |                   | #. Minimum -- specified as a string   |
 |                               |                   |    but must be a numeric value (e.g.  |
 |                               |                   |    '0.1') Can be 'NULL' to allow any  |
@@ -201,15 +203,15 @@ Namelist Description
 |                               |                   | points beyond the last grid index are |
 |                               |                   | outside the domain.                   |
 +-------------------------------+-------------------+---------------------------------------+
-| periodic_y                    | logical           | Used for the single column model to   |
-|                               |                   | make the grid wrap in Y (see scm      |
+| periodic_y                    | logical           | Used for the WRF single column model  |
+|                               |                   | to make the grid wrap in Y (see scm   |
 |                               |                   | below). This is NOT the same as       |
 |                               |                   | wrapping in latitude (see polar       |
 |                               |                   | below).                               |
 +-------------------------------+-------------------+---------------------------------------+
 | polar                         | logical           | If *.true.*, points at the poles are  |
 |                               |                   | wrapped across the grid. It is not    |
-|                               |                   | clear this is a good idea since the   |
+|                               |                   | clear this is a good idea because the |
 |                               |                   | grid is degnerate here.               |
 +-------------------------------+-------------------+---------------------------------------+
 | scm                           | logical           | If *.true.* the single column model   |
@@ -221,18 +223,15 @@ Namelist Description
 |                               |                   | *periodic_x* and *periodic_y* should  |
 |                               |                   | also be *.true.* in this case.        |
 +-------------------------------+-------------------+---------------------------------------+
-| sfc_elev_max_diff             | real(r8)          | If > 0, the maximum difference, in    |
-|                               |                   | meters, between an observation marked |
-|                               |                   | as a 'surface obs' as the vertical    |
-|                               |                   | type (with the surface elevation, in  |
-|                               |                   | meters, as the numerical vertical     |
-|                               |                   | location), and the surface elevation  |
-|                               |                   | as defined by the model. Observations |
-|                               |                   | further away from the surface than    |
-|                               |                   | this threshold are rejected and not   |
-|                               |                   | assimilated. If the value is          |
-|                               |                   | negative, this test is skipped.       |
-+-------------------------------+-------------------+---------------------------------------+
+| sfc_elev_max_diff             | real(r8)          | The maximum elevation difference      |
+|                               |                   | (in meters) between a 'surface'       |
+|                               |                   | observation and the land surface      |
+|                               |                   | elevation defined in WRF.             |
+|                               |                   | If the value is > 0, that value is    |
+|                               |                   | the threshold at which the surface    |
+|                               |                   | observations are rejected. If the     |
+|                               |                   | value is negative the test is skipped.|
++-------------------------------+-------------------+--------------------------------------.+
 | allow_obs_below_vol           | logical           | If *.false.* then if an observation   |
 |                               |                   | with a vertical coordinate of         |
 |                               |                   | pressure or height (i.e. not a        |
@@ -247,48 +246,51 @@ Namelist Description
 |                               |                   | extrapolate downward from data values |
 |                               |                   | at levels 1 and 2.                    |
 +-------------------------------+-------------------+---------------------------------------+
-| center_search_half_length     | real(r8)          | The model_mod now contains two        |
-|                               |                   | schemes for searching for a vortex    |
-|                               |                   | center location. If the **old**       |
-|                               |                   | scheme is compiled in, then this and  |
-|                               |                   | the center_spline_grid_scale namelist |
-|                               |                   | items are used. (Search code for      |
-|                               |                   | 'use_old_vortex'.) Half length (in    |
-|                               |                   | meters) of a square box for searching |
-|                               |                   | the vortex center.                    |
+| center_search_half_length     | real(r8)          | A parameter in the 'use_old_vortex'   | 
+|                               |                   | scheme used to search for a vortex    |
+|                               |                   | center location. It is the half-length|   
+|                               |                   | (meters) of a square box used during  |
+|                               |                   | the vortex search. This value and the |
+|                               |                   | 'center_spline_grid_scale' namelist   |
+|                               |                   | items are required. To implement, set |             
+|                               |                   | ``use_old_vortex = .true.`` in        | 
+|                               |                   | ``model_mod.f90`` prior to compiling  |
+|                               |                   | DART.                                 |
 +-------------------------------+-------------------+---------------------------------------+
-| center_spline_grid_scale      | integer           | The model_mod now contains two        |
-|                               |                   | schemes for searching for a vortex    |
-|                               |                   | center location. If the **old**       |
-|                               |                   | scheme is compiled in, then this and  |
-|                               |                   | the center_search_half_length         |
-|                               |                   | namelist items are used. (Search code |
-|                               |                   | for 'use_old_vortex'.) Ratio of       |
-|                               |                   | refining grid for                     |
-|                               |                   | spline-interpolation in determining   |
-|                               |                   | the vortex center.                    |
+| center_spline_grid_scale      | integer           | A parameter in the 'use_old_vortex'   |
+|                               |                   | scheme used to search for a vortex    |
+|                               |                   | center location. It is the fine grid  |
+|                               |                   | ratio for the spline interpolation    |
+|                               |                   | used during the vortex search. This   |
+|                               |                   | value and the                         |                                                                |                               |                   | 'center_search_half_length' namelist  | 
+|                               |                   | items are required. To implement, set |
+|                               |                   | ``use_old_vortex = .true.`` in        |
+|                               |                   | ``model_mod.f90`` prior to compiling  |
+|                               |                   | DART.                                 |
 +-------------------------------+-------------------+---------------------------------------+
-| circulation_pres_level        | real(r8)          | The model_mod now contains two        |
-|                               |                   | schemes for searching for a vortex    |
-|                               |                   | center location. If the **new**       |
-|                               |                   | scheme is compiled in, then this and  |
-|                               |                   | the circulation_radius namelist items |
-|                               |                   | are used. (Search code for            |
-|                               |                   | 'use_old_vortex'.) Pressure, in       |
-|                               |                   | pascals, of the level at which the    |
-|                               |                   | circulation is computed when          |
-|                               |                   | searching for the vortex center.      |
+| circulation_pres_level        | real(r8)          | A parameter in the 'circulation'      |
+|                               |                   | scheme used to search for a vortex    |
+|                               |                   | center location. It is the pressure   |
+|                               |                   | (Pascals) at which the circulation is |
+|                               |                   | computed during the vortex search.    |
+|                               |                   | This value and the                    |
+|                               |                   | 'circulation_radius' namelist items   |
+|                               |                   | are required. To implement, set       |
+|                               |                   | ``use_old_vortex = .false.`` in     |
+|                               |                   | ``model_mod.f90`` prior to compiling  |
+|                               |                   | DART.                                 |
 +-------------------------------+-------------------+---------------------------------------+
-| circulation_radius            | real(r8)          | The model_mod now contains two        |
-|                               |                   | schemes for searching for a vortex    |
-|                               |                   | center location. If the **new**       |
-|                               |                   | scheme is compiled in, then this and  |
-|                               |                   | the circulation_pres_level namelist   |
-|                               |                   | items are used. (Search code for      |
-|                               |                   | 'use_old_vortex'.) Radius, in meters, |
-|                               |                   | of the circle over which the          |
-|                               |                   | circulation calculation is done when  |
-|                               |                   | searching for the vortex center.      |
+| circulation_radius            | real(r8)          | A parameter in the 'circulation'      |
+|                               |                   | scheme used to search for a vortex    |
+|                               |                   | center location. It is the radius     |
+|                               |                   | (meters) of the circle over which the |
+|                               |                   | search for the vortex center is       |
+|                               |                   | performed. This value and the         |
+|                               |                   | 'circulation_pres_level' namelist     |
+|                               |                   | items are required.  To implement,    |
+|                               |                   | set ``use_old_vortex = .false.`` in   |
+|                               |                   | ``model_mod.f90`` prior to compiling  |
+|                               |                   | DART.
 +-------------------------------+-------------------+---------------------------------------+
 | vert_localization_coord       | integer           | Vertical coordinate for vertical      |
 |                               |                   | localization.                         |
@@ -317,8 +319,8 @@ Additional Namelist Information
 
 
 (2) The format for ``wrf_state_variables`` is an array of 5 strings:
-    WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and 'XXX'. If XXX
-    is 999 the variable is part of all domains, otherwise it is limited
+    WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and a numerical
+    string 'XXX'. If XXX=999 the variable is part of all domains, otherwise it is limited
     to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
     example:
 
@@ -358,11 +360,41 @@ Additional Namelist Information
     as having a negative offset and do not need to wrap. This flag controls
     what happens when the edges of the grid are reached.
 
-(5) The scm flag is used for the ``single column model`` version of WRF.
+(5) The ``scm`` flag is used for the single column model version of WRF.
     It needs the periodic_x and periodic_y flags set to true, in which
     case the X and Y directions are periodic. There is no collapsing of the grid
     into a single location like the 3d-spherical polar flag implies.
     
+
+(6) The intent of the ``sfc_elev_max_diff`` quality control check is to eliminate
+    surface observations that are mismatched from the WRF model's surface elevation.
+    Mismatch can occur if the WRF land surface elevation is not finely resolved (coarse grid)
+    thus there is a significant representation mismatch between a point observation
+    and the WRF model. Assimilating surface observations with large mismatch can
+    deprecate assimilation forecast skill.
+    This check can only be applied to **surface observations** which are automatically
+    assigned to observations that use the ``VERTISSURFACE`` vertical coordinate
+    defined in the ``obs_seq.out`` file.   
+
+(7) The ``allow_obs_below_vol`` enables vertical extrapolation in cases where the 
+    observation vertical location is below the lowest WRF model vertical layer, thus
+    used as an alternative for the standard vertical interpolation routine. 
+    The bottom WRF layer can vary based on total vertical levels, however, in general,
+     descends to (roughly) 10-50 meters above the surface and does not encompass common 
+    surface observations at 2 and 10 meters. This is not recommended given
+    (linear) extrapolation is a poor approximation of surface observations  at the
+    land-atmosphere boundary where energy and vapor exchange are controlled by 
+    similarity theory. When using  surface observations it is preferred
+    (and the default of the WRF ``model_mod.f90``) to operate on the WRF 2D 
+    surface output (e.g. T2, U10) instead of 3D WRF output (e.g. T, THM) to 
+    avoid the need for extrapolation.
+
+(8) The vortex searching namelist options are only required during WRF simulations
+    where the spatial domain of interest is dynamic such as with a hurricane.
+
+
+
+
 References
 ----------
 
