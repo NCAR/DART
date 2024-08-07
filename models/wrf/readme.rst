@@ -23,13 +23,13 @@ Some important WRF-DART updates include:
   (terrain following at surface) and accounts for this in the forward
   operator calculations.
 
-- Version 11.5.0: Improves compatibility with WRFv4+ versions and later
-  where the prognostic 3D temperature variable is THM.
+- Version 11.5.0: Improves compatibility with WRFv4+ versions where
+  the prognostic 3D temperature variable is THM.
 
 It is always recommended that you update your DART version to the 
 `latest release <https://github.com/NCAR/DART/releases>`__ before beginning new research.
 
-WRF+DART Tutorial
+WRF-DART Tutorial
 -----------------
 
 This tutorial provides a real-world example of assimilating a wide variety of atmospheric
@@ -38,7 +38,7 @@ observations during an extreme storm event for the United States during April 20
 running a WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/models/wrf/tutorial/README.html>`__
 
 
-General Overview
+General WRF Interface Overview
 -------------
 
 - The WRF ``model_mod.f90`` file reads WRF netCDF files directly to acquire the model state
@@ -231,7 +231,7 @@ Namelist Description:
 |                               |                   | the threshold at which the surface    |
 |                               |                   | observations are rejected. If the     |
 |                               |                   | value is negative the test is skipped.|
-+-------------------------------+-------------------+--------------------------------------.+
++-------------------------------+-------------------+---------------------------------------+
 | allow_obs_below_vol           | logical           | If *.false.* then if an observation   |
 |                               |                   | with a vertical coordinate of         |
 |                               |                   | pressure or height (i.e. not a        |
@@ -276,7 +276,7 @@ Namelist Description:
 |                               |                   | This value and the                    |
 |                               |                   | 'circulation_radius' namelist items   |
 |                               |                   | are required. To implement, set       |
-|                               |                   | ``use_old_vortex = .false.`` in     |
+|                               |                   | ``use_old_vortex = .false.`` in       |
 |                               |                   | ``model_mod.f90`` prior to compiling  |
 |                               |                   | DART.                                 |
 +-------------------------------+-------------------+---------------------------------------+
@@ -290,7 +290,7 @@ Namelist Description:
 |                               |                   | items are required.  To implement,    |
 |                               |                   | set ``use_old_vortex = .false.`` in   |
 |                               |                   | ``model_mod.f90`` prior to compiling  |
-|                               |                   | DART.
+|                               |                   | DART.                                 |
 +-------------------------------+-------------------+---------------------------------------+
 | vert_localization_coord       | integer           | Vertical coordinate for vertical      |
 |                               |                   | localization.                         |
@@ -312,17 +312,17 @@ Additional Namelist Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (1) If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
-    fill the state variable table with the following wrf vars:
+    fill the state variable table with the following WRF variables:
             U, V, W, PH, T, MU
-    You must set it to false before you change the value
-    of ``wrf_state_variables`` and have it take effect.
+    You must set ``default_state_variables = .false.`` before changing the value
+    of ``wrf_state_variables`` to have it take effect.
 
 
 (2) The format for ``wrf_state_variables`` is an array of 5 strings:
     WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and a numerical
     string 'XXX'. If XXX=999 the variable is part of all domains, otherwise it is limited
     to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
-    example:
+    For example:
 
 .. code-block::
 
@@ -344,9 +344,9 @@ Additional Namelist Information
 
 (3) The format for ``wrf_state_bounds`` is an array of 4 strings:
     WRF output field, minimum value, maximum value, and either
-    FAIL or CLAMP.  FAIL will halt the program if an out of range value
-    is detected.  CLAMP will set the out of range values to the min or max.
-    The special string 'NULL' will map to plus or minus infinity and will
+    FAIL or CLAMP.  *FAIL* will halt the program if an out of range value
+    is detected.  *CLAMP* will set the out of range values to the min or max.
+    The special string *NULL* will map to plus or minus infinity and will
     not change the values.  Arrays not listed in this table will not
     be changed as they are read or written.
 
@@ -386,7 +386,7 @@ Additional Namelist Information
     land-atmosphere boundary where energy and vapor exchange are controlled by 
     similarity theory. When using  surface observations it is preferred
     (and the default of the WRF ``model_mod.f90``) to operate on the WRF 2D 
-    surface output (e.g. T2, U10) instead of 3D WRF output (e.g. T, THM) to 
+    surface output (e.g. T2, U10) instead of WRF 3D output (e.g. T, THM) to 
     avoid the need for extrapolation.
 
 (8) The vortex searching namelist options are only required during WRF simulations
