@@ -38,8 +38,8 @@ observations during an extreme storm event for the United States during April 20
 running a WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/models/wrf/tutorial/README.html>`__
 
 
-General WRF Interface Overview
-------------------------------
+WRF Interface Overview
+----------------------
 
 - The WRF ``model_mod.f90`` file reads WRF netCDF files directly to acquire the model state
   data. Earlier versions required ``wrf_to_dart`` and ``dart_to_wrf`` programs which
@@ -252,8 +252,8 @@ Namelist Description:
 |                               |                   | (meters) of a square box used during  |
 |                               |                   | the vortex search. This value and the |
 |                               |                   | 'center_spline_grid_scale' namelist   |
-|                               |                   | items are required. To implement, set |             
-|                               |                   | ``use_old_vortex = .true.`` in        | 
+|                               |                   | items are required. To implement, set |
+|                               |                   | ``use_old_vortex = .true.`` in        |
 |                               |                   | ``model_mod.f90`` prior to compiling  |
 |                               |                   | DART.                                 |
 +-------------------------------+-------------------+---------------------------------------+
@@ -262,7 +262,8 @@ Namelist Description:
 |                               |                   | center location. It is the fine grid  |
 |                               |                   | ratio for the spline interpolation    |
 |                               |                   | used during the vortex search. This   |
-|                               |                   | value and the                         |                                                                |                               |                   | 'center_search_half_length' namelist  | 
+|                               |                   | value and the                         | 
+|                               |                   | 'center_search_half_length' namelist  |
 |                               |                   | items are required. To implement, set |
 |                               |                   | ``use_old_vortex = .true.`` in        |
 |                               |                   | ``model_mod.f90`` prior to compiling  |
@@ -312,18 +313,22 @@ Namelist Description:
 Additional Namelist Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
-  fill the state variable table with the following WRF variables:
-  U, V, W, PH, T, MU
-  You must set ``default_state_variables = .false.`` before changing the value
-  of ``wrf_state_variables`` to have it take effect.
+- default_state_variables
+
+If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
+fill the state variable table with the following WRF variables:
+U, V, W, PH, T, MU
+You must set ``default_state_variables = .false.`` before changing the value
+of ``wrf_state_variables`` to have it take effect.
 
 
-- The format for ``wrf_state_variables`` is an array of 5 strings:
-  WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and a numerical
-  string 'XXX'. If XXX=999 the variable is part of all domains, otherwise it is limited
-  to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
-  For example:
+- wrf_state_variables  
+
+The format for ``wrf_state_variables`` is an array of 5 strings:
+WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and a numerical
+string 'XXX'. If XXX=999 the variable is part of all domains, otherwise it is limited
+to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
+For example:
 
 ::
 
@@ -343,57 +348,70 @@ Additional Namelist Information
                            'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
                            'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
 
-- The format for ``wrf_state_bounds`` is an array of 4 strings:
-  WRF output field, minimum value, maximum value, and either
-  FAIL or CLAMP.  *FAIL* will halt the program if an out of range value
-  is detected.  *CLAMP* will set the out of range values to the min or max.
-  The special string *NULL* will map to plus or minus infinity and will
-  not change the values.  Arrays not listed in this table will not
-  be changed as they are read or written.
+
+- wrf_state_bounds
+
+The format for ``wrf_state_bounds`` is an array of 4 strings:
+WRF output field, minimum value, maximum value, and either
+FAIL or CLAMP.  *FAIL* will halt the program if an out of range value
+is detected.  *CLAMP* will set the out of range values to the min or max.
+The special string *NULL* will map to plus or minus infinity and will
+not change the values.  Arrays not listed in this table will not
+be changed as they are read or written.
 
 
-- The ``Polar`` and ``periodic_x`` namelist values are used in global WRF simulations.
-  If ``polar`` is true, the grid interpolation routines will wrap over the north and south poles.
-  If ``periodic_x`` is true, when the east and west edges of the grid are
-  reached the interpolation will wrap.  Note this is a separate issue
-  from regional models which cross the GMT line. Those grids are marked
-  as having a negative offset and do not need to wrap. This flag controls
-  what happens when the edges of the grid are reached.
+- polar, periodic_x
+
+The ``Polar`` and ``periodic_x`` namelist values are used in global WRF simulations.
+If ``polar`` is true, the grid interpolation routines will wrap over the north and south poles.
+If ``periodic_x`` is true, when the east and west edges of the grid are
+reached the interpolation will wrap.  Note this is a separate issue
+from regional models which cross the GMT line. Those grids are marked
+as having a negative offset and do not need to wrap. This flag controls
+what happens when the edges of the grid are reached.
 
 
-- The ``scm`` flag is used for the single column model version of WRF.
-  It needs the periodic_x and periodic_y flags set to true, in which
-  case the X and Y directions are periodic. There is no collapsing of the grid
-  into a single location like the 3d-spherical polar flag implies.
+- Single Column Model (scm)
+
+The ``scm`` flag is used for the single column model version of WRF.
+It needs the periodic_x and periodic_y flags set to true, in which
+case the X and Y directions are periodic. There is no collapsing of the grid
+into a single location like the 3d-spherical polar flag implies.
+
     
+- sfc_elev_max_diff
 
-- The intent of the ``sfc_elev_max_diff`` quality control check is to eliminate
-  surface observations that are mismatched from the WRF model's surface elevation.
-  Mismatch can occur if the WRF land surface elevation is not finely resolved (coarse grid)
-  thus there is a significant representation mismatch between a point observation
-  and the WRF model. Assimilating surface observations with large mismatch can
-  deprecate assimilation forecast skill.
-  This check can only be applied to **surface observations** which are automatically
-  assigned to observations that use the ``VERTISSURFACE`` vertical coordinate
-  defined in the ``obs_seq.out`` file.   
-
-
-- The ``allow_obs_below_vol`` enables vertical extrapolation in cases where the 
-  observation vertical location is below the lowest WRF model vertical layer, thus
-  used as an alternative for the standard vertical interpolation routine. 
-  The bottom WRF layer can vary based on total vertical levels, however, in general,
-  descends to (roughly) 10-50 meters above the surface and does not encompass common 
-  surface observations at 2 and 10 meters. This is not recommended given
-  (linear) extrapolation is a poor approximation of surface observations  at the
-  land-atmosphere boundary where energy and vapor exchange are controlled by 
-  similarity theory. When using  surface observations it is preferred
-  (and the default of the WRF ``model_mod.f90``) to operate on the WRF 2D 
-  surface output (e.g. T2, U10) instead of WRF 3D output (e.g. T, THM) to 
-  avoid the need for extrapolation.
+The intent of the ``sfc_elev_max_diff`` quality control check is to eliminate
+surface observations that are mismatched from the WRF model's surface elevation.
+Mismatch can occur if the WRF land surface elevation is not finely resolved (coarse grid)
+thus there is a significant representation mismatch between a point observation
+and the WRF model. Assimilating surface observations with large mismatch can
+deprecate assimilation forecast skill.
+This check can only be applied to **surface observations** which are automatically
+assigned to observations that use the ``VERTISSURFACE`` vertical coordinate
+defined in the ``obs_seq.out`` file.   
 
 
-- The vortex searching namelist options are only required during WRF simulations
-  where the spatial domain of interest is dynamic such as with a hurricane.
+- allow_obs_below_vol  
+
+The ``allow_obs_below_vol`` enables vertical extrapolation in cases where the 
+observation vertical location is below the lowest WRF model vertical layer, thus
+used as an alternative for the standard vertical interpolation routine. 
+The bottom WRF layer can vary based on total vertical levels, however, in general,
+descends to (roughly) 10-50 meters above the surface and does not encompass common 
+surface observations at 2 and 10 meters. This is not recommended given
+(linear) extrapolation is a poor approximation of surface observations  at the
+land-atmosphere boundary where energy and vapor exchange are controlled by 
+similarity theory. When using  surface observations it is preferred
+(and the default of the WRF ``model_mod.f90``) to operate on the WRF 2D 
+surface output (e.g. T2, U10) instead of WRF 3D output (e.g. T, THM) to 
+avoid the need for extrapolation.
+
+
+- Vortex option
+
+The vortex searching namelist options are only required during WRF simulations
+where the spatial domain of interest is dynamic such as with a hurricane.
 
 
 

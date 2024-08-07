@@ -808,7 +808,7 @@ you would do the following:
    for the program to access the analysis domain information.
 
 Step 4: Overview of forward (observation) operators [OPTIONAL] 
----------------------------------------------------
+--------------------------------------------------------------
 
 This section is for informational purposes only and does not include any 
 instructions to complete the tutorial. It provides a description of
@@ -939,31 +939,31 @@ output field for a select number of observation types within the tutorial.
 
 
 
-+----------------------------------+-------------------------------+--------------+------------+
-|   DART Observation               | DART Observation              |  WRF Type    | WRF output |
-|   Type                           | Quantity                      |              |   field    |
-+==================================+===============================+==============+============+
-| ``METAR_TEMPERATURE_2_METER``    | ``QTY_2M_TEMPERATURE``        | ``TYPE_T2``  | ``T2``     |
-|       (VERTISSURFACE)            |                               |              |            |
-+----------------------------------+-------------------------------+--------------+------------+
-|  ``RADIOSONDE_TEMPERATURE``      | ``QTY_POTENTIAL_TEMPERATURE`` | ``TYPE_T``   | ``THM``    |
-|     (VERTISPRESSURE)             | ``QTY_VAPOR_MIXING_RATIO``    | ``TYPE_QV``  | ``QVAPOR`` |    
-|                                  | ``QTY_PRESSURE``              | ``TYPE_MU``  | ``MU``     |
-|                                  | ``QTY_GEOPOTENTIAL_HEIGHT``   | ``TYPE_GZ``  | ``PH``     |
-+----------------------------------+-------------------------------+--------------+------------+
-| ``METAR_U_10_METER_WIND``        |  ``QTY_U_WIND_COMPONENT``     | ``TYPE_U10`` | ``U10``    |
-|      (VERTISSURFACE)             |  ``QTY_V_WIND_COMPONENT``     | ``TYPE_V10`` | ``V10``    |          
-+----------------------------------+-------------------------------+--------------+------------+
-| ``ACARS_U_WIND_COMPONENT``       |  ``QTY_U_WIND_COMPONENT``     | ``TYPE_U``   | ``U``      |
-|      (VERTISPRESSURE)            |  ``QTY_V_WIND_COMPONENT``     | ``TYPE_V``   | ``V``      |
-+----------------------------------+-------------------------------+--------------+------------+
-| ``METAR_DEWPOINT_2_METER``       | ``QTY_DEWPOINT``              |              |            |
-|      (VERTISSURFACE)             | ``QTY_SPECIFIC_HUMIDITY``     | ``TYPE_Q2``  | ``Q2``     |
-|                                  | ``QTY_PRESSURE``              | ``TYPE_PS``  | ``PSFC``   |
-+----------------------------------+-------------------------------+--------------+------------+
-| ``RADIOSONDE_SPECIFIC_HUMIDITY`` | ``QTY_SPECIFIC_HUMIDITY``     | ``TYPE_QV``  | ``QVAPOR`` |
-|      (VERTISPRESSURE)            |                               |              |            |
-+----------------------------------+-------------------------------+--------------+------------+
++----------------------------------+---------+-------------------------------+--------------+------------+
+|  DART Observation Type           | Surface | DART Observation Quantity     |  WRF Type    | WRF output |
+|                                  | Obs ?   |                               |              | field      |
++==================================+=========+===============================+==============+============+
+| ``METAR_TEMPERATURE_2_METER``    | Yes     | ``QTY_2M_TEMPERATURE``        | ``TYPE_T2``  | ``T2``     |
+|                                  |         |                               |              |            |
++----------------------------------+---------+-------------------------------+--------------+------------+
+| ``RADIOSONDE_TEMPERATURE``       | No      | ``QTY_POTENTIAL_TEMPERATURE`` | ``TYPE_T``   | ``THM``    |
+|                                  |         | ``QTY_VAPOR_MIXING_RATIO``    | ``TYPE_QV``  | ``QVAPOR`` |
+|                                  |         | ``QTY_PRESSURE``              | ``TYPE_MU``  | ``MU PH``  |
+|                                  |         | ``QTY_GEOPOTENTIAL_HEIGHT``   | ``TYPE_GZ``  |            |
++----------------------------------+---------+-------------------------------+--------------+------------+
+| ``METAR_U_10_METER_WIND``        | Yes     | ``QTY_U_WIND_COMPONENT``      | ``TYPE_U10`` | ``U10``    |
+|                                  |         | ``QTY_V_WIND_COMPONENT``      | ``TYPE_V10`` | ``V10``    |    
++----------------------------------+---------+-------------------------------+--------------+------------+
+| ``ACARS_U_WIND_COMPONENT``       | No      | ``QTY_U_WIND_COMPONENT``      | ``TYPE_U``   | ``U``      |
+|                                  |         | ``QTY_V_WIND_COMPONENT``      | ``TYPE_V``   | ``V``      |
++----------------------------------+---------+-------------------------------+--------------+------------+
+| ``METAR_DEWPOINT_2_METER``       | Yes     | ``QTY_DEWPOINT``              |              |            |
+|                                  |         | ``QTY_SPECIFIC_HUMIDITY``     | ``TYPE_Q2``  | ``Q2``     |
+|                                  |         | ``QTY_PRESSURE``              | ``TYPE_PS``  | ``PSFC``   |
++----------------------------------+---------+-------------------------------+--------------+------------+
+| ``RADIOSONDE_SPECIFIC_HUMIDITY`` | No      | ``QTY_SPECIFIC_HUMIDITY``     | ``TYPE_QV``  | ``QVAPOR`` |
+|                                  |         |                               |              |            |
++----------------------------------+---------+-------------------------------+--------------+------------+
 
 
 
