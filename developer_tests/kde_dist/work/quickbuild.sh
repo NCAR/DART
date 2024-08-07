@@ -14,7 +14,7 @@ MODEL="none"
 EXTRA="$DART"/models/template/threed_model_mod.f90
 dev_test=1
 LOCATION="threed_sphere"
-TEST="test_kde_dist"
+TEST="kde_dist"
 
 serial_programs=(
 test_kde_dist
@@ -26,7 +26,10 @@ arguments "$@"
 # clean the directory
 \rm -f -- *.o *.mod Makefile .cppdefs
 
-# build 
+# build and run preprocess before making any other DART executables
+buildpreprocess
+
+# build DART
 buildit
 
 # clean up
