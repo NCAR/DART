@@ -866,12 +866,10 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
          ! I draw one random (above) then add 1/Nb to each subsequent value
          u = unif + real(count_lower, r8) / real(ens_size, r8)
          count_lower = count_lower + 1
-         write(*,*) 'lower boundary probability ', u
        elseif (bounded_above .and.  (ens(i) .ge. upper_bound)) then
          ! As above, I draw one random then add 1/Nb to each subsequent value
          u = 1._r8 - (unif + real(count_upper, r8) / real(ens_size, r8))
          count_upper = count_upper + 1
-         write(*,*) 'upper boundary probability ', u
        elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
          ! Can't use kde with only one ensemble member (or identical ensemble members), so assign a
          ! random probability
