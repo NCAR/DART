@@ -18,7 +18,7 @@ use distribution_params_mod, only : distribution_params_type, deallocate_distrib
                                     NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
                                     GAMMA_DISTRIBUTION, BETA_DISTRIBUTION,               &
                                     LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION,       &
-                                    PARTICLE_FILTER_DISTRIBUTION
+                                    PARTICLE_FILTER_DISTRIBUTION, KDE_DISTRIBUTION
 
 use normal_distribution_mod, only : normal_cdf, inv_std_normal_cdf
 
@@ -30,6 +30,9 @@ use beta_distribution_mod,  only : beta_cdf_params, inv_beta_cdf_params, &
 
 use bnrh_distribution_mod,    only : bnrh_cdf_initialized_vector, bnrh_cdf_params, &
                                      inv_bnrh_cdf_params, get_bnrh_sd
+
+use kde_distribution_mod,  only : kde_cdf_params, inv_kde_cdf_params, pack_kde_params, &
+                                  obs_dist_types, separate_ensemble
 
 implicit none
 private
@@ -183,7 +186,9 @@ elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    endif
 !----------------------------------------------------------------------------------
 
-
+elseif(p%distribution_type == KDE_DISTRIBUTION) then
+   call to_probit_kde(ens_size, state_ens, p, probit_ens, &
+      use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
 !!!elseif(p%distribution_type == PARTICLE_FILTER_DISTRIBUTION) then
    !!!call to_probit_particle(ens_size, state_ens, p, probit_ens, use_input_p, &
        !!!bounded_below, bounded_above, lower_bound, upper_bound)
@@ -446,6 +451,100 @@ end subroutine to_probit_bounded_normal_rh
 !!!
 !------------------------------------------------------------------------
 
+subroutine to_probit_kde(ens_size, state_ens, p, probit_ens, use_input_p, &
+   bounded_below, bounded_above, lower_bound, upper_bound)
+
+   ! Transforms the values in state_ens. The transform is either defined
+   ! by state_ens (when use_input_p is false), or by p%ens (when use_input_p
+   ! is true). Handles the case where ensemble members are on the boundary.
+
+   integer,                           intent(in) :: ens_size
+   real(r8),                          intent(in) :: state_ens(ens_size)
+   type(distribution_params_type), intent(inout) :: p
+   real(r8),                         intent(out) :: probit_ens(ens_size)
+   logical,                           intent(in) :: use_input_p
+   logical,                           intent(in) :: bounded_below, bounded_above
+   real(r8),                          intent(in) :: lower_bound,   upper_bound
+
+   ! local variables
+   real(r8) :: u
+   integer  :: i
+   real(r8) :: y = 0._r8         ! Dummy value, not used
+   real(r8) :: obs_param = 1._r8 ! Dummy value, not used
+   real(r8) :: ens(ens_size)     ! Ensemble that defines the transform
+   real(r8) :: ens_interior(ens_size) ! Ensemble members that are not on the boundaries
+   integer  :: ens_size_interior ! Number of ensemble members that are not on the boundaries
+   type(distribution_params_type) :: p_interior
+   real(r8) :: d(ens_size), d_max
+   real(r8) :: p_lower, p_int, p_upper
+
+   ! Get the ensemble that defines the transform
+   if(use_input_p) then
+      ens(:) = p%ens(:)
+   else
+      ! The input ensemble (state_ens) defines the transform.
+      ens(:) = state_ens(:)
+   endif
+
+   ! If all ensemble members that define the transform are identical, then we can't
+   ! really define the transform, so we simply set all probit values to 0, pack the
+   ! ensemble members into p, and return.
+   d(:) = abs( ens(:) - ens(1) )
+   d_max = maxval(d)
+   if(d_max .le. 0.0_r8) then
+      probit_ens(:) = 0._r8
+      if(.not. use_input_p) then
+         allocate(p%ens(1:ens_size))
+         p%ens(:) = ens(:)
+      endif
+      return
+   endif
+
+   ! If we reach this point then the ensemble members that define the transform are
+   ! not all identical, and if we are not using the input p then we need to define it.
+   if (.not. use_input_p) then
+      call pack_kde_params(ens_size, bounded_below, bounded_above, lower_bound, &
+         upper_bound, ens, y, obs_param, obs_dist_types%uninformative, p)
+   endif
+
+   ! Get mixture component probabilities and interior ensemble
+   call separate_ensemble(ens, ens_size, bounded_below, bounded_above, &
+      lower_bound, upper_bound, ens_interior, ens_size_interior, &
+      p_lower, p_int, p_upper)
+
+   ! Get parameters of the kde distribution for the interior
+   if (ens_size_interior .gt. 1) then
+      d(1:ens_size_interior) = abs( ens_interior(1:ens_size_interior) - ens_interior(1) )
+      d_max = maxval(d(1:ens_size_interior))
+      if (d_max .gt. 0._r8) then
+         call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, &
+            upper_bound, ens_interior(1:ens_size_interior), y, obs_param, &
+            obs_dist_types%uninformative, p_interior)
+      endif
+   else
+      d_max = 0._r8
+   endif
+   do i=1,ens_size
+      ! Map each state_ens member to a probability u using the prior cdf. Members
+      ! on the boundary map to p_lower and p_upper.
+      if (bounded_below .and. (state_ens(i) .le. lower_bound)) then
+         u = p_lower
+      elseif (bounded_above .and. (state_ens(i) .ge. upper_bound)) then
+         u = 1._r8 - p_upper
+      elseif ((ens_size_interior .le. 1) .or. (d_max .le. 0._r8)) then
+         ! Can't use kde with only one ensemble member, so assign to middle of interior range
+         u = (p_int * 0.5_r8) + p_lower
+      else ! Use the interior cdf obtained using kde.
+         u = kde_cdf_params(state_ens(i), p_interior)
+         u = (p_int * u) + p_lower
+      endif
+      ! Transform to probit/logit space
+      probit_ens(i) = probit_or_logit_transform(u)
+   end do
+
+end subroutine to_probit_kde
+
+
 subroutine transform_all_from_probit(ens_size, num_vars, probit_ens, p, state_ens)
 
 integer, intent(in)                  :: ens_size
@@ -493,6 +592,8 @@ elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    call from_probit_bounded_normal_rh(ens_size, probit_ens, p, state_ens)
 !!!elseif(p%distribution_type == PARTICLE_FILTER_DISTRIBUTION) then
    !!!call from_probit_particle(ens_size, probit_ens, p, state_ens)
+elseif(p%distribution_type == KDE_DISTRIBUTION) then
+   call from_probit_kde(ens_size, probit_ens, p, state_ens)
 else
    write(errstring, *) 'Illegal distribution type', p%distribution_type
    call error_handler(E_ERR, 'transform_from_probit', errstring, source)
@@ -640,6 +741,81 @@ end subroutine from_probit_bounded_normal_rh
 !!!deallocate(p%more_params)
 !!!
 !!!end subroutine from_probit_particle
+
+!------------------------------------------------------------------------
+
+subroutine from_probit_kde(ens_size, probit_ens, p, state_ens)
+
+   ! Handles the case where ensemble members are on the boundary.
+
+   integer,                           intent(in) :: ens_size
+   real(r8),                          intent(in) :: probit_ens(ens_size)
+   type(distribution_params_type), intent(inout) :: p
+   real(r8),                         intent(out) :: state_ens(ens_size)
+
+   ! local variables
+   integer :: i
+   real(r8) :: u
+   real(r8) :: ens(ens_size)     ! Ensemble that defines the transform
+   real(r8) :: ens_interior(ens_size) ! Ensemble members that are not on the boundaries
+   integer  :: ens_size_interior ! Number of ensemble members that are not on the boundaries
+   type(distribution_params_type) :: p_interior
+   real(r8) :: p_lower, p_int, p_upper
+   real(r8) :: y, obs_param
+   real(r8) :: d(ens_size), d_max
+
+   ! The ensemble that defines the transform is contained in p, so unpack it
+   ens(:) = p%ens(:)
+
+   ! If all ensemble members are identical, then there is no update
+   d(:) = abs( ens(:) - ens(1) )
+   d_max = maxval(d)
+   if(d_max .le. 0.0_r8) then
+      state_ens(:) = ens(1)
+      return
+   endif
+   ! Get mixture components on the boundaries and interior ensemble
+   call separate_ensemble(ens, ens_size, p%bounded_below, p%bounded_above, &
+      p%lower_bound, p%upper_bound, ens_interior, ens_size_interior, &
+      p_lower, p_int, p_upper)
+
+   ! Get parameters of the kde distribution for the interior
+   if (ens_size_interior .gt. 1) then
+      d(1:ens_size_interior) = abs( ens_interior(1:ens_size_interior) - ens_interior(1) )
+      d_max = maxval(d(1:ens_size_interior))
+      if (d_max .gt. 0._r8) then
+         ! Unpack obs info from param struct
+         y         = p%more_params(p%ens_size + 2)
+         obs_param = p%more_params(p%ens_size + 3)
+         call pack_kde_params(ens_size_interior, p%bounded_below, p%bounded_above, p%lower_bound, &
+            p%upper_bound, ens_interior(1:ens_size_interior), y, obs_param, &
+            obs_dist_types%uninformative, p_interior)
+      endif
+   else
+      d_max = 0._r8
+   endif
+
+   ! Transform each probit ensemble member back to physical space
+   do i = 1, ens_size
+      ! First, invert the probit/logit to get probabilities u
+      u = inv_probit_or_logit_transform(probit_ens(i))
+      ! Next invert the mixture CDF to get the physical space ensemble
+      if (p%bounded_below .and. (u .le. p_lower)) then
+         state_ens(i) = p%lower_bound
+      elseif (p%bounded_above .and. (u .ge. 1._r8-p_upper)) then
+         state_ens(i) = p%upper_bound
+      elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
+         ! If there is only one interior ensemble member in the prior then any
+         ! ensemble member that moves into the interior just gets mapped to the
+         ! one interior value from the prior.
+         state_ens(i) = ens_interior(1)
+      else
+         u = (u - p_lower) / p_int
+         state_ens(i) = inv_kde_cdf_params(u, p_interior)
+      endif
+   end do
+
+end subroutine from_probit_kde
 
 !------------------------------------------------------------------------
 

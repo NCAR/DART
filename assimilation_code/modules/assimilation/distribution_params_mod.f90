@@ -25,10 +25,12 @@ integer, parameter :: BETA_DISTRIBUTION              = 4
 integer, parameter :: LOG_NORMAL_DISTRIBUTION        = 5
 integer, parameter :: UNIFORM_DISTRIBUTION           = 6
 integer, parameter :: PARTICLE_FILTER_DISTRIBUTION   = 7
+integer, parameter :: KDE_DISTRIBUTION               = 8
 
 public :: distribution_params_type, deallocate_distribution_params, &
    NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, &
-      LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION, PARTICLE_FILTER_DISTRIBUTION
+      LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION, PARTICLE_FILTER_DISTRIBUTION, &
+      KDE_DISTRIBUTION
 
 contains
 
