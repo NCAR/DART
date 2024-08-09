@@ -41,13 +41,6 @@ running a WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/m
 WRF Interface Overview
 ----------------------
 
-- The WRF ``model_mod.f90`` file reads WRF netCDF files directly to acquire the model state
-  data. Earlier versions required ``wrf_to_dart`` and ``dart_to_wrf`` programs which
-  are no longer necessary.
-- A WRF file named ``wrfinput_d01`` is required and must be at the same
-  resolution and have the same surface elevation data as the files converted to
-  create the initial conditions. 
-
 The model interface code supports WRF configurations with multiple domains. Data
 for all domains is read into the DART state vector. During the computation of
 the forward operators (getting the estimated observation values from each
@@ -124,7 +117,7 @@ Namelist Description:
 | Item                          | Type              | Description                           |
 +===============================+===================+=======================================+
 | default_state_variables       | logical           | If *.true.*, the dart state vector    |
-|                               |                   | contains the fields U, V, W, PH, T,   |
+|                               |                   | contains the fields U, V, W, PH, THM, |
 |                               |                   | MU, in that order, and only those.    |
 |                               |                   | Any values listed in the              |
 |                               |                   | *wrf_state_variables* namelist item   |
@@ -146,9 +139,9 @@ Namelist Description:
 |                               |                   | #. WRF Type - supplements the quantity|
 |                               |                   |    name to control the operation of   |
 |                               |                   |    forward operator.                  |
-|                               |                   | #. The string UPDATE. At some future  |
-|                               |                   |    point, non-updatable fields may    |
-|                               |                   |    become part of the state vector.   |
+|                               |                   | #. The string UPDATE or NO_COPY_BACK  |
+|                               |                   |    Determines whether WRF state       |
+|                               |                   |    is updated by DART                 |
 |                               |                   | #. A numeric string listing the       |
 |                               |                   |    domain(s) that include the WRF     |
 |                               |                   |    state variable.                    |
@@ -175,12 +168,10 @@ Namelist Description:
 |                               |                   |    '0.1') Can be 'NULL' to allow any  |
 |                               |                   |    maximum value.                     |
 |                               |                   | #. Action -- valid strings are        |
-|                               |                   |    'CLAMP' or 'FAIL'. 'FAIL' means if |
-|                               |                   |    value is found outside the range,  |
-|                               |                   |    the code fails with an error.      |
-|                               |                   |    'CLAMP' sets the out of            |
-|                               |                   |    range value to the minimum         |
-|                               |                   |    or maximum value.                  |
+|                               |                   |    'CLAMP' or 'FAIL'. 'FAIL' ignores  |
+|                               |                   |    the bounds whereas 'CLAMP' sets    |
+|                               |                   |    the out of range value to the      |
+|                               |                   |    minimum or maximum value.          |
 +-------------------------------+-------------------+---------------------------------------+
 | num_domains                   | integer           | Total number of WRF domains,          |
 |                               |                   | including nested domains.             |
@@ -315,9 +306,6 @@ Additional Namelist Information
 
 - default_state_variables
 
-If ``default_state_variables`` is .true. the ``model_mod.f90`` code will
-fill the state variable table with the following WRF variables:
-U, V, W, PH, T, MU
 You must set ``default_state_variables = .false.`` before changing the value
 of ``wrf_state_variables`` to have it take effect.
 
@@ -325,7 +313,7 @@ of ``wrf_state_variables`` to have it take effect.
 - wrf_state_variables  
 
 The format for ``wrf_state_variables`` is an array of 5 strings:
-WRF output field, DART Quantity, WRF TYPE, 'UPDATE', and a numerical
+WRF output field, DART Quantity, WRF TYPE, 'UPDATE' or 'NO_COPY_BACK', and a numerical
 string 'XXX'. If XXX=999 the variable is part of all domains, otherwise it is limited
 to specific domains (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
 For example:
@@ -347,17 +335,6 @@ For example:
                            'TH2','QTY_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
                            'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
                            'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
-
-
-- wrf_state_bounds
-
-The format for ``wrf_state_bounds`` is an array of 4 strings:
-WRF output field, minimum value, maximum value, and either
-FAIL or CLAMP.  *FAIL* will halt the program if an out of range value
-is detected.  *CLAMP* will set the out of range values to the min or max.
-The special string *NULL* will map to plus or minus infinity and will
-not change the values.  Arrays not listed in this table will not
-be changed as they are read or written.
 
 
 - polar, periodic_x

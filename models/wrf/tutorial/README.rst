@@ -816,9 +816,7 @@ the DART settings that control the forward operator which
 calculates the prior and posterior model estimates for the observations. 
 An introduction to important namelist variables that control the operation of the forward
 operator are located in the `WRF namelist documentation. 
-<https://docs.dart.ucar.edu/en/latest/models/wrf/readme.html#namelist>`__
-
-
+<../../../models/wrf/readme.html#namelist>`__
 
 
 The ``obs_seq.out`` file generated as described in Step 3 includes a total
@@ -855,7 +853,7 @@ on a single temperature observation to describe the process:
 
 
 A critical piece of observation metadata includes the observation type 
-(``METAR_TEMPERATURE_2_METER``) which is linked to the observation quantity
+(``METAR_TEMPERATURE_2_METER``) which is linked to the quantity
 (``QTY_2M_TEMPERATURE``) through the observation definition file 
 (``obs_def_metar_mod.f90``). This file is included within the 
 ``&preprocess_nml`` section of the namelist file as:
@@ -878,8 +876,7 @@ A critical piece of observation metadata includes the observation type
      ..     
 
 During the DART compilation described  within Step 1 this information is 
-included within the ``obs_def_mod.f90`` which is read during the execution of
-``filter``.
+included within the ``obs_def_mod.f90``.
 
 The vertical coordinate type is the 4th column beneath the loc3d header within ``obs_seq.out``.
 In this example the value -1 indicates the vertical coordinate is ``VERTISSURFACE``. It defines the
@@ -894,7 +891,7 @@ observations. All other coordinates are considered non-surface observations
 only the ``VERTISSURFACE`` is a surface observation.
 
 For more information on the vertical coordinate metadata see the detailed structure of
-an `obs_seq file. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__
+an `obs_seq file. <../../../guide/creating-obs-seq-real.html#observation-location>`__ 
 
 In order to connect this observation to the appropriate WRF output variables
 the ``wrf_state_variables`` within ``&model_nml`` defines the *WRF field name* and
@@ -909,17 +906,17 @@ the *WRF TYPE* in the 1st and 3rd columns as shown in the tutorial example below
  .. 
 
 For more information on the ``&model_nml`` variables see the `WRF documentation page 
-<https://docs.dart.ucar.edu/en/latest/models/wrf/readme.html#namelist>`__
+<../../../models/wrf/readme.html#namelist>`__
 
 
 As described above, the linkage between the observation type and the WRF output field 
-is defined through the observation quantity, surface variable (observation
+is defined through the physical quantity, surface variable designation (observation
 vertical coordinate), and WRF TYPE.  The current design of the WRF ``model_mod.f90``
-is such that the observation quantity is a general classification (e.g. temperature, wind
+is such that the quantity is a general classification (e.g. temperature, wind
 specific humidity), whereas the WRF TYPE classification is more precisely
-mapped to the WRF output field. Future DART versions may remove the need for the WRF TYPE.  
-The table below summarizes the dependency between the observation type and the WRF
-output field for a select number of observation types within the tutorial.
+mapped to the WRF output field. The table below summarizes the dependency between 
+the observation type and the WRF output field for a select number of observation types 
+within the tutorial.
 
 .. Note::
 
@@ -940,7 +937,7 @@ output field for a select number of observation types within the tutorial.
 
 
 +----------------------------------+---------+-------------------------------+--------------+------------+
-|  DART Observation Type           | Surface | DART Observation Quantity     |  WRF Type    | WRF output |
+|  DART Observation Type           | Surface |       DART Quantity           |  WRF Type    | WRF output |
 |                                  | Obs ?   |                               |              | field      |
 +==================================+=========+===============================+==============+============+
 | ``METAR_TEMPERATURE_2_METER``    | Yes     | ``QTY_2M_TEMPERATURE``        | ``TYPE_T2``  | ``T2``     |
@@ -1434,7 +1431,7 @@ quite high (>90%). This high acceptance percentage is typical of a high-quality
 assimilation and consistent with the strong reduction in RMSE.
 
 
-The same plot as above is given below excerpt for the observation type: 
+The same plot as above except for the observation type: 
 ``RADIOSONE_SPECIFIC_HUMIDITY``.
 
 +-------------------------------------------------------------+

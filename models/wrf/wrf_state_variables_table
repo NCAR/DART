@@ -9,8 +9,8 @@ that should be added to the DART input.nml namelist &model_nml,
 'wrf_state_variables' list.  All items must be strings.  The 5 columns are:
 exact variable name in WRF output file, DART Quantity , a WRF Type,
 a flag to determine whether the variable is updated during the analysis 
-(currently only 'UPDATE' is supported), and a flag to identify 
-which domains include this variable, where '999' means all domains.
+('UPDATE' 'NO_COPY_BACK'), and a flag to identify which domains include
+ this variable, where '999' means all domains.
 
 
 Horizontal Winds:
@@ -20,7 +20,7 @@ Horizontal Winds:
    'V10', 'QTY_V_WIND_COMPONENT', 'TYPE_V10', 'UPDATE', '999',
 
 Sensible Temperature:
-   'T', 'QTY_TEMPERATURE', 'TYPE_T', 'UPDATE', '999',
+   'THM', 'QTY_TEMPERATURE', 'TYPE_T', 'UPDATE', '999',
    'T2', 'QTY_TEMPERATURE', 'TYPE_T2', 'UPDATE', '999',
 
 Potential Temperature:
