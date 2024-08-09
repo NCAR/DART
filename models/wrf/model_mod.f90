@@ -1648,86 +1648,96 @@ else
 
    elseif ( obs_kind == QTY_TEMPERATURE ) then
       ! This is for 3D temperature field -- surface temps later
-      !print*, 'k ', k
+      if(.not. surf_var) then
 
-      if ( wrf%dom(id)%type_t >= 0 ) then
+        if ( wrf%dom(id)%type_t >= 0 ) then
 
-         do uk = 1, count ! for the different ks
+           do uk = 1, count ! for the different ks
 
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+              ! Check to make sure retrieved integer gridpoints are in valid range
+              if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                   boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+                   boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
 
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
+                 call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+                 if ( rc .ne. 0 ) &
+                      print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
             
-               ! Interpolation for T field at level k
-               ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-               iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-               ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-               iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 ! Interpolation for T field at level k
+                 ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
 
-               x_iul = get_state(iul, state_handle)
-               x_ill = get_state(ill, state_handle)
-               x_ilr = get_state(ilr, state_handle)
-               x_iur = get_state(iur, state_handle)
+                 x_iul = get_state(iul, state_handle)
+                 x_ill = get_state(ill, state_handle)
+                 x_ilr = get_state(ilr, state_handle)
+                 x_iur = get_state(iur, state_handle)
 
-               ! In terms of perturbation potential temperature
-               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+                 ! In terms of perturbation potential temperature
+                 a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
-               pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk), id, state_handle, ens_size)
-               pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk), id, state_handle, ens_size)
-               pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk), id, state_handle, ens_size)
-               pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk), id, state_handle, ens_size)
+                 pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk), id, state_handle, ens_size)
+                 pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk), id, state_handle, ens_size)
+                 pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk), id, state_handle, ens_size)
+                 pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk), id, state_handle, ens_size)
 
-               ! Pressure at location
-               pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+                 ! Pressure at location
+                 pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                     ! Full sensible temperature field
-                     fld(1, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
-                  endif
-               enddo
+                 do e = 1, ens_size
+                    if ( k(e) == uniquek(uk) ) then
+                       ! Full sensible temperature field
+                       fld(1, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
+                    endif
+                 enddo
 
-               ! Interpolation for T field at level k+1
-               ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-               iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-               ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-               iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 ! Interpolation for T field at level k+1
+                 ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
 
-               x_ill = get_state(ill, state_handle)
-               x_iul = get_state(iul, state_handle)
-               x_iur = get_state(iur, state_handle)
-               x_ilr = get_state(ilr, state_handle)
+                 x_ill = get_state(ill, state_handle)
+                 x_iul = get_state(iul, state_handle)
+                 x_iur = get_state(iur, state_handle)
+                 x_ilr = get_state(ilr, state_handle)
 
-               ! In terms of perturbation potential temperature
-               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+                 ! In terms of perturbation potential temperature
+                 a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
-               pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk)+1, id, state_handle, ens_size)
-               pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk)+1, id, state_handle, ens_size)
-               pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk)+1, id, state_handle, ens_size)
-               pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk)+1, id, state_handle, ens_size)
 
-               ! Pressure at location
-               pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+                 ! Pressure at location
+                 pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                  ! Full sensible temperature field
-                  fld(2, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
-                  endif
-               enddo
-            endif
-         enddo
+                 do e = 1, ens_size
+                    if ( k(e) == uniquek(uk) ) then
+                    ! Full sensible temperature field
+                    fld(2, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
+                    endif
+                 enddo
+              endif
+           enddo
+        endif
       else
-         fld = missing_r8
-      end if
+
+      ! This is for surface temperature (T2)
+        if ( wrf%dom(id)%type_t2 >= 0 ) then
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_handle)
+            if (all(fld == missing_r8)) goto 200
+        else
+          call error_handler(E_MSG, 'model_mod section 1.b Sensible Temperature:', &
+         'WARNING: Surface temperature variable not found in &model_nml')
+          fld = missing_r8     
+        end if
+      end if  
    elseif (obs_kind == QTY_2M_TEMPERATURE) then
       ! This is for 2-meter temperature
-      if ( wrf%dom(id)%type_t2 >= 0 ) then ! HK is there a better way to do this?
+      if ( wrf%dom(id)%type_t2 >= 0 ) then 
          call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_handle)
          if (all(fld == missing_r8)) goto 200
       else
@@ -1801,7 +1811,7 @@ else
             call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_th2, dxm, dx, dy, dym, ens_size, state_handle)
             if (all(fld == missing_r8)) goto 200
    
-            endif
+         endif
       endif
 
    !-----------------------------------------------------
