@@ -19,7 +19,7 @@ use location_mod,          only : location_type, set_location, get_location,  &
                                   get_close_obs, get_close_state,             &
                                   convert_vertical_obs, convert_vertical_state
 
-use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    &
+use utilities_mod,         only : do_nml_file, do_nml_term,    &
                                   nmlfileunit, find_namelist_in_file,           &
                                   check_namelist_read
 
@@ -283,9 +283,6 @@ end subroutine get_state_meta_data
 subroutine initialize()
 
 integer :: iunit, io
-
-! Print module information
-call register_module(source)
 
 ! Read the namelist 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
