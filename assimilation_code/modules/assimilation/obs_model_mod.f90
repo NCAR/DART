@@ -157,6 +157,9 @@ call get_ensemble_time(ens_handle, 1, ens_time)
 
 ! Compute the model time step and center a window around the closest time
 delta_time = get_model_time_step()
+if (delta_time <= set_time(0,0)) then
+   call error_handler(E_ERR, 'move_ahead', 'shortest_time_between_assimilations must be > 0', source)
+endif
 
 ! print out current window, if requested
 if (print_trace_details > 0) then
