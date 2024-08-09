@@ -2,7 +2,7 @@
 name: Bug report
 about: Report a problem with DART 
 title: 'bug: '
-labels: bug
+labels: 'bug'
 assignees: ''
 
 ---
