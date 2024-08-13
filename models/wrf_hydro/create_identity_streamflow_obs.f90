@@ -18,7 +18,7 @@ use         types_mod, only : r8, missing_r8, i8
 
 use      location_mod, only : VERTISHEIGHT, location_type, get_location
 
-use     utilities_mod, only : nc_check, nmlfileunit, do_nml_file, do_nml_term, &
+use     utilities_mod, only : nmlfileunit, do_nml_file, do_nml_term, &
                               initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read, &
                               error_handler, E_ERR, E_MSG, &
@@ -47,7 +47,7 @@ use         model_mod, only : static_init_model, get_state_meta_data, &
                               get_number_of_links
 
 use          sort_mod, only : index_sort
-
+use    netcdf_utilities_mod, only : nc_check
 use netcdf
 
 implicit none
@@ -66,7 +66,7 @@ character(len=512) :: string1, string2, string3 ! strings for messages
 integer,  parameter :: NUM_COPIES      = 1      ! number of copies in sequence
 integer,  parameter :: NUM_QC          = 1      ! number of QC entries
 real(r8), parameter :: MIN_OBS_ERR_STD = 0.1_r8 ! m^3/sec
-real(r8), parameter :: MAX_OBS_ERR_STD = 100000.0_r8 
+real(r8), parameter :: MAX_OBS_ERR_STD = 1000000.0_r8 
 real(r8), parameter :: NORMAL_FLOW     = 10.0_r8
 real(r8), parameter :: contract        = 0.001_r8
 
@@ -104,7 +104,7 @@ integer,                        allocatable :: discharge_quality(:)
 real(r8),                       allocatable :: discharge(:)
 
 character(len=IDLength),        allocatable :: desired_gages(:)
-integer         :: n_wanted_gages
+integer         :: n_wanted_gages, n_desired_gages
 real(r8)        :: oerr, qc
 integer         :: oday, osec
 type(obs_type)  :: obs
@@ -127,6 +127,7 @@ character(len=256) :: output_file     = 'obs_seq.out'
 character(len=256) :: location_file   = 'location.nc'
 character(len=256) :: gages_list_file = ''
 real(r8)           :: obs_fraction_for_error = 0.01
+logical            :: assimilate_all  = .false. 
 integer            :: debug = 0
 
 namelist / create_identity_streamflow_obs_nml / &
@@ -135,6 +136,7 @@ namelist / create_identity_streamflow_obs_nml / &
                location_file, &
                gages_list_file, &
                obs_fraction_for_error, &
+               assimilate_all, &
                debug
 
 !-------------------------------------------------------------------------------
@@ -209,7 +211,12 @@ call static_init_obs_sequence()
 call init_obs(obs,      num_copies=NUM_COPIES, num_qc=NUM_QC)
 call init_obs(prev_obs, num_copies=NUM_COPIES, num_qc=NUM_QC)
 
-n_wanted_gages = set_desired_gages(gages_list_file)
+! Collect all the gauges: 
+! - desired ones will have the provided obs_err_sd
+! - remaining gauges are dummy with very large obs_err_sd
+
+n_desired_gages = set_desired_gages(gages_list_file)
+n_wanted_gages  = 0 !set_desired_gages(gages_list_file)
 call find_textfile_dims(input_files, nfiles)
 
 num_new_obs = estimate_total_obs_count(input_files, nfiles)
@@ -308,7 +315,8 @@ FILELOOP : do ifile=1,nfiles
 
    OBSLOOP: do n = 1, nobs
 
-      if ( discharge(n) < 0.0_r8 ) cycle OBSLOOP
+      ! make sure discharge is physical 
+      if ( discharge(n) < 0.0_r8 .or. discharge(n) /= discharge(n) ) cycle OBSLOOP
 
       ! relate the TimeSlice:station to the RouteLink:gage so we can
       ! determine the location
@@ -318,13 +326,13 @@ FILELOOP : do ifile=1,nfiles
       ! relate the physical location to the dart state vector index
       dart_index = linkloc_to_dart(lat(indx), lon(indx))
 
-      ! oerr is the observation error standard deviation in this application.
-      ! The observation error variance encoded in the observation file
-      ! will be oerr*oerr
-      oerr = max(discharge(n)*obs_fraction_for_error, MIN_OBS_ERR_STD)
-
-      ! MEG: A fix to not crush the ensemble in a no-flood period (stagnant water).  
-      !if ( discharge(n) < NORMAL_FLOW ) then 
+      ! desired gauges get the provided obs_err
+      ! remaining ones are for verification purposes
+      if (ANY(desired_gages == station_strings(n)) .or. assimilate_all) then  
+        oerr = max(discharge(n)*obs_fraction_for_error, MIN_OBS_ERR_STD)
+      else 
+        oerr = MAX_OBS_ERR_STD
+      endif
          ! don't correct that much, the gauge observations imply that the flow 
          ! in the stream is small. This is not a flood period. Streamflow values
          ! indicate a more or less lake situation rather than a strongly flowing stream. 
@@ -660,9 +668,9 @@ call nc_check(io, routine, 'closing file "'//trim(input_file)//'"' )
 
 ! We need to know how many observations there may be.
 ! Specifying too many is not really a problem.
-! I am adding 20%
+! I am multiplying by 10.
 
-num_obs = 1.2_r8 * nobs * nfiles
+num_obs = 10.0_r8 * nobs * nfiles
 
 end function estimate_total_obs_count
 

@@ -10,7 +10,6 @@
 % * plot_ens_time_series.m	time series of ensemble members, mean and truth
 % * plot_phase_space.m		trajectory of 3 state variables of a single ensemble member
 % * plot_sawtooth.m		time series of a state variable including updates
-% * plot_smoother_err.m		global error and spread using the smoother
 % * plot_total_err.m		plots of global error and spread of ensemble mean
 % * plot_var_var_correl.m	correlation of a vrbl at a time and another vrbl at all times
 %

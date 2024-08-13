@@ -17,13 +17,13 @@ programs=(
 filter
 model_mod_check
 perfect_model_obs
-perturb_single_instance
 )
 
 serial_programs=(
 advance_time
 create_fixed_network_seq
 create_obs_sequence
+fill_inflation_restart
 obs_diag
 obs_seq_to_netcdf
 obs_sequence_tool

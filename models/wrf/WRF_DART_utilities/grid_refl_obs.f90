@@ -48,7 +48,6 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
 use    utilities_mod, only : error_handler, E_ERR, E_MSG, file_exist, &
                              initialize_utilities, finalize_utilities
 use    netcdf
-use    f2kcli
 
 implicit none
 
@@ -111,14 +110,14 @@ integer               :: i, j, k, o
 integer :: var_id, ncid, ierr
 character(len=80) :: varname
 
-! f2kcli stuff
+! command-line parameters stuff
 integer :: status, length
 character(len=120) :: string
 
 
 call initialize_utilities('grid_refl_obs')
 
-! Get command-line parameters, using the F2KCLI interface.  See f2kcli.f90 for details.
+! Get command-line parameters, using the fortran 2003 intrinsics.
 
 if( COMMAND_ARGUMENT_COUNT() .ne. 7 ) then
   print*, 'INCORRECT # OF ARGUMENTS ON COMMAND LINE:  ', COMMAND_ARGUMENT_COUNT()

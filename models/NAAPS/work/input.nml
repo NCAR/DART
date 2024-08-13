@@ -1,5 +1,11 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &assim_tools_nml
-   filter_kind                     = 1
    cutoff                          = 0.03
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
@@ -121,13 +127,6 @@
    perturbation_amplitude  = 0.2
   /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'ics'
-   restart_out_file_name = 'restart'
-  /
 
 &filter_nml
    async                    = 0

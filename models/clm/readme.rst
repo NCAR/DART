@@ -9,7 +9,7 @@ Overview
 
 This is the DART interface to the 
 `CESM2 Community Land Model. <https://www.cesm.ucar.edu/models/cesm2/land/>`__
-Specifically, CESM **release-cesm2.2.0** using CLM **release-cesm2.2.01**
+Specifically, CESM **release-cesm2.2.0** using CTSM **release-cesm2.2.03**
 
 This document is most useful if the user has a prior understanding of running CESM
 and also running CLM-DART.  For this reason **we strongly recommend the following
@@ -41,7 +41,7 @@ changes to the CLM source code that are useful in a data assimilation context.
 CLM is a rapidly-moving target and DART is developed and maintained by a small
 group of people. Consequently, we have focused on supporting *released* versions
 of CLM. This documentation and scripting were tested using the CESM 
-tag **release-cesm2.2.0** and CLM tag **release-cesm2.2.01** following the download
+tag **release-cesm2.2.0** and CTSM tag **release-cesm2.2.03** following the download
 instructions from https://github.com/ESCOMP/CESM .
 
 CLM-DART has been used to assimilate snow data, soil moisture, leaf area index, 
@@ -65,10 +65,10 @@ SourceMods
 ~~~~~~~~~~
 
 While we strive to keep DART requirements out of the model code, there are a few 
-SourceMods needed to run DART for CLM from within CESM. Appropriate SourceMods 
-for each CESM version are available as tar files at 
-http://www.image.ucar.edu/pub/DART/CESM
-They will create a directory with the appropriate SourceMods structure. 
+SourceMods needed to run DART for CLM from within CESM. 
+DART SourceMods for different versions of CESM are available as
+part of the DART package at ${dartroot}/models/clm/DART_SourceMods/ 
+where dartroot is the location of your DART installation.
 It is up to you to either use them 'as is' or put them under version control 
 in your CESM source code installation. The DART scripting allows you to specify
 a directory containing the SourceMods - and then copies those SourceMods to
@@ -495,7 +495,7 @@ Inflation has been shown to be quite useful in our experience of
 DA with CLM and DART. The model is strongly influenced by the
 atmospheric forcing and will cause the CLM ensemble to
 relax to a state consistent with the forcing when the assimilation
-stops. [5]_ Depending on the forecast length between assimilations, and 
+stops. Depending on the forecast length between assimilations, and 
 sometimes just to restore the variance lost during an assimilation, 
 inflation should be used.
 
@@ -744,49 +744,49 @@ References
 
 The 
 `CTSM Documentation <https://escomp.github.io/ctsm-docs/versions/master/html/index.html>`__
-is THE reference for CLM.
+is THE reference for CLM. Below are a list of CLM-DART scientific publications:
 
-.. [1] Zhang, Y.-F., T. J. Hoar, Z.-L. Yang, J. L. Anderson, A. M. Toure and M. Rodell, 2014:
+       Zhang, Y.-F., T. J. Hoar, Z.-L. Yang, J. L. Anderson, A. M. Toure and M. Rodell, 2014:
        Assimilation of MODIS snow cover through the Data Assimilation Research Testbed 
        and the Community Land Model version 4.
        *Journal of Geophysical Research: Atmospheres*, **142** 1489-1508, 
        `doi:10.1002/2013JD021329 <https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013JD021329>`__
 
-.. [2] Lin, P., J. Wei, Z. -L. Yang, Y. Zhang, K. Zhang, 2016:
+       Lin, P., J. Wei, Z. -L. Yang, Y. Zhang, K. Zhang, 2016:
        Snow data assimilation‐constrained land initialization improves seasonal 
        temperature prediction.
        *Geophysical Research Letters* **43** (21), 11,423-11,432
        `doi:10.1002/2016GL070966 <https://doi.org/10.1002/2016GL070966>`__
 
-.. [3] Zhao, L., Z. -L. Yang and T. J. Hoar, 2016:
+       Zhao, L., Z. -L. Yang and T. J. Hoar, 2016:
        Global soil moisture estimation by assimilating AMSR-E brightness temperatures 
        in a coupled CLM4-RTM-DART system.
        *Journal of Hydrometeorology*, **17**, 2431-2454, 
        `doi:10.1175/JHM-D-15-0218.1 <https://doi.org/10.1175/JHM-D-15-0218.1>`__
 
-.. [4] Kwon, Y., Z. -L. Yang, T. J. Hoar and A. M. Toure, 2017:
+       Kwon, Y., Z. -L. Yang, T. J. Hoar and A. M. Toure, 2017:
        Improving the radiance assimilation performance in estimating snow water storage across 
        snow and land-cover types in North America.
        *Journal of Hydrometeorology*, **18**, 651-668, 
        `doi:10.1175/JHM-D-16-0102.1 <https://doi.org/10.1175/JHM-D-16-0102.1>`__
 
-.. [5]  Fox, A. M., Hoar, T. J., Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al., 2018:
+       Fox, A. M., Hoar, T. J., Anderson, J. L., Arellano, A. F., Smith, W. K., Litvak, M. E., et al., 2018:
        Evaluation of a data assimilation system for land surface models using CLM4.5.
        *Journal of Advances in Modeling Earth Systems*, **10**, 2471–2494, 
        `doi.org/10.1029/2018MS001362 <https://doi.org/10.1029/2018MS001362>`__
 
-.. [6] Ling, X. L., Fu, C. B., Yang, Z. L., & Guo, W. D., 2019:
+       Ling, X. L., Fu, C. B., Yang, Z. L., & Guo, W. D., 2019:
        Comparison of different sequential assimilation algorithms for satellite-derived leaf area 
        index using the Data Assimilation Research Testbed (version Lanai).
        *Geoscientific Model Development*, 12(7), 3119-3133. 
        `doi.org/10.5194/gmd-12-3119-2019 <https://doi.org/10.5194/gmd-12-3119-2019>`__
 
-.. [7] Bian, Q., Xu, Z., Zhao, L., Zhang, Y. F., Zheng, H., Shi, C., … & Yang, Z. L., 2019:
+       Bian, Q., Xu, Z., Zhao, L., Zhang, Y. F., Zheng, H., Shi, C., … & Yang, Z. L., 2019:
        Evaluation and intercomparison of multiple snow water equivalent products over the Tibetan Plateau.
        *Journal of Hydrometeorology*, 20(10), 2043-2055. 
        `doi.org/10.1175/JHM-D-19-0011.1 <https://doi.org/10.1175/JHM-D-19-0011.1>`__
 
-.. [8] Raczka, B., Hoar T.J., Duarte H.F., Fox A.M., Anderson J.L., Bowling D.R., & Lin J.C., 2021
+       Raczka, B., Hoar T.J., Duarte H.F., Fox A.M., Anderson J.L., Bowling D.R., & Lin J.C., 2021
        Improving CLM5.0 Biomass and Carbon Exchange across the Western US Using a Data Assimilation System.
        *Journal of Advances in Modeling Earth Systems*, `doi.org/10.1029/2020MS002421 <https://doi.org/10.1029/2020MS002421>`__
 

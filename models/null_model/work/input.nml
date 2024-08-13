@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
    single_file_in             = .true.
@@ -97,7 +104,6 @@
    /
 
 &assim_tools_nml
-   filter_kind                     = 1,
    cutoff                          = 1000000.0,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
@@ -180,8 +186,6 @@
    verbose               = .false.
    /
 
-&smoother_nml
-   /
 
 &state_vector_io_nml
    /

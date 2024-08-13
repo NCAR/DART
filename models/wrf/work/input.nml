@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
@@ -41,8 +48,8 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 32,
+   num_output_state_members = 3,
+   num_output_obs_members   = 3,
    output_interval          = 1,
    num_groups               = 1,
    distributed_state        = .true.
@@ -89,13 +96,6 @@
    verbose           = .false.
    /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart',
-   /
 
 # cutoff is in radians; for the earth, 0.05 is about 300 km.
 # cutoff is defined to be the half-width of the localization radius,
@@ -103,7 +103,6 @@
 # localization radius, where the influence of an obs decreases
 # to ~half at 300 km, and ~0 at the edges of the area.
 &assim_tools_nml
-   filter_kind                     = 1,
    cutoff                          = 0.05,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
@@ -206,7 +205,7 @@
                          'V',     'QTY_V_WIND_COMPONENT',     'TYPE_V',    'UPDATE','999',
                          'W',     'QTY_VERTICAL_VELOCITY',    'TYPE_W',    'UPDATE','999',
                          'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'TYPE_GZ',   'UPDATE','999',
-                         'T',     'QTY_POTENTIAL_TEMPERATURE','TYPE_T',    'UPDATE','999',
+                         'THM',     'QTY_POTENTIAL_TEMPERATURE','TYPE_T',    'UPDATE','999',
                          'MU',    'QTY_PRESSURE',             'TYPE_MU',   'UPDATE','999',
                          'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'TYPE_QV',   'UPDATE','999',
                          'PSFC',  'QTY_SURFACE_PRESSURE',     'TYPE_PSFC', 'UPDATE','999',

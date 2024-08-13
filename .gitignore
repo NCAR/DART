@@ -1,3 +1,5 @@
+*.a
+*.so
 *.mod
 *.o
 *.swp
@@ -89,6 +91,9 @@ gitm_blocks_to_netcdf
 gitm_to_netcdf
 netcdf_to_gitm_blocks
 streamflow_obs_diag
+cam_dart_obs_preprocessor
+aether_to_dart
+dart_to_aether
 
 # Observation converter exectutables
 convert_aviso
@@ -157,6 +162,10 @@ ssec_satwnd
 gts_to_dart
 littler_tf_dart
 rad_3dvar_to_dart
+L1_AMSUA_to_netcdf
+convert_airs_L2
+convert_amsu_L1
+convert_L2b
 
 # Test programs built by developer_tests
 rttov_test
@@ -188,6 +197,8 @@ stacktest
 obs_rwtest
 test_quad_irreg_interp
 test_quad_reg_interp
+test_table_read
+test_ran_unif
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

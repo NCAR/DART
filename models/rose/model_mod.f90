@@ -25,10 +25,11 @@ use     location_mod, only : location_type, get_close_maxdist_init, &
 use    utilities_mod, only : file_exist, open_file, close_file, &       
                              error_handler, E_ERR, E_MSG, E_WARN, nmlfileunit, &
                              do_output, find_namelist_in_file, check_namelist_read, &
-                             do_nml_file, do_nml_term, nc_check
+                             do_nml_file, do_nml_term
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT,&
                              QTY_TEMPERATURE
+use    netcdf_utilities_mod, only : nc_check
 use typesizes
 use netcdf
 

@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -67,13 +74,6 @@
    inf_sd_max_change           = 1.05,                    1.05,
    /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .true.,
-   restart_in_file_name  = 'ics',
-   restart_out_file_name = 'restart',
-   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
@@ -83,7 +83,6 @@
    /
 
 &assim_tools_nml
-   filter_kind                     = 1,
    cutoff                          = 0.02,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,

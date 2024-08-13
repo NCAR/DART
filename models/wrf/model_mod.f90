@@ -284,6 +284,10 @@ integer, parameter :: map_cassini = 6, map_cyl = 5
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
 
+! hybrid_opt 2 is a hybrid coordinate - terrain following at the
+! surface, and straight pressure levels at the top.
+integer, parameter :: VERT_HYBRID = 2
+
 !---- private data ----
 
 ! Got rid of surf_var as global private variable for model_mod and just defined it locally
@@ -309,7 +313,8 @@ TYPE wrf_static_data_for_dart
 
    integer  :: domain_size
    integer  :: localization_coord
-   real(r8), dimension(:),     pointer :: znu, dn, dnw, zs, znw
+   integer  :: hybrid_opt
+   real(r8), dimension(:),     pointer :: znu, dn, dnw, zs, znw, c1h, c2h
    real(r8), dimension(:,:),   pointer :: mub, hgt
    real(r8), dimension(:,:),   pointer :: latitude, latitude_u, latitude_v
    real(r8), dimension(:,:),   pointer :: longitude, longitude_u, longitude_v
@@ -692,7 +697,7 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
    wrf%dom(id)%type_v      = get_type_ind_from_type_string(id,'V')
    wrf%dom(id)%type_w      = get_type_ind_from_type_string(id,'W')
-   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'T')
+   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'THM')
    wrf%dom(id)%type_gz     = get_type_ind_from_type_string(id,'PH')
    wrf%dom(id)%type_qv     = get_type_ind_from_type_string(id,'QVAPOR')
    wrf%dom(id)%type_qr     = get_type_ind_from_type_string(id,'QRAIN')
@@ -3766,7 +3771,7 @@ integer :: PERIODIC_XVarID, POLARVarID
 
 integer :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
      MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, hgtVarID , LatuVarID, &
-     LatvVarID, LonuVarID, LonvVarID, ZNWVarID
+     LatvVarID, LonuVarID, LonvVarID, ZNWVarID, C1HVarID, C2HVarID
 
 integer :: TimeDimID
 
@@ -4042,6 +4047,34 @@ call nc_check(nf90_put_att(ncid, DNWVarID, 'units', &
                  ''), &
                  'nc_write_model_atts','def_var DNW'//' units')
 
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+   call nc_check(nf90_def_var(ncid, name='C1H', xtype=nf90_real, &
+                    dimids= btDimID, varid=C1HVarID), &
+                    'nc_write_model_atts','def_var C1H')
+   call nc_check(nf90_put_att(ncid, C1HVarID, 'long_name', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C1H'//' long_name')
+   call nc_check(nf90_put_att(ncid, C1HVarID, 'description', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C1H'//' description')
+   call nc_check(nf90_put_att(ncid, C1HVarID, 'units', &
+                    ''), &
+                    'nc_write_model_atts','def_var C1H'//' units')
+   
+   call nc_check(nf90_def_var(ncid, name='C2H', xtype=nf90_real, &
+                    dimids= btDimID, varid=C2HVarID), &
+                    'nc_write_model_atts','def_var C2H')
+   call nc_check(nf90_put_att(ncid, C2HVarID, 'long_name', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C2H'//' long_name')
+   call nc_check(nf90_put_att(ncid, C2HVarID, 'description', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C2H'//' description')
+   call nc_check(nf90_put_att(ncid, C2HVarID, 'units', &
+                    ''), &
+                    'nc_write_model_atts','def_var C2H'//' units')
+endif
+
 !
 !    float MUB(Time, south_north, west_east) ;
 !            MUB:FieldType = 104 ;
@@ -4307,6 +4340,12 @@ call nc_check(nf90_put_var(ncid,      ZNWVarID, wrf%dom(id)%znw), &
               'nc_write_model_atts','put_var znw')
 call nc_check(nf90_put_var(ncid,      DNWVarID, wrf%dom(id)%dnw), &
               'nc_write_model_atts','put_var dnw')
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+   call nc_check(nf90_put_var(ncid,      C1HVarID, wrf%dom(id)%c1h), &
+                 'nc_write_model_atts','put_var c1h')
+   call nc_check(nf90_put_var(ncid,      C2HVarID, wrf%dom(id)%c2h), &
+                 'nc_write_model_atts','put_var c2h')
+endif
 
 ! defining horizontal
 call nc_check(nf90_put_var(ncid,      mubVarID, wrf%dom(id)%mub), &
@@ -5276,7 +5315,11 @@ ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
 
 ! now calculate rho = - mu / dphi/deta
 
-model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+   model_rho_t_distrib(:) = - (wrf%dom(id)%c1h(k)*(wrf%dom(id)%mub(i,j)+x_imu) + wrf%dom(id)%c2h(k)) / ph_e
+else
+   model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
+endif
 
 end function model_rho_t_distrib
 
@@ -6403,6 +6446,13 @@ if (istatus1 == 0) then
       local_loc   = locs(t_ind)
       local_which = nint(query_location(local_loc))
 
+      if (present(dist)) then
+         if (local_which == VERTISUNDEF) then
+            dist(k) = get_dist(base_loc, local_loc, base_type, loc_qtys(t_ind))
+            cycle
+         endif
+      endif
+
       ! Convert local vertical coordinate to requested vertical coordinate if necessary.
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
@@ -7037,6 +7087,7 @@ subroutine read_wrf_file_attributes(ncid,id)
 
 integer, intent(in)   :: ncid, id
 logical, parameter    :: debug = .false.
+integer :: ret
 
 ! get meta data and static data we need
 
@@ -7074,6 +7125,13 @@ logical, parameter    :: debug = .false.
    call nc_check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon), &
                      'static_init_model', 'get_att STAND_LON')
    if(debug) write(*,*) ' stdlon is ',stdlon
+
+   ! this attribute is not present in older wrf files, which means it is not
+   ! using a hybrid vertical coordinate.  not having this attribute should
+   ! not cause an error.
+   ret =  nf90_get_att(ncid, nf90_global, 'HYBRID_OPT', wrf%dom(id)%hybrid_opt)
+   if (ret /= NF90_NOERR) wrf%dom(id)%hybrid_opt = 0
+   if(debug) write(*,*) 'hybrid_opt is ', wrf%dom(id)%hybrid_opt
 
    RETURN
 
@@ -7168,6 +7226,22 @@ integer               :: var_id
    call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%dnw), &
                      'read_wrf_static_data','get_var DNW')
    if(debug) write(*,*) ' dnw is ',wrf%dom(id)%dnw
+
+   if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+      allocate(wrf%dom(id)%c1h(1:wrf%dom(id)%bt))
+      call nc_check( nf90_inq_varid(ncid, "C1H", var_id), &
+                        'read_wrf_static_data','inq_varid C1H')
+      call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%c1h), &
+                        'read_wrf_static_data','get_var C1H')
+      if(debug) write(*,*) ' c1h is ',wrf%dom(id)%c1h
+   
+      allocate(wrf%dom(id)%c2h(1:wrf%dom(id)%bt))
+      call nc_check( nf90_inq_varid(ncid, "C2H", var_id), &
+                        'read_wrf_static_data','inq_varid C2H')
+      call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%c2h), &
+                        'read_wrf_static_data','get_var C2H')
+      if(debug) write(*,*) ' c2h is ',wrf%dom(id)%c2h
+   endif
 
    allocate(wrf%dom(id)%zs(1:wrf%dom(id)%sls))
    call nc_check( nf90_inq_varid(ncid, "ZS", var_id), &
@@ -7391,7 +7465,7 @@ default_table(:,row) = (/ 'PH                        ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'T                         ', &
+default_table(:,row) = (/ 'THM                       ', &
                           'QTY_POTENTIAL_TEMPERATURE ', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &

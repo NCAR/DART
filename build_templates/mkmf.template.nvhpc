@@ -1,0 +1,30 @@
+# Template for NVIDIA HPC (nvhpc) Compiler Environment
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+
+# ftn is for Derecho (a Cray machine)
+# For non-Cray machines use nvfortran
+MPIFC = ftn
+MPILD = ftn
+FC = ftn
+LD = ftn
+
+# If your NETCDF environment variable is not set correctly,
+# uncomment the following line and set value to where lib and include
+# are found for the netcdf files that match this compiler.
+#
+# NETCDF = /opt/local
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+FFLAGS = -O -Kieee -Mbackslash $(INCS)
+LDFLAGS = $(INCS) $(LIBS)
+
+# For development or debugging, use the following flags.
+# To generate a traceback, 
+# set the enviroment variable 'NVCOMPILER_TERM=trace' at runtime.
+# FFLAGS = -gopt -C -traceback -Ktrap=fp  -Mbackslash -Kieee $(INCS)
+

@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    input_state_files          = "ENS01.2009.oce.nc"
@@ -80,12 +87,6 @@
 &mpi_utilities_nml
    /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
-   /
 
 &ensemble_manager_nml
    layout = 1
@@ -93,7 +94,6 @@
    /
 
 &assim_tools_nml
-   filter_kind                     = 1
    cutoff                          = 0.005
    sort_obs_inc                    = .false.
    spread_restoration              = .false.

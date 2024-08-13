@@ -62,7 +62,7 @@ use         location_mod, only : location_type, get_close_type, query_location, 
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             &
                                  compute_copy_mean_var, get_var_owner_index,              &
-                                 prepare_to_update_copies, map_pe_to_task
+                                 map_pe_to_task
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              &
                                  sum_across_tasks, task_count, start_mpi_timer,           &
@@ -165,7 +165,7 @@ real(r8) :: frac_neff                       = 0.20_r8
 real(r8) :: pf_alpha                        = 0.30_r8
 integer  :: pf_kddm                         = 0
 logical  :: sampling_weighted_prior         = .true.
-logical  :: pf_enkf_hybrid                  = .true.
+logical  :: pf_enkf_hybrid                  = .false.
 real(r8) :: min_residual                    = 0.5_r8
 integer  :: pf_maxiter                      = 3
 real(r8) :: pf_kf_rtps_coeff                = 0.0_r8
@@ -495,10 +495,6 @@ allocate(close_state_dist(     ens_handle%my_num_vars), &
          my_state_kind(        ens_handle%my_num_vars), &
          my_state_loc(         ens_handle%my_num_vars))
 ! end alloc
-
-! we are going to read/write the copies array
-call prepare_to_update_copies(ens_handle)
-call prepare_to_update_copies(obs_ens_handle)
 
 ! Initialize assim_tools_module if needed
 if (.not. module_initialized) call assim_tools_init()

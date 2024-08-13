@@ -2,7 +2,7 @@ A brief history of DART
 =======================
 
 The DART project was initiated in August 2001, and in 2003, the Data
-Assimilation Research Section (DAReS) was officially formed at NCAR. In 2004,
+Assimilation Research Section (DAReS) was officially formed at NSF NCAR. In 2004,
 the first officially supported version of DART was released. Consistent version
 control history is available back to 2005, making DART an extremely long-lived
 and well-supported software project. Since 2004, there have been more than a

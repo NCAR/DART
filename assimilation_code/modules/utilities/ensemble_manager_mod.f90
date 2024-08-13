@@ -37,9 +37,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           get_copy,                   put_copy,                 all_vars_to_all_copies,     &
           all_copies_to_all_vars,     allocate_vars,            deallocate_vars,            &
           compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
-          broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
-          prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
-          prepare_to_update_copies,   print_ens_handle,         set_current_time,           &
+          broadcast_copy,             print_ens_handle,         set_current_time,           &
           map_task_to_pe,             map_pe_to_task,           get_current_time,           &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
           deallocate_single_copy
@@ -66,7 +64,6 @@ type ensemble_type
    ! Time is only related to var complete
    type(time_type), allocatable :: time(:)
    integer                      :: distribution_type
-   integer                      :: valid     ! copies modified last, vars modified last, both same
    integer                      :: id_num
    integer, allocatable         :: task_to_pe_list(:), pe_to_task_list(:) ! List of tasks
    ! Flexible my_pe, layout_type which allows different task layouts for different ensemble handles
@@ -82,13 +79,6 @@ end type ensemble_type
 !PAR other storage option control can be implemented here. In particular, want to find
 !PAR some way, either allocating or multiple addressing, to use same chunk of storage
 !PAR for both copy and var complete representations.
-
-! track if copies modified last, vars modified last, both are in sync
-! (and therefore both valid to be used r/o), or unknown.
-integer, parameter :: VALID_UNKNOWN = -1
-integer, parameter :: VALID_BOTH    =  0      ! vars & copies have same data
-integer, parameter :: VALID_VARS    =  1      ! vars(:,:) modified last
-integer, parameter :: VALID_COPIES  =  2      ! copies(:,:) modified last
 
 ! unique counter per ensemble handle
 integer              :: global_counter = 1
@@ -237,9 +227,6 @@ else
        source, text2=msgstring)
 endif
 
-! initially no data
-ens_handle%valid = VALID_BOTH
-
 if(debug .and. my_task_id()==0) then
    print*, 'pe_to_task_list', ens_handle%pe_to_task_list
    print*, 'task_to_pe_list', ens_handle%task_to_pe_list
@@ -277,11 +264,6 @@ real(r8),            intent(out)             :: vars(:)
 type(time_type),     intent(out),  optional  :: mtime
 
 integer :: owner, owners_index
-
-! Error checking
-if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'get_copy', 'last access not var-complete', source)
-endif
 
 ! Verify that requested copy exists
 if(copy < 1 .or. copy > ens_handle%num_copies) then
@@ -348,11 +330,6 @@ type(time_type),     intent(in), optional :: mtime
 
 integer :: owner, owners_index
 
-! Error checking
-if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'put_copy', 'last access not var-complete', source)
-endif
-
 if(copy < 1 .or. copy > ens_handle%num_copies) then
    write(msgstring, *) 'Requested copy: ', copy, ' is > maximum copy: ', ens_handle%num_copies 
    call error_handler(E_ERR,'put_copy', msgstring, source)
@@ -392,8 +369,6 @@ if(ens_handle%my_pe == owner) then
    endif
 endif
 
-ens_handle%valid = VALID_VARS
-
 end subroutine put_copy
 
 !-----------------------------------------------------------------
@@ -410,11 +385,6 @@ integer,             intent(in)           :: copy
 real(r8),            intent(out)          :: arraydata(:)
 
 integer :: owner, owners_index
-
-! Error checking
-if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'broadcast_copy', 'last access not var-complete', source)
-endif
 
 if(copy < 1 .or. copy > ens_handle%num_copies) then
    write(msgstring, *) 'Requested copy: ', copy, ' is > maximum copy: ', ens_handle%num_copies 
@@ -439,94 +409,6 @@ else
 endif
 
 end subroutine broadcast_copy
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_write_to_vars(ens_handle)
-
-! Warn ens manager that we're going to directly update the %vars array
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!ens_handle%valid = VALID_VARS
-
-end subroutine prepare_to_write_to_vars
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_write_to_copies(ens_handle)
-
-! Warn ens manager that we're going to directly update the %copies array
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!ens_handle%valid = VALID_COPIES
-
-end subroutine prepare_to_write_to_copies
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_read_from_vars(ens_handle)
-
-! Check to be sure that the vars array is current
-
-type(ensemble_type), intent(in) :: ens_handle
-
-!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_read_from_vars', &
- !       'last access not var-complete', source)
-!endif
-
-end subroutine prepare_to_read_from_vars
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_read_from_copies(ens_handle)
-
-! Check to be sure that the copies array is current
-
-type(ensemble_type), intent(in) :: ens_handle
-
-!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_read_from_copies', &
-!        'last access not copy-complete', source)
-!endif
-
-end subroutine prepare_to_read_from_copies
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_update_vars(ens_handle)
-
-! We need read/write access, so it has to start valid for vars or both,
-! and then is going to be vars only going out.
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_update_vars', &
- !       'last access not var-complete', source)
-!endif
-!ens_handle%valid = VALID_VARS
-
-end subroutine prepare_to_update_vars
-
-!-----------------------------------------------------------------
-
-subroutine prepare_to_update_copies(ens_handle)
-
-! We need read/write access, so it has to start valid for copies or both,
-! and then is going to be copies only going out.
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'prepare_to_update_copies', &
-!        'last access not copy-complete', source)
-!endif
-!ens_handle%valid = VALID_COPIES
-
-end subroutine prepare_to_update_copies
 
 !-----------------------------------------------------------------
 
@@ -596,12 +478,6 @@ logical,             intent(in)             :: duplicate_time
 ! If duplicate_time is true, also copies the time information from ens1 to ens2. 
 ! If duplicate_time is false, the times in ens2 are left unchanged.
 
-! Error checking
-if (ens1%valid /= VALID_VARS .and. ens1%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'duplicate_ens', &
-        'last access not var-complete for source ensemble', source)
-endif
-
 ! Check to make sure that the ensembles are compatible
 if(ens1%num_copies /= ens2%num_copies) then
    write(msgstring, *) 'num_copies ', ens1%num_copies, ' and ', ens2%num_copies, &
@@ -621,8 +497,6 @@ endif
 
 ! Duplicate each copy that is stored locally on this process.
 ens2%vars = ens1%vars
-
-ens2%valid = VALID_VARS
 
 ! Duplicate time if requested
 if(duplicate_time) ens2%time = ens1%time
@@ -1056,25 +930,6 @@ if (present(label)) then
    call timestamp_message('vars_to_copies start: '//label, alltasks=.true.)
 endif
 
-! Error checking, but can't return early in case only some of the
-! MPI tasks need to transpose.  Only if all N tasks say this is an
-! unneeded transpose can we skip it.
-!if (ens_handle%valid == VALID_BOTH) then
-!   if (flag_unneeded_transposes) then
-!      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
-!      call error_handler(E_MSG, 'all_vars_to_all_copies', &
-!           'vars & copies both valid, transpose not needed for this task', &
-!            source, text2=msgstring)
-!   endif
-!else if (ens_handle%valid /= VALID_VARS) then
-!   write(msgstring, *) 'ens_handle ', ens_handle%id_num
-!   call error_handler(E_ERR, 'all_vars_to_all_copies', &
-!        'last access not var-complete', source, &
-!         text2=msgstring)
-!endif
-
-ens_handle%valid = VALID_BOTH
-
 ! Accelerated version for single process
 if(num_pes == 1) then
    ens_handle%copies = transpose(ens_handle%vars)
@@ -1231,25 +1086,6 @@ integer     :: global_ens_index
 if (present(label)) then
    call timestamp_message('copies_to_vars start: '//label, alltasks=.true.)
 endif
-
-! Error checking, but can't return early in case only some of the
-! MPI tasks need to transpose.  Only if all N tasks say this is an
-! unneeded transpose can we skip it.
-!if (ens_handle%valid == VALID_BOTH) then
-!   if (flag_unneeded_transposes) then
-!      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
-!      call error_handler(E_MSG, 'all_copies_to_all_vars', &
-!           'vars & copies both valid, transpose not needed for this task', &
-!            source, text2=msgstring)
-!   endif
-!else if (ens_handle%valid /= VALID_COPIES) then
-!   write(msgstring, *) 'ens_handle ', ens_handle%id_num
-!   call error_handler(E_ERR, 'all_copies_to_all_vars', &
-!        'last access not copy-complete', source, &
-!         text2=msgstring)
-!endif
-
-ens_handle%valid = VALID_BOTH
 
 ! Accelerated version for single process
 if(num_pes == 1) then
@@ -1416,12 +1252,6 @@ integer :: num_copies, i
 
 ! Should check to make sure that start, end and mean are all legal
 
-! Error checking
-if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'compute_copy_mean', &
-        'last access not copy-complete', source)
-endif
-
 num_copies = end_copy - start_copy + 1
 
 MYLOOP : do i = 1, ens_handle%my_num_vars
@@ -1431,8 +1261,6 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
       ens_handle%copies(mean_copy, i) = sum(ens_handle%copies(start_copy:end_copy, i)) / num_copies
    endif
 end do MYLOOP
-
-ens_handle%valid = VALID_COPIES
 
 end subroutine compute_copy_mean
 
@@ -1449,12 +1277,6 @@ integer,             intent(in)    :: start_copy, end_copy, mean_copy, sd_copy
 integer :: num_copies, i
 
 ! Should check to make sure that start, end, mean and sd are all legal copies
-
-! Error checking
-!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'compute_copy_mean_sd', &
-!        'last access not copy-complete', source)
-!endif
 
 num_copies = end_copy - start_copy + 1
 
@@ -1475,8 +1297,6 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
 
 end do MYLOOP
 
-ens_handle%valid = VALID_COPIES
-
 end subroutine compute_copy_mean_sd
 
 !--------------------------------------------------------------------------------
@@ -1494,12 +1314,6 @@ integer :: num_copies, i
 
 ! Should check to make sure that start, end, mean and var are all legal copies
 
-! Error checking
-if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'compute_copy_mean_var', &
-        'last access not copy-complete', source)
-endif
-
 num_copies = end_copy - start_copy + 1
 
 MYLOOP : do i = 1, ens_handle%my_num_vars
@@ -1516,8 +1330,6 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
       endif
    endif
 end do MYLOOP
-
-ens_handle%valid = VALID_COPIES
 
 end subroutine compute_copy_mean_var
 
@@ -1612,8 +1424,6 @@ write(msgstring, *) 'number of my_copies: ', ens_handle%my_num_copies
 call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'number of my_vars  : ', ens_handle%my_num_vars
 call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
-write(msgstring, *) 'valid              : ', ens_handle%valid
-call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'distribution_type  : ', ens_handle%distribution_type
 call error_handler(E_MSG, 'ensemble handle: ', msgstring, source)
 write(msgstring, *) 'my_pe number       : ', ens_handle%my_pe
@@ -1692,9 +1502,6 @@ subroutine round_robin(ens_handle)
 
 ! Round-robin MPI task layout starting at the first node.  
 ! Starting on the first node forces pe 0 = task 0. 
-! The smoother code assumes task 0 has an ensemble member.
-! If you want to break the assumption that pe 0 = task 0, this routine is a good 
-! place to start. Test with the smoother. 
 
 type(ensemble_type), intent(inout)   :: ens_handle
 

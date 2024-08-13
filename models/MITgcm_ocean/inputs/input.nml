@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &location_nml
    horiz_dist_only                 = .true.
    nlon                            = 71
@@ -275,12 +282,6 @@
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = "reg_diagnostics"  /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'ics',
-   restart_out_file_name = 'restart'  /
 
 &mpi_utilities_nml
    reverse_task_layout        = .false.

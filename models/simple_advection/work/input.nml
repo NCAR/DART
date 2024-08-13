@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .true.
@@ -83,13 +90,6 @@
    silence                     = .false.
    /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .true.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
-   /
 
 &ensemble_manager_nml
    /
@@ -98,7 +98,6 @@
 # large for the model to converge.  to test that the model is
 # doing a successful assimilation, change cutoff to 0.02 and rerun.
 &assim_tools_nml
-   filter_kind                     = 1
    cutoff                          = 100000000.0
    sort_obs_inc                    = .false.
    spread_restoration              = .false.

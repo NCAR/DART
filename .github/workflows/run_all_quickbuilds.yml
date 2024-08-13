@@ -1,0 +1,84 @@
+name: 'run all quickbuilds'
+on:
+  workflow_dispatch:
+  
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    container: 
+      image: hkershaw/dart-dep-external:2.0
+      options: "--cap-add=SYS_PTRACE"    
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        run: |
+          git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+          DART=$(git rev-parse --show-toplevel)
+          files_to_process=( $(find $DART -executable -type f -name quickbuild.sh | sed -E 's#(\./|quickbuild\.sh)##g') )
+          joined_items=""
+          for item in "${files_to_process[@]}"; do
+            if [[ $item == *"template"* ]]; then
+              continue  # template model not for compiling
+            fi
+            if [[ $item == *"/var/"* ]] || [[ $item == *"/gps/"* ]]; then
+              # skipping these converters, out of the box quickbuild.sh fails
+              #    var needs wrf files
+              #    gps need prepbuffr bufrlib.a to be built
+              continue 
+            fi 
+            # Append the quoted item and a comma to the string
+            stripped_item=${item#/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/}  # removes /__w/DART/DART
+            echo $stripped_item
+            joined_items+="\"$stripped_item\","
+          done
+
+          # Remove the trailing comma from the last item
+          joined_items="${joined_items%,}"
+
+          echo "value=[ $joined_items ]" >> $GITHUB_OUTPUT
+        shell: bash
+  build:
+    needs: [ setup ]
+    runs-on: ubuntu-latest
+    container: 
+      image: hkershaw/dart-dep-external:2.0
+      options: "--cap-add=SYS_PTRACE"    
+    strategy:
+      fail-fast: false 
+      matrix:
+        value: ${{fromJSON(needs.setup.outputs.matrix)}}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Creating Makefile template
+        run: |
+          cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+          case ${{ matrix.value }} in
+            *quikscat* | *GSI2DART* )
+              cp /home/mkmf.template.quikscat.gfortran mkmf.template
+              ;;
+            *AIRS*)
+              cp /home/mkmf.template.AIRS.gfortran mkmf.template
+              ;;
+            *GMI* | *GOES* | *forward_operators* | *NSIDC* )
+              cp /home/mkmf.template.rttov.gfortran  mkmf.template
+              ;;
+            *library*)
+              cp ../developer_tests/library/mkmf.template.gfortran mkmf.template
+              ;;
+            *)
+              cp mkmf.template.gfortran mkmf.template
+              echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+              ;;
+          esac
+        shell: bash
+      - name: Run quickbuild.sh script
+        run: |
+          cd ${{ matrix.value }}
+          ./quickbuild.sh
+        shell: bash

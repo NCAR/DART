@@ -4,47 +4,33 @@ PROGRAM ``obs_impact_tool``
 Overview
 --------
 
-The standard DART algorithms compute increments for an observation and then compute corresponding increments for each
-model state variable due to that observation. To do this, DART computes a sample regression coefficient using the prior
-ensemble distributions of a state variable and the observation. The increments for each member of the observation are
-multiplied by this regression coefficient and then added to the corresponding prior ensemble member for the state
-variable. However, in many cases, it is appropriate to reduce the impact of an observation on a state variable; this is
-called localization. The standard DART algorithms allow users to specify a localization that is a function of the
-horizontal (and optionally vertical) distance between the observation and the state variable. The localization is a
-value between 0 and 1 and multiplies the regression coefficient when updating state ensemble members.
+The standard DART algorithms work by calculating increments for an observation and then determining corresponding
+increments for each variable in the state due to that observation. This is done by computing a sample regression 
+coefficient using the prior ensemble distributions of a state variable and the observation. The increments for each member 
+of the ensemble are multiplied by this coefficient and then added to the corresponding prior ensemble member for the variable.
 
-Sometimes, it may be desirable to do an additional localization that is a function of the 
-type of observation and the
-state vector quantity. This program allows users to construct a table that is read by 
-filter at run-time to localize the
-impact of sets of observation types on sets of state vector quantities. Users can create 
-named sets of observation types
-and sets of state vector quantities and specify a localization for the impact of the 
-specified observation types on the state vector quantities.
+However, in many cases it is necessary to limit the influence of an observation on a variable; this is known as localization.
+DART provides a way to specify a localization, known as cutoff, based on the horizontal and vertical distance between the observation 
+and the state variable.
 
-An example would be to create a subset of observations of tracer concentration for a variety of tracers, and a subset of
-dynamic state variable quantities like temperatures and wind components. It has been common to set this localization
-value to 0 so that tracer observations have no impact on dynamic state quantities, however, the tool allows values
-between 0 and 1 to be specified.
+In some situations, you may want additional localization based on the type of observation and the state quanity. 
+``obs_impact_tool`` allows you to create a table that filter reads during runtime to localize the impact of certain types of 
+observations on specific state vector quantities. You can define sets of observation types and state vector quantities, and 
+specify localization for the impact of those observation types on the state vector quantities.
 
-This tool allows related collections of observation types and state vector quantities to be named and then express the
-relationship of the named groups to each other in a concise way. It can also define relationships by exceptions.
-
-All the listed observation types and state vector quantities must be known by the system.
-If they are not, look at the
-&preprocess_nml :: input_items namelist which specifies which *obs_def_xxx_mod.f90* files 
-are included, which is where observation types are defined.
-Quantities for different regimes (atmosphere, ocean, land, etc.) are defined in
-``assimilation_code/modules/observations/xxx_quantities_mod.f90`` and explained in
-:doc:`../../modules/observations/obs_kind_mod`
-
-Format of the input file can be any combination of these types of sections:
-
-.. container::
-
-   ::
+For example, you can create a subset of observations related to tracer concentration for various tracers, and a subset of 
+dynamic state variables like temperatures and wind components. Typically, it is common practice to set this localization value 
+to 0 to prevent tracer observations from affecting dynamic state quantities. However, ``obs_impact_tool`` allows you to specify values
+between 0 and 1.
 
 
+#. Build ``obs_sequence_tool`` by adding ``obs_impact_tool`` to the list of serial_programs in the quickbuild.sh script for the model you are using.
+   Run ./quickbuild.sh to build all the DART programs.
+#. Create an input file for ``obs_sequence_tool`` to define the impacts of observations. In the examples on this page, the input file
+   is called `cross_correlations.txt`.  
+   The format of the input file can be any combination of the following types of sections:
+
+   .. code:: bash
 
       # hash mark starts a comment.
 
@@ -99,10 +85,48 @@ Format of the input file can be any combination of these types of sections:
        groupname1  groupname1   0.0
       END IMPACT
 
-Namelist interface ``&obs_impact_tool_nml`` must be read from file ``input.nml``.
+   The following is an example of an input file to prevent chemistry species from impacting the meterological variables in the model state, and vice versa:
 
-Namelist
---------
+   .. code:: bash
+
+       GROUP chem
+        QTY_CO QTY_NO QTY_C2H4
+       END GROUP
+
+       GROUP met
+        ALLQTYS EXCEPT chem
+       END GROUP
+
+       IMPACT
+       chem   met    0.0
+       met    chem   0.0
+       END IMPACT
+
+
+#. Run ``obs_impact_tool`` using your `cross_correlations.txt` as input. ``obs_impact_tool`` will create an output file,
+   named `control_impact_runtime.txt` in this example.
+
+   .. code:: text
+   
+      &obs_impact_tool_nml
+        input_filename          = 'cross_correlations.txt'
+        output_filename         = 'control_impact_runtime.txt'
+        /
+   
+
+#. Set the following namelist options in :ref:`&assim_tools_nml<assim_tools>` to use `control_impact_runtime.txt` in filter. 
+   Filter will apply your selected observation impacts during assimilation.
+
+   .. code:: text
+   
+      &assim_tools_nml
+        adjust_obs_impact               = .true.
+        obs_impact_filename             = 'control_impact_runtime.txt'
+        /
+
+
+obs_impact_tool Namelist
+------------------------
 
 This namelist is read from the file ``input.nml``. Namelists start with an ampersand '&' and terminate with a slash '/'.
 Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
@@ -135,47 +159,3 @@ namelist.
    +-----------------+--------------------+-----------------------------------------------------------------------------+
    | debug           | logical            | If true print out debugging info.                                           |
    +-----------------+--------------------+-----------------------------------------------------------------------------+
-
-| 
-
-Examples
---------
-
-To prevent chemistry species from impacting the meterological variables in the model state, and vice versa:
-
-.. container::
-
-   ::
-
-      GROUP chem
-       QTY_CO QTY_NO QTY_C2H4
-      END GROUP
-
-      GROUP met
-       ALLQTYS EXCEPT chem
-      END GROUP
-
-      IMPACT
-       chem   met    0.0
-       met    chem   0.0
-      END IMPACT
-
-Modules used
-------------
-
-::
-
-   types_mod
-   utilities_mod
-   parse_args_mod
-
-Files
------
-
--  two text files, one input and one output.
--  obs_impact_tool.nml
-
-References
-----------
-
--  none

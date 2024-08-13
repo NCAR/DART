@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+        
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",
@@ -12,8 +19,8 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 3,
+   num_output_state_members = 50,
+   num_output_obs_members   = 50,
    output_interval          = 1,
    num_groups               = 1,
    output_forward_op_errors = .false.,
@@ -63,19 +70,11 @@
    verbose           = .false.
    /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
-   /
 
 &assim_tools_nml
-   filter_kind                     = 1,
    cutoff                          = 0.10,
    sort_obs_inc                    = .false.,
-   spread_restoration              = .true.,
+   spread_restoration              = .false.,
    sampling_error_correction       = .true.,         
    print_every_nth_obs             = 1000,
    adaptive_localization_threshold = 2000,
@@ -118,7 +117,7 @@
    wrf_state_variables     = 'U','QTY_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
                              'V','QTY_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
                              'W','QTY_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
-                             'T','QTY_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+                             'THM','QTY_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
                              'PH','QTY_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
                              'MU','QTY_PRESSURE','TYPE_MU','UPDATE','999',
                              'QVAPOR','QTY_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',

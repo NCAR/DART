@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",
@@ -46,13 +53,6 @@
    perturbation_amplitude  = 0.2
    /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
-   /
 
 &assim_tools_nml
    filter_kind                     = 1,

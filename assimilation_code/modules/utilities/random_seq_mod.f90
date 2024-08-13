@@ -25,7 +25,8 @@ public :: random_seq_type, &
           twod_gaussians, &
           random_gamma, & 
           random_inverse_gamma, & 
-          random_exponential
+          random_exponential, &
+          ran_twist
 
 character(len=*), parameter :: source = 'random_seq_mod.f90'
 
@@ -41,7 +42,7 @@ integer :: seq_number = -1
 
 ! the following routines were transcribed from C to F90, originally
 ! from the GNU scientific library:  init_ran, ran_unif, ran_gauss,
-! ran_gamma
+! ran_gamma, ran_twist
 
 integer, parameter :: N = 624   ! period parameters
 integer, parameter :: M = 397
@@ -532,6 +533,93 @@ enddo OUTER
 g = rscale * d * v
 
 end function ran_gamma
+
+!------------------------------------------------------------------------
+
+!> A random congruential random number generator from
+!> the GNU Scientific Library (The Mersenne Twister MT19937 varient.)
+!> This routine returns an Integer.
+
+function ran_twist(s)
+ type(random_seq_type), intent(inout) :: s
+ 
+integer :: kk
+integer(i8) :: ran_twist, k, y, m1
+
+! original c code:
+!  define MAGIC(y) (((y)&0x1) ? 0x9908b0dfUL : 0)
+
+if (s%mti >= N) then
+   ! generate N words at a time
+   do kk = 0, N-M-1
+      y = ior(iand(s%mt(kk), UPPER_MASK), iand(s%mt(kk + 1), LOWER_MASK))
+      if (iand(y,1_i8) == 1_i8) then
+         m1 = magic
+      else
+         m1 = 0_i8
+      endif
+      s%mt(kk) = ieor(s%mt(kk + M), ieor(ishft(y,-1_i8), m1))
+
+! original c code:
+!          unsigned long y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+!          mt[kk] = mt[kk + M] ^ (y >> 1) ^ MAGIC(y);
+
+   enddo
+
+   do kk = N-M, N-2
+      y = ior(iand(s%mt(kk), UPPER_MASK), iand(s%mt(kk + 1), LOWER_MASK))
+      if (iand(y,1_i8) == 1_i8) then
+         m1 = magic
+      else
+         m1 = 0_i8
+      endif
+      s%mt(kk) = ieor(s%mt(kk + (M-N)), ieor(ishft(y,-1_i8), m1))
+
+! original c code:
+!          unsigned long y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+!          mt[kk] = mt[kk + (M - N)] ^ (y >> 1) ^ MAGIC(y);
+
+   enddo
+
+   y = ior(iand(s%mt(N-1), UPPER_MASK), iand(s%mt(0), LOWER_MASK))
+   if (iand(y,1_i8) == 1_i8) then
+      m1 = magic
+   else
+      m1 = 0_i8
+   endif
+   s%mt(N-1) = ieor(s%mt(M-1), ieor(ishft(y,-1_i8), m1))
+
+! original c code:
+!        unsigned long y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
+!        mt[N - 1] = mt[M - 1] ^ (y >> 1) ^ MAGIC(y);
+
+   s%mti = 0
+endif
+
+! Tempering
+
+k = s%mt(s%mti)
+
+k = ieor(k, ishft(k, -11_i8))
+k = ieor(k, iand(ishft(k, 7_i8),  C1))
+k = ieor(k, iand(ishft(k, 15_i8), C2))
+k = ieor(k, ishft(k, -18_i8))
+
+! original c code:
+!  k ^= (k >> 11);
+!  k ^= (k << 7) & 0x9d2c5680UL;
+!  k ^= (k << 15) & 0xefc60000UL;
+!  k ^= (k >> 18);
+
+s%mti = s%mti + 1
+
+! at this point we have an integer value for k
+! this routine returns 0.0 <= real < 1.0, so do
+! the divide here.  return range:  [0,1).
+
+ran_twist = k
+
+end function ran_twist
 
 !------------------------------------------------------------------------
 
