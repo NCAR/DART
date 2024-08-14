@@ -100,6 +100,8 @@ program seaicedata_to_obs_netcdf
        catdim = 1
     endif
     
+    print *, 'max obs is', len_loc
+
     ! remember that when you ncdump the netcdf file, the dimensions are
     ! listed in C order.  when you allocate them for fortran, reverse the order.
     allocate(         lat(len_loc))
@@ -153,6 +155,8 @@ program seaicedata_to_obs_netcdf
     ! and a quality control flag.  the max possible number of obs needs to
     ! be specified but it will only write out the actual number created.
     max_obs    = len_loc*catdim
+
+    print *, 'max obs is', max_obs
     num_copies = 1
     num_qc     = 1
     
@@ -189,7 +193,7 @@ program seaicedata_to_obs_netcdf
           if (debug) print *, 'start of main loop, ', iacc, ialo
           
           !! check the lat/lon values to see if they are ok
-          if ( lat(t) >  90.0_r8 .or. lat(t) <   40.0_r8 ) cycle 
+         !  if ( lat(t) >  90.0_r8 .or. lat(t) <   40.0_r8 ) cycle 
           if ( lon(t) <   0.0_r8 .or. lon(t) >  360.0_r8 ) cycle 
           
           ! If the data values are outside acceptable bounds, skip them.
