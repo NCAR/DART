@@ -95,6 +95,21 @@ use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &
                                   QTY_SEAICE_FY              , &
                                   QTY_SEAICE_AGREG_FY        , &
                                   QTY_SEAICE_AGREG_SURFACETEMP,&
+                                  QTY_SEAICE_VICE01          , &
+                                  QTY_SEAICE_VICE02          , &
+                                  QTY_SEAICE_VICE03          , &
+                                  QTY_SEAICE_VICE04          , &
+                                  QTY_SEAICE_VICE05          , &
+                                  QTY_SEAICE_VSNO01          , &
+                                  QTY_SEAICE_VSNO02          , &
+                                  QTY_SEAICE_VSNO03          , &
+                                  QTY_SEAICE_VSNO04          , &
+                                  QTY_SEAICE_VSNO05          , &
+                                  QTY_SEAICE_AICE01          , &
+                                  QTY_SEAICE_AICE02          , &
+                                  QTY_SEAICE_AICE03          , &
+                                  QTY_SEAICE_AICE04          , &
+                                  QTY_SEAICE_AICE05          , &
                                   get_index_for_quantity     , &
                                   get_name_for_quantity
 
@@ -941,6 +956,23 @@ SELECT CASE (obs_type)
       base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
       cat_signal = 1 ! now same as boring 2d field
+   CASE ( QTY_SEAICE_VICE01         , &
+          QTY_SEAICE_VICE02         , &
+          QTY_SEAICE_VICE03         , &
+          QTY_SEAICE_VICE04         , &
+          QTY_SEAICE_VICE05         , &
+          QTY_SEAICE_VSNO01         , &
+          QTY_SEAICE_VSNO02         , &
+          QTY_SEAICE_VSNO03         , &
+          QTY_SEAICE_VSNO04         , &
+          QTY_SEAICE_VSNO05         , &
+          QTY_SEAICE_AICE01         , &
+          QTY_SEAICE_AICE02         , &
+          QTY_SEAICE_AICE03         , &
+          QTY_SEAICE_AICE04         , &
+          QTY_SEAICE_AICE05         )
+      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type)) 
+      cat_signal = 1
    CASE ( QTY_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
           QTY_V_SEAICE_COMPONENT    , &
           QTY_SEAICE_ALBEDODIRVIZ   , &
