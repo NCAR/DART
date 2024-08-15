@@ -57,9 +57,9 @@ integer, parameter :: Nslyr = 3   ! number of layers in snow, hardwired
 
 real(r8), allocatable :: aicen_original(:,:,:), vicen_original(:,:,:), vsnon_original(:,:,:)
 real(r8), allocatable :: aicen(:,:,:), vicen(:,:,:), vsnon(:,:,:), Tsfcn(:,:,:)
-real(r8), allocatable :: qice(:,:,:,:)
-real(r8), allocatable :: sice(:,:,:,:)
-real(r8), allocatable :: qsno(:,:,:,:)
+real(r8), allocatable :: qice001(:,:,:), qice002(:,:,:), qice003(:,:,:), qice004(:,:,:), qice005(:,:,:), qice006(:,:,:), qice007(:,:,:), qice008(:,:,:)
+real(r8), allocatable :: sice001(:,:,:), sice002(:,:,:), sice003(:,:,:), sice004(:,:,:), sice005(:,:,:), sice006(:,:,:), sice007(:,:,:), sice008(:,:,:)
+real(r8), allocatable :: qsno001(:,:,:), qsno002(:,:,:), qsno003(:,:,:)
 
 !------------------------------------------------------------------
 ! INIALIZE AND PERFORM CHECKS ON FILES                
@@ -111,21 +111,31 @@ call nc_check(nf90_inquire_dimension(ncid,dimid,len=Ny),&
 
 
 allocate(aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat), Tsfcn(Nx,Ny,Ncat), aicen_original(Nx,Ny,Ncat), vicen_original(Nx,Ny,Ncat), vsnon_original(Nx,Ny,Ncat))
-allocate(qice(Nx,Ny,Nilyr,Ncat), sice(Nx,Ny,Nilyr,Ncat), qsno(Nx,Ny,Nslyr,Ncat))
+! allocate(qice(Nx,Ny,Nilyr,Ncat), sice(Nx,Ny,Nilyr,Ncat), qsno(Nx,Ny,Nslyr,Ncat))
 
 call get_3d_variable(ncid, 'aicen', aicen_original, original_cice_restart_file)
 call get_3d_variable(ncid, 'vicen', vicen_original, original_cice_restart_file)
 call get_3d_variable(ncid, 'vsnon', vsnon_original, original_cice_restart_file)
 call get_3d_variable(ncid, 'Tsfcn', Tsfcn, original_cice_restart_file)
-do l=1, Nilyr
-   write(nchar,'(i3.3)') l
-   call get_3d_variable(ncid, 'qice'//trim(nchar), qice(:,:,l,:), original_cice_restart_file)
-   call get_3d_variable(ncid, 'sice'//trim(nchar), sice(:,:,l,:), original_cice_restart_file)
-enddo
-do l=1, Nslyr
-   write(nchar,'(i3.3)') l
-   call get_3d_variable(ncid, 'qsno'//trim(nchar), qsno(:,:,l,:), original_cice_restart_file)
-enddo
+call get_3d_variable(ncid, 'qice001', qice001, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice002', qice002, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice003', qice003, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice004', qice004, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice005', qice005, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice006', qice006, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice007', qice007, original_cice_restart_file)
+call get_3d_variable(ncid, 'qice008', qice008, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice001', sice001, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice002', sice002, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice003', sice003, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice004', sice004, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice005', sice005, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice006', sice006, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice007', sice007, original_cice_restart_file)
+call get_3d_variable(ncid, 'sice008', sice008, original_cice_restart_file)
+call get_3d_variable(ncid, 'qsno001', qsno001, original_cice_restart_file)
+call get_3d_variable(ncid, 'qsno002', qsno002, original_cice_restart_file)
+call get_3d_variable(ncid, 'qsno003', qsno003, original_cice_restart_file)
 
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(original_cice_restart_file))
 
@@ -145,20 +155,38 @@ call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(dart_to_cice_input
 !------------------------------------------------------------------
 if (postprocess == 'cice') then
    write(*,*) 'calling cice postprocessing...'
-   call cice_rebalancing(qice, sice, qsno,     &
-                         aicen, vicen, vsnon,  &
+   call cice_rebalancing(qice001, qice002,     &
+                         qice003, qice004,     &
+                         qice005, qice006,     &
+                         qice007, qice008,     &
+                         sice001, sice002,     &
+                         sice003, sice004,     &
+                         sice005, sice006,     &
+                         sice007, sice008,     &
+                         qsno001, qsno002,     &
+                         qsno003, aicen,       &
+                         vicen, vsnon,         &
                          aicen_original,       &
                          vicen_original,       &
                          vsnon_original,       &
-                         Tsfcn,               &
+                         Tsfcn,                &
                          Ncat, Nx, Ny,         &
                          Nilyr, Nslyr)
    write(*,*) 'cice postprocessing function completed...'
 
  else if (postprocess == 'aice') then 
    write(*,*) 'calling aice postprocessing...'
-   call area_simple_squeeze(qice, sice, qsno,     &
-                            aicen, vicen, vsnon,  &
+   call area_simple_squeeze(qice001, qice002,     &
+                            qice003, qice004,     &
+                            qice005, qice006,     &
+                            qice007, qice008,     &
+                            sice001, sice002,     &
+                            sice003, sice004,     &
+                            sice005, sice006,     &
+                            sice007, sice008,     &
+                            qsno001, qsno002,     &
+                            qsno003, aicen,       &
+                            vicen, vsnon,         &
                             aicen_original,       &
                             vicen_original,       &
                             vsnon_original,       &
@@ -168,8 +196,17 @@ if (postprocess == 'cice') then
    write(*,*) 'aice postprocessing function completed...'
  else if (postprocess == 'vice') then
    write(*,*) 'calling vice postprocessing...'
-   call volume_simple_squeeze(qice, sice, qsno,     &
-                              aicen, vicen, vsnon,  &
+   call volume_simple_squeeze(qice001, qice002,     &
+                              qice003, qice004,     &
+                              qice005, qice006,     &
+                              qice007, qice008,     &
+                              sice001, sice002,     &
+                              sice003, sice004,     &
+                              sice005, sice006,     &
+                              sice007, sice008,     &
+                              qsno001, qsno002,     &
+                              qsno003, aicen,       &
+                              vicen, vsnon,         &
                               aicen_original,       &
                               vicen_original,       &
                               vsnon_original,       &
@@ -211,29 +248,119 @@ call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postpro
 io = nf90_put_var(ncid, VarID, Tsfcn)
 call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
 
-do l=1, Nilyr
-   write(nchar,'(i3.3)') l
-   varname='qice'//trim(nchar)
-   io = nf90_inq_varid(ncid, trim(varname), VarID)
-   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
-   io = nf90_put_var(ncid, VarID, qice(:,:,l,:))
-   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+varname='qice001'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice001)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
 
-   varname='sice'//trim(nchar)
-   io = nf90_inq_varid(ncid, trim(varname), VarID)
-   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
-   io = nf90_put_var(ncid, VarID, sice(:,:,l,:))
-   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
-enddo
+varname='qice002'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice002)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
 
-do l=1, Nslyr
-   write(nchar,'(i3.3)') l
-   varname='qsno'//trim(nchar)
-   io = nf90_inq_varid(ncid, trim(varname), VarID)
-   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
-   io = nf90_put_var(ncid, VarID, sice(:,:,l,:))
-   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
-enddo
+varname='qice003'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice003)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qice004'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice004)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qice005'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice005)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qice006'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice006)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qice007'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice007)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qice008'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qice008)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice001'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice001)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice002'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice002)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice003'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice003)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice004'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice004)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice005'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice005)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice006'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice006)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice007'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice007)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='sice008'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, sice008)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qsno001'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qsno001)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qsno002'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qsno002)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
+
+varname='qsno003'
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(postprocessed_output_file))
+io = nf90_put_var(ncid, VarID, qsno003)
+call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
 
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(postprocessed_output_file))
 
@@ -241,7 +368,9 @@ call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(postprocessed_outp
 ! DEALLOCATE AND FINALIZE                
 !------------------------------------------------------------------
 deallocate(aicen, vicen, vsnon, Tsfcn, aicen_original, vicen_original, vsnon_original)
-deallocate(qice, sice, qsno )
+deallocate(qice001, qice002, qice003, qice004, qice005, qice006, qice007, qice008)
+deallocate(sice001, sice002, sice003, sice004, sice005, sice006, sice007, sice008)
+deallocate(qsno001, qsno002, qsno003)
 
 call finalize_utilities('dart_to_cice')
 
@@ -290,8 +419,17 @@ subroutine get_3d_variable(ncid, varname, var, filename)
    
 end subroutine get_3d_variable
 
-subroutine area_simple_squeeze(qice, sice, qsno,    &
-                               aicen, vicen, vsnon, &
+subroutine area_simple_squeeze(qice001, qice002,     &
+                               qice003, qice004,     &
+                               qice005, qice006,     &
+                               qice007, qice008,     &
+                               sice001, sice002,     &
+                               sice003, sice004,     &
+                               sice005, sice006,     &
+                               sice007, sice008,     &
+                               qsno001, qsno002,     &
+                               qsno003, aicen,       &
+                               vicen, vsnon,         &
                                aicen_original,      &
                                vicen_original,      &
                                vsnon_original,      &
@@ -300,10 +438,14 @@ subroutine area_simple_squeeze(qice, sice, qsno,    &
                                Nilyr, Nslyr)
 
   real(r8), intent(inout) :: aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat),  &
-                             qice(Nx,Ny,Nilyr,Ncat), sice(Nx,Ny,Nilyr,Ncat), qsno(Nx,Ny,Nslyr,Ncat),     &
+                             qice001(Nx,Ny,Nilyr), qice002(Nx,Ny,Nilyr), qice003(Nx,Ny,Nilyr), qice004(Nx,Ny,Nilyr), &
+                             qice005(Nx,Ny,Nilyr), qice006(Nx,Ny,Nilyr), qice007(Nx,Ny,Nilyr), qice008(Nx,Ny,Nilyr), &
+                             sice001(Nx,Ny,Nilyr), sice002(Nx,Ny,Nilyr), sice003(Nx,Ny,Nilyr), sice004(Nx,Ny,Nilyr), &
+                             sice005(Nx,Ny,Nilyr), sice006(Nx,Ny,Nilyr), sice007(Nx,Ny,Nilyr), sice008(Nx,Ny,Nilyr), &
+                             qsno001(Nx,Ny,Nslyr), qsno002(Nx,Ny,Nslyr), qsno003(Nx,Ny,Nslyr),   &
                              Tsfcn(Nx,Ny,Ncat)
   real(r8), intent(in) :: aicen_original(Nx,Ny,Ncat), vicen_original(Nx,Ny,Ncat), vsnon_original(Nx,Ny,Ncat)     
-  integer, intent(in) :: Ncat, Nilyr, Nslyr
+  integer, intent(in) :: Ncat, Nilyr, Nslyr, Nx, Ny
 
   real(r8), allocatable :: aice(:,:), aice_temp(:,:) 
   real(r8), allocatable :: hin_max(:)
@@ -332,9 +474,25 @@ subroutine area_simple_squeeze(qice, sice, qsno,    &
     enddo
   
   ! Begin process 
-    sice  = max(0.0_r8, sice)  ! salinities must be non-negative
-    qice  = min(0.0_r8, qice)  ! enthalpies (ice) must be non-positive
-    qsno  = min(0.0_r8, qsno)  ! enthalphies (snow) must be non-positive
+    sice001  = max(0.0_r8, sice001)  ! salinities must be non-negative
+    sice002  = max(0.0_r8, sice002)  ! salinities must be non-negative
+    sice003  = max(0.0_r8, sice003)  ! salinities must be non-negative
+    sice004  = max(0.0_r8, sice004)  ! salinities must be non-negative
+    sice005  = max(0.0_r8, sice005)  ! salinities must be non-negative
+    sice006  = max(0.0_r8, sice006)  ! salinities must be non-negative
+    sice007  = max(0.0_r8, sice007)  ! salinities must be non-negative
+    sice008  = max(0.0_r8, sice008)  ! salinities must be non-negative
+    qice001  = min(0.0_r8, qice001)  ! enthalpies (ice) must be non-positive
+    qice002  = min(0.0_r8, qice002)  ! enthalpies (ice) must be non-positive
+    qice003  = min(0.0_r8, qice003)  ! enthalpies (ice) must be non-positive
+    qice004  = min(0.0_r8, qice004)  ! enthalpies (ice) must be non-positive
+    qice005  = min(0.0_r8, qice005)  ! enthalpies (ice) must be non-positive
+    qice006  = min(0.0_r8, qice006)  ! enthalpies (ice) must be non-positive
+    qice007  = min(0.0_r8, qice007)  ! enthalpies (ice) must be non-positive
+    qice008  = min(0.0_r8, qice008)  ! enthalpies (ice) must be non-positive
+    qsno001  = min(0.0_r8, qsno001)  ! enthalphies (snow) must be non-positive
+    qsno002  = min(0.0_r8, qsno002)  ! enthalphies (snow) must be non-positive
+    qsno003  = min(0.0_r8, qsno003)  ! enthalphies (snow) must be non-positive
     aicen = min(1.0_r8,aicen)  ! concentrations must not exceed 1 
     Tsfcn = min(Tsmelt,Tsfcn)  ! ice/snow surface must not exceed melting
 
@@ -412,27 +570,59 @@ subroutine area_simple_squeeze(qice, sice, qsno,    &
             if (aicen(i,j,n)==0._r8 ) then
                vicen(i,j,n)   = 0._r8
                vsnon(i,j,n) = 0._r8
-               sice(i,j,:,n) = 0._r8
-               qice(i,j,:,n) = 0._r8
-               qsno(i,j,:,n) = 0._r8
+               sice001(i,j,n) = 0._r8
+               sice002(i,j,n) = 0._r8
+               sice003(i,j,n) = 0._r8
+               sice004(i,j,n) = 0._r8
+               sice005(i,j,n) = 0._r8
+               sice006(i,j,n) = 0._r8
+               sice007(i,j,n) = 0._r8
+               sice008(i,j,n) = 0._r8
+               qice001(i,j,n) = 0._r8
+               qice002(i,j,n) = 0._r8
+               qice003(i,j,n) = 0._r8
+               qice004(i,j,n) = 0._r8
+               qice005(i,j,n) = 0._r8
+               qice006(i,j,n) = 0._r8
+               qice007(i,j,n) = 0._r8
+               qice008(i,j,n) = 0._r8
+               qsno001(i,j,n) = 0._r8
+               qsno002(i,j,n) = 0._r8
+               qsno003(i,j,n) = 0._r8
                Tsfcn(i,j,n)   = -1.836_r8
             ! If the adjustment introduced new ice.. 
             else if (aicen(i,j,n)>0._r8 .and. aicen_original(i,j,n)==0._r8) then
                ! allow no snow volume or enthalpy
                vsnon(i,j,n) = 0._r8
-               qsno(i,j,:,n) = 0._r8
+               qsno001(i,j,n) = 0._r8
+               qsno002(i,j,n) = 0._r8
+               qsno003(i,j,n) = 0._r8
 
                ! require ice volume for thickness = category boundary midpoint
                vicen(i,j,n) =  aicen(i,j,n) * hcat_midpoint(n)
 
                ! salinity of mushy ice, see add_new_ice in ice_therm_itd.F90
                Si0new = sss - dSin0_frazil ! given our choice of sss
-               sice(i,j,:,n) = Si0new
+               sice001(i,j,n) = Si0new
+               sice002(i,j,n) = Si0new
+               sice003(i,j,n) = Si0new
+               sice004(i,j,n) = Si0new
+               sice005(i,j,n) = Si0new
+               sice006(i,j,n) = Si0new
+               sice007(i,j,n) = Si0new
+               sice008(i,j,n) = Si0new
 
                ! temperature and enthalpy
                Ti          = min(liquidus_temperature_mush(Si0new/phi_init), -0.1_r8)
                qi0new      = enthalpy_mush(Ti, Si0new)
-               qice(i,j,:,n) = qi0new
+               qice001(i,j,n) = qi0new
+               qice002(i,j,n) = qi0new
+               qice003(i,j,n) = qi0new
+               qice004(i,j,n) = qi0new
+               qice005(i,j,n) = qi0new
+               qice006(i,j,n) = qi0new
+               qice007(i,j,n) = qi0new
+               qice008(i,j,n) = qi0new
                Tsfcn(i,j,n)  = Ti
             endif
          enddo
@@ -441,8 +631,17 @@ subroutine area_simple_squeeze(qice, sice, qsno,    &
 
 end subroutine area_simple_squeeze
 
-subroutine volume_simple_squeeze(qice, sice, qsno,    &
-                                 aicen, vicen, vsnon, &
+subroutine volume_simple_squeeze(qice001, qice002,     &
+                                 qice003, qice004,     &
+                                 qice005, qice006,     &
+                                 qice007, qice008,     &
+                                 sice001, sice002,     &
+                                 sice003, sice004,     &
+                                 sice005, sice006,     &
+                                 sice007, sice008,     &
+                                 qsno001, qsno002,     &
+                                 qsno003, aicen,       &
+                                 vicen, vsnon,         &
                                  aicen_original,      &
                                  vicen_original,      &
                                  vsnon_original,      &
@@ -451,7 +650,11 @@ subroutine volume_simple_squeeze(qice, sice, qsno,    &
                                  Nilyr, Nslyr)
 
   real(r8), intent(inout) :: aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat),  &
-                             qice(Nx,Ny,Nilyr,Ncat), sice(Nx,Ny,Nilyr,Ncat), qsno(Nx,Ny,Nslyr,Ncat),     &
+                             qice001(Nx,Ny,Nilyr), qice002(Nx,Ny,Nilyr), qice003(Nx,Ny,Nilyr), qice004(Nx,Ny,Nilyr), &
+                             qice005(Nx,Ny,Nilyr), qice006(Nx,Ny,Nilyr), qice007(Nx,Ny,Nilyr), qice008(Nx,Ny,Nilyr), &
+                             sice001(Nx,Ny,Nilyr), sice002(Nx,Ny,Nilyr), sice003(Nx,Ny,Nilyr), sice004(Nx,Ny,Nilyr), &
+                             sice005(Nx,Ny,Nilyr), sice006(Nx,Ny,Nilyr), sice007(Nx,Ny,Nilyr), sice008(Nx,Ny,Nilyr), &
+                             qsno001(Nx,Ny,Nslyr), qsno002(Nx,Ny,Nslyr), qsno003(Nx,Ny,Nslyr),   &
                              Tsfcn(Nx,Ny,Ncat)
   real(r8), intent(in) :: aicen_original(Nx,Ny,Ncat), vicen_original(Nx,Ny,Ncat), vsnon_original(Nx,Ny,Ncat)     
   integer, intent(in) :: Ncat, Nx, Ny, Nilyr, Nslyr
@@ -483,10 +686,25 @@ subroutine volume_simple_squeeze(qice, sice, qsno,    &
     enddo
 
   ! Begin process 
-    sice  = max(0.0_r8, sice)  ! salinities must be non-negative
-    qice  = min(0.0_r8, qice)  ! enthalpies (ice) must be non-positive
-    qsno  = min(0.0_r8, qsno)  ! enthalphies (snow) must be non-positive
-    ! aicen = min(1.0_r8,aicen)  ! concentrations must not exceed 1 
+    sice001  = max(0.0_r8, sice001)  ! salinities must be non-negative
+    sice002  = max(0.0_r8, sice002)  ! salinities must be non-negative
+    sice003  = max(0.0_r8, sice003)  ! salinities must be non-negative
+    sice004  = max(0.0_r8, sice004)  ! salinities must be non-negative
+    sice005  = max(0.0_r8, sice005)  ! salinities must be non-negative
+    sice006  = max(0.0_r8, sice006)  ! salinities must be non-negative
+    sice007  = max(0.0_r8, sice007)  ! salinities must be non-negative
+    sice008  = max(0.0_r8, sice008)  ! salinities must be non-negative
+    qice001  = min(0.0_r8, qice001)  ! enthalpies (ice) must be non-positive
+    qice002  = min(0.0_r8, qice002)  ! enthalpies (ice) must be non-positive
+    qice003  = min(0.0_r8, qice003)  ! enthalpies (ice) must be non-positive
+    qice004  = min(0.0_r8, qice004)  ! enthalpies (ice) must be non-positive
+    qice005  = min(0.0_r8, qice005)  ! enthalpies (ice) must be non-positive
+    qice006  = min(0.0_r8, qice006)  ! enthalpies (ice) must be non-positive
+    qice007  = min(0.0_r8, qice007)  ! enthalpies (ice) must be non-positive
+    qice008  = min(0.0_r8, qice008)  ! enthalpies (ice) must be non-positive
+    qsno001  = min(0.0_r8, qsno001)  ! enthalphies (snow) must be non-positive
+    qsno002  = min(0.0_r8, qsno002)  ! enthalphies (snow) must be non-positive
+    qsno003  = min(0.0_r8, qsno003)  ! enthalphies (snow) must be non-positive    ! aicen = min(1.0_r8,aicen)  ! concentrations must not exceed 1 
     Tsfcn = min(Tsmelt,Tsfcn)  ! ice/snow surface must not exceed melting
 
   ! calculate aice, which might be negative or >1 at this point
@@ -529,7 +747,7 @@ subroutine volume_simple_squeeze(qice, sice, qsno,    &
     where(aicen_temp==0) aicen_temp = -999
 
     do n=1,Ncat
-      do j=1,Ny,
+      do j=1,Ny
          do i=1,Nx
             hicen_original(i,j,n) = vicen_original(i,j,n)/aicen_temp(i,j,n)
             hsnon_original(i,j,n) = vsnon_original(i,j,n)/aicen_temp(i,j,n)
@@ -569,27 +787,59 @@ subroutine volume_simple_squeeze(qice, sice, qsno,    &
             if (vicen(i,j,n)==0._r8 ) then
                aicen(i,j,n)   = 0._r8
                vsnon(i,j,n) = 0._r8
-               sice(i,j,:,n) = 0._r8
-               qice(i,j,:,n) = 0._r8
-               qsno(i,j,:,n) = 0._r8
+               sice001(i,j,n) = 0._r8
+               sice002(i,j,n) = 0._r8
+               sice003(i,j,n) = 0._r8
+               sice004(i,j,n) = 0._r8
+               sice005(i,j,n) = 0._r8
+               sice006(i,j,n) = 0._r8
+               sice007(i,j,n) = 0._r8
+               sice008(i,j,n) = 0._r8
+               qice001(i,j,n) = 0._r8
+               qice002(i,j,n) = 0._r8
+               qice003(i,j,n) = 0._r8
+               qice004(i,j,n) = 0._r8
+               qice005(i,j,n) = 0._r8
+               qice006(i,j,n) = 0._r8
+               qice007(i,j,n) = 0._r8
+               qice008(i,j,n) = 0._r8
+               qsno001(i,j,n) = 0._r8
+               qsno002(i,j,n) = 0._r8
+               qsno003(i,j,n) = 0._r8
                Tsfcn(i,j,n)   = -1.836_r8
             ! If the adjustment introduced new ice.. 
             else if (aicen(i,j,n)>0._r8 .and. aicen_original(i,j,n)==0._r8) then
                ! allow no snow volume or enthalpy
                vsnon(i,j,n) = 0._r8
-               qsno(i,j,:,n) = 0._r8
+               qsno001(i,j,n) = 0._r8
+               qsno002(i,j,n) = 0._r8
+               qsno003(i,j,n) = 0._r8
 
                ! require ice volume for thickness = category boundary midpoint
                aicen(i,j,n) =  vicen(i,j,n)/hcat_midpoint(n)
 
                ! salinity of mushy ice, see add_new_ice in ice_therm_itd.F90
                Si0new = sss - dSin0_frazil ! given our choice of sss
-               sice(i,j,:,n) = Si0new
+               sice001(i,j,n) = Si0new
+               sice002(i,j,n) = Si0new
+               sice003(i,j,n) = Si0new
+               sice004(i,j,n) = Si0new
+               sice005(i,j,n) = Si0new
+               sice006(i,j,n) = Si0new
+               sice007(i,j,n) = Si0new
+               sice008(i,j,n) = Si0new
 
                ! temperature and enthalpy
                Ti          = min(liquidus_temperature_mush(Si0new/phi_init), -0.1_r8)
                qi0new      = enthalpy_mush(Ti, Si0new)
-               qice(i,j,:,n) = qi0new
+               qice001(i,j,n) = qi0new
+               qice002(i,j,n) = qi0new
+               qice003(i,j,n) = qi0new
+               qice004(i,j,n) = qi0new
+               qice005(i,j,n) = qi0new
+               qice006(i,j,n) = qi0new
+               qice007(i,j,n) = qi0new
+               qice008(i,j,n) = qi0new
                Tsfcn(i,j,n)  = Ti
             endif
           enddo
@@ -598,8 +848,17 @@ subroutine volume_simple_squeeze(qice, sice, qsno,    &
 
 end subroutine volume_simple_squeeze
 
-subroutine cice_rebalancing(qice, sice, qsno,     &
-                            aicen, vicen, vsnon,  &
+subroutine cice_rebalancing(qice001, qice002,     &
+                            qice003, qice004,     &
+                            qice005, qice006,     &
+                            qice007, qice008,     &
+                            sice001, sice002,     &
+                            sice003, sice004,     &
+                            sice005, sice006,     &
+                            sice007, sice008,     &
+                            qsno001, qsno002,     &
+                            qsno003, aicen,       &
+                            vicen, vsnon,         &
                             aicen_original,       &
                             vicen_original,       &
                             vsnon_original,       &
@@ -608,7 +867,11 @@ subroutine cice_rebalancing(qice, sice, qsno,     &
                             Nilyr, Nslyr)
 
    real(r8), intent(inout) :: aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat),  &
-                              qice(Nx,Ny,Nilyr,Ncat), sice(Nx,Ny,Nilyr,Ncat), qsno(Nx,Ny,Nslyr,Ncat),     &
+                              qice001(Nx,Ny,Nilyr), qice002(Nx,Ny,Nilyr), qice003(Nx,Ny,Nilyr), qice004(Nx,Ny,Nilyr), &
+                              qice005(Nx,Ny,Nilyr), qice006(Nx,Ny,Nilyr), qice007(Nx,Ny,Nilyr), qice008(Nx,Ny,Nilyr), &
+                              sice001(Nx,Ny,Nilyr), sice002(Nx,Ny,Nilyr), sice003(Nx,Ny,Nilyr), sice004(Nx,Ny,Nilyr), &
+                              sice005(Nx,Ny,Nilyr), sice006(Nx,Ny,Nilyr), sice007(Nx,Ny,Nilyr), sice008(Nx,Ny,Nilyr), &
+                              qsno001(Nx,Ny,Nslyr), qsno002(Nx,Ny,Nslyr), qsno003(Nx,Ny,Nslyr),   &
                               Tsfcn(Nx,Ny,Ncat)
    real(r8), intent(in) :: aicen_original(Nx,Ny,Ncat), vicen_original(Nx,Ny,Ncat), vsnon_original(Nx,Ny,Ncat)     
    integer, intent(in) :: Ncat, Nx, Ny, Nilyr, Nslyr
@@ -639,9 +902,25 @@ subroutine cice_rebalancing(qice, sice, qsno,     &
      enddo
 
    ! Begin process 
-     sice  = max(0.0_r8, sice)  ! salinities must be non-negative
-     qice  = min(0.0_r8, qice)  ! enthalpies (ice) must be non-positive
-     qsno  = min(0.0_r8, qsno)  ! enthalphies (snow) must be non-positive
+     sice001  = max(0.0_r8, sice001)  ! salinities must be non-negative
+     sice002  = max(0.0_r8, sice002)  ! salinities must be non-negative
+     sice003  = max(0.0_r8, sice003)  ! salinities must be non-negative
+     sice004  = max(0.0_r8, sice004)  ! salinities must be non-negative
+     sice005  = max(0.0_r8, sice005)  ! salinities must be non-negative
+     sice006  = max(0.0_r8, sice006)  ! salinities must be non-negative
+     sice007  = max(0.0_r8, sice007)  ! salinities must be non-negative
+     sice008  = max(0.0_r8, sice008)  ! salinities must be non-negative
+     qice001  = min(0.0_r8, qice001)  ! enthalpies (ice) must be non-positive
+     qice002  = min(0.0_r8, qice002)  ! enthalpies (ice) must be non-positive
+     qice003  = min(0.0_r8, qice003)  ! enthalpies (ice) must be non-positive
+     qice004  = min(0.0_r8, qice004)  ! enthalpies (ice) must be non-positive
+     qice005  = min(0.0_r8, qice005)  ! enthalpies (ice) must be non-positive
+     qice006  = min(0.0_r8, qice006)  ! enthalpies (ice) must be non-positive
+     qice007  = min(0.0_r8, qice007)  ! enthalpies (ice) must be non-positive
+     qice008  = min(0.0_r8, qice008)  ! enthalpies (ice) must be non-positive
+     qsno001  = min(0.0_r8, qsno001)  ! enthalphies (snow) must be non-positive
+     qsno002  = min(0.0_r8, qsno002)  ! enthalphies (snow) must be non-positive
+     qsno003  = min(0.0_r8, qsno003)  ! enthalphies (snow) must be non-positive
      Tsfcn = min(Tsmelt,Tsfcn)  ! ice/snow surface must not exceed melting
      aicen = min(1.0_r8,aicen)  ! concentrations must not exceed 1 
    
@@ -709,33 +988,69 @@ subroutine cice_rebalancing(qice, sice, qsno,     &
                   if (vsnon(i,j,n) > 0.0_r8 .and. vsnon_original(i,j,n) == 0.0_r8) then
                      Ti = min(liquidus_temperature_mush(Si0new/phi_init), -0.1_r8)
                      qsno_hold = snow_enthaply(Ti)
-                     qsno(i,j,:,n) = qsno_hold
+                     qsno001(i,j,n) = qsno_hold
+                     qsno002(i,j,n) = qsno_hold
+                     qsno003(i,j,n) = qsno_hold
                   endif
                ! if the adjustment doesn't have ice but the original does...
                else if (aicen(i,j,n) == 0.0_r8 .and. aicen_original(i,j,n) > 0.0_r8) then
                   vicen(i,j,n) = 0.0_r8
-                  qice(i,j,:,n) = 0.0_r8
-                  sice(i,j,:,n) = 0.0_r8
-                  qsno(i,j,:,n) = 0.0_r8
+                  sice001(i,j,n) = 0._r8
+                  sice002(i,j,n) = 0._r8
+                  sice003(i,j,n) = 0._r8
+                  sice004(i,j,n) = 0._r8
+                  sice005(i,j,n) = 0._r8
+                  sice006(i,j,n) = 0._r8
+                  sice007(i,j,n) = 0._r8
+                  sice008(i,j,n) = 0._r8
+                  qice001(i,j,n) = 0._r8
+                  qice002(i,j,n) = 0._r8
+                  qice003(i,j,n) = 0._r8
+                  qice004(i,j,n) = 0._r8
+                  qice005(i,j,n) = 0._r8
+                  qice006(i,j,n) = 0._r8
+                  qice007(i,j,n) = 0._r8
+                  qice008(i,j,n) = 0._r8
+                  qsno001(i,j,n) = 0._r8
+                  qsno002(i,j,n) = 0._r8
+                  qsno003(i,j,n) = 0._r8
                   vsnon(i,j,n) = 0.0_r8
                   Tsfcn(i,j,n) = -1.836_r8
                ! if the adjustment has ice but the original doesn't... 
                else if (aicen(i,j,n)>0.0_r8 .and. aicen_original(i,j,n) == 0.0_r8) then
                   if (vicen(i,j,n) == 0.0_r8) vicen(i,j,n) =  aicen(i,j,n) * hcat_midpoint(n)
-                  sice(i,j,:,n) = Si0new
+                  sice001(i,j,n) = Si0new
+                  sice002(i,j,n) = Si0new
+                  sice003(i,j,n) = Si0new
+                  sice004(i,j,n) = Si0new
+                  sice005(i,j,n) = Si0new
+                  sice006(i,j,n) = Si0new
+                  sice007(i,j,n) = Si0new
+                  sice008(i,j,n) = Si0new
                   Ti = min(liquidus_temperature_mush(Si0new/phi_init), -0.1_r8)
                   qi0new = enthalpy_mush(Ti, Si0new)
-                  qice(i,j,:,n) = qi0new
+                  qice001(i,j,n) = qi0new
+                  qice002(i,j,n) = qi0new
+                  qice003(i,j,n) = qi0new
+                  qice004(i,j,n) = qi0new
+                  qice005(i,j,n) = qi0new
+                  qice006(i,j,n) = qi0new
+                  qice007(i,j,n) = qi0new
+                  qice008(i,j,n) = qi0new
 
                   if (vsnon(i,j,n) == 0.0_r8 .and. vsnon_original(i,j,n) > 0.0_r8) then
-                     qsno(i,j,:,n) = 0.0_r8
+                     qsno001(i,j,n) = 0._r8
+                     qsno002(i,j,n) = 0._r8
+                     qsno003(i,j,n) = 0._r8
                   else if (vsnon(i,j,n) > 0.0_r8 .and. vsnon_original(i,j,n) == 0.0_r8) then
                      qsno_hold = snow_enthaply(Ti)
-                     qsno(i,j,:,n) = qsno_hold
+                     qsno001(i,j,n) = qsno_hold
+                     qsno002(i,j,n) = qsno_hold
+                     qsno003(i,j,n) = qsno_hold
                   endif
                   Tsfcn(i,j,n) = Ti
                ! If neither the adjustment nor the original category have ice in them... 
-               else if (aicen(n) == 0.0_r8) then
+               else if (aicen(i,j,n) == 0.0_r8) then
                   vicen(i,j,n) = 0.0_r8
                   vsnon(i,j,n) = 0.0_r8
                endif
