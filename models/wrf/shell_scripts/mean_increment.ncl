@@ -1,7 +1,7 @@
 ; find the mean state space increment, output the fields to a single mean file
 ; that can be used to make plots
 ; G. Romine 2011-12
-
+; Updating for 1 domain only B. Raczka 2024-08
 begin
 
 ; get the list of files to read in
@@ -23,9 +23,7 @@ begin
  ListSetType(fil, "join")
 
  pull_2D_field_names = (/"T2", "Q2", "U10", "V10", "PSFC"/)
- pull_2D_field_names(:) = pull_2D_field_names(:)+"_d01"
- pull_3D_field_names = (/"U", "V", "T", "QVAPOR"/)
- pull_3D_field_names(:) = pull_3D_field_names(:)+"_d01"
+ pull_3D_field_names = (/"U", "V", "THM", "QVAPOR"/)
  npulls = dimsizes(pull_2D_field_names)
 
 ; Below will dump out the data to a file for replotting later
@@ -34,16 +32,17 @@ begin
   do i=0,npulls-1
    print("   Extracting 2d variable "+pull_2D_field_names(i))
    do fil_num=0,nfils-1
-;    print(" reading file "+flist(fil_num))
-; dimensions are ncljoin, copy, Time, south_north, west_east
+;   print(" reading file "+flist(fil_num))
+; dimensions are ncljoin, Time, south_north, west_east
 ; copy zero is the ensemble mean 
-    pull_var = fil[fil_num]->$pull_2D_field_names(i)$(:,0,:,:,:)
+    pull_var = fil[fil_num]->$pull_2D_field_names(i)$(:,:,:,:)
     dims = dimsizes(pull_var)
     if (fil_num .eq. 0) then  ; first iteration, make var
      alltimes_var = new ( (/nfils,dims(2),dims(3)/), typeof(pull_var) )
     end if
 ;    printVarSummary(pull_var)
     alltimes_var(fil_num,:,:) = pull_var(0,0,:,:)
+;   printVarSummary(alltimes_var)
     delete(pull_var)
    end do
 ; average over time (first dimension)
@@ -69,9 +68,9 @@ begin
    print("   Extracting 3d variable "+pull_3D_field_names(i))
    do fil_num=0,nfils-1
 ;    print(" reading file "+flist(fil_num))
-; dimensions are ncljoin, copy, Time, level, south_north, west_east
+; dimensions are ncljoin, Time, level, south_north, west_east
 ; copy zero is the ensemble mean
-    pull_var = fil[fil_num]->$pull_3D_field_names(i)$(:,0,:,:,:,:)
+    pull_var = fil[fil_num]->$pull_3D_field_names(i)$(:,:,:,:,:)
     dims = dimsizes(pull_var)
     if (fil_num .eq. 0) then  ; first iteration, make var
      alltimes_var = new ( (/nfils,dims(2),dims(3),dims(4)/), typeof(pull_var) )
