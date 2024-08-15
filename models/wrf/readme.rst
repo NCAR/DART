@@ -168,10 +168,9 @@ Namelist Description:
 |                               |                   |    '0.1') Can be 'NULL' to allow any  |
 |                               |                   |    maximum value.                     |
 |                               |                   | #. Action -- valid strings are        |
-|                               |                   |    'CLAMP' or 'FAIL'. 'FAIL' ignores  |
-|                               |                   |    the bounds whereas 'CLAMP' sets    |
-|                               |                   |    the out of range value to the      |
-|                               |                   |    minimum or maximum value.          |
+|                               |                   |    'CLAMP' or 'FAIL'. Ignored by      |
+|                               |                   |    filter. Filter will always clamp   |
+|                               |                   |    if min and/or max is set.          |
 +-------------------------------+-------------------+---------------------------------------+
 | num_domains                   | integer           | Total number of WRF domains,          |
 |                               |                   | including nested domains.             |
