@@ -1,3 +1,6 @@
+&model_nml
+/
+
 &utilities_nml
    module_details = .false.
    write_nml = 'none'

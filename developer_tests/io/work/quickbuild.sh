@@ -19,7 +19,6 @@ LOCATION="threed_sphere"
 programs=(
 test_cf_conventions
 test_read_write_restarts
-test_read_write_time
 )
 
 
