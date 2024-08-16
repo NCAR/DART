@@ -780,7 +780,7 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
    type(distribution_params_type) :: params_interior_prior
    type(distribution_params_type) :: params_interior_posterior
    integer  :: ens_size_interior
-   integer  :: i, count_lower, count_upper
+   integer  :: i, count_lower, count_int, count_upper
    integer  :: obs_dist_type
 
    if (bounded_below .or. bounded_above) then
@@ -815,12 +815,14 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
    if (ens_size_interior .gt. 1) then
       d(1:ens_size_interior) = abs( ens_interior(1:ens_size_interior) - ens_interior(1) )
       d_max = maxval(d(1:ens_size_interior))
-      call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, upper_bound, &
-                           ens_interior, y, obs_param, obs_dist_types%uninformative, &
-                           params_interior_prior)
-      call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, upper_bound, &
-                           ens_interior, y, obs_param, obs_dist_type, &
-                           params_interior_posterior)
+      if (d_max .gt. 0._r8) then
+         call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, upper_bound, &
+                              ens_interior, y, obs_param, obs_dist_types%uninformative, &
+                              params_interior_prior)
+         call pack_kde_params(ens_size_interior, bounded_below, bounded_above, lower_bound, upper_bound, &
+                              ens_interior, y, obs_param, obs_dist_type, &
+                              params_interior_posterior)
+      endif
    else
       d_max = 0._r8
    endif
@@ -856,6 +858,7 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
    ! Update ensemble members -> get observation increments
 
    count_lower = 0
+   count_int   = 0
    count_upper = 0
    unif = random_uniform(inc_ran_seq) / real(ens_size, r8)
    do i=1,ens_size
@@ -872,8 +875,9 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
          count_upper = count_upper + 1
        elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
          ! Can't use kde with only one ensemble member (or identical ensemble members), so assign a
-         ! random probability
-         u = (p_int_prior * random_uniform(inc_ran_seq)) + p_lower_prior
+         ! random probability. As above, I draw one random then add 1/Nb to each subsequent value
+         u = unif + p_lower_prior + real(count_int, r8) / real(ens_size, r8)
+         count_int = count_int + 1
       else ! Use the interior cdf obtained using kde.
          u = kde_cdf_params(ens(i), params_interior_prior)
          u = (p_int_prior * u) + p_lower_prior
@@ -886,7 +890,8 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
          obs_inc(i) = upper_bound - ens(i)
       elseif ((ens_size_interior .eq. 1) .or. (d_max .le. 0._r8)) then
          ! posterior value in the interior, but there's only one prior ensemble member/value
-         ! in the interior, so we just assign the posterior ensemble member equal to the prior one
+         ! in the interior (or prior ensemble members in the interior are identical), so we
+         ! just assign the posterior ensemble member equal to the prior one
          obs_inc(i) = ens_interior(1) - ens(i)
       else ! posterior value in the interior, can use kde
          ! Rescale u to be between 0 and 1 before inverting interior cdf
