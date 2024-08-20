@@ -887,7 +887,7 @@ related to the observation.  Step 8 is a type of localization in that it restric
 the state update to a subset of CLM variables.  Here, we further restrict the influence
 of the observation to the state space most nearly physically collocated with the observation.
 The spatial localization is set through the the ``assim_tools_nml``, ``cov_cutoff_nml``
-and ``location_nml`` settings witin ``input.nml`` as: 
+and ``location_nml`` settings within ``input.nml`` as: 
 
 ::
 
