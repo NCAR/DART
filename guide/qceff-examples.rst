@@ -7,7 +7,7 @@ QCEFF: Examples with the Lorenz 96 Tracer Model
 The Quantile-Conserving Ensemble Filter Framework (QCEFF) tools are available in DART
 as of version v11.
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences and is
-anxious to build scientific collaborations using these new capabilities.
+eager to build scientific collaborations using these new capabilities.
 
 To get started, build the DART executables for the Lorenz 96 tracer advection model:
 
