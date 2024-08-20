@@ -893,7 +893,6 @@ and ``location_nml`` settings witin ``input.nml`` as:
 
  # cutoff of 0.03 (radians) is about 200km
  &assim_tools_nml
-    filter_kind                     = 1
     cutoff                          = 0.05
 
 ::
