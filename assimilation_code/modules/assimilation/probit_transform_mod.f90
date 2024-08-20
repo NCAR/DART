@@ -138,8 +138,7 @@ elseif(p%distribution_type == GAMMA_DISTRIBUTION) then
    call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p, &
       bounded_below, bounded_above, lower_bound, upper_bound)
 elseif(p%distribution_type == BETA_DISTRIBUTION) then 
-   call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p, &
-      lower_bound, upper_bound)
+   call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
       use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
@@ -274,8 +273,7 @@ if(.not. use_input_p) then
       call error_handler(E_ERR, 'to_probit_gamma', errstring, source)
    endif
 
-   call set_gamma_params_from_ens(state_ens, ens_size, bounded_below, bounded_above, &
-      lower_bound, upper_bound, p)
+   call set_gamma_params_from_ens(state_ens, ens_size, p)
 endif
 
 do i = 1, ens_size
@@ -289,15 +287,13 @@ end subroutine to_probit_gamma
 
 !------------------------------------------------------------------------
 
-subroutine to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p, &
-   lower_bound, upper_bound)
+subroutine to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
 
 integer, intent(in)                  :: ens_size
 real(r8), intent(in)                 :: state_ens(ens_size)
 type(distribution_params_type), intent(inout) :: p
 real(r8), intent(out)                :: probit_ens(ens_size)
 logical, intent(in)                  :: use_input_p
-real(r8), intent(in)                 :: lower_bound, upper_bound
 
 ! Probit transform for beta.
 real(r8) :: quantile
@@ -305,7 +301,7 @@ integer  :: i
 
 ! Get the parameters for this distribution if not already available
 if(.not. use_input_p) then
-   call set_beta_params_from_ens(state_ens, ens_size, lower_bound, upper_bound, p)
+   call set_beta_params_from_ens(state_ens, ens_size, p)
 endif
 
 do i = 1, ens_size
