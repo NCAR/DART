@@ -144,8 +144,8 @@ Data assimilation algorithms available in DART
 DART allows users to test the impact of using multiple different types of
 algorithms for filtering, inflation/deflation, and covariance localization.
 
-DART offers numerous **filter algorithms** in the :ref:`QCEFF`. These determine how the posterior
-distribution is updated based on the observations and the prior ensemble. The
+DART offers numerous **filter algorithms** in the :ref:`QCEFF`. These determine how the prior
+distribution is updated based on the observations. The
 following table lists the filters supported in DART.
 
 +--------------------+----------------------------+--------------------------------------------+
