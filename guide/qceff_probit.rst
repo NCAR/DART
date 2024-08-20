@@ -6,7 +6,7 @@ Quantile-Conserving Ensemble Filter Framework
 The Quantile-Conserving Ensemble Filter Framework (QCEFF) tools are available in DART
 as of version v11. 
 The DART development team (dart@ucar.edu) would be happy to hear about your experiences 
-and is anxious to build scientific collaborations using these new capabilities.
+and is eager to build scientific collaborations using these new capabilities.
 
 The QCEFF options are set using a :ref:`qceff table <qceff table>` given as a namelist option to &algorithm_info_nml.
 
