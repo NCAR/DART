@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=cice-scm2
+MODEL=cice-scm
 LOCATION=threed_sphere
 
 
