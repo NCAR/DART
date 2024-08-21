@@ -1,0 +1,317 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = '/glade/work/mollyw/Projects/c-icesat-2/cases/CICESAT2_analysis/cice_bounded_qceff_table.csv'
+   /
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.
+   write_output_state_to_file = .true.
+   init_time_days             = -1
+   init_time_seconds          = -1
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+   output_interval            = 1
+   input_state_files          = "cice.r.nc"
+   output_state_files         = "perfect_restart.nc"
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   async                      = 0
+   adv_ens_command            = "no_advance_script"
+   output_timestamps          = .false.
+   trace_execution            = .false.
+   output_forward_op_errors   = .false.
+   print_every_nth_obs        = -1
+   silence                    = .false.
+   /
+
+&filter_nml
+   async                    = 0
+   adv_ens_command          = "no_advance_script"
+   ens_size                 = 30
+   obs_sequence_in_name     = "obs_seq.out"
+   obs_sequence_out_name    = "obs_seq.final"
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   num_output_obs_members   = 30
+   output_interval          = 1
+   num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
+   output_forward_op_errors = .true.
+   output_timestamps        = .true.
+   trace_execution          = .true.
+   silence                  = .false.
+
+   input_state_file_list    = "cice_restarts.txt"
+   output_state_file_list   = "cice_restarts.txt"
+   stages_to_write          = 'input', 'preassim', 'analysis','output'
+   output_members           = .true.
+   output_mean              = .true.
+   output_sd                = .true.
+   write_all_stages_at_end  = .false.
+   num_output_state_members = 30
+
+   inf_flavor                  = 5,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_initial                 = 1.02,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 50.0,                   50.0
+   inf_damping                 = 0.9,                     0.9
+   inf_sd_initial              = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
+   /
+
+# The possible filenames:
+# The input and output member names can be overridden
+# {input,forecast,preassim,postassim,analysis,output}_0001[_dom].nc
+# {input,forecast,preassim,postassim,analysis,output}_mean[_dom].nc
+# {input,forecast,preassim,postassim,analysis,output}_sd[_dom].nc
+# {input,forecast,preassim,postassim,analysis,output}_priorinf_mean[_dom].nc
+# {input,forecast,preassim,postassim,analysis,output}_priorinf_sd[_dom].nc
+# {input,forecast,preassim,postassim,analysis,output}_postinf_mean[_dom].nc
+# {input,forecast,preassim,postassim,analysis,output}_postinf_sd[_dom].nc
+
+# cutoff of 0.03 (radians) is about 200km
+&assim_tools_nml
+   cutoff                          = 0.1
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .true.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
+   print_every_nth_obs             = 1000
+   /
+
+
+&state_vector_io_nml
+   buffer_state_io         = .false.
+   single_precision_output = .false.
+   /
+
+
+&quality_control_nml
+   input_qc_threshold       = 1.0
+   outlier_threshold        = 3.0
+   /
+
+
+&ensemble_manager_nml
+   layout                  = 2
+   tasks_per_node          = 128
+   /
+
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .true.
+   reg_diagnostics_file = "reg_diagnostics"
+   /
+
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+
+&preprocess_nml
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_cice_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/seaice_quantities_mod.f90',
+                             '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
+   /
+
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'SAT_SEAICE_AGREG_FREEBOARD'
+   evaluate_these_obs_types   = 'null'
+   /
+
+
+# Each variable must have 3 entries.
+# 1: the netCDF variable name
+# 2: the DART KIND
+# 3: does the variable get updated in the restart file or not ...
+#    'UPDATE' =>        update the variable in the restart file
+#    'NO_COPY_BACK' => do not update the variable in the restart file
+#    all these variables will be updated INTERNALLY IN DART
+
+&model_nml
+   assimilation_period_days     = 1
+   assimilation_period_seconds  = 0
+   model_perturbation_amplitude = 0.00002
+   binary_grid_file_format      = 'big_endian'
+   debug                        = 1
+   model_state_variables  =       'aicen', 'QTY_SEAICE_CONCENTR'        , 'UPDATE',
+                                  'vicen', 'QTY_SEAICE_VOLUME'          , 'UPDATE',
+				                      'vsnon', 'QTY_SEAICE_SNOWVOLUME'      , 'UPDATE',
+   /
+
+# r_snw is appended to the cice restart file by 'cice_to_dart.f90', which reads the
+# cice_parameter_nml   namelist. 
+#                                  'r_snw', 'QTY_2D_PARAMETER'           , 'UPDATE',
+
+
+# See the cice model_mod.html for a larger listing of CICE variables and their
+# associated DART quantities (QTYs). The list is by no means complete.
+
+&cice_parameter_nml
+   cice_restart_input_file = 'cice_restart.nc'
+   parameter_input_file    = 'parameter_prior.nc'
+   cice_parameters         = 'r_snw'
+   /
+
+&dart_to_cice_nml
+   dart_to_cice_input_file    = 'dart_restart.nc'
+   original_cice_restart_file = 'cice_restart.nc'
+   postprocessed_output_file  = 'postprocessed_restart.nc'
+   balance_method             = 'simple_squeeze'
+   postprocess                = 'cice'
+   /
+
+
+&location_nml
+   horiz_dist_only      = .true.
+   approximate_distance = .false.
+   nlon                 = 71
+   nlat                 = 36
+   output_box_info      = .true.
+   /
+
+
+&utilities_nml
+   TERMLEVEL      = 2
+   module_details = .false.
+   logfilename    = 'dart_log.out'
+   nmlfilename    = 'dart_log.nml'
+   write_nml      = 'file'
+   /
+
+
+
+
+&mpi_utilities_nml
+   /
+
+
+&obs_common_subset_nml
+   num_to_compare_at_once = 3
+   filename_seq      = ''
+   filename_seq_list = 'cat.list'
+   filename_out      = 'obs_seq.2018-10-14-00000'
+   print_only        = .false.
+   calendar          = 'Gregorian'
+  /
+
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+
+&obs_diag_nml
+   obs_sequence_name     = ''
+   obs_sequence_list     = 'cat.list'
+   first_bin_center      =  2001, 1,  1, 0, 0, 0
+   last_bin_center       =  2001, 1,  2, 0, 0, 0
+   bin_separation        =     0, 0,  1, 0, 0, 0
+   bin_width             =     0, 0,  1, 0, 0, 0
+   time_to_skip          =     0, 0,  0, 0, 0, 0
+   max_num_bins          = 1000
+   trusted_obs           = 'null'
+   Nregions              = 1
+   lonlim1               =   0.0
+   lonlim2               = 360.0
+   latlim1               =  40.0
+   latlim2               =  90.0
+   reg_names             = 'Arctic'
+   hlevel_edges          =  0.0, 1.0
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
+   /
+
+
+&obs_sequence_tool_nml
+   filename_seq       = ''
+   filename_seq_list  = 'cat.list'
+   filename_out       = 'obs_seq.2010-10-14-00000'
+   print_only         = .false.
+   gregorian_cal      = .true.
+   synonymous_qc_list = 'COSMOS QC','Ameriflux QC'
+   /
+
+
+&schedule_nml
+   calendar             = 'Gregorian'
+   first_bin_start      =  1601,  1,  1,  0,  0,  0
+   first_bin_end        =  2999,  1,  1,  0,  0,  0
+   last_bin_end         =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1           =    0.0
+   lonlim2           =  360.0
+   latlim1           =  -90.0
+   latlim2           =   90.0
+   verbose           = .false.
+   /
+
+
+! useful input for model_mod_check_nml ...
+
+   x_inds    of interest   720, 7000
+   loc_of_interest      = 287.5,  82.48, 0.35
+   loc_of_interest      = 287.5, -40.70, 0.35
+   loc_of_interest      =  90.0,  41.00, 0.35
+
+&model_mod_check_nml
+   input_state_files     = 'cice.r.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 3210
+   loc_of_interest       = 45.0, 82.48, 1
+   quantity_of_interest  = 'QTY_SEAICE_CONCENTR'
+   interp_test_lonrange  = 0.0, 359.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 1.0, 2.0
+   interp_test_dvert     = 1.0
+   verbose               = .false.
+   /
+
