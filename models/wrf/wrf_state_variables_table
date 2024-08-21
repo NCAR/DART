@@ -4,14 +4,13 @@
 #
 # DART $Id$
 
-This table contains the description of a value, followed by the line(s)
+This table contains the description of an atmospheric property, followed by the line(s)
 that should be added to the DART input.nml namelist &model_nml, 
 'wrf_state_variables' list.  All items must be strings.  The 5 columns are:
-Exact variable name in WRF netcdf file, DART Kind String, a Type
-column that has a suggested value but is unused, a flag to say
-whether the variable should be updated or not (currently only 'UPDATE' is
-supported), and a flag to say which of multiple domains should have this
-variable, where '999' means all domains.
+exact variable name in WRF output file, DART Quantity , a WRF Type,
+a flag to determine whether the variable is updated during the analysis 
+('UPDATE' 'NO_COPY_BACK'), and a flag to identify which domains include
+ this variable, where '999' means all domains.
 
 
 Horizontal Winds:
@@ -21,7 +20,7 @@ Horizontal Winds:
    'V10', 'QTY_V_WIND_COMPONENT', 'TYPE_V10', 'UPDATE', '999',
 
 Sensible Temperature:
-   'T', 'QTY_TEMPERATURE', 'TYPE_T', 'UPDATE', '999',
+   'THM', 'QTY_TEMPERATURE', 'TYPE_T', 'UPDATE', '999',
    'T2', 'QTY_TEMPERATURE', 'TYPE_T2', 'UPDATE', '999',
 
 Potential Temperature:
