@@ -2231,10 +2231,10 @@ call get_date(model_time, iyear, imonth, iday, ihour, imin, isec)
 seconds = (ihour*60 + imin)*60 + isec
 
 call nc_begin_define_mode(ncid)
-call nc_add_global_attribute(ncid, 'nyr'   , iyear)
-call nc_add_global_attribute(ncid, 'month' , imonth)
+call nc_add_global_attribute(ncid, 'myear'   , iyear)
+call nc_add_global_attribute(ncid, 'mmonth' , imonth)
 call nc_add_global_attribute(ncid, 'mday'  , iday)
-call nc_add_global_attribute(ncid, 'sec'   , seconds)
+call nc_add_global_attribute(ncid, 'msec'   , seconds)
 call nc_end_define_mode(ncid)
 
 end subroutine write_model_time
@@ -2577,10 +2577,10 @@ character(len=256) :: filename
 type(time_type) :: read_model_time
 
 integer :: ncid         !< netcdf file id
-integer :: nyr      , & ! year number, in cice restart
-           month    , & ! month number, 1 to 12, in cice restart
+integer :: myear      , & ! year number, in cice restart
+           mmonth    , & ! month number, 1 to 12, in cice restart
            mday     , & ! day of the month, in cice restart
-           sec          ! elapsed seconds into date, in cice restart
+           msec          ! elapsed seconds into date, in cice restart
 integer :: hour     , & ! hour of the day, needed for dart set_date
            minute   , & ! minute of the hour, needed for dart set_date
            secthismin 
@@ -2594,28 +2594,28 @@ endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
                   'read_model_time', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'nyr'  , nyr), &
-                  'read_model_time', 'get_att nyr')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'month' , month), &
-                  'read_model_time', 'get_att month')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'myear'  , myear), &
+                  'read_model_time', 'get_att myear')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'mmonth' , mmonth), &
+                  'read_model_time', 'get_att mmonth')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'mday'   , mday), &
                   'read_model_time', 'get_att mday')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'sec', sec), &
-                  'read_model_time', 'get_att sec')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'msec', msec), &
+                  'read_model_time', 'get_att msec')
 
 ! FIXME: we don't allow a real year of 0 - add one for now, but
 ! THIS MUST BE FIXED IN ANOTHER WAY!
-if (nyr == 0) then
+if (myear == 0) then
   call error_handler(E_MSG, 'read_model_time', &
                      'WARNING!!!   year 0 not supported; setting to year 1')
-  nyr = 1
+  myear = 1
 endif
 
-hour       = int(sec/3600) 
-minute     = int((sec-hour*3600)/60)
-secthismin = int(sec-hour*3600-minute*60) 
+hour       = int(msec/3600) 
+minute     = int((msec-hour*3600)/60)
+secthismin = int(msec-hour*3600-minute*60) 
 
-read_model_time = set_date(nyr, month, mday, hour, minute, secthismin)
+read_model_time = set_date(myear, mmonth, mday, hour, minute, secthismin)
 
 end function read_model_time
 

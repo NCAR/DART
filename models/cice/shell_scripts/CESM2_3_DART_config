@@ -215,8 +215,10 @@ if [[ -e input.nml ]]; then
       ${COPY} input.nml input.nml.original
    fi
 
-elif [[ -e ${DARTROOT}/models/cice/work/input.nml ]]; then
-   ${COPY} ${DARTROOT}/models/cice/work/input.nml  input.nml
+elif [[ -e /glade/work/mollyw/Projects/c-icesat-2/data/templates/DART_input.nml.template ]]; then
+   ${COPY} /glade/work/mollyw/Projects/c-icesat-2/data/templates/DART_input.nml.template input.nml
+# elif [[ -e ${DARTROOT}/models/cice/work/input.nml ]]; then
+#    ${COPY} ${DARTROOT}/models/cice/work/input.nml  input.nml
    if [[ -x update_dart_namelists ]]; then
           ./update_dart_namelists
    fi
@@ -231,6 +233,7 @@ ${COPY} ${DARTROOT}/models/cice/work/cice_to_dart      ${EXEROOT}
 ${COPY} ${DARTROOT}/models/cice/work/dart_to_cice      ${EXEROOT}
 ${COPY} ${DARTROOT}/models/cice/work/filter            ${EXEROOT}
 ${COPY} ${DARTROOT}/models/cice/work/perfect_model_obs ${EXEROOT}
+${COPY} /glade/work/mollyw/Projects/c-icesat-2/data/templates/cice_bounded_qceff_table.csv ${CASEROOT}
 
 exit 0
 
@@ -301,20 +304,18 @@ chmod 0755 update_dart_namelists
 #=========================================================================
 
 if ( $num_instances > 1 ) then
-   set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
+   set SAMP_ERR_FILE = ${DARTROOT}/assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc
+   # set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
       echo ""
-      echo "WARNING: no final_full.xx file found for an ensemble size of ${num_instances}."
+      echo "WARNING: No sampling_error_correction_table.nc file found."
       echo "         This file is NOT needed unless you want to turn on the"
       echo "         sampling_error_correction feature in any of the models."
       echo "         To use it, in addition to setting the namelist to .true., cd to:"
-      echo "         ${DARTROOT}/system_simulation"
-      echo "         and create a final_full.${num_instances} file"
-      echo "         one can be generated for any ensemble size; see docs."
-      echo "         Copy it into ${CASEROOT} before running."
-      echo ""
+      echo "         ${DARTROOT}/assimilation_code/programs/gen_sampling_err_table/"
+      echo "         and copy it into ${CASEROOT} before running."
    endif
    
    foreach N ( input.nml )

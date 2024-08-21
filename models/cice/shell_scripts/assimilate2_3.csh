@@ -99,19 +99,30 @@ cd ${RUNDIR}
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `ls -1 $CASE.cpl_*.r.*.nc | tail -n 1`
-set FILE = $FILE:r
-set CPL_DATE_EXT = `echo $FILE:e`
-set CPL_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
+set REST_FILE = `ls -1 $CASE.cpl_*.r.*.nc | tail -n 1`
+set HIST_FILE = `ls -1 $CASE.cice_*.h.*.nc | tail -n 1`
+set modelFILE = $REST_FILE:r
+set obsFILE = $HIST_FILE:r
+
+set CPL_DATE_EXT = `echo $modelFILE:e`
+set CPL_DATE     = `echo $modelFILE:e | sed -e "s#-# #g"`
+set OBS_DATE_EXT = `echo $obsFILE:e`
+set OBS_DATE     = `echo $obsFILE:e | sed -e "s#-# #g"`
+
 set CPL_YEAR     = `echo $CPL_DATE[1] | bc`
+set OBS_YEAR     = `echo $OBS_DATE[1] | bc`
 set CPL_MONTH    = `echo $CPL_DATE[2] | bc`
+set OBS_MONTH    = `echo $OBS_DATE[2] | bc`
 set CPL_DAY      = `echo $CPL_DATE[3] | bc`
+set OBS_DAY      = `echo $OBS_DATE[3] | bc`
 set CPL_SECONDS  = `echo $CPL_DATE[4] | bc`
 set CPL_HOUR     = `echo $CPL_DATE[4] / 3600 | bc`
 
 echo "valid time of model is $CPL_YEAR $CPL_MONTH $CPL_DAY $CPL_SECONDS (seconds)"
 echo "valid time of model is $CPL_YEAR $CPL_MONTH $CPL_DAY $CPL_HOUR (hours)"
 
+echo "will look for observation at time $OBS_YEAR $OBS_MONTH $OBS_DAY $CPL_SECONDS (seconds)"
+echo "will look for observation at time $OBS_YEAR $OBS_MONTH $OBS_DAY $CPL_HOUR (hours)"
 #-------------------------------------------------------------------------
 # Create temporary working directory for the assimilation and go there
 #-------------------------------------------------------------------------
@@ -139,7 +150,7 @@ if (! -d ${BASEOBSROOT}/) then
    exit 2
 endif
 
-set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${CPL_YEAR} ${CPL_MONTH} ${CPL_DAY} ${CPL_SECONDS}`
+set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${OBS_YEAR} ${OBS_MONTH} ${OBS_DAY} ${CPL_SECONDS}`
 set OBS_FILE = ${BASEOBSROOT}/${OBSFNAME}
 
 if (  -e   ${OBS_FILE} ) then
@@ -197,11 +208,11 @@ set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 
 if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${CASEROOT}/final_full.${ensemble_size}
+   set SAMP_ERR_FILE = ${CASEROOT}/sampling_error_correction_table.nc
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
-      echo "ERROR: no sampling error correction file for this ensemble size."
+      echo "ERROR: no sampling error correction file found."
       echo "ERROR: looking for ${SAMP_ERR_FILE}"
       exit 2
    endif
@@ -469,28 +480,28 @@ while ( $member <= ${ensemble_size} )
    if (! -d ${member_dir}) mkdir ${member_dir}
    cd ${member_dir}
    set ICE_FILENAME = `head -n $member ../cice_restarts.txt | tail -n 1`
-if ( $PARAMETER_ESTIMATION == "TRUE" ) then 
-   foreach PARAM ($cice_parameters)
-     if ( $CONTINUE_RUN == "FALSE" || $use_mean == "TRUE" ) then   
-         ncks -v  fsnow ../$ICE_FILENAME -O temp.nc  
+   if ( $PARAMETER_ESTIMATION == "TRUE" ) then 
+      foreach PARAM ($cice_parameters)
+         if ( $CONTINUE_RUN == "FALSE" || $use_mean == "TRUE" ) then   
+            ncks -v  fsnow ../$ICE_FILENAME -O temp.nc  
        
-         ncrename -v fsnow,$PARAM temp.nc
+            ncrename -v fsnow,$PARAM temp.nc
        
-         set par_value = `grep "$PARAM" "${CASEROOT}/user_nl_cice${inst_string}" | cut -d'=' -f2 | sed "s/^ *//"`
-         echo ${PARAM} $par_value
-         ncap2 -s "${PARAM}[nj,ni]=$par_value" temp.nc temp2.nc
-         echo "ncap2 done"
-         ncks -v ${PARAM} temp2.nc -A ../$ICE_FILENAME 
-         rm -rf temp.nc temp2.nc         
-     else   # use filters delta r_snow
-         set date_yesterday = `date -d "${CPL_DATE[1]}-${CPL_DATE[2]}-${CPL_DATE[3]} 1 day ago" +%F`-${CPL_DATE[4]}
-         set pre_restart = `printf $RUNDIR/${CASE}.cice_%04d.r.${date_yesterday}.nc $member`
-         ncks -v $PARAM $pre_restart -A ../$ICE_FILENAME
-     endif 
-   end
+            set par_value = `grep "$PARAM" "${CASEROOT}/user_nl_cice${inst_string}" | cut -d'=' -f2 | sed "s/^ *//"`
+            echo ${PARAM} $par_value
+            ncap2 -s "${PARAM}[nj,ni]=$par_value" temp.nc temp2.nc
+            echo "ncap2 done"
+            ncks -v ${PARAM} temp2.nc -A ../$ICE_FILENAME 
+            rm -rf temp.nc temp2.nc         
+         else   # use filters delta r_snow
+            set date_yesterday = `date -d "${CPL_DATE[1]}-${CPL_DATE[2]}-${CPL_DATE[3]} 1 day ago" +%F`-${CPL_DATE[4]}
+            set pre_restart = `printf $RUNDIR/${CASE}.cice_%04d.r.${date_yesterday}.nc $member`
+            ncks -v $PARAM $pre_restart -A ../$ICE_FILENAME
+         endif 
+      end
    endif
-   ln -sf ../${ICE_FILENAME} cice_restart.nc
 
+   ln -sf ../${ICE_FILENAME} cice_restart.nc
    ln -sf ../input.nml .
    echo "input.nml linked"
    @ member ++
@@ -609,34 +620,41 @@ while ( $member <= $ensemble_size )
    set PRIOR_FILENAME = `printf cice_prior.r.%04d.nc $member`
    ln -sf ../${PRIOR_FILENAME} cice_restart.nc
 
+   # create a postprocessed_restart.nc file for changes to be written to
+   cp ../${ICE_FILENAME} postprocessed_restart.nc
+
    #========================================================
    # FEI: link yesterday's restart file 
    # to pre_restart.nc  
+   # MOLLY: link original restart file to original_cice_restart_file
    #========================================================
-   cd ${CASEROOT}
+   # cd ${CASEROOT}
 
-   if ( ${CONTINUE_RUN} == "TRUE" ) then
+   # if ( ${CONTINUE_RUN} == "TRUE" ) then
 
-      set date_yesterday = `date -d "${CPL_DATE[1]}-${CPL_DATE[2]}-${CPL_DATE[3]} 1 day ago" +%F`-${CPL_DATE[4]}
-      echo "the forecast began at " $date_yesterday
-      set pre_restart = `printf $RUNDIR/${CASE}.cice_%04d.r.${date_yesterday}.nc $member`
+   #    set date_yesterday = `date -d "${CPL_DATE[1]}-${CPL_DATE[2]}-${CPL_DATE[3]} 1 day ago" +%F`-${CPL_DATE[4]}
+   #    echo "the forecast began at " $date_yesterday
+   #    set pre_restart = `printf $RUNDIR/${CASE}.cice_%04d.r.${date_yesterday}.nc $member`
 
-   else
+   # else
 
-      set infile   = `printf $RUNDIR/ice_in_%04d $member`
-      set MYSTRING = `grep 'ice_ic' $infile`
-      set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
-      set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-      set pre_restart = $MYSTRING[2]
+   #    set infile   = `printf $RUNDIR/ice_in_%04d $member`
+   #    set MYSTRING = `grep 'ice_ic' $infile`
+   #    set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
+   #    set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
+   #    set pre_restart = $MYSTRING[2]
 
-   endif
+   # endif
 
-  cd $RUNDIR/assimilate_ice/${member_dir}          #go back to the assim dir
-  ${LINK} $pre_restart pre_restart.nc
+   # cd $RUNDIR/assimilate_ice/${member_dir}          #go back to the assim dir
+#   ${LINK} $pre_restart pre_restart.nc
 
 
    echo "starting dart_to_ice for member ${member} at "`date`
-   ${EXEROOT}/dart_to_cice >! output.${member}.dart_to_ice &
+   ${EXEROOT}/dart_to_cice >! output.${member}.dart_to_ice 
+
+   # copy the postprocessed_restart.nc back to the restart file in the model run directory
+   cp postprocessed_restart.nc ../${ICE_FILENAME}
 
    cd ..
 
