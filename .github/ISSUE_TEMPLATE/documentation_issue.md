@@ -11,7 +11,7 @@ assignees: ''
 :books: Please describe the problem you’ve noticed in the documentation. 
 
 ### Where did you find the issue?
-Provide the location of the issue:  
+Provide the location(s) of the issue:  
 
 - File name or URL: 
 - Section name or header:
