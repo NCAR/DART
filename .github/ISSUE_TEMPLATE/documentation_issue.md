@@ -20,7 +20,7 @@ Provide the location(s) of the issue:
 Share what’s incorrect, unclear, missing, or outdated.
 
 ### Suggestions for improvement
-If you have any ideas on how to fix the issue, please share them.
+If you have any ideas to fix or generally improve this documentation, please share them.
 
 ### Anything else we should know?
 Include any other relevant details, such as references, screenshots, or related discussions.
