@@ -12,14 +12,14 @@ from time import perf_counter
 ###############################################################
 
 case = sys.argv[1]
-truth = int(sys.argv[2])
+user = sys.argv[2]
+truth = int(sys.argv[3])
 
-if sys.argv[3] == 'all':
+if sys.argv[4] == 'all':
     stages = ['preassim','pre_filter','post_filter','postprocessed','analysis','forecast']
 else:
     stages = [sys.argv[i] for i in range(3,len(sys.argv))]
 
-user = 'mollyw'
 output_path = '/glade/work/'+user+'/Projects/cice-scm-da/data/processed/'+case+'/'
 if not os.path.exists(output_path):
     os.makedirs(output_path)
@@ -32,6 +32,7 @@ start = perf_counter()
 
 print('Working on case '+case+'...')
 print('Postprocessing stages: '+str(stages))
+ensemble_size = len(glob.glob('/glade/derecho/scratch/'+user+'/ICEPACK_RUNS/'+case+'/mem*'))
 
 for stage in stages:
     if stage in ['input','preassim','analysis','output']:
@@ -47,11 +48,11 @@ for stage in stages:
     if stage in ['preassim','analysis','pre_filter','postprocessed','post_filter','forecast']:
         # Cycle over ensemble members and concatenate in time
         if 'output_files' in base_path:
-            for i in range(1,30):
+            for i in range(1,ensemble_size):
                 os.system('ncecat '+base_path+'????-??-??/'+stage+'_member_00'+f"{i:02d}"+'.nc '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc')
                 os.system('ncrename -d record,time '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc')
         elif 'analyses' in base_path:
-            for i in range(1,31):
+            for i in range(1,ensemble_size+1):
                 if i == truth:
                     if stage == 'postprocessed':
                         os.system('ncecat '+base_path+'????-??-??/truth_data_00'+f"{i:02d}"+'.nc '+output_path+'truth_data_00'+f"{i:02d}"+'.nc')
@@ -62,7 +63,7 @@ for stage in stages:
                     os.system('ncecat '+base_path+'????-??-??/'+stage+'_restart_00'+f"{i:02d}"+'.nc '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc')
                     os.system('ncrename -d record,time '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc')
         elif 'forecast' in base_path:
-            for i in range(1,31):
+            for i in range(1,ensemble_size+1):
                 os.system('ncecat '+base_path+'????-??-??/icepack.h.????-??-??_00'+f"{i:02d}"+'.nc '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc')
                 # take an average over the time dimension
                 os.system('ncwa -O -C -a time '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc '+output_path+stage+'_member_00'+f"{i:02d}"+'.nc')

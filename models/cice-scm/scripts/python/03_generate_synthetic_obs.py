@@ -254,6 +254,11 @@ def repack_categories(file):
 ## INTERAL PROCESSES                                         ##
 ###############################################################
 
+if os.path.exists(dart_dir + '/models/cice-scm/work/cice.r.nc') is False:   
+    os.symlink(scratch_dir + '/ICEPACK_RUNS/'+source_case+'/mem0001/restart/iced.2011-01-02-00000.nc', dart_dir + '/models/cice-scm/work/cice.r.nc')
+else:
+    print('dummy cice restart file already exists! Not linking another!')
+
 # set the observation types
 if category is True:
     ob_types = ['SAT_SEAICE_VICE01','SAT_SEAICE_VICE02','SAT_SEAICE_VICE03','SAT_SEAICE_VICE04', 'SAT_SEAICE_VICE05',

@@ -177,7 +177,7 @@ while mem <= ensemble_size:
     restart_file = scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem'+inst_string+'/restart/iced.2012-01-01-00000.year10.nc'
     
     # read namelist template
-    namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_1.3.1_flux')
+    namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_JRA55_flux')
 
     # set case settings 
     namelist['setup_nml']['year_init'] = year_init

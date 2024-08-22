@@ -193,7 +193,7 @@ while mem <= ensemble_size:
     
     # read namelist template
     # namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_noflux')
-    namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_1.3.1_flux')
+    namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_JRA55_flux')
 
     # set case settings 
     namelist['setup_nml']['year_init'] = year_init

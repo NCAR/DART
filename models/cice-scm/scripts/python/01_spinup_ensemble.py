@@ -33,7 +33,7 @@ compiler = 'intel'
 # choose a spinup length and ensemble size (limited at this 
 # time to 30 or less)
 spinup_length = 10
-ensemble_size = 30
+ensemble_size = 3
 
 # choose a lateral flux option
 flux = sys.argv[3]
@@ -269,7 +269,7 @@ while spinup_year <= spinup_length:
         os.system(comd)
 
         # check the output file for successful model completion
-        check_finished = 'ICEPACK_COMPLETED SUCCESSFULLY'
+        check_finished = 'ICEPACK COMPLETED SUCCESSFULLY'
         txt = open('icepack.out').readlines()
         if check_finished not in txt:
             print('Icepack did not run correctly! Process stopped.')
@@ -314,7 +314,7 @@ time = pd.date_range('2011-01-01','2021-01-01',freq='1H')
 time = time[:-1]
 # remove leap years 
 time = time[~((time.month == 2) & (time.day == 29))]
-for mem in range(30):
+for mem in range(ensemble_size):
     string = '{:02d}'.format(mem+1)
     files = sorted(glob.glob('/glade/derecho/scratch/'+user+'/ICEPACK_RUNS/'+case_name+'/mem00'+string+'/history/*.nc'))
     print(files)

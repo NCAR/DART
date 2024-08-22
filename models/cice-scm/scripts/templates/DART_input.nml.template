@@ -102,7 +102,6 @@
    /
 
 &assim_tools_nml
-   filter_kind                     = 101,
    cutoff                          = 1000000.0
    distribute_mean                 = .false.
    sort_obs_inc                    = .false.,
