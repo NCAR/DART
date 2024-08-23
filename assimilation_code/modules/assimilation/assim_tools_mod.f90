@@ -78,7 +78,7 @@ use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
 use algorithm_info_mod, only : probit_dist_info, obs_inc_info, EAKF, ENKF, &
                                BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
-                               KERNEL, OBS_PARTICLE, KERNEL_QCEF
+                               KERNEL, OBS_PARTICLE, KDE_FILTER
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
@@ -1030,7 +1030,7 @@ else
 
    !--------------------------------------------------------------------------
 
-   else if(filter_kind == KERNEL_QCEF) then
+   else if(filter_kind == KDE_FILTER) then
       call obs_increment_kde(ens, ens_size, obs, obs_var, bounded_below, &
          bounded_above, lower_bound, upper_bound, obs_inc)
    else

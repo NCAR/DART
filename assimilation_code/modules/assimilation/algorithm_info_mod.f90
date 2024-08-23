@@ -41,12 +41,12 @@ integer, parameter :: OBS_PARTICLE       = 4
 integer, parameter :: UNBOUNDED_RHF      = 8
 integer, parameter :: GAMMA_FILTER       = 11
 integer, parameter :: BOUNDED_NORMAL_RHF = 101
-integer, parameter :: KERNEL_QCEF        = 102
+integer, parameter :: KDE_FILTER        = 102
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
           init_algorithm_info_mod, end_algorithm_info_mod, &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, &
-          GAMMA_FILTER, KERNEL, OBS_PARTICLE, KERNEL_QCEF
+          GAMMA_FILTER, KERNEL, OBS_PARTICLE, KDE_FILTER
 
 ! type definitions for the QCF table
 type obs_error_info_type
@@ -297,8 +297,8 @@ do row = 1, size(qceff_table_data)
          qceff_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
       case ('BOUNDED_NORMAL_RHF')
          qceff_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
-      case ('KERNEL_QCEF')
-         qceff_table_data(row)%obs_inc_info%filter_kind = KERNEL_QCEF
+      case ('KDE_FILTER')
+         qceff_table_data(row)%obs_inc_info%filter_kind = KDE_FILTER
       case default
          write(errstring, *) 'Invalid filter kind: ', trim(filter_kind_string(row))
          call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
