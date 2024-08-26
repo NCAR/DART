@@ -22,6 +22,23 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 26 2024 :: KQCEF. Tag 11.7.0**
+
+- Adds a Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation to DART.
+- New distribution module kde_distribution_mod.
+- New module rootfinding_mod that provides a different implementation of inv_cdf.
+
+*Contributed by Ian Grooms*
+
+**August 15 2024 :: WRF fwd operator bug fixes. Tag v11.6.1**
+
+WRF-DART bug-fixes:
+
+  - Bug fix for surface temperature observations to use QTY_2M_TEMPERATURE
+  - Bug fix for conversion of vapor mixing ratio to specific humidity
+  - Bug fix for diagnostics_obs.csh
+  - Improved documentation for WRF model_mod and WRF-DART Tutorial
+
 **July 26 2024 :: Library build tools for DART. Tag v11.6.0**
 
 - Buildtools for compiling DART as a shared or a static library.
