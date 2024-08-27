@@ -6,8 +6,7 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength
-use time_manager_mod, only : time_type, set_time, set_time_missing, set_calendar_type, &
-                             get_time, set_date, get_date
+use time_manager_mod, only : time_type, set_calendar_type, get_time, set_date, get_date
 use     location_mod, only : location_type, get_close_type, get_close_obs, get_dist, &
                              convert_vertical_obs, convert_vertical_state, &
                              set_location, set_location_missing, VERTISLEVEL, &
@@ -120,10 +119,6 @@ character(len=512) :: string1
 character(len=512) :: string2
 character(len=512) :: string3
 
-type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
-
-type(time_type) :: assimilation_time_step 
-
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 10
 integer, parameter :: num_state_table_columns = 3
@@ -191,7 +186,7 @@ call set_calendar_type('Gregorian')
 
 model_timestep = set_model_time_step()
 
-call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
+call get_time(model_timestep,ss,dd)
 
 write(string1, *) 'assimilation period is ', dd,' days ', ss,' seconds'
 call error_handler(E_MSG, 'static_init_model', string1, source)
@@ -223,46 +218,6 @@ if (do_output()) write(*, *) 'model_size = ', model_size
 end subroutine static_init_model
 
 !------------------------------------------------------------------
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no 
-! synthetic data experiments using perfect_model_obs are planned, 
-! this can be a NULL INTERFACE.
-
-!subroutine init_conditions(x)
-!
-!real(r8), intent(out) :: x(:)
-!
-!x = MISSING_R8
-!
-!end subroutine init_conditions
-
-!------------------------------------------------------------------
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to 
-! compute a timestep, for instance for radiation computations.
-! This interface is only called if the namelist parameter
-! async is set to 0 in perfect_model_obs of filter or if the 
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If one of these options
-! is not going to be used (the model will only be advanced as
-! a separate model-specific executable), this can be a 
-! NULL INTERFACE.
-
-!subroutine adv_1step(x, time)
-!
-!real(r8),        intent(inout) :: x(:)
-!type(time_type), intent(in)    :: time
-!
-!end subroutine adv_1step
-
-
-
-!------------------------------------------------------------------
 ! Returns the number of items in the state vector as an integer. 
 ! This interface is required for all applications.
 
@@ -273,24 +228,6 @@ integer(i8) :: get_model_size
 get_model_size = model_size
 
 end function get_model_size
-
-!------------------------------------------------------------------
-! Companion interface to init_conditions. Returns a time that is somehow 
-! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no 
-! synthetic data experiments using perfect_model_obs are planned, 
-! this can be a NULL INTERFACE.
-
-!subroutine init_time(time)
-!
-!type(time_type), intent(out) :: time
-!
-!! for now, just set to 0
-!time = set_time(0,0)
-!
-!end subroutine init_time
 
 !------------------------------------------------------------------
 ! Given a state handle, a location, and a model state variable type,
@@ -691,19 +628,12 @@ subroutine nc_write_model_atts(ncid, domain_id)
 
 integer, intent(in) :: ncid      ! netCDF file identifier
 integer, intent(in) :: domain_id
-integer :: NGridDimID
 
-integer, parameter :: MAXLINELEN = 128
-character(len=8), parameter :: cice_namelist_file = 'cice_in'
-character(len=MAXLINELEN), allocatable, dimension(:) :: textblock
-integer :: LineLenDimID, nlinesDimID, nmlVarID
-integer :: nlines, linelen,status
-logical :: has_cice_namelist
+integer :: NGridDimID
+integer :: tlonVarID, tlatVarID
+integer :: status
 
 character(len=256) :: filename
-
-integer :: NlonDimID, NlatDimID
-integer :: tlonVarID, tlatVarID
 
 if ( .not. module_initialized ) call static_init_model
 
