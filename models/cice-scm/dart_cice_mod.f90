@@ -4,25 +4,18 @@
 
 module dart_cice_mod
 
-use        types_mod, only : r8, rad2deg, PI, SECPERDAY, digits12
-use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
-                             set_calendar_type, get_calendar_string, &
-                             print_date, print_time, operator(==), operator(-)
-use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             register_module, error_handler, &
-                             find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, find_textfile_dims
-
+use        types_mod, only      : r8, rad2deg
+use time_manager_mod, only      : time_type, set_time, set_calendar_type, &
+                                  operator(==), operator(-)
+use    utilities_mod, only      : file_exist, error_handler, E_ERR, E_MSG
 use  netcdf_utilities_mod, only : nc_check
 
-
-use typesizes
 use netcdf
 
 implicit none
 private
 
-public :: set_model_time_step,get_horiz_grid_dims, &
+public :: set_model_time_step, get_horiz_grid_dims, &
           get_ncat_dim, read_horiz_grid
 
 character(len=*), parameter :: source   = 'dart_cice_mod.f90'
@@ -75,8 +68,10 @@ if ( .not. module_initialized ) call initialize_module
 !if ( (trim(restart_option) == 'ndays') .or. (trim(restart_option) == 'nday' ) ) then
 !   set_model_time_step = set_time(0, restart_n) ! (seconds, days)
 !else if ( trim(restart_option) == 'nyears' ) then
-   ! FIXME ... CMB I guess we ignore it and make the freq 1 day anyway?
-   set_model_time_step = set_time(0, 1) ! (seconds, days)
+
+! FIXME ... CMB I guess we ignore it and make the freq 1 day anyway?
+set_model_time_step = set_time(0, 1) ! (seconds, days)
+
 !else
 !   call error_handler(E_ERR,'set_model_time_step', &
 !              'restart_option must be ndays or nday', source, revision, revdate)
@@ -107,10 +102,9 @@ if (nc_rc /= nf90_noerr) then
 endif
 
 call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Nx), &
-         'get_horiz_grid_dims','inquire_dimension ni '//trim(ic_filename))
+              'get_horiz_grid_dims','inquire_dimension ni '//trim(ic_filename))
 
-call nc_check(nf90_close(grid_id), &
-         'get_horiz_grid_dims','close '//trim(ic_filename) )
+call nc_check(nf90_close(grid_id), 'get_horiz_grid_dims','close '//trim(ic_filename) )
 
 end subroutine get_horiz_grid_dims
 
@@ -126,7 +120,7 @@ integer :: grid_id, dimid, nc_rc
 if ( .not. module_initialized ) call initialize_module
 
 call nc_check(nf90_open(trim(ic_filename), nf90_nowrite, grid_id), &
-         'get_ncat_dim','open '//trim(ic_filename))
+              'get_ncat_dim','open '//trim(ic_filename))
 
 ! ncat : get dimid for 'ncat' and then get value
 nc_rc = nf90_inq_dimid(grid_id, 'ncat', dimid)
@@ -139,11 +133,9 @@ if (nc_rc /= nf90_noerr) then
 endif
 
 call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ncat), &
-         'get_ncat_dim','inquire_dimension ni '//trim(ic_filename))
+              'get_ncat_dim','inquire_dimension ni '//trim(ic_filename))
 
-! tidy up
-call nc_check(nf90_close(grid_id), &
-         'get_ncat_dim','close '//trim(ic_filename) )
+call nc_check(nf90_close(grid_id), 'get_ncat_dim','close '//trim(ic_filename) )
 
 end subroutine get_ncat_dim
 
@@ -151,48 +143,43 @@ end subroutine get_ncat_dim
 
 subroutine read_horiz_grid(nx, TLAT, TLON)
 
-integer,                    intent(in)  :: nx
+integer,                 intent(in)  :: nx
 real(r8), dimension(nx), intent(out) :: TLAT, TLON
 
-integer :: grid_id, reclength,VarId,status
+integer :: grid_id, reclength, VarId
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Check to see that the file exists.
-
 if ( .not. file_exist(ic_filename) ) then
    msgstring = 'cice grid '//trim(ic_filename)//' not found'
    call error_handler(E_ERR,'read_horiz_grid', msgstring, source)
 endif
 
 ! Open it and read them in the EXPECTED order.
-! Actually, we only need the first two, so I'm skipping the rest.
-
 call nc_check(nf90_open(trim(ic_filename), nf90_nowrite, grid_id), &
-         'read_horiz_grid','open '//trim(ic_filename))
+              'read_horiz_grid', 'open '//trim(ic_filename))
+
 ! Latitude
 call nc_check(nf90_inq_varid(grid_id, 'tlat', VarId), &
-         'read_horiz_grid','inquiring tlat from '//trim(ic_filename))
-call nc_check(nf90_get_var(grid_id, VarId, TLAT, &
-               start=(/1/), &
-               count=(/nx/)), &
-'read_horiz_grid','getting tlat from '//trim(ic_filename))
-!Longitude
-call nc_check(nf90_inq_varid(grid_id, 'tlon', VarId), &
-'read_horiz_grid','inquiring tlon from '//trim(ic_filename))
-call nc_check(nf90_get_var(grid_id, VarId, TLON, &
-               start=(/1/), &
-               count=(/nx/)), &
-     'read_horiz_grid','getting tlon from '//trim(ic_filename))
+              'read_horiz_grid', 'inquiring tlat from '//trim(ic_filename))
+call nc_check(nf90_get_var(grid_id, VarId, TLAT, start=(/1/), &
+              count=(/nx/)), 'read_horiz_grid', &
+              'getting tlat from '//trim(ic_filename))
 
-call nc_check(nf90_close(grid_id), &
-         'read_horiz_grid','close '//trim(ic_filename) )
+! Longitude
+call nc_check(nf90_inq_varid(grid_id, 'tlon', VarId), &
+              'read_horiz_grid', 'inquiring tlon from '//trim(ic_filename))
+call nc_check(nf90_get_var(grid_id, VarId, TLON, &
+              start=(/1/), count=(/nx/)), &
+              'read_horiz_grid', 'getting tlon from '//trim(ic_filename))
+
+call nc_check(nf90_close(grid_id), 'read_horiz_grid', 'close '//trim(ic_filename))
 
 TLAT = TLAT * rad2deg
 TLON = TLON * rad2deg
 
 ! ensure [0,360) [-90,90]
-
 where (TLON <   0.0_r8) TLON = TLON + 360.0_r8
 where (TLON > 360.0_r8) TLON = TLON - 360.0_r8
 
