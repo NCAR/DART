@@ -1,43 +1,31 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module model_mod
 
-! This is a template showing the interfaces required for a model to be compliant
-! with the DART data assimilation infrastructure. The public interfaces listed
-! must all be supported with the argument lists as indicated. Many of the interfaces
-! are not required for minimal implementation (see the discussion of each
-! interface and look for NULL INTERFACE). 
-
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength
-use time_manager_mod, only : time_type, set_time, set_time_missing,set_calendar_type,get_time, &
-                             set_date, get_date
-use     location_mod, only : location_type, get_close_type, &
-                             get_close_obs, get_dist,&
+use time_manager_mod, only : time_type, set_time, set_time_missing, set_calendar_type, &
+                             get_time, set_date, get_date
+use     location_mod, only : location_type, get_close_type, get_close_obs, get_dist, &
                              convert_vertical_obs, convert_vertical_state, &
-                             set_location, set_location_missing,VERTISLEVEL, &
-                             get_location, &
-                             loc_get_close_state => get_close_state
-use    utilities_mod, only : register_module, error_handler, &
-                             E_ERR, E_MSG, logfileunit, &
-                             nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+                             set_location, set_location_missing, VERTISLEVEL, &
+                             get_location, loc_get_close_state => get_close_state
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
+                             nmlfileunit, do_output, do_nml_file, do_nml_term, &
                              find_namelist_in_file, check_namelist_read,to_upper, &
                              file_exist
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
-                                 nc_add_global_creation_time, &
-                                 nc_begin_define_mode, nc_end_define_mode, &
-                                 nc_check
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_end_define_mode, nc_check
 use state_structure_mod, only : add_domain, get_domain_size
 use ensemble_manager_mod, only : ensemble_type
 use distributed_state_mod, only : get_state
 use default_model_mod, only : pert_model_copies, nc_write_model_vars, init_conditions, &
                               init_time, adv_1step
-use         dart_cice_mod, only : set_model_time_step,get_horiz_grid_dims, &
-                                  get_ncat_dim, read_horiz_grid
+use         dart_cice_mod, only : set_model_time_step,get_horiz_grid_dims, get_ncat_dim, &
+                                  read_horiz_grid
 use   state_structure_mod, only : state_structure_info,get_index_start, get_num_variables, &
                                   get_dart_vector_index, get_model_variable_indices
 use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &
@@ -96,9 +84,9 @@ use netcdf
 implicit none
 private
 
-! required by DART code - will be called from filter and other
-! DART executables.  interfaces to these routines are fixed and
-! cannot be changed in any way.
+! required routines by DART code - will be called from filter and other
+! DART executables. interfaces to these routines are fixed and cannot
+! be changed in any way.
 public :: get_model_size,         &
           adv_1step,              &
           get_state_meta_data,    &
@@ -111,7 +99,7 @@ public :: get_model_size,         &
           init_conditions, &
           check_sfctemp_var
 
-! public but in another module
+! required routines where code is in other modules
 public :: nc_write_model_vars,    &
           pert_model_copies,      &
           get_close_obs,          &
@@ -123,10 +111,11 @@ public :: nc_write_model_vars,    &
 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = 'cice-scm/model_mod.f90'
+
+logical, save :: module_initialized = .false.
+
+! message strings
 character(len=512) :: string1
 character(len=512) :: string2
 character(len=512) :: string3
@@ -146,18 +135,7 @@ integer, parameter :: VAR_NAME_INDEX = 1
 integer, parameter :: VAR_QTY_INDEX = 2
 integer, parameter :: VAR_UPDATE_INDEX = 3
 
-! EXAMPLE: perhaps a namelist here for anything you want to/can set at runtime.
-! this is optional!  only add things which can be changed at runtime.
-integer  :: model_size 
-integer  :: assimilation_period_days      = 0 
-integer  :: assimilation_period_seconds   = 3600
-
-real(r8) :: model_perturbation_amplitude = 0.01
-
-character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
-integer  :: debug = 100
-integer  :: grid_oi = 3
-logical, save :: module_initialized = .false.
+integer  :: model_size
 
 real(r8), allocatable :: TLAT(:), TLON(:)
 
@@ -166,10 +144,14 @@ type(time_type) :: model_time, model_timestep
 integer :: Nx=-1
 integer :: Ncat=-1
 integer :: domain_id,nfields
-! uncomment this, the namelist related items in the 'use utilities' section above,
-! and the namelist related items below in static_init_model() to enable the 
-! run-time namelist settings.
-!namelist /model_nml/ model_size, assimilation_time_step_days, assimilation_time_step_seconds
+
+! things which can/should be in the model_nml
+integer  :: assimilation_period_days      = 0
+integer  :: assimilation_period_seconds   = 3600
+real(r8) :: model_perturbation_amplitude = 0.01
+character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+integer  :: debug = 100
+integer  :: grid_oi = 3
 
 namelist /model_nml/  &
    assimilation_period_days,     &  ! for now, this is the timestep
@@ -182,7 +164,6 @@ namelist /model_nml/  &
 contains
 
 !------------------------------------------------------------------
-!
 ! Called to do one time initialization of the model. As examples,
 ! might define information about the model size or model timestep.
 ! In models that require pre-computed static data, for instance
@@ -191,25 +172,20 @@ contains
 
 subroutine static_init_model()
 
- real(r8) :: x_loc
- integer  :: i, dom_id,iunit,io,ss,dd
-!integer  :: iunit, io
+real(r8) :: x_loc
+integer  :: i, dom_id, iunit, io, ss, dd
 
-if ( module_initialized ) return ! only need to do this once.
+if ( module_initialized ) return ! only need to do this once
  
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
 module_initialized = .true.
 
-! This is where you would read a namelist, for example.
 call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-if (do_nml_file())  write(nmlfileunit, nml=model_nml)
-if (do_nml_term()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(*, nml=model_nml)
 
 call set_calendar_type('Gregorian')
 
@@ -217,8 +193,8 @@ model_timestep = set_model_time_step()
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
-write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+write(string1, *) 'assimilation period is ', dd,' days ', ss,' seconds'
+call error_handler(E_MSG, 'static_init_model', string1, source)
 
 call get_horiz_grid_dims(Nx)
 call get_ncat_dim(Ncat)
@@ -230,10 +206,8 @@ allocate(TLAT(Nx), TLON(Nx))
 
 call read_horiz_grid(Nx, TLAT, TLON)
  
-if (do_output()) write(logfileunit, *) 'Using grid : Nx, Ncat = ', &
-                                                     Nx, Ncat
-if (do_output()) write(     *     , *) 'Using grid : Nx, Ncat = ', &
-                                                     Nx, Ncat
+if (do_output()) write(logfileunit, *) 'Using grid : Nx, Ncat = ', Nx, Ncat
+if (do_output()) write(*, *) 'Using grid : Nx, Ncat = ', Nx, Ncat
 
 domain_id = add_domain('cice.r.nc', nfields, &
                        var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
@@ -243,10 +217,11 @@ domain_id = add_domain('cice.r.nc', nfields, &
 if (debug > 2) call state_structure_info(domain_id)
 
 model_size = get_domain_size(domain_id)
-if (do_output()) write(*,*) 'model_size = ', model_size
+if (do_output()) write(*, *) 'model_size = ', model_size
 
 
 end subroutine static_init_model
+
 !------------------------------------------------------------------
 ! Returns a model state vector, x, that is some sort of appropriate
 ! initial condition for starting up a long integration of the model.
@@ -263,8 +238,6 @@ end subroutine static_init_model
 !x = MISSING_R8
 !
 !end subroutine init_conditions
-
-
 
 !------------------------------------------------------------------
 ! Does a single timestep advance of the model. The input value of
@@ -301,8 +274,6 @@ get_model_size = model_size
 
 end function get_model_size
 
-
-
 !------------------------------------------------------------------
 ! Companion interface to init_conditions. Returns a time that is somehow 
 ! appropriate for starting up a long integration of the model.
@@ -326,22 +297,15 @@ end function get_model_size
 ! interpolates the state variable fields to that location and returns
 ! the values in expected_obs. The istatus variables should be returned as
 ! 0 unless there is some problem in computing the interpolation in
-! which case an alternate value should be returned. The itype variable
-! is a model specific integer that specifies the kind of field (for
-! instance temperature, zonal wind component, etc.). In low order
-! models that have no notion of types of variables this argument can
-! be ignored. For applications in which only perfect model experiments
-! with identity observations (i.e. only the value of a particular
-! state variable is observed), this can be a NULL INTERFACE.
+! which case an alternate value should be returned.
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus, thick_flag)
-
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_type
-real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
+real(r8),           intent(out) :: expected_obs(ens_size) ! array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 logical,optional,    intent(inout) :: thick_flag
 
@@ -353,7 +317,7 @@ real(r8)       :: expected_aggr_conc(ens_size)
 integer        :: set_obstype
 integer        :: var_table_index
 
-!Fei---need aicen*fyn to calculate the aggregate FY concentration------------
+!Fei---need aicen*fyn to calculate the aggregate FY concentration
 real(r8)       :: expected_conc(ens_size)
 real(r8)       :: expected_fy(ens_size)
 real(r8)       :: expected_tsfc(ens_size)
@@ -362,7 +326,7 @@ real(r8)       :: temp1(ens_size)
 
 if ( .not. module_initialized ) call static_init_model
 
-expected_obs(:) = MISSING_R8     ! the DART bad value flag
+expected_obs(:) = MISSING_R8 ! represents a bad value in DART
 istatus(:) = 99
 
 loc_array = get_location(location)
@@ -577,7 +541,7 @@ endif
 if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus, size(expected_obs)
 
 ! This should be the result of the interpolation of a
-! given kind (itype) of variable at the given location.
+! given obs_type of variable at the given location.
 
 ! The return code for successful return should be 0. 
 ! Any positive number is an error.
@@ -586,7 +550,9 @@ if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus, size(ex
 ! useful in diagnosing problems.
 
 end subroutine model_interpolate
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, cat_signal, expected_obs, istatus)
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
@@ -643,6 +609,7 @@ do iterations = 1, Niterations
    expected_obs = expected_obs+work_expected_obs
 enddo
 end subroutine lon_lat_interpolate
+
 !------------------------------------------------------------------
 ! Returns the smallest increment in time that the model is capable 
 ! of advancing the state in a given implementation, or the shortest
@@ -658,13 +625,12 @@ if ( .not. module_initialized ) call static_init_model
 shortest_time_between_assimilations = model_timestep
 
 end function shortest_time_between_assimilations
+
 !------------------------------------------------------------------
 ! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
+! associated location. This interface is required for all filter 
+! applications as it is required for computing the distance between
+! observations and state variables.
 
 subroutine get_state_meta_data(index_in, location, var_type)
 
@@ -674,8 +640,8 @@ integer,             intent(out), optional :: var_type
 
 real(r8) :: lat, lon, rcat
 integer  :: ni_index, hold_index, cat_index, local_var, var_id
-
 ! these should be set to the actual location and state quantity
+
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, ni_index, cat_index, hold_index, var_id=var_id)
@@ -694,13 +660,14 @@ endif
 
 end subroutine get_state_meta_data
 
-subroutine get_state_kind(var_ind, var_type)
- integer, intent(in)  :: var_ind
- integer, intent(out) :: var_type
-
+!------------------------------------------------------------------
 ! Given an integer index into the state vector structure, returns the kind,
 ! and both the starting offset for this kind, as well as the offset into
 ! the block of this kind.
+
+subroutine get_state_kind(var_ind, var_type)
+ integer, intent(in)  :: var_ind
+ integer, intent(out) :: var_type
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -708,17 +675,14 @@ var_type = state_kinds_list(var_ind)
 
 end subroutine get_state_kind
 
-
 !------------------------------------------------------------------
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
+! Does any shutdown and clean-up needed for model
 
 subroutine end_model()
 
 deallocate(TLAT,TLON)
 
 end subroutine end_model
-
 
 !------------------------------------------------------------------
 ! write any additional attributes to the output and diagnostic files
@@ -754,8 +718,6 @@ call nc_add_global_creation_time(ncid)
 call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
-call nc_add_global_attribute(ncid, "model_revision", revision )
-call nc_add_global_attribute(ncid, "model_revdate", revdate )
 call nc_add_global_attribute(ncid, "model", "CICE-SCM")
 
 call nc_check(nf90_def_dim(ncid, name='ni', &
@@ -779,13 +741,14 @@ call nc_check(nf90_put_var(ncid, tlatVarID, TLAT ), &
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+! given a kind, return what variable number it is
+
 function get_varid_from_kind(dart_kind)
 
 integer, intent(in) :: dart_kind
 integer             :: get_varid_from_kind
-
-! given a kind, return what variable number it is
 
 integer :: i
 
@@ -799,15 +762,16 @@ end do
 if (debug > 1) then
    write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
    write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
-   call error_handler(E_MSG,'get_varid_from_kind', string1, &
-                      source, revision, revdate, text2=string2)
+   call error_handler(E_MSG, 'get_varid_from_kind', string1, source, text2=string2)
 endif
 
 get_varid_from_kind = -1
 
 end function get_varid_from_kind
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_var )
+
+!------------------------------------------------------------------
+
+subroutine verify_state_variables(state_variables, ngood, table, kind_list, update_var)
 
 character(len=*),  intent(inout) :: state_variables(:)
 integer,           intent(out) :: ngood
@@ -828,9 +792,9 @@ ngood = 0
 !>@     The default is provided in the input namelist.
 
 if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
-   call use_default_state_variables( state_variables )
+   call use_default_state_variables(state_variables)
    string1 = 'model_nml:model_state_variables not specified using default variables'
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
+   call error_handler(E_MSG, 'verify_state_variables', string1, source)
 endif
 
 MyLoop : do i = 1, nrows
@@ -849,19 +813,17 @@ MyLoop : do i = 1, nrows
 
    if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
       string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+      call error_handler(E_ERR, 'verify_state_variables', string1, source)
    endif
 
    ! Make sure DART kind is valid
-
    kind_list(i) = get_index_for_quantity(dartstr)
    if( kind_list(i)  < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+      call error_handler(E_ERR, 'verify_state_variables', string1, source)
    endif
 
    ! Make sure the update variable has a valid name
-
    if ( present(update_var) )then
       SELECT CASE (update)
          CASE ('UPDATE')
@@ -871,23 +833,25 @@ MyLoop : do i = 1, nrows
          CASE DEFAULT
             write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
             write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
-            call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
+            call error_handler(E_ERR, 'verify_state_variables', string1, source, text2=string2)
       END SELECT
    endif
 
    ! Record the contents of the DART state vector
-
    if (do_output()) then
       write(string1,'(A,I2,6A)') 'variable ',i,' is ',trim(varname), ', ', trim(dartstr), ', ', trim(update)
-      call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
+      call error_handler(E_MSG, 'verify_state_variables', string1, source)
    endif
 
    ngood = ngood + 1
+
 enddo MyLoop
 
 end subroutine verify_state_variables
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine use_default_state_variables( state_variables )
+
+!------------------------------------------------------------------
+
+subroutine use_default_state_variables(state_variables)
 
 character(len=*),  intent(inout) :: state_variables(:)
 
@@ -900,7 +864,12 @@ state_variables( 1:5*num_state_table_columns ) = &
       'VICE                      ', 'QTY_V_SEAICE_COMPONENT    ', 'UPDATE                    '/)
 
 end subroutine use_default_state_variables
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+! Given a DART location (referred to as "base") and a set of candidate
+! locations & kinds (locs, loc_qtys/indx), returns the subset close to the
+! "base", their indices, and their distances to the "base" ...
+
 subroutine get_close_state(filt_gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                          num_close, close_indices, distances, state_handle)
 
@@ -915,14 +884,9 @@ integer,              intent(out)   :: close_indices(:)
 real(r8),             intent(out), optional :: distances(:)
 type(ensemble_type),  intent(in),  optional :: state_handle
 
-! Given a DART location (referred to as "base") and a set of candidate
-! locations & kinds (locs, loc_qtys/indx), returns the subset close to the
-! "base", their indices, and their distances to the "base" ...
-
 integer :: t_ind, k
 
 ! Initialize variables to missing status
-
 num_close = 0
 close_indices = -99
 if (present(distances)) distances(:) = 1.0e9   !something big and positive (far away)
@@ -948,13 +912,15 @@ if (present(distances)) then
 endif
 
 end subroutine get_close_state
-!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 function read_model_time(filename)
 
 character(len=256) :: filename
 type(time_type) :: read_model_time
 
-integer :: ncid         !< netcdf file id
+integer :: ncid         ! netcdf file id
 integer :: nyr      , & ! year number, in cice restart
            month    , & ! month number, 1 to 12, in cice restart
            mday     , & ! day of the month, in cice restart
@@ -967,7 +933,7 @@ if ( .not. module_initialized ) call static_init_model
 
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+   call error_handler(E_ERR, 'read_model_time', string1, source)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
@@ -985,7 +951,8 @@ call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'sec', sec), &
 ! THIS MUST BE FIXED IN ANOTHER WAY!
 if (nyr == 0) then
   call error_handler(E_MSG, 'read_model_time', &
-                     'WARNING!!!   year 0 not supported; setting to year 1')
+                     'WARNING!!!   year 0 not supported; setting to year 1', &
+                     source)
   nyr = 1
 endif
 
@@ -994,8 +961,11 @@ minute     = int((sec-hour*3600)/60)
 secthismin = int(sec-hour*3600-minute*60)
 
 read_model_time = set_date(nyr, month, mday, hour, minute, secthismin)
+
 end function read_model_time
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 subroutine write_model_time(ncid, model_time, adv_to_time)
 
 integer,         intent(in)           :: ncid
@@ -1014,8 +984,8 @@ if (present(adv_to_time)) then
    write(string1,*)'CICE/DART not configured to advance CICE.'
    write(string2,*)'called with optional advance_to_time of'
    write(string3,'(i4.4,5(1x,i2.2))')iyear,imonth,iday,ihour,imin, isec
-   call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2,text3=string3)
+   call error_handler(E_ERR, routine, string1, source, text2=string2, &
+                      text3=string3)
 endif
 
 call get_date(model_time, iyear, imonth, iday, ihour, imin, isec)
@@ -1030,9 +1000,12 @@ call nc_add_global_attribute(ncid, 'sec'   , seconds)
 call nc_end_define_mode(ncid)
 
 end subroutine write_model_time
+
 !-----------------------------------------------------------------
 ! Check which surface temperature state variable is in restart
+
 subroutine check_sfctemp_var(flag)
+
 logical, intent(inout) :: flag
 
 if (any(variable_table(:,1)=='Tsfc')) then
@@ -1040,10 +1013,14 @@ if (any(variable_table(:,1)=='Tsfc')) then
 else
   flag = .false.
 endif
+
 end subroutine check_sfctemp_var
+
 !-----------------------------------------------------------------
 ! Find state variable index 
+
 subroutine find_var_type(varname,var_index)
+
 character(len=16), intent(in) :: varname
 integer, intent(inout) :: var_index
 
@@ -1056,16 +1033,12 @@ do i=1,size(variable_table(:,1))
   endif
 enddo
 write(string1,*)'Could not find index of state variable'
-call error_handler(E_ERR, 'find_var_type', string1, &
-              source, revision, revdate)
+call error_handler(E_ERR, 'find_var_type', string1, source)
+
 end subroutine find_var_type
+
 !===================================================================
 ! End of model_mod
 !===================================================================
-end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+end module model_mod
