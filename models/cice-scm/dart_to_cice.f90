@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program dart_to_cice
 
@@ -26,13 +24,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-
-!------------------------------------------------------------------
+character(len=*), parameter :: source = 'dart_to_cice.f90'
 
 character(len=256) :: dart_to_cice_input_file = 'dart_restart.nc'
 character(len=256) :: original_cice_input_file = 'cice_restart.nc'
@@ -86,7 +78,7 @@ real(r8), parameter :: &
      phi_init = 0.75_r8, &
      dSin0_frazil = 3.0_r8
 real(r8), parameter :: sss = 34.7_r8
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(r8) :: squeeze,cc1,cc2,cc3,x1,Si0new,Ti,qsno_hold,qi0new
 real(r8), allocatable ::  hin_max(:)
 real(r8), allocatable ::  hcat_midpoint(:)
@@ -145,7 +137,7 @@ do l=1, Nslyr
   call get_variable(ncid,'qsno'//trim(nchar),qsno(l,:),dart_to_cice_input_file,gridpt_oi,Ncat)
 enddo
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(original_cice_input_file))
-!!!!!!!!!
+
 call nc_check( nf90_open(trim(dart_to_cice_input_file), NF90_NOWRITE, ncid), &
                   'dart_to_cice', 'open "'//trim(dart_to_cice_input_file)//'"')
 allocate(aicen(NCAT),vicen(NCAT),vsnon(NCAT))
@@ -154,7 +146,7 @@ call get_variable(ncid,'vicen',vicen,dart_to_cice_input_file,gridpt_oi,Ncat)
 call get_variable(ncid,'vsnon',vsnon,dart_to_cice_input_file,gridpt_oi,Ncat)
 call get_variable1d(ncid,'sst',sst,dart_to_cice_input_file,gridpt_oi,sst_present)
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(dart_to_cice_input_file))
-!!!!!!!!!!!!!!!!!!!!!!!!!
+
 qice = min(0.0_r8,qice)
 sice = max(0.0_r8,sice)
 qsno = min(0.0_r8,qsno)
@@ -247,7 +239,7 @@ do n=1,NCAT
     vsnon(n) = 0.0_r8
   endif
 enddo
-!!!!!!!!
+
 call nc_check( nf90_open(trim(original_cice_input_file), NF90_WRITE, ncid), &
                   'dart_to_cice', 'open "'//trim(original_cice_input_file)//'"')
 varname='aicen'
@@ -257,7 +249,7 @@ call nc_check(io, 'dart_to_cice', &
 io = nf90_put_var(ncid, VarID, aicen,start=(/gridpt_oi,1/),count=(/1,NCAT/))
 call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
-!!!!
+
 varname='vicen'
 io = nf90_inq_varid(ncid, trim(varname), VarID)
 call nc_check(io, 'dart_to_cice', &
@@ -265,7 +257,7 @@ call nc_check(io, 'dart_to_cice', &
 io = nf90_put_var(ncid, VarID, vicen,start=(/gridpt_oi,1/),count=(/1,NCAT/))
 call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
-!!!!
+
 varname='vsnon'
 io = nf90_inq_varid(ncid, trim(varname), VarID)
 call nc_check(io, 'dart_to_cice', &
@@ -273,7 +265,7 @@ call nc_check(io, 'dart_to_cice', &
 io = nf90_put_var(ncid, VarID, vsnon,start=(/gridpt_oi,1/),count=(/1,NCAT/))
 call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
-!!!!
+
 varname='Tsfcn'
 io = nf90_inq_varid(ncid, trim(varname), VarID)
 call nc_check(io, 'dart_to_cice', &
@@ -281,7 +273,7 @@ call nc_check(io, 'dart_to_cice', &
 io = nf90_put_var(ncid, VarID, Tsfcn,start=(/gridpt_oi,1/),count=(/1,NCAT/))
 call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
-!!!!!
+
 if (sst_present) then
   varname='sst'
   io = nf90_inq_varid(ncid, trim(varname), VarID)
@@ -291,7 +283,7 @@ if (sst_present) then
   call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
 endif
-!!!!!
+
 do l=1, Nilyr
   write(nchar,'(i3.3)') l
   varname='qice'//trim(nchar)
@@ -301,7 +293,7 @@ do l=1, Nilyr
   io = nf90_put_var(ncid, VarID, qice(l,:),start=(/gridpt_oi,1/),count=(/1,NCAT/))
   call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
-  !!!!!!!!!!
+
   varname='sice'//trim(nchar)
   io = nf90_inq_varid(ncid, trim(varname), VarID)
   call nc_check(io, 'dart_to_cice', &
@@ -310,7 +302,7 @@ do l=1, Nilyr
   call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(original_cice_input_file))
 enddo
-!!!!
+
 do l=1, Nslyr
   write(nchar,'(i3.3)') l
   varname='qsno'//trim(nchar)
@@ -330,8 +322,9 @@ deallocate( qice, sice, qsno )
 
 call finalize_utilities('dart_to_cice')
 
-
 contains
+
+!------------------------------------------------------------------
 
 subroutine get_variable(ncid,varname,var,filename,space_index,ncat)
 integer,               intent(in)  :: ncid,ncat
@@ -355,7 +348,9 @@ call nc_check(nf90_get_var(ncid, VarID, holder), 'dart_to_cice', &
 var(:) = holder(gridpt_oi,:)
 
 end subroutine get_variable
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 subroutine get_variable1d(ncid,varname,var,filename,space_index,var_present)
 integer,               intent(in)  :: ncid
 character(len=*),      intent(in)  :: varname
@@ -384,7 +379,9 @@ call nc_check(nf90_get_var(ncid, VarID, holder), 'dart_to_cice', &
 var = holder(gridpt_oi)
 
 end subroutine get_variable1d
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 function enthalpy_mush(zTin, zSin) result(zqin)
 
     ! enthalpy of mush from mush temperature and bulk salinity
@@ -422,7 +419,9 @@ function enthalpy_mush(zTin, zSin) result(zqin)
            rhoi * cp_ice * zTin - (1._r8 - phi) * rhoi * Lfresh
 
   end function enthalpy_mush
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 function liquid_fraction(zTin, zSin) result(phi)
 
     ! liquid fraction of mush from mush temperature and bulk salinity
@@ -441,7 +440,9 @@ function liquid_fraction(zTin, zSin) result(phi)
     phi = zSin / max(Sbr, zSin)
 
   end function liquid_fraction
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 function snow_enthaply(Ti) result(qsno)
     real(r8), intent(in) :: Ti
 
@@ -452,7 +453,9 @@ function snow_enthaply(Ti) result(qsno)
 
     qsno = -rhos*(Lfresh - cp_ice*min(0.0_r8,Ti))
   end function snow_enthaply
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 function liquidus_brine_salinity_mush(zTin) result(Sbr)
 
     ! liquidus relation: equilibrium brine salinity as function of temperature
@@ -512,7 +515,9 @@ function liquidus_brine_salinity_mush(zTin) result(Sbr)
     Sbr = Sbr * lsubzero
 
   end function liquidus_brine_salinity_mush
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!------------------------------------------------------------------
+
 function liquidus_temperature_mush(Sbr) result(zTin)
 
     ! liquidus relation: equilibrium temperature as function of brine salinity
@@ -568,11 +573,7 @@ function liquidus_temperature_mush(Sbr) result(zTin)
           ((Sbr / (M2_liq + N2_liq * Sbr)) + O2_liq) * (1._r8 - t_high)
 
   end function liquidus_temperature_mush
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-end program dart_to_cice
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+!------------------------------------------------------------------
+
+end program dart_to_cice

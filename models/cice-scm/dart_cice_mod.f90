@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module dart_cice_mod
 
@@ -27,10 +25,7 @@ private
 public :: set_model_time_step,get_horiz_grid_dims, &
           get_ncat_dim, read_horiz_grid
 
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source   = 'dart_cice_mod.f90'
 character(len=512) :: msgstring
 logical, save :: module_initialized = .false.
 
@@ -38,14 +33,15 @@ character(len=256) :: ic_filename      = 'cice.r.nc'
 
 contains
 
-subroutine initialize_module
-
-integer :: iunit, io
-
+!-----------------------------------------------------------------
 ! Read calendar information
 ! In 'restart' mode, this is primarily the calendar type and 'stop'
 ! information. The time attributes of the restart file override
 ! the namelist time information.
+
+subroutine initialize_module
+
+integer :: iunit, io
 
 ! FIXME : Real observations are always GREGORIAN dates ...
 ! but stomping on that here gets in the way of running
@@ -55,23 +51,20 @@ call set_calendar_type('gregorian')
 ! Make sure we have a cice restart file (for grid dims)
 if ( .not. file_exist(ic_filename) ) then
    msgstring = 'dart_cice_mod: '//trim(ic_filename)//' not found'
-   call error_handler(E_ERR,'initialize_module', &
-          msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'initialize_module', msgstring, source)
 endif
 
 module_initialized = .true.
 
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
 end subroutine initialize_module
-!!!!!!!!!!!!!!!!
-function set_model_time_step()
 
+!-----------------------------------------------------------------
 ! the initialize_module ensures that the cice namelists are read.
 ! The restart times in the cice_in&restart_nml are used to define
 ! appropriate assimilation timesteps.
-!
+
+function set_model_time_step()
+
 type(time_type) :: set_model_time_step
 
 if ( .not. module_initialized ) call initialize_module
@@ -90,14 +83,12 @@ if ( .not. module_initialized ) call initialize_module
 !endif
 
 end function set_model_time_step
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine get_horiz_grid_dims(Nx)
 
-!
+!-----------------------------------------------------------------
 ! Read the lon, lat grid size from the restart netcdf file.
 ! The actual grid file is a binary file with no header information.
-!
-! The file name comes from module storage ... namelist.
+
+subroutine get_horiz_grid_dims(Nx)
 
 integer, intent(out) :: Nx   ! Number of Longitudes
 
@@ -112,8 +103,7 @@ call nc_check(nf90_open(trim(ic_filename), nf90_nowrite, grid_id), &
 nc_rc = nf90_inq_dimid(grid_id, 'ni', dimid)
 if (nc_rc /= nf90_noerr) then
   msgstring = "unable to find either 'ni' or 'nlon' in file "//trim(ic_filename)
-  call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
-                         source,revision,revdate)
+  call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, source)
 endif
 
 call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Nx), &
@@ -123,11 +113,11 @@ call nc_check(nf90_close(grid_id), &
          'get_horiz_grid_dims','close '//trim(ic_filename) )
 
 end subroutine get_horiz_grid_dims
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine get_ncat_dim(Ncat)
 
-!
+!-----------------------------------------------------------------
 ! Read the ncat size from the restart netcdf file.
+
+subroutine get_ncat_dim(Ncat)
 
 integer, intent(out) :: Ncat   ! Number of categories in ice-thick dist
 
@@ -144,8 +134,7 @@ if (nc_rc /= nf90_noerr) then
    nc_rc = nf90_inq_dimid(grid_id, 'Ncat', dimid)
    if (nc_rc /= nf90_noerr) then
       msgstring = "unable to find either 'ncat' or 'Ncat' in file "//trim(ic_filename)
-      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
-                         source,revision,revdate)
+      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, source)
    endif
 endif
 
@@ -153,12 +142,13 @@ call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ncat), &
          'get_ncat_dim','inquire_dimension ni '//trim(ic_filename))
 
 ! tidy up
-
 call nc_check(nf90_close(grid_id), &
          'get_ncat_dim','close '//trim(ic_filename) )
 
 end subroutine get_ncat_dim
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!-----------------------------------------------------------------
+
 subroutine read_horiz_grid(nx, TLAT, TLON)
 
 integer,                    intent(in)  :: nx
@@ -172,8 +162,7 @@ if ( .not. module_initialized ) call initialize_module
 
 if ( .not. file_exist(ic_filename) ) then
    msgstring = 'cice grid '//trim(ic_filename)//' not found'
-   call error_handler(E_ERR,'read_horiz_grid', &
-          msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'read_horiz_grid', msgstring, source)
 endif
 
 ! Open it and read them in the EXPECTED order.
@@ -212,5 +201,8 @@ where (TLAT >  90.0_r8) TLAT =  90.0_r8
 
 end subroutine read_horiz_grid
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!===================================================================
+! End of model_mod
+!===================================================================
+
 end module dart_cice_mod
