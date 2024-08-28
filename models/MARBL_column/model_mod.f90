@@ -1,4 +1,3 @@
-! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
@@ -32,7 +31,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_get_variable, nc_get_variable_size, nc_close_file
 
 use state_structure_mod, only : add_domain, get_domain_size, get_model_variable_indices, &
-                                get_varid_from_kind, get_dart_vector_index
+                                get_varid_from_kind, get_dart_vector_index, &
+                                get_num_domains
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
                          QTY_V_CURRENT_COMPONENT, QTY_DRY_LAND, &
@@ -124,7 +124,7 @@ contains
 
 subroutine static_init_model()
 
-integer :: iunit, io
+integer :: iunit, io, i_dom, domain_count
 character(len=vtablenamelength) :: variable_table(modelvar_table_height, modelvar_table_width), &
                                    param_table(modelparams_table_height, modelparams_table_width)
 integer :: state_qty_list(modelvar_table_height), &
@@ -158,6 +158,20 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
+! The kind of experiments that can be performed using this code: 
+! 1- State estimation:
+!    To achieve this, you'll need to set "estimate_params" 
+!    in the model_nml to ".false."
+! 2- State and Parameters estimation: 
+!    To achieve this, set "estimate_params" to ".true."
+! 3- Parameters estimation only: 
+!    To achieve this, we still need to read in the state
+!    in order to compute covariances and innovations. 
+!    First, set "estimate_params" to ".true." and 
+!    Next, set the 5th column in the state table as
+!    "NO_COPY_BACK". The parameters update status should 
+!    be kept as "Update"
+
 ! setting up the DART state vector
 call verify_state_variables(model_state_variables, nfields, variable_table, &
                             state_qty_list, state_clamp_vals, update_var_list)
@@ -182,6 +196,14 @@ end if
 
 call read_num_layers     ! setting the value of nz
 call read_ocean_geometry ! determining the basin depth
+
+! Determine the domain and model size
+domain_count = get_num_domains()
+
+model_size = 0
+do i_dom = 1,domain_count
+     model_size = model_size + get_domain_size(i_dom)
+enddo
 
 end subroutine static_init_model
 
@@ -221,7 +243,7 @@ integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
-get_model_size = get_domain_size(state_dom_id) + get_domain_size(param_dom_id)
+get_model_size = model_size
 
 end function get_model_size
 
@@ -642,7 +664,6 @@ integer :: ncid
 
 character(len=*), parameter :: routine = 'read_ocean_geometry'
 
-! Need nx, ny
 if ( .not. module_initialized ) call static_init_model
 
 ncid = nc_open_file_readonly(ocean_geometry)
