@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=MARBL_joint_estimation
+MODEL=MARBL_column
 LOCATION=threed_sphere
 
 
