@@ -241,13 +241,17 @@
 &model_mod_check_nml
    input_state_files    = 'mom_in.nc', 'param_in.nc'
    output_state_files   = 'mom_out.nc', 'param_out.nc'
-   test1thru            = 4
+   test1thru            = 7
    run_tests            = 1 
    x_ind                = 600
    loc_of_interest      = 296., 31., -500.0
    quantity_of_interest = 'QTY_DISSOLVED_OXYGEN'
-   interp_test_dx       = 0.02
-   interp_test_xrange   = 0.0, 1.0
-   verbose              = .true.
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   interp_test_lonrange  = 295., 297.
+   interp_test_dlon      = 0.10
+   interp_test_latrange  = 30., 32.
+   interp_test_dlat      = 0.10
+   interp_test_vertrange = 0.0,  -100.00
+   interp_test_dvert     = -10.0
+   verbose               = .true.   
    /
-

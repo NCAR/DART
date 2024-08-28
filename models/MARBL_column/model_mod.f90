@@ -492,7 +492,7 @@ call nc_begin_define_mode(ncid)
 call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
-call nc_add_global_attribute(ncid, "model", "template")
+call nc_add_global_attribute(ncid, "model", "MARBL_column")
 
 call nc_end_define_mode(ncid)
 
@@ -608,8 +608,6 @@ call nc_close_file(ncid)
 end subroutine read_num_layers
 
 !------------------------------------------------------------
-! ocean_geom are 2D state sized static data
-! HK Do these arrays become too big in high res cases?
 subroutine read_ocean_geometry()
 
 integer :: ncid
@@ -627,8 +625,6 @@ call nc_close_file(ncid)
 end subroutine read_ocean_geometry
 
 !------------------------------------------------------------------
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
 
 subroutine end_model()
 
