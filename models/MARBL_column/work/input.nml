@@ -29,9 +29,6 @@
    model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_BGC_PARAM', '0.0', 'NA', 'UPDATE'
    /
 
-'params_input.txt',
-'params_output.txt',
-
 &filter_nml
    single_file_in               = .false.,
    input_state_files            = '',
