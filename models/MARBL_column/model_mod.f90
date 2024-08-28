@@ -136,9 +136,6 @@ logical :: update_var_list(modelvar_table_height), &
 
 module_initialized = .true.
 
-! Print module information to log file and stdout.
-call register_module(source)
-
 ! Read values from the namelist
 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -253,10 +250,6 @@ end function get_model_size
 ! the values in expected_obs. The istatus variables should be returned as
 ! 0 unless there is some problem in computing the interpolation in
 ! which case a positive istatus should be returned.
-!
-! For applications in which only perfect model experiments
-! with identity observations (i.e. only the value of a particular
-! state variable is observed), this can be a NULL INTERFACE.
 
 subroutine model_interpolate(state_handle, ens_size, location, qty, expected_obs, istatus)
 
@@ -283,8 +276,6 @@ qty_id = get_varid_from_kind(state_dom_id, qty)
 loc_temp = get_location(location)
 requested_depth = loc_temp(3)
 
-! print *, "REQUESTED DEPTH = ",requested_depth
-
 ! extracting the current layer thicknesses for each ensemble member.
 thickness_id = get_varid_from_kind(state_dom_id, QTY_LAYER_THICKNESS)
 
@@ -295,12 +286,13 @@ do layer_index = 1, nz
     layer_thicknesses(layer_index, :) = get_state(thickness_index, state_handle)
 end do
 
+
 ! performing the interpolation for each ensemble member individually.
 do ens_index = 1, ens_size
-    ! print *, "BASIN DEPTH     = ",-basin_depth(1,1)
-    ! print *, "----------------------------------------------------"
-    ! print *, "computing centers of layers"
-    ! print *, "----------------------------------------------------"
+    !print *, "BASIN DEPTH     = ",-basin_depth(1,1)
+    !print *, "----------------------------------------------------"
+    !print *, "computing centers of layers"
+    !print *, "----------------------------------------------------"
 
     ! locating the layer index to be used as the upper interpolation point for this ensemble member.
     layer_index = nz
@@ -310,7 +302,7 @@ do ens_index = 1, ens_size
     layerdepth_top = layerdepth_bottom &        ! depth at top of the layer given by layer_index.
                           + layer_thicknesses(layer_index, ens_index)
 
-    ! print *, "layer = ",layer_index,", center = ",layerdepth_center,", bottom = ",layerdepth_bottom,", top = ",layerdepth_top
+    !print *, "layer = ",layer_index,", center = ",layerdepth_center,", bottom = ",layerdepth_bottom,", top = ",layerdepth_top
     
     do while((layerdepth_center < requested_depth) .and. (layer_index > 1))
         layer_index = layer_index - 1
@@ -318,7 +310,7 @@ do ens_index = 1, ens_size
         layerdepth_center = layerdepth_bottom + 0.5 * layer_thicknesses(layer_index, ens_index)
         layerdepth_top = layerdepth_bottom + layer_thicknesses(layer_index, ens_index)
 
-        ! print *, "layer = ",layer_index,", bottom = ",layerdepth_bottom,", center = ",layerdepth_center,", top = ",layerdepth_top
+        !print *, "layer = ",layer_index,", bottom = ",layerdepth_bottom,", center = ",layerdepth_center,", top = ",layerdepth_top
 
     end do
 
@@ -326,9 +318,9 @@ do ens_index = 1, ens_size
     if((requested_depth < -basin_depth(1,1)) .or. (layerdepth_top < requested_depth)) then
         ! case where the requested depth is below the ocean floor, or above the ocean surface
 
-        ! print *, "----------------------------------------------------"
-        ! print *, "depth is below ocean floor or above ocean surface"
-        ! print *, "----------------------------------------------------"
+        !print *, "----------------------------------------------------"
+        !print *, "depth is below ocean floor or above ocean surface"
+        !print *, "----------------------------------------------------"
 
         istatus(ens_index) = 1
         expected_obs(ens_index) = MISSING_R8
@@ -338,9 +330,9 @@ do ens_index = 1, ens_size
         ! or the top half of the shallowest layer. In both cases, the "interpolated" value is
         ! simply the current value of that layer in MOM6.
 
-        ! print *, "----------------------------------------------------"
-        ! print *, "only using value from layer ",layer_index
-        ! print *, "----------------------------------------------------"
+        !print *, "----------------------------------------------------"
+        !print *, "only using value from layer ", layer_index
+        !print *, "----------------------------------------------------"
 
         istatus(ens_index) = 0
         qty_index = get_dart_vector_index(1, 1, layer_index, state_dom_id, qty_id)
@@ -354,8 +346,8 @@ do ens_index = 1, ens_size
         ! the center of another. We interpolate linearly between the nearest layers above
         ! and below.
 
-        ! print *, "----------------------------------------------------"
-        ! print *, "interpolating between layers ",layer_index," and ",(layer_index + 1)
+        !print *, "----------------------------------------------------"
+        !print *, "interpolating between layers ", layer_index, " and ", (layer_index + 1)
 
         istatus(ens_index) = 0
 
@@ -363,23 +355,23 @@ do ens_index = 1, ens_size
         depth_above = layerdepth_center
         depth_below = layerdepth_top - layer_thicknesses(layer_index, ens_index) &
                                         - .5*layer_thicknesses(layer_index + 1, ens_index)
-        
+       
         ! extracting the quantity values at the layers above and below
-        qty_index = get_dart_vector_index(1, 1, layer_index, state_dom_id, qty_id)
+        qty_index   = get_dart_vector_index(1, 1, layer_index, state_dom_id, qty_id)
         state_slice = get_state(qty_index, state_handle)
-        val_above = state_slice(ens_index)
+        val_above   = state_slice(ens_index)
 
-        qty_index = get_dart_vector_index(1, 1, layer_index + 1, state_dom_id, qty_id)
+        qty_index   = get_dart_vector_index(1, 1, layer_index + 1, state_dom_id, qty_id)
         state_slice = get_state(qty_index, state_handle)
-        val_below = state_slice(ens_index)
+        val_below   = state_slice(ens_index)
 
-        ! print *, "corresponding to the values: ",val_above," and ",val_below
-        ! print *, "----------------------------------------------------"
+        !print *, "corresponding to the values: ", val_above, " and ", val_below
+        !print *, "----------------------------------------------------"
 
         ! linear interpolation
         expected_obs(ens_index) = val_above + (requested_depth - depth_above) * (val_below - val_above) / (depth_below - depth_above)
 
-        ! print *, "final value = ",expected_obs(ens_index)
+        !print *, "final value = ",expected_obs(ens_index)
     end if
 end do
 
@@ -633,6 +625,15 @@ call nc_get_variable(ncid, 'D', basin_depth, routine)
 call nc_close_file(ncid)
 
 end subroutine read_ocean_geometry
+
+!------------------------------------------------------------------
+! Does any shutdown and clean-up needed for model. Can be a NULL
+! INTERFACE if the model has no need to clean up storage, etc.
+
+subroutine end_model()
+
+
+end subroutine end_model
 
 !===================================================================
 ! End of model_mod

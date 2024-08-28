@@ -26,7 +26,7 @@
                            'mesozooC ', 'QTY_MESOZOOPLANKTON_CARBON    ', '0.0', 'NA', 'UPDATE      ',
                            'h        ', 'QTY_LAYER_THICKNESS           ', '0.0', 'NA', 'NO_COPY_BACK'
    estimate_params       = .true.
-   model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_PARAM_AUTOTROPH1_KDOP ', '0.0', 'NA', 'UPDATE'
+   model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_BGC_PARAM', '0.0', 'NA', 'UPDATE'
    /
 
 'params_input.txt',
@@ -241,11 +241,11 @@
 &model_mod_check_nml
    input_state_files    = 'mom_in.nc', 'param_in.nc'
    output_state_files   = 'mom_out.nc', 'param_out.nc'
-   test1thru            = 3
+   test1thru            = 4
    run_tests            = 1 
    x_ind                = 600
-   loc_of_interest      = 1.11, 0.54, -500.0
-   quantity_of_interest = 'BATS_OXYGEN'
+   loc_of_interest      = 296., 31., -500.0
+   quantity_of_interest = 'QTY_DISSOLVED_OXYGEN'
    interp_test_dx       = 0.02
    interp_test_xrange   = 0.0, 1.0
    verbose              = .true.
