@@ -73,7 +73,7 @@ my $endline = $/;
 my @src_suffixes = ( q/\.F/, q/\.F90/, q/\.c/, q/\.f/, q/\.f90/ );
 my @inc_suffixes = ( q/\.H/, q/\.fh/, q/\.h/, q/\.inc/ );
 push @inc_suffixes, @src_suffixes; # sourcefiles can be includefiles too
-my @tgt_suffixes = ( q/\.a/ );
+my @tgt_suffixes = ( q/\.a/, q/\.so/ );
 
 print "Using MPI wrappers\n" if $opt_w;
 my %compile_cmd;
@@ -481,6 +481,12 @@ print MAKEFILE "tags: \$(SRC)\n\tctags \$(SRC)\n";
 ( $name, $path, $suffix ) = fileparse( $opt_p, @tgt_suffixes );
 if( $suffix eq '.a' ) {
    print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(AR) \$(ARFLAGS) $opt_p \$(OBJ)\n";
+} elsif ( $suffix eq '.so' ) {
+    if ( $opt_w ) {
+       print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(MPILD) \$(SHR) \$(OBJ) -o $opt_p  \$(LDFLAGS)";
+    } else {
+       print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(LD) \$(SHR) \$(OBJ) -o $opt_p  \$(LDFLAGS)";
+   }      
 } elsif ( $opt_w ){
    print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(MPILD) \$(OBJ) -o $opt_p $opt_l \$(LDFLAGS)\n";
 } else {
