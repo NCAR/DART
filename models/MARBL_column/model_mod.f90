@@ -83,8 +83,8 @@ integer :: nfields ! number of fields in the state or parameter vector
 integer :: nz      ! the number of vertical layers
 integer :: model_size
 type(time_type) :: assimilation_time_step
-real(r8), parameter :: geolon = 360 - 64.0
-real(r8), parameter :: geolat = 31.0
+real(r8) :: geolon 
+real(r8) :: geolat 
 real(r8) :: basin_depth(2,2)
 
 ! parameters to be used in specifying the DART internal state
@@ -96,6 +96,7 @@ integer, parameter :: modelparams_table_width = 5
 ! defining the variables that will be read from the namelist
 character(len=256) :: template_file(2)
 character(len=256) :: ocean_geometry
+real(r8)           :: station_location(2)
 integer            :: time_step_days
 integer            :: time_step_seconds
 logical            :: estimate_params
@@ -104,12 +105,13 @@ character(len=vtablenamelength) &
 character(len=vtablenamelength) &
    :: model_parameters(modelparams_table_height * modelparams_table_width)
 
-namelist /model_nml/ template_file, &
-                     ocean_geometry, &
-                     time_step_days, &
-                     time_step_seconds, &
+namelist /model_nml/ template_file,         &
+                     ocean_geometry,        &
+                     station_location,      &
+                     time_step_days,        &
+                     time_step_seconds,     &
                      model_state_variables, &
-                     estimate_params, &
+                     estimate_params,       &
                      model_parameters
 contains
 
@@ -390,12 +392,17 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: qty
 
-real(r8) :: lat, lon
 integer :: lon_index, lat_index, level, local_qty
 
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, level, kind_index=local_qty)
+
+! Make sure the longitude is properly assigned
+geolon = station_location(1)
+geolat = station_location(2)
+
+if (geolon < 0.0_r8)  geolon = 360.0 + geolon
 
 location = set_location(geolon, geolat, real(level,r8), VERTISLEVEL)
 
@@ -405,7 +412,6 @@ endif
 
 
 end subroutine get_state_meta_data
-
 
 !------------------------------------------------------------------
 ! Any model specific distance calcualtion can be done here
