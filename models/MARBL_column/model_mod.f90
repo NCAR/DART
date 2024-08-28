@@ -403,7 +403,6 @@ shortest_time_between_assimilations = assimilation_time_step
 end function shortest_time_between_assimilations
 
 
-
 !------------------------------------------------------------------
 ! Given an integer index into the state vector, returns the
 ! associated location and optionally the physical quantity.
@@ -424,7 +423,7 @@ call get_model_variable_indices(index_in, lon_index, lat_index, level, kind_inde
 geolon = station_location(1)
 geolat = station_location(2)
 
-if (geolon < 0.0_r8)  geolon = 360.0 + geolon
+if (geolon < 0.0_r8) geolon = 360.0 + geolon
 
 location = set_location(geolon, geolat, real(level,r8), VERTISLEVEL)
 
@@ -483,17 +482,6 @@ call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
 
 
 end subroutine get_close_state
-
-
-!------------------------------------------------------------------
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
-
-subroutine end_model()
-
-
-end subroutine end_model
-
 
 !------------------------------------------------------------------
 ! write any additional attributes to the output and diagnostic files
@@ -594,13 +582,13 @@ MyLoop : do i = 1, nrows
     ! reading the clamp values
 
     if (table(i, 3) /= 'NA') then
-        read(table(i,3), '(d16.8)') clamp_vals(i,1)
+        read(table(i,3), *) clamp_vals(i,1)
     else
         clamp_vals(i,1) = MISSING_R8
     endif
     
     if (table(i,4) /= 'NA') then
-        read(table(i,4), '(d16.8)') clamp_vals(i,2)
+        read(table(i,4), *) clamp_vals(i,2)
     else
         clamp_vals(i,2) = MISSING_R8
     endif
@@ -610,34 +598,6 @@ enddo MyLoop
 
 
 end subroutine verify_state_variables
-
-!------------------------------------------------------------
-function on_v_grid(qty)
-
-integer, intent(in)  :: qty
-logical :: on_v_grid
-
-if (qty == QTY_V_CURRENT_COMPONENT) then
-    on_v_grid = .true.
-else
-    on_v_grid = .false.
-endif
-
-end function on_v_grid
-
-!----------------------------------------------------------
-function on_u_grid(qty)
-
-integer, intent(in)  :: qty
-logical :: on_u_grid
-
-if (qty == QTY_U_CURRENT_COMPONENT) then
-    on_u_grid = .true.
-else
-    on_u_grid = .false.
-endif
-
-end function on_u_grid
 
 !------------------------------------------------------------
 ! Read number of vertical layers from mom6 template file
