@@ -97,6 +97,7 @@ integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
 real(r8), allocatable :: geolon(:,:), geolat(:,:),     & ! T
                          geolon_u(:,:), geolat_u(:,:), & ! U
                          geolon_v(:,:), geolat_v(:,:)    ! V
+logical, allocatable  :: mask(:,:) ! geolat/lon/u/v has missing values
 type(quad_interp_handle) :: interp_t_grid,  &
                             interp_u_grid,  &
                             interp_v_grid
@@ -606,17 +607,25 @@ ny = nxy(2)
 allocate(geolon(nx,ny), geolat(nx,ny))      ! T grid
 allocate(geolon_u(nx,ny), geolat_u(nx,ny))  ! U grid
 allocate(geolon_v(nx,ny), geolat_v(nx,ny))  ! V grid
+allocate(mask(nx,ny))  ! missing values
 
 call nc_get_variable(ncid, 'geolon', geolon, routine)
 call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
 call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
 
+! mom6 has missing values in the grid
+mask(:,:) = .false.
+where (geolon == 1.0e+20) mask = .true.  !HK tood should check for missing value
 
-! mom6 example file has longitude > 360
+! mom6 example files have longitude > 360 and longitudes < 0
 ! DART uses [0,360]
-where(geolon > 360.0_r8 )   geolon   = geolon   - 360.0_r8
-where(geolon_u > 360.0_r8 ) geolon_u = geolon_u - 360.0_r8
-where(geolon_v > 360.0_r8 ) geolon_v = geolon_v - 360.0_r8
+geolon = mod(geolon, 360.0)
+geolon_u = mod(geolon_u, 360.0)
+geolon_v = mod(geolon_v, 360.0)
+
+where (geolon < 0.0) geolon = geolon + 360
+where (geolon_u < 0.0) geolon_u = geolon_u + 360
+where (geolon_v < 0.0) geolon_v = geolon_v + 360
 
 call nc_get_variable(ncid, 'geolat', geolat, routine)
 call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
@@ -831,7 +840,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_t_grid)
 
-call set_quad_coords(interp_t_grid, geolon, geolat)
+call set_quad_coords(interp_t_grid, geolon, geolat, mask)
 
 ! U
 call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
@@ -839,7 +848,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_u_grid)
 
-call set_quad_coords(interp_u_grid, geolon_u, geolat_u)
+call set_quad_coords(interp_u_grid, geolon_u, geolat_u, mask)
 
 
 ! V
@@ -848,7 +857,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_v_grid)
 
-call set_quad_coords(interp_v_grid, geolon_v, geolat_v)
+call set_quad_coords(interp_v_grid, geolon_v, geolat_v, mask)
 
 end subroutine setup_interpolation
 
