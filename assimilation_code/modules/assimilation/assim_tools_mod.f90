@@ -78,12 +78,16 @@ use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
 use algorithm_info_mod, only : probit_dist_info, obs_inc_info, EAKF, ENKF, &
                                BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
-                               KERNEL, OBS_PARTICLE
+                               KERNEL, OBS_PARTICLE, KDE_FILTER
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
 
 use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf, inv_bnrh_cdf_like
+
+use kde_distribution_mod, only : kde_cdf_params, inv_kde_cdf_params, obs_dist_types,      &
+                                 pack_kde_params, likelihood_function, separate_ensemble, &
+                                 obs_increment_kde
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params
                                
@@ -1025,6 +1029,10 @@ else
       !!!endif
 
    !--------------------------------------------------------------------------
+
+   else if(filter_kind == KDE_FILTER) then
+      call obs_increment_kde(ens, ens_size, obs, obs_var, bounded_below, &
+         bounded_above, lower_bound, upper_bound, obs_inc)
    else
       call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind', source)
@@ -1165,9 +1173,6 @@ do i = 1, ens_size
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
-
-
-
 
 ! Computes a normal or truncated normal (above and/or below) likelihood.
 function get_truncated_normal_like(x, obs, obs_var, &
@@ -1420,6 +1425,8 @@ if(first_inc_ran_call) then
 endif
 
 ! Generate a uniform random number and a Gaussian for each new member
+!! IG: This could be done with a single random number and in a way that
+!! preserves the order of the ensemble members
 do i = 1, ens_size
    unif = random_uniform(inc_ran_seq)
    ! Figure out which kernel it's in
