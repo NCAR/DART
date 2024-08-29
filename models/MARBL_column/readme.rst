@@ -3,8 +3,8 @@ MARBL_column
 
 **MARBL** stands for the Marine Biogeochemistry Library; it's a modular biogeochemical modeling suite for next-generatioon models. 
 It simulates marine ecosystem dynamics and the coupled cycles of carbon, nitrogen, phosphorus, iron, silicon, and oxygen. 
-It is a component of the Community Earth System Model (`CESM <https://www.cesm.ucar.edu/>`_) and is often coupled to other physical ocean models such as 
-the Modular Ocean Model (`MOM6 <https://mom6.readthedocs.io/en/main/>`_). 
+It is a component of the Community Earth System Model (`CESM <https://www.cesm.ucar.edu/>`_) and is often coupled to 
+other physical ocean models such as the Modular Ocean Model (`MOM6 <https://mom6.readthedocs.io/en/main/>`_). 
                          
 For a detailed description of the model, the reader is refered to Long et al., 2021 [1]_.
                          
@@ -25,20 +25,24 @@ The code is designed to perform 3 kinds of data assimilation (DA) experiments:
                          
 #. **State Estimation:** where the prognostic state variables of MARBL such as nitrate concerntration are updated.
    To achive this, you'll need to set 
-                         ``estimate_params = .false.`` within ``&model_nml`` in the namelist file ``input.nml`` 
+      ``estimate_params = .false.`` within ``&model_nml`` in the namelist file ``input.nml`` 
                          
 #. **State and Parameters Estimation:** where both the state and a set of model parameters are updated. 
    MARBL has a long list of uncertain model parameters that can be constrained alongside the state. 
-   This usually improves the prediction skill of the model and alleviate some of its biases. 
+   This usually improves the prediction skill of the model and alleviates some of its biases. 
    To achieve this DA exercise, you'll need to set
-                         ``estimate_params = .true.`` 
-                         
+      ``estimate_params = .true.`` 
+            
+      The combined DART state will be of the form :math:`Z_k = \left[ \mathbf{x}_k, \boldsymbol{\theta} \right]^T`
+      where :math:`Z_k` is the joint state, :math:`\mathbf{x}` and parameters, :math:`\boldsymbol{\theta}` 
+      vector at time ``t_k``      
+                    
 #. **Parameters Estimation only:** where only the parameters are constrained using the data. DART
    will still need to read in the state to construct ensemble covariances and compute innovations. 
    The only difference is that the ensemble increments are only regressed onto the unknown parameters.
    To achive this goal, you'll need to set ``estimate_params = .true.`` and turn the update status for 
    all state variable to
-                         ``NO_COPY_BACK``
+      ``NO_COPY_BACK``
    This ensures that the state will not be updated. The ``NO_COPY_BACK`` option is added as the 5th entry 
    in the state table (after the variable name, its associated quantity and its physical bounds) within ``&model_nml``
 
@@ -84,7 +88,7 @@ This namelist provides control over the kind of DA experiment as described abvov
 |                                     |                    | There is another template file corresponding to the        |
 |                                     |                    | BGC parameters that we intend to estimate.                 |
 +-------------------------------------+--------------------+------------------------------------------------------------+
-| ``ocean_geometry``                  | character(len=256) | The ocean geometry file is used read the ``basin_depth``   |
+| ``ocean_geometry``                  | character(len=256) | The ocean geometry file is used to read ``basin_depth``    |
 +-------------------------------------+--------------------+------------------------------------------------------------+
 | ``station_location``                | real(2)            | Longitude and latitude of the ocean column location.       |
 +-------------------------------------+--------------------+------------------------------------------------------------+                               
@@ -121,7 +125,6 @@ This namelist provides control over the kind of DA experiment as described abvov
 
 References
 ----------
-
 .. [1] Long, Matthew C., J. Keith Moore, Keith Lindsay, Michael Levy, Scott C. Doney, 
        Jessica Y. Luo, Kristen M. Krumhardt, Robert T. Letscher, Maxwell Grover, and Zephyr T. Sylvester. 
        "Simulations with the marine biogeochemistry library (MARBL)." 

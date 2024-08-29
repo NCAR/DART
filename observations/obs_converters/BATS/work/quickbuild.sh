@@ -12,9 +12,9 @@ source "$DART"/build_templates/buildconvfunctions.sh
 CONVERTER=BATS
 LOCATION=threed_sphere
 
-
 programs=(
 bats_to_obs
+bats_to_clim_obs
 obs_sequence_tool
 advance_time
 )

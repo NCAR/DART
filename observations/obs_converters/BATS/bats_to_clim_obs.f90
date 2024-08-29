@@ -40,6 +40,8 @@ integer, parameter :: OTYPE_ORDERING(NUM_SCALAR_OBS) &
                           BATS_PHOSPHATE, BATS_SILICATE/)
 
 real(r8), parameter :: MIN_OBS_ERROR = 0.1_r8
+real(r8), parameter :: bats_lon = 360.0_r8 - 64.0_r8
+real(r8), parameter :: bats_lat = 31.0_r8
 
 ! namelist variables, changeable at runtime
 character(len=256) :: text_input_file, obs_out_dir
@@ -227,7 +229,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
    end if
 
    ! adding the observation
-   call create_3d_obs(31.0_r8, 64.0_r8, vert, VERTISHEIGHT, &
+   call create_3d_obs(bats_lat, bats_lon, vert, VERTISHEIGHT, &
                          ovalue, OTYPE_ORDERING(otype_index), obs_err, &
                          oday, osec, qc, obs)
 
