@@ -467,7 +467,6 @@ An example of the &assim_tools_nml using per-type radii is provided below.
    &assim_tools_nml
      adaptive_localization_threshold = -1
      cutoff                          = 15000.0
-     filter_kind                     = 1
      print_every_nth_obs             = 100
      rectangular_quadrature          = .true.
      sampling_error_correction       = .false.

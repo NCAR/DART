@@ -318,7 +318,6 @@ References
    DART build system <guide/quickbuild.rst>
    guide/assimilation-complex-model
    guide/mpi_intro
-   guide/filters
    guide/inflation
    guide/required-model-mod-routines
    guide/suggestions-for-a-simple-model
@@ -508,7 +507,6 @@ References
 
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
-   guide/netcdf_inflation_files
    guide/state_structure
    guide/filter_async_modes
    guide/distributed_state
