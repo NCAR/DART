@@ -270,11 +270,11 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | defaults to model timestep size.          |
 +------------------------------+---------------------+-------------------------------------------+
 | All variables named inf_* are arrays of length 2. The first element controls the prior,        |
-| the second element controls the posterior inflation. See :doc:`../../programs/filter/filter`   |
+| the second element controls the posterior inflation. See :ref:`Inflation`                      |
 | for a discussion of inflation and effective strategies.                                        |
 +------------------------------+---------------------+-------------------------------------------+
-| inf_flavor                   | character(len=32),  | Inflation flavor [prior, posterior]       |
-|                              | dimension(2)        | see `Inflation Options`_  below.          |
+| inf_flavor                   | integer,            | Inflation flavor [prior, posterior]       |
+|                              | dimension(2)        | see :ref:`Inflation` for details          |
 +------------------------------+---------------------+-------------------------------------------+
 | inf_initial_from_restart     | logical,            | If ``.true.``, get initial mean values    |
 |                              | dimension(2)        | for inflation from inflation file.        |
@@ -407,39 +407,6 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | volume of output.                         |
 +------------------------------+---------------------+-------------------------------------------+
 
-Inflation Options
------------------
-
-The value for the ``inf_flavor`` is a character string. For backwards compatiblity
-(it was an integer code), the specification of the integer is still supported.
-Inflation values (for flavors other than 0) will be time-varying
-only if ``inf_sd_initial`` > 0.
-
-+--------------------------------+---------------------------------------------------------+
-| inflation option               | description                                             |
-+================================+=========================================================+
-| | 0                            | no inflation                                            |
-| | '0'                          |                                                         |
-| | 'NO_INFLATION'               |                                                         |
-+--------------------------------+---------------------------------------------------------+
-| | 2                            | spatially-varying state-space (gaussian)                |
-| | '2'                          |                                                         |
-| | 'VARYING_SS_INFLATION'       |                                                         |
-+--------------------------------+---------------------------------------------------------+
-| | 3                            | spatially-fixed state-space (gaussian)                  |
-| | '3'                          |                                                         |
-| | 'SINGLE_SS_INFLATION'        |                                                         |
-+--------------------------------+---------------------------------------------------------+
-| | 4                            | Relaxation To Prior Spread (Posterior inflation only)   |
-| | '4'                          |                                                         |
-| | 'RELAXATION_TO_PRIOR_SPREAD' |                                                         |
-| | 'RTPS                        |                                                         |
-+--------------------------------+---------------------------------------------------------+
-| | 5                            | Enhanced spatially-varying state-space (inverse gamma). |
-| | '5'                          | Refer to ``inf_sd_initial`` for how to set the          |
-| | 'ENHANCED_SS_INFLATION'      | time evolution options.                                 |
-+--------------------------------+---------------------------------------------------------+
-
 
 .. _pert_model_copies:
 
@@ -496,7 +463,7 @@ Error codes and conditions
 +================================+=======================================================================+==================================================================+
 | filter_main                    | ens_size in namelist is ###: Must be > 1                              | Ensemble size must be at least 2.                                |
 +--------------------------------+-----------------------------------------------------------------------+------------------------------------------------------------------+
-| filter_main                    | inf_flavor= ### Must be 0, 2, 3.                                      | Observation Inflation is no longer supported (i.e flavor 1).     |
+| filter_main                    | inf_flavor = ### Must be 0, 2, 3, 4, 5                                | Observation Inflation is no longer supported (i.e flavor 1).     |
 +--------------------------------+-----------------------------------------------------------------------+------------------------------------------------------------------+
 | filter_main                    | Posterior observation space inflation (type 1) not supported.         | Posterior observation space inflation doesn't work.              |
 +--------------------------------+-----------------------------------------------------------------------+------------------------------------------------------------------+
