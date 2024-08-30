@@ -32,7 +32,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_variable_size, &
-                                 NF90_MAX_NAME
+                                 NF90_MAX_NAME, nc_get_attribute_from_variable
 
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
@@ -596,6 +596,7 @@ subroutine read_horizontal_grid()
 
 integer :: ncid
 integer :: nxy(2) ! (nx,ny)
+real(r8) :: fillval
 
 character(len=*), parameter :: routine = 'read_horizontal_grid'
 
@@ -613,9 +614,23 @@ call nc_get_variable(ncid, 'geolon', geolon, routine)
 call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
 call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
 
+call nc_get_variable(ncid, 'geolat', geolat, routine)
+call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
+call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
+
 ! mom6 has missing values in the grid
 mask(:,:) = .false.
-where (geolon == 1.0e+20) mask = .true.  !HK tood should check for missing value
+call nc_get_attribute_from_variable(ncid, 'geolon', '_FillValue', fillval)
+where (geolon == fillval) mask = .true.  
+
+! set missing value to a land point to prevent set_location erroring
+where (geolon == fillval) geolon = 72.51
+where (geolon_u == fillval) geolon_u = 72.51
+where (geolon_v == fillval) geolon_v = 72.51
+
+where (geolat == fillval) geolat = 42.56
+where (geolat_u == fillval) geolat_u = 42.56
+where (geolat_v == fillval) geolat_v = 42.56
 
 ! mom6 example files have longitude > 360 and longitudes < 0
 ! DART uses [0,360]
@@ -626,10 +641,6 @@ geolon_v = mod(geolon_v, 360.0)
 where (geolon < 0.0) geolon = geolon + 360
 where (geolon_u < 0.0) geolon_u = geolon_u + 360
 where (geolon_v < 0.0) geolon_v = geolon_v + 360
-
-call nc_get_variable(ncid, 'geolat', geolat, routine)
-call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
-call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
 
 call nc_close_file(ncid)
 
