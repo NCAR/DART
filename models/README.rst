@@ -31,6 +31,7 @@ DART supported models:
 - :doc:`MOM6/readme`
 - :doc:`mpas_atm/readme`
 - :doc:`mpas_ocn/readme`
+- :doc:`MARBL_column/readme`
 - :doc:`NCOMMAS/readme`
 - :doc:`noah/readme`
 - :doc:`null_model/readme`

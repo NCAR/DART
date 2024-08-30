@@ -24,25 +24,27 @@ It's designed to be used at locations where in-situ data is abundant such as
 The code is designed to perform 3 kinds of data assimilation (DA) experiments: 
                          
 #. **State Estimation:** where the prognostic state variables of MARBL such as nitrate concerntration are updated.
-   To achive this, you'll need to set 
-      ``estimate_params = .false.`` within ``&model_nml`` in the namelist file ``input.nml`` 
+   To achive this, you'll need to set  
+   
+   ``estimate_params = .false.`` within ``&model_nml`` in the namelist file ``input.nml`` 
                          
 #. **State and Parameters Estimation:** where both the state and a set of model parameters are updated. 
    MARBL has a long list of uncertain model parameters that can be constrained alongside the state. 
    This usually improves the prediction skill of the model and alleviates some of its biases. 
    To achieve this DA exercise, you'll need to set
-      ``estimate_params = .true.`` 
-            
-      The combined DART state will be of the form :math:`Z_k = \left[ \mathbf{x}_k, \boldsymbol{\theta} \right]^T`
-      where :math:`Z_k` is the joint state, :math:`\mathbf{x}` and parameters, :math:`\boldsymbol{\theta}` 
-      vector at time ``t_k``      
+   
+   ``estimate_params = .true.`` 
+   
+   The combined DART state will be of the form :math:`Z_k = \left[ \mathbf{x}_k, \boldsymbol{\theta} \right]^T`
+   where :math:`Z_k` is the joint state, :math:`\mathbf{x}` and parameters, :math:`\boldsymbol{\theta}` 
+   vector at time :math:`t_k`      
                     
 #. **Parameters Estimation only:** where only the parameters are constrained using the data. DART
    will still need to read in the state to construct ensemble covariances and compute innovations. 
    The only difference is that the ensemble increments are only regressed onto the unknown parameters.
    To achive this goal, you'll need to set ``estimate_params = .true.`` and turn the update status for 
-   all state variable to
-      ``NO_COPY_BACK``
+   all state variable to ``NO_COPY_BACK``
+   
    This ensures that the state will not be updated. The ``NO_COPY_BACK`` option is added as the 5th entry 
    in the state table (after the variable name, its associated quantity and its physical bounds) within ``&model_nml``
 

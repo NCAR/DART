@@ -17,7 +17,7 @@ often named ``bats_bottle.txt``
 
 The data is huge extending from Oct 1988 to present day. It consists of a long list of information
 such as 
-  Depth, Oxygen, CO2, Nitrate, Phosphate, Silicate, Alkalinity, Organic Carbon, Bacteria, ...
+`Depth, Oxygen, CO2, Nitrate, Phosphate, Silicate, Alkalinity, Organic Carbon, Bacteria, ...`
 
 Observation Converter:
 ----------------------
@@ -53,7 +53,8 @@ Namelists start with an ampersand '&' and terminate with a slash '/'.
 
 This namelist provides control over the kind of observations to extract from the file in addition to their uncertainties. 
 In its current form, the observations that are extracted from the data file are: 
-  ``BATS_OXYGEN``, ``BATS_INORGANIC_CARBON``, ``BATS_ALKALINITY``, ``BATS_NITRATE``, ``BATS_PHOSPHATE``, ``BATS_SILICATE``
+
+``BATS_OXYGEN``, ``BATS_INORGANIC_CARBON``, ``BATS_ALKALINITY``, ``BATS_NITRATE``, ``BATS_PHOSPHATE``, ``BATS_SILICATE``
 
 +-------------------------------------+--------------------+------------------------------------------------------------+
 | Contents                            | Type               | Description                                                |
@@ -75,7 +76,7 @@ In its current form, the observations that are extracted from the data file are:
 +-------------------------------------+--------------------+------------------------------------------------------------+
 | ``vert_cols``                       | integer(2)         | First and last columns where depth is recorded.            | 
 +-------------------------------------+--------------------+------------------------------------------------------------+
-| ``scalar_obs_cols  ``               | integer(:, 2)      | ith row of this table should list the first and last       |
+| ``scalar_obs_cols``                 | integer(:, 2)      | ith row of this table should list the first and last       |
 |                                     |                    | columns where the value of the ith observation variable    |
 |                                     |                    | is recorded. Ordering of observation variables is defined  |
 |                                     |                    | by the OTYPE_ORDERING parameter in bats_to_obs.f90.        |
@@ -94,7 +95,7 @@ In its current form, the observations that are extracted from the data file are:
 +-------------------------------------+--------------------+------------------------------------------------------------+
 
 Climatology:
-~~~~~~~~~~~
+~~~~~~~~~~~~
 On top of assimilating real-time data, we often observe the quasi-cyclostationary behavior of the biogeochemical system 
 over the period of one year, and we update MARBL parameters by comparing this observed climatology to a climatology 
 predicted by MARBL. This usually involves running different forms of the ensmeble smoother where the model is re-run 
