@@ -22,6 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 29 2024 :: Bug fixes for shortest_time_between_assimilations and get_close_init. Tag 11.7.1**
+
+Bug fixes:
+
+   - Prevent hang by erroring out if shortest_time_between_assimilations <=0
+   - Catch and error out if max_dist or max_dist_list is <=0 for 3d sphere 
+     3d cartesian get_close_init
+   - Improved defaults for template  model input.nml
+
+Doc fixes:
+  
+   - Removed out-of-date info about inflation flavor character strings
+   - Remove out-of-date info on qceff branch checkout
+   - GitHub template for reporting documentation issues
+
+
 **August 26 2024 :: KQCEF. Tag 11.7.0**
 
 - Adds a Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation to DART.
