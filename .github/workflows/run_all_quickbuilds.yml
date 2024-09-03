@@ -68,6 +68,9 @@ jobs:
             *GMI* | *GOES* | *forward_operators* | *NSIDC* )
               cp /home/mkmf.template.rttov.gfortran  mkmf.template
               ;;
+            *library*)
+              cp ../developer_tests/library/mkmf.template.gfortran mkmf.template
+              ;;
             *)
               cp mkmf.template.gfortran mkmf.template
               echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template

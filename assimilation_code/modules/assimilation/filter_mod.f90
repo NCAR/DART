@@ -2275,7 +2275,7 @@ end subroutine store_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size, post_inflate, prior_inflate) result(num_copies)
+function count_state_ens_copies(ens_size, prior_inflate, post_inflate) result(num_copies)
 
 integer,                     intent(in) :: ens_size
 type(adaptive_inflate_type), intent(in) :: prior_inflate
