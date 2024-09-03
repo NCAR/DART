@@ -65,6 +65,12 @@ do i = 1, 7
    cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i), 0.0_r8, 1.0_r8) - mcdf(i)
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
+if(maxval(pdf_diff) < 1e-15_r8 .and. maxval(cdf_diff) < 1e-15_r8) then
+   write(*, *) 'Matlab Comparison Tests: PASS'
+else
+   write(*, *) 'Matlab Comparison Tests: FAIL'
+endif
+
 
 ! Test many x values for cdf and inverse cdf for a single set of alpha and beta
 alpha = 5.0_r8
@@ -82,6 +88,13 @@ end do
 write(*, *) '----------------------------'
 write(*, *) 'max difference in inversion is ', max_diff
 write(*, *) 'max difference should be less than 1e-14'
+
+if(max_diff < 1e-14_r8) then
+   write(*, *) 'Inversion Tests: PASS'
+else
+   write(*, *) 'Inversion Tests: FAIL'
+endif
+
 
 end subroutine test_beta
 
