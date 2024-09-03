@@ -122,7 +122,7 @@ How to Use the Automation Tool
 
    .. code-block:: sh
 
-      ./new_converter [OBSERVATION_NAME] [FILE_FORMAT]
+      ./new_converter.sh [OBSERVATION_NAME] [FILE_FORMAT]
 
 3. **Review Generated Files**: The script will create a new directory with the necessary files for your observation converter.
 
