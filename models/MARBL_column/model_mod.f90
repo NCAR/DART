@@ -4,52 +4,47 @@
 
 module model_mod
 
-! This is a template showing the interfaces required for a model to be compliant
-! with the DART data assimilation infrastructure. Do not change the arguments
-! for the public routines.
+! This is the MARBL_columun model_mod for the DART data assimilation infrastructure. 
+! Do not change the arguments for the public routines.
 
-use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
+use        types_mod,      only : r8, i8, MISSING_R8, vtablenamelength
 
-use time_manager_mod, only : time_type, set_time
+use time_manager_mod,      only : time_type, set_time
 
-use     location_mod, only : location_type, get_close_type, &
-                             loc_get_close_obs => get_close_obs, &
-                             loc_get_close_state => get_close_state, &
-                             set_location, set_location_missing, &
-                             get_location, VERTISLEVEL
+use     location_mod,      only : location_type, get_close_type, &
+                                  get_close_obs, get_close_state, &
+                                  set_location, set_location_missing, &
+                                  get_location, VERTISLEVEL
 
-use    utilities_mod, only : register_module, error_handler, &
-                             E_ERR, E_MSG, &
-                             nmlfileunit, do_output, do_nml_file, do_nml_term,  &
-                             find_namelist_in_file, check_namelist_read, &
-                             to_upper
+use    utilities_mod,      only : error_handler, E_ERR, E_MSG, &
+                                  nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+                                  find_namelist_in_file, check_namelist_read, &
+                                  to_upper
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
-                                 nc_add_global_creation_time, &
-                                 nc_begin_define_mode, nc_end_define_mode, &
-                                 NF90_MAX_NAME, nc_open_file_readonly, &
-                                 nc_get_variable, nc_get_variable_size, nc_close_file
+use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file, &
+                                  nc_add_global_creation_time, &
+                                  nc_begin_define_mode, nc_end_define_mode, &
+                                  NF90_MAX_NAME, nc_open_file_readonly, &
+                                  nc_get_variable, nc_get_variable_size, nc_close_file
 
-use state_structure_mod, only : add_domain, get_domain_size, get_model_variable_indices, &
-                                get_varid_from_kind, get_dart_vector_index, &
-                                get_num_domains
+use state_structure_mod,   only : add_domain, get_domain_size, get_model_variable_indices, &
+                                  get_varid_from_kind, get_dart_vector_index, &
+                                  get_num_domains
 
-use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
-                         QTY_V_CURRENT_COMPONENT, QTY_DRY_LAND, &
-                         QTY_LAYER_THICKNESS
+use obs_kind_mod,          only : get_index_for_quantity, QTY_LAYER_THICKNESS
 
-use distributed_state_mod, only: get_state
+use distributed_state_mod, only : get_state
 
-use ensemble_manager_mod, only : ensemble_type
+use ensemble_manager_mod,  only : ensemble_type
 
 ! These routines are passed through from default_model_mod.
 ! To write model specific versions of these routines
 ! remove the routine from this use statement and add your code to
 ! this the file.
-use default_model_mod, only : pert_model_copies, write_model_time, &
-                              init_time => fail_init_time, &
-                              init_conditions => fail_init_conditions, &
-                              convert_vertical_obs, convert_vertical_state, adv_1step
+use default_model_mod,     only : pert_model_copies, write_model_time, &
+                                  init_time => fail_init_time, &
+                                  init_conditions => fail_init_conditions, &
+                                  convert_vertical_obs, convert_vertical_state, adv_1step
 
 implicit none
 private
@@ -62,9 +57,9 @@ public :: get_model_size,         &
           end_model,              &
           static_init_model,      &
           nc_write_model_atts,    &
+          pert_model_copies,      &
           get_close_obs,          &
           get_close_state,        &
-          pert_model_copies,      &
           convert_vertical_obs,   &
           convert_vertical_state, &
           read_model_time,        &
@@ -74,38 +69,40 @@ public :: get_model_size,         &
           shortest_time_between_assimilations, &
           write_model_time
 
-
 character(len=256), parameter :: source = "model_mod.f90"
-logical :: module_initialized = .false.
-integer :: state_dom_id  ! used to access the state structure
-integer :: param_dom_id  ! used to access MARBL internal parameters
-integer :: nfields ! number of fields in the state or parameter vector
-integer :: nz      ! the number of vertical layers
-integer :: model_size
+
+logical         :: module_initialized = .false.
+integer         :: state_dom_id  ! used to access the state structure
+integer         :: param_dom_id  ! used to access MARBL internal parameters
+integer         :: nfields       ! number of fields in the state or parameter vector
+integer         :: nz            ! the number of vertical layers
+integer(i8)     :: model_size
 type(time_type) :: assimilation_time_step
-real(r8) :: geolon 
-real(r8) :: geolat 
-real(r8) :: basin_depth(2,2)
+real(r8)        :: geolon 
+real(r8)        :: geolat 
+real(r8)        :: basin_depth(2,2)
 
 ! parameters to be used in specifying the DART internal state
-integer, parameter :: modelvar_table_height = 13
-integer, parameter :: modelvar_table_width = 5
-integer, parameter :: modelparams_table_height = 1
-integer, parameter :: modelparams_table_width = 5
+integer, parameter :: MODELVAR_TABLE_HEIGHT    = 13
+integer, parameter :: MODELVAR_TABLE_WIDTH     = 5
+integer, parameter :: MODELPARAMS_TABLE_HEIGHT = 1
+integer, parameter :: MODELPARAMS_TABLE_WIDTH  = 5
 
 ! defining the variables that will be read from the namelist
-character(len=256) :: template_file(2)
-character(len=256) :: ocean_geometry
-real(r8)           :: station_location(2)
-integer            :: time_step_days
-integer            :: time_step_seconds
-logical            :: estimate_params
-character(len=vtablenamelength) &
-   :: model_state_variables(modelvar_table_height * modelvar_table_width)
-character(len=vtablenamelength) &
-   :: model_parameters(modelparams_table_height * modelparams_table_width)
+character(len=256)              :: state_template_file = 'MOM.res.nc'
+character(len=256)              :: param_template_file = 'marbl_params.nc'
+character(len=256)              :: ocean_geometry      = 'ocean_geometry.nc'
+real(r8)                        :: station_location(2) = (/-64.0, 31.0/)
+integer                         :: time_step_days      = 1 
+integer                         :: time_step_seconds   = 0
+logical                         :: estimate_params     = .false.
+character(len=vtablenamelength) :: &
+      model_state_variables(MODELVAR_TABLE_HEIGHT * MODELVAR_TABLE_WIDTH)  = ''
+character(len=vtablenamelength) :: &
+      model_parameters(MODELPARAMS_TABLE_HEIGHT * MODELPARAMS_TABLE_WIDTH) = ''
 
-namelist /model_nml/ template_file,         &
+namelist /model_nml/ state_template_file,   &
+                     param_template_file,   &
                      ocean_geometry,        &
                      station_location,      &
                      time_step_days,        &
@@ -117,22 +114,19 @@ contains
 
 !------------------------------------------------------------------
 !
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
+! Called to do one time initialization of the model. 
 
 subroutine static_init_model()
 
 integer :: iunit, io, i_dom, domain_count
-character(len=vtablenamelength) :: variable_table(modelvar_table_height, modelvar_table_width), &
-                                   param_table(modelparams_table_height, modelparams_table_width)
-integer :: state_qty_list(modelvar_table_height), &
-           param_qty_list(modelparams_table_height)
-real(r8):: state_clamp_vals(modelvar_table_height, 2), &
-           param_clamp_vals(modelparams_table_height, 2)
-logical :: update_var_list(modelvar_table_height), &
-           update_param_list(modelparams_table_height)
+character(len=vtablenamelength) :: variable_table(MODELVAR_TABLE_HEIGHT, MODELVAR_TABLE_WIDTH), &
+                                   param_table(MODELPARAMS_TABLE_HEIGHT, MODELPARAMS_TABLE_WIDTH)
+integer :: state_qty_list(MODELVAR_TABLE_HEIGHT), &
+           param_qty_list(MODELPARAMS_TABLE_HEIGHT)
+real(r8):: state_clamp_vals(MODELVAR_TABLE_HEIGHT, 2), &
+           param_clamp_vals(MODELPARAMS_TABLE_HEIGHT, 2)
+logical :: update_var_list(MODELVAR_TABLE_HEIGHT), &
+           update_param_list(MODELPARAMS_TABLE_HEIGHT)
 
 module_initialized = .true.
 
@@ -155,6 +149,12 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
+! Make sure the longitude is properly assigned
+geolon = station_location(1)
+geolat = station_location(2)
+
+if (geolon < 0.0_r8) geolon = 360.0 + geolon
+
 ! The kind of experiments that can be performed using this code: 
 ! 1- State estimation:
 !    To achieve this, you'll need to set "estimate_params" 
@@ -173,7 +173,7 @@ assimilation_time_step = set_time(time_step_seconds, &
 call verify_state_variables(model_state_variables, nfields, variable_table, &
                             state_qty_list, state_clamp_vals, update_var_list)
 
-    state_dom_id = add_domain(template_file(1), nfields, &
+    state_dom_id = add_domain(state_template_file, nfields, &
                               var_names = variable_table(1:nfields, 1), &
                               kind_list = state_qty_list(1:nfields), &
                               clamp_vals = state_clamp_vals, &
@@ -184,7 +184,7 @@ if(estimate_params) then
     call verify_state_variables(model_parameters, nfields, param_table, &
                                 param_qty_list, param_clamp_vals, update_param_list)
 
-    param_dom_id = add_domain(template_file(2), nfields, &
+    param_dom_id = add_domain(param_template_file, nfields, &
                               var_names = param_table(1:nfields, 1), &
                               kind_list = param_qty_list(1:nfields), &
                               clamp_vals = param_clamp_vals, &
@@ -215,7 +215,6 @@ type(time_type) :: read_model_time
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
 real(r8) :: days
-type(time_type) :: mom6_time
 integer :: mom_base_date_in_days, mom_days
 
 mom_base_date_in_days = 139157 ! 1982 1 1 0 0
@@ -289,10 +288,6 @@ end do
 
 ! performing the interpolation for each ensemble member individually.
 do ens_index = 1, ens_size
-    !print *, "BASIN DEPTH     = ",-basin_depth(1,1)
-    !print *, "----------------------------------------------------"
-    !print *, "computing centers of layers"
-    !print *, "----------------------------------------------------"
 
     ! locating the layer index to be used as the upper interpolation point for this ensemble member.
     layer_index = nz
@@ -302,25 +297,16 @@ do ens_index = 1, ens_size
     layerdepth_top = layerdepth_bottom &        ! depth at top of the layer given by layer_index.
                           + layer_thicknesses(layer_index, ens_index)
 
-    !print *, "layer = ",layer_index,", center = ",layerdepth_center,", bottom = ",layerdepth_bottom,", top = ",layerdepth_top
-    
     do while((layerdepth_center < requested_depth) .and. (layer_index > 1))
         layer_index = layer_index - 1
         layerdepth_bottom = layerdepth_bottom + layer_thicknesses(layer_index, ens_index)
         layerdepth_center = layerdepth_bottom + 0.5 * layer_thicknesses(layer_index, ens_index)
         layerdepth_top = layerdepth_bottom + layer_thicknesses(layer_index, ens_index)
-
-        !print *, "layer = ",layer_index,", bottom = ",layerdepth_bottom,", center = ",layerdepth_center,", top = ",layerdepth_top
-
     end do
 
     ! having located the index of the upper interpolation layer, we now calculate the interpolation.
     if((requested_depth < -basin_depth(1,1)) .or. (layerdepth_top < requested_depth)) then
         ! case where the requested depth is below the ocean floor, or above the ocean surface
-
-        !print *, "----------------------------------------------------"
-        !print *, "depth is below ocean floor or above ocean surface"
-        !print *, "----------------------------------------------------"
 
         istatus(ens_index) = 1
         expected_obs(ens_index) = MISSING_R8
@@ -330,24 +316,15 @@ do ens_index = 1, ens_size
         ! or the top half of the shallowest layer. In both cases, the "interpolated" value is
         ! simply the current value of that layer in MOM6.
 
-        !print *, "----------------------------------------------------"
-        !print *, "only using value from layer ", layer_index
-        !print *, "----------------------------------------------------"
-
         istatus(ens_index) = 0
         qty_index = get_dart_vector_index(1, 1, layer_index, state_dom_id, qty_id)
         state_slice = get_state(qty_index, state_handle)
         expected_obs(ens_index) = state_slice(ens_index)
 
-        ! print *, "final value = ",expected_obs(ens_index)
-
     else
         ! case where the requested depth is above the center of some layer, and below
         ! the center of another. We interpolate linearly between the nearest layers above
         ! and below.
-
-        !print *, "----------------------------------------------------"
-        !print *, "interpolating between layers ", layer_index, " and ", (layer_index + 1)
 
         istatus(ens_index) = 0
 
@@ -365,13 +342,9 @@ do ens_index = 1, ens_size
         state_slice = get_state(qty_index, state_handle)
         val_below   = state_slice(ens_index)
 
-        !print *, "corresponding to the values: ", val_above, " and ", val_below
-        !print *, "----------------------------------------------------"
-
         ! linear interpolation
         expected_obs(ens_index) = val_above + (requested_depth - depth_above) * (val_below - val_above) / (depth_below - depth_above)
 
-        !print *, "final value = ",expected_obs(ens_index)
     end if
 end do
 
@@ -411,12 +384,6 @@ if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, level, kind_index=local_qty)
 
-! Make sure the longitude is properly assigned
-geolon = station_location(1)
-geolat = station_location(2)
-
-if (geolon < 0.0_r8) geolon = 360.0 + geolon
-
 location = set_location(geolon, geolat, real(level,r8), VERTISLEVEL)
 
 if (present(qty)) then
@@ -425,55 +392,6 @@ endif
 
 
 end subroutine get_state_meta_data
-
-!------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc            ! handle to a get_close structure
-integer,                       intent(in)    :: base_type     ! observation TYPE
-type(location_type),           intent(inout) :: base_loc      ! location of interest
-type(location_type),           intent(inout) :: locs(:)       ! obs locations
-integer,                       intent(in)    :: loc_qtys(:)   ! QTYS for obs
-integer,                       intent(in)    :: loc_types(:)  ! TYPES for obs
-integer,                       intent(out)   :: num_close     ! how many are close
-integer,                       intent(out)   :: close_ind(:)  ! incidies into the locs array
-real(r8),            optional, intent(out)   :: dist(:)       ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-character(len=*), parameter :: routine = 'get_close_obs'
-
-call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                          num_close, close_ind, dist, ens_handle)
-
-end subroutine get_close_obs
-
-
-!------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                           num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc           ! handle to a get_close structure
-type(location_type),           intent(inout) :: base_loc     ! location of interest
-integer,                       intent(in)    :: base_type    ! observation TYPE
-type(location_type),           intent(inout) :: locs(:)      ! state locations
-integer,                       intent(in)    :: loc_qtys(:)  ! QTYs for state
-integer(i8),                   intent(in)    :: loc_indx(:)  ! indices into DART state vector
-integer,                       intent(out)   :: num_close    ! how many are close
-integer,                       intent(out)   :: close_ind(:) ! indices into the locs array
-real(r8),            optional, intent(out)   :: dist(:)      ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-character(len=*), parameter :: routine = 'get_close_state'
-
-
-call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                            num_close, close_ind, dist, ens_handle)
-
-
-end subroutine get_close_state
 
 !------------------------------------------------------------------
 ! write any additional attributes to the output and diagnostic files
@@ -597,9 +515,7 @@ subroutine read_num_layers()
 
 integer :: ncid
 
-character(len=*), parameter :: routine = 'read_num_layers'
-
-ncid = nc_open_file_readonly(template_file(1))
+ncid = nc_open_file_readonly(state_template_file)
 
 call nc_get_variable_size(ncid, 'Layer', nz)
 

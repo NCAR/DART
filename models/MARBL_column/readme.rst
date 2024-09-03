@@ -45,8 +45,9 @@ The code is designed to perform 3 kinds of data assimilation (DA) experiments:
    To achive this goal, you'll need to set ``estimate_params = .true.`` and turn the update status for 
    all state variable to ``NO_COPY_BACK``
    
-   This ensures that the state will not be updated. The ``NO_COPY_BACK`` option is added as the 5th entry 
-   in the state table (after the variable name, its associated quantity and its physical bounds) within ``&model_nml``
+   This ensures that the updated state will not be written back to the restart file. The ``NO_COPY_BACK`` 
+   option is added as the 5th entry in the state table (after the variable name, its associated quantity 
+   and its physical bounds) within ``&model_nml``. 
 
 Namelist
 --------
@@ -55,8 +56,9 @@ The ``&model_nml`` variables and their default values are listed here:
 .. code-block:: fortran 
 
   &model_nml
-     template_file         = 'member_0001/RESTART/MOM.res.nc', 'member_0001/marbl_params.nc',
-     ocean_geometry        = 'member_0001/ocean_geometry.nc',
+     state_template_file   = 'MOM.res.nc', 
+     param_template_file   = 'marbl_params.nc',
+     ocean_geometry        = 'ocean_geometry.nc',
      station_location      = -64, 31
      time_step_days        = 1,
      time_step_seconds     = 0,
@@ -82,13 +84,14 @@ This namelist provides control over the kind of DA experiment as described abvov
 +-------------------------------------+--------------------+------------------------------------------------------------+
 | Item                                | Type               | Description                                                |
 +=====================================+====================+============================================================+
-| ``template_file``                   | character(len=256) | MARBL restart file including MARBL's prognostic variables  |
+| ``state_template_file``             | character(len=256) | MARBL restart file including MARBL's prognostic variables  |
 |                                     |                    | and other grid information such as the ocean layers.       |
 |                                     |                    | The state variables read from this file are listed in      |
 |                                     |                    | in the ``model_state_variables``                           |
-|                                     |                    |                                                            |
-|                                     |                    | There is another template file corresponding to the        |
-|                                     |                    | BGC parameters that we intend to estimate.                 |
++-------------------------------------+--------------------+------------------------------------------------------------+
+| ``param_template_file``             | character(len=256) | Template file corresponding to the BGC parameters that we  |
+|                                     |                    | intend to estimate. The parameters read from this file are |
+|                                     |                    | listed in the ``model_parameters``.                        |
 +-------------------------------------+--------------------+------------------------------------------------------------+
 | ``ocean_geometry``                  | character(len=256) | The ocean geometry file is used to read ``basin_depth``    |
 +-------------------------------------+--------------------+------------------------------------------------------------+

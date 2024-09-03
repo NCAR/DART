@@ -27,11 +27,11 @@ DART supported models:
 - :doc:`lorenz_96_2scale/readme`
 - :doc:`lorenz_96_tracer_advection/readme`
 - :doc:`forced_lorenz_96/readme`
+- :doc:`MARBL_column/readme`
 - :doc:`MITgcm_ocean/readme`
 - :doc:`MOM6/readme`
 - :doc:`mpas_atm/readme`
 - :doc:`mpas_ocn/readme`
-- :doc:`MARBL_column/readme`
 - :doc:`NCOMMAS/readme`
 - :doc:`noah/readme`
 - :doc:`null_model/readme`

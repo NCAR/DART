@@ -7,7 +7,8 @@
    /
 
 &model_nml
-   template_file         = 'ensemble/background/member_0001/RESTART/MOM.res.nc', 'ensemble/background/member_0001/marbl_params.nc',
+   state_template_file   = 'ensemble/background/member_0001/RESTART/MOM.res.nc',
+   param_template_file   = 'ensemble/background/member_0001/marbl_params.nc',
    ocean_geometry        = 'ensemble/background/member_0001/ocean_geometry.nc',
    station_location      = -64, 31
    time_step_days        = 1,
@@ -236,8 +237,8 @@
    /
 
 &model_mod_check_nml
-   input_state_files    = 'mom_in.nc', 'param_in.nc'
-   output_state_files   = 'mom_out.nc', 'param_out.nc'
+   input_state_files    = 'marbl_in.nc', 'param_in.nc'
+   output_state_files   = 'marbl_out.nc', 'param_out.nc'
    test1thru            = 7
    run_tests            = 1 
    x_ind                = 600
