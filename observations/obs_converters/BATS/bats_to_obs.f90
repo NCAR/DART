@@ -2,14 +2,13 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 ! This file is meant to read a text file containing bottle data from the
 ! Bermuda Atlantic Time-Series Study (https://bats.bios.asu.edu/).
 
 program bats_to_obs
 
-use         types_mod, only : r8, PI, DEG2RAD
+use         types_mod, only : r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               open_file, close_file, &
                               find_namelist_in_file, check_namelist_read, &
@@ -17,14 +16,14 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               do_nml_file, do_nml_term
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               operator(>=), increment_time, get_time, &
-                              operator(-), NOLEAP, GREGORIAN, operator(+), &
+                              operator(-), GREGORIAN, operator(+), &
                               print_date
 use      location_mod, only : VERTISHEIGHT, VERTISPRESSURE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
                               init_obs_sequence, get_num_obs, set_copy_meta_data, &
                               set_qc_meta_data, destroy_obs_sequence
-
+use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 use      obs_kind_mod, only : BATS_OXYGEN, BATS_INORGANIC_CARBON, BATS_ALKALINITY, &
                               BATS_NITRATE, BATS_PHOSPHATE, BATS_SILICATE
 
@@ -35,22 +34,31 @@ integer, parameter :: NUM_SCALAR_OBS = 6  ! maximum number of scalar observation
 
 ! this array defines the order in which observations are read from the file
 integer, parameter :: OTYPE_ORDERING(NUM_SCALAR_OBS) &
-                      = (/BATS_OXYGEN, BATS_INORGANIC_CARBON, BATS_ALKALINITY, BATS_NITRATE, &
+         = (/BATS_OXYGEN, BATS_INORGANIC_CARBON, BATS_ALKALINITY, BATS_NITRATE, &
                           BATS_PHOSPHATE, BATS_SILICATE/)
 
 real(r8), parameter :: MIN_OBS_ERROR = 0.1_r8
-real(r8), parameter :: bats_lon = 360.0_r8 - 64.0_r8
-real(r8), parameter :: bats_lat = 31.0_r8
+real(r8), parameter :: BATS_LON      = 360.0_r8 - 64.0_r8
+real(r8), parameter :: BATS_LAT      = 31.0_r8
 
 ! namelist variables, changeable at runtime
-character(len=256) :: text_input_file, obs_out_dir
-integer :: max_lines, read_starting_at_line, date_firstcol, hourminute_firstcol
-integer :: lat_cols(2), lon_cols(2), vert_cols(2)
-integer :: scalar_obs_cols(2, NUM_SCALAR_OBS)
-real(r8) :: obs_uncertainties(NUM_SCALAR_OBS)
-logical :: debug
+character(len=256) :: text_input_file                    = 'bats_bottle.txt' 
+character(len=256) :: obs_out_dir                        = 'obs_seq_files'
+integer            :: max_lines                          = 68000 
+integer            :: read_starting_at_line              = 61
+integer            :: date_firstcol                      = 14
+integer            :: hourminute_firstcol                = 35
+integer            :: lat_cols(2)                        = (/42, 47/)
+integer            :: lon_cols(2)                        = (/51, 56/)
+integer            :: vert_cols(2)                       = (/64, 69/)
+real(r8)           :: obs_uncertainties(NUM_SCALAR_OBS)  = 0.2_r8
+logical            :: debug                              = .true.
+integer            :: scalar_obs_cols(2, NUM_SCALAR_OBS) = reshape( (/ &
+                                                           113, 137, 145, 153, 170, 178, &
+                                                           119, 143, 151, 159, 176, 184 /), &
+                                                           shape(scalar_obs_cols), order=(/2,1/) ) 
 
-namelist /bats_to_obs_nml/ text_input_file, max_lines, read_starting_at_line, date_firstcol, &
+namelist /bats_to_obs_nml/ text_input_file, max_lines, read_starting_at_line, date_firstcol,    &
                            hourminute_firstcol, lat_cols, lon_cols, vert_cols, scalar_obs_cols, &
                            obs_uncertainties, obs_out_dir, debug
 
@@ -58,23 +66,21 @@ namelist /bats_to_obs_nml/ text_input_file, max_lines, read_starting_at_line, da
 character (len=294) :: input_line, obs_out_file
 character (len=6)   :: daystr
 
-integer :: oday, day_bin, day_bin_old, osec, rcio, iunit, otype, line_number, otype_index
-integer :: year, month, day, hour, minute, second, hourminute_raw, date_raw
+integer :: oday, day_bin, day_bin_old, osec, rcio, iunit, line_number, otype_index
+integer :: year, month, day, hour, minute, hourminute_raw, date_raw
 integer :: num_copies, num_qc, max_obs
 integer :: num_processed(NUM_SCALAR_OBS)
 
-logical  :: file_exist, first_obs, new_obs_seq
+logical  :: first_obs, new_obs_seq
 
-real(r8) :: temp, terr, qc, wdir, wspeed, werr, obs_err
-real(r8) :: lat, lon, vert, uwnd, uerr, vwnd, verr, ovalue
+real(r8) :: qc, obs_err
+real(r8) :: vert, ovalue
 real(r8) :: running_sum(NUM_SCALAR_OBS), running_sqsum(NUM_SCALAR_OBS), &
             maxvals(NUM_SCALAR_OBS), minvals(NUM_SCALAR_OBS)
 
-! the uncertainties corresponding to the observations above
-
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: ref_day0, time_obs, prev_time
+type(time_type)         :: time_obs, prev_time
 
 
 ! start of executable code
@@ -280,7 +286,7 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
       obs_err = max(obs_uncertainties(otype_index)*ovalue, MIN_OBS_ERROR)
 
-      call create_3d_obs(bats_lat, bats_lon, vert, VERTISHEIGHT, &
+      call create_3d_obs(BATS_LAT, BATS_LON, vert, VERTISHEIGHT, &
                          ovalue, OTYPE_ORDERING(otype_index), obs_err, &
                          oday, osec, qc, obs)
 
@@ -314,122 +320,4 @@ end do
 ! end of main program
 call finalize_utilities()
 
-contains
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   create_3d_obs - subroutine that is used to create an observation
-!                   type from observation data.  
-!
-!       NOTE: assumes the code is using the threed_sphere locations module, 
-!             that the observation has a single data value and a single
-!             qc value, and that this obs type has no additional required
-!             data (e.g. gps and radar obs need additional data per obs)
-!
-! inputs:
-!    lat   - latitude of observation
-!    lon   - longitude of observation
-!    vval  - vertical coordinate
-!    vkind - kind of vertical coordinate (pressure, level, etc)
-!    obsv  - observation value
-!    otype - observation type
-!    oerr  - observation error
-!    day   - gregorian day
-!    sec   - gregorian second
-!    qc    - quality control value
-! outputs:
-!    obs   - observation type
-!
-!     created Oct. 2007 Ryan Torn, NCAR/MMM
-!     adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, otype, oerr, day, sec, qc, obs)
-use        types_mod, only : r8
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
-                             set_obs_def_error_variance, set_obs_def_location
-use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
-use time_manager_mod, only : time_type, set_time
-use     location_mod, only : set_location
-
- integer,        intent(in)    :: otype, vkind, day, sec
- real(r8),       intent(in)    :: lat, lon, vval, obsv, oerr, qc
- type(obs_type), intent(inout) :: obs
-
-real(r8)           :: obs_val(1), qc_val(1)
-type(obs_def_type) :: obs_def
-
-call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
-call set_obs_def_type_of_obs(obs_def, otype)
-call set_obs_def_time(obs_def, set_time(sec, day))
-call set_obs_def_error_variance(obs_def, oerr * oerr)
-call set_obs_def(obs, obs_def)
-
-obs_val(1) = obsv
-call set_obs_values(obs, obs_val)
-qc_val(1)  = qc
-call set_qc(obs, qc_val)
-
-end subroutine create_3d_obs
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   add_obs_to_seq -- adds an observation to a sequence.  inserts if first
-!           obs, inserts with a prev obs to save searching if that's possible.
-!
-!     seq - observation sequence to add obs to
-!     obs - observation, already filled in, ready to add
-!     obs_time - time of this observation, in dart time_type format
-!     prev_obs - the previous observation that was added to this sequence
-!                (will be updated by this routine)
-!     prev_time - the time of the previously added observation 
-!                (will also be updated by this routine)
-!     first_obs - should be initialized to be .true., and then will be
-!                updated by this routine to be .false. after the first obs
-!                has been added to this sequence.
-!
-!     created Mar 8, 2010   nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine add_obs_to_seq(seq, obs, obs_time, prev_obs, prev_time, first_obs)
- use        types_mod, only : r8
- use obs_sequence_mod, only : obs_sequence_type, obs_type, insert_obs_in_seq
- use time_manager_mod, only : time_type, operator(>=)
-
-  type(obs_sequence_type), intent(inout) :: seq
-  type(obs_type),          intent(inout) :: obs, prev_obs
-  type(time_type),         intent(in)    :: obs_time
-  type(time_type),         intent(inout) :: prev_time
-  logical,                 intent(inout) :: first_obs
-
-! insert(seq,obs) always works (i.e. it inserts the obs in
-! proper time format) but it can be slow with a long file.
-! supplying a previous observation that is older (or the same
-! time) as the new one speeds up the searching a lot.
-
-if(first_obs) then    ! for the first observation, no prev_obs
-   call insert_obs_in_seq(seq, obs)
-   first_obs = .false.
-else               
-   if(obs_time >= prev_time) then  ! same time or later than previous obs
-      call insert_obs_in_seq(seq, obs, prev_obs)
-   else                            ! earlier, search from start of seq
-      call insert_obs_in_seq(seq, obs)
-   endif
-endif
-
-! update for next time
-prev_obs = obs
-prev_time = obs_time
-
-end subroutine add_obs_to_seq
-
 end program bats_to_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
