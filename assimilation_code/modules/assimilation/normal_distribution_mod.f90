@@ -374,13 +374,21 @@ if(quantile <  0.0_r8 .or. quantile > 1.0_r8) then
 endif
 
 ! If the distribution is bounded, quantiles at the limits have values at the bounds
-if(bounded_below .and. quantile == 0.0_r8) then
-   x = lower_bound
-   return
+if(quantile == 0.0_r8) then
+   ! The following statement is required to avoid a compiler bug in gcc 13.2.0
+   quantile = 0.0_r8
+   if(bounded_below) then
+      x = lower_bound
+      return
+   endif
 endif
-if(bounded_above .and. quantile == 1.0_r8) then
-   x = upper_bound
-   return
+if(quantile == 1.0_r8) then
+   ! The following statement is required to avoid a compiler bug in gcc 13.2.0
+   quantile = 1.0_r8
+   if(bounded_above) then
+      x = upper_bound
+      return
+   endif
 endif
 
 ! If input quantiles are outside the numerically supported range, move them to the extremes
