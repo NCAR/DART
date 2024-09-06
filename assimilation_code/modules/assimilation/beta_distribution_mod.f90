@@ -64,8 +64,8 @@ real(r8) :: mcdf(7) = [0.204832764699133_r8, 0.002430000000000_r8, 0.87500000000
 ! Compare to matlab
 write(*, *) 'Absolute value of differences should be less than 1e-15'
 do i = 1, 7
-   pdf_diff(i) = beta_pdf(mx(i), malpha(i), mbeta(i)) - mpdf(i)
-   cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i)) - mcdf(i)
+   pdf_diff(i) = abs(beta_pdf(mx(i), malpha(i), mbeta(i)) - mpdf(i))
+   cdf_diff(i) = abs(beta_cdf(mx(i), malpha(i), mbeta(i)) - mcdf(i))
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
 if(maxval(pdf_diff) < 1e-15_r8 .and. maxval(cdf_diff) < 1e-15_r8) then
