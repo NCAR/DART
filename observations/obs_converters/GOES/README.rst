@@ -39,7 +39,7 @@ Top of the atmosphere radiance observations are sensitive to the
 atmospheric constituents (e.g. water vapor) that reside in the vertical
 profile of the atmosphere. Given this is an integrated quantity and does
 not depend on a single vertical location, it may be appropriate to leave
-the vertical location unassigned (i.e. VERTISUNDEF) within the ``obs_seq.out``
+the vertical location undefined (i.e. VERTISUNDEF) within the ``obs_seq.out``
 file. This approach, however, limits the application of vertical localization
 during the assimilation step.
 
@@ -54,7 +54,7 @@ Radiance versus Brightness Temperature
 This converter assigns the observation type as ``GOES[16-19]_ABI_RADIANCE``.
 The default setup in DART is that this radiance observation type is assigned
 the quantity ``QTY_RADIANCE``.  Radiance observations are commonly expressed 
-in spectrally resolved units of mW/cm/m^2/sr. 
+in spectrally resolved units (mW/cm/m^2/sr). 
 
 Alternatively, radiances can also be expressed as brightness temperatures
 (units: Kelvin) and the DART code also supports observation quantities of 
@@ -87,7 +87,7 @@ variables.
 |                         |            | If .true. and DQF /= 0, the |
 |                         |            | scan is rejected. If        |
 |                         |            | .false. any DQF > 1         |
-|                         |            | the scan.                   |
+|                         |            | rejects the scan.           |
 +-------------------------+------------+-----------------------------+
 | verbose                 | .false.    | Run-time output verbosity   |
 +-------------------------+------------+-----------------------------+
@@ -95,15 +95,16 @@ variables.
 |                         |            | standard deviation in units |
 |                         |            | of radiance. IMPORTANT:     |
 |                         |            | the user must supply a      |
-|                         |            | value other than MISSING_R8 |
+|                         |            | value other than MISSING_R8.|
 |                         |            | Be aware that the           |
 |                         |            | observation sequence files  |
 |                         |            | convert this to a variance. |
 +-------------------------+------------+-----------------------------+
 | vloc_pres_hPa           | -1.0       | If a positive value, the    |
 |                         |            | vertical location of the    |
-|                         |            | observation (hPa), with     |
-|                         |            | vertical coordinate of      |
+|                         |            | observation (hPa) is        |
+|                         |            | assigned with a vertical    |
+|                         |            | coordinate of               |
 |                         |            | VERTISPRESSURE. If negative |
 |                         |            | value there is no vertical  |
 |                         |            | location and the coordinate |
@@ -114,7 +115,7 @@ Radiance metadata supplied to obs_seq.out file
 ----------------------------------------------
 
 This converter is designed to supply metadata to the radiative transfer
-model (RTTOV) :doc:`../../observations/forward_operators/obs_def_rttov_mod`
+model (RTTOV) :doc:`../../../observations/forward_operators/obs_def_rttov_mod`
 that supports the calculation of the expected radiance 
 observation during the assimilation step.  Below is a description
 of this metadata information.

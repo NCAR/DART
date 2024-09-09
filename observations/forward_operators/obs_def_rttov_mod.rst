@@ -57,7 +57,7 @@ to assimilate HIMAWARI_9_AHI_RADIANCE as QTY_BRIGHTNESS_TEMPERATURE, edit the QT
 in obs_def_rttov{13}_mod.f90 and rerun quickbuild.sh.  Although both spectral radiance
 (mW/cm/m^2/sr) and brightness temperature (Kelvin) quantify the same emitted/reflected
 radiance from the atmosphere, the tendency for brightness temperatures to adhere closer
-to a gaussian distribution may improve the quality of the assimilation overall if using
+to a gaussian distribution  may improve the quality of the assimilation if using
 a DART filter type that depends on Gaussian assumptions (e.g. EAKF).  This is
 an ongoing area of research.
 
@@ -68,7 +68,7 @@ RTTOV  Metadata
 
 The RTTOV module ingests metadata from the ``obs_seq.out`` file in order to calculate the
 expected observed radiance.  For example, a single ``HIMAWARI_9_AHI_RADIANCE`` 
-synthetic observation in units of brightness temperature (Kelvin) looks like:
+synthetic observation in units of brightness temperature (Kelvin) looks like the following:
 
 .. code::
 
@@ -93,13 +93,13 @@ synthetic observation in units of brightness temperature (Kelvin) looks like:
      1.00000000000000
 
 
-Please note, that in the  radiance observation example a vertical level (34000 Pa) was
-assigned to the observation with the ``VERTISPRESSURE`` (integer = 2) vertical coordinate. 
+Please note, that in this example the radiance observation was assigned a  vertical level (34000 Pa) 
+with the ``VERTISPRESSURE`` (integer = 2) vertical coordinate. 
 Although radiance/BT observations are technically representative of the entire atmospheric
 column and not a single vertical level, in some applications
 this approximation improves the skill of the assimilation forecast.  This is an ongoing
 area of research. As an alternative, it is also common to leave the vertical level
-as undefined (VERTISUNDEF, integer = -2), however this limits the ability to vertically
+as undefined (VERTISUNDEF, integer = -2), however, this limits the ability to vertically
 localize the impact of the observation on the model state.
 
 The RTTOV specific metadata is located after the ``visir`` line.  This includes the
@@ -109,10 +109,12 @@ reflectance has no impact on an IR radiance observation.  Also note, the observa
 provides a 4 integer description (31/9/56/8) of the platform/satellite/sensor/channel
 combination specific to this satellite observation.  For more information on this
 metadata refer to this GOES observation converter example here: 
-:doc:`../obs_converters/GOES/README.rst`
+:doc:`../observations/obs_converters/GOES/README.rst`
 
-**It is imperative that the user confirms the satellite integer metadata matches the
-appropriate RTTOV coefficient (parameter) file.  See next section for more information.**
+.. Important ::
+
+  **It is imperative that the user confirms the satellite integer metadata matches the
+  appropriate RTTOV coefficient (parameter) file.  See next section for more information.**
 
 RTTOV coefficient files
 -----------------------
@@ -126,14 +128,15 @@ is provided:
 
    HIMAWARI_9_AHI	31	9	56	ir	rtcoef_himawari_9_ahi.dat
 
-The coefficent files (.dat) are included with the RTTOV installation and can be found at the
-path ``~{RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
-should be included in your run folder at runtime.  
+The coefficent file (.dat) is included with the RTTOV installation and can be found at the
+path  ``~{RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
+should be included in your run folder at runtime. Additional coefficent files for a given
+satellite sensor may be required.
 
 It is good practice to always view your coefficent file (.dat) to confirm that the 
-channels listed in the file include the channel from the ``obs_seq.out`` file. The coefficent
+channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficent
 file will include a list of channels (wavebands) with the associated wavelength (microns).
-For exammple the rtcoef_himawari_9_ahi.dat file looks like:
+For example the rtcoef_himawari_9_ahi.dat file looks like:
 
 
 
@@ -142,9 +145,10 @@ For exammple the rtcoef_himawari_9_ahi.dat file looks like:
   The RTTOV package includes multiple coefficent files (e.g. all wavelengths, IR only, etc.)  that 
   contain the appropriate parameter data for each satellite/sensor/channel combination. Whether
   the file contains all wavelengths versus only IR wavelengths is **extremely important** because
-  it will shift the value of the channel number. If you subset your coefficent file to only include
+  it will shift the value of the channel number. Recommended practice is to choose a coefficient file
+  with all channels included, however, If you subset your coefficent file to only include
   IR channels, for example, you will also have to adjust your channel number in the obs_seq.out file.
-  If RTTOV always returns expected observations of radiance == 0, or if the prior expected radiance
+  If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
   is unusually biased from your prior, this could be a sign there is a mismatch between the 
   obs_seq.out channel and the coefficient file channel.  
 
