@@ -19,12 +19,16 @@ either WRF or DART.
   versions 11.4.0 and earlier because those older versions do not account
   for different coordinate systems including the sigma hybrid coordinates as 
   described in `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
+  
   Furthermore, older versions do not account for the prognostic temperature variable
   switch from ``T`` (perturbation potential temperature) to ``THM``, (either perturbation
   potential temperature or perturbation moist potential temperature) as described in
   `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__. The current implementation
   of the code sets ``T=THM`` because within &dynamics section of ``namelist.input``
-  ``use_theta_m=0``.
+  ``use_theta_m=0``.  For this reason, It is mandatory to include ``THM`` instead of 
+  ``T`` as the ``TYPE_T`` within the wrf_state_variables namelist. Furthermore, including
+  ``T`` in the namelist can lead to errors in the WRF model_mod bounds check as 
+  described in `Issue #728. <https://github.com/NCAR/DART/issues/728>`__
 
   Earlier version of WRF (v3.9) may run without errors with more recent versions of
   DART (later than 11.4.0), but the assimilation performance will be deprecated.  
