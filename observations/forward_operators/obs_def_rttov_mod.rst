@@ -136,8 +136,6 @@ satellite sensor may be required.
 It is good practice to always view your coefficent file (.dat) to confirm that the 
 channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficent
 file will include a list of channels (wavebands) with the associated wavelength (microns).
-For example the rtcoef_himawari_9_ahi.dat file looks like:
-
 
 
 .. Important ::
@@ -146,8 +144,8 @@ For example the rtcoef_himawari_9_ahi.dat file looks like:
   contain the appropriate parameter data for each satellite/sensor/channel combination. Whether
   the file contains all wavelengths versus only IR wavelengths is **extremely important** because
   it will shift the value of the channel number. Recommended practice is to choose a coefficient file
-  with all channels included, however, If you subset your coefficent file to only include
-  IR channels, for example, you will also have to adjust your channel number in the obs_seq.out file.
+  with all channels included.  If, on the other hand, you subset your coefficent file to only include
+  IR channels, you will also have to adjust your channel number in the obs_seq.out file.
   If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
   is unusually biased from your prior, this could be a sign there is a mismatch between the 
   obs_seq.out channel and the coefficient file channel.  
