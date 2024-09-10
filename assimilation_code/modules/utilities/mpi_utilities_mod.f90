@@ -1975,7 +1975,7 @@ integer,  intent(in)  :: window   ! window object
 integer,  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: rows_in_window ! number of rows in the window
 integer,  intent(in)  :: num_rows ! number of rows to get from the window
-real(r8), intent(out) :: x(:)     ! result
+real(r8), intent(out) :: x(num_rows)     ! result
 
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer :: errcode
