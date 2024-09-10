@@ -28,7 +28,7 @@ git clone https://github.com/NCAR/DART.git
 
 To cite DART, please use the following text:
 
-> The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2021). Boulder, Colorado: UCAR/NCAR/CISL/DAReS.
+> The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2021). Boulder, Colorado: UCAR/NSF NCAR/CISL/DAReS.
 > http://doi.org/10.5065/D6WQ0202
 
 and update the DART version and year as appropriate.

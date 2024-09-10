@@ -109,6 +109,8 @@
  diff_6th_opt                        = 2, 2, 
  diff_6th_factor                     = 0.25, 0.12,
  epssm                               = 0.1
+ use_theta_m                         = 0
+ zadvect_implicit                    = 1
  /
 
  &bdy_control
