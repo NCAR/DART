@@ -53,11 +53,14 @@ use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
 
 use ensemble_manager_mod, only : ensemble_type
 
-! These routines are passed through from default_model_mod.
+use random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+
+use mpi_utilities_mod, only: my_task_id
+
 ! To write model specific versions of these routines
 ! remove the routine from this use statement and add your code to
 ! this the file.
-use default_model_mod, only : pert_model_copies, write_model_time, &
+use default_model_mod, only : write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
                               convert_vertical_obs, adv_1step
@@ -554,6 +557,46 @@ enddo
 end subroutine get_close_state
 
 
+!------------------------------------------------------------------
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
+
+integer :: ilon, ilat, idepth
+integer :: i, j
+logical :: dry
+
+type(random_seq_type) :: random_seq
+
+if ( .not. module_initialized ) call static_init_model
+
+interf_provided = .true.
+
+call init_random_seq(random_seq, my_task_id())
+
+! only perturb the ocean cells, skip cells that are land or below the ocean floor
+do i = 1, state_ens_handle%my_num_vars
+
+   call get_model_variable_indices(state_ens_handle%my_vars(i), ilon, ilat, idepth)
+   dry = .false.
+
+   if (on_land(ilon, ilat)) dry = .true.
+
+   !f (below_sea_floor(ilon, ilat, idepth)) dry = .true. 
+
+   do j = 1, ens_size
+      if (dry) cycle
+         state_ens_handle%copies(j,i) = random_gaussian(random_seq, state_ens_handle%copies(j,i), 0.2_r8)
+
+   enddo
+enddo
+
+
+
+end subroutine pert_model_copies
 !------------------------------------------------------------------
 ! Does any shutdown and clean-up needed for model. Can be a NULL
 ! INTERFACE if the model has no need to clean up storage, etc.
