@@ -192,7 +192,7 @@ if ($?TASKS_PER_NODE) then
 endif
 
 #=========================================================================
-# Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
+# Block 2: Stage the files needed for SAMPLING ERROR CORRECTION and QCEFF
 #
 # The sampling error correction is a lookup table.
 # The tables were originally in the DART distribution, but should
@@ -220,6 +220,9 @@ else
    echo "Sampling Error Correction not requested for this assimilation."
 endif
 
+# Make this better later but for now (MW2024)
+set QCEFF_FILE = ${CASEROOT}/cice_bounded_qceff_table.csv
+${COPY} ${QCEFF_FILE} .
 #=========================================================================
 # Block 3: DART_INFLATION
 # This stages the files that contain the inflation values.
@@ -738,5 +741,3 @@ endif
 echo "`date` -- END ICE_ASSIMILATE"
 
 exit 0
-
-
