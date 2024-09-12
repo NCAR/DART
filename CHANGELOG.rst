@@ -22,6 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**September 10 2024:: MARBL_column. Tag 11.8.0**
+
+- Interface for MARBL_column for DART: 
+
+   - state estimation
+   - state and parameter estimation
+   - parameter estimation only
+
+- BATS observation converter, and BATS climatology scripting
+
+*contributed by Robin Armstrong*
+
+Bugfix:
+
+- fix for IO for NetCDF files when only some variables have the unlimited dimension  
+
 **August 29 2024 :: Bug fixes for shortest_time_between_assimilations and get_close_init. Tag 11.7.1**
 
 Bug fixes:
