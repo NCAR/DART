@@ -65,7 +65,7 @@ do i = 1, 7
    cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i), 0.0_r8, 1.0_r8) - mcdf(i)
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
-if(maxval(pdf_diff) < 1e-15_r8 .and. maxval(cdf_diff) < 1e-15_r8) then
+if(abs(maxval(pdf_diff)) < 1e-15_r8 .and. abs(maxval(cdf_diff)) < 1e-15_r8) then
    write(*, *) 'Matlab Comparison Tests: PASS'
 else
    write(*, *) 'Matlab Comparison Tests: FAIL'

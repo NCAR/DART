@@ -65,7 +65,7 @@ do i = 1, 7
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
 
-if(maxval(pdf_diff) < 1e-15_r8 .and. maxval(cdf_diff) < 1e-15_r8) then
+if(abs(maxval(pdf_diff)) < 1e-15_r8 .and. abs(maxval(cdf_diff)) < 1e-15_r8) then
    write(*, *) 'Matlab Comparison Tests: PASS'
 else
    write(*, *) 'Matlab Compariosn Tests: FAIL'
