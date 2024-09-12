@@ -1,0 +1,255 @@
+
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
+&model_nml
+   state_template_file   = 'ensemble/background/member_0001/RESTART/MOM.res.nc',
+   param_template_file   = 'ensemble/background/member_0001/marbl_params.nc',
+   ocean_geometry        = 'ensemble/background/member_0001/ocean_geometry.nc',
+   station_location      = -64, 31
+   time_step_days        = 1,
+   time_step_seconds     = 0,
+   model_state_variables = 'NO3      ', 'QTY_NITRATE_CONCENTRATION     ', '0.0', 'NA', 'UPDATE      ',
+                           'SiO3     ', 'QTY_DISSOLVED_INORGANIC_SIO3  ', '0.0', 'NA', 'UPDATE      ',
+                           'PO4      ', 'QTY_PHOSPHATE_CONCENTRATION   ', '0.0', 'NA', 'UPDATE      ',
+                           'Fe       ', 'QTY_DISSOLVED_INORGANIC_IRON  ', '0.0', 'NA', 'UPDATE      ',
+                           'DIC      ', 'QTY_DISSOLVED_INORGANIC_CARBON', '0.0', 'NA', 'UPDATE      ',
+                           'O2       ', 'QTY_DISSOLVED_OXYGEN          ', '0.0', 'NA', 'UPDATE      ',
+                           'DOC      ', 'QTY_DISSOLVED_ORGANIC_CARBON  ', '0.0', 'NA', 'UPDATE      ',
+                           'DON      ', 'QTY_DISSOLVED_ORGANIC_NITROGEN', '0.0', 'NA', 'UPDATE      ',
+                           'DOP      ', 'QTY_DISSOLVED_ORGANIC_P       ', '0.0', 'NA', 'UPDATE      ',
+                           'ALK      ', 'QTY_ALKALINITY                ', '0.0', 'NA', 'UPDATE      ',
+                           'microzooC', 'QTY_MICROZOOPLANKTON_CARBON   ', '0.0', 'NA', 'UPDATE      ',
+                           'mesozooC ', 'QTY_MESOZOOPLANKTON_CARBON    ', '0.0', 'NA', 'UPDATE      ',
+                           'h        ', 'QTY_LAYER_THICKNESS           ', '0.0', 'NA', 'NO_COPY_BACK'
+   estimate_params       = .true.
+   model_parameters      = 'autotroph_settings(1)%kDOP ', 'QTY_BGC_PARAM', '0.0', 'NA', 'UPDATE'
+   /
+
+&filter_nml
+   single_file_in               = .false.,
+   input_state_files            = '',
+   input_state_file_list        = 'states_input.txt', 'params_input.txt' 
+
+   stages_to_write              = 'preassim', 'analysis', 'output',
+
+   single_file_out              = .false.,
+   output_state_files           = '',
+   output_state_file_list       = 'states_output.txt', 'params_output.txt'
+   output_interval              = 1,
+   output_members               = .true.,
+   num_output_state_members     = 3,
+   output_mean                  = .true.,
+   output_sd                    = .true.,
+   write_all_stages_at_end      = .true.,
+
+   ens_size                     = 3,
+   num_groups                   = 1,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 1e-2,
+   distributed_state            = .true.,
+
+   async                        = 0,
+   adv_ens_command              = "./advance_model.csh",
+
+   obs_sequence_in_name         = 'BATS_147612.out',
+   obs_sequence_out_name        = 'obs_seq.final',
+   num_output_obs_members       = 3,
+   init_time_days               = -1,
+   init_time_seconds            = -1,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+
+   inf_flavor                  = 5,                       0,
+   inf_initial_from_restart    = .true.,                  .false.,
+   inf_sd_initial_from_restart = .true.,                  .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                     1.0,
+   inf_lower_bound             = 0.0,                     1.0,
+   inf_upper_bound             = 100.0,                   1000000.0,
+   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_sd_lower_bound          = 0.6,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
+
+   trace_execution              = .true.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
+   silence                      = .false.,
+   /
+
+&fill_inflation_restart_nml
+   write_prior_inf   = .true.,
+   prior_inf_mean    = 1.0,
+   prior_inf_sd      = 0.6,
+
+   write_post_inf    = .false.,
+   post_inf_mean     = 1.00,
+   post_inf_sd       = 0.6,
+
+   input_state_files = 'ensemble/background/member_0001/RESTART/MOM.res.nc', 'ensemble/background/member_0001/marbl_params.nc',
+   single_file       = .false.,
+   verbose           = .false.
+   /
+
+&quality_control_nml
+   input_qc_threshold  = 3.0,
+   outlier_threshold   = 3.0,
+/
+
+&location_nml
+   /
+
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.,
+   single_file_in             = .false.,
+   input_state_files          = "MOM.res.nc",
+
+   write_output_state_to_file = .true.,
+   single_file_out            = .false.,
+   output_state_files         = "MOM.res.output.nc",
+   output_interval            = 1,
+
+   async                      = 0,
+   adv_ens_command            = "./advance_model.csh",
+
+   obs_seq_in_file_name       = "obs_seq.in",
+   obs_seq_out_file_name      = "obs_seq.out",
+   init_time_days             = 0,
+   init_time_seconds          = 0,
+   first_obs_days             = -1,
+   first_obs_seconds          = -1,
+   last_obs_days              = -1,
+   last_obs_seconds           = -1,
+
+   trace_execution            = .false.,
+   output_timestamps          = .false.,
+   print_every_nth_obs        = -1,
+   output_forward_op_errors   = .false.,
+   silence                    = .false.,
+   /
+
+&ensemble_manager_nml
+   /
+
+&assim_tools_nml
+   cutoff                          = 1000000.0,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   distribute_mean                 = .false.
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 0
+   /
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = "reg_diagnostics"
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'BATS_OXYGEN',
+                                'BATS_ALKALINITY',
+                                'BATS_INORGANIC_CARBON',
+	                        'BATS_SILICATE',
+	                        'BATS_PHOSPHATE',
+                                'BATS_NITRATE'
+   evaluate_these_obs_types   = 'BATS_ORGANIC_CARBON',
+                                'BATS_NITROGEN'
+   /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   module_details = .false.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml',
+   write_nml   = 'none'
+   /
+
+&preprocess_nml
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/default_quantities_mod.f90', 
+                             '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
+   /
+
+&obs_sequence_tool_nml
+   filename_seq      = 'obs_seq.one', 'obs_seq.two',
+   filename_out      = 'obs_seq.processed',
+   first_obs_days    = -1,
+   first_obs_seconds = -1,
+   last_obs_days     = -1,
+   last_obs_seconds  = -1,
+   print_only        = .false.,
+   gregorian_cal     = .false.
+   /
+
+&obs_diag_nml
+   obs_sequence_name     = ''
+   obs_sequence_list     = 'obs_seq_list.txt'
+   first_bin_center      =  2005, 2, 24, 0, 0, 0
+   last_bin_center       =  2010, 2, 28, 0, 0, 0
+   bin_separation        =     0, 0, 1, 0, 0, 0
+   bin_width             =     0, 0, 1, 0, 0, 0
+   time_to_skip          =     0, 0, 0, 0, 0, 0
+   max_num_bins          = 1000
+   plevel                = -888888.0
+   hlevel                = -1, -5, -10, -50, -100, -250, -500, -1000, -2000, -3000, -4000, -5000, -6000
+   mlevel                = -888888
+   plevel_edges          = -888888.0
+   hlevel_edges          = -888888.0
+   mlevel_edges          = -888888
+   Nregions              = 1
+   lonlim1               = 0
+   lonlim2               = 360
+   latlim1               = -90
+   latlim2               = 90
+   reg_names             = 'null'
+   trusted_obs           = 'null'
+   create_rank_histogram = .true.
+   outliers_in_histogram = .false.
+   use_zero_error_obs    = .false.
+   verbose               = .false.
+   /
+
+&state_vector_io_nml
+   /
+
+&model_mod_check_nml
+   input_state_files    = 'marbl_in.nc', 'param_in.nc'
+   output_state_files   = 'marbl_out.nc', 'param_out.nc'
+   test1thru            = 7
+   run_tests            = 1 
+   x_ind                = 600
+   loc_of_interest      = 296., 31., -500.0
+   quantity_of_interest = 'QTY_DISSOLVED_OXYGEN'
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   interp_test_lonrange  = 295., 297.
+   interp_test_dlon      = 0.10
+   interp_test_latrange  = 30., 32.
+   interp_test_dlat      = 0.10
+   interp_test_vertrange = 0.0,  -100.00
+   interp_test_dvert     = -10.0
+   verbose               = .true.   
+   /
