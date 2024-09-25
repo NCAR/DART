@@ -34,7 +34,7 @@ set POST_STAGE_DIR   = ${BASE_DIR}/post
 set OBS_DIAG_DIR     = ${BASE_DIR}/obs_diag
 set PERTS_DIR        = ${BASE_DIR}/perts
 
-#  Directories that can be used by many things
+#  Assign path to DART, WRF, WPS and WRFDA build
 set SHELL_SCRIPTS_DIR = ${BASE_DIR}/scripts
 set DART_DIR          = /glade/work/USER/DART                     # set this appropriately #%%%#
 set WRF_DM_SRC_DIR    = /glade/work/USER/WRFV3                    # set this appropriately #%%%#
@@ -47,14 +47,14 @@ set GRIB_DATA_DIR     = ${ICBC_DIR}/grib_data                     # set this app
 set GRIB_SRC          = 'GFS'                                     # set this appropriately #%%%#
 
 # list of variables for extraction and cycling
-set extract_vars_a   = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+set extract_vars_a   = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                          U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
-set extract_vars_b   = ( U V W PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+set extract_vars_b   = ( U V W PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                          U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
                          REFL_10CM VT_DBZ_WT )
-set cycle_vars_a     =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+set cycle_vars_a     =   ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                            U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
-set increment_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
+set increment_vars_a = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
 
 #  Diagnostic parameters
 set OBS_VERIF_DAYS      = 7

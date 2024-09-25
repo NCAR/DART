@@ -473,14 +473,18 @@ while ( 1 == 1 )
 
             else if ( $SUPER_PLATFORM == 'derecho' ) then
 
+
                if ( `qstat -wa | grep assim_advance_${n} | wc -l` == 0 ) then
 
-                  echo "assim_advance_${n} is missing from the queue"
-                  qsub assim_advance_mem${n}.csh
+                  echo "Warning, detected that assim_advance_${n} is missing from the queue"
+                  echo "If this warning leads to  missing output from ensemble ${n}" 
+                  echo "consider enabling the qsub command within keep_trying while statement in driver.csh"
+
+                  #qsub assim_advance_mem${n}.csh
                endif
 
             endif
-            sleep 15
+            sleep 5
 
          end
          set start_time = `head -1 start_member_${n}`
@@ -515,12 +519,12 @@ while ( 1 == 1 )
                else if ( $SUPER_PLATFORM == 'derecho' ) then
 
                   qsub assim_advance_mem${n}.csh
-
+                  sleep 5
                endif
       	       break
 
             endif
-            sleep 10    # this might need to be longer, though I moved the done flag lower in the
+            sleep 15    # this might need to be longer, though I moved the done flag lower in the
                         # advance_model.csh to hopefully avoid the file moves below failing
 
          end

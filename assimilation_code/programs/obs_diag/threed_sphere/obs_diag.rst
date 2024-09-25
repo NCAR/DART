@@ -1,3 +1,5 @@
+.. _obs-diag-threed-sphere:
+
 PROGRAM ``obs_diag`` (for observations that use the threed_sphere location module)
 ==================================================================================
 
@@ -77,7 +79,7 @@ the quantity (for every variable, every level, every region) in a single matlab
 figure window - and creates a series of .ps files with multiple pages for each
 of the figures. The directory gets cluttered with them. The rank histogram 
 information in ``obs_diag_output.nc`` can easily be plotted with
-`ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ (left), 
+`ncview`_. (left), 
 a free third-party piece of software or with ``plot_rank_histogram.m`` (right).
 See the `Rank histograms`_ section for more information and links to instructions.
 
@@ -536,10 +538,9 @@ Please note:
 
 +-----------+----------------------------------------------------------------------------------------------------------+
 | |image3|  | `Instructions for viewing the rank histogram with                                                        |
-|           | ncview <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#ncview_histogram>`__.               |
+|           | ncview <https://cirrus.ucsd.edu/ncview/>`__.                                                             |
 +-----------+----------------------------------------------------------------------------------------------------------+
-| |image4|  | `Instructions for viewing the rank histogram with                                                        |
-|           | Matlab <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs>`__.                        |
+| |image4|  | :ref:`Instructions for viewing the rank histogram with Matlab<plotRankHistogram>`.                       |
 +-----------+----------------------------------------------------------------------------------------------------------+
 
 "trusted" observation types
@@ -730,7 +731,7 @@ portion of the run-time output:
   variable in the netCDF file.
 | Now that you have the ``obs_diag_output.nc``, you can explore it with ``plot_profile.m, plot_bias_xxx_profile.m, or
   plot_rmse_xxx_profile.m``,
-  rank histograms with `ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ or ``plot_rank_histogram.m``.
+  rank histograms with `ncview`_ or ``plot_rank_histogram.m``.
 
 References
 ----------
@@ -752,3 +753,6 @@ N/A
    :width: 600px
 .. |image5| image:: ../../../../guide/images/RAD_T_trusted_bias_evolution.png
    :width: 600px
+
+.. _ncview: https://cirrus.ucsd.edu/ncview/
+

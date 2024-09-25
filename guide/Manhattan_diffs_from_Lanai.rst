@@ -79,7 +79,7 @@ the model is spun up in perfect_model_obs, but the model itself has variable str
 Additions/Changes to existing namelists for how to use NetCDF IO.
 
 **Note** when using NetCDF restarts, inflation files are NetCDF also. The inflation mean and inflation standard
-deviation are in separate files when you use NetCDF restarts. See :doc:`./netcdf_inflation_files` for details.
+deviation are in separate files when you use NetCDF restarts. 
 
 Calculation of forward operators
 --------------------------------

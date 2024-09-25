@@ -11,6 +11,7 @@ Each directory has at least one converter:
 -  ``AURA``: See ``DART/observations/obs_converters/AURA``
 -  ``Aviso+/CMEMS``: :doc:`../observations/obs_converters/AVISO/AVISO`
 -  ``Ameriflux``: :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`
+-  ``BATS``: :doc:`../observations/obs_converters/BATS/readme`
 -  ``CHAMP``: :doc:`../observations/obs_converters/CHAMP/work/README`
 -  ``cice``: :doc:`../observations/obs_converters/cice/cice_to_obs`
 -  ``CNOFS``: See ``DART/observations/obs_converters/CNOFS``

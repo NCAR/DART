@@ -84,6 +84,8 @@ for p in ${all_programs[@]}; do
 done
 
 \rm -f -- preprocess
+\rm -f -- libdart.a
+\rm -f -- libdart.so
 cleanpreprocess
 
 }
@@ -253,6 +255,16 @@ fi
      $program
 }
 
+#-------------------------
+# Build a library
+#
+#-------------------------
+function buildlib() {
+findsrc
+$DART/build_templates/mkmf -x -a $DART $m -p $1 \
+     $dartsrc \
+     $EXTRA
+}
 #-------------------------
 # Build a model specific program
 # looks in $DART/models/$MODEL/src/programs for {main}.f90 
