@@ -5,7 +5,7 @@ Pangu-Weather
 Overview
 --------
 
-Pangu-Weather model is an AI model for global weather forecasting. The Pangu-Weather model is described and available at `Pangu-Weather <https://github.com/198808xc/Pangu-Weather?tab=readme-ov-file>`
+Pangu-Weather model is an AI model for global weather forecasting. The Pangu-Weather model is described and available at `Pangu-Weather <https://github.com/198808xc/Pangu-Weather?tab=readme-ov-file>`_.
 
 Dr. Nuo Chen implemented the support for the Pangu-Weather model in DART based on the CAM-FV DART interface.
 
@@ -19,38 +19,37 @@ How to perform the assimilation?
 Files required:
 
 * Initial ensemble anlysis or reanalysis files in your data storage directory
-* [ ] conversion from initial ensemble files to npy files
+* Conversion from initial ensemble files to npy files
 * DART obs_seq format observation files
-* `landmask.npy` qauter degree landmask created by WPS geogrid.exe 
-* `terrain.npy` qauter degree landmask created by WPS geogrid.exe 
-* `pangu_weather_6.onnx` Pangu-Weather model
+* ``landmask.npy`` quater degree landmask created by WPS geogrid.exe 
+* ``terrain.npy`` quater degree landmask created by WPS geogrid.exe 
+* ``pangu_weather_6.onnx`` Pangu-Weather model
 * In your working directory:
 
-  * `inference_cpu.py` or `inference_gpu.py` depending on whether you have access to GPU to run Pangu-Weather model, modify `model_path=$dir_to_pangu_weather_model/pangu_weather_6.onnx`
-  * `input.nml` 
-  * `sampling_error_correction_table.nc <../../assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc>`
-  * `convert_pgout_to_nc.py`; modify `landmask = $dir_to_landmask/landmask.npy`, `terrainmask = $dir_to_terrain/terrain.npy`, and `work_dir = $dir_to_working_directory/`
-  * `convert_dartout_to_npy.py`
-  * `assimilate.sh`
-  * `run_filter.csh`
+  * ``inference_cpu.py`` or ``inference_gpu.py`` depending on whether you have access to GPU to run Pangu-Weather model, modify ``model_path=$dir_to_pangu_weather_model/pangu_weather_6.onnx``
+  * ``input.nml``
+  * ``sampling_error_correction_table.nc``
+  * ``convert_pgout_to_nc.py``; modify ``landmask = $dir_to_landmask/landmask.npy``, ``terrainmask = $dir_to_terrain/terrain.npy``, and ``work_dir = $dir_to_working_directory/``
+  * ``convert_dartout_to_npy.py``
+  * ``assimilate.sh``
+  * ``run_filter.csh``
 
 Steps: 
 
-#. Download `pangu_weather_6.onnx` from `Pangu-Weather <https://github.com/198808xc/Pangu-Weather?tab=readme-ov-file>`
-#. Create an virtual environment with `pangu-dart-cpu.yml` or `pangu-dart-gpu.yml`
-#. Prepare the initial ensemble anlysis or reanalysis files and convert them using `convert_initial_conditions.py`
-#. In `$DART/build_template/` choose a `mkmf.template.xx` that suits your system, then `cp mkmf.template.xx mkmf.template`
-#. In `$DART/models/pangu/work/`, run `./quichbuild.sh`. It compiles the necessary DART executables based on the `mkmf.template` that you set. Among all the executables generated, `./filter` performs the actual assimilation. After the compilation, move `./filter` to the working directory.
-#. Modify file locations in `inference_cpu.py` (or `inference_gpu.py`), `convert_pgout_to_nc.py` as suggested above
-#. Modify the user defined section in `assimilate.sh` 
-#. Modify the hpc settings in `run_filter.csh` and `assimilate.sh` 
-#. Modify `input.nml`. See `Namelists`_ and for more details.
-#. run `qsub ./assimilate.sh` or `./assimilate.sh` to performs the assimilation cycle
+#. Download ``pangu_weather_6.onnx`` from `Pangu-Weather <https://github.com/198808xc/Pangu-Weather?tab=readme-ov-file>`_.
+#. Create an virtual environment with ```pangu-dart-cpu.yml``` or ``pangu-dart-gpu.yml``
+#. Prepare the initial ensemble anlysis or reanalysis files and convert them using ``convert_initial_conditions.py``
+#. In ``$DART/build_template/`` choose a ``mkmf.template.xx`` that suits your system, then ``cp mkmf.template.xx mkmf.template``
+#. In ``$DART/models/pangu/work/``, run ``./quichbuild.sh``. It compiles the necessary DART executables based on the ``mkmf.template`` that you set. Among all the executables generated, ``./filter`` performs the actual assimilation. After the compilation, move `./filter` to the working directory.
+#. Modify file locations in ``inference_cpu.py`` (or ``inference_gpu.py``), ``convert_pgout_to_nc.py`` as suggested above
+#. Modify the user defined section in ``assimilate.sh`` 
+#. Modify the hpc settings in ``run_filter.csh`` and ``assimilate.sh`` 
+#. Modify ``input.nml``. See `Namelists`_ and for more details.
+#. run ``qsub ./assimilate.sh`` or ``./assimilate.sh`` to perform the assimilation cycle
 
 
-user defined variables
 
-.. list-table:: Title
+.. list-table:: User Defined variables
    :widths: 20 10 50
    :header-rows: 1
 
@@ -74,7 +73,7 @@ user defined variables
 Namelists 
 ---------
 
-DART assembles the namelists for all the relevant modules into a single namelist file `$DART/models/pangu/input.nml`.
+DART assembles the namelists for all the relevant modules into a single namelist file ``$DART/models/pangu/input.nml``.
 Namelists star with an ampersand ``&`` and terminate with a slash ``/``. 
 Character strings that contain a ``/`` must be enclosed in quotes to prevent them from interfering with the namelist structure.
 Text outside of the ``&`` and ``/`` pair is ignored.
@@ -129,30 +128,10 @@ and options like `no_obs_assim_above_level`, `model_damping_ends_at_level`, `no_
      - integer 
      - Set this to increasingly larger values to print out more debugging information. Note that this can be very verbose. Use with care.
 
-For other components of related to assimilation, consult the following links:
-
-.. list-table::
-   :widths: 15 50
-   :header-rows: 1
-
-   * - Namelist
-     - Reference
-   * - filter_nml
-     - `<../../assimilation_code/modules/assimilation/filter_mod.rst>`
-   * - assim_tools_nml
-     - `<../../assimilation_code/modules/assimilation/assim_tools_mod.rst>`
-   * - cov_cutoff_nml
-     - `<../../assimilation_code/modules/assimilation/cov_cutoff_mod.rst>`
-   * - obs_kind_nml
-     - `<../../assimilation_code/modules/observations/obs_kind_mod.rst>`
-   * - location_nml
-     - `<../../assimilation_code/location/threed_sphere/location_mod.rst>`
-   * - quality_control_nml
-     - `<../../assimilation_code/modules/assimilation/quality_control_mod.rst>`
 
 
 Features not implemented and future development plan
----------------------------------------------------
+-----------------------------------------------------
 
 * Allow ensemble generation from single intial condition files.
 * Implement the ability to discard observations at too high or low levels, including damping options. 
