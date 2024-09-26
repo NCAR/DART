@@ -97,7 +97,7 @@ integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
 real(r8), allocatable :: geolon(:,:), geolat(:,:),     & ! T
                          geolon_u(:,:), geolat_u(:,:), & ! U
                          geolon_v(:,:), geolat_v(:,:)    ! V
-logical, allocatable  :: mask(:,:) ! geolat/lon/u/v has missing values
+logical, allocatable  :: mask(:,:), mask_u(:,:), mask_v(:,:) ! geolat/lon/u/v has missing values
 type(quad_interp_handle) :: interp_t_grid,  &
                             interp_u_grid,  &
                             interp_v_grid
@@ -609,6 +609,8 @@ allocate(geolon(nx,ny), geolat(nx,ny))      ! T grid
 allocate(geolon_u(nx,ny), geolat_u(nx,ny))  ! U grid
 allocate(geolon_v(nx,ny), geolat_v(nx,ny))  ! V grid
 allocate(mask(nx,ny))  ! missing values
+allocate(mask_u(nx,ny))  ! missing values
+allocate(mask_v(nx,ny))  ! missing values
 
 call nc_get_variable(ncid, 'geolon', geolon, routine)
 call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
@@ -620,8 +622,14 @@ call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
 
 ! mom6 has missing values in the grid
 mask(:,:) = .false.
+mask_u(:,:) = .false.
+mask_v(:,:) = .false.
 call nc_get_attribute_from_variable(ncid, 'geolon', '_FillValue', fillval)
 where (geolon == fillval) mask = .true.  
+call nc_get_attribute_from_variable(ncid, 'geolon_u', '_FillValue', fillval)
+where (geolon_u == fillval) mask_u = .true.  
+call nc_get_attribute_from_variable(ncid, 'geolon_v', '_FillValue', fillval)
+where (geolon_v == fillval) mask_v = .true.  
 
 ! set missing value to a land point to prevent set_location erroring
 where (geolon == fillval) geolon = 72.51
@@ -859,7 +867,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_u_grid)
 
-call set_quad_coords(interp_u_grid, geolon_u, geolat_u, mask)
+call set_quad_coords(interp_u_grid, geolon_u, geolat_u, mask_u)
 
 
 ! V
@@ -868,7 +876,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_v_grid)
 
-call set_quad_coords(interp_v_grid, geolon_v, geolat_v, mask)
+call set_quad_coords(interp_v_grid, geolon_v, geolat_v, mask_v)
 
 end subroutine setup_interpolation
 
