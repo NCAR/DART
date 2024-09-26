@@ -97,9 +97,7 @@ use state_structure_mod, only: add_domain, get_model_variable_indices, &
                                get_dart_vector_index, get_varid_from_kind, &
                                get_num_dims
 
-! models/PANGU/module_map_utils.f90
-use map_utils, only: map_init, map_set, latlon_to_ij, &
-                     ij_to_latlon, gridwind_to_truewind
+
 use quad_utils_mod, only: quad_interp_handle, init_quad_interp, &
                           set_quad_coords, finalize_quad_interp, &
                           quad_lon_lat_locate, quad_lon_lat_evaluate, &
@@ -1594,12 +1592,12 @@ subroutine nc_write_model_atts(ncid, id)
    !----------------------------------------------------------------------------
 
    ! Mass Grid Longitudes
-   call nc_define_real_variable(ncid, 'XLONG', (/'west_east', 'south_north'/), routine)
+   call nc_define_real_variable(ncid, 'XLONG', (/'west_east  ', 'south_north'/), routine)
    call nc_add_attribute_to_variable(ncid, 'XLONG', 'long_name', 'longitude', routine)
    call nc_add_attribute_to_variable(ncid, 'XLONG', 'units', 'degrees_east', routine)
 
    ! Mass Grid Latitudes
-   call nc_define_real_variable(ncid, 'XLAT', (/'west_east', 'south_north'/), routine)
+   call nc_define_real_variable(ncid, 'XLAT', (/'west_east  ', 'south_north'/), routine)
    call nc_add_attribute_to_variable(ncid, 'XLAT', 'long_name', 'latitude', routine)
    call nc_add_attribute_to_variable(ncid, 'XLAT', 'units', 'degrees_north', routine)
 
@@ -2908,27 +2906,27 @@ subroutine fill_default_state_table(default_table)
    row = row + 1
    default_table(:, row) = (/'U                         ', &
                              'QTY_U_WIND_COMPONENT      ', &
-                             'NA                    ', &
-                             'NA                    ', &
-                             'UPDATE                       '/)
+                             'NA                        ', &
+                             'NA                        ', &
+                             'UPDATE                    '/)
    row = row + 1
    default_table(:, row) = (/'V                         ', &
                              'QTY_V_WIND_COMPONENT      ', &
-                             'NA                    ', &
-                             'NA                    ', &
-                             'UPDATE                       '/)
+                             'NA                        ', &
+                             'NA                        ', &
+                             'UPDATE                    '/)
    row = row + 1
    default_table(:, row) = (/'T                         ', &
-                             'QTY_TEMPERATURE ', &
-                             'NA                    ', &
-                             'NA                    ', &
-                             'UPDATE                       '/)
+                             'QTY_TEMPERATURE           ', &
+                             'NA                        ', &
+                             'NA                        ', &
+                             'UPDATE                    '/)
    row = row + 1
    default_table(:, row) = (/'Q                          ', &
-                             'QTY_SPECIFIC_HUMIDITY    ', &
-                             'NA                    ', &
-                             'NA                    ', &
-                             'UPDATE                       '/)
+                             'QTY_SPECIFIC_HUMIDITY      ', &
+                             'NA                         ', &
+                             'NA                         ', &
+                             'UPDATE                     '/)
 
    return
 
