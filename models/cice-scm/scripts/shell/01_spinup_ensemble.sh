@@ -1,6 +1,6 @@
 #!/bin/bash -l
 ### Job Name
-#PBS -N spinup_icepack_ensemble
+#PBS -N spinup_icepack_ensemble_SC
 ### Charging account
 #PBS -A UWAS0083
 ### Request one chunk of resources with 1 CPU and 10 GB of memory
@@ -24,6 +24,6 @@ mkdir -p $TMPDIR
 conda activate cice-scm-da
 
 ### Run analysis script
-python ../python/01_spinup_ensemble.py spinup_test mollyw open_water Sib_Chuk atm
+python ../python/01_spinup_ensemble.py spinup_SibChuk mollyw uniform_ice Sib_Chuk atm
 
 

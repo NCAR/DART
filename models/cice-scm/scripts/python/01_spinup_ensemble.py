@@ -18,7 +18,7 @@ import pandas as pd
 case_name = sys.argv[1]
 user = sys.argv[2]
 
-# set relevant directory names 
+# set the relevant directory names 
 # where is this project repo located on your system?
 project_dir = '/glade/work/'+user+'/Projects/cice-scm-da/'
 # where is the Icepack installation located on your system?
@@ -33,7 +33,7 @@ compiler = 'intel'
 # choose a spinup length and ensemble size (limited at this 
 # time to 30 or less)
 spinup_length = 10
-ensemble_size = 3
+ensemble_size = 30
 
 # choose a lateral flux option
 flux = sys.argv[3]
@@ -41,23 +41,20 @@ flux = sys.argv[3]
 # choose a location
 location = sys.argv[4]
 
-#-----------------------------------------#
-# copy over relavent forcing files
-#-----------------------------------------#
 if location != 'default':
-    comd = 'cp '+project_dir+'/data/forcings/ATM_PERTS/'+location+'/ATM_FORCING_*.txt '+project_dir+'/data/forcings/JRA55/'
-    os.system(comd)
-    comd = 'cp '+project_dir+'/data/forcings/OCN_PERTS/'+location+'/OCN_FORCING_*.txt '+project_dir+'/data/forcings/ISPOL_2004/'
-    os.system(comd)
+    # comd = 'cp '+project_dir+'/data/forcings/'+location+'/JRA55/ATM_FORCING_*.txt '+project_dir+'/data/forcings/JRA55/'
+    # os.system(comd)
+    # comd = 'cp '+project_dir+'/data/forcings/'+location+'/ISPOL_2004/OCN_FORCING_*.txt '+project_dir+'/data/forcings/ISPOL_2004/'
+    # os.system(comd)
 
     locs = {'Barents': [1.309, 0.698132], 
             'CoastalCanada': [1.41372, 6.24828], 
-            'Sib_Chuk': [1.3183906501, 3.0446500856], 
+            'SibChuk': [1.3183906501, 3.0446500856], 
             'CentralArctic': [1.53589, 0]}
-else:
-    comd = 'cp '+project_dir+'/data/forcings/OCN_PERTS/Original/OCN_FORCING_*.txt '+project_dir+'/data/forcings/ISPOL_2004/'
-    os.system(comd)
-    locs = {'default': [0, 0]}
+# else:
+#     comd = 'cp '+project_dir+'/data/forcings/OCN_PERTS/Original/OCN_FORCING_*.txt '+project_dir+'/data/forcings/ISPOL_2004/'
+#     os.system(comd)
+#     locs = {'default': [0, 0]}
 
 # This code comes equipped with the ability to perturb param-
 # eters in the sea ice code. To do so, you must specify the 
@@ -95,8 +92,8 @@ else:
 # 1. Set parameter details
 #-----------------------------------------#
 # Defaults
-dR_snw = -2.0
-# dR_snw = 1.5
+# dR_snw = -2.0
+dR_snw = 1.5
 dksno = 0.3
 dCf = 17
 ddragio = 0.00536
@@ -105,6 +102,7 @@ dhs_ssl = 0.04
 drsnw_mlt = 1500.0
 drhoi = 917.0
 drhos = 330.0
+ddt_mlt = 1.0
 
 # Perturbed
 parameters = xr.open_dataset(project_dir+ '/data/forcings/ICE_PERTS/parameters_30_cice5.nc')
@@ -155,20 +153,26 @@ if 'Cf' in perturb:
 else:
     Cf = list(zeros+dCf)
 
+if 'dt_mlt' in perturb:
+    print('dt_mlt is not in pre-calculated parameter perturbations!')
+    dt_mlt = list(zeros+ddt_mlt)
+else:
+    dt_mlt = list(zeros+ddt_mlt)
+
 #-----------------------------------------#
 # 2. Set up an Icepack case
 #-----------------------------------------#
 # go to the Icepack directory
 os.chdir(icepack_dir)
 
-# setup a new case 
+# set up a new case 
 comd = './icepack.setup -c '+case_name+' -m '+machine+' -e '+compiler
 os.system(comd)
 
 #-----------------------------------------#
 # 3. Build the case 
 #-----------------------------------------#
-# got into the case directory 
+# go to the case directory
 os.chdir(case_name)
 
 # build the case 
@@ -176,7 +180,7 @@ comd = './icepack.build'
 os.system(comd)
 
 # check that the case was built correctly
-storage_dir = scratch_dir + '/ICEPACK_RUNS/'+case_name
+storage_dir = scratch_dir + '/ICEPACK_RUNS/' + case_name
 if os.path.exists(storage_dir) is False:
     AssertionError('Model did not build correctly! Please rebuild model or check your directory setups in the Icepack installation.')
 else:
@@ -245,12 +249,13 @@ while spinup_year <= spinup_length:
         namelist['shortwave_nml']['hi_ssl'] = hi_ssl[mem-1]
         namelist['shortwave_nml']['hs_ssl'] = hs_ssl[mem-1]
         namelist['shortwave_nml']['rsnw_mlt'] = rsnw_mlt[mem-1]
+        namelist['shortwave_nml']['dt_mlt'] = dt_mlt[mem-1]
         namelist['snow_nml']['rhos']= rhos[mem-1]
         namelist['dynamics_nml']['Cf'] = Cf[mem-1]
         namelist['dynamics_nml']['dragio'] = dragio[mem-1]
 
         # set namelist forcing options
-        namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'
+        namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/'
         if 'atm' in perturb:
             namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_'+inst_string+'.txt'
         else:
@@ -269,10 +274,10 @@ while spinup_year <= spinup_length:
         os.system(comd)
 
         # check the output file for successful model completion
-        check_finished = 'ICEPACK COMPLETED SUCCESSFULLY'
+        check_finished = ' ICEPACK COMPLETED SUCCESSFULLY '
         txt = open('icepack.out').readlines()
         if check_finished not in txt:
-            print('Icepack did not run correctly! Process stopped.')
+            print('Icepack did not run correctly!')
         else:
             print('Icepack ran successfully!')
     

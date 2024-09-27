@@ -277,20 +277,20 @@ obs_loc_data = xr.open_dataset(location_file)
 # define the state variables 
 if category is True:
     state_variables = [ 'vice01', 'QTY_SEAICE_VICE01'        , 'UPDATE',
-                        'vice02', 'QTY_SEAICE_VICE02'        , 'UPDATE',
-                        'vice03', 'QTY_SEAICE_VICE03'        , 'UPDATE',
-                        'vice04', 'QTY_SEAICE_VICE04'        , 'UPDATE',
-                        'vice05', 'QTY_SEAICE_VICE05'        , 'UPDATE',
-                        'vsno01', 'QTY_SEAICE_VSNO01'        , 'UPDATE',
-                        'vsno02', 'QTY_SEAICE_VSNO02'        , 'UPDATE',
-                        'vsno03', 'QTY_SEAICE_VSNO03'        , 'UPDATE',
-                        'vsno04', 'QTY_SEAICE_VSNO04'        , 'UPDATE',
-                        'vsno05', 'QTY_SEAICE_VSNO05'        , 'UPDATE',
-                        'aice01', 'QTY_SEAICE_AICE01'        , 'UPDATE',
-                        'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
-                        'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
-                        'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
-                        'aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
+                    'vice02', 'QTY_SEAICE_VICE02'        , 'UPDATE',
+                    'vice03', 'QTY_SEAICE_VICE03'        , 'UPDATE',
+                    'vice04', 'QTY_SEAICE_VICE04'        , 'UPDATE',
+                    'vice05', 'QTY_SEAICE_VICE05'        , 'UPDATE',
+                    'vsno01', 'QTY_SEAICE_VSNO01'        , 'UPDATE',
+                    'vsno02', 'QTY_SEAICE_VSNO02'        , 'UPDATE',
+                    'vsno03', 'QTY_SEAICE_VSNO03'        , 'UPDATE',
+                    'vsno04', 'QTY_SEAICE_VSNO04'        , 'UPDATE',
+                    'vsno05', 'QTY_SEAICE_VSNO05'        , 'UPDATE',
+                    'aice01', 'QTY_SEAICE_AICE01'        , 'UPDATE',
+                    'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
+                    'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
+                    'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
+                    'aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
 else:   
     state_variables = ['aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE',
                        'vicen', 'QTY_SEAICE_VOLUME', 'UPDATE',
@@ -319,6 +319,7 @@ for t in range(0, datelist.shape[0]):
     diff = datelist[t] - datetime(1601,1,1,0)
     nml_file = f90nml.read(dart_dir + '/models/cice-scm/scripts/templates/DART_input.nml.template')
     # nml_file = f90nml.read(project_dir + '/data/templates/DART_input.nml.template')
+    nml_file['algorithm_info_nml']['qceff_table_filename'] = '/glade/u/home/mollyw/work/dart_manhattan/models/cice-scm/scripts/templates/cice_bounded_qceff_table.csv'
     nml_file['perfect_model_obs_nml']['init_time_days'] = diff.days
     nml_file['perfect_model_obs_nml']['init_time_seconds'] = diff.seconds
     nml_file['perfect_model_obs_nml']['input_state_files'] = 'cice.r.nc'
