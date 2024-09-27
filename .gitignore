@@ -266,6 +266,9 @@ mexico_aqs_o3_ascii_to_obs
 mexico_aqs_pm10_ascii_to_obs
 mexico_aqs_pm25_ascii_to_obs
 mexico_aqs_so2_ascii_to_obs
+panda_co_ascii_to_obs
+panda_o3_ascii_to_obs
+panda_pm25_ascii_to_obs
 
 # Test programs built by developer_tests
 rttov_test
