@@ -1,0 +1,8 @@
+TES uses natural log of VMR in the retrieval equation.
+
+TES uses a prior
+
+TES adds surface pressure to the pressure grid
+
+TES maps the model trace gas to the averaging kernel pressure levels.
+

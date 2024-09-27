@@ -1,0 +1,1 @@
+There seems to be a problme with the OMI SO2 scattering weights.  The lowest five or six levels are zeros.  For now, I've stopped development of the forward operator.
