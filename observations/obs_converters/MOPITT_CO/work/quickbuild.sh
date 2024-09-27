@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildconvfunctions.sh
 
-CONVERTER=ATMOS_CHEM/MOPITT_CO
+CONVERTER=/MOPITT_CO
 LOCATION=threed_sphere
 
 

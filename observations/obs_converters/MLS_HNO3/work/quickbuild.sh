@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildconvfunctions.sh
 
-CONVERTER=ATMOS_CHEM/MLS_HNO3
+CONVERTER=/MLS_HNO3
 LOCATION=threed_sphere
 
 

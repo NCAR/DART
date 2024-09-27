@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildconvfunctions.sh
 
-CONVERTER=ATMOS_CHEM/CRIS_CH4
+CONVERTER=/CRIS_CH4
 LOCATION=threed_sphere
 
 
