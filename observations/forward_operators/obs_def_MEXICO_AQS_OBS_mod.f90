@@ -16,7 +16,7 @@
 ! The Summit supercomputer is a joint effort of the University of Colorado Boulder
 ! and Colorado State University.
 
-! BEGIN DART PREPROCESS TYPE LIST
+! BEGIN DART PREPROCESS TYPE DEFINITIONS
 ! MEXICO_AQS_CO,                       QTY_CO,                     COMMON_CODE
 ! MEXICO_AQS_SO2,                      QTY_SO2,                    COMMON_CODE
 ! MEXICO_AQS_NO2,                      QTY_NO2,                    COMMON_CODE
@@ -29,5 +29,4 @@
 ! MEXICO_AQS_RELATIVE_HUMIDITY,        QTY_RELATIVE_HUMIDITY,      COMMON_CODE
 ! MEXICO_AQS_U_WIND_COMPONENT,         QTY_U_WIND_COMPONENT,       COMMON_CODE
 ! MEXICO_AQS_V_WIND_COMPONENT,         QTY_V_WIND_COMPONENT,       COMMON_CODE
-! END DART PREPROCESS KIND LIST
-
+! END DART PREPROCESS TYPE DEFINITIONS

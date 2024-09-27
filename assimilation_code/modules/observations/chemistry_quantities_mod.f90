@@ -99,6 +99,7 @@
 !   QTY_NITROGEN
 !   QTY_LAI
 !   QTY_FPAR
+!   QTY_PB
 !
 !   QTY_E_CO  
 !   QTY_E_NO  

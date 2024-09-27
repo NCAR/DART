@@ -260,6 +260,12 @@ tropomi_no2_trop_col_ascii_to_obs
 tropomi_no2_trop_col_thinner
 tropomi_o3_total_col_ascii_to_obs
 tropomi_o3_trop_col_ascii_to_obs
+mexico_aqs_co_ascii_to_obs
+mexico_aqs_no2_ascii_to_obs
+mexico_aqs_o3_ascii_to_obs
+mexico_aqs_pm10_ascii_to_obs
+mexico_aqs_pm25_ascii_to_obs
+mexico_aqs_so2_ascii_to_obs
 
 # Test programs built by developer_tests
 rttov_test
