@@ -32,7 +32,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_variable_size, &
-                                 NF90_MAX_NAME
+                                 NF90_MAX_NAME, nc_get_attribute_from_variable
 
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
@@ -97,6 +97,7 @@ integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
 real(r8), allocatable :: geolon(:,:), geolat(:,:),     & ! T
                          geolon_u(:,:), geolat_u(:,:), & ! U
                          geolon_v(:,:), geolat_v(:,:)    ! V
+logical, allocatable  :: mask(:,:), mask_u(:,:), mask_v(:,:) ! geolat/lon/u/v has missing values
 type(quad_interp_handle) :: interp_t_grid,  &
                             interp_u_grid,  &
                             interp_v_grid
@@ -595,6 +596,7 @@ subroutine read_horizontal_grid()
 
 integer :: ncid
 integer :: nxy(2) ! (nx,ny)
+real(r8) :: fillval
 
 character(len=*), parameter :: routine = 'read_horizontal_grid'
 
@@ -606,21 +608,47 @@ ny = nxy(2)
 allocate(geolon(nx,ny), geolat(nx,ny))      ! T grid
 allocate(geolon_u(nx,ny), geolat_u(nx,ny))  ! U grid
 allocate(geolon_v(nx,ny), geolat_v(nx,ny))  ! V grid
+allocate(mask(nx,ny))  ! missing values
+allocate(mask_u(nx,ny))  ! missing values
+allocate(mask_v(nx,ny))  ! missing values
 
 call nc_get_variable(ncid, 'geolon', geolon, routine)
 call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
 call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
 
-
-! mom6 example file has longitude > 360
-! DART uses [0,360]
-where(geolon > 360.0_r8 )   geolon   = geolon   - 360.0_r8
-where(geolon_u > 360.0_r8 ) geolon_u = geolon_u - 360.0_r8
-where(geolon_v > 360.0_r8 ) geolon_v = geolon_v - 360.0_r8
-
 call nc_get_variable(ncid, 'geolat', geolat, routine)
 call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
 call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
+
+! mom6 has missing values in the grid
+! and set missing value to a land point to prevent set_location erroring
+mask(:,:) = .false.
+mask_u(:,:) = .false.
+mask_v(:,:) = .false.
+call nc_get_attribute_from_variable(ncid, 'geolon', '_FillValue', fillval)
+where (geolon == fillval) mask = .true.  
+where (geolon == fillval) geolon = 72.51
+where (geolat == fillval) geolat = 42.56
+
+call nc_get_attribute_from_variable(ncid, 'geolon_u', '_FillValue', fillval)
+where (geolon_u == fillval) mask_u = .true.  
+where (geolon_u == fillval) geolon_u = 72.51
+where (geolat_u == fillval) geolat_u = 42.56
+
+call nc_get_attribute_from_variable(ncid, 'geolon_v', '_FillValue', fillval)
+where (geolon_v == fillval) mask_v = .true.  
+where (geolon_v == fillval) geolon_v = 72.51
+where (geolat_v == fillval) geolat_v = 42.56
+
+! mom6 example files have longitude > 360 and longitudes < 0
+! DART uses [0,360]
+geolon = mod(geolon, 360.0)
+geolon_u = mod(geolon_u, 360.0)
+geolon_v = mod(geolon_v, 360.0)
+
+where (geolon < 0.0) geolon = geolon + 360
+where (geolon_u < 0.0) geolon_u = geolon_u + 360
+where (geolon_v < 0.0) geolon_v = geolon_v + 360
 
 call nc_close_file(ncid)
 
@@ -831,7 +859,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_t_grid)
 
-call set_quad_coords(interp_t_grid, geolon, geolat)
+call set_quad_coords(interp_t_grid, geolon, geolat, mask)
 
 ! U
 call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
@@ -839,7 +867,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_u_grid)
 
-call set_quad_coords(interp_u_grid, geolon_u, geolat_u)
+call set_quad_coords(interp_u_grid, geolon_u, geolat_u, mask_u)
 
 
 ! V
@@ -848,7 +876,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_v_grid)
 
-call set_quad_coords(interp_v_grid, geolon_v, geolat_v)
+call set_quad_coords(interp_v_grid, geolon_v, geolat_v, mask_v)
 
 end subroutine setup_interpolation
 
