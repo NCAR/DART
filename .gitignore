@@ -185,6 +185,7 @@ cris_nh3_profile_ascii_to_obs
 cris_o3_profile_ascii_to_obs
 cris_pan_profile_ascii_to_obs
 gome2a_no2_trop_col_ascii_to_obs
+gome2a_no2_trop_col_thinner
 iasi_co_cpsr_ascii_to_obs
 iasi_co_profile_ascii_to_obs
 iasi_co_total_col_ascii_to_obs
