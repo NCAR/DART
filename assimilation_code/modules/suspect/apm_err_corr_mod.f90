@@ -1,4 +1,5 @@
 module apm_err_corr_mod
+   use iso_c_binding, only: c_int
    implicit none
    private
    public :: vertical_transform, &
@@ -16,6 +17,17 @@ module apm_err_corr_mod
              apm_pack_2d, &
              apm_unpack_2d, &
              recenter_factors
+
+   integer(c_int) :: pid
+
+interface
+   function getpid() bind(C, name="getpid") result(pid)
+       use iso_c_binding, only: c_int
+       integer(c_int) :: pid
+   end function getpid
+end interface
+
+
    contains
 
 subroutine vertical_transform(A_chem,geo_ht,nx,ny,nz,nz_chem,corr_lngth_vt)
@@ -81,7 +93,8 @@ corr_lngth_hz)
   
    implicit none
    integer,                               intent(in)   :: nx,ny,nz_chem
-   integer,                               intent(in)   :: nchem_spcs,sw_corr_tm
+   integer,                               intent(in)   :: nchem_spcs
+   logical,                               intent(in)   :: sw_corr_tm !HK  perturb_chem_emiss_CORR_RT_MA_MPI.f90
    integer,                               intent(in)   :: ngrid_corr
    real,                                  intent(in)   :: corr_lngth_hz
    real,dimension(nx,ny),                 intent(in)   :: lat,lon
@@ -728,8 +741,7 @@ subroutine init_random_seed()
       t = transfer(tms, t)
    end if
    s = ieor(t(1), t(2))
-!   pid = getpid() + 1099279 ! Add a prime
-   call pxfgetpid(pid,ierr)
+   pid = getpid() + 1099279 ! Add a prime
    s = ieor(s, pid)
    if (n >= 3) then
       aseed(1) = t(1) + 36269
