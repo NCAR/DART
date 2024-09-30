@@ -123,7 +123,6 @@ local mpi="$DART"/assimilation_code/modules/utilities/mpi_utilities_mod.f90
 local mpif08="$DART"/assimilation_code/modules/utilities/mpif08_utilities_mod.f90
 local nullmpi="$DART"/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 local nullwin="$DART"/assimilation_code/modules/utilities/null_win_mod.f90
-local craywin="$DART"/assimilation_code/modules/utilities/cray_win_mod.f90
 local nocraywin="$DART"/assimilation_code/modules/utilities/no_cray_win_mod.f90
 local no_cray_winf08="$DART"/assimilation_code/modules/utilities/no_cray_winf08_mod.f90
 
@@ -133,11 +132,7 @@ if [ "$mpisrc" == "mpi" ]; then
    core=${core//$nullwin/}
    core=${core//$mpif08/}
    core=${core//$no_cray_winf08/}
-   if [ "$windowsrc" == "craywin" ]; then
-       core=${core//$nocraywin/}
-   else #nocraywin
-       core=${core//$craywin/}
-   fi
+
 else #nompi
 
    core=${core//$mpi/}
