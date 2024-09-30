@@ -22,7 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**September 10 2024:: MARBL_column. Tag 11.8.0**
+**September 27 2024 :: MOM6 mask bug-fix. Tag 11.8.1**
+
+- Fix for MOM6 CESM3 workhorse 2/3 degree grid TL319_t232 to 
+  mask missing geolon|lat|u|v|t values  
+
+**September 10 2024 :: MARBL_column. Tag 11.8.0**
 
 - Interface for MARBL_column for DART: 
 
