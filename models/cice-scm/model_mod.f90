@@ -108,8 +108,6 @@ public :: nc_write_model_vars,    &
           read_model_time, &
           write_model_time
 
-
-! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = 'cice-scm/model_mod.f90'
 
 logical, save :: module_initialized = .false.
@@ -159,11 +157,10 @@ namelist /model_nml/  &
 contains
 
 !------------------------------------------------------------------
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
-! Can be a NULL INTERFACE for the simplest models.
+! Called to do one time initialization of the model. Reads the
+! namelist, defines information about the model size and model
+! timestep, initializes module variables, and calls add_domain()
+! to set what data should be read into the state
 
 subroutine static_init_model()
 
@@ -219,7 +216,6 @@ end subroutine static_init_model
 
 !------------------------------------------------------------------
 ! Returns the number of items in the state vector as an integer. 
-! This interface is required for all applications.
 
 function get_model_size()
 
@@ -232,9 +228,9 @@ end function get_model_size
 !------------------------------------------------------------------
 ! Given a state handle, a location, and a model state variable type,
 ! interpolates the state variable fields to that location and returns
-! the values in expected_obs. The istatus variables should be returned as
-! 0 unless there is some problem in computing the interpolation in
-! which case an alternate value should be returned.
+! the values in expected_obs. The istatus variables should be
+! returned as 0 unless there is some problem in computing the 
+! interpolation, in which case an alternate value should be returned.
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus, thick_flag)
 
@@ -285,7 +281,7 @@ endif
 SELECT CASE (obs_type)
    CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       if (any(variable_table(:,1)=='hi')) then
-        cat_signal = 1 !was 1 ! for extra special procedure to aggregate
+        cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_THICKNESS))
         thick_flag = .true.
         base_offset = cat_index
@@ -298,7 +294,7 @@ SELECT CASE (obs_type)
       endif
    CASE (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
       if (any(variable_table(:,1)=='hs')) then
-        cat_signal = 1 !was 1 ! for extra special procedure to aggregate
+        cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_SNOWDEPTH))
         base_offset = cat_index
         thick_flag = .true.
@@ -323,7 +319,7 @@ SELECT CASE (obs_type)
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))
    CASE (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
       if (any(variable_table(:,1)=='Tsfc')) then
-        cat_signal = 1
+        cat_signal = 1 ! for extra special procedure to aggregate
         base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_SURFACETEMP))
         thick_flag = .true.
         set_obstype = obs_type
@@ -333,7 +329,7 @@ SELECT CASE (obs_type)
         base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
       endif
    CASE (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
-      cat_signal = 1
+      cat_signal = 1 ! for extra special procedure to aggregate
       set_obstype = obs_type
       !base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SOM_TEMPERATURE))
       base_offset = cat_index
@@ -373,7 +369,7 @@ SELECT CASE (obs_type)
       ! then treat as 2d field in lon_lat_interp
       
       base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
-      base_offset = base_offset + (cat_index-1)! * Nx 
+      base_offset = base_offset + (cat_index-1)
       base_offset = cat_index
       set_obstype = obs_type
       cat_signal = 1 ! now same as boring 2d field
@@ -478,8 +474,6 @@ if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus, size(ex
 ! The return code for successful return should be 0. 
 ! Any positive number is an error.
 ! Negative values are reserved for use by the DART framework.
-! Using distinct positive values for different types of errors can be
-! useful in diagnosing problems.
 
 end subroutine model_interpolate
 
@@ -541,7 +535,6 @@ end subroutine lon_lat_interpolate
 ! Returns the smallest increment in time that the model is capable 
 ! of advancing the state in a given implementation, or the shortest
 ! time you want the model to advance between assimilations.
-! This interface is required for all applications.
 
 function shortest_time_between_assimilations()
 
@@ -554,10 +547,8 @@ shortest_time_between_assimilations = model_timestep
 end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
-! Given an integer index into the state vector structure, returns the
-! associated location. This interface is required for all filter 
-! applications as it is required for computing the distance between
-! observations and state variables.
+! Given an integer index into the state vector structure, returns 
+! the associated location.
 
 subroutine get_state_meta_data(index_in, location, var_type)
 
@@ -663,7 +654,7 @@ call nc_synchronize_file(ncid)
 end subroutine nc_write_model_atts
 
 !------------------------------------------------------------------
-! given a kind, return what variable number it is
+! Given a kind, return what variable number it is
 
 function get_varid_from_kind(dart_kind)
 
@@ -786,9 +777,10 @@ state_variables( 1:5*num_state_table_columns ) = &
 end subroutine use_default_state_variables
 
 !------------------------------------------------------------------
-! Given a DART location (referred to as "base") and a set of candidate
-! locations & kinds (locs, loc_qtys/indx), returns the subset close to the
-! "base", their indices, and their distances to the "base" ...
+! Given a DART location (referred to as "base") and a set of
+! candidate locations & kinds (locs, loc_qtys/indx), returns the
+! subset close to the base, their indices, and their distances to
+! the base
 
 subroutine get_close_state(filt_gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                          num_close, close_indices, distances, state_handle)
