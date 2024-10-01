@@ -14,8 +14,7 @@ use netcdf
 implicit none
 private
 
-public :: set_model_time_step, get_horiz_grid_dims, &
-          get_ncat_dim, read_horiz_grid
+public :: get_horiz_grid_dims, get_ncat_dim, read_horiz_grid
 
 character(len=*), parameter :: source   = 'dart_cice_mod.f90'
 character(len=512) :: msgstring
@@ -44,34 +43,6 @@ endif
 module_initialized = .true.
 
 end subroutine initialize_module
-
-!-----------------------------------------------------------------
-! the initialize_module ensures that the cice namelists are read.
-! The restart times in the cice_in&restart_nml are used to define
-! appropriate assimilation timesteps.
-
-function set_model_time_step()
-
-type(time_type) :: set_model_time_step
-
-if ( .not. module_initialized ) call initialize_module
-
-! Check the 'restart_option' and 'restart_n' to determine
-! when we can stop the model
-! CMB not sure if nday is actually different than ndays, no matter here though
-!if ( (trim(restart_option) == 'ndays') .or. (trim(restart_option) == 'nday' ) ) then
-!   set_model_time_step = set_time(0, restart_n) ! (seconds, days)
-!else if ( trim(restart_option) == 'nyears' ) then
-
-! FIXME ... CMB I guess we ignore it and make the freq 1 day anyway?
-set_model_time_step = set_time(0, 1) ! (seconds, days)
-
-!else
-!   call error_handler(E_ERR,'set_model_time_step', &
-!              'restart_option must be ndays or nday', source, revision, revdate)
-!endif
-
-end function set_model_time_step
 
 !-----------------------------------------------------------------
 ! Read the lon, lat grid size from the restart netcdf file.
@@ -183,7 +154,7 @@ where (TLAT >  90.0_r8) TLAT =  90.0_r8
 end subroutine read_horiz_grid
 
 !===================================================================
-! End of model_mod
+! End of module dart_cice_mod
 !===================================================================
 
 end module dart_cice_mod
