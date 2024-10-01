@@ -132,10 +132,8 @@
    /
 
 &model_nml
-    assimilation_period_days = 1
-    assimilation_period_seconds = 0
     model_perturbation_amplitude = 2e-05
-    debug = 100
+    debug = 1
     model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE', 'vicen',
                             'QTY_SEAICE_VOLUME', 'UPDATE', 'vsnon', 'QTY_SEAICE_SNOWVOLUME',
                             'UPDATE'
