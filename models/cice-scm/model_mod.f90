@@ -5,7 +5,7 @@
 module model_mod
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength
+use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength, vtablenamelength
 use time_manager_mod, only : time_type, set_calendar_type, get_time, set_date, get_date
 use     location_mod, only : location_type, get_close_type, get_close_obs, get_dist, &
                              convert_vertical_obs, convert_vertical_state, &
@@ -122,7 +122,7 @@ character(len=512) :: string3
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 10
 integer, parameter :: num_state_table_columns = 3
-character(len=NF90_MAX_NAME) :: variable_table( max_state_variables, num_state_table_columns )
+character(len=vtablenamelength) :: variable_table( max_state_variables, num_state_table_columns )
 integer :: state_kinds_list( max_state_variables )
 logical :: update_var_list( max_state_variables )
 
@@ -290,13 +290,11 @@ SELECT CASE (obs_type)
         thick_flag = .true.
         base_offset = cat_index
         set_obstype = obs_type
-        !call find_var_type('hi',var_index)
       else
         set_obstype = QTY_SEAICE_VOLUME
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))
         base_offset = cat_index
-        !call find_var_type('vicen',var_index)
       endif
    CASE (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
       if (any(variable_table(:,1)=='hs')) then
@@ -305,13 +303,11 @@ SELECT CASE (obs_type)
         base_offset = cat_index
         thick_flag = .true.
         set_obstype = obs_type
-        !call find_var_type('hs',var_index)
       else
         set_obstype = QTY_SEAICE_SNOWVOLUME
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))
         base_offset = cat_index
-        !call find_var_type('vsnon',var_index)
       endif
    CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
@@ -464,7 +460,6 @@ if (cat_signal == -1) then
       ! we need to know the aggregate sea ice concentration for these special cases
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (cat_index-1)
-      print*,'CHECK CHECK CHECK'
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
 
@@ -506,7 +501,6 @@ real(r8) :: x_corners(4), y_corners(4)
 real(r8) :: p(4,ens_size), xbot(ens_size), xtop(ens_size)
 real(r8) :: work_expected_obs(ens_size)
 real(r8) :: lon_fract, lat_fract
-logical  :: masked
 integer  :: quad_status
 integer  :: e, iterations, Niterations
 integer :: next_offset
@@ -539,10 +533,6 @@ do iterations = 1, Niterations
    !print*,'offset',offset
    state_index = get_dart_vector_index(grid_oi,int(offset,i4),1, domain_id, e)
    work_expected_obs = get_state(state_index,state_handle)
-   !if(masked) then
-   !   istatus = 3
-   !   return
-   !endif
    expected_obs = expected_obs+work_expected_obs
 enddo
 end subroutine lon_lat_interpolate
@@ -945,27 +935,6 @@ else
 endif
 
 end subroutine check_sfctemp_var
-
-!-----------------------------------------------------------------
-! Find state variable index 
-
-subroutine find_var_type(varname,var_index)
-
-character(len=16), intent(in) :: varname
-integer, intent(inout) :: var_index
-
-integer :: i
-
-do i=1,size(variable_table(:,1))
-  if (trim(varname) == variable_table(i,1)) then
-    var_index = i
-    return
-  endif
-enddo
-write(string1,*)'Could not find index of state variable'
-call error_handler(E_ERR, 'find_var_type', string1, source)
-
-end subroutine find_var_type
 
 !===================================================================
 ! End of model_mod
