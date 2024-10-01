@@ -5,8 +5,7 @@
 module dart_cice_mod
 
 use        types_mod, only      : r8, rad2deg
-use time_manager_mod, only      : time_type, set_time, set_calendar_type, &
-                                  operator(==), operator(-)
+use time_manager_mod, only      : time_type, set_time, set_calendar_type
 use    utilities_mod, only      : file_exist, error_handler, E_ERR, E_MSG
 use  netcdf_utilities_mod, only : nc_check
 
@@ -34,11 +33,6 @@ contains
 
 subroutine initialize_module
 
-integer :: iunit, io
-
-! FIXME : Real observations are always GREGORIAN dates ...
-! but stomping on that here gets in the way of running
-! a perfect_model experiment for pre-1601 AD cases.
 call set_calendar_type('gregorian')
 
 ! Make sure we have a cice restart file (for grid dims)
