@@ -1,0 +1,13 @@
+name: pgdartGPU
+channels:
+  - conda-forge
+dependencies:
+  - python==3.11
+  - matplotlib==3.8
+  - numpy==1.26
+  - xarray
+  - netCDF4
+  - pip
+  - pip:
+      - onnx
+      - onnxruntime-gpu
