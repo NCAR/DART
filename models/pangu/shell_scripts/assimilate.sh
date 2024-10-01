@@ -37,14 +37,14 @@ wq
 ex_end
 
 ####### modify input and output file list for filter
-output_file="filter_input_list.txt"
-> $output_file
+output_file="filter_input_list.txt" 
+
 for ((i=1; i<=num_instances; i++)); do
     printf "pginput_%04d.nc\n" $i >> $output_file
 done
 
 output_file="filter_output_list.txt"
-> $output_file
+
 for ((i=1; i<=num_instances; i++)); do
     printf "pgoutput_%04d.nc\n" $i >> $output_file
 done
@@ -84,7 +84,7 @@ for ((i=1; i<=num_cycles; i++)); do
     formatted_date=$(date -d "$date_string + 6 hours" "+%Y-%m-%d %H:%M:%S")
     new_date="${formatted_date:0:10}-${formatted_date:11:2}"
     new_date_short="${new_date//-/}"
-    echo $new_date_short
+
     ln -sf $obs_dir/obs_seq$new_date_short obs_seq.out
     
     echo "------ BEGIN -----"
@@ -143,7 +143,7 @@ for ((i=1; i<=num_cycles; i++)); do
     	inst_string=$(printf "_%04d" $inst)
        # !!!!!!!  IMPORTANT WARNING !!!!!
        # for time step one, use ensemble version convert_dartout_to_npy_mem.py, or modify the pgout
-    	python convert_dartout_to_npy.py $old_date $inst_string $output_dir
+    	python convert_dartout_to_npy.py $new_date $inst_string $output_dir
      
     	let inst++
     done
@@ -152,11 +152,9 @@ for ((i=1; i<=num_cycles; i++)); do
     echo "------ DONE -----"
     
     ######### rename the dart output_mean and output_sd
-    old_date_short="${old_date//-/}"
-    echo $old_date_short
-    mv output_mean.nc $output_dir/output_mean_$old_date_short.nc
-    mv output_sd.nc $output_dir/output_sd_$old_date_short.nc
-    mv obs_seq.final $output_dir/obs_seq.final_$old_date_short
+    mv output_mean.nc $output_dir/output_mean_$new_date_short.nc
+    mv output_sd.nc $output_dir/output_sd_$new_date_short.nc
+    mv obs_seq.final $output_dir/obs_seq.final_$new_date_short
     
     
     # repeat and cycle
