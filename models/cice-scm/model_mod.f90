@@ -22,9 +22,8 @@ use state_structure_mod, only : add_domain, get_domain_size
 use ensemble_manager_mod, only : ensemble_type
 use distributed_state_mod, only : get_state
 use default_model_mod, only : pert_model_copies, nc_write_model_vars, init_conditions, &
-                              init_time, adv_1step
-use         dart_cice_mod, only : set_model_time_step,get_horiz_grid_dims, get_ncat_dim, &
-                                  read_horiz_grid
+                              init_time, adv_1step, shortest_time_between_assimilations
+use         dart_cice_mod, only : get_horiz_grid_dims, get_ncat_dim, read_horiz_grid
 use   state_structure_mod, only : state_structure_info,get_index_start, get_num_variables, &
                                   get_dart_vector_index, get_model_variable_indices
 use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &
@@ -138,17 +137,13 @@ integer :: Nx=-1
 integer :: Ncat=-1
 integer :: domain_id,nfields
 
-! things which can/should be in the model_nml
-integer  :: assimilation_period_days      = 0
-integer  :: assimilation_period_seconds   = 3600
+! Items in the model_nml
 real(r8) :: model_perturbation_amplitude = 0.01
 character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
-integer  :: debug = 100
+integer  :: debug = 1
 integer  :: grid_oi = 3
 
 namelist /model_nml/  &
-   assimilation_period_days,     &  ! for now, this is the timestep
-   assimilation_period_seconds,  &
    model_perturbation_amplitude, &
    model_state_variables,        &
    debug,                        &
@@ -181,7 +176,7 @@ if (do_nml_term()) write(*, nml=model_nml)
 
 call set_calendar_type('Gregorian')
 
-model_timestep = set_model_time_step()
+model_timestep = shortest_time_between_assimilations()
 
 call get_time(model_timestep,ss,dd)
 
@@ -502,7 +497,6 @@ integer(i8) :: state_index
 if ( .not. module_initialized ) call static_init_model
 
 istatus = 0
-print*,'VAR TYPE',var_type
 if (var_type == 14) then
   e = 1
 else if (var_type == 15) then
@@ -530,21 +524,6 @@ do iterations = 1, Niterations
    expected_obs = expected_obs+work_expected_obs
 enddo
 end subroutine lon_lat_interpolate
-
-!------------------------------------------------------------------
-! Returns the smallest increment in time that the model is capable 
-! of advancing the state in a given implementation, or the shortest
-! time you want the model to advance between assimilations.
-
-function shortest_time_between_assimilations()
-
-type(time_type) :: shortest_time_between_assimilations
- 
-if ( .not. module_initialized ) call static_init_model
-
-shortest_time_between_assimilations = model_timestep
-
-end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
 ! Given an integer index into the state vector structure, returns 
