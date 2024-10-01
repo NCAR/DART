@@ -361,6 +361,7 @@ converters) include:
 -  ``AURA``: See ``./AURA``
 -  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
 -  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
+-  ``BATS``: :doc:`./BATS/readme`
 -  ``CHAMP``: :doc:`./CHAMP/work/README`
 -  ``cice``: :doc:`./cice/cice_to_obs`
 -  ``CNOFS``: See ``./CNOFS``
