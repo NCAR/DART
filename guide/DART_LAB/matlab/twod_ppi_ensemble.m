@@ -1,36 +1,31 @@
-function twod_ensemble
-%% TWOD_ENSEMBLE explores how and unobserved variable is updated by an
-%   observed variable in an ensemble filter.
+function twod_ppi_ensemble
+%% TWOD_PPI_ENSEMBLE demonstrates capabilities of a variety of QCEFF filters
+%      for computing the impact of an observed variable on an unobserved
+%      variable. 
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive
 %      ensemble generation mechanism. Ensemble members are created by
 %      left clicking in the central portion of the plot on the left side
 %      of the panel. The horizontal axis is for an observed quantity, 
-%      and the vertical axis for an unobserved quantity. When you have all
-%      the ensemble members you want, click outside of the grey plot area.
-%      As you add ensemble members, marginal plots for the observed and
-%      unobserved axes are created and the sample correlation is displayed.
+%      and the vertical axis for an unobserved quantity. The unobserved 
+%      quantity is nonnegative so ensemble members must not be below
+%      the axis. When you have all the ensemble members you want, click 
+%      outside of the grey plot area. As you add ensemble members, marginal 
+%      plots for the observed and unobserved axes are created and the 
+%      sample correlation is displayed.
 %
-%      Once you have created a prior ensemble (green asterisks), click the 
-%      'Update Ensemble' button. With the default settings, this will apply the EAKF 
-%      algorithm to produce a posterior ensemble (blue asterisks) in the central
-%      bivariate plot and in the marginal plots. The prior and posteriors are 
-%      connected by cyan segments. 
+%      The push buttons at the bottom of the joint distribution plot select
+%      two different continuous distribution choices for a QCEFF for the
+%      observed variable, normal and RHF. The push buttons at the right
+%      select the continuous distribution for the unobserved variable
+%      and include normal, Gamma, an unbounded BNRH (RHF) and a bounded
+%      BNRH. 
 %
-%      Two other ensemble filter variants, the EnKF (sometimes referred to as 
-%      the perturbed observations ensemble Kalman filter) and the rank histogram 
-%      filter (RHF) can be selected with the pushbuttons at the lower right.
-%      Selecting one of these and pressing 'Update Ensemble' will produce
-%      the posterior ensemble and posterior statistics using the selected
-%      filter algorithm. The EnKF is a stochastic algorithm so repeated 
-%      updates can be done for the same prior and observation by repeatedly 
-%      pressing 'Update Ensemble'.
-%
-%      The marginal distributions of the observed quantity and the 
-%      unobserved quantity are shown in the rectangular plots abutting the
-%      square joint distribution. The prior and posterior ensembles and
-%      the increments between them are highlighted in all three plots after
-%      the 'Update Ensemble' button is pushed. 
+%      Clicking on 'Update Ensemble' results in an updated joint ensemble 
+%      along with updated marginals for both the observed and unobserved
+%      variables. The plot to the right is the joint distribution of the
+%      prior and posterior ensemble in the probit probability integral
+%      (PPI) transform space. 
 %
 %      The plot at the lower right shows more detail of the update for the
 %      observed variable including the likelihood in red.
@@ -40,7 +35,7 @@ function twod_ensemble
 %
 % See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
 %           oned_model.m oned_model_inf.m run_lorenz_63.m run_lorenz_96.m 
-%           run_lorenz_96_inf.m twod_ppi_ensemble.m
+%           run_lorenz_96_inf.m twod_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -48,17 +43,18 @@ function twod_ensemble
 %
 % DART $Id$
 
-help twod_ensemble;
+help twod_ppi_ensemble;
 
 atts = stylesheet;  % get the default fonts and color
 
-figureXmin   = 100;
-figureYmin   = 250;
-figureWidth  = 900;
-figureHeight = 480;
+figureXmin   = 0;
+figureYmin   = 0;
+figureWidth  = 1100;    handles.figureWidth = figureWidth;
+figureHeight = 800;     handles.figureHeight = figureHeight;
+handles.figureNormalization = 1000;
 
 %% Create a figure layout
-handles.figure1 = figure('Name', 'twod_ensemble', ...
+handles.figure1 = figure('Name', 'twod_ppi_ensemble', ...
     'Position', [figureXmin figureYmin figureWidth figureHeight], ...
     'Color', atts.background);
 
@@ -72,47 +68,50 @@ handles.figure1 = figure('Name', 'twod_ensemble', ...
 %% Create a button that lets you create a new ensemble.
 handles.ui_button_create_ensemble = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Position', [480/figureWidth 420/figureHeight 175/figureWidth 40/figureHeight] , ...
+    'Position', [gpx(0.2) gpy(0.75) gpx(0.2) gpy(0.04)] , ...
     'String', 'Create New Ensemble', ...
     'BackgroundColor', 'White', ...
     'Callback', @create_ensemble_Callback, ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
-    'FontSize', 0.4);
+    'FontSize', 0.38);
 
 %% Create a Button that updates the ensemble.
 % This button is disabled at first because there is no ensemble to update.
 handles.ui_button_update_ensemble = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Position', [480/figureWidth 360/figureHeight 175/figureWidth 40/figureHeight] , ...
+    'Position', [gpx(0.42) gpy(0.75) gpx(0.2) gpy(0.04)] , ...
     'String', 'Update Ensemble', ...
     'BackgroundColor', 'White', ...
     'Callback', @update_ensemble_Callback, ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
-    'FontSize', 0.4, ...
+    'FontSize', 0.38, ...
     'Enable', 'Off');
 
-%% Create Radio Button group with choices for the types of assimilation
+%% Create Radio Button group with choices for the state variable PPI distribution
 
 handles.ui_assimilation_buttons = uibuttongroup('Visible','off', ...
-    'Position', [480/figureWidth 260/figureHeight 150/figureWidth 80/figureHeight] , ...
+    'Position', [gpx(0.01) gpy(0.55) gpx(0.15) gpy(0.11)] , ...
     'BorderType', 'none', ...
     'BackgroundColor', atts.background, ...
     'SelectionChangeFcn', @Assimilation_selection);
 
+set(handles.ui_assimilation_buttons, 'title', 'PPI DISTRIBUTION', 'fontsize', 16, ...
+   'FontUnits', 'Normalized');
+
 % Positions are relative to the Button Group
 radioXmin   = 0.05;
 radioWidth  = 0.9;
-nudge       = 0.025;
-radioHeight = (1 - 4*nudge)/3;
+nudge       = 0.02;
+radioHeight = (1 - 5*nudge)/4;
 
 radioYmin   = 1.0 - radioHeight - nudge;
-handles.ui_radio_EAKF = uicontrol(handles.ui_assimilation_buttons, ...
+handles.ui_radio_Normal = uicontrol(handles.ui_assimilation_buttons, ...
     'Style','radiobutton', ...
     'Units' , 'Normalized', ...
     'Position',[radioXmin radioYmin radioWidth radioHeight], ...
-    'String','EAKF', ...
+    'String','Normal', ...
     'BackgroundColor' , atts.background, ...
     'Foreground' , 'Black', ...
     'FontName', atts.fontname, ...
@@ -122,9 +121,9 @@ handles.ui_radio_EAKF = uicontrol(handles.ui_assimilation_buttons, ...
     'HandleVisibility','off');
 
 radioYmin   = radioYmin - radioHeight - nudge;
-handles.ui_radio_EnKF = uicontrol(handles.ui_assimilation_buttons, ...
+handles.ui_radio_Gamma = uicontrol(handles.ui_assimilation_buttons, ...
     'Style','radiobutton', ...
-    'String','EnKF', ...
+    'String','Gamma', ...
     'Units' , 'Normalized', ...
     'Position',[radioXmin radioYmin radioWidth radioHeight], ...
     'BackgroundColor' , atts.background, ...
@@ -147,17 +146,79 @@ handles.ui_radio_RHF = uicontrol(handles.ui_assimilation_buttons, ...
     'FontSize' , 0.8, ...
     'HandleVisibility','off');
 
+radioYmin   = radioYmin - radioHeight - nudge;
+handles.ui_radio_BNRH = uicontrol(handles.ui_assimilation_buttons, ...
+    'Style','radiobutton', ...
+    'String','BNRH', ...
+    'Units' , 'Normalized', ...
+    'Position',[radioXmin radioYmin radioWidth radioHeight], ...
+    'BackgroundColor' , atts.background, ...
+    'FontName', atts.fontname, ...
+    'FontUnits', 'Normalized' , ...
+    'FontWeight', 'Bold' , ...
+    'FontSize' , 0.8, ...
+    'HandleVisibility','off');
+
 % Make the uibuttongroup visible after creating child objects.
 set(handles.ui_assimilation_buttons, 'Visible','On');
 selected = get(handles.ui_assimilation_buttons,'SelectedObject');
-handles.filter_type = get(selected,'String');
+handles.state_dist_type = get(selected,'String');
+
+%% Create Radio Button group with choices for the obs variable PPI distribution
+
+handles.ui_obs_ppi_buttons = uibuttongroup('Visible','off', ...
+    'Position', [gpx(0.33) gpy(0.1) gpx(0.16) gpy(0.11)] , ...
+    'BorderType', 'none', ...
+    'BackgroundColor', atts.background, ...
+    'SelectionChangeFcn', @obs_ppi_selection);
+
+set(handles.ui_obs_ppi_buttons, 'title', 'PPI DISTRIBUTION', 'fontsize', 16, ...
+   'FontUnits', 'Normalized');
+
+% Positions are relative to the Button Group
+radioXmin   = 0.05;
+radioWidth  = 0.9;
+nudge       = 0.02;
+radioHeight = (1 - 5*nudge)/4;
+
+radioYmin   = 1.0 - radioHeight - nudge;
+handles.ui_radio_obs_normal = uicontrol(handles.ui_obs_ppi_buttons, ...
+    'Style','radiobutton', ...
+    'Units' , 'Normalized', ...
+    'Position',[radioXmin radioYmin radioWidth radioHeight], ...
+    'String','Normal', ...
+    'BackgroundColor' , atts.background, ...
+    'Foreground' , 'Black', ...
+    'FontName', atts.fontname, ...
+    'FontUnits', 'Normalized' , ...
+    'FontWeight', 'Bold' , ...
+    'FontSize', 0.8, ...
+    'HandleVisibility','off');
+
+radioYmin   = radioYmin - radioHeight - nudge;
+handles.ui_radio_obs_RHF = uicontrol(handles.ui_obs_ppi_buttons, ...
+    'Style','radiobutton', ...
+    'String','RHF', ...
+    'Units' , 'Normalized', ...
+    'Position',[radioXmin radioYmin radioWidth radioHeight], ...
+    'BackgroundColor' , atts.background, ...
+    'FontName', atts.fontname, ...
+    'FontUnits', 'Normalized' , ...
+    'FontWeight', 'Bold' , ...
+    'FontSize' , 0.8, ...
+    'HandleVisibility','off');
+
+% Make the uibuttongroup visible after creating child objects.
+set(handles.ui_obs_ppi_buttons, 'Visible','On');
+selected = get(handles.ui_obs_ppi_buttons,'SelectedObject');
+handles.obs_dist_type = get(selected,'String');
 
 %% Create a red panel with two text boxes and two edit boxes next to them
 
 handles.ObservationPanel = uipanel('BackgroundColor', atts.red, ...
     'BorderType','none', ...
     'Units', 'Normalized', ...
-    'Position',[670/figureWidth 370/figureHeight 210/figureWidth 90/figureHeight]);
+    'Position',[gpx(0.7) gpy(0.20) gpx(0.2), gpy(0.06)]);
 
 % Positions are relative to the panel
 nudge  = 0.05;
@@ -219,14 +280,14 @@ handles.ui_edit_obs_error_sd = uicontrol(handles.ObservationPanel, ...
 % observation error sd
 handles.ui_text_error = uicontrol('Style', 'text', ...
     'Units', 'Normalized', ...
-    'Position', [0.220 0.550 0.20 0.20] , ...
+    'Position', [gpx(0.275), gpy(0.4), gpx(0.35), gpy(0.15)], ...
     'String', 'Error' , ...
     'BackgroundColor', 'white', ...
     'ForegroundColor', atts.red, ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
     'FontWeight', 'Bold', ...
-    'FontSize', 0.2, ...
+    'FontSize', 0.15, ...
     'Visible', 'Off');
 
 %Set up all the handles variables and create the graphs
@@ -240,41 +301,77 @@ h_obs_error_sd = get(handles.ui_edit_obs_error_sd);
 observation    = str2double(h_observation.String);
 obs_error_sd   = str2double(h_obs_error_sd.String);
 
-plotposition = [ 40/figureWidth 110/figureHeight  60/figureWidth 350/figureHeight; ...
-    115/figureWidth 110/figureHeight 340/figureWidth 350/figureHeight; ...
-    115/figureWidth  40/figureHeight 340/figureWidth  55/figureHeight];
+plotposition = [ gpx(0.20) gpy(0.35) gpx(0.07), gpy(0.35) ; ...
+                 gpx(0.275) gpy(0.35) gpx(0.35)    gpy(0.35); ...
+                 gpx(0.275) gpy(0.275) gpx(0.35)    gpy(0.07);
+                 gpx(0.7) gpy(0.35) gpx(0.35)    gpy(0.35)];
+                
 
 %% Create the axis for the unobserved marginal graphic
+
+% Set parameters for the initial x and y value ranges
+handles.xmin = -10;
+handles.xmax = 10;
+handles.ymin = -2;
+handles.ymax = 10;
 
 handles.h_unobMarginal = axes('Position', plotposition(1,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
-axis([0 1 0 10]);
+axis([0 1 handles.ymin handles.ymax]);
 set(gca, 'FontUnits', 'Normalized');
 ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
-%% Get a subplot for the joint
+%% Get a subplot for the joint prior
 
 handles.h_joint = axes('Position', plotposition(2,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
-axis([0 10 0 10]);
+
+axis([handles.xmin, handles.xmax, handles.ymin, handles.ymax]);
 grid on
 hold on
 title('Joint Distribution', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 set(gca, 'color', [0.8, 0.8, 0.8])
-set(gca, 'FontUnits', 'Normalized')
+set(gca, 'FontUnits', 'Normalized');
 
-h_click    = text(5, 9, {'Click inside Joint Distribution plot','grey area to create member.'}, ...
+% Plot long axes at x and y = 0
+ax = [-1000, 1000];
+ay = [0, 0];
+plot(ax, ay, 'k', 'linewidth', 2);
+ax = [0 0];
+ay = [-1000 1000];
+plot(ax, ay, 'k', 'linewidth', 2);
+
+h_click    = text(0, 8, {'Click inside Joint Distribution plot','grey area to create member.'}, ...
     'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
-h_finish   = text(5, 8, 'Click outside of grey to finish.', ...
+h_finish   = text(0, 6, 'Click outside of grey to finish.',...
     'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
-h_err_text = text(5, 4, 'An ensemble must have at least 2 members.', 'Color', atts.red, ...
+h_err_text = text(0, 4, 'An ensemble must have at least 2 members.', 'Color', atts.red, ...
     'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 
 handles.h_correl = text(5, 9, ' ', 'Color', atts.green, 'FontWeight', 'Bold', ...
     'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
+% Prepare error message for negative y in case it's needed
+h_neg_y   = text(0, 3, 'Unobserved variable must be nonnegative', ...
+     'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'visible', 'off');
+        
+
+%% Get a subplot for the ppi joint prior
+
+handles.h_ppi_joint = axes('Position', plotposition(4,:), ...
+    'FontName', atts.fontname, ...
+    'FontSize', atts.fontsize);
+axis([-3 3 -3 3]);
+grid on
+hold on
+title('Joint PPI SpaceDistribution', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+set(gca, 'FontUnits', 'Normalized');
+
+xlabel('PPI Transformed Observed', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+ylabel('PPI Transformed Unobserved', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+
 
 %% Create a subplot for the observed variable marginal
 
@@ -282,9 +379,9 @@ handles.h_obMarginal = axes('Position', plotposition(3,:), ...
     'FontName', atts.fontname, 'FontSize', atts.fontsize);
 
 % May want to mess with vertical axis for prior density
-axis([0 10 0 1]);
+axis([handles.xmin handles.xmax 0 1]);
 hold on
-xlabel('Observed Quantity', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+xlabel('Observed Quantity', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 set(gca, 'FontUnits', 'Normalized');
 handles.h_obs_marg = plot(observation, 0, '*', 'MarkerSize', 16, 'LineWidth', 2.0);
 set(handles.h_obs_marg,'Color',atts.red)
@@ -296,13 +393,13 @@ set(handles.h_obMarginal  , 'Yticklabel', []);
 
 %This graph is the graph of the observation
 handles.h_obs_likelihood = axes( ...
-    'Position', [500/figureWidth 40/figureHeight 390/figureWidth 200/figureHeight], ...
+    'Position', [gpx(0.63) gpy(0.035), gpx(0.35), gpy(0.125)], ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
 
 handles.h_marg_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
 
-axis([0 10 -handles.y_max/5 1]);
+axis([handles.xmin handles.xmax -handles.y_max/5 1]);
 
 % Set the ticks
 set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
@@ -319,8 +416,8 @@ hold on
 handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16, 'LineWidth', 2.0);
 set(handles.h_obs_ast,'Color',atts.red)
 
-% Plot an axis; display is fixed from x = 0 to 10
-plot([0 10], [0 0], 'k', 'LineWidth', 2);
+% Plot an axis; 
+plot([-1000 1000], [0 0], 'k', 'LineWidth', 2);
 
 %% ----------------------------------------------------------------------------
 
@@ -350,6 +447,9 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_state_inc,    'Visible', 'off');
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
+        set(handles.h_ppi_prior,    'Visible', 'off');
+        set(handles.h_ppi_post,     'Visible', 'off');
+        set(handles.h_joint_ppi,    'Visible', 'off');
         
         % Clear out the old best fit line
         set(handles.h_best_fit, 'Visible', 'off');
@@ -363,21 +463,28 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         % Work in the joint distribution plot
         axes(handles.h_joint);
         hold on
-        
+
         % Need to guarantee at least 2 ensemble members
         ens_size = 0;
         
         while ens_size < 1000
-            
             [xt, yt] = ginput(1);
             gca;
+
+            % Make sure negative y message is off
+            set(h_neg_y, 'visible', 'off');
+
             % Make sure that the click was in the correct set of axes
             % Terminate by clicking outside of graph range
-            if(xt < 0 || xt > 10 || yt < 0 || yt > 10 || gca ~= handles.h_joint)
+            if(xt < handles.xmin || xt > handles.xmax || yt < handles.ymin || ...
+                yt > handles.ymax || gca ~= handles.h_joint)
                 axes(handles.h_joint); %#ok<LAXES>
                 break;
+            elseif(yt<0 & yt >= handles.ymin)
+                % Still in grey shaded part of plot but value of y is negative
+                set(h_neg_y, 'visible', 'on');
             else
-                
+
                 ens_size = ens_size + 1;
                 x(1, ens_size) = xt; %#ok<AGROW>
                 x(2, ens_size) = yt; %#ok<AGROW>
@@ -438,7 +545,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             prior_cov  = cov(x(1, :), x(2, :));
             slope      = prior_cov(1, 2) / var(x(1, :));
             intercept  = prior_mean(2) - slope * prior_mean(1);
-            
+
             best_x = [-1000 1000];
             best_y = slope * best_x + intercept;
  
@@ -474,77 +581,92 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_state_inc,    'Visible', 'off');
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
+        set(handles.h_ppi_prior,    'Visible', 'off');
+        set(handles.h_ppi_post,     'Visible', 'off');
+        set(handles.h_joint_ppi,    'Visible', 'off');
         
-        ensemble = handles.ens_members;
+        prior_obs = handles.ens_members(1, :);
+        prior_state = handles.ens_members(2, :);
         h_observation  = get(handles.ui_edit_observation);
         h_obs_error_sd = get(handles.ui_edit_obs_error_sd);
         observation    = str2double(h_observation.String);
         obs_error_sd   = str2double(h_obs_error_sd.String);
         
         %If ensemble is not empty
-        if (size(ensemble,2) > 0)
-            switch handles.filter_type
-                case 'EAKF'
-                    [obs_increments, ~] = ...
-                        obs_increment_eakf(ensemble(1, :), observation, obs_error_sd^2);
-                case 'EnKF'
-                    [obs_increments, ~] = ...
-                        obs_increment_enkf(ensemble(1, :), observation, obs_error_sd^2);
-                case 'RHF'
-                    [obs_increments, ~] = ...
-                        obs_increment_rhf(ensemble(1, :), observation, obs_error_sd^2);
+        if (size(prior_obs,2) > 0)
+
+            % Observation space increment method is controlled by obs PPI distribution choide
+            if(strcmp(handles.obs_dist_type, 'Normal'))
+               % The observation space updates are standard EAKF 
+               [obs_increments, ~] = ...
+                  obs_increment_eakf(prior_obs, observation, obs_error_sd^2);
+            else
+               % Observation space updates by unbounded RHF
+               [obs_increments, ~] = ...
+                   obs_increment_rhf(prior_obs, observation, obs_error_sd^2, false);
             end
-            
-            % Add on increments to get new ensemble
-            new_ensemble = ensemble(1, :) + obs_increments;
+    
+            % Add on increments to get posterior
+            post_obs = prior_obs + obs_increments;
+
+            % Updating the state variables
+            [post_state, prior_obs_ppi, post_obs_ppi, prior_state_ppi, post_state_ppi]  = ...
+                ppi_update(prior_obs, prior_state, post_obs, handles.state_dist_type, ...
+                handles.obs_dist_type);
             
             %Set the y-coordinate of the ensembles, to be halfway between 0 and
             %the bottom of the graph;
             y(1:handles.ens_size) = -handles.y_max/10;
             
-            handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+            handles.h_update_ens = plot(post_obs, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+
+            % Plot the PPI priors and posteriors
+            axes(handles.h_ppi_joint);
+            handles.h_ppi_prior = ...
+               plot(prior_obs_ppi, prior_state_ppi, '*', 'Markersize', 16, 'Color', atts.green);
+            handles.h_ppi_post = ...
+               plot(post_obs_ppi, post_state_ppi, '*', 'Markersize', 16, 'Color', atts.blue);
+            % Plot the connecting segments
+            for i = 1:handles.ens_size
+                cx = [prior_obs_ppi(i), post_obs_ppi(i)];
+                cy = [prior_state_ppi(i), post_state_ppi(i)];
+                handles.h_joint_ppi(i) = plot(cx, cy, 'c');
+            end
             
             % Plot the increments in the state marginal plot
             axes(handles.h_obMarginal);
             
             % Need to sort ensemble to get nice ordering for increments
-            [~, sort_obs_ind] = sort(ensemble(1, :));
+            [~, sort_obs_ind] = sort(prior_obs);
             for i = 1:handles.ens_size
                 y(i) = i / (handles.ens_size + 1);
                 handles.h_marg_update(i) = ...
-                    plot(new_ensemble(sort_obs_ind(i)), y(i), '*', 'MarkerSize', 16, 'Color', atts.blue);
+                    plot(post_obs(sort_obs_ind(i)), y(i), '*', 'MarkerSize', 16, 'Color', atts.blue);
                 % Also plot a segment in blue
                 handles.h_marg_inc(i) = ...
-                    plot([ensemble(1, sort_obs_ind(i)), new_ensemble(1, sort_obs_ind(i))], ...
+                    plot([prior_obs(sort_obs_ind(i)), post_obs(sort_obs_ind(i))], ...
                     [y(i), y(i)], 'c');
             end
             
-            % Figure out the increments for the unobserved variable
-            
             axes(handles.h_unobMarginal);
             
-            covar     = cov(ensemble');
-            state_inc = obs_increments * covar(1, 2) / covar(1, 1);
-            new_state = ensemble(2, :) + state_inc;
-            %>@ TODO POSSIBLE IMPROVEMENT ... annotate new marginal mean, sd
-            
             % Now need to sort the state variable ensemble to get nice ordering
-            [~, sort_ind] = sort(ensemble(2, :));
+            [~, sort_ind] = sort(prior_state);
             for i = 1:handles.ens_size
                 handles.h_marg_state(i) = ...
-                    plot(y(i), new_state(sort_ind(i)), '*', 'MarkerSize', 16, 'Color', atts.blue);
+                    plot(y(i), post_state(sort_ind(i)), '*', 'MarkerSize', 16, 'Color', atts.blue);
                 % Also plot a segment in blue
                 handles.h_state_inc(i) = plot([y(i), y(i)], ...
-                    [ensemble(2, sort_ind(i)), new_state(sort_ind(i))], 'c');
+                    [prior_state(sort_ind(i)), post_state(sort_ind(i))], 'c');
             end
             
             % Plot the updated joint distribution points
             axes(handles.h_joint);
             for i = 1:handles.ens_size
-                handles.h_joint_update(i) = plot(new_ensemble(i), new_state(i), ...
+                handles.h_joint_update(i) = plot(post_obs(i), post_state(i), ...
                     '*', 'MarkerSize', 16, 'Color', atts.blue);
-                handles.h_joint_inc(i) = plot([ensemble(1, i), new_ensemble(1, i)], ...
-                    [ensemble(2, i), new_state(i)], 'c');
+                handles.h_joint_inc(i) = plot([prior_obs(i), post_obs(i)], ...
+                    [prior_state(i), post_state(i)], 'c');
             end
             
             % Return the focus to the window with pushbuttons
@@ -570,12 +692,12 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         if( isfinite( str2double(    get(handles.ui_edit_observation, 'String'))))
             observation = str2double(get(handles.ui_edit_observation, 'String'));
             
-            if (observation > 10)
-                set(handles.ui_edit_observation, 'String', '<10!');
+            if (observation > handles.xmax)
+                set(handles.ui_edit_observation, 'String', ['< ', num2str(handles.xmax)]);
                 input_error('observation');
                 return;
-            elseif (observation < 0)
-                set(handles.ui_edit_observation, 'String', '>0!');
+            elseif (observation < handles.xmin)
+                set(handles.ui_edit_observation, 'String', ['> ', num2str(handles.xmin)]);
                 input_error('observation');
                 return;
             end
@@ -587,6 +709,9 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             set(handles.h_best_fit,     'Visible', 'On');
             set(handles.h_joint_update, 'Visible', 'On');
             set(handles.h_joint_inc,    'Visible', 'On');
+            set(handles.h_ppi_prior,    'Visible', 'On');
+            set(handles.h_ppi_post,     'Visible', 'On');
+            set(handles.h_joint_ppi,    'Visible', 'On');
         else
             set(handles.ui_edit_observation, 'String', '?');
             input_error('observation');
@@ -648,6 +773,9 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             set(handles.h_best_fit,     'Visible', 'On');
             set(handles.h_joint_update, 'Visible', 'On');
             set(handles.h_joint_inc,    'Visible', 'On');
+            set(handles.h_ppi_prior,    'Visible', 'On');
+            set(handles.h_ppi_post,     'Visible', 'On');
+            set(handles.h_joint_ppi,    'Visible', 'On');
             
         else
             set(handles.ui_edit_obs_error_sd, 'String', '?');
@@ -664,7 +792,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         handles.y_max = handles.y_max + 0.2;
         
         %Update the axis based on the new y_max
-        axis([0 10 -handles.y_max/5 handles.y_max]);
+        axis([handles.xmin handles.xmax -handles.y_max/5 handles.y_max]);
         
         set(gca,'YTickMode','auto')
         ticks    = get(gca,'YTick');
@@ -718,6 +846,9 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         handles.h_marg_state    = [];
         handles.h_state_inc     = [];
         handles.h_joint_update  = [];
+        handles.h_ppi_prior     = [];
+        handles.h_ppi_post      = [];
+        handles.h_joint_ppi     = [];
         handles.h_joint_inc     = [];
         handles.h_correl        = [];
         handles.first_correl    = true;
@@ -735,7 +866,20 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         
         % Set the filter_type string to newest radiobutton Value
         
-        handles.filter_type = get(eventdata.NewValue,'String');
+        handles.state_dist_type = get(eventdata.NewValue,'String');
+    end
+%% ----------------------------------------------------------------------------
+
+    function obs_ppi_selection(~, eventdata)
+        % Function is called whenever a radio button has been selected, it sets
+        % the global filter variable
+        
+        % eventdata refers to the data in the GUI when a radio button in the
+        % group is changed
+        
+        % Set the filter_type string to newest radiobutton Value
+        
+        handles.obs_dist_type = get(eventdata.NewValue,'String');
     end
 
 %% ----------------------------------------------------------------------------
@@ -748,7 +892,12 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_best_fit,               'Visible', 'Off');
                 set(handles.h_joint_update,           'Visible', 'Off');
                 set(handles.h_joint_inc,              'Visible', 'Off');
-                set(handles.ui_text_error,            'String' , 'Observation must be a number between 0 and 10');
+                set(handles.h_ppi_prior,              'Visible', 'Off');
+                set(handles.h_ppi_post,               'Visible', 'Off');
+                set(handles.h_joint_ppi,              'Visible', 'Off');
+                msg_string = ['Observation must be a number between ', ...
+                   num2str(handles.xmin), ' and ', num2str(handles.xmax)];
+                set(handles.ui_text_error,            'String' , msg_string);
                 set(handles.ui_text_error,            'Visible', 'On');
                 
                 % Disable other input to guarantee only one error at a time!
@@ -763,6 +912,9 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_best_fit,     'Visible', 'Off');
                 set(handles.h_joint_update, 'Visible', 'Off');
                 set(handles.h_joint_inc,    'Visible', 'Off');
+                set(handles.h_ppi_prior,    'Visible', 'Off');
+                set(handles.h_ppi_post,     'Visible', 'Off');
+                set(handles.h_joint_ppi,    'Visible', 'Off');
                 set(handles.ui_text_error,  'String' , 'Observation Error SD must be a number greater than 0');
                 set(handles.ui_text_error,  'Visible', 'On');
                 
@@ -773,7 +925,24 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         end   % of switch
     end  % function input_error
 
+%% ----------------------------------------------------------------------------
+
+   function [x] = gpx(f) 
+
+   x = f * handles.figureNormalization / handles.figureWidth;
+
+   end
+
+%% ----------------------------------------------------------------------------
+
+   function [y] = gpy(f) 
+
+   y = f * handles.figureNormalization / handles.figureHeight;
+   
+   end
+
 end
+
 
 % <next few lines under version control, do not edit>
 % $URL$
