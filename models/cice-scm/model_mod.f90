@@ -746,12 +746,10 @@ subroutine use_default_state_variables(state_variables)
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*num_state_table_columns ) = &
-   (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
-      'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
-      'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    ', &
-      'UICE                      ', 'QTY_U_SEAICE_COMPONENT    ', 'UPDATE                    ', &
-      'VICE                      ', 'QTY_V_SEAICE_COMPONENT    ', 'UPDATE                    '/)
+state_variables( 1:3*num_state_table_columns ) = &
+   (/ 'aicen                     ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
+      'vicen                     ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
+      'vsnon                     ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    '/)
 
 end subroutine use_default_state_variables
 
