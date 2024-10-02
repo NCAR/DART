@@ -74,8 +74,7 @@ synthetic observation in units of brightness temperature (Kelvin) looks like the
 
 
    OBS            1
-     288.370817896852
-     288.456378689407
+    288.370817896852
     0.000000000000000E+000
             -1           2          -1
   obdef
@@ -102,14 +101,14 @@ area of research. As an alternative, it is also common to leave the vertical lev
 as undefined (VERTISUNDEF, integer = -2), however, this limits the ability to vertically
 localize the impact of the observation on the model state.
 
-The RTTOV specific metadata is located after the ``visir`` line.  This includes the
-azimuth and elevation angle of the satellite and the sun respectively.  Note, in this 
-instance the sun azimuth/elevation are given missing values (-888888) because solar
-reflectance has no impact on an IR radiance observation.  Also note, the observation
+In this example where the observation is infrared (IR) radiance, the  metadata is located after
+the ``visir`` line (Note: for microwave observations the metadata would follow 'mw').  
+The metadata includes the azimuth and elevation angle of the satellite and the sun respectively. In this instance the sun azimuth/elevation are given missing values (-888888) because
+solar reflectance has no impact on an IR radiance observation.  Also note, the observation
 provides a 4 integer description (31/9/56/8) of the platform/satellite/sensor/channel
 combination specific to this satellite observation.  For more information on this
 metadata refer to this GOES observation converter example here: 
-:doc:`../observations/obs_converters/GOES/README.rst`
+:doc:`../../observations/obs_converters/GOES/README`
 
 .. Important ::
 
@@ -129,7 +128,7 @@ is provided:
    HIMAWARI_9_AHI	31	9	56	ir	rtcoef_himawari_9_ahi.dat
 
 The coefficent file (.dat) is included with the RTTOV installation and can be found at the
-path  ``~{RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
+path  ``${RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
 should be included in your run folder at runtime. Additional coefficent files for a given
 satellite sensor may be required.
 
@@ -145,7 +144,7 @@ file will include a list of channels (wavebands) with the associated wavelength 
   the file contains all wavelengths versus only IR wavelengths is **extremely important** because
   it will shift the value of the channel number. Recommended practice is to choose a coefficient file
   with all channels included.  If, on the other hand, you subset your coefficent file to only include
-  IR channels, you will also have to adjust your channel number in the obs_seq.out file.
+  IR channels, you should edit your observation converter file such that the channels match.
   If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
   is unusually biased from your prior, this could be a sign there is a mismatch between the 
   obs_seq.out channel and the coefficient file channel.  
