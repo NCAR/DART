@@ -457,6 +457,7 @@ References
    models/gitm/readme
    models/gitm/netcdf_to_gitm_blocks
    models/gitm/gitm_blocks_to_netcdf
+   models/icepack/readme
    models/ikeda/readme
    models/LMDZ/readme
    models/lorenz_04/readme
@@ -493,7 +494,6 @@ References
    models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
    models/template/readme
    models/utilities/default_model_mod
-
 
 .. toctree::
    :maxdepth: 2

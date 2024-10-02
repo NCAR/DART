@@ -1,0 +1,14 @@
+This test case performs DART data assimilation with CICE_SCM (Icepack)
+
+The assimilation is performed within a single time window, and therefore the model is never advanced.
+
+This example uses 10 ensemble members, which are created by perturbing the single restart file iced.2011-01-02-00000.nc to generate the ensemble.
+
+Note that the model time has been set to match the time of the observations with the following values in the &filter_nml:
+   init_time_days               = 153076,
+   init_time_seconds            = 0,
+
+The observation sequence contains 300 observations, 100 for each of the following types:
+   SAT_SEAICE_AGREG_CONCENTR
+   SAT_SEAICE_AGREG_THICKNESS
+   SAT_SEAICE_AGREG_SNOWDEPTH
