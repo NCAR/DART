@@ -389,11 +389,11 @@ if (cat_signal == -2) then
    temp = temp + expected_conc * expected_fy  !sum(aicen*fyn) = FY % over ice
    temp1= temp1+ expected_conc                        !sum(aicen) = aice
 
-      if (any(expected_conc<0.0) .or. any(expected_conc>1.0))then
+      if ((any(expected_conc<0.0) .or. any(expected_conc>1.0)) .and. (debug > 1)) then
       print*,'obstype FY expected sicn:',expected_conc
       print*,'FY sicn lat lon:',llat,llon
       endif
-      if (any(expected_fy>1.0) .or. any(expected_fy<0.0)) then
+      if ((any(expected_fy>1.0) .or. any(expected_fy<0.0)) .and. (debug > 1)) then
       print*,'obstype FY expected fyn:',expected_fy,llat,llon
       print*,'FY fyn lat lon:',llat,llon
       endif
@@ -414,11 +414,11 @@ else if (cat_signal == -3 ) then
       base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
       base_offset = base_offset + (icat-1) * Nx
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal_interm, expected_tsfc, istatus)
-      if (any(expected_conc<0.0) .or. any(expected_conc>1.0))then
+      if ((any(expected_conc<0.0) .or. any(expected_conc>1.0)) .and. (debug > 1)) then
       print*,'obstype TSFC expected sicn:',expected_conc
       print*,'TSFC sicn lat lon:',llat,llon
       endif
-      if (any(expected_tsfc>50.0) .or. any(expected_tsfc<-100.0)) then
+      if ((any(expected_tsfc>50.0) .or. any(expected_tsfc<-100.0)) .and. (debug > 1)) then
       print*,'obstype TSFC expected tsfcn:',expected_tsfc
       print*,'TSFC tsfcn lat lon:',llat,llon
       endif
@@ -426,7 +426,7 @@ else if (cat_signal == -3 ) then
       temp1= temp1+ expected_conc                  !sum(aicen) = aice
    end do
    expected_obs = temp/max(temp1,1.0e-8)  !sum(aicen*Tsfcn)/aice = Tsfc ;averaged temperature over sea-ice covered portion
-   if (any(expected_obs>50.0) .or. any(expected_obs<-100.0)) then
+   if ((any(expected_obs>50.0) .or. any(expected_obs<-100.0)) .and. (debug > 1)) then
       print*,'obstype TSFC expected obs:',expected_obs
       print*,'TSFC tsfc lat lon:' ,llat,llon
       print*,'temp:',temp
@@ -435,11 +435,11 @@ else if (cat_signal == -3 ) then
 else
     call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal, expected_obs, istatus)
     
-      if (any(expected_obs<0.0))then
+      if (any(expected_obs<0.0) .and. (debug > 1)) then
       print*,'obstype SIC expected concs:',expected_obs
       print*,'SIC sic negative lat lon:',llat,llon
       endif
-      if (any(expected_obs>1.0))then
+      if (any(expected_obs>1.0) .and. (debug > 1)) then
       print*,'obstype SIC expected concs:',expected_obs
       print*,'SIC sic positive lat lon:',llat,llon
       endif
@@ -452,7 +452,7 @@ if (cat_signal == -1) then
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
 
-      if (any(expected_aggr_conc<0.0) .or. any(expected_aggr_conc>1.0))then
+      if ((any(expected_aggr_conc<0.0) .or. any(expected_aggr_conc>1.0)) .and. (debug > 1)) then
       print*,'obstype SIT expected conc:',expected_aggr_conc
       print*,'SIT sic lat lon:',llat,llon
       endif
