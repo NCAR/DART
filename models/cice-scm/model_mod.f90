@@ -821,13 +821,10 @@ call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'mday'   , mday), &
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'sec', sec), &
                   'read_model_time', 'get_att sec')
 
-! FIXME: we don't allow a real year of 0 - add one for now, but
-! THIS MUST BE FIXED IN ANOTHER WAY!
 if (nyr == 0) then
-  call error_handler(E_MSG, 'read_model_time', &
-                     'WARNING!!!   year 0 not supported; setting to year 1', &
+  call error_handler(E_ERR, 'read_model_time', &
+                     'A model time with year 0 is not supported', & 
                      source)
-  nyr = 1
 endif
 
 hour       = int(sec/3600)
