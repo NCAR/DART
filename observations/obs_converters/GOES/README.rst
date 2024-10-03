@@ -40,11 +40,12 @@ atmospheric constituents (e.g. water vapor) that reside in the vertical
 profile of the atmosphere. Given this is an integrated quantity and does
 not depend on a single vertical location, it may be appropriate to leave
 the vertical location undefined (i.e. VERTISUNDEF) within the ``obs_seq.out``
-file. This approach, however, limits the application of vertical localization
-during the assimilation step.
+file, by setting the ``vloc_pres_hPa = -1`` (See namelist options below). This approach, 
+however, limits the application of vertical localization during the assimilation step.
 
 Alternatively, for some applications it may be appropriate to assign 
-a vertical location to the radiance observation. This is an ongoing area
+a vertical location to the radiance observation, by setting the ``vloc_pres_hPa``
+to the appropriate pressure level. This is an ongoing area
 of observation-space localization research, and is the standard
 workaround pioneered by Lili Lei and Jeff Whittaker.
 

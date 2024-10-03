@@ -112,16 +112,18 @@ metadata refer to this GOES observation converter example here:
 
 .. Important ::
 
-  **It is imperative that the user confirms the satellite integer metadata matches the
-  appropriate RTTOV coefficient (parameter) file.  See next section for more information.**
+  **It is important that the user confirms the satellite integer metadata within
+    the obs_seq.out file matches the metadata within  rttov_sensor_db.csv.  Furthermore,
+    confirm that the channel as defined in the obs_seq.out file matches the channel
+    available in the RTTOV coefficient file (.dat).  See next section for more information.**
 
 RTTOV coefficient files
 -----------------------
 
-The RTTOV coefficent file contains the appropriate parameter values for a specific satellite
-radiance observation. The RTTOV database file (``rttov_sensor_db.csv``) refers to the coefficent
+The RTTOV coefficent file (.dat) contains the appropriate parameter values for a specific satellite
+radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficent
 file.  For the ``HIMAWARI_9_AHI_RADIANCE`` observation type, for example, the following information
-is provided:
+is provided within ``rttov_sensor_db.csv``:
 
 .. code::
 
@@ -253,11 +255,13 @@ RTTOV v12 Namelist
    +------------------------+--------------------+----------------------------------------------------------------------+
    | Item                   | Type               | Description                                                          |
    +========================+====================+======================================================================+
-   | rttov_sensor_db_file   | character(len=512) | The location of the RTTOV sensor database. The format for the        |
-   |                        |                    | database is a comma-separated file. The columns of the database are  |
-   |                        |                    | the DART observation-kind, the platform/satellite/sensor ID, the     |
-   |                        |                    | observation type, the coefficient file, and a comma-separated list   |
-   |                        |                    | of RTTOV channels to use for this observation type.                  |
+   | rttov_sensor_db_file   | character(len=512) | The location of the DART file with RTTOV sensor metadata. The format |
+   |                        |                    | is a comma-separated file. The columns are the DART                  |
+   |                        |                    | observation type, the platform/satellite/sensor ID, the              |
+   |                        |                    | wavelength band, the coefficient file, and a comma-separated list    |
+   |                        |                    | of RTTOV channels to use for this observation type. The default file |
+   |                        |                    | does not provide a list of channels, thus default behavior is to     |
+   |                        |                    | make all channels available.                                         |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | first_lvl_is_sfc       | logical            | Whether the first level of the model represents the surface (true)   |
    |                        |                    | or the top of the atmosphere (false).                                |
