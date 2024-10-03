@@ -361,6 +361,7 @@ References
    observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
+   observations/obs_converters/BATS/readme
    observations/obs_converters/cice/cice_to_obs
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/COSMOS/COSMOS_to_obs
@@ -466,6 +467,7 @@ References
    models/lorenz_96_tracer_advection/readme
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
+   models/MARBL_column/readme
    models/MOM6/readme
    models/mpas_atm/readme
    models/mpas_atm/mpas_dart_obs_preprocess

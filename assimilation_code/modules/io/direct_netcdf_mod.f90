@@ -93,7 +93,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_index_start, get_index_end , get_num_dims, &
                                  create_diagnostic_structure, &
                                  end_diagnostic_structure, &
-                                 has_unlimited_dim
+                                 has_unlimited_dim, get_io_dim_ids
 
 use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  stage_metadata_type, get_file_description, &
@@ -858,16 +858,17 @@ do i = start_var, end_var
    counts(:) = 1
 
    slice_start(:) = 1 ! default to read all dimensions start at 1
-
-   if (has_unlimited_dim(domain)) then
+   
+   ret = nf90_inquire(ncfile_in, unlimitedDimID=unlim_dimID)
+   call nc_check(ret, 'read_variables: nf90_inquire', 'unlimitedDimID')
+   
+   if (has_unlimited_dim(domain) .and. any(get_io_dim_ids(domain, i) ==  unlim_dimID )) then
 
       counts(num_dims) = 1 ! one slice of unlimited dimesion
-      counts(1:num_dims-1) = get_dim_lengths(domain, i) ! the state
+      counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i) ! the state
       
       ! read latest time slice - hack to get started with tiegcm
       ! not sure if it will always be the last time slice
-      ret = nf90_inquire(ncfile_in, unlimitedDimID=unlim_dimID)
-      call nc_check(ret, 'read_variables: nf90_inquire', 'unlimitedDimID')
 
       if (unlim_dimID /= -1) then ! unlimited dimension exists
          ret = nf90_inquire_dimension(ncfile_in, unlim_dimID, len=slice_start(num_dims))
@@ -1588,15 +1589,17 @@ do i = start_var, end_var
       slice_start(:) = 1 ! default to read all dimensions starting at 1
       counts(:) = 1
 
-      if (has_unlimited_dim(domain)) then
+      ret = nf90_inquire(ncid, unlimitedDimID=unlim_dimID)
+      call nc_check(ret, 'read_variables: nf90_inquire', 'unlimitedDimID')
+
+      if (has_unlimited_dim(domain) .and. any(get_io_dim_ids(domain, i) ==  unlim_dimID )) then
 
          counts(num_dims) = 1 ! one slice of unlimited dimesion
          counts(1:get_num_dims(domain, i)) = get_dim_lengths(domain, i)
 
          ! write the latest time slice - HK hack to get started with tiegcm
          ! not sure if it will always be the last time slice
-         ret = nf90_inquire(ncid, unlimitedDimID=unlim_dimID)
-         call nc_check(ret, 'write_variables: nf90_inquire', 'unlimitedDimID')
+         
          if (unlim_dimID /= -1) then ! unlimited dimension exists
             ret = nf90_inquire_dimension(ncid, unlim_dimID, len=slice_start(num_dims))
             call nc_check(ret, 'write_variables: nf90_inquire dimension', 'unlimitedDim length')
