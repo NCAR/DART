@@ -45,7 +45,7 @@ however, limits the application of vertical localization during the assimilation
 
 Alternatively, for some applications it may be appropriate to assign 
 a vertical location to the radiance observation, by setting the ``vloc_pres_hPa``
-to the appropriate pressure level. This is an ongoing area
+to a vertical pressure level (hPa). This is an ongoing area
 of observation-space localization research, and is the standard
 workaround pioneered by Lili Lei and Jeff Whittaker.
 

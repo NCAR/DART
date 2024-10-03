@@ -6,7 +6,7 @@ MODULE ``obs_def_rttov_mod``
 Overview
 --------
 
-DART RTTOV observation module, including the observation operators for the two primary 
+The DART RTTOV observation module, including the observation operators for the two primary 
 RTTOV-observation types -- visible/infrared radiances and microwave 
 radiances/brightness temperatures.
 
@@ -68,7 +68,7 @@ RTTOV  Metadata
 
 The RTTOV module ingests metadata from the ``obs_seq.out`` file in order to calculate the
 expected observed radiance.  For example, a single ``HIMAWARI_9_AHI_RADIANCE`` 
-synthetic observation in units of brightness temperature (Kelvin) looks like the following:
+observation in units of brightness temperature (Kelvin) looks like the following:
 
 .. code::
 
@@ -95,14 +95,15 @@ synthetic observation in units of brightness temperature (Kelvin) looks like the
 Please note, that in this example the radiance observation was assigned a  vertical level (34000 Pa) 
 with the ``VERTISPRESSURE`` (integer = 2) vertical coordinate. 
 Although radiance/BT observations are technically representative of the entire atmospheric
-column and not a single vertical level, in some applications
-this approximation improves the skill of the assimilation forecast.  This is an ongoing
+column and not a single vertical level, for some applications where specific channels (wavelength)
+are especially sensitive to constituents at particular atmospheric levels, assigning
+a vertical level to the observation may improve the skill of the assimilation forecast.  This is an ongoing
 area of research. As an alternative, it is also common to leave the vertical level
 as undefined (VERTISUNDEF, integer = -2), however, this limits the ability to vertically
 localize the impact of the observation on the model state.
 
 In this example where the observation is infrared (IR) radiance, the  metadata is located after
-the ``visir`` line (Note: for microwave observations the metadata would follow 'mw').  
+the ``visir`` line (Note: for microwave observations the metadata would follow ``mw``).  
 The metadata includes the azimuth and elevation angle of the satellite and the sun respectively. In this instance the sun azimuth/elevation are given missing values (-888888) because
 solar reflectance has no impact on an IR radiance observation.  Also note, the observation
 provides a 4 integer description (31/9/56/8) of the platform/satellite/sensor/channel
@@ -112,10 +113,10 @@ metadata refer to this GOES observation converter example here:
 
 .. Important ::
 
-  **It is important that the user confirms the satellite integer metadata within
+    It is important that the user confirms the satellite integer metadata within
     the obs_seq.out file matches the metadata within  rttov_sensor_db.csv.  Furthermore,
     confirm that the channel as defined in the obs_seq.out file matches the channel
-    available in the RTTOV coefficient file (.dat).  See next section for more information.**
+    available in the RTTOV coefficient file (.dat).  See next section for more information.
 
 RTTOV coefficient files
 -----------------------
@@ -146,7 +147,7 @@ file will include a list of channels (wavebands) with the associated wavelength 
   the file contains all wavelengths versus only IR wavelengths is **extremely important** because
   it will shift the value of the channel number. Recommended practice is to choose a coefficient file
   with all channels included.  If, on the other hand, you subset your coefficent file to only include
-  IR channels, you should edit your observation converter file such that the channels match.
+  IR channels, you should edit your observation converter such that the channels match.
   If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
   is unusually biased from your prior, this could be a sign there is a mismatch between the 
   obs_seq.out channel and the coefficient file channel.  
@@ -155,12 +156,14 @@ file will include a list of channels (wavebands) with the associated wavelength 
 
 Known issues:
 -------------
--  DART does not yet provide any type of bias correction
--  Cross-channel error correlations are not yet supported. A principal component approach has been discussed. For now,
-   the best bet is to use a subset of channels that are nearly independent of one another.
--  Vertical localization will need to be tuned. Turning off vertical localization may work well if you have a large
-   number of ensemble members. Using the maximum peak of the weighting function or the cloud-top may be appropriate.
-   There are also other potential approaches being investigated.
+-  DART does not provide any type of observation bias correction. It may be appropriate to preprocess your radiance
+   observations to remove systematic  bias before assimilation, using techniques such as cumulative distribution 
+   function (CDF) matching.
+-  Cross-channel error correlations are not supported. A principal component approach has been discussed. For now,
+   we recommend to use a subset of channels that are nearly independent of one another.
+-  Vertical localization will need to be tuned based on the research application. Turning off vertical localization 
+   may work well if you have a large number of ensemble members. Using the maximum peak of the channel weighting 
+   function or the cloud-top height to set a vertical location for an observation may be appropriate. 
 
 
 The namelist ``&obs_def_rttov_mod_nml`` is read from file ``input.nml``. Namelists start with an ampersand '&'
