@@ -14,7 +14,7 @@ More information about the model and instructions on how to run Icepack can be f
 
 This model is run as a separate executable from DART, and this means that you must use scripts to alternate the model and DART program execution and allow for the progression of the assimilation through multiple time windows. These scripts will be provided by DART, but they are currently still in progress. 
 
-The assimilation process can be easily executed within a single assimilation window, however. There is a test case available in /DART/models/icepack/icepack_test that contains the necessary input files to run filter, the main program in DART that performs the assimilation. There is a README file in this directory to give more details on the specifics of the test case.
+The assimilation process can be easily executed within a single assimilation window, however. There is a test case available in ``/glade/work/masmith/test_cases/icepack_test`` that contains the necessary input files to run filter, the main program in DART that performs the assimilation. There is a README file in this directory to give more details on the specifics of the test case. If you do not have access to the NSF NCAR Derecho Supercomputer, the reach out to the DAReS team at ``masmith@ucar.edu`` and we will provide you with the test case.
 
 The steps to run this example are as follows:
 
@@ -24,15 +24,18 @@ The steps to run this example are as follows:
 2.  | ``./quickbuild.sh`` (or ``quickbuild.sh nompi`` if you are not building with mpi)
     | Builds all DART executables 
 
-3.  | ``cd /DART/models/icepack/icepack_test``
+3.  | ``cp -r /glade/work/masmith/test_cases/icepack_test ..``
+    | Copy the test directory from the directory stated above to your Icepack directory
+
+4.  | ``cd ../icepack_test``
     | Navigate to the test directory
 
-4.  | In ``work/input.nml``, set ``perturb_from_single_instance = .true.`` in the
+5.  | In ``work/input.nml``, set ``perturb_from_single_instance = .true.`` in the
       ``&filter_nml``
     | This setting causes filter to perturb a single restart file to generate an
       ensemble
 
-5.  | ``./filter``
+6.  | ``./filter``
     | Runs the assimilation program, resulting in four main output files:
     |    ``analysis_mean.nc`` and ``analysis_sd`` - the mean and standard deviation of the state of all ensemble members after the assimilation
     |    ``obs_seq.final`` - the ensemble members' estimate of the observations.
@@ -49,6 +52,7 @@ Namelist
     model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE', 'vicen',
                             'QTY_SEAICE_VOLUME', 'UPDATE', 'vsnon', 'QTY_SEAICE_SNOWVOLUME',
                             'UPDATE'
+    grid_oi = 3
 /
 
 Description of each namelist entry
@@ -64,6 +68,11 @@ Description of each namelist entry
 |                              |               | mean more debug reporting.      |
 +------------------------------+---------------+---------------------------------+
 | model_state_variables        | character(*)  | List of model state variables   |
++------------------------------+---------------+---------------------------------+
+| grid_oi                      | integer       | Specifies a constant to be used |
+|                              |               | as the value for the first      |
+|                              |               | dimension in calls to           |
+|                              |               | get_dart_vector_index           |
 +------------------------------+---------------+---------------------------------+
 
 References

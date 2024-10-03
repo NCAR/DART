@@ -107,7 +107,7 @@ public :: nc_write_model_vars,    &
           read_model_time, &
           write_model_time
 
-character(len=256), parameter :: source   = 'cice-scm/model_mod.f90'
+character(len=256), parameter :: source   = 'icepack/model_mod.f90'
 
 logical, save :: module_initialized = .false.
 
