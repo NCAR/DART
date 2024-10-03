@@ -159,8 +159,7 @@ contains
 
 subroutine static_init_model()
 
-real(r8) :: x_loc
-integer  :: i, dom_id, iunit, io, ss, dd
+integer  :: iunit, io, ss, dd
 
 if ( module_initialized ) return ! only need to do this once
  
@@ -243,7 +242,6 @@ integer(i8)    :: base_offset
 integer        :: cat_index, cat_signal, icat, cat_signal_interm
 real(r8)       :: expected_aggr_conc(ens_size)
 integer        :: set_obstype
-integer        :: var_table_index
 
 !Fei---need aicen*fyn to calculate the aggregate FY concentration
 real(r8)       :: expected_conc(ens_size)
@@ -484,16 +482,10 @@ integer,             intent(in)  :: cat_signal
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
-integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
-integer  :: x_ind, y_ind
-real(r8) :: x_corners(4), y_corners(4)
-real(r8) :: p(4,ens_size), xbot(ens_size), xtop(ens_size)
 real(r8) :: work_expected_obs(ens_size)
-real(r8) :: lon_fract, lat_fract
-integer  :: quad_status
 integer  :: e, iterations, Niterations
-integer :: next_offset
 integer(i8) :: state_index
+
 if ( .not. module_initialized ) call static_init_model
 
 istatus = 0
@@ -591,7 +583,6 @@ integer, intent(in) :: domain_id
 
 integer :: NGridDimID
 integer :: tlonVarID, tlatVarID
-integer :: status
 
 character(len=256) :: filename
 
@@ -845,7 +836,7 @@ type(time_type), intent(in), optional :: adv_to_time
 
 character(len=16), parameter :: routine = 'write_model_time'
 
-integer :: io, varid, iyear, imonth, iday, ihour, imin, isec
+integer :: iyear, imonth, iday, ihour, imin, isec
 integer :: seconds
 
 if ( .not. module_initialized ) call static_init_model
