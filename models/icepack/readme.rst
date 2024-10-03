@@ -8,9 +8,9 @@ Overview
 
 DART interface modules for Icepack, the column physics of the sea ice model CICE (`https://github.com/cice-consortium/Icepack <https://github.com/cice-consortium/Icepack>`_). Icepack is maintained by the CICE Consortium.
 
-The column physics package of the sea ice model CICE, “Icepack”, is maintained by the CICE Consortium. A large portion of the physics in sea ice models can be described in a vertical column, without reference to neighboring grid cells. This code includes several options for simulating sea ice thermodynamics, mechanical redistribution (ridging) and associated area and thickness changes. In addition, the model supports a number of tracers, including thickness, enthalpy, ice age, first-year ice area, deformed ice area and volume, melt ponds, and biogeochemistry.
+A large portion of the physics in sea ice models can be described in a vertical column, without reference to neighboring grid cells. This code includes several options for simulating sea ice thermodynamics, mechanical redistribution (ridging) and associated area and thickness changes. In addition, the model supports a number of tracers, including thickness, enthalpy, ice age, first-year ice area, deformed ice area and volume, melt ponds, and biogeochemistry.
 
-More information about the model and instructions on how to run Icepack can be found in the `Icepack documentation: <https://cice-consortium-icepack.readthedocs.io/en/main/index.html>`_
+More information about the model and instructions on how to run Icepack can be found in the `Icepack documentation <https://cice-consortium-icepack.readthedocs.io/en/main/index.html>`_.
 
 This model is run as a separate executable from DART, and this means that you must use scripts to alternate the model and DART program execution and allow for the progression of the assimilation through multiple time windows. These scripts will be provided by DART, but they are currently still in progress. 
 
@@ -46,14 +46,14 @@ Namelist
 
 .. code-block:: fortran
 
-&model_nml
-    model_perturbation_amplitude = 2e-05
-    debug = 1
-    model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE', 'vicen',
+   &model_nml
+      model_perturbation_amplitude = 2e-05
+      debug = 1
+      model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE', 'vicen',
                             'QTY_SEAICE_VOLUME', 'UPDATE', 'vsnon', 'QTY_SEAICE_SNOWVOLUME',
                             'UPDATE'
-    grid_oi = 3
-/
+      grid_oi = 3
+   /
 
 Description of each namelist entry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
