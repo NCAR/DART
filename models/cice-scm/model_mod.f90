@@ -678,13 +678,12 @@ nrows = size(table,1)
 
 ngood = 0
 
-!>@todo deprecate. Remove a hidden 'default' set of variables.
-!>@     The default is provided in the input namelist.
-
-if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
-   call use_default_state_variables(state_variables)
-   string1 = 'model_nml:model_state_variables not specified using default variables'
-   call error_handler(E_MSG, 'verify_state_variables', string1, source)
+! Including this check as well because the conditionals below do not pass and cause the
+! code to error out when the model_state_variables namelist entry is completely empty
+! (model_state_variables = '')
+if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist entry provided
+   string1 = 'model_nml:model_state_variables not specified'
+   call error_handler(E_ERR, 'verify_state_variables', string1, source)
 endif
 
 MyLoop : do i = 1, nrows
@@ -738,20 +737,6 @@ MyLoop : do i = 1, nrows
 enddo MyLoop
 
 end subroutine verify_state_variables
-
-!------------------------------------------------------------------
-
-subroutine use_default_state_variables(state_variables)
-
-character(len=*),  intent(inout) :: state_variables(:)
-
-! strings must all be the same length for the gnu compiler
-state_variables( 1:3*num_state_table_columns ) = &
-   (/ 'aicen                     ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
-      'vicen                     ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
-      'vsnon                     ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    '/)
-
-end subroutine use_default_state_variables
 
 !------------------------------------------------------------------
 ! Given a DART location (referred to as "base") and a set of
