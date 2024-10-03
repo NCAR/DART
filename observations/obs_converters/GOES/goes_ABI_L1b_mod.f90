@@ -462,8 +462,9 @@ xloop: do ix=1,map%nx
          specularity = MISSING_R8
       end if
 
-      ! the RTTOV ABI coefficients start from channel 7
-      goes_channel = map%channel-6
+      ! Defines the GOES ABI wavelength channels (band_id)
+      ! Channels range from 1-16 covering UV/VIS/NIR/IR spectrum
+      goes_channel = map%channel
 
       ! add additional metadata for this obs type.  returns key to use in create call
       call set_visir_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform_id, sat_id, sensor_id, & 

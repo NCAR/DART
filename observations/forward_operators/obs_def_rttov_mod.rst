@@ -6,7 +6,7 @@ MODULE ``obs_def_rttov_mod``
 Overview
 --------
 
-DART RTTOV observation module, including the observation operators for the two primary 
+The DART RTTOV observation module, including the observation operators for the two primary 
 RTTOV-observation types -- visible/infrared radiances and microwave 
 radiances/brightness temperatures.
 
@@ -46,25 +46,124 @@ Although a model may not have the necessary inputs by itself,
 the defaults in RTTOV based on climatology can be used.
 The impact on the quality of the results should be investigated.
 
-The quanities for each observation type are defined in obs_def_rttov{13}_mod.f90, like so:
+The quanities for each observation type are defined in obs_def_rttov{13}_mod.f90, for example:
 
 .. code::
 
-   ! HIMAWARI_8_AHI_RADIANCE,      QTY_RADIANCE
+   ! HIMAWARI_9_AHI_RADIANCE,      QTY_RADIANCE
 
 If you want to change the quantity associated with an observation, for example, if you want
-to assimilate HIMAWARI_8_AHI_RADIANCE as QTY_BRIGHTNESS_TEMPERATURE, edit the QTY
-in obs_def_rttov{13}_mod.f90 and rerun quickbuild.sh.
+to assimilate HIMAWARI_9_AHI_RADIANCE as QTY_BRIGHTNESS_TEMPERATURE, edit the QTY
+in obs_def_rttov{13}_mod.f90 and rerun quickbuild.sh.  Although both spectral radiance
+(mW/cm/m^2/sr) and brightness temperature (Kelvin) quantify the same emitted/reflected
+radiance from the atmosphere, the tendency for brightness temperatures to adhere closer
+to a gaussian distribution  may improve the quality of the assimilation if using
+a DART filter type that depends on Gaussian assumptions (e.g. EAKF).  This is
+an ongoing area of research.
+
+
+
+RTTOV  Metadata
+---------------
+
+The RTTOV module ingests metadata from the ``obs_seq.out`` file in order to calculate the
+expected observed radiance.  For example, a single ``HIMAWARI_9_AHI_RADIANCE`` 
+observation in units of brightness temperature (Kelvin) looks like the following:
+
+.. code::
+
+
+   OBS            1
+    288.370817896852
+    0.000000000000000E+000
+            -1           2          -1
+  obdef
+  loc3d
+       1.766273140907288        0.1535889655351639         34000.00000000000      2
+  kind
+           304
+   visir
+     100.500000000000        46.6700000000000       -888888.000000000
+    -888888.000000000
+            31           9          56           8
+    -888888.000000000
+             1
+       0     154166
+     1.00000000000000
+
+
+Please note, that in this example the radiance observation was assigned a  vertical level (34000 Pa) 
+with the ``VERTISPRESSURE`` (integer = 2) vertical coordinate. 
+Although radiance/BT observations are technically representative of the entire atmospheric
+column and not a single vertical level, for some applications where specific channels (wavelength)
+are especially sensitive to constituents at particular atmospheric levels, assigning
+a vertical level to the observation may improve the skill of the assimilation forecast.  This is an ongoing
+area of research. As an alternative, it is also common to leave the vertical level
+as undefined (VERTISUNDEF, integer = -2), however, this limits the ability to vertically
+localize the impact of the observation on the model state.
+
+In this example where the observation is infrared (IR) radiance, the  metadata is located after
+the ``visir`` line (Note: for microwave observations the metadata would follow ``mw``).  
+The metadata includes the azimuth and elevation angle of the satellite and the sun respectively. In this instance the sun azimuth/elevation are given missing values (-888888) because
+solar reflectance has no impact on an IR radiance observation.  Also note, the observation
+provides a 4 integer description (31/9/56/8) of the platform/satellite/sensor/channel
+combination specific to this satellite observation.  For more information on this
+metadata refer to this GOES observation converter example here: 
+:doc:`../../observations/obs_converters/GOES/README`
+
+.. Important ::
+
+    It is important that the user confirms the satellite integer metadata within
+    the obs_seq.out file matches the metadata within  rttov_sensor_db.csv.  Furthermore,
+    confirm that the channel as defined in the obs_seq.out file matches the channel
+    available in the RTTOV coefficient file (.dat).  See next section for more information.
+
+RTTOV coefficient files
+-----------------------
+
+The RTTOV coefficent file (.dat) contains the appropriate parameter values for a specific satellite
+radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficent
+file.  For the ``HIMAWARI_9_AHI_RADIANCE`` observation type, for example, the following information
+is provided within ``rttov_sensor_db.csv``:
+
+.. code::
+
+   HIMAWARI_9_AHI	31	9	56	ir	rtcoef_himawari_9_ahi.dat
+
+The coefficent file (.dat) is included with the RTTOV installation and can be found at the
+path  ``${RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
+should be included in your run folder at runtime. Additional coefficent files for a given
+satellite sensor may be required.
+
+It is good practice to always view your coefficent file (.dat) to confirm that the 
+channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficent
+file will include a list of channels (wavebands) with the associated wavelength (microns).
+
+
+.. Important ::
+
+  The RTTOV package includes multiple coefficent files (e.g. all wavelengths, IR only, etc.)  that 
+  contain the appropriate parameter data for each satellite/sensor/channel combination. Whether
+  the file contains all wavelengths versus only IR wavelengths is **extremely important** because
+  it will shift the value of the channel number. Recommended practice is to choose a coefficient file
+  with all channels included.  If, on the other hand, you subset your coefficent file to only include
+  IR channels, you should edit your observation converter such that the channels match.
+  If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
+  is unusually biased from your prior, this could be a sign there is a mismatch between the 
+  obs_seq.out channel and the coefficient file channel.  
+
 
 
 Known issues:
-
--  DART does not yet provide any type of bias correction
--  Cross-channel error correlations are not yet supported. A principal component approach has been discussed. For now,
-   the best bet is to use a subset of channels that are nearly independent of one another.
--  Vertical localization will need to be tuned. Turning off vertical localization may work well if you have a large
-   number of ensemble members. Using the maximum peak of the weighting function or the cloud-top may be appropriate.
-   There are also other potential approaches being investigated.
+-------------
+-  DART does not provide any type of observation bias correction. It may be appropriate to preprocess your radiance
+   observations to remove systematic  bias before assimilation, using techniques such as cumulative distribution 
+   function (CDF) matching.
+-  Cross-channel error correlations are not supported. A principal component approach has been discussed. For now,
+   we recommend to use a subset of channels that are nearly independent of one another.
+-  Vertical localization will need to be tuned based on the research application. Turning off vertical localization 
+   may work well if you have a large number of ensemble members. Using the maximum peak of the channel weighting 
+   function or the cloud-top height to set a vertical location for an observation may be appropriate. 
 
 
 The namelist ``&obs_def_rttov_mod_nml`` is read from file ``input.nml``. Namelists start with an ampersand '&'
@@ -159,11 +258,13 @@ RTTOV v12 Namelist
    +------------------------+--------------------+----------------------------------------------------------------------+
    | Item                   | Type               | Description                                                          |
    +========================+====================+======================================================================+
-   | rttov_sensor_db_file   | character(len=512) | The location of the RTTOV sensor database. The format for the        |
-   |                        |                    | database is a comma-separated file. The columns of the database are  |
-   |                        |                    | the DART observation-kind, the platform/satellite/sensor ID, the     |
-   |                        |                    | observation type, the coefficient file, and a comma-separated list   |
-   |                        |                    | of RTTOV channels to use for this observation type.                  |
+   | rttov_sensor_db_file   | character(len=512) | The location of the DART file with RTTOV sensor metadata. The format |
+   |                        |                    | is a comma-separated file. The columns are the DART                  |
+   |                        |                    | observation type, the platform/satellite/sensor ID, the              |
+   |                        |                    | wavelength band, the coefficient file, and a comma-separated list    |
+   |                        |                    | of RTTOV channels to use for this observation type. The default file |
+   |                        |                    | does not provide a list of channels, thus default behavior is to     |
+   |                        |                    | make all channels available.                                         |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | first_lvl_is_sfc       | logical            | Whether the first level of the model represents the surface (true)   |
    |                        |                    | or the top of the atmosphere (false).                                |
