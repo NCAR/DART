@@ -8,9 +8,9 @@ use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength, vtablenamel
 use time_manager_mod, only : time_type, set_calendar_type, get_time, set_date, get_date
 use     location_mod, only : location_type, get_close_type, get_close_obs, get_dist, &
                              convert_vertical_obs, convert_vertical_state, &
-                             set_location, set_location_missing, VERTISLEVEL, &
-                             get_location, loc_get_close_state => get_close_state
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
+                             set_location, VERTISLEVEL, get_location, &
+                             loc_get_close_state => get_close_state
+use    utilities_mod, only : error_handler, E_ERR, E_MSG, logfileunit, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term, &
                              find_namelist_in_file, check_namelist_read,to_upper, &
                              file_exist
@@ -93,8 +93,7 @@ public :: get_model_size,         &
           static_init_model,      &
           nc_write_model_atts, &
           init_time, &
-          init_conditions, &
-          check_sfctemp_var
+          init_conditions
 
 ! required routines where code is in other modules
 public :: nc_write_model_vars,    &
@@ -861,21 +860,6 @@ call nc_add_global_attribute(ncid, 'sec'   , seconds)
 call nc_end_define_mode(ncid)
 
 end subroutine write_model_time
-
-!-----------------------------------------------------------------
-! Check which surface temperature state variable is in restart
-
-subroutine check_sfctemp_var(flag)
-
-logical, intent(inout) :: flag
-
-if (any(variable_table(:,1)=='Tsfc')) then
-  flag = .true.
-else
-  flag = .false.
-endif
-
-end subroutine check_sfctemp_var
 
 !===================================================================
 ! End of model_mod
