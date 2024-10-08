@@ -4,7 +4,6 @@
 
 module model_mod
 
-! Modules that are absolutely required for use are listed
 use        types_mod, only : i4, r8, i8, MISSING_R8, metadatalength, vtablenamelength
 use time_manager_mod, only : time_type, set_calendar_type, get_time, set_date, get_date
 use     location_mod, only : location_type, get_close_type, get_close_obs, get_dist, &
