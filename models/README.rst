@@ -19,6 +19,7 @@ DART supported models:
 - :doc:`FESOM/readme`
 - :doc:`gitm/readme`
 - :doc:`ikeda/readme`
+- :doc:`icepack/readme`
 - :doc:`LMDZ/readme`
 - :doc:`lorenz_04/readme`
 - :doc:`lorenz_63/readme`
