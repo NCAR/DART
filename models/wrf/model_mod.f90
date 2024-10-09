@@ -695,6 +695,11 @@ WRFDomains : do id=1,num_domains
    ! JPH now that we have the domain ID just go ahead and get type indices once
    ! NOTE: this is not strictly necessary - can use only stagger info in the future (???)
 
+   ! If using WRF temperature variable 'T' instead of 'THM' fail immediately to 
+   ! prevent boundscheck errors. For WRFv4 and later version variable 'T' is 
+   ! diagnostic, thus updating the 'THM' variable (prognostic) is preferred.
+
+
    if (get_type_ind_from_type_string(id,'T') >=0) then
       
       write(errstring,*)'WRF temperature variable T in model_nml must be replaced', &
@@ -742,23 +747,6 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
    !wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'VT_DBZ_WT')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
-
-   ! If using WRF temperature variable 'T' instead of 'THM' fail immediately to 
-   ! prevent boundscheck errors. For WRFv4 and later version variable 'T' is 
-   ! diagnostic, thus updating the 'THM' variable (prognostic) is preferred.
-
-   if ( wrf%dom(id)%type_t >= 0 .and. get_type_ind_from_type_string(id,'T') >=0) then
-
-      write(errstring,*)'WRF temperature variable T in model_nml must be replaced &
-                         with THM for WRFv4 and later'
-      call error_handler(E_ERR,'static_init_model', errstring, source, revision, revdate)
-
-   endif
-
-
-
-
-
 
    ! variable bound table for setting upper and lower bounds of variables 
    var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,1) = wrf%dom(id)%lower_bound
