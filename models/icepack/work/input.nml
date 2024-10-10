@@ -88,14 +88,6 @@
    silence                      = .false.,
    /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'
-   /
-
 &ensemble_manager_nml
    /
 
@@ -134,9 +126,9 @@
 &model_nml
     model_perturbation_amplitude = 2e-05
     debug = 1
-    model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE', 'vicen',
-                            'QTY_SEAICE_VOLUME', 'UPDATE', 'vsnon', 'QTY_SEAICE_SNOWVOLUME',
-                            'UPDATE'
+    model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE',
+                            'vicen', 'QTY_SEAICE_VOLUME', 'UPDATE',
+                            'vsnon', 'QTY_SEAICE_SNOWVOLUME', 'UPDATE'
 /
 
 &dart_to_cice_nml

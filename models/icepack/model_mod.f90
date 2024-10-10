@@ -125,7 +125,7 @@ integer, parameter :: VAR_NAME_INDEX = 1
 integer, parameter :: VAR_QTY_INDEX = 2
 integer, parameter :: VAR_UPDATE_INDEX = 3
 
-integer  :: model_size
+integer(i8) :: model_size
 
 real(r8), allocatable :: TLAT(:), TLON(:)
 
@@ -261,15 +261,15 @@ if (obs_qty == QTY_SEAICE_CATEGORY) then
    if (cat_index <= Ncat) then
       istatus      = 0
       expected_obs = cat_index
-      RETURN
+      return
    endif
 endif
 if (debug > 1) then
    print *, 'requesting interpolation of ', obs_qty, ' at ', llon, llat, cat_index
 endif
 
-SELECT CASE (obs_qty)
-   CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
+select case (obs_qty)
+   case (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       if (any(variable_table(:,1)=='hi')) then
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_THICKNESS))
@@ -282,7 +282,7 @@ SELECT CASE (obs_qty)
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))
         base_offset = cat_index
       endif
-   CASE (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
+   case (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
       if (any(variable_table(:,1)=='hs')) then
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_SNOWDEPTH))
@@ -295,19 +295,19 @@ SELECT CASE (obs_qty)
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))
         base_offset = cat_index
       endif
-   CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
+   case (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
       set_obsqty = obs_qty
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))
-   CASE (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
+   case (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
       set_obsqty = obs_qty
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))
-   CASE (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
+   case (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
       set_obsqty = obs_qty
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))
-   CASE (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
+   case (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
       if (any(variable_table(:,1)=='Tsfc')) then
         cat_signal = 1 ! for extra special procedure to aggregate
         base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_SURFACETEMP))
@@ -318,12 +318,12 @@ SELECT CASE (obs_qty)
         set_obsqty = QTY_SEAICE_SURFACETEMP
         base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
       endif
-   CASE (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
+   case (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
       cat_signal = 1 ! for extra special procedure to aggregate
       set_obsqty = obs_qty
       !base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SOM_TEMPERATURE))
       base_offset = cat_index
-   CASE (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
+   case (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
          QTY_SEAICE_FY       , &
          QTY_SEAICE_VOLUME         , &
          QTY_SEAICE_SNOWVOLUME     , &
@@ -363,11 +363,11 @@ SELECT CASE (obs_qty)
       base_offset = cat_index
       set_obsqty = obs_qty
       cat_signal = 1 ! now same as boring 2d field
-  CASE DEFAULT
+   case default
       ! Not a legal type for interpolation, return istatus error
       istatus = 15
       return
-END SELECT
+end select
 
 if (cat_signal == -2) then
    temp = 0.0_r8
@@ -702,16 +702,16 @@ MyLoop : do i = 1, nrows
 
    ! Make sure the update variable has a valid name
    if ( present(update_var) )then
-      SELECT CASE (update)
-         CASE ('UPDATE')
+      select case (update)
+         case ('UPDATE')
             update_var(i) = .true.
-         CASE ('NO_COPY_BACK')
+         case ('NO_COPY_BACK')
             update_var(i) = .false.
-         CASE DEFAULT
+         case default
             write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
             write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
             call error_handler(E_ERR, 'verify_state_variables', string1, source, text2=string2)
-      END SELECT
+      end select
    endif
 
    ! Record the contents of the DART state vector

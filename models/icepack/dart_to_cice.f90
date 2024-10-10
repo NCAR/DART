@@ -397,11 +397,11 @@ function enthalpy_mush(zTin, zSin) result(zqin)
          phi     ! ice liquid fraction
 
 ! from shr_const_mod.F90
-    real(r8),parameter :: SHR_CONST_CPSW  = 3.996e3_R8   ! specific heat of sea water ~ J/kg/K
-    real(R8),parameter :: SHR_CONST_CPICE = 2.11727e3_R8 ! specific heat of fresh ice ~ J/kg/K
-    real(R8),parameter :: SHR_CONST_RHOSW = 1.026e3_R8   ! density of sea water ~ kg/m^3
-    real(R8),parameter :: SHR_CONST_RHOICE= 0.917e3_R8   ! density of ice        ~ kg/m^3
-    real(R8),parameter :: SHR_CONST_LATICE= 3.337e5_R8   ! latent heat of fusion ~ J/kg
+    real(r8),parameter :: SHR_CONST_CPSW  = 3.996e3_r8   ! specific heat of sea water ~ J/kg/K
+    real(r8),parameter :: SHR_CONST_CPICE = 2.11727e3_r8 ! specific heat of fresh ice ~ J/kg/K
+    real(r8),parameter :: SHR_CONST_RHOSW = 1.026e3_r8   ! density of sea water ~ kg/m^3
+    real(r8),parameter :: SHR_CONST_RHOICE= 0.917e3_r8   ! density of ice        ~ kg/m^3
+    real(r8),parameter :: SHR_CONST_LATICE= 3.337e5_r8   ! latent heat of fusion ~ J/kg
 
 
 ! from cice/src/drivers/cesm/ice_constants.F90
