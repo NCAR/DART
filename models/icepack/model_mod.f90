@@ -167,7 +167,6 @@ call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(*, nml=model_nml)
 
@@ -224,22 +223,22 @@ end function get_model_size
 ! returned as 0 unless there is some problem in computing the 
 ! interpolation, in which case an alternate value should be returned.
 
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus, thick_flag)
+subroutine model_interpolate(state_handle, ens_size, location, obs_qty, expected_obs, istatus, thick_flag)
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_type
+integer,             intent(in) :: obs_qty
 real(r8),           intent(out) :: expected_obs(ens_size) ! array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
-logical,optional,    intent(inout) :: thick_flag
+logical,optional, intent(inout) :: thick_flag
 
 !local vars
 real(r8)       :: loc_array(3), llon, llat
 integer(i8)    :: base_offset
 integer        :: cat_index, cat_signal, icat, cat_signal_interm
 real(r8)       :: expected_aggr_conc(ens_size)
-integer        :: set_obstype
+integer        :: set_obsqty
 
 !Fei---need aicen*fyn to calculate the aggregate FY concentration
 real(r8)       :: expected_conc(ens_size)
@@ -258,7 +257,7 @@ llon    = loc_array(1)
 llat    = loc_array(2)
 cat_index = int(loc_array(3))
 
-if (obs_type == QTY_SEAICE_CATEGORY) then
+if (obs_qty == QTY_SEAICE_CATEGORY) then
    if (cat_index <= Ncat) then
       istatus      = 0
       expected_obs = cat_index
@@ -266,19 +265,19 @@ if (obs_type == QTY_SEAICE_CATEGORY) then
    endif
 endif
 if (debug > 1) then
-   print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, cat_index
+   print *, 'requesting interpolation of ', obs_qty, ' at ', llon, llat, cat_index
 endif
 
-SELECT CASE (obs_type)
+SELECT CASE (obs_qty)
    CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       if (any(variable_table(:,1)=='hi')) then
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_THICKNESS))
         thick_flag = .true.
         base_offset = cat_index
-        set_obstype = obs_type
+        set_obsqty = obs_qty
       else
-        set_obstype = QTY_SEAICE_VOLUME
+        set_obsqty = QTY_SEAICE_VOLUME
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))
         base_offset = cat_index
@@ -289,39 +288,39 @@ SELECT CASE (obs_type)
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_SNOWDEPTH))
         base_offset = cat_index
         thick_flag = .true.
-        set_obstype = obs_type
+        set_obsqty = obs_qty
       else
-        set_obstype = QTY_SEAICE_SNOWVOLUME
+        set_obsqty = QTY_SEAICE_SNOWVOLUME
         cat_signal = 1 ! for extra special procedure to aggregate
         !base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))
         base_offset = cat_index
       endif
    CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      set_obstype = obs_type
+      set_obsqty = obs_qty
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))
    CASE (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      set_obstype = obs_type
+      set_obsqty = obs_qty
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))
    CASE (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      set_obstype = obs_type
+      set_obsqty = obs_qty
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))
    CASE (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
       if (any(variable_table(:,1)=='Tsfc')) then
         cat_signal = 1 ! for extra special procedure to aggregate
         base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_AGREG_SURFACETEMP))
         thick_flag = .true.
-        set_obstype = obs_type
+        set_obsqty = obs_qty
       else
         cat_signal = -3
-        set_obstype = QTY_SEAICE_SURFACETEMP
+        set_obsqty = QTY_SEAICE_SURFACETEMP
         base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
       endif
    CASE (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
       cat_signal = 1 ! for extra special procedure to aggregate
-      set_obstype = obs_type
+      set_obsqty = obs_qty
       !base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SOM_TEMPERATURE))
       base_offset = cat_index
    CASE (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
@@ -359,10 +358,10 @@ SELECT CASE (obs_type)
       ! move pointer to the particular category
       ! then treat as 2d field in lon_lat_interp
       
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_qty))
       base_offset = base_offset + (cat_index-1)
       base_offset = cat_index
-      set_obstype = obs_type
+      set_obsqty = obs_qty
       cat_signal = 1 ! now same as boring 2d field
   CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
@@ -378,12 +377,12 @@ if (cat_signal == -2) then
       cat_signal_interm = 1
       base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (icat-1) * Nx
-      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal_interm, expected_conc, istatus)
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obsqty, cat_signal_interm, expected_conc, istatus)
       !reads in fyn
       cat_signal_interm = 1
       base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_FY))
       base_offset = base_offset + (icat-1) * Nx
-      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal_interm, expected_fy, istatus)
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obsqty, cat_signal_interm, expected_fy, istatus)
    temp = temp + expected_conc * expected_fy  !sum(aicen*fyn) = FY % over ice
    temp1= temp1+ expected_conc                        !sum(aicen) = aice
 
@@ -406,12 +405,12 @@ else if (cat_signal == -3 ) then
       cat_signal_interm = 1
       base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (icat-1) * Nx
-      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal_interm, expected_conc, istatus)
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obsqty, cat_signal_interm, expected_conc, istatus)
       !reads in Tsfcn
       cat_signal_interm = 1
       base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
       base_offset = base_offset + (icat-1) * Nx
-      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal_interm, expected_tsfc, istatus)
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obsqty, cat_signal_interm, expected_tsfc, istatus)
       if ((any(expected_conc<0.0) .or. any(expected_conc>1.0)) .and. (debug > 1)) then
       print*,'obstype TSFC expected sicn:',expected_conc
       print*,'TSFC sicn lat lon:',llat,llon
@@ -431,7 +430,7 @@ else if (cat_signal == -3 ) then
       print*,'temp1:',temp1
    endif
 else
-    call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal, expected_obs, istatus)
+    call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obsqty, cat_signal, expected_obs, istatus)
     
       if (any(expected_obs<0.0) .and. (debug > 1)) then
       print*,'obstype SIC expected concs:',expected_obs
@@ -447,7 +446,7 @@ if (cat_signal == -1) then
       ! we need to know the aggregate sea ice concentration for these special cases
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (cat_index-1)
-      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obstype, cat_signal, expected_aggr_conc, istatus)
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, set_obsqty, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
 
       if ((any(expected_aggr_conc<0.0) .or. any(expected_aggr_conc>1.0)) .and. (debug > 1)) then
@@ -460,7 +459,7 @@ endif
 if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus, size(expected_obs)
 
 ! This should be the result of the interpolation of a
-! given obs_type of variable at the given location.
+! given obs_qty of variable at the given location.
 
 ! The return code for successful return should be 0. 
 ! Any positive number is an error.
@@ -470,29 +469,29 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
-subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, cat_signal, expected_obs, istatus)
+subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, qty, cat_signal, expected_obs, istatus)
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 integer(i8),         intent(in)  :: offset
 real(r8),            intent(in)  :: lon, lat
-integer,             intent(in)  :: var_type
+integer,             intent(in)  :: qty
 integer,             intent(in)  :: cat_signal
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
 real(r8) :: work_expected_obs(ens_size)
-integer  :: e, iterations, Niterations
+integer  :: var_id, iterations, Niterations
 integer(i8) :: state_index
 
 if ( .not. module_initialized ) call static_init_model
 
 istatus = 0
-if (var_type == 14) then
-  e = 1
-else if (var_type == 15) then
-  e = 2
-else if (var_type == 16) then
-  e = 3
+if (qty == 14) then
+  var_id = 1
+else if (qty == 15) then
+  var_id = 2
+else if (qty == 16) then
+  var_id = 3
 endif
 if ( cat_signal < 1 )  then
    Niterations = Ncat ! only iterate if aggregating over all types
@@ -509,7 +508,7 @@ do iterations = 1, Niterations
    ! in future versions of dart.)
    !next_offset = offset + (iterations-1)*Nx 
    !print*,'offset',offset
-   state_index = get_dart_vector_index(grid_oi,int(offset,i4),1, domain_id, e)
+   state_index = get_dart_vector_index(grid_oi,int(offset,i4),1, domain_id, var_id)
    work_expected_obs = get_state(state_index,state_handle)
    expected_obs = expected_obs+work_expected_obs
 enddo
@@ -519,11 +518,11 @@ end subroutine lon_lat_interpolate
 ! Given an integer index into the state vector structure, returns 
 ! the associated location.
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: var_type
+integer,             intent(out), optional :: qty
 
 real(r8) :: lat, lon, rcat
 integer  :: ni_index, hold_index, cat_index, local_var, var_id
@@ -541,8 +540,8 @@ if (debug > 5) print *, 'lon, lat, cat_index = ', lon, lat, cat_index
 rcat     = cat_index*1.0_r8
 location = set_location(lon, lat, rcat, VERTISLEVEL)
 
-if (present(var_type)) then
-   var_type = local_var
+if (present(qty)) then
+   qty = local_var
 endif
 
 end subroutine get_state_meta_data
@@ -552,13 +551,13 @@ end subroutine get_state_meta_data
 ! and both the starting offset for this kind, as well as the offset into
 ! the block of this kind.
 
-subroutine get_state_kind(var_ind, var_type)
+subroutine get_state_kind(var_ind, qty)
  integer, intent(in)  :: var_ind
- integer, intent(out) :: var_type
+ integer, intent(out) :: qty
 
 if ( .not. module_initialized ) call static_init_model
 
-var_type = state_kinds_list(var_ind)
+qty = state_kinds_list(var_ind)
 
 end subroutine get_state_kind
 
