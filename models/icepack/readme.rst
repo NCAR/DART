@@ -49,9 +49,9 @@ Namelist
    &model_nml
       model_perturbation_amplitude = 2e-05
       debug = 1
-      model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE', 'vicen',
-                            'QTY_SEAICE_VOLUME', 'UPDATE', 'vsnon', 'QTY_SEAICE_SNOWVOLUME',
-                            'UPDATE'
+      model_state_variables = 'aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE',
+                              'vicen', 'QTY_SEAICE_VOLUME', 'UPDATE',
+                              'vsnon', 'QTY_SEAICE_SNOWVOLUME', 'UPDATE'
       grid_oi = 3
    /
 
