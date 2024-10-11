@@ -112,7 +112,8 @@ use state_structure_mod, only :  add_domain, get_model_variable_indices, &
                                  state_structure_info, get_index_start, get_index_end, &
                                  get_num_variables, get_domain_size, get_varid_from_varname, &
                                  get_variable_name, get_num_dims, get_dim_lengths, &
-                                 get_dart_vector_index, get_num_varids_from_kind
+                                 get_dart_vector_index, get_num_varids_from_kind, &
+                                 get_dim_name
 
 
 implicit none
@@ -522,7 +523,6 @@ anl_domid = add_domain(init_template_filename, nfields,           &
                        clamp_vals = variable_bounds(1:nfields,:) )
 
 model_size = get_domain_size(anl_domid)
-print*, 'model size = ', model_size
 
 lbc_nfields = 0
 
@@ -718,31 +718,83 @@ end subroutine read_grid
 
 !------------------------------------------------------------------
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, qty)
 
-! given an index into the state vector, return its location and
-! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
+! Given an index into the state vector, return its location and
+! optionally the qty
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, optional,   intent(out) :: var_type
+integer, optional,   intent(out) :: qty
 
 integer  :: nzp, iloc, vloc, nf, ndim
-real(r8) :: height
+integer  :: index, i, j, k, dom_id, var_id, qty_local, vert, cell, level
+real(r8) :: lon, lat, height
 type(location_type) :: new_location
 
 if ( .not. module_initialized ) call static_init_model
 
-!call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
+call get_model_variable_indices(index_in, i, j, k, dom_id=dom_id, var_id=var_id, kind_index=qty_local)
 
-!nzp  = get_num_vert_levels() !  HK @todo
+! Need to find if the variable is 2d (1d netcdf) or 3d (2d netcdf) 
+! Need to find if variable is on cells or edges
+! Need to find if variable is on nVertLevels or nVertLevelsP1
 
-if (present(var_type)) then
-!   var_type = dart_kind
+if (get_num_dims(dom_id, var_id) == 1) then  ! 2d (1d netcdf) variable: (cells)
+   cell = i
+   level = 1
+   vert = VERTISSURFACE
+   if (on_edge(dom_id, var_id)) then
+      lon = lonEdge(cell)
+      lat = latEdge(cell)
+      height = zGridEdge(level, cell)
+   else
+      lon = lonCell(cell)
+      lat = latCell(cell)
+      height = zGridFace(level, cell) !HK 2D on face in original code
+   endif
+
+else ! 2d (1d netcdf) variable: (levels, cells)
+   cell = j
+   level = i
+   vert = VERTISHEIGHT
+   if (on_edge(dom_id, var_id)) then
+      lon = lonEdge(cell)
+      lat = latEdge(cell)
+      height = zGridEdge(level, cell)
+   else
+      lon = lonCell(cell)
+      lat = latCell(cell)
+      if (get_dim_name(dom_id, var_id, 1) == 'nVertLevels') then
+         height = zGridCenter(level, cell)
+      else
+         height = zGridFace(level, cell) 
+      endif
+   endif
+endif
+
+location = set_location(lon, lat, height, vert)
+
+if (present(qty)) then
+   qty = qty_local
 endif
 
 end subroutine get_state_meta_data
+
+!------------------------------------------------------------------
+function on_edge(dom, var)
+
+integer, intent(in) :: dom, var
+logical :: on_edge
+
+if (get_num_dims(dom, var) == 1) then 
+   on_edge = ( get_dim_name(dom, var, 1) == 'nEdges' ) 
+else
+   on_edge = ( get_dim_name(dom, var, 2) == 'nEdges' ) 
+endif
+
+end function on_edge
+
 
 !------------------------------------------------------------------
 !> given a state vector, a location, and a QTY_xxx, return the
