@@ -1,0 +1,78 @@
+
+# Notes for model_nml:
+# (1) vert_localization_coord must be one of:
+#     1 = model level
+#     2 = pressure
+#     3 = height
+# (2) see bottom of this file for explanations of polar, periodic_x, 
+#     periodic_y, and scm
+# (3) calendar = 3 is GREGORIAN, which is what WRF uses.
+# (4) if 'default_state_variables' is .true. the model_mod.f90 code will
+#     fill the state variable table with the following wrf vars: 
+#        U, V, W, PH, T, MU
+#     you must set it to false before you change the value 
+#     of 'wrf_state_variables' and have it take effect.
+# (5) the format for 'wrf_state_variables' is an array of 5 strings:
+#     wrf netcdf variable name, dart QTY_xxx string, type string (must be 
+#     unique, will soon be obsolete, we hope), 'UPDATE', and '999' if the 
+#     array is part of all domains.  otherwise, it is a string with the domain
+#     numbers (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
+#   example:
+# wrf_state_variables='U','QTY_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
+#                     'V','QTY_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
+#                     'W','QTY_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
+#                     'T','QTY_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+#                     'PH','QTY_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
+#                     'MU','QTY_PRESSURE','TYPE_MU','UPDATE','999',
+#                     'QVAPOR','QTY_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+#                     'QCLOUD','QTY_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
+#                     'QRAIN','QTY_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
+#                     'U10','QTY_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
+#                     'V10','QTY_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
+#                     'T2','QTY_TEMPERATURE','TYPE_T2','UPDATE','999',
+#                     'TH2','QTY_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
+#                     'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
+#                     'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
+# (6) the format for 'wrf_state_bounds' is an array of 4 strings:
+#     wrf netcdf variable name, minimum value, maximum value, and either
+#     FAIL or CLAMP.  FAIL will halt the program if an out of range value
+#     is detected.  CLAMP will set out of range values to the min or max.
+#     The special string 'NULL' will map to plus or minus infinity and will
+#     not change the values.  arrays not listed in this table will not
+#     be changed as they are read or written.
+
+
+&model_nml
+   default_state_variables     = .true.
+   wrf_state_variables         = 'NULL'
+   wrf_state_bounds            = 'NULL'
+   num_domains                 = 1
+   calendar_type               = 3
+   assimilation_period_seconds = 21600
+   allow_obs_below_vol         = .false.
+   vert_localization_coord     = 3
+   center_search_half_length   = 500000.
+   center_spline_grid_scale    = 10
+   circulation_pres_level      = 80000.0
+   circulation_radius          = 108000.0
+   sfc_elev_max_diff           = -1.0
+   polar                       = .false.
+   periodic_x                  = .false.
+   periodic_y                  = .false.
+   scm                         = .false.
+   allow_perturbed_ics         = .false.
+ /
+
+# polar and periodic_x are used in global wrf.  if polar is true, the 
+# grid interpolation routines will wrap over the north & south poles.  
+# if periodic_x is true, when the east and west edges of the grid are
+# reached the interpolation will wrap.  note this is a separate issue
+# from regional models which cross the GMT line; those grids are marked
+# as having a negative offset and do not need to wrap; this flag controls
+# what happens when the edges of the grid are reached.
+
+# the scm flag is used for the 'single column model' version of WRF.
+# it needs the periodic_x and periodic_y flags set to true, in which
+# case the X and Y directions are periodic; no collapsing of the grid
+# into a single location like the 3d-spherical polar flag implies.
+
