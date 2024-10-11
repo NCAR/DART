@@ -27,11 +27,11 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              get_next_filename, E_ERR, error_handler
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
-use direct_netcdf_mod,only : read_transpose, read_variables
-use        model_mod, only : static_init_model, statevector_to_analysis_file, &
+use direct_netcdf_mod,only : read_variables  !HK read_variables?!
+use        model_mod, only : static_init_model, &
                              get_model_size, get_init_template_filename,      &
                              get_analysis_time, statevector_to_boundary_file, &
-                             print_variable_ranges, &  ! , get_num_vars
+                             print_variable_ranges, &  
                              set_lbc_variables, force_u_into_state
 use state_structure_mod, only : get_num_variables, get_domain_size
 
@@ -44,10 +44,7 @@ use netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/update_bc.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -97,19 +94,19 @@ call check_namelist_read(iunit, io, "update_bc_nml")
 ! get the first member file to use as a template
 bdy_template_filename = get_next_filename(update_boundary_file_list, 1)
 
-! Note that force_u_into_state should be called before static_init_model, which is unusual.
+! Note that force_u_into_state should be called before static_init_model, which is unusual.  !HK ?
 call force_u_into_state()
 call set_lbc_variables(bdy_template_filename)
 
 call static_init_model()
-call get_init_template_filename(static_filename)
+call get_init_template_filename(static_filename) !HK ?
 
 x_size = get_model_size()
-allocate(statevector(x_size))
+allocate(statevector(x_size))  !HK whole state vector
 
 ! use get_num_variables() after setting the domains
 ! separate number for analysis file, boundary file
-nanlvars = get_num_variables(1)
+nanlvars = get_num_variables(1) !HK 1,2, is domain number hardcoed?
 nbdyvars = get_num_variables(2)
 
 write(*,*)
@@ -119,7 +116,7 @@ write(*,*) 'update_bc: Updating ',nbdyvars,' variables'
 ! Reads lists of input mpas (prior) and filter (analysis) files 
 !----------------------------------------------------------------------
 filenum = 1
-fileloop: do        ! until out of files
+fileloop: do        ! until out of files  !HK loop around files, why not run this code in parallel?
 
   ! get a file name from the list, one at a time.
   next_infile  = get_next_filename(update_analysis_file_list, filenum)
