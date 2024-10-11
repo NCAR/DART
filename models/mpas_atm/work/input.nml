@@ -169,7 +169,7 @@
 
 
 &model_nml
-   init_template_filename       = 'init.nc'
+   init_template_filename       = 'restart.2014-09-15_00.00.00.nc'
    assimilation_period_days     = 0
    assimilation_period_seconds  = 21600
    model_perturbation_amplitude = 0.0001
@@ -178,7 +178,6 @@
    highest_obs_pressure_mb      = 1.0
    sfc_elev_max_diff            = 100.
    log_p_vert_interp            = .false.
-   debug                        = 0
    use_u_for_wind               = .false.
    use_rbf_option               = 2
    update_u_from_reconstruct    = .true.
@@ -368,7 +367,7 @@
 &model_mod_check_nml
    input_state_files     = 'init.nc'
    output_state_files    = 'check_me.nc'
-   test1thru             = 0
+   test1thru             = 1
    run_tests             = 1,2,3,4,5,7
    x_ind                 = 300
    loc_of_interest       = 240.0, 0.0, 10000.0

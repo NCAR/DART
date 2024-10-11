@@ -60,9 +60,9 @@ use xyz_location_mod, only : xyz_location_type, xyz_set_location, xyz_get_locati
                              xyz_get_close_type, xyz_get_close_init, xyz_get_close_destroy, &
                              xyz_find_nearest, xyz_use_great_circle_dist
 
-use    utilities_mod, only : register_module, error_handler, get_unit,         &
+use    utilities_mod, only : error_handler, get_unit,         &
                              E_ERR, E_WARN, E_MSG, E_ALLMSG, logfileunit,      &
-                             do_output, to_upper, nmlfileunit,                 &
+                             to_upper, nmlfileunit,                 &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file, do_nml_file,            &
@@ -104,7 +104,7 @@ use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars
 
-use distributed_state_mod
+use distributed_state_mod, only : get_state
 
 use netcdf
 
@@ -123,7 +123,6 @@ private
 
 ! routines in this list have code in this module
 public :: get_model_size,                 &
-          get_num_vars,                   &
           get_state_meta_data,            &
           model_interpolate,              &
           shortest_time_between_assimilations, &
@@ -148,16 +147,12 @@ public :: init_time,                      &
 ! the interfaces here can be changed as appropriate.
 
 public :: get_init_template_filename,   &
-          analysis_file_to_statevector, &
-          statevector_to_analysis_file, &
-          statevector_to_boundary_file, &
           get_analysis_time,            &
           get_grid_dims,                &
           get_xland,                    &
           get_surftype,                 &
           get_cell_center_coords,       &
           get_bdy_mask,                 &
-          print_variable_ranges,        &
           find_closest_cell_center,     &
           find_triangle,                &
           read_2d_from_nc_file,         &
@@ -177,13 +172,10 @@ public :: set_lbc_variables, &
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 ! module global storage; maintains values between calls, accessible by
 ! any subroutine
 character(len=512) :: string1, string2, string3
-character(len=256) :: locstring
 logical, save :: module_initialized = .false.
 
 ! length of an mpas (also wrf) time string:  YYYY-MM-DD_hh:mm:ss
@@ -234,8 +226,6 @@ logical            :: log_p_vert_interp = .true.     ! if true, interpolate vert
 character(len=32)  :: calendar = 'Gregorian'
 real(r8)           :: highest_obs_pressure_mb   = 100.0_r8    ! do not assimilate obs higher than this level.
 real(r8)           :: sfc_elev_max_diff = -1.0_r8    ! do not assimilate if |model - station| height is larger than this [m].
-integer            :: xyzdebug = 0
-integer            :: debug = 0   ! turn up for more and more debug messages
 
 ! this is not in the namelist or supported generally.
 ! (setting this to true avoids the surface elevation max diff 
@@ -312,8 +302,6 @@ namelist /model_nml/             &
    model_perturbation_amplitude, &
    log_p_vert_interp,            &
    calendar,                     &
-   debug,                        &
-   xyzdebug,                     &
    use_u_for_wind,               &
    use_rbf_option,               &
    update_u_from_reconstruct,    &
@@ -339,8 +327,6 @@ character(len=NF90_MAX_NAME) :: lbc_variables(max_state_variables) = ''
 namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
 
 integer :: nfields
-
-type(progvartype), dimension(max_state_variables) :: progvar
 
 ! Grid parameters - the values will be read from an mpas analysis file.
 
@@ -465,32 +451,21 @@ integer, allocatable :: triangle_list(:)
 
 contains
 
-!==================================================================
-! All the public REQUIRED interfaces come first - just by convention.
-!==================================================================
-
-
 !------------------------------------------------------------------
 
 subroutine static_init_model()
 !>@todo FIXME - can we add an optional arg here for update_bc use? !HK No.
 
 ! Called to do one time initialization of the model.
-!
-! All the grid information comes from the initialization of
-! the dart_model_mod module.
-
-! Local variables - all the important ones have module scope
-
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname,dimname
 character(len=obstypelength)       :: kind_string
 integer :: ncid, VarID, numdims, varsize, dimlen
-integer :: iunit, io, ivar, i, index1, indexN, iloc, kloc
+integer :: iunit, io, ivar, i
 integer :: ss, dd, z1, m1
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
-integer :: cel1, cel2, lbc_nfields
+integer :: lbc_nfields
 logical :: both
 real(r8) :: variable_bounds(max_state_variables, 2)
 integer :: variable_qtys(max_state_variables)
@@ -531,22 +506,146 @@ model_timestep = set_model_time_step()
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
 write(string1,*)'assimilation window is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,routine,string1,source,revision,revdate)
-
-!---------------------------------------------------------------
-! 1) get grid dimensions
-! 2) allocate space for the grids
-! 3) read them from the analysis file
+call error_handler(E_MSG,routine,string1,source)
 
 ncid = nc_open_file_readonly(init_template_filename, routine)
 
-! move this up - some of the routines below depend on having
-! the variable table parsed already, and U added if needed.
 call verify_state_variables( mpas_state_variables, ncid, init_template_filename, &
-                             nfields, variable_table)
+                             nfields, variable_table, variable_qtys, variable_bounds)
+call read_grid()
 
-! get sizes
-call read_grid_dims(ncid)
+call nc_close_file(ncid, routine)
+
+anl_domid = add_domain(init_template_filename, nfields,           &
+                       var_names  = variable_table (1:nfields,1), &
+                       kind_list  = variable_qtys(1:nfields),     &
+                       clamp_vals = variable_bounds(1:nfields,:) )
+
+model_size = get_domain_size(anl_domid)
+print*, 'model size = ', model_size
+
+lbc_nfields = 0
+
+! if we have a lateral boundary file, add it to the domain
+! so we have access to the corresponding lbc_xxx fields.
+!>@todo FIXME: if we want to do increments, we could also add a
+! third domain which is the original forecast fields before
+! the assimilation (so we can compute increments)  !HK why would you need to add a third domain?
+if (.not. global_grid .and. lbc_variables(1) /= '') then
+   ! regional: count number of lbc fields to read in
+   COUNTUP: do i=1, max_state_variables
+      if (lbc_variables(i) /= '') then
+         lbc_nfields = lbc_nfields + 1
+      else
+         exit COUNTUP
+      endif
+   enddo COUNTUP
+   lbc_domid = add_domain(bdy_template_filename, lbc_nfields,    &
+                          var_names  = lbc_variables)
+                        ! FIXME clamp_vals = variable_bounds(1:nfields,:) )
+   model_size = model_size + get_domain_size(lbc_domid)
+else
+   lbc_domid = -1
+endif
+
+! do some sanity checking here:
+
+! if you have at least one of these wind components in the state vector,
+! you have to have them both.  the subroutine will error out if only one
+! is found and not both.
+if (has_uvreconstruct) then
+   call winds_present(z1,m1,both)
+endif
+
+! if you set the namelist to use the reconstructed cell center winds,
+! they have to be in the state vector.
+if (update_u_from_reconstruct .and. .not. has_uvreconstruct) then
+   write(string1,*) 'update_u_from_reconstruct cannot be True'
+   write(string2,*) 'because state vector does not contain U/V reconstructed winds'
+   call error_handler(E_ERR,'static_init_model',string1,source, &
+                      text2=string2)
+endif
+
+! if you set the namelist to update the edge normal winds based on the
+! updated cell center winds, and you also have the edge normal winds in
+! the state vector, warn that the edge normal winds will be ignored
+! when going back to the mpas_analysis.nc file.  not an error, but the
+! updates to the edge normal vectors won't affect the results.
+if (update_u_from_reconstruct .and. has_edge_u) then
+   write(string1,*) 'edge normal winds (u) in MPAS file will be updated based on U/V reconstructed winds'
+   write(string2,*) 'and not from the updated edge normal values in the state vector'
+   write(string3,*) 'because update_u_from_reconstruct is True'
+   call error_handler(E_MSG,'static_init_model',string1,source, &
+                      text2=string2, text3=string3)
+endif
+
+! there are two choices when updating the edge normal winds based on the
+! winds at the cell centers.  one is a direct interpolation of the values;
+! the other is to read in the original cell centers, compute the increments
+! changed by the interpolation, and then add or substract only the increments
+! from the original edge normal wind values.
+if (update_u_from_reconstruct) then
+   if (use_increments_for_u_update) then
+      write(string1,*) 'edge normal winds (u) in MPAS file will be updated based on the difference'
+      write(string2,*) 'between the original U/V reconstructed winds and the updated values'
+      write(string3,*) 'because use_increment_for_u_update is True'
+   else
+      write(string1,*) 'edge normal winds (u) in MPAS file will be updated by averaging the'
+      write(string2,*) 'updated U/V reconstructed winds at the corresponding cell centers'
+      write(string3,*) 'because use_increment_for_u_update is False'
+   endif
+   call error_handler(E_MSG,'static_init_model',string1,source, &
+                      text2=string2, text3=string3)
+endif
+
+! basically we cannot do much without having at least these
+! three fields in the state vector.  refuse to go further
+! if these are not present:
+!print *, get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+!print *, get_num_varids_from_kind(anl_domid, QTY_DENSITY)
+!print *, get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
+if ((get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
+    (get_num_varids_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
+    (get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
+   write(string1, *) 'State vector is missing one or more of the following fields:'
+   write(string2, *) 'Potential Temperature (theta), Density (rho), Vapor Mixing Ratio (qv).'
+   write(string3, *) 'Cannot convert between height/pressure nor compute sensible temps.'
+   call error_handler(E_ERR,'static_init_model',string1,source, &
+                      text2=string2, text3=string3)
+endif
+
+! tell the location module how we want to localize in the vertical
+call set_vertical_localization_coord(vert_localization_coord)
+
+! set an appropriate value for roundoff tests based
+! on this code being compiled single or double precision.
+! set to 1e-5 (for single) or 1e-12 (for double precision).
+if (r8 == digits12) then
+   roundoff = 1.0e-12_r8
+else
+   roundoff = 1.0e-5_r8
+endif
+
+end subroutine static_init_model
+
+!------------------------------------------------------------------
+subroutine read_grid()
+
+integer :: cel1, cel2
+integer :: iloc, kloc
+integer :: ncid
+character(len=*), parameter :: routine = 'read_grid'
+
+ncid = nc_open_file_readonly(init_template_filename, routine)
+
+nCells        = nc_get_dimension_size(ncid, 'nCells',         routine)
+nVertices     = nc_get_dimension_size(ncid, 'nVertices',      routine)
+nEdges        = nc_get_dimension_size(ncid, 'nEdges',         routine)
+maxEdges      = nc_get_dimension_size(ncid, 'maxEdges',       routine)
+nVertLevels   = nc_get_dimension_size(ncid, 'nVertLevels',    routine)
+nVertLevelsP1 = nc_get_dimension_size(ncid, 'nVertLevelsP1',  routine)
+vertexDegree  = nc_get_dimension_size(ncid, 'vertexDegree',   routine)
+nSoilLevels   = nc_get_dimension_size(ncid, 'nSoilLevels',    routine)
 
 allocate(latCell(nCells), lonCell(nCells))
 allocate(zGridFace(nVertLevelsP1, nCells))
@@ -605,134 +704,16 @@ if(data_on_edges) then
             zGridEdge(iloc,kloc) = zGridCenter(iloc,cel2)
          else  !this is bad...
             write(string1,*)'Edge ',kloc,' at vertlevel ',iloc,' has no neighbouring cells!'
-            call error_handler(E_ERR,'static_init_model', string1, source, revision, revdate)
+            call error_handler(E_ERR,'static_init_model', string1, source)
          endif
       enddo
    enddo
 endif
 
+call nc_close_file(ncid, routine)
 
 
-anl_domid = add_domain(init_template_filename, nfields,           &
-                       var_names  = variable_table (1:nfields,1), &
-                       kind_list  = variable_qtys(1:nfields),     &
-                       clamp_vals = variable_bounds(1:nfields,:) )
-
-model_size = get_domain_size(anl_domid)
-if ( debug > 4 .and. do_output()) print*,'model_size(anl_domid)=',model_size  ! HA
-
-lbc_nfields = 0
-
-! if we have a lateral boundary file, add it to the domain
-! so we have access to the corresponding lbc_xxx fields.
-!>@todo FIXME: if we want to do increments, we could also add a
-! third domain which is the original forecast fields before
-! the assimilation (so we can compute increments)
-if (.not. global_grid .and. lbc_variables(1) /= '') then
-   ! regional: count number of lbc fields to read in
-   COUNTUP: do i=1, max_state_variables
-      if (lbc_variables(i) /= '') then
-         lbc_nfields = lbc_nfields + 1
-      else
-         exit COUNTUP
-      endif
-   enddo COUNTUP
-   if( debug > 4 .and. do_output()) print*, 'Regional: number of lbc fields to read in = ', lbc_nfields
-   lbc_domid = add_domain(bdy_template_filename, lbc_nfields,    &
-                          var_names  = lbc_variables)
-                        ! FIXME clamp_vals = variable_bounds(1:nfields,:) )
-   if( debug > 4 .and. do_output()) print*, 'model_size, lbc_domid =',model_size,lbc_domid
-
-   model_size = model_size + get_domain_size(lbc_domid)
-else
-   lbc_domid = -1
-endif
-
-if ( debug > 4 .and. do_output()) then
-     call state_structure_info(anl_domid)
-     print*, 'model_size =',model_size
-     if(lbc_domid >= 0) print*, 'get_domain_size(lbc_domid):',get_domain_size(lbc_domid)
-endif
-
-! do some sanity checking here:
-
-! if you have at least one of these wind components in the state vector,
-! you have to have them both.  the subroutine will error out if only one
-! is found and not both.
-if (has_uvreconstruct) then
-   call winds_present(z1,m1,both)
-endif
-
-! if you set the namelist to use the reconstructed cell center winds,
-! they have to be in the state vector.
-if (update_u_from_reconstruct .and. .not. has_uvreconstruct) then
-   write(string1,*) 'update_u_from_reconstruct cannot be True'
-   write(string2,*) 'because state vector does not contain U/V reconstructed winds'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate, &
-                      text2=string2)
-endif
-
-! if you set the namelist to update the edge normal winds based on the
-! updated cell center winds, and you also have the edge normal winds in
-! the state vector, warn that the edge normal winds will be ignored
-! when going back to the mpas_analysis.nc file.  not an error, but the
-! updates to the edge normal vectors won't affect the results.
-if (update_u_from_reconstruct .and. has_edge_u) then
-   write(string1,*) 'edge normal winds (u) in MPAS file will be updated based on U/V reconstructed winds'
-   write(string2,*) 'and not from the updated edge normal values in the state vector'
-   write(string3,*) 'because update_u_from_reconstruct is True'
-   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate, &
-                      text2=string2, text3=string3)
-endif
-
-! there are two choices when updating the edge normal winds based on the
-! winds at the cell centers.  one is a direct interpolation of the values;
-! the other is to read in the original cell centers, compute the increments
-! changed by the interpolation, and then add or substract only the increments
-! from the original edge normal wind values.
-if (update_u_from_reconstruct) then
-   if (use_increments_for_u_update) then
-      write(string1,*) 'edge normal winds (u) in MPAS file will be updated based on the difference'
-      write(string2,*) 'between the original U/V reconstructed winds and the updated values'
-      write(string3,*) 'because use_increment_for_u_update is True'
-   else
-      write(string1,*) 'edge normal winds (u) in MPAS file will be updated by averaging the'
-      write(string2,*) 'updated U/V reconstructed winds at the corresponding cell centers'
-      write(string3,*) 'because use_increment_for_u_update is False'
-   endif
-   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate, &
-                      text2=string2, text3=string3)
-endif
-
-! basically we cannot do much without having at least these
-! three fields in the state vector.  refuse to go further
-! if these are not present:
-!print *, get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
-!print *, get_num_varids_from_kind(anl_domid, QTY_DENSITY)
-!print *, get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
-if ((get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
-    (get_num_varids_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
-    (get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
-   write(string1, *) 'State vector is missing one or more of the following fields:'
-   write(string2, *) 'Potential Temperature (theta), Density (rho), Vapor Mixing Ratio (qv).'
-   write(string3, *) 'Cannot convert between height/pressure nor compute sensible temps.'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate, &
-                      text2=string2, text3=string3)
-endif
-
-! tell the location module how we want to localize in the vertical
-call set_vertical_localization_coord(vert_localization_coord)
-
-! set an appropriate value for roundoff tests based
-! on this code being compiled single or double precision.
-! set to 1e-5 (for single) or 1e-12 (for double precision).
-if (r8 == digits12) then
-   roundoff = 1.0e-12_r8
-else
-   roundoff = 1.0e-5_r8
-endif
-
-end subroutine static_init_model
+end subroutine read_grid
 
 
 !------------------------------------------------------------------
@@ -753,49 +734,12 @@ type(location_type) :: new_location
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
+!call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
 
-nzp  = progvar(nf)%numvertical
-
-! the zGrid array contains the location of the cell top and bottom faces, so it has one
-! more value than the number of cells in each column.  for locations of cell centers
-! you have to take the midpoint of the top and bottom face of the cell.
-if (progvar(nf)%numedges /= MISSING_I) then
-   if (.not. data_on_edges) then
-      call error_handler(E_ERR, 'get_state_meta_data', &
-                        'Internal error: numedges present but data_on_edges false', &
-                        source, revision, revdate, text2='variable '//trim(progvar(nf)%varname))
-   endif
-   if ( progvar(nf)%ZonHalf ) then
-      height = zGridEdge(vloc,iloc)
-   else
-      call error_handler(E_ERR, 'get_state_meta_data', 'no support for edges at face heights', &
-                         source, revision, revdate)
-   endif
-
-   if (nzp <= 1) then
-      location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISSURFACE)
-   else
-      location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISHEIGHT)
-   endif
-else
-   if ( progvar(nf)%ZonHalf ) then
-      height = zGridCenter(vloc,iloc)
-   else if (nzp <= 1) then
-      height = zGridFace(1,iloc)
-   else
-      height = zGridFace(vloc,iloc)
-   endif
-
-   if (nzp <= 1) then
-      location = set_location(lonCell(iloc),latCell(iloc), height, VERTISSURFACE)
-   else
-      location = set_location(lonCell(iloc),latCell(iloc), height, VERTISHEIGHT)
-   endif
-endif
+!nzp  = get_num_vert_levels() !  HK @todo
 
 if (present(var_type)) then
-   var_type = dart_kind
+!   var_type = dart_kind
 endif
 
 end subroutine get_state_meta_data
@@ -808,7 +752,7 @@ end subroutine get_state_meta_data
 !>       ERROR codes:
 !>
 !>       ISTATUS =  1:  general error for rttov - at least one of the input variables goes wrong
-!>       ISTATUS = 99:  general error in case something terrible goes wrong...
+!>       ISTATUS = 99:  general error in case something terrible goes wrong
 !>       ISTATUS = 81:  Vertical location too high
 !>       ISTATUS = 80:  Vertical location too low
 !>       ISTATUS = 88:  this kind is not in the state vector
@@ -827,18 +771,6 @@ end subroutine get_state_meta_data
 !>       ISTATUS = 201: Reject observation from user specified pressure level
 !>       ISTATUS = 988: pressure is not monotonically descreased with level.
 !>
-!> Debugging options:
-!> 0: No prints, whatsoever.
-!> 1: Print only when each obs is rejected.
-!> 2: Print the basic info on each obs.
-!> 3: Print the base location of the localization.
-!> 5: Print info on the localized obs and the model grids
-!> 9: Print info on wind updates
-!> 10: Print info on each obs in detail.
-!> 11: Print info on localized states
-!> 12: Print info on each ensemble member in detail.
-!> 13: Print detailed info on triangle and level search
-
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
@@ -863,216 +795,6 @@ if ( .not. module_initialized ) call static_init_model
 expected_obs = MISSING_R8
 istatus      = 0
 
-! rename for sanity - we can't change the argument names
-! to this subroutine, but this really is a kind.
-obs_kind = obs_type
-
-! write the location information into a string for error messages and debugging
-call write_location(0,location,charstring=locstring)
-
-llv = get_location(location)
-verttype = nint(query_location(location))
-surface_obs = (verttype == VERTISSURFACE) 
-
-! this routine returns the cellid for a global mpas grid, same as
-! find_closest_cell_center().
-! for a regional grid it only returns a good cellid if the closest cell center
-! AND the other 2 triangle points surrounding this location are completely inside 
-! the grid and none of the vertices are in the boundary region.
-cellid = cell_ok_to_interpolate(location)
-if (cellid < 1) then
-   istatus = 11
-   return
-endif
-
-! FIXME see issue #96 - remove all but surface elevation
-! pass surface variables for rttov - it should be ok as these are diagnostic (except for surface elevation).
-if((obs_kind == QTY_SURFACE_PRESSURE) .or. (obs_kind == QTY_SURFACE_ELEVATION)    .or. &
-   (obs_kind == QTY_2M_TEMPERATURE)   .or. (obs_kind == QTY_2M_SPECIFIC_HUMIDITY) .or. &
-   (obs_kind == QTY_SKIN_TEMPERATURE) .or. (obs_kind == QTY_SURFACE_TYPE)         .or. &
-   (obs_kind == QTY_CLOUD_FRACTION)   .or. &
-   (obs_kind == QTY_10M_U_WIND_COMPONENT) .or. (obs_kind == QTY_10M_V_WIND_COMPONENT)) then
-    istatus = 0
-else
-! Reject obs if the station height is far way from the model terrain.
-   if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
-   if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
-      istatus = 12
-   endif
-   endif
-endif
-
-! see if observation quantity is in the state vector.  this sets an
-! error code and returns without a fatal error if answer is no.
-! exceptions:  the state vector has potential temp, but we can
-! compute sensible temperature from pot_temp, rho, and qv.
-! also there are options for the winds because mpas has both
-! winds on the cell edges (normal only) and reconstructed winds
-! at the cell centers (U,V).  there are namelist options to control
-! which to use if both are in the state vector.  
-! As another note, mpas defines the model variable qv as water vapor 
-! mixing ratio while it defines q2 as 2-meter specific humidity,
-! not 2-m water vapor mixing ratio, so q2 should be specified as 
-! QTY_2M_SPECIFIC_HUMIDITY in mpas_state_variables in &mpas_vars_nml.
-
-! is this field in the state?
-ivar = get_progvar_index_from_kind(obs_kind)
-if (ivar > 0) then
-   goodkind = .true.     ! yes
-
-else
-   goodkind = .false.    ! but check for exceptions
-
-   ! exceptions if the kind isn't directly
-   ! a field in the state vector:
-   select case (obs_kind)
-      case (QTY_TEMPERATURE, QTY_2M_TEMPERATURE)
-         goodkind = .true.
-      case (QTY_SURFACE_ELEVATION, QTY_GEOPOTENTIAL_HEIGHT)
-         goodkind = .true.
-      case (QTY_PRESSURE)   ! surface pressure should be in the state
-         goodkind = .true.
-      case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE, QTY_CLOUD_FRACTION)   
-         goodkind = .true.
-      case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
-         goodkind = .true.
-      case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
-         ! if the reconstructed winds at the cell centers aren't there,
-         ! we can use the edge normal winds, if the user allows it.
-         if (get_progvar_index_from_kind(QTY_EDGE_NORMAL_SPEED) > 0 &
-             .and. use_u_for_wind) goodkind = .true.
-   end select
-endif
-
-! this kind is not in the state vector and it isn't one of the exceptions
-! that we know how to handle.
-if (.not. goodkind) then
-   istatus(:) = 88
-endif
-
-! Reject obs above a user specified pressure level.
-! this is expensive - only do it if users want to reject observations
-! at the top of the model.  negative values mean ignore this test.
-
-if (.not.surface_obs) then
-
-if (highest_obs_pressure_mb > 0.0) then
-   if (.not.(is_vertical(location, "SURFACE")) .and. (.not.(is_vertical(location, "UNDEFINED")))) then
-
-   call compute_pressure_at_loc(state_handle, ens_size, location, lpres, istatus)
-   where (lpres < highest_obs_pressure_mb * 100.0_r8)
-      ! Exclude from assimilation the obs above a user specified level
-      istatus(:) = 201
-   end where
-
-   endif
-endif
-
-endif !(.not.surface_obs) then
-
-! Not prepared to do W interpolation at this time
-if(obs_kind == QTY_VERTICAL_VELOCITY) then
-   if (debug > 0 .and. do_output()) print *, 'model_interpolate: code does not handle vertical velocity yet'
-   istatus(:) = 16
-   return
-endif
-
-! winds
-if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
-     obs_kind == QTY_V_WIND_COMPONENT) .and. has_edge_u .and. use_u_for_wind) then
-   if (obs_kind == QTY_U_WIND_COMPONENT) then
-      ! return U
-      call compute_u_with_rbf(state_handle, ens_size, location, .TRUE., expected_obs, istatus)
-   else
-      ! return V
-      call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
-   endif
-  
-else if (obs_kind == QTY_TEMPERATURE) then
-   ! need to get potential temp, pressure, qv here, but can
-   ! use same weights, so push all three types into the subroutine.
-   tvars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   tvars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   tvars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 3, tvars, values, istatus)
-
-   ! convert pot_temp, density, vapor mixing ratio into sensible temperature
-   expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus) 
-
-else if (obs_kind == QTY_PRESSURE) then
-   call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
-
-else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
-   location_tmp = location
-   call convert_vert_distrib(state_handle, ens_size, location_tmp, QTY_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
-
-   do e = 1, ens_size
-     if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
-   enddo
-
-else if (obs_kind == QTY_VAPOR_MIXING_RATIO      .or. obs_kind == QTY_2M_SPECIFIC_HUMIDITY   .or. &
-         obs_kind == QTY_CLOUDWATER_MIXING_RATIO .or. obs_kind == QTY_RAINWATER_MIXING_RATIO .or. &
-         obs_kind == QTY_ICE_MIXING_RATIO        .or. obs_kind == QTY_SNOW_MIXING_RATIO      .or. &
-         obs_kind == QTY_GRAUPEL_MIXING_RATIO    .or. obs_kind == QTY_CLOUD_FRACTION       ) then
-   tvars(1) = get_progvar_index_from_kind(obs_kind)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
-   expected_obs = values(1, :)
-
-   ! Don't accept negative hydrometeors
-   do e = 1, ens_size
-      if(istatus(e) == 0) then
-         expected_obs(e) = max(values(1, e),0.0_r8)
-         if(obs_kind == QTY_CLOUD_FRACTION) expected_obs(e) = min(values(1, e),1.0_r8)
-      endif
-   enddo
-
-else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
-   tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
-   expected_obs = values(1, :)
-
-   ! compute vapor pressure, then: sh = vp / (1.0 + vp)
-   do e = 1, ens_size
-      if (istatus(e) == 0) then
-         if (expected_obs(e) >= 0.0_r8) then
-            expected_obs(e) = expected_obs(e) / (1.0_r8 + expected_obs(e))
-         else
-            expected_obs(e) = 1.0e-12_r8  
-         endif
-      endif 
-   enddo
-
-
-! Only for the variables NOT included in the dart state vector.
-! Anything included in the state_handle should not go into the case right down here.
-! ex. QTY_SURFACE_PRESSURE will be taken care of in the else statement (one further down)
-! as a generic interpolation case thru compute_scalar_with_barycentric
-! because that obs_kind is included in mpas_state_variables in &mpas_vars_nml (e.g. state vector).
-else if (obs_kind == QTY_SURFACE_ELEVATION .or. &
-         obs_kind == QTY_SKIN_TEMPERATURE  .or. obs_kind == QTY_SURFACE_TYPE ) then
-
-   if (obs_kind == QTY_SURFACE_ELEVATION) then
-       call compute_surface_data_with_barycentric(zGridFace(1,:), location, expected_obs(1), istatus(1))
-   else if (obs_kind == QTY_SKIN_TEMPERATURE) then
-       call compute_surface_data_with_barycentric(skintemp(:), location, expected_obs(1), istatus(1))
-   else if (obs_kind == QTY_SURFACE_TYPE) then
-       call get_surftype(nCells,surftype)
-       call compute_surface_data_with_barycentric(surftype(:)*1.0_r8, location, expected_obs(1), istatus(1))
-   endif
-
-   expected_obs(2:ens_size) = expected_obs(1)
-   istatus(2:ens_size) = istatus(1)
-
-else
-   ! all other kinds come here.
-   ! direct interpolation: kind is in the state vector and no clamping or other conversions needed
-
-   tvars(1) = ivar
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), values(1,:), istatus)
-   expected_obs = values(1, :)
- 
-endif
 
 end subroutine model_interpolate
 
@@ -1447,13 +1169,9 @@ if (vertical_localization_on()) then
   else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
       base_qty = get_quantity_for_type_of_obs(base_type)
       location_arr(1) = base_loc
-      call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
+      call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
       istatus1 = istat_arr(1)
       base_loc = location_arr(1)
-      if(debug > 4 .and. do_output()) then
-         call write_location(0,base_loc,charstring=string1)
-         call error_handler(E_ALLMSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
-     endif
    endif
 endif
 
@@ -1478,7 +1196,7 @@ if (istatus1 == 0) then
       if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
           if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
               location_arr(1) = local_obs_loc
-              call convert_vert_distrib(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istat_arr)
+              call convert_vert(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istat_arr)
               istatus2 = istat_arr(1)
               locs(t_ind) = location_arr(1)
           else
@@ -1555,7 +1273,7 @@ if (vertical_localization_on()) then
   else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
       base_qty = get_quantity_for_type_of_obs(base_type)
       location_arr(1) = base_loc
-      call convert_vert_distrib(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
+      call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
       istatus1 = istat_arr(1)
       base_loc = location_arr(1)
    endif
@@ -1582,14 +1300,10 @@ if (istatus1 == 0) then
       if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
           if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
               location_arr(1) = local_obs_loc
-              call convert_vert_distrib_state(state_handle, 1, location_arr, loc_qtys(t_ind), &
+              call convert_vert_state(state_handle, 1, location_arr, loc_qtys(t_ind), &
                                               loc_indx(t_ind), vert_localization_coord, istat_arr)
               istatus2 = istat_arr(1)
               locs(t_ind) = location_arr(1)
-              if(istatus2 /= 0 .and. debug > 9 .and. do_output()) then
-                 call write_location(0,local_obs_loc,charstring=string1)
-                 call error_handler(E_ALLMSG, 'get_close_state: local_obs_loc',string1,source, revision, revdate)
-              endif
           else
               istatus2 = 0
           endif
@@ -1695,13 +1409,12 @@ end subroutine force_u_into_state
 !> ncid_a = analysis - either init or restart.
 
 subroutine statevector_to_boundary_file(state_vector, ncid_b, ncid_a, &
-    lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, idebug)
+    lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments)
 
 real(r8), intent(inout) :: state_vector(:) !HK whole state vector?
 integer,  intent(in)    :: ncid_b, ncid_a
 logical,  intent(in)    :: lbc_update_from_reconstructed_winds
 logical,  intent(in)    :: lbc_update_winds_from_increments
-integer,  intent(in)    :: idebug
 
 integer :: i, a_ivar, b_ivar, ivar, ivar_u, avar_u
 integer(i8) :: a_index, b_index, l, sb_index, eb_index
@@ -1721,7 +1434,7 @@ nvars = get_num_variables(lbc_domid)
 write(string1, *) 'lbc_update_from_reconstructed_winds = ', lbc_update_from_reconstructed_winds
 write(string2, *) 'lbc_update_winds_from_increments = ',lbc_update_winds_from_increments
 call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                         source,revision,revdate, text2=string2)
+                         source, text2=string2)
 
 ! save a copy of the reconstructed cell winds in separate arrays
 ! if we are doing an incremental update of the edge normal winds.
@@ -1730,7 +1443,7 @@ if (lbc_update_winds_from_increments) then
       write(string1, *) 'Cannot update edge winds from increments because the boundary file does not contain the reconstructed winds (lbc_ur, lbc_vr)'
       write(string2, *) 'lbc_update_winds_from_increments should be .false.'
       call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                         source,revision,revdate, text2=string2)
+                         source, text2=string2)
    endif
 
    allocate(old_lbc_ucell(nVertLevels, nCells))
@@ -1763,7 +1476,7 @@ CELLS: do cellid = 1, nCells
          write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
          write(string2, *) 'because the name does not start with "lbc"'
          call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                            source,revision,revdate, text2=string2)
+                            source, text2=string2)
          cycle VARLOOP
       endif
 
@@ -1780,9 +1493,6 @@ CELLS: do cellid = 1, nCells
 
       a_ivar = get_varid_from_varname(anl_domid, avarname)
 
-      !if(do_output().and.idebug > 4) print*, 'statevector_to_boundary_file: ', &
-      !                trim(bvarname), b_ivar, trim(avarname), a_ivar
-
       call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
 
       ! HA: double-check if dimensions are the same between lbc_domid and anl_domid.
@@ -1790,7 +1500,7 @@ CELLS: do cellid = 1, nCells
       if(dims(1) /= dima(1) .or. dims(2) /= dima(2)) then
          write(string1, *) 'Dimension mismatches:',dims,' vs.',dima
          call error_handler(E_ERR,'statevector_to_boundary_file',string1,&
-                            source,revision,revdate)
+                            source)
          exit
       endif
 
@@ -1861,8 +1571,6 @@ else  ! do the increment process
    ! this is the analysis u, not blended in the boundary zone yet.
    avar_u = get_varid_from_varname(anl_domid, 'u')
    call vector_to_prog_var(state_vector, avar_u, lbc_u)
-
-   if (idebug > 9 .and. do_output()) print *, 'MIN/MAX lbc_u before update:',MINVAL(lbc_u),MAXVAL(lbc_u)
    
    if (lbc_update_winds_from_increments) then
    
@@ -1894,12 +1602,7 @@ else  ! do the increment process
    
            lbc_u(:,edgeid) = lbc_u(:,edgeid) + delta_u(:,edgeid)
 
-           if (idebug > 9 .and. .not.on_boundary_edge(edgeid)) &
-               print*, iup, edgeid, delta_u(1,edgeid)
-
       enddo IEDGE
-
-      if (idebug > 9 .and. do_output()) print*, 'MIN/MAX delta_u:            ',MINVAL(delta_u),MAXVAL(delta_u)
 
       deallocate(old_lbc_ucell, old_lbc_vcell, delta_u)
 
@@ -1910,7 +1613,6 @@ else  ! do the increment process
       call uv_cell_to_edges(lbc_ucell, lbc_vcell, lbc_u, .true.)
       
    endif
-   if (idebug > 9 .and. do_output()) print *, 'MIN/MAX lbc_u  after update:',MINVAL(lbc_u),MAXVAL(lbc_u)
    
    ! put lbc_u array data back into the state_vector
    
@@ -1931,7 +1633,7 @@ VARLOOP2: do b_ivar = 1, nvars
       write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
       write(string2, *) 'because the name does not start with "lbc"'
       call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                         source,revision,revdate, text2=string2)
+                         source, text2=string2)
       cycle VARLOOP2
    endif
 
@@ -1952,10 +1654,6 @@ VARLOOP2: do b_ivar = 1, nvars
 
    sb_index = get_index_start(anl_domid, a_ivar)
    eb_index = get_index_end  (anl_domid, a_ivar)
-
-   if (idebug > 9 .and. do_output()) print *, 'updating ', trim(bvarname), ' min, max:',&
-       minval(state_vector(sb_index:eb_index)), maxval(state_vector(sb_index:eb_index))
-       !, ' with length ', eb_index - sb_index + 1
 
    ! Soyoung - Now, the lbc file has the analysis in the interior and the blended values
    !           in the boundary zone. In other words, the lbc file is updated not only in
@@ -1996,7 +1694,7 @@ call nc_check( nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims),
 
 if (numdims /= 2) then
    write(string1,*) 'xtime variable has unknown shape in ', trim(filename)
-   call error_handler(E_ERR,'get_analysis_time',string1,source,revision,revdate)
+   call error_handler(E_ERR,'get_analysis_time',string1,source)
 endif
 
 call nc_check( nf90_inquire_dimension(ncid, dimIDs(1), len=idims(1)), &
@@ -2007,7 +1705,7 @@ call nc_check( nf90_inquire_dimension(ncid, dimIDs(2), len=idims(2)), &
 if (idims(2) /= 1) then
    write(string1,*) 'multiple timesteps (',idims(2),') in file ', trim(filename)
    write(string2,*) 'We are using the LAST one, presumably, the LATEST timestep.'
-   call error_handler(E_MSG,'get_analysis_time',string1,source,revision,revdate,text2=string2)
+   call error_handler(E_MSG,'get_analysis_time',string1,source,text2=string2)
 endif
 
 ! Get the highest ranking time ... the last one, basically.
@@ -2016,11 +1714,6 @@ call nc_check( nf90_get_var(ncid, VarID, timestring, start = (/ 1, idims(2) /)),
               'get_analysis_time', 'get_var xtime '//trim(filename))
 
 get_analysis_time_ncid = string_to_time(timestring)
-
-if ((debug > 0) .and. do_output()) then
-   call print_date(get_analysis_time_ncid, 'get_analysis_time:model date')
-   call print_time(get_analysis_time_ncid, 'get_analysis_time:model time')
-endif
 
 end function get_analysis_time_ncid
 
@@ -2045,14 +1738,14 @@ if ( .not. module_initialized ) call static_init_model
 ! string from the filename itself.
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'file ', trim(filename),' does not exist.' 
-   call error_handler(E_ERR,'get_analysis_time',string1,source,revision,revdate)
+   call error_handler(E_ERR,'get_analysis_time',string1,source)
 endif
 
 ! find the first digit and use that as the start of the string conversion
 i = scan(filename, "0123456789")
 if (i <= 0) then
    write(string1,*) 'cannot find time string in name ', trim(filename)
-   call error_handler(E_ERR,'get_analysis_time',string1,source,revision,revdate)
+   call error_handler(E_ERR,'get_analysis_time',string1,source)
 endif
 
 get_analysis_time_fname = string_to_time(filename(i:i+TIMELEN-1))
@@ -2231,7 +1924,7 @@ if (dointerval) then
    if (ndays > 99) then
       write(string1, *) 'interval number of days is ', ndays
       call error_handler(E_ERR,'time_to_string', 'interval days cannot be > 99', &
-                         source, revision, revdate, text2=string1)
+                         source, text2=string1)
    endif
    ihour = nsecs / 3600
    nsecs = nsecs - (ihour * 3600)
@@ -2282,40 +1975,6 @@ if ( .not. module_initialized ) call static_init_model
 set_model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
 
 end function set_model_time_step
-
-
-!------------------------------------------------------------------
-!> Read the grid dimensions from the MPAS netcdf file.
-!>
-
-subroutine read_grid_dims(ncid)
-integer, intent(in) :: ncid
-
-character(len=*), parameter :: routine = 'read_grid_dims'
-
-nCells        = nc_get_dimension_size(ncid, 'nCells',         routine)
-nVertices     = nc_get_dimension_size(ncid, 'nVertices',      routine)
-nEdges        = nc_get_dimension_size(ncid, 'nEdges',         routine)
-maxEdges      = nc_get_dimension_size(ncid, 'maxEdges',       routine)
-nVertLevels   = nc_get_dimension_size(ncid, 'nVertLevels',    routine)
-nVertLevelsP1 = nc_get_dimension_size(ncid, 'nVertLevelsP1',  routine)
-vertexDegree  = nc_get_dimension_size(ncid, 'vertexDegree',   routine)
-nSoilLevels   = nc_get_dimension_size(ncid, 'nSoilLevels',    routine)
-
-if (debug > 4 .and. do_output()) then
-   write(*,*)
-   write(*,*)'read_grid_dims: nCells        is ', nCells
-   write(*,*)'read_grid_dims: nVertices     is ', nVertices
-   write(*,*)'read_grid_dims: nEdges        is ', nEdges
-   write(*,*)'read_grid_dims: maxEdges      is ', maxEdges
-   write(*,*)'read_grid_dims: nVertLevels   is ', nVertLevels
-   write(*,*)'read_grid_dims: nVertLevelsP1 is ', nVertLevelsP1
-   write(*,*)'read_grid_dims: vertexDegree  is ', vertexDegree
-   write(*,*)'read_grid_dims: nSoilLevels   is ', nSoilLevels
-endif
-
-end subroutine read_grid_dims
-
 
 !------------------------------------------------------------------
 !> Read the grid values in from the MPAS netcdf file.
@@ -2440,7 +2099,7 @@ if ( .not. module_initialized ) call static_init_model
 ! get the ivar values for the zonal and meridional wind fields
 call winds_present(zonal,meridional,both)
 if (.not. both) call error_handler(E_ERR, 'update_wind_components', &
-   'internal error: wind fields not found', source, revision, revdate)
+   'internal error: wind fields not found', source)
 
 allocate(    u(nVertLevels, nEdges))
 allocate(ucell(nVertLevels, nCells))
@@ -2597,16 +2256,18 @@ end subroutine put_u
 
 
 !------------------------------------------------------------------
-
-subroutine verify_state_variables( state_variables, ncid, filename, ngood, table )
+! HK 
+subroutine verify_state_variables(state_variables, ncid, filename, ngood, table, qty_list, variable_bounds)
 
 character(len=*), dimension(:),   intent(in)  :: state_variables
 integer,                          intent(in)  :: ncid
 character(len=*),                 intent(in)  :: filename
 integer,                          intent(out) :: ngood
 character(len=*), dimension(:,:), intent(out) :: table
+integer,                          intent(out) :: qty_list(:)
+real(r8),                         intent(out) :: variable_bounds(:,:)
 
-integer :: nrows, ncols, i, j, VarID
+integer :: nrows, i, j, VarID
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname, dimname
 character(len=NF90_MAX_NAME) :: dartstr
@@ -2619,8 +2280,10 @@ if ( .not. module_initialized ) call static_init_model
 failure = .FALSE. ! perhaps all with go well
 u_already_in_list = .FALSE.
 
+!HK @todo varible bounds
+variable_bounds(:,:) = MISSING_R8   
+
 nrows = size(table,1)
-ncols = size(table,2)
 
 ngood = 0
 MyLoop : do i = 1, nrows
@@ -2630,11 +2293,15 @@ MyLoop : do i = 1, nrows
    table(i,1) = trim(varname)
    table(i,2) = trim(dartstr)
 
+   if (varname == 'u') has_edge_u = .true.
+   if (varname == 'uReconstructZonal' .or. &
+       varname == 'uReconstructMeridional') has_uvreconstruct = .true.
+
    if ( table(i,1) == ' ' .and. table(i,2) == ' ' ) exit MyLoop ! Found end of list.
 
    if ( table(i,1) == ' ' .or. table(i,2) == ' ' ) then
       string1 = 'mpas_vars_nml:model state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+      call error_handler(E_ERR,'verify_state_variables',string1,source)
    endif
 
    ! Make sure variable exists in model analysis variable list
@@ -2670,7 +2337,7 @@ MyLoop : do i = 1, nrows
             ! supported - do nothing
          case default
             write(string2,'(''unsupported dimension '',a,'' in '',a)') trim(dimname),trim(string1)
-            call error_handler(E_MSG,'verify_state_variables',string2,source,revision,revdate)
+            call error_handler(E_MSG,'verify_state_variables',string2,source)
             failure = .TRUE.
       end select
 
@@ -2678,21 +2345,15 @@ MyLoop : do i = 1, nrows
 
    if (failure) then
        string2 = 'unsupported dimension(s) are fatal'
-       call error_handler(E_ERR,'verify_state_variables',string2,source,revision,revdate)
+       call error_handler(E_ERR,'verify_state_variables',string2,source)
    endif
 
    ! Make sure DART kind is valid
 
-   if( get_index_for_quantity(dartstr) < 0 ) then
+   qty_list(i) = get_index_for_quantity(dartstr)
+   if( qty_list(i) < 0 ) then
       write(string1,'(''there is no qty <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ! Record the contents of the DART state vector
-
-   if ((debug > 0) .and. do_output()) then
-      write(logfileunit,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
-      write(     *     ,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+      call error_handler(E_ERR,'verify_state_variables',string1,source)
    endif
 
    ! Keep track of whether U (edge normal winds) is part of the user-specified field list
@@ -2704,7 +2365,7 @@ enddo MyLoop
 if (ngood == nrows) then
    string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,text2=string2)
+   call error_handler(E_MSG,'verify_state_variables',string1,source,text2=string2)
 endif
 
 ! if this flag is true and the user hasn't said U should be in the state,
@@ -2793,7 +2454,7 @@ endif
 ! only one present - error.
 write(string1,*) 'both components for U/V reconstructed winds must be in state vector'
 write(string2,*) 'cannot have only one of uReconstructMeridional and uReconstructZonal'
-call error_handler(E_ERR,'winds_present',string1,source,revision,revdate,text2=string2)
+call error_handler(E_ERR,'winds_present',string1,source,text2=string2)
 
 end subroutine winds_present
 
@@ -2821,55 +2482,7 @@ integer                       :: n
 n = 1
 do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= '' )
 
-   bounds_varname = trim(bounds_table(1,n))
-
-   if ( bounds_varname == trim(progvar(ivar)%varname) ) then
-
-        bound = trim(bounds_table(2,n))
-        if ( bound /= 'NULL' .and. bound /= '' ) then
-             read(bound,'(d16.8)') lower_bound
-        else
-             lower_bound = missing_r8
-        endif
-
-        bound = trim(bounds_table(3,n))
-        if ( bound /= 'NULL' .and. bound /= '' ) then
-             read(bound,'(d16.8)') upper_bound
-        else
-             upper_bound = missing_r8
-        endif
-
-        ! How do we want to handle out of range values?
-        ! Set them to predefined limits (clamp) or simply fail (fail).
-        clamp_or_fail = trim(bounds_table(4,n))
-        if ( clamp_or_fail == 'NULL' .or. clamp_or_fail == '') then
-             write(string1, *) 'instructions for CLAMP_or_FAIL on ', &
-                                trim(bounds_varname), ' are required'
-             call error_handler(E_ERR,'get_variable_bounds',string1, &
-                                source,revision,revdate)
-        else if ( clamp_or_fail == 'CLAMP' ) then
-             progvar(ivar)%out_of_range_fail = .FALSE.
-        else if ( clamp_or_fail == 'FAIL' ) then
-             progvar(ivar)%out_of_range_fail = .TRUE.
-        else
-             write(string1, *) 'last column must be "CLAMP" or "FAIL" for ', &
-                  trim(bounds_varname)
-             call error_handler(E_ERR,'get_variable_bounds',string1, &
-                  source,revision,revdate, text2='found '//trim(clamp_or_fail))
-        endif
-
-        ! Assign the clamping information into the variable
-        progvar(ivar)%clamping = .true.
-        progvar(ivar)%range    = (/ lower_bound, upper_bound /)
-
-        if ((debug > 0) .and. do_output()) then
-           write(*,*) 'In get_variable_bounds assigned ', trim(progvar(ivar)%varname)
-           write(*,*) ' clamping range  ',progvar(ivar)%range
-        endif
-
-        ! we found the progvar entry and set the values.  return here.
-        return
-   endif
+   bounds_varname = trim(bounds_table(1,n)) 
 
    n = n + 1
 
@@ -2919,7 +2532,7 @@ else if(is_vertical(location, "HEIGHT") .or. is_vertical(location, "LEVEL")) the
    new_location = location
 
    ! the quantity doesn't matter for this call but we have to pass in something.
-   call convert_vert_distrib(state_handle, ens_size, new_location, QTY_TEMPERATURE, VERTISPRESSURE, istatus)
+   call convert_vert(state_handle, ens_size, new_location, QTY_TEMPERATURE, VERTISPRESSURE, istatus)
 
    do e = 1, ens_size
       if(istatus(e) == 0) then
@@ -2930,36 +2543,6 @@ else if(is_vertical(location, "HEIGHT") .or. is_vertical(location, "LEVEL")) the
 
 else if(is_vertical(location, "SURFACE")) then
 
-   ivars(1) = get_progvar_index_from_kind(QTY_SURFACE_PRESSURE)
-   if ( ivars(1) >= 0 ) then
-
-     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars(1), values(1,:), istatus)
-     where (istatus == 0) ploc(:) = values(1,:)
-
-   else
-     istatus = 88    ! required quantity not in state vector
-     return
-
-!%!     !>original code:
-!%!     !>@todo FIXME: do we really want to do this if the vert is surface and
-!%!     !> the surface pressure field is not in the state?  this is going to return
-!%!     !> the pressure at the midpoint of the first level, is it not?
-!%!
-!%!     new_location(1) = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
-!%!
-!%!     ! Need to get base offsets for the potential temperature, density, and water
-!%!     ! vapor mixing fields in the state vector
-!%!     ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-!%!     ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-!%!     ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
-!%!
-!%!     call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
-!%!     if ( all(istatus /= 0) ) return
-!%!
-!%!     ! Convert surface theta, rho, qv into pressure
-!%!     call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
-
-   endif
 
 else if(is_vertical(location, "UNDEFINED")) then    ! not error, but no exact vert loc either
    ploc(:) = 200100.0_r8    ! this is an unrealistic pressure value to indicate no known pressure.
@@ -2967,7 +2550,7 @@ else if(is_vertical(location, "UNDEFINED")) then    ! not error, but no exact ve
 
 else
    call error_handler(E_ERR, 'compute_pressure:', 'internal error: unknown type of vertical', &
-        source, revision, revdate)
+        source)
 endif
 
 end subroutine compute_pressure_at_loc
@@ -2988,7 +2571,7 @@ integer,             intent(out)   :: status(:)
 integer :: i
 
 do i=1, num
-   call convert_vert_distrib(state_handle, 1, locs(i:i), loc_qtys(i), which_vert, status(i:i))
+   call convert_vert(state_handle, 1, locs(i:i), loc_qtys(i), which_vert, status(i:i))
 enddo
 
 end subroutine convert_vertical_obs
@@ -3011,13 +2594,13 @@ integer :: i, status(1)
 
 !> we are using code from get_state_meta_data to get
 !> the indices for cell id and vert level.  this calls a
-!> modified convert_vert_distrib() routine that doesn't
+!> modified convert_vert() routine that doesn't
 !> have to search for the cell centers. 
 
 istatus = 0
 
 do i=1, num
-   call convert_vert_distrib_state(state_handle, 1, locs(i:i), loc_qtys(i), &
+   call convert_vert_state(state_handle, 1, locs(i:i), loc_qtys(i), &
                                    loc_indx(i), which_vert, status)
 
    ! save the first error we see - but continue to convert the rest
@@ -3029,9 +2612,9 @@ end subroutine convert_vertical_state
 
 
 !------------------------------------------------------------------
-!> code to convert an observation location's vertical coordinate type.
+!> code to convert an observation location's vertical coordinate type. !HK also state locations
 
-subroutine convert_vert_distrib(state_handle, ens_size, location, obs_kind, ztypeout, istatus)
+subroutine convert_vert(state_handle, ens_size, location, obs_kind, ztypeout, istatus)
 
 ! This subroutine converts a given obs vertical coordinate to
 ! the vertical localization coordinate type requested through the
@@ -3050,7 +2633,7 @@ subroutine convert_vert_distrib(state_handle, ens_size, location, obs_kind, ztyp
 !            in distance computations, this is actually the "expected"
 !            vertical coordinate, so that computed distance is the
 !            "expected" distance. Thus, under normal circumstances,
-!            the state that is supplied to convert_vert_distrib should be the
+!            the state that is supplied to convert_vert should be the
 !            ensemble mean. Nevertheless, the subroutine has the
 !            functionality to operate on any DART state vector that
 !            is supplied to it.
@@ -3099,11 +2682,6 @@ ztypein  = nint(query_location(location(1), 'which_vert'))
 if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
    istatus = 0
    return
-else
-   if (debug > 9 .and. do_output()) then
-      write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
-      call error_handler(E_MSG, 'convert_vert_distrib',string1,source, revision, revdate)
-   endif
 endif
 
 ! we do need to convert the vertical.  start by
@@ -3168,11 +2746,6 @@ select case (ztypeout)
       endif
    enddo
 
-   if (debug > 9 .and. do_output()) then
-      write(string2,'("Zk for member 1:", 3F8.2," => ",F8.2)') zk_mid(:,1),zout(1)
-      call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-   endif
-
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'pressure' in Pa
    ! ------------------------------------------------------------
@@ -3180,13 +2753,13 @@ select case (ztypeout)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+   !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
    if (any(ivars(1:3) < 0)) then
       write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
-      call error_handler(E_ERR, 'convert_vert_distrib',string1,source, revision, revdate)
+      call error_handler(E_ERR, 'convert_vert',string1,source)
    endif
 
    ! Get theta, rho, qv at the interpolated location
@@ -3198,12 +2771,6 @@ select case (ztypeout)
 
    ! Convert theta, rho, qv into pressure
    call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
-   if( all(istatus /= 0) ) then
-      if (debug > 1 .and. do_output()) then
-       write(string2,'("Failed in compute_full_pressure in VERTISPRESSURE")')
-       call error_handler(E_ALLMSG, 'convert_vert_distrib',string2,source, revision, revdate)
-      endif
-   endif
 
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'height' in meters
@@ -3240,12 +2807,6 @@ select case (ztypeout)
       endif
    enddo
 
-   if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_height [m] for member 1:",F10.2)') zout(1)
-      call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-   endif
-
-
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'scale height' (a ratio)
    ! ------------------------------------------------------------
@@ -3276,9 +2837,9 @@ select case (ztypeout)
 
      ! Base offsets for the potential temperature, density, and water
      ! vapor mixing fields in the state vector.
-       ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-       ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-       ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+       !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+       !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+       !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
      if (at_surf .or. do_norm) then  ! we will need surface pressure
 
@@ -3292,12 +2853,6 @@ select case (ztypeout)
 
        ! Convert surface theta, rho, qv into pressure
        call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), surfp, tk, istatus)
-       if( all(istatus /= 0) ) then
-          if (debug > 1 .and. do_output()) then
-              write(string2,'("Failed in compute_full_pressure in surfp")')
-              call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-          endif
-       endif
 
      endif
 
@@ -3308,12 +2863,6 @@ select case (ztypeout)
 
        ! Convert theta, rho, qv into pressure
        call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), fullp, tk, istatus)
-       if( all(istatus /= 0) ) then
-          if (debug > 1 .and. do_output()) then
-              write(string2,'("Failed in compute_full_pressure in fullp")')
-              call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-          endif
-       endif
 
      endif
 
@@ -3347,8 +2896,8 @@ select case (ztypeout)
    ! -------------------------------------------------------
    case default
       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
-      call error_handler(E_ERR,'convert_vert_distrib', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'convert_vert', string1, &
+                         source)
 
 end select   ! outgoing vert type
 
@@ -3362,12 +2911,12 @@ do e = 1, ens_size
 enddo
 
 
-end subroutine convert_vert_distrib
+end subroutine convert_vert
 
 !------------------------------------------------------------------
 !> code to convert an state location's vertical coordinate type.
 
-subroutine convert_vert_distrib_state(state_handle, ens_size, location, quantity, state_indx, ztypeout, istatus)
+subroutine convert_vert_state(state_handle, ens_size, location, quantity, state_indx, ztypeout, istatus)
 
 ! This subroutine converts a given state vertical coordinate to
 ! the vertical localization coordinate type requested through the
@@ -3379,7 +2928,7 @@ subroutine convert_vert_distrib_state(state_handle, ens_size, location, quantity
 !            in distance computations, this is actually the "expected"
 !            vertical coordinate, so that computed distance is the
 !            "expected" distance. Thus, under normal circumstances,
-!            state_handle that is supplied to convert_vert_distrib should be the
+!            state_handle that is supplied to convert_vert should be the
 !            ensemble mean. Nevertheless, the subroutine has the
 !            functionality to operate on any DART state vector that
 !            is supplied to it.
@@ -3424,11 +2973,6 @@ ztypein  = nint(query_location(location(1), 'which_vert'))
 if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
    istatus = 0
    return
-else
-   if (debug > 9 .and. do_output()) then
-      write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
-      call error_handler(E_MSG, 'convert_vert_distrib_state',string1,source, revision, revdate)
-   endif
 endif
 
 !> assume that all locations have the same incoming lat/lon and level.
@@ -3442,8 +2986,7 @@ enddo
 
 !> state_indx is i8, intent(in).  
 !> cellid and vert_level are integer, intent(out)
-call find_mpas_indices(state_indx, cellid, vert_level, ndim)
-if (debug > 9 .and. do_output()) print*,'convert_vert_distrib_state: ndim=', ndim
+!call find_mpas_indices(state_indx, cellid, vert_level, ndim)
 
 ! the routines below will use zin as the incoming vertical value
 ! and zout as the new outgoing one.  start out assuming failure
@@ -3487,11 +3030,6 @@ select case (ztypeout)
 
    zout(:) = vert_level
 
-   if (debug > 9 .and. do_output()) then
-      write(string2,'("zout_in_level for member 1:",F10.2)') zout(1)
-      call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-   endif
-
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'pressure' in Pa
    ! ------------------------------------------------------------
@@ -3505,14 +3043,10 @@ select case (ztypeout)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+   !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
-   if (any(ivars(1:3) < 0)) then
-      write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
-      call error_handler(E_ERR, 'convert_vert_distrib_state',string1,source, revision, revdate)
-   endif
 
    ! Get theta, rho, qv at the interpolated location - pass in cellid we have already located 
    ! to save the search time.
@@ -3524,17 +3058,6 @@ select case (ztypeout)
 
    ! Convert theta, rho, qv into pressure
    call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
-   if( all(istatus /= 0) ) then
-       if (debug > 1 .and. do_output()) then
-           write(string2,'("Failed in compute_full_pressure")')
-           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-       endif
-   else
-       if (debug > 9 .and. do_output()) then
-           write(string2,'("zout[Pa] for member 1,theta,rho,qv,ier:",3F10.2,F12.8,I5)') zout(1),values(1:3,1),istatus(1)
-           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-       endif
-   endif      ! istatus
 
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'height' in meters
@@ -3550,12 +3073,6 @@ select case (ztypeout)
       if ( quantity == QTY_VERTICAL_VELOCITY ) zout(:) = zGridFace(vert_level, cellid)
       if ( quantity == QTY_EDGE_NORMAL_SPEED ) zout(:) = zGridEdge(vert_level, cellid)
    endif
-
-   if (debug > 9 .and. do_output()) then
-      write(string2,'("zout[m] for member 1:",F10.2)') zout(1)
-      call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-   endif
-
 
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'scale height' (a ratio)
@@ -3590,9 +3107,9 @@ select case (ztypeout)
 
      ! Base offsets for the potential temperature, density, and water
      ! vapor mixing fields in the state vector.
-       ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-       ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-       ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+       !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+       !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+       !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
      if (at_surf .or. do_norm) then  ! we will need surface pressure
 
@@ -3606,17 +3123,6 @@ select case (ztypeout)
 
        ! Convert surface theta, rho, qv into pressure
        call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), surfp, tk, istatus)
-       if( all(istatus /= 0) ) then
-           if (debug > 1 .and. do_output()) then
-           write(string2,'("Failed in compute_full_pressure")')
-           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-           endif
-       else
-           if (debug > 9 .and. do_output()) then
-           write(string2,'("zout_psfc,theta,rho,qv:",3F10.2,F12.8)') surfp(1), values(1:3,1)
-           call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
-           endif
-       endif      ! istatus
 
      endif
 
@@ -3660,8 +3166,8 @@ select case (ztypeout)
    ! -------------------------------------------------------
    case default
       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
-      call error_handler(E_ERR,'convert_vert_distrib_state', string1, &
-                         source, revision, revdate)
+      call error_handler(E_ERR,'convert_vert_state', string1, &
+                         source)
 
 end select   ! outgoing vert type
 
@@ -3675,7 +3181,7 @@ do e = 1, ens_size
 enddo
 
 
-end subroutine convert_vert_distrib_state
+end subroutine convert_vert_state
 
 !-------------------------------------------------------------------
 
@@ -3730,8 +3236,6 @@ upper = -1
 if(height < bounds(1)) then
    if(outside_grid_level_tolerance <= 0.0_r8) then
       ier = 998
-      if ((debug > 1) .and. do_output()) print*,'find_height_bounds: height < bounds(1) ', &
-      height, bounds(1)
    else
       ! let points outside the grid but "close enough" use the
       ! bottom level as the height.  hlevel should come back < 1
@@ -3839,12 +3343,6 @@ lat  = llv(2)
 vert = llv(3)
 verttype = nint(query_location(loc))
 
-! these first 3 types need no cell/edge location information.
-if ((debug > 9) .and. do_output()) then
-   write(string2,'("vert, which_vert:",3F20.12,I5)') lon,lat,vert,verttype
-   call error_handler(E_MSG, 'find_vert_level',string2,source, revision, revdate)
-endif
-
 ! VERTISSURFACE describes variables on A surface (not necessarily THE surface)
 ! VERTISUNDEF describes no defined vertical location (e.g. vertically integrated vals)
 if(verttype == VERTISSURFACE .or. verttype == VERTISUNDEF) then  ! same across the ensemble
@@ -3892,21 +3390,14 @@ if(verttype == VERTISPRESSURE ) then
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   call get_index_range(QTY_POTENTIAL_TEMPERATURE, pt_base_offset)
-   call get_index_range(QTY_DENSITY, density_base_offset)
-   call get_index_range(QTY_VAPOR_MIXING_RATIO, qv_base_offset)
+   !call get_index_range(QTY_POTENTIAL_TEMPERATURE, pt_base_offset)
+   !call get_index_range(QTY_DENSITY, density_base_offset)
+   !call get_index_range(QTY_VAPOR_MIXING_RATIO, qv_base_offset)
 
    do i=1, nc
       call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), nVertLevels, &
             pt_base_offset, density_base_offset, qv_base_offset,  &
             lower(i, :), upper(i, :), fract(i, :), ier)
-
-      !if(debug > 9) print '(A,5I5,F10.4)', &
-      !   '    after find_pressure_bounds: ier, i, cellid, lower, upper, fract = ', &
-      !      ier, i, ids(i), lower(i, :), upper(i, :), fract(i, :)
-      !if(debug > 5 .and. ier(e) /= 0) print '(A,4I5,F10.4,I3,F10.4)', &
-      !'fail in find_pressure_bounds: ier, nc, i, id, vert, lower, fract: ', &
-      !   ier, nc, i, ids(i), vert_array, lower(i, :), fract(i, :)
 
       ! we are inside a loop over each corner. consolidate error codes
       ! so that we return an error for that ensemble member if any
@@ -3938,7 +3429,7 @@ if(verttype == VERTISHEIGHT) then
          if (.not. data_on_edges) then
             call error_handler(E_ERR, 'find_vert_level', &
                               'Internal error: oncenters false but data_on_edges false', &
-                              source, revision, revdate)
+                              source)
          endif
          call find_height_bounds(vert, nVertLevels, zGridEdge(:, ids(i)), &
                                  lower(i, :), upper(i, :), fract(i, :), ier)
@@ -3950,8 +3441,6 @@ if(verttype == VERTISHEIGHT) then
       where (ier /= 0 .and. track_ier == 0) track_ier = ier
 
    enddo
-
-   if ((debug > 9) .and. do_output()) print*,'find_vert_level is done'
 
    ier = track_ier
    return
@@ -4250,73 +3739,15 @@ if(ier(1) /= 0) then
    return
 endif
 
-! If the field is on a single level, lower and upper are both 1
-call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
-if(all(ier /= 0)) return
+! HK @todo
 
-! for each field to compute at this location:
-do k=1, n
-   ! get the starting index in the state vector
-   index1 = progvar(ival(k))%index1
-   nvert  = progvar(ival(k))%numvertical
-
-   ! for each corner: could be 1 if location is directly at a vertex, but
-   ! normally is 3 for the enclosing triangle made up of cell centers.
-   do i = 1, nc
-      ! go around triangle and interpolate in the vertical
-      ! c(3) are the cell ids
-
-      low_offset = (c(i)-1) * nvert !FIXME low_offset and upp_offset are the same?
-      upp_offset = (c(i)-1) * nvert
-
-      if( nvert == 1 ) then         ! fields on a surface (1-D, one level, ...)
-
-          ! Because 'lower(i,1)-1' evaluates to zero for 1-D, no need to add it
-          fdata(i,:) = get_state(index1 + low_offset, state_handle)
-
-      else                          ! 2-D fields
-
-         did_member(:) = .false.
-
-         members: do e = 1, ens_size
-
-            if (did_member(e)) cycle members
-
-            !> minimize the number of times we call get_state() by
-            !> doing all the ensemble members which are between the same
-            !> two vertical levels.  this is true most of the time. 
-            !> in some cases it could be 2 or 3 different pairs of levels because 
-            !> of differences in vertical conversion that depends on per-member fields.
-            low_state_indx = index1 + low_offset + lower(i,e)-1
-            lowval(:) = get_state(low_state_indx, state_handle)
-            upp_state_indx = index1 + upp_offset + upper(i,e)-1
-            uppval(:) = get_state(upp_state_indx, state_handle)
-
-            thislower = lower(i, e)
-            thisupper = upper(i, e)
-
-            ! for all remaining ensemble members, use these values if the lower and
-            ! upper level numbers are the same.  fract() will vary with member.
-            do e2=e, ens_size
-               if (thislower == lower(i, e2) .and. thisupper == upper(i, e2)) then
-                  fdata(i, e2) = lowval(e2)*(1.0_r8 - fract(i, e2)) + uppval(e2)*fract(i, e2)
-                  did_member(e2) = .true.
-               endif
-            enddo
-         enddo members
-
-      endif                         ! 2-D fields
-
-   enddo  ! corners
-
-   ! now have vertically interpolated values at cell centers.
-   ! use weights to compute value at interp point.
-   do e = 1, ens_size
+! now have vertically interpolated values at cell centers.
+! use weights to compute value at interp point.
+do e = 1, ens_size
       if (ier(e) /= 0) cycle
       dval(k, e) = sum(weights(1:nc) * fdata(1:nc, e))
-   enddo
-
 enddo
+
 
 end subroutine compute_scalar_with_barycentric
 
@@ -4502,8 +3933,6 @@ integer,             intent(out) :: lower(:, :), upper(:, :) ! ens_size
 real(r8),            intent(out) :: fract(:, :) ! ens_size
 integer,             intent(out) :: ier(:) ! ens_size
 
-integer :: e
-
 ! initialization
 lower = MISSING_I
 upper = MISSING_I
@@ -4548,245 +3977,235 @@ integer :: e ! loop index
 ier  = 0
 uval = MISSING_R8
 
-! FIXME: it would be great to make this cache the last value and 
-! if the location is the same as before and it's asking for V now 
-! instead of U, skip the expensive computation.  however, given
-! how we currently distribute observations the V wind obs will
-! almost certainly be given to a different task.  if that changes
-! in some future version of dart, revisit this code as well.
+! progindex = get_index_from_varname('u')
+! if (progindex < 0 .or. .not. data_on_edges) then
+!    ! cannot compute u if it isn't in the state vector, or if we
+!    ! haven't read in the edge data (which shouldn't happen if
+!    ! u is in the state vector.
+!    ier = 18
+!    return
+! endif
+! index1 = progvar(progindex)%index1 !HK why are they using the start of the index in the vector?
+! nvert = progvar(progindex)%numvertical
 
-progindex = get_index_from_varname('u')
-if (progindex < 0 .or. .not. data_on_edges) then
-   ! cannot compute u if it isn't in the state vector, or if we
-   ! haven't read in the edge data (which shouldn't happen if
-   ! u is in the state vector.
-   ier = 18
-   return
-endif
-index1 = progvar(progindex)%index1
-nvert = progvar(progindex)%numvertical
+! ! unpack the location into local vars
+! llv = get_location(loc) ! I believe this is the same across the ensemble
+! lon = llv(1)
+! lat = llv(2)
+! vert = llv(3)
+! verttype = nint(query_location(loc))
 
-! unpack the location into local vars
-llv = get_location(loc) ! I believe this is the same across the ensemble
-lon = llv(1)
-lat = llv(2)
-vert = llv(3)
-verttype = nint(query_location(loc))
+! call find_surrounding_edges(lat, lon, nedges, edgelist, cellid, vertexid)
+! if (nedges <= 0) then
+!    ! we are on a boundary, no interpolation
+!    ier = 18
+!    return
+! endif
 
-call find_surrounding_edges(lat, lon, nedges, edgelist, cellid, vertexid)
-if (nedges <= 0) then
-   ! we are on a boundary, no interpolation
-   ier = 18
-   return
-endif
+! if (verttype == VERTISPRESSURE) then
+!    ! get all cells which share any edges with the 3 cells which share
+!    ! the closest vertex.
+!    call make_cell_list(vertexid, 3, ncells, celllist)
 
-if (verttype == VERTISPRESSURE) then
-   ! get all cells which share any edges with the 3 cells which share
-   ! the closest vertex.
-   call make_cell_list(vertexid, 3, ncells, celllist)
+!    call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
+!                         lower, upper, fract, ier)
 
-   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
-                        lower, upper, fract, ier)
+!    if (all(ier /= 0)) return
 
-   if (all(ier /= 0)) return
+!    ! now have pressure at all cell centers - need to interp to get pressure
+!    ! at edge centers.
+!    call move_pressure_to_edges(ncells, celllist, lower, upper, fract, &
+!                                nedges, edgelist, ier)
+!    if (all(ier /= 0)) return
 
-   ! now have pressure at all cell centers - need to interp to get pressure
-   ! at edge centers.
-   call move_pressure_to_edges(ncells, celllist, lower, upper, fract, &
-                               nedges, edgelist, ier)
-   if (all(ier /= 0)) return
+! else
+!    ! need vert index for the vertical level
+!    call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
+!                         lower, upper, fract, ier)
+!    if (all(ier /= 0)) return
+! endif
 
-else
-   ! need vert index for the vertical level
-   call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
-                        lower, upper, fract, ier)
-   if (all(ier /= 0)) return
-endif
+! ! the rbf code needs (their names == our names):
+! ! nData == nedges
+! ! xyz data == xyzEdge
+! ! normalDirectionData == edgeNormalVectors
+! ! velocitydata = U field
 
-! the rbf code needs (their names == our names):
-! nData == nedges
-! xyz data == xyzEdge
-! normalDirectionData == edgeNormalVectors
-! velocitydata = U field
+! do i = 1, nedges
+!    !>@todo FIXME:
+!    ! ryan has size(xEdge, 1) but this is a 1d array, so a dimension shouldn't be needed
+!    ! was possibly required for ifort v17 on cheyenne
+!    if (edgelist(i) > size(xEdge,1)) then
+!       write(string1, *) 'edgelist has index larger than edge count', &
+!                           i, edgelist(i), size(xEdge,1)
+!       call error_handler(E_ERR, 'compute_u_with_rbf', 'internal error', &
+!                          source, text2=string1)
+!    endif
+!    xdata(i) = xEdge(edgelist(i))
+!    ydata(i) = yEdge(edgelist(i))
+!    zdata(i) = zEdge(edgelist(i))
 
-do i = 1, nedges
-   !>@todo FIXME:
-   ! ryan has size(xEdge, 1) but this is a 1d array, so a dimension shouldn't be needed
-   ! was possibly required for ifort v17 on cheyenne
-   if (edgelist(i) > size(xEdge,1)) then
-      write(string1, *) 'edgelist has index larger than edge count', &
-                          i, edgelist(i), size(xEdge,1)
-      call error_handler(E_ERR, 'compute_u_with_rbf', 'internal error', &
-                         source, revision, revdate, text2=string1)
-   endif
-   xdata(i) = xEdge(edgelist(i))
-   ydata(i) = yEdge(edgelist(i))
-   zdata(i) = zEdge(edgelist(i))
+!    do j=1, 3
+!       edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
+!    enddo
 
-   do j=1, 3
-      edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
-   enddo
+!    !>@todo lower (upper) could be different levels in pressure
+!    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
+!    lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
+!    lowval =  get_state(lowindx, state_handle)
 
-   !>@todo lower (upper) could be different levels in pressure
-   !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
-   lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
-   lowval =  get_state(lowindx, state_handle)
+!    !uppval = x(index1 + (edgelist(i)-1) * nvert + upper(i)-1)
+!    upindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(upper(i,1)-1,i8)
+!    uppval =  get_state(upindx, state_handle)
 
-   !uppval = x(index1 + (edgelist(i)-1) * nvert + upper(i)-1)
-   upindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(upper(i,1)-1,i8)
-   uppval =  get_state(upindx, state_handle)
+!    veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
 
-   veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
-
-enddo
+! enddo
 
 
-! this intersection routine assumes the points are on the surface
-! of a sphere.  they do NOT try to make a plane between the three
-! points.  the difference is small, granted.
-call latlon_to_xyz(lat, lon, xreconstruct,yreconstruct,zreconstruct)
+! ! this intersection routine assumes the points are on the surface
+! ! of a sphere.  they do NOT try to make a plane between the three
+! ! points.  the difference is small, granted.
+! call latlon_to_xyz(lat, lon, xreconstruct,yreconstruct,zreconstruct)
 
-! call a simple subroutine to define vectors in the tangent plane
-call get_geometry(nedges, xdata, ydata, zdata, &
-              xreconstruct, yreconstruct, zreconstruct, edgenormals, &
-              on_a_sphere, datatangentplane)
+! ! call a simple subroutine to define vectors in the tangent plane
+! call get_geometry(nedges, xdata, ydata, zdata, &
+!               xreconstruct, yreconstruct, zreconstruct, edgenormals, &
+!               on_a_sphere, datatangentplane)
 
-! calculate coeffs_reconstruct
-call get_reconstruct_init(nedges, xdata, ydata, zdata, &
-              xreconstruct, yreconstruct, zreconstruct, edgenormals, &
-              datatangentplane, coeffs_reconstruct)
+! ! calculate coeffs_reconstruct
+! call get_reconstruct_init(nedges, xdata, ydata, zdata, &
+!               xreconstruct, yreconstruct, zreconstruct, edgenormals, &
+!               datatangentplane, coeffs_reconstruct)
 
-! do the reconstruction
-do e = 1, ens_size
-   call get_reconstruct(nedges, lat*deg2rad, lon*deg2rad, &
-               coeffs_reconstruct, on_a_sphere, veldata(:, e), &
-               ureconstructx, ureconstructy, ureconstructz, &
-               ureconstructzonal, ureconstructmeridional)
+! ! do the reconstruction
+! do e = 1, ens_size
+!    call get_reconstruct(nedges, lat*deg2rad, lon*deg2rad, &
+!                coeffs_reconstruct, on_a_sphere, veldata(:, e), &
+!                ureconstructx, ureconstructy, ureconstructz, &
+!                ureconstructzonal, ureconstructmeridional)
 
-   if (zonal) then
-      uval = ureconstructzonal
-   else
-      uval = ureconstructmeridional
-   endif
+!    if (zonal) then
+!       uval = ureconstructzonal
+!    else
+!       uval = ureconstructmeridional
+!    endif
 
-enddo
+! enddo
 
 end subroutine compute_u_with_rbf
 
-!------------------------------------------------------------
+! !------------------------------------------------------------
 
 subroutine find_surrounding_edges(lat, lon, nedges, edge_list, cellid, vertexid)
-real(r8), intent(in)  :: lat, lon
-integer,  intent(out) :: nedges, edge_list(:)
-integer,  intent(out) :: cellid, vertexid
+ real(r8), intent(in)  :: lat, lon
+ integer,  intent(out) :: nedges, edge_list(:)
+ integer,  intent(out) :: cellid, vertexid
 
-! given an arbitrary lat/lon location, find the edges of the
-! cells that share the nearest vertex.  return the ids for the
-! closest cell center and closest vertex to save having to redo
-! the search.
+! ! given an arbitrary lat/lon location, find the edges of the
+! ! cells that share the nearest vertex.  return the ids for the
+! ! closest cell center and closest vertex to save having to redo
+! ! the search.
 
-integer :: vertex_list(30), nedges1, edge_list1(300), c, i
-integer :: ncells, cell_list(150), nedgec, edgeid, nverts
+! integer :: vertex_list(30), nedges1, edge_list1(300), c, i
+! integer :: ncells, cell_list(150), nedgec, edgeid, nverts
 
-! find the cell id that has a center point closest
-! to the given point.
-cellid = find_closest_cell_center(lat, lon)
-if (cellid < 1) then
-   nedges = 0
-   edge_list(:) = -1
-   return
-endif
+! ! find the cell id that has a center point closest
+! ! to the given point.
+! cellid = find_closest_cell_center(lat, lon)
+! if (cellid < 1) then
+!    nedges = 0
+!    edge_list(:) = -1
+!    return
+! endif
 
-! inside this cell, find the vertex id that the point
-! is closest to.  this is a return from this subroutine.
-vertexid = closest_vertex_ll(cellid, lat, lon)
-if (vertexid <= 0) then
-   ! call error handler?  unexpected
-   nedges = 0
-   edge_list(:) = -1
-   return
-endif
+! ! inside this cell, find the vertex id that the point
+! ! is closest to.  this is a return from this subroutine.
+! vertexid = closest_vertex_ll(cellid, lat, lon)
+! if (vertexid <= 0) then
+!    ! call error handler?  unexpected
+!    nedges = 0
+!    edge_list(:) = -1
+!    return
+! endif
 
-nedges = 0
-edge_list = 0
+! nedges = 0
+! edge_list = 0
 
-select case (use_rbf_option)
-  case (0)
-      ! use edges on the closest cell only.
-      nedges = nEdgesOnCell(cellid)
-      do i=1, nedges
-         edge_list(i) = edgesOnCell(i, cellid)
-      enddo
-  case (1)
-      ! fill in the number of unique edges and fills the
-      ! edge list with the edge ids.  the code that detects
-      ! boundary edges for the ocean or regional atmosphere
-      ! is incorporated here.  nedges can come back 0 in that case.
-      vertex_list(1) = vertexid
-      call make_edge_list_from_verts(1, vertex_list, nedges, edge_list)
+! select case (use_rbf_option)
+!   case (0)
+!       ! use edges on the closest cell only.
+!       nedges = nEdgesOnCell(cellid)
+!       do i=1, nedges
+!          edge_list(i) = edgesOnCell(i, cellid)
+!       enddo
+!   case (1)
+!       ! fill in the number of unique edges and fills the
+!       ! edge list with the edge ids.  the code that detects
+!       ! boundary edges for the ocean or regional atmosphere
+!       ! is incorporated here.  nedges can come back 0 in that case.
+!       vertex_list(1) = vertexid
+!       call make_edge_list_from_verts(1, vertex_list, nedges, edge_list)
 
-   case (2)
-      ! for all vertices of the enclosing cell, add the
-      ! edges which share this vertex.
-      nverts = nEdgesOnCell(cellid)
-      do i=1, nverts
-         vertex_list(i) = verticesOnCell(i, cellid)
-      enddo
+!    case (2)
+!       ! for all vertices of the enclosing cell, add the
+!       ! edges which share this vertex.
+!       nverts = nEdgesOnCell(cellid)
+!       do i=1, nverts
+!          vertex_list(i) = verticesOnCell(i, cellid)
+!       enddo
 
-      ! fill in the number of unique edges and fills the
-      ! edge list with the edge ids.  the code that detects
-      ! boundary edges for the ocean or regional atmosphere
-      ! is incorporated here.  nedges can come back 0 in that case.
-      call make_edge_list_from_verts(nverts, vertex_list, nedges, edge_list)
+!       ! fill in the number of unique edges and fills the
+!       ! edge list with the edge ids.  the code that detects
+!       ! boundary edges for the ocean or regional atmosphere
+!       ! is incorporated here.  nedges can come back 0 in that case.
+!       call make_edge_list_from_verts(nverts, vertex_list, nedges, edge_list)
 
-   case (3)
-      call make_cell_list(vertexid, 1, ncells, cell_list)
+!    case (3)
+!       call make_cell_list(vertexid, 1, ncells, cell_list)
 
-      ! for all cells:
-      do c=1, ncells
-         ! for all vertices of the enclosing cell, add the
-         ! edges which share this vertex.
-         nverts = nEdgesOnCell(cell_list(c))
-         do i=1, nverts
-            vertex_list(i) = verticesOnCell(i, cell_list(c))
-         enddo
+!       ! for all cells:
+!       do c=1, ncells
+!          ! for all vertices of the enclosing cell, add the
+!          ! edges which share this vertex.
+!          nverts = nEdgesOnCell(cell_list(c))
+!          do i=1, nverts
+!             vertex_list(i) = verticesOnCell(i, cell_list(c))
+!          enddo
 
-         ! fill in the number of unique edges and fills the
-         ! edge list with the edge ids.  the code that detects
-         ! boundary edges for the ocean or regional atmosphere
-         ! is incorporated here.  nedges can come back 0 in that case.
-         call make_edge_list_from_verts(nverts, vertex_list, nedges1, edge_list1)
-         call merge_edge_lists(nedges, edge_list, nedges1, edge_list1)
-      enddo
+!          ! fill in the number of unique edges and fills the
+!          ! edge list with the edge ids.  the code that detects
+!          ! boundary edges for the ocean or regional atmosphere
+!          ! is incorporated here.  nedges can come back 0 in that case.
+!          call make_edge_list_from_verts(nverts, vertex_list, nedges1, edge_list1)
+!          call merge_edge_lists(nedges, edge_list, nedges1, edge_list1)
+!       enddo
 
-   case (4)
-      ! this one gives the same edge list as case (2).  see what's faster.
-      nedgec = nEdgesOnCell(cellid)
-      do i=1, nedgec
-         edgeid = edgesOnCell(i, cellid)
-         if (cellsOnEdge(1, edgeid) /= cellid) then
-            cell_list(i) = cellsOnEdge(1, edgeid)
-         else
-            cell_list(i) = cellsOnEdge(2, edgeid)
-         endif
-      enddo
+!    case (4)
+!       ! this one gives the same edge list as case (2).  see what's faster.
+!       nedgec = nEdgesOnCell(cellid)
+!       do i=1, nedgec
+!          edgeid = edgesOnCell(i, cellid)
+!          if (cellsOnEdge(1, edgeid) /= cellid) then
+!             cell_list(i) = cellsOnEdge(1, edgeid)
+!          else
+!             cell_list(i) = cellsOnEdge(2, edgeid)
+!          endif
+!       enddo
 
-      call make_edge_list_from_cells(nedgec, cell_list, nedges, edge_list)
+!       call make_edge_list_from_cells(nedgec, cell_list, nedges, edge_list)
 
-   case default
-      call error_handler(E_ERR, 'find_surrounding_edges', 'bad use_rbf_option value', &
-                         source, revision, revdate)
-end select
+!    case default
+!       call error_handler(E_ERR, 'find_surrounding_edges', 'bad use_rbf_option value', &
+!                          source)
+! end select
 
-! Check if any of edges are located in the boundary zone.
-! (We will skip the obs if any edges are located there.)
-if (on_boundary_edgelist(edge_list)) then
-   nedges = -1
-   edge_list(:) = -1
-   if(debug > 0 .and. do_output()) call error_handler(E_MSG, 'find_surrounding_edges', 'edges in the boundary', &
-                      source, revision, revdate)
-   return
-endif
+! ! Check if any of edges are located in the boundary zone.
+! ! (We will skip the obs if any edges are located there.)
+! if (on_boundary_edgelist(edge_list)) then
+!    nedges = -1
+!    edge_list(:) = -1
+! endif
 
 end subroutine find_surrounding_edges
 
@@ -4907,7 +4326,7 @@ if (global_grid) then
 else
    string1 = 'MPAS running in regional (limited-area) mode'
 endif
-call error_handler(E_MSG,'set_global_grid',string1,source,revision,revdate)
+call error_handler(E_MSG,'set_global_grid',string1,source)
 
 end subroutine set_global_grid
 
@@ -5329,7 +4748,7 @@ logical :: found
 
 if (degree < 1 .or. degree > 3) then
    call error_handler(E_ERR, 'make_cell_list', 'internal error, must have 1 <= degree <= 3', &
-                      source, revision, revdate)
+                      source)
 endif
 
 ! use the cellsOnVertex() array to find the three cells
@@ -5442,7 +4861,7 @@ do i=1, nedges
    if (x1 < 0.0_r8 .or. x2 < 0.0_r8) then
       write(string1, *) 'neither cell found in celllist', c1, c2, ' edge is ',  edgelist(i)
       call error_handler(E_ERR, 'move_pressure_to_edges', 'cell id not found in list', &
-                         source, revision, revdate, text2=string1)
+                         source, text2=string1)
    endif
    ! FIXME: should this be a log interpolation since we know this is going
    ! to be used for pressure only?  it's in the horizontal so the values
@@ -5491,10 +4910,9 @@ else
    write(string1, *) h, ' not outside range of ', lb, ' and ', ub
    call error_handler(E_ERR, 'extrapolate_level', &
                       'extrapolate code called for height not out of range', &
-                      source, revision, revdate, text2=string1)
+                      source, text2=string1)
 endif
 
-if (debug > 1 .and. do_output()) print *, 'extrapolate: ', h, lb, ub, extrapolate_level
 end function extrapolate_level
 
 !------------------------------------------------------------
@@ -5574,112 +4992,6 @@ where (weights < 0.0_r8) weights = 0.0_r8
 return
 
 end subroutine inside_triangle
-
-!------------------------------------------------------------
-
-function vector_magnitude(a)
-
-! Given a cartesian vector, compute the magnitude
-
-real(r8), intent(in)  :: a(3)
-real(r8) :: vector_magnitude
-
-vector_magnitude = sqrt(a(1)*a(1) + a(2)*a(2) + a(3)*a(3))
-
-end function vector_magnitude
-
-!------------------------------------------------------------
-
-subroutine vector_cross_product(a, b, r)
-
-! Given 2 cartesian vectors, compute the cross product of a x b
-
-real(r8), intent(in)  :: a(3), b(3)
-real(r8), intent(out) :: r(3)
-
-r(1) = a(2)*b(3) - a(3)*b(2)
-r(2) = a(3)*b(1) - a(1)*b(3)
-r(3) = a(1)*b(2) - a(2)*b(1)
-
-end subroutine vector_cross_product
-
-!------------------------------------------------------------
-
-function vector_dot_product(a, b)
-
-! Given 2 cartesian vectors, compute the dot product of a . b
-
-real(r8), intent(in)  :: a(3), b(3)
-real(r8) :: vector_dot_product
-
-vector_dot_product = a(1)*b(1) + a(2)*b(2) + a(3)*b(3)
-
-end function vector_dot_product
-
-!------------------------------------------------------------
-
-subroutine vector_projection(a, b, r)
-
-! Given 2 cartesian vectors, project a onto b
-
-real(r8), intent(in)  :: a(3), b(3)
-real(r8), intent(out) :: r(3)
-
-real(r8) :: ab_over_bb
-
-ab_over_bb = vector_dot_product(a, b) / vector_dot_product(b, b)
-r = (ab_over_bb) * b
-
-end subroutine vector_projection
-
-!------------------------------------------------------------
-
-subroutine determinant3(a, r)
-
-! Given a 3x3 matrix, compute the determinant
-
-real(r8), intent(in)  :: a(3,3)
-real(r8), intent(out) :: r
-
-r = a(1,1)*(a(2,2)*a(3,3) - (a(3,2)*a(2,3))) + &
-    a(2,1)*(a(3,2)*a(1,3) - (a(3,3)*a(1,2))) + &
-    a(3,1)*(a(1,2)*a(2,3) - (a(2,2)*a(1,3)))
-
-end subroutine determinant3
-
-!------------------------------------------------------------
-
-subroutine invert3(a, r)
-
-! Given a 3x3 matrix, compute the inverse
-
-real(r8), intent(in)  :: a(3,3)
-real(r8), intent(out) :: r(3,3)
-
-real(r8) :: det, b(3,3)
-
-call determinant3(a, det)
-if (det == 0.0_r8) then
-   print *, 'matrix cannot be inverted'
-   r = 0.0_r8
-   return
-endif
-
-b(1,1) = a(2,2)*a(3,3) - a(3,2)*a(2,3)
-b(2,1) = a(3,1)*a(2,3) - a(2,1)*a(3,3)
-b(3,1) = a(2,1)*a(3,2) - a(3,1)*a(2,2)
-
-b(1,2) = a(3,2)*a(1,3) - a(1,2)*a(3,3)
-b(2,2) = a(1,1)*a(3,3) - a(3,1)*a(1,3)
-b(3,2) = a(3,1)*a(1,2) - a(1,1)*a(3,2)
-
-b(1,3) = a(1,2)*a(2,3) - a(2,2)*a(1,3)
-b(2,3) = a(1,3)*a(2,1) - a(1,1)*a(2,3)
-b(3,3) = a(1,1)*a(2,2) - a(2,1)*a(1,2)
-
-r = b / det
-
-end subroutine invert3
 
 !------------------------------------------------------------
 
@@ -5806,18 +5118,6 @@ integer :: e
 qv_nonzero = max(qv,0.0_r8)
 theta_to_tk = missing_r8
 
-
-if ( debug > 0 .and. do_output()) then
-   if (any(istatus /= 0)) then
-     print *, 'theta_to_tk - nonzero istatus coming in'
-     do e = 1, ens_size
-      if (istatus(e) /= 0) then
-          write(string2, *) 'member ', e, ' incoming istatus = ', istatus(e)
-          call error_handler(E_ALLMSG, 'theta_to_tk',string2,source, revision, revdate)
-      endif  !(istatus(e) /= 0) then
-     enddo   ! ens_size
-   endif
-endif
 where (istatus == 0)
 
    theta_m = (1.0_r8 + rvord * qv_nonzero)*theta
