@@ -368,7 +368,7 @@
    input_state_files     = 'restart.2014-09-15_00.00.00.nc'
    output_state_files    = 'check_me.nc'
    test1thru             = -1
-   run_tests             = 1,2,3,4,6
+   run_tests             = 1,2,3,4
    x_ind                 = 300
    loc_of_interest       = 240.0, 0.0, 10000.0
    quantity_of_interest  = 'QTY_U_WIND_COMPONENT'

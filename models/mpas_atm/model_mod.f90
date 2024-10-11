@@ -601,9 +601,6 @@ endif
 ! basically we cannot do much without having at least these
 ! three fields in the state vector.  refuse to go further
 ! if these are not present:
-!print *, get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
-!print *, get_num_varids_from_kind(anl_domid, QTY_DENSITY)
-!print *, get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
 if ((get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
     (get_num_varids_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
     (get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
@@ -800,30 +797,6 @@ end function on_edge
 !> given a state vector, a location, and a QTY_xxx, return the
 !> interpolated value at that location, and an error code.  0 is success,
 !> anything positive is an error.  (negative reserved for system use)
-!>
-!>       ERROR codes:
-!>
-!>       ISTATUS =  1:  general error for rttov - at least one of the input variables goes wrong
-!>       ISTATUS = 99:  general error in case something terrible goes wrong
-!>       ISTATUS = 81:  Vertical location too high
-!>       ISTATUS = 80:  Vertical location too low
-!>       ISTATUS = 88:  this kind is not in the state vector
-!>       ISTATUS = 89:  tk cannot be computed.
-!>       ISTATUS = 11:  Could not find the closest cell center that contains this lat/lon
-!>       ISTATUS = 12:  Surface obs too far away from model elevation
-!>       ISTATUS = 13:  Missing value in interpolation.
-!>       ISTATUS = 14:  Could not find the other two cell centers of the triangle that contains this lat/lon
-!>       ISTATUS = 15:  Cell centers of the triangle fall in the lateral boundary zone
-!>       ISTATUS = 16:  Don't know how to do vertical velocity for now
-!>       ISTATUS = 17:  Unable to compute pressure values
-!>       ISTATUS = 18:  altitude illegal
-!>       ISTATUS = 19:  could not compute u using RBF code
-!>       ISTATUS = 101: Internal error; reached end of subroutine without
-!>                      finding an applicable case.
-!>       ISTATUS = 201: Reject observation from user specified pressure level
-!>       ISTATUS = 988: pressure is not monotonically descreased with level.
-!>
-
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 type(ensemble_type), intent(in)  :: state_handle
@@ -832,6 +805,26 @@ type(location_type), intent(in)  :: location
 integer,             intent(in)  :: obs_type
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
+
+! error codes: 
+integer, parameter :: GENERAL_RTTOV_ERROR = 1 ! general error for rttov - at least one of the input variables goes wrong
+integer, parameter :: CRITICAL_ERROR = 99 ! general error in case something terrible goes wrong
+integer, parameter :: VERTICAL_TOO_HIGH = 81 ! Vertical location too high
+integer, parameter :: VERTICAL_TOO_LOW = 80 ! Vertical location too low
+integer, parameter :: KIND_NOT_IN_STATE_VECTOR = 88 ! qty is not in the state vector
+integer, parameter :: TK_COMPUTATION_ERROR = 89 ! tk cannot be computed
+integer, parameter :: CELL_CENTER_NOT_FOUND = 11 ! Could not find the closest cell center that contains this lat/lon
+integer, parameter :: SURFACE_OBS_TOO_FAR = 12 ! Surface obs too far away from model elevation
+integer, parameter :: INTERPOLATION_MISSING_VALUE = 13 ! Missing value in interpolation
+integer, parameter :: TRIANGLE_CELL_CENTER_NOT_FOUND = 14 ! Could not find the other two cell centers of the triangle that contains this lat/lon
+integer, parameter :: TRIANGLE_CELL_CENTER_IN_BOUNDARY = 15 ! Cell centers of the triangle fall in the lateral boundary zone
+integer, parameter :: VERTICAL_VELOCITY_NOT_AVAIL = 16 ! Do not know how to do vertical velocity for now
+integer, parameter :: PRESSURE_COMPUTATION_ERROR = 17 ! Unable to compute pressure values
+integer, parameter :: ILLEGAL_ALTITUDE = 18
+integer, parameter :: RBF_U_COMPUTATION_ERROR = 19 ! could not compute u using RBF code
+integer, parameter :: INTERNAL_ERROR = 101 ! reached end of subroutine without finding an applicable case.
+integer, parameter :: REJECT_OBS_USER_PRESSURE_LEVEL = 201 ! Reject observation from user specified pressure level
+integer, parameter :: PRESSURE_NOT_MONOTONIC = 988 ! Pressure is not monotonically descreased with level
 
 type(location_type) :: location_tmp(ens_size)
 integer  :: ivar, obs_kind
@@ -845,7 +838,17 @@ integer  :: e, verttype
 if ( .not. module_initialized ) call static_init_model
 
 expected_obs = MISSING_R8
-istatus      = 0
+istatus      = INTERNAL_ERROR
+
+llv = get_location(location)
+verttype = nint(query_location(location))
+surface_obs = (verttype == VERTISSURFACE) 
+
+cellid = cell_ok_to_interpolate(location)
+if (cellid < 1) then
+   istatus = CELL_CENTER_NOT_FOUND
+   return
+endif
 
 
 end subroutine model_interpolate
