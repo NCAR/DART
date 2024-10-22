@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**October 22 2024 :: Bug-fixes: WRF and GOES. Tag 11.8.2**
+
+- Force THM to be the WRF-DART temperature variable
+- Remove offset on GOES observation converter 
+
 **September 27 2024 :: MOM6 mask bug-fix. Tag 11.8.1**
 
 - Fix for MOM6 CESM3 workhorse 2/3 degree grid TL319_t232 to 
