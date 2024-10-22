@@ -695,8 +695,8 @@ WRFDomains : do id=1,num_domains
    ! JPH now that we have the domain ID just go ahead and get type indices once
    ! NOTE: this is not strictly necessary - can use only stagger info in the future (???)
 
-   ! The model_nml must contain  WRF temperature variable 'THM' to 
-   ! prevent boundcheck error. For WRFv4 and later versions variable 'T' is 
+   ! Prevent boundscheck error by making WRF temperature variable 'THM' as mandatory. 
+   ! Also, for WRFv4 and later versions variable 'T' is 
    ! diagnostic, thus updating the 'THM' variable (prognostic) is also preferred
    ! for all DA applications.
    
