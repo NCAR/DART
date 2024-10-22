@@ -343,8 +343,7 @@ For example:
 
    It is mandatory to include ``THM`` instead of ``T`` as the ``TYPE_T`` WRF 
    temperature variable. This is because ``THM`` is the prognostic temperature variable
-   that will impact the forecast when updated.  Also, including ``T`` can give 
-   boundscheck errors as described in `issue #728. <https://github.com/NCAR/DART/issues/728>`__  
+   that will impact the forecast when updated. 
 
 
 - polar, periodic_x

@@ -26,9 +26,7 @@ either WRF or DART.
   `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__. The current implementation
   of the code sets ``T=THM`` because within &dynamics section of ``namelist.input``
   ``use_theta_m=0``.  For this reason, It is mandatory to include ``THM`` instead of 
-  ``T`` as the ``TYPE_T`` within the wrf_state_variables namelist. Furthermore, including
-  ``T`` in the namelist can lead to errors in the WRF model_mod bounds check as 
-  described in `Issue #728. <https://github.com/NCAR/DART/issues/728>`__
+  ``T`` as the ``TYPE_T`` within the wrf_state_variables namelist.
 
   Earlier version of WRF (v3.9) may run without errors with more recent versions of
   DART (later than 11.4.0), but the assimilation performance will be deprecated.  
