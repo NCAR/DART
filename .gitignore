@@ -168,6 +168,7 @@ L1_AMSUA_to_netcdf
 convert_airs_L2
 convert_amsu_L1
 convert_L2b
+convert_goes_ABI_L1b
 
 # Test programs built by developer_tests
 rttov_test
