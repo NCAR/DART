@@ -4954,7 +4954,7 @@ select case (ztypeout)
    ! we have the vert_level and cellid - no need to call find_triangle or find_vert_indices
 
    zout(:) = vert_level
-
+   istatus(:) = 0
    if (debug > 9 .and. do_output()) then
       write(string2,'("zout_in_level for member 1:",F10.2)') zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib_state',string2,source, revision, revdate)
@@ -5013,10 +5013,12 @@ select case (ztypeout)
    ! of the quantities should use the level centers.
    if ( ndim == 1 )  then
       zout(:) = zGridFace(1, cellid)
+      istatus(:) = 0
    else
       zout(:) = zGridCenter(vert_level, cellid)
       if ( quantity == QTY_VERTICAL_VELOCITY ) zout(:) = zGridFace(vert_level, cellid)
       if ( quantity == QTY_EDGE_NORMAL_SPEED ) zout(:) = zGridEdge(vert_level, cellid)
+      istatus(:) = 0
    endif
 
    if (debug > 9 .and. do_output()) then
@@ -5045,7 +5047,7 @@ select case (ztypeout)
      !  surf F, norm F:  need fullp only
      !  surf F, norm T:  need both surfp and fullp
 
-     at_surf = (ztypein == VERTISSURFACE)
+     at_surf = (ztypein == VERTISSURFACE)  !HK ztypin is set to VERTISLEVEL before entering this case statement
      do_norm = .not. no_normalization_of_scale_heights
 
      ! if normalizing pressure and we're on the surface, by definition scale height 
