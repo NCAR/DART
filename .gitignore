@@ -203,6 +203,7 @@ test_quad_reg_interp
 test_table_read
 test_ran_unif
 test_kde_dist
+test_window
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

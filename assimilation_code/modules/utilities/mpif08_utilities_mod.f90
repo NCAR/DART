@@ -1969,12 +1969,13 @@ end subroutine get_from_mean
 
 !-----------------------------------------------------------------------------
 
-subroutine get_from_fwd(owner, window, mindex, num_rows, x)
+subroutine get_from_fwd(owner, window, mindex, rows_in_window, num_rows, x)
 
 integer,  intent(in)  :: owner    ! task in the window that owns the memory
 type(MPI_Win),  intent(in)  :: window   ! window object
 integer,  intent(in)  :: mindex   ! index in the tasks memory
-integer,  intent(in)  :: num_rows ! number of rows in the window
+integer,  intent(in)  :: rows_in_window ! number of rows in the window
+integer,  intent(in)  :: num_rows ! number of rows to get from the window
 real(r8), intent(out) :: x(num_rows)     ! result
 
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
@@ -1984,7 +1985,7 @@ integer :: errcode
 ! to have occured until the call to mpi_win_unlock. 
 ! => Don't do anything with x in between mpi_get and mpi_win_lock
 
-target_disp = (mindex - 1)*num_rows
+target_disp = (mindex - 1)*rows_in_window
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
 call mpi_get(x, num_rows, datasize, owner, target_disp, num_rows, datasize, window, errcode)
 call mpi_win_unlock(owner, window, errcode)
