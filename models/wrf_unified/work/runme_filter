@@ -1,0 +1,317 @@
+#!/bin/tcsh 
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
+# start at a generic run script for the mpi version.  this should probably
+# end up in the shell scripts directory - but it is here for now.  nsc.
+#=============================================================================
+# This block of directives constitutes the preamble for the LSF queuing system
+# LSF is used on the IBM   Linux cluster 'lightning'
+# LSF is used on the IMAGe Linux cluster 'coral'
+# LSF is used on the IBM   'bluevista'
+# The queues on lightning and bluevista are supposed to be similar.
+#
+# the normal way to submit to the queue is:    bsub < runme_filter
+#
+# an explanation of the most common directives follows:
+# -J Job name (master script job.csh presumes filter_server.xxxx.log)
+# -o STDOUT filename
+# -e STDERR filename
+# -P      account
+# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
+# -n number of processors  (really)
+##=============================================================================
+#BSUB -J filter
+#BSUB -o filter.%J.log
+#BSUB -q regular
+#BSUB -n 16
+##BSUB -P nnnnnnnn
+#BSUB -W 1:00
+#
+#
+##=============================================================================
+## This block of directives constitutes the preamble for the PBS queuing system
+## PBS is used on the CGD   Linux cluster 'bangkok'
+## PBS is used on the CGD   Linux cluster 'calgary'
+## 
+## the normal way to submit to the queue is:    qsub runme_filter
+## 
+## an explanation of the most common directives follows:
+## -N     Job name
+## -r n   Declare job non-rerunable
+## -e <arg>  filename for standard error
+## -o <arg>  filename for standard out 
+## -q <arg>   Queue name (small, medium, long, verylong)
+## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
+##                     and calgary, there is no way to 'share' the processors
+##                     on the node with another job, so you might as well use
+##                     them both.  (ppn == Processors Per Node)
+##=============================================================================
+#PBS -N filter
+#PBS -r n
+#PBS -e filter.err
+#PBS -o filter.log
+#PBS -q medium
+#PBS -l nodes=16:ppn=2
+
+
+# if async=2, e.g. you are going to run './wrf.exe', single process
+# (or possibly 'mpirun -np 1 ./wrf.exe'), so each processor advances 
+# one ensemble independently of the others, leave this as false.
+#
+# if async=4, e.g.  all the processors advance each wrf.exe in turn with
+# mpirun -np 64 wrf.exe (or whatever) for as many ensembles as you have,
+# set this to "true"
+
+# if async=4, also check that the call to advance_model.csh
+# has the right number of ensemble members below; it must match
+# the input.nml number.
+
+set parallel_model = "false"
+
+set num_ens = 16
+
+# A common strategy for the beginning is to check for the existence of
+# some variables that get set by the different queuing mechanisms.
+# This way, we know which queuing mechanism we are working with,
+# and can set 'queue-independent' variables for use for the remainder
+# of the script.
+
+if ($?LS_SUBCWD) then
+
+   # LSF has a list of processors already in a variable (LSB_HOSTS)
+   #  alias submit 'bsub < \!*'
+
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+   
+     mpirun.lsf ./filter
+   
+   else
+   
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
+     rm -f model_to_filter.lock filter_to_model.lock
+     mkfifo model_to_filter.lock filter_to_model.lock
+
+     set filterhome = ~/.filter
+     if ( ! -e $filterhome) mkdir $filterhome
+   
+     # this starts filter but also returns control back to
+     # this script immediately.
+      
+     (setenv HOME $filterhome; mpirun.lsf ./filter)  &
+       
+     while ( -e filter_to_model.lock )
+       
+       set todo=`( echo $< ) < filter_to_model.lock`
+       echo todo received, value = ${todo}
+       
+       if ( "${todo}" == "finished" ) then
+         echo main script: filter done.
+         wait
+         break                                
+
+       else if ( "${todo}" == "advance" ) then
+         
+         # the second number below must match the number
+         # of ensembles.  and in input.nml, the advance model
+         # command must have -np N with N equal to the number
+         # of processors this job is using.
+   
+         echo calling model advance now:                
+         ./advance_model.csh 0 ${num_ens} filter_control00000  true
+         
+         echo restarting filter.     
+         mpirun.lsf  ./wakeup_filter
+       
+       else
+         
+         echo main script: unexpected value received.
+         break
+       
+       endif
+      
+     end
+      
+     echo filter finished, removing pipes.
+     rm -f model_to_filter.lock filter_to_model.lock
+   
+     if ( -d $filterhome) rmdir $filterhome
+   endif
+   
+
+else if ($?PBS_O_WORKDIR) then
+
+   # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
+   #  alias submit 'qsub \!*'
+
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+   
+     mpirun ./filter
+   
+   else
+   
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
+     rm -f model_to_filter.lock filter_to_model.lock
+     mkfifo model_to_filter.lock filter_to_model.lock
+
+     set filterhome = ~/.filter
+     if ( ! -e $filterhome) mkdir $filterhome
+   
+     # this starts filter but also returns control back to
+     # this script immediately.
+      
+     (setenv HOME $filterhome; mpirun ./filter)  &
+       
+     while ( -e filter_to_model.lock )
+       
+       set todo=`( echo $< ) < filter_to_model.lock`
+       echo todo received, value = ${todo}
+       
+       if ( "${todo}" == "finished" ) then
+         echo main script: filter done.
+         wait
+         break                                
+
+       else if ( "${todo}" == "advance" ) then
+         
+         # the second number below must match the number
+         # of ensembles.  and in input.nml, the advance model
+         # command must have -np N with N equal to the number
+         # of processors this job is using.
+   
+         echo calling model advance now:                
+         ./advance_model.csh 0 ${num_ens} filter_control00000  true
+         
+         echo restarting filter.     
+         mpirun  ./wakeup_filter
+       
+       else
+         
+         echo main script: unexpected value received.
+         break
+       
+       endif
+      
+     end
+      
+     echo filter finished, removing pipes.
+     rm -f model_to_filter.lock filter_to_model.lock
+   
+     if ( -d $filterhome) rmdir $filterhome
+   endif
+   
+else if ($?OCOTILLO_MPINODES) then
+
+   # If you have a linux cluster with no queuing software, use this
+   # section.  The list of computational nodes is given to the mpirun
+   # command and it assigns them as they appear in the file.  In some
+   # cases it seems to be necessary to wrap the command in a small
+   # script that changes to the current directory before running.
+   # (ocotillo is a local ncar cluster, and also a type of desert tree)
+
+   echo "running on ocotillo"
+
+   # before running this script, do this once.  the syntax is
+   # node name : how many tasks you can run on it
+   #setenv OCOTILLO_MPINODES  ~/nodelist
+   #echo "node7:2" >! $OCOTILLO_MPINODES
+   #echo "node5:2" >> $OCOTILLO_MPINODES
+   #echo "node3:2" >> $OCOTILLO_MPINODES
+   #echo "node1:2" >> $OCOTILLO_MPINODES
+
+   setenv NUM_PROCS 8
+   echo "running with $NUM_PROCS nodes specified from $OCOTILLO_MPINODES"
+
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+
+      mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./filter
+
+   else
+
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
+     rm -f model_to_filter.lock filter_to_model.lock
+     mkfifo model_to_filter.lock filter_to_model.lock
+
+     set filterhome = ~/.filter
+     if ( ! -e $filterhome) mkdir $filterhome
+   
+     # this starts filter but also returns control back to
+     # this script immediately.
+      
+     (setenv HOME $filterhome; \
+      mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./filter ) &
+       
+     while ( -e filter_to_model.lock )
+       
+       set todo=`( echo $< ) < filter_to_model.lock`
+       echo todo received, value = ${todo}
+       
+       if ( "${todo}" == "finished" ) then
+         echo main script: filter done.
+         wait
+         break                                
+
+       else if ( "${todo}" == "advance" ) then
+         
+         # the second number below must match the number
+         # of ensembles.  and in input.nml, the advance model
+         # command must have -np N with N equal to the number
+         # of processors this job is using.
+   
+         echo calling model advance now:                
+         ./advance_model.csh 0 ${num_ens} filter_control00000  true
+         
+         echo restarting filter.     
+         mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./wakeup_filter
+       
+       else
+         
+         echo main script: unexpected value received.
+         break
+       
+       endif
+      
+     end
+      
+     echo filter finished, removing pipes.
+     rm -f model_to_filter.lock filter_to_model.lock
+   
+     if ( -d $filterhome) rmdir $filterhome
+   endif
+   
+else
+
+   # interactive - assume you are using 'lam-mpi' and that you have
+   # already run 'lamboot' once to start the lam server, or that you
+   # are running with a machine that has mpich installed.
+
+   echo "running interactively"
+   mpirun -np 4 ./filter
+
+endif
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
