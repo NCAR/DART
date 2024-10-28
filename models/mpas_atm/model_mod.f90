@@ -338,16 +338,16 @@ namelist /model_nml/             &
    no_normalization_of_scale_heights
 
 ! DART state vector contents are specified in the input.nml:&mpas_vars_nml namelist.
-integer, parameter :: max_state_variables = 80
-integer, parameter :: num_state_table_columns = 2
-integer, parameter :: num_bounds_table_columns = 4
-character(len=NF90_MAX_NAME) :: mpas_state_variables(max_state_variables * num_state_table_columns ) = ' '
-character(len=NF90_MAX_NAME) :: mpas_state_bounds(num_bounds_table_columns, max_state_variables ) = ' '
-character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
+integer, parameter :: MAX_STATE_VARIABLES = 80
+integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
+integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 4 !HK @todo get rid of clamp or fail
+character(len=NF90_MAX_NAME) :: mpas_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
+character(len=NF90_MAX_NAME) :: mpas_state_bounds(NUM_BOUNDS_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
+character(len=NF90_MAX_NAME) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS )
 
 ! this is special and not in the namelist.  boundary files have a fixed
 ! set of variables with fixed names.
-character(len=NF90_MAX_NAME) :: lbc_variables(max_state_variables) = ''
+character(len=NF90_MAX_NAME) :: lbc_variables(MAX_STATE_VARIABLES) = ''
 
 namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
 
@@ -492,8 +492,8 @@ integer :: ss, dd, z1, m1
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
 integer :: lbc_nfields
 logical :: both
-real(r8) :: variable_bounds(max_state_variables, 2)
-integer :: variable_qtys(max_state_variables)
+real(r8) :: variable_bounds(MAX_STATE_VARIABLES, 2)
+integer :: variable_qtys(MAX_STATE_VARIABLES)
 character(len=*), parameter :: routine = 'static_init_model'
 
 if ( module_initialized ) return ! only need to do this once.
@@ -535,8 +535,8 @@ call error_handler(E_MSG,routine,string1,source)
 
 ncid = nc_open_file_readonly(init_template_filename, routine)
 
-call verify_state_variables( mpas_state_variables, ncid, init_template_filename, &
-                             nfields, variable_table, variable_qtys, variable_bounds)
+call verify_state_variables(ncid, init_template_filename, &
+                            nfields, variable_qtys, variable_bounds)
 call read_grid()
 
 call nc_close_file(ncid, routine)
@@ -557,7 +557,7 @@ lbc_nfields = 0
 ! the assimilation (so we can compute increments)  !HK why would you need to add a third domain?
 if (.not. global_grid .and. lbc_variables(1) /= '') then
    ! regional: count number of lbc fields to read in
-   COUNTUP: do i=1, max_state_variables
+   COUNTUP: do i=1, MAX_STATE_VARIABLES
       if (lbc_variables(i) /= '') then
          lbc_nfields = lbc_nfields + 1
       else
@@ -2471,50 +2471,47 @@ end subroutine put_u
 
 
 !------------------------------------------------------------------
-! HK 
-subroutine verify_state_variables(state_variables, ncid, filename, ngood, table, qty_list, variable_bounds)
+subroutine verify_state_variables(ncid, filename, ngood, qty_list, variable_bounds)
 
-character(len=*), dimension(:),   intent(in)  :: state_variables
 integer,                          intent(in)  :: ncid
 character(len=*),                 intent(in)  :: filename
 integer,                          intent(out) :: ngood
-character(len=*), dimension(:,:), intent(out) :: table
 integer,                          intent(out) :: qty_list(:)
 real(r8),                         intent(out) :: variable_bounds(:,:)
 
-integer :: nrows, i, j, VarID
+integer :: i, j, VarID
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname, dimname
 character(len=NF90_MAX_NAME) :: dartstr
+real(r8) :: lower_bound, upper_bound
+character(len=10) :: bound
 integer :: dimlen, numdims
 logical :: u_already_in_list
 logical :: failure
 
 if ( .not. module_initialized ) call static_init_model
 
-failure = .FALSE. ! perhaps all with go well
+failure = .FALSE. ! this is for unsupported dimensions
 u_already_in_list = .FALSE.
 
 !HK @todo varible bounds
 variable_bounds(:,:) = MISSING_R8   
 
-nrows = size(table,1)
-
 ngood = 0
-MyLoop : do i = 1, nrows
+MyLoop : do i = 1, MAX_STATE_VARIABLES
 
-   varname    = trim(state_variables(2*i -1))
-   dartstr    = trim(state_variables(2*i   ))
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
+   varname    = trim(mpas_state_variables(2*i -1))
+   dartstr    = trim(mpas_state_variables(2*i   ))
+   variable_table(i,1) = trim(varname)
+   variable_table(i,2) = trim(dartstr) !HK @todo to_upper
 
    if (varname == 'u') has_edge_u = .true.
    if (varname == 'uReconstructZonal' .or. &
        varname == 'uReconstructMeridional') has_uvreconstruct = .true.
 
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' ) exit MyLoop ! Found end of list.
+   if ( variable_table(i,1) == ' ' .and. variable_table(i,2) == ' ' ) exit MyLoop ! Found end of list.
 
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' ) then
+   if ( variable_table(i,1) == ' ' .or. variable_table(i,2) == ' ' ) then
       string1 = 'mpas_vars_nml:model state_variables not fully specified'
       call error_handler(E_ERR,'verify_state_variables',string1,source)
    endif
@@ -2563,8 +2560,6 @@ MyLoop : do i = 1, nrows
        call error_handler(E_ERR,'verify_state_variables',string2,source)
    endif
 
-   ! Make sure DART kind is valid
-
    qty_list(i) = get_index_for_quantity(dartstr)
    if( qty_list(i) < 0 ) then
       write(string1,'(''there is no qty <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
@@ -2572,13 +2567,36 @@ MyLoop : do i = 1, nrows
    endif
 
    ! Keep track of whether U (edge normal winds) is part of the user-specified field list
-   if ((table(i, 1) == 'u') .or. (table(i, 1) == 'U')) u_already_in_list = .true.
+   if ((variable_table(i, 1) == 'u') .or. (variable_table(i, 1) == 'U')) u_already_in_list = .true.
+
+   ! check variable bounds
+   do j = 1, MAX_STATE_VARIABLES
+       if (trim(mpas_state_bounds(1, j)) == ' ') exit
+         if (trim(mpas_state_bounds(1, j)) == trim(varname)) then
+
+            bound = trim(mpas_state_bounds(2, j))
+            if ( bound /= 'NULL' .and. bound /= '' ) then
+               read(bound,'(d16.8)') lower_bound
+             else
+               lower_bound = MISSING_R8
+             endif
+
+             bound = trim(mpas_state_bounds(3, j))
+             if ( bound /= 'NULL' .and. bound /= '' ) then
+                  read(bound,'(d16.8)') upper_bound
+             else
+                  upper_bound = MISSING_R8
+             endif
+            variable_bounds(i,1) = lower_bound
+            variable_bounds(i,2) = upper_bound
+         endif
+   enddo
 
    ngood = ngood + 1
 enddo MyLoop
 
-if (ngood == nrows) then
-   string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
+if (ngood == MAX_STATE_VARIABLES) then
+   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
    call error_handler(E_MSG,'verify_state_variables',string1,source,text2=string2)
 endif
@@ -2587,9 +2605,12 @@ endif
 ! add it to the list.
 if (add_u_to_state_list .and. .not. u_already_in_list) then
    ngood = ngood + 1
-   table(ngood,1) = "u"
-   table(ngood,2) = "QTY_EDGE_NORMAL_SPEED"
+   variable_table(ngood,1) = "u"
+   variable_table(ngood,2) = "QTY_EDGE_NORMAL_SPEED"
 endif
+
+! state bounds
+
 
 end subroutine verify_state_variables
 
@@ -2608,13 +2629,13 @@ end subroutine verify_state_variables
 !>
 
 function is_edgedata_in_state_vector(state_list, bdy_list)
-  character(len=*), intent(in) :: state_list(max_state_variables, num_state_table_columns)
-  character(len=*), intent(in) :: bdy_list(max_state_variables)
+  character(len=*), intent(in) :: state_list(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS)
+  character(len=*), intent(in) :: bdy_list(MAX_STATE_VARIABLES)
   logical :: is_edgedata_in_state_vector
 
 integer :: i
 
-StateLoop : do i = 1, max_state_variables
+StateLoop : do i = 1, MAX_STATE_VARIABLES
 
    if (state_list(i, 1) == ' ') exit StateLoop ! Found end of list.
 
@@ -2627,7 +2648,7 @@ enddo StateLoop
 
 ! if U is not in the state, does it matter if U is
 ! in the boundary file?  yes, return true if so.
-BdyLoop : do i = 1, max_state_variables
+BdyLoop : do i = 1, MAX_STATE_VARIABLES
 
    if (bdy_list(i) == ' ') exit BdyLoop ! Found end of list.
 
@@ -2672,38 +2693,6 @@ write(string2,*) 'cannot have only one of uReconstructMeridional and uReconstruc
 call error_handler(E_ERR,'winds_present',string1,source,text2=string2)
 
 end subroutine winds_present
-
-
-!------------------------------------------------------------
-subroutine get_variable_bounds(bounds_table, ivar)
-
-! matches MPAS variable name in bounds table to assign
-! the bounds if they exist.  otherwise sets the bounds
-! to missing_r8
-!
-! SYHA (May-30-2013)
-! Adopted from wrf/model_mod.f90 after adding mpas_state_bounds in mpas_vars_nml.
-
-! bounds_table is the global mpas_state_bounds
-character(len=*), intent(in)  :: bounds_table(num_bounds_table_columns, max_state_variables)
-integer,          intent(in)  :: ivar
-
-! local variables
-character(len=50)             :: bounds_varname, bound
-character(len=10)             :: clamp_or_fail
-real(r8)                      :: lower_bound, upper_bound
-integer                       :: n
-
-n = 1
-do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= '' )
-
-   bounds_varname = trim(bounds_table(1,n)) 
-
-   n = n + 1
-
-enddo !n
-
-end subroutine get_variable_bounds
 
 !------------------------------------------------------------------
 
@@ -4005,7 +3994,7 @@ end subroutine compute_scalar_with_barycentric
 subroutine compute_surface_data_with_barycentric(var1d, loc, dval, ier, this_cellid)
 
 type(location_type), intent(in)  :: loc
-real(r8),            intent(in)  :: var1d(:)
+real(r8),            intent(in)  :: var1d(:) ! whole static variable. HK why pass this in?
 real(r8),            intent(out) :: dval
 integer,             intent(out) :: ier
 integer, optional,   intent(in)  :: this_cellid
@@ -4229,8 +4218,7 @@ if (var_id < 0 .or. .not. data_on_edges) then
    ! cannot compute u if it is not in the state vector, or if we
    ! have not read in the edge data (which shouldn't happen if
    ! u is in the state vector.
-   ier = 18
-   print*, 'hello Helen'
+   ier = RBF_U_COMPUTATION_ERROR
    return
 endif
 
