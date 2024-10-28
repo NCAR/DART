@@ -2373,31 +2373,8 @@ end subroutine convert_vertical_state
 
 
 !------------------------------------------------------------------
-!> code to convert an observation location's vertical coordinate type. !HK also state locations
-
+!> code to convert an observation location's vertical coordinate type.
 subroutine convert_vert(state_handle, ens_size, location, obs_kind, ztypeout, istatus)
-
-! This subroutine converts a given obs vertical coordinate to
-! the vertical localization coordinate type requested through the
-! model_mod namelist.
-!
-! Notes: (1) obs_kind is only necessary to check whether the ob
-!            is an identity ob.
-!        (2) This subroutine can convert both obs' and state points'
-!            vertical coordinates. Remember that state points get
-!            their DART location information from get_state_meta_data
-!            which is called by filter_assim during the assimilation
-!            process.
-!        (3) state_handle is the relevant DART state vector for carrying out
-!            computations necessary for the vertical coordinate
-!            transformations. As the vertical coordinate is only used
-!            in distance computations, this is actually the "expected"
-!            vertical coordinate, so that computed distance is the
-!            "expected" distance. Thus, under normal circumstances,
-!            the state that is supplied to convert_vert should be the
-!            ensemble mean. Nevertheless, the subroutine has the
-!            functionality to operate on any DART state vector that
-!            is supplied to it.
 
 type(ensemble_type),    intent(in)    :: state_handle
 integer,                intent(in)    :: ens_size
@@ -2406,9 +2383,6 @@ integer,                intent(in)    :: obs_kind
 integer,                intent(in)    :: ztypeout
 integer,                intent(out)   :: istatus(ens_size)
 
-! zin and zout are the vert values coming in and going out.
-! ztype{in,out} are the vert types as defined by the 3d sphere
-! locations mod (location/threed_sphere/location_mod.f90)
 real(r8), dimension(3, ens_size) :: llv_loc
 real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
 integer,  dimension(3,ens_size)  :: k_low, k_up
@@ -2435,9 +2409,6 @@ if (obs_kind < 0) then
    location(:) = location(1)
 endif
 
-! if the existing coord is already in the requested vertical units
-! or if the vert is 'undef' which means no specifically defined
-! vertical coordinate, return now.
 ztypein  = nint(query_location(location(1), 'which_vert'))
 if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
    istatus = 0
@@ -2450,9 +2421,6 @@ do e = 1, ens_size
    llv_loc(:, e) = get_location(location(e))
 enddo
 
-! the routines below will use zin as the incoming vertical value
-! and zout as the new outgoing one.  start out assuming failure
-! (zout = missing) and wait to be pleasantly surprised when it works.
 zin(:)     = llv_loc(3, :)
 zout(:)    = missing_r8
 
@@ -2460,7 +2428,7 @@ zout(:)    = missing_r8
 ! with the requested type as out.
 do e = 1, ens_size
    if (zin(e) == missing_r8) then
-      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
+      location(e) = set_location(llv_loc(1, e), llv_loc(2, e), MISSING_R8, ztypeout)
    endif
 enddo
 ! if the entire ensemble has missing vertical values we can return now.
@@ -2470,106 +2438,86 @@ if (all(zin == missing_r8)) then
    return
 endif
 
-! Convert the incoming vertical type (ztypein) into the vertical
-! localization coordinate given in the namelist (ztypeout).
-! Various incoming vertical types (ztypein) are taken care of
-! inside find_vert_level. So we only check ztypeout here.
-
-! convert into:
 select case (ztypeout)
 
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'model level number'
-   ! ------------------------------------------------------------
    case (VERTISLEVEL)
 
-   ! Identify the three cell ids (c) in the triangle enclosing the obs and
-   ! the vertical indices for the triangle at two adjacent levels (k_low and k_up)
-   ! and the fraction (fract) for vertical interpolation.
+      ! Identify the three cell ids (c) in the triangle enclosing the obs and
+      ! the vertical indices for the triangle at two adjacent levels (k_low and k_up)
+      ! and the fraction (fract) for vertical interpolation.
 
-   call find_triangle (location(1), n, c, weights, istatus(1))
-   if(istatus(1) /= 0) then
-      istatus(:) = istatus(1)
-      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      return
-   endif
-   call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
-   if( all(istatus /= 0) ) then
-      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      return
-   endif
-
-   zk_mid = k_low + fract
-   do e = 1, ens_size
-      if(istatus(e) == 0) then
-         zout(e) = sum(weights(:) * zk_mid(:, e))
+      call find_triangle (location(1), n, c, weights, istatus(1))
+      if(istatus(1) /= 0) then
+         istatus(:) = istatus(1)
+         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         return
       endif
-   enddo
+      call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
+      if( all(istatus /= 0) ) then
+         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         return
+      endif
 
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'pressure' in Pa
-   ! ------------------------------------------------------------
+      zk_mid = k_low + fract
+      do e = 1, ens_size
+         if(istatus(e) == 0) then
+            zout(e) = sum(weights(:) * zk_mid(:, e))
+         endif
+      enddo
+
    case (VERTISPRESSURE)
 
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   ivars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
-   ivars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
+      ivars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+      ivars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
+      ivars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
 
-   if (any(ivars(1:3) < 0)) then
-      write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
-      call error_handler(E_ERR, 'convert_vert',string1,source)
-   endif
+      if (any(ivars(1:3) < 0)) then
+         write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
+         call error_handler(E_ERR, 'convert_vert',string1,source)
+      endif
 
-   ! Get theta, rho, qv at the interpolated location
-   call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
-   if( all(istatus /= 0) ) then
-      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      return
-   endif
+      ! Get theta, rho, qv at the interpolated location
+      call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
+      if( all(istatus /= 0) ) then
+         location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
+         return
+      endif
 
-   ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
+      ! Convert theta, rho, qv into pressure
+      call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
 
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'height' in meters
-   ! ------------------------------------------------------------
    case (VERTISHEIGHT)
 
-   call find_triangle (location(1), n, c, weights, istatus(1))
-   if(istatus(1) /= 0) then
-      istatus(:) = istatus(1)
-      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      return
-   endif
-   call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
-   if( all(istatus /= 0) ) then
-      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      return
-   endif
-
-   fdata = 0.0_r8
-   do i = 1, n
-      where (istatus == 0)
-         fdata(i, :) = zGridFace(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
-                       zGridFace(k_up (i, :),c(i))*fract(i, :)
-      end where
-   enddo
-
-   ! now have vertically interpolated values at cell centers.
-   ! use horizontal weights to compute value at interp point.
-   do e = 1, ens_size
-      if(istatus(e) == 0) then
-         zout(e) = sum(weights(:) * fdata(:,e))
-      else
-         zout(e) = missing_r8
+      call find_triangle (location(1), n, c, weights, istatus(1))
+      if(istatus(1) /= 0) then
+         istatus(:) = istatus(1)
+         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         return
       endif
-   enddo
+      call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
+      if( all(istatus /= 0) ) then
+         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         return
+      endif
 
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'scale height' (a ratio)
-   ! ------------------------------------------------------------
+      fdata = 0.0_r8
+      do i = 1, n
+         where (istatus == 0)
+            fdata(i, :) = zGridFace(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
+                        zGridFace(k_up (i, :),c(i))*fract(i, :)
+         end where
+      enddo
+
+      ! now have vertically interpolated values at cell centers.
+      ! use horizontal weights to compute value at interp point.
+      do e = 1, ens_size
+         if(istatus(e) == 0) then
+            zout(e) = sum(weights(:) * fdata(:,e))
+         else
+            zout(e) = missing_r8
+         endif
+      enddo
+
    case (VERTISSCALEHEIGHT)
 
      ! Scale Height is defined as:  log(pressure) 
@@ -2595,11 +2543,9 @@ select case (ztypeout)
         return
      endif
 
-     ! Base offsets for the potential temperature, density, and water
-     ! vapor mixing fields in the state vector.
-       !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-       !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-       !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+     ivars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+     ivars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
+     ivars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
 
      if (at_surf .or. do_norm) then  ! we will need surface pressure
 
@@ -2607,7 +2553,7 @@ select case (ztypeout)
        surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
        call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
        if( all(istatus /= 0) ) then
-           location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+           location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
            return
        endif
 
@@ -2651,9 +2597,6 @@ select case (ztypeout)
         end where
      endif
 
-   ! -------------------------------------------------------
-   ! outgoing vertical coordinate is unrecognized
-   ! -------------------------------------------------------
    case default
       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
       call error_handler(E_ERR,'convert_vert', string1, &
@@ -2664,12 +2607,11 @@ end select   ! outgoing vert type
 ! Returned location
 do e = 1, ens_size
    if(istatus(e) == 0) then
-      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),zout(e),ztypeout)
+      location(e) = set_location(llv_loc(1, e), llv_loc(2, e), zout(e), ztypeout)
    else
-      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
+      location(e) = set_location(llv_loc(1, e), llv_loc(2, e), MISSING_R8, ztypeout)
    endif
 enddo
-
 
 end subroutine convert_vert
 
@@ -2685,9 +2627,6 @@ integer(i8),            intent(in)    :: state_indx
 integer,                intent(in)    :: ztypeout ! requested vertical type
 integer,                intent(out)   :: istatus(ens_size)
 
-! zin and zout are the vert values coming in and going out.
-! ztype{in,out} are the vert types as defined by the 3d sphere
-! locations mod (location/threed_sphere/location_mod.f90)
 real(r8), dimension(3, ens_size) :: llv_loc
 real(r8), dimension(3,ens_size)  :: values
 real(r8), dimension(ens_size)    :: zin, zout
@@ -3831,110 +3770,110 @@ subroutine find_surrounding_edges(lat, lon, nedges, edge_list, cellid, vertexid)
  integer,  intent(out) :: nedges, edge_list(:)
  integer,  intent(out) :: cellid, vertexid
 
-! ! given an arbitrary lat/lon location, find the edges of the
-! ! cells that share the nearest vertex.  return the ids for the
-! ! closest cell center and closest vertex to save having to redo
-! ! the search.
+! given an arbitrary lat/lon location, find the edges of the
+! cells that share the nearest vertex.  return the ids for the
+! closest cell center and closest vertex to save having to redo
+! the search.
 
-! integer :: vertex_list(30), nedges1, edge_list1(300), c, i
-! integer :: ncells, cell_list(150), nedgec, edgeid, nverts
+integer :: vertex_list(30), nedges1, edge_list1(300), c, i
+integer :: ncells, cell_list(150), nedgec, edgeid, nverts
 
-! ! find the cell id that has a center point closest
-! ! to the given point.
-! cellid = find_closest_cell_center(lat, lon)
-! if (cellid < 1) then
-!    nedges = 0
-!    edge_list(:) = -1
-!    return
-! endif
+! find the cell id that has a center point closest
+! to the given point.
+cellid = find_closest_cell_center(lat, lon)
+if (cellid < 1) then
+   nedges = 0
+   edge_list(:) = -1
+   return
+endif
 
-! ! inside this cell, find the vertex id that the point
-! ! is closest to.  this is a return from this subroutine.
-! vertexid = closest_vertex_ll(cellid, lat, lon)
-! if (vertexid <= 0) then
-!    ! call error handler?  unexpected
-!    nedges = 0
-!    edge_list(:) = -1
-!    return
-! endif
+! inside this cell, find the vertex id that the point
+! is closest to.  this is a return from this subroutine.
+vertexid = closest_vertex_ll(cellid, lat, lon)
+if (vertexid <= 0) then
+   ! call error handler?  unexpected
+   nedges = 0
+   edge_list(:) = -1
+   return
+endif
 
-! nedges = 0
-! edge_list = 0
+nedges = 0
+edge_list = 0
 
-! select case (use_rbf_option)
-!   case (0)
-!       ! use edges on the closest cell only.
-!       nedges = nEdgesOnCell(cellid)
-!       do i=1, nedges
-!          edge_list(i) = edgesOnCell(i, cellid)
-!       enddo
-!   case (1)
-!       ! fill in the number of unique edges and fills the
-!       ! edge list with the edge ids.  the code that detects
-!       ! boundary edges for the ocean or regional atmosphere
-!       ! is incorporated here.  nedges can come back 0 in that case.
-!       vertex_list(1) = vertexid
-!       call make_edge_list_from_verts(1, vertex_list, nedges, edge_list)
+select case (use_rbf_option)
+  case (0)
+      ! use edges on the closest cell only.
+      nedges = nEdgesOnCell(cellid)
+      do i=1, nedges
+         edge_list(i) = edgesOnCell(i, cellid)
+      enddo
+  case (1)
+      ! fill in the number of unique edges and fills the
+      ! edge list with the edge ids.  the code that detects
+      ! boundary edges for the ocean or regional atmosphere
+      ! is incorporated here.  nedges can come back 0 in that case.
+      vertex_list(1) = vertexid
+      call make_edge_list_from_verts(1, vertex_list, nedges, edge_list)
 
-!    case (2)
-!       ! for all vertices of the enclosing cell, add the
-!       ! edges which share this vertex.
-!       nverts = nEdgesOnCell(cellid)
-!       do i=1, nverts
-!          vertex_list(i) = verticesOnCell(i, cellid)
-!       enddo
+   case (2)
+      ! for all vertices of the enclosing cell, add the
+      ! edges which share this vertex.
+      nverts = nEdgesOnCell(cellid)
+      do i=1, nverts
+         vertex_list(i) = verticesOnCell(i, cellid)
+      enddo
 
-!       ! fill in the number of unique edges and fills the
-!       ! edge list with the edge ids.  the code that detects
-!       ! boundary edges for the ocean or regional atmosphere
-!       ! is incorporated here.  nedges can come back 0 in that case.
-!       call make_edge_list_from_verts(nverts, vertex_list, nedges, edge_list)
+      ! fill in the number of unique edges and fills the
+      ! edge list with the edge ids.  the code that detects
+      ! boundary edges for the ocean or regional atmosphere
+      ! is incorporated here.  nedges can come back 0 in that case.
+      call make_edge_list_from_verts(nverts, vertex_list, nedges, edge_list)
 
-!    case (3)
-!       call make_cell_list(vertexid, 1, ncells, cell_list)
+   case (3)
+      call make_cell_list(vertexid, 1, ncells, cell_list)
 
-!       ! for all cells:
-!       do c=1, ncells
-!          ! for all vertices of the enclosing cell, add the
-!          ! edges which share this vertex.
-!          nverts = nEdgesOnCell(cell_list(c))
-!          do i=1, nverts
-!             vertex_list(i) = verticesOnCell(i, cell_list(c))
-!          enddo
+      ! for all cells:
+      do c=1, ncells
+         ! for all vertices of the enclosing cell, add the
+         ! edges which share this vertex.
+         nverts = nEdgesOnCell(cell_list(c))
+         do i=1, nverts
+            vertex_list(i) = verticesOnCell(i, cell_list(c))
+         enddo
 
-!          ! fill in the number of unique edges and fills the
-!          ! edge list with the edge ids.  the code that detects
-!          ! boundary edges for the ocean or regional atmosphere
-!          ! is incorporated here.  nedges can come back 0 in that case.
-!          call make_edge_list_from_verts(nverts, vertex_list, nedges1, edge_list1)
-!          call merge_edge_lists(nedges, edge_list, nedges1, edge_list1)
-!       enddo
+         ! fill in the number of unique edges and fills the
+         ! edge list with the edge ids.  the code that detects
+         ! boundary edges for the ocean or regional atmosphere
+         ! is incorporated here.  nedges can come back 0 in that case.
+         call make_edge_list_from_verts(nverts, vertex_list, nedges1, edge_list1)
+         call merge_edge_lists(nedges, edge_list, nedges1, edge_list1)
+      enddo
 
-!    case (4)
-!       ! this one gives the same edge list as case (2).  see what's faster.
-!       nedgec = nEdgesOnCell(cellid)
-!       do i=1, nedgec
-!          edgeid = edgesOnCell(i, cellid)
-!          if (cellsOnEdge(1, edgeid) /= cellid) then
-!             cell_list(i) = cellsOnEdge(1, edgeid)
-!          else
-!             cell_list(i) = cellsOnEdge(2, edgeid)
-!          endif
-!       enddo
+   case (4)
+      ! this one gives the same edge list as case (2).  see what's faster.
+      nedgec = nEdgesOnCell(cellid)
+      do i=1, nedgec
+         edgeid = edgesOnCell(i, cellid)
+         if (cellsOnEdge(1, edgeid) /= cellid) then
+            cell_list(i) = cellsOnEdge(1, edgeid)
+         else
+            cell_list(i) = cellsOnEdge(2, edgeid)
+         endif
+      enddo
 
-!       call make_edge_list_from_cells(nedgec, cell_list, nedges, edge_list)
+      call make_edge_list_from_cells(nedgec, cell_list, nedges, edge_list)
 
-!    case default
-!       call error_handler(E_ERR, 'find_surrounding_edges', 'bad use_rbf_option value', &
-!                          source)
-! end select
+   case default
+      call error_handler(E_ERR, 'find_surrounding_edges', 'bad use_rbf_option value', &
+                         source)
+end select
 
-! ! Check if any of edges are located in the boundary zone.
-! ! (We will skip the obs if any edges are located there.)
-! if (on_boundary_edgelist(edge_list)) then
-!    nedges = -1
-!    edge_list(:) = -1
-! endif
+! Check if any of edges are located in the boundary zone.
+! (We will skip the obs if any edges are located there.)
+if (on_boundary_edgelist(edge_list)) then
+   nedges = -1
+   edge_list(:) = -1
+endif
 
 end subroutine find_surrounding_edges
 
