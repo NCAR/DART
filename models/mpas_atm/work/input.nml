@@ -210,6 +210,7 @@
                           'w',                     'QTY_VERTICAL_VELOCITY',
                           'qv',                    'QTY_VAPOR_MIXING_RATIO',
                           'surface_pressure',      'QTY_SURFACE_PRESSURE',
+                          't2m'                    'QTY_2M_TEMPERATURE',
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
   /
 
@@ -371,7 +372,7 @@
    run_tests             = 1,2,3,4
    x_ind                 = 300
    loc_of_interest       = 240.0, 0.0, 10000.0
-   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   quantity_of_interest  = 'QTY_V_WIND_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0

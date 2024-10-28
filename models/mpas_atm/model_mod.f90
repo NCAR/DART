@@ -104,7 +104,7 @@ use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars
 
-use distributed_state_mod, only : get_state
+use distributed_state_mod, only : get_state, get_state_array
 
 use netcdf
 
@@ -113,7 +113,10 @@ use state_structure_mod, only :  add_domain, get_model_variable_indices, &
                                  get_num_variables, get_domain_size, get_varid_from_varname, &
                                  get_variable_name, get_num_dims, get_dim_lengths, &
                                  get_dart_vector_index, get_num_varids_from_kind, &
-                                 get_dim_name
+                                 get_dim_name, get_varid_from_kind
+
+use get_reconstruct_mod, only : get_reconstruct_init, get_reconstruct
+use get_geometry_mod,    only : get_geometry
 
 
 implicit none
@@ -173,6 +176,27 @@ public :: set_lbc_variables, &
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
+
+! error codes: 
+integer, parameter :: GENERAL_RTTOV_ERROR = 1 ! general error for rttov - at least one of the input variables goes wrong
+integer, parameter :: CRITICAL_ERROR = 99 ! general error in case something terrible goes wrong
+integer, parameter :: VERTICAL_TOO_HIGH = 81 ! Vertical location too high
+integer, parameter :: VERTICAL_TOO_LOW = 80 ! Vertical location too low
+integer, parameter :: QTY_NOT_IN_STATE_VECTOR = 88 ! qty is not in the state vector
+integer, parameter :: TK_COMPUTATION_ERROR = 89 ! tk cannot be computed
+integer, parameter :: CELL_CENTER_NOT_FOUND = 11 ! Could not find the closest cell center that contains this lat/lon
+integer, parameter :: SURFACE_OBS_TOO_FAR = 12 ! Surface obs too far away from model elevation
+integer, parameter :: INTERPOLATION_MISSING_VALUE = 13 ! Missing value in interpolation
+integer, parameter :: TRIANGLE_CELL_CENTER_NOT_FOUND = 14 ! Could not find the other two cell centers of the triangle that contains this lat/lon
+integer, parameter :: TRIANGLE_CELL_CENTER_IN_BOUNDARY = 15 ! Cell centers of the triangle fall in the lateral boundary zone
+integer, parameter :: VERTICAL_VELOCITY_NOT_AVAIL = 16 ! Do not know how to do vertical velocity for now
+integer, parameter :: PRESSURE_COMPUTATION_ERROR = 17 ! Unable to compute pressure values
+integer, parameter :: ILLEGAL_ALTITUDE = 18
+integer, parameter :: RBF_U_COMPUTATION_ERROR = 19 ! could not compute u using RBF code
+integer, parameter :: INTERNAL_ERROR = 101 ! reached end of subroutine without finding an applicable case.
+integer, parameter :: REJECT_OBS_USER_PRESSURE_LEVEL = 201 ! Reject observation from user specified pressure level
+integer, parameter :: PRESSURE_NOT_MONOTONIC = 988 ! Pressure is not monotonically descreased with level
+
 
 ! module global storage; maintains values between calls, accessible by
 ! any subroutine
@@ -794,37 +818,18 @@ end function on_edge
 
 
 !------------------------------------------------------------------
-!> given a state vector, a location, and a QTY_xxx, return the
+!> given a state ensemble_handle, a location, and a QTY_xxx, return the
 !> interpolated value at that location, and an error code.  0 is success,
 !> anything positive is an error.  (negative reserved for system use)
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, qty, expected_obs, istatus)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_type
+integer,             intent(in)  :: qty
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
-! error codes: 
-integer, parameter :: GENERAL_RTTOV_ERROR = 1 ! general error for rttov - at least one of the input variables goes wrong
-integer, parameter :: CRITICAL_ERROR = 99 ! general error in case something terrible goes wrong
-integer, parameter :: VERTICAL_TOO_HIGH = 81 ! Vertical location too high
-integer, parameter :: VERTICAL_TOO_LOW = 80 ! Vertical location too low
-integer, parameter :: KIND_NOT_IN_STATE_VECTOR = 88 ! qty is not in the state vector
-integer, parameter :: TK_COMPUTATION_ERROR = 89 ! tk cannot be computed
-integer, parameter :: CELL_CENTER_NOT_FOUND = 11 ! Could not find the closest cell center that contains this lat/lon
-integer, parameter :: SURFACE_OBS_TOO_FAR = 12 ! Surface obs too far away from model elevation
-integer, parameter :: INTERPOLATION_MISSING_VALUE = 13 ! Missing value in interpolation
-integer, parameter :: TRIANGLE_CELL_CENTER_NOT_FOUND = 14 ! Could not find the other two cell centers of the triangle that contains this lat/lon
-integer, parameter :: TRIANGLE_CELL_CENTER_IN_BOUNDARY = 15 ! Cell centers of the triangle fall in the lateral boundary zone
-integer, parameter :: VERTICAL_VELOCITY_NOT_AVAIL = 16 ! Do not know how to do vertical velocity for now
-integer, parameter :: PRESSURE_COMPUTATION_ERROR = 17 ! Unable to compute pressure values
-integer, parameter :: ILLEGAL_ALTITUDE = 18
-integer, parameter :: RBF_U_COMPUTATION_ERROR = 19 ! could not compute u using RBF code
-integer, parameter :: INTERNAL_ERROR = 101 ! reached end of subroutine without finding an applicable case.
-integer, parameter :: REJECT_OBS_USER_PRESSURE_LEVEL = 201 ! Reject observation from user specified pressure level
-integer, parameter :: PRESSURE_NOT_MONOTONIC = 988 ! Pressure is not monotonically descreased with level
 
 type(location_type) :: location_tmp(ens_size)
 integer  :: ivar, obs_kind
@@ -834,6 +839,8 @@ logical  :: goodkind, surface_obs
 real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
+real(r8) :: single_expected_obs
+integer  :: single_istatus
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -850,10 +857,163 @@ if (cellid < 1) then
    return
 endif
 
+! HK @todo elevation check (but not for rttov)
+
+! Explicit fail for qty_vertical_velocity
+if (qty == QTY_VERTICAL_VELOCITY) then
+   istatus = VERTICAL_VELOCITY_NOT_AVAIL
+   return
+endif
+
+if (.not. qty_ok_to_interpolate(qty)) then
+   istatus = QTY_NOT_IN_STATE_VECTOR
+   return
+endif
+
+! HK @todo reject obs above a user specified pressure level
+
+select case (qty)
+
+   ! HK @todo winds
+   case (QTY_U_WIND_COMPONENT)
+      if (use_u_for_wind .and. has_edge_u) then
+         call compute_u_with_rbf(state_handle, ens_size, location, .TRUE., expected_obs, istatus)
+      else
+         tvars(1) = get_varid_from_kind(anl_domid, qty)
+         call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), expected_obs, istatus)
+      endif
+      
+   case (QTY_V_WIND_COMPONENT)
+      if (use_u_for_wind .and. has_edge_u) then
+         call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
+      else
+         tvars(1) = get_varid_from_kind(anl_domid, qty)
+         call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), expected_obs, istatus)
+      endif
+
+   case (QTY_TEMPERATURE) 
+      ! need to get potential temp, pressure, qv here, but can
+      ! use same weights, so push all three types into the subroutine.
+      tvars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+      tvars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
+      tvars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
+
+      call compute_scalar_with_barycentric(state_handle, ens_size, location, 3, tvars, values, istatus)
+      if (fails(istatus)) then
+         istatus = TK_COMPUTATION_ERROR
+         return ! early return to not pass nonsense values to theta_to_tk
+      endif
+      ! convert pot_temp, density, vapor mixing ratio into sensible temperature
+      expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus) 
+
+   case (QTY_PRESSURE) 
+      call compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
+      if (fails(istatus)) istatus = PRESSURE_COMPUTATION_ERROR
+
+   case (QTY_GEOPOTENTIAL_HEIGHT)
+      location_tmp = location
+      call convert_vert(state_handle, ens_size, location_tmp, QTY_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
+
+      do e = 1, ens_size
+      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
+      enddo
+
+   ! HK @todo things that cannot be negative
+   case (QTY_VAPOR_MIXING_RATIO, &
+         QTY_CLOUDWATER_MIXING_RATIO, &
+         QTY_ICE_MIXING_RATIO, &
+         QTY_GRAUPEL_MIXING_RATIO, &
+         QTY_2M_SPECIFIC_HUMIDITY, &
+         QTY_RAINWATER_MIXING_RATIO, &
+         QTY_SNOW_MIXING_RATIO, &
+         QTY_CLOUD_FRACTION  )
+
+   case(QTY_SPECIFIC_HUMIDITY)
+      tvars(1) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
+      call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), expected_obs, istatus)
+
+      ! compute vapor pressure, then: sh = vp / (1.0 + vp)
+      do e = 1, ens_size
+         if (istatus(e) == 0) then
+            if (expected_obs(e) >= 0.0_r8) then
+               expected_obs(e) = expected_obs(e) / (1.0_r8 + expected_obs(e))
+            else
+               expected_obs(e) = 1.0e-12_r8  
+            endif
+         endif 
+      enddo
+
+   ! qtys not included in the dart state vector, but static across the ensemble
+   case (QTY_SURFACE_ELEVATION)
+      call compute_surface_data_with_barycentric(zGridFace(1,:), location, single_expected_obs, single_istatus)
+      expected_obs(:) = single_expected_obs
+      istatus(:) = single_istatus
+
+   case (QTY_SKIN_TEMPERATURE)
+      call compute_surface_data_with_barycentric(skintemp(:), location, single_expected_obs, single_istatus)
+      expected_obs(:) = single_expected_obs
+      istatus(:) = single_istatus
+
+   case (QTY_SURFACE_TYPE)
+      call get_surftype(nCells,surftype)
+      call compute_surface_data_with_barycentric(surftype(:)*1.0_r8, location, single_expected_obs, single_istatus)
+      expected_obs(:) = single_expected_obs
+      istatus(:) = single_istatus
+   
+   case default ! regular interpolation
+      tvars(1) = get_varid_from_kind(anl_domid, qty)
+      call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), expected_obs, istatus)
+
+end select
+
+
 
 end subroutine model_interpolate
 
+!------------------------------------------------------------------
+function fails(e) result(fail)
 
+integer, intent(in) :: e(:)
+logical :: fail
+
+fail = (any(e /= 0))
+
+end function fails
+
+!------------------------------------------------------------------
+function qty_ok_to_interpolate(qty) result(qty_ok)
+
+integer, intent(in) :: qty
+logical :: qty_ok
+
+integer :: varid
+
+qty_ok = .false.
+varid = get_varid_from_kind(anl_domid, qty)
+
+if (varid > 0) then ! in the state vector
+   qty_ok = .true.
+   return
+endif
+
+select case (qty)
+case (QTY_TEMPERATURE, QTY_2M_TEMPERATURE)
+   qty_ok = .true.
+case (QTY_SURFACE_ELEVATION, QTY_GEOPOTENTIAL_HEIGHT)
+   qty_ok = .true.
+case (QTY_PRESSURE)   ! surface pressure should be in the state !HK @todo check "should"
+   qty_ok = .true.
+case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE, QTY_CLOUD_FRACTION)   
+   qty_ok = .true.
+case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
+   qty_ok = .true.
+case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
+   if (get_varid_from_kind(anl_domid, QTY_EDGE_NORMAL_SPEED) > 0 .and. use_u_for_wind) qty_ok = .true.
+case default
+   qty_ok = .false.
+end select
+
+end function qty_ok_to_interpolate
 !------------------------------------------------------------------
 
 subroutine nc_write_model_atts(ncid, domain_id)
@@ -3359,9 +3519,9 @@ type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nc, ids(:)
 logical,             intent(in)  :: oncenters
-integer,             intent(out) :: lower(:, :), upper(:, :) ! ens_size
-real(r8),            intent(out) :: fract(:, :)
-integer,             intent(out) :: ier(:)
+integer,             intent(out) :: lower(nc, ens_size), upper(nc, ens_size)
+real(r8),            intent(out) :: fract(nc, ens_size)
+integer,             intent(out) :: ier(ens_size)
 
 real(r8) :: lat, lon, vert, llv(3)
 real(r8) :: vert_array(ens_size)
@@ -3776,31 +3936,63 @@ real(r8), dimension(3, ens_size) :: fract, fdata
 real(r8), dimension(ens_size) :: lowval, uppval
 real(r8)    :: weights(3)
 integer     :: c(3), nvert, k, i, nc
-integer(i8) :: index1, low_offset, upp_offset, low_state_indx, upp_state_indx
+integer(i8) :: low_state_indx(ens_size), upp_state_indx(ens_size)
+integer     :: jdummy, kdummy
 integer     :: lower(3, ens_size), upper(3,ens_size)
 integer     :: e, e2, thislower, thisupper
 logical     :: did_member(ens_size)
 
-! assume failure
 dval = MISSING_R8
-ier = 88   ! field not in state vector
+ier = QTY_NOT_IN_STATE_VECTOR
 
 ! make sure we have all good field indices first
 if (any(ival < 0)) return
 
-call find_triangle (loc, nc, c, weights, ier(1), this_cellid)
+call find_triangle (loc, nc, c, weights, ier(1), this_cellid) !HK c is cell centers
 if(ier(1) /= 0) then
    ier(:) = ier(1)
    return
 endif
 
-! HK @todo
+! If the field is on a single level, lower and upper are both 1
+call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
+if(fails(ier)) return
 
-! now have vertically interpolated values at cell centers.
-! use weights to compute value at interp point.
-do e = 1, ens_size
-      if (ier(e) /= 0) cycle
-      dval(k, e) = sum(weights(1:nc) * fdata(1:nc, e))
+! for each field to compute at this location: !HK @todo why loop in here?  why not outside?
+do k = 1, n
+
+   if( get_num_dims(anl_domid, ival(k)) == 1 ) then  ! 1-D field
+      do i = 1, nc
+         ! go around triangle and interpolate in the vertical
+         ! c(3) are the cell ids
+         low_state_indx(1) =  get_dart_vector_index(c(i), jdummy, kdummy, anl_domid, ival(k))
+         fdata(i,:) = get_state(low_state_indx(1), state_handle)
+      enddo
+
+   else ! 2-D field
+
+      do i = 1, nc
+
+         members: do e = 1, ens_size
+
+            low_state_indx(e) =  get_dart_vector_index(lower(i,e), c(i), kdummy, anl_domid, ival(k))
+            upp_state_indx(e) =  get_dart_vector_index(upper(i,e), c(i), kdummy, anl_domid, ival(k))
+            
+         enddo members
+
+         call get_state_array(lowval(:), low_state_indx, state_handle)
+         call get_state_array(uppval(:), upp_state_indx, state_handle)
+
+         fdata(i, :) = lowval(:)*(1.0_r8 - fract(i, :)) + uppval(:)*fract(i,:)
+
+      enddo  ! corners
+ 
+   endif
+   ! now have vertically interpolated values at cell centers.
+   ! use weights to compute value at interp point.
+   do e = 1, ens_size
+    dval(k, e) = sum(weights(1:nc) * fdata(1:nc, e))
+   enddo
 enddo
 
 
@@ -3907,7 +4099,7 @@ do i=1, nedges
    edgeid = edgesOnCell(i, cellid)
    if (.not. global_grid .and. &
       (cellsOnEdge(1, edgeid) <= 0 .or. cellsOnEdge(2, edgeid) <= 0)) then
-      ier = 14
+      ier = TRIANGLE_CELL_CENTER_NOT_FOUND 
       return
    endif
    if (cellsOnEdge(1, edgeid) /= cellid) then
@@ -3964,7 +4156,7 @@ else                       ! an arbitrary point
       endif
    enddo findtri
    if (.not. foundit) then
-      ier = 14     ! 11?
+      ier = TRIANGLE_CELL_CENTER_NOT_FOUND
       return
    endif
 
@@ -3983,10 +4175,10 @@ type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nc
-integer,             intent(in)  :: c(:)
-integer,             intent(out) :: lower(:, :), upper(:, :) ! ens_size
-real(r8),            intent(out) :: fract(:, :) ! ens_size
-integer,             intent(out) :: ier(:) ! ens_size
+integer,             intent(in)  :: c(nc)
+integer,             intent(out) :: lower(nc, ens_size), upper(nc, ens_size)
+real(r8),            intent(out) :: fract(nc, ens_size) ! ens_size
+integer,             intent(out) :: ier(ens_size)
 
 ! initialization
 lower = MISSING_I
@@ -4006,8 +4198,8 @@ type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: loc
 logical,             intent(in)  :: zonal
-real(r8),            intent(out) :: uval(:) ! ens_size
-integer,             intent(out) :: ier(:) ! ens_size
+real(r8),            intent(out) :: uval(ens_size)
+integer,             intent(out) :: ier(ens_size) 
 
 ! max edges we currently use is ~50, but overestimate for now
 integer, parameter :: listsize = 200
@@ -4021,132 +4213,131 @@ real(r8)    :: ureconstructx, ureconstructy, ureconstructz
 real(r8)    :: ureconstructzonal, ureconstructmeridional
 real(r8)    :: datatangentplane(3,2)
 real(r8)    :: coeffs_reconstruct(3,listsize)
-integer(i8) :: upindx, lowindx
-integer     :: index1, progindex, cellid, vertexid
+integer(i8) :: upindx(ens_size), lowindx(ens_size)
+integer     :: cellid, vertexid
 real(r8)    :: lat, lon, vert, llv(3), fract(listsize, ens_size), lowval(ens_size), uppval(ens_size)
 integer     :: verttype, lower(listsize, ens_size), upper(listsize, ens_size), ncells, celllist(listsize)
+integer     :: var_id, dummy
 
 integer :: e ! loop index
 
-! Initialization
 ier  = 0
 uval = MISSING_R8
 
-! progindex = get_index_from_varname('u')
-! if (progindex < 0 .or. .not. data_on_edges) then
-!    ! cannot compute u if it isn't in the state vector, or if we
-!    ! haven't read in the edge data (which shouldn't happen if
-!    ! u is in the state vector.
-!    ier = 18
-!    return
-! endif
-! index1 = progvar(progindex)%index1 !HK why are they using the start of the index in the vector?
-! nvert = progvar(progindex)%numvertical
+var_id = get_varid_from_varname(anl_domid, 'u')
+if (var_id < 0 .or. .not. data_on_edges) then
+   ! cannot compute u if it is not in the state vector, or if we
+   ! have not read in the edge data (which shouldn't happen if
+   ! u is in the state vector.
+   ier = 18
+   print*, 'hello Helen'
+   return
+endif
 
-! ! unpack the location into local vars
-! llv = get_location(loc) ! I believe this is the same across the ensemble
-! lon = llv(1)
-! lat = llv(2)
-! vert = llv(3)
-! verttype = nint(query_location(loc))
+! unpack the location into local vars
+llv = get_location(loc) ! I believe this is the same across the ensemble
+lon = llv(1)
+lat = llv(2)
+vert = llv(3)
+verttype = nint(query_location(loc))
 
-! call find_surrounding_edges(lat, lon, nedges, edgelist, cellid, vertexid)
-! if (nedges <= 0) then
-!    ! we are on a boundary, no interpolation
-!    ier = 18
-!    return
-! endif
+call find_surrounding_edges(lat, lon, nedges, edgelist, cellid, vertexid)
+if (nedges <= 0) then ! we are on a boundary, no interpolation
+    ier = 18
+    return
+ endif
 
-! if (verttype == VERTISPRESSURE) then
-!    ! get all cells which share any edges with the 3 cells which share
-!    ! the closest vertex.
-!    call make_cell_list(vertexid, 3, ncells, celllist)
+if (verttype == VERTISPRESSURE) then
+   ! get all cells which share any edges with the 3 cells which share
+   ! the closest vertex.
+   call make_cell_list(vertexid, 3, ncells, celllist)
 
-!    call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
-!                         lower, upper, fract, ier)
+   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
+                         lower, upper, fract, ier)
 
-!    if (all(ier /= 0)) return
+   if (fails(ier)) return
 
-!    ! now have pressure at all cell centers - need to interp to get pressure
-!    ! at edge centers.
-!    call move_pressure_to_edges(ncells, celllist, lower, upper, fract, &
-!                                nedges, edgelist, ier)
-!    if (all(ier /= 0)) return
+   ! now have pressure at all cell centers - need to interp to get pressure
+   ! at edge centers.
+   call move_pressure_to_edges(ncells, celllist, lower, upper, fract, &
+                                nedges, edgelist, ier)
+   if (fails(ier)) return
 
-! else
-!    ! need vert index for the vertical level
-!    call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
-!                         lower, upper, fract, ier)
-!    if (all(ier /= 0)) return
-! endif
+else
+   ! need vert index for the vertical level
+   call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
+                         lower, upper, fract, ier)
+    if (fails(ier)) return
+endif
 
-! ! the rbf code needs (their names == our names):
-! ! nData == nedges
-! ! xyz data == xyzEdge
-! ! normalDirectionData == edgeNormalVectors
-! ! velocitydata = U field
+! the rbf code needs (their names == our names):
+! nData == nedges
+! xyz data == xyzEdge
+! normalDirectionData == edgeNormalVectors
+! velocitydata = U field
 
-! do i = 1, nedges
-!    !>@todo FIXME:
-!    ! ryan has size(xEdge, 1) but this is a 1d array, so a dimension shouldn't be needed
-!    ! was possibly required for ifort v17 on cheyenne
-!    if (edgelist(i) > size(xEdge,1)) then
-!       write(string1, *) 'edgelist has index larger than edge count', &
-!                           i, edgelist(i), size(xEdge,1)
-!       call error_handler(E_ERR, 'compute_u_with_rbf', 'internal error', &
-!                          source, text2=string1)
-!    endif
-!    xdata(i) = xEdge(edgelist(i))
-!    ydata(i) = yEdge(edgelist(i))
-!    zdata(i) = zEdge(edgelist(i))
+do i = 1, nedges
+   !>@todo FIXME:
+   ! ryan has size(xEdge, 1) but this is a 1d array, so a dimension shouldn't be needed
+   ! was possibly required for ifort v17 on cheyenne
+   if (edgelist(i) > size(xEdge,1)) then
+       write(string1, *) 'edgelist has index larger than edge count', &
+                           i, edgelist(i), size(xEdge,1)
+      call error_handler(E_ERR, 'compute_u_with_rbf', 'internal error', &
+                          source, text2=string1)
+   endif
 
-!    do j=1, 3
-!       edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
-!    enddo
+   xdata(i) = xEdge(edgelist(i))
+   ydata(i) = yEdge(edgelist(i))
+   zdata(i) = zEdge(edgelist(i))
 
-!    !>@todo lower (upper) could be different levels in pressure
-!    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
-!    lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
-!    lowval =  get_state(lowindx, state_handle)
+   do j=1, 3
+      edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
+   enddo
 
-!    !uppval = x(index1 + (edgelist(i)-1) * nvert + upper(i)-1)
-!    upindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(upper(i,1)-1,i8)
-!    uppval =  get_state(upindx, state_handle)
+  ! Lower/upper could be different levels in pressure
+   do e = 1, ens_size
+      lowindx = get_dart_vector_index(lower(i, e), edgelist(i), dummy,anl_domid, var_id) !HK @todo check x,y,z
+      upindx = get_dart_vector_index(upper(i, e), edgelist(i), dummy,anl_domid, var_id) !HK @todo check x,y,z
+   enddo
 
-!    veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
-
-! enddo
+   call get_state_array(lowval, lowindx, state_handle)
+   call get_state_array(uppval, upindx, state_handle)
+   veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
 
 
-! ! this intersection routine assumes the points are on the surface
-! ! of a sphere.  they do NOT try to make a plane between the three
-! ! points.  the difference is small, granted.
-! call latlon_to_xyz(lat, lon, xreconstruct,yreconstruct,zreconstruct)
+enddo
 
-! ! call a simple subroutine to define vectors in the tangent plane
-! call get_geometry(nedges, xdata, ydata, zdata, &
-!               xreconstruct, yreconstruct, zreconstruct, edgenormals, &
-!               on_a_sphere, datatangentplane)
 
-! ! calculate coeffs_reconstruct
-! call get_reconstruct_init(nedges, xdata, ydata, zdata, &
-!               xreconstruct, yreconstruct, zreconstruct, edgenormals, &
-!               datatangentplane, coeffs_reconstruct)
+! this intersection routine assumes the points are on the surface
+! of a sphere.  they do NOT try to make a plane between the three
+! points.  the difference is small, granted.
+call latlon_to_xyz(lat, lon, xreconstruct,yreconstruct,zreconstruct)
 
-! ! do the reconstruction
-! do e = 1, ens_size
-!    call get_reconstruct(nedges, lat*deg2rad, lon*deg2rad, &
-!                coeffs_reconstruct, on_a_sphere, veldata(:, e), &
-!                ureconstructx, ureconstructy, ureconstructz, &
-!                ureconstructzonal, ureconstructmeridional)
+! call a simple subroutine to define vectors in the tangent plane
+call get_geometry(nedges, xdata, ydata, zdata, &
+               xreconstruct, yreconstruct, zreconstruct, edgenormals, &
+               on_a_sphere, datatangentplane)
 
-!    if (zonal) then
-!       uval = ureconstructzonal
-!    else
-!       uval = ureconstructmeridional
-!    endif
+! calculate coeffs_reconstruct
+call get_reconstruct_init(nedges, xdata, ydata, zdata, &
+              xreconstruct, yreconstruct, zreconstruct, edgenormals, &
+              datatangentplane, coeffs_reconstruct)
 
-! enddo
+! do the reconstruction
+do e = 1, ens_size
+   call get_reconstruct(nedges, lat*deg2rad, lon*deg2rad, &
+                coeffs_reconstruct, on_a_sphere, veldata(:, e), &
+                ureconstructx, ureconstructy, ureconstructz, &
+                ureconstructzonal, ureconstructmeridional)
+
+   if (zonal) then
+       uval(e) = ureconstructzonal
+   else
+       uval(e) = ureconstructmeridional
+   endif
+
+enddo
 
 end subroutine compute_u_with_rbf
 
@@ -5186,7 +5377,7 @@ where (istatus == 0)
 
    elsewhere
 
-      istatus = 89
+      istatus = TK_COMPUTATION_ERROR
 
    endwhere
 
