@@ -874,7 +874,6 @@ endif
 
 select case (qty)
 
-   ! HK @todo winds
    case (QTY_U_WIND_COMPONENT)
       if (use_u_for_wind .and. has_edge_u) then
          call compute_u_with_rbf(state_handle, ens_size, location, .TRUE., expected_obs, istatus)
@@ -1355,84 +1354,60 @@ type(ensemble_type), optional, intent(in)  :: state_handle
 
 
 integer                :: ztypeout
-integer                :: t_ind, istatus1, istatus2, k, istat_arr(1)
+integer                :: t_ind, istatus(1), k, istat_arr(1)
 integer                :: base_which, local_obs_which, base_qty
 real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
 type(location_type)    :: local_obs_loc, location_arr(1)
-! timing
-real(digits12) :: t_base, t_base2, interval
-
-real(r8) ::  hor_dist
-hor_dist = 1.0e9_r8
-
-! Initialize variables to missing status
 
 num_close = 0
-istatus1  = 0
-istatus2  = 0
 
 ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
-
 base_llv = get_location(base_loc)
 base_which = nint(query_location(base_loc))
 
 ztypeout = vert_localization_coord
 
 if (vertical_localization_on()) then
-  if (base_llv(3) == MISSING_R8) then
-     istatus1 = 1
+  if (base_llv(3) == MISSING_R8) then !HK @todo what about VERTISUNDEF?
+     return
   else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
       base_qty = get_quantity_for_type_of_obs(base_type)
       location_arr(1) = base_loc
       call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
-      istatus1 = istat_arr(1)
+      if (istat_arr(1) /= 0) return
       base_loc = location_arr(1)
    endif
 endif
 
-if (istatus1 == 0) then
+! Loop over potentially close subset of obs priors or state variables
+call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, num_close, close_ind)
 
-   ! Loop over potentially close subset of obs priors or state variables
-   ! This way, we are decreasing the number of distance computations that will follow.
-   ! This is a horizontal-distance operation and we don't need to have the relevant vertical
-   ! coordinate information yet (for locs).
-   call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                          num_close, close_ind)
+do k = 1, num_close
 
-   do k = 1, num_close
+   t_ind = close_ind(k)
+   local_obs_loc   = locs(t_ind)
+   local_obs_which = nint(query_location(local_obs_loc))
 
-      t_ind = close_ind(k)
-      local_obs_loc   = locs(t_ind)
-      local_obs_which = nint(query_location(local_obs_loc))
-
-      ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
-      ! This should only be necessary for obs priors, as state location information already
-      ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
-      if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
-          if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
-              location_arr(1) = local_obs_loc
-              call convert_vert(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istat_arr)
-              istatus2 = istat_arr(1)
-              locs(t_ind) = location_arr(1)
-          else
-              istatus2 = 0
-          endif
-      endif
-
-      if (present(dist)) then
-         ! Compute distance - set distance to a very large value if vert coordinate is missing
-         ! or vert_interpolate returned error (istatus2=1)
-         local_obs_llv = get_location(local_obs_loc)
-         if ( (vertical_localization_on() .and. &
-              (local_obs_llv(3) == MISSING_R8)) .or. (istatus2 /= 0) ) then
-               dist(k) = 1.0e9_r8
+   ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
+   if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
+         if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
+            location_arr(1) = local_obs_loc
+            call convert_vert(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istatus)
+            locs(t_ind) = location_arr(1)
          else
-               dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
+            istatus = 0
          endif
-      endif
+   endif
 
-   enddo
-endif
+   if (present(dist)) then
+      if (istatus(1) == 0) then
+         dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
+      else
+         dist(k) = 1.0e9_r8
+      endif
+   endif
+
+enddo
 
 end subroutine get_close_obs
 
@@ -1608,278 +1583,6 @@ add_u_to_state_list = .true.
 
 end subroutine force_u_into_state
 
-
-!------------------------------------------------------------------
-
-!> regional mpas only:
-!> update the boundary fields based on the analysis file values
-!> in the boundary region, which were updated by blending the analysis
-!> and the original (e.g., prior) boundary values.
-!> There are options to update edge winds directly (by blending 'u'),
-!> or to update reconstructed winds at cell centers first then project them onto edges.
-!> When the edge wind is updated, it can be replaced by the blended value,
-!> or modified with the increments (from cell-center winds).
-!> state_vector - read from both ncid_a and ncid_b.
-!> ncid_b = lbc to be overwritten with blended fields in the boundary zone.
-!> ncid_a = analysis - either init or restart.
-
-subroutine statevector_to_boundary_file(state_vector, ncid_b, ncid_a, &
-    lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments)
-
-real(r8), intent(inout) :: state_vector(:) !HK whole state vector?
-integer,  intent(in)    :: ncid_b, ncid_a
-logical,  intent(in)    :: lbc_update_from_reconstructed_winds
-logical,  intent(in)    :: lbc_update_winds_from_increments
-
-integer :: i, a_ivar, b_ivar, ivar, ivar_u, avar_u
-integer(i8) :: a_index, b_index, l, sb_index, eb_index
-integer :: cellid, vert_level, ndims, nvars, dims(3), col
-integer :: adims, dima(3), iup   ! HA
-integer :: edgeid
-real(r8) :: weight
-real(r8), allocatable :: lbc_u(:,:), lbc_ucell(:,:), lbc_vcell(:,:)
-real(r8), allocatable :: delta_u(:,:), old_lbc_ucell(:,:), old_lbc_vcell(:,:)
-real(r8), allocatable :: inc_lbc_ucell(:,:), inc_lbc_vcell(:,:)
-
-character(len=NF90_MAX_NAME) :: avarname, bvarname
-character(len=*), parameter :: routine = 'statevector_to_boundary_file'
-
-nvars = get_num_variables(lbc_domid)
-
-write(string1, *) 'lbc_update_from_reconstructed_winds = ', lbc_update_from_reconstructed_winds
-write(string2, *) 'lbc_update_winds_from_increments = ',lbc_update_winds_from_increments
-call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                         source, text2=string2)
-
-! save a copy of the reconstructed cell winds in separate arrays
-! if we are doing an incremental update of the edge normal winds.
-if (lbc_update_winds_from_increments) then
-   if (.not. lbc_file_has_reconstructed_winds) then
-      write(string1, *) 'Cannot update edge winds from increments because the boundary file does not contain the reconstructed winds (lbc_ur, lbc_vr)'
-      write(string2, *) 'lbc_update_winds_from_increments should be .false.'
-      call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                         source, text2=string2)
-   endif
-
-   allocate(old_lbc_ucell(nVertLevels, nCells))
-   allocate(old_lbc_vcell(nVertLevels, nCells))
-   allocate(      delta_u(nVertLevels, nEdges))
-
-   ivar = get_varid_from_varname(lbc_domid, 'lbc_ur')
-   call bdy_vector_to_prog_var(state_vector, ivar, old_lbc_ucell)
-
-   ivar = get_varid_from_varname(lbc_domid, 'lbc_vr')
-   call bdy_vector_to_prog_var(state_vector, ivar, old_lbc_vcell)
-endif
-
-! for each cell in the grid, find the analysis in the
-! boundary region and blend them with prior lbc values.
-CELLS: do cellid = 1, nCells
-
-   ! Soyoung: We blend the analysis in the boundary zone only.
-   if (.not. on_boundary_cell(cellid)) cycle CELLS
-
-   ! 1.0 is interior, 0.0 is exterior boundary
-   weight = get_analysis_weight(cellid)
-
-   ! do all variables associated with this cellid.
-   
-   VARLOOP: do b_ivar = 1, nvars
-
-      bvarname = get_variable_name(lbc_domid, b_ivar)
-      if (bvarname(1:4) /= 'lbc_') then
-         write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
-         write(string2, *) 'because the name does not start with "lbc"'
-         call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                            source, text2=string2)
-         cycle VARLOOP
-      endif
-
-      ! skip edge normal 'U' winds here - they will
-      ! be handled in a separate code section below.
-      if (bvarname == 'lbc_u') cycle VARLOOP
-
-      ! get corresponding field in analysis domain
-      avarname = trim(bvarname(5:))
-
-      ! reconstructed cell-center winds have different names in the lbc file.
-      if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
-      if (bvarname == 'lbc_vr') avarname = 'uReconstructMeridional'
-
-      a_ivar = get_varid_from_varname(anl_domid, avarname)
-
-      call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
-
-      ! HA: double-check if dimensions are the same between lbc_domid and anl_domid.
-      call find_mpas_dims(anl_domid, a_ivar, adims, dima)
-      if(dims(1) /= dima(1) .or. dims(2) /= dima(2)) then
-         write(string1, *) 'Dimension mismatches:',dims,' vs.',dima
-         call error_handler(E_ERR,'statevector_to_boundary_file',string1,&
-                            source)
-         exit
-      endif
-
-      ! loop over vert_levels.
-      THISCOL: do col=1, dims(1)
-         a_index = get_dart_vector_index(col, cellid, 1, anl_domid, a_ivar)
-         b_index = get_dart_vector_index(col, cellid, 1, lbc_domid, b_ivar)
-   
-         ! compute (1-w)*x_lbc + w*x_anl
-         state_vector(a_index) = (1.0_r8 - weight) * state_vector(b_index) + &
-                                           weight  * state_vector(a_index)
-
-      enddo THISCOL
-
-   enddo VARLOOP
-
-enddo CELLS
-
-!> here is where we fix up the U edge normal winds
-!> two options - do them directly, or compute increments from the
-!> reconstructed winds and update from them.
-
-if (.not. lbc_update_from_reconstructed_winds) then
-
-   ! this is the prior u, not updated yet
-   a_ivar = get_varid_from_varname(anl_domid, 'u')       ! analysis edge winds
-   b_ivar = get_varid_from_varname(lbc_domid, 'lbc_u')   ! prior edge winds in the lbc file
-
-   call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
-
-   ! for each edge in the grid, find the ones which are in the
-   ! boundary region and blend their values.
-   EDGES: do edgeid = 1, nEdges
-   
-      if (.not. on_boundary_edge(edgeid)) cycle EDGES
-   
-      ! 1.0 is interior, 0.0 is exterior boundary
-      weight = get_analysis_weight(edgeid,.false.)
-   
-      ! loop over vert_levels.
-      THATCOL: do col=1, dims(1)
-            a_index = get_dart_vector_index(col, edgeid, 1, anl_domid, a_ivar)
-            b_index = get_dart_vector_index(col, edgeid, 1, lbc_domid, b_ivar)
-      
-            ! compute (1-w)*x_lbc + w*x_anl
-            state_vector(a_index) = (1.0_r8 - weight) * state_vector(b_index) + &
-                                              weight  * state_vector(a_index)
-      enddo THATCOL
-   
-   enddo EDGES
-
-else  ! do the increment process
-
-   ! We only blended cell-center fields (e.g. looping over all the variables in the CELLS loop above, but not over 'u' in nEdges).
-   ! Now we compute diffs (or increments) between the blended ur (vr) and the prior lbc_ur (vr).
-   
-   allocate(        lbc_u(nVertLevels, nEdges))
-   allocate(    lbc_ucell(nVertLevels, nCells))
-   allocate(    lbc_vcell(nVertLevels, nCells))
-   
-   ! these analyses have been blended in the boundary zone already.
-   ivar = get_varid_from_varname(anl_domid, 'uReconstructZonal')
-   call vector_to_prog_var(state_vector, ivar, lbc_ucell)
-   
-   ivar = get_varid_from_varname(anl_domid, 'uReconstructMeridional')
-   call vector_to_prog_var(state_vector, ivar, lbc_vcell)
-   
-   ! this is the analysis u, not blended in the boundary zone yet.
-   avar_u = get_varid_from_varname(anl_domid, 'u')
-   call vector_to_prog_var(state_vector, avar_u, lbc_u)
-   
-   if (lbc_update_winds_from_increments) then
-   
-      ! project analysis increments at cell centers onto the edges.
-   
-      allocate(inc_lbc_ucell(nVertLevels, nCells))
-      allocate(inc_lbc_vcell(nVertLevels, nCells))
-   
-      inc_lbc_ucell = lbc_ucell - old_lbc_ucell 
-      inc_lbc_vcell = lbc_vcell - old_lbc_vcell 
-   
-      call uv_cell_to_edges(inc_lbc_ucell, inc_lbc_vcell, delta_u)
-   
-      ! Soyoung: Add the blended u increments back to lbc_u in the boundary zone.
-      !          We should not change the analysis u in the interior domain, but
-      !          We should also check bdyMaskCell for the two adjacent cells as
-      !          bdyMaskEdge is assigned with the lower mask value between the two
-      !          cells.
-      ! Ex) An edge between cell1 (w/ bdyMaskCell = 0) and cell2 (w/ bdyMaskCell = 1)
-      ! has bdyMaskEdge = 0. In this case, even if bdyMaskEdge of the edge is zero,
-      ! cell2 has been updated in the CELLS loop above, so the edge has to be updated.
-
-      iup = 0
-      IEDGE: do edgeid = 1, nEdges
-
-      if (.not. on_boundary_edge(edgeid) .and. &
-          .not. on_boundary_cell(cellsOnEdge(1,edgeid)) .and. &
-          .not. on_boundary_cell(cellsOnEdge(2,edgeid)) ) cycle IEDGE
-   
-           lbc_u(:,edgeid) = lbc_u(:,edgeid) + delta_u(:,edgeid)
-
-      enddo IEDGE
-
-      deallocate(old_lbc_ucell, old_lbc_vcell, delta_u)
-
-   else
-   
-      ! just replace, no increments
-      ! project the diffs (or increments) onto the edges by calling uv_cell_to_edges.
-      call uv_cell_to_edges(lbc_ucell, lbc_vcell, lbc_u, .true.)
-      
-   endif
-   
-   ! put lbc_u array data back into the state_vector
-   
-   sb_index = get_index_start(anl_domid, avar_u)
-   eb_index = get_index_end  (anl_domid, avar_u)
-   state_vector(sb_index:eb_index) = reshape(lbc_u, (/eb_index-sb_index+1/) )
-      
-   deallocate(lbc_u, lbc_ucell, lbc_vcell)
-
-endif   ! U updates
-   
-
-! for each boundary variable, write it to the output file.
-VARLOOP2: do b_ivar = 1, nvars
-
-   bvarname = get_variable_name(lbc_domid, b_ivar)
-   if (bvarname(1:4) /= 'lbc_') then
-      write(string1, *) 'skipping update of boundary variable ', trim(bvarname)
-      write(string2, *) 'because the name does not start with "lbc"'
-      call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                         source, text2=string2)
-      cycle VARLOOP2
-   endif
-
-   ! by default strip off 'lbc_' from boundary file name
-   ! and update that field name for the analysis file,
-   ! unless it doesn't follow the pattern
-   avarname = trim(bvarname(5:))
-
-   if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
-   if (bvarname == 'lbc_vr') avarname = 'uReconstructMeridional'
-
-   ! Soyoung - we blended the analysis vector in the boundary zone.
-   a_ivar = get_varid_from_varname(anl_domid, avarname)
-
-   ! nsc - it's possible we could remove this line and the
-   !       reshape()s from put_variable lines below.
-   call find_mpas_dims(lbc_domid, b_ivar, ndims, dims)
-
-   sb_index = get_index_start(anl_domid, a_ivar)
-   eb_index = get_index_end  (anl_domid, a_ivar)
-
-   ! Soyoung - Now, the lbc file has the analysis in the interior and the blended values
-   !           in the boundary zone. In other words, the lbc file is updated not only in
-   !           the boundary, but over the entire domain (although it is used only for the
-   !           boundary zone).
-   call nc_put_variable(ncid_b, bvarname, reshape(state_vector(sb_index:eb_index), dims), routine)
-!   call nc_put_variable(ncid_a, avarname, reshape(state_vector(sb_index:eb_index), dims), routine)
-
-enddo VARLOOP2
-
-end subroutine statevector_to_boundary_file
 
 !------------------------------------------------------------------
 
@@ -2252,127 +1955,6 @@ if (nc_variable_exists(ncid, 'maxLevelCell')) then
 endif
 
 end subroutine get_grid
-
-
-!------------------------------------------------------------------
-
-subroutine update_wind_components(ncid, filename, state_vector, use_increments_for_u_update)
-
- integer,  intent(in)  :: ncid
- character(len=*), intent(in) :: filename
- real(r8), intent(in)  :: state_vector(:)
- logical,  intent(in)  :: use_increments_for_u_update
-
-! the winds pose a special problem because the model uses the edge-normal component
-! of the winds at the center of the cell edges at half levels in the vertical ('u').
-! the output files from the model can include interpolated Meridional and Zonal
-! winds as prognostic fields, which are easier for us to use when computing
-! forward operator values.  but in the end we need to update 'u' in the output
-! model file.
-
-! this routine is only called when 'u' is not being directly updated by the
-! assimilation, and the updated cell center values need to be converted back
-! to update 'u'.   there are several choices for how to do this and most are
-! controlled by namelist settings.
-
-! If 'use_increments_for_u_update' is .true.:
-!  Read in the previous reconstructed winds from the original mpas netcdf file
-!  and compute what increments (changes in values) were added by the assimilation.
-!  Read in the original edge normal wind 'u' field from that same mpas netcdf
-!  file and add the interpolated increments to compute the updated 'u' values.
-!  (note that we can't use the DART Prior_Diag.nc file to get the previous
-!  values if we're using Prior inflation, because the diagnostic values are
-!  written out after inflation is applied.)
-
-! If 'use_increments_for_u_update' is .false.:
-!  use the Zonal/Meridional cell center values directly. The edge normal winds
-!  are each directly between 2 cell centers, so average the components normal
-!  to the edge direction.  don't read in the previous values at the cell centers
-!  or the edge normal winds.
-
-! there are several changes here from previous versions:
-!  1. it requires both zonal and meridional fields to be there.  it doesn't
-!  make sense to assimilate with only one component of the winds.
-!  2. i removed the 'return if this has been called already' flag.
-!  this is a generic utility routine.  if someone wrote a main program
-!  that wanted to cycle over multiple files in a loop, this would have
-!  only updated the first file and silently returned for all the rest.
-!  3. i moved the netcdf code for 3 identical operations into a subroutine.
-!  the code is easier to read and it's less likely to make a mistake if
-!  the code needs to be changed (one place vs three).
-
-! space to hold existing data from the analysis file
-real(r8), allocatable :: u(:,:)              ! u(nVertLevels, nEdges)
-real(r8), allocatable :: ucell(:,:)          ! uReconstructZonal(nVertLevels, nCells)
-real(r8), allocatable :: vcell(:,:)          ! uReconstructMeridional(nVertLevels, nCells)
-real(r8), allocatable :: data_2d_array(:,:)  ! temporary
-logical :: both
-integer :: zonal, meridional
-
-if ( .not. module_initialized ) call static_init_model
-
-! get the ivar values for the zonal and meridional wind fields
-call winds_present(zonal,meridional,both)
-if (.not. both) call error_handler(E_ERR, 'update_wind_components', &
-   'internal error: wind fields not found', source)
-
-allocate(    u(nVertLevels, nEdges))
-allocate(ucell(nVertLevels, nCells))
-allocate(vcell(nVertLevels, nCells))
-
-! if doing increments, read in 'u' (edge normal winds), plus the uReconstructZonal
-! and uReconstructMeridional fields from the mpas analysis netcdf file.
-
-if (use_increments_for_u_update) then
-   call read_2d_from_nc_file(ncid, filename, 'u', u)
-   call read_2d_from_nc_file(ncid, filename, 'uReconstructZonal', ucell)
-   call read_2d_from_nc_file(ncid, filename, 'uReconstructMeridional', vcell)
-
-   ! compute the increments compared to the updated values in the state vector
-
-   allocate(data_2d_array(nVertLevels, nCells))
-
-   ! write updated reconstructed winds to restart file for later use.
-   call vector_to_prog_var(state_vector, zonal, data_2d_array)
-   call put_u(ncid, filename, data_2d_array, 'uReconstructZonal')
-   ucell = data_2d_array - ucell
-
-   call vector_to_prog_var(state_vector, meridional, data_2d_array)
-   call put_u(ncid, filename, data_2d_array, 'uReconstructMeridional')
-   vcell = data_2d_array - vcell
-
-   deallocate(data_2d_array)
-
-   ! this is by nedges, not ncells as above
-   allocate(data_2d_array(nVertLevels, nEdges))
-   call uv_cell_to_edges(ucell, vcell, data_2d_array)
-   u(:,:) = u(:,:) + data_2d_array(:,:)
-   deallocate(data_2d_array)
-
-else
-
-   ! The state vector has updated zonal and meridional wind components.
-   ! put them directly into the arrays.  these are the full values, not
-   ! just increments.
-   call vector_to_prog_var(state_vector, zonal, ucell)
-   call vector_to_prog_var(state_vector, meridional, vcell)
-
-   call uv_cell_to_edges(ucell, vcell, u, .true.)
-
-   call put_u(ncid, filename, ucell, 'uReconstructZonal')
-   call put_u(ncid, filename, vcell, 'uReconstructMeridional')
-endif
-
-
-
-! Write back to the mpas analysis file.
-
-call put_u(ncid, filename, u, 'u')
-
-deallocate(ucell, vcell, u)
-
-end subroutine update_wind_components
-
 
 !------------------------------------------------------------------
 
@@ -3188,9 +2770,7 @@ do e = 1, ens_size
    llv_loc(:, e) = get_location(location(e))
 enddo
 
-!> state_indx is i8, intent(in).  
-!> cellid and vert_level are integer, intent(out)
-!call find_mpas_indices(state_indx, cellid, vert_level, ndim)
+call find_mpas_indices(state_indx, cellid, vert_level, ndim)
 
 ! the routines below will use zin as the incoming vertical value
 ! and zout as the new outgoing one.  start out assuming failure
@@ -3390,6 +2970,30 @@ end subroutine convert_vert_state
 !-------------------------------------------------------------------
 
 
+!------------------------------------------------------------------
+subroutine find_mpas_indices(index_in, cellid, vert_level, ndim)
+
+integer(i8), intent(in)  :: index_in
+integer,     intent(out) :: cellid
+integer,     intent(out) :: vert_level
+integer,     intent(out) :: ndim
+
+integer  :: i, j, k ! Indices into variable (note k is not used in MPAS)
+integer  :: nzp, iloc, vloc, nnf
+
+call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
+ndim = get_num_dims(anl_domid, nnf)
+
+if ( ndim == 2) then   ! 3d (2d netcdf ) variable(vcol, iloc)
+   vert_level = i
+   cellid = j
+else  ! 2d (1d netcdf) variable: (cells)
+   cellid = i
+   vert_level = 1
+endif
+
+end subroutine find_mpas_indices
+
 !==================================================================
 ! The following (private) interfaces are used for triangle interpolation
 !==================================================================
@@ -3515,7 +3119,6 @@ integer,             intent(out) :: ier(ens_size)
 real(r8) :: lat, lon, vert, llv(3)
 real(r8) :: vert_array(ens_size)
 integer  :: track_ier(ens_size)
-integer(i8) :: pt_base_offset, density_base_offset, qv_base_offset
 integer     :: verttype, i
 integer     :: e
 
@@ -3583,24 +3186,13 @@ if(verttype == VERTISLEVEL) then
 
 endif
 
-! ok, now we need to know where we are in the grid for heights or pressures
-! as the vertical coordinate.
-
-! Vertical interpolation for pressure coordinates
 if(verttype == VERTISPRESSURE ) then
 
    track_ier = 0
    vert_array = vert
 
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   !call get_index_range(QTY_POTENTIAL_TEMPERATURE, pt_base_offset)
-   !call get_index_range(QTY_DENSITY, density_base_offset)
-   !call get_index_range(QTY_VAPOR_MIXING_RATIO, qv_base_offset)
-
    do i=1, nc
       call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), nVertLevels, &
-            pt_base_offset, density_base_offset, qv_base_offset,  &
             lower(i, :), upper(i, :), fract(i, :), ier)
 
       ! we are inside a loop over each corner. consolidate error codes
@@ -3614,11 +3206,6 @@ if(verttype == VERTISPRESSURE ) then
    return
 endif
 
-!HK I believe height is the same across the ensemble, so you can use
-! vert and not vert_array:
-
-! grid is in height, so this needs to know which cell to index into
-! for the column of heights and call the bounds routine.
 if(verttype == VERTISHEIGHT) then
    ! For height, can do simple vertical search for interpolation for now
    ! Get the lower and upper bounds and fraction for each column
@@ -3656,7 +3243,6 @@ end subroutine find_vert_level
 !------------------------------------------------------------------
 
 subroutine find_pressure_bounds(state_handle, ens_size, p, cellid, nbounds, &
-   pt_base_offset, density_base_offset, qv_base_offset, &
    lower, upper, fract, ier)
 
 ! Finds vertical interpolation indices and fraction for a quantity with
@@ -3669,11 +3255,10 @@ type(ensemble_type), intent(in) :: state_handle
 integer,     intent(in)  :: ens_size
 real(r8),    intent(in)  :: p(ens_size)
 integer,     intent(in)  :: cellid
-integer,     intent(in)  :: nbounds ! number of vertical levels?
-integer(i8), intent(in)  :: pt_base_offset, density_base_offset, qv_base_offset
-integer,     intent(out) :: lower(:), upper(:) ! ens_size
-real(r8),    intent(out) :: fract(:) ! ens_size
-integer,     intent(out) :: ier(:) ! ens_size
+integer,     intent(in)  :: nbounds ! number of vertical levels !HK @todo why not call it num_levels?
+integer,     intent(out) :: lower(ens_size), upper(ens_size) 
+real(r8),    intent(out) :: fract(ens_size) 
+integer,     intent(out) :: ier(ens_size)
 
 integer  :: i, ier2
 real(r8) :: pr
@@ -3693,14 +3278,12 @@ upper = -1
 ier = 0
 
 ! Find the lowest pressure
-call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
-   qv_base_offset, cellid, 1, nbounds, pressure(1, :), temp_ier)
+call get_interp_pressure(state_handle, ens_size, cellid, 1, pressure(1, :), temp_ier)
 
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Get the highest pressure level
-call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
-   qv_base_offset, cellid, nbounds, nbounds, pressure(nbounds, :), temp_ier)
+call get_interp_pressure(state_handle, ens_size, cellid, nbounds, pressure(nbounds, :), temp_ier)
 
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
@@ -3727,14 +3310,13 @@ if(all(found_level)) return
 do i = 2, nbounds
    ! we've already done this call for level == nbounds
    if (i /= nbounds) then
-      call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
-         qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
+      call get_interp_pressure(state_handle, ens_size, cellid, i, pressure(i, :), temp_ier)
       where (ier(:) == 0) ier(:) = temp_ier(:)
    endif
    
    ! Check if pressure is not monotonically descreased with level.
    if(any(pressure(i, :) > pressure(i-1, :))) then
-     where(pressure(i, :) > pressure(i-1, :)) ier(:) = 988
+     where(pressure(i, :) > pressure(i-1, :)) ier(:) = PRESSURE_NOT_MONOTONIC
    endif
 
    ! each ensemble member could have a vertical between different levels,
@@ -3770,33 +3352,37 @@ end subroutine find_pressure_bounds
 
 !------------------------------------------------------------------
 
-subroutine get_interp_pressure(state_handle, ens_size, pt_offset, density_offset, qv_offset, &
-   cellid, lev, nlevs, pressure, ier)
+subroutine get_interp_pressure(state_handle, ens_size, cellid, lev, pressure, ier)
 
 ! Finds the value of pressure at a given point at model level lev
 
 type(ensemble_type), intent(in) :: state_handle
 integer,      intent(in)  :: ens_size
-integer(i8),  intent(in)  :: pt_offset, density_offset, qv_offset
 integer,      intent(in)  :: cellid
-integer,      intent(in)  :: lev, nlevs
-real(r8),     intent(out) :: pressure(:)
-integer,      intent(out) :: ier(:)
+integer,      intent(in)  :: lev
+real(r8),     intent(out) :: pressure(ens_size)
+integer,      intent(out) :: ier(ens_size)
 
-integer  :: offset
+integer(i8) :: pt_idx, density_idx, qv_idx
+integer :: dummyk
 real(r8) :: pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size)
 integer :: e
 
 ! Get the values of potential temperature, density, and vapor
-offset = (cellid - 1) * nlevs + lev - 1
-pt      =  get_state(pt_offset      + offset, state_handle)
-density =  get_state(density_offset + offset, state_handle)
-qv      =  get_state(qv_offset      + offset, state_handle)
+
+pt_idx      = get_dart_vector_index(lev, cellid, dummyk, anl_domid, get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE))
+density_idx = get_dart_vector_index(lev, cellid, dummyk, anl_domid, get_varid_from_kind(anl_domid, QTY_DENSITY))
+qv_idx      = get_dart_vector_index(lev, cellid, dummyk, anl_domid, get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO))
+
+pt      =  get_state(pt_idx, state_handle)
+density =  get_state(density_idx, state_handle)
+qv      =  get_state(qv_idx, state_handle)
 
 ! Initialization
 ier = 0
 
 ! Error if any of the values are missing; probably will be all or nothing
+!HK @todo why would the state be missing?
 do e = 1, ens_size
    if(pt(e) == MISSING_R8 .or. density(e) == MISSING_R8 .or. qv(e) == MISSING_R8) then
       ier(e) = 2
@@ -3945,6 +3531,7 @@ endif
 
 ! If the field is on a single level, lower and upper are both 1
 call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
+
 if(fails(ier)) return
 
 ! for each field to compute at this location: !HK @todo why loop in here?  why not outside?
