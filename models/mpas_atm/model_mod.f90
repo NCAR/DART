@@ -178,7 +178,7 @@ public :: set_lbc_variables, &
 character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
 
 ! error codes: 
-integer, parameter :: GENERAL_RTTOV_ERROR = 1 ! general error for rttov - at least one of the input variables goes wrong
+integer, parameter :: GENERAL_ERROR = 1 ! general error
 integer, parameter :: CRITICAL_ERROR = 99 ! general error in case something terrible goes wrong
 integer, parameter :: VERTICAL_TOO_HIGH = 81 ! Vertical location too high
 integer, parameter :: VERTICAL_TOO_LOW = 80 ! Vertical location too low
@@ -1354,7 +1354,7 @@ type(ensemble_type), optional, intent(in)  :: state_handle
 
 
 integer                :: ztypeout
-integer                :: t_ind, istatus(1), k, istat_arr(1)
+integer                :: t_ind, istatus(1), k
 integer                :: base_which, local_obs_which, base_qty
 real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
 type(location_type)    :: local_obs_loc, location_arr(1)
@@ -1373,8 +1373,8 @@ if (vertical_localization_on()) then
   else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
       base_qty = get_quantity_for_type_of_obs(base_type)
       location_arr(1) = base_loc
-      call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
-      if (istat_arr(1) /= 0) return
+      call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istatus)
+      if (istatus(1) /= 0) return
       base_loc = location_arr(1)
    endif
 endif
@@ -1390,13 +1390,15 @@ do k = 1, num_close
 
    ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
    if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
-         if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
-            location_arr(1) = local_obs_loc
-            call convert_vert(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istatus)
-            locs(t_ind) = location_arr(1)
-         else
-            istatus = 0
-         endif
+      if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
+         location_arr(1) = local_obs_loc
+         call convert_vert(state_handle, 1, location_arr, loc_qtys(t_ind), vert_localization_coord, istatus)
+         locs(t_ind) = location_arr(1)
+      else
+         istatus = 0
+      endif
+   else
+      istatus = 0
    endif
 
    if (present(dist)) then
@@ -1419,10 +1421,6 @@ end subroutine get_close_obs
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, state_handle)
 
-!>@todo FIXME this is working on state vector items.  if a vertical
-!>conversion is needed, it doesn't need to interpolate.  it can compute
-!>the location using the logic that get_state_meta_data() uses.
-
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
@@ -1433,86 +1431,63 @@ type(ensemble_type), optional, intent(in)  :: state_handle
 
 
 integer                :: ztypeout
-integer                :: t_ind, istatus1, istatus2, k, istat_arr(1)
+integer                :: t_ind, istatus(1), k
 integer                :: base_which, local_obs_which, base_qty
 real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
 type(location_type)    :: local_obs_loc, location_arr(1)
-! timing
-real(digits12) :: t_base, t_base2, interval
-
-
-real(r8) ::  hor_dist
-hor_dist = 1.0e9_r8
-
-! Initialize variables to missing status
 
 num_close = 0
-istatus1  = 0
-istatus2  = 0
 
 ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
-
 base_llv = get_location(base_loc)
 base_which = nint(query_location(base_loc))
 
 ztypeout = vert_localization_coord
 
 if (vertical_localization_on()) then
-  if (base_llv(3) == MISSING_R8) then
-     istatus1 = 1
+  if (base_llv(3) == MISSING_R8) then !HK @todo what about VERTISUNDEF?
+     return
   else if (base_which /= vert_localization_coord .and. base_which /= VERTISUNDEF) then
       base_qty = get_quantity_for_type_of_obs(base_type)
       location_arr(1) = base_loc
-      call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istat_arr)
-      istatus1 = istat_arr(1)
+      call convert_vert(state_handle, 1, location_arr, base_qty, vert_localization_coord, istatus)
+      if (istatus(1) /= 0) return
       base_loc = location_arr(1)
    endif
 endif
 
-if (istatus1 == 0) then
+! Loop over potentially close subset of obs priors or state variables
+call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, num_close, close_ind)
 
-   ! Loop over potentially close subset of obs priors or state variables
-   ! This way, we are decreasing the number of distance computations that will follow.
-   ! This is a horizontal-distance operation and we don't need to have the relevant vertical
-   ! coordinate information yet (for locs).
-   call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                            num_close, close_ind)
+do k = 1, num_close
 
-   do k = 1, num_close
+   t_ind = close_ind(k)
+   local_obs_loc   = locs(t_ind)
+   local_obs_which = nint(query_location(local_obs_loc))
 
-      t_ind = close_ind(k)
-      local_obs_loc   = locs(t_ind)
-      local_obs_which = nint(query_location(local_obs_loc))
-
-      ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
-      ! This should only be necessary for obs priors, as state location information already
-      ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
-      if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
-          if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
-              location_arr(1) = local_obs_loc
-              call convert_vert_state(state_handle, 1, location_arr, loc_qtys(t_ind), &
-                                              loc_indx(t_ind), vert_localization_coord, istat_arr)
-              istatus2 = istat_arr(1)
-              locs(t_ind) = location_arr(1)
-          else
-              istatus2 = 0
-          endif
+   ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
+   if ((base_which /= VERTISUNDEF) .and.  (vertical_localization_on())) then
+      if (local_obs_which /= vert_localization_coord .and. local_obs_which /= VERTISUNDEF) then
+         location_arr(1) = local_obs_loc
+         call convert_vert_state(state_handle, 1, location_arr, loc_qtys(t_ind), &
+                                          loc_indx(t_ind), vert_localization_coord, istatus)
+         locs(t_ind) = location_arr(1)
+      else
+         istatus = 0
       endif
+   else
+         istatus = 0
+   endif
 
-      if (present(dist)) then
-         ! Compute distance - set distance to a very large value if vert coordinate is missing
-         ! or vert_interpolate returned error (istatus2=1)
-         local_obs_llv = get_location(local_obs_loc)
-         if ( (vertical_localization_on() .and. &
-              (local_obs_llv(3) == MISSING_R8)) .or. (istatus2 /= 0) ) then
-               dist(k) = 1.0e9_r8
-         else
-               dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
-         endif
+   if (present(dist)) then
+      if (istatus(1) == 0) then
+         dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
+      else
+         dist(k) = 1.0e9_r8
       endif
+   endif
 
    enddo
-endif
 
 end subroutine get_close_state
 
@@ -2446,8 +2421,7 @@ real(r8) :: weights(3)
 integer  :: ztypein, i, e, n
 integer  :: c(3), ivars(3) 
 
-! assume failure.
-istatus = 1
+istatus = GENERAL_ERROR
 
 ! initialization
 k_low = 0.0_r8
@@ -2539,9 +2513,9 @@ select case (ztypeout)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+   ivars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+   ivars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
+   ivars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
 
    if (any(ivars(1:3) < 0)) then
       write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
@@ -2700,57 +2674,32 @@ enddo
 end subroutine convert_vert
 
 !------------------------------------------------------------------
-!> code to convert an state location's vertical coordinate type.
-
+! given an index into state, convert the location into requested vertical type
 subroutine convert_vert_state(state_handle, ens_size, location, quantity, state_indx, ztypeout, istatus)
-
-! This subroutine converts a given state vertical coordinate to
-! the vertical localization coordinate type requested through the
-! model_mod namelist.
-!
-!        (3) state_handle is the relevant DART state vector for carrying out
-!            computations necessary for the vertical coordinate
-!            transformations. As the vertical coordinate is only used
-!            in distance computations, this is actually the "expected"
-!            vertical coordinate, so that computed distance is the
-!            "expected" distance. Thus, under normal circumstances,
-!            state_handle that is supplied to convert_vert should be the
-!            ensemble mean. Nevertheless, the subroutine has the
-!            functionality to operate on any DART state vector that
-!            is supplied to it.
 
 type(ensemble_type),    intent(in)    :: state_handle
 integer,                intent(in)    :: ens_size
 type(location_type),    intent(inout) :: location(ens_size)  ! because the verticals may differ
 integer,                intent(in)    :: quantity
 integer(i8),            intent(in)    :: state_indx
-integer,                intent(in)    :: ztypeout
+integer,                intent(in)    :: ztypeout ! requested vertical type
 integer,                intent(out)   :: istatus(ens_size)
 
 ! zin and zout are the vert values coming in and going out.
 ! ztype{in,out} are the vert types as defined by the 3d sphere
 ! locations mod (location/threed_sphere/location_mod.f90)
 real(r8), dimension(3, ens_size) :: llv_loc
-real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
-integer,  dimension(3,ens_size)  :: k_low, k_up
+real(r8), dimension(3,ens_size)  :: values
 real(r8), dimension(ens_size)    :: zin, zout
 real(r8), dimension(ens_size)    :: tk, fullp, surfp
-logical :: at_surf, do_norm, on_bound
+logical :: at_surf, do_norm
 type(location_type), dimension(ens_size) :: surfloc
 
-real(r8) :: weights(3)
 integer  :: ztypein, i, e, n, ndim
 integer  :: c(3), ivars(3), vert_level
-integer  :: cellid              !SYHA
+integer  :: cellid
 
-! assume failure.
-istatus = 1
-
-! initialization
-k_low = 0.0_r8
-k_up = 0.0_r8
-weights = 0.0_r8
-
+istatus = GENERAL_ERROR
 
 ! if the existing coord is already in the requested vertical units
 ! or if the vert is 'undef' which means no specifically defined
@@ -2761,110 +2710,76 @@ if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
    return
 endif
 
-!> assume that all locations have the same incoming lat/lon and level.
-!> depending on the output vert type each member might have a different
-!> vertical value.
-
 ! unpack the incoming location(s)
 do e = 1, ens_size
    llv_loc(:, e) = get_location(location(e))
 enddo
 
 call find_mpas_indices(state_indx, cellid, vert_level, ndim)
-
-! the routines below will use zin as the incoming vertical value
-! and zout as the new outgoing one.  start out assuming failure
-! (zout = missing) and wait to be pleasantly surprised when it works.
 zin(:)     = vert_level
 ztypein    = VERTISLEVEL
+
 zout(:)    = missing_r8
 
 ! if the vertical is missing to start with, return it the same way
 ! with the requested type as out.
 do e = 1, ens_size
    if (zin(e) == missing_r8) then 
-      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
+      location(e) = set_location(llv_loc(1, e), llv_loc(2, e), MISSING_R8, ztypeout)
    endif
 enddo
-! if the entire ensemble has missing vertical values we can return now.
-! otherwise we need to continue to convert the members with good vertical values.
-! boundary cells will be updated by the assimilation.
-! if all the vertical localization coord values are missing, 
-! we don't call this routine again, and return.
-if (all(zin == missing_r8)) then ! .or. on_bound) then
+
+if (all(zin ==  MISSING_R8))  then
    istatus(:) = 0
    return
 endif
 
-! Convert the incoming vertical type (ztypein) into the vertical
-! localization coordinate given in the namelist (ztypeout).
-! Because this is only for state vector locations, we have already
-! computed the vertical level, so all these conversions are from
-! model level to something.
-
-! convert into:
 select case (ztypeout)
 
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'model level number'
-   ! ------------------------------------------------------------
    case (VERTISLEVEL)
 
-   ! we have the vert_level and cellid - no need to call find_triangle or find_vert_indices
+      zout(:) = vert_level
+      istatus(:) = 0
 
-   zout(:) = vert_level
-
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'pressure' in Pa
-   ! ------------------------------------------------------------
    case (VERTISPRESSURE)
 
-   !>@todo FIXME - this is the original code from the
-   !> observation version which does horizontal interpolation.
-   !> in this code we know we are on a state vector location
-   !> so no interp is needed.  we should be able to make this
-   !> more computationally efficient.
+      !>@todo FIXME - this is the original code from the
+      !> observation version which does horizontal interpolation.
+      !> in this code we know we are on a state vector location
+      !> so no interp is needed.  we should be able to make this
+      !> more computationally efficient.
 
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+      ivars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+      ivars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
+      ivars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
 
+      ! Get theta, rho, qv at the interpolated location - pass in cellid we have already located 
+      ! to save the search time.
+      call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus, cellid)
+      if( all(istatus /= 0) ) then
+         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         return
+      endif
 
-   ! Get theta, rho, qv at the interpolated location - pass in cellid we have already located 
-   ! to save the search time.
-   call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus, cellid)
-   if( all(istatus /= 0) ) then
-      location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      return
-   endif
+      ! Convert theta, rho, qv into pressure
+      call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
 
-   ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1,:), values(2,:), values(3,:), zout, tk, istatus)
-
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'height' in meters
-   ! ------------------------------------------------------------
    case (VERTISHEIGHT)
 
-   ! surface obs should use the lower face of the first level.  the rest
-   ! of the quantities should use the level centers.
-   if ( ndim == 1 )  then
-      zout(:) = zGridFace(1, cellid)
-   else
-      zout(:) = zGridCenter(vert_level, cellid)
-      if ( quantity == QTY_VERTICAL_VELOCITY ) zout(:) = zGridFace(vert_level, cellid)
-      if ( quantity == QTY_EDGE_NORMAL_SPEED ) zout(:) = zGridEdge(vert_level, cellid)
-   endif
+      if ( ndim == 1 )  then
+         zout(:) = zGridFace(1, cellid)
+         istatus(:) = 0
+      else
+         zout(:) = zGridCenter(vert_level, cellid)
+         if ( quantity == QTY_VERTICAL_VELOCITY ) zout(:) = zGridFace(vert_level, cellid)
+         if ( quantity == QTY_EDGE_NORMAL_SPEED ) zout(:) = zGridEdge(vert_level, cellid)
+         istatus(:) = 0
+      endif
 
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'scale height' (a ratio)
-   ! ------------------------------------------------------------
    case (VERTISSCALEHEIGHT)
 
-   !>@todo FIXME
-   !> whatever we do for pressure, something similar here
+      !>@todo FIXME
+      !> whatever we do for pressure, something similar here
 
      ! Scale Height is defined as:  log(pressure) 
      ! if namelist item:  no_normalization_of_scale_heights = .true. 
@@ -2891,9 +2806,9 @@ select case (ztypeout)
 
      ! Base offsets for the potential temperature, density, and water
      ! vapor mixing fields in the state vector.
-       !ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-       !ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-       !ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+     ivars(1) = get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE)
+     ivars(2) = get_varid_from_kind(anl_domid, QTY_DENSITY)
+     ivars(3) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
 
      if (at_surf .or. do_norm) then  ! we will need surface pressure
 
@@ -2920,9 +2835,6 @@ select case (ztypeout)
 
      endif
 
-     ! we have what we need now.  figure out the case and set zout to the right values.
-     ! we've already taken care of the (at_surf .and. do_norm) case, so that simplifies
-     ! the tests here.
      if (at_surf) then
         where (surfp /= MISSING_R8)
            zout = log(surfp)
@@ -2945,9 +2857,6 @@ select case (ztypeout)
         end where
      endif
 
-   ! -------------------------------------------------------
-   ! outgoing vertical coordinate is unrecognized
-   ! -------------------------------------------------------
    case default
       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
       call error_handler(E_ERR,'convert_vert_state', string1, &
@@ -2955,12 +2864,11 @@ select case (ztypeout)
 
 end select   ! outgoing vert type
 
-! Returned location
 do e = 1, ens_size
    if(istatus(e) == 0) then
-      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),zout(e),ztypeout)
+      location(e) = set_location(llv_loc(1, e), llv_loc(2, e), zout(e), ztypeout)
    else
-      location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
+      location(e) = set_location(llv_loc(1, e), llv_loc(2, e), MISSING_R8, ztypeout)
    endif
 enddo
 
@@ -3500,7 +3408,7 @@ subroutine compute_scalar_with_barycentric(state_handle, ens_size, loc, n, ival,
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-type(location_type), intent(in)  :: loc !(ens_size)
+type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: n
 integer,             intent(in)  :: ival(n)
 real(r8),            intent(out) :: dval(n, ens_size)
