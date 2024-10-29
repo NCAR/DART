@@ -2275,12 +2275,12 @@ real(r8), dimension(3) :: llv, llv_new      ! lon/lat/vert
 real(r8), dimension(3, ens_size) :: values
 real(r8), dimension(ens_size)    :: tk
 type(location_type), dimension(ens_size) :: new_location
-integer :: ivars(3)
+integer :: ivars(1)
 integer :: e ! loop index
 
 ! default is failure
 ploc = MISSING_R8
-istatus = 99
+istatus = CRITICAL_ERROR
 
 ! base location
 llv = get_location(location)
@@ -2304,6 +2304,15 @@ else if(is_vertical(location, "HEIGHT") .or. is_vertical(location, "LEVEL")) the
 
 else if(is_vertical(location, "SURFACE")) then
 
+   ivars(1) = get_varid_from_kind(anl_domid, QTY_SURFACE_PRESSURE)
+   if ( ivars(1) >= 0 ) then
+
+     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars(1), values(1,:), istatus)
+     where (istatus == 0) ploc(:) = values(1,:)
+
+   else
+     istatus = QTY_NOT_IN_STATE_VECTOR
+   endif
 
 else if(is_vertical(location, "UNDEFINED")) then    ! not error, but no exact vert loc either
    ploc(:) = 200100.0_r8    ! this is an unrealistic pressure value to indicate no known pressure.
@@ -3726,7 +3735,6 @@ do i = 1, nedges
    call get_state_array(lowval, lowindx, state_handle)
    call get_state_array(uppval, upindx, state_handle)
    veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
-
 
 enddo
 
