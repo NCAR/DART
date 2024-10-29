@@ -113,7 +113,7 @@ use state_structure_mod, only :  add_domain, get_model_variable_indices, &
                                  get_num_variables, get_domain_size, get_varid_from_varname, &
                                  get_variable_name, get_num_dims, get_dim_lengths, &
                                  get_dart_vector_index, get_num_varids_from_kind, &
-                                 get_dim_name, get_varid_from_kind
+                                 get_dim_name, get_varid_from_kind, get_num_domains
 
 use get_reconstruct_mod, only : get_reconstruct_init, get_reconstruct
 use get_geometry_mod,    only : get_geometry
@@ -165,16 +165,12 @@ public :: get_init_template_filename,   &
           is_global_grid,               &
           uv_cell_to_edges
 
-! try adjusting what static_init_model does, before it is called.
-! the main update_bc program, for example, can call these before
-! calling static_init_model() and that will modify what it does.
 public :: set_lbc_variables, &
           force_u_into_state
 
 ! set_lbc_variables sets the lbc_variables string array
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
 
-! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
 
 ! error codes: 
@@ -198,8 +194,6 @@ integer, parameter :: REJECT_OBS_USER_PRESSURE_LEVEL = 201 ! Reject observation 
 integer, parameter :: PRESSURE_NOT_MONOTONIC = 988 ! Pressure is not monotonically descreased with level
 
 
-! module global storage; maintains values between calls, accessible by
-! any subroutine
 character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
 
@@ -224,7 +218,6 @@ real(r8), parameter :: radius = 6371229.0_r8 ! meters
 ! set in static_init_model() to 1e-5 or 1e-12 depending on compiled precision
 real(r8) :: roundoff
 
-! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
 ! Structure for computing distances to cell centers, and assorted arrays
@@ -233,12 +226,8 @@ type(xyz_get_close_type)             :: cc_gc
 type(xyz_location_type), allocatable :: cell_locs(:)
 logical :: search_initialized = .false.
 
-! compile-time control over whether grid information is written to the
-! diagnostic files or not.  if it is, the files are self-contained (e.g. for
-! ease of plotting), but are also much larger than they would be otherwise.
-! change this private variable to control whether the grid information is
-! written or not.
-logical :: add_static_data_to_diags = .false.
+integer :: anl_domid = -1 
+integer :: lbc_domid = -1
 
 ! variables which are in the module namelist
 character(len=256) :: init_template_filename = 'mpas_init.nc'
@@ -256,9 +245,6 @@ real(r8)           :: sfc_elev_max_diff = -1.0_r8    ! do not assimilate if |mod
 ! (setting this to true avoids the surface elevation max diff 
 ! test for elevation and surface pressure.)
 logical :: always_assim_surf_altimeters = .false.
-
-integer :: anl_domid = -1 ! For state_structure_mod access
-integer :: lbc_domid = -1
 
 ! if .false. use U/V reconstructed winds tri interp at centers for wind forward ops
 ! if .true.  use edge normal winds (u) with RBF functs for wind forward ops
@@ -337,7 +323,6 @@ namelist /model_nml/             &
    write_grid_to_diag_files,     &
    no_normalization_of_scale_heights
 
-! DART state vector contents are specified in the input.nml:&mpas_vars_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 80
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
 integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 4 !HK @todo get rid of clamp or fail
@@ -351,10 +336,7 @@ character(len=NF90_MAX_NAME) :: lbc_variables(MAX_STATE_VARIABLES) = ''
 
 namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
 
-integer :: nfields
-
 ! Grid parameters - the values will be read from an mpas analysis file.
-
 integer :: nCells        = -1  ! Total number of cells making up the grid
 integer :: nVertices     = -1  ! Unique points in grid that are corners of cells
 integer :: nEdges        = -1  ! Straight lines between vertices making up cells
@@ -365,18 +347,6 @@ integer :: vertexDegree  = -1  ! Max number of cells/edges that touch any vertex
 integer :: nSoilLevels   = -1  ! Number of soil layers
 
 ! scalar grid positions
-
-! FIXME: we read in a lot of metadata about the grids.  if space becomes an
-! issue we could consider reading in only the x,y,z arrays for all the items
-! plus the radius, and then compute the lat/lon for locations needed by
-! get_state_meta_data() on demand.  most of the computations we need to do
-! are actually easier in xyz coords (no issue with poles).
-
-! FIXME: it may be desirable to read in xCell(:), yCell(:), zCell(:)
-! to keep from having to compute them on demand, especially since we
-! have converted the radian lat/lon of the cell centers into degrees.
-! we have to convert back, then take a few sin and cos to get xyz.
-! time/space/accuracy tradeoff here.
 
 real(r8), allocatable :: xVertex(:), yVertex(:), zVertex(:)
 real(r8), allocatable :: xEdge(:), yEdge(:), zEdge(:)
@@ -411,7 +381,7 @@ integer,  allocatable :: maxLevelCell(:)
 
 integer,  allocatable :: surftype(:)   !  ! surface type (land=0, water=1, seaice = 2) - for rttov
 
-integer         :: model_size          ! the state vector length
+integer(i8)     :: model_size          
 type(time_type) :: model_timestep      ! smallest time to adv model
 
 ! useful flags in making decisions when searching for points, etc
@@ -421,22 +391,7 @@ logical :: has_edge_u = .false.        ! true = has original normal u on edges
 logical :: has_uvreconstruct = .false. ! true = has reconstructed at centers
 
 ! Do we have any state vector items located on the cell edges?
-! If not, avoid reading in or using the edge arrays to save space.
-! FIXME: this should be set after looking at the fields listed in the
-! namelist which are to be read into the state vector - if any of them
-! are located on the edges then this flag should be changed to .true.
-! however, the way the code is structured these arrays are allocated
-! before the details of field list is examined.  since right now the
-! only possible field array that is on the edges is the 'u' edge normal
-! winds, search specifically for that in the state field list and set
-! this based on that.  if any other data might be on edges, this routine
-! will need to be updated: is_edgedata_in_state_vector()
 logical :: data_on_edges = .false.
-
-! currently unused; for a regional model it is going to be necessary to know
-! if the grid is continuous around longitudes (wraps in east-west) or not,
-! and if it covers either of the poles.
-character(len= 64) :: ew_boundary_type, ns_boundary_type
 
 
 INTERFACE get_analysis_time
@@ -479,8 +434,6 @@ contains
 !------------------------------------------------------------------
 
 subroutine static_init_model()
-!>@todo FIXME - can we add an optional arg here for update_bc use? !HK No.
-
 ! Called to do one time initialization of the model.
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
@@ -490,16 +443,14 @@ integer :: ncid, VarID, numdims, varsize, dimlen
 integer :: iunit, io, ivar, i
 integer :: ss, dd, z1, m1
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
-integer :: lbc_nfields
+integer :: nfields, lbc_nfields
 logical :: both
 real(r8) :: variable_bounds(MAX_STATE_VARIABLES, 2)
 integer :: variable_qtys(MAX_STATE_VARIABLES)
 character(len=*), parameter :: routine = 'static_init_model'
 
-if ( module_initialized ) return ! only need to do this once.
+if ( module_initialized ) return 
 
-! Since this routine calls other routines that could call this routine
-! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
 
 ! Read the DART namelist for this model
@@ -512,17 +463,9 @@ if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Read the MPAS variable list to populate DART state vector
-! Intentionally do not try to dump them to the nml unit because
-! they include large character arrays which output pages of white space.
-! The routine that reads and parses this namelist will output what
-! values it found into the log.
 call find_namelist_in_file('input.nml', 'mpas_vars_nml', iunit)
 read(iunit, nml = mpas_vars_nml, iostat = io)
 call check_namelist_read(iunit, io, 'mpas_vars_nml')
-
-!---------------------------------------------------------------
-! Set the time step ... causes mpas namelists to be read - HK does it?
-! Ensures model_timestep is multiple of 'dynamics_timestep'
 
 call set_calendar_type( calendar )   
 
@@ -537,14 +480,15 @@ ncid = nc_open_file_readonly(init_template_filename, routine)
 
 call verify_state_variables(ncid, init_template_filename, &
                             nfields, variable_qtys, variable_bounds)
-call read_grid()
-
-call nc_close_file(ncid, routine)
 
 anl_domid = add_domain(init_template_filename, nfields,           &
                        var_names  = variable_table (1:nfields,1), &
                        kind_list  = variable_qtys(1:nfields),     &
                        clamp_vals = variable_bounds(1:nfields,:) )
+
+call read_grid()
+
+call nc_close_file(ncid, routine)                      
 
 model_size = get_domain_size(anl_domid)
 
@@ -552,9 +496,6 @@ lbc_nfields = 0
 
 ! if we have a lateral boundary file, add it to the domain
 ! so we have access to the corresponding lbc_xxx fields.
-!>@todo FIXME: if we want to do increments, we could also add a
-! third domain which is the original forecast fields before
-! the assimilation (so we can compute increments)  !HK why would you need to add a third domain?
 if (.not. global_grid .and. lbc_variables(1) /= '') then
    ! regional: count number of lbc fields to read in
    COUNTUP: do i=1, MAX_STATE_VARIABLES
@@ -568,11 +509,7 @@ if (.not. global_grid .and. lbc_variables(1) /= '') then
                           var_names  = lbc_variables)
                         ! FIXME clamp_vals = variable_bounds(1:nfields,:) )
    model_size = model_size + get_domain_size(lbc_domid)
-else
-   lbc_domid = -1
 endif
-
-! do some sanity checking here:
 
 ! if you have at least one of these wind components in the state vector,
 ! you have to have them both.  the subroutine will error out if only one
@@ -622,9 +559,7 @@ if (update_u_from_reconstruct) then
                       text2=string2, text3=string3)
 endif
 
-! basically we cannot do much without having at least these
-! three fields in the state vector.  refuse to go further
-! if these are not present:
+! Required state vector fields
 if ((get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
     (get_num_varids_from_kind(anl_domid, QTY_DENSITY) < 0) .or. &
     (get_num_varids_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO) < 0)) then
@@ -635,15 +570,11 @@ if ((get_num_varids_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
                       text2=string2, text3=string3)
 endif
 
-! tell the location module how we want to localize in the vertical
 call set_vertical_localization_coord(vert_localization_coord)
 
-! set an appropriate value for roundoff tests based
-! on this code being compiled single or double precision.
-! set to 1e-5 (for single) or 1e-12 (for double precision).
-if (r8 == digits12) then
+if (r8 == digits12) then ! double precision
    roundoff = 1.0e-12_r8
-else
+else ! single precision
    roundoff = 1.0e-5_r8
 endif
 
@@ -685,9 +616,9 @@ allocate(verticesOnCell(maxEdges, nCells))
 allocate(edgeNormalVectors(3, nEdges))
 allocate(xVertex(nVertices), yVertex(nVertices), zVertex(nVertices))
 
-! see if U is in the state vector list.  if not, don't read in or
+! see if and variables on Edges are in the state vector.  If not, do not read in or
 ! use any of the Edge arrays to save space.
-data_on_edges = is_edgedata_in_state_vector(variable_table, lbc_variables)
+data_on_edges = is_edgedata_in_state_vector()
 
 if(data_on_edges) then
    allocate(zGridEdge(nVertLevels, nEdges))
@@ -1858,13 +1789,10 @@ end function string_to_time
 
 function set_model_time_step()
 
-! the static_init_model ensures that the model namelists are read.
-
 type(time_type) :: set_model_time_step
 
 if ( .not. module_initialized ) call static_init_model
 
-! these are from the namelist
 set_model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
 
 end function set_model_time_step
@@ -2166,57 +2094,28 @@ if (add_u_to_state_list .and. .not. u_already_in_list) then
    variable_table(ngood,2) = "QTY_EDGE_NORMAL_SPEED"
 endif
 
-! state bounds
-
-
 end subroutine verify_state_variables
 
 
 !------------------------------------------------------------------
+function is_edgedata_in_state_vector()
 
-!> @todo FIXME if you can call this *after* add_domain() has been
-!> called, then we could use state structure calls for this.
-!>
-!> but right now, it's called first.  so pass in the namelist 
-!> and boundary lists and base the decision on those.
-!>
-!> this routine can only be called after the namelist is read.  
-!> also, it's called BY static_init_model() so it can't call
-!> back into it.
-!>
+logical :: is_edgedata_in_state_vector
 
-function is_edgedata_in_state_vector(state_list, bdy_list)
-  character(len=*), intent(in) :: state_list(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS)
-  character(len=*), intent(in) :: bdy_list(MAX_STATE_VARIABLES)
-  logical :: is_edgedata_in_state_vector
-
-integer :: i
-
-StateLoop : do i = 1, MAX_STATE_VARIABLES
-
-   if (state_list(i, 1) == ' ') exit StateLoop ! Found end of list.
-
-   if (state_list(i, 1) == 'u') then
-      is_edgedata_in_state_vector = .true.
-      return
-   endif
-
-enddo StateLoop
-
-! if U is not in the state, does it matter if U is
-! in the boundary file?  yes, return true if so.
-BdyLoop : do i = 1, MAX_STATE_VARIABLES
-
-   if (bdy_list(i) == ' ') exit BdyLoop ! Found end of list.
-
-   if (bdy_list(i) == 'lbc_u') then
-      is_edgedata_in_state_vector = .true.
-      return
-   endif
-
-enddo BdyLoop
+integer :: dom, var, dim
 
 is_edgedata_in_state_vector = .false.
+
+do dom = 1, get_num_domains()
+   do var = 1, get_num_variables(dom)
+      do dim = 1, get_num_dims(dom, var)
+         if (get_dim_name(dom, var, dim) == 'nEdges') then
+            is_edgedata_in_state_vector = .true.
+            return
+         endif
+      enddo
+   enddo
+enddo
 
 end function is_edgedata_in_state_vector
 
