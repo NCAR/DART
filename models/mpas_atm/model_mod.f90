@@ -1979,7 +1979,6 @@ if ( .not. module_initialized ) call static_init_model
 failure = .FALSE. ! this is for unsupported dimensions
 u_already_in_list = .FALSE.
 
-!HK @todo varible bounds
 variable_bounds(:,:) = MISSING_R8   
 
 ngood = 0
@@ -4748,16 +4747,6 @@ where (istatus == 0)       ! We only take non-missing tk here
 end where
 
 end subroutine compute_full_pressure
-
-!--------------------------------------------------------------------
-!> pass the vertical localization coordinate to assim_tools_mod
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-query_vert_localization_coord = vert_localization_coord
-
-end function query_vert_localization_coord
 
 !--------------------------------------------------------------------
 !> read the time from the input file
