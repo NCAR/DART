@@ -26,10 +26,9 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
 use direct_netcdf_mod,only : read_transpose, read_variables
-use        model_mod, only : static_init_model, statevector_to_analysis_file, &
+use        model_mod, only : static_init_model, &
                              get_model_size, &
-                             get_num_vars, get_analysis_time, &
-                             print_variable_ranges
+                             get_analysis_time
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
@@ -81,7 +80,7 @@ call check_namelist_read(iunit, io, "update_mpas_states_nml")
 
 call static_init_model()
 
-nvars  = get_num_vars()
+nvars  = 1 !get_num_vars() !HK @todo
 x_size = get_model_size()
 allocate(statevector(x_size))
 
@@ -121,26 +120,14 @@ fileloop: do        ! until out of files
   !----------------------------------------------------------------------
   ! Read analysis state vector (assuming to be available at the model time)
   !----------------------------------------------------------------------
-  call read_variables(ncAnlID, statevector, 1, nvars, dom_id)
-
-  !----------------------------------------------------------------------
-  ! if requested, print out the data ranges variable by variable
-  ! (note if we are clamping data values, that happens in the conversion
-  ! routine below and these values are before the clamping happens.)
-  !----------------------------------------------------------------------
-  if (print_data_ranges) then
-      write(*,*) 
-      write(*,*) ' Input: ', trim(next_infile) 
-      write(*,*) 'Output: ', trim(next_outfile)
-      call print_variable_ranges(statevector, 'Analysis states')
-      write(*,*) 
-  endif
+  call read_variables(ncAnlID, statevector, 1, nvars, dom_id) !HK @todo do not call read_variables directly
 
   !----------------------------------------------------------------------
   ! update the current model state vector
   !----------------------------------------------------------------------
   write(*,*) 'Overwriting states in ',trim(next_outfile)
-  call statevector_to_analysis_file(statevector, ncBckID, next_outfile)
+  !call statevector_to_analysis_file(statevector, ncBckID, next_outfile) !HK @todo
+  call error_handler(E_ERR, 'update_mpas_states', 'Not implemented yet', source)
 
   !----------------------------------------------------------------------
   ! Log what we think we're doing, and exit.

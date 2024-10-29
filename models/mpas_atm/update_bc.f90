@@ -29,9 +29,8 @@ use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
 use direct_netcdf_mod,only : read_variables  !HK read_variables?!
 use        model_mod, only : static_init_model, &
-                             get_model_size, get_init_template_filename,      &
+                             get_model_size,    &
                              get_analysis_time, statevector_to_boundary_file, &
-                             print_variable_ranges, &  
                              set_lbc_variables, force_u_into_state
 use state_structure_mod, only : get_num_variables, get_domain_size
 
@@ -99,7 +98,6 @@ call force_u_into_state()
 call set_lbc_variables(bdy_template_filename)
 
 call static_init_model()
-call get_init_template_filename(static_filename) !HK ?
 
 x_size = get_model_size()
 allocate(statevector(x_size))  !HK whole state vector
@@ -142,7 +140,7 @@ fileloop: do        ! until out of files  !HK loop around files, why not run thi
    call print_time(state_time,'DART current time',logfileunit)
    call print_time(model_time,'mpas current time',logfileunit)
    write(string1,*) trim(next_infile),' current time must equal model time'
-   call error_handler(E_ERR,'update_bc',string1,source,revision,revdate)
+   call error_handler(E_ERR,'update_bc',string1,source)
   endif
 
   !----------------------------------------------------------------------
@@ -157,7 +155,7 @@ fileloop: do        ! until out of files  !HK loop around files, why not run thi
   if((nCellsA /= nCellsB) .or. (nVertLevelsA /= nVertLevelsB)) then  ! Ha
      print*,'nCells, nVertLevels:', nCellsB, nVertLevelsB,' in ',trim(next_outfile)
      write(string1,*) 'Domain size mismatches'
-     call error_handler(E_ERR,'update_bc',string1,source,revision,revdate)
+     call error_handler(E_ERR,'update_bc',string1,source)
   endif
 
   !----------------------------------------------------------------------

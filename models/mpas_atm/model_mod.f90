@@ -150,8 +150,7 @@ public :: init_time,                      &
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 
-public :: get_init_template_filename,   &
-          get_analysis_time,            &
+public :: get_analysis_time,            &
           get_grid_dims,                &
           get_xland,                    &
           get_surftype,                 &
@@ -162,11 +161,11 @@ public :: get_init_template_filename,   &
           read_2d_from_nc_file,         &
           find_height_bounds,           &
           cell_ok_to_interpolate,       &
-          is_global_grid,               &
           uv_cell_to_edges
 
 public :: set_lbc_variables, &
-          force_u_into_state
+          force_u_into_state, &
+          statevector_to_boundary_file
 
 ! set_lbc_variables sets the lbc_variables string array
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
@@ -192,6 +191,8 @@ integer, parameter :: RBF_U_COMPUTATION_ERROR = 19 ! could not compute u using R
 integer, parameter :: INTERNAL_ERROR = 101 ! reached end of subroutine without finding an applicable case.
 integer, parameter :: REJECT_OBS_USER_PRESSURE_LEVEL = 201 ! Reject observation from user specified pressure level
 integer, parameter :: PRESSURE_NOT_MONOTONIC = 988 ! Pressure is not monotonically descreased with level
+integer, parameter :: HEIGHT_TOO_LOW = 998
+integer, parameter :: HEIGHT_TOO_HIGH = 9998
 
 
 character(len=512) :: string1, string2, string3
@@ -847,6 +848,8 @@ select case (qty)
       if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
       enddo
 
+   ! HK @todo w interpolation QTY_VERTICAL_VELOCITY
+
    ! HK @todo things that cannot be negative
    case (QTY_VAPOR_MIXING_RATIO, &
          QTY_CLOUDWATER_MIXING_RATIO, &
@@ -1200,16 +1203,6 @@ integer  :: num_variables
 integer  :: i, j
 integer(i8), allocatable :: var_list(:)
 
-
-! Perturbs a model state copies for generating initial ensembles.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, 
-! it may do so by adding a perturbation to each model state 
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
 interf_provided = .true.
 
 num_variables = get_num_variables(anl_domid) !HK what about the other domain?
@@ -1427,19 +1420,6 @@ end subroutine get_close_state
 !  (these are not required by dart but are used by other programs)
 !==================================================================
 
-subroutine get_init_template_filename( filename )  !HK why n
-
-! return the name of the template filename that was set
-! in the model_nml namelist (ex. init.nc)
-
-character(len=*), intent(OUT) :: filename
-
-if ( .not. module_initialized ) call static_init_model
-
-filename = trim(init_template_filename)
-
-end subroutine get_init_template_filename
-
 
 !-------------------------------------------------------------------
 ! modify what static_init_model does.  this *must* be called before !HK Nope this is not good.
@@ -1619,9 +1599,6 @@ end subroutine write_model_time
 
 subroutine get_grid_dims(Cells, Vertices, Edges, VertLevels, VertexDeg, SoilLevels)
 
-! public routine for returning the counts of various things in the grid
-!
-
 integer, intent(out) :: Cells         ! Total number of cells making up the grid
 integer, intent(out) :: Vertices      ! Unique points in grid which are corners of cells
 integer, intent(out) :: Edges         ! Straight lines between vertices making up cells
@@ -1721,49 +1698,6 @@ end subroutine get_bdy_mask
 !==================================================================
 ! The (model-specific) private interfaces come last
 !==================================================================
-
-
-!------------------------------------------------------------------
-!> convert time type into a character string with the
-!> format of YYYY-MM-DD_hh:mm:ss
-
-function time_to_string(t, interval)
-
- type(time_type), intent(in) :: t
- logical, intent(in), optional :: interval
-character(len=TIMELEN) :: time_to_string
-
-integer :: iyear, imonth, iday, ihour, imin, isec
-integer :: ndays, nsecs
-logical :: dointerval
-
-   dointerval = .false.
-if (present(interval)) dointerval = interval
-
-! for interval output, output the number of days, then hours, mins, secs
-! for date output, use the calendar routine to get the year/month/day hour:min:sec
-if (dointerval) then
-   call get_time(t, nsecs, ndays)
-   if (ndays > 99) then
-      write(string1, *) 'interval number of days is ', ndays
-      call error_handler(E_ERR,'time_to_string', 'interval days cannot be > 99', &
-                         source, text2=string1)
-   endif
-   ihour = nsecs / 3600
-   nsecs = nsecs - (ihour * 3600)
-   imin  = nsecs / 60
-   nsecs = nsecs - (imin * 60)
-   isec  = nsecs
-   write(time_to_string, '(I2.2,3(A1,I2.2))') &
-                        ndays, '_', ihour, ':', imin, ':', isec
-else
-   call get_date(t, iyear, imonth, iday, ihour, imin, isec)
-   write(time_to_string, '(I4.4,5(A1,I2.2))') &
-                        iyear, '-', imonth, '-', iday, '_', ihour, ':', imin, ':', isec
-endif
-
-end function time_to_string
-
 
 !------------------------------------------------------------------
 
@@ -2355,12 +2289,12 @@ select case (ztypeout)
       call find_triangle (location(1), n, c, weights, istatus(1))
       if(istatus(1) /= 0) then
          istatus(:) = istatus(1)
-         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
          return
       endif
       call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
       if( all(istatus /= 0) ) then
-         location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
+         location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
          return
       endif
 
@@ -2796,7 +2730,7 @@ upper = -1
 ! too low?
 if(height < bounds(1)) then
    if(outside_grid_level_tolerance <= 0.0_r8) then
-      ier = 998
+      ier = HEIGHT_TOO_LOW
    else
       ! let points outside the grid but "close enough" use the
       ! bottom level as the height.  hlevel should come back < 1
@@ -2812,7 +2746,7 @@ endif
 ! too high?
 if(height > bounds(nbounds)) then
    if(outside_grid_level_tolerance <= 0.0_r8) then
-      ier = 9998
+      ier = HEIGHT_TOO_HIGH
    else
       ! let points outside the grid but "close enough" use the
       ! top level as the height.  hlevel should come back > nbounds
@@ -3122,7 +3056,6 @@ real(r8) :: pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size)
 integer :: e
 
 ! Get the values of potential temperature, density, and vapor
-
 pt_idx      = get_dart_vector_index(lev, cellid, dummyk, anl_domid, get_varid_from_kind(anl_domid, QTY_POTENTIAL_TEMPERATURE))
 density_idx = get_dart_vector_index(lev, cellid, dummyk, anl_domid, get_varid_from_kind(anl_domid, QTY_DENSITY))
 qv_idx      = get_dart_vector_index(lev, cellid, dummyk, anl_domid, get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO))
@@ -3902,16 +3835,6 @@ endif
 call error_handler(E_MSG,'set_global_grid',string1,source)
 
 end subroutine set_global_grid
-
-!------------------------------------------------------------
-!> accessor function for global_grid module variable
-
-function is_global_grid()
-logical :: is_global_grid
-
-is_global_grid = global_grid 
-
-end function is_global_grid
 
 !------------------------------------------------------------
 !> find the closest cell center.  if global grid, return it.
@@ -4805,4 +4728,23 @@ tstring(18:19) = ch_second
 
 end subroutine set_wrf_date
 
+!----------------------------------------------------------------------
+
+subroutine statevector_to_boundary_file(state_vector, ncid_b, ncid_a, &
+   lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, idebug)
+
+real(r8), intent(inout) :: state_vector(:)
+integer,  intent(in)    :: ncid_b, ncid_a
+logical,  intent(in)    :: lbc_update_from_reconstructed_winds
+logical,  intent(in)    :: lbc_update_winds_from_increments
+integer,  intent(in)    :: idebug
+
+call error_handler(E_ERR, 'statevector_to_boundary_file', 'not implemented', source)
+
+end subroutine statevector_to_boundary_file
+
+!----------------------------------------------------------------------!
+
+
 end module model_mod
+
