@@ -679,7 +679,6 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: qty
 
-integer  :: nzp, iloc, vloc, nf, ndim
 integer  :: index, i, j, k, dom_id, var_id, qty_local, vert, cell, level
 real(r8) :: lon, lat, height
 type(location_type) :: new_location
