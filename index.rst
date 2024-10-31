@@ -246,8 +246,8 @@ Citing DART
 
 Cite DART using the following text:
 
-   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2019).
-   Boulder, Colorado: UCAR/NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
+   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2024).
+   Boulder, Colorado: UCAR/NSF NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
 
 Update the DART version and year as appropriate.
 
@@ -318,7 +318,6 @@ References
    DART build system <guide/quickbuild.rst>
    guide/assimilation-complex-model
    guide/mpi_intro
-   guide/filters
    guide/inflation
    guide/required-model-mod-routines
    guide/suggestions-for-a-simple-model
@@ -362,6 +361,7 @@ References
    observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
+   observations/obs_converters/BATS/readme
    observations/obs_converters/cice/cice_to_obs
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/COSMOS/COSMOS_to_obs
@@ -439,6 +439,7 @@ References
    :hidden:
 
    models/9var/readme
+   models/aether_lat-lon/readme
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme
@@ -466,6 +467,7 @@ References
    models/lorenz_96_tracer_advection/readme
    models/forced_lorenz_96/readme
    models/MITgcm_ocean/readme
+   models/MARBL_column/readme
    models/MOM6/readme
    models/mpas_atm/readme
    models/mpas_atm/mpas_dart_obs_preprocess
@@ -480,6 +482,7 @@ References
    models/POP/dart_pop_mod
    models/ROMS/readme
    models/rose/readme
+   models/seir/readme
    models/simple_advection/readme
    models/sqg/readme
    models/template/new_model
@@ -506,7 +509,6 @@ References
 
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
-   guide/netcdf_inflation_files
    guide/state_structure
    guide/filter_async_modes
    guide/distributed_state

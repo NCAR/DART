@@ -20,8 +20,8 @@ use time_manager_mod,     only : time_type, set_time, get_time,                 
                                  operator(/=), operator(>), operator(-),              &
                                  operator(/), operator(+), operator(<), operator(==), &
                                  operator(<=), operator(>=)
-use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe, &
-                                 prepare_to_update_vars
+use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe
+
 use mpi_utilities_mod,    only : my_task_id, task_sync, block_task, &
                                  sum_across_tasks, shell_execute, my_task_id
 use io_filenames_mod,     only : file_info_type
@@ -157,6 +157,9 @@ call get_ensemble_time(ens_handle, 1, ens_time)
 
 ! Compute the model time step and center a window around the closest time
 delta_time = get_model_time_step()
+if (delta_time <= set_time(0,0)) then
+   call error_handler(E_ERR, 'move_ahead', 'shortest_time_between_assimilations must be > 0', source)
+endif
 
 ! print out current window, if requested
 if (print_trace_details > 0) then
@@ -347,8 +350,6 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
 
    ! Ok, this task does need to advance something. 
    need_advance = 1
-
-   call prepare_to_update_vars(ens_handle)
 
    ! Increment number of ensemble member copies I have.
    my_num_state_copies = my_num_state_copies + 1

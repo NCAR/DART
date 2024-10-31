@@ -22,6 +22,135 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**October 22 2024 :: Bug-fixes: WRF and GOES. Tag 11.8.2**
+
+- Force THM to be the WRF-DART temperature variable
+- Remove offset on GOES observation converter 
+
+**September 27 2024 :: MOM6 mask bug-fix. Tag 11.8.1**
+
+- Fix for MOM6 CESM3 workhorse 2/3 degree grid TL319_t232 to 
+  mask missing geolon|lat|u|v|t values  
+
+**September 10 2024 :: MARBL_column. Tag 11.8.0**
+
+- Interface for MARBL_column for DART: 
+
+   - state estimation
+   - state and parameter estimation
+   - parameter estimation only
+
+- BATS observation converter, and BATS climatology scripting
+
+*contributed by Robin Armstrong*
+
+Bugfix:
+
+- fix for IO for NetCDF files when only some variables have the unlimited dimension  
+
+**August 29 2024 :: Bug fixes for shortest_time_between_assimilations and get_close_init. Tag 11.7.1**
+
+Bug fixes:
+
+   - Prevent hang by erroring out if shortest_time_between_assimilations <=0
+   - Catch and error out if max_dist or max_dist_list is <=0 for 3d sphere 
+     3d cartesian get_close_init
+   - Improved defaults for template  model input.nml
+
+Doc fixes:
+  
+   - Removed out-of-date info about inflation flavor character strings
+   - Remove out-of-date info on qceff branch checkout
+   - GitHub template for reporting documentation issues
+
+
+**August 26 2024 :: KQCEF. Tag 11.7.0**
+
+- Adds a Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation to DART.
+- New distribution module kde_distribution_mod.
+- New module rootfinding_mod that provides a different implementation of inv_cdf.
+
+*Contributed by Ian Grooms*
+
+**August 15 2024 :: WRF fwd operator bug fixes. Tag v11.6.1**
+
+WRF-DART bug-fixes:
+
+  - Bug fix for surface temperature observations to use QTY_2M_TEMPERATURE
+  - Bug fix for conversion of vapor mixing ratio to specific humidity
+  - Bug fix for diagnostics_obs.csh
+  - Improved documentation for WRF model_mod and WRF-DART Tutorial
+
+**July 26 2024 :: Library build tools for DART. Tag v11.6.0**
+
+- Buildtools for compiling DART as a shared or a static library.
+- Bugfix: correct order of arguments in count_state_ens_copies for 'input'
+  stages_to_write.
+
+**July 11 2024 :: Bgrid documentation and scripting fix. Tag v11.5.1**
+
+- Updated Bgrid documentation and removed outdated scripts and files
+- Fixed obs_diag rank histogram documentation links
+- Improved inflation file documentation
+- GitHub action for running all quickbuilds in DART
+
+**May 16 2024 :: WRF v4. Tag v11.5.0**
+
+- WRF-DART and WRF-DART Tutorial updated to WRFv4. Note, not backwards compatible with WRFv3.9. 
+- local particle filter default value for pf_enkf_hybrid=.false. *contributed by Jon Poterjoy*
+
+**April 23 2024 :: Bug-fix: WRF hybrid vertical coordinate. Tag v11.4.1**
+
+- DART now detects whether WRF is using Hybrid Vertical Coordinate (HVC) introduced in WRFv3.9 or terrain following (TF) system.
+  This fix is also compatible with pre WRFv3.9 versions which did not include explicit attribute information for vertical coordinate system.
+- Improved obs_impact_tool documentation.
+
+**March 27 2024 :: WRF-Hydro Developments; AIRS converter documentation update; Add citation.cff file. Tag v11.4.0**
+
+- WRF-Hydro:
+
+  - Added a new perfect model obs experimental capability to HydroDART
+  - Modified the Streamflow obs converter to allow for better diagnostics: allows DART to
+    compute obs space diagnostics on all gauges from the Routelink
+  - Enhanced performance in the model_mod and noah_hydro_mod when running a full CONUS domain
+  - Improved HydroDART Diagnostics with new capabilities (saves the hydrographs in a high-resolution
+    pdf, handles hybrid DA components, separate plots for the hybrid statistics, allows the openloop
+    to have different ens size and gauges than the DA runs)
+
+- AIRS and AMSU-A observation converters:
+
+  - Updated the documentation to use up-to-date build suggestions for the HDFEOS library
+  - Updated the AIRS converter code to be able to use version 7 of the AIRS data formats
+  - Removed unused and non-functional code: AIRS/BUILD_HDF-EOS.sh, AIRS/L1_AMSUA_to_netcdf.f90,
+    AIRS/shell_scripts/Build_HDF_to_netCDF.sh, AIRS/shell_scripts/Convert_HDF_to_netCDF.csh
+  - Removed the unnecessary entries from obs_def_rttov_nml in the input.nml
+
+- Added a citation.cff file to help users correctly cite DART software - creates a link to cite
+  the repository on the landing page sidebar on GitHub.
+
+**March 13 2024 :: Update WRF-DART scripts and bug template to Derecho; remove no-op routines in ensemble manager. Tag v11.3.1**
+
+- Updated the csh scripting templates used to run WRF-DART and WRF-DART tutorial from Cheyenne to Derecho
+- Updated bug report template to use Derecho instead of Cheyenne
+- Removed the following no-op routines from ensemble manager: prepare_to_write_to_vars, prepare_to_write_to_copies,
+  prepare_to_read_from_vars, prepare_to_read_from_copies, prepare_to_update_vars, prepare_to_update_copies
+
+**March 12 2024 :: MITgcm/N-BLING with Compressed Staggered Grids. Tag v11.3.0**
+
+- The DART-MITgcm code now supports compressed grids, especially suited for areas like 
+  the Red Sea where land occupies more than 90% of the domain.  
+  Built upon work *contributed by Jiachen Liu*.
+- Allows writing the BGC fields into MITgcm's pickup files.
+- Allows different compression for the regular and staggered grids.
+
+**March 12 2024 :: Aether lat-lon. Tag v11.2.0**
+
+- Aether lat-lon interface added to DART.
+
+**March 11 2024 :: SEIR model for infectious diseases. Tag v11.1.0**
+
+- Added SEIR model which simulates the spread of infectious diseases, for example COVID-19.
+
 **February 13 2024 :: Fortran Standards. Tag v11.0.3**
 
 - Replace f2kcli with Fortran intrinsics for command line arguments.

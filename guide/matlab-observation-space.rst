@@ -2,6 +2,8 @@
 MATLAB observation space diagnostics
 ####################################
 
+.. _configMatlab:
+
 Configuring MATLAB
 ==================
 
@@ -106,7 +108,10 @@ multiple axes on a single figure.
 
 |two experiments profile example|
 
-----------------------------------------
+.. _plotRankHistogram:
+
+plot_rank_histogram
+-------------------
 
 `plot_rank_histogram.m <https://raw.githubusercontent.com/NCAR/DART/master/diagnostics/matlab/plot_rank_histogram.m>`__ will
 create rank histograms for any variable that has that information present in

@@ -284,6 +284,10 @@ integer, parameter :: map_cassini = 6, map_cyl = 5
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
 
+! hybrid_opt 2 is a hybrid coordinate - terrain following at the
+! surface, and straight pressure levels at the top.
+integer, parameter :: VERT_HYBRID = 2
+
 !---- private data ----
 
 ! Got rid of surf_var as global private variable for model_mod and just defined it locally
@@ -309,7 +313,8 @@ TYPE wrf_static_data_for_dart
 
    integer  :: domain_size
    integer  :: localization_coord
-   real(r8), dimension(:),     pointer :: znu, dn, dnw, zs, znw
+   integer  :: hybrid_opt
+   real(r8), dimension(:),     pointer :: znu, dn, dnw, zs, znw, c1h, c2h
    real(r8), dimension(:,:),   pointer :: mub, hgt
    real(r8), dimension(:,:),   pointer :: latitude, latitude_u, latitude_v
    real(r8), dimension(:,:),   pointer :: longitude, longitude_u, longitude_v
@@ -689,10 +694,26 @@ WRFDomains : do id=1,num_domains
 
    ! JPH now that we have the domain ID just go ahead and get type indices once
    ! NOTE: this is not strictly necessary - can use only stagger info in the future (???)
+
+   ! Prevent boundscheck error by making WRF temperature variable 'THM' as mandatory. 
+   ! Also, for WRFv4 and later versions variable 'T' is 
+   ! diagnostic, thus updating the 'THM' variable (prognostic) is also preferred
+   ! for all DA applications.
+   
+
+
+   if (get_type_ind_from_type_string(id,'T') >=0 .or. get_type_ind_from_type_string(id,'THM') <=0) then
+      
+      write(errstring,*)'WRF temperature variable THM must appear in DART model_nml', &
+                        ' for WRFv4 and later'
+      call error_handler(E_ERR,'static_init_model', errstring, source, revision, revdate)
+     
+   endif        
+
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
    wrf%dom(id)%type_v      = get_type_ind_from_type_string(id,'V')
    wrf%dom(id)%type_w      = get_type_ind_from_type_string(id,'W')
-   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'T')
+   wrf%dom(id)%type_t      = get_type_ind_from_type_string(id,'THM')
    wrf%dom(id)%type_gz     = get_type_ind_from_type_string(id,'PH')
    wrf%dom(id)%type_qv     = get_type_ind_from_type_string(id,'QVAPOR')
    wrf%dom(id)%type_qr     = get_type_ind_from_type_string(id,'QRAIN')
@@ -1643,86 +1664,96 @@ else
 
    elseif ( obs_kind == QTY_TEMPERATURE ) then
       ! This is for 3D temperature field -- surface temps later
-      !print*, 'k ', k
+      if(.not. surf_var) then
 
-      if ( wrf%dom(id)%type_t >= 0 ) then
+        if ( wrf%dom(id)%type_t >= 0 ) then
 
-         do uk = 1, count ! for the different ks
+           do uk = 1, count ! for the different ks
 
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+              ! Check to make sure retrieved integer gridpoints are in valid range
+              if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                   boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+                   boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
 
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
+                 call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+                 if ( rc .ne. 0 ) &
+                      print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
             
-               ! Interpolation for T field at level k
-               ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-               iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-               ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
-               iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 ! Interpolation for T field at level k
+                 ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
+                 iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_t)
 
-               x_iul = get_state(iul, state_handle)
-               x_ill = get_state(ill, state_handle)
-               x_ilr = get_state(ilr, state_handle)
-               x_iur = get_state(iur, state_handle)
+                 x_iul = get_state(iul, state_handle)
+                 x_ill = get_state(ill, state_handle)
+                 x_ilr = get_state(ilr, state_handle)
+                 x_iur = get_state(iur, state_handle)
 
-               ! In terms of perturbation potential temperature
-               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+                 ! In terms of perturbation potential temperature
+                 a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
-               pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk), id, state_handle, ens_size)
-               pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk), id, state_handle, ens_size)
-               pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk), id, state_handle, ens_size)
-               pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk), id, state_handle, ens_size)
+                 pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk), id, state_handle, ens_size)
+                 pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk), id, state_handle, ens_size)
+                 pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk), id, state_handle, ens_size)
+                 pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk), id, state_handle, ens_size)
 
-               ! Pressure at location
-               pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+                 ! Pressure at location
+                 pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                     ! Full sensible temperature field
-                     fld(1, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
-                  endif
-               enddo
+                 do e = 1, ens_size
+                    if ( k(e) == uniquek(uk) ) then
+                       ! Full sensible temperature field
+                       fld(1, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
+                    endif
+                 enddo
 
-               ! Interpolation for T field at level k+1
-               ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-               iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-               ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
-               iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 ! Interpolation for T field at level k+1
+                 ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
+                 iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
 
-               x_ill = get_state(ill, state_handle)
-               x_iul = get_state(iul, state_handle)
-               x_iur = get_state(iur, state_handle)
-               x_ilr = get_state(ilr, state_handle)
+                 x_ill = get_state(ill, state_handle)
+                 x_iul = get_state(iul, state_handle)
+                 x_iur = get_state(iur, state_handle)
+                 x_ilr = get_state(ilr, state_handle)
 
-               ! In terms of perturbation potential temperature
-               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+                 ! In terms of perturbation potential temperature
+                 a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
-               pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk)+1, id, state_handle, ens_size)
-               pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk)+1, id, state_handle, ens_size)
-               pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk)+1, id, state_handle, ens_size)
-               pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres1 = model_pressure_t_distrib(ll(1), ll(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres2 = model_pressure_t_distrib(lr(1), lr(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres3 = model_pressure_t_distrib(ul(1), ul(2), uniquek(uk)+1, id, state_handle, ens_size)
+                 pres4 = model_pressure_t_distrib(ur(1), ur(2), uniquek(uk)+1, id, state_handle, ens_size)
 
-               ! Pressure at location
-               pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+                 ! Pressure at location
+                 pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                  ! Full sensible temperature field
-                  fld(2, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
-                  endif
-               enddo
-            endif
-         enddo
+                 do e = 1, ens_size
+                    if ( k(e) == uniquek(uk) ) then
+                    ! Full sensible temperature field
+                    fld(2, e) = (ts0 + a1(e))*(pres(e)/ps0)**kappa
+                    endif
+                 enddo
+              endif
+           enddo
+        endif
       else
-         fld = missing_r8
-      end if
+
+      ! This is for surface temperature (T2)
+        if ( wrf%dom(id)%type_t2 >= 0 ) then
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_handle)
+            if (all(fld == missing_r8)) goto 200
+        else
+          call error_handler(E_MSG, 'model_mod section 1.b Sensible Temperature:', &
+         'WARNING: Surface temperature variable not found in &model_nml')
+          fld = missing_r8     
+        end if
+      end if  
    elseif (obs_kind == QTY_2M_TEMPERATURE) then
       ! This is for 2-meter temperature
-      if ( wrf%dom(id)%type_t2 >= 0 ) then ! HK is there a better way to do this?
+      if ( wrf%dom(id)%type_t2 >= 0 ) then 
          call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_handle)
          if (all(fld == missing_r8)) goto 200
       else
@@ -1796,7 +1827,7 @@ else
             call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_th2, dxm, dx, dy, dym, ens_size, state_handle)
             if (all(fld == missing_r8)) goto 200
    
-            endif
+         endif
       endif
 
    !-----------------------------------------------------
@@ -1885,9 +1916,8 @@ else
       if (all(fld == missing_r8)) goto 200
 
     !-----------------------------------------------------
-   ! 1.f Specific Humidity (SH, SH2)
-   ! Look at me
-   ! Convert water vapor mixing ratio to specific humidity:
+   ! 1.f Specific Humidity (QV,Q2)
+   ! Water vapor mixing ratio is used to calculate specific humidity:
    else if( obs_kind == QTY_SPECIFIC_HUMIDITY ) then
 
       ! This is for 3D specific humidity -- surface spec humidity later
@@ -1905,9 +1935,9 @@ else
 
                   call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc ) ! HK why is this type_t
                   if ( rc .ne. 0 ) &
-                       print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
+                       print*, 'model_mod.f90 :: model_interpolate :: getCorners QV rc = ', rc
 
-                  ! Interpolation for SH field at level k
+                  ! Interpolation for QV field at level k
                   ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_qv)
                   iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_qv)
                   ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk), domain_id(id), wrf%dom(id)%type_qv)
@@ -1921,11 +1951,13 @@ else
                   do e = 1, ens_size
                      if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct k
                         a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) ! think this can go outside the k loop
+
+                        ! Vapor mixing ratio (QV) to specific humidity conversion
                         fld(1,e) = a1(e) /(1.0_r8 + a1(e))
                      endif
                   enddo
 
-                  ! Interpolation for SH field at level k+1
+                  ! Interpolation for QV field at level k+1
                   ill = get_dart_vector_index(ll(1), ll(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_qv)
                   iul = get_dart_vector_index(ul(1), ul(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_qv)
                   ilr = get_dart_vector_index(lr(1), lr(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_qv)
@@ -1937,8 +1969,10 @@ else
                   x_iur = get_state(iur, state_handle)
 
                   do e = 1, ens_size
-                     if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct
+                     if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct k
                         a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
+                        ! Vapor mixing ratio (QV) to specific humidity conversion
                         fld(2,e) = a1(e) /(1.0_r8 + a1(e))
                      endif
                   enddo
@@ -1947,7 +1981,7 @@ else
 
          endif
 
-      ! This is for surface specific humidity (calculated from Q2)
+      ! This is for surface specific humidity calculated from vapor mixing ratio (Q2)
       else
          
          ! confirm that field is in the DART state vector
@@ -1961,7 +1995,7 @@ else
                if ( rc .ne. 0 ) &
                     print*, 'model_mod.f90 :: model_interpolate :: getCorners Q2 rc = ', rc
 
-               ! Interpolation for the SH2 field
+               ! Interpolation for the Q2 field
                ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_q2)
                iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_q2)
                ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_q2)
@@ -1973,6 +2007,8 @@ else
                x_ilr = get_state(ilr, state_handle)
 
                a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+               
+               ! Vapor mixing ratio (Q2) to specific humidity conversion
                fld(1,:) = a1 /(1.0_r8 + a1)
 
             endif
@@ -1997,11 +2033,10 @@ else
          endif
       endif
 
-      ! Don't accept negative water vapor amounts (?)
+      ! Don't accept negative water vapor amounts
      fld = max(0.0_r8, fld)
 
    else if (obs_kind == QTY_2M_SPECIFIC_HUMIDITY ) then
-      ! FIXME: Q2 is actually a mixing ratio, not a specific humidity
       if ( wrf%dom(id)%type_q2 >= 0 ) then
          ! Check to make sure retrieved integer gridpoints are in valid range
          if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -2012,7 +2047,7 @@ else
             if ( rc .ne. 0 ) &
                  print*, 'model_mod.f90 :: model_interpolate :: getCorners Q2 rc = ', rc
 
-            ! Interpolation for the SH2 field
+            ! Interpolation for the Q2 field
             ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_q2)
             iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_q2)
             ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_q2)
@@ -2024,7 +2059,10 @@ else
             x_ilr = get_state(ilr, state_handle)
 
             a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-            fld(1,:) = a1
+            
+            ! Vapor mixing ratio (Q2) to specific humidity conversion
+            fld(1,:) = a1/(1.0_r8 + a1)
+
          endif
       endif
 
@@ -3766,7 +3804,7 @@ integer :: PERIODIC_XVarID, POLARVarID
 
 integer :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
      MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, hgtVarID , LatuVarID, &
-     LatvVarID, LonuVarID, LonvVarID, ZNWVarID
+     LatvVarID, LonuVarID, LonvVarID, ZNWVarID, C1HVarID, C2HVarID
 
 integer :: TimeDimID
 
@@ -4042,6 +4080,34 @@ call nc_check(nf90_put_att(ncid, DNWVarID, 'units', &
                  ''), &
                  'nc_write_model_atts','def_var DNW'//' units')
 
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+   call nc_check(nf90_def_var(ncid, name='C1H', xtype=nf90_real, &
+                    dimids= btDimID, varid=C1HVarID), &
+                    'nc_write_model_atts','def_var C1H')
+   call nc_check(nf90_put_att(ncid, C1HVarID, 'long_name', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C1H'//' long_name')
+   call nc_check(nf90_put_att(ncid, C1HVarID, 'description', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C1H'//' description')
+   call nc_check(nf90_put_att(ncid, C1HVarID, 'units', &
+                    ''), &
+                    'nc_write_model_atts','def_var C1H'//' units')
+   
+   call nc_check(nf90_def_var(ncid, name='C2H', xtype=nf90_real, &
+                    dimids= btDimID, varid=C2HVarID), &
+                    'nc_write_model_atts','def_var C2H')
+   call nc_check(nf90_put_att(ncid, C2HVarID, 'long_name', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C2H'//' long_name')
+   call nc_check(nf90_put_att(ncid, C2HVarID, 'description', &
+                    'dn values on full (w) levels'), &
+                    'nc_write_model_atts','def_var C2H'//' description')
+   call nc_check(nf90_put_att(ncid, C2HVarID, 'units', &
+                    ''), &
+                    'nc_write_model_atts','def_var C2H'//' units')
+endif
+
 !
 !    float MUB(Time, south_north, west_east) ;
 !            MUB:FieldType = 104 ;
@@ -4307,6 +4373,12 @@ call nc_check(nf90_put_var(ncid,      ZNWVarID, wrf%dom(id)%znw), &
               'nc_write_model_atts','put_var znw')
 call nc_check(nf90_put_var(ncid,      DNWVarID, wrf%dom(id)%dnw), &
               'nc_write_model_atts','put_var dnw')
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+   call nc_check(nf90_put_var(ncid,      C1HVarID, wrf%dom(id)%c1h), &
+                 'nc_write_model_atts','put_var c1h')
+   call nc_check(nf90_put_var(ncid,      C2HVarID, wrf%dom(id)%c2h), &
+                 'nc_write_model_atts','put_var c2h')
+endif
 
 ! defining horizontal
 call nc_check(nf90_put_var(ncid,      mubVarID, wrf%dom(id)%mub), &
@@ -5276,7 +5348,11 @@ ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
 
 ! now calculate rho = - mu / dphi/deta
 
-model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
+if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+   model_rho_t_distrib(:) = - (wrf%dom(id)%c1h(k)*(wrf%dom(id)%mub(i,j)+x_imu) + wrf%dom(id)%c2h(k)) / ph_e
+else
+   model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
+endif
 
 end function model_rho_t_distrib
 
@@ -7044,6 +7120,7 @@ subroutine read_wrf_file_attributes(ncid,id)
 
 integer, intent(in)   :: ncid, id
 logical, parameter    :: debug = .false.
+integer :: ret
 
 ! get meta data and static data we need
 
@@ -7081,6 +7158,13 @@ logical, parameter    :: debug = .false.
    call nc_check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon), &
                      'static_init_model', 'get_att STAND_LON')
    if(debug) write(*,*) ' stdlon is ',stdlon
+
+   ! this attribute is not present in older wrf files, which means it is not
+   ! using a hybrid vertical coordinate.  not having this attribute should
+   ! not cause an error.
+   ret =  nf90_get_att(ncid, nf90_global, 'HYBRID_OPT', wrf%dom(id)%hybrid_opt)
+   if (ret /= NF90_NOERR) wrf%dom(id)%hybrid_opt = 0
+   if(debug) write(*,*) 'hybrid_opt is ', wrf%dom(id)%hybrid_opt
 
    RETURN
 
@@ -7175,6 +7259,22 @@ integer               :: var_id
    call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%dnw), &
                      'read_wrf_static_data','get_var DNW')
    if(debug) write(*,*) ' dnw is ',wrf%dom(id)%dnw
+
+   if (wrf%dom(id)%hybrid_opt == VERT_HYBRID) then
+      allocate(wrf%dom(id)%c1h(1:wrf%dom(id)%bt))
+      call nc_check( nf90_inq_varid(ncid, "C1H", var_id), &
+                        'read_wrf_static_data','inq_varid C1H')
+      call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%c1h), &
+                        'read_wrf_static_data','get_var C1H')
+      if(debug) write(*,*) ' c1h is ',wrf%dom(id)%c1h
+   
+      allocate(wrf%dom(id)%c2h(1:wrf%dom(id)%bt))
+      call nc_check( nf90_inq_varid(ncid, "C2H", var_id), &
+                        'read_wrf_static_data','inq_varid C2H')
+      call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%c2h), &
+                        'read_wrf_static_data','get_var C2H')
+      if(debug) write(*,*) ' c2h is ',wrf%dom(id)%c2h
+   endif
 
    allocate(wrf%dom(id)%zs(1:wrf%dom(id)%sls))
    call nc_check( nf90_inq_varid(ncid, "ZS", var_id), &
@@ -7398,7 +7498,7 @@ default_table(:,row) = (/ 'PH                        ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'T                         ', &
+default_table(:,row) = (/ 'THM                       ', &
                           'QTY_POTENTIAL_TEMPERATURE ', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &

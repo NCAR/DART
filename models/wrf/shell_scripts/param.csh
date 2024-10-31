@@ -9,8 +9,7 @@
 #                        ASSIM_INT_MINUTES support needs to be added to param.csh,
 #                        it is referenced in assim_advance.csh but not declared in param.csh
 
-# Set up environment. Current settings are for NCAR's Cheyenne
-module load mpt          # set this appropriately #%%%#
+# Set up environment. Current settings are for NCAR's Derecho
 module load nco          # set this appropriately #%%%#
 module load ncl/6.6.2    # set this appropriately #%%%#
 
@@ -25,7 +24,7 @@ set NUM_DOMAINS        = 1
 #  Directories where things are run
 #  IMPORTANT : Scripts provided rely on this directory structure and names relative to BASE_DIR.
 #              Do not change, otherwise tutorial will fail.    
-set BASE_DIR         = /glade2/scratch2/USER/WORK_DIR     # set this appropriately #%%%#
+set BASE_DIR         = /glade/derecho/scratch/USER/WORK_DIR     # set this appropriately #%%%#
 set RUN_DIR          = ${BASE_DIR}/rundir
 set TEMPLATE_DIR     = ${BASE_DIR}/template
 set OBSPROC_DIR      = ${BASE_DIR}/obsproc
@@ -35,57 +34,55 @@ set POST_STAGE_DIR   = ${BASE_DIR}/post
 set OBS_DIAG_DIR     = ${BASE_DIR}/obs_diag
 set PERTS_DIR        = ${BASE_DIR}/perts
 
-#  Directories that can be used by many things
+#  Assign path to DART, WRF, WPS and WRFDA build
 set SHELL_SCRIPTS_DIR = ${BASE_DIR}/scripts
-set DART_DIR          = /glade/p/work/USER/DART_manhattan           # set this appropriately #%%%#
-set WRF_DM_SRC_DIR    = /glade/p/work/USER/WRFV3_dmpar              # set this appropriately #%%%#
-set WPS_SRC_DIR       = /glade/p/work/USER/WPS                      # set this appropriately #%%%#
-set VAR_SRC_DIR       = /glade/p/work/USER/WRFDA                    # set this appropriately #%%%#
+set DART_DIR          = /glade/work/USER/DART                     # set this appropriately #%%%#
+set WRF_DM_SRC_DIR    = /glade/work/USER/WRFV3                    # set this appropriately #%%%#
+set WPS_SRC_DIR       = /glade/work/USER/WPS                      # set this appropriately #%%%#
+set VAR_SRC_DIR       = /glade/work/USER/WRFDA                    # set this appropriately #%%%#
 
 # for generating wrf template files
-set GEO_FILES_DIR     = /glade/p/work/USER/WPS        # set this appropriately #%%%#
-set GRIB_DATA_DIR     = /glade/p/work/USER/WPS/GRIB   # set this appropriately #%%%#
-set GRIB_SRC          = 'GFS'                         # set this appropriately #%%%#
+set GEO_FILES_DIR     = /glade/u/home/wrfhelp/WPS_GEOG            # set this appropriately #%%%#
+set GRIB_DATA_DIR     = ${ICBC_DIR}/grib_data                     # set this appropriately #%%%#
+set GRIB_SRC          = 'GFS'                                     # set this appropriately #%%%#
 
 # list of variables for extraction and cycling
-set extract_vars_a   = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+set extract_vars_a   = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                          U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
-set extract_vars_b   = ( U V W PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+set extract_vars_b   = ( U V W PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                          U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
                          REFL_10CM VT_DBZ_WT )
-set cycle_vars_a     =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+set cycle_vars_a     =   ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                            U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
-set increment_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
+set increment_vars_a = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
 
 #  Diagnostic parameters
 set OBS_VERIF_DAYS      = 7
 
 #  Generic queuing system parameters
-set SUPER_PLATFORM      = cheyenne
-
-# TJH consistent way of checking the SUPER_PLATFORM and injecting that
-#     header information into the scripts ... rather than have scripts
-#     that have redundant blocks in them ...
-#
+set SUPER_PLATFORM          = derecho
 set COMPUTER_CHARGE_ACCOUNT = YOUR_ACCT                  # set this appropriately #%%%#
-set EMAIL                   = YOUR_EMAIL@SOMEPLACE.COM   # set this appropriately #%%%#
+set EMAIL                   = YOUR_EMAIL                 # set this appropriately #%%%#
 
-if ( $SUPER_PLATFORM == 'cheyenne') then
-   # cheyenne values (uses 'PBS' queueing system) 
-   # set this appropriately #%%%#  ... ALL OF THESE if using PBS
-   set FILTER_QUEUE       = regular
+if ( $SUPER_PLATFORM == 'derecho') then
+   # Derecho values (uses 'PBS' queueing system) 
+   # Set these appropriately for your PBS system  #%%%#  
+   set FILTER_QUEUE       = main
+   set FILTER_PRIORITY    = premium
    set FILTER_TIME        = 0:35:00
-   set FILTER_NODES       = 10
-   set FILTER_PROCS       = 36
-   set FILTER_MPI         = 36
-   set ADVANCE_QUEUE       = regular
-   set ADVANCE_TIME        = 0:20:00
-   set ADVANCE_NODES       = 3
-   set ADVANCE_PROCS       = 36
-   set ADVANCE_MPI         = 36
+   set FILTER_NODES       = 2
+   set FILTER_PROCS       = 128
+   set FILTER_MPI         = 128
+
+   set ADVANCE_QUEUE      = main
+   set ADVANCE_PRIORITY   = premium
+   set ADVANCE_TIME       = 0:20:00
+   set ADVANCE_NODES      = 1
+   set ADVANCE_PROCS      = 128
+   set ADVANCE_MPI        = 128
 else
-   # yellowstone (uses 'LSF' queueing system)
-   # set this appropriately #%%%#  ... ALL OF THESE if using LSF
+   # 'LSF' queueing system example
+   # Set these appropriately for your LSF or Slurm system #%%%# 
    set FILTER_QUEUE        = regular
    set FILTER_TIME         = 0:25
    set FILTER_CORES        = 512
@@ -97,8 +94,6 @@ else
 endif
 
 #  System specific commands
-# TJH ... The LINK command probably should not have the force option.
-# TJH ... and if the LINK fails, should it die right there?
 setenv   REMOVE 'rm -rf'
 setenv   COPY 'cp -pfr'
 setenv   MOVE 'mv -f'
