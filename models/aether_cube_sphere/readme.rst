@@ -8,7 +8,7 @@ In addition to the standard DART programs associated with a given model, this in
 three additional programs for the Aether cube sphere: ``aether_to_dart``, ``dart_to_aether``, and 
 ``create_geometry_file``.
 
-Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_restart_files.zip>`_ to 
+Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_restart_files.zip>`__ to
 download a set of Aether cube sphere restart files.
 
 aether_to_dart
@@ -79,7 +79,7 @@ This program takes two sets of six Aether grid files:
 - ``grid_corners_g000?.nc``, where ``?`` corresponds to the six grid corner files, numbered 0-5, and
 - ``grid_g000?.nc``, where ``?`` corresponds to the six grid center files, numbered 0-5.
 
-Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_grid_files.zip>`_ to 
+Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_grid_files.zip>`__ to
 download a set of Aether cube sphere grid files.
 
 Aether's model fields are defined at the grid centers. The grid corners are at locations 
