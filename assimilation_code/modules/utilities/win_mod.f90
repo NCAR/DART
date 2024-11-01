@@ -29,8 +29,6 @@ integer :: mean_win    !< window for the mean
 integer :: current_win !< keep track of current window, start out assuming an invalid window
 
 ! parameters for keeping track of which window is open
-!>@todo should this be in the window_mod?  you will have to change in both cray 
-!> and non cray versions 
 integer, parameter :: NO_WINDOW    = -1
 integer, parameter :: MEAN_WINDOW  = 0 
 integer, parameter :: STATE_WINDOW = 2 
