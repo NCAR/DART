@@ -59,7 +59,7 @@ integer :: ierr
 integer :: bytesize !< size in bytes of each element in the window
 integer :: my_num_vars !< my number of vars
 
-! Find out how many copies to get, maybe different to %num_copies
+! Find out how many copies to get, maybe different to state_ens_handle%num_copies
 data_count = copies_in_window(state_ens_handle)
 
 if (get_allow_transpose(state_ens_handle)) then
