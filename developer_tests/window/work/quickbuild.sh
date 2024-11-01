@@ -11,7 +11,7 @@ export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
 MODEL="none"
-EXTRA=/Users/hkershaw/DART/issues/fortran-testanything
+EXTRA=$DART/models/template/threed_model_mod.f90
 dev_test=1
 LOCATION="threed_sphere"
 TEST="window"

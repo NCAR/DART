@@ -222,8 +222,10 @@ done
 function dartbuild() {
 
 local program
+local devlibs
 
 if [ $dev_test -eq 0 ]; then
+  devlibs=""
   #look in $program directory for {main}.f90
   if [ $1 == "obs_diag" ]; then
     program=$DART/assimilation_code/programs/obs_diag/$LOCATION
@@ -235,11 +237,13 @@ if [ $dev_test -eq 0 ]; then
 else
   # For developer tests {main}.f90 is in developer_tests
   program=$DART/developer_tests/$TEST/$1.f90
+  devlibs=$DART/developer_tests/contrib/fortran-testanything
 fi
 
  $DART/build_templates/mkmf -x -a $DART $m -p $1 \
      $dartsrc \
      $EXTRA \
+     $devlibs \
      $program
 }
 
