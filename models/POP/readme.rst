@@ -89,7 +89,6 @@ the following steps.
    Data Exchange <https://gdex.ucar.edu/dataset/483.html>`_
 #. Configure the scripts for your specific experiment by editing
    ``DART_params.csh``.
-#. Stage your initial ensemble using ``copy_POP_JRA_restarts.py``.
 #. Run the appropriate DART setup script to create and build the CESM case.
 
 If the DART setup script runs to completion, it will print instructions to the
@@ -137,7 +136,7 @@ It is run by the setup scripts.
 +---------------------+-----------------------------------------------------------+
 
 One set of variables to make sure are set correctly in this script are related to
-the SourceMods enable POP to recompute the barotropic velocity to prevent the
+the SourceMods, which  enable POP to recompute the barotropic velocity to prevent the
 barotropic solver from crashing. You can find and download the SourceMods available
 for POP-DART `here <https://www.image.ucar.edu/pub/DART/CESM/>`_. Ensure that the
 environment variable use_SourceMods is set to TRUE and the environment variable
@@ -212,19 +211,6 @@ integration.
 
 Other files needed for assimilation
 -----------------------------------
-
-Creating an initial ensemble
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Karspeck et al. (2013) [3]_ find that an ensemble of 1 January model states
-selected from a multi-decade free-running integration of POP2 can be used as an
-initial ensemble.
-
-If you have access to CGD's Ocean Section directory on ``/glade/campaign`` you
-can use the `copy_POP_JRA_restarts.py`_ script to stage a collection of POP
-restart files from Who Kim's multi-century ``g210.G_JRA.v14.gx1v7.01``
-experiment to serve as an initial ensemble. This experiment uses the JRA-55
-dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
 
 Observation sequence files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
