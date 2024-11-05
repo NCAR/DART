@@ -60,7 +60,7 @@ use        utilities_mod, only : register_module, error_handler,                
 
 use         obs_kind_mod, only : get_index_for_quantity
 
-use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
+use mpi_utilities_mod, only: my_task_id, all_reduce_min_max, task_count
 
 use         fesom_modules, only: read_node, read_aux3, read_depth, read_namelist, &
                                  nCells => myDim_nod2D, & ! number of surface locations
@@ -828,7 +828,7 @@ do i = 1, get_num_variables(domid)
 enddo
 
 ! get global min/max for each variable
-call broadcast_minmax(min_var, max_var, num_variables)
+call all_reduce_min_max(min_var, max_var, num_variables)
 deallocate(within_range)
 
 call init_random_seq(random_seq, my_task_id()+1)
