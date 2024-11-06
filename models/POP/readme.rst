@@ -213,6 +213,18 @@ integration.
 Other files needed for assimilation
 -----------------------------------
 
+Creating an initial ensemble
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Karspeck et al. (2013) [3]_ finds that an ensemble of 1 January model states
+selected from a multi-decade free-running integration of POP2 can be used as an
+initial ensemble.
+
+You can access a collection of POP restart files from Who Kim's multi-century
+``g210.G_JRA.v14.gx1v7.01`` experiment to serve as an initial ensemble in the
+`NSF NCAR Geoscience Data Exchange <https://gdex.ucar.edu/dataset/483.html>`_. This
+experiment uses the JRA-55 dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
+
 Observation sequence files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
