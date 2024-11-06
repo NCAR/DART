@@ -665,7 +665,8 @@ end function repeat_alarm
 !=========================================================================
 
 subroutine set_calendar_type_integer(mytype)
-
+!------------------------------------------------------------------------
+!
 ! Selects calendar for default mapping from time to date - if you know 
 ! the magic integer for the calendar of interest. 
 
@@ -684,7 +685,8 @@ end subroutine set_calendar_type_integer
 
 
 subroutine set_calendar_type_string(calstring)
-
+!------------------------------------------------------------------------
+!
 ! Selects calendar for default mapping from time to date - given a string. 
 
 character(len=*), intent(in) :: calstring
@@ -693,7 +695,6 @@ integer, parameter :: max_calendar_string_length = len_trim('THIRTY_DAY_MONTHS')
 
 character(len=len(calstring))             :: str1
 character(len=max_calendar_string_length) :: cstring
-logical :: found_calendar = .false.
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -715,34 +716,23 @@ call to_upper(cstring)
 
 if     ( cstring == 'NO_CALENDAR' ) then
         calendar_type  = NO_CALENDAR
-        found_calendar = .true.
 elseif ( cstring == 'NO CALENDAR' ) then   ! allow this as a synonym 
         calendar_type  = NO_CALENDAR
-        found_calendar = .true.
 elseif ( cstring == 'NONE' ) then          ! also allow this
         calendar_type  = NO_CALENDAR
-        found_calendar = .true.
 elseif ( cstring == 'THIRTY_DAY_MONTHS' ) then
         calendar_type  = THIRTY_DAY_MONTHS
-        found_calendar = .true.
 elseif ( cstring == 'JULIAN' ) then
         calendar_type  = JULIAN
-        found_calendar = .true.
 elseif ( cstring == 'NOLEAP' ) then
         calendar_type  = NOLEAP
-        found_calendar = .true.
 elseif ( cstring == 'GREGORIAN_MARS' ) then
         calendar_type  = GREGORIAN_MARS
-        found_calendar = .true.
 elseif ( cstring == 'SOLAR_MARS' ) then
         calendar_type  = SOLAR_MARS
-        found_calendar = .true.
 elseif ( cstring == 'GREGORIAN' ) then
         calendar_type  = GREGORIAN
-        found_calendar = .true.
-endif
-
-if( .not. found_calendar ) then
+else
    write(errstring,*)'Unknown calendar ',calstring
    call error_handler(E_ERR,'set_calendar_type_string',errstring,source)
 endif
