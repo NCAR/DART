@@ -135,12 +135,13 @@ It is run by the setup scripts.
 |                     | where the restarts from the GDEX were downloaded/stored.  |
 +---------------------+-----------------------------------------------------------+
 
-One set of variables to make sure are set correctly in this script are related to
-the SourceMods, which  enable POP to recompute the barotropic velocity to prevent the
+SourceMods are required to enable POP to recompute the barotropic velocity to prevent the
 barotropic solver from crashing. You can find and download the SourceMods available
-for POP-DART `here <https://www.image.ucar.edu/pub/DART/CESM/>`_. Ensure that the
-environment variable use_SourceMods is set to TRUE and the environment variable
-SourceModDir matches the directory path where the SourceMods were downloaded/stored.
+for POP-DART `here <https://www.image.ucar.edu/pub/DART/CESM/>`_. 
+
+Put the SourceMods in your home directory:
+
+~/${cesmtag}/SourceMods 
 
 Setup scripts
 ~~~~~~~~~~~~~
