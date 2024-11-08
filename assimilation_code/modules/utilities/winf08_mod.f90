@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-!> Window without cray pointer. Should you point the window at contigous memory?
 module window_mod
 
 !> \defgroup window window_mod
@@ -15,7 +14,7 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_in
                                  set_num_extra_copies, all_copies_to_all_vars, &
                                  all_vars_to_all_copies
 
-use mpi
+use mpi_f08
 
 implicit none
 
@@ -25,26 +24,21 @@ public :: create_mean_window, create_state_window, free_mean_window, &
           mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
 
 ! mpi window handles
-integer :: state_win   !< window for the forward operator
-integer :: mean_win    !< window for the mean
+type(MPI_Win) :: state_win   !< window for the forward operator
+type(MPI_Win) :: mean_win    !< window for the mean
 integer :: current_win !< keep track of current window, start out assuming an invalid window
 
 ! parameters for keeping track of which window is open
-!>@todo should this be in the window_mod?  you will have to change in both cray 
-!> and non cray versions 
 integer, parameter :: NO_WINDOW    = -1
 integer, parameter :: MEAN_WINDOW  = 0 
 integer, parameter :: STATE_WINDOW = 2 
 
-integer :: data_count !! number of copies in the window
+integer :: data_count !! number of copies required
 integer(KIND=MPI_ADDRESS_KIND) :: window_size
 logical :: use_distributed_mean = .false. ! initialize to false
 
 ! Global memory to stick the mpi window to.
 ! Need a simply contiguous piece of memory to pass to mpi_win_create
-! Openmpi 1.10.0 will not compile with ifort 16 if
-! you create a window with a 2d array.
-real(r8), allocatable :: contiguous_fwd(:)
 real(r8), allocatable :: mean_1d(:)
 
 type(ensemble_type) :: mean_ens_handle
@@ -65,8 +59,7 @@ integer :: ierr
 integer :: bytesize !< size in bytes of each element in the window
 integer :: my_num_vars !< my number of vars
 
-! Find out how many copies to put in the window
-! copies_in_window is not necessarily equal to ens_handle%num_copies
+! Find out how many copies to get, maybe different to state_ens_handle%num_copies
 data_count = copies_in_window(state_ens_handle)
 
 if (get_allow_transpose(state_ens_handle)) then
@@ -82,19 +75,14 @@ else
    my_num_vars = state_ens_handle%my_num_vars
 
    call mpi_type_size(datasize, bytesize, ierr)
-   window_size = my_num_vars*data_count*bytesize
-
-   allocate(contiguous_fwd(data_count*my_num_vars))
-   contiguous_fwd = reshape(state_ens_handle%copies(1:data_count, :), (/my_num_vars*data_count/))
+   window_size = my_num_vars*state_ens_handle%num_copies*bytesize
 
    ! Expose local memory to RMA operation by other processes in a communicator.
-   call mpi_win_create(contiguous_fwd, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), state_win, ierr)
+   call mpi_win_create(state_ens_handle%copies, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), state_win, ierr)
 endif
 
 ! Set the current window to the state window
 current_win = STATE_WINDOW
-
-data_count = copies_in_window(state_ens_handle)
 
 end subroutine create_state_window
 
@@ -163,7 +151,6 @@ if(get_allow_transpose(state_ens_handle)) then ! the forward operators were done
 else
    ! close mpi window
    call mpi_win_free(state_win, ierr)
-   deallocate(contiguous_fwd)
 endif
 
 current_win = NO_WINDOW
