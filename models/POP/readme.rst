@@ -216,7 +216,7 @@ Other files needed for assimilation
 Creating an initial ensemble
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Karspeck et al. (2013) [3]_ finds that an ensemble of 1 January model states
+Karspeck et al. (2013) [3]_ find that an ensemble of 1 January model states
 selected from a multi-decade free-running integration of POP2 can be used as an
 initial ensemble.
 
