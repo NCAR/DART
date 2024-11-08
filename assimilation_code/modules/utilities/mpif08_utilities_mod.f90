@@ -1475,7 +1475,7 @@ integer :: errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_minmax', errstring, source)
+   call error_handler(E_ERR,'all_reduce_min_max', errstring, source)
 endif
 
 call mpi_allreduce(MPI_IN_PLACE, min_var, num_elements, datasize, MPI_MIN, get_dart_mpi_comm(), errcode)
