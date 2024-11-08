@@ -110,7 +110,7 @@ else
       !x = get_local_state(element_index)
       x = state_ens_handle%copies(1:data_count, element_index)
    else
-     call get_from_fwd(owner_of_state, state_win, element_index, data_count, x)
+     call get_from_fwd(owner_of_state, state_win, element_index, state_ens_handle%num_copies, data_count, x)
    endif
 endif
 
