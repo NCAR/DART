@@ -22,17 +22,37 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**October 22 2024 :: Bug-fixes: WRF and GOES. Tag 11.8.2**
+**November 8 2024 :: POP initial ensemble available from GDEX. Tag v11.8.4**
+
+Documentation update:
+
+  - POP initial ensemble available from GDEX.
+
+Bug-fixes:
+
+  - Removed unnecessary loops around calendar types in time_manager_mod.
+  - Removed unused routine from normal_distribution_mod which case giving compilation warnings.
+  - Replaced broadcast_minmax calls with all_reduce_min_max.
+
+
+**November 7 2024 :: MPI window memory reduction. Tag v11.8.3**
+
+- Removes unnecessary copy of state into mpi window.
+- Removes cray pointer version of the mpi window.
+- | Fortran-testanything included in developer tests. 
+  |  *From dennisdjensen: see developer_tests/contrib/fortran-testanything/LICENSE.txt*
+
+**October 22 2024 :: Bug-fixes: WRF and GOES. Tag v11.8.2**
 
 - Force THM to be the WRF-DART temperature variable
 - Remove offset on GOES observation converter 
 
-**September 27 2024 :: MOM6 mask bug-fix. Tag 11.8.1**
+**September 27 2024 :: MOM6 mask bug-fix. Tag v11.8.1**
 
 - Fix for MOM6 CESM3 workhorse 2/3 degree grid TL319_t232 to 
   mask missing geolon|lat|u|v|t values  
 
-**September 10 2024 :: MARBL_column. Tag 11.8.0**
+**September 10 2024 :: MARBL_column. Tag v11.8.0**
 
 - Interface for MARBL_column for DART: 
 
@@ -48,7 +68,7 @@ Bugfix:
 
 - fix for IO for NetCDF files when only some variables have the unlimited dimension  
 
-**August 29 2024 :: Bug fixes for shortest_time_between_assimilations and get_close_init. Tag 11.7.1**
+**August 29 2024 :: Bug fixes for shortest_time_between_assimilations and get_close_init. Tag v11.7.1**
 
 Bug fixes:
 
@@ -64,7 +84,7 @@ Doc fixes:
    - GitHub template for reporting documentation issues
 
 
-**August 26 2024 :: KQCEF. Tag 11.7.0**
+**August 26 2024 :: KQCEF. Tag v11.7.0**
 
 - Adds a Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation to DART.
 - New distribution module kde_distribution_mod.
