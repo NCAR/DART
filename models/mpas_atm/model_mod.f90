@@ -104,7 +104,7 @@ use     obs_kind_mod, only : get_index_for_quantity,       &
                              QTY_SURFACE_TYPE,             &  ! for rttov
                              QTY_CLOUD_FRACTION               ! for rttov
 
-use mpi_utilities_mod, only: my_task_id, broadcast_minmax
+use mpi_utilities_mod, only: my_task_id, all_reduce_min_max
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
@@ -1812,7 +1812,7 @@ do i = 1, get_num_variables(anl_domid)
 enddo
 
 ! get global min/max for each variable
-call broadcast_minmax(min_var, max_var, num_variables)
+call all_reduce_min_max(min_var, max_var, num_variables)
 deallocate(within_range)
 
 call init_random_seq(random_seq, my_task_id()+1)

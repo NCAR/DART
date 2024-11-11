@@ -22,6 +22,19 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 8 2024 :: POP initial ensemble available from GDEX. Tag v11.8.4**
+
+Documentation update:
+
+  - POP initial ensemble available from GDEX.
+
+Bug-fixes:
+
+  - Removed unnecessary loops around calendar types in time_manager_mod.
+  - Removed unused routine from normal_distribution_mod which case giving compilation warnings.
+  - Replaced broadcast_minmax calls with all_reduce_min_max.
+
+
 **November 7 2024 :: MPI window memory reduction. Tag v11.8.3**
 
 - Removes unnecessary copy of state into mpi window.
