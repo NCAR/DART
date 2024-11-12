@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 12 2024 :: MPAS bug-fixes. Tag v11.8.5**
+
+- Fixed 2m and 10m fields not being updated - set istatus for VERTISHEIGHT 
+  and VERTISLEVEL for convert_vert_distrib_state.
+- Fixed vertical location in convert_vertical_obs to use zGridFace.
+
 **November 8 2024 :: POP initial ensemble available from GDEX. Tag v11.8.4**
 
 Documentation update:
