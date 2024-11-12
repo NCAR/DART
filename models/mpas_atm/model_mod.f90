@@ -803,6 +803,8 @@ endif
 
 ! HK @todo reject obs above a user specified pressure level
 
+! HK @todo 2M temp, 10M winds. #768
+
 select case (qty)
 
    case (QTY_U_WIND_COMPONENT)
