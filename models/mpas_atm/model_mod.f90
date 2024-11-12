@@ -4686,8 +4686,8 @@ select case (ztypeout)
    fdata = 0.0_r8
    do i = 1, n
       where (istatus == 0)
-         fdata(i, :) = zGridFace(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
-                       zGridFace(k_up (i, :),c(i))*fract(i, :)
+         fdata(i, :) = zGridCenter(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
+                       zGridCenter(k_up (i, :),c(i))*fract(i, :)
       end where
    enddo
 
