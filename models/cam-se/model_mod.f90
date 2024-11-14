@@ -65,7 +65,6 @@ use        random_seq_mod,  only : random_seq_type, init_random_seq, random_gaus
 use  ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 use distributed_state_mod,  only : get_state
 
-! Debug pressure calc; added get_varid_from_varname
 use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
                                    get_dim_name, get_kind_index, get_num_dims, &
                                    get_num_variables, get_varid_from_kind, get_varid_from_varname, &
@@ -322,9 +321,6 @@ common_initialized = .true.
 call find_namelist_in_file('input.nml', 'model_nml', iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
-! Debug pressure calc
-! Add checks here?   No, the character state variables list needs to be parsed
-! in set_cam_variable_info.
 
 ! Record the namelist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
@@ -352,9 +348,9 @@ call init_globals()
 ! read the namelist &model_nml :: state_variables
 ! to set up what will be read into the cam state vector
 call set_cam_variable_info(cam_template_filename, state_variables)
-! Debug pressure calc
-! This may be where to check consistency; namelist has been parsed into qtys, names, etc.
-call verify_dry_mass_inputs
+
+! Verify that required variables are in the state vector.
+call verify_state_var_list
 
 ! The size of the only surface pressure dimension is the number of columns
 ncol_temp = get_dim_lengths(domain_id,  get_varid_from_kind(domain_id, QTY_SURFACE_PRESSURE))
@@ -3357,7 +3353,7 @@ end subroutine solve_quadratic
 
 !-----------------------------------------------------------------------
 
-subroutine verify_dry_mass_inputs
+subroutine verify_state_var_list
 
 ! No return is needed.  A diagnostic statement is printed before a potential failure
 ! of get_varid_from_varname.  Success means carry on.
@@ -3371,23 +3367,26 @@ data var_names /'PS', 'Q', 'CLDLIQ', 'CLDICE', 6*''/
 ! PS is required for both cam-se and cam-fv, 
 ! and regardless of the dry mass logical variables status.
 i = 1
-write(string1, *) 'Looking for ',var_names(i),' among the state variables for dry_mass'
-call error_handler(E_MSG, 'verify_dry_mass_inputs', string1, source, revision, revdate)
 varid = get_varid_from_varname(domain_id, var_names(i))
+if (varid == -1) then
+   write(string1, *) var_names(i),' needs to be among the state variables.'
+   call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+endif
 
 i = i + 1
 if (dry_mass_vertical_coordinate .and. precise_dry_mass_get_close) then
    do while (var_names(i) .ne. '')
-      write(string1, *) 'Looking for ',var_names(i),' among the state variables for dry_mass'
-      call error_handler(E_MSG, 'verify_dry_mass_inputs', string1, source, revision, revdate)
-   
       varid = get_varid_from_varname(domain_id, var_names(i))
+      if (varid == -1) then
+         write(string1, *) var_names(i),' needs to be among the state variables for dry_mass.'
+         call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+      endif
    
       i = i + 1
    enddo
 endif   
 
-end subroutine verify_dry_mass_inputs
+end subroutine verify_state_var_list
 
 !-----------------------------------------------------------------------
 
