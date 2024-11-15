@@ -2789,7 +2789,7 @@ subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, var_id, lower, 
 type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: nc, ids(3) 
+integer,             intent(in)  :: nc, ids(nc)
 integer,             intent(in)  :: var_id ! state variable id
 integer,             intent(out) :: lower(nc, ens_size), upper(nc, ens_size)
 real(r8),            intent(out) :: fract(nc, ens_size)
