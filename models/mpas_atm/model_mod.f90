@@ -790,12 +790,6 @@ endif
 
 ! HK @todo elevation check (but not for rttov)
 
-! Explicit fail for qty_vertical_velocity
-if (qty == QTY_VERTICAL_VELOCITY) then
-   istatus = VERTICAL_VELOCITY_NOT_AVAIL
-   return
-endif
-
 if (.not. qty_ok_to_interpolate(qty)) then
    istatus = QTY_NOT_IN_STATE_VECTOR
    return
@@ -847,10 +841,8 @@ select case (qty)
       call convert_vert(state_handle, ens_size, location_tmp, QTY_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
 
       do e = 1, ens_size
-      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
+        if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
       enddo
-
-   ! HK @todo w interpolation QTY_VERTICAL_VELOCITY
 
    ! HK @todo things that cannot be negative
    case (QTY_VAPOR_MIXING_RATIO, &
@@ -899,8 +891,6 @@ select case (qty)
       call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), expected_obs, istatus)
 
 end select
-
-
 
 end subroutine model_interpolate
 
@@ -2294,7 +2284,7 @@ select case (ztypeout)
          location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
          return
       endif
-      call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
+      call find_vert_level (state_handle, ens_size, location(1), n, c, -1, k_low, k_up, fract, istatus) !HK @todo needs qty to indicate center
       if( all(istatus /= 0) ) then
          location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
          return
@@ -2336,7 +2326,7 @@ select case (ztypeout)
          location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
          return
       endif
-      call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
+      call find_vert_level (state_handle, ens_size, location(1), n, c, -1, k_low, k_up, fract, istatus)
       if( all(istatus /= 0) ) then
          location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
          return
@@ -2670,7 +2660,7 @@ integer,     intent(out) :: ndim
 integer  :: i, j, k ! Indices into variable (note k is not used in MPAS)
 integer  :: nzp, iloc, vloc, nnf
 
-call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
+call get_model_variable_indices(index_in, i, j, k, var_id=nnf) !HK @todo query domain id
 ndim = get_num_dims(anl_domid, nnf)
 
 if ( ndim == 2) then   ! 3d (2d netcdf ) variable(vcol, iloc)
@@ -2790,7 +2780,7 @@ end subroutine find_height_bounds
 !> has one level, both level numbers are identical ... 1 and the
 !> fractions are identical ... 0.0
 
-subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, oncenters, lower, upper, fract, ier)
+subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, var_id, lower, upper, fract, ier)
 
 ! note that this code handles data at cell centers, at edges, but not
 ! data on faces.  so far we don't have any on faces.
@@ -2799,17 +2789,20 @@ subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, oncenters, lowe
 type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: nc, ids(:)
-logical,             intent(in)  :: oncenters
+integer,             intent(in)  :: nc, ids(3) 
+integer,             intent(in)  :: var_id ! state variable id
 integer,             intent(out) :: lower(nc, ens_size), upper(nc, ens_size)
 real(r8),            intent(out) :: fract(nc, ens_size)
 integer,             intent(out) :: ier(ens_size)
 
 real(r8) :: lat, lon, vert, llv(3)
 real(r8) :: vert_array(ens_size)
-integer  :: track_ier(ens_size)
 integer     :: verttype, i
 integer     :: e
+integer  :: num_levs
+logical  :: edgy
+real(r8) :: vert_levels(nVertLevelsP1)
+
 
 ! Initialization
 ier = 0 
@@ -2830,106 +2823,91 @@ fract(1:nc, :) = -1.0_r8
 !is_vertical: VERTISPRESSURE
 !is_vertical:   VERTISHEIGHT
 
-! unpack the location into local vars
-! I think you can do this with the first ensemble member? 
-! Because they are the same horizontally?
 llv = get_location(loc)
 lon  = llv(1)
 lat  = llv(2)
 vert = llv(3)
 verttype = nint(query_location(loc))
 
-! VERTISSURFACE describes variables on A surface (not necessarily THE surface)
+! Need - number of levels
+!      - edges
+!      - centers
+
+if (get_dim_name(anl_domid, var_id, 1) == 'nVertLevels') then
+   num_levs = nVertLevels
+else
+   num_levs = nVertLevelsP1
+endif
+
+! VERTISSURFACE describes variables on A surface (not necessarily THE surface) !HK @todo what does this mean?
 ! VERTISUNDEF describes no defined vertical location (e.g. vertically integrated vals)
-if(verttype == VERTISSURFACE .or. verttype == VERTISUNDEF) then  ! same across the ensemble
-   lower(1:nc, :) = 1
-   upper(1:nc, :) = 1
-   fract(1:nc, :) = 0.0_r8 
-   ier = 0
-   return
-endif
-
-! model level numbers (supports fractional levels)
-if(verttype == VERTISLEVEL) then
-   ! FIXME: if this is W, the top is nVertLevels+1
-   if (vert > nVertLevels) then 
-      ier(:) = 81
-      return
-   endif
-
-   ! at the top we have to make the fraction 1.0; all other
-   ! integral levels can be 0.0 from the lower level.
-   if (vert == nVertLevels) then
-      lower(1:nc, :) = nint(vert) - 1   ! round down
-      upper(1:nc, :) = nint(vert)
-      fract(1:nc, :) = 1.0_r8
+select case (verttype)
+   case (VERTISSURFACE, VERTISUNDEF) ! same across the ensemble
+      lower(1:nc, :) = 1
+      upper(1:nc, :) = 1
+      fract(1:nc, :) = 0.0_r8 
       ier = 0
-      return
-   endif
 
-   lower(1:nc, :) = aint(vert)   ! round down
-   upper(1:nc, :) = lower+1
-   fract(1:nc, :) = vert - lower
-   ier = 0
-   return
-
-endif
-
-if(verttype == VERTISPRESSURE ) then
-
-   track_ier = 0
-   vert_array = vert
-
-   do i=1, nc
-      call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), nVertLevels, &
-            lower(i, :), upper(i, :), fract(i, :), ier)
-
-      ! we are inside a loop over each corner. consolidate error codes
-      ! so that we return an error for that ensemble member if any
-      ! of the corners fails the pressure bounds test.
-      where (ier /= 0 .and. track_ier == 0) track_ier = ier
-
-   enddo
-
-   ier = track_ier
-   return
-endif
-
-if(verttype == VERTISHEIGHT) then
-   ! For height, can do simple vertical search for interpolation for now
-   ! Get the lower and upper bounds and fraction for each column
-   track_ier = 0
-
-   do i=1, nc
-      if (oncenters) then
-         call find_height_bounds(vert, nVertLevels, zGridCenter(:, ids(i)), &
-                                 lower(i, :), upper(i, :), fract(i, :), ier)
-      else
-
-         if (.not. data_on_edges) then
-            call error_handler(E_ERR, 'find_vert_level', &
-                              'Internal error: oncenters false but data_on_edges false', &
-                              source)
-         endif
-         call find_height_bounds(vert, nVertLevels, zGridEdge(:, ids(i)), &
-                                 lower(i, :), upper(i, :), fract(i, :), ier)
+   case (VERTISLEVEL) ! model level numbers (supports fractional levels)
+      if (vert > num_levs) then 
+         ier(:) = VERTICAL_TOO_HIGH
+         return
       endif
 
-      ! we are inside a loop over each corner. consolidate error codes
-      ! so that we return an error for that ensemble member if any
-      ! of the corners fails the pressure bounds test.
-      where (ier /= 0 .and. track_ier == 0) track_ier = ier
+      ! at the top we have to make the fraction 1.0; all other
+      ! integral levels can be 0.0 from the lower level.
+      if (vert == num_levs) then
+         lower(1:nc, :) = nint(vert) - 1   ! round down
+         upper(1:nc, :) = nint(vert)
+         fract(1:nc, :) = 1.0_r8
+         ier = 0
+         return
+      endif
 
-   enddo
+      lower(1:nc, :) = aint(vert)   ! round down
+      upper(1:nc, :) = lower+1
+      fract(1:nc, :) = vert - lower
+      ier = 0
 
-   ier = track_ier
-   return
+   case (VERTISPRESSURE )
 
-endif
+      vert_array(:) = vert
+
+      do i=1, nc
+         call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), num_levs, &
+               lower(i, :), upper(i, :), fract(i, :), ier)
+
+         if(fails(ier)) return
+
+      enddo
+      
+   case (VERTISHEIGHT) 
+      ! For height, can do simple vertical search for interpolation for now
+      ! Get the lower and upper bounds and fraction for each column
+      
+      edgy = on_edge(anl_domid, var_id)
+      do i=1, nc
+
+         if (edgy) then
+            vert_levels(1:num_levs) = zGridEdge(:, ids(i))
+         elseif ( num_levs == nVertLevels ) then
+            vert_levels(1:num_levs) = zGridCenter(:, ids(i))
+         else
+            vert_levels(1:num_levs) = zGridFace(:, ids(i))
+         endif
+         call find_height_bounds(vert, num_levs, vert_levels(1:num_levs), &
+                                 lower(i, :), upper(i, :), fract(i, :), ier)
+
+         if(fails(ier)) return
+
+      enddo
+
+   end select
 
 end subroutine find_vert_level
 
 !------------------------------------------------------------------
+
 
 subroutine find_pressure_bounds(state_handle, ens_size, p, cellid, nbounds, &
    lower, upper, fract, ier)
@@ -3179,7 +3157,7 @@ end subroutine get_barycentric_weights
 !------------------------------------------------------------
 !> this routine computes 1 or more values at a single location,
 !> for each ensemble member.  "n" is the number of different
-!> quantities to compute, ival is an array of 'n' progval() indices
+!> quantities to compute, ival is an array of 'n' state indices
 !> to indicate which quantities to compute.
 !> dval(n, ens_size) are the output values, and ier(ens_size) are 
 !> the success/error returns for each ensemble member.
@@ -3218,7 +3196,9 @@ if(ier(1) /= 0) then
 endif
 
 ! If the field is on a single level, lower and upper are both 1
-call find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
+! HK @todo this is assuming the array qtys are all on the same zgrid.  
+!    ival(1) to find levels for array of qtys
+call find_vert_level(state_handle, ens_size, loc, nc, c, ival(1), lower, upper, fract, ier)
 
 if(fails(ier)) return
 
@@ -3338,8 +3318,6 @@ else
    cellid = find_closest_cell_center(lat, lon)
 endif
 
-
-
 if (cellid < 1) then
    ier = 11
    return
@@ -3429,32 +3407,6 @@ endif     ! horizontal index search is done now.
 end subroutine find_triangle
 
 !------------------------------------------------------------
-!> This routine adds some error checking because find_vert_level
-!> has some early return statements that prevent having the debugging
-!> information in it.
-
-subroutine find_vert_indices (state_handle, ens_size, loc, nc, c, lower, upper, fract, ier)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: loc
-integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: nc
-integer,             intent(in)  :: c(nc)
-integer,             intent(out) :: lower(nc, ens_size), upper(nc, ens_size)
-real(r8),            intent(out) :: fract(nc, ens_size) ! ens_size
-integer,             intent(out) :: ier(ens_size)
-
-! initialization
-lower = MISSING_I
-upper = MISSING_I
-fract = 0.0_r8
-
-! need vert index for the vertical level
-call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
-
-end subroutine find_vert_indices
-
-!------------------------------------------------------------
 
 subroutine compute_u_with_rbf(state_handle, ens_size, loc, zonal, uval, ier)
 
@@ -3515,7 +3467,7 @@ if (verttype == VERTISPRESSURE) then
    ! the closest vertex.
    call make_cell_list(vertexid, 3, ncells, celllist)
 
-   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, .true., &
+   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, -1, & !HK @todo this varid needs to signify pressure
                          lower, upper, fract, ier)
 
    if (fails(ier)) return
@@ -3526,9 +3478,9 @@ if (verttype == VERTISPRESSURE) then
                                 nedges, edgelist, ier)
    if (fails(ier)) return
 
-else
+else !HK @todo is the only other option VERTISHEIGHT?
    ! need vert index for the vertical level
-   call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, .false., &
+   call find_vert_level(state_handle, ens_size, loc, nedges, edgelist, var_id, &
                          lower, upper, fract, ier)
     if (fails(ier)) return
 endif
