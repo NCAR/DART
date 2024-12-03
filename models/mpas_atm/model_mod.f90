@@ -788,7 +788,15 @@ if (cellid < 1) then
    return
 endif
 
-! HK @todo elevation check (but not for rttov)
+! Reject obs if the station height is far way from the model terrain. (but not for rttov!)
+if (.not. required_for_rttov(qty)) then
+   if(surface_obs .and. sfc_elev_max_diff >= 0) then
+      if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
+         istatus = SURFACE_OBS_TOO_FAR
+         return
+      endif
+   endif
+endif
 
 if (.not. qty_ok_to_interpolate(qty)) then
    istatus = QTY_NOT_IN_STATE_VECTOR
@@ -2647,7 +2655,34 @@ enddo
 end subroutine convert_vert_state
 
 !-------------------------------------------------------------------
+function required_for_rttov(qty)
 
+integer, intent(in) :: qty
+logical :: required_for_rttov
+
+select case (qty)
+
+!HK @todo what is a surface qty that is not required for RTTOV?
+
+case (QTY_SURFACE_PRESSURE, &
+      QTY_SURFACE_ELEVATION, &
+      QTY_2M_TEMPERATURE, &
+      QTY_2M_SPECIFIC_HUMIDITY, &
+      QTY_SKIN_TEMPERATURE, &
+      QTY_SURFACE_TYPE, &
+      QTY_CLOUD_FRACTION, &
+      QTY_10M_U_WIND_COMPONENT, &
+      QTY_10M_V_WIND_COMPONENT)
+
+   required_for_rttov = .true.
+
+case default
+
+   required_for_rttov = .false.
+
+end select
+
+end function required_for_rttov
 
 !------------------------------------------------------------------
 subroutine find_mpas_indices(index_in, cellid, vert_level, ndim)
