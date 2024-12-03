@@ -803,7 +803,27 @@ if (.not. qty_ok_to_interpolate(qty)) then
    return
 endif
 
-! HK @todo reject obs above a user specified pressure level
+! Reject obs above a user specified pressure level
+if (highest_obs_pressure_mb > 0.0) then
+   if (.not. surface_obs) then
+      if (.not.(is_vertical(location, "UNDEFINED"))) then
+         call compute_pressure_at_loc(state_handle, ens_size, location, lpres, istatus)
+         if (fails(istatus)) then
+            istatus = PRESSURE_COMPUTATION_ERROR
+            return
+         endif
+         do e = 1, ens_size
+            if (lpres(e) < highest_obs_pressure_mb * 100.0_r8 ) then
+               istatus(e) = REJECT_OBS_USER_PRESSURE_LEVEL
+            endif
+         enddo
+         if (fails(istatus)) then
+            istatus = REJECT_OBS_USER_PRESSURE_LEVEL
+            return
+         endif
+      endif
+   endif
+endif
 
 ! HK @todo 2M temp, 10M winds. #768
 
