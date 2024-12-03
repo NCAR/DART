@@ -872,7 +872,7 @@ select case (qty)
         if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
       enddo
 
-   ! HK @todo things that cannot be negative
+   ! Things that cannot be negative
    case (QTY_VAPOR_MIXING_RATIO, &
          QTY_CLOUDWATER_MIXING_RATIO, &
          QTY_ICE_MIXING_RATIO, &
@@ -881,6 +881,15 @@ select case (qty)
          QTY_RAINWATER_MIXING_RATIO, &
          QTY_SNOW_MIXING_RATIO, &
          QTY_CLOUD_FRACTION  )
+
+      tvars(1) = get_varid_from_kind(anl_domid, qty)
+      call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars(1), expected_obs, istatus)
+      if (fails(istatus)) then
+         istatus = GENERAL_ERROR
+         return
+      endif
+      expected_obs = max(expected_obs, 0.0_r8)
+      if (qty == QTY_CLOUD_FRACTION) expected_obs = min(expected_obs, 1.0_r8)
 
    case(QTY_SPECIFIC_HUMIDITY)
       tvars(1) = get_varid_from_kind(anl_domid, QTY_VAPOR_MIXING_RATIO)
