@@ -202,6 +202,9 @@ test_quad_irreg_interp
 test_quad_reg_interp
 test_table_read
 test_ran_unif
+test_gamma_dist
+test_normal_dist
+test_beta_dist
 test_kde_dist
 test_window
 
