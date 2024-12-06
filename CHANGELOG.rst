@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 6 2024 :: Developer tests. Tag v11.8.6**
+
+- Tests for distribution modules: normal, beta, gamma
+- Removed out-of-date tests for state IO
+
 **November 12 2024 :: MPAS bug-fixes. Tag v11.8.5**
 
 - Fixed 2m and 10m fields not being updated - set istatus for VERTISHEIGHT 
