@@ -65,6 +65,12 @@ do i = 1, 7
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
 
+if(abs(maxval(pdf_diff)) < 1e-15_r8 .and. abs(maxval(cdf_diff)) < 1e-15_r8) then
+   write(*, *) 'Matlab Comparison Tests: PASS'
+else
+   write(*, *) 'Matlab Compariosn Tests: FAIL'
+endif
+
 ! Input a mean and variance
 mean = 10.0_r8
 sd = 1.0_r8
@@ -86,6 +92,13 @@ end do
 write(*, *) '----------------------------'
 write(*, *) 'max difference in inversion is ', max_diff
 write(*, *) 'max difference should be less than 1e-11'
+
+if(max_diff < 1e-11_r8) then
+   write(*, *) 'Inversion Tests: PASS'
+else
+   write(*, *) 'Inversion Tests: FAIL'
+endif
+
 
 end subroutine test_gamma
 
