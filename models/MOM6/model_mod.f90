@@ -49,7 +49,8 @@ use distributed_state_mod, only : get_state, get_state_array
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
                          QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS, &
-                         QTY_DRY_LAND, QTY_SALINITY
+                         QTY_DRY_LAND, QTY_SALINITY, QTY_TEMPERATURE, &
+                         QTY_POTENTIAL_TEMPERATURE
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -220,25 +221,27 @@ end function get_model_size
 ! 0 unless there is some problem in computing the interpolation in
 ! which case a positive istatus should be returned.
 
-subroutine model_interpolate(state_handle, ens_size, location, qty, expected_obs, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, qty_in, expected_obs, istatus)
 
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
-integer,             intent(in) :: qty
+integer,             intent(in) :: qty_in
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
+integer  :: qty ! local qty
 integer  :: which_vert, four_ilons(4), four_ilats(4), lev(ens_size,2)
 integer  :: locate_status, quad_status
 real(r8) :: lev_fract(ens_size)
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2) ! level below and above obs
+real(r8) :: expected_pot_temp(ens_size), expected_salinity(ens_size), pressure_dbars(ens_size)
 type(quad_interp_handle) :: interp
 integer :: varid, i, e, thick_id
-integer(i8) :: th_indx, indx(ens_size)
+integer(i8) :: th_indx
 real(r8) :: depth_at_x(ens_size), thick_at_x(ens_size) ! depth, layer thickness at obs lat lon
 logical :: found(ens_size)
 
@@ -246,6 +249,16 @@ if ( .not. module_initialized ) call static_init_model
 
 expected_obs(:) = MISSING_R8
 istatus(:) = 1
+
+if (qty_in == QTY_TEMPERATURE) then
+   qty = QTY_POTENTIAL_TEMPERATURE  ! model has potential temperature
+   if (get_varid_from_kind(dom_id, QTY_SALINITY) < 0) then ! Require salinity to convert to temperature
+      istatus = NOT_IN_STATE
+      return
+   end if
+else
+   qty = qty_in
+endif
 
 varid = get_varid_from_kind(dom_id, qty)
 if (varid < 0) then ! not in state
@@ -338,6 +351,66 @@ if (on_basin_edge(four_ilons, four_ilats, ens_size, depth_at_x)) then
    return
 endif
 
+
+select case (qty_in)
+   case (QTY_TEMPERATURE)
+      ! convert from potential temperature to temperature
+
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_pot_temp, quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = QUAD_EVALUTATE_FAILED
+         return
+      endif
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, get_varid_from_kind(dom_id, QTY_SALINITY), expected_salinity, quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = QUAD_EVALUTATE_FAILED
+         return
+      endif
+
+      pressure_dbars =  0.059808_r8*(exp(-0.025_r8*depth_at_x) - 1.0_r8)  &
+                        + 0.100766_r8*depth_at_x + 2.28405e-7_r8*lon_lat_vert(3)**2
+      expected_obs = sensible_temp(expected_pot_temp, expected_salinity, pressure_dbars)
+
+   case (QTY_SALINITY) ! convert from PSU (model) to MSU (obersvation)
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
+      if (quad_status /= 0) then 
+         istatus(:) = QUAD_EVALUTATE_FAILED
+         return
+      endif
+      expected_obs = expected_obs/1000.0_r8
+ 
+   case default
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = QUAD_EVALUTATE_FAILED
+         return
+      endif
+end select
+
+istatus(:) = 0
+
+end subroutine model_interpolate
+
+!------------------------------------------------------------------
+! Interpolate on the quad, between two levels
+subroutine state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
+
+integer,  intent(in) :: four_ilons(4), four_ilats(4) ! indices into lon, lat
+real(r8), intent(in) :: lon_lat_vert(3) ! lon, lat, vert of obs
+integer,  intent(in) :: ens_size
+integer,  intent(in) :: lev(ens_size,2) ! levels below and above obs
+real(r8), intent(in) :: lev_fract(ens_size) 
+type(quad_interp_handle), intent(in) :: interp
+type(ensemble_type), intent(in) :: state_handle
+integer,  intent(in) :: varid ! which state variable
+real(r8), intent(out) :: expected_obs(ens_size)
+integer,  intent(out) :: quad_status
+
+integer :: i, e
+integer(i8) :: indx(ens_size)
+real(r8) :: quad_vals(4, ens_size)
+real(r8) :: expected(ens_size, 2) ! state value at level below and above obs
+
 do i = 1, 2 
    !HK which corner of the quad is which?
    ! corner1
@@ -371,12 +444,7 @@ do i = 1, 2
                               quad_vals, & ! 4 corners x ens_size
                               expected(:,i), &
                               quad_status)
-   if (quad_status /= 0) then
-      istatus(:) = QUAD_EVALUTATE_FAILED
-      return
-   else
-      istatus = 0
-   endif
+   if (quad_status /= 0) return
 
 enddo
 
@@ -384,14 +452,7 @@ enddo
 ! expected_obs = bot_val + lev_fract * (top_val - bot_val)
 expected_obs = expected(:,1) + lev_fract(:) * (expected(:,2) - expected(:,1))
 
-if (qty == QTY_SALINITY) then  ! convert from PSU (model) to MSU (obersvation)
-   expected_obs = expected_obs/1000.0_r8
-endif
-
-
-end subroutine model_interpolate
-
-
+end subroutine state_on_quad
 
 !------------------------------------------------------------------
 ! Returns the smallest increment in time that the model is capable 
@@ -897,6 +958,63 @@ endif
 
 end function
 
+!------------------------------------------------------------
+! calculate sensible (in-situ) temperature from 
+! local pressure, salinity, and potential temperature
+elemental function sensible_temp(potemp, s, lpres)
+
+real(r8), intent(in)  :: potemp ! potential temperature in C
+real(r8), intent(in)  :: s      ! salinity Practical Salinity Scale 1978 (PSS-78)
+real(r8), intent(in)  :: lpres  ! pressure in decibars
+real(r8) :: sensible_temp ! in-situ (sensible) temperature (C)
+
+integer  :: i,j,n
+real(r8) :: dp,p,q,r1,r2,r3,r4,r5,s1,t,x
+
+s1 = s - 35.0_r8
+p  = 0.0_r8
+t  = potemp
+
+dp = lpres - p
+n  = int (abs(dp)/1000.0_r8) + 1
+dp = dp/n
+
+do i=1,n
+   do j=1,4
+
+      r1 = ((-2.1687e-16_r8 * t + 1.8676e-14_r8) * t - 4.6206e-13_r8) * p
+      r2 = (2.7759e-12_r8*t - 1.1351e-10_r8) * s1
+      r3 = ((-5.4481e-14_r8 * t + 8.733e-12_r8) * t - 6.7795e-10_r8) * t
+      r4 = (r1 + (r2 + r3 + 1.8741e-8_r8)) * p + (-4.2393e-8_r8 * t+1.8932e-6_r8) * s1
+      r5 = r4 + ((6.6228e-10_r8 * t-6.836e-8_r8) * t + 8.5258e-6_r8) * t + 3.5803e-5_r8
+
+      x  = dp*r5
+
+      if (j == 1) then
+         t = t + 0.5_r8 * x
+         q = x
+         p = p + 0.5_r8 * dp
+      
+      else if (j == 2) then
+         t = t + 0.29298322_r8 * (x-q)
+         q = 0.58578644_r8 * x + 0.121320344_r8 * q
+
+      else if (j == 3) then
+         t = t + 1.707106781_r8 * (x-q)
+         q = 3.414213562_r8*x - 4.121320344_r8*q
+         p = p + 0.5_r8*dp
+
+      else ! j must == 4
+         t = t + (x - 2.0_r8 * q) / 6.0_r8
+
+      endif
+
+   enddo ! j loop
+enddo ! i loop
+
+sensible_temp = t
+
+end function sensible_temp
 
 !------------------------------------------------------------------
 ! Verify that the namelist was filled in correctly, and check
