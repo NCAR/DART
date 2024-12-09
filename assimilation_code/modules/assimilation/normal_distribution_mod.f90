@@ -66,10 +66,10 @@ do i = 1, 7
    cdf_diff(i) = normal_cdf(mx(i), mmean(i), msd(i)) - mcdf(i)
 end do
 max_matlab_diff = maxval(abs(cdf_diff))
-if(max_matlab_diff > 1.0e-15_r8) then
-   write(*, *) 'WARNING: Difference from Matlab baseline is too large ', max_matlab_diff
+if(max_matlab_diff < 1.0e-15_r8) then
+   write(*, *) 'Matlab Comparison Tests: PASS ', max_matlab_diff
 else
-   write(*, *) 'Agreement with Matlab baseline is okay: max diff is < 1e-15 ', max_matlab_diff
+   write(*, *) 'Matlab Comparison Tests: FAIL ', max_matlab_diff
 endif
 
 ! Keep track of differences as function of quantile
@@ -92,10 +92,10 @@ end do
 
 do j = 1, 16
    if(max_diff(j) > inv_diff_bound(j)) then
-      write(*, *) 'WARNING: Max inversion diff ', max_diff(j), ' > bound ', inv_diff_bound(j), &
+     write(*, *) 'FAIL: Max inversion diff ', max_diff(j), ' > bound ', inv_diff_bound(j), &
         'for quantiles < ', max_q(j)
    else
-      write(*, *) 'Max inversion diff ', max_diff(j), ' OK, bound ', inv_diff_bound(j), &
+     write(*, *) 'PASS: Max inversion diff ', max_diff(j), ' < bound ', inv_diff_bound(j), &
         'for quantiles < ', max_q(j)
    endif
 end do
