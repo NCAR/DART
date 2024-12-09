@@ -62,7 +62,7 @@ contains
 !------------------------------------------------------------------------
 
 subroutine transform_all_to_probit(ens_size, num_vars, state_ens, distribution_type, &
-   p, probit_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
+   p, probit_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr)
 
 integer, intent(in)                           :: ens_size
 integer, intent(in)                           :: num_vars
@@ -73,6 +73,7 @@ real(r8), intent(out)                         :: probit_ens(:, :)
 logical, intent(in)                           :: use_input_p
 logical, intent(in)                           :: bounded_below, bounded_above
 real(r8), intent(in)                          :: lower_bound,   upper_bound
+integer, intent(out)                          :: ierr(num_vars)
 
 
 ! NOTE THAT WILL MAKE HELEN CRAZY: THIS WORKS WITH THE INPUT CALLING ARGUMENTS FOR STATE_ENS AND
@@ -89,8 +90,8 @@ real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars
    call transform_to_probit(ens_size, state_ens(1:ens_size, i), distribution_type(i), &
-      p(i), temp_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
-   probit_ens(1:ens_size, i) = temp_ens
+      p(i), temp_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr(i))
+   if(ierr(i) == 0) probit_ens(1:ens_size, i) = temp_ens
 end do
 
 end subroutine transform_all_to_probit
@@ -98,7 +99,8 @@ end subroutine transform_all_to_probit
 !------------------------------------------------------------------------
 
 subroutine transform_to_probit(ens_size, state_ens_in, distribution_type, p, &
-   probit_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
+   probit_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, &
+   ierr)
 
 integer, intent(in)                           :: ens_size
 real(r8), intent(in)                          :: state_ens_in(ens_size)
@@ -108,6 +110,7 @@ real(r8), intent(out)                         :: probit_ens(ens_size)
 logical, intent(in)                           :: use_input_p
 logical, intent(in)                           :: bounded_below, bounded_above
 real(r8), intent(in)                          :: lower_bound,   upper_bound
+integer,  intent(out)                         :: ierr
 
 real(r8) :: state_ens(ens_size)
 real(r8) :: probit_ens_temp(ens_size), state_ens_temp(ens_size), diff(ens_size)
@@ -116,6 +119,9 @@ integer :: i
 
 ! If not initialized, read in the namelist
 if(.not. module_initialized) call initialize_probit_transform
+
+! Default is no error, ierr is 0
+ierr = 0
 
 ! Fix bounds violations if requested
 if(fix_bound_violations) then
@@ -145,7 +151,7 @@ elseif(p%distribution_type == BETA_DISTRIBUTION) then
       lower_bound, upper_bound)
 elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
-      use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
+      use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr)
 
 !----------------------------------------------------------------------------------
 ! The following code block tests that the to/from probit calls are nearly inverse
@@ -153,33 +159,37 @@ elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
    if(do_inverse_check) then
       if(.not. use_input_p) then
          call to_probit_bounded_normal_rh(ens_size, state_ens, p_temp, probit_ens_temp, &
-            use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
-         call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p_temp, state_ens_temp)
-         diff = state_ens - state_ens_temp
-         if(abs(maxval(diff)) > 1.0e-8_r8) then
-            write(*, *) 'Maximum allowed value of probit to/from difference exceeded'
-            write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
-            write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
-            do i = 1, ens_size
-               write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
-            enddo
-            stop
+            use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr)
+         if(ierr == 0) then
+            call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p_temp, state_ens_temp)
+            diff = state_ens - state_ens_temp
+            if(abs(maxval(diff)) > 1.0e-8_r8) then
+               write(*, *) 'Maximum allowed value of probit to/from difference exceeded'
+               write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
+               write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
+               do i = 1, ens_size
+                  write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
+               enddo
+               stop
+            endif
          endif
       endif
    
       if(use_input_p) then
          call to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens_temp, &
-            use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
-         call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p, state_ens_temp)
-         diff = state_ens - state_ens_temp
-         if(abs(maxval(diff)) > 1.0e-8_r8) then
-            write(*, *) 'Maximum allowed value of probit to/from difference for input p exceeded'
-            write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
-            write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
-            do i = 1, ens_size
-               write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
-            enddo
-            stop
+            use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr)
+         if(ierr == 0) then
+            call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p, state_ens_temp)
+            diff = state_ens - state_ens_temp
+            if(abs(maxval(diff)) > 1.0e-8_r8) then
+               write(*, *) 'Maximum allowed value of probit to/from difference for input p exceeded'
+               write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
+               write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
+               do i = 1, ens_size
+                  write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
+               enddo
+               stop
+            endif
          endif
       
       endif
@@ -325,7 +335,7 @@ end subroutine to_probit_beta
 !------------------------------------------------------------------------
 
 subroutine to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
-   use_input_p, bounded_below, bounded_above, lower_bound, upper_bound)
+   use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr)
 
 ! Note that this is just for transforming back and forth, not for doing the RHF observation update
 ! This means that we know a prior that the quantiles associated with the initial ensemble are
@@ -334,6 +344,11 @@ subroutine to_probit_bounded_normal_rh(ens_size, state_ens, p, probit_ens, &
 ! How to handle identical ensemble members is an open question for now. This is also a problem
 ! for ensemble members that are identical to one of the bounds. 
 
+! If the stanard deviation computed for the sample ensemble is not positive, don't know how
+! to do a transform? This can happen when the standard deviation computation is 0 or negative
+! due to computational precision errors. Could try to work around this, but challenge with knowing
+! what to do on the tails where a normal distribution requires a standard deviation.
+
 integer,  intent(in)                          :: ens_size
 real(r8), intent(in)                          :: state_ens(ens_size)
 type(distribution_params_type), intent(inout) :: p
@@ -341,31 +356,31 @@ real(r8), intent(out)                         :: probit_ens(ens_size)
 logical,  intent(in)                          :: use_input_p
 logical,  intent(in)                          :: bounded_below, bounded_above
 real(r8), intent(in)                          :: lower_bound,   upper_bound
+integer,  intent(out)                         :: ierr
 
 ! Probit transform for bounded normal rh.
 integer  :: i
 real(r8) :: quantile(ens_size)
 
-if(use_input_p) then
-   ! Do not know what to do if sd of original ensemble is 0 (or small, work on this later)
-   if(get_bnrh_sd(p) <= 0.0_r8) then
-      ! Just return the original ensemble
-      probit_ens = state_ens 
-      return
-   endif
+! Successful return has ierr 0
+ierr = 0
 
+if(use_input_p) then
+   ! Need tthis to fail if p isn't available. Is that possible?
    ! Get the quantiles for each of the ensemble members in a BNRH distribution
    call bnrh_cdf_initialized_vector(state_ens, ens_size, p, quantile)
-
 else
    ! Get all the info about the rank histogram cdf
    call bnrh_cdf_params(state_ens, ens_size, bounded_below, bounded_above, &
       lower_bound, upper_bound, p, quantile)
 
-   ! Do not know what to do if sd is 0 (or small, work on this later)
+   ! Fail if sd is not positive (or small, work on this later)
    if(get_bnrh_sd(p) <= 0.0_r8) then
+      ierr = 1
       ! Just return the original ensemble
       probit_ens = state_ens 
+      ! Free up the storage that would have been used for the transformed variables
+      call deallocate_distribution_params(p)
       return
    endif
 
@@ -545,21 +560,28 @@ subroutine to_probit_kde(ens_size, state_ens, p, probit_ens, use_input_p, &
 end subroutine to_probit_kde
 
 
-subroutine transform_all_from_probit(ens_size, num_vars, probit_ens, p, state_ens)
+subroutine transform_all_from_probit(ens_size, num_vars, probit_ens, p, state_ens, &
+   transform_ok)
 
 integer, intent(in)                  :: ens_size
 integer, intent(in)                  :: num_vars
 real(r8), intent(in)                 :: probit_ens(:, :)
 type(distribution_params_type), intent(inout) :: p(num_vars)
 real(r8), intent(out)                :: state_ens(:, :)
+logical,  intent(in)                 :: transform_ok(num_vars)
 
 ! Transform back to the original space
 integer  :: i
 real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars
-   call transform_from_probit(ens_size, probit_ens(1:ens_size, i), p(i), temp_ens)
-   state_ens(1:ens_size, i) = temp_ens
+   if(transform_ok(i)) then
+      call transform_from_probit(ens_size, probit_ens(1:ens_size, i), p(i), temp_ens)
+      state_ens(1:ens_size, i) = temp_ens
+   else
+      ! Transform can't be done, so return the input
+      state_ens(1:ens_size, i) = probit_ens(1:ens_size, i)
+   endif
 end do
 
 end subroutine transform_all_from_probit
