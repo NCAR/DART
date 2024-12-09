@@ -508,7 +508,7 @@ do i = 1, ens_handle%my_num_vars
       state_dist_params(i), probit_ens, .false., &
       bounded_below, bounded_above, lower_bound, upper_bound, ierr)
    state_probit_trans_ok(i) = (ierr == 0)
-   if(state_probit_trans_ok(1)) ens_handle%copies(1:ens_size, i) = probit_ens
+   if(state_probit_trans_ok(i)) ens_handle%copies(1:ens_size, i) = probit_ens
 end do
 
 !> optionally convert all state location verticals
