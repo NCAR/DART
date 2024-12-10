@@ -16,7 +16,7 @@ TEST="namelist"
 LOCATION="threed_sphere"
 
 programs=(
-test_read_variable_namelist
+test_get_state_variables
 )
 
 
