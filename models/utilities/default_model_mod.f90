@@ -52,7 +52,16 @@ public :: get_model_size,         &
           convert_vertical_state, &
           read_model_time,        &  ! from the dart_time_io module
           write_model_time,       &
-          verify_state_variables
+          get_state_variables, &
+          state_var_type
+
+type :: state_var_type
+    integer                        :: nvars
+    character(len=64), allocatable :: netcdf_var_names(:)
+    integer,           allocatable :: qtys(:)
+    real(r8),          allocatable :: clamp_values(:, :)
+    logical,           allocatable :: updates(:)
+end type state_var_type
 
 character(len=*), parameter :: source = 'utilities/default_model_mod.f90'
 
@@ -288,74 +297,138 @@ end subroutine pert_model_copies
 
 !--------------------------------------------------------------------
 
-!> Reads in model_nml:model_state_variables and puts it in a table.
+!> Reads in model_nml:model_state_variables and returns a
+!> state_var_type state_vars with nvars ; netcdf variable names ;
+!> qtys (kinds) ; clamp values ; updates
 !
-!> Verifies that the namelist was filled in correctly, and check
+!> Verifies that the namelist was filled in correctly, and checks
 !> that there are valid entries for the dart_kind.
-!> Returns a table with columns:
-!
-!> netcdf_variable_name ; dart_qty_string ; update_string
 
-subroutine verify_state_variables(state_variables, ngood, table, qty_list, update_var)
+subroutine get_state_variables(nml_state_vars, MAX_STATE_VARIABLES, use_clamping, state_vars)
 
-character(len=*),  intent(inout) :: state_variables(:)
-integer,             intent(out) :: ngood
-character(len=*),    intent(out) :: table(:,:)
-integer,             intent(out) :: qty_list(:)   ! kind number
-logical,             intent(out) :: update_var(:) ! logical update
+character(len=*),   intent(inout) :: nml_state_vars(:)
+logical,               intent(in) :: use_clamping
+integer,               intent(in) :: MAX_STATE_VARIABLES
+type(state_var_type), intent(out) :: state_vars
 
-integer :: nrows, i
 character(len=NF90_MAX_NAME) :: netcdf_var_name, dart_qty_str, update
 character(len=256) :: string1, string2
+integer :: i, ivar
 
-nrows = size(table,1)
-ngood = 0
+if(use_clamping) then
+   ! Loop through the variables array to get the actual count of the number of variables
+   do ivar = 1, MAX_STATE_VARIABLES
+      ! If the first element in the row is an empty string, the loop has exceeded the extent of the variables
+      if (nml_state_vars(5*ivar-4) == '') then
+         state_vars%nvars = ivar-1
+         exit
+      endif
+   enddo
+else
+   ! Loop through the variables array to get the actual count of the number of variables
+   do ivar = 1, MAX_STATE_VARIABLES
+      ! If the first element in the row is an empty string, the loop has exceeded the extent of the variables
+      if (nml_state_vars(3*ivar-2) == '') then
+         state_vars%nvars = ivar-1
+         exit
+      endif
+   enddo
+endif
 
-RowsLoop : do i = 1, nrows ! each row contains netcdf variable name, dart qty, update
+! Allocate the arrays in the var derived type
+allocate(state_vars%netcdf_var_names(state_vars%nvars), state_vars%qtys(state_vars%nvars), state_vars%clamp_values(state_vars%nvars, 2), state_vars%updates(state_vars%nvars))
 
-   netcdf_var_name = trim(state_variables(3*i -2))
-   dart_qty_str = trim(state_variables(3*i -1))
-   update = trim(state_variables(3*i))
+if(use_clamping) then
 
-   call to_upper(dart_qty_str)
-   call to_upper(update)
+   RowsLoop : do i = 1, state_vars%nvars
 
-   table(i,1) = trim(netcdf_var_name)
-   table(i,2) = trim(dart_qty_str)
-   table(i,3) = trim(update)
+      netcdf_var_name = trim(nml_state_vars(5*i-4))
+      state_vars%netcdf_var_names(i) = trim(netcdf_var_name)
 
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit RowsLoop ! Found end of list.
+      dart_qty_str = trim(nml_state_vars(5*i-3))
+      call to_upper(dart_qty_str)
+      ! Make sure DART qty is valid
+      state_vars%qtys(i) = get_index_for_quantity(dart_qty_str)
+      if( state_vars%qtys(i) < 0 ) then
+         write(string1,*) 'The quantity specified in the &model_nml "', dart_qty_str, '", is not present in obs_kind_mod.f90'
+         call error_handler(E_ERR,'verify_state_variables',string1)
+      endif
 
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
-      string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR, 'verify_state_variables', string1)
-   endif
+      if (nml_state_vars(5*i-2) /= 'NA') then
+         read(nml_state_vars(5*i-2), '(d16.8)') state_vars%clamp_values(i,1)
+      else
+         state_vars%clamp_values(i,1) = MISSING_R8
+      endif
 
-   ! Make sure DART qty is valid
+      if (nml_state_vars(5*i-1) /= 'NA') then
+         read(nml_state_vars(5*i-1), '(d16.8)') state_vars%clamp_values(i,2)
+      else
+         state_vars%clamp_values(i,2) = MISSING_R8
+      endif
 
-   qty_list(i) = get_index_for_quantity(dart_qty_str)
-   if( qty_list(i) < 0 ) then
-      write(string1,*) 'The quantity specified in the &model_nml "', dart_qty_str, '", is not present in obs_kind_mod.f90'
-      call error_handler(E_ERR,'verify_state_variables',string1)
-   endif
+      update = trim(nml_state_vars(5*i))
+      call to_upper(update)
+      select case (update)
+         case ('UPDATE')
+            state_vars%updates(i) = .true.
+         case ('NO_COPY_BACK')
+            state_vars%updates(i) = .false.
+         case default
+            write(string1,'(A)')  'Invalid update variable in &model_nml:model_state_variable - only UPDATE or NO_COPY_BACK are supported'
+            write(string2,'(6A)') 'Issue: ', trim(netcdf_var_name), ', ', trim(dart_qty_str), ', ', trim(update)
+            call error_handler(E_ERR,'verify_state_variables',string1, text2=string2)
+      end select
 
-   ! Make sure the update variable has a valid name
+      ! Checking that the rows in the nml entry are all complete
+      if ( dart_qty_str == '' .or. nml_state_vars(5*i-2) == '' .or. nml_state_vars(5*i-1) == '' .or. update == '' ) then
+         string1 = 'model_nml:model_state_variables not fully specified'
+         call error_handler(E_ERR, 'verify_state_variables', string1)
+      endif
 
-   select case (update)
-      case ('UPDATE')
-         update_var(i) = .true.
-      case ('NO_COPY_BACK')
-         update_var(i) = .false.
-      case default
-         write(string1,'(A)')  'Invalid update variable in &model_nml:model_state_variable - only UPDATE or NO_COPY_BACK are supported'
-         write(string2,'(6A)') 'Issue: ', trim(netcdf_var_name), ', ', trim(dart_qty_str), ', ', trim(update)
-         call error_handler(E_ERR,'verify_state_variables',string1, text2=string2)
-   end select
+   enddo RowsLoop
 
-   ngood = ngood + 1
-enddo RowsLoop
+else
 
-end subroutine verify_state_variables
+   RowsLoopNoClamp : do i = 1, state_vars%nvars
+
+      state_vars%clamp_values(:,:) = MISSING_R8
+
+      netcdf_var_name = trim(nml_state_vars(3*i-2))
+      state_vars%netcdf_var_names(i) = trim(netcdf_var_name)
+
+      dart_qty_str = trim(nml_state_vars(3*i-1))
+      call to_upper(dart_qty_str)
+      ! Make sure DART qty is valid
+      state_vars%qtys(i) = get_index_for_quantity(dart_qty_str)
+      if( state_vars%qtys(i) < 0 ) then
+         write(string1,*) 'The quantity specified in the &model_nml "', dart_qty_str, '", is not present in obs_kind_mod.f90'
+         call error_handler(E_ERR,'verify_state_variables',string1)
+      endif
+
+      update = trim(nml_state_vars(3*i))
+      call to_upper(update)
+      select case (update)
+         case ('UPDATE')
+            state_vars%updates(i) = .true.
+         case ('NO_COPY_BACK')
+            state_vars%updates(i) = .false.
+         case default
+            write(string1,'(A)')  'Invalid update variable in &model_nml:model_state_variable - only UPDATE or NO_COPY_BACK are supported'
+            write(string2,'(6A)') 'Issue: ', trim(netcdf_var_name), ', ', trim(dart_qty_str), ', ', trim(update)
+            call error_handler(E_ERR,'verify_state_variables',string1, text2=string2)
+      end select
+
+      ! Checking that the rows in the nml entry are all complete
+      if ( dart_qty_str == '' .or. update == '' ) then
+         string1 = 'model_nml:model_state_variables not fully specified'
+         call error_handler(E_ERR, 'verify_state_variables', string1)
+      endif
+
+   enddo RowsLoopNoClamp
+
+endif
+
+end subroutine get_state_variables
 
 !===================================================================
 ! End of model_mod
