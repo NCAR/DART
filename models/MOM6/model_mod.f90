@@ -21,11 +21,9 @@ use     location_mod, only : location_type, get_close_type, &
                              get_location, query_location, VERTISLEVEL, &
                              VERTISHEIGHT, set_vertical
 
-use    utilities_mod, only : error_handler, &
-                             E_ERR, E_MSG, &
+use    utilities_mod, only : error_handler, E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
-                             find_namelist_in_file, check_namelist_read, &
-                             to_upper
+                             find_namelist_in_file, check_namelist_read
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, &
@@ -47,9 +45,8 @@ use state_structure_mod, only : add_domain, get_domain_size, &
 
 use distributed_state_mod, only : get_state, get_state_array
 
-use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
-                         QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS, &
-                         QTY_DRY_LAND, QTY_SALINITY
+use obs_kind_mod, only : QTY_U_CURRENT_COMPONENT, QTY_V_CURRENT_COMPONENT, &
+                         QTY_LAYER_THICKNESS, QTY_DRY_LAND, QTY_SALINITY
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -60,7 +57,8 @@ use ensemble_manager_mod, only : ensemble_type
 use default_model_mod, only : pert_model_copies, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
-                              convert_vertical_obs, adv_1step
+                              convert_vertical_obs, adv_1step, &
+                              get_state_variables, state_var_type
 
 implicit none
 private
@@ -108,6 +106,7 @@ real(r8), allocatable :: wet(:,:), basin_depth(:,:)
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 10
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
+logical, parameter :: use_clamping = .false.
 
 ! model_interpolate failure codes
 integer, parameter :: NOT_IN_STATE = 12
@@ -150,10 +149,7 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-character(len=vtablenamelength) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS)
-
-integer :: state_qty_list(MAX_STATE_VARIABLES)
-logical :: update_var_list(MAX_STATE_VARIABLES)
+type(state_var_type) :: state_vars
 
 ! identifiers for variable_table
 integer, parameter :: VAR_NAME_INDEX = 1
@@ -180,15 +176,16 @@ call set_calendar_type('gregorian')
 assimilation_time_step = set_time(assimilation_period_seconds, &
                                   assimilation_period_days)
 
-! verify that the model_state_variables namelist was filled in correctly.
-! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, state_qty_list, update_var_list)
+! Reads the model_state_variables namelist entry into a table and returns
+! state_var_type state_vars with nvars, netcdf variable names, kinds/qtys,
+! clamp values (optional), and update strings.
+call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
 
 ! Define which variables are in the model state
-dom_id = add_domain(template_file, nfields, &
-                    var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
-                    kind_list = state_qty_list(1:nfields), &
-                    update_list = update_var_list(1:nfields))
+dom_id = add_domain(template_file, state_vars%nvars, &
+                    var_names = state_vars%netcdf_var_names(1:state_vars%nvars), &
+                    kind_list = state_vars%qtys(1:state_vars%nvars), &
+                    update_list = state_vars%updates(1:state_vars%nvars))
 
 model_size = get_domain_size(dom_id)
 
@@ -896,78 +893,6 @@ else
 endif
 
 end function
-
-
-!------------------------------------------------------------------
-! Verify that the namelist was filled in correctly, and check
-! that there are valid entries for the dart_kind.
-! Returns a table with columns:
-!
-! netcdf_variable_name ; dart_qty_string ; update_string
-
-subroutine verify_state_variables(state_variables, ngood, table, qty_list, update_var)
-
-character(len=*),  intent(inout) :: state_variables(:)
-integer,           intent(out) :: ngood
-character(len=*),  intent(out) :: table(:,:)
-integer,           intent(out) :: qty_list(:)   ! kind number
-logical,           intent(out) :: update_var(:) ! logical update
-
-integer :: nrows, i
-character(len=NF90_MAX_NAME) :: varname, dartstr, update
-character(len=256) :: string1, string2
-
-if ( .not. module_initialized ) call static_init_model
-
-nrows = size(table,1)
-
-ngood = 0
-
-MyLoop : do i = 1, nrows
-
-   varname = trim(state_variables(3*i -2))
-   dartstr = trim(state_variables(3*i -1))
-   update  = trim(state_variables(3*i   ))
-   
-   call to_upper(update)
-
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   table(i,3) = trim(update)
-
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop ! Found end of list.
-
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
-      string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1)
-   endif
-
-   ! Make sure DART qty is valid
-
-   qty_list(i) = get_index_for_quantity(dartstr)
-   if( qty_list(i)  < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1)
-   endif
-   
-   ! Make sure the update variable has a valid name
-
-   select case (update)
-      case ('UPDATE')
-         update_var(i) = .true.
-      case ('NO_COPY_BACK')
-         update_var(i) = .false.
-      case default
-         write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
-         write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
-         call error_handler(E_ERR,'verify_state_variables',string1, text2=string2)
-   end select
-
-   ngood = ngood + 1
-enddo MyLoop
-
-
-end subroutine verify_state_variables
 
 !--------------------------------------------------------------------
 function read_model_time(filename)
