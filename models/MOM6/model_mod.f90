@@ -688,28 +688,28 @@ mask_u(:,:) = .false.
 mask_v(:,:) = .false.
 call nc_get_attribute_from_variable(ncid, 'geolon', '_FillValue', fillval)
 where (geolon == fillval) mask = .true.  
-where (geolon == fillval) geolon = 72.51
-where (geolat == fillval) geolat = 42.56
+where (geolon == fillval) geolon = 72.51_r8
+where (geolat == fillval) geolat = 42.56_r8
 
 call nc_get_attribute_from_variable(ncid, 'geolon_u', '_FillValue', fillval)
 where (geolon_u == fillval) mask_u = .true.  
-where (geolon_u == fillval) geolon_u = 72.51
-where (geolat_u == fillval) geolat_u = 42.56
+where (geolon_u == fillval) geolon_u = 72.51_r8
+where (geolat_u == fillval) geolat_u = 42.56_r8
 
 call nc_get_attribute_from_variable(ncid, 'geolon_v', '_FillValue', fillval)
 where (geolon_v == fillval) mask_v = .true.  
-where (geolon_v == fillval) geolon_v = 72.51
-where (geolat_v == fillval) geolat_v = 42.56
+where (geolon_v == fillval) geolon_v = 72.51_r8
+where (geolat_v == fillval) geolat_v = 42.56_r8
 
 ! mom6 example files have longitude > 360 and longitudes < 0
 ! DART uses [0,360]
-geolon = mod(geolon, 360.0)
-geolon_u = mod(geolon_u, 360.0)
-geolon_v = mod(geolon_v, 360.0)
+geolon = mod(geolon, 360.0_r8)
+geolon_u = mod(geolon_u, 360.0_r8)
+geolon_v = mod(geolon_v, 360.0_r8)
 
-where (geolon < 0.0) geolon = geolon + 360
-where (geolon_u < 0.0) geolon_u = geolon_u + 360
-where (geolon_v < 0.0) geolon_v = geolon_v + 360
+where (geolon < 0.0) geolon = geolon + 360.0_r8
+where (geolon_u < 0.0) geolon_u = geolon_u + 360.0_r8
+where (geolon_v < 0.0) geolon_v = geolon_v + 360.0_r8
 
 call nc_close_file(ncid)
 
