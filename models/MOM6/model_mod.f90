@@ -106,7 +106,6 @@ real(r8), allocatable :: wet(:,:), basin_depth(:,:)
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: MAX_STATE_VARIABLES = 10
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
-logical, parameter :: use_clamping = .false.
 
 ! model_interpolate failure codes
 integer, parameter :: NOT_IN_STATE = 12
@@ -178,8 +177,8 @@ assimilation_time_step = set_time(assimilation_period_seconds, &
 
 ! Reads the model_state_variables namelist entry into a table and returns
 ! state_var_type state_vars with nvars, netcdf variable names, kinds/qtys,
-! clamp values (optional), and update strings.
-call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
+! and update logicals.
+call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, state_vars)
 
 ! Define which variables are in the model state
 dom_id = add_domain(template_file, state_vars%nvars, &
