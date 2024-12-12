@@ -82,7 +82,8 @@ use        chem_tables_mod, only : init_chem_tables, finalize_chem_tables, &
                                    get_molar_mass, get_volume_mixing_ratio
 use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
                                    init_time => fail_init_time,    &
-                                   init_conditions => fail_init_conditions
+                                   init_conditions => fail_init_conditions, &
+                                   get_state_variables, state_var_type
 
 use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
                                    cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
@@ -96,7 +97,7 @@ use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pres
 
 
 use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, &
-                                set_cam_variable_info, MAX_STATE_VARIABLES, &
+                                MAX_STATE_VARIABLES, &
                                 num_state_table_columns, MAX_PERT, &
                                 shortest_time_between_assimilations, domain_id, &
                                 cuse_log_vertical_scale, &
@@ -216,6 +217,8 @@ namelist /model_nml/  &
 character(len=512) :: string1, string2, string3
 logical, save      :: module_initialized = .false.
 
+logical, parameter :: use_clamping = .true.
+
 ! Surface potential; used for calculation of geometric heights.
 ! SENote: right now every process has their own complete copy of this
 real(r8), allocatable :: phis(:)
@@ -299,6 +302,8 @@ contains
 
 subroutine static_init_model()
 
+type(state_var_type) :: state_vars
+
 integer :: iunit, io, i 
 integer :: nc_file_ID
 integer :: ncol_temp(1)
@@ -343,7 +348,11 @@ call init_globals()
 
 ! read the namelist &model_nml :: state_variables
 ! to set up what will be read into the cam state vector
-call set_cam_variable_info(cam_template_filename, state_variables)
+call get_state_variables(state_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
+
+domain_id = add_domain(cam_template_filename, state_vars%nvars, state_vars%netcdf_var_names, state_vars%qtys, &
+                       state_vars%clamp_values, state_vars%updates)
+
 
 ! The size of the only surface pressure dimension is the number of columns
 ncol_temp = get_dim_lengths(domain_id,  get_varid_from_kind(domain_id, QTY_SURFACE_PRESSURE))
