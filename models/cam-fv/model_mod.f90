@@ -304,13 +304,6 @@ call init_globals()
 ! to set up what will be read into the cam state vector
 call get_state_variables(state_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
 
-write(*,*) 'state_vars%nvars: ', state_vars%nvars
-write(*,*) 'state_vars%netcdf_var_names: ', state_vars%netcdf_var_names
-write(*,*) 'state_vars%qtys: ', state_vars%qtys
-write(*,*) 'state_vars%clamp_values(:,1): ', state_vars%clamp_values(:, 1)
-write(*,*) 'state_vars%clamp_values(:,2): ', state_vars%clamp_values(:, 2)
-write(*,*) 'state_vars%updates: ', state_vars%updates
-
 domain_id = add_domain(cam_template_filename, state_vars%nvars, state_vars%netcdf_var_names, state_vars%qtys, &
                        state_vars%clamp_values, state_vars%updates)
 
