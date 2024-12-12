@@ -5,7 +5,7 @@
 program test_get_state_variables
 
 use        utilities_mod, only : find_namelist_in_file, check_namelist_read 
-use    mpi_utilities_mod, only : initialize_mpi_utilities, task_count, my_task_id, finalize_mpi_utilities
+use    mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 use            types_mod, only : vtablenamelength, MISSING_R8
 use    default_model_mod, only : get_state_variables, state_var_type
 
@@ -27,9 +27,7 @@ namelist /model_nml/  &
 
 call initialize_mpi_utilities('test_get_state_variables')
 
-if (my_task_id() == 0 ) then
-  call plan(12*task_count())
-endif
+call plan(12)
 
 ! Using namelist file WITHOUT clamping values
 use_clamping = .false.
@@ -60,6 +58,7 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
 
 call get_state_variables(state_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
+
 write(*,*) 'state_vars%nvars: ', state_vars%nvars
 write(*,*) 'state_vars%netcdf_var_names: ', state_vars%netcdf_var_names
 write(*,*) 'state_vars%qtys: ', state_vars%qtys
