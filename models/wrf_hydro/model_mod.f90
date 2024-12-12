@@ -44,7 +44,8 @@ use distributed_state_mod, only : get_state
 
 use      dart_time_io_mod, only : write_model_time
 
-use     default_model_mod, only : adv_1step, nc_write_model_vars
+use     default_model_mod, only : adv_1step, nc_write_model_vars, get_state_variables, &
+                                  state_var_type
 
 use        noah_hydro_mod, only : configure_lsm, configure_hydro, &
                                   n_link, linkLong, linkLat, linkAlt, get_link_tree, &
@@ -110,6 +111,8 @@ character(len=*), parameter :: revdate  = ""
 
 logical, save :: module_initialized = .false.
 
+logical, parameter :: use_clamping = .true.
+
 character(len=512) :: string1, string2, string3
 
 integer(i8) :: model_size
@@ -140,9 +143,9 @@ real(r8)            :: streamflow_4_local_multipliers = 1.0e-5
 character(len=256)  :: perturb_distribution           = 'lognormal'
 
 character(len=obstypelength) :: &
-    lsm_variables(  NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = '', &
-    hydro_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = '', &
-    parameters(     NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
+    lsm_variables(  NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = '', &
+    hydro_variables(NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = '', &
+    parameters(     NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = ''
 
 namelist /model_nml/ assimilation_period_days,       &
                      assimilation_period_seconds,    &
@@ -175,6 +178,8 @@ contains
 subroutine static_init_model()
 
 character(len=*), parameter :: routine = 'static_init_model'
+
+type(state_var_type) :: state_vars_hydro, state_vars_parameters, state_vars_lsm
 
 integer  :: iunit, io, domainID
 integer  :: n_lsm_fields
@@ -250,13 +255,13 @@ DOMAINS: do domainID = 1,size(domain_order)
 
       call configure_hydro()
       call read_hydro_global_atts(domain_shapefiles(domainID))
-      call verify_variables(hydro_variables, domain_shapefiles(domainID), &
-                  n_hydro_fields, var_names, var_qtys, var_ranges, var_update)
+
+      call get_state_variables(hydro_variables, MAX_STATE_VARIABLES, use_clamping, state_vars_hydro)
       idom_hydro = add_domain(domain_shapefiles(domainID), &
-                       n_hydro_fields, var_names, &
-                         kind_list=var_qtys, &
-                        clamp_vals=var_ranges(1:n_hydro_fields,:), &
-                       update_list=var_update)
+                       state_vars_hydro%nvars, state_vars_hydro%netcdf_var_names, &
+                       kind_list=state_vars_hydro%qtys, &
+                       clamp_vals=state_vars_hydro%clamp_values, &
+                       update_list=state_vars_hydro%updates)
 
       if (debug > 99) call state_structure_info(idom_hydro)
 
@@ -273,13 +278,13 @@ DOMAINS: do domainID = 1,size(domain_order)
 
    elseif (index(domain_name,'PARAMETER') > 0) then
 
-      call verify_variables(parameters, domain_shapefiles(domainID), n_parameters, &
-                       var_names, var_qtys, var_ranges, var_update)
+      call get_state_variables(parameters, MAX_STATE_VARIABLES, use_clamping, state_vars_parameters)
       idom_parameters = add_domain(domain_shapefiles(domainID), &
-                            n_parameters, var_names, &
-                              kind_list=var_qtys, &
-                             clamp_vals=var_ranges(1:n_parameters,:), &
-                            update_list=var_update )
+                        state_vars_parameters%nvars, state_vars_parameters%netcdf_var_names, &
+                        kind_list=state_vars_parameters%qtys, &
+                        clamp_vals=state_vars_parameters%clamp_values, &
+                        update_list=state_vars_parameters%updates)
+
       if (debug > 99) call state_structure_info(idom_parameters)
 
       !>@todo check the size of the parameter variables against nlinks
@@ -288,14 +293,14 @@ DOMAINS: do domainID = 1,size(domain_order)
 
       call configure_lsm(lsm_model_choice)
       call read_noah_global_atts(domain_shapefiles(domainID))
-      call verify_variables(lsm_variables, domain_shapefiles(domainID), n_lsm_fields, &
-                       var_names, var_qtys, var_ranges, var_update)
-      idom_lsm = add_domain(domain_shapefiles(domainID), &
-                     n_lsm_fields, var_names, &
-                         kind_list=var_qtys, &
-                        clamp_vals=var_ranges(1:n_lsm_fields,:), &
-                       update_list=var_update)
-      if (debug > 99) call state_structure_info(idom_lsm)
+      call get_state_variables(lsm_variables, MAX_STATE_VARIABLES, use_clamping, state_vars_lsm)
+      idom_hydro = add_domain(domain_shapefiles(domainID), &
+                       state_vars_lsm%nvars, state_vars_lsm%netcdf_var_names, &
+                       kind_list=state_vars_lsm%qtys, &
+                       clamp_vals=state_vars_lsm%clamp_values, &
+                       update_list=state_vars_lsm%updates)
+
+       if (debug > 99) call state_structure_info(idom_lsm)
 
    else
 
@@ -1251,90 +1256,6 @@ end subroutine end_model
 !=======================================================================
 ! End of the required interfaces
 !=======================================================================
-
-!-----------------------------------------------------------------------
-!> given the list of variables and a filename, check user input
-!> return the handle to the open netCDF file and the number of variables
-!> in this 'domain'
-
-subroutine verify_variables( variable_table, filename, ngood, &
-                       var_names, var_qtys, var_ranges, var_update)
-
-character(len=*), intent(in)  :: variable_table(:,:)
-character(len=*), intent(in)  :: filename
-integer,          intent(out) :: ngood
-character(len=*), intent(out) :: var_names(:)
-real(r8),         intent(out) :: var_ranges(:,:)
-logical,          intent(out) :: var_update(:)
-integer ,         intent(out) :: var_qtys(:)
-
-character(len=*), parameter :: routine = 'verify_variables'
-
-integer  :: io, i, quantity
-real(r8) :: minvalue, maxvalue
-
-character(len=NF90_MAX_NAME) :: varname
-character(len=NF90_MAX_NAME) :: dartstr
-character(len=NF90_MAX_NAME) :: minvalstring
-character(len=NF90_MAX_NAME) :: maxvalstring
-character(len=NF90_MAX_NAME) :: state_or_aux
-
-ngood = 0
-MyLoop : do i = 1, size(variable_table,2)
-
-   varname      = variable_table(VT_VARNAMEINDX,i)
-   dartstr      = variable_table(VT_KINDINDX   ,i)
-   minvalstring = variable_table(VT_MINVALINDX ,i)
-   maxvalstring = variable_table(VT_MAXVALINDX ,i)
-   state_or_aux = variable_table(VT_STATEINDX  ,i)
-
-   if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
-
-   if ( varname == ' ' .or.  dartstr == ' ' ) then
-      string1 = 'model_nml: variable list not fully specified'
-      string2 = 'reading from "'//trim(filename)//'"'
-      call error_handler(E_ERR,routine, string1, &
-                 source, revision, revdate, text2=string2)
-   endif
-
-   ! The internal DART routines check if the variable name is valid.
-
-   ! Make sure DART kind is valid
-   quantity = get_index_for_quantity(dartstr)
-   if( quantity < 0 ) then
-      write(string1,'(''there is no obs_kind "'',a,''" in obs_kind_mod.f90'')') &
-                    trim(dartstr)
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
-   endif
-
-   ! All good to here - fill the output variables
-
-   ngood = ngood + 1
-   var_names( ngood)   = varname
-   var_qtys(  ngood)   = quantity
-   var_ranges(ngood,:) = (/ MISSING_R8, MISSING_R8 /)
-   var_update(ngood)   = .false.   ! at least initially
-
-   ! convert the [min,max]valstrings to numeric values if possible
-   read(minvalstring,*,iostat=io) minvalue
-   if (io == 0) var_ranges(ngood,1) = minvalue
-
-   read(maxvalstring,*,iostat=io) maxvalue
-   if (io == 0) var_ranges(ngood,2) = maxvalue
-
-   call to_upper(state_or_aux)
-   if (state_or_aux == 'UPDATE') var_update(ngood) = .true.
-
-enddo MyLoop
-
-if (ngood == MAX_STATE_VARIABLES) then
-   string1 = 'WARNING: you may need to increase "MAX_STATE_VARIABLES"'
-   write(string2,'(''you have specified at least '',i4,'' perhaps more.'')') ngood
-   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
-endif
-
-end subroutine verify_variables
-
 
 !-----------------------------------------------------------------------
 !> Sets the location information arrays for each domain
