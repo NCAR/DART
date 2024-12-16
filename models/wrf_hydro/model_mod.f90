@@ -118,12 +118,7 @@ character(len=512) :: string1, string2, string3
 integer(i8) :: model_size
 type(time_type) :: time_step
 
-! Codes for interpreting the columns of the variable_table
-integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
-integer, parameter :: VT_KINDINDX     = 2 ! ... DART kind
-integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
-integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
-integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
+! For interpreting the columns of the variable_table
 integer, parameter :: MAX_STATE_VARIABLES     = 40
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 
@@ -182,15 +177,7 @@ character(len=*), parameter :: routine = 'static_init_model'
 type(state_var_type) :: state_vars_hydro, state_vars_parameters, state_vars_lsm
 
 integer  :: iunit, io, domainID
-integer  :: n_lsm_fields
-integer  :: n_hydro_fields
-integer  :: n_parameters
 integer  :: vsize
-
-character(len=obstypelength) :: var_names(MAX_STATE_VARIABLES)
-real(r8) :: var_ranges(MAX_STATE_VARIABLES,2)
-logical  :: var_update(MAX_STATE_VARIABLES)
-integer  :: var_qtys(  MAX_STATE_VARIABLES)
 
 character(len=256) :: domain_name
 
