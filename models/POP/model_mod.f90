@@ -50,7 +50,9 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, &
                                   get_dart_vector_index
-use default_model_mod,     only : adv_1step, init_time, init_conditions, nc_write_model_vars
+use default_model_mod,     only : adv_1step, init_time, init_conditions, &
+                                  nc_write_model_vars, get_state_variables, &
+                                  state_var_type
 
 use typesizes
 use netcdf 
@@ -109,14 +111,7 @@ type(random_seq_type) :: random_seq
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 10 
 integer, parameter :: num_state_table_columns = 3
-character(len=vtablenamelength) :: variable_table( max_state_variables, num_state_table_columns )
-integer :: state_kinds_list( max_state_variables )
-logical :: update_var_list( max_state_variables )
-
-! identifiers for variable_table
-integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_QTY_INDEX = 2
-integer, parameter :: VAR_UPDATE_INDEX = 3
+type(state_var_type) :: state_vars
 
 ! things which can/should be in the model_nml
 integer  :: assimilation_period_days = -1
@@ -157,9 +152,6 @@ namelist /model_nml/  &
 ! is not being used.
 !------------------------------------------------------------------
 
-! Number of fields in the state vector
-integer :: nfields
-
 ! Grid parameters - the values will be read from a
 ! standard POP namelist and filled in here.
 
@@ -189,8 +181,6 @@ integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer(i8) :: model_size    ! the state vector length
-
-
 
 !------------------------------------------------
 
@@ -336,8 +326,8 @@ if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
 ! verify that the model_state_variables namelist was filled in correctly.  
-! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, state_kinds_list, update_var_list)
+! returns state_vars which has netcdf variable names, kinds and update strings.
+call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, state_vars)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
@@ -356,9 +346,10 @@ call dpth2pres(Nz, ZC, pressure)
 call init_interp()
 
 !> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
-domain_id = add_domain('pop.r.nc', nfields, &
-                       var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
-                       update_list = update_var_list(1:nfields))
+domain_id = add_domain('pop.r.nc', state_vars%nvars, &
+                       var_names = state_vars%netcdf_var_names, &
+                       kind_list = state_vars%qtys, &
+                       update_list = state_vars%updates)
 
 model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size
@@ -1796,7 +1787,7 @@ integer             :: get_varid_from_kind
 integer :: i
 
 do i = 1, get_num_variables(domain_id)
-   if (dart_kind == state_kinds_list(i)) then
+   if (dart_kind == state_vars%qtys(i)) then
       get_varid_from_kind = i
       return
    endif
@@ -1825,7 +1816,7 @@ integer, intent(out) :: var_type
 
 if ( .not. module_initialized ) call static_init_model
 
-var_type = state_kinds_list(var_ind)
+var_type = state_vars%qtys(var_ind)
 
 end subroutine get_state_kind
 
@@ -2744,103 +2735,6 @@ integer,             intent(out) :: istatus
 istatus = 0
 
 end subroutine vert_convert
-
-
-!------------------------------------------------------------------
-!> Verify that the namelist was filled in correctly, and check
-!> that there are valid entries for the dart_kind. 
-!> Returns a table with columns:  
-!>
-!>    netcdf_variable_name ; dart_kind_string ; update_string
-
-
-subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_var )
-
-character(len=*),  intent(inout) :: state_variables(:)
-integer,           intent(out) :: ngood
-character(len=*),  intent(out) :: table(:,:)
-integer,           intent(out) :: kind_list(:)   ! kind number
-logical, optional, intent(out) :: update_var(:) ! logical update
-
-integer :: nrows, i
-character(len=NF90_MAX_NAME) :: varname, dartstr, update
-
-if ( .not. module_initialized ) call static_init_model
-
-nrows = size(table,1)
-
-ngood = 0
-
-if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
-   call use_default_state_variables( state_variables )
-   string1 = 'model_nml:model_state_variables not specified using default variables'
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
-endif
-
-MyLoop : do i = 1, nrows
-
-   varname = trim(state_variables(3*i -2))
-   dartstr = trim(state_variables(3*i -1))
-   update  = trim(state_variables(3*i   ))
-   
-   call to_upper(update)
-
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   table(i,3) = trim(update)
-
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop ! Found end of list.
-
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
-      string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ! Make sure DART kind is valid
-
-   kind_list(i) = get_index_for_quantity(dartstr)
-   if( kind_list(i)  < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-   
-   ! Make sure the update variable has a valid name
-
-   if ( present(update_var) )then
-      SELECT CASE (update)
-         CASE ('UPDATE')
-            update_var(i) = .true.
-         CASE ('NO_COPY_BACK')
-            update_var(i) = .false.
-         CASE DEFAULT
-            write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
-            write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
-            call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
-      END SELECT
-   endif
-
-   ! Record the contents of the DART state vector
-
-   if (do_output()) then
-      write(string1,'(A,I2,6A)') 'variable ',i,' is ',trim(varname), ', ', trim(dartstr), ', ', trim(update)
-      call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ngood = ngood + 1
-enddo MyLoop
-
-! check to see if temp and salinity are both in the state otherwise you will not
-! be able to interpolate in XXX subroutine
-if ( any(kind_list == QTY_SALINITY) ) then
-   ! check to see that temperature is also in the variable list
-   if ( .not. any(kind_list == QTY_POTENTIAL_TEMPERATURE) ) then
-      write(string1,'(A)') 'in order to compute temperature you need to have both '
-      write(string2,'(A)') 'QTY_SALINITY and QTY_POTENTIAL_TEMPERATURE in the model state'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
-   endif
-endif
- 
-end subroutine verify_state_variables
 
 
 !------------------------------------------------------------------
