@@ -150,11 +150,6 @@ subroutine static_init_model()
 integer  :: iunit, io
 type(state_var_type) :: state_vars
 
-! identifiers for variable_table
-integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_QTY_INDEX = 2
-integer, parameter :: VAR_UPDATE_INDEX = 3
-
 module_initialized = .true.
 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
