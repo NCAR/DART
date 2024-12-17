@@ -429,7 +429,7 @@ RowsLoopNoClamp : do i = 1, state_vars%nvars
    ! Make sure DART qty is valid
    state_vars%qtys(i) = get_index_for_quantity(dart_qty_str)
    if( state_vars%qtys(i) < 0 ) then
-      write(string1,*) 'The quantity specified in the &model_nml "', dart_qty_str, '", is not present in obs_kind_mod.f90'
+      write(string1,'(3A)') 'The quantity specified in the &model_nml "', trim(dart_qty_str), '", is not present in obs_kind_mod.f90'
       call error_handler(E_ERR,'verify_state_variables',string1)
    endif
 
