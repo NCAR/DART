@@ -91,7 +91,12 @@ real(r8) :: temp_ens(ens_size)
 do i = 1, num_vars
    call transform_to_probit(ens_size, state_ens(1:ens_size, i), distribution_type(i), &
       p(i), temp_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr(i))
-   if(ierr(i) == 0) probit_ens(1:ens_size, i) = temp_ens
+   if(ierr(i) == 0) 
+      probit_ens(1:ens_size, i) = temp_ens
+   else
+      ! If transform failed, return the input state
+      probit_ens(1:ens_size, i) = state_ens(1:ens_size, i)
+   endif
 end do
 
 end subroutine transform_all_to_probit
@@ -366,7 +371,7 @@ real(r8) :: quantile(ens_size)
 ierr = 0
 
 if(use_input_p) then
-   ! Need tthis to fail if p isn't available. Is that possible?
+   ! Need this to fail if p isn't available. Is that possible?
    ! Get the quantiles for each of the ensemble members in a BNRH distribution
    call bnrh_cdf_initialized_vector(state_ens, ens_size, p, quantile)
 else
