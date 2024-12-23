@@ -91,7 +91,7 @@ real(r8) :: temp_ens(ens_size)
 do i = 1, num_vars
    call transform_to_probit(ens_size, state_ens(1:ens_size, i), distribution_type(i), &
       p(i), temp_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr(i))
-   if(ierr(i) == 0) 
+   if(ierr(i) == 0) then
       probit_ens(1:ens_size, i) = temp_ens
    else
       ! If transform failed, return the input state
