@@ -162,7 +162,8 @@ public :: get_analysis_time,            &
           cell_ok_to_interpolate,       &
           uv_cell_to_edges
 
-public :: set_lbc_variables, &
+public :: update_u_from_reconstruct, &
+          set_lbc_variables, &
           force_u_into_state, &
           statevector_to_boundary_file
 

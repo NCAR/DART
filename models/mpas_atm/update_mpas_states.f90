@@ -30,10 +30,10 @@ use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
 use        model_mod, only : static_init_model, &
                              get_model_size, &
-                             get_analysis_time
+                             get_analysis_time, update_u_from_reconstruct
 
 use state_structure_mod, only : get_num_variables, get_variable_name, &
-                                get_variable_size
+                                get_variable_size, get_varid_from_varname
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
@@ -105,6 +105,10 @@ fileloop: do        ! until out of files
 
       allocate(variable(get_variable_size(1, i)))
 
+      if (get_variable_name(1,i) == 'uReconstructZonal' .or. &
+          get_variable_name(1,i) == 'uReconstructMeridional'.or. &
+          get_variable_name(1,i) == 'u') cycle varloop
+
       call nc_get_variable(ncAnlID, get_variable_name(1,i), variable)
       call nc_put_variable(ncBckID, get_variable_name(1,i), variable)
 
@@ -112,7 +116,22 @@ fileloop: do        ! until out of files
 
   enddo varloop
 
-  call error_handler(E_MSG, 'Overwriting states in ',trim(next_outfile), source)
+  ! deal with wind
+  if (update_u_from_reconstruct) then
+     ! reconstruct u 
+     call error_handler(E_ERR,'update_mpas_states','update_u_from_reconstruct is not implemented',source)
+  else
+     ! copy u from analysis to background
+    allocate(variable(get_variable_size(1, get_varid_from_varname(1, 'u'))))
+
+    call nc_get_variable(ncAnlID, 'u', variable)
+    call nc_put_variable(ncBckID, 'u', variable)  
+
+    deallocate(variable)
+
+  endif
+
+  call error_handler(E_MSG, 'Overwritten states in ',trim(next_outfile), source)
 
   call print_date( model_time,'update_mpas_states:model date')
   call print_time( model_time,'update_mpas_states:model time')
