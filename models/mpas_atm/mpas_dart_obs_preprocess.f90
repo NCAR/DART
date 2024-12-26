@@ -80,8 +80,6 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/mpas_dart_obs_preprocess.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -1545,7 +1543,7 @@ do k = 1, nloc  !  loop over all observation locations
    icell = find_closest_cell_center(airobs(k)%lat, airobs(k)%lon)
    if(icell < 1) then
       write(string,*) 'Cannot find any cell for this obs at ', airobs(k)%lat, airobs(k)%lon
-      call error_handler(E_MSG, routine, source, revision, revdate, text2=string) 
+      call error_handler(E_MSG, routine, source, text2=string) 
    endif
    if(airobs(k)%pressure > ps) then
       ik = 1
@@ -1917,7 +1915,7 @@ do k = 1, nloc  ! loop over all locations
         if(icell < 1) then
            write(string,*) 'Cannot find any cell for this obs at ',&
                             satobs(k)%lat,satobs(k)%lon  
-           call error_handler(E_MSG, routine, source, revision, revdate, text2=string) 
+           call error_handler(E_MSG, routine, source, text2=string) 
         endif
         if(satobs(k)%pressure > ps) then
            ik = 1
