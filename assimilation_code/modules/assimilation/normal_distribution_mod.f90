@@ -6,7 +6,7 @@ module normal_distribution_mod
 
 use types_mod, only : r8, missing_r8, digits12, PI
 
-use utilities_mod, only : E_ERR, E_MSG, error_handler
+use utilities_mod, only : E_ERR, E_ALLMSG, error_handler
 
 use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
 
@@ -445,7 +445,7 @@ end do
 ! Not currently happening for any of the test cases on gfortran
 x = x_new
 write(errstring, *)  'Failed to converge for quantile ', quantile
-call error_handler(E_MSG, 'inv_cdf', errstring, source)
+call error_handler(E_ALLMSG, 'inv_cdf', errstring, source)
 !!!call error_handler(E_ERR, 'inv_cdf', errstring, source)
 
 end function inv_cdf
