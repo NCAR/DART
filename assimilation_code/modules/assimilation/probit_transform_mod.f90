@@ -278,8 +278,7 @@ if(.not. use_input_p) then
       call error_handler(E_ERR, 'to_probit_gamma', errstring, source)
    endif
 
-   call set_gamma_params_from_ens(state_ens, ens_size, bounded_below, bounded_above, &
-      lower_bound, upper_bound, p)
+   call set_gamma_params_from_ens(state_ens, ens_size, p)
 endif
 
 do i = 1, ens_size
