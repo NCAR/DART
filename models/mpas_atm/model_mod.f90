@@ -158,7 +158,6 @@ public :: get_analysis_time,            &
           get_bdy_mask,                 &
           find_closest_cell_center,     &
           find_triangle,                &
-          read_2d_from_nc_file,         &
           find_height_bounds,           &
           cell_ok_to_interpolate,       &
           uv_cell_to_edges
@@ -1820,52 +1819,6 @@ if (nc_variable_exists(ncid, 'maxLevelCell')) then
 endif
 
 end subroutine get_grid
-
-!------------------------------------------------------------------
-
-subroutine read_2d_from_nc_file(ncid, filename, varname, data)
- integer,          intent(in)  :: ncid
- character(len=*), intent(in)  :: filename
- character(len=*), intent(in)  :: varname
- real(r8),         intent(out) :: data(:,:)
-
-!
-! Read the values for all dimensions but the time dimension.
-! Only read the last time (if more than 1 present)
-!
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME) :: dimname
-integer :: VarID, numdims, dimlen, i
-
-call nc_check(nf90_inq_varid(ncid, varname, VarID), &
-              'read_from_nc_file', &
-              'inq_varid '//trim(varname)//' '//trim(filename))
-
-call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
-              'read_from_nc_file', &
-              'inquire '//trim(varname)//' '//trim(filename))
-
-do i=1, numdims
-   write(string1,*)'inquire length for dimension ',i
-   call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen, name=dimname), &
-                 'read_2d_from_nc_file', &
-                  trim(string1)//' '//trim(filename))
-   if (trim(dimname) == 'Time') then
-      mystart(i)       = dimlen
-      mycount(numdims) = 1
-   else
-      mystart(i)       = 1
-      mycount(i)       = dimlen
-   endif
-enddo
-
-call nc_check( nf90_get_var(ncid, VarID, data, &
-               start=mystart(1:numdims), count=mycount(1:numdims)), &
-              'read_2d_from_nc_file', &
-              'get_var u '//trim(filename))
-
-end subroutine read_2d_from_nc_file
 
 
 !------------------------------------------------------------------
