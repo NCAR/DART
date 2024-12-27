@@ -30,10 +30,12 @@ use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
 use        model_mod, only : static_init_model, &
                              get_model_size, &
-                             get_analysis_time, update_u_from_reconstruct
+                             get_analysis_time, update_u_from_reconstruct, &
+                             use_increments_for_u_update, uv_cell_to_edges
 
 use state_structure_mod, only : get_num_variables, get_variable_name, &
-                                get_variable_size, get_varid_from_varname
+                                get_variable_size, get_varid_from_varname, &
+                                get_dim_lengths
 
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
@@ -62,6 +64,10 @@ integer               :: filenum, i
 real(r8), allocatable :: variable(:)
 type(time_type)       :: model_time
 type(time_type)       :: state_time
+integer               :: dims(2) !(nVertLevels, nEdges | nCells)
+real(r8), allocatable :: u(:,:), ucell(:,:), vcell(:,:) 
+real(r8), allocatable :: ucell_dart(:,:), vcell_dart(:,:), increments(:,:)
+integer :: dom_id = 1 ! HK @todo
 !----------------------------------------------------------------------
 
 call initialize_utilities(progname=source)
@@ -85,8 +91,8 @@ fileloop: do        ! until out of files
   next_outfile = get_next_filename(update_output_file_list, filenum)
   if (next_infile == '' .or. next_outfile == '') exit fileloop
 
-  ncAnlID = nc_open_file_readonly(next_infile, 'update_mpas_states - open readonly')
-  ncBckID = nc_open_file_readwrite(next_outfile, 'update_mpas_states - open readwrite')
+  ncAnlID = nc_open_file_readonly(next_infile, 'update_mpas_states - open readonly') ! analysis from DART
+  ncBckID = nc_open_file_readwrite(next_outfile, 'update_mpas_states - open readwrite') ! background, original mpas file
 
   model_time = get_analysis_time(ncBckID, next_outfile)
   state_time = get_analysis_time(ncAnlID, next_infile)
@@ -105,12 +111,12 @@ fileloop: do        ! until out of files
 
       allocate(variable(get_variable_size(1, i)))
 
-      if (get_variable_name(1,i) == 'uReconstructZonal' .or. &
-          get_variable_name(1,i) == 'uReconstructMeridional'.or. &
-          get_variable_name(1,i) == 'u') cycle varloop
+      if (get_variable_name(dom_id,i) == 'uReconstructZonal' .or. &
+          get_variable_name(dom_id,i) == 'uReconstructMeridional'.or. &
+          get_variable_name(dom_id,i) == 'u') cycle varloop
 
-      call nc_get_variable(ncAnlID, get_variable_name(1,i), variable)
-      call nc_put_variable(ncBckID, get_variable_name(1,i), variable)
+      call nc_get_variable(ncAnlID, get_variable_name(dom_id,i), variable)
+      call nc_put_variable(ncBckID, get_variable_name(dom_id,i), variable)
 
       deallocate(variable)
 
@@ -118,11 +124,68 @@ fileloop: do        ! until out of files
 
   ! deal with wind
   if (update_u_from_reconstruct) then
-     ! reconstruct u 
-     call error_handler(E_ERR,'update_mpas_states','update_u_from_reconstruct is not implemented',source)
+
+     if (use_increments_for_u_update) then
+        !  Read in the previous reconstructed winds from the original mpas netcdf file
+        !  and compute what increments (changes in values) were added by the assimilation.
+        !  Read in the original edge normal wind 'u' field from that same mpas netcdf
+        !  file and add the interpolated increments to compute the updated 'u' values.
+
+        ! read in u, uReconstrtuctZonal, uReconstructMeridional from background
+        ! read in uReconstrtuctZonal, uReconstructMeridional from analysis
+
+        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'u'))
+        allocate(u(dims(1), dims(2)), increments(dims(1), dims(2)))
+        call nc_get_variable(ncBckID, 'u', u)
+
+        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'uReconstructZonal'))
+        allocate(ucell(dims(1), dims(2)), ucell_dart(dims(1), dims(2)))
+        call nc_get_variable(ncBckID, 'uReconstructZonal', ucell)
+        call nc_get_variable(ncAnlID, 'uReconstructZonal', ucell_dart)
+        ucell = ucell_dart - ucell ! u increments
+
+        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'uReconstructMeridional'))
+        allocate(vcell(dims(1), dims(2)), vcell_dart(dims(1), dims(2)))
+        call nc_get_variable(ncBckID, 'uReconstructMeridional', vcell)
+        call nc_get_variable(ncAnlID, 'uReconstructMeridional', vcell_dart)
+        vcell = vcell_dart - vcell ! v increments
+   
+        call uv_cell_to_edges(ucell, vcell, increments) !
+
+        u = u + increments
+
+        call nc_put_variable(ncBckID, 'u', u)
+        call nc_put_variable(ncBckID, 'uReconstructZonal', ucell_dart)
+        call nc_put_variable(ncBckID, 'uReconstructMeridional', vcell_dart)
+
+        deallocate(u, increments, ucell, vcell, ucell_dart, vcell_dart)
+         
+     else
+        ! The state vector has updated zonal and meridional wind components.
+        ! put them directly into the arrays.  These are the full values, not
+        ! just increments.
+        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'u'))
+        allocate(u(dims(1), dims(2)))
+        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'uReconstructZonal'))
+        allocate(ucell_dart(dims(1), dims(2)))
+        call nc_get_variable(ncAnlID, 'uReconstructZonal', ucell_dart)
+        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'uReconstructMeridional'))
+        allocate(vcell_dart(dims(1), dims(2)))
+        call nc_get_variable(ncAnlID, 'uReconstructMeridional', vcell_dart)
+ 
+        call uv_cell_to_edges(ucell_dart, vcell_dart, u, .true.)
+
+        call nc_put_variable(ncBckID, 'u', variable)
+        call nc_put_variable(ncBckID, 'uReconstructZonal', variable)
+        call nc_put_variable(ncBckID, 'uReconstructMeridional', variable)
+
+        deallocate(u, ucell_dart, vcell_dart)
+
+     endif
+
   else
      ! copy u from analysis to background
-    allocate(variable(get_variable_size(1, get_varid_from_varname(1, 'u'))))
+    allocate(variable(get_variable_size(1, get_varid_from_varname(dom_id, 'u'))))
 
     call nc_get_variable(ncAnlID, 'u', variable)
     call nc_put_variable(ncBckID, 'u', variable)  

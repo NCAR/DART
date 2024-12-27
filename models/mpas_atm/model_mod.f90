@@ -165,6 +165,7 @@ public :: get_analysis_time,            &
 public :: update_u_from_reconstruct, &
           set_lbc_variables, &
           force_u_into_state, &
+          use_increments_for_u_update, &
           statevector_to_boundary_file
 
 ! set_lbc_variables sets the lbc_variables string array
@@ -550,11 +551,11 @@ if (update_u_from_reconstruct) then
    if (use_increments_for_u_update) then
       write(string1,*) 'edge normal winds (u) in MPAS file will be updated based on the difference'
       write(string2,*) 'between the original U/V reconstructed winds and the updated values'
-      write(string3,*) 'because use_increment_for_u_update is True'
+      write(string3,*) 'because use_increments_for_u_update is True'
    else
       write(string1,*) 'edge normal winds (u) in MPAS file will be updated by averaging the'
       write(string2,*) 'updated U/V reconstructed winds at the corresponding cell centers'
-      write(string3,*) 'because use_increment_for_u_update is False'
+      write(string3,*) 'because use_increments_for_u_update is False'
    endif
    call error_handler(E_MSG,'static_init_model',string1,source, &
                       text2=string2, text3=string3)
