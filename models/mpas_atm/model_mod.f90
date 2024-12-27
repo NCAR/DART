@@ -23,7 +23,8 @@ module model_mod
 ! by each to make sure the intended actions are what happens.
 
 use        types_mod, only : r4, r8, i8, digits12, SECPERDAY, MISSING_R8,      &
-                             rad2deg, deg2rad, PI, MISSING_I, obstypelength
+                             rad2deg, deg2rad, PI, MISSING_I, obstypelength,   &
+                             vtablenamelength
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date, set_calendar_type,        &
@@ -141,7 +142,7 @@ public :: get_model_size,                 &
           read_model_time,                &
           write_model_time
 
-! code for these routines are in other modules
+! pass through routines to the default model_mod
 public :: init_time,                      &
           init_conditions,                &
           adv_1step,                      &
@@ -149,24 +150,19 @@ public :: init_time,                      &
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
-
 public :: get_analysis_time,            &
           get_grid_dims,                &
           get_xland,                    &
-          get_surftype,                 &
           get_cell_center_coords,       &
           get_bdy_mask,                 &
           find_closest_cell_center,     &
-          find_triangle,                &
-          find_height_bounds,           &
           cell_ok_to_interpolate,       &
           uv_cell_to_edges
 
 public :: update_u_from_reconstruct, &
           set_lbc_variables, &
           force_u_into_state, &
-          use_increments_for_u_update, &
-          statevector_to_boundary_file
+          use_increments_for_u_update
 
 ! set_lbc_variables sets the lbc_variables string array
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
@@ -231,7 +227,8 @@ logical :: search_initialized = .false.
 integer :: anl_domid = -1 
 integer :: lbc_domid = -1
 
-! variables which are in the module namelist
+!------------------------------------------------------------------------
+! variables which are in the model_nml namelist
 character(len=256) :: init_template_filename = 'mpas_init.nc'
 character(len=256) :: bdy_template_filename = ''
 integer            :: vert_localization_coord = VERTISHEIGHT
@@ -243,10 +240,6 @@ character(len=32)  :: calendar = 'Gregorian'
 real(r8)           :: highest_obs_pressure_mb   = 100.0_r8    ! do not assimilate obs higher than this level.
 real(r8)           :: sfc_elev_max_diff = -1.0_r8    ! do not assimilate if |model - station| height is larger than this [m].
 
-! this is not in the namelist or supported generally.
-! (setting this to true avoids the surface elevation max diff 
-! test for elevation and surface pressure.)
-logical :: always_assim_surf_altimeters = .false.
 
 ! if .false. use U/V reconstructed winds tri interp at centers for wind forward ops
 ! if .true.  use edge normal winds (u) with RBF functs for wind forward ops
@@ -288,25 +281,6 @@ logical :: write_grid_to_diag_files = .false.
 ! (backwards compatible with previous code), set this to .true.
 logical :: no_normalization_of_scale_heights = .true. 
 
-! for regional MPAS
-real(r8) :: dxmax  ! max distance between two adjacent cell centers in the mesh (in meters)
-
-! when updating boundary files for regional mpas, note whether the boundary
-! file has the reconstructed winds (lbc_ur, lbc_vr) or not. (this is set by
-! looking at the bdy template file and seeing if those variables are there.)  
-! if not, the other two options are ignored.  
-! if they are in the lbc file, then the other logicals control whether to use 
-! them instead of updating the U edge winds directly, and whether to use the 
-! reconstructed increments or not. 
-! the latter two options could be added to the namelist if someone wanted to
-! explore the options for how the edge winds are updated in the boundary file.
-! for now they're not - they're hardcoded true.
-! note that these are for the boundary file update only - there are separate
-! options for how to update the U winds in the main assimilation state.
-
-logical :: lbc_file_has_reconstructed_winds     = .false.  
-
-
 namelist /model_nml/             &
    init_template_filename,       &
    vert_localization_coord,      &
@@ -325,18 +299,44 @@ namelist /model_nml/             &
    write_grid_to_diag_files,     &
    no_normalization_of_scale_heights
 
+!------------------------------------------------------------------------
+
 integer, parameter :: MAX_STATE_VARIABLES = 80
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
 integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 4 !HK @todo get rid of clamp or fail
-character(len=NF90_MAX_NAME) :: mpas_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
-character(len=NF90_MAX_NAME) :: mpas_state_bounds(NUM_BOUNDS_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
-character(len=NF90_MAX_NAME) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS )
+character(len=vtablenamelength) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS )
+
+!------------------------------------------------------------------------
+! mpas_vars_nml namelist
+character(len=vtablenamelength) :: mpas_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
+character(len=vtablenamelength) :: mpas_state_bounds(NUM_BOUNDS_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
+
+namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
+!------------------------------------------------------------------------
+
+!------------------------------------------------------------------------
+! for regional MPAS
+real(r8) :: dxmax  ! max distance between two adjacent cell centers in the mesh (in meters)
+
+! when updating boundary files for regional mpas, note whether the boundary
+! file has the reconstructed winds (lbc_ur, lbc_vr) or not. (this is set by
+! looking at the bdy template file and seeing if those variables are there.)  
+! if not, the other two options are ignored.  
+! if they are in the lbc file, then the other logicals control whether to use 
+! them instead of updating the U edge winds directly, and whether to use the 
+! reconstructed increments or not. 
+! the latter two options could be added to the namelist if someone wanted to
+! explore the options for how the edge winds are updated in the boundary file.
+! for now they're not - they're hardcoded true.
+! note that these are for the boundary file update only - there are separate
+! options for how to update the U winds in the main assimilation state.
+
+logical :: lbc_file_has_reconstructed_winds     = .false.  
 
 ! this is special and not in the namelist.  boundary files have a fixed
 ! set of variables with fixed names.
-character(len=NF90_MAX_NAME) :: lbc_variables(MAX_STATE_VARIABLES) = ''
-
-namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
+character(len=vtablenamelength) :: lbc_variables(MAX_STATE_VARIABLES) = ''
+!------------------------------------------------------------------------
 
 ! Grid parameters - the values will be read from an mpas analysis file.
 integer :: nCells        = -1  ! Total number of cells making up the grid
@@ -349,7 +349,6 @@ integer :: vertexDegree  = -1  ! Max number of cells/edges that touch any vertex
 integer :: nSoilLevels   = -1  ! Number of soil layers
 
 ! scalar grid positions
-
 real(r8), allocatable :: xVertex(:), yVertex(:), zVertex(:)
 real(r8), allocatable :: xEdge(:), yEdge(:), zEdge(:)
 real(r8), allocatable :: lonEdge(:) ! edge longitudes (degrees, original radians in file)
@@ -363,8 +362,6 @@ real(r8), allocatable :: skintemp(:)! ground or water surface temperature      -
 real(r8), allocatable :: zGridFace(:,:)   ! geometric height at cell faces   (nVertLevelsP1,nCells)
 real(r8), allocatable :: zGridCenter(:,:) ! geometric height at cell centers (nVertLevels,  nCells)
 real(r8), allocatable :: zGridEdge(:,:)   ! geometric height at edge centers (nVertLevels,  nEdges)
-!real(r8), allocatable :: zEdgeFace(:,:)   ! geometric height at edges faces  (nVertLevelsP1,nEdges)
-!real(r8), allocatable :: zEdgeCenter(:,:) ! geometric height at edges faces  (nVertLevels  ,nEdges)
 
 integer,  allocatable :: cellsOnVertex(:,:) ! list of cell centers defining a triangle
 integer,  allocatable :: verticesOnCell(:,:)
@@ -376,7 +373,6 @@ real(r8), allocatable :: edgeNormalVectors(:,:)
 
 ! Boundary information might be needed ... regional configuration?
 ! Read if available.
-
 integer,  allocatable :: bdyMaskCell(:)
 integer,  allocatable :: bdyMaskEdge(:)
 integer,  allocatable :: maxLevelCell(:)
@@ -394,7 +390,6 @@ logical :: has_uvreconstruct = .false. ! true = has reconstructed at centers
 
 ! Do we have any state vector items located on the cell edges?
 logical :: data_on_edges = .false.
-
 
 INTERFACE get_analysis_time
       MODULE PROCEDURE get_analysis_time_ncid
@@ -418,23 +413,9 @@ integer, parameter :: num_reg_x = 90, num_reg_y = 90
 ! ??? is sufficient for ???
 integer, parameter :: max_reg_list_num = 100
 
-! The triangle interpolation keeps a list of how many and which triangles
-! overlap each regular lon-lat box. The number is stored in
-! array triangle_num. The allocatable array
-! triangle_list lists the uniquen index
-! of each overlapping triangle. The entry in
-! triangle_start for a given regular lon-lat box indicates
-! where the list of triangles begins in the triangle_list.
-
-integer :: triangle_start(num_reg_x, num_reg_y)
-integer :: triangle_num  (num_reg_x, num_reg_y) = 0
-integer, allocatable :: triangle_list(:)
-
-
 contains
 
 !------------------------------------------------------------------
-
 subroutine static_init_model()
 ! Called to do one time initialization of the model.
 
@@ -470,13 +451,11 @@ read(iunit, nml = mpas_vars_nml, iostat = io)
 call check_namelist_read(iunit, io, 'mpas_vars_nml')
 
 call set_calendar_type( calendar )   
-
 model_timestep = set_model_time_step()
-
-call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
-
+call get_time(model_timestep,ss,dd)
 write(string1,*)'assimilation window is ',dd,' days ',ss,' seconds'
 call error_handler(E_MSG,routine,string1,source)
+
 
 ncid = nc_open_file_readonly(init_template_filename, routine)
 
@@ -988,41 +967,19 @@ character(len=*), parameter :: routine = 'nc_write_model_atts'
 real(r8), allocatable :: data1d(:)
 integer :: ncid2
 
-
-!-------------------------------------------------------------------------------
-! put file into define mode.
-!-------------------------------------------------------------------------------
-
 call nc_begin_define_mode(ncid)
 
-!-------------------------------------------------------------------------------
-! Write Global Attributes
-!-------------------------------------------------------------------------------
-
 call nc_add_global_creation_time(ncid)
-
 call nc_add_global_attribute(ncid, "model_source", source)
 call nc_add_global_attribute(ncid, "model", "MPAS_ATM")
 
-
-!----------------------------------------------------------------------------
-! if not adding grid info, return here
-!----------------------------------------------------------------------------
-
-if (.not. write_grid_to_diag_files) then
+if (.not. write_grid_to_diag_files) then ! early return, no need to write grid info
    call nc_end_define_mode(ncid)
    call nc_synchronize_file(ncid)
    return
 endif
 
-!----------------------------------------------------------------------------
-!  Everything below here is static grid info
-!----------------------------------------------------------------------------
-
-!----------------------------------------------------------------------------
 ! Dimensions 
-!----------------------------------------------------------------------------
-
 call nc_define_dimension(ncid, 'nCells',        nCells,        routine)
 call nc_define_dimension(ncid, 'nEdges',        nEdges,        routine)
 call nc_define_dimension(ncid, 'nVertLevels',   nVertLevels,   routine)
@@ -1033,9 +990,8 @@ call nc_define_dimension(ncid, 'maxEdges',      maxEdges,     routine)
 call nc_define_dimension(ncid, 'nVertices',     nVertices,    routine)
 call nc_define_dimension(ncid, 'VertexDegree',  VertexDegree, routine)
 
-!----------------------------------------------------------------------------
 ! Coordinate Variables and the Attributes
-!----------------------------------------------------------------------------
+
 ! Cell Longitudes
 call      nc_define_real_variable(ncid, 'lonCell', 'nCells', routine)
 call nc_add_attribute_to_variable(ncid, 'lonCell', 'long_name',   'cell center longitudes', routine)
@@ -1093,15 +1049,8 @@ endif
 
 call nc_define_real_variable(ncid, 'areaCell', 'nCells', routine)
 
-!----------------------------------------------------------------------------
-! Finished with dimension/variable definitions, must end 'define' mode to fill.
-!----------------------------------------------------------------------------
 
 call nc_end_define_mode(ncid)
-
-!----------------------------------------------------------------------------
-! Fill the coordinate variables
-!----------------------------------------------------------------------------
 
 call nc_put_variable(ncid, 'lonCell', lonCell, routine)
 call nc_put_variable(ncid, 'latCell', latCell, routine)
@@ -1117,11 +1066,12 @@ call nc_put_variable(ncid, 'nEdgesOnCell', nEdgesOnCell, routine)
 call nc_put_variable(ncid, 'verticesOnCell', verticesOnCell, routine)
 call nc_put_variable(ncid, 'cellsOnVertex', cellsOnVertex, routine)
 
+call nc_synchronize_file(ncid) ! Flush the buffer and leave netCDF file open
+
 !----------------------------------------------------------------------------
 ! DART has not read these in, so we have to read them from the input file
 ! and copy them to the DART output file.
 !----------------------------------------------------------------------------
-
 ncid2 = nc_open_file_readonly(init_template_filename, routine)
 
 allocate(data1d(nCells))
@@ -1152,10 +1102,6 @@ deallocate(data1d)
 
 call nc_close_file(ncid2)
 
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
@@ -1822,56 +1768,6 @@ endif
 
 end subroutine get_grid
 
-
-!------------------------------------------------------------------
-
-subroutine put_u(ncid, filename, u, vchar)
- character(len=*) :: vchar
- integer,  intent(in) :: ncid
- character(len=*), intent(in) :: filename
- real(r8), intent(in) :: u(:,:)       ! u(nVertLevels, nEdges)
-
-! Put the newly updated 'u' field back into the netcdf file.
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount, numu
-integer :: VarID, numdims, nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: ntimes, i
-
-if ( .not. module_initialized ) call static_init_model
-
-string2 = trim(filename)//' '//trim(vchar)
-
-call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-              'put_u', 'inquire '//trim(filename))
-
-call nc_check(nf90_inquire_dimension(ncid, unlimitedDimID, len=ntimes), &
-              'put_u', 'inquire time dimension length '//trim(filename))
-
-call nc_check(nf90_inq_varid(ncid, trim(vchar), VarID), &
-              'put_u', 'inq_varid '//trim(string2))
-
-call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
-              'put_u', 'inquire '//trim(string2))
-
-do i=1, numdims
-   write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-   call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=numu(i)), &
-                 'put_u', string1)
-enddo
-
-! for all but the time dimension, read all the values.
-! for time read only the last one (if more than 1 present)
-mystart = 1
-mystart(numdims) = ntimes
-mycount = numu
-mycount(numdims) = 1
-
-call nc_check(nf90_put_var(ncid, VarID, u, start=mystart, count=mycount), &
-              'put_u', 'put_var '//trim(string2))
-
-end subroutine put_u
-
-
 !------------------------------------------------------------------
 subroutine verify_state_variables(ncid, filename, ngood, qty_list, variable_bounds)
 
@@ -1925,7 +1821,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
                  'verify_state_variables', trim(string2))
 
    ! Make sure variable is defined by (Time,nCells) or (Time,nCells,vertical)
-   ! unable to support Edges or Vertices at this time.
+   ! unable to support Edges or Vertices at this time.m !HK @todo this is not true.
 
    call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
                  'verify_state_variables', 'inquire '//trim(string1))
@@ -2691,11 +2587,6 @@ else  ! 2d (1d netcdf) variable: (cells)
 endif
 
 end subroutine find_mpas_indices
-
-!==================================================================
-! The following (private) interfaces are used for triangle interpolation
-!==================================================================
-
 
 !------------------------------------------------------------------
 !> Finds position of a given height in an array of height grid points and returns
@@ -4700,21 +4591,6 @@ tstring(17:17) = ":"
 tstring(18:19) = ch_second
 
 end subroutine set_wrf_date
-
-!----------------------------------------------------------------------
-
-subroutine statevector_to_boundary_file(state_vector, ncid_b, ncid_a, &
-   lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, idebug)
-
-real(r8), intent(inout) :: state_vector(:)
-integer,  intent(in)    :: ncid_b, ncid_a
-logical,  intent(in)    :: lbc_update_from_reconstructed_winds
-logical,  intent(in)    :: lbc_update_winds_from_increments
-integer,  intent(in)    :: idebug
-
-call error_handler(E_ERR, 'statevector_to_boundary_file', 'not implemented', source)
-
-end subroutine statevector_to_boundary_file
 
 !----------------------------------------------------------------------!
 

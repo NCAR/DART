@@ -30,7 +30,7 @@ use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
 use direct_netcdf_mod,only : read_variables  !HK read_variables?!
 use        model_mod, only : static_init_model, &
                              get_model_size,    &
-                             get_analysis_time, statevector_to_boundary_file, &
+                             get_analysis_time, &
                              set_lbc_variables, force_u_into_state
 use state_structure_mod, only : get_num_variables, get_domain_size
 
@@ -164,15 +164,16 @@ fileloop: do        ! until out of files  !HK loop around files, why not run thi
   d1size = get_domain_size(1)
   d2size = get_domain_size(2)
 
-  call read_variables(ncAnlID, statevector(1:d1size), 1, nanlvars, domain=1)
-  call read_variables(ncBdyID, statevector(d1size+1:d1size+d2size), 1, nbdyvars, domain=2)
+  !call read_variables(ncAnlID, statevector(1:d1size), 1, nanlvars, domain=1)
+  !call read_variables(ncBdyID, statevector(d1size+1:d1size+d2size), 1, nbdyvars, domain=2)
 
   !----------------------------------------------------------------------
   ! update the current model state vector
   !----------------------------------------------------------------------
   write(*,*) 'Updating boundary variables in ',trim(next_outfile)
-  call statevector_to_boundary_file(statevector, ncBdyID, ncAnlID, &
-       lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, debug)
+  !call statevector_to_boundary_file(statevector, ncBdyID, ncAnlID, &
+  !     lbc_update_from_reconstructed_winds, lbc_update_winds_from_increments, debug)
+  call error_handler(E_ERR,'update_bc','routines not implemented',source)
 
   !----------------------------------------------------------------------
   ! Log what we think we're doing, and exit.
