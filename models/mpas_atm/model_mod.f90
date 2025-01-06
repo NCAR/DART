@@ -157,12 +157,18 @@ public :: get_analysis_time,            &
           get_bdy_mask,                 &
           find_closest_cell_center,     &
           cell_ok_to_interpolate,       &
-          uv_cell_to_edges
+          uv_increments_cell_to_edges,  &
+          uv_field_cell_to_edges,       &
+          on_boundary_cell,             &
+          on_boundary_edge,             &
+          get_analysis_weight,          &
+          cell_next_to_boundary_edge
 
 public :: update_u_from_reconstruct, &
           set_lbc_variables, &
           force_u_into_state, &
-          use_increments_for_u_update
+          use_increments_for_u_update, &
+          anl_domid, lbc_domid ! HK todo accessor functions?
 
 ! set_lbc_variables sets the lbc_variables string array
 ! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
@@ -3795,6 +3801,23 @@ if (bdyMaskEdge(edgeid) > 0) on_boundary_edge = .true.
 end function on_boundary_edge
 
 !------------------------------------------------------------
+!> Determine if this edge is on the boundary
+
+function cell_next_to_boundary_edge(edgeid)
+
+integer,  intent(in)  :: edgeid
+logical               :: cell_next_to_boundary_edge
+
+if (global_grid .or. .not. allocated(bdyMaskEdge)) return
+
+cell_next_to_boundary_edge = .false.
+cell_next_to_boundary_edge = on_boundary_cell(cellsOnEdge(1,edgeid))
+cell_next_to_boundary_edge = on_boundary_cell(cellsOnEdge(2,edgeid))
+   
+end function cell_next_to_boundary_edge
+
+
+!------------------------------------------------------------
 !> Determine if this edge is the outermost edge (bdyMaskEdge = 7)
 
 function on_outermost_edge(edgeid)
@@ -4354,28 +4377,37 @@ return
 end subroutine inside_triangle
 
 !------------------------------------------------------------
+function uv_increments_cell_to_edges(zonal_wind, meridional_wind) result(u_inc)
 
-subroutine uv_cell_to_edges(zonal_wind, meridional_wind, uedge, full_u)
+! Project u, v wind increments at cell centers onto the edges.
+! Increments at the outermost edge are set to 0.0 because we do not update/compute 
+! uedge in the outermost edge in the regional MPAS.
 
-! Project u, v wind (increments) at cell centers onto the edges.
-! FIXME:
-!        we can hard-code R3 here since it comes from the (3d) x/y/z cartesian coordinate.
-!        We read cellsOnEdge and edgeNormalVectors in get_grid.
-!        Here "uedge" is an edge normal wind which can be either a full field or an increment
-!        depending on the optional input (full_u).
-!        if full_u = .true., then the edge wind is replaced by averaging zonal and meridional 
-!        winds at cell centers.
-!        if full_u does not exist, uedge is the analysis increment from the updated cell-center winds.
-!        We do not update/compute uedge in the outermost edge in the regional MPAS.
-! This routine followed the updating part in tend_toEdges in 
-! MPAS/src/core_atmosphere/physics/mpas_atmphys_todynamics.F.
+real(r8), intent(in) :: zonal_wind(:,:)        ! u wind increments from filter
+real(r8), intent(in) :: meridional_wind(:,:)   ! v wind increments from filter
+real(r8) :: u_inc(size(zonal_wind, 1), size(zonal_wind, 2))  ! normal velocity increment on the edges
 
-real(r8), intent(in) :: zonal_wind(:,:)             ! u wind updated from filter
-real(r8), intent(in) :: meridional_wind(:,:)        ! v wind updated from filter
-real(r8), intent(inout):: uedge(:,:)                ! normal velocity (increment) on the edges
-logical,  intent(in), optional :: full_u            ! compute a full field, not an increment
+real(r8) :: uedge(size(zonal_wind, 1), size(zonal_wind, 2))
 
-! Local variables
+if ( .not. module_initialized ) call static_init_model
+
+uedge(:,:) = 0.0_r8 ! initialize increments to 0 for outermost edge
+call project_uv_cell_to_edges(zonal_wind, meridional_wind, uedge)
+u_inc = uedge
+
+end function uv_increments_cell_to_edges
+
+!------------------------------------------------------------------
+
+subroutine uv_field_cell_to_edges(zonal_wind, meridional_wind, uedge)
+
+! Replaces a edge normal velocity field, by projecting u, v wind fields at cell 
+! centers onto the edges.
+
+real(r8), intent(in) :: zonal_wind(:,:)        ! u wind from filter
+real(r8), intent(in) :: meridional_wind(:,:)   ! v wind from filter
+real(r8), intent(inout):: uedge(:,:)           ! normal velocity on the edges
+
 integer, parameter :: R3 = 3
 real(r8) :: east(R3,nCells), north(R3,nCells)
 real(r8) :: lonCell_rad(nCells), latCell_rad(nCells)
@@ -4383,10 +4415,36 @@ integer  :: iCell, iEdge, cell1, cell2
 
 if ( .not. module_initialized ) call static_init_model
 
-! Initialization for increments
-if ( .not. present(full_u)) then
-   uedge(:,:) = 0.0_r8
-endif
+call project_uv_cell_to_edges(zonal_wind, meridional_wind, uedge)
+
+end subroutine uv_field_cell_to_edges
+   
+!------------------------------------------------------------------
+
+subroutine project_uv_cell_to_edges(zonal_wind, meridional_wind, uedge)
+
+! Replaces a edge normal velocity , by projecting u, v wind at cell 
+! centers onto the edges.
+! The original field on the outermost edge is left unchanged, because
+!  we do not update/compute uedge in the outermost edge in the regional MPAS.
+!
+! FIXME:
+!        we can hard-code R3 here since it comes from the (3d) x/y/z cartesian coordinate.
+!        We read cellsOnEdge and edgeNormalVectors in get_grid.
+!         
+! This routine followed the updating part in tend_toEdges in 
+! MPAS/src/core_atmosphere/physics/mpas_atmphys_todynamics.F.
+
+real(r8), intent(in) :: zonal_wind(:,:)        ! u wind from filter
+real(r8), intent(in) :: meridional_wind(:,:)   ! v wind from filter
+real(r8), intent(inout):: uedge(:,:)           ! normal velocity on the edges
+
+integer, parameter :: R3 = 3
+real(r8) :: east(R3,nCells), north(R3,nCells)
+real(r8) :: lonCell_rad(nCells), latCell_rad(nCells)
+integer  :: iCell, iEdge, cell1, cell2
+
+if ( .not. module_initialized ) call static_init_model
 
 ! Back to radians (locally)
 lonCell_rad = lonCell*deg2rad
@@ -4395,15 +4453,15 @@ latCell_rad = latCell*deg2rad
 ! Compute unit vectors in east and north directions for each cell:
 do iCell = 1, nCells
 
-    east(1,iCell) = -sin(lonCell_rad(iCell))
-    east(2,iCell) =  cos(lonCell_rad(iCell))
-    east(3,iCell) =  0.0_r8
-    call r3_normalize(east(1,iCell), east(2,iCell), east(3,iCell))
+      east(1,iCell) = -sin(lonCell_rad(iCell))
+      east(2,iCell) =  cos(lonCell_rad(iCell))
+      east(3,iCell) =  0.0_r8
+      call r3_normalize(east(1,iCell), east(2,iCell), east(3,iCell))
 
-    north(1,iCell) = -cos(lonCell_rad(iCell))*sin(latCell_rad(iCell))
-    north(2,iCell) = -sin(lonCell_rad(iCell))*sin(latCell_rad(iCell))
-    north(3,iCell) =  cos(latCell_rad(iCell))
-    call r3_normalize(north(1,iCell), north(2,iCell), north(3,iCell))
+      north(1,iCell) = -cos(lonCell_rad(iCell))*sin(latCell_rad(iCell))
+      north(2,iCell) = -sin(lonCell_rad(iCell))*sin(latCell_rad(iCell))
+      north(3,iCell) =  cos(latCell_rad(iCell))
+      call r3_normalize(north(1,iCell), north(2,iCell), north(3,iCell))
 
 enddo
 
@@ -4429,10 +4487,10 @@ do iEdge = 1, nEdges
    endif    ! if(.not.on_outermost_edge(iEdge)) then
 enddo       ! do iEdge = 1, nEdges
 
-end subroutine uv_cell_to_edges
-
-
+end subroutine project_uv_cell_to_edges
+      
 !------------------------------------------------------------------
+
 
 !==================================================================
 ! The following (private) routines were borrowed from the MPAS code

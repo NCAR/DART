@@ -31,7 +31,8 @@ use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
 use        model_mod, only : static_init_model, &
                              get_model_size, &
                              get_analysis_time, update_u_from_reconstruct, &
-                             use_increments_for_u_update, uv_cell_to_edges
+                             use_increments_for_u_update, uv_increments_cell_to_edges, &
+                             uv_field_cell_to_edges, anl_domid
 
 use state_structure_mod, only : get_num_variables, get_variable_name, &
                                 get_variable_size, get_varid_from_varname, &
@@ -44,7 +45,6 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  
 implicit none
 
-! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/update_mpas_states.f90'
 
 !------------------------------------------------------------------
@@ -67,7 +67,7 @@ type(time_type)       :: state_time
 integer               :: dims(2) !(nVertLevels, nEdges | nCells)
 real(r8), allocatable :: u(:,:), ucell(:,:), vcell(:,:) 
 real(r8), allocatable :: ucell_dart(:,:), vcell_dart(:,:), increments(:,:)
-integer :: dom_id = 1 ! HK @todo
+integer :: dom_id = anl_domid
 !----------------------------------------------------------------------
 
 call initialize_utilities(progname=source)
@@ -107,9 +107,9 @@ fileloop: do        ! until out of files
   endif
 
   ! copy variables that are not wind from analysis to background
-  varloop: do i = 1, get_num_variables(1)
+  varloop: do i = 1, get_num_variables(dom_id)
 
-      allocate(variable(get_variable_size(1, i)))
+      allocate(variable(get_variable_size(dom_id, i)))
 
       if (get_variable_name(dom_id,i) == 'uReconstructZonal' .or. &
           get_variable_name(dom_id,i) == 'uReconstructMeridional'.or. &
@@ -150,9 +150,7 @@ fileloop: do        ! until out of files
         call nc_get_variable(ncAnlID, 'uReconstructMeridional', vcell_dart)
         vcell = vcell_dart - vcell ! v increments
    
-        call uv_cell_to_edges(ucell, vcell, increments) !
-
-        u = u + increments
+        u = u + uv_increments_cell_to_edges(ucell, vcell)
 
         call nc_put_variable(ncBckID, 'u', u)
         call nc_put_variable(ncBckID, 'uReconstructZonal', ucell_dart)
@@ -173,7 +171,7 @@ fileloop: do        ! until out of files
         allocate(vcell_dart(dims(1), dims(2)))
         call nc_get_variable(ncAnlID, 'uReconstructMeridional', vcell_dart)
  
-        call uv_cell_to_edges(ucell_dart, vcell_dart, u, .true.)
+        call uv_field_cell_to_edges(ucell_dart, vcell_dart, u)
 
         call nc_put_variable(ncBckID, 'u', variable)
         call nc_put_variable(ncBckID, 'uReconstructZonal', variable)
