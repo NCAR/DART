@@ -114,8 +114,8 @@ integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
 integer, parameter :: NOT_IN_STATE = 12
 integer, parameter :: THICKNESS_NOT_IN_STATE = 13
 integer, parameter :: QUAD_LOCATE_FAILED = 14
-integer, parameter :: THICKNESS_QUAD_EVALUTATE_FAILED = 15
-integer, parameter :: QUAD_EVALUTATE_FAILED = 16
+integer, parameter :: THICKNESS_QUAD_EVALUATE_FAILED = 15
+integer, parameter :: QUAD_EVALUATE_FAILED = 16
 integer, parameter :: QUAD_ON_LAND = 17
 integer, parameter :: QUAD_ON_BASIN_EDGE = 18
 integer, parameter :: OBS_ABOVE_SURFACE = 20
@@ -231,6 +231,8 @@ integer,             intent(in) :: qty_in
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
+real(r8), parameter             :: concentration_to_ppt = 1000.0
+
 integer  :: qty ! local qty
 integer  :: which_vert, four_ilons(4), four_ilats(4), lev(ens_size,2)
 integer  :: locate_status, quad_status
@@ -323,7 +325,7 @@ FIND_LAYER: do i = 2, nz
                               thick_at_x, &
                               quad_status)
    if (quad_status /= 0) then
-      istatus(:) = THICKNESS_QUAD_EVALUTATE_FAILED
+      istatus(:) = THICKNESS_QUAD_EVALUATE_FAILED
       return
    endif
 
@@ -358,12 +360,12 @@ select case (qty_in)
 
       call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_pot_temp, quad_status)
       if (quad_status /= 0) then
-         istatus(:) = QUAD_EVALUTATE_FAILED
+         istatus(:) = QUAD_EVALUATE_FAILED
          return
       endif
       call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, get_varid_from_kind(dom_id, QTY_SALINITY), expected_salinity, quad_status)
       if (quad_status /= 0) then
-         istatus(:) = QUAD_EVALUTATE_FAILED
+         istatus(:) = QUAD_EVALUATE_FAILED
          return
       endif
 
@@ -371,10 +373,10 @@ select case (qty_in)
                         + 0.100766_r8*depth_at_x + 2.28405e-7_r8*lon_lat_vert(3)**2
       expected_obs = sensible_temp(expected_pot_temp, expected_salinity, pressure_dbars)
 
-   case (QTY_SALINITY) ! convert from PSU (model) to MSU (obersvation)
+   case (QTY_SALINITY) ! convert from g of salt per kg of seawater (model) to kg of salt per kg of seawater (observation)
       call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
       if (quad_status /= 0) then 
-         istatus(:) = QUAD_EVALUTATE_FAILED
+         istatus(:) = QUAD_EVALUATE_FAILED
          return
       endif
       expected_obs = expected_obs/1000.0_r8
@@ -382,7 +384,7 @@ select case (qty_in)
    case default
       call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
       if (quad_status /= 0) then
-         istatus(:) = QUAD_EVALUTATE_FAILED
+         istatus(:) = QUAD_EVALUATE_FAILED
          return
       endif
 end select
