@@ -555,7 +555,7 @@ allocate(verticesOnCell(maxEdges, nCells))
 allocate(edgeNormalVectors(3, nEdges))
 allocate(xVertex(nVertices), yVertex(nVertices), zVertex(nVertices))
 
-! see if and variables on Edges are in the state vector.  If not, do not read in or
+! see if any variables on Edges are in the state vector.  If not, do not read in or
 ! use any of the Edge arrays to save space.
 data_on_edges = is_edgedata_in_state_vector()
 
@@ -1139,7 +1139,7 @@ integer(i8), allocatable :: var_list(:)
 
 interf_provided = .true.
 
-num_variables = get_num_variables(anl_domid) !HK what about the other domain?
+num_variables = get_num_variables(anl_domid)
 
 ! Get min and max of each variable in each domain
 allocate(var_list(get_my_num_vars(ens_handle)))
@@ -2474,7 +2474,7 @@ integer,     intent(out) :: ndim
 integer  :: i, j, k ! Indices into variable (note k is not used in MPAS)
 integer  :: nzp, iloc, vloc, nnf
 
-call get_model_variable_indices(index_in, i, j, k, var_id=nnf) !HK @todo query domain id
+call get_model_variable_indices(index_in, i, j, k, var_id=nnf)
 ndim = get_num_dims(anl_domid, nnf)
 
 if ( ndim == 2) then   ! 3d (2d netcdf ) variable(vcol, iloc)
@@ -3364,12 +3364,12 @@ enddo
 
 end subroutine compute_u_with_rbf
 
-! !------------------------------------------------------------
+!------------------------------------------------------------
 
 subroutine find_surrounding_edges(lat, lon, nedges, edge_list, cellid, vertexid)
- real(r8), intent(in)  :: lat, lon
- integer,  intent(out) :: nedges, edge_list(:)
- integer,  intent(out) :: cellid, vertexid
+real(r8), intent(in)  :: lat, lon
+integer,  intent(out) :: nedges, edge_list(:)
+integer,  intent(out) :: cellid, vertexid
 
 ! given an arbitrary lat/lon location, find the edges of the
 ! cells that share the nearest vertex.  return the ids for the
@@ -4346,15 +4346,15 @@ latCell_rad = latCell*deg2rad
 ! Compute unit vectors in east and north directions for each cell:
 do iCell = 1, nCells
 
-      east(1,iCell) = -sin(lonCell_rad(iCell))
-      east(2,iCell) =  cos(lonCell_rad(iCell))
-      east(3,iCell) =  0.0_r8
-      call r3_normalize(east(1,iCell), east(2,iCell), east(3,iCell))
+   east(1,iCell) = -sin(lonCell_rad(iCell))
+   east(2,iCell) =  cos(lonCell_rad(iCell))
+   east(3,iCell) =  0.0_r8
+   call r3_normalize(east(1,iCell), east(2,iCell), east(3,iCell))
 
-      north(1,iCell) = -cos(lonCell_rad(iCell))*sin(latCell_rad(iCell))
-      north(2,iCell) = -sin(lonCell_rad(iCell))*sin(latCell_rad(iCell))
-      north(3,iCell) =  cos(latCell_rad(iCell))
-      call r3_normalize(north(1,iCell), north(2,iCell), north(3,iCell))
+   north(1,iCell) = -cos(lonCell_rad(iCell))*sin(latCell_rad(iCell))
+   north(2,iCell) = -sin(lonCell_rad(iCell))*sin(latCell_rad(iCell))
+   north(3,iCell) =  cos(latCell_rad(iCell))
+   call r3_normalize(north(1,iCell), north(2,iCell), north(3,iCell))
 
 enddo
 
