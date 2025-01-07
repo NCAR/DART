@@ -1,0 +1,4 @@
+QCEFF table version: 1,obs_error_info,,,,probit_inflation,,,,,probit_state,,,,,probit_extended_state,,,,,obs_inc_info,,,,
+QTY_NAME,bounded_below,bounded_above,lower_bound,upper_bound,dist_type,bounded_below,bounded_above,lower_bound,upper_bound,dist_type,bounded_below,bounded_above,lower_bound,upper_bound,dist_type,bounded_below,bounded_above,lower_bound,upper_bound,filter_kind,bounded_below,bounded_above,lower_bound,upper_bound
+QTY_AQUIFER_WATER,.false.,.false.,-888888,-888888,GAMMA_DISTRIBUTION,.false.,.true.,-888888,1234,BETA_DISTRIBUTION,.false.,.false.,-888888,-888888,NORMAL_DISTRIBUTION,.false.,.false.,-888888,-888888,EAKF,.false.,.false.,-888888,-888888
+QTY_AMMONIUM_SULPHATE ,.false.,.false.,-888888,-888888,BETA_DISTRIBUTION,.false.,.true.,-888888,-145.6,GAMMA_DISTRIBUTION,.false.,.false.,45,44,BETA_DISTRIBUTION,.false.,.false.,-888888,-888888,EAKF,.false.,.false.,-888888,-888888
