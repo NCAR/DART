@@ -165,13 +165,8 @@ public :: get_analysis_time,            &
           cell_next_to_boundary_edge
 
 public :: update_u_from_reconstruct, &
-          set_lbc_variables, &
-          force_u_into_state, &
           use_increments_for_u_update, &
-          anl_domid, lbc_domid ! HK todo accessor functions?
-
-! set_lbc_variables sets the lbc_variables string array
-! force_u_into_state sets a logical add_u_to_state_list that forces u to be in state
+          anl_domid ! HK todo accessor functions?
 
 character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
 
@@ -231,7 +226,6 @@ type(xyz_location_type), allocatable :: cell_locs(:)
 logical :: search_initialized = .false.
 
 integer :: anl_domid = -1 
-integer :: lbc_domid = -1
 
 !------------------------------------------------------------------------
 ! variables which are in the model_nml namelist
@@ -264,11 +258,6 @@ logical :: update_u_from_reconstruct = .true.
 ! if .true., read in the original u,v winds, compute the increments after the
 ! assimilation, and use only the increments to update the edge winds
 logical :: use_increments_for_u_update = .true.
-
-! if set by: call force_u_into_state()  *BEFORE* calling static_init_model(),
-! the code will add U (edge normal winds) to the mpas state vector even if it
-! isn't in the namelist.
-logical :: add_u_to_state_list = .false.
 
 ! if > 0, amount of distance in fractional model levels that a vertical
 ! point can be above or below the top or bottom of the grid and still be
@@ -323,26 +312,8 @@ namelist /mpas_vars_nml/ mpas_state_variables, mpas_state_bounds
 !------------------------------------------------------------------------
 ! for regional MPAS
 real(r8) :: dxmax  ! max distance between two adjacent cell centers in the mesh (in meters)
-
-! when updating boundary files for regional mpas, note whether the boundary
-! file has the reconstructed winds (lbc_ur, lbc_vr) or not. (this is set by
-! looking at the bdy template file and seeing if those variables are there.)  
-! if not, the other two options are ignored.  
-! if they are in the lbc file, then the other logicals control whether to use 
-! them instead of updating the U edge winds directly, and whether to use the 
-! reconstructed increments or not. 
-! the latter two options could be added to the namelist if someone wanted to
-! explore the options for how the edge winds are updated in the boundary file.
-! for now they're not - they're hardcoded true.
-! note that these are for the boundary file update only - there are separate
-! options for how to update the U winds in the main assimilation state.
-
-logical :: lbc_file_has_reconstructed_winds     = .false.  
-
-! this is special and not in the namelist.  boundary files have a fixed
-! set of variables with fixed names.
-character(len=vtablenamelength) :: lbc_variables(MAX_STATE_VARIABLES) = ''
 !------------------------------------------------------------------------
+
 
 ! Grid parameters - the values will be read from an mpas analysis file.
 integer :: nCells        = -1  ! Total number of cells making up the grid
@@ -432,7 +403,7 @@ integer :: ncid, VarID, numdims, varsize, dimlen
 integer :: iunit, io, ivar, i
 integer :: ss, dd, z1, m1
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
-integer :: nfields, lbc_nfields
+integer :: nfields
 logical :: both
 real(r8) :: variable_bounds(MAX_STATE_VARIABLES, 2)
 integer :: variable_qtys(MAX_STATE_VARIABLES)
@@ -478,25 +449,6 @@ call read_grid()
 call nc_close_file(ncid, routine)                      
 
 model_size = get_domain_size(anl_domid)
-
-lbc_nfields = 0
-
-! if we have a lateral boundary file, add it to the domain
-! so we have access to the corresponding lbc_xxx fields.
-if (.not. global_grid .and. lbc_variables(1) /= '') then
-   ! regional: count number of lbc fields to read in
-   COUNTUP: do i=1, MAX_STATE_VARIABLES
-      if (lbc_variables(i) /= '') then
-         lbc_nfields = lbc_nfields + 1
-      else
-         exit COUNTUP
-      endif
-   enddo COUNTUP
-   lbc_domid = add_domain(bdy_template_filename, lbc_nfields,    &
-                          var_names  = lbc_variables)
-                        ! FIXME clamp_vals = variable_bounds(1:nfields,:) )
-   model_size = model_size + get_domain_size(lbc_domid)
-endif
 
 ! if you have at least one of these wind components in the state vector,
 ! you have to have them both.  the subroutine will error out if only one
@@ -1402,57 +1354,6 @@ end subroutine get_close_state
 !  (these are not required by dart but are used by other programs)
 !==================================================================
 
-
-!-------------------------------------------------------------------
-! modify what static_init_model does.  this *must* be called before !HK Nope this is not good.
-! calling static_init_model().
-! the boundary file variables are fixed by the model and so we
-! don't allow the user to set them via namelist
-
-subroutine set_lbc_variables(template_filename)
-
-character(len=*), intent(in) :: template_filename
-
-integer :: ncid
-
-bdy_template_filename = template_filename
-
-! this initial list always exists.  hardcode them for now,
-! and query to see if the reconstructed winds are there or not.
-
-lbc_variables(1) = 'lbc_qc'
-lbc_variables(2) = 'lbc_qr'
-lbc_variables(3) = 'lbc_qv'
-lbc_variables(4) = 'lbc_rho'
-lbc_variables(5) = 'lbc_theta'
-lbc_variables(6) = 'lbc_u'
-lbc_variables(7) = 'lbc_w'
-
-ncid = nc_open_file_readonly(template_filename, 'set_lbc_variables')
-if (nc_variable_exists(ncid, 'lbc_ur')) then
-   lbc_variables(8) = 'lbc_ur'  
-   lbc_variables(9) = 'lbc_vr' 
-   lbc_file_has_reconstructed_winds = .true.
-endif
-call nc_close_file(ncid)
-
-end subroutine set_lbc_variables
-
-
-!-------------------------------------------------------------------
-! modify what static_init_model does.  this *must* be called before
-! calling static_init_model().
-! set a logical add_u_to_state_list that forces u to be in state
-
-subroutine force_u_into_state()
-
-add_u_to_state_list = .true.
-
-end subroutine force_u_into_state
-
-
-!------------------------------------------------------------------
-
 function get_analysis_time_ncid( ncid, filename )
 
 ! The analysis netcdf files have the start time of the experiment.
@@ -1902,14 +1803,6 @@ if (ngood == MAX_STATE_VARIABLES) then
    string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
    call error_handler(E_MSG,'verify_state_variables',string1,source,text2=string2)
-endif
-
-! if this flag is true and the user hasn't said U should be in the state,
-! add it to the list.
-if (add_u_to_state_list .and. .not. u_already_in_list) then
-   ngood = ngood + 1
-   variable_table(ngood,1) = "u"
-   variable_table(ngood,2) = "QTY_EDGE_NORMAL_SPEED"
 endif
 
 end subroutine verify_state_variables

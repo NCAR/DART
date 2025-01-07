@@ -27,17 +27,16 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              get_next_filename, E_ERR, E_MSG, error_handler
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
-use direct_netcdf_mod,only : read_variables  !HK read_variables?!
 use        model_mod, only : static_init_model, &
                              get_model_size,    &
                              get_analysis_time, &
-                             anl_domid, lbc_domid, &
                              uv_increments_cell_to_edges, &
                              uv_field_cell_to_edges, &
                              get_analysis_weight, &
                              on_boundary_cell, &
                              on_boundary_edge, &
-                             cell_next_to_boundary_edge
+                             cell_next_to_boundary_edge, &
+                             get_grid_dims
                              
 
 use state_structure_mod, only : get_num_variables, get_domain_size, &
@@ -48,7 +47,8 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
                                  nc_get_dimension_size,   &
                                  nc_close_file, &
-                                 NF90_MAX_NAME
+                                 NF90_MAX_NAME, &
+                                 nc_get_variable, nc_put_variable
 
 implicit none
 
@@ -87,12 +87,15 @@ integer :: nVertLevels   = -1  ! Vertical levels; count of vert cell centers
 integer :: vertexDegree  = -1  ! Max number of cells/edges that touch any vertex
 integer :: nSoilLevels   = -1  ! Number of soil layers
 
-integer :: cellid, edgeid, varid
+integer :: cellid, edgeid, i
 
+logical :: lbc_file_has_reconstructed_winds  ! HK @todo may always be false
+character(len=NF90_MAX_NAME), dimension(9) :: lbc_variables
 real(r8), allocatable, dimension(:,:) :: lbc_u, lbc_ucell, lbc_vcell, inc_lbc_ucell, inc_lbc_vcell
 real(r8), allocatable, dimension(:,:) :: old_lbc_ucell, old_lbc_vcell, delta_u
 real(r8), allocatable, dimension(:,:) :: a_var_data, b_var_data, var_data
 real(r8) :: weight
+
 
 character(len=NF90_MAX_NAME) :: bvarname, avarname
 
@@ -107,6 +110,18 @@ call check_namelist_read(iunit, io, "update_bc_nml")
 
 call static_init_model()
 call get_grid_dims(nCells, nVertices, nEdges, nVertLevels, vertexDegree, nSoilLevels)
+
+lbc_file_has_reconstructed_winds = .false.
+lbc_variables(1) = 'lbc_qc'
+lbc_variables(2) = 'lbc_qr'
+lbc_variables(3) = 'lbc_qv'
+lbc_variables(4) = 'lbc_rho'
+lbc_variables(5) = 'lbc_theta'
+lbc_variables(6) = 'lbc_u'
+lbc_variables(7) = 'lbc_w'
+lbc_variables(8) = 'lbc_ur'  ! may not be in the file
+lbc_variables(9) = 'lbc_vr'  ! may not be in the file
+
 !----------------------------------------------------------------------
 ! Reads lists of input mpas (prior) and filter (analysis) files 
 !HK @todo loop around files, why not run this code in parallel?
@@ -178,8 +193,8 @@ fileloop: do        ! until out of files
    allocate(b_var_data(nVertLevels, nCells))
    allocate(var_data(nVertLevels, nCells))
 
-   VARLOOP: do varid = 1, get_num_variables(lbc_domid)
-      bvarname = get_variable_name(lbc_domid, varid)
+   VARLOOP: do i = 1, size(lbc_variables)
+      bvarname = lbc_variables(i)
       avarname = trim(bvarname(5:)) !corresponding field in analysis domain
 
       ! skip edge normal winds
@@ -188,14 +203,6 @@ fileloop: do        ! until out of files
       ! reconstructed cell-center winds have different names in the lbc file.
       if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
       if (bvarname == 'lbc_vr') avarname = 'uReconstructMeridional'    
-
-      if (bvarname(1:4) /= 'lbc_') then
-         write(string1, *) 'skipping update of boundary variable ', trim(bvarname)  !HK @todo why do you need to tell people this?
-         write(string2, *) 'because the name does not start with "lbc"'
-         call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
-                              source, text2=string2)
-         cycle VARLOOP
-      endif
 
       call nc_get_variable(ncAnlID, avarname, a_var_data)
       call nc_get_variable(ncBdyID, bvarname, b_var_data)
@@ -272,7 +279,7 @@ fileloop: do        ! until out of files
             ! has bdyMaskEdge = 0. In this case, even if bdyMaskEdge of the edge is zero,
             ! cell2 has been updated in the CELLS loop above, so the edge has to be updated.
    
-            if (.not. on_boundary_edge(edgeid) .and. .not. cell_next_to_boundary_edge(edgid)) cycle IEDGE
+            if (.not. on_boundary_edge(edgeid) .and. .not. cell_next_to_boundary_edge(edgeid)) cycle IEDGE
   
             lbc_u(:,edgeid) = lbc_u(:,edgeid) + delta_u(:,edgeid)
   

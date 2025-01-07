@@ -32,7 +32,7 @@ use        model_mod, only : static_init_model, &
                              get_model_size, &
                              get_analysis_time, update_u_from_reconstruct, &
                              use_increments_for_u_update, uv_increments_cell_to_edges, &
-                             uv_field_cell_to_edges, anl_domid
+                             uv_field_cell_to_edges, dom_id => anl_domid
 
 use state_structure_mod, only : get_num_variables, get_variable_name, &
                                 get_variable_size, get_varid_from_varname, &
@@ -67,7 +67,6 @@ type(time_type)       :: state_time
 integer               :: dims(2) !(nVertLevels, nEdges | nCells)
 real(r8), allocatable :: u(:,:), ucell(:,:), vcell(:,:) 
 real(r8), allocatable :: ucell_dart(:,:), vcell_dart(:,:), increments(:,:)
-integer :: dom_id = anl_domid
 !----------------------------------------------------------------------
 
 call initialize_utilities(progname=source)
