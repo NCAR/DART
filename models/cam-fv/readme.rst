@@ -118,7 +118,7 @@ Reanalyses
 There have been two large-scale reanalysis efforts using CAM-FV and DART. 
 The **CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
 is archived in the NSF NCAR Research Data Archive 
-`DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ .
+`DS345.0 <https://rda.ucar.edu/datasets/d345000/#!description>`__ .
 (See the |CAM6_Rean|_ ).
 It contains just under 120Tb (yes Tb) of data:
 
@@ -139,7 +139,7 @@ An earlier, more limited dataset can be found in the
 `**Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis** 
 <https://github.com/NCAR/DART/wiki/2-degree-DATM-ensemble-for-CESM-experiments-(1998-thru-2010)>`__
 is archived in the NSF NCAR Research Data Archive 
-`DS199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__ .
+`DS199.1 <https://rda.ucar.edu/datasets/d199001/>`__ .
 It contains about 1.5Tb of data:
 
    This dataset contains files that are an ensemble of 'coupler history' 
@@ -154,7 +154,7 @@ It contains about 1.5Tb of data:
    for CESM component sets that require a data atmosphere. Some example 
    stream text files are included in the RDA to illustrate how to use these data.
 
-..  * CAM4, 2 degree, 2000-2010, `Reanalysis <https://rda.ucar.edu/datasets/ds199.1>`__
+..  * CAM4, 2 degree, 2000-2010, `Reanalysis <https://rda.ucar.edu/datasets/d199001>`__
 ..  * files from the old "large file site": http://www.image.ucar.edu/pub/DART/CAM/
 
 Observations
@@ -167,11 +167,11 @@ which contain the types of observations in the table below
 These files are available on NSF NCAR's glade file system:
 /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10.
 Versions of these files, which also have the results of the reanalysis in them,
-are available from the RDA ds345.0 linked above.
+are available from the RDA d345000 linked above.
 
 NCEP
    NCEP's PREPBUFR files (prepqm) in NSF NCAR's Research Data Archive:
-   (https://rda.ucar.edu/datasets/ds090.0/)
+   (https://rda.ucar.edu/datasets/d090000/)
 
 COSMIC
    This site (http://www.cosmic.ucar.edu/) provides atmospheric refractivity 

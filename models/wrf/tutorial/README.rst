@@ -624,7 +624,7 @@ Step 3: Prepare observations [OPTIONAL]
    The remaining instructions provided below in Step 3 are meant as a guideline
    to converting raw PREPBUFR data files into the required ``obs_seq`` format
    required by DART. Be aware that there is ongoing discussion of the proper
-   archived data set (RDA ds090.0 or ds337.0) that should be used to obtain
+   archived data set (RDA d090000 or d337000) that should be used to obtain
    the PREPBUFR data. See the discussion in `bug report #634 <https://github.com/NCAR/DART/issues/634>`__.  
    If you have questions please contact the DART team.
 
@@ -651,7 +651,7 @@ generate an observation sequence file.
 
 The steps listed below to generate these observation
 sequence files are meant as a guideline for NSF NCAR Research Data
-Archive data file ds090.0. **Be aware not all required software has been
+Archive data file d090000. **Be aware not all required software has been
 migrated to Derecho to perform this conversion.**  
 See `bug report #634 <https://github.com/NCAR/DART/issues/634>`__
 for more updated information.
@@ -682,7 +682,7 @@ you would do the following:
 
 -  Download the PREPBUFR observations for your desired time. Go to the
    `NSF NCAR Research Data
-   Archive <https://rda.ucar.edu/datasets/ds090.0/>`__ page for the
+   Archive <https://rda.ucar.edu/datasets/d090000/>`__ page for the
    NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
    the "Data Access" tab, and follow either the instructions for
    external users or NSF NCAR internal users.

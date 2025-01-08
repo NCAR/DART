@@ -105,7 +105,7 @@ Download WOD from NSF NCAR
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 WOD09 can also be downloaded from NSF NCAR's `research data archive (RDA) dataset 
-285.0 <https://rda.ucar.edu/datasets/ds285.0/>`__.
+285.0 <https://rda.ucar.edu/datasets/d285000/>`__.
 
 Programs
 --------

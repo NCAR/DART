@@ -3,7 +3,7 @@
 # Extracts site level grid cell from CAM4 reanalysis
 
 # CAM4 reanalysis
-CAM4_grid_path="/glade/collections/rda/data/ds199.1/"
+CAM4_grid_path="/glade/campaign/collections/rda/data/d199001/"
 # Site Level grid cell from CAM4 renanalysis
 CAM4_site_path="/glade/work/bmraczka/CAM4_NR1/"
 

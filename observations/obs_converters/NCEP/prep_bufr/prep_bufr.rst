@@ -148,12 +148,12 @@ Note that if you can get the blocked file formats to begin with, this program is
 Getting the ncep reanalysis prepbufr format data from NSF NCAR HPSS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis dataset, ds090.0, on NSF NCAR Mass Store
+The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis dataset, d090000, on NSF NCAR Mass Store
 System (HPSS).
 
 To find the files:
 
--  go to the `NSF NCAR/NCEP reanalysis archive. <http://rda.ucar.edu/datasets/ds090.0/>`__
+-  go to the `NSF NCAR/NCEP reanalysis archive. <http://rda.ucar.edu/datasets/d090000/>`__
 -  Click on the "Inventories" tab.
 -  Select the year you are interested in.
 -  Search for files with the string "prepqm" in the name.
