@@ -217,9 +217,19 @@ do row = 1, size(qceff_table_data)
       case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
          qceff_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       case ('GAMMA_DISTRIBUTION')
+         ! Force standard Gamma distribution
          qceff_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
+         qceff_table_data(row)%probit_inflation%bounded_above = .false.
+         qceff_table_data(row)%probit_inflation%bounded_below = .true.
+         qceff_table_data(row)%probit_inflation%upper_bound = MISSING_R8
+         qceff_table_data(row)%probit_inflation%lower_bound = 0.0_r8
       case ('BETA_DISTRIBUTION')
+         ! Force standard Beta distribution
          qceff_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
+         qceff_table_data(row)%probit_inflation%bounded_above = .true.
+         qceff_table_data(row)%probit_inflation%bounded_below = .true.
+         qceff_table_data(row)%probit_inflation%upper_bound = 1.0_r8
+         qceff_table_data(row)%probit_inflation%lower_bound = 0.0_r8
       case ('LOG_NORMAL_DISTRIBUTION')
          qceff_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
@@ -242,9 +252,19 @@ do row = 1, size(qceff_table_data)
       case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       case ('GAMMA_DISTRIBUTION')
+         ! Force standard Gamma distribution
          qceff_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
+         qceff_table_data(row)%probit_state%bounded_above = .false.
+         qceff_table_data(row)%probit_state%bounded_below = .true.
+         qceff_table_data(row)%probit_state%upper_bound = MISSING_R8
+         qceff_table_data(row)%probit_state%lower_bound = 0.0_r8
       case ('BETA_DISTRIBUTION')
+         ! Force standard Beta distribution
          qceff_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
+         qceff_table_data(row)%probit_state%bounded_above = .true.
+         qceff_table_data(row)%probit_state%bounded_below = .true.
+         qceff_table_data(row)%probit_state%upper_bound = 1.0_r8
+         qceff_table_data(row)%probit_state%lower_bound = 0.0_r8
       case ('LOG_NORMAL_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
@@ -266,9 +286,19 @@ do row = 1, size(qceff_table_data)
       case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       case ('GAMMA_DISTRIBUTION')
+         ! Force standard Gamma distribution
          qceff_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
+         qceff_table_data(row)%probit_extended_state%bounded_above = .false.
+         qceff_table_data(row)%probit_extended_state%bounded_below = .true.
+         qceff_table_data(row)%probit_extended_state%upper_bound = MISSING_R8
+         qceff_table_data(row)%probit_extended_state%lower_bound = 0.0_r8
       case ('BETA_DISTRIBUTION')
+         ! Force standard Beta distribution
          qceff_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
+         qceff_table_data(row)%probit_extended_state%bounded_above = .true.
+         qceff_table_data(row)%probit_extended_state%bounded_below = .true.
+         qceff_table_data(row)%probit_extended_state%upper_bound = 1.0_r8
+         qceff_table_data(row)%probit_extended_state%lower_bound = 0.0_r8
       case ('LOG_NORMAL_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
