@@ -63,8 +63,8 @@ public :: above_ramp_start, are_damping, build_cam_pressure_columns, build_heigh
           set_vert_localization, vert_interp, vertical_localization_type, write_model_time
 
 public :: nc_write_model_atts, grid_data, read_grid_info, &
-          MAX_STATE_VARIABLES, num_state_table_columns, common_initialized, &
-          MAX_PERT, shortest_time_between_assimilations, domain_id, &
+          common_initialized, MAX_PERT, &
+          shortest_time_between_assimilations, domain_id, &
           ccustom_routine_to_generate_ensemble, &
           cfields_to_perturb, &
           cperturbation_amplitude, &
@@ -107,8 +107,6 @@ type(cam_grid) :: grid_data
 ! info and is required for getting state variables.
 integer :: domain_id = -1
 
-integer, parameter :: MAX_STATE_VARIABLES = 100
-integer, parameter :: num_state_table_columns = 5
 ! maximum number of fields you can list to be perturbed
 ! to generate an ensemble if starting from a single state.
 integer, parameter :: MAX_PERT = 100

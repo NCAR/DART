@@ -47,7 +47,8 @@ use  ensemble_manager_mod, only : ensemble_type
 use distributed_state_mod, only : get_state
 
 use     default_model_mod, only : adv_1step, nc_write_model_vars, &
-                                  get_state_variables, state_var_type
+                                  parse_variables_clamp, &
+                                  MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 use        noah_hydro_mod, only : configure_lsm, get_noah_timestepping, &
                                   num_soil_layers, lsm_namelist_filename, &
@@ -124,15 +125,6 @@ character(len=*), parameter :: source   = 'noah_model_mod.f90'
 integer, parameter :: NSOLDX = 100
 character(len=512) :: string1, string2, string3
 
-! Codes for interpreting the columns of the variable_table
-integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
-integer, parameter :: VT_KINDINDX     = 2 ! ... DART kind
-integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
-integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
-integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
-integer, parameter :: MAX_STATE_VARIABLES     = 40
-integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
-
 integer :: domain_count
 integer :: idom, idom_lsm = -1
 
@@ -162,14 +154,12 @@ integer               :: assimilation_period_seconds  = 60
 real(r8)              :: model_perturbation_amplitude = 0.002
 character(len=256)    :: perturb_distribution         = 'lognormal'
 integer               :: debug    = 0  ! turn up for more and more debug messages
-character(len=obstypelength) :: lsm_variables(NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = ' '
+character(len=obstypelength) :: lsm_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar      = .false.    ! wrap over the poles
 logical :: periodic_x = .false.    ! wrap in longitude or x
 logical :: periodic_y = .false.    ! used for single column model, wrap in y
-
-logical, parameter :: use_clamping = .true.
 
 namelist /model_nml/ domain_shapefiles, &
                      lsm_model_choice, &
@@ -229,8 +219,6 @@ integer  :: iunit, io, domainID
 integer  :: n_lsm_fields
 integer  :: i
 
-type(state_var_type) :: state_vars
-
 character(len=256) :: filename
 
 if ( module_initialized ) return ! only need to do this once.
@@ -274,11 +262,7 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
    else
       call configure_lsm(lsm_model_choice,domain_shapefiles(domainID))
       call read_noah_global_atts(domain_shapefiles(domainID))
-      call get_state_variables(lsm_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
-      idom_lsm = add_domain(domain_shapefiles(domainID), state_vars%nvars, state_vars%netcdf_var_names, &
-                            kind_list=state_vars%qtys, &
-                            clamp_vals=state_vars%clamp_values, &
-                            update_list=state_vars%updates)
+      idom_lsm = add_domain(domain_shapefiles(domainID), parse_variables_clamp(lsm_variables))
       if (debug > 99) call state_structure_info(idom_lsm)
 
       call check_vertical_dimension(idom_lsm)

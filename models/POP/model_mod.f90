@@ -49,10 +49,11 @@ use distributed_state_mod, only : get_state
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, &
-                                  get_dart_vector_index
+                                  get_dart_vector_index, get_varid_from_kind, &
+                                  get_kind_index
 use default_model_mod,     only : adv_1step, init_time, init_conditions, &
-                                  nc_write_model_vars, get_state_variables, &
-                                  state_var_type
+                                  nc_write_model_vars, parse_variables, &
+                                  MAX_STATE_VARIABLE_FIELDS
 
 use typesizes
 use netcdf 
@@ -108,17 +109,12 @@ logical, save :: module_initialized = .false.
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: max_state_variables = 10 
-integer, parameter :: num_state_table_columns = 3
-type(state_var_type) :: state_vars
-
 ! things which can/should be in the model_nml
 integer  :: assimilation_period_days = -1
 integer  :: assimilation_period_seconds = -1
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=vtablenamelength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! only valid values:  native, big_endian, little_endian
@@ -325,10 +321,6 @@ endif
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
-! verify that the model_state_variables namelist was filled in correctly.  
-! returns state_vars which has netcdf variable names, kinds and update strings.
-call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, state_vars)
-
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
@@ -346,10 +338,10 @@ call dpth2pres(Nz, ZC, pressure)
 call init_interp()
 
 !> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
-domain_id = add_domain('pop.r.nc', state_vars%nvars, &
-                       var_names = state_vars%netcdf_var_names, &
-                       kind_list = state_vars%qtys, &
-                       update_list = state_vars%updates)
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables and returns a state_var_type that
+! can be passed to add_domain
+domain_id = add_domain('pop.r.nc', parse_variables(model_state_variables))
 
 model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size
@@ -832,7 +824,7 @@ if(obs_type == QTY_SEA_SURFACE_ANOMALY) then
                    source, revision, revdate, text2=string2, text3=string3)
    endif
 
-   base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE))
+   base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEA_SURFACE_PRESSURE))
    call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, &
            QTY_SEA_SURFACE_HEIGHT, 1, expected_obs, istatus, expected_mdt)
 
@@ -853,10 +845,10 @@ SELECT CASE (obs_type)
          QTY_U_CURRENT_COMPONENT,   &
          QTY_V_CURRENT_COMPONENT,   &
          QTY_SEA_SURFACE_PRESSURE)
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
 
    CASE (QTY_SEA_SURFACE_HEIGHT)
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEA_SURFACE_PRESSURE))
       convert_to_ssh = .TRUE. ! simple linear transform of PSURF
 
    CASE DEFAULT
@@ -1745,7 +1737,7 @@ integer :: lon_index, lat_index, depth_index, local_var, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
-call get_state_kind(var_id, local_var)
+local_var = get_kind_index(domain_id, var_id)
 
 if (is_on_ugrid(local_var)) then
    lon = ULON(lon_index, lat_index)
@@ -1775,52 +1767,6 @@ endif
 end subroutine get_state_meta_data
 
 
-!--------------------------------------------------------------------
-!> given a DART kind, return the variable number (position in the list)
-
-
-function get_varid_from_kind(dart_kind)
-
-integer, intent(in) :: dart_kind
-integer             :: get_varid_from_kind
-
-integer :: i
-
-do i = 1, get_num_variables(domain_id)
-   if (dart_kind == state_vars%qtys(i)) then
-      get_varid_from_kind = i
-      return
-   endif
-end do
-
-write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
-call error_handler(E_MSG,'get_varid_from_kind', string1, &
-                   source, revision, revdate, text2=string2)
-
-get_varid_from_kind = -1
-
-end function get_varid_from_kind
-
-
-!------------------------------------------------------------------
-!> Given an integer index into the state vector structure, returns the kind,
-!> and both the starting offset for this kind, as well as the offset into
-!> the block of this kind.
-
-
-subroutine get_state_kind(var_ind, var_type)
-
-integer, intent(in)  :: var_ind
-integer, intent(out) :: var_type
-
-if ( .not. module_initialized ) call static_init_model
-
-var_type = state_vars%qtys(var_ind)
-
-end subroutine get_state_kind
-
-
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
 !> type, taking into account the ocean bottom and dry land.
@@ -1836,7 +1782,7 @@ integer :: lon_index, lat_index, depth_index, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
-call get_state_kind(var_id, var_type)
+var_type = get_kind_index(domain_id, var_id)
 
 ! if on land or below ocean floor, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then
@@ -2352,8 +2298,8 @@ if(hstatus /= 0) then
    return
 endif
 
-offset_salt = get_index_start(domain_id, get_varid_from_kind(QTY_SALINITY))
-offset_temp = get_index_start(domain_id, get_varid_from_kind(QTY_POTENTIAL_TEMPERATURE))
+offset_salt = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SALINITY))
+offset_temp = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_POTENTIAL_TEMPERATURE))
 
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
 call do_interp(state_handle, ens_size, offset_salt, hgt_bot, hgt_top, hgt_fract, llon, llat, &
@@ -2747,7 +2693,7 @@ subroutine use_default_state_variables( state_variables )
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*num_state_table_columns ) = &
+state_variables( 1:5*3 ) = &
    (/ 'SALT_CUR                  ', 'QTY_SALINITY              ', 'UPDATE                    ', &
       'TEMP_CUR                  ', 'QTY_POTENTIAL_TEMPERATURE ', 'UPDATE                    ', &
       'UVEL_CUR                  ', 'QTY_U_CURRENT_COMPONENT   ', 'UPDATE                    ', &

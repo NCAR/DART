@@ -58,7 +58,8 @@ use default_model_mod, only : pert_model_copies, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
                               convert_vertical_obs, adv_1step, &
-                              get_state_variables, state_var_type
+                              parse_variables, &
+                              MAX_STATE_VARIABLE_FIELDS
 
 implicit none
 private
@@ -103,10 +104,6 @@ type(quad_interp_handle) :: interp_t_grid,  &
 ! Ocean vs land
 real(r8), allocatable :: wet(:,:), basin_depth(:,:)
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: MAX_STATE_VARIABLES = 10
-integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
-
 ! model_interpolate failure codes
 integer, parameter :: NOT_IN_STATE = 12
 integer, parameter :: THICKNESS_NOT_IN_STATE = 13
@@ -125,7 +122,7 @@ character(len=256) :: static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc
 character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = -1
 integer  :: assimilation_period_seconds   = -1
-character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
+character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables
@@ -148,7 +145,6 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-type(state_var_type) :: state_vars
 
 module_initialized = .true.
 
@@ -156,7 +152,7 @@ call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
-! Record the namelist values used for the run 
+! Record the namelist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
@@ -170,16 +166,11 @@ call set_calendar_type('gregorian')
 assimilation_time_step = set_time(assimilation_period_seconds, &
                                   assimilation_period_days)
 
-! Reads the model_state_variables namelist entry into a table and returns
-! state_var_type state_vars with nvars, netcdf variable names, kinds/qtys,
-! and update logicals.
-call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, state_vars)
-
-! Define which variables are in the model state
-dom_id = add_domain(template_file, state_vars%nvars, &
-                    var_names = state_vars%netcdf_var_names(1:state_vars%nvars), &
-                    kind_list = state_vars%qtys(1:state_vars%nvars), &
-                    update_list = state_vars%updates(1:state_vars%nvars))
+! Define which variables are in the model state;
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables to a state_var_type that can be passed
+! to add_domain
+dom_id = add_domain(template_file, parse_variables(model_state_variables))
 
 model_size = get_domain_size(dom_id)
 

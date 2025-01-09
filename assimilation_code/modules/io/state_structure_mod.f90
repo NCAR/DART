@@ -68,6 +68,8 @@ use netcdf_utilities_mod, only : nc_check
 
 use      sort_mod, only : index_sort
 
+use default_model_mod, only : state_var_type
+
 use netcdf
 
 implicit none
@@ -281,6 +283,7 @@ interface add_domain
    module procedure add_domain_blank
    module procedure add_domain_from_file
    module procedure add_domain_from_spec
+   module procedure add_domain_from_state_type
 end interface
 
 interface get_index_start
@@ -313,8 +316,6 @@ contains
 !> into the state_strucutre. 
 !>
 !> Returns a dom_id that can be used to harvest information of a particular domain
-!>
-!> Does this need to be a function or a subroutine?
 
 
 function add_domain_from_file(info_file, num_vars, var_names, kind_list, clamp_vals, update_list) result(dom_id)
@@ -363,6 +364,58 @@ if ( present(clamp_vals)  ) call set_clamping   (dom_id, num_vars, clamp_vals)
 if ( present(update_list) ) call set_update_list(dom_id, num_vars, update_list)
 
 end function add_domain_from_file
+
+
+!-------------------------------------------------------------------------------
+!> Given an info_file, reads in a state_var_type including nvars, netcdf
+!> variable names, qtys (kinds), clamp values (optional), and updates into the
+!> state_structure
+!>
+!> Returns a dom_id that can be used to harvest information of a particular domain
+
+
+function add_domain_from_state_type(info_file, vars) result(dom_id)
+
+character(len=*), intent(in) :: info_file
+type(state_var_type), intent(in) :: vars
+integer :: dom_id
+
+integer :: ivar
+
+! add to domains
+call assert_below_max_num_domains('add_domain_from_file')
+state%num_domains = state%num_domains + 1
+!>@todo dom_id should be a handle.
+dom_id = state%num_domains
+
+! save information about the information file
+state%domain(dom_id)%info_file = info_file
+state%domain(dom_id)%method = 'file'
+
+! set number of variables in this domain
+state%domain(dom_id)%num_variables = vars%nvars
+
+! load up the variable names
+allocate(state%domain(dom_id)%variable(vars%nvars))
+
+do ivar = 1, vars%nvars
+   state%domain(dom_id)%variable(ivar)%varname = vars%netcdf_var_names(ivar)
+enddo
+
+! load up variable id's and sizes
+call load_state_variable_info(state%domain(dom_id),dom_id)
+
+! load up the domain unique dimension info
+call load_unique_dim_info(dom_id)
+
+! load up any cf-conventions if they exist
+call load_common_cf_conventions(state%domain(dom_id))
+
+call set_dart_kinds(dom_id, vars%nvars, vars%qtys)
+if (allocated(vars%clamp_values)) call set_clamping(dom_id, vars%nvars, vars%clamp_values)
+call set_update_list(dom_id, vars%nvars, vars%updates)
+
+end function add_domain_from_state_type
 
 
 !-------------------------------------------------------------------------------

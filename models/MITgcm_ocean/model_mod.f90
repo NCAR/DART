@@ -44,7 +44,8 @@ use random_seq_mod,        only : random_seq_type, init_random_seq, random_gauss
 
 use default_model_mod,     only : nc_write_model_vars, adv_1step, &
                                   init_conditions => fail_init_conditions, &
-                                  get_state_variables, state_var_type
+                                  parse_variables_clamp, &
+                                  MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -127,8 +128,6 @@ integer          :: startDate_1         = 19530101
 integer          :: startDate_2         = 60000
 logical          :: calendarDumps       = .false.
 logical          :: pickupStrictlyMatch = .false.
-
-logical, parameter :: use_clamping = .true.
 
 NAMELIST /CAL_NML/ TheCalendar, startDate_1, startDate_2, calendarDumps
 
@@ -281,14 +280,7 @@ integer(i8) :: model_size    ! the state vector length
 ! Model namelist declarations with defaults
 ! Codes for interpreting the columns of the variable_table
 
-integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
-integer, parameter :: VT_KINDINDX     = 2 ! ... DART QUANTITY
-integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
-integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
-integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
-integer, parameter :: MAX_STATE_VARIABLES = 20
-integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
-character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES ) = ' '
+character(len=vtablenamelength) :: mitgcm_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 
 character(len=256) :: model_shape_file = ' '
 integer  :: assimilation_period_days = 7
@@ -331,8 +323,6 @@ contains
 !> Called to do one-time initialization of the model.
 
 subroutine static_init_model()
-
-type(state_var_type) :: state_vars
 
 integer :: i, iunit, io
 integer :: ss, dd
@@ -532,11 +522,7 @@ if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 
-call get_state_variables(mitgcm_variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
-
-domain_id = add_domain(model_shape_file, state_vars%nvars, &
-                       state_vars%netcdf_var_names, state_vars%qtys, &
-                       state_vars%clamp_values, state_vars%updates)
+domain_id = add_domain(model_shape_file, parse_variables_clamp(mitgcm_variables))
 
 if (compress) then ! read in compressed coordinates
 

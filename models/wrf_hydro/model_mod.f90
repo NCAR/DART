@@ -44,8 +44,8 @@ use distributed_state_mod, only : get_state
 
 use      dart_time_io_mod, only : write_model_time
 
-use     default_model_mod, only : adv_1step, nc_write_model_vars, get_state_variables, &
-                                  state_var_type
+use     default_model_mod, only : adv_1step, nc_write_model_vars, parse_variables_clamp, &
+                                  MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 use        noah_hydro_mod, only : configure_lsm, configure_hydro, &
                                   n_link, linkLong, linkLat, linkAlt, get_link_tree, &
@@ -111,16 +111,10 @@ character(len=*), parameter :: revdate  = ""
 
 logical, save :: module_initialized = .false.
 
-logical, parameter :: use_clamping = .true.
-
 character(len=512) :: string1, string2, string3
 
 integer(i8) :: model_size
 type(time_type) :: time_step
-
-! For interpreting the columns of the variable_table
-integer, parameter :: MAX_STATE_VARIABLES     = 40
-integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 
 integer :: domain_count
 integer :: idom, idom_hydro = -1, idom_parameters = -1, idom_lsm = -1
@@ -138,9 +132,9 @@ real(r8)            :: streamflow_4_local_multipliers = 1.0e-5
 character(len=256)  :: perturb_distribution           = 'lognormal'
 
 character(len=obstypelength) :: &
-    lsm_variables(  NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = '', &
-    hydro_variables(NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = '', &
-    parameters(     NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = ''
+    lsm_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = '', &
+    hydro_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = '', &
+    parameters(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ''
 
 namelist /model_nml/ assimilation_period_days,       &
                      assimilation_period_seconds,    &
@@ -173,8 +167,6 @@ contains
 subroutine static_init_model()
 
 character(len=*), parameter :: routine = 'static_init_model'
-
-type(state_var_type) :: state_vars_hydro, state_vars_parameters, state_vars_lsm
 
 integer  :: iunit, io, domainID
 integer  :: vsize
@@ -243,12 +235,8 @@ DOMAINS: do domainID = 1,size(domain_order)
       call configure_hydro()
       call read_hydro_global_atts(domain_shapefiles(domainID))
 
-      call get_state_variables(hydro_variables, MAX_STATE_VARIABLES, use_clamping, state_vars_hydro)
       idom_hydro = add_domain(domain_shapefiles(domainID), &
-                       state_vars_hydro%nvars, state_vars_hydro%netcdf_var_names, &
-                       kind_list=state_vars_hydro%qtys, &
-                       clamp_vals=state_vars_hydro%clamp_values, &
-                       update_list=state_vars_hydro%updates)
+                              parse_variables_clamp(hydro_variables))
 
       if (debug > 99) call state_structure_info(idom_hydro)
 
@@ -265,12 +253,8 @@ DOMAINS: do domainID = 1,size(domain_order)
 
    elseif (index(domain_name,'PARAMETER') > 0) then
 
-      call get_state_variables(parameters, MAX_STATE_VARIABLES, use_clamping, state_vars_parameters)
       idom_parameters = add_domain(domain_shapefiles(domainID), &
-                        state_vars_parameters%nvars, state_vars_parameters%netcdf_var_names, &
-                        kind_list=state_vars_parameters%qtys, &
-                        clamp_vals=state_vars_parameters%clamp_values, &
-                        update_list=state_vars_parameters%updates)
+                                   parse_variables_clamp(parameters))
 
       if (debug > 99) call state_structure_info(idom_parameters)
 
@@ -280,12 +264,8 @@ DOMAINS: do domainID = 1,size(domain_order)
 
       call configure_lsm(lsm_model_choice)
       call read_noah_global_atts(domain_shapefiles(domainID))
-      call get_state_variables(lsm_variables, MAX_STATE_VARIABLES, use_clamping, state_vars_lsm)
       idom_hydro = add_domain(domain_shapefiles(domainID), &
-                       state_vars_lsm%nvars, state_vars_lsm%netcdf_var_names, &
-                       kind_list=state_vars_lsm%qtys, &
-                       clamp_vals=state_vars_lsm%clamp_values, &
-                       update_list=state_vars_lsm%updates)
+                              parse_variables_clamp(lsm_variables))
 
        if (debug > 99) call state_structure_info(idom_lsm)
 

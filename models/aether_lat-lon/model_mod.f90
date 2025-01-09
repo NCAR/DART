@@ -62,7 +62,7 @@ use default_model_mod, only : &
     init_time => fail_init_time, &
     init_conditions => fail_init_conditions, &
     convert_vertical_obs, convert_vertical_state, adv_1step, &
-    get_state_variables, state_var_type
+    parse_variables_clamp, MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 implicit none
 private
@@ -89,7 +89,6 @@ public :: get_model_size,         &
 character(len=256), parameter :: source   = 'aether_lat-lon/model_mod.f90'
 
 logical :: module_initialized = .false.
-logical, parameter :: use_clamping = .true.
 integer :: dom_id ! used to access the state structure
 type(time_type) :: assimilation_time_step 
 
@@ -99,9 +98,7 @@ character(len=256) :: template_file = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 
-integer, parameter              :: MAX_STATE_VARIABLES     = 100
-integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
-character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS*MAX_STATE_VARIABLES) = ''
+character(len=vtablenamelength) :: variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ''
 
 namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
@@ -151,7 +148,6 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-type(state_var_type) :: state_vars
 
 module_initialized = .true.
 
@@ -173,8 +169,6 @@ lon_delta = lons(2) - lons(1)
 lat_start = lats(1)
 lat_delta = lats(2) - lats(1)
 
-call get_state_variables(variables, MAX_STATE_VARIABLES, use_clamping, state_vars)
-
 ! This time is both the minimum time you can ask the model to advance
 ! (for models that can be advanced by filter) and it sets the assimilation
 ! window.  All observations within +/- 1/2 this interval from the current
@@ -182,10 +176,11 @@ call get_state_variables(variables, MAX_STATE_VARIABLES, use_clamping, state_var
 ! feel free to hardcode it and remove from the namelist.
 assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
-! Define which variables are in the model state
-! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(template_file, state_vars%nvars, state_vars%netcdf_var_names, state_vars%qtys, &
-                    state_vars%clamp_values, state_vars%updates)
+! Define which variables are in the model state;
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables and returns a state_var_type that
+! can be passed to add_domain
+dom_id = add_domain(template_file, parse_variables_clamp(variables))
 
 call state_structure_info(dom_id)
 

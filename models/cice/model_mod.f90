@@ -35,7 +35,8 @@ use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids
                                   nc_write_location
 
 use default_model_mod,     only : init_time, init_conditions, adv_1step, &
-                                  nc_write_model_vars, get_state_variables, state_var_type
+                                  nc_write_model_vars, parse_variables, &
+                                  MAX_STATE_VARIABLE_FIELDS
 
 use         utilities_mod, only : register_module, error_handler,               &
                                   E_ERR, E_MSG, nmlfileunit, get_unit,  &
@@ -113,7 +114,8 @@ use distributed_state_mod, only : get_state
 
 use   state_structure_mod, only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
-                                  get_num_dims, get_domain_size, state_structure_info
+                                  get_num_dims, get_domain_size, state_structure_info, &
+                                  get_varid_from_kind, get_kind_index
 
 use typesizes
 use netcdf 
@@ -165,17 +167,12 @@ logical, save :: module_initialized = .false.
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: max_state_variables = 10 
-integer, parameter :: num_state_table_columns = 3
-type(state_var_type) :: state_vars
-
 ! things which can/should be in the model_nml
 integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=metadatalength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! valid values:  native, big_endian, little_endian
@@ -398,10 +395,6 @@ call read_topography(Nx, Ny,  KMT,  KMU)
 if (debug > 2) call write_grid_netcdf()     ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
-! verify that the model_state_variables namelist was filled in correctly.  
-! returns state_vars  which has netcdf variable names, kinds and update strings.
-call get_state_variables(model_state_variables, MAX_STATE_VARIABLES, state_vars)
-
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 2 are 2D.
 !  e.g. aicen,vicen,vsnon = 256 x 225 x 5
@@ -418,10 +411,10 @@ call init_interp()
 ! Determine the shape of the variables from "cice.r.nc"
 ! The assimilate.csh, perfect_model.csh must ensure the cice restart file
 ! is linked to this filename.
-domain_id = add_domain('cice.r.nc', state_vars%nvars, &
-                       var_names = state_vars%netcdf_var_names, &
-                       kind_list = state_vars%qtys, &
-                       update_list = state_vars%updates)
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables and returns a state_var_type that can be
+! passed to add_domain
+domain_id = add_domain('cice.r.nc', parse_variables(model_state_variables))
 
 if (debug > 2) call state_structure_info(domain_id)
 
@@ -872,25 +865,25 @@ endif
 SELECT CASE (obs_type)
    CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_VOLUME))  
    CASE (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SNOWVOLUME))  
    CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))  
    CASE (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_VOLUME))  
    CASE (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SNOWVOLUME))  
    CASE (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
       cat_signal = -3
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SURFACETEMP))
    CASE (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
       cat_signal = 3
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SOM_TEMPERATURE))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SOM_TEMPERATURE))
    CASE (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
          QTY_SEAICE_FY       , & 
          QTY_SEAICE_VOLUME         , &
@@ -925,7 +918,7 @@ SELECT CASE (obs_type)
          QTY_SEAICE_SNOWENTHALPY003  )
       ! move pointer to the particular category
       ! then treat as 2d field in lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
       cat_signal = 1 ! now same as boring 2d field
    CASE ( QTY_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
@@ -934,7 +927,7 @@ SELECT CASE (obs_type)
           QTY_SEAICE_ALBEDODIRNIR   , &
           QTY_SEAICE_ALBEDOINDVIZ   , &
           QTY_SEAICE_ALBEDOINDNIR   )
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
       cat_signal = 2 ! also boring 2d field (treat same as cat_signal 1)
    CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
@@ -952,12 +945,12 @@ if (cat_signal == -2) then
    do icat = 1,Ncat
       !reads in aicen 
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_conc, istatus)
       !reads in fyn
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_FY))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_FY))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_fy, istatus)
    temp = temp + expected_conc * expected_fy  !sum(aicen*fyn) = FY % over ice
@@ -980,12 +973,12 @@ else if (cat_signal == -3 ) then
    do icat = 1,Ncat
       !reads in aicen 
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_conc, istatus)
       !reads in Tsfcn
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_SURFACETEMP))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_tsfc, istatus)
       if (any(expected_conc<0.0) .or. any(expected_conc>1.0))then
@@ -1023,7 +1016,7 @@ endif
 
 if (cat_signal == -1) then
       ! we need to know the aggregate sea ice concentration for these special cases
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))  
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
       
@@ -1819,7 +1812,7 @@ integer  :: lon_index, lat_index, cat_index, local_var, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, cat_index, var_id=var_id)
-call get_state_kind(var_id, local_var)
+local_var = get_kind_index(domain_id, var_id)
 
 if (is_on_ugrid(local_var)) then
    lon = ULON(lon_index, lat_index)
@@ -1844,52 +1837,6 @@ end subroutine get_state_meta_data
 
 !--------------------------------------------------------------------
 
-function get_varid_from_kind(dart_kind)
-
-integer, intent(in) :: dart_kind
-integer             :: get_varid_from_kind
-
-! given a kind, return what variable number it is
-
-integer :: i
-
-do i = 1, get_num_variables(domain_id)
-   if (dart_kind == state_vars%qtys(i)) then
-      get_varid_from_kind = i
-      return
-   endif
-end do
-
-if (debug > 1) then
-   write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-   write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
-   call error_handler(E_MSG,'get_varid_from_kind', string1, &
-                      source, revision, revdate, text2=string2)
-endif
-
-get_varid_from_kind = -1
-
-end function get_varid_from_kind
-
-
-!------------------------------------------------------------------
-
-subroutine get_state_kind(var_ind, var_type)
- integer, intent(in)  :: var_ind
- integer, intent(out) :: var_type
-
-! Given an integer index into the state vector structure, returns the kind,
-! and both the starting offset for this kind, as well as the offset into
-! the block of this kind.
-
-if ( .not. module_initialized ) call static_init_model
-
-var_type = state_vars%qtys(var_ind)
-
-end subroutine get_state_kind
-
-!------------------------------------------------------------------
-
 subroutine get_state_kind_inc_dry(index_in, var_type)
  integer(i8), intent(in)  :: index_in
  integer,     intent(out) :: var_type
@@ -1902,7 +1849,7 @@ integer :: lon_index, lat_index, depth_index, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
-call get_state_kind(var_id, var_type)
+var_type = get_kind_index(domain_id, var_id)
 
 ! if on land, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index)) then
@@ -2583,7 +2530,7 @@ subroutine use_default_state_variables( state_variables )
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*num_state_table_columns ) = &
+state_variables( 1:5*3 ) = &
    (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
       'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
       'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    ', &
