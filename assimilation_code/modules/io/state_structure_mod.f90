@@ -383,7 +383,7 @@ integer :: dom_id
 integer :: ivar
 
 ! add to domains
-call assert_below_max_num_domains('add_domain_from_file')
+call assert_below_max_num_domains('add_domain_from_state_type')
 state%num_domains = state%num_domains + 1
 !>@todo dom_id should be a handle.
 dom_id = state%num_domains
