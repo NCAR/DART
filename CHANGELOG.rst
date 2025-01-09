@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 9 2024 :: Bug-fix 1D obs_diag. Tag v11.8.7**
+
+- Added a dummy dimension so 1D obs_diag output can be used with 
+  MATLAB diagnostic tools
+- Added a notification that probit inflation QCEFF options are ignored 
+  for RTPS
+
 **December 6 2024 :: Developer tests. Tag v11.8.6**
 
 - Tests for distribution modules: normal, beta, gamma

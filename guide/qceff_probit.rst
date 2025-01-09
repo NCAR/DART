@@ -48,6 +48,11 @@ options as columns of the qceff_table:
      * lower_bound    (default -888888)
      * upper_bound    (default -888888)
 
+   .. note::
+
+      If using RTPS inflation, the probit distribution information is ignored for posterior
+      inflation.
+
 
 * Observation increment information
 
