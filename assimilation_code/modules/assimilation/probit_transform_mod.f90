@@ -138,8 +138,7 @@ elseif(p%distribution_type == LOG_NORMAL_DISTRIBUTION) then
 elseif(p%distribution_type == UNIFORM_DISTRIBUTION) then 
    call to_probit_uniform(ens_size, state_ens, p, probit_ens, use_input_p, lower_bound, upper_bound)
 elseif(p%distribution_type == GAMMA_DISTRIBUTION) then 
-   call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p, &
-      bounded_below, bounded_above, lower_bound, upper_bound)
+   call to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%distribution_type == BETA_DISTRIBUTION) then 
    call to_probit_beta(ens_size, state_ens, p, probit_ens, use_input_p)
 elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
@@ -252,16 +251,13 @@ end subroutine to_probit_uniform
 
 !------------------------------------------------------------------------
 
-subroutine to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p, &
-   bounded_below, bounded_above, lower_bound, upper_bound)
+subroutine to_probit_gamma(ens_size, state_ens, p, probit_ens, use_input_p)
 
 integer,  intent(in)                          :: ens_size
 real(r8), intent(in)                          :: state_ens(ens_size)
 type(distribution_params_type), intent(inout) :: p
 real(r8), intent(out)                         :: probit_ens(ens_size)
 logical,  intent(in)                          :: use_input_p
-logical,  intent(in)                          :: bounded_below, bounded_above
-real(r8), intent(in)                          :: lower_bound,   upper_bound
 
 ! Probit transform for gamma.
 real(r8) :: quantile
@@ -271,13 +267,6 @@ integer  :: i
 
 ! Get the parameters for this distribution if not already available
 if(.not. use_input_p) then 
-
-   ! In full generality, gamma must be bounded either below or above
-   if(.not. (bounded_below .neqv. bounded_above)) then
-      errstring = 'Gamma distribution requires either bounded above or below to be true'
-      call error_handler(E_ERR, 'to_probit_gamma', errstring, source)
-   endif
-
    call set_gamma_params_from_ens(state_ens, ens_size, p)
 endif
 
