@@ -295,6 +295,7 @@ mean        = 0.0_r8;     sd          = 1.0_r8
 p%params(1) = mean;       p%params(2) = sd
 
 ! Normal is unbounded
+p%distribution_type = NORMAL_DISTRIBUTION
 p%bounded_below = .false.;       p%bounded_above = .false.
 p%lower_bound   = missing_r8;    p%upper_bound   = missing_r8
 
