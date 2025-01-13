@@ -408,6 +408,12 @@ if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Ncat = ', &
 ! Initialize the interpolation routines
 call init_interp()
 
+if ( model_state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
+   call use_default_state_variables( model_state_variables )
+   string1 = 'model_nml:model_state_variables not specified - using default variables'
+   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+endif
+
 ! Determine the shape of the variables from "cice.r.nc"
 ! The assimilate.csh, perfect_model.csh must ensure the cice restart file
 ! is linked to this filename.
@@ -2530,7 +2536,7 @@ subroutine use_default_state_variables( state_variables )
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*3 ) = &
+state_variables( 1:15 ) = &
    (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
       'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
       'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    ', &

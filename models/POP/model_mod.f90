@@ -337,6 +337,12 @@ call dpth2pres(Nz, ZC, pressure)
 ! Initialize the interpolation routines
 call init_interp()
 
+if ( model_state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
+   call use_default_state_variables( model_state_variables )
+   string1 = 'model_nml:model_state_variables not specified - using default variables'
+   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+endif
+
 !> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
 ! parse_variables converts the character table that was read in from
 ! model_nml:model_state_variables and returns a state_var_type that
@@ -2693,7 +2699,7 @@ subroutine use_default_state_variables( state_variables )
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*3 ) = &
+state_variables( 1:15 ) = &
    (/ 'SALT_CUR                  ', 'QTY_SALINITY              ', 'UPDATE                    ', &
       'TEMP_CUR                  ', 'QTY_POTENTIAL_TEMPERATURE ', 'UPDATE                    ', &
       'UVEL_CUR                  ', 'QTY_U_CURRENT_COMPONENT   ', 'UPDATE                    ', &
