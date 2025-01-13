@@ -60,7 +60,7 @@ public :: get_model_size,         &
 
 type :: state_var_type
     integer                        :: nvars
-    character(len=64), allocatable :: netcdf_var_names(:)
+    character(len=NF90_MAX_NAME), allocatable :: netcdf_var_names(:)
     integer, allocatable           :: qtys(:)
     real(r8), allocatable          :: clamp_values(:, :)
     logical, allocatable           :: updates(:)
