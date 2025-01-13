@@ -9,7 +9,7 @@ module model_mod
 ! with the DART data assimilation infrastructure. Do not change the arguments
 ! for the public routines.
 
-use        types_mod, only : r8, i8, MISSING_R8
+use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
 
 use time_manager_mod, only : time_type, set_time
 
@@ -38,7 +38,8 @@ use ensemble_manager_mod, only : ensemble_type
 use default_model_mod, only : pert_model_copies, read_model_time, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
-                              convert_vertical_obs, convert_vertical_state, adv_1step
+                              convert_vertical_obs, convert_vertical_state, adv_1step, &
+                              parse_variables, MAX_STATE_VARIABLE_FIELDS
 
 implicit none
 private
@@ -74,8 +75,9 @@ type(time_type) :: assimilation_time_step
 character(len=256) :: template_file = 'model_restart.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
+character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 
-namelist /model_nml/ template_file, time_step_days, time_step_seconds
+namelist /model_nml/ template_file, time_step_days, time_step_seconds, state_variables
 
 contains
 
@@ -108,9 +110,11 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
-
-! Define which variables are in the model state
-dom_id = add_domain(template_file, num_vars=2, var_names=(/'Temp', 'Wind'/))
+! Define which variables are in the model state;
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables to a state_var_type that can be passed
+! to add_domain
+dom_id = add_domain(template_file, parse_variables(state_variables))
 
 end subroutine static_init_model
 

@@ -61,7 +61,8 @@ use default_model_mod, only : &
     pert_model_copies, read_model_time, write_model_time, &
     init_time => fail_init_time, &
     init_conditions => fail_init_conditions, &
-    convert_vertical_obs, convert_vertical_state, adv_1step
+    convert_vertical_obs, convert_vertical_state, adv_1step, &
+    parse_variables_clamp, MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 implicit none
 private
@@ -97,17 +98,7 @@ character(len=256) :: template_file = 'filter_input_0001.nc'
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 
-integer, parameter              :: MAX_STATE_VARIABLES     = 100
-integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
-character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
-
-type :: var_type
-    integer :: count
-    character(len=64), allocatable :: names(:)
-    integer,           allocatable :: qtys(:)
-    real(r8),          allocatable :: clamp_values(:, :)
-    logical,           allocatable :: updates(:)
-end type var_type
+character(len=vtablenamelength) :: variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ''
 
 namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
@@ -157,7 +148,6 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-type(var_type) :: var
 
 module_initialized = .true.
 
@@ -179,8 +169,6 @@ lon_delta = lons(2) - lons(1)
 lat_start = lats(1)
 lat_delta = lats(2) - lats(1)
 
-var = assign_var(variables, MAX_STATE_VARIABLES)
-
 ! This time is both the minimum time you can ask the model to advance
 ! (for models that can be advanced by filter) and it sets the assimilation
 ! window.  All observations within +/- 1/2 this interval from the current
@@ -188,10 +176,11 @@ var = assign_var(variables, MAX_STATE_VARIABLES)
 ! feel free to hardcode it and remove from the namelist.
 assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
-! Define which variables are in the model state
-! This is using add_domain_from_file (arg list matches)
-dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
-                    var%clamp_values, var%updates)
+! Define which variables are in the model state;
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables and returns a state_var_type that
+! can be passed to add_domain
+dom_id = add_domain(template_file, parse_variables_clamp(variables))
 
 call state_structure_info(dom_id)
 
@@ -408,72 +397,6 @@ allocate(lons(nlon))
 call nc_get_variable(ncid, trim(LON_VAR_NAME), lons, routine)
 
 end subroutine assign_dimensions
-
-!-----------------------------------------------------------------------
-! Parse the table of variables characteristics into arrays for easier access.
-
-function assign_var(variables, MAX_STATE_VARIABLES) result(var)
-
-character(len=vtablenamelength), intent(in) :: variables(:, :)
-integer, intent(in)                         :: MAX_STATE_VARIABLES
-
-type(var_type) :: var
-integer        :: ivar
-character(len=vtablenamelength) :: table_entry
-
-!-----------------------------------------------------------------------
-! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
-integer, parameter :: NAME_INDEX      = 1 ! ... variable name
-integer, parameter :: QTY_INDEX       = 2 ! ... DART qty
-integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
-integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
-integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
-
-! Loop through the variables array to get the actual count of the number of variables
-do ivar = 1, MAX_STATE_VARIABLES
-   ! If the element is an empty string, the loop has exceeded the extent of the variables
-   if (variables(1, ivar) == '') then
-      var%count = ivar-1
-      exit
-   endif 
-enddo
-
-! Allocate the arrays in the var derived type
-allocate(var%names(var%count), var%qtys(var%count), var%clamp_values(var%count, 2), var%updates(var%count))
-
-do ivar = 1, var%count
- 
-   var%names(ivar) = trim(variables(NAME_INDEX, ivar))
-
-   table_entry = variables(QTY_INDEX, ivar)
-   call to_upper(table_entry)
-
-   var%qtys(ivar) = get_index_for_quantity(table_entry)
-
-   if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
-      read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
-   else
-      var%clamp_values(ivar,1) = MISSING_R8
-   endif
-
-   if (variables(MAX_VAL_INDEX, ivar) /= 'NA') then
-      read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
-   else
-      var%clamp_values(ivar,2) = MISSING_R8
-   endif
-
-   table_entry = variables(UPDATE_INDEX, ivar)
-   call to_upper(table_entry)
-
-   if (table_entry == 'UPDATE') then
-      var%updates(ivar) = .true.
-   else
-      var%updates(ivar) = .false.
-   endif
-
-enddo
-
-end function assign_var
 
 !-----------------------------------------------------------------------
 ! Extract state values needed by the interpolation from all ensemble members.
