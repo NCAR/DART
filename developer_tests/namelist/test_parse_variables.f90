@@ -47,9 +47,9 @@ call ok(state_vars%netcdf_var_names(3) == 'UVEL_CUR')
 call ok(state_vars%qtys(1) == 263)
 call ok(state_vars%qtys(2) == 254)
 call ok(state_vars%qtys(3) == 356)
-call ok(state_vars%updates(1) == .true.)
-call ok(state_vars%updates(2) == .true.)
-call ok(state_vars%updates(3) == .true.)
+call ok(state_vars%updates(1) .eqv. .true.)
+call ok(state_vars%updates(2) .eqv. .true.)
+call ok(state_vars%updates(3) .eqv. .true.)
 
 ! Using namelist entry WITH clamping values
 
@@ -72,9 +72,9 @@ call ok(state_vars_clamp%clamp_values(2,1) == 0.0)
 call ok(state_vars_clamp%clamp_values(2,2) == 0.0)
 call ok(state_vars_clamp%clamp_values(3,1) == 0.0)
 call ok(state_vars_clamp%clamp_values(3,2) == 0.0)
-call ok(state_vars_clamp%updates(1) == .true.)
-call ok(state_vars_clamp%updates(2) == .true.)
-call ok(state_vars_clamp%updates(3) == .true.)
+call ok(state_vars_clamp%updates(1) .eqv. .true.)
+call ok(state_vars_clamp%updates(2) .eqv. .true.)
+call ok(state_vars_clamp%updates(3) .eqv. .true.)
 
 call finalize_mpi_utilities()
 
