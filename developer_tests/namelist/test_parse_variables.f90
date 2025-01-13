@@ -6,7 +6,7 @@ program test_parse_variables
 
 use        utilities_mod, only : find_namelist_in_file, check_namelist_read 
 use    mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
-use            types_mod, only : vtablenamelength, MISSING_R8
+use            types_mod, only : vtablenamelength, MISSING_R8, r8
 use    default_model_mod, only : parse_variables_clamp, parse_variables, &
                                  state_var_type, &
                                  MAX_STATE_VARIABLE_FIELDS_CLAMP, &
@@ -32,7 +32,7 @@ namelist /model_nml_clamp/  &
 
 call initialize_mpi_utilities('test_parse_variables')
 
-call plan(26)
+call plan(28)
 
 ! Using namelist entry WITHOUT clamping values
 
@@ -49,8 +49,9 @@ call ok(state_vars%netcdf_var_names(3) == 'UVEL_CUR')
 call ok(state_vars%qtys(1) == QTY_SALINITY)
 call ok(state_vars%qtys(2) == QTY_POTENTIAL_TEMPERATURE)
 call ok(state_vars%qtys(3) == QTY_U_CURRENT_COMPONENT)
+call ok(allocated(state_vars_clamp%clamp_values) .eqv. .false.)
 call ok(state_vars%updates(1) .eqv. .true.)
-call ok(state_vars%updates(2) .eqv. .true.)
+call ok(state_vars%updates(2) .eqv. .false.)
 call ok(state_vars%updates(3) .eqv. .true.)
 
 ! Using namelist entry WITH clamping values
@@ -68,14 +69,15 @@ call ok(state_vars_clamp%netcdf_var_names(3) == 'UVEL_CUR')
 call ok(state_vars_clamp%qtys(1) == QTY_SALINITY)
 call ok(state_vars_clamp%qtys(2) == QTY_POTENTIAL_TEMPERATURE)
 call ok(state_vars_clamp%qtys(3) == QTY_U_CURRENT_COMPONENT)
-call ok(state_vars_clamp%clamp_values(1,1) == 0.0)
-call ok(state_vars_clamp%clamp_values(1,2) == 0.0)
-call ok(state_vars_clamp%clamp_values(2,1) == 0.0)
-call ok(state_vars_clamp%clamp_values(2,2) == 0.0)
-call ok(state_vars_clamp%clamp_values(3,1) == 0.0)
-call ok(state_vars_clamp%clamp_values(3,2) == 0.0)
+call ok(allocated(state_vars_clamp%clamp_values) .eqv. .true.)
+call ok(state_vars_clamp%clamp_values(1,1) == 0.0_r8)
+call ok(state_vars_clamp%clamp_values(1,2) == 0.0_r8)
+call ok(state_vars_clamp%clamp_values(2,1) == 0.0_r8)
+call ok(state_vars_clamp%clamp_values(2,2) == 0.0_r8)
+call ok(state_vars_clamp%clamp_values(3,1) == 0.0_r8)
+call ok(state_vars_clamp%clamp_values(3,2) == 0.0_r8)
 call ok(state_vars_clamp%updates(1) .eqv. .true.)
-call ok(state_vars_clamp%updates(2) .eqv. .true.)
+call ok(state_vars_clamp%updates(2) .eqv. .false.)
 call ok(state_vars_clamp%updates(3) .eqv. .true.)
 
 call finalize_mpi_utilities()
