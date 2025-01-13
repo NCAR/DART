@@ -11,6 +11,8 @@ use    default_model_mod, only : parse_variables_clamp, parse_variables, &
                                  state_var_type, &
                                  MAX_STATE_VARIABLE_FIELDS_CLAMP, &
                                  MAX_STATE_VARIABLE_FIELDS
+use         obs_kind_mod, only : QTY_SALINITY, QTY_POTENTIAL_TEMPERATURE, &
+                                 QTY_U_CURRENT_COMPONENT
 
 use test ! fortran-testanything
 
@@ -44,9 +46,9 @@ call ok(state_vars%nvars == 3)
 call ok(state_vars%netcdf_var_names(1) == 'SALT_CUR')
 call ok(state_vars%netcdf_var_names(2) == 'TEMP_CUR')
 call ok(state_vars%netcdf_var_names(3) == 'UVEL_CUR')
-call ok(state_vars%qtys(1) == 263)
-call ok(state_vars%qtys(2) == 254)
-call ok(state_vars%qtys(3) == 356)
+call ok(state_vars%qtys(1) == QTY_SALINITY)
+call ok(state_vars%qtys(2) == QTY_POTENTIAL_TEMPERATURE)
+call ok(state_vars%qtys(3) == QTY_U_CURRENT_COMPONENT)
 call ok(state_vars%updates(1) .eqv. .true.)
 call ok(state_vars%updates(2) .eqv. .true.)
 call ok(state_vars%updates(3) .eqv. .true.)
@@ -63,9 +65,9 @@ call ok(state_vars_clamp%nvars == 3)
 call ok(state_vars_clamp%netcdf_var_names(1) == 'SALT_CUR')
 call ok(state_vars_clamp%netcdf_var_names(2) == 'TEMP_CUR')
 call ok(state_vars_clamp%netcdf_var_names(3) == 'UVEL_CUR')
-call ok(state_vars_clamp%qtys(1) == 263)
-call ok(state_vars_clamp%qtys(2) == 254)
-call ok(state_vars_clamp%qtys(3) == 356)
+call ok(state_vars_clamp%qtys(1) == QTY_SALINITY)
+call ok(state_vars_clamp%qtys(2) == QTY_POTENTIAL_TEMPERATURE)
+call ok(state_vars_clamp%qtys(3) == QTY_U_CURRENT_COMPONENT)
 call ok(state_vars_clamp%clamp_values(1,1) == 0.0)
 call ok(state_vars_clamp%clamp_values(1,2) == 0.0)
 call ok(state_vars_clamp%clamp_values(2,1) == 0.0)
