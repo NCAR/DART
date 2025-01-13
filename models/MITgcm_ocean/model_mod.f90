@@ -43,9 +43,7 @@ use mpi_utilities_mod,     only : my_task_id
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
 use default_model_mod,     only : nc_write_model_vars, adv_1step, &
-                                  init_conditions => fail_init_conditions, &
-                                  parse_variables_clamp, &
-                                  MAX_STATE_VARIABLE_FIELDS_CLAMP
+                                  init_conditions => fail_init_conditions
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -280,7 +278,14 @@ integer(i8) :: model_size    ! the state vector length
 ! Model namelist declarations with defaults
 ! Codes for interpreting the columns of the variable_table
 
-character(len=vtablenamelength) :: mitgcm_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
+integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
+integer, parameter :: VT_KINDINDX     = 2 ! ... DART QUANTITY
+integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
+integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
+integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
+integer, parameter :: MAX_STATE_VARIABLES = 20
+integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
+character(len=vtablenamelength) :: mitgcm_variables(NUM_STATE_TABLE_COLUMNS, MAX_STATE_VARIABLES ) = ' '
 
 character(len=256) :: model_shape_file = ' '
 integer  :: assimilation_period_days = 7
@@ -312,6 +317,7 @@ type MIT_meta_type
 end type MIT_meta_type
 
 integer :: domain_id
+integer :: nvars
 
 contains
 
@@ -323,6 +329,11 @@ contains
 !> Called to do one-time initialization of the model.
 
 subroutine static_init_model()
+
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
+integer  :: quantity_list(MAX_STATE_VARIABLES)   = MISSING_I
+real(r8) ::    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+logical  ::   update_list(MAX_STATE_VARIABLES)   = .FALSE.
 
 integer :: i, iunit, io
 integer :: ss, dd
@@ -522,7 +533,11 @@ if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 
-domain_id = add_domain(model_shape_file, parse_variables_clamp(mitgcm_variables))
+call parse_variable_input(mitgcm_variables, model_shape_file, nvars, &
+                      var_names, quantity_list, clamp_vals, update_list)
+
+domain_id = add_domain(model_shape_file, nvars, &
+                    var_names, quantity_list, clamp_vals, update_list )
 
 if (compress) then ! read in compressed coordinates
 
@@ -2033,6 +2048,91 @@ close(iunit)
 close(ounit)
 
 end subroutine write_data_namelistfile
+
+
+!-----------------------------------------------------------------------
+!>
+!> Fill the array of requested variables, dart kinds, possible min/max
+!> values and whether or not to update the field in the output file.
+!>
+!>@param state_variables the list of variables and kinds from model_mod_nml
+!>@param ngood the number of variable/KIND pairs specified
+
+subroutine parse_variable_input(state_variables, filename, ngood, &
+                     var_names, quantity_list, clamp_vals, update_list)
+
+character(len=*), intent(in)  :: state_variables(:,:)
+character(len=*), intent(in)  :: filename
+integer,          intent(out) :: ngood
+character(len=*), intent(out) :: var_names(:)
+integer,          intent(out) :: quantity_list(:)
+real(r8),         intent(out) :: clamp_vals(:,:)
+logical,          intent(out) :: update_list(:)
+
+integer :: i
+character(len=NF90_MAX_NAME) :: varname
+character(len=NF90_MAX_NAME) :: dartstr
+character(len=NF90_MAX_NAME) :: minvalstring
+character(len=NF90_MAX_NAME) :: maxvalstring
+character(len=NF90_MAX_NAME) :: updateable
+
+ngood = 0
+MyLoop : do i = 1, MAX_STATE_VARIABLES
+
+   varname      = trim(state_variables(VT_VARNAMEINDX,i))
+   dartstr      = trim(state_variables(VT_KINDINDX   ,i))
+   minvalstring = trim(state_variables(VT_MINVALINDX ,i))
+   maxvalstring = trim(state_variables(VT_MAXVALINDX ,i))
+   updateable   = trim(state_variables(VT_STATEINDX  ,i))
+
+   if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
+
+   if ( varname == ' ' .or. dartstr == ' ' ) then
+      string1 = 'model_nml:model "variables" not fully specified'
+      string2 = 'reading from "'//trim(filename)//'"'
+      call error_handler(E_ERR,'parse_variable_input:',string1,source,text2=string2)
+   endif
+
+   ! Make sure DART quantity is valid
+
+   if( get_index_for_quantity(dartstr) < 0 ) then
+      write(string1,'(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+      call error_handler(E_ERR,'parse_variable_input:',string1,source)
+   endif
+
+   call to_upper(minvalstring)
+   call to_upper(maxvalstring)
+   call to_upper(updateable)
+
+   var_names(i)     = varname
+   quantity_list(i) = get_index_for_quantity(dartstr)
+   clamp_vals(i, 1) = string_to_real(minvalstring)
+   clamp_vals(i, 2) = string_to_real(maxvalstring)
+   update_list(i)   = string_to_logical(updateable, 'UPDATE')
+
+   ! Adjust clamping in case of log-transform
+   if (quantity_list(i) == QTY_NITRATE_CONCENTRATION     ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_PHOSPHATE_CONCENTRATION   ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_OXYGEN          ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_PHYTOPLANKTON_BIOMASS     ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_ALKALINITY                ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_INORGANIC_CARBON) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_ORGANIC_P       ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_ORGANIC_NITROGEN) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_DISSOLVED_INORGANIC_IRON  ) call adjust_clamp(clamp_vals(i, 1))
+   if (quantity_list(i) == QTY_SURFACE_CHLOROPHYLL       ) call adjust_clamp(clamp_vals(i, 1))
+
+   ngood = ngood + 1
+
+enddo MyLoop
+
+if (ngood == MAX_STATE_VARIABLES) then
+   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
+   write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
+   call error_handler(E_MSG,'parse_variable_input:',string1,source,text2=string2)
+endif
+
+end subroutine parse_variable_input
 
 
 !-----------------------------------------------------------------------
