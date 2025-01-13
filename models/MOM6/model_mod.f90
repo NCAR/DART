@@ -231,7 +231,7 @@ integer,             intent(in) :: qty_in
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
-real(r8), parameter             :: concentration_to_ppt = 1000.0
+real(r8), parameter             :: CONCENTRATION_TO_PPT = 1000.0_r8
 
 integer  :: qty ! local qty
 integer  :: which_vert, four_ilons(4), four_ilats(4), lev(ens_size,2)
@@ -379,7 +379,7 @@ select case (qty_in)
          istatus(:) = QUAD_EVALUATE_FAILED
          return
       endif
-      expected_obs = expected_obs/1000.0_r8
+      expected_obs = expected_obs/CONCENTRATION_TO_PPT
  
    case default
       call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
