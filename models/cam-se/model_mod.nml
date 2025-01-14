@@ -30,6 +30,13 @@
    homme_map_file                  = 'SEMapping.nc'
    cs_grid_file                    = 'SEMapping_cs_grid.nc'
    vertical_localization_coord     = 'PRESSURE'
+   state_variables  = 'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
+                      'U',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+                      'V',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
+                      'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
+                      'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
+                      'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
+                      'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
    use_log_vertical_scale          = .false.
    assimilation_period_days        = 0
    assimilation_period_seconds     = 21600

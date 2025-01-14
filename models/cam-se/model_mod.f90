@@ -1,3 +1,6 @@
+! "Debug pressure calc" shows changes which prevent users from asking for total(moist) pressure
+! without providing the moisture variables in the state vector.
+
 ! DART software - Copyright UCAR. This open source software is provided
 ! by ucar, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/dares/dart/dart_download
@@ -61,9 +64,10 @@ use     mpi_utilities_mod,  only : my_task_id
 use        random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
 use  ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 use distributed_state_mod,  only : get_state
+
 use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
                                    get_dim_name, get_kind_index, get_num_dims, &
-                                   get_num_variables, get_varid_from_kind, &
+                                   get_num_variables, get_varid_from_kind, get_varid_from_varname, &
                                    get_model_variable_indices, state_structure_info, get_short_name, &
                                    get_long_name, get_dim_lengths, get_variable_name
 use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, nc_create_file, &
@@ -144,7 +148,7 @@ character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
 ! model_nml namelist variables and default values
-! Which vertical coordinate: Dry mass if for versions with CESM2 and later
+! Which vertical coordinate: Dry mass for versions with CESM2 and later
 logical            :: dry_mass_vertical_coordinate    = .true.
 ! If false, uses less precise but vastly cheaper traditional hybrid vertical coordinate for get_close
 logical            :: precise_dry_mass_get_close      = .false.
@@ -344,6 +348,9 @@ call init_globals()
 ! read the namelist &model_nml :: state_variables
 ! to set up what will be read into the cam state vector
 call set_cam_variable_info(cam_template_filename, state_variables)
+
+! Verify that required variables are in the state vector.
+call verify_state_var_list
 
 ! The size of the only surface pressure dimension is the number of columns
 ncol_temp = get_dim_lengths(domain_id,  get_varid_from_kind(domain_id, QTY_SURFACE_PRESSURE))
@@ -593,6 +600,11 @@ call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
 !SENote Do further study of how we want to return istatus for various failures
 ! For now return istatus 12 for any of the failure modes
 if (any(istatus /= 0)) then
+   ! Debug vert info
+   if(debug_level > 12) then
+      write(string1,*)'get_se_quad_vals failed istatus(:) = ', istatus
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   endif
    istatus = 12
    return
 endif
@@ -1271,6 +1283,12 @@ if (numdims == 2) then
                                 four_vert_fracts(icorner, :), my_status)
 
       if (any(my_status /= 0)) then
+         ! Debug se_values
+         if(debug_level > 12) then
+            write(string1,*)'find_se_vertical_levels failed vert, corner,  my_status(:) = ', &
+                             lon_lat_vert(3), corners(icorner),my_status
+            call error_handler(E_MSG,routine,string1,source,revision,revdate)
+         endif
          my_status = 12
          return
       endif
@@ -1295,7 +1313,14 @@ if (numdims == 2) then
    endif
 
    !SENote Technically nothing happens after this point anyway? So is this statement needed.
-   if (any(my_status /= 0)) return
+   if (any(my_status /= 0)) then
+      if(debug_level > 12) then
+         write(string1,*)'get_se_four_(non)state_values failed varid, my_status(:) = ', &
+                          varid, my_status
+         call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      endif
+      return
+   endif
 
 else if (numdims == 1) then
 
@@ -1305,7 +1330,15 @@ else if (numdims == 1) then
          call get_se_values_from_varid(state_handle,  ens_size, corners(icorner), & 
                                     level_one_array, varid, quad_vals(icorner,:),my_status)
 
-         if (any(my_status /= 0)) return
+         if (any(my_status /= 0)) then
+            ! Debug se_values
+            if(debug_level > 12) then
+               write(string1,*)'get_se_values_from_varid failed varid, corner,  my_status(:) = ', &
+                                varid, corners(icorner),my_status
+               call error_handler(E_MSG,routine,string1,source,revision,revdate)
+            endif
+            return
+         endif
 
       enddo
 
@@ -1386,8 +1419,8 @@ end subroutine get_se_four_state_values
 !-----------------------------------------------------------------------
 !>
 
-! Returns my_status 0 for success, 16 if unable to find values at lower level
-! and 17 if unable to find values at upper level.
+! Returns my_status 0 for success, 26 if unable to find values at lower level
+! and 27 if unable to find values at upper level.
 
 subroutine get_se_four_nonstate_values(state_handle, ens_size, four_corners, &
                                  four_levs1, four_levs2, four_vert_fracts, &
@@ -1412,14 +1445,14 @@ do icorner=1, 4
    call get_se_values_from_nonstate_fields(state_handle, ens_size, four_corners(icorner), &
                               four_levs1(icorner, :), obs_qty, precise, vals1, my_status)
    if (any(my_status /= 0)) then
-      my_status(:) = 16   ! cannot retrieve vals1 values
+      my_status(:) = 26   ! cannot retrieve vals1 values
       return
    endif
 
    call get_se_values_from_nonstate_fields(state_handle,  ens_size, four_corners(icorner), &
                               four_levs2(icorner, :), obs_qty, precise, vals2, my_status)
    if (any(my_status /= 0)) then
-      my_status(:) = 17   ! cannot retrieve top values
+      my_status(:) = 27   ! cannot retrieve top values
       return
    endif
 
@@ -1694,7 +1727,7 @@ integer  :: k, n, istatus
 
 ! For now, will fail all ensemble members and levels if any level/member fails
 
-! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
+! Need the water tracer specific mixing ratios for every level in the column to compute their mass sum
 do k = 1, nlevels
 
    ! Specific Humidity
@@ -1731,7 +1764,7 @@ do k = 1, nlevels
 
 enddo
 
-! Compute the dry mass at the bottom of the column for each enseble member
+! Compute the dry mass at the bottom of the column for each ensemble member
 ! Do we need to worry about latitudinal variation in g?
 ! Nothing but dry air above the model top
 dry_mass_top = ref_model_top_pressure / gravity
@@ -1747,7 +1780,8 @@ do n = 1, ens_size
       half_pressure(k + 1) = half_pressure(k) + &
          !gravity * (a_width(k)*dry_mass_top + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
          ! SENote: NEXT LINE IS BELIEVED TO BE CORRECT BUT NEEDS TO BE VETTED WITH CGD
-         gravity * (a_width(k)*dry_mass_top / grid_data%hyai%vals(1) + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
+         gravity * (a_width(k)*dry_mass_top/grid_data%hyai%vals(1) + b_width(k)*dry_mass_sfc(n)) &
+                 * sum_dry_mix_ratio(k, n)
       pressure(k, n) = (half_pressure(k) + half_pressure(k + 1)) / 2
    end do
 end do
@@ -3316,6 +3350,43 @@ else
 endif
 
 end subroutine solve_quadratic
+
+!-----------------------------------------------------------------------
+
+subroutine verify_state_var_list
+
+! No return is needed.  A diagnostic statement is printed before a potential failure
+! of get_varid_from_varname.  Success means carry on.
+
+! There could be more moisture variables than the traditional 3.
+character(len=32), dimension(10) :: var_names
+integer:: i, varid
+
+data var_names /'PS', 'Q', 'CLDLIQ', 'CLDICE', 6*''/
+
+! PS is required for both cam-se and cam-fv, 
+! and regardless of the dry mass logical variables status.
+i = 1
+varid = get_varid_from_varname(domain_id, var_names(i))
+if (varid == -1) then
+   write(string1, *) var_names(i),' needs to be among the state variables.'
+   call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+endif
+
+i = i + 1
+if (dry_mass_vertical_coordinate .and. precise_dry_mass_get_close) then
+   do while (var_names(i) .ne. '')
+      varid = get_varid_from_varname(domain_id, var_names(i))
+      if (varid == -1) then
+         write(string1, *) var_names(i),' needs to be among the state variables for dry_mass.'
+         call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+      endif
+   
+      i = i + 1
+   enddo
+endif   
+
+end subroutine verify_state_var_list
 
 !-----------------------------------------------------------------------
 
