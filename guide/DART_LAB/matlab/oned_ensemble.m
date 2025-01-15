@@ -1,36 +1,52 @@
 function oned_ensemble
-%% ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
+%% ONED_ENSEMBLE explores different ensemble filter assimilation algorithms for a scalar.
 %
 %      Push on the 'Create New Ensemble' button to activate the interactive
-%      observation generation mechanism and lay down a set of 'observations'
-%      representative of your ensemble. (Think: Some H() operator has
-%      converted the model state to an expected observation.) This is done by
-%      placing the cursor near the axis in the plot and clicking. When you
-%      have all the ensemble members you want, click in the grey area of
-%      the window outside of the white axis plot.
+%      mechanism to generate a prior ensemble estimate of the observation.
+%      This is done by placing the cursor near the axis in the plot and clicking. 
+%      When you have all the ensemble members you want, click in the grey area of
+%      the window outside of the white axis plot. As you add ensemble members,
+%      the ensemble prior mean and prior standard deviation are updated in the upper
+%      left corner of the plot.
 %
-%      After you have an ensemble and an observation, click 'Update Ensemble'.
-%      The algorithm is applied and the Posterior (blue) is plotted below the
-%      Prior (green). The mean and standard deviation of the posterior are
-%      also printed on the plot.
+%      Once you have created a prior ensemble (green asterisks), click the 
+%      'Update Ensemble' button. With the default settings, this will apply the EAKF 
+%      algorithm to produce a posterior ensemble (blue asterisks) just below the axis. 
+%      The mean and standard deviation of the posterior are also printed on the plot. 
 %
-%      The type of ensemble Kalman filter update can be chosen using the
-%      pulldown menu at the bottom.
+%      Two other ensemble filter variants, the EnKF (sometimes referred to as 
+%      the perturbed observations ensemble Kalman filter) and the rank histogram 
+%      filter (RHF) can be selected with the pushbuttons at the lower right.
+%      Selecting one of these and pressing 'Update Ensemble' will produce
+%      the posterior ensemble and posterior statistics using the selected
+%      filter algorithm.
 %
-%      Checking the 'Show Inflation' box will also apply inflation to the
-%      prior before doing the update and will print the mean and standard
+%      For the EAKF and RHF, the continuous prior distribution (green)
+%      that is fit to the prior ensemble and the posterior continuous distribution 
+%      (blue) from which the QCEFF algorithm determines the posterior ensemble
+%      members are also plotted. The EnKF is not a QCEFF filter and does
+%      not directly make use of a continuous prior and posterior distribution fit.  
+%
+%      Checking the 'Apply Inflation' box will also apply inflation to the
+%      prior ensemble before doing the update and will print the mean and standard
 %      deviation of the inflated prior and the resulting posterior. The
 %      inflated prior and posterior are plotted on an axis below the
-%      axis for the uninflated ensemble.
+%      axis for the uninflated ensemble. The value of the covariance inflation
+%      applied can be adjusted using the slider or by typing in a value in the
+%      'Inflation Amount' box.
 %
-%      The 'EAKF' is a stochastic algorithm so repeated updates can be done
-%      for the same prior and observation.
+%      The 'EnKF' is a stochastic algorithm so repeated updates can be done
+%      for the same prior and observation by repeatedly pressing 'Update Ensemble'.
+%      The 'EnKF' version implemented here adjusts the mean of the perturbed
+%      observations so that they are equal to the actual observation. This means
+%      that the posterior mean is the same for each repeat.
 %
-%      change the Observation Error SD, lay down an ensemble pretty far away
-%      from the observation - have fun with it.
+%      The mean and standard deviation of the observation likelihood
+%      can be changed in the red box. 
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_model.m 
+%           oned_model_inf.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -50,6 +66,8 @@ handles.ens_size         = 0;
 handles.ens_members      = 0;
 handles.h_obs_plot       = [];
 handles.h_update_ens     = [];
+handles.h_prior_pdf      = [];
+handles.h_post_pdf       = [];
 handles.h_ens_member     = [];
 handles.h_obs_ast        = [];
 handles.h_update_lines   = [];
@@ -467,9 +485,23 @@ axis([xlower xupper ylower yupper]);
 set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'FontSize', atts.fontsize)
 set(gca, 'XGrid', 'on')
+set(gca, 'color', [0.8, 0.8, 0.8]);
 
 plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
+set(gca, 'FontUnits', 'Normalized');
 title('oned_ensemble','Interpreter','none')
+
+% Format the information and error messages for ensemble creation
+h_click = text(0,  0.6, {'Click inside grey graphics box to create member', ...
+   '(only X value is used)'}, 'FontSize', atts.fontsize, 'HorizontalAlignment', 'center', ...
+   'FontUnits', 'Normalized', 'Visible', 'Off');
+h_err_text = text(0, -0.15, 'An ensemble has to have at least 2 members.', ...
+   'FontSize', atts.fontsize, 'HorizontalAlignment', 'center','Color', atts.red, ...
+   'FontUnits', 'Normalized', 'Visible', 'Off');
+h_finish   = text(0, -0.15, 'Click outside of grey to finish', ...
+   'Fontsize', atts.fontsize, 'HorizontalAlignment', 'center', ...
+   'FontUnits', 'Normalized', 'Visible', 'Off');
+
 
 %% -----------------------------------------------------------------------------
 
@@ -491,6 +523,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old update points
         set(handles.h_update_ens,          'Visible', 'Off');
+        set(handles.h_prior_pdf,           'Visible', 'Off');
+        set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
         
@@ -509,14 +543,9 @@ title('oned_ensemble','Interpreter','none')
         
         % Messages are centered in the middle.
         xmid = (xupper + xlower) / 2.0;
-        h_click    = text(xmid,  0.6, {'Click inside graphics box to create member', ...
-            '(only X value is used)'}, 'FontSize', atts.fontsize, 'HorizontalAlignment', 'center');
-        
-        h_err_text = text(xmid, -0.15, 'An ensemble has to have at least 2 members.', ...
-            'FontSize', atts.fontsize, 'Visible', 'on', 'HorizontalAlignment', 'center','Color', atts.red);
-        
-        h_finish   = text(xmid, -0.15, 'Click outside of plot to finish', ...
-            'Fontsize', atts.fontsize, 'Visible', 'Off', 'HorizontalAlignment', 'center');
+        set(h_click, 'Position', [xmid, 0.6, 0], 'Visible', 'On');
+        set(h_err_text, 'Position', [xmid, -0.15, 0], 'Visible', 'On');
+        set(h_finish, 'Position', [xmid, -0.15, 0], 'Visible', 'Off');
         
         ens_size = 0;
         
@@ -625,6 +654,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old points
         set(handles.h_update_ens,     'Visible', 'Off');
+        set(handles.h_prior_pdf,      'Visible', 'Off');
+        set(handles.h_post_pdf,       'Visible', 'Off');
         set(handles.h_inf_up_ens,     'Visible', 'Off');
         set(handles.h_inf_ens_member, 'Visible', 'Off');
         
@@ -647,18 +678,24 @@ title('oned_ensemble','Interpreter','none')
             case 'EAKF'
                 [obs_increments, ~] = ...
                     obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
+
+                handles.h_prior_pdf = plot_gaussian(mean(ensemble), std(ensemble), 1);
+                set(handles.h_prior_pdf, 'linewidth', 2, 'color', atts.green);
             case 'EnKF'
                 [obs_increments, ~] = ...
                     obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
+                % There is no prior distribution to plot for the EnKF, it's not a QCEF
             case 'RHF'
-                [obs_increments, ~] = ...
-                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
+                bounded_left = false;
+                [obs_increments, err, xp_prior, yp_prior, xp_post, yp_post] = ...
+                    obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2, bounded_left);
+                handles.h_prior_pdf = plot(xp_prior, yp_prior, 'linewidth', 2, 'color', atts.green);
+                handles.h_post_pdf = plot(xp_post, yp_post, 'linewidth', 2, 'color', atts.blue);
         end
         
         % Add on increments to get new ensemble
         new_ensemble = ensemble + obs_increments;
-        
-        y(1:size(ensemble)) = -0.1;
+        y(1:size(ensemble,2)) = -0.1;
         handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
         
         % Plot lines connecting the prior and posterior ensemble members
@@ -678,6 +715,12 @@ title('oned_ensemble','Interpreter','none')
         
         str1 = sprintf('Posterior SD = %.4f',new_sd);
         set(handles.ui_text_post_sd,   'String', str1, 'Visible', 'on');
+       
+        % Plot the posterior continuous for the EAKF
+        if(strcmp(filter_type, 'EAKF'))
+             handles.h_post_pdf = plot_gaussian(new_mean, new_sd, 1);
+             set(handles.h_post_pdf, 'linewidth', 2, 'color', atts.blue);
+        end
         
         % If the checkbox isn't set, return now
         if(not(get(handles.ui_checkbox_inflation, 'Value')))
@@ -698,9 +741,10 @@ title('oned_ensemble','Interpreter','none')
         end
         
         % Update mean and sd of old posterior
+        handles.inf_prior_mean = mean(inf_ens(1:handles.ens_size));
         handles.inf_prior_sd = std(inf_ens(1:handles.ens_size));
         
-        str1 = sprintf('Inflated = %.4f',handles.prior_mean);
+        str1 = sprintf('Inflated = %.4f',handles.inf_prior_mean);
         set(handles.ui_text_inflated_prior_mean,'String',str1,'Visible','on');
         str1 = sprintf('Inflated = %.4f',handles.inf_prior_sd);
         set(handles.ui_text_inflated_prior_sd,  'String',str1,'Visible','on');
@@ -716,13 +760,13 @@ title('oned_ensemble','Interpreter','none')
                     obs_increment_enkf(inf_ens, handles.observation, handles.obs_error_sd^2);
             case 'RHF'
                 [obs_increments, ~] = ...
-                    obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2);
+                    obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2, bounded_left);
         end
         
         % Add on increments to get new ensemble
         new_ensemble = inf_ens + obs_increments;
         
-        y(1:size(ensemble)) = -0.3;
+        y(1:size(ensemble, 2)) = -0.3;
         handles.h_inf_up_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
         
         % Plot lines connecting the prior and posterior ensemble members
@@ -777,6 +821,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old updated points
         set(handles.h_update_ens,          'Visible', 'Off');
+        set(handles.h_prior_pdf,           'Visible', 'Off');
+        set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
         
@@ -858,6 +904,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old updated points
         set(handles.h_update_ens,     'Visible', 'Off');
+        set(handles.h_prior_pdf,      'Visible', 'Off');
+        set(handles.h_post_pdf,       'Visible', 'Off');
         set(handles.h_inf_up_ens,     'Visible', 'Off');
         set(handles.h_inf_ens_member, 'Visible', 'Off');
         
@@ -937,6 +985,8 @@ title('oned_ensemble','Interpreter','none')
         
         % Turn Off any old updated points
         set(handles.h_update_ens,          'Visible', 'Off');
+        set(handles.h_prior_pdf,           'Visible', 'Off');
+        set(handles.h_post_pdf,            'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
         

@@ -1,53 +1,67 @@
 function oned_model
-%% ONED_MODEL simple ensemble data assimilation example.
+%% ONED_MODEL explores cycling ensemble data assimilation for a single variable
+%  model.
 %
-%      There are no input arguments. Simply invoke by typing the name.
+%      This application explores cycling data assimilation for a system that  
+%      has a true value that is always zero. A single observation is generated 
+%      for each assimilation cycle as a random draw from Normal(0, 1). 
 %
-%      ONED_MODEL demonstrates the simplest possible case of ensemble data
-%      assimilation. It is possible to explore assimilation algorithms,
-%      ensemble sizes, model biases, etc. on-the-fly. The posterior
-%      of the state is indicated by blue asterisks, the states evolve along
-%      a trajectory indicated by the green lines to wind up at a prior state
-%      for the assimilation - indicated by the green asterisks. After the
-%      assimilation, the (posterior) state is indicated in blue and the
-%      process is ready to repeat.
+%      The forecast model is a linear error growth with growth rate 2, a
+%      systematic bias term, and a nonlinear quadratic error term.
+%      The difference equation is:
+%      x(t+1) = x(t) + x(t) + bias + a * x(t) * |x(t)|. The values of the 
+%      model_bias and the nonlinear coefficient a are initially set to 0
+%      but can be changed using two of the boxes on the right side of the
+%      display.
 %
-%      ONED_MODEL opens a gui control window that plots
-%      the most recent prior, posterior, and observation,
-%      time sequences of the assimilation, the RMS error,
-%      spread and kurtosis, and prior and posterior rank histograms.
+%      The button in the upper left, initially labeled 'Advance Model' can 
+%      be used to step through alternating model advance and assimilation 
+%      steps; the button will be relabeled as "Assimilate Obs" to do the 
+%      assimilation. Pressing the 'Start Auto Run' will automatically do 
+%      alternating advance and assimilation steps. The button will be relabeled
+%      as 'Pause Auto Run' which can be pressed to pause the cycling.
 %
-%      The top button alternates between "Advance Model" and "Assimilate" to
-%      single-step the model. The "Start Auto Run" button is useful to watch
-%      the system evolve and generate estimates from many assimilation cycles.
+%      The ensemble size can be selected using the box on the right side.
+%      A constant multiplicative inflation value has a default of 1 (no 
+%      inflation) but can be changed with the box on the right. 
 %
-%      Since this is a 'perfect model' experiment, we know the true state,
-%      the amount of noise added to the observations, etc.; so it is possible to
-%      calculate the error of the ensemble in addition to the spread. The
-%      Truth is not (in general) the same as the observation!
+%      The Ensemble Adjustment Kalman filter (EAKF), perturbed obs ensemble 
+%      Kalman filter (EnKF), and the rank histogram filter (RHF) can be 
+%      selected with the pushbuttons at the bottom right.
 %
-%      This also introduces the concept of the 'rank histogram'. With N
-%      ensemble members, there will always be N+1 'bins' that encompass the
-%      state (to the left of the lowest ensemble member, to the right of the
-%      highest, and all the ones in-between). The rank histogram tracks the
-%      number of times the truth lies in each bin. With a good ensemble,
-%      (i.e. a good assimilation system) the true state will be
-%      indistinguishable from any of the ensemble members. This results
-%      in a flat rank histogram, given enough samples.
+%      Five panels of information are displayed about the assimilation.
+%      The upper left panel shows the prior ensemble members (green 
+%      asterisks), the posterior ensemble members (blue asterisks), the 
+%      observation (red asterisk), the likelihood distribution (red dashed 
+%      curve), and the truth (black) for the current assimilation cycle 
+%      plotted on a horizontal axis.
 %
-% See also: gaussian_product.m oned_model_inf.m oned_ensemble.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%      The upper right panel shows the time evolution of the ensemble on
+%      a vertical axis. The truth (zero axis, black dashed), the prior
+%      ensemble (green asterisks), posterior ensemble (blue asterisks), and 
+%      observation (red asterisk) are plotted, along with green line 
+%      segments connecting the posterior at the previous time to the prior
+%      at the next time.
+%
+%      The second panel in the left column shows the time evolution of
+%      ensemble mean error (blue) and ensemble spread (red) and the third
+%      panel shows the ensemble kurtosis.
+%
+%      The two bottom panels show the prior (left) and posterior (right)
+%      rank histograms with the most recent time's entry highlighted in 
+%      yellow. The 'Clear Hist' button on the lower right resets the rank
+%      histograms. The 'Reset' button restores the application to its
+%      initial state. 
+%
+%% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model_inf.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
-
-%>@todo FIXME really should set plot limits based on model bias and inflation values
-%> could set state limits to +/- 7
-%> observation likelihood graphic (handles.axes) can have a static range
-%> based on these values as well.
 
 help oned_model
 
@@ -316,6 +330,7 @@ handles.ui_text_inf_err_print = uicontrol('Style', 'text', ...
     'FontSize'            , atts.fontsize, ...
     'FontName'            , atts.fontname, ...
     'FontWeight'          , 'Bold', ...
+    'FontUnits'           , 'Normalized', ...
     'Visible'             , 'Off');
 
 handles.ui_text_model_bias_err_print = uicontrol('Style', 'text', ...
@@ -327,6 +342,7 @@ handles.ui_text_model_bias_err_print = uicontrol('Style', 'text', ...
     'FontName'            , atts.fontname, ...
     'FontSize'            , atts.fontsize, ...
     'FontWeight'          , 'Bold', ...
+    'FontUnits'           , 'Normalized', ...
     'Visible'             , 'Off');
 
 handles.ui_text_nonlin_err_print = uicontrol('Style', 'text', ...
@@ -338,6 +354,7 @@ handles.ui_text_nonlin_err_print = uicontrol('Style', 'text', ...
     'FontName'            , atts.fontname, ...
     'FontSize'            , atts.fontsize, ...
     'FontWeight'          , 'Bold', ...
+    'FontUnits'           , 'Normalized', ...
     'Visible'             , 'Off');
 
 handles.ui_text_ens_size_err_print = uicontrol('Style', 'text', ...
@@ -349,6 +366,7 @@ handles.ui_text_ens_size_err_print = uicontrol('Style', 'text', ...
     'FontName'            , atts.fontname, ...
     'FontSize'            , atts.fontsize, ...
     'FontWeight'          , 'Bold', ...
+    'FontUnits'           , 'Normalized', ...
     'Visible'             , 'Off');
 
 %% -----------------------------------------------------------------------------
@@ -675,7 +693,7 @@ reset_button_Callback()
             
             % plot the model evolution
             handles.time_step = handles.time_step + 1;
-            plot(handles.time_step - 0.1, ens_new, '*', 'MarkerSize', 6, 'Color', atts.green);
+            plot(handles.time_step - 0.1, ens_new, '*', 'MarkerSize', 10, 'Color', atts.green);
             
             % Load up to plot all segments at once, more time efficient than previous loop
             bx(1:2, 1:handles.ens_size) = 0;
@@ -705,7 +723,7 @@ reset_button_Callback()
             handles.spread = prior_spread;
             
             L = legend([h_e h_s], 'Error', 'Spread', 'Location', 'NorthEast');
-            set(L,'FontName', atts.fontname, 'FontSize', atts.fontsize,'Box','on');
+            set(L, 'Box','on');
             
             if verLessThan('matlab','R2017a')
                 % Convince Matlab to not autoupdate the legend with each new line.
@@ -731,7 +749,7 @@ reset_button_Callback()
             
             handles.kurtosis = prior_kurtosis;
             
-            %% Update the prior rank histogram figure
+            % Update the prior rank histogram figure
             axes(handles.h_prior_rank_histogram);
             
             ens_rank = get_ens_rank(ens_new, 0);
@@ -745,8 +763,14 @@ reset_button_Callback()
             B = bar(temp_rank,'stacked');
             B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
             B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
-            
-            %% Plot the figure window for this update
+
+            set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.1);
+            ylabel('Frequency'           ,'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
+            xlabel('Rank'                ,'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
+            title ('Prior Rank Histogram')
+           
+ 
+            % Plot the figure window for this update
             axes(handles.axes);
             cla;
             
@@ -793,19 +817,20 @@ reset_button_Callback()
                 base_x = ens_axis(4) - text_width;
             end
             
-            text(base_x, -0.1, ['Truth in Prior Bin ', num2str(ens_rank)], ...
+            hsss= text(base_x, -0.1, ['Truth in Prior Bin ', num2str(ens_rank)], ...
                 'FontSize', 14, 'FontWeight', 'Bold','FontName', atts.fontname);
+            set(hsss, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
             
             % Draw a line from the label string to the truth
             h = line([base_x + text_width / 8, 0], [-0.08, -0.03]);
             set(h, 'Color', 'k');
             
             % Label this plot
-            xlabel('State'               ,'FontName', atts.fontname, 'FontSize', atts.fontsize);
-            title('Latest Ensemble Prior','FontName', atts.fontname, 'FontSize', atts.fontsize);
+            xlabel('State', 'FontName', atts.fontname, 'FontUnits', 'Normalized', 'FontSize', 0.05);
+            title('Latest Ensemble Prior','FontName', atts.fontname, ...
+               'FontUnits', 'Normalized', 'FontSize', 0.05);
             
             L = legend([hg_prior hg_truth],'Prior','Truth');
-            set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
             
             if verLessThan('matlab','R2017a')
                 % Convince Matlab to not autoupdate the legend with each new line.
@@ -849,6 +874,20 @@ reset_button_Callback()
                 axlims(1) = handles.time_step;
                 axlims(2) = handles.time_step + 10;
                 axis(axlims)
+
+                % There are normalization issues with this legend when it is resized
+                % from large to small. No way to independently set legend normalized
+                % font size.
+                % plot the invisible stuff and capture a nice handle array for later.
+                h_truth     = plot(-1, 0, 'k--', 'Visible', 'on');
+                h_obs       = plot(-1, 0, 'r*' , 'Visible', 'on', 'MarkerSize', 10);
+                h_prior     = plot(-1, 0, 'g*-', 'Visible', 'on', 'MarkerSize', 10, ...
+                   'Color', atts.green);
+                h_posterior = plot(-1, 0, 'b*' , 'Visible', 'on', 'MarkerSize', 10);
+                h_evolution_handles = [h_truth h_obs h_prior h_posterior];
+        
+                L = legend(h_evolution_handles, 'Truth', 'Observation', 'Prior', 'Posterior');
+                set(L, 'Box', 'on',  'Position',[0.821 0.770 0.118 0.148])
                 
                 % Want the lower y limit to stay 0 for error spread
                 axes(handles.h_err_spread_evolution);
@@ -891,13 +930,13 @@ reset_button_Callback()
                         obs_increment_rhf(ens, observation, obs_error_sd^2);
             end
             
-            %% Plot the evolution of the state
+            % Plot the evolution of the state
             new_ens = ens + obs_increments;
             axes(handles.h_state_evolution);
-            plot(handles.time_step + 0.1, new_ens, 'b*', 'MarkerSize', 6);
+            plot(handles.time_step + 0.1, new_ens, 'b*', 'MarkerSize', 10);
             handles.ens = new_ens;
             
-            %% Update the rank data
+            % Update the rank data
             axes(handles.h_post_rank_histogram);
             ens_rank = get_ens_rank(handles.ens, 0);
             
@@ -905,35 +944,44 @@ reset_button_Callback()
             temp_rank(:, 1)        = handles.post_rank(1:handles.ens_size + 1);
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
+
             hold off
-            
             B = bar(temp_rank, 'stacked');
             B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
             B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
+            set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.1);
+            ylabel('Frequency', 'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
+            xlabel('Rank', 'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
+            title ('Posterior Rank Histogram')
             
             % Update the permanent storage of the rank values
             handles.post_rank(ens_rank) = handles.post_rank(ens_rank) + 1;
             
-            %% Plot the segment for the updated error
+            % Plot the segment for the updated error
             axes(handles.h_err_spread_evolution);
             
             post_error = calculate_rmse(new_ens, 0.0);
             
-            h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
+            h_e = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.error, post_error]);
-            set(h,'Color', atts.blue, 'LineWidth', 2.0);
+            set(h_e,'Color', atts.blue, 'LineWidth', 2.0);
             
             handles.error = post_error;
             
-            %% Plot the segment for the updated spread
+            % Plot the segment for the updated spread
             axes(handles.h_err_spread_evolution);
             
             post_spread = std(new_ens);
-            h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
+            h_s = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.spread, post_spread]);
-            set(h, 'Color', atts.red, 'LineWidth', 2.0);
+            set(h_s, 'Color', atts.red, 'LineWidth', 2.0);
             
             handles.spread = post_spread;
+
+            % Recreate legend when axes shift in time
+            if( mod(handles.time_step, 10) == 0)
+               L = legend([h_e h_s], 'Error', 'Spread', 'Location', 'NorthEast');
+            end
             
             %% Plot the segment for the updated kurtosis
             axes(handles.h_kurtosis_evolution);
@@ -1014,8 +1062,8 @@ reset_button_Callback()
                 base_x = ens_axis(2) - text_width;
             end
             
-            text(base_x, -0.18, ['Truth in Posterior Bin ', num2str(ens_rank)], ...
-                'FontSize', 14, 'FontWeight', 'Bold','FontName', atts.fontname);
+            httt = text(base_x, -0.18, ['Truth in Posterior Bin ', num2str(ens_rank)]);
+            set(httt, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
             
             % Draw a line from the label string to the truth
             plot([base_x + text_width/8, 0], [-0.16, -0.13], 'k');
@@ -1035,13 +1083,12 @@ reset_button_Callback()
             plot(ens_axis(1:2), [-0.1 -0.1], 'k', 'LineWidth', 2);
             
             % Label this plot
-            xlabel('State','FontName', atts.fontname,'FontSize', atts.fontsize);
-            title('Latest Ensemble Prior, Likelihood, Posterior', ...
-                'FontName', atts.fontname, 'FontSize', atts.fontsize,'FontWeight', 'Bold');
+            xlabel('State', 'FontName', atts.fontname, 'FontUnits', 'Normalized', 'FontSize', 0.05);
+            title('Latest Ensemble Prior, Likelihood, Posterior','FontName', atts.fontname, ...
+               'FontUnits', 'Normalized', 'FontSize', 0.05);
             
             % Put on legend
             L = legend([hg_prior hg_post hg_like], 'Prior', 'Posterior', 'Likelihood', 'Location','NorthEast');
-            set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
             
             if verLessThan('matlab','R2017a')
                 % Convince Matlab to not autoupdate the legend with each new line.
@@ -1126,9 +1173,13 @@ reset_button_Callback()
         
         hg_like  = line([0 1], [0 0.1]);
         set(hg_like, 'LineWidth', 2, 'Color', atts.red, 'LineStyle','--', 'Visible', 'off');
-        
+
+        % Set original horizontal axes
+        axis([-7 7 -Inf Inf])
+
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
+
         L = legend([hg_prior hg_post hg_like],'Prior','Posterior','Likelihood');
-        set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize,'Box','on');
         
         if verLessThan('matlab','R2017a')
             % Convince Matlab to not autoupdate the legend with each new line.
@@ -1139,9 +1190,7 @@ reset_button_Callback()
         end
         
         hold on;
-        % Set original horizontal axes
-        axis([-7 7 -Inf Inf])
-        
+
     end
 
 %% -----------------------------------------------------------------------------
@@ -1164,7 +1213,7 @@ reset_button_Callback()
         
         x(1:handles.ens_size) = handles.time_step + 0.1;
         
-        plot(x, handles.ens, 'b*', 'MarkerSize', 6);
+        plot(x, handles.ens, 'b*', 'MarkerSize', 10);
         hold on
         str1  = '$x_{t+1} = x_t + (x_t+$model bias$) + a{\cdot}x_t{\cdot}{\mid}x_t{\mid}$';
         str2  = '\hspace{1.5mm} observation is a draw from $\mathcal{N}(0,1)$';
@@ -1175,21 +1224,17 @@ reset_button_Callback()
         plot([1 100000], [0 0], 'k--');
         
         % plot the invisible stuff and capture a nice handle array for later.
-        h_truth     = plot(1, 0, 'k--', 'Visible', 'on');
-        h_obs       = plot(1, 0, 'r*' , 'Visible', 'on', 'MarkerSize', 10);
-        h_prior     = plot(1, 0, 'g*-', 'Visible', 'on', 'MarkerSize', 6, 'Color', atts.green);
-        h_posterior = plot(1, 0, 'b*' , 'Visible', 'on', 'MarkerSize', 6);
+        h_truth     = plot(-1, 0, 'k--', 'Visible', 'on');
+        h_obs       = plot(-1, 0, 'r*' , 'Visible', 'on', 'MarkerSize', 10);
+        h_prior     = plot(-1, 0, 'g*-', 'Visible', 'on', 'MarkerSize', 10, 'Color', atts.green);
+        h_posterior = plot(-1, 0, 'b*' , 'Visible', 'on', 'MarkerSize', 10);
         h_evolution_handles = [h_truth h_obs h_prior h_posterior];
         
         % Want the y axis limits to take care of themselves
         set(gca, 'YLimMode', 'Auto','XTickLabel',[],'XGrid','on');
-        ylabel('State','FontName', atts.fontname,'FontSize', atts.fontsize);
         
         L = legend(h_evolution_handles, 'Truth', 'Observation', 'Prior', 'Posterior');
-        set(L,'FontName', atts.fontname, ...
-            'FontSize', 12, ...
-            'Box', 'on', ...
-            'Position',[0.821 0.770 0.118 0.148])
+        set(L, 'Box', 'on',  'Position',[0.821 0.770 0.118 0.148])
         
         if verLessThan('matlab','R2017a')
             % Convince Matlab to not autoupdate the legend with each new line.
@@ -1200,6 +1245,8 @@ reset_button_Callback()
         end
         
         axis([1 10 -Inf Inf]);
+        set(gca, 'FontUnits', 'Normalized', 'FontSize', 0.2)
+        ylabel('State', 'FontName', atts.fontname, 'FontUnits', 'Normalized', 'FontSize', 0.15);
         
     end
 
@@ -1220,10 +1267,11 @@ reset_button_Callback()
                 'Color', 'White');
         end
         
-        ylabel('Error, Spread','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([1 10 0 Inf]);
         set(gca,'XTickLabel',[],'XGrid','on')
+        set(gca, 'FontUnits', 'Normalized', 'FontSize', 0.1)
         hold on;
+        ylabel('Error, Spread','FontName', atts.fontname, 'FontUnits', 'Normalized','FontSize', 0.15);
         
     end
 
@@ -1244,9 +1292,10 @@ reset_button_Callback()
         end
         
         axis([1 10 0 Inf]);
-        ylabel('Kurtosis', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
-        xlabel('Timestep', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         set(gca,'XGrid', 'on')
+        set(gca, 'FontUnits', 'Normalized', 'FontSize', 0.1)
+        ylabel('Kurtosis', 'FontName', atts.fontname, 'FontUnits', 'Normalized', 'FontSize', 0.15);
+        xlabel('Timestep', 'FontName', atts.fontname, 'FontUnits', 'Normalized', 'FontSize', 0.15);
         hold on;
         
     end
@@ -1264,11 +1313,12 @@ reset_button_Callback()
             handles.h_prior_rank_histogram = axes('Position',[0.050 0.075 0.333 0.208]);
         end
         
-        ylabel('Frequency'           ,'FontName', atts.fontname,'FontSize', atts.fontsize);
-        xlabel('Rank'                ,'FontName', atts.fontname,'FontSize', atts.fontsize);
         title ('Prior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([0 handles.ens_size+2 -Inf Inf])
         set(handles.h_prior_rank_histogram,'XTick',1:(handles.ens_size+1));
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.1);
+        ylabel('Frequency'           ,'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
+        xlabel('Rank'                ,'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
         hold on
         
     end
@@ -1286,11 +1336,12 @@ reset_button_Callback()
             handles.h_post_rank_histogram = axes('Position',[0.43 0.075 0.333 0.208]);
         end
         
-        ylabel('Frequency'               ,'FontName', atts.fontname,'FontSize', atts.fontsize);
-        xlabel('Rank'                    ,'FontName', atts.fontname,'FontSize', atts.fontsize);
         title ('Posterior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([0 handles.ens_size+2 -Inf Inf])
         set(handles.h_post_rank_histogram,'XTick',1:(handles.ens_size+1));
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.1);
+        ylabel('Frequency'           ,'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
+        xlabel('Rank'                ,'FontName', atts.fontname,'FontUnits', 'Normalized','FontSize', 0.125);
         hold on;
         
     end
