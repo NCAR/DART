@@ -1,8 +1,3 @@
-! This code may (or may not) be part of the MPAS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
-
   module get_coeff_mod
 
   use types_mod, only : r8
