@@ -3,7 +3,7 @@
 Purpose: 
 
 These scripts are designed to improve site level CLM-DART simulations.  They remove
-bias from the CAM6 (ds345.0) and CAM4 (ds199.1) reanalysis products.  Meteorological bias
+bias from the CAM6 (d345000) and CAM4 (d199001) reanalysis products.  Meteorological bias
 is significant and detrimental for site level simulations because of 
 the spatial mismatch between a reanalysis grid (1-2 degrees) and a land site (1x1 km). 
 These scripts are designed to operate on the CAM6 or CAM4 reanalysis global gridded datasets
@@ -13,8 +13,8 @@ See the following github issue for more information: https://github.com/NCAR/DAR
 Required Input:
 1) CAM4 or CAM6 global datasets (80 members)
    Located on Cheyenne or archived at:
-   https://rda.ucar.edu/datasets/ds345-0/
-   https://rda.ucar.edu/datasets/ds199-1/
+   https://rda.ucar.edu/datasets/d345000/
+   https://rda.ucar.edu/datasets/d199001/
  
 2) Site Level Meterological Forcing (e.g. Ameriflux, NEON)
    The scripts are designed for PLUMBER2 format w/ US-NR1 as example.

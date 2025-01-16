@@ -4,7 +4,7 @@
 
 # CAM6 Reanalysis
 
-CAM6_grid_path="/glade/collections/rda/data/ds345.0/cpl_unzipped/"
+CAM6_grid_path="/glade/campaign/collections/rda/data/d345000/cpl_unzipped/"
 # Site level  grid cell from CAM6 reanalysis
 CAM6_site_path="/glade/work/bmraczka/CAM6_NR1/"
 

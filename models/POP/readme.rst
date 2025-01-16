@@ -62,7 +62,7 @@ making minor edits to set details that are specific to your project. The setup
 scripts create a CESM case in which POP is configured using a 1° horizontal
 grid, and uses the eddy parametrization of  Gent and McWilliams (1990). [2]_
 The CICE model is active and atmospheric forcing is provided by the `CAM6 DART
-Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_.
+Reanalysis <https://rda.ucar.edu/datasets/d345000/>`_.
 
 The filesystem attached to NSF NCAR's supercomputer is known as the Globally
 Accessible Data Environment (GLADE). All filepaths on GLADE have the structure:
@@ -285,7 +285,7 @@ Data atmosphere streams files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The setup scripts configure the CESM case with atmospheric forcing from the 
-`CAM6 DART Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_. The coupler 
+`CAM6 DART Reanalysis <https://rda.ucar.edu/datasets/d345000/>`_. The coupler 
 history files from this reanalysis are referenced in
 ``user_datm.streams*template`` files. These ``user_datm.streams*template``
 files are contained in the same directory as the setup scripts and are
