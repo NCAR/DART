@@ -9,10 +9,10 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+# KDR I uncommented all three lines after Helen's conf.py lines to activate references.rst failed
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
@@ -86,3 +86,9 @@ templates_path = ['guide/_templates']
 html_static_path = ['guide/_static']
 
 html_css_files = ['css/custom.css']
+
+# include references
+with open(os.path.join(os.path.dirname(__file__), 'guide/references.rst')) as f:
+    references_content = f.read()
+
+rst_prolog = references_content
