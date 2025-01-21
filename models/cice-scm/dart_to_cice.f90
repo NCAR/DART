@@ -39,7 +39,7 @@ character(len=256) :: postprocessed_output_file = 'postprocessed_restart.nc'
 character(len=128) :: balance_method = 'simple_squeeze'
 character(len=128) :: postprocess = 'cice'
 character(len=15)  :: r_snw_name  = 'r_snw'
-integer :: gridpt_oi = 3
+integer            :: gridpt_oi = 3
 
 namelist /dart_to_cice_nml/ dart_to_cice_input_file,    &
                             original_cice_restart_file, &
@@ -328,7 +328,7 @@ subroutine area_simple_squeeze(qice, sice, qsno,    &
   ! reclaculate aice, now it should be non-negative
     aice_temp = sum(aicen)
  
-  ! if aice <0, then set every category to 0
+  ! if aice < 0, then set every category to 0
     if (aice < 0._r8) then
       aicen(:) = 0._r8
     end if
@@ -538,13 +538,16 @@ subroutine cice_rebalancing(qice, sice, qsno,     &
   real(r8) :: aice, vice, vsno, aice_temp, vice_temp, vsno_temp
   real(r8) :: hin_max(0:Ncat)
   real(r8) :: hcat_midpoint(Ncat)
-  real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new 
+  real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new, hicen, frbdn
   real(r8), parameter :: Tsmelt = 0._r8,        &
                          cc3 = 3._r8,           &
                          c1 = 1._r8,            &
                          phi_init = 0.75_r8,    &
                          dSin0_frazil = 3.0_r8, &
-                         sss = 34.7_r8
+                         sss = 34.7_r8,         &
+                         rhow = 1.026e3_r8,     &
+                         rhoi = 0.917e3_r8,     &
+                         rhos = 0.330e3_r8
   
   ! calculate dependent variables 
     cc1 = cc3/real(Ncat,kind=r8)
@@ -561,6 +564,7 @@ subroutine cice_rebalancing(qice, sice, qsno,     &
     enddo
 
   ! Begin process with the variables post-adjustment 
+    write(*,*) 'beginning icepack postprocessing process...'
     sice = max(0.0_r8,sice)   ! salinities must be non-negative
     qice = min(0.0_r8,qice)   ! enthalpy (ice) must be non-positive
     qsno = min(0.0_r8,qsno)   ! enthalphy (snow) must be non-positive
@@ -568,47 +572,104 @@ subroutine cice_rebalancing(qice, sice, qsno,     &
     aicen = min(1.0_r8,aicen) ! concentration must be less than 1
 
   ! calculate aggregates for post-adjustment category variables
+    write(*,*) 'calculating aggregates...'
     aice = sum(aicen)
     vice = sum(vicen)
     vsno = sum(vsnon)
   
   ! impose bounds on categories
+    write(*,*) 'imposing bounds on categories...'
     aicen = max(0.0_r8,aicen) ! concentration must be non-negative
     vicen = max(0.0_r8,vicen) ! volumes (ice) must be non-negative
     vsnon = max(0.0_r8,vsnon) ! volumes (snow) must be non-negative 
 
   ! re-calculate aggregates once bounds are enforced
+    write(*,*) 'recalculating aggregates...'
     aice_temp = sum(aicen)
     vice_temp = sum(vicen)
     vsno_temp = sum(vsnon)
 
-  ! If the post-adjustment concentration was 0 or less than 0, remove all ice  
+    write(*,*) 'begin squeezing...'
+    ! If the post-adjustment concentration was 0 or less than 0, remove all ice  
     if (aice <= 0.0_r8) then
       aicen(:) = 0.0_r8
       vicen(:) = 0.0_r8
       vsnon(:) = 0.0_r8
+    ! If the post-adjustmnt ice is greater than zero, satisfy conditions area/volume/freeboard conditions
+    else if (aice > 0.0_r8) then
+      do n=1,Ncat
+        ! if ice area both before and after bound is greater than zero, removed "melted" negative area
+        if (aice_temp > 0._r8 .and. aice > 0._r8) then
+          aicen(n) = aicen(n) - (aice_temp-aice)*aicen(n)/aice_temp
+        endif
+        ! same for volume
+        if (vice_temp > 0._r8 .and. vice > 0._r8) then
+          vicen(n) = vicen(n) - (vice_temp-vice)*vicen(n)/vice_temp
+        endif
+        ! same for snow depth
+        if (vsno_temp > 0._r8 .and. vsno > 0._r8) then
+          vsnon(n) = vsnon(n) - (vsno_temp-vsno)*vsnon(n)/vsno_temp
+        endif
+        ! if the area in each category is greater than zero, satisfy thickness/freeboard conditions
+        if (aicen(n) > 0.0_r8) then
+          hicen = vicen(n)/aicen(n)
+          frbdn = vicen(n)*(1 - rhoi/rhow) - vsnon(n)*rhos/rhow
+          if (n == Ncat) then
+            ! if ice in the largest category is thinner than the largest category lower bound, 
+            ! recalculate the area to satisfy thickness at the lower bound
+            if (hicen < hin_max(n-1)) then
+              aicen(n) = vicen(n)/hin_max(n-1)
+            endif
+          else
+            ! if ice in the thinner cats is too thick or too thin for respective categories, 
+            ! recalculate area to satisfy thickness at the midpoint
+            if (hicen > hin_max(n) .or. hicen < hin_max(n-1)) then
+              aicen(n) = vicen(n)/hcat_midpoint(n)
+            endif
+          endif
+          ! if freeboard is negative, because volume is conserved in the thickness adjustments,
+          ! recalculate the snow to reach freeboard in the category = 0
+          if (frbdn < 0.0_r8) then
+            vsnon(n) = vicen(n)*(1.0_r8 - rhoi/rhow)*(rhow/rhos)
+          endif
+        ! if area in each category is less than zero, remove ice from that category
+        else
+          aicen(n) = 0.0_r8
+          vicen(n) = 0.0_r8
+          vsnon(n) = 0.0_r8
+        endif
+      enddo 
+
+      ! recalculate the aggregate area
+      aice = sum(aicen)
+
+      ! if the post-adjustment concentration is greater thant 1, squeeze it down
+      if (aice > 1.0_r8) then
+        squeeze = 1.0_r8/aice
+        aicen(:) = aicen(:)*squeeze
+      endif
     endif
 
-  ! If ice exists in both the post-adjustment and post-bounds variables, 
-  ! shift the post-adjustment negative values of each category variable 
-    do n=1,Ncat
-      if (aice_temp > 0._r8 .and. aice > 0._r8) then
-         aicen(n) = aicen(n) - (aice_temp-aice)*aicen(n)/aice_temp
-     endif
-      if (vice_temp > 0._r8 .and. vice > 0._r8) then
-       vicen(n) = vicen(n) - (vice_temp-vice)*vicen(n)/vice_temp
-      endif
-      if (vsno_temp > 0._r8 .and. vsno > 0._r8) then
-       vsnon(n) = vsnon(n) - (vsno_temp-vsno)*vsnon(n)/vsno_temp
-      endif
-    enddo
+  ! ! If ice exists in both the post-adjustment and post-bounds variables, 
+  ! ! shift the post-adjustment negative values of each category variable 
+  !   do n=1,Ncat
+  !     if (aice_temp > 0._r8 .and. aice > 0._r8) then
+  !        aicen(n) = aicen(n) - (aice_temp-aice)*aicen(n)/aice_temp
+  !    endif
+  !     if (vice_temp > 0._r8 .and. vice > 0._r8) then
+  !      vicen(n) = vicen(n) - (vice_temp-vice)*vicen(n)/vice_temp
+  !     endif
+  !     if (vsno_temp > 0._r8 .and. vsno > 0._r8) then
+  !      vsnon(n) = vsnon(n) - (vsno_temp-vsno)*vsnon(n)/vsno_temp
+  !     endif
+  !   enddo
    
-  ! If the post-adjustment concentration is greater than 1, squeeze it down
-    if (aice > 1.0_r8) then
-      squeeze = 1.0_r8/aice
-      aicen(:) = aicen(:)*squeeze
-    endif
-
+  ! ! If the post-adjustment concentration is greater than 1, squeeze it down
+  !   if (aice > 1.0_r8) then
+  !     squeeze = 1.0_r8/aice
+  !     aicen(:) = aicen(:)*squeeze
+  !   endif
+    write(*,*) 'adjust snow, salinities, and enthalpies to be consistent...'
   ! Adjust the volume, snow, salinities and enthalphies to be consistent with the squeezed concentrations
     do n=1,Ncat
     ! if the adjustment and the original category both have ice in them... 
