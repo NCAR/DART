@@ -242,3 +242,20 @@ finds your new code and ignores any code you do not want compiled.
    a directory, a list of files, or a single file.
 
 
+Building DART as a library
+--------------------------
+
+For developers who want to build DART as a library for use with another applications, we provide
+the buildlib buildfunction.   
+
+.. code-block :: bash
+
+   buildlib libdart.a  # for a static library
+   buildlib libdart.so # for a shared library
+
+
+Example quickbuild.sh scripts for building a shared and a static library are given in 
+``DART/developer_tests/library/{shared|static}/work``.
+
+
+

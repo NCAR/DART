@@ -1,3 +1,5 @@
+.. _inflation:
+
 Inflation
 =========
 
@@ -90,9 +92,11 @@ In the namelist each entry has two values. The first is for Prior inflation and 
 ``&filter_nml :: inf_initial_from_restart``
    *valid values:* .true. or .false.
 
-   If true, read the inflation values from an inflation restart file named ``input_{prior,post}inf_mean.nc.`` An initial
-   run could be done to let spatially-varying inflation values evolve in a spinup phase, and then the saved values can
-   be read back in and used as fixed values in further runs. Or if time-varying inflation is used, then the restart file
+   If true, read the inflation values from an inflation restart file named ``input_{prior,post}inf_mean{_d##}.nc``,
+   (d\#\# is the domain number, if needed).
+   An initial run could be done to let spatially-varying inflation values evolve in a spinup phase, 
+   and then the saved values can be read back in and used as fixed values in further runs. 
+   Or if time-varying inflation is used, then the restart file
    from the previous job step must be supplied as an input file for the next step.
 
 ``&filter_nml :: inf_initial``
@@ -127,8 +131,8 @@ In the namelist each entry has two values. The first is for Prior inflation and 
 ``&filter_nml :: inf_sd_initial_from_restart``
    *valid values:* .true. or .false.
 
-   If true, read the inflation standard deviation values from an restart file named ``input_{prior,post}inf_sd.nc.`` See
-   the comments above about ``inflation_initial_from_restart``.
+   If true, read the inflation standard deviation values from an restart file named ``input_{prior,post}inf_sd{_d##}.nc.`` 
+   See the comments above about ``inflation_initial_from_restart``.
 
 ``&filter_nml :: inf_sd_initial``
    *valid values:* ≤ 0.0 to disable evolution of inflation, > 0.0 otherwise
@@ -188,7 +192,8 @@ The suggested procedure for testing inflation options is to start without any (b
 ``inf_damping`` > 0.). Then enable Prior state space, spatially-varying inflation, with no Posterior inflation (set
 ``inf_flavor`` to [2, 0]). Then try damped inflation (set ``inf_damping`` to 0.9 and set ``inf_sd_initial`` and
 ``inf_sd_lower_bound`` to 0.6). The inflation values and standard deviation are written out to files with
-``_{prior,post}inf_{mean,sd}`` in their names. These NetCDF files can be viewed with common tools (we often use
+``_{prior,post}inf_{mean,sd}{_d##}.nc``, in their names
+(d\#\# is the domain number, if needed). These NetCDF files can be viewed with common tools (we often use
 `ncview <http://meteora.ucsd.edu/~pierce/ncview_home_page.html>`__ ). Expected inflation values are generally in the 1
 to 30 range; if values grow much larger than this it usually indicates a problem with the assimilation.
 
@@ -207,11 +212,11 @@ Here's an example of using ncap2 to set the T,U and V inf values:
 
    ::
 
-        ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 input_priorinf_mean.nc
-        ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 input_priorinf_sd.nc
+        ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 input_priorinf_mean_d01.nc
+        ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 input_priorinf_sd_d01.nc
         -or-
-        ncap2 -s 'T(:,:,:)=1.0;U(:,:,:)=1.0;V(:,:,:)=1.0' wrfinput_d01 input_priorinf_mean.nc
-        ncap2 -s 'T(:,:,:)=0.6;U(:,:,:)=0.6;V(:,:,:)=0.6' wrfinput_d01 input_priorinf_sd.nc
+        ncap2 -s 'T(:,:,:)=1.0;U(:,:,:)=1.0;V(:,:,:)=1.0' wrfinput_d01 input_priorinf_mean_d01.nc
+        ncap2 -s 'T(:,:,:)=0.6;U(:,:,:)=0.6;V(:,:,:)=0.6' wrfinput_d01 input_priorinf_sd_d01.nc
 
 Some versions of the NCO utilities change the full 3D arrays into a single scalar. If that's your result (check your
 output with ``ncdump -h``) use the alternate syntax or a more recent version of the NCO tools.

@@ -438,6 +438,12 @@ if (do_output()) then
                                       inf_damping(POSTERIOR_INF), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
+   if (do_rtps_inflate(post_inflate)) then
+      write(msgstring, *) 'Posterior inflation is RTPS, QCEFF ', &
+                              'inflation options will be ignored for posterior inflation'
+      call error_handler(E_MSG,'filter_main:', msgstring)
+   endif
+
 endif
 
 call trace_message('After  initializing inflation')
@@ -2275,7 +2281,7 @@ end subroutine store_copies
 !------------------------------------------------------------------
 !> Count the number of copies to be allocated for the ensemble manager
 
-function count_state_ens_copies(ens_size, post_inflate, prior_inflate) result(num_copies)
+function count_state_ens_copies(ens_size, prior_inflate, post_inflate) result(num_copies)
 
 integer,                     intent(in) :: ens_size
 type(adaptive_inflate_type), intent(in) :: prior_inflate

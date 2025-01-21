@@ -22,6 +22,126 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 14 2025 :: Bug-fix MOM6 potential temperature. Tag v11.8.8**
+
+- MOM6 model_interpolate for potential temperature
+- Update lorenz workshop input.nmls to v11
+
+**January 9 2025 :: Bug-fix 1D obs_diag. Tag v11.8.7**
+
+- Added a dummy dimension so 1D obs_diag output can be used with 
+  MATLAB diagnostic tools
+- Added a notification that probit inflation QCEFF options are ignored 
+  for RTPS
+
+**December 6 2024 :: Developer tests. Tag v11.8.6**
+
+- Tests for distribution modules: normal, beta, gamma
+- Removed out-of-date tests for state IO
+
+**November 12 2024 :: MPAS bug-fixes. Tag v11.8.5**
+
+- Fixed 2m and 10m fields not being updated - set istatus for VERTISHEIGHT 
+  and VERTISLEVEL for convert_vert_distrib_state.
+- Fixed vertical location in convert_vertical_obs to use zGridFace.
+
+**November 8 2024 :: POP initial ensemble available from GDEX. Tag v11.8.4**
+
+Documentation update:
+
+  - POP initial ensemble available from GDEX.
+
+Bug-fixes:
+
+  - Removed unnecessary loops around calendar types in time_manager_mod.
+  - Removed unused routine from normal_distribution_mod which case giving compilation warnings.
+  - Replaced broadcast_minmax calls with all_reduce_min_max.
+
+
+**November 7 2024 :: MPI window memory reduction. Tag v11.8.3**
+
+- Removes unnecessary copy of state into mpi window.
+- Removes cray pointer version of the mpi window.
+- | Fortran-testanything included in developer tests. 
+  |  *From dennisdjensen: see developer_tests/contrib/fortran-testanything/LICENSE.txt*
+
+**October 22 2024 :: Bug-fixes: WRF and GOES. Tag v11.8.2**
+
+- Force THM to be the WRF-DART temperature variable
+- Remove offset on GOES observation converter 
+
+**September 27 2024 :: MOM6 mask bug-fix. Tag v11.8.1**
+
+- Fix for MOM6 CESM3 workhorse 2/3 degree grid TL319_t232 to 
+  mask missing geolon|lat|u|v|t values  
+
+**September 10 2024 :: MARBL_column. Tag v11.8.0**
+
+- Interface for MARBL_column for DART: 
+
+   - state estimation
+   - state and parameter estimation
+   - parameter estimation only
+
+- BATS observation converter, and BATS climatology scripting
+
+*contributed by Robin Armstrong*
+
+Bugfix:
+
+- fix for IO for NetCDF files when only some variables have the unlimited dimension  
+
+**August 29 2024 :: Bug fixes for shortest_time_between_assimilations and get_close_init. Tag v11.7.1**
+
+Bug fixes:
+
+   - Prevent hang by erroring out if shortest_time_between_assimilations <=0
+   - Catch and error out if max_dist or max_dist_list is <=0 for 3d sphere 
+     3d cartesian get_close_init
+   - Improved defaults for template  model input.nml
+
+Doc fixes:
+  
+   - Removed out-of-date info about inflation flavor character strings
+   - Remove out-of-date info on qceff branch checkout
+   - GitHub template for reporting documentation issues
+
+
+**August 26 2024 :: KQCEF. Tag v11.7.0**
+
+- Adds a Quantile-Conserving Ensemble Filter Based on Kernel-Density Estimation to DART.
+- New distribution module kde_distribution_mod.
+- New module rootfinding_mod that provides a different implementation of inv_cdf.
+
+*Contributed by Ian Grooms*
+
+**August 15 2024 :: WRF fwd operator bug fixes. Tag v11.6.1**
+
+WRF-DART bug-fixes:
+
+  - Bug fix for surface temperature observations to use QTY_2M_TEMPERATURE
+  - Bug fix for conversion of vapor mixing ratio to specific humidity
+  - Bug fix for diagnostics_obs.csh
+  - Improved documentation for WRF model_mod and WRF-DART Tutorial
+
+**July 26 2024 :: Library build tools for DART. Tag v11.6.0**
+
+- Buildtools for compiling DART as a shared or a static library.
+- Bugfix: correct order of arguments in count_state_ens_copies for 'input'
+  stages_to_write.
+
+**July 11 2024 :: Bgrid documentation and scripting fix. Tag v11.5.1**
+
+- Updated Bgrid documentation and removed outdated scripts and files
+- Fixed obs_diag rank histogram documentation links
+- Improved inflation file documentation
+- GitHub action for running all quickbuilds in DART
+
+**May 16 2024 :: WRF v4. Tag v11.5.0**
+
+- WRF-DART and WRF-DART Tutorial updated to WRFv4. Note, not backwards compatible with WRFv3.9. 
+- local particle filter default value for pf_enkf_hybrid=.false. *contributed by Jon Poterjoy*
+
 **April 23 2024 :: Bug-fix: WRF hybrid vertical coordinate. Tag v11.4.1**
 
 - DART now detects whether WRF is using Hybrid Vertical Coordinate (HVC) introduced in WRFv3.9 or terrain following (TF) system.
