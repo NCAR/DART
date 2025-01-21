@@ -35,70 +35,130 @@ observation type).
 Specifying a vertical location
 ------------------------------
 
-Jeff Steward added (PR 48) the capability to specify a vertical location
-if desired. This allows for localization in the vertical. 
+Top of the atmosphere radiance observations are sensitive to the
+atmospheric constituents (e.g. water vapor) that reside in the vertical
+profile of the atmosphere. Given this is an integrated quantity and does
+not depend on a single vertical location, it may be appropriate to leave
+the vertical location undefined (i.e. VERTISUNDEF) within the ``obs_seq.out``
+file, by setting the ``vloc_pres_hPa = -1`` (See namelist options below). This approach, 
+however, limits the application of vertical localization during the assimilation step.
 
-  It’s sometimes helpful, even though definitely wrong from a theoretical
-  standpoint, to give a vertical location to satellite observations
-  (which are integrated quantities). This has been an issue with
-  observation-space localization for some time, and this is the standard
-  workaround pioneered by Lili Lei and Jeff Whittaker.
+Alternatively, for some applications it may be appropriate to assign 
+a vertical location to the radiance observation, by setting the ``vloc_pres_hPa``
+to a vertical pressure level (hPa). This is an ongoing area
+of observation-space localization research, and is the standard
+workaround pioneered by Lili Lei and Jeff Whittaker.
 
-A short description of the namelist options
--------------------------------------------
+Radiance versus Brightness Temperature
+--------------------------------------
 
-This table is meant to familiarize you with some of the options
-available. Until we fully implement automatic documentation generation,
-you would be well advised to familiarize yourself with the code. This is
-not the full list of namelist variables …
+This converter assigns the observation type as ``GOES[16-19]_ABI_RADIANCE``.
+The default setup in DART is that this radiance observation type is assigned
+the quantity ``QTY_RADIANCE``.  Radiance observations are commonly expressed 
+in spectrally resolved units (mW/cm/m^2/sr). 
 
-+-------------------------+---------------------+---------------------+
-| variable                | default             | meaning             |
-+=========================+=====================+=====================+
-| x_thin                  | 0                   | Skip this many per  |
-|                         |                     | X scan.             |
-+-------------------------+---------------------+---------------------+
-| y_thin                  | 0                   | Skip this many per  |
-|                         |                     | Y scan.             |
-+-------------------------+---------------------+---------------------+
-| goes_num                | 16                  | GOES Satellite      |
-|                         |                     | number.             |
-+-------------------------+---------------------+---------------------+
-| reject_dqf_1            | .true.              | Bad scan rejection  |
-|                         |                     | criteria. If .true. |
-|                         |                     | and DQF /= 0, the   |
-|                         |                     | scan is rejected.   |
-|                         |                     | If .false. any DQF  |
-|                         |                     | > 1 rejects the     |
-|                         |                     | scan.               |
-+-------------------------+---------------------+---------------------+
-| verbose                 | .false.             | Run-time output     |
-|                         |                     | verbosity           |
-+-------------------------+---------------------+---------------------+
-| obs_err                 | MISSING_R8          | The observation     |
-|                         |                     | error standard      |
-|                         |                     | deviation (std dev, |
-|                         |                     | in radiance units)  |
-|                         |                     | TODO: make this     |
-|                         |                     | more sophisticated. |
-|                         |                     | You must supply a   |
-|                         |                     | value other than    |
-|                         |                     | MISSING_R8. Be      |
-|                         |                     | aware that the      |
-|                         |                     | observation         |
-|                         |                     | sequence files      |
-|                         |                     | convert this to a   |
-|                         |                     | variance.           |
-+-------------------------+---------------------+---------------------+
-| vloc_pres_hPa           | -1.0                | The vertical        |
-|                         |                     | location of this    |
-|                         |                     | observation (hPa).  |
-|                         |                     | A negative means    |
-|                         |                     | there is no         |
-|                         |                     | vertical location   |
-|                         |                     | (which is typical   |
-|                         |                     | for a               |
-|                         |                     | ve                  |
-|                         |                     | rtically-integrated |
-|                         |                     | quantity).          |
-+-------------------------+---------------------+---------------------+
+Alternatively, radiances can also be expressed as brightness temperatures
+(units: Kelvin) and the DART code also supports observation quantities of 
+``QTY_BRIGHTNESS_TEMPERATURE``. Both the spectral and temperature units
+quantify the same physical properties of the atmosphere 
+(emitted and reflected radiation), however, in some applications it may
+be advantageous to use brightness temperatures given their Gaussian 
+distribution.  This is an ongoing area of research.
+
+
+An overview of the namelist options
+-----------------------------------
+
+A description of the most important namelist options. Note that supplying
+an observation error value is mandatory. This is not the full list of namelist
+variables.
+
++-------------------------+------------+-----------------------------+
+| Variable                | Default    |      Description            |
++=========================+============+=============================+
+| x_thin                  | 0          | Skip this many observations |
+|                         |            | per X scan                  |
++-------------------------+------------+-----------------------------+
+| y_thin                  | 0          | Skip this many observations |
+|                         |            | per Y scan                  |
++-------------------------+------------+-----------------------------+
+| goes_num                | 16         | GOES Satellite number       |
++-------------------------+------------+-----------------------------+
+| reject_dqf_1            | .true.     | Bad scan rejection critera. |
+|                         |            | If .true. and DQF /= 0, the |
+|                         |            | scan is rejected. If        |
+|                         |            | .false. any DQF > 1         |
+|                         |            | rejects the scan.           |
++-------------------------+------------+-----------------------------+
+| verbose                 | .false.    | Run-time output verbosity   |
++-------------------------+------------+-----------------------------+
+| obs_err                 | MISSING_R8 | The observation error       |
+|                         |            | standard deviation in units |
+|                         |            | of radiance. IMPORTANT:     |
+|                         |            | the user must supply a      |
+|                         |            | value other than MISSING_R8.|
+|                         |            | Be aware that the           |
+|                         |            | observation sequence files  |
+|                         |            | convert this to a variance. |
++-------------------------+------------+-----------------------------+
+| vloc_pres_hPa           | -1.0       | If a positive value, the    |
+|                         |            | vertical location of the    |
+|                         |            | observation (hPa) is        |
+|                         |            | assigned with a vertical    |
+|                         |            | coordinate of               |
+|                         |            | VERTISPRESSURE. If negative |
+|                         |            | value there is no vertical  |
+|                         |            | location and the coordinate |
+|                         |            | is VERTISUNDEFINED.         |
++-------------------------+------------+-----------------------------+
+
+Radiance metadata supplied to obs_seq.out file
+----------------------------------------------
+
+This converter is designed to supply metadata to the radiative transfer
+model (RTTOV) :doc:`../../../observations/forward_operators/obs_def_rttov_mod`
+that supports the calculation of the expected radiance 
+observation during the assimilation step.  Below is a description
+of this metadata information.
+
+The integer values that describe the platform/satellite/sensor/channel
+combination for the GOES satellite are required by the RTTOV radiance
+model to assign the appropriate coefficent file during the radiance
+calculation. For more details refer to the 
+`RTTOV user guide. <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__
+
+
++-------------------------+------------+-----------------------------+
+| Variable                | Value      |      Description            |
++=========================+============+=============================+
+| sat az/el               | Supplied   | GOES satellite azimuth and  |
+|                         | by data    | elevation angle             |
+|                         | file       |                             |
++-------------------------+------------+-----------------------------+
+| sun az/el               | -888888    | Sun azimuth and elevation   |
+|                         |            | angle. The default is for   |
+|                         |            | missing values. For IR      |
+|                         |            | channels reflected solar    |
+|                         |            | has no impact. For NIR/     |
+|                         |            | VIS/UV providing sun az/el  |
+|                         |            | may be desirable but not    |
+|                         |            | required by RTTOV.          |
++-------------------------+------------+-----------------------------+
+| platform                | 4          | Platform number supplied    |
+|                         |            | by converter code.          |
++-------------------------+------------+-----------------------------+
+| sat_id                  | 16         | Satellite ID number         |
+|                         |            | supplied by converter code. |
++-------------------------+------------+-----------------------------+
+| instrument              | 44         | Sensor number supplied by   |
+|                         |            | converter code              |
++-------------------------+------------+-----------------------------+
+| channel                 | Supplied   | The wavelength channel      |
+|                         | by data    | (1-16) assigned from band_id|
+|                         | file       | variable in data file.      |
++-------------------------+------------+-----------------------------+
+
+
+
+
+
