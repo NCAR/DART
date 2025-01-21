@@ -22,6 +22,18 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 14 2025 :: Bug-fix MOM6 potential temperature. Tag v11.8.8**
+
+- MOM6 model_interpolate for potential temperature
+- Update lorenz workshop input.nmls to v11
+
+**January 9 2025 :: Bug-fix 1D obs_diag. Tag v11.8.7**
+
+- Added a dummy dimension so 1D obs_diag output can be used with 
+  MATLAB diagnostic tools
+- Added a notification that probit inflation QCEFF options are ignored 
+  for RTPS
+
 **December 6 2024 :: Developer tests. Tag v11.8.6**
 
 - Tests for distribution modules: normal, beta, gamma
