@@ -621,3 +621,4 @@ References
    :hidden:
 
    guide/404
+   guide/references

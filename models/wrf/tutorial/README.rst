@@ -682,7 +682,7 @@ you would do the following:
 
 -  Download the PREPBUFR observations for your desired time. Go to the
    `NSF NCAR Research Data
-   Archive <https://rda.ucar.edu/datasets/d090000/>`__ page for the
+   Archive <d090000_>`_ page for the
    NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
    the "Data Access" tab, and follow either the instructions for
    external users or NSF NCAR internal users.

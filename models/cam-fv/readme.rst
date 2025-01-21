@@ -118,7 +118,7 @@ Reanalyses
 There have been two large-scale reanalysis efforts using CAM-FV and DART. 
 The **CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
 is archived in the NSF NCAR Research Data Archive 
-`DS345.0 <https://rda.ucar.edu/datasets/d345000/#!description>`__ .
+`d345000`_.
 (See the |CAM6_Rean|_ ).
 It contains just under 120Tb (yes Tb) of data:
 
@@ -139,7 +139,7 @@ An earlier, more limited dataset can be found in the
 `**Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis** 
 <https://github.com/NCAR/DART/wiki/2-degree-DATM-ensemble-for-CESM-experiments-(1998-thru-2010)>`__
 is archived in the NSF NCAR Research Data Archive 
-`DS199.1 <https://rda.ucar.edu/datasets/d199001/>`__ .
+`d199001`_ .
 It contains about 1.5Tb of data:
 
    This dataset contains files that are an ensemble of 'coupler history' 
@@ -171,7 +171,7 @@ are available from the RDA d345000 linked above.
 
 NCEP
    NCEP's PREPBUFR files (prepqm) in NSF NCAR's Research Data Archive:
-   (https://rda.ucar.edu/datasets/d090000/)
+   (`d090000`_)
 
 COSMIC
    This site (http://www.cosmic.ucar.edu/) provides atmospheric refractivity 
