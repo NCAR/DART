@@ -1,11 +1,11 @@
 #!/bin/bash -l
 ### Job Name
-#PBS -N grab_atm_forcings
+#PBS -N extract_atmospheric_forcings
 ### Charging account
-#PBS -A UWAS0083
+#PBS -A P93300065
 ### Request one chunk of resources with 1 CPU and 10 GB of memory
-#PBS -l select=1:ncpus=1:mem=100GB
-### Allow job to run up to 30 minutes
+#PBS -l select=1:ncpus=1:mem=200GB
+### Set job walltime
 #PBS -l walltime=1:00:00
 #PBS -l job_priority=economy
 ### Route the job to the economy queue
@@ -23,5 +23,9 @@ mkdir -p $TMPDIR
 # module load ncarenv python
 conda activate cice-scm-da
 
-### Run analysis script
-python ../python/00_grab_atm_forcing.py 2000 2000 spinup 2
+## If you want spinup forcings (from 2000-2010) uncomment the next line...
+python ../python/00_grab_atm_forcing.py 2000 2010 spinup 30
+## If you want free/assimilation forcings (from 2011-2015) uncomment the next line...
+# python ../python/00_grab_atm_forcing.py 2011 2015 free 30
+## If you want forecast forcings (from 2012-2016) uncomment the next line...
+# python ../python/00_grab_atm_forcing.py 2012 2016 branch_2012 30
