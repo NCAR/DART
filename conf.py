@@ -9,10 +9,10 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-# KDR I uncommented all three lines after Helen's conf.py lines to activate references.rst failed
+#
 import os
-import sys
-sys.path.insert(0, os.path.abspath('.'))
+# import sys
+# sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
@@ -21,7 +21,7 @@ copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '11.8.7'
+release = '11.8.9'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------

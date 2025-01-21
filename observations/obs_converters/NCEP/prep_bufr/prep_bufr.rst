@@ -153,7 +153,7 @@ System (HPSS).
 
 To find the files:
 
--  go to the `NSF NCAR/NCEP reanalysis archive. <http://rda.ucar.edu/datasets/d090000/>`__
+-  go to the `NSF NCAR/NCEP reanalysis archive. <NCEP+NCAR_obs_>`_
 -  Click on the "Inventories" tab.
 -  Select the year you are interested in.
 -  Search for files with the string "prepqm" in the name.
