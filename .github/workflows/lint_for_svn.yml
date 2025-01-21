@@ -1,0 +1,28 @@
+name: lint_for_svn_on_pr
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Get list of changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v34
+
+    - name: Run script on changed files
+      run: |
+        # Save the script to a file
+        echo '$(cat check_lines.sh)' > check_lines.sh
+        chmod +x check_lines.sh
+
+        # Run the script on each changed file
+        for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          ./check_lines.sh "$file"
+        done
