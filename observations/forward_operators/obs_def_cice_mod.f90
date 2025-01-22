@@ -45,7 +45,8 @@
 !  use obs_def_cice_mod, only : get_expected_agreg_freeboard, &
 !                               get_expected_agreg_over_grid, &
 !                               get_expected_agreg_over_ice,  &
-!                               get_expected_agreg_thickness
+!                               get_expected_agreg_thickness, &
+!                               get_expected_agreg_concentration
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !-----------------------------------------------------------------------------
 
@@ -62,8 +63,8 @@
 !      call get_expected_agreg_thickness(state_handle, ens_size, location, &
 !               QTY_SEAICE_SNOWVOLUME, expected_obs, istatus)
 !   case(SAT_SEAICE_AGREG_CONCENTR)
-!      call get_expected_agreg_over_grid(state_handle, ens_size, location, &
-!               QTY_SEAICE_CONCENTR, expected_obs,istatus)
+!      call get_expected_agreg_concentration(state_handle, ens_size, location, &
+!               QTY_SEAICE_CONCENTR, expected_obs, istatus)
 !   case(SAT_SEAICE_AGREG_VOLUME)
 !      call get_expected_agreg_over_grid(state_handle, ens_size, location, &
 !               QTY_SEAICE_VOLUME, expected_obs, istatus)
@@ -251,13 +252,15 @@ do icat = 1, Ncat
 
    where(istatus1==0 .and. istatus2==0) &
      fb_volume = fb_volume + ice_volume*(1 - ice_dens/water_dens) - &
-                             snow_volume*snow_dens/water_dens
+                             snow_volume*(snow_dens/water_dens - 1)
 end do
 
 where(istatus3==0 .and. agreg_sic>1e-6) agreg_fb = fb_volume/agreg_sic
 where(istatus1/=0) istatus = istatus1
 where(istatus2/=0) istatus = istatus2
 where(istatus3/=0) istatus = istatus3
+
+agreg_fb = max(agreg_fb, 0.0_r8)
 
 end subroutine get_expected_agreg_freeboard
 
@@ -301,6 +304,8 @@ do icat = 1, Ncat
    call interpolate(state_handle, ens_size, location_fake, obstype, grid ,istatus)
    where(istatus == 0) agreg_grid = agreg_grid + grid
 end do
+
+! agreg_grid = max(agreg_grid, 0.0_r8)
 
 end subroutine get_expected_agreg_over_grid
 
@@ -359,7 +364,7 @@ do icat =1, Ncat
 end do
 
 !where(agreg_sic>1e-6) agreg_ice = temp_ice/agreg_sic
-agreg_ice = temp_ice/max(agreg_sic,1e-8)
+agreg_ice = temp_ice/max(agreg_sic,1e-6)
 
 end subroutine get_expected_agreg_over_ice
 
@@ -401,10 +406,43 @@ call get_expected_agreg_over_grid(state_handle, ens_size, location,&
 where(istatus1 /= 0) istatus = istatus1
 where(istatus2 /= 0) istatus = istatus2
 !where(istatus == 0.and.agreg_sic>1e-6) agreg_thickness = agreg_volume/agreg_sic
-where(istatus  == 0) agreg_thickness = agreg_volume/max(agreg_sic,1e-8)
+where(istatus  == 0) agreg_thickness = max(agreg_volume,0.0_r8)/max(agreg_sic,1e-6_r8)
 
 end subroutine get_expected_agreg_thickness
 
+!-----------------------------------------------------------------------------
+!> For thickness, it's sum(volume*concentr)
+!> Good for sea ice thickness and snow thickness
+
+subroutine get_expected_agreg_concentration(state_handle, ens_size, location, &
+               obstype, agreg_sic, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obstype
+real(r8),            intent(out) :: agreg_sic(ens_size)
+integer,             intent(out) :: istatus(ens_size)
+
+integer   :: istatus1(ens_size), istatus2(ens_size)
+real(r8)  :: loc_array(3),llat,llon
+
+if (.not.module_initialized) call initialize_module(state_handle, ens_size)
+
+loc_array = get_location(location)
+llat = loc_array(1)
+llon = loc_array(2)
+istatus = 0
+
+
+call get_expected_agreg_over_grid(state_handle, ens_size, location, &
+         QTY_SEAICE_CONCENTR, agreg_sic, istatus1)
+
+where(istatus1 /= 0) istatus = istatus1
+where(istatus  == 0) agreg_sic = max(agreg_sic, 0.0_r8)
+where(istatus  == 0) agreg_sic = min(agreg_sic, 1.0_r8)
+
+end subroutine get_expected_agreg_concentration
 
 !-----------------------------------------------------------------------------
 !> This determines the number of sea ice categories.
