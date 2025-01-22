@@ -468,12 +468,12 @@ subroutine area_simple_squeeze(qice001, qice002,     &
       hcat_midpoint(n)=0.5_r8*(hin_max(n-1)+hin_max(n))
    enddo
    
-   allocate(sice001(Nx,Ny,Ncat),sice002(Nx,Ny,Ncat),sice003(Nx,Ny,Ncat),sice004(Nx,Ny,Ncat), &
-            sice005(Nx,Ny,Ncat),sice006(Nx,Ny,Ncat),sice007(Nx,Ny,Ncat),sice008(Nx,Ny,Ncat), &
-            qice001(Nx,Ny,Ncat),qice002(Nx,Ny,Ncat),qice003(Nx,Ny,Ncat),qice004(Nx,Ny,Ncat), &
-            qice005(Nx,Ny,Ncat),qice006(Nx,Ny,Ncat),qice007(Nx,Ny,Ncat),qice008(Nx,Ny,Ncat), &
-            qsno001(Nx,Ny,Ncat),qsno002(Nx,Ny,Ncat),qsno003(Nx,Ny,Ncat))
-   allocate(aicen(Nx,Ny,Ncat),vicen(Nx,Ny,Ncat),vsnon(Nx,Ny,Ncat),Tsfcn(Nx,Ny,Ncat))
+   ! allocate(sice001(Nx,Ny,Ncat),sice002(Nx,Ny,Ncat),sice003(Nx,Ny,Ncat),sice004(Nx,Ny,Ncat), &
+   !          sice005(Nx,Ny,Ncat),sice006(Nx,Ny,Ncat),sice007(Nx,Ny,Ncat),sice008(Nx,Ny,Ncat), &
+   !          qice001(Nx,Ny,Ncat),qice002(Nx,Ny,Ncat),qice003(Nx,Ny,Ncat),qice004(Nx,Ny,Ncat), &
+   !          qice005(Nx,Ny,Ncat),qice006(Nx,Ny,Ncat),qice007(Nx,Ny,Ncat),qice008(Nx,Ny,Ncat), &
+   !          qsno001(Nx,Ny,Ncat),qsno002(Nx,Ny,Ncat),qsno003(Nx,Ny,Ncat))
+   ! allocate(aicen(Nx,Ny,Ncat),vicen(Nx,Ny,Ncat),vsnon(Nx,Ny,Ncat),Tsfcn(Nx,Ny,Ncat))
    ! Begin process 
    sice001  = max(0.0_r8, sice001)  ! salinities must be non-negative
    sice002  = max(0.0_r8, sice002)  ! salinities must be non-negative
@@ -698,12 +698,12 @@ subroutine volume_simple_squeeze(qice001, qice002,     &
       hcat_midpoint(n)=0.5_r8*(hin_max(n-1)+hin_max(n))
    enddo
 
-   allocate(sice001(Nx,Ny,Ncat),sice002(Nx,Ny,Ncat),sice003(Nx,Ny,Ncat),sice004(Nx,Ny,Ncat), &
-            sice005(Nx,Ny,Ncat),sice006(Nx,Ny,Ncat),sice007(Nx,Ny,Ncat),sice008(Nx,Ny,Ncat), &
-            qice001(Nx,Ny,Ncat),qice002(Nx,Ny,Ncat),qice003(Nx,Ny,Ncat),qice004(Nx,Ny,Ncat), &
-            qice005(Nx,Ny,Ncat),qice006(Nx,Ny,Ncat),qice007(Nx,Ny,Ncat),qice008(Nx,Ny,Ncat), &
-            qsno001(Nx,Ny,Ncat),qsno002(Nx,Ny,Ncat),qsno003(Nx,Ny,Ncat))
-   allocate(aicen(Nx,Ny,Ncat),vicen(Nx,Ny,Ncat),vsnon(Nx,Ny,Ncat),Tsfcn(Nx,Ny,Ncat))
+   ! allocate(sice001(Nx,Ny,Ncat),sice002(Nx,Ny,Ncat),sice003(Nx,Ny,Ncat),sice004(Nx,Ny,Ncat), &
+   !          sice005(Nx,Ny,Ncat),sice006(Nx,Ny,Ncat),sice007(Nx,Ny,Ncat),sice008(Nx,Ny,Ncat), &
+   !          qice001(Nx,Ny,Ncat),qice002(Nx,Ny,Ncat),qice003(Nx,Ny,Ncat),qice004(Nx,Ny,Ncat), &
+   !          qice005(Nx,Ny,Ncat),qice006(Nx,Ny,Ncat),qice007(Nx,Ny,Ncat),qice008(Nx,Ny,Ncat), &
+   !          qsno001(Nx,Ny,Ncat),qsno002(Nx,Ny,Ncat),qsno003(Nx,Ny,Ncat))
+   ! allocate(aicen(Nx,Ny,Ncat),vicen(Nx,Ny,Ncat),vsnon(Nx,Ny,Ncat),Tsfcn(Nx,Ny,Ncat))
 
    ! Begin process 
    sice001  = max(0.0_r8, sice001)  ! salinities must be non-negative
@@ -812,7 +812,7 @@ subroutine volume_simple_squeeze(qice001, qice002,     &
          ! If there is no ice post-adjustment... 
             if (vicen(i,j,n)==0._r8 ) then
                aicen(i,j,n)   = 0._r8
-               vsnon(i,j,n) = 0._r8
+               vsnon(i,j,n)   = 0._r8
                sice001(i,j,n) = 0._r8
                sice002(i,j,n) = 0._r8
                sice003(i,j,n) = 0._r8
@@ -910,7 +910,7 @@ subroutine cice_rebalancing(qice001, qice002,     &
 
    real(r8), allocatable :: aice(:,:), vice(:,:), vsno(:,:), aice_temp(:,:), vice_temp(:,:), vsno_temp(:,:) 
    real(r8), allocatable :: hin_max(:), hcat_midpoint(:)
-   real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new
+   real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new, hicen
    real(r8), parameter :: Tsmelt = 0._r8,        &
                           cc3 = 3._r8,           &
                           c1 = 1._r8,            &
@@ -934,12 +934,12 @@ subroutine cice_rebalancing(qice001, qice002,     &
       hcat_midpoint(n)=0.5_r8*(hin_max(n-1)+hin_max(n))
    enddo
 
-   allocate(sice001(Nx,Ny,Ncat),sice002(Nx,Ny,Ncat),sice003(Nx,Ny,Ncat),sice004(Nx,Ny,Ncat), &
-            sice005(Nx,Ny,Ncat),sice006(Nx,Ny,Ncat),sice007(Nx,Ny,Ncat),sice008(Nx,Ny,Ncat), &
-            qice001(Nx,Ny,Ncat),qice002(Nx,Ny,Ncat),qice003(Nx,Ny,Ncat),qice004(Nx,Ny,Ncat), &
-            qice005(Nx,Ny,Ncat),qice006(Nx,Ny,Ncat),qice007(Nx,Ny,Ncat),qice008(Nx,Ny,Ncat), &
-            qsno001(Nx,Ny,Ncat),qsno002(Nx,Ny,Ncat),qsno003(Nx,Ny,Ncat))
-   allocate(aicen(Nx,Ny,Ncat),vicen(Nx,Ny,Ncat),vsnon(Nx,Ny,Ncat),Tsfcn(Nx,Ny,Ncat))
+   ! allocate(sice001(Nx,Ny,Ncat),sice002(Nx,Ny,Ncat),sice003(Nx,Ny,Ncat),sice004(Nx,Ny,Ncat), &
+   !          sice005(Nx,Ny,Ncat),sice006(Nx,Ny,Ncat),sice007(Nx,Ny,Ncat),sice008(Nx,Ny,Ncat), &
+   !          qice001(Nx,Ny,Ncat),qice002(Nx,Ny,Ncat),qice003(Nx,Ny,Ncat),qice004(Nx,Ny,Ncat), &
+   !          qice005(Nx,Ny,Ncat),qice006(Nx,Ny,Ncat),qice007(Nx,Ny,Ncat),qice008(Nx,Ny,Ncat), &
+   !          qsno001(Nx,Ny,Ncat),qsno002(Nx,Ny,Ncat),qsno003(Nx,Ny,Ncat))
+   ! allocate(aicen(Nx,Ny,Ncat),vicen(Nx,Ny,Ncat),vsnon(Nx,Ny,Ncat),Tsfcn(Nx,Ny,Ncat))
 
    ! Begin process 
    write(*,*) 'beginning cice postprocessing process...'
@@ -1009,27 +1009,66 @@ subroutine cice_rebalancing(qice001, qice002,     &
             aicen(i,j,:) = 0.0_r8
             vicen(i,j,:) = 0.0_r8
             vsnon(i,j,:) = 0.0_r8
+         else if (aice(i,j) > 0.0_r8) then
+            do n=1,Ncat
+               if (aice_temp(i,j) > 0.0_r8 .and. aice(i,j) > 0.0_r8) then
+                  aicen(i,j,n) = aicen(i,j,n) - (aice_temp(i,j) - aice(i,j))*aicen(i,j,n)/aice_temp(i,j) 
+               endif
+               if (vice_temp(i,j) > 0.0_r8 .and. vice(i,j) > 0.0_r8) then
+                  vicen(i,j,n) = vicen(i,j,n) - (vice_temp(i,j) - vice(i,j))*vicen(i,j,n)/vice_temp(i,j)
+               endif
+               if (vsno_temp(i,j) > 0.0_r8 .and. vsno(i,j) > 0.0_r8) then
+                  vsnon(i,j,n) = vsnon(i,j,n) - (vsno_temp(i,j) - vsno(i,j))*vsnon(i,j,n)/vsno_temp(i,j)
+               endif
+               if (aicen(i,j,n) > 0.0_r8) then
+                  hicen = vicen(i,j,n)/aicen(i,j,n)
+                  if (n == Ncat) then
+                     if (hicen < hin_max(n-1)) then
+                         aicen(i,j,n) = vicen(i,j,n)/hin_max(n-1)
+                     endif
+                  else
+                     if (hicen > hin_max(n) .or. hicen < hin_max(n-1)) then
+                        aicen(i,j,n) = vicen(i,j,n)/hcat_midpoint(n)
+                     endif
+                  endif
+               else
+                  vicen(i,j,n) = 0.0_r8
+                  vsnon(i,j,n) = 0.0_r8
+               endif
+            enddo
+
+            ! recalculate the aggregate area
+            aice = aicen(:,:,1)
+            do n = 2, Ncat  
+               aice = aice+aicen(:,:,n)
+            enddo
+
+            ! If the post-adjustment concentration is greater than 1, squeeze it down
+            if (aice(i,j) > 1.0_r8) then
+               squeeze = 1.0_r8/aice(i,j)
+               aicen(i,j,:) = aicen(i,j,:)*squeeze
+            endif        
          endif
 
-         ! if ice exists in both the post-adjustment and post-bounds variables, 
-         ! shift the post-adjustment negative values of each category variable 
-         do n=1,Ncat
-            if (aice_temp(i,j) > 0.0_r8 .and. aice(i,j) > 0.0_r8) then
-               aicen(i,j,n) = aicen(i,j,n) - (aice_temp(i,j) - aice(i,j))*aicen(i,j,n)/aice_temp(i,j)
-            endif
-            if (vice_temp(i,j) > 0.0_r8 .and. vice(i,j) > 0.0_r8) then
-               vicen(i,j,n) = vicen(i,j,n) - (vice_temp(i,j) - vice(i,j))*vicen(i,j,n)/vice_temp(i,j)
-            endif
-            if (vsno_temp(i,j) > 0.0_r8 .and. vsno(i,j) > 0.0_r8) then
-               vsnon(i,j,n) = vsnon(i,j,n) - (vsno_temp(i,j) - vsno(i,j))*vsnon(i,j,n)/vsno_temp(i,j)
-            endif
-         enddo
+         !! if ice exists in both the post-adjustment and post-bounds variables, 
+         !! shift the post-adjustment negative values of each category variable 
+         !do n=1,Ncat
+         !   if (aice_temp(i,j) > 0.0_r8 .and. aice(i,j) > 0.0_r8) then
+         !      aicen(i,j,n) = aicen(i,j,n) - (aice_temp(i,j) - aice(i,j))*aicen(i,j,n)/aice_temp(i,j)
+         !   endif
+         !   if (vice_temp(i,j) > 0.0_r8 .and. vice(i,j) > 0.0_r8) then
+         !      vicen(i,j,n) = vicen(i,j,n) - (vice_temp(i,j) - vice(i,j))*vicen(i,j,n)/vice_temp(i,j)
+         !   endif
+         !   if (vsno_temp(i,j) > 0.0_r8 .and. vsno(i,j) > 0.0_r8) then
+         !      vsnon(i,j,n) = vsnon(i,j,n) - (vsno_temp(i,j) - vsno(i,j))*vsnon(i,j,n)/vsno_temp(i,j)
+         !   endif
+         !enddo
 
-         ! If the post-adjustment concentration is greater than 1, squeeze it down
-         if (aice(i,j) > 1.0_r8) then
-            squeeze = 1.0_r8/aice(i,j)
-            aicen(i,j,:) = aicen(i,j,:)*squeeze
-         endif
+         !! If the post-adjustment concentration is greater than 1, squeeze it down
+         !if (aice(i,j) > 1.0_r8) then
+         !   squeeze = 1.0_r8/aice(i,j)
+         !   aicen(i,j,:) = aicen(i,j,:)*squeeze
+         !endif
 
          ! Adjust the volume, snow, salinities and enthalphies to be consistent with the squeezed concentrations
          do n=1,Ncat
