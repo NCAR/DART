@@ -1,7 +1,3 @@
-.. Shouldn't be needed because of new os lines in conf.py:
-.. .. include:: /Users/raeder/DAI/Manhattan/guide/references.rst
-.. .. include:: ../../guide/references.rst
-
 .. _POP:
 
 POP
