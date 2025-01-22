@@ -229,11 +229,12 @@ fi
 
 
 
-${COPY} ${DARTROOT}/models/cice/work/cice_to_dart      ${EXEROOT}
-${COPY} ${DARTROOT}/models/cice/work/dart_to_cice      ${EXEROOT}
-${COPY} ${DARTROOT}/models/cice/work/filter            ${EXEROOT}
-${COPY} ${DARTROOT}/models/cice/work/perfect_model_obs ${EXEROOT}
-${COPY} /glade/work/mollyw/Projects/c-icesat-2/data/templates/cice_bounded_qceff_table.csv ${CASEROOT}
+${COPY} ${DARTROOT}/models/cice/work/cice_to_dart           ${EXEROOT}
+${COPY} ${DARTROOT}/models/cice/work/dart_to_cice           ${EXEROOT}
+${COPY} ${DARTROOT}/models/cice/work/filter                 ${EXEROOT}
+${COPY} ${DARTROOT}/models/cice/work/perfect_model_obs      ${EXEROOT}
+${COPY} ${DARTROOT}/models/cice/work/fill_inflation_restart ${EXEROOT}
+${COPY} /glade/work/mollyw/Projects/c-icesat-2/data/templates/cice_unbounded_qceff_table.csv ${CASEROOT}
 
 exit 0
 
