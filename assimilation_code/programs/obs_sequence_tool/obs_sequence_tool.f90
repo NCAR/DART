@@ -221,13 +221,13 @@ if (num_FO_types_to_suppress > 0) call setup_FO_suppress_list(FO_write_types)
 ! the values if so.  Note that if any of the values are not missing_r8, all of
 ! them must have good (and consistent) values.  i don't have code in here yet
 ! to idiotproof this, but i should add it.
+
+restrict_by_location = .false.
 if ((minval(min_box).ne.missing_r8) .or. (maxval(min_box).ne.missing_r8) .or. &
     (minval(max_box).ne.missing_r8) .or. (maxval(max_box).ne.missing_r8)) then
    restrict_by_location = .true.
    min_loc = set_location(min_box)
    max_loc = set_location(max_box)
-else
-   restrict_by_location = .false.
 endif
 
 ! 3d sphere box check - locations module dependent, but an important one.
@@ -302,8 +302,6 @@ if ((min_lat /= -90.0_r8) .or. (max_lat /=  90.0_r8) .or. &
    max_box(3) = 0.0_r8
    max_box(4) = -2.0_r8 !! FIXME: VERTISUNDEF, but not all loc mods have it
    max_loc = set_location(max_box)
-else
-   restrict_by_location = .false.
 endif
   
 !%! ! SPECIAL: cut off all GPS obs below the given height

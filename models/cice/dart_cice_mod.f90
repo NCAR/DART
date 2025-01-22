@@ -85,8 +85,11 @@ character(len=64) :: conversion = 'native'    ! no conversion
 
 
 character(len=256) :: grid_file, grid_format,  grid_type, &     ! CMB verified types
-                      gridcpl_file, kmt_file
-integer :: kcatbound
+                      gridcpl_file, kmt_file, bathymetry_file, &
+                      bathymetry_format, grid_atm, grid_ice, grid_ocn
+integer :: kcatbound, nblyr, ncat, nfsd, nilyr, nslyr
+logical :: close_boundaries, orca_halogrid, use_bathymetry
+real(r8) :: dxrect, dyrect
 
 ! CMB stole code from ice_domain.F90
    integer, parameter :: log_kind  = kind(.true.), &
@@ -99,13 +102,19 @@ integer :: kcatbound
    logical (kind=log_kind) :: &
       maskhalo_dyn   , & ! if true, use masked halo updates for dynamics
       maskhalo_remap , & ! if true, use masked halo updates for transport
-      maskhalo_bound     ! if true, use masked halo updates for bound_state
+      maskhalo_bound , & ! if true, use masked halo updates for bound_state
+      add_mpi_barriers   ! added by MW for CICE6, she doesn't know what it does
 
    character (len=80) :: &
        distribution_type,   &! method to use for distributing blocks
        distribution_wght     ! method for weighting work per block 
 
-   integer (int_kind) :: nprocs                ! num of processors
+   integer (int_kind) :: nprocs , &               ! num of processors
+                         nx_global, &
+                         ny_global, &
+                         max_blocks, &
+                         block_size_x, &
+                         block_size_y
 
    character (len=80) :: processor_shape
 
@@ -186,50 +195,44 @@ integer :: kcatbound
     integer(SHR_KIND_IN)    :: ierr                  ! Return code             
 
 
-   namelist /grid_nml/ grid_file, grid_format, grid_type, &
-         gridcpl_file, kcatbound, kmt_file
+   namelist /grid_nml/ bathymetry_file, bathymetry_format,&
+                       close_boundaries,                  &
+                       dxrect, dyrect,                    &
+                       grid_atm, grid_ice, grid_ocn,      &
+                       grid_file, grid_format, grid_type, &
+                       gridcpl_file, kcatbound, kmt_file, &
+                       nblyr, ncat, nfsd, nilyr, nslyr,   &
+                       orca_halogrid, use_bathymetry
 
-   namelist /domain_nml/ nprocs, &
-                         processor_shape,   &
+   namelist /domain_nml/ processor_shape,   &
                          distribution_type, &
                          distribution_wght, &
                          ew_boundary_type,  &
                          ns_boundary_type,  &
                          maskhalo_dyn,      &
                          maskhalo_remap,    &
-                         maskhalo_bound
+                         maskhalo_bound,    &
+                         nx_global,         &
+                         ny_global,         &
+                         max_blocks,        &
+                         block_size_x,      &
+                         block_size_y,      &
+                         add_mpi_barriers
 
-    namelist /seq_timemgr_inparm/  calendar, curr_ymd, curr_tod,  &
-         stop_option, stop_n, stop_ymd, stop_tod,                &
-         restart_option, restart_n, restart_ymd,                 &
-         pause_option,   &
-         pause_n,           &
-         pause_active_atm, &
-         pause_active_cpl, &
-         pause_active_ocn, &
-         pause_active_wav, &
-         pause_active_glc, &
-         pause_active_ice, &
-         pause_active_rof, &
-         pause_active_lnd, &
-         data_assimilation_atm, &
-         data_assimilation_cpl, &
-         data_assimilation_ocn, &
-         data_assimilation_wav, &
-         data_assimilation_glc, &
-         data_assimilation_ice, &
-         data_assimilation_rof, &
-         data_assimilation_lnd, &
-         history_option, history_n, history_ymd,                 &
-         histavg_option, histavg_n, histavg_ymd,                 &
-         barrier_option, barrier_n, barrier_ymd,                 &
-         tprof_option, tprof_n, tprof_ymd,                       &
-         start_ymd, start_tod, ref_ymd, ref_tod,                 &
-         atm_cpl_dt, ocn_cpl_dt, ice_cpl_dt, lnd_cpl_dt,         &
-         atm_cpl_offset, lnd_cpl_offset, ocn_cpl_offset,         &
-         ice_cpl_offset, glc_cpl_dt, glc_cpl_offset, glc_avg_period, &
-         wav_cpl_dt, wav_cpl_offset, esp_cpl_dt, esp_cpl_offset, &
-         rof_cpl_dt, rof_cpl_offset, esp_run_on_pause, end_restart
+   ! namelist /seq_timemgr_inparm/  calendar, curr_ymd, curr_tod,  &
+   !       stop_option, stop_n, stop_ymd, stop_tod,        &
+   !       restart_option, restart_n, restart_ymd,         &
+   !       history_option, history_n, history_ymd,         &
+   !       histavg_option, histavg_n, histavg_ymd,         &
+   !       pause_option, pause_n, pause_component_list,   &
+   !       barrier_option, barrier_n, barrier_ymd,         &
+   !       tprof_option, tprof_n, tprof_ymd,               &
+   !       start_ymd, start_tod, ref_ymd, ref_tod,         &
+   !       atm_cpl_dt, ocn_cpl_dt, ice_cpl_dt, lnd_cpl_dt, &
+   !       atm_cpl_offset, lnd_cpl_offset, ocn_cpl_offset, &
+   !       ice_cpl_offset, glc_cpl_dt, glc_avg_period, glc_cpl_offset,     &
+   !       wav_cpl_dt, wav_cpl_offset, esp_cpl_dt, esp_cpl_offset,     &
+   !       esp_run_on_pause, rof_cpl_dt, rof_cpl_offset, end_restart
 
 !======================================================================
 contains
@@ -273,9 +276,9 @@ read(iunit, nml = domain_nml, iostat = io)
 call check_namelist_read(iunit, io, 'domain_nml')
 
 ! Read CESM "driver" restart information 
-call find_namelist_in_file('drv_in', 'seq_timemgr_inparm', iunit)
-read(iunit, nml = seq_timemgr_inparm, iostat = io)
-call check_namelist_read(iunit, io, 'seq_timemgr_inparm')
+! call find_namelist_in_file('drv_in', 'seq_timemgr_inparm', iunit)
+! read(iunit, nml = seq_timemgr_inparm, iostat = io)
+! call check_namelist_read(iunit, io, 'seq_timemgr_inparm')
 
 module_initialized = .true.
 
@@ -459,10 +462,10 @@ else
               'stop_option must be "ndays or nday"', source, revision, revdate)
 endif
 
-iunit = open_file('cice_in.DART',form='formatted',action='rewind')
-write(iunit, nml=seq_timemgr_inparm)
-write(iunit, '('' '')')
-close(iunit)
+! iunit = open_file('cice_in.DART',form='formatted',action='rewind')
+! write(iunit, nml=seq_timemgr_inparm)
+! write(iunit, '('' '')')
+! close(iunit)
 
 end subroutine write_cice_namelist
 

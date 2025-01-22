@@ -7,7 +7,15 @@ Overview
 This document describes the DART interface module for the atmospheric component 
 of the Model for Prediction Across Scales
 `MPAS <https://ncar.ucar.edu/what-we-offer/models/model-prediction-across-scales-mpas>`__ 
-(or briefly, MPAS-ATM) global model, which uses an unstructured Voronoi grid mesh,
+(or briefly, MPAS-ATM) global model.
+
+The DART interface has constants set to match MPAS v5.0 onwards as defined in 
+`MPAS-Model/src/framework/mpas_constants.F <https://github.com/MPAS-Dev/MPAS-Model/blob/master/src/framework/mpas_constants.F>`__.
+If you need to reproduce work with DART and MPAS v4 you will need to change the model_mod.f90 
+parameters ``cp``, ``cv`` and ``rvord`` to match MPAS v4. 
+
+
+The mpas-atm model uses an unstructured Voronoi grid mesh,
 formally Spherical Centriodal Voronoi Tesselations (SCVTs). This allows for both
 quasi-uniform discretization of the sphere and local refinement. The MPAS/DART
 interface was built on the SCVT-dual mesh and does not regrid to regular lat/lon
@@ -444,7 +452,7 @@ Compilation
 
 The DART interface for MPAS-ATM can be compiled with various fortran compilers
 such as (but not limited to) gfortran, pgf90, and intel. It has been tested on a
-Mac and NCAR IBM supercomputer (yellowstone).
+Mac and NSF NCAR IBM supercomputer (yellowstone).
 
 
 .. note::

@@ -70,7 +70,7 @@ This package is currently organized into files under the DART/observations/NCEP/
    install.sh    A script to install the NCEP PREPBUFR decoder and the NCEP BUFR library.
    exe           Executables of the decoder and converter.
    data          Where the NCEP PREPBUFR files (prepqm****) could be loaded into
-                 from the NCAR Mass Store (the script assumes this is the default location).
+                 from the NSF NCAR Mass Store (the script assumes this is the default location).
    work          Where we run the script to do the decoding.
    convert_bufr  Source code (grabbufr) to convert the binary big-endian PREPBUFR files to 
                  little-endian files, and a script to compile the program.
@@ -145,15 +145,15 @@ executable cwordsh.x executable.
 
 Note that if you can get the blocked file formats to begin with, this program is not needed.
 
-Getting the ncep reanalysis prepbufr format data from ncar hpss
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Getting the ncep reanalysis prepbufr format data from NSF NCAR HPSS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis dataset, ds090.0, on NCAR Mass Store
+The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis dataset, ds090.0, on NSF NCAR Mass Store
 System (HPSS).
 
 To find the files:
 
--  go to the `NCAR/NCEP reanalysis archive. <http://rda.ucar.edu/datasets/ds090.0/>`__
+-  go to the `NSF NCAR/NCEP reanalysis archive. <http://rda.ucar.edu/datasets/ds090.0/>`__
 -  Click on the "Inventories" tab.
 -  Select the year you are interested in.
 -  Search for files with the string "prepqm" in the name.
@@ -166,7 +166,7 @@ A21902. After September 2003, these files include AIRCRAFT data (airplane readin
 ACARS data (airplane readings taken during takeoff and landing). There are different datasets which include ACARS data
 but their use is restricted and you must contact the RDA group to get access.
 
-| If you are running on a machine with direct access to the NCAR HPSS, then change directories into the prep_bufr/data
+| If you are running on a machine with direct access to the NSF NCAR HPSS, then change directories into the prep_bufr/data
   subdirectory and run:
 | *> hsi get /DSS/A##### rawfile*
 | where ##### is the data set number you want.
@@ -178,7 +178,7 @@ but their use is restricted and you must contact the RDA group to get access.
 | *> mv rawfile data.tar*
 | *> tar -xvf data.tar*
 | However, if you get an error from the tar command you will need to run the ``cosconvert`` program to convert the file
-  into a readable tar file. On the NCAR machine *yellowstone*, run:
+  into a readable tar file. On the NSF NCAR machine *yellowstone*, run:
 | *> /glade/u/home/rdadata/bin/cosconvert -b rawfile data.tar*
 | On other platforms, download the appropriate version from: http://rda.ucar.edu/libraries/io/cos_blocking/utils/ .
   Build and run the converter and then you should have a tar file you can unpack.

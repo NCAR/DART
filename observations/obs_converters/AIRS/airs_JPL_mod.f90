@@ -2,7 +2,7 @@
 
 ! adapted from original JPL code, example AIRS readers
 !
-! updated for version 6 of the AIRS data formats
+! updated for version 6 and 7 of the AIRS data formats
 ! added fields needed to support radiances
 ! removed unused items to streamline the code.
 !
@@ -511,7 +511,7 @@ contains
         print *, "Error ", statn, " reading field ", &
                   "TAirStdErr"
 
-      if (ver == 6) then
+      if (ver .eq. 6 .or. ver .eq. 7) then
          edge(3) = 45
          edge(2) = 30
          edge(1) = 28
@@ -543,7 +543,7 @@ contains
         print *, "Error ", statn, " reading field ", &
                   "TSurfAirErr"
 
-      if (ver == 6) then
+      if (ver .eq. 6 .or. ver .eq. 7) then
          edge(2) = 45
          edge(1) = 30
          statn = SWrdfld(swid, "TSurfAir_QC", &
@@ -621,7 +621,7 @@ contains
         print *, "Error ", statn, " reading field ", &
                   "H2OMMRStdErr"
 
-      if (ver == 6) then
+      if (ver .eq. 6 .or. ver .eq. 7) then
          edge(3) = 45
          edge(2) = 30
          edge(1) = 14
@@ -653,7 +653,7 @@ contains
         print *, "Error ", statn, " reading field ", &
                   "totH2OStdErr"
 
-      if (ver == 6) then
+      if (ver .eq. 6 .or. ver .eq. 7) then
          edge(2) = 45
          edge(1) = 30
          statn = SWrdfld(swid, "totH2OStd_QC", &

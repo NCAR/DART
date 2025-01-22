@@ -268,7 +268,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
       vert_Q_loop:  do ivert=istart,humidity_top_index
 
-         if ((version == 6) .and. (granule%H2OMMRStd_QC(ivert, icol, irow) > 0)) cycle vert_Q_loop
+         if ((version.eq.6 .or. version.eq.7) .and. (granule%H2OMMRStd_QC(ivert, icol, irow) > 0)) cycle vert_Q_loop
 
          qqc = 0   ! if we get here, the quality control is 'Best' == 0
 
@@ -316,7 +316,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 enddo rowloop
 
 ! Print a little summary
-write(msgstring,*) 'obs used = ', obs_num
+write(msgstring,*) 'obs used = ', obs_num - 1
 call error_handler(E_MSG, ' ', msgstring)
 
 call print_obs_seq_summary(seq)

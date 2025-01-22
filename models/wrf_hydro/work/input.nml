@@ -7,6 +7,13 @@
 #    domain_order                 = 'hydro', 'parameters'
 #    domain_shapefiles            = 'restart.hydro.nc', 'parameters.nc'
 
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &model_nml
      assimilation_period_days       = 0
      assimilation_period_seconds    = 3600
@@ -121,15 +128,7 @@
   enable_special_outlier_code = .false.
   /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
-  /
 
-# filter_kind=9 => JPoterjoy particle filter
 # cutoff is in radians; for the earth, 0.05 is about 300 km.
 # cutoff is defined to be the half-width of the localization radius
 # so 0.05 radians for cutoff is about an 600 km effective
@@ -141,7 +140,6 @@
 # max_link_distance = 2000m = cutoff = 0.000157 radians
 
 &assim_tools_nml
-   filter_kind                     = 1
    cutoff                          = 0.000157
    sort_obs_inc                    = .false.
    spread_restoration              = .false.

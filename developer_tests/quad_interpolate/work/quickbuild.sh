@@ -5,11 +5,11 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=template
-LOCATION=threed_sphere
+MODEL="none"
+EXTRA="$DART"/models/template/threed_model_mod.f90
 TEST=quad_interpolate
 dev_test=1
-
+LOCATION="threed_sphere"
 
 programs=(
 )

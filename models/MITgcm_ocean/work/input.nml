@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    start_from_restart       = .true.
    output_restart           = .true.
@@ -86,7 +93,6 @@
 # in both lists, the same number of items
 
 &assim_tools_nml
-   filter_kind                       = 1
    cutoff                            = 0.025
    distribute_mean                   = .false.
    sort_obs_inc                      = .false.
@@ -262,13 +268,6 @@
    verbose           = .false.
   /
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'ics'
-   restart_out_file_name = 'restart'
-  /
 
 
 #-------------------------------------------------------------------------------
@@ -458,7 +457,7 @@
 #   quantity_of_interest = 'QTY_DENSITY'
 
 &model_mod_check_nml
-   input_state_files     = 'OUTPUT.nc'
+   input_state_files     = 'mem01_reduced.nc'
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0

@@ -52,15 +52,20 @@ function print_usage() {
   echo "  quickbuild.sh clean               : clean the build" 
   echo "  quickbuild.sh help                : print help message"
   echo "   " 
-  echo "  quickbuild.sh [nompi] [program]   : optional arguments " 
-  echo "                                      [nompi] build without mpi"
-  echo "                                      [program] build a single program"
+  echo "  quickbuild.sh [mpi/nompi/mpif08] [program]   : optional arguments " 
+  echo "                                                 [mpi]     build with mpi (default)"
+  echo "                                                 [nompi]   build without mpi"
+  echo "                                                 [mpif08]  build with mpi using mpi_f08"
+  echo "                                                 [program] build a single program"
   echo "   " 
   echo "  Example 1. Build filter without mpi:"
   echo "           quickbuild.sh nompi filter"
   echo "   " 
   echo "  Example 2. Build perfect_model_obs with mpi"
   echo "           quickbuild.sh perfect_model_obs"
+  echo "   " 
+  echo "  Example 3. Build perfect_model_obs with mpi using the mpi_f08 bindings"
+  echo "           quickbuild.sh mpif08 perfect_model_obs"
   echo "   " 
   exit
 }
@@ -79,6 +84,8 @@ for p in ${all_programs[@]}; do
 done
 
 \rm -f -- preprocess
+\rm -f -- libdart.a
+\rm -f -- libdart.so
 cleanpreprocess
 
 }
@@ -96,12 +103,12 @@ if [ $# -gt 2 ]; then
    print_usage
 fi
 
-# Default to build with mpi
+# Default to build with mpi  (non f08 version)
 mpisrc=mpi
 windowsrc=no_cray_win
 m="-w" # mkmf wrapper arg
 
-# if the first argument is help, nompi, clean
+# if the first argument is help, nompi, mpi, mpif08, clean
 case $1 in
   help)
     print_usage
@@ -111,6 +118,18 @@ case $1 in
     mpisrc="null_mpi"
     windowsrc=""
     m=""
+    shift 1
+    ;;
+
+  mpi)
+    mpisrc="mpi"
+    windowsrc="no_cray_win"
+    shift 1
+    ;;  
+
+  mpif08)
+    mpisrc="mpif08"
+    windowsrc="no_cray_winf08"
     shift 1
     ;;
 
@@ -146,24 +165,39 @@ local misc="$DART/models/utilities/ \
 
 # remove null/mpi from list
 local mpi="$DART"/assimilation_code/modules/utilities/mpi_utilities_mod.f90
+local mpif08="$DART"/assimilation_code/modules/utilities/mpif08_utilities_mod.f90
 local nullmpi="$DART"/assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 local nullwin="$DART"/assimilation_code/modules/utilities/null_win_mod.f90
 local craywin="$DART"/assimilation_code/modules/utilities/cray_win_mod.f90
 local nocraywin="$DART"/assimilation_code/modules/utilities/no_cray_win_mod.f90
+local no_cray_winf08="$DART"/assimilation_code/modules/utilities/no_cray_winf08_mod.f90
 
 if [ "$mpisrc" == "mpi" ]; then
 
    core=${core//$nullmpi/}
    core=${core//$nullwin/}
+   core=${core//$mpif08/}
+   core=${core//$no_cray_winf08/}
    if [ "$windowsrc" == "craywin" ]; then
        core=${core//$nocraywin/}
    else #nocraywin
        core=${core//$craywin/}
    fi
-else #nompi
+
+elif [ "$mpisrc" == "mpif08" ]; then
+
+   core=${core//$nullmpi/}
+   core=${core//$nullwin/}
+   core=${core//$mpi/}
+   core=${core//$craywin/}
+   core=${core//$nocraywin/}
+
+else  #nompi
 
    core=${core//$mpi/}
+   core=${core//$mpif08/}
    core=${core//$nocraywin/}
+   core=${core//$no_cray_winf08/}
    core=${core//$craywin/}
 fi
 
@@ -221,6 +255,16 @@ fi
      $program
 }
 
+#-------------------------
+# Build a library
+#
+#-------------------------
+function buildlib() {
+findsrc
+$DART/build_templates/mkmf -x -a $DART $m -p $1 \
+     $dartsrc \
+     $EXTRA
+}
 #-------------------------
 # Build a model specific program
 # looks in $DART/models/$MODEL/src/programs for {main}.f90 

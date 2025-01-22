@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &quality_control_nml
 /
 
@@ -99,19 +106,11 @@
    /
 
 
-&smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
-   /
 
 &ensemble_manager_nml
    /
 
 &assim_tools_nml
-   filter_kind                     = 1
    cutoff                          = 0.2
    sort_obs_inc                    = .false.
    spread_restoration              = .false.

@@ -13,7 +13,7 @@ parameter configuration that are driven from its namelist. See the namelist sect
 of assimilation steps to be done is controlled by the input observation sequence and by the time-stepping capabilities
 of the model being used in the assimilation.
 
-See :doc:`../../../README` for more documentation, including a discussion of the
+See :ref:`Welcome page` for more documentation, including a discussion of the
 capabilities of the assimilation system, a diagram of the entire execution cycle, the options and features.
 
 Namelist
@@ -359,9 +359,10 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | in the current directory. For each        |
 |                              |                     | ensemble member which returns a non-zero  |
 |                              |                     | return code, a line will be written to    |
-|                              |                     | this file. Each line will have three      |
-|                              |                     | values listed: the observation number,    |
-|                              |                     | the ensemble member number, and the       |
+|                              |                     | this file. Each line will list the        |
+|                              |                     | following values: the ensemble member     |
+|                              |                     | number, local observation number, the key |
+|                              |                     | for the observation, and then the         |
 |                              |                     | istatus return code. Be cautious when     |
 |                              |                     | turning this option on. The number of     |
 |                              |                     | lines in this file can be up to the       |
@@ -476,7 +477,6 @@ Modules used
    ensemble_manager_mod
    adaptive_inflate_mod
    mpi_utilities_mod
-   smoother_mod
    random_seq_mod
    state_vector_io_mod
    io_filenames_mod

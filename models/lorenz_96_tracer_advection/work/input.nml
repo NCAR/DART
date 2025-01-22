@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .false.,
    single_file_in             = .true.
@@ -29,7 +36,7 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = 'filter_input.nc'
+   input_state_files            = 'perfect_input.nc'
    input_state_file_list        = ''
 
    stages_to_write  = 'preassim', 'analysis', 'output'
@@ -40,14 +47,14 @@
 
    output_interval              = 1,
    output_members               = .true.
-   num_output_state_members     = 20,
+   num_output_state_members     = 80,
    output_mean                  = .true.
    output_sd                    = .true.
 
-   ens_size                     = 40,
+   ens_size                     = 80,
    num_groups                   = 1,
-   perturb_from_single_instance = .false.,
-   perturbation_amplitude       = 0.2,
+   perturb_from_single_instance = .true.,
+   perturbation_amplitude       = 0.01,
    distributed_state            = .true.
 
    async                        = 0,
@@ -55,7 +62,7 @@
 
    obs_sequence_in_name         = "obs_seq.out",
    obs_sequence_out_name        = "obs_seq.final",
-   num_output_obs_members       = 20,
+   num_output_obs_members       = 80,
    init_time_days               = 0,
    init_time_seconds            = 0,
    first_obs_days               = -1,
@@ -63,13 +70,13 @@
    last_obs_days                = -1,
    last_obs_seconds             = -1,
 
-   inf_flavor                  = 2,                       0,
+   inf_flavor                  = 5,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1.2,                     1.2,
+   inf_lower_bound             = 0.0,                     1.0,
+   inf_upper_bound             = 1000.0,                     1.2,
    inf_damping                 = 0.9,                     1.0,
    inf_sd_initial              = 0.6,                     0.0,
    inf_sd_lower_bound          = 0.6,                     0.0,
@@ -82,20 +89,11 @@
    silence                      = .false.,
    /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'
-   /
-
 &ensemble_manager_nml
    /
 
 &assim_tools_nml
-   filter_kind                     = 1,
-   cutoff                          = 0.2,
+   cutoff                          = 1000000.0
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -125,16 +123,25 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
-				'RAW_TRACER_CONCENTRATION',
-				'RAW_TRACER_SOURCE'
+   'RAW_TRACER_CONCENTRATION' 
+   evaluate_these_obs_types = 'RAW_TRACER_SOURCE'  
    /
 
 &model_nml
-   model_size        = 120,
-   forcing           = 8.00,
-   delta_t           = 0.05,
-   time_step_days    = 0,
-   time_step_seconds = 3600,
+   model_size               = 120,
+   forcing                  = 8.0,
+   delta_t                  = 0.05,
+   mean_velocity            = 0.0,
+   pert_velocity_multiplier = 5.0,
+   diffusion_coef           = 0.0,
+   e_folding                = 0.25,
+   sink_rate                = 0.1,
+   source_rate              = 100.0,
+   point_tracer_source_rate = 5.0,
+   positive_tracer          = .true.,
+   bound_above_is_one       = .false.
+   time_step_days           = 0,
+   time_step_seconds        = 3600,
    /
 
 &utilities_nml

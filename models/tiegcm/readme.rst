@@ -8,7 +8,7 @@ Overview
 --------
 
 The Thermosphere Ionosphere Electrodynamic General Circulation Model 
-(`TIEGCM <http://www.hao.ucar.edu/modeling/tgcm/tie.php>`__) is developed by the NCAR
+(`TIEGCM <http://www.hao.ucar.edu/modeling/tgcm/tie.php>`__) is developed by the NSF NCAR
 High Altitude Observatory (`HAO <https://www2.hao.ucar.edu/>`__).
 
 

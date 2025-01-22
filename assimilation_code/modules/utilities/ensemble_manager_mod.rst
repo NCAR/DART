@@ -140,12 +140,6 @@ Public interfaces
 \                                  compute_copy_mean
 \                                  compute_copy_mean_sd
 \                                  compute_copy_mean_var
-\                                  prepare_to_write_to_vars
-\                                  prepare_to_write_to_copies
-\                                  prepare_to_read_from_vars
-\                                  prepare_to_read_from_copies
-\                                  prepare_to_update_vars
-\                                  prepare_to_update_copies
 \                                  print_ens_handle
 \                                  map_pe_to_task
 \                                  map_task_to_pe
@@ -174,7 +168,6 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
          ! Time is only related to var complete
          type(time_type), pointer :: time(:)
          integer :: distribution_type
-         integer :: valid     ! copies modified last, vars modified last, both same
          integer :: id_num
          integer, allocatable :: task_to_pe_list(:) ! List of tasks
          integer, allocatable :: pe_to_task_list(:) ! List of tasks
@@ -796,182 +789,6 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
 
 | 
 
-.. container:: routine
-
-   *call prepare_to_update_vars(ens_handle)*
-   ::
-
-      type(ensemble_type), intent(inout)  :: ens_handle
-
-.. container:: indent1
-
-   Call this routine before directly accessing the ``ens_handle%vars`` array when the data is going to be updated, and
-   the incoming vars array should have the most current data representation.
-
-   Internally the ensemble manager tracks which of the copies or vars arrays, or both, have the most recently updated
-   representation of the data. For example, before a transpose (``all_vars_to_all_copies()`` or
-   ``all_copies_to_all_vars()``) the code checks to be sure the source array has the most recently updated
-   representation before it does the operation. After a transpose both representations have the same update time and are
-   both valid.
-
-   For efficiency reasons we allow the copies and vars arrays to be accessed directly from other code without going
-   through a routine in the ensemble manager. The "prepare" routines verify that the desired array has the most recently
-   updated representation of the data, and if needed marks which one has been updated so the internal consistency checks
-   have an accurate accounting of the representations.
-
-   ============== ================================================
-   ``ens_handle`` Handle for the ensemble being accessed directly.
-   ============== ================================================
-
-| 
-
-.. container:: routine
-
-   *call prepare_to_update_copies(ens_handle)*
-   ::
-
-      type(ensemble_type), intent(inout)  :: ens_handle
-
-.. container:: indent1
-
-   Call this routine before directly accessing the ``ens_handle%copies`` array when the data is going to be updated, and
-   the incoming copies array should have the most current data representation.
-
-   Internally the ensemble manager tracks which of the copies or vars arrays, or both, have the most recently updated
-   representation of the data. For example, before a transpose (``all_vars_to_all_copies()`` or
-   ``all_copies_to_all_vars()``) the code checks to be sure the source array has the most recently updated
-   representation before it does the operation. After a transpose both representations have the same update time and are
-   both valid.
-
-   For efficiency reasons we allow the copies and vars arrays to be accessed directly from other code without going
-   through a routine in the ensemble manager. The "prepare" routines verify that the desired array has the most recently
-   updated representation of the data, and if needed marks which one has been updated so the internal consistency checks
-   have an accurate accounting of the representations.
-
-   ============== ================================================
-   ``ens_handle`` Handle for the ensemble being accessed directly.
-   ============== ================================================
-
-| 
-
-.. container:: routine
-
-   *call prepare_to_read_from_vars(ens_handle)*
-   ::
-
-      type(ensemble_type), intent(inout)  :: ens_handle
-
-.. container:: indent1
-
-   Call this routine before directly accessing the ``ens_handle%vars`` array for reading only, when the incoming vars
-   array should have the most current data representation.
-
-   Internally the ensemble manager tracks which of the copies or vars arrays, or both, have the most recently updated
-   representation of the data. For example, before a transpose (``all_vars_to_all_copies()`` or
-   ``all_copies_to_all_vars()``) the code checks to be sure the source array has the most recently updated
-   representation before it does the operation. After a transpose both representations have the same update time and are
-   both valid.
-
-   For efficiency reasons we allow the copies and vars arrays to be accessed directly from other code without going
-   through a routine in the ensemble manager. The "prepare" routines verify that the desired array has the most recently
-   updated representation of the data, and if needed marks which one has been updated so the internal consistency checks
-   have an accurate accounting of the representations.
-
-   ============== ================================================
-   ``ens_handle`` Handle for the ensemble being accessed directly.
-   ============== ================================================
-
-| 
-
-.. container:: routine
-
-   *call prepare_to_read_from_copies(ens_handle)*
-   ::
-
-      type(ensemble_type), intent(inout)  :: ens_handle
-
-.. container:: indent1
-
-   Call this routine before directly accessing the ``ens_handle%copies`` array for reading only, when the incoming
-   copies array should have the most current data representation.
-
-   Internally the ensemble manager tracks which of the copies or vars arrays, or both, have the most recently updated
-   representation of the data. For example, before a transpose (``all_vars_to_all_copies()`` or
-   ``all_copies_to_all_vars()``) the code checks to be sure the source array has the most recently updated
-   representation before it does the operation. After a transpose both representations have the same update time and are
-   both valid.
-
-   For efficiency reasons we allow the copies and vars arrays to be accessed directly from other code without going
-   through a routine in the ensemble manager. The "prepare" routines verify that the desired array has the most recently
-   updated representation of the data, and if needed marks which one has been updated so the internal consistency checks
-   have an accurate accounting of the representations.
-
-   ============== ================================================
-   ``ens_handle`` Handle for the ensemble being accessed directly.
-   ============== ================================================
-
-| 
-
-.. container:: routine
-
-   *call prepare_to_write_to_vars(ens_handle)*
-   ::
-
-      type(ensemble_type), intent(inout)  :: ens_handle
-
-.. container:: indent1
-
-   Call this routine before directly accessing the ``ens_handle%vars`` array for writing. This routine differs from the
-   'update' version in that it doesn't care what the original data state is. This routine might be used in the case
-   where an array is being filled for the first time and consistency with the data in the copies array is not an issue.
-
-   Internally the ensemble manager tracks which of the copies or vars arrays, or both, have the most recently updated
-   representation of the data. For example, before a transpose (``all_vars_to_all_copies()`` or
-   ``all_copies_to_all_vars()``) the code checks to be sure the source array has the most recently updated
-   representation before it does the operation. After a transpose both representations have the same update time and are
-   both valid.
-
-   For efficiency reasons we allow the copies and vars arrays to be accessed directly from other code without going
-   through a routine in the ensemble manager. The "prepare" routines verify that the desired array has the most recently
-   updated representation of the data, and if needed marks which one has been updated so the internal consistency checks
-   have an accurate accounting of the representations.
-
-   ============== ================================================
-   ``ens_handle`` Handle for the ensemble being accessed directly.
-   ============== ================================================
-
-| 
-
-.. container:: routine
-
-   *call prepare_to_write_to_copies(ens_handle)*
-   ::
-
-      type(ensemble_type), intent(inout)  :: ens_handle
-
-.. container:: indent1
-
-   Call this routine before directly accessing the ``ens_handle%copies`` array for writing. This routine differs from
-   the 'update' version in that it doesn't care what the original data state is. This routine might be used in the case
-   where an array is being filled for the first time and consistency with the data in the vars array is not an issue.
-
-   Internally the ensemble manager tracks which of the copies or vars arrays, or both, have the most recently updated
-   representation of the data. For example, before a transpose (``all_vars_to_all_copies()`` or
-   ``all_copies_to_all_vars()``) the code checks to be sure the source array has the most recently updated
-   representation before it does the operation. After a transpose both representations have the same update time and are
-   both valid.
-
-   For efficiency reasons we allow the copies and vars arrays to be accessed directly from other code without going
-   through a routine in the ensemble manager. The "prepare" routines verify that the desired array has the most recently
-   updated representation of the data, and if needed marks which one has been updated so the internal consistency checks
-   have an accurate accounting of the representations.
-
-   ============== ================================================
-   ``ens_handle`` Handle for the ensemble being accessed directly.
-   ============== ================================================
-
-| 
-
 Private interfaces
 ------------------
 
@@ -1162,9 +979,7 @@ dimensioned large enough to hold all copies. Depends on distribution_type with o
 
 .. container:: indent1
 
-   Round-robin MPI task layout starting at the first node. Starting on the first node forces pe 0 = task 0. The smoother
-   code assumes task 0 has an ensemble member. If you want to break the assumption that pe 0 = task 0, this routine is a
-   good place to start. Test with the smoother.
+   Round-robin MPI task layout starting at the first node. Starting on the first node forces pe 0 = task 0. 
 
    ============== =======================
    ``ens_handle`` Handle for an ensemble.

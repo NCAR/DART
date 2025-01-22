@@ -10,10 +10,11 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL="template"
-LOCATION="threed_sphere"
+MODEL="none"
+EXTRA="$DART"/models/template/threed_model_mod.f90
 dev_test=1
 TEST="random_seq"
+LOCATION="threed_sphere"
 
 serial_programs=(
 test_corr
@@ -24,6 +25,7 @@ test_gaussian
 test_hist
 test_inv_gamma
 test_random
+test_ran_unif
 test_reseed
 )
 

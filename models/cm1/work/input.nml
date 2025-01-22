@@ -2,6 +2,13 @@
 ! For high-resolution models with large DART states, 
 ! use 'distributed_state = .true.'
 
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &filter_nml
   async                       = 2
   adv_ens_command             = 'advance_model.csh'
@@ -250,7 +257,6 @@
 &assim_tools_nml
   adaptive_localization_threshold = -1
   cutoff                          = 15000.0
-  filter_kind                     = 1
   print_every_nth_obs             = 100
   rectangular_quadrature          = .true.
   sampling_error_correction       = .false.
@@ -321,13 +327,6 @@
 /
 
 
-&smoother_nml
-  num_lags              = 0
-  output_restart        = .true.
-  restart_in_file_name  = 'ics'
-  restart_out_file_name = 'restart'
-  start_from_restart    = .false.
-/
 
 
 &state_vector_io_nml

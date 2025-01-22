@@ -7,12 +7,14 @@ Overview
 AmeriFlux level 4 data to DART observation sequence converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-| This routine is designed to convert the flux tower Level 4 data from the `AmeriFlux <http://ameriflux.lbl.gov>`__
-  network of observations from micrometeorological tower sites. AmeriFlux is part of
-  `FLUXNET <http://fluxnet.ornl.gov>`__ and the converter is hoped to be a suitable starting point for the conversion of
-  observations from FLUXNET. As of May 2012, I have not yet tried to work with any other observations from FLUXNET.
-| The AmeriFlux Level 4 products are recorded using the local time. DART observation sequence files use GMT. For more
-  information about AmeriFlux data products, go to http://ameriflux.lbl.gov.
+| This routine was designed to convert the flux tower Level 4 data from the `AmeriFlux <http://ameriflux.lbl.gov>`__
+  network of observations from micrometeorological tower sites. The download link and flux data format for this code
+  *has been discontinued* (e.g. ``USBar2004_L4_h.txt``).  Thus if you are using flux obs converters for the first time
+  *PLEASE USE* the updated ``Fluxnetfull_to_obs.f90`` converter and follow the documentation there :doc:`./fluxnetfull_to_obs`
+  We have kept this code available if you still use the older Ameriflux data format.  Also this code uses a general approach
+  to calculating sensible, latent and net ecosystem exchange uncertainty, that may be helpful. 
+| The AmeriFlux Level 4 data products are provided in the local time of the flux tower location. DART observation sequence
+  files are provided in UTC, thus this routine includes a time conversion. 
 
 .. warning::
 

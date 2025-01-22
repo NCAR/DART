@@ -42,6 +42,13 @@
 #PBS  -o Test_0.bld1
 #PBS  -j oe 
 #
+if ($?PBS_O_WORKDIR) then
+   # This avoids using /var/tmp, which can be purged by other jobs while this
+   # share queue job is running, which kills it.
+   setenv TMPDIR /glade/scratch/$USER/temp
+   mkdir -p $TMPDIR
+endif
+
 # ---------------------
 # Purpose
 # ---------------------
@@ -516,7 +523,6 @@ setenv COMP_GLC           `./xmlquery COMP_GLC           --value`
 setenv COMP_ROF           `./xmlquery COMP_ROF           --value`
 setenv CIMEROOT           `./xmlquery CIMEROOT           --value`
 setenv EXEROOT            `./xmlquery EXEROOT            --value`
-setenv RUNDIR             `./xmlquery RUNDIR             --value`
 setenv CAM_CONFIG_OPTS    `./xmlquery CAM_CONFIG_OPTS    --value`
 
 set    max_tasks_per_node = `./xmlquery    MAX_TASKS_PER_NODE --value`
@@ -672,6 +678,8 @@ echo "After xmlchanges for ROOTPEs ..."
 ./xmlchange GET_REFCASE=FALSE
 
 ./xmlchange CIME_OUTPUT_ROOT=${cime_output}
+# Changing CIME_OUTPUT_ROOT changes RUNDIR in CESM, so change it here too.
+setenv RUNDIR  `./xmlquery RUNDIR --value`
 
 ./xmlchange SSTICE_DATA_FILENAME=$sst_dataset
 ./xmlchange SSTICE_GRID_FILENAME=$sst_grid
@@ -895,7 +903,7 @@ while ($inst <= $num_instances)
    # echo " mfilt         = 1 "                             >> ${fname}
 
    echo $CAM_CONFIG_OPTS | grep 'cam4'
-   if ($status == 0) echo " fv_div24del2_flag = 4 "       >> ${fname}
+   if ($status == 0) echo " fv_div24del2flag = 4 "       >> ${fname}
 
    # Settings that differ between regular CAM and the WACCM version:
 
@@ -1236,6 +1244,16 @@ else     # CONTINUE_RUN == FALSE
    echo "All files set to run the FIRST experiment step using (ref)time" $init_time
 
 endif
+
+ls *inf*\${restart_time}* >& /dev/null
+if (\$status != 0) then 
+   echo ""
+   echo '==========================================================='
+   echo "WARNING:  no inflation files were found for \$restart_time"
+   echo '==========================================================='
+   echo ""
+endif
+
 exit 0
 
 EndOfText

@@ -1,3 +1,5 @@
+.. _gps: 
+
 GPS Observations
 ================
 
@@ -342,7 +344,7 @@ If you are converting only a day or two of observations you can download the fil
 programs from the command line. However if you are going convert many days/months/years of data you need an automated
 script, possibly submitted to a batch queue on a large machine. The following instructions describe shell scripts we
 provide as a guide in the ``shell_scripts`` directory. You will have to adapt them for your own system unless you are
-running on an NCAR superscomputer.
+running on an NSF NCAR supercomputer.
 
 | **Making DART Observations from Radio Occultation atmPrf Profiles:**
 
@@ -424,7 +426,7 @@ running on an NCAR superscomputer.
 
 | 
 
-| **Notes on already converted observations on the NCAR supercomputers**
+| **Notes on already converted observations on the NSF NCAR supercomputers**
 | **GPS Radio Occultation Data:**
 
 ::
