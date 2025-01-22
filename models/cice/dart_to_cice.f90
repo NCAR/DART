@@ -52,7 +52,6 @@ character(len=128) :: method
 character(len=3)   :: nchar
 
 integer :: iunit, io, ncid, dimid, l, n, i, j, VarID, Ncat, Nx, Ny
-
 real(r8), allocatable :: aicen_original(:,:,:), vicen_original(:,:,:), vsnon_original(:,:,:)
 real(r8), allocatable :: aicen(:,:,:), vicen(:,:,:), vsnon(:,:,:), Tsfcn(:,:,:)
 real(r8), allocatable :: qice001(:,:,:), qice002(:,:,:), qice003(:,:,:), qice004(:,:,:), qice005(:,:,:), qice006(:,:,:), qice007(:,:,:), qice008(:,:,:)
@@ -355,6 +354,7 @@ io = nf90_put_var(ncid, VarID, qsno003)
 call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(postprocessed_output_file))
 
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(postprocessed_output_file))
+
 
 !------------------------------------------------------------------
 ! DEALLOCATE AND FINALIZE                

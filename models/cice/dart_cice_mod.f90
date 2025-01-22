@@ -122,56 +122,78 @@ real(r8) :: dxrect, dyrect
 ! code from cesm1_5_beta06c/cime/share/csm_share/shr/shr_kind_mod.F990
    integer,parameter :: SHR_QTY_CS = 80                     ! short char
    integer,parameter :: SHR_QTY_IN = kind(1)                ! native integer
+! a guess 
+   integer,parameter :: SHR_KIND_IN = kind(1)               ! native integer
+   integer,parameter :: SHR_kind_CS = 80                     ! short char
    
-! code from cesm1_5_beta06c/cime/driver_cpl/shr/seq_timemgr_mod.F90
-    character(SHR_QTY_CS)  :: calendar              ! Calendar type
-    character(SHR_QTY_CS)  :: stop_option           ! Stop option units
-    integer(SHR_QTY_IN)    :: stop_n                ! Number until stop
-    integer(SHR_QTY_IN)    :: stop_ymd              ! Stop date (YYYYMMDD)
-    integer(SHR_QTY_IN)    :: stop_tod              ! Stop time-of-day
-    character(SHR_QTY_CS)  :: restart_option        ! Restart option units
-    integer(SHR_QTY_IN)    :: restart_n             ! Number until restart interval
-    integer(SHR_QTY_IN)    :: restart_ymd           ! Restart date (YYYYMMDD)
-    character(SHR_QTY_CS)  :: pause_option
-    integer(SHR_QTY_IN)    :: pause_n
-    character(SHR_QTY_CS)  :: pause_component_list
-    character(SHR_QTY_CS)  :: history_option        ! History option units
-    integer(SHR_QTY_IN)    :: history_n             ! Number until history interval
-    integer(SHR_QTY_IN)    :: history_ymd           ! History date (YYYYMMDD)
-    character(SHR_QTY_CS)  :: histavg_option        ! Histavg option units
-    integer(SHR_QTY_IN)    :: histavg_n             ! Number until histavg interval
-    integer(SHR_QTY_IN)    :: histavg_ymd           ! Histavg date (YYYYMMDD)
-    character(SHR_QTY_CS)  :: barrier_option        ! Barrier option units
-    integer(SHR_QTY_IN)    :: barrier_n             ! Number until barrier interval
-    integer(SHR_QTY_IN)    :: barrier_ymd           ! Barrier date (YYYYMMDD)
-    character(SHR_QTY_CS)  :: tprof_option          ! tprof option units
-    integer(SHR_QTY_IN)    :: tprof_n               ! Number until tprof interval
-    integer(SHR_QTY_IN)    :: tprof_ymd             ! tprof date (YYYYMMDD)
-    integer(SHR_QTY_IN)    :: start_ymd             ! Start date (YYYYMMDD)
-    integer(SHR_QTY_IN)    :: start_tod             ! Start time of day (seconds)
-    integer(SHR_QTY_IN)    :: curr_ymd              ! Current ymd (YYYYMMDD)
-    integer(SHR_QTY_IN)    :: curr_tod              ! Current tod (seconds)
-    integer(SHR_QTY_IN)    :: ref_ymd               ! Reference date (YYYYMMDD)
-    integer(SHR_QTY_IN)    :: ref_tod               ! Reference time of day (seconds)
-    integer(SHR_QTY_IN)    :: atm_cpl_dt            ! Atmosphere coupling interval
-    integer(SHR_QTY_IN)    :: lnd_cpl_dt            ! Land coupling interval
-    integer(SHR_QTY_IN)    :: ice_cpl_dt            ! Sea-Ice coupling interval
-    integer(SHR_QTY_IN)    :: ocn_cpl_dt            ! Ocean coupling interval
-    integer(SHR_QTY_IN)    :: glc_cpl_dt            ! Glc coupling interval
-    character(SHR_QTY_CS)  :: glc_avg_period
-    integer(SHR_QTY_IN)    :: rof_cpl_dt            ! Runoff coupling interval
-    integer(SHR_QTY_IN)    :: wav_cpl_dt            ! Wav coupling interval
-    integer(SHR_QTY_IN)    :: esp_cpl_dt            ! Esp coupling interval
-    integer(SHR_QTY_IN)    :: atm_cpl_offset        ! Atmosphere coupling interval
-    integer(SHR_QTY_IN)    :: lnd_cpl_offset        ! Land coupling interval
-    integer(SHR_QTY_IN)    :: ice_cpl_offset        ! Sea-Ice coupling interval
-    integer(SHR_QTY_IN)    :: ocn_cpl_offset        ! Ocean coupling interval
-    integer(SHR_QTY_IN)    :: glc_cpl_offset        ! Glc coupling interval
-    integer(SHR_QTY_IN)    :: wav_cpl_offset        ! Wav coupling interval
-    integer(SHR_QTY_IN)    :: rof_cpl_offset        ! Runoff coupling interval
-    integer(SHR_QTY_IN)    :: esp_cpl_offset        ! Esp coupling interval
-    logical                 :: end_restart           ! Write restart at end of run
-    logical                :: esp_run_on_pause
+!code from  /glade/u/home/cmip6/cesm_tags/release-cesm2.1.2/cime/src/drivers/mct/shr/seq_timemgr_mod.F90
+!formerly from cesm1_5_beta06c/cime/driver_cpl/shr/seq_timemgr_mod.F90
+    character(SHR_KIND_CS)  :: calendar              ! Calendar type       
+    character(SHR_KIND_CS)  :: stop_option           ! Stop option units       
+    integer(SHR_KIND_IN)    :: stop_n                ! Number until stop 
+    integer(SHR_KIND_IN)    :: stop_ymd              ! Stop date (YYYYMMDD)
+    integer(SHR_KIND_IN)    :: stop_tod              ! Stop time-of-day     
+    character(SHR_KIND_CS)  :: restart_option        ! Restart option units
+    integer(SHR_KIND_IN)    :: restart_n             ! Number until restart interval 
+    integer(SHR_KIND_IN)    :: restart_ymd           ! Restart date (YYYYMMDD)
+    character(SHR_KIND_CS)  :: pause_option          ! Pause option units   
+    integer(SHR_KIND_IN)    :: pause_n               ! Number between pause intervals
+    integer(SHR_KIND_IN)    :: RestInterval              ! Component Restart Interval  
+    logical :: pause_active_atm
+    logical :: pause_active_cpl
+    logical :: pause_active_ocn
+    logical :: pause_active_wav
+    logical :: pause_active_glc
+    logical :: pause_active_ice
+    logical :: pause_active_rof
+    logical :: pause_active_lnd
+    logical :: data_assimilation_atm
+    logical :: data_assimilation_cpl
+    logical :: data_assimilation_ocn
+    logical :: data_assimilation_wav
+    logical :: data_assimilation_glc
+    logical :: data_assimilation_ice
+    logical :: data_assimilation_rof
+    logical :: data_assimilation_lnd
+    character(SHR_KIND_CS)  :: history_option        ! History option units   
+    integer(SHR_KIND_IN)    :: history_n             ! Number until history interval
+    integer(SHR_KIND_IN)    :: history_ymd           ! History date (YYYYMMDD) 
+    character(SHR_KIND_CS)  :: histavg_option        ! Histavg option units  
+    integer(SHR_KIND_IN)    :: histavg_n             ! Number until histavg interval  
+    integer(SHR_KIND_IN)    :: histavg_ymd           ! Histavg date (YYYYMMDD)
+    character(SHR_KIND_CS)  :: barrier_option        ! Barrier option units   
+    integer(SHR_KIND_IN)    :: barrier_n             ! Number until barrier interval
+    integer(SHR_KIND_IN)    :: barrier_ymd           ! Barrier date (YYYYMMDD)
+    character(SHR_KIND_CS)  :: tprof_option          ! tprof option units    
+    integer(SHR_KIND_IN)    :: tprof_n               ! Number until tprof interval  
+    integer(SHR_KIND_IN)    :: tprof_ymd             ! tprof date (YYYYMMDD)  
+    integer(SHR_KIND_IN)    :: start_ymd             ! Start date ([YY]YYYYMMDD)  
+    integer(SHR_KIND_IN)    :: start_tod             ! Start time of day (seconds) 
+    integer(SHR_KIND_IN)    :: curr_ymd              ! Current ymd ([YY]YYYYMMDD)   
+    integer(SHR_KIND_IN)    :: curr_tod              ! Current tod (seconds) 
+    integer(SHR_KIND_IN)    :: ref_ymd               ! Reference date (YYYYMMDD) 
+    integer(SHR_KIND_IN)    :: ref_tod               ! Reference time of day (seconds) 
+    integer(SHR_KIND_IN)    :: atm_cpl_dt            ! Atmosphere coupling interval  
+    integer(SHR_KIND_IN)    :: lnd_cpl_dt            ! Land coupling interval 
+    integer(SHR_KIND_IN)    :: ice_cpl_dt            ! Sea-Ice coupling interval 
+    integer(SHR_KIND_IN)    :: ocn_cpl_dt            ! Ocean coupling interval
+    integer(SHR_KIND_IN)    :: glc_cpl_dt            ! Glc coupling interval  
+    character(SHR_KIND_CS)  :: glc_avg_period        ! Glc avering coupling period  
+    integer(SHR_KIND_IN)    :: rof_cpl_dt            ! Runoff coupling interval
+    integer(SHR_KIND_IN)    :: wav_cpl_dt            ! Wav coupling interval   
+    integer(SHR_KIND_IN)    :: esp_cpl_dt            ! Esp coupling interval  
+    integer(SHR_KIND_IN)    :: atm_cpl_offset        ! Atmosphere coupling interval 
+    integer(SHR_KIND_IN)    :: lnd_cpl_offset        ! Land coupling interval 
+    integer(SHR_KIND_IN)    :: ice_cpl_offset        ! Sea-Ice coupling interval
+    integer(SHR_KIND_IN)    :: ocn_cpl_offset        ! Ocean coupling interval
+    integer(SHR_KIND_IN)    :: glc_cpl_offset        ! Glc coupling interval
+    integer(SHR_KIND_IN)    :: wav_cpl_offset        ! Wav coupling interval  
+    integer(SHR_KIND_IN)    :: rof_cpl_offset        ! Runoff coupling interval
+    integer(SHR_KIND_IN)    :: esp_cpl_offset        ! Esp coupling interval 
+    logical                 :: esp_run_on_pause      ! Run ESP on pause cycle 
+    logical                 :: end_restart           ! Write restart at end of run 
+    integer(SHR_KIND_IN)    :: ierr                  ! Return code             
+
 
    namelist /grid_nml/ bathymetry_file, bathymetry_format,&
                        close_boundaries,                  &
