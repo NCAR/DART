@@ -160,20 +160,20 @@ def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, 
     else:
         obs_subdir = obs_dir + '/itd/'
         state_variables = ['vice01', 'QTY_SEAICE_VICE01'        , 'UPDATE',
-                       'vice02', 'QTY_SEAICE_VICE02'        , 'UPDATE',
-                       'vice03', 'QTY_SEAICE_VICE03'        , 'UPDATE',
-                       'vice04', 'QTY_SEAICE_VICE04'        , 'UPDATE',
-                       'vice05', 'QTY_SEAICE_VICE05'        , 'UPDATE',
-                       'vsno01', 'QTY_SEAICE_VSNO01'        , 'UPDATE',
-                       'vsno02', 'QTY_SEAICE_VSNO02'        , 'UPDATE',
-                       'vsno03', 'QTY_SEAICE_VSNO03'        , 'UPDATE',
-                       'vsno04', 'QTY_SEAICE_VSNO04'        , 'UPDATE',
-                       'vsno05', 'QTY_SEAICE_VSNO05'        , 'UPDATE',
-                       'aice01', 'QTY_SEAICE_AICE01'        , 'UPDATE',
-                       'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
-                       'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
-                       'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
-                       'aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
+                           'vice02', 'QTY_SEAICE_VICE02'        , 'UPDATE',
+                           'vice03', 'QTY_SEAICE_VICE03'        , 'UPDATE',
+                           'vice04', 'QTY_SEAICE_VICE04'        , 'UPDATE',
+                           'vice05', 'QTY_SEAICE_VICE05'        , 'UPDATE',
+                           'vsno01', 'QTY_SEAICE_VSNO01'        , 'UPDATE',
+                           'vsno02', 'QTY_SEAICE_VSNO02'        , 'UPDATE',
+                           'vsno03', 'QTY_SEAICE_VSNO03'        , 'UPDATE',
+                           'vsno04', 'QTY_SEAICE_VSNO04'        , 'UPDATE',
+                           'vsno05', 'QTY_SEAICE_VSNO05'        , 'UPDATE',
+                           'aice01', 'QTY_SEAICE_AICE01'        , 'UPDATE',
+                           'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
+                           'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
+                           'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
+                           'aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
 
     # Get date information
     year = assim_date.year
@@ -242,7 +242,7 @@ def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, 
     nml_file['filter_nml']['num_output_state_members'] = ensemble_size-1
     nml_file['filter_nml']['num_output_obs_members'] = ensemble_size-1
     nml_file['obs_kind_nml']['assimilate_these_obs_types'] = obs_type
-    nml_file['algorithm_info_nml']['qceff_table_filename'] = dart_dir+'/models/cice-scm/scripts/templates/cice_'+qceff_type+'_qceff_table.csv'
+    nml_file['algorithm_info_nml']['qceff_table_filename'] = dart_dir+'/models/cice-scm/scripts/templates/icepack_'+qceff_type+'_qceff_table.csv'
     nml_file['assim_tools_nml']['cutoff'] = 100000.0
     nml_file['model_nml']['model_state_variables'] = state_variables
     nml_file['dart_to_cice_nml']['postprocess'] = postprocessing

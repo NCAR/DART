@@ -38,7 +38,6 @@ compiler = 'intel'
 ensemble_size = len(glob.glob(scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem*'))
 # set assimilation times
 first_assim_time = datetime(int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]))
-print(first_assim_time)
 model_init_time = datetime(2011, 1, 1)
 days_to_assim = first_assim_time - model_init_time
 assim_date_str = '{0}-{1}-{2}'.format('%04d'%first_assim_time.year, '%02d'%first_assim_time.month, '%02d'%first_assim_time.day)
@@ -48,7 +47,7 @@ assim_date_str = '{0}-{1}-{2}'.format('%04d'%first_assim_time.year, '%02d'%first
 flux = sys.argv[4]
 
 # choose a location
-location = spinup_case[7:]
+location = spinup_case[7:-8]
 
 if location != 'default':
     locs = {'Barents': [1.309, 0.698132], 
@@ -192,7 +191,7 @@ while mem <= ensemble_size:
     # handle restarts
     runtype_flag = True
     restart_flag = True
-    restart_file = scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem'+inst_string+'/restart/iced.2012-01-01-00000.year10.nc'
+    restart_file = scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem'+inst_string+'/restart/iced.2011-01-01-00000.nc'
     
     # read namelist template
     namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_JRA55_flux')
@@ -227,7 +226,7 @@ while mem <= ensemble_size:
     namelist['dynamics_nml']['dragio'] = dragio[mem-1]
 
     # set namelist forcing options
-    namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/'
+    namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/free/'
     namelist['forcing_nml']['ycycle'] = 5
     if 'atm' in perturb:
         namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_'+inst_string+'.txt'
