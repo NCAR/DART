@@ -291,14 +291,18 @@ if ( $PRIOR_INF > 0 ) then
       # file. This is the signal we need to to coerce the namelist
       # to have different values for this execution ONLY.
       # Since the local namelist comes from CASEROOT each time, we're golden.
+      ${EXEROOT}/fill_inflation_restart || exit  4
 
-      set PRIOR_TF = FALSE
+      ${COPY} ${latest} output_priorinf_mean.nc
+      ${LINK} $latest input_priorinf_mean.nc
+      # set PRIOR_TF = FALSE
+      ${REMOVE} ../cice_inflation_cookie
 
-ex input.nml <<ex_end
-g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
-g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
-wq
-ex_end
+# ex input.nml <<ex_end
+# g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+# g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+# wq
+# ex_end
 
    else
 
@@ -312,6 +316,7 @@ ex_end
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
+         ${COPY} ${latest} output_priorinf_mean.nc
          ${LINK} $latest input_priorinf_mean.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation MEAN file."
@@ -326,6 +331,7 @@ ex_end
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
+         ${COPY} ${latest} output_priorinf_sd.nc
          ${LINK} $latest input_priorinf_sd.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation SD file."
@@ -400,7 +406,7 @@ else
 endif
 
 # Eat the cookie regardless
-${REMOVE} ../cice_inflation_cookie
+# ${REMOVE} ../cice_inflation_cookie
 
 #=========================================================================
 # Block 4: Create a set of restart files before DART has modified anything.
@@ -414,6 +420,10 @@ ${REMOVE} ../cice_inflation_cookie
 #   confirm the valid time of the model state.
 #
 #   At this time we also create a list of files we want to read/modify.
+#   
+#   We also take this opportunity to "unpack" the categorized state
+#   into individual variables that will be inflated and updated with their
+#   own QCEFF information. (Molly Wieringa, 2024)
 #=========================================================================
 
 echo "`date` -- BEGIN CREATING SAFETY FILES"
@@ -438,12 +448,43 @@ while ( ${member} <= ${ensemble_size} )
 
    ${COPY} ../${ICE_FILENAME} ${SAFETY_FILE} &
 
-   @ member++
+   # # Here, unpack the restart file
+   # set cat = 0
+   # set cat_val = 1
+   # while ( $cat <= 4 )
+   #    ncks -h -M -m -O -C -d ncat,$cat -v aicen ../${ICE_FILENAME} aice0${cat_val}.nc.tmp
+   #    ncks -h -M -m -O -C -d ncat,$cat -v vicen ../${ICE_FILENAME} vice0${cat_val}.nc.tmp
+   #    ncks -h -M -m -O -C -d ncat,$cat -v vsnon ../${ICE_FILENAME} vsno0${cat_val}.nc.tmp
+
+   #    ncrename -h -v aicen,aice0${cat_val} aice0${cat_val}.nc.tmp
+   #    ncrename -h -v vicen,vice0${cat_val} vice0${cat_val}.nc.tmp
+   #    ncrename -h -v vsnon,vsno0${cat_val} vsno0${cat_val}.nc.tmp
+
+   #    ncwa -a ncat aice0${cat_val}.nc.tmp aice0${cat_val}.nc
+   #    ncwa -a ncat vice0${cat_val}.nc.tmp vice0${cat_val}.nc
+   #    ncwa -a ncat vsno0${cat_val}.nc.tmp vsno0${cat_val}.nc
+
+   #    ncks -h -A -M aice0${cat_val}.nc ../${ICE_FILENAME}
+   #    ncks -h -A -M vice0${cat_val}.nc ../${ICE_FILENAME}
+   #    ncks -h -A -M vsno0${cat_val}.nc ../${ICE_FILENAME}
+
+   #    rm aice0${cat_val}.nc.tmp vice0${cat_val}.nc.tmp vsno0${cat_val}.nc.tmp
+   #    rm aice0${cat_val}.nc vice0${cat_val}.nc vsno0${cat_val}.nc
+
+   #    @ cat ++
+   #    @ cat_val ++
+   # end 
+
+   # ncks -C -O -x -v aicen ../${ICE_FILENAME} ../${ICE_FILENAME}
+   # ncks -C -O -x -v vicen ../${ICE_FILENAME} ../${ICE_FILENAME}
+   # ncks -C -O -x -v vsnon ../${ICE_FILENAME} ../${ICE_FILENAME}
+
+   @ member ++
 end
 
 wait
 
-echo "`date` -- END CREATING SAFETY FILES for all ${ensemble_size} members."
+echo "`date` -- END CREATING SAFETY FILES for and unpacking all ${ensemble_size} members."
 
 #=========================================================================
 # If do parameter estimation, call the followsing block
@@ -594,6 +635,7 @@ endif
 # they need to be rebalanced before being used. The rebalancing is done
 # by the dart_to_cice program.
 # Each member will do its job in its own directory.
+# Each member's restart file will also be repacked, prior to postprocessing.
 # Block 7: The ice files have now been updated, move them into position.
 # >@todo FIXME ... rename 'dart_to_cice' to 'rebalance_cice' or something
 # more accurate.
@@ -612,6 +654,45 @@ while ( $member <= $ensemble_size )
    ${REMOVE} output.${member}.dart_to_ice
 
    set ICE_FILENAME = `head -n $member ../cice_restarts.txt | tail -n 1`
+
+   # Here, repack the restart file into aicen, vicen, vsnon (Molly Wieringa, 2024)
+   # set cat = 0
+   # set cat_val = 1
+   # while ( $cat <= 4 )
+   #    ncks -h -M -m -O -C -v aice0${cat_val} ../${ICE_FILENAME} aice0${cat_val}.nc.tmp
+   #    ncks -h -M -m -O -C -v vice0${cat_val} ../${ICE_FILENAME} vice0${cat_val}.nc.tmp
+   #    ncks -h -M -m -O -C -v vsno0${cat_val} ../${ICE_FILENAME} vsno0${cat_val}.nc.tmp
+
+   #    ncrename -h -v aice0${cat_val},aicen aice0${cat_val}.nc.tmp
+   #    ncrename -h -v vice0${cat_val},vicen vice0${cat_val}.nc.tmp
+   #    ncrename -h -v vsno0${cat_val},vsnon vsno0${cat_val}.nc.tmp
+
+   #    ncap2 -C -O -s 'defdim("ncat",1);aicen[ncat,nj,ni]=aicen' aice0${cat_val}.nc.tmp aice0${cat_val}.nc.tmp
+   #    ncap2 -C -O -s 'defdim("ncat",1);vicen[ncat,nj,ni]=vicen' vice0${cat_val}.nc.tmp vice0${cat_val}.nc.tmp
+   #    ncap2 -C -O -s 'defdim("ncat",1);vsnon[ncat,nj,ni]=vsnon' vsno0${cat_val}.nc.tmp vsno0${cat_val}.nc.tmp
+
+   #    ncks -C -O -h --mk_rec_dmn ncat aice0${cat_val}.nc.tmp aice0${cat_val}.nc.tmp
+   #    ncks -C -O -h --mk_rec_dmn ncat vice0${cat_val}.nc.tmp vice0${cat_val}.nc.tmp
+   #    ncks -C -O -h --mk_rec_dmn ncat vsno0${cat_val}.nc.tmp vsno0${cat_val}.nc.tmp
+
+   #    ncks -C -O -x -v aice0${cat_val} ../${ICE_FILENAME} ../${ICE_FILENAME}
+   #    ncks -C -O -x -v vice0${cat_val} ../${ICE_FILENAME} ../${ICE_FILENAME}
+   #    ncks -C -O -x -v vsno0${cat_val} ../${ICE_FILENAME} ../${ICE_FILENAME}
+
+   #    @ cat ++
+   #    @ cat_val ++
+   # end 
+
+   # ncrcat aice*.nc.tmp aicen.nc
+   # ncrcat vice*.nc.tmp vicen.nc
+   # ncrcat vsno*.nc.tmp vsnon.nc
+
+   # ncks -h -A -M -v aicen aicen.nc ../${ICE_FILENAME}
+   # ncks -h -A -M -v vicen vicen.nc ../${ICE_FILENAME}
+   # ncks -h -A -M -v vsnon vsnon.nc ../${ICE_FILENAME}
+
+   # rm *.nc.tmp
+   # rm aicen.nc vicen.nc vsnon.nc
 
    ${LINK} ../${ICE_FILENAME} dart_restart.nc || exit 6
 
