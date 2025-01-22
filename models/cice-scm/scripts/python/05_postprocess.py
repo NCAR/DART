@@ -20,7 +20,8 @@ if sys.argv[4] == 'all':
 else:
     stages = [sys.argv[i] for i in range(3,len(sys.argv))]
 
-output_path = '/glade/work/'+user+'/Projects/cice-scm-da/data/processed/'+case+'/'
+# output_path = '/glade/work/'+user+'/Projects/cice-scm-da/data/processed/'+case+'/'
+output_path = '/glade/derecho/scratch/mollyw/ICEPACK_EXPERIMENTS/'+case+'/'
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 
