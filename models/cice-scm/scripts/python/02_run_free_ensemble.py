@@ -38,7 +38,7 @@ simulation_years = 5
 # choose a lateral flux option
 flux = sys.argv[4]
 
-# choose a location
+# choose a location (this is read assuming that the spinup case is named "spinup_LOCATION")
 location = spinup_case[7:]
 
 if location != 'default':
@@ -214,7 +214,11 @@ while mem <= ensemble_size:
     # handle restarts
     runtype_flag = True
     restart_flag = True
-    restart_file = scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem'+inst_string+'/restart/iced.2012-01-01-00000.year'+str(spinup_length)+'.nc'
+    
+    ## if you used the cycling spinup option, your restart file will be named something like '2012-01-01.year10'
+    # restart_file = scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem'+inst_string+'/restart/iced.2012-01-01-00000.year'+str(spinup_length)+'.nc'
+    ## standard restart file option
+    restart_file = scratch_dir + '/ICEPACK_RUNS/'+spinup_case+'/mem'+inst_string+'/restart/iced.2011-01-01-00000.nc'
     
     # read namelist template
     # namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_noflux')
@@ -250,7 +254,7 @@ while mem <= ensemble_size:
     namelist['dynamics_nml']['dragio'] = dragio[mem-1]
 
     # set namelist forcing options
-    namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/'
+    namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/free/'
     namelist['forcing_nml']['ycycle'] = simulation_years
     if 'atm' in perturb:
         namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_'+inst_string+'.txt'
