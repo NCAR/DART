@@ -1,11 +1,11 @@
 #!/bin/bash -l
 ### Job Name
-#PBS -N run_free_ensemble_CC
+#PBS -N run_free_ensemble
 ### Charging account
-#PBS -A UWAS0083
+#PBS -A P93300065
 ### Request one chunk of resources with 1 CPU and 10 GB of memory
 #PBS -l select=1:ncpus=1:mem=8GB
-### Allow job to run up to 30 minutes
+### Set job walltime
 #PBS -l walltime=1:00:00
 #PBS -l job_priority=economy
 ### Route the job to the economy queue
