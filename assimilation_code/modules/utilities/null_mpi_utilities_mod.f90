@@ -109,9 +109,8 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
-          get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
-          start_mpi_timer, read_mpi_timer, send_sum_to, get_global_max,      &
-          all_reduce_min_max  ! deprecated, replace by broadcast_minmax
+          get_from_fwd, get_from_mean, broadcast_flag, start_mpi_timer,      &
+          read_mpi_timer, send_sum_to, get_global_max, all_reduce_min_max
 
 character(len=*), parameter :: source = 'null_mpi_utilities_mod.f90'
 
@@ -432,8 +431,9 @@ end subroutine send_minmax_to
 
 !-----------------------------------------------------------------------------
 
-!> cover routine which is deprecated.  when all user code replaces this
-!> with broadcast_minmax(), remove this.
+!> Find min and max of each element of an array across tasks, put the result on every task.
+!> For this null_mpi_version min_var and max_var are unchanged because there is
+!> only 1 task.
 
 subroutine all_reduce_min_max(min_var, max_var, num_elements)
 
@@ -441,23 +441,7 @@ integer,  intent(in)    :: num_elements
 real(r8), intent(inout) :: min_var(num_elements)
 real(r8), intent(inout) :: max_var(num_elements)
 
-call broadcast_minmax(min_var, max_var, num_elements)
-
 end subroutine all_reduce_min_max
-
-!-----------------------------------------------------------------------------
-
-!> Find min and max of each element of an array across tasks, put the result on every task.
-!> For this null_mpi_version min_var and max_var are unchanged because there is
-!> only 1 task.
-
-subroutine broadcast_minmax(min_var, max_var, num_elements)
-
-integer,  intent(in)    :: num_elements
-real(r8), intent(inout) :: min_var(num_elements)
-real(r8), intent(inout) :: max_var(num_elements)
-
-end subroutine broadcast_minmax
 
 !-----------------------------------------------------------------------------
 
@@ -634,13 +618,14 @@ end subroutine get_from_mean
 
 !-----------------------------------------------------------------------------
 
-subroutine get_from_fwd(owner, window, mindex, num_rows, x)
+subroutine get_from_fwd(owner, window, mindex, rows_in_window, num_rows, x)
 
 integer,  intent(in)  :: owner    ! task in the window that owns the memory
 integer,  intent(in)  :: window   ! window object
 integer,  intent(in)  :: mindex   ! index in the tasks memory
-integer,  intent(in)  :: num_rows ! number of rows in the window
-real(r8), intent(out) :: x(num_rows) ! result
+integer,  intent(in)  :: rows_in_window ! number of rows in the window
+integer,  intent(in)  :: num_rows ! number of rows to get from the window
+real(r8), intent(out) :: x(num_rows)     ! result
 
 call error_handler(E_ERR,'get_from_fwd', 'cannot be used in serial mode', source)
 

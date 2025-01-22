@@ -438,6 +438,12 @@ if (do_output()) then
                                       inf_damping(POSTERIOR_INF), ' will be used'
       call error_handler(E_MSG,'filter_main:', msgstring)
    endif
+   if (do_rtps_inflate(post_inflate)) then
+      write(msgstring, *) 'Posterior inflation is RTPS, QCEFF ', &
+                              'inflation options will be ignored for posterior inflation'
+      call error_handler(E_MSG,'filter_main:', msgstring)
+   endif
+
 endif
 
 call trace_message('After  initializing inflation')
