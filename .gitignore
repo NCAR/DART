@@ -162,10 +162,13 @@ ssec_satwnd
 gts_to_dart
 littler_tf_dart
 rad_3dvar_to_dart
+bats_to_clim_obs
+bats_to_obs
 L1_AMSUA_to_netcdf
 convert_airs_L2
 convert_amsu_L1
 convert_L2b
+convert_goes_ABI_L1b
 
 # Test programs built by developer_tests
 rttov_test
@@ -199,6 +202,11 @@ test_quad_irreg_interp
 test_quad_reg_interp
 test_table_read
 test_ran_unif
+test_gamma_dist
+test_normal_dist
+test_beta_dist
+test_kde_dist
+test_window
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

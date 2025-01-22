@@ -68,6 +68,8 @@ character(len=*), parameter :: source = 'oned/obs_diag.f90'
 integer, parameter :: MaxRegions = 4
 integer, parameter :: MaxTrusted = 5
 integer, parameter :: stringlength = 32
+! Output files need a single level to be compatible with three D fields for plotting
+integer, parameter :: Nlevels = 1
 
 !---------------------------------------------------------------------
 ! variables associated with the observation
@@ -1728,6 +1730,7 @@ end function Rank_Histogram
    character(len=*), intent(in) :: fname
 
    integer :: ncid, i, nobs, typesdimlen
+   integer ::  LevelDimID,   LevelVarID
    integer ::  RegionDimID,  RegionVarID
    integer ::    TimeDimID,    TimeVarID
    integer ::    CopyDimID,    CopyVarID,  CopyMetaVarID
@@ -1880,6 +1883,7 @@ end function Rank_Histogram
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='time',   len = NF90_UNLIMITED,   dimid = TimeDimID), &
               'WriteNetCDF', 'time:def_dim '//trim(fname))
+
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='bounds',   len = 2,  dimid = BoundsDimID), &
               'WriteNetCDF', 'bounds:def_dim '//trim(fname))
@@ -1891,6 +1895,10 @@ end function Rank_Histogram
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='obstypes', len = max_defined_types_of_obs,    dimid = TypesDimID), &
               'WriteNetCDF', 'types:def_dim '//trim(fname))
+
+   call nc_check(nf90_def_dim(ncid=ncid, &
+              name='level',   len = 1,  dimid = LevelDimID), &
+              'WriteNetCDF', 'level:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='region', len = Nregions,         dimid = RegionDimID), &
@@ -1927,6 +1935,22 @@ end function Rank_Histogram
              'WriteNetCDF', 'types:explanation')
 
    !----------------------------------------------------------------------------
+   ! Define 'level' dimension
+   !----------------------------------------------------------------------------
+
+   call nc_check(nf90_def_var(ncid=ncid, name='level', xtype=nf90_int, &
+             dimids=LevelDimID, varid=LevelVarID), 'WriteNetCDF', 'level:def_var')
+   call nc_check(nf90_put_att(ncid, LevelVarID, 'long_name', 'model level'), &
+             'WriteNetCDF', 'level:long_name')
+   call nc_check(nf90_put_att(ncid, LevelVarID, 'units',     'nondimensional'), &
+             'WriteNetCDF', 'level:units')
+   ! Level values are -1 to reflect that they are not meaningful
+   call nc_check(nf90_put_att(ncid, LevelVarID, 'valid_range', (/-1, -1/)), &
+             'WriteNetCDF', 'level:valid_range')
+   call nc_check(nf90_put_att(ncid, LevelVarID, 'explanation', 'needed for compatibility with 3D'), &
+             'WriteNetCDF', 'level:explanation')
+
+   !----------------------------------------------------------------------------
    ! Define the regions coordinate variable and attributes
    !----------------------------------------------------------------------------
 
@@ -1939,7 +1963,7 @@ end function Rank_Histogram
    call nc_check(nf90_put_att(ncid, RegionVarID, 'valid_range', (/1,Nregions/)), &
              'WriteNetCDF', 'region:valid_range')
    call nc_check(nf90_put_att(ncid, RegionVarID, 'explanation', 'see region_names'), &
-             'WriteNetCDF', 'types:explanation')
+             'WriteNetCDF', 'region:explanation')
 
    !----------------------------------------------------------------------------
    ! Define 'bounds' dimension
@@ -2055,6 +2079,9 @@ end function Rank_Histogram
    call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_defined_types_of_obs)), &
               'WriteNetCDF', 'typesmeta:put_var')
 
+   call nc_check(nf90_put_var(ncid, LevelVarID, (/ -1 /)), &
+              'WriteNetCDF', 'level:put_var')
+
    call nc_check(nf90_put_var(ncid, RegionVarID, (/ (i,i=1,Nregions) /) ), &
               'WriteNetCDF', 'region:put_var')
 
@@ -2078,13 +2105,13 @@ end function Rank_Histogram
 
    if ( verbose ) write(*,*)'summary for Priors of time-region vars'
    if ( create_rank_histogram ) then
-      ierr = WriteTRV(ncid, prior, TimeDimID, CopyDimID, RegionDimID, RankDimID)
+      ierr = WriteTRV(ncid, prior, TimeDimID, CopyDimID, LevelDimID, RegionDimID, RankDimID)
    else
-      ierr = WriteTRV(ncid, prior, TimeDimID, CopyDimID, RegionDimID)
+      ierr = WriteTRV(ncid, prior, TimeDimID, CopyDimID, LevelDimID, RegionDimID)
    endif
    if ( verbose ) write(*,*)
    if ( verbose ) write(*,*)'summary for Posteriors of time-region vars'
-   ierr = WriteTRV(ncid, poste,    TimeDimID, CopyDimID, RegionDimID)
+   ierr = WriteTRV(ncid, poste,    TimeDimID, CopyDimID, LevelDimID, RegionDimID)
    if ( verbose ) write(*,*)
 
    !----------------------------------------------------------------------------
@@ -2100,10 +2127,10 @@ end function Rank_Histogram
 !======================================================================
 
 
-   function WriteTRV(ncid, vrbl, TimeDimID, CopyDimID, RegionDimID, RankDimID)
+   function WriteTRV(ncid, vrbl, TimeDimID, CopyDimID, LevelDimID, RegionDimID, RankDimID)
    integer,           intent(in) :: ncid
    type(TRV_type),    intent(in) :: vrbl
-   integer,           intent(in) :: TimeDimID, CopyDimID, RegionDimID
+   integer,           intent(in) :: TimeDimID, CopyDimID, RegionDimID, LevelDimID
    integer, optional, intent(in) :: RankDimID
    integer :: WriteTRV
 
@@ -2112,7 +2139,7 @@ end function Rank_Histogram
    character(len=NF90_MAX_NAME) :: string1
 
    integer :: VarID, VarID2, oldmode
-   real(r4), allocatable, dimension(:,:,:) :: rchunk
+   real(r4), allocatable, dimension(:,:,:, :) :: rchunk
    integer,  allocatable, dimension(:,:,:) :: ichunk
 
    FLAVORS : do ivar = 1,num_obs_types
@@ -2124,31 +2151,31 @@ end function Rank_Histogram
          write(*,'(i4,1x,A,1x,i8)') ivar, obs_type_strings(ivar), nobs
       endif
 
-      allocate(rchunk(Nregions,Ncopies,Nepochs))
+      allocate(rchunk(Nregions,Nlevels, Ncopies, Nepochs))
       rchunk = MISSING_R4
 
       do itime   = 1,Nepochs
       do iregion = 1,Nregions
 
-         rchunk(iregion, 1,itime) = vrbl%Nposs(      itime,iregion,ivar)
-         rchunk(iregion, 2,itime) = vrbl%Nused(      itime,iregion,ivar)
-         rchunk(iregion, 3,itime) = vrbl%rmse(       itime,iregion,ivar)
-         rchunk(iregion, 4,itime) = vrbl%bias(       itime,iregion,ivar)
-         rchunk(iregion, 5,itime) = vrbl%spread(     itime,iregion,ivar)
-         rchunk(iregion, 6,itime) = vrbl%totspread(  itime,iregion,ivar)
-         rchunk(iregion, 7,itime) = vrbl%NbadDartQC( itime,iregion,ivar)
-         rchunk(iregion, 8,itime) = vrbl%observation(itime,iregion,ivar)
-         rchunk(iregion, 9,itime) = vrbl%ens_mean(   itime,iregion,ivar)
-         rchunk(iregion,10,itime) = vrbl%Ntrusted(   itime,iregion,ivar)
-         rchunk(iregion,11,itime) = vrbl%NDartQC_0(  itime,iregion,ivar)
-         rchunk(iregion,12,itime) = vrbl%NDartQC_1(  itime,iregion,ivar)
-         rchunk(iregion,13,itime) = vrbl%NDartQC_2(  itime,iregion,ivar)
-         rchunk(iregion,14,itime) = vrbl%NDartQC_3(  itime,iregion,ivar)
-         rchunk(iregion,15,itime) = vrbl%NDartQC_4(  itime,iregion,ivar)
-         rchunk(iregion,16,itime) = vrbl%NDartQC_5(  itime,iregion,ivar)
-         rchunk(iregion,17,itime) = vrbl%NDartQC_6(  itime,iregion,ivar)
-         rchunk(iregion,18,itime) = vrbl%NDartQC_7(  itime,iregion,ivar)
-         rchunk(iregion,19,itime) = vrbl%NDartQC_8(  itime,iregion,ivar)
+         rchunk(iregion, 1, 1,itime) = vrbl%Nposs(      itime,iregion,ivar)
+         rchunk(iregion, 1, 2,itime) = vrbl%Nused(      itime,iregion,ivar)
+         rchunk(iregion, 1, 3,itime) = vrbl%rmse(       itime,iregion,ivar)
+         rchunk(iregion, 1, 4,itime) = vrbl%bias(       itime,iregion,ivar)
+         rchunk(iregion, 1, 5,itime) = vrbl%spread(     itime,iregion,ivar)
+         rchunk(iregion, 1, 6,itime) = vrbl%totspread(  itime,iregion,ivar)
+         rchunk(iregion, 1, 7,itime) = vrbl%NbadDartQC( itime,iregion,ivar)
+         rchunk(iregion, 1, 8,itime) = vrbl%observation(itime,iregion,ivar)
+         rchunk(iregion, 1, 9,itime) = vrbl%ens_mean(   itime,iregion,ivar)
+         rchunk(iregion,1, 10,itime) = vrbl%Ntrusted(   itime,iregion,ivar)
+         rchunk(iregion,1, 11,itime) = vrbl%NDartQC_0(  itime,iregion,ivar)
+         rchunk(iregion,1, 12,itime) = vrbl%NDartQC_1(  itime,iregion,ivar)
+         rchunk(iregion,1, 13,itime) = vrbl%NDartQC_2(  itime,iregion,ivar)
+         rchunk(iregion,1, 14,itime) = vrbl%NDartQC_3(  itime,iregion,ivar)
+         rchunk(iregion,1, 15,itime) = vrbl%NDartQC_4(  itime,iregion,ivar)
+         rchunk(iregion,1, 16,itime) = vrbl%NDartQC_5(  itime,iregion,ivar)
+         rchunk(iregion,1, 17,itime) = vrbl%NDartQC_6(  itime,iregion,ivar)
+         rchunk(iregion,1, 18,itime) = vrbl%NDartQC_7(  itime,iregion,ivar)
+         rchunk(iregion,1, 19,itime) = vrbl%NDartQC_8(  itime,iregion,ivar)
 
       enddo
       enddo
@@ -2161,7 +2188,7 @@ end function Rank_Histogram
       string1 = trim(obsname)//'_'//adjustl(vrbl%string)
 
       call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_real, &
-             dimids=(/ RegionDimID, CopyDimID, TimeDimID /), &
+             dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
              varid=VarID), 'WriteTRV', 'region:def_var')
       call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    MISSING_R4), &
               'WriteTRV','put_att:fillvalue')

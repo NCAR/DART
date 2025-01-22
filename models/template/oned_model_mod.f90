@@ -19,7 +19,7 @@ use location_mod,          only : location_type, set_location, get_location,  &
                                   get_close_obs, get_close_state,             &
                                   convert_vertical_obs, convert_vertical_state
 
-use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    &
+use utilities_mod,         only : do_nml_file, do_nml_term,    &
                                   nmlfileunit, find_namelist_in_file,           &
                                   check_namelist_read
 
@@ -71,7 +71,6 @@ public :: pert_model_copies,      &
           read_model_time, &
           write_model_time
 
-! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = "new_model.f90"
 
 type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
@@ -100,11 +99,18 @@ contains
 
 subroutine static_init_model()
 
+integer  :: iunit, io
 real(r8) :: x_loc
 integer  :: i, dom_id
 
-! Do any initial setup needed, including reading the namelist values
-call initialize()
+! Read the namelist 
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
+
+! Output the namelist values if requested
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(model_size))
@@ -273,30 +279,6 @@ location = state_loc(index_in)
 if (present(qty_type)) qty_type = QTY_STATE_VARIABLE 
 
 end subroutine get_state_meta_data
-
-
-
-!------------------------------------------------------------------
-! Do any initialization/setup, including reading the
-! namelist values.
-
-subroutine initialize()
-
-integer :: iunit, io
-
-! Print module information
-call register_module(source)
-
-! Read the namelist 
-call find_namelist_in_file("input.nml", "model_nml", iunit)
-read(iunit, nml = model_nml, iostat = io)
-call check_namelist_read(iunit, io, "model_nml")
-
-! Output the namelist values if requested
-if (do_nml_file()) write(nmlfileunit, nml=model_nml)
-if (do_nml_term()) write(     *     , nml=model_nml)
-
-end subroutine initialize
 
 
 !------------------------------------------------------------------

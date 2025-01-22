@@ -694,6 +694,22 @@ WRFDomains : do id=1,num_domains
 
    ! JPH now that we have the domain ID just go ahead and get type indices once
    ! NOTE: this is not strictly necessary - can use only stagger info in the future (???)
+
+   ! Prevent boundscheck error by making WRF temperature variable 'THM' as mandatory. 
+   ! Also, for WRFv4 and later versions variable 'T' is 
+   ! diagnostic, thus updating the 'THM' variable (prognostic) is also preferred
+   ! for all DA applications.
+   
+
+
+   if (get_type_ind_from_type_string(id,'T') >=0 .or. get_type_ind_from_type_string(id,'THM') <=0) then
+      
+      write(errstring,*)'WRF temperature variable THM must appear in DART model_nml', &
+                        ' for WRFv4 and later'
+      call error_handler(E_ERR,'static_init_model', errstring, source, revision, revdate)
+     
+   endif        
+
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
    wrf%dom(id)%type_v      = get_type_ind_from_type_string(id,'V')
    wrf%dom(id)%type_w      = get_type_ind_from_type_string(id,'W')
