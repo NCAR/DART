@@ -297,7 +297,9 @@ else:
                        'vsnon', 'QTY_SEAICE_SNOWVOLUME', 'UPDATE']
     
 # set the date range for observations times 
-datelist = pd.date_range(start = first_obs_date, end = last_obs_date).to_pydatetime()
+datelist = pd.date_range(start = first_obs_date, end = last_obs_date)
+datelist = datelist[~((datelist.month == 2) & (datelist.day == 29))]
+datelist = datelist.to_pydatetime()
 
 # cycle through time and generate observations
 for t in range(0, datelist.shape[0]):
@@ -405,7 +407,11 @@ for t in range(0, datelist.shape[0]):
 
 
 # Generate a netcdf file with all the observation sequence files
-files = sorted(glob.glob('obs_seq.*'))
+# Move all generated observation sequence files to obs_dir and clean up
+comd = 'mv obs_seq.* '+ obs_dir
+os.system(comd)
+
+files = sorted(glob.glob(obs_dir+'/obs_seq.*'))
 
 text_file = open("observations_list.txt", "w")
 for file in files:
@@ -432,11 +438,6 @@ else:
     
     os.remove('input.nml')
     os.remove('observations_list.txt')
-
-
-# Move all generated observation sequence files to obs_dir and clean up
-comd = 'mv obs_seq.* '+ obs_dir
-os.system(comd)
 
 num_files = len(glob.glob(obs_dir + '/obs_seq.*'))
 print(str(num_files) + ' days of observations successfully converted. Program finished.')
