@@ -133,8 +133,8 @@ Available distributions
 
   * NORMAL_DISTRIBUTION (default)
   * BOUNDED_NORMAL_RH_DISTRIBUTION
-  * GAMMA_DISTRIBUTION with lower bound at 0
-  * BETA_DISTRIBUTION bound between 0 and 1
+  * GAMMA_DISTRIBUTION (with a lower bound at 0)
+  * BETA_DISTRIBUTION (bound between 0 and 1)
   * LOG_NORMAL_DISTRIBUTION
   * UNIFORM_DISTRIBUTION
   * KDE_DISTRIBUTION
