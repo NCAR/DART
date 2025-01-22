@@ -3,17 +3,28 @@
  hist_avg = .true.  
  histfreq = 'd','m','x','x','x'
  histfreq_n = 1,1,1,1,1
- ice_ic = 'cice.r.nc'
- lcdf64 = .true. 
+ ice_ic ='cice.r.nc' 
+ latpnt = 74.0339039239224, -65.0
+ lcdf64 = .true.
+ lonpnt = 139.265008814424, -45.0
+ ndtd = 1
+ pointer_file = "./rpointer.ice"
+ print_global = .true.
+ print_points = .true.
+ restart_ext = .false.
+ restart_file = ""
+ restart_format = "pio"
+ write_ic = .false.
+ year_init = 1 
  xndt_dyn =  1.0 
 /
 &grid_nml
- grid_file = 'horiz_grid_20010402.ieeer8'
+ grid_file = "/glade/p/cesmdata/cseg/inputdata/ocn/pop/gx1v7/grid/horiz_grid_20010402.ieeer8"
  grid_format = 'bin'
  grid_type = 'displaced_pole'
  gridcpl_file = 'unknown_gridcpl_file'
  kcatbound =  0 
- kmt_file = 'topography_20090204.ieeei4'
+ kmt_file = "/glade/p/cesmdata/cseg/inputdata/ocn/pop/gx1v7/grid/topography_20161215.ieeei4"
 /
 &ice_nml
  advection = 'remap'
