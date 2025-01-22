@@ -1,8 +1,8 @@
 #!/bin/bash -l
 ### Job Name
-#PBS -N run_SIassimilations
+#PBS -N run_assimilation
 ### Charging account
-#PBS -A UWAS0083
+#PBS -A P93300065
 ### Request one chunk of resources with 1 CPU and 10 GB of memory
 #PBS -l select=1:ncpus=1:mem=4GB
 ### Allow job to run up to 30 minutes
@@ -22,6 +22,6 @@ mkdir -p $TMPDIR
 conda activate cice-scm-da
 
 ### Run analysis script
-python ../python/04a_setup_da_case.py SIT_test_bounded mollyw spinup_test open_water atm
-python ../python/04b_cycle.py SIT_test_bounded mollyw free_test 3 bounded 2011 1 2 2011 12 31 null SAT_SEAICE_AGREG_THICKNESS
-python ../python/05_postprocess.py SIT_test_bounded mollyw 3 all
+python ../python/04a_setup_da_case.py SIT_test_bounded mollyw spinup_test uniform_ice atm
+python ../python/04b_cycle.py SIT_test_bounded mollyw free_test 13 bounded 2011 1 2 2011 12 31 null SAT_SEAICE_AGREG_THICKNESS
+python ../python/05_postprocess.py SIT_test_bounded mollyw 13 all
