@@ -22,6 +22,6 @@ mkdir -p $TMPDIR
 conda activate cice-scm-da
 
 ### Run analysis script
-python ../python/04a_setup_da_case.py SIT_test_bounded mollyw spinup_test uniform_ice atm
-python ../python/04b_cycle.py SIT_test_bounded mollyw free_test 13 bounded 2011 1 2 2011 12 31 null SAT_SEAICE_AGREG_THICKNESS
-python ../python/05_postprocess.py SIT_test_bounded mollyw 13 all
+python ../python/04a_setup_da_case.py SIT_CoastalCanada_bounded mollyw spinup_CoastalCanada uniform_ice atm
+python ../python/04b_cycle.py SIT_CoastalCanada_bounded mollyw free_CoastalCanada 13 bounded 2011 1 2 2011 12 31 null SAT_SEAICE_AGREG_THICKNESS
+python ../python/05_postprocess.py SIT_CoastalCanada_bounded mollyw 13 all
