@@ -29,6 +29,8 @@ call init_algorithm_info_mod()
 call probit_dist_info(QTY_AQUIFER_WATER, .false., .true., dist_type, &
                         bounded_below, bounded_above, lower_bound, upper_bound)
 
+call plan(30)
+
 call ok(dist_type == GAMMA_DISTRIBUTION)
 call ok(bounded_below)
 call ok(.not. bounded_above)
