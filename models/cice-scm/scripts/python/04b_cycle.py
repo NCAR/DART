@@ -147,7 +147,7 @@ def repack_categories(file):
     return len(ds.variables)
 
 
-def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, cat_obs = False):
+def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, obs_type, cat_obs = False):
 
     case_dir  = '/glade/derecho/scratch/'+user+'/ICEPACK_RUNS/'+case+'/'
     assim_dir = '/glade/derecho/scratch/'+user+'/ICEPACK_RUNS/assim_dir/'+case+'/'
@@ -241,8 +241,14 @@ def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, 
     nml_file['filter_nml']['ens_size'] = ensemble_size-1
     nml_file['filter_nml']['num_output_state_members'] = ensemble_size-1
     nml_file['filter_nml']['num_output_obs_members'] = ensemble_size-1
+    if date_str == '2011-01-02':
+        nml_file['filter_nml']['inf_initial_from_restart'] = [False, False]
+        nml_file['filter_nml']['inf_sd_initial_from_restart'] = [False, False]
+    else:
+        nml_file['filter_nml']['inf_initial_from_restart'] = [True, False]
+        nml_file['filter_nml']['inf_sd_initial_from_restart'] = [True, False]
     nml_file['obs_kind_nml']['assimilate_these_obs_types'] = obs_type
-    nml_file['algorithm_info_nml']['qceff_table_filename'] = dart_dir+'/models/cice-scm/scripts/templates/cice_'+qceff_type+'_qceff_table.csv'
+    nml_file['algorithm_info_nml']['qceff_table_filename'] = dart_dir+'/models/cice-scm/scripts/templates/icepack_'+qceff_type+'_qceff_table.csv'
     nml_file['assim_tools_nml']['cutoff'] = 100000.0
     nml_file['model_nml']['model_state_variables'] = state_variables
     nml_file['dart_to_cice_nml']['postprocess'] = postprocessing
@@ -271,6 +277,11 @@ def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, 
     comd = 'mv input_*.nc ' + case_dir+ '/output_files/'+date_str+'/'
     os.system(comd)
     sleep(2)
+
+    # rename output_priorinf_[mean, sd].nc to input
+    os.system('cp output_priorinf_mean.nc input_priorinf_mean.nc')
+    os.system('cp output_priorinf_sd.nc input_priorinf_sd.nc')
+
     comd = 'mv preassim_*.nc ' + case_dir+ '/output_files/'+date_str+'/'
     os.system(comd)
     sleep(2)
@@ -303,13 +314,14 @@ def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, 
             shutil.copy('post_filter_restart.nc', case_dir+'/analyses/'+date_str+'/post_filter_restart_'+inst_string+'.nc')
             shutil.copy('../input.nml', '.')
 
-            # generate a copy of the pre_filter file that will become the postprocessed file 
-            shutil.copy('pre_filter_restart.nc', 'postprocessed_restart.nc')
-
             # repack the post_filter_restart.nc file if necessary
             if cat_obs is True:
+                null = repack_categories('pre_filter_restart.nc')
                 null = repack_categories('post_filter_restart.nc')
             
+            #generate a copy of the pre_filter file that will become the postprocessed file 
+            shutil.copy('pre_filter_restart.nc', 'postprocessed_restart.nc')
+
             # Run dart_to_cice postprocessing
             # os.symlink(assim_dir+'/dart_to_cice','dart_to_cice')
             comd = assim_dir + '/dart_to_cice > output.dart_to_cice'
@@ -372,7 +384,7 @@ datelist = pd.date_range(start = first_assim_date, end = end_assim_date).to_pyda
 start = perf_counter()
 
 for date in datelist:
-    cycle_da(case, source_case, dart_dir, qceff_type, date, truth_member, cat_obs=cat_assim)
+    cycle_da(case, source_case, dart_dir, qceff_type, date, truth_member, obs_type, cat_obs=cat_assim)
 
 end = perf_counter()
 print(f'Execution time was {(end - start)/60:0.4f} minutes')
