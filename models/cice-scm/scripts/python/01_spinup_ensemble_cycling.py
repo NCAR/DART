@@ -32,7 +32,7 @@ compiler = 'intel'
 
 # choose a spinup length and ensemble size (limited at this 
 # time to 30 or less)
-spinup_length = 11
+spinup_length = 10
 ensemble_size = 30
 
 # choose a lateral flux option
@@ -187,98 +187,121 @@ else:
     print('Model with following perturbations has been built:', perturb)
 
 #-----------------------------------------#
-# 4. Run the spinup
+# 4. Begin cycling over each year 
 #-----------------------------------------#
-simulation_length = 8760 * spinup_length
+simulation_length = 8760
 spinup_year = 1
+while spinup_year <= spinup_length:
+    spinup_year_str ='{0}'.format('%02d' % spinup_year) 
+    print('Working on spinup year '+ spinup_year_str+'...')
 
-#-------------------------------------#
-# 5. Begin cycling through ensemble   
-#-------------------------------------#
-mem = 1
-while mem <= ensemble_size:
-    inst_string ='{0}'.format('%04d' % mem) 
-    print('Running member '+inst_string+'...')
+    #-------------------------------------#
+    # 5. Begin cycling through ensemble   
+    #-------------------------------------#
+    mem = 1
+    while mem <= ensemble_size:
+        inst_string ='{0}'.format('%04d' % mem) 
+        print('Running member '+inst_string+'...')
 
-    os.chdir(storage_dir)
-    os.makedirs('mem' + inst_string + '/history/')
-    os.makedirs('mem' + inst_string + '/restart/')
+        if spinup_year == 1:
+            #create history and restart directories for the run
+            os.chdir(storage_dir)
+            os.makedirs('mem' + inst_string + '/history/')
+            os.makedirs('mem' + inst_string + '/restart/')
 
-    # link the model executable for each member to the main one built for the case
-    os.symlink(storage_dir+'/icepack','mem' + inst_string+'/icepack')
+            # link the model executable for each member to the main one built for the case
+            os.symlink(storage_dir+'/icepack','mem' + inst_string+'/icepack')
 
-    # set restart flag
-    restart_flag = False
-
-    # begin working on an individual ensemble member
-    os.chdir(storage_dir+'/mem' + inst_string)
-
-    # read namelist template
-    # namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_noflux')
-    namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_JRA55_flux')
-
-    # set case settings 
-    namelist['setup_nml']['year_init'] = 2000
-    namelist['setup_nml']['npt'] = simulation_length
-    namelist['setup_nml']['restart'] = restart_flag
-    namelist['setup_nml']['runtype_startup'] = True
-    namelist['setup_nml']['dumpfreq'] = 'y'
-    namelist['setup_nml']['ice_ic'] = 'default'
-    if location != 'default':
-        namelist['setup_nml']['input_lat'] = locs[location][0]
-        namelist['setup_nml']['input_lon'] = locs[location][1]
-    else:
-        print('Using default location for forcing files.')
-
-    # change namelist parameters of note
-    namelist['thermo_nml']['ksno'] = ksno[mem-1]
-    namelist['thermo_nml']['rhoi'] = rhoi[mem-1]
-    namelist['shortwave_nml']['r_snw'] = R_snw[mem-1]
-    namelist['shortwave_nml']['hi_ssl'] = hi_ssl[mem-1]
-    namelist['shortwave_nml']['hs_ssl'] = hs_ssl[mem-1]
-    namelist['shortwave_nml']['rsnw_mlt'] = rsnw_mlt[mem-1]
-    namelist['shortwave_nml']['dt_mlt'] = dt_mlt[mem-1]
-    namelist['snow_nml']['rhos']= rhos[mem-1]
-    namelist['dynamics_nml']['Cf'] = Cf[mem-1]
-    namelist['dynamics_nml']['dragio'] = dragio[mem-1]
-
-    # set namelist forcing options
-    namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/spinup/'
-    if 'atm' in perturb:
-        namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_'+inst_string+'.txt'
-    else:
-        namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_0001.txt'
-    if 'ocn' in perturb:
-        namelist['forcing_nml']['ocn_data_file'] = 'OCN_FORCING_PERT_'+inst_string+'.txt'
-    else:
-        namelist['forcing_nml']['ocn_data_file'] = 'OCN_FORCING_'+inst_string+'.txt'
-        
-    namelist['forcing_nml']['lateral_flux_type'] = flux
-    # write namelist to needed file
-    namelist.write('icepack_in',force=True)
-
-    # run the member instance and dump output 
-    comd = './icepack > icepack.out'
-    os.system(comd)
-
-    # check the output file for successful model completion
-    check_finished = ' ICEPACK COMPLETED SUCCESSFULLY '
-    txt = open('icepack.out').readlines()
-    if check_finished not in txt:
-        print('Icepack did not run correctly!')
-    else:
-        print('Icepack ran successfully!')
+            # set restart flag
+            restart_flag = False
+        else:
+            restart_flag = True
+            restart_file ='restart/iced.2012-01-01-00000.year'+spinup_year_str_prev+'.nc'
     
-    # check for restart files 
-    files = glob.glob('restart/iced.2011-01-01-00000.nc')
-    if len(files) == 0:
-        print('Icepack did not correctly generate restart file! Process stopped.')
-    else:
-        print('Restarts found! Member completed successfully!')
-    # advance to the next ensemble member 
-    mem += 1
+        # begin working on an individual ensemble member
+        os.chdir(storage_dir+'/mem' + inst_string)
 
-check_spinup = glob.glob(storage_dir + '/mem*/restart/iced.2011-01-01-00000.nc')
+        # read namelist template
+        # namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_noflux')
+        namelist = f90nml.read(project_dir + '/data/templates/ICEPACK_input.nml.template_JRA55_flux')
+
+        # set case settings 
+        namelist['setup_nml']['year_init'] = 2011
+        namelist['setup_nml']['npt'] = simulation_length
+        namelist['setup_nml']['restart'] = restart_flag
+        namelist['setup_nml']['runtype_startup'] = True
+        namelist['setup_nml']['dumpfreq'] = 'y'
+        if restart_flag is not True:
+            namelist['setup_nml']['ice_ic'] = 'default'
+        else:
+            namelist['setup_nml']['restart_dir'] = './restart/'
+            namelist['setup_nml']['ice_ic'] = restart_file
+        if location != 'default':
+            namelist['setup_nml']['input_lat'] = locs[location][0]
+            namelist['setup_nml']['input_lon'] = locs[location][1]
+        else:
+            print('Using default location for forcing files.')
+
+        # change namelist parameters of note
+        namelist['thermo_nml']['ksno'] = ksno[mem-1]
+        namelist['thermo_nml']['rhoi'] = rhoi[mem-1]
+        namelist['shortwave_nml']['r_snw'] = R_snw[mem-1]
+        namelist['shortwave_nml']['hi_ssl'] = hi_ssl[mem-1]
+        namelist['shortwave_nml']['hs_ssl'] = hs_ssl[mem-1]
+        namelist['shortwave_nml']['rsnw_mlt'] = rsnw_mlt[mem-1]
+        namelist['shortwave_nml']['dt_mlt'] = dt_mlt[mem-1]
+        namelist['snow_nml']['rhos']= rhos[mem-1]
+        namelist['dynamics_nml']['Cf'] = Cf[mem-1]
+        namelist['dynamics_nml']['dragio'] = dragio[mem-1]
+
+        # set namelist forcing options
+        namelist['forcing_nml']['data_dir'] = project_dir + '/data/forcings/'+location+'/'
+        if 'atm' in perturb:
+            namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_'+inst_string+'.txt'
+        else:
+            namelist['forcing_nml']['atm_data_file'] = 'ATM_FORCING_0001.txt'
+        if 'ocn' in perturb:
+            namelist['forcing_nml']['ocn_data_file'] = 'OCN_FORCING_PERT_'+inst_string+'.txt'
+        else:
+            namelist['forcing_nml']['ocn_data_file'] = 'OCN_FORCING_'+inst_string+'.txt'
+        
+        namelist['forcing_nml']['lateral_flux_type'] = flux
+        # write namelist to needed file
+        namelist.write('icepack_in',force=True)
+
+        # run the member instance and dump output 
+        comd = './icepack > icepack.out'
+        os.system(comd)
+
+        # check the output file for successful model completion
+        check_finished = ' ICEPACK COMPLETED SUCCESSFULLY '
+        txt = open('icepack.out').readlines()
+        if check_finished not in txt:
+            print('Icepack did not run correctly!')
+        else:
+            print('Icepack ran successfully!')
+    
+        # check for restart files 
+        files = glob.glob('restart/iced.2012-01-01-00000.nc')
+        if len(files) == 0:
+            print('Icepack did not correctly generate restart file! Process stopped.')
+        else:
+            comd = 'mv ./restart/iced.2012-01-01-00000.nc ./restart/iced.2012-01-01-00000.year'+spinup_year_str+'.nc'
+            os.system(comd)
+            comd = 'mv ./history/icepack.h.20110101.nc ./history/icepack.h.20110101.year'+spinup_year_str+'.nc'
+            os.system(comd)
+            print('restarts and history files renamed!')
+    
+        # advance to the next ensemble member 
+        mem += 1
+    
+    # save the spinup_year_str to access the restart during the next spinup year
+    spinup_year_str_prev = spinup_year_str
+    
+    # advance to the next spinup year
+    spinup_year += 1
+
+check_spinup = glob.glob(storage_dir + '/mem*/restart/iced.2012-01-01-00000.year'+spinup_year_str+'.nc')
 # print(check_spinup)
 if len(check_spinup) != ensemble_size:
     print('Spinup did not complete as expected. Some restarts are missing. Processed stopped.')
@@ -286,24 +309,36 @@ else:
     print('Spinup complete. Submitting postprocessing...')
 
 # if a postprocessing directory does not exist for this case, make one
-output_path = '/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name+'/'
-
-if os.path.exists(output_path) == False:
-    os.mkdir(output_path)
+if os.path.isdir('/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name) == False:
+    os.mkdir('/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name)
 
 files = sorted(glob.glob('/glade/derecho/scratch/'+user+'/ICEPACK_RUNS/'+case_name+'/mem*/history/*.nc'))
-DS = []
-for file in files:
-    ds = xr.open_dataset(file).isel({'ni':2}).drop(['ntrcr','ni','trcr','trcrn'])
-    DS.append(ds)
 
-ens_ds = xr.concat(DS, dim='member')
-ens_ds = ens_ds.resample(time = '1D').mean()
-ens_ds['hi'] = ens_ds.vice/ens_ds.aice
+ENS = []
+time = pd.date_range('2011-01-01','2021-01-01',freq='1H')
+time = time[:-1]
+# remove leap years 
+time = time[~((time.month == 2) & (time.day == 29))]
+for mem in range(ensemble_size):
+    string = '{:02d}'.format(mem+1)
+    files = sorted(glob.glob('/glade/derecho/scratch/'+user+'/ICEPACK_RUNS/'+case_name+'/mem00'+string+'/history/*.nc'))
+    print(files)
+    DS = []
+    for file in files:
+        ds_temp = xr.open_dataset(file).isel({'ni':2}).drop(['ni','ntrcr','trcr','trcrn'])
+        # ds_temp = ds_temp.resample(time='1D').mean()
+        DS.append(ds_temp)
+    ds = xr.concat(DS,dim='time')
+    ds['time'] = time
+    ds = ds.resample(time='1D').mean()
+    ds['hi'] = ds.vice/ds.aice
+    ENS.append(ds)
 
-ens_ds.to_netcdf(output_path+'/postprocessed_ensemble.nc')
-ens_ds.mean(dim='member').to_netcdf(output_path+'/postprocessed_ensemble_mean.nc')
-ens_ds.std(dim='member', ddof=1).to_netcdf(output_path+'/postprocessed_ensemble_std.nc')
+ens_ds = xr.concat(ENS,dim='member')
+
+ens_ds.to_netcdf('/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name+'/postprocessed_ensemble.nc')
+ens_ds.mean(dim='member').to_netcdf('/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name+'/postprocessed_ensemble_mean.nc')
+ens_ds.std(dim='member', ddof=1).to_netcdf('/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name+'/postprocessed_ensemble_std.nc')
 
 # check if files have been written
 if len(glob.glob('/glade/work/'+user+'/Projects/cice-scm-da/data/processed/ensemble/'+case_name+'/postprocessed_ens*.nc')) == 3:
