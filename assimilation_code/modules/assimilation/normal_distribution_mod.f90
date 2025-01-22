@@ -160,7 +160,7 @@ real(r8) :: normalized_q
 ! VARIABLES THROUGHOUT NEED TO SWITCH TO DIGITS_12
 ! The comment above is not consistent with the performance of these routines 
 ! as validated by test_normal. There is no evidence that this is still
-! required.
+! required. HK @todo test_normal fails if r8=r4, so beware.
 
 ! Can search in a standard normal, then multiply by sd at end and add mean
 ! Divide q by alpha to get the right place for weighted normal
