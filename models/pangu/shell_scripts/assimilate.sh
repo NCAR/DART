@@ -38,13 +38,13 @@ ex_end
 
 ####### modify input and output file list for filter
 output_file="filter_input_list.txt" 
-
+rm $output_file
 for ((i=1; i<=num_instances; i++)); do
     printf "pginput_%04d.nc\n" $i >> $output_file
 done
 
 output_file="filter_output_list.txt"
-
+rm $output_file
 for ((i=1; i<=num_instances; i++)); do
     printf "pgoutput_%04d.nc\n" $i >> $output_file
 done
