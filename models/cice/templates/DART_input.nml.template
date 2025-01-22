@@ -2,7 +2,7 @@
    /
 
 &algorithm_info_nml
-   qceff_table_filename = '/glade/work/mollyw/Projects/c-icesat-2/cases/CICESAT2_analysis/cice_bounded_qceff_table.csv'
+   qceff_table_filename = '/glade/work/mollyw/Projects/c-icesat-2/cases/CICESAT2_analysis_eakf/cice_unbounded_qceff_table.csv'
    /
 
 &perfect_model_obs_nml
@@ -52,7 +52,7 @@
 
    input_state_file_list    = "cice_restarts.txt"
    output_state_file_list   = "cice_restarts.txt"
-   stages_to_write          = 'input', 'preassim', 'analysis','output'
+   stages_to_write          = 'input', 'preassim', 'postassim', 'analysis','output'
    output_members           = .true.
    output_mean              = .true.
    output_sd                = .true.
@@ -60,8 +60,8 @@
    num_output_state_members = 30
 
    inf_flavor                  = 5,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_initial_from_restart    = .true.,                 .false.
+   inf_sd_initial_from_restart = .true.,                 .false.
    inf_initial                 = 1.02,                     1.0
    inf_lower_bound             = 1.0,                     1.0
    inf_upper_bound             = 50.0,                   50.0
@@ -161,9 +161,9 @@
    model_perturbation_amplitude = 0.00002
    binary_grid_file_format      = 'big_endian'
    debug                        = 1
-   model_state_variables  =       'aicen', 'QTY_SEAICE_CONCENTR'        , 'UPDATE',
-                                  'vicen', 'QTY_SEAICE_VOLUME'          , 'UPDATE',
-				                      'vsnon', 'QTY_SEAICE_SNOWVOLUME'      , 'UPDATE',
+   model_state_variables        = 'aicen', 'QTY_SEAICE_CONCENTR'      , 'UPDATE',
+                                  'vicen', 'QTY_SEAICE_VOLUME'        , 'UPDATE',
+                                  'vsnon', 'QTY_SEAICE_SNOWVOLUME'    , 'NO_COPY_BACK',
    /
 
 # r_snw is appended to the cice restart file by 'cice_to_dart.f90', which reads the
