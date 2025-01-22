@@ -3,23 +3,15 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 
-! use threed_cartesian
 module model_mod
 
-! This is a template showing the interfaces required for a model to be compliant
-! with the DART data assimilation infrastructure. Do not change the arguments
-! for the public routines.
-
-! assimilation_code/modules/utilities/types_mod.f90
 use types_mod, only: r8, i8, deg2rad, missing_r8, missing_i, &
                      ps0, earth_radius, digits12, vtablenamelength, &
                      gas_constant, gas_constant_v, gravity, pi
 
-! assimilation_code/modules/utilities/time_manager_mod.f90
 use time_manager_mod, only: time_type, set_time, set_calendar_type, GREGORIAN, &
                             set_date, get_date
 
-! assimilation_code/modules/utilities/location_mod
 use location_mod, only: location_type, get_location, set_location, &
                         query_location, VERTISUNDEF, VERTISSURFACE, &
                         VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
@@ -30,7 +22,6 @@ use location_mod, only: location_type, get_location, set_location, &
                         loc_get_close_state => get_close_state, &
                         get_maxdist, set_vertical
 ! VERTISUNDEF    = -2  ! has no specific vertical location (undefined) \ VERTISSURFACE     = -1  ! surface value  \ VERTISLEVEL       =  1  ! by level  \  VERTISPRESSURE    =  2  ! by pressure (in pascals) \ VERTISHEIGHT      =  3  ! by height (in meters) \ VERTISSCALEHEIGHT =  4  ! by scale height (unitless)
-! assimilation_code/modules/utilities/utilities_mod.f90
 use utilities_mod, only: file_exist, open_file, close_file, &
                          register_module, error_handler, E_ERR, E_WARN, &
                          E_MSG, nmlfileunit, &
@@ -40,7 +31,6 @@ use utilities_mod, only: file_exist, open_file, close_file, &
                          find_enclosing_indices, to_upper, &
                          string_to_logical, string_to_real
 
-! assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 use netcdf_utilities_mod, only: nc_get_variable, nc_get_variable_size, nc_create_file, &
                                 nc_add_attribute_to_variable, &
                                 nc_define_integer_variable, nc_define_double_variable, &
@@ -54,13 +44,10 @@ use netcdf_utilities_mod, only: nc_get_variable, nc_get_variable_size, nc_create
                                 nc_close_file, nc_variable_exists, nc_get_global_attribute, &
                                 nc_get_dimension_size, nc_check
 
-! assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 use mpi_utilities_mod, only: my_task_id, task_count, all_reduce_min_max
 
-! assimilation_code/modules/utilities/random_seq_mod.f90
 use random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
-! assimilation_code/modules/assimilation/obs_model_mod.f90
 use obs_kind_mod, only: QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
                         QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, &
                         QTY_SPECIFIC_HUMIDITY, QTY_SURFACE_ELEVATION, &
@@ -72,13 +59,8 @@ use obs_kind_mod, only: QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
                         get_index_for_quantity, get_num_quantities, &
                         get_name_for_quantity, get_quantity_for_type_of_obs
 
-! assimilation_code/modules/utilities/ensemble_manager_mod.f90
 use ensemble_manager_mod, only: ensemble_type, get_my_num_vars, get_my_vars
 
-! assimilation_code/modules/utilities/sort_mod.f90
-use sort_mod, only: sort
-
-! assimilation_code/modules/utilities/distributed_state_mod.f90
 use distributed_state_mod, only: get_state
 
 ! These routines are passed through from default_model_mod.
@@ -105,7 +87,6 @@ use quad_utils_mod, only: quad_interp_handle, init_quad_interp, &
                           QUAD_LOCATED_CELL_CENTERS
 
 use netcdf
-use typesizes
 
 implicit none
 private
@@ -153,8 +134,6 @@ public :: MAX_STATE_VARIABLES, &
 public :: model_static_data_for_dart
 
 character(len=256), parameter :: source = "model_mod.f90"
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate = ''
 
 ! miscellaneous
 integer, parameter :: MAX_STATE_VARIABLES = 100
@@ -279,10 +258,7 @@ subroutine static_init_model()
    integer               :: ref_nlevels
 
    character(len=*), parameter :: routine = 'static_init_model'
-
-   ! Print module information to log file and stdout.
-   call register_module(source, revision, revdate)
-
+   
    module_initialized = .true.
 
    call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -302,9 +278,9 @@ subroutine static_init_model()
       call nc_check(nf90_open(input_template_filename, NF90_NOWRITE, ncid), &
                     'static_init_model', input_template_filename)
    else
-      call error_handler(E_ERR, 'static_init_model', &
-                         'Please put ', input_template_filename, &
-                         ' in the work directory.', source, revision, revdate)
+      write (string1, *) 'Please put ', trim(input_template_filename), &
+                         ' in the work directory.'
+      call error_handler(E_ERR, routine, string1, source)
    end if
    if (debug) write (*, *) ' ncid is ', ncid
 
@@ -356,8 +332,6 @@ subroutine static_init_model()
 
    ! close data file, we have all we need
    call nc_check(nf90_close(ncid), 'static_init_model', 'close ', input_template_filename)
-
-   call error_handler(E_MSG, 'static_init_model', errstring)
 
 end subroutine static_init_model
 
@@ -508,7 +482,7 @@ subroutine get_state_meta_data(index_in, location, var_type_out)
    else
       write (string1, *) 'state vector field not 2D or 3D and no code to handle other dimensionity'
       write (string2, *) 'dimensionality = ', nd, ' quantity type = ', trim(get_name_for_quantity(var_qty))
-      call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+      call error_handler(E_ERR, routine, string1, source, text2=string2)
    end if
 
    if (debug) write (*, *) 'lon, lat, lev: ', lon, lat, use_vert_val
@@ -585,7 +559,7 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_qty, interp_v
    if (status1 /= 0) then
       if (debug_level > 12) then
          write (string1, *) 'did not find observation quantity ', obs_qty, ' in the state vector'
-         call error_handler(E_MSG, routine, string1, source, revision, revdate)
+         call error_handler(E_MSG, routine, string1, source)
       end if
       istatus(:) = status1   ! this quantity not in the state vector
       return
@@ -714,7 +688,7 @@ subroutine get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four
    else
       write (string1, *) trim(get_name_for_quantity(obs_qty)), ' has dimension ', numdims
       call error_handler(E_ERR, routine, 'only supports 2D or 3D fields', &
-                         source, revision, revdate, text2=string1)
+                         source, text2=string1)
    end if
 
    ! when you get here, my_status() was set either by passing it to a
@@ -851,7 +825,7 @@ function get_dims_from_qty(obs_quantity, var_id)
       case default
          write (string1, *) 'we can not interpolate qty "', get_name_for_quantity(obs_quantity), &
             '" if the dimension is not known'
-         call error_handler(E_ERR, routine, string1, source, revision, revdate)
+         call error_handler(E_ERR, routine, string1, source)
       end select
    end if
 
@@ -878,7 +852,7 @@ subroutine get_quad_values(ens_size, lon_index, lat_index, obs_quantity, stagger
 
    case default
       write (string1, *) 'we can not interpolate qty', obs_quantity
-      call error_handler(E_ERR, routine, string1, source, revision, revdate)
+      call error_handler(E_ERR, routine, string1, source)
 
    end select
 
@@ -916,7 +890,7 @@ subroutine get_values_from_single_level(ens_handle, ens_size, qty, lon_index, la
    state_indx = get_dart_vector_index(lon_index, lat_index, lev_index, domain_id, varid)
    if (state_indx < 1 .or. state_indx > get_domain_size(domain_id)) then
       write (string1, *) 'state_index out of range: ', state_indx, ' not between ', 1, get_domain_size(domain_id)
-      call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2, text3='should not happen')
+      call error_handler(E_ERR, routine, string1, source, text2=string2, text3='should not happen')
    end if
    vals(:) = get_state(state_indx, ens_handle)
 
@@ -972,7 +946,7 @@ subroutine get_values_from_varid(ens_handle, ens_size, lon_index, lat_index, lev
       if (state_indx < 0) then
          write (string1, *) 'Should not happen: could not find dart state index from '
          write (string2, *) 'lon, lat, and lev index :', lon_index, lat_index, lev_index
-         call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+         call error_handler(E_ERR, routine, string1, source, text2=string2)
          return
       end if
 
@@ -1029,7 +1003,7 @@ subroutine get_values_from_nonstate_fields(ens_handle, ens_size, lon_index, lat_
 
    case default
       write (string1, *) 'contact dart support. unexpected error for quantity ', obs_quantity
-      call error_handler(E_MSG, routine, string1, source, revision, revdate)
+      call error_handler(E_MSG, routine, string1, source)
 
    end select
 
@@ -1158,7 +1132,7 @@ subroutine find_vertical_levels(ens_handle, ens_size, lon_index, lat_index, vert
 
    case default
       write (string1, *) 'unsupported vertical type: ', which_vert
-      call error_handler(E_ERR, routine, string1, source, revision, revdate)
+      call error_handler(E_ERR, routine, string1, source)
 
    end select
 
@@ -1573,10 +1547,7 @@ subroutine nc_write_model_atts(ncid, id)
 
    call nc_add_global_creation_time(ncid, routine)
 
-   call nc_add_global_attribute(ncid, "model_source", source, routine)
-   call nc_add_global_attribute(ncid, "model_revision", revision, routine)
-   call nc_add_global_attribute(ncid, "model_revdate", revdate, routine)
-
+   call nc_add_global_attribute(ncid, "model_source", source, routine)   
    call nc_add_global_attribute(ncid, "model", "pangu", routine)
 
    !-----------------------------------------------------------------
@@ -1818,7 +1789,7 @@ subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provid
    if (.not. allow_perturbed_ics) then
       call error_handler(E_ERR, 'pert_model_copies', &
                          'starting pangu model from a single vector requires additional steps', &
-                         source, revision, revdate, &
+                         source, &
                          text2='see comments in pangu/model_mod.f90::pert_model_copies()')
    end if
 
@@ -2293,7 +2264,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
          call obs_vertical_to_scaleheight(ens_handle, locs(i), my_status(i))
       case default
          write (string1, *) 'unable to convert vertical obs "', which_vert, '"'
-         call error_handler(E_ERR, routine, string1, source, revision, revdate)
+         call error_handler(E_ERR, routine, string1, source)
       end select
    end do
 
@@ -2359,7 +2330,7 @@ subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
          call state_vertical_to_scaleheight(ens_handle, ens_size, locs(i), loc_indx(i), loc_qtys(i))
       case default
          write (string1, *) 'unable to convert vertical state "', which_vert, '"'
-         call error_handler(E_MSG, routine, string1, source, revision, revdate)
+         call error_handler(E_MSG, routine, string1, source)
       end select
    end do
 
@@ -2558,7 +2529,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
    if (.not. present(ens_handle)) then
       call error_handler(E_ERR, routine, &
                          'unexpected error: cannot convert distances without an ensemble handle', &
-                         source, revision, revdate)
+                         source)
    end if
 
    ! does the base obs need conversion first?
@@ -2653,7 +2624,7 @@ subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
    if (.not. present(ens_handle)) then
       call error_handler(E_ERR, routine, &
                          'unexpected error: cannot convert distances without an ensemble handle', &
-                         source, revision, revdate)
+                         source)
    end if
 
    ! does the base obs need conversion first?
@@ -2852,14 +2823,14 @@ subroutine set_model_variable_info(input_template_filename, variable_array)
 
       if (varname == ' ' .or. dartstr == ' ') then
          string1 = 'model_nml:model "state_variables" not fully specified'
-         call error_handler(E_ERR, routine, string1, source, revision, revdate)
+         call error_handler(E_ERR, routine, string1, source)
       end if
 
       ! Make sure DART kind is valid
 
       if (get_index_for_quantity(dartstr) < 0) then
          write (string1, '(3A)') 'there is no obs_kind "', trim(dartstr), '" in obs_kind_mod.f90'
-         call error_handler(E_ERR, routine, string1, source, revision, revdate)
+         call error_handler(E_ERR, routine, string1, source)
       end if
 
       call to_upper(minvalstr)
@@ -2883,7 +2854,7 @@ subroutine set_model_variable_info(input_template_filename, variable_array)
       write (string2, '(A,i4,A)') 'WARNING: you have specified at least ', nfields, &
          ' perhaps more'
 
-      call error_handler(E_MSG, routine, string1, source, revision, revdate, text2=string2)
+      call error_handler(E_MSG, routine, string1, source, text2=string2)
    end if
 
    ! CAM only has a single domain (only a single grid, no nests or multiple grids)
@@ -3065,7 +3036,7 @@ subroutine obs_too_high(vert_value, which_vert, my_status)
 
    write (errstring, *) 'vertical type: ', which_vert
    call error_handler(E_ERR, 'obs_too_high', 'unrecognized vertical type', &
-                      source, revision, revdate, text2=errstring)
+                      source, text2=errstring)
 
 end subroutine obs_too_high
 
@@ -3128,7 +3099,7 @@ subroutine set_vert_localization(typename)
    case default
       write (string1, *) 'unrecognized vertical localization coordinate type: '//trim(typename)
       write (string2, *) 'valid values are: PRESSURE, HEIGHT, SCALEHEIGHT, LEVEL'
-      call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+      call error_handler(E_ERR, routine, string1, source, text2=string2)
    end select
 
    ! during assimilation, when get_close() is called to compute the separation distance
@@ -3159,7 +3130,7 @@ function read_model_time(filename)
 
    if (.not. file_exist(filename)) then
       write (string1, *) trim(filename), ' does not exist.'
-      call error_handler(E_ERR, routine, string1, source, revision, revdate)
+      call error_handler(E_ERR, routine, string1, source)
    end if
 
    ncid = nc_open_file_readonly(filename, routine)
@@ -3193,11 +3164,11 @@ function read_model_time(filename)
       write (string2, *) 'WARNING - ', trim(filename), ' changing year from ', &
          iyear, 'to', iyear + 1601
 
-      call error_handler(E_MSG, routine, string1, source, revision, &
-                         revdate, text2=string2, text3='to make it a valid Gregorian date.')
+      call error_handler(E_MSG, routine, string1, source, &
+                         text2=string2, text3='to make it a valid Gregorian date.')
 
       write (string1, *) ' '
-      call error_handler(E_MSG, routine, string1, source, revision)
+      call error_handler(E_MSG, routine, string1, source)
       iyear = iyear + 1601
    end if
 

@@ -218,8 +218,8 @@
    /
 
 &model_mod_check_nml
-   input_state_file_list       = 'filter_input_list.txt'
-   output_state_file_list       = 'filter_output_list.txt'
+   input_state_files  = 'filter_input_list.txt'
+   output_state_files = 'filter_output_list.txt'
    test1thru            = 7
    run_tests            = 1,2,3,4,5,7
    x_ind                = 42
