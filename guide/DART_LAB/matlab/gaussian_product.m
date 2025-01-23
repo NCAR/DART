@@ -3,21 +3,24 @@ function gaussian_product
 %
 %    This is fundamental to Kalman filters and to ensemble
 %    data assimilation. Change the parameters of the
-%    gaussian for the Prior (green) and the Observation (red)
+%    Gaussian for the Prior (green) and the Observation (red)
 %    and click on 'Plot Posterior'.
 %
-%    The product (in this case, the 'Posterior') of two gaussians is a gaussian.
-%    If the parameters of the two gaussians are known, the parameters of the
-%    resulting gaussian can be calculated.
+%    The product (in this case, the 'Posterior') of two Gaussians is a Gaussian.
+%    If the parameters of the two Gaussians are known, the parameters of the
+%    resulting Gaussian can be calculated.
 %
-% See also: oned_model.m oned_model_inf.m oned_ensemble.m
-%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+% See also: bounded_oned_ensemble.m oned_cycle.m oned_ensemble.m oned_model.m
+%           oned_model_inf.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
+
+help gaussian_product
 
 atts = stylesheet;  % get the default fonts and colors
 
@@ -248,6 +251,7 @@ align(hlist,'Center','Distribute')
 
 %%Plots an initial graph with the default values
 g_prod_plot(handles);
+set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
 
 %% ---------------------------------------------------------------------
 
@@ -257,6 +261,7 @@ g_prod_plot(handles);
         %handles. This is done through the function definition.
         
         [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         
         % If there is an error, zero out the posterior text values
         % don't try to do posterior computation
@@ -300,21 +305,25 @@ g_prod_plot(handles);
 
     function edit_prior_mean_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
     function edit_prior_sd_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
     function edit_observation_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 
     function edit_obs_error_sd_Callback(~, ~)
         g_prod_plot(handles);
+        set(gca, 'FontUnits', 'Normalized', 'Fontsize', 0.05);
         reset_Posterior();
     end
 

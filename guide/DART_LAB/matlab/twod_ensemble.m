@@ -1,26 +1,46 @@
 function twod_ensemble
-%% TWOD_ENSEMBLE demonstrates a powerful aspect of ensemble data assimilation.
-%      The ensemble makes it possible to estimate the impact of observations
-%      on unobserved state variables.
+%% TWOD_ENSEMBLE explores how and unobserved variable is updated by an
+%   observed variable in an ensemble filter.
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive
-%      observation generation mechanism and lay down a set of ensemble
-%      samples of an unobserved variable (vertical axis) and an observed
-%      variable (horizontal axis). The ensemble members are created by
-%      left clicking in the central portion of the figure window.
-%      Start out small, say 6 or so.
-%      In this case, some H() operator would generate the Observed Quantity.
-%      The Unobserved State Variable could simply be some portion of the
-%      model state.
+%      ensemble generation mechanism. Ensemble members are created by
+%      left clicking in the central portion of the plot on the left side
+%      of the panel. The horizontal axis is for an observed quantity, 
+%      and the vertical axis for an unobserved quantity. When you have all
+%      the ensemble members you want, click outside of the grey plot area.
+%      As you add ensemble members, marginal plots for the observed and
+%      unobserved axes are created and the sample correlation is displayed.
 %
-%      After creating the ensemble, the correlation between the Observed
-%      Quantity and the Unobserved State Variable is calculated.
-%      Select an assimilation algorithm and click 'Update Ensemble'.
-%      The increments are shown as red lines, the new Posterior estimates
-%      are in blue.
+%      Once you have created a prior ensemble (green asterisks), click the 
+%      'Update Ensemble' button. With the default settings, this will apply the EAKF 
+%      algorithm to produce a posterior ensemble (blue asterisks) in the central
+%      bivariate plot and in the marginal plots. The prior and posteriors are 
+%      connected by cyan segments. 
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
-%           run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
+%      Two other ensemble filter variants, the EnKF (sometimes referred to as 
+%      the perturbed observations ensemble Kalman filter) and the rank histogram 
+%      filter (RHF) can be selected with the pushbuttons at the lower right.
+%      Selecting one of these and pressing 'Update Ensemble' will produce
+%      the posterior ensemble and posterior statistics using the selected
+%      filter algorithm. The EnKF is a stochastic algorithm so repeated 
+%      updates can be done for the same prior and observation by repeatedly 
+%      pressing 'Update Ensemble'.
+%
+%      The marginal distributions of the observed quantity and the 
+%      unobserved quantity are shown in the rectangular plots abutting the
+%      square joint distribution. The prior and posterior ensembles and
+%      the increments between them are highlighted in all three plots after
+%      the 'Update Ensemble' button is pushed. 
+%
+%      The plot at the lower right shows more detail of the update for the
+%      observed variable including the likelihood in red.
+%
+%      The mean and standard deviation of the likelihood can be 
+%      changed in the red box. 
+%
+% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model.m oned_model_inf.m run_lorenz_63.m run_lorenz_96.m 
+%           run_lorenz_96_inf.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -230,7 +250,8 @@ handles.h_unobMarginal = axes('Position', plotposition(1,:), ...
     'FontName', atts.fontname, ...
     'FontSize', atts.fontsize);
 axis([0 1 0 10]);
-ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize);
+set(gca, 'FontUnits', 'Normalized');
+ylabel('Unobserved State Variable', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
 %% Get a subplot for the joint
@@ -241,28 +262,30 @@ handles.h_joint = axes('Position', plotposition(2,:), ...
 axis([0 10 0 10]);
 grid on
 hold on
-title('Joint Distribution');
+title('Joint Distribution', 'Fontsize', atts.fontsize, 'FontUnits', 'Normalized');
+set(gca, 'color', [0.8, 0.8, 0.8])
+set(gca, 'FontUnits', 'Normalized')
 
-h_click    = text(5, 9, {'Click inside Joint Distribution plot','to create member.'}, ...
-    'FontSize', 16, 'HorizontalAlignment','center');
-h_finish   = text(5, 8, 'Click outside of plot to finish.', ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+h_click    = text(5, 9, {'Click inside Joint Distribution plot','grey area to create member.'}, ...
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
+h_finish   = text(5, 8, 'Click outside of grey to finish.', ...
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 h_err_text = text(5, 4, 'An ensemble must have at least 2 members.', 'Color', atts.red, ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 
 handles.h_correl = text(5, 9, ' ', 'Color', atts.green, 'FontWeight', 'Bold', ...
-    'FontSize', 16, 'HorizontalAlignment','center');
+    'FontSize', 16, 'HorizontalAlignment','center', 'FontUnits', 'Normalized', 'Visible', 'off');
 
 %% Create a subplot for the observed variable marginal
 
 handles.h_obMarginal = axes('Position', plotposition(3,:), ...
-    'FontName', atts.fontname, ...
-    'FontSize', atts.fontsize);
+    'FontName', atts.fontname, 'FontSize', atts.fontsize);
 
 % May want to mess with vertical axis for prior density
 axis([0 10 0 1]);
 hold on
-xlabel('Observed Quantity');
+xlabel('Observed Quantity', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+set(gca, 'FontUnits', 'Normalized');
 handles.h_obs_marg = plot(observation, 0, '*', 'MarkerSize', 16, 'LineWidth', 2.0);
 set(handles.h_obs_marg,'Color',atts.red)
 
@@ -286,9 +309,10 @@ set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(handles.h_marg_obs_plot, 'Color', atts.red, ...
     'Linestyle', '--', ...
     'LineWidth', 2);
-xlabel('Observed Quantity',      'FontSize', atts.fontsize);
-ylabel('Observation Likelihood', 'FontSize', atts.fontsize);
-title('Marginal Distribution of Observation', 'FontSize', atts.fontsize);
+set(gca, 'FontUnits', 'Normalized');
+xlabel('Observed Quantity',      'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+ylabel('Observation Likelihood', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
+title('Marginal Distribution of Observation', 'FontSize', atts.fontsize, 'FontUnits', 'Normalized');
 hold on
 
 % Plot an asterisk for the observed value
@@ -330,6 +354,11 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         % Clear out the old best fit line
         set(handles.h_best_fit, 'Visible', 'off');
         set(handles.h_correl,   'Visible', 'off');
+
+        % Turn on the data entry messages
+        set(h_click, 'Visible', 'on');
+        set(h_finish, 'Visible', 'on');
+        set(h_err_text, 'Visible', 'on');
         
         % Work in the joint distribution plot
         axes(handles.h_joint);
@@ -408,10 +437,11 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             prior_mean = mean(x, 2);
             prior_cov  = cov(x(1, :), x(2, :));
             slope      = prior_cov(1, 2) / var(x(1, :));
+            intercept  = prior_mean(2) - slope * prior_mean(1);
             
-            best_x = [0 10];
-            best_y(1) = prior_mean(2) - (prior_mean(1)) * slope;
-            best_y(2) = best_y(1) + 10 * slope;
+            best_x = [-1000 1000];
+            best_y = slope * best_x + intercept;
+ 
             handles.h_best_fit = plot(best_x, best_y, 'g', 'LineWidth', 2.0);
             set(handles.h_best_fit, 'Color', atts.green);
             
