@@ -22,6 +22,21 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 22 2025 :: Bug-fix: Gamma and Beta Distributions. Tag v11.8.9**
+
+Bug fixes:
+
+    - Beta distribution only supporting standard Beta, bounded 0-1.
+    - Gamma distribution only supporting standard, lower bound 0.
+    - Beta and Gamma bounds are forced in the QCEFF table.
+
+Updates:
+
+    - Explicitly setting distribution type, now have UNSET.
+    - Message about failing to converge changed to E_ALLMSG to be visible
+      on all mpi ranks.
+    - remove unused test_obs directory
+
 **January 14 2025 :: Bug-fix MOM6 potential temperature. Tag v11.8.8**
 
 - MOM6 model_interpolate for potential temperature

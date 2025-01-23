@@ -6,7 +6,7 @@ module normal_distribution_mod
 
 use types_mod, only : r8, missing_r8, digits12, PI
 
-use utilities_mod, only : E_ERR, E_MSG, error_handler
+use utilities_mod, only : E_ERR, E_ALLMSG, error_handler
 
 use distribution_params_mod, only : distribution_params_type, NORMAL_DISTRIBUTION
 
@@ -61,6 +61,7 @@ real(r8) :: inv_diff_bound(16) = [1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_r8, 1e-10_
                                   1e-5_r8, 1e-4_r8, 1e-3_r8, 1e-2_r8, 1e-1_r8, 1e-0_r8]
 
 ! Compare to matlab 
+write(*, *) 'Absolute value of differences should be less than 1e-15'
 ! Absolute value of differences should be less than 1e-15
 do i = 1, 7
    cdf_diff(i) = normal_cdf(mx(i), mmean(i), msd(i)) - mcdf(i)
@@ -157,6 +158,9 @@ real(r8), intent(in)  :: alpha, mean, sd, q
 real(r8) :: normalized_q
 
 ! VARIABLES THROUGHOUT NEED TO SWITCH TO DIGITS_12
+! The comment above is not consistent with the performance of these routines 
+! as validated by test_normal. There is no evidence that this is still
+! required. HK @todo test_normal fails if r8=r4, so beware.
 
 ! Can search in a standard normal, then multiply by sd at end and add mean
 ! Divide q by alpha to get the right place for weighted normal
@@ -196,8 +200,6 @@ real(r8)             :: x
 real(r8), intent(in) :: quantile_in
 
 ! This is used to get a good first guess for the search in inv_std_normal_cdf
-! The params argument is not needed here but is required for consistency &
-! with other distributions
 
 ! normal inverse
 ! translate from http://home.online.no/~pjacklam/notes/invnorm
@@ -285,13 +287,17 @@ real(r8), intent(in)  :: quantile
 ! Given a quantile q, finds the value of x for which the standard normal cdf
 ! has approximately this quantile
 
-! Where should the stupid p type come from
 type(distribution_params_type) :: p
 real(r8) :: mean, sd
 
 ! Set the mean and sd to 0 and 1 for standard normal
 mean        = 0.0_r8;     sd          = 1.0_r8
 p%params(1) = mean;       p%params(2) = sd
+
+! Normal is unbounded
+p%distribution_type = NORMAL_DISTRIBUTION
+p%bounded_below = .false.;       p%bounded_above = .false.
+p%lower_bound   = missing_r8;    p%upper_bound   = missing_r8
 
 x = inv_std_normal_cdf_params(quantile, p)
 
@@ -300,6 +306,10 @@ end function inv_std_normal_cdf
 !------------------------------------------------------------------------
 
 function inv_cdf(quantile_in, cdf, first_guess, p) result(x)
+
+! This routine is used for many distributions, not just the normal distribution
+! Could be moved to its own module for clarity or combined with Ian Groom's
+! rootfinding module as an option. 
 
 interface
    function cdf(x, p)
@@ -337,6 +347,11 @@ integer, parameter :: max_iterations = 50
 
 ! Limit on number of times to halve the increment; No deep thought.
 integer, parameter :: max_half_iterations = 25
+
+! Largest delta for computing centered difference derivative
+! Changing this can affect accuracy for specific applications like Ian Grooms KDE
+! Changing to 1e-9 allows all of the KDE tests to PASS
+real(r8), parameter :: max_delta = 1e-8_r8
 
 real(r8) :: quantile
 real(r8) :: reltol, dq_dx, delta
@@ -387,7 +402,7 @@ do iter = 1, max_iterations
    ! Analytically, the PDF is derivative of CDF but this can be numerically inaccurate for extreme values
    ! Use numerical derivatives of the CDF to get more accurate inversion
    ! These values for the delta for the approximation work with Gfortran
-   delta = max(1e-8_r8, 1e-8_r8 * abs(x_guess))
+   delta = max(max_delta, max_delta * abs(x_guess))
    dq_dx = (cdf(x_guess + delta, p) - cdf(x_guess - delta, p)) / (2.0_r8 * delta)
    ! Derivative of 0 means we're not going anywhere else
    if(dq_dx <= 0.0_r8) then
@@ -431,7 +446,7 @@ end do
 ! Not currently happening for any of the test cases on gfortran
 x = x_new
 write(errstring, *)  'Failed to converge for quantile ', quantile
-call error_handler(E_MSG, 'inv_cdf', errstring, source)
+call error_handler(E_ALLMSG, 'inv_cdf', errstring, source)
 !!!call error_handler(E_ERR, 'inv_cdf', errstring, source)
 
 end function inv_cdf
@@ -482,7 +497,7 @@ subroutine set_normal_params_from_ens(ens, num, p)
 
 integer,                        intent(in)                         :: num
 real(r8),                       intent(in)                        :: ens(num)
-type(distribution_params_type), intent(inout) :: p
+type(distribution_params_type), intent(out) :: p
 
 ! Set up the description of the normal distribution defined by the ensemble
 p%distribution_type = NORMAL_DISTRIBUTION
@@ -490,6 +505,9 @@ p%distribution_type = NORMAL_DISTRIBUTION
 ! The two meaningful params are the mean and standard deviation
 call normal_mean_sd(ens, num, p%params(1), p%params(2))
 
+! Normal is unbounded
+p%bounded_below = .false.;       p%bounded_above = .false.
+p%lower_bound   = missing_r8;    p%upper_bound   = missing_r8
 
 end subroutine set_normal_params_from_ens
 

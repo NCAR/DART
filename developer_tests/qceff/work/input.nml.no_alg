@@ -1,7 +1,3 @@
-&algorithm_info_nml
- qceff_table_filename = 'qcf_force_beta_gamma.csv'
-/
-
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.
@@ -30,3 +26,6 @@
 
 &obs_kind_nml
 /
+
+
+

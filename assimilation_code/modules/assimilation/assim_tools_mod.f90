@@ -1065,7 +1065,7 @@ integer :: i
 ! Compute the prior quantiles of each ensemble member in the prior gamma distribution
 call gamma_mn_var_to_shape_scale(prior_mean, prior_var, prior_shape, prior_scale)
 do i = 1, ens_size
-   q(i) = gamma_cdf(ens(i), prior_shape, prior_scale, .true., .false., 0.0_r8, missing_r8) 
+   q(i) = gamma_cdf(ens(i), prior_shape, prior_scale) 
 end do
 
 ! Compute the statistics of the continous posterior distribution
@@ -1082,7 +1082,7 @@ endif
 
 ! Now invert the quantiles with the posterior distribution
 do i = 1, ens_size
-   post(i) = inv_gamma_cdf(q(i), post_shape, post_scale, .true., .false., 0.0_r8, missing_r8)
+   post(i) = inv_gamma_cdf(q(i), post_shape, post_scale)
 end do
 
 obs_inc = post - ens
