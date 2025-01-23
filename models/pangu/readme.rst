@@ -67,7 +67,7 @@ Steps:
      - directory to store the output files (e.g. output_mean, output_sd, obs_seq.final and ensemble output files )
    * - obs_dir
      - string
-     - where the observations are located. Observation should be in DART obs_seq format, see `obs_converter <https://https://github.com/NCAR/DART/tree/main/observations/obs_converters>`
+     - where the observations are located. Observation should be in DART obs_seq format, see :ref:`observations`.
 
 
 Namelists 
