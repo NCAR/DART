@@ -7,9 +7,18 @@ function run_lorenz_63
 %
 %      This is another 'perfect_model' experiment. As the model is
 %      advanced, observations are taken from the true state and are
-%      assimilated by the ensemble members. The true trajectory, the
-%      observations, the observation increments, and the Prior and Posterior
-%      ensemble states are displayed.
+%      assimilated by the ensemble members. The three model components
+%      are observed at each assimilation cycle with a specified 
+%      observation error distribution that is Normal(0, 1). 
+%      
+%      See the documentation for oned_model_mod.m for a description of
+%      using the 'Advance Model' button and 'Start Auto Run' button
+%      to do cycling assimilation. 
+%
+%      No assimilation, the Ensemble Adjustment Kalman filter (EAKF), 
+%      perturbed obs ensemble Kalman filter (EnKF), and the rank 
+%      histogram filter (RHF) can be  selected with the pushbuttons
+%      at the right. The 'Reset' button restarts the application.
 %
 %      To provide context and highlight the details of the assimilation,
 %      two views are presented. The larger view is a detailed view of
@@ -18,6 +27,17 @@ function run_lorenz_63
 %      Both views are fundamentally views 'from above' ... looking down
 %      on the Z-axis although they can be rotated when the assimilation is
 %      stopped.
+%
+%      The detailed view includes the truth (black asterisk) and its
+%      recent trajectory (black line). It also contains the recent 
+%      trajectory of the 20 ensemble members (green lines). If 
+%      assimilation is being done, it also displays the observation
+%      (red asterisk) and the increments to the prior ensemble members
+%      resulting from the assimilation (red lines). 
+%
+%      The global panel plots a time history of the true trajectory
+%      (black line with asterisks at start and end) and the most
+%      recent observation (red asterisk) when assimilation is being done.
 %
 %      After you get the feel for a few single steps through the process
 %      (by repeatedly pressing the 'Advance/Assimilate' button), select
@@ -30,8 +50,9 @@ function run_lorenz_63
 %      particularly difficult - especially in the highly nonlinear
 %      'saddle' region.
 %
-% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
-%           twod_ensemble.m run_lorenz_96.m run_lorenz_96_inf.m
+%% See also: bounded_oned_ensemble.m gaussian_product.m oned_cycle.m oned_ensemble.m
+%           oned_model.m oned_model_inf.m run_lorenz_96.m run_lorenz_96_inf.m
+%           twod_ensemble.m twod_ppi_ensemble.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

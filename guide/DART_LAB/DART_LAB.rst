@@ -15,11 +15,11 @@ DART tutorial presentations
 
 Here are the PDF files for the presentation part of the tutorial:
 
-- :download:`Section 1: <presentation/DART_LAB_Section01.pdf>` The basics in 1D.
-- :download:`Section 2: <presentation/DART_LAB_Section02.pdf>` How should observations of a state variable impact an unobserved 
-  state variable? Multivariate assimilation.
-- :download:`Section 3: <presentation/DART_LAB_Section03.pdf>` Sampling error and localization.
-- :download:`Section 4: <presentation/DART_LAB_Section04.pdf>` The Ensemble Kalman Filter (Perturbed Observations).
+- :download:`Section 1: <presentation/DART_LAB_Section01.pdf>` Ensemble Data Assimilation Concepts in 1D.
+- :download:`Section 2: <presentation/DART_LAB_Section02.pdf>` How Should Observations Impact an Unobserved 
+  State Variable? Multivariate Assimilation.
+- :download:`Section 3: <presentation/DART_LAB_Section03.pdf>` Inflation and Localization to Improve Performance.
+- :download:`Section 4: <presentation/DART_LAB_Section04.pdf>` Nonlinear and Non-Gaussian Extensions.
 - :download:`Section 5: <presentation/DART_LAB_Section05.pdf>` Adaptive Inflation.
 
 Matlab hands-on exercises
@@ -31,11 +31,16 @@ options. A valid `Matlab <http://www.mathworks.com/products/matlab/>`__ license 
 
 The exercises use the following functions:
 
+-  bounded_oned_ensemble
 -  gaussian_product
--  oned_model
+-  oned_cycle
 -  oned_ensemble
+-  oned_model
+-  oned_model_inf
 -  run_lorenz_63
 -  run_lorenz_96
+-  run_lorenz_96_inf
 -  twod_ensemble
+-  twod_ppi_ensemble
 
 To run these, cd into the DART_LAB/matlab directory, start matlab, and type the names at the prompt.
