@@ -369,7 +369,7 @@ and 2) correlation between state variables.  Given the sensitivity of CLM to
 atmospheric conditions an established method to generate multi-instance CLM
 simulations is through weather reanalysis data generated from a CAM-DART assimilation. These
 CAM-DART reanalyses are available from 1997-2010 `CAM4 <CAM4rean_rda_>`_,
-and 2011-2020 `CAM6 <CAM6rean_rda_>`.
+and 2011-2020 `CAM6 <CAM6rean_rda_>`_.
 
 For this tutorial we will use the January 2011 CAM6 reanalysis (d345000) only.  
 To make sure the scripts can locate the weather data first make sure
