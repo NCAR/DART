@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 23 2025 :: Pangu-DART. Tag v11.9.0**
+
+- Pangu-Weather ML model DART interface
+
+*contributed by Nuo Chen, University of Oklahoma*
+
 **January 22 2025 :: Bug-fix: Gamma and Beta Distributions. Tag v11.8.9**
 
 Bug fixes:
