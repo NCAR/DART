@@ -62,7 +62,7 @@ making minor edits to set details that are specific to your project. The setup
 scripts create a CESM case in which POP is configured using a 1° horizontal
 grid, and uses the eddy parametrization of  Gent and McWilliams (1990). [2]_
 The CICE model is active and atmospheric forcing is provided by the `CAM6 DART
-Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_.
+Reanalysis <CAM6rean_rda_>`_.
 
 The filesystem attached to NSF NCAR's supercomputer is known as the Globally
 Accessible Data Environment (GLADE). All filepaths on GLADE have the structure:
@@ -231,7 +231,7 @@ Observation sequence files
 When ``setup_CESM_hybrid_ensemble.csh`` is used to create an assimilation
 experiment, ``DART_params.csh`` configures the experiment to assimilate 
 observation sequence files from the World Ocean Database 2013 (WOD13; Boyer et
-al. 2013 [5]_).
+al. 2013 [5]_, `NSF NCAR's Research Data Archive <WOD_obs_>`_.).
 
 The WOD13 dataset comprises data from 2005-01-01 to 2016-12-31 and contains the
 following observation types:
@@ -262,7 +262,7 @@ the following directory on GLADE:
 
 .. code-block::
 
-   /glade/p/cisl/dares/Observations/WOD13
+   /glade/campaign/cisl/fs1_p_relocation/dares/Observations/WOD13
 
 The subdirectories are formatted in ``YYYYMM`` order.
 
@@ -272,7 +272,7 @@ are also stored in the following directory on GLADE:
 
 .. code-block::
 
-   /glade/p/cisl/dares/Observations/WOD09
+   /glade/campaign/cisl/fs1_p_relocation/dares/WOD09
 
 These observation sequence files can be assimilated by changing the
 ``BASEOBSDIR`` variable in ``DART_params.csh``.
@@ -285,7 +285,7 @@ Data atmosphere streams files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The setup scripts configure the CESM case with atmospheric forcing from the 
-`CAM6 DART Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_. The coupler 
+`CAM6 DART Reanalysis <CAM6rean_rda_>`_. The coupler 
 history files from this reanalysis are referenced in
 ``user_datm.streams*template`` files. These ``user_datm.streams*template``
 files are contained in the same directory as the setup scripts and are

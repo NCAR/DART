@@ -22,7 +22,39 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**January 9 2024 :: Bug-fix 1D obs_diag. Tag v11.8.7**
+**January 23 2025 :: DART_LAB QCEFF. Tag v11.10.0**
+
+- Updated DART_LAB to include QCEFF
+- NSF NCAR RDA links updated
+- /glade RDA locations updated
+
+**January 23 2025 :: Pangu-DART. Tag v11.9.0**
+
+- Pangu-Weather ML model DART interface
+
+*contributed by Nuo Chen, University of Oklahoma*
+
+**January 22 2025 :: Bug-fix: Gamma and Beta Distributions. Tag v11.8.9**
+
+Bug fixes:
+
+    - Beta distribution only supporting standard Beta, bounded 0-1.
+    - Gamma distribution only supporting standard, lower bound 0.
+    - Beta and Gamma bounds are forced in the QCEFF table.
+
+Updates:
+
+    - Explicitly setting distribution type, now have UNSET.
+    - Message about failing to converge changed to E_ALLMSG to be visible
+      on all mpi ranks.
+    - remove unused test_obs directory
+
+**January 14 2025 :: Bug-fix MOM6 potential temperature. Tag v11.8.8**
+
+- MOM6 model_interpolate for potential temperature
+- Update lorenz workshop input.nmls to v11
+
+**January 9 2025 :: Bug-fix 1D obs_diag. Tag v11.8.7**
 
 - Added a dummy dimension so 1D obs_diag output can be used with 
   MATLAB diagnostic tools
