@@ -8,6 +8,7 @@ to know information about the compiler to be used and settings for that compiler
 quickbuild is a powerful build and exploration tool. For more information see, the DART website.
 
 .. image:: images/build_templates_dir.png
+   :align: center
 
 This compiler specific information is provided in a file called ‘mkmf.template’ in the 
 build_templates/ directory. A variety of possible templates are available in this directory
