@@ -11,7 +11,7 @@ use types_mod, only : r8, missing_r8
 
 use sort_mod,  only : index_sort
 
-use utilities_mod, only : E_ERR, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
+use utilities_mod, only : E_ERR, E_ALLMSG, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
                           find_namelist_in_file, check_namelist_read
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params, &
@@ -79,6 +79,7 @@ real(r8) :: state_ens(ens_size)
 real(r8) :: probit_ens_temp(ens_size), state_ens_temp(ens_size), diff(ens_size)
 type(distribution_params_type) :: p_temp
 integer :: i
+character(len=32), parameter :: routine = 'transform_to_probit'
 
 ! If not initialized, read in the namelist
 if(.not. module_initialized) call initialize_probit_transform
@@ -125,13 +126,15 @@ elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
             call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p_temp, state_ens_temp)
             diff = state_ens - state_ens_temp
             if(abs(maxval(diff)) > 1.0e-8_r8) then
-               write(*, *) 'Maximum allowed value of probit to/from difference exceeded'
-               write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
-               write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
+               write(errstring, *) 'Location of minimum ensemble member ', minloc(state_ens)
+               call error_handler(E_ALLMSG, routine, errstring)
+               write(errstring, *) 'Location of maximum ensemble member ', maxloc(state_ens)
+               call error_handler(E_ALLMSG, routine, errstring)
                do i = 1, ens_size
-                  write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
+                  write(errstring, *) i, state_ens(i), state_ens_temp(i), diff(i)
+                  call error_handler(E_ALLMSG, routine, errstring)
                enddo
-               stop
+               call error_handler(E_ERR, routine, 'Maximum allowed value of probit to/from difference exceeded')
             endif
          endif
       endif
@@ -143,13 +146,15 @@ elseif(p%distribution_type == BOUNDED_NORMAL_RH_DISTRIBUTION) then
             call from_probit_bounded_normal_rh(ens_size, probit_ens_temp, p, state_ens_temp)
             diff = state_ens - state_ens_temp
             if(abs(maxval(diff)) > 1.0e-8_r8) then
-               write(*, *) 'Maximum allowed value of probit to/from difference for input p exceeded'
-               write(*, *) 'Location of minimum ensemble member ', minloc(state_ens)
-               write(*, *) 'Location of maximum ensemble member ', maxloc(state_ens)
+               write(errstring, *)  'Location of minimum ensemble member ', minloc(state_ens)
+               call error_handler(E_ALLMSG, routine, errstring)
+               write(errstring, *)  'Location of maximum ensemble member ', maxloc(state_ens)
+               call error_handler(E_ALLMSG, routine, errstring)
                do i = 1, ens_size
-                  write(*, *) i, state_ens(i), state_ens_temp(i), diff(i)
+                  write(errstring, *) i, state_ens(i), state_ens_temp(i), diff(i)
+                  call error_handler(E_ALLMSG, routine, errstring)
                enddo
-               stop
+               call error_handler(E_ERR, routine, 'Maximum allowed value of probit to/from difference for input p exceeded')
             endif
          endif
       
