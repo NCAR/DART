@@ -37,7 +37,7 @@ use kde_distribution_mod,  only : kde_cdf_params, inv_kde_cdf_params, pack_kde_p
 implicit none
 private
 
-public :: transform_to_probit, transform_from_probit, transform_all_to_probit, &
+public :: transform_to_probit, transform_from_probit, &
    transform_all_from_probit
 
 character(len=512)     :: errstring
@@ -58,48 +58,6 @@ namelist /probit_transform_nml/ fix_bound_violations, &
           use_logit_instead_of_probit, do_inverse_check
 
 contains
-
-!------------------------------------------------------------------------
-
-subroutine transform_all_to_probit(ens_size, num_vars, state_ens, distribution_type, &
-   p, probit_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr)
-
-integer, intent(in)                           :: ens_size
-integer, intent(in)                           :: num_vars
-real(r8), intent(in)                          :: state_ens(:, :)
-integer, intent(in)                           :: distribution_type(num_vars)
-type(distribution_params_type), intent(inout) :: p(num_vars)
-real(r8), intent(out)                         :: probit_ens(:, :)
-logical, intent(in)                           :: use_input_p
-logical, intent(in)                           :: bounded_below, bounded_above
-real(r8), intent(in)                          :: lower_bound,   upper_bound
-integer, intent(out)                          :: ierr(num_vars)
-
-
-! NOTE THAT WILL MAKE HELEN CRAZY: THIS WORKS WITH THE INPUT CALLING ARGUMENTS FOR STATE_ENS AND
-! PROBIT_ENS BEING THE SAME. A TEMP IS USED TO AVOID OVERWRITING ISSUES. IS THIS YUCKY?
-
-! Note that the input and output arrays may have extra copies (first subscript). Passing sections of a
-! leading index could be inefficient for time and storage, so avoiding that for now.
-
-! Assumes that the bounds are the same for any variables that are BNRH for now
-! The bounds variables are not used for the normal case or the case where the input p is used
-
-integer  :: i
-real(r8) :: temp_ens(ens_size)
-
-do i = 1, num_vars
-   call transform_to_probit(ens_size, state_ens(1:ens_size, i), distribution_type(i), &
-      p(i), temp_ens, use_input_p, bounded_below, bounded_above, lower_bound, upper_bound, ierr(i))
-   if(ierr(i) == 0) then
-      probit_ens(1:ens_size, i) = temp_ens
-   else
-      ! If transform failed, return the input state
-      probit_ens(1:ens_size, i) = state_ens(1:ens_size, i)
-   endif
-end do
-
-end subroutine transform_all_to_probit
 
 !------------------------------------------------------------------------
 
