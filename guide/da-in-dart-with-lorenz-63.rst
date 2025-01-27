@@ -1,3 +1,5 @@
+.. _da-in-dart-with-lorenz-63:
+
 Data assimilation in DART using the Lorenz 63 model
 ===================================================
 
