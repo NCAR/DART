@@ -10,7 +10,7 @@ supporting a different model.
 
 If part of your team isn't familiar with data assimilation yet, you should
 review the introductory material in this documentation and and also look at
-work through the concepts in the :doc:`/theory/readme`.
+work through the concepts in the :ref:`DARTtutorial`.
 
 Goals of using DART
 -------------------

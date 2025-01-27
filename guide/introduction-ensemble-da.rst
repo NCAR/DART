@@ -115,7 +115,7 @@ manually-designed algorithm, and it is certainly less labor-intensive to
 develop.
 
 This was a brief introduction to the important concepts of DA. For more
-information, see the :doc:`DART Tutorial </theory/readme>` and the
+information, see the :ref:`DARTtutorial` and the
 :doc:`./DART_LAB/DART_LAB`.
 
 .. |assim_anim| image:: images/science_nuggets/AssimAnim.gif

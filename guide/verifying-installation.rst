@@ -176,8 +176,8 @@ learn more about:
    workflow.
 -  :doc:`How do I run DART with my model? <required-model-mod-routines>`
 -  :doc:`How do I add my observations to DART? <adding-your-observations-to-dart>`
--  :doc:`How would I use DART for teaching students or
-   myself? <../theory/readme>`
+-  :ref:`How would I use DART for teaching students or
+   myself? <DARTtutorial>`
 -  :doc:`How can I contribute to DART? <contributors-guide>`
 
 .. note::

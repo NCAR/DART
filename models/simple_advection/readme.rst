@@ -46,7 +46,7 @@ given location, and does spatial interpolation for model state variables.
 
 The simple advection model has a ``work/workshop_setup.csh`` script that compiles 
 and runs an example.  This example is referenced in Section 25 of the
-:doc:`DART tutorial <../../theory/readme>`.
+:ref:`DARTtutorial`.
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 

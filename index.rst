@@ -420,9 +420,9 @@ References
    :maxdepth: 2
    :caption: Theory
 
-   theory/readme
    theory/conditional-probability-bayes-theorem
    guide/DART_LAB/DART_LAB
+   guide/tutorial/tutorial
    CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
    guide/qceff-examples.rst

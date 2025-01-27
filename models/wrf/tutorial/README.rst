@@ -48,7 +48,7 @@ The DART team is not responsible for and does not maintain the WRF code. For WRF
 or the `WRF github page. <https://github.com/wrf-model>`__
 
 If you are new to DART, we recommend that you become familiar with DART
-by working through the :doc:`../../../theory/readme` and then
+by working through the :ref:`DARTtutorial` and then
 understanding the :ref:`DART getting started <Welcome page>` documentation.
 
 This tutorial is **not** a toy simulation, but represents a realistic WRF-DART

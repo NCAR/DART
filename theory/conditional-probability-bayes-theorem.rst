@@ -256,4 +256,4 @@ house if both your alarm and the firefighters' meter detect carbon monoxide.
 It also demonstrates the ability of Bayes' theorem to update the probability of
 an event when new information becomes available.
 
-With these concepts you can now begin the :doc:`readme`.
+With these concepts you can now begin the :ref:`DARTtutorial`.

@@ -32,7 +32,7 @@ and use the `CESM User Forum <https://bb.cgd.ucar.edu/cesm/>`__
 for CLM-specific assistance.
 
 If you are new to DART, we recommend that you become familiar
-by first working through the :doc:`../../../theory/readme` and then
+by first working through the :ref:`DARTtutorial` and then
 understanding the :ref:`DART getting started <Welcome page>` documentation.
 
 This CLM5-DART tutorial is based on a simple example in which we 

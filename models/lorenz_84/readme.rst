@@ -29,7 +29,7 @@ that can be altered by editing the ``&model_nml`` `namelist`_ in the
 
 The Lorenz 84 model has a ``work/workshop_setup.csh`` script that compiles and runs 
 an example.  This example is referenced specifically in Section 7 of the 
-:doc:`DART tutorial <../../theory/readme>`
+:ref:`DARTtutorial`
 and is intended to provide insight into model/assimilation behavior.
 The example **may or may not** result in good (*or even decent!*) results!
 

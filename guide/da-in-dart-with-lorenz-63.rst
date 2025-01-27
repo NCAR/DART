@@ -559,7 +559,7 @@ was able to reach the red true state "attractor."
 
 You should now be able to tinker with the Lorenz 63 model and other models in
 DART. For more detailed information on the theory of ensemble data
-assimilation, see the :doc:`/theory/readme`. For more concrete information
+assimilation, see the :ref:`DARTtutorial`. For more concrete information
 regarding DART's algorithms and capabilities, see the next section
 :doc:`benefits-of-using-dart`. To add your own model to DART, see
 :doc:`assimilation-complex-model`. Finally, if you want to add your own

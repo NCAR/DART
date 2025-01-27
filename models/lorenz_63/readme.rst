@@ -47,7 +47,7 @@ in 3D space, but spread along the linear attractor lines.
 
 The Lorenz 63 model has a ``work/workshop_setup.csh`` script that compiles and 
 runs an example.  This example is referenced at various points in the 
-:doc:`DART tutorial <../../theory/readme>` 
+:ref:`DARTtutorial` 
 and is intended to provide insight into model/assimilation behavior. 
 The example **may or may not** result in good (*or even decent!*) results!
 
