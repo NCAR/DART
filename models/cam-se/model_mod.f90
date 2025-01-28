@@ -1,6 +1,3 @@
-! "Debug pressure calc" shows changes which prevent users from asking for total(moist) pressure
-! without providing the moisture variables in the state vector.
-
 ! DART software - Copyright UCAR. This open source software is provided
 ! by ucar, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/dares/dart/dart_download
@@ -64,7 +61,6 @@ use     mpi_utilities_mod,  only : my_task_id
 use        random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
 use  ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 use distributed_state_mod,  only : get_state
-
 use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
                                    get_dim_name, get_kind_index, get_num_dims, &
                                    get_num_variables, get_varid_from_kind, get_varid_from_varname, &
@@ -349,7 +345,6 @@ call init_globals()
 ! to set up what will be read into the cam state vector
 call set_cam_variable_info(cam_template_filename, state_variables)
 
-! Verify that required variables are in the state vector.
 call verify_state_var_list
 
 ! The size of the only surface pressure dimension is the number of columns
@@ -600,11 +595,6 @@ call get_se_quad_vals(state_handle, ens_size, varid, obs_qty, cell_corners, &
 !SENote Do further study of how we want to return istatus for various failures
 ! For now return istatus 12 for any of the failure modes
 if (any(istatus /= 0)) then
-   ! Debug vert info
-   if(debug_level > 12) then
-      write(string1,*)'get_se_quad_vals failed istatus(:) = ', istatus
-      call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   endif
    istatus = 12
    return
 endif
@@ -1283,12 +1273,6 @@ if (numdims == 2) then
                                 four_vert_fracts(icorner, :), my_status)
 
       if (any(my_status /= 0)) then
-         ! Debug se_values
-         if(debug_level > 12) then
-            write(string1,*)'find_se_vertical_levels failed vert, corner,  my_status(:) = ', &
-                             lon_lat_vert(3), corners(icorner),my_status
-            call error_handler(E_MSG,routine,string1,source,revision,revdate)
-         endif
          my_status = 12
          return
       endif
@@ -1313,14 +1297,7 @@ if (numdims == 2) then
    endif
 
    !SENote Technically nothing happens after this point anyway? So is this statement needed.
-   if (any(my_status /= 0)) then
-      if(debug_level > 12) then
-         write(string1,*)'get_se_four_(non)state_values failed varid, my_status(:) = ', &
-                          varid, my_status
-         call error_handler(E_MSG,routine,string1,source,revision,revdate)
-      endif
-      return
-   endif
+   if (any(my_status /= 0)) return
 
 else if (numdims == 1) then
 
@@ -1330,15 +1307,7 @@ else if (numdims == 1) then
          call get_se_values_from_varid(state_handle,  ens_size, corners(icorner), & 
                                     level_one_array, varid, quad_vals(icorner,:),my_status)
 
-         if (any(my_status /= 0)) then
-            ! Debug se_values
-            if(debug_level > 12) then
-               write(string1,*)'get_se_values_from_varid failed varid, corner,  my_status(:) = ', &
-                                varid, corners(icorner),my_status
-               call error_handler(E_MSG,routine,string1,source,revision,revdate)
-            endif
-            return
-         endif
+         if (any(my_status /= 0)) return
 
       enddo
 
@@ -1780,8 +1749,7 @@ do n = 1, ens_size
       half_pressure(k + 1) = half_pressure(k) + &
          !gravity * (a_width(k)*dry_mass_top + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
          ! SENote: NEXT LINE IS BELIEVED TO BE CORRECT BUT NEEDS TO BE VETTED WITH CGD
-         gravity * (a_width(k)*dry_mass_top/grid_data%hyai%vals(1) + b_width(k)*dry_mass_sfc(n)) &
-                 * sum_dry_mix_ratio(k, n)
+         gravity * (a_width(k)*dry_mass_top / grid_data%hyai%vals(1) + b_width(k)*dry_mass_sfc(n)) * sum_dry_mix_ratio(k, n)
       pressure(k, n) = (half_pressure(k) + half_pressure(k + 1)) / 2
    end do
 end do
