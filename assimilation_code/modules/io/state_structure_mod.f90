@@ -18,10 +18,14 @@ module state_structure_mod
 !> The add_domain() call adds a 'domain' to the state. This may be a component in 
 !> the case of XCESM or another coupled model.
 !>  
-!> There are three ways to add a domain (these are overloaded as add_domain):
+!> There are four ways to add a domain (these are overloaded as add_domain):
 !>    * add_domain_blank. This takes model size as an argument.
 !>
 !>    * add_domain_from_file. This takes a netcdf file and a list of variables
+!>
+!>    * add_domain_from_state_type. This takes a netcdf file and a state_var_type,
+!>      which includes nvars, netcdf variable names, qtys (kinds),
+!>      clamp_values (optional), and updates
 !>
 !>    * add_domain_from_spec. This makes a skeleton structure for a domain. Dimensions
 !>      for each variable must be added using add_dimension_to_variable(). This is intended
@@ -242,8 +246,8 @@ type domain_type
    character(len=256) :: info_file = 'NULL'
 
    ! string identifying the manner in which the domain was created
-   ! 'blank', 'file', or 'spec'
-   character(len=6) :: method = 'none'
+   ! 'blank', 'file', 'state_type', or 'spec'
+   character(len=11) :: method = 'none'
    
 end type domain_type
 
@@ -390,7 +394,7 @@ dom_id = state%num_domains
 
 ! save information about the information file
 state%domain(dom_id)%info_file = info_file
-state%domain(dom_id)%method = 'file'
+state%domain(dom_id)%method = 'state_type'
 
 ! set number of variables in this domain
 state%domain(dom_id)%num_variables = vars%nvars
