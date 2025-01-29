@@ -46,9 +46,7 @@ use  ensemble_manager_mod, only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
-use     default_model_mod, only : adv_1step, nc_write_model_vars, &
-                                  parse_variables_clamp, &
-                                  MAX_STATE_VARIABLE_FIELDS_CLAMP
+use     default_model_mod, only : adv_1step, nc_write_model_vars
 
 use        noah_hydro_mod, only : configure_lsm, get_noah_timestepping, &
                                   num_soil_layers, lsm_namelist_filename, &
@@ -125,6 +123,15 @@ character(len=*), parameter :: source   = 'noah_model_mod.f90'
 integer, parameter :: NSOLDX = 100
 character(len=512) :: string1, string2, string3
 
+! Codes for interpreting the columns of the variable_table
+integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
+integer, parameter :: VT_KINDINDX     = 2 ! ... DART kind
+integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
+integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
+integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
+integer, parameter :: MAX_STATE_VARIABLES     = 40
+integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
+
 integer :: domain_count
 integer :: idom, idom_lsm = -1
 
@@ -154,7 +161,7 @@ integer               :: assimilation_period_seconds  = 60
 real(r8)              :: model_perturbation_amplitude = 0.002
 character(len=256)    :: perturb_distribution         = 'lognormal'
 integer               :: debug    = 0  ! turn up for more and more debug messages
-character(len=obstypelength) :: lsm_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
+character(len=obstypelength) :: lsm_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
 
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar      = .false.    ! wrap over the poles
@@ -219,6 +226,11 @@ integer  :: iunit, io, domainID
 integer  :: n_lsm_fields
 integer  :: i
 
+character(len=obstypelength) :: var_names(MAX_STATE_VARIABLES)
+real(r8) :: var_ranges(MAX_STATE_VARIABLES,2)
+logical  :: var_update(MAX_STATE_VARIABLES)
+integer  :: var_qtys(  MAX_STATE_VARIABLES)
+
 character(len=256) :: filename
 
 if ( module_initialized ) return ! only need to do this once.
@@ -262,7 +274,12 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
    else
       call configure_lsm(lsm_model_choice,domain_shapefiles(domainID))
       call read_noah_global_atts(domain_shapefiles(domainID))
-      idom_lsm = add_domain(domain_shapefiles(domainID), parse_variables_clamp(lsm_variables))
+      call verify_variables(lsm_variables, domain_shapefiles(domainID), n_lsm_fields, &
+                       var_names, var_qtys, var_ranges, var_update)
+      idom_lsm = add_domain(domain_shapefiles(domainID), n_lsm_fields, var_names, &
+                         kind_list=var_qtys, &
+                        clamp_vals=var_ranges(1:n_lsm_fields,:), &
+                       update_list=var_update)
       if (debug > 99) call state_structure_info(idom_lsm)
 
       call check_vertical_dimension(idom_lsm)
@@ -1202,6 +1219,91 @@ end subroutine pert_model_copies
 ! (less necessary for small models; generally used for larger models
 ! with predefined file formats and control structures.)
 !==================================================================
+
+
+!------------------------------------------------------------------
+!> given the list of variables and a filename, check user input
+!> return the handle to the open netCDF file and the number of variables
+!> in this 'domain'
+
+subroutine verify_variables( variable_table, filename, ngood, &
+                       var_names, var_qtys, var_ranges, var_update)
+
+character(len=*), intent(in)  :: variable_table(:,:)
+character(len=*), intent(in)  :: filename
+integer,          intent(out) :: ngood
+character(len=*), intent(out) :: var_names(:)
+real(r8),         intent(out) :: var_ranges(:,:)
+logical,          intent(out) :: var_update(:)
+integer ,         intent(out) :: var_qtys(:)
+
+character(len=*), parameter :: routine = 'verify_variables'
+
+integer  :: io, i, quantity
+real(r8) :: minvalue, maxvalue
+
+character(len=NF90_MAX_NAME) :: varname
+character(len=NF90_MAX_NAME) :: dartstr
+character(len=NF90_MAX_NAME) :: minvalstring
+character(len=NF90_MAX_NAME) :: maxvalstring
+character(len=NF90_MAX_NAME) :: state_or_aux
+
+ngood = 0
+MyLoop : do i = 1, size(variable_table,2)
+
+   varname      = variable_table(VT_VARNAMEINDX,i)
+   dartstr      = variable_table(VT_KINDINDX   ,i)
+   minvalstring = variable_table(VT_MINVALINDX ,i)
+   maxvalstring = variable_table(VT_MAXVALINDX ,i)
+   state_or_aux = variable_table(VT_STATEINDX  ,i)
+
+   if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
+
+   if ( varname == ' ' .or.  dartstr == ' ' ) then
+      string1 = 'model_nml: variable list not fully specified'
+      string2 = 'reading from "'//trim(filename)//'"'
+      call error_handler(E_ERR,routine, string1, source, text2=string2)
+   endif
+
+   ! The internal DART routines check if the variable name is valid.
+
+   ! Make sure DART kind is valid
+   quantity = get_index_for_quantity(dartstr)
+   if( quantity < 0 ) then
+      write(string1,'(''there is no obs_kind "'',a,''" in obs_kind_mod.f90'')') &
+                    trim(dartstr)
+      call error_handler(E_ERR,routine,string1,source)
+   endif
+
+   ! All good to here - fill the output variables
+
+   ngood = ngood + 1
+   var_names( ngood)   = varname
+   var_qtys(  ngood)   = quantity
+   var_ranges(ngood,:) = (/ MISSING_R8, MISSING_R8 /)
+   var_update(ngood)   = .false.   ! at least initially
+
+   ! convert the [min,max]valstrings to numeric values if possible
+   read(minvalstring,*,iostat=io) minvalue
+   if (io == 0) var_ranges(ngood,1) = minvalue
+
+   read(maxvalstring,*,iostat=io) maxvalue
+   if (io == 0) var_ranges(ngood,2) = maxvalue
+
+   call to_upper(state_or_aux)
+   if (state_or_aux == 'UPDATE') var_update(ngood) = .true.
+
+enddo MyLoop
+
+if (ngood == MAX_STATE_VARIABLES) then
+   string1 = 'WARNING: you may need to increase "MAX_STATE_VARIABLES"'
+   write(string2,'(''you have specified at least '',i4,'' perhaps more.'')') ngood
+   call error_handler(E_MSG,routine,string1,source,text2=string2)
+endif
+
+
+end subroutine verify_variables
+
 
 !-----------------------------------------------------------------------
 !> Sets the location information arrays for each domain
