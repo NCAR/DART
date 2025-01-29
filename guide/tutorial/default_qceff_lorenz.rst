@@ -14,10 +14,10 @@ Three default QCEFF files are included in lorenz_96/work:
 For example, the following modification to the algorithm_info namelist entry results in applying 
 the bounded normal rank histogram algorithms, give it a try:
 
-.. code-block:: fortran
+.. code-block:: text
 
-	&algorithm_info_nml
-	   qceff_table_filename = 'bnrhf_qceff_table.csv'
-    /
+   &algorithm_info_nml
+      qceff_table_filename = 'bnrhf_qceff_table.csv'
+   /
 
 Try changing back to 80 ensemble members with the BNRHF

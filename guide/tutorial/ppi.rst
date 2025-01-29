@@ -3,6 +3,7 @@ Controlling probit probability integral transform
 ==================================================
 
 The QCEFF file controls:
+
 #. What PPI transforms are used when updating state variables,
 #. What PPI transforms are used when updating extended state variables (observations), 
 #. What PPI transforms are used before applying inflation,

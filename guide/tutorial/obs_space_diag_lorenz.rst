@@ -15,7 +15,11 @@ The three most useful matlab programs for low-order models are:
 
 The user interfaces are documented using matlab help.
 
-Try: plot_rank_histogram('obs_diag_output.nc', -1)
+Try: 
+
+.. code-block:: 
+   
+   plot_rank_histogram('obs_diag_output.nc', -1)
 
 Produces observation space rank histograms: The ones for the lower and upper half of the 
 domain are shown here. 
@@ -26,7 +30,11 @@ domain are shown here.
 .. image:: images/hist_upper.png
    :align: center
 
-Try: plot_evolution('obs_diag_output.nc', 'rmse', 'obsname', 'RAW_STATE_VARIABLE’)
+Try: 
+
+.. code-block:: matlab
+   
+   plot_evolution('obs_diag_output.nc', 'rmse', 'obsname', 'RAW_STATE_VARIABLE')
 
 This produces time series of observation space rmse. 
 
@@ -35,7 +43,11 @@ This produces time series of observation space rmse.
    :align: center
 
 
-Try: plot_evolution('obs_diag_output.nc', ‘bias', 'obsname', 'RAW_STATE_VARIABLE’)
+Try: plot_evolution('obs_diag_output.nc', 'bias', 'obsname', 'RAW_STATE_VARIABLE')
+
+.. code-block:: matlab
+
+   plot_evolution('obs_diag_output.nc', 'bias', 'obsname', 'RAW_STATE_VARIABLE')
 
 This produces time series of observation space bias. 
 
@@ -43,14 +55,15 @@ This produces time series of observation space bias.
    :align: center
 
 
-try: 
+Try: 
 
-..code-block:: bash
+.. code-block:: matlab
 
 	fname  = 'obs_diag_output.nc';
 	copy = 'totalspread';
 	plotdat = plot_rmse_xxx_evolution(fname, copy);
-	This Produces a time series of rmse and totalspread
+
+This produces a time series of rmse and totalspread
 
 .. image:: images/rmse_xxx_evo.png
    :align: center

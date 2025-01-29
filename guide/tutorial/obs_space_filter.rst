@@ -5,7 +5,7 @@ Some DART namelist entries are the names of files that contain more detailed run
 
 The most widely used example is found in the algorithm_info module namelist:
 
-.. code-block:: fortran
+.. code-block:: text
 
 	&algorithm_info_nml
 	   qceff_table_filename = 'eakf_qceff_table.csv'

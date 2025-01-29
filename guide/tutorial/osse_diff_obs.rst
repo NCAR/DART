@@ -5,9 +5,9 @@ The observation sequence used to generate observations for an OSSE is set by:
 
 .. code-block:: text
 
-	&perfect_model_obs_nml
-	 	...
-		obs_seq_in_file_name	= “obs_seq.in”
+   &perfect_model_obs_nml
+      ...
+      obs_seq_in_file_name	= “obs_seq.in”
 
 To do an OSSE with a different observing network:
 
@@ -20,8 +20,8 @@ Change back to the default observation sequence file, obs_seq.in, before moving 
 
 .. code-block:: text
 
-	&perfect_model_obs_nml
-	    ...
-		obs_seq_in_file_name	= “obs_seq.in”
+   &perfect_model_obs_nml
+      ...
+      obs_seq_in_file_name	= “obs_seq.in”
 
 Run perfect_model_obs to recreate the original set of synthetic observations.

@@ -11,7 +11,7 @@ quickbuild is a powerful build and exploration tool. For more information see, t
    :align: center
 
 This compiler specific information is provided in a file called ‘mkmf.template’ in the 
-build_templates/ directory. A variety of possible templates are available in this directory
+build_templates/ directory. A variety of possible templates are available in this directory.
 
 
 Copy a template file that is appropriate for your compiler to the file ‘mkmf.template’ in the build_templates/ directory.
