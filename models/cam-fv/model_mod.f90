@@ -2390,21 +2390,15 @@ subroutine verify_state_var_list
 ! No return is needed.  A diagnostic statement is printed before a potential failure
 ! of get_varid_from_varname.  Success means carry on.
 
-! There could be more moisture variables than the traditional 3.
-character(len=32), dimension(10) :: var_names
-integer:: i, varid
-
-data var_names /'PS', 9*''/
+integer:: varid
 
 ! PS is required for both cam-se and cam-fv, 
-! and regardless of the dry mass logical variables status.
-i = 1
-varid = get_varid_from_varname(domain_id, var_names(i))
+!
+varid = get_varid_from_varname(domain_id, 'PS')
 if (varid == -1) then
-   write(string1, *) var_names(i),' needs to be among the state variables.'
+   write(string1, *) 'PS needs to be among the state variables.'
    call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
 endif
-
 
 end subroutine verify_state_var_list
 !===================================================================
