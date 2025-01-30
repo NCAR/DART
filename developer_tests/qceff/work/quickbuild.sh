@@ -18,6 +18,7 @@ LOCATION="threed_sphere"
 
 serial_programs=(
 test_table_read
+test_force_bounds
 )
 
 # quickbuild arguments

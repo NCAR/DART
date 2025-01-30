@@ -35,6 +35,7 @@ DART supported models:
 - :doc:`NCOMMAS/readme`
 - :doc:`noah/readme`
 - :doc:`null_model/readme`
+- :doc:`pangu/readme`
 - :doc:`PBL_1d/readme`
 - :doc:`pe2lyr/readme`
 - :doc:`POP/readme`

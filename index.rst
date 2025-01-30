@@ -476,6 +476,7 @@ References
    models/NCOMMAS/readme
    models/noah/readme
    models/null_model/readme
+   models/pangu/readme
    models/PBL_1d/readme
    models/pe2lyr/readme
    models/POP/readme
@@ -621,3 +622,4 @@ References
    :hidden:
 
    guide/404
+   guide/references
