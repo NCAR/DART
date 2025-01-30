@@ -234,11 +234,11 @@ Using Relaxation to prior spread (RTPS; flavor **4**):
 	 .. note::
 		 Order of (prior) inflation operations within DART:
 
-		 - Inflation is read from file or namelist
-		 - Inflation damping is applied: :math:`\sqrt{\lambda} \leftarrow 1 + \rho(\sqrt{\lambda} - 1),` where :math:`\rho` is the damping factor
-		 - Damped Inflation is applied to the prior ensemble
-		 - Inflation is updated with observations
-		 - Updated inflation values are written out
+		 1. Inflation is read from restart file or namelist
+		 2. Inflation damping is applied: :math:`\sqrt{\lambda} \leftarrow 1 + \rho(\sqrt{\lambda} - 1),` where :math:`\rho` is the damping factor
+		 3. Damped Inflation is applied to the prior ensemble
+		 4. Inflation is updated with observations using the selected ``inf_flavor`` algorithm
+		 5. Updated inflation values are written out
 
 ``&filter_nml :: inf_sd_initial_from_restart``
    *valid values:* ``.true.`` or ``.false.``
