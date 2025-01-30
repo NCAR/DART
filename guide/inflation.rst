@@ -154,7 +154,7 @@ and the second is for **posterior inflation**.
    or decrease through time and may produce better results.
 
    In practice, we recommend starting with no inflation (both values **0**). Then try
-   the inverse gamme inflation type **5** for prior inflation and use no inflation (**0**) 
+   the inverse gamma inflation type **5** for prior inflation and use no inflation (**0**) 
    for the posterior. Inflation flavor **5** is recommended, over **2** or **3**, 
    because it employs a pdf that is more suitable for describing the inflation unlike the 
    other two flavors as shown in the table above.
@@ -296,11 +296,11 @@ does the renaming and copying of the inflation files may already be provided.
 
                 Assigning a variable as ``NO_COPY_BACK`` is the **only way** to prevent inflation
                 from being applied to a variable when inflation is turned on.  If a variable is
-                not updated by observations either because of 1)observation gaps in space or time 
-                2)outside spatial localization distance 3)variable localization applied through
-                the ``obs_impact_tool``, the inflation update for that part of the state will revert
-                to the inflation damping method, and inflation will still be applied to all parts
-                of the state space.
+                not updated by observations because either 1) observation gaps exist in space or time 
+                2)the state is outside the spatial localization distance, or  3) variable localization 
+                was applied through the ``obs_impact_tool``, --the inflation update for that part of the
+                state will revert to the inflation damping method, and inflation will still be applied 
+                to all parts of the state space.
 
                 DART does not allow for variable specific ``inf_damping`` settings thus if an immediate
                 response time is required in the application of inflation, an alternative is to
