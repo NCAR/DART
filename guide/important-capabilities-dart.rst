@@ -171,31 +171,31 @@ such as the particle filter (PF), please contact the DART team.
 |                    | (KDE) filter               |                                            |
 +--------------------+----------------------------+--------------------------------------------+
 
-DART also has several **inflation algorithms** available for both prior (the
-first value in the namelist) and posterior (the second value in the namelist).
+DART also has several **inflation algorithms** (i.e. "flavors") available for both prior 
+(``inf_flavor``, first value) and posterior (``inf_flavor``, second value) inflation. The
+``inf_flavor`` setting is located under the ``&filter_nml`` heading within ``input.nml``
 The following table lists the inflation “flavors” supported in DART along with
-their type number (set by *inf_flavor* in ``input.nml`` under the “filter_nml”
-section):
+their integer value:
 
-+-----------+-----------------------------+----------------------------------+
-| Flavor #  | Inflation flavor name       | References                       |
-+===========+=============================+==================================+
-| 0         | No inflation                | n/a                              |
-+-----------+-----------------------------+----------------------------------+
-| 1         | (Not Supported)             | n/a                              |
-+-----------+-----------------------------+----------------------------------+
-| 2         | Spatially-varying           | **Anderson, J. L.**, 2009. [6]_  |
-|           | state-space (Gaussian)      |                                  |
-+-----------+-----------------------------+----------------------------------+
-| 3         | Spatially-fixed             | **Anderson, J. L.**, 2007. [5]_  |
-|           | state-space (Gaussian)      |                                  |
-+-----------+-----------------------------+----------------------------------+
-| 4         | Relaxation to prior spread  | **Whitaker, J. S.**              |
-|           | (posterior inflation only)  | **and T. M. Hamill**, 2012. [7]_ |
-+-----------+-----------------------------+----------------------------------+
-| 5         | Enhanced spatially-varying  | **El Gharamti M.**, 2018. [8]_   |
-|           | state-space (inverse gamma) |                                  |
-+-----------+-----------------------------+----------------------------------+
++-------------+-----------------------------+----------------------------------+
+| inf_flavor #| Inflation flavor name       | References                       |
++=============+=============================+==================================+
+| 0           | No inflation                | n/a                              |
++-------------+-----------------------------+----------------------------------+
+| 1           | (Not Supported)             | n/a                              |
++-------------+-----------------------------+----------------------------------+
+| 2           | Spatially-varying           | **Anderson, J. L.**, 2009. [6]_  |
+|             | state-space (Gaussian)      |                                  |
++-------------+-----------------------------+----------------------------------+
+| 3           | Spatially-fixed             | **Anderson, J. L.**, 2007. [5]_  |
+|             | state-space (Gaussian)      |                                  |
++-------------+-----------------------------+----------------------------------+
+| 4           | Relaxation to prior spread  | **Whitaker, J. S.**              |
+|             | (posterior inflation only)  | **and T. M. Hamill**, 2012. [7]_ |
++-------------+-----------------------------+----------------------------------+
+| 5           | Enhanced spatially-varying  | **El Gharamti M.**, 2018. [8]_   |
+|             | state-space (inverse gamma) |                                  |
++-------------+-----------------------------+----------------------------------+
 
 DART has the ability to correct for sampling errors in the regression
 caused by finite ensemble sizes. DART’s sampling error correction algorithm
