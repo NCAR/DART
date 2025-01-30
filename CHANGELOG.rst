@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 30 2025 :: Bug-fix: Explicitly handle BNRHF transform failures. Tag v11.10.1**
+
+- Probit transform failure is caught and an error code is returned 
+- filter_mod and assim_tools_mod skip variables that fail the transform
+
 **January 23 2025 :: DART_LAB QCEFF. Tag v11.10.0**
 
 - Updated DART_LAB to include QCEFF
