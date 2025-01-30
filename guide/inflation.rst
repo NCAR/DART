@@ -12,13 +12,13 @@ Inflation is a common technique used to restore variability in the ensemble with
 This is achieved by linearly scaling the ensemble perturbations (also known as anomalies or
 departures from the mean) as follows:
 
-	:math:`\widetilde{\mathbf{x}}_k^i = \sqrt{\lambda} \left( \mathbf{x}_k^i -
- 	\overline{\mathbf{x}}_k \right) + \overline{\mathbf{x}}_k, \quad
-	i = 1, 2, ..., N_e`
+	:math:`\widetilde{\mathbf{x}}_i = \sqrt{\lambda} \left( \mathbf{x}_i -
+ 	\overline{\mathbf{x}} \right) + \overline{\mathbf{x}}, \quad
+	i = 1, 2, ..., N`
 
-where :math:`\mathbf{x}_k` is the (uninflated) state at any time :math:`t_k`, :math:`\overline{\mathbf{x}}_k`
+where :math:`\mathbf{x}` is the (uninflated) state at any time, :math:`\overline{\mathbf{x}}`
 is the ensemble mean and :math:`\lambda` is the inflation factor. The inflated ensemble
-members are denoted by :math:`\widetilde{\mathbf{x}}_k^i` and :math:`N_e` is the ensemble size.
+members are denoted by :math:`\widetilde{\mathbf{x}}_i` and :math:`N` is the ensemble size.
 This operation is equivalent to scaling the original variance of the ensemble by a factor of
 :math:`\lambda`. Typically, :math:`\lambda > 1` increasing the ensemble variance, yet studies
 such as `El Gharamti (2018) <https://doi.org/10.1175/MWR-D-17-0187.1>`_ have shown that
@@ -83,9 +83,10 @@ DART includes advanced adaptive inflation algorithms that allow inflation
 to vary dynamically in both space and time. These algorithms treat inflation
 as a random variable characterized by a probability density function (PDF).
 The mean (or mode) of the PDF is used as the inflation value, while the standard
-deviation reflects the level of confidence in that value. In this way, the 
-inflation parameters (mean, standard deviation) are prognostic variables and
-are updated similarly to how model states are updated within the filter step.
+deviation reflects the level of confidence in that value. In this way, the
+inflation parameters (mean and standard deviation) are estimated alongside the
+model state variables in the analysis step, following the so-called joint
+state-parameters estimation approach.
 
 * A **larger standard deviation** indicates less confidence in the inflation value, allowing it to evolve more rapidly over time
 * A **smaller standard deviation** signifies greater confidence, leading to slower changes as the inflation value is presumed to be more accurate
@@ -93,21 +94,22 @@ are updated similarly to how model states are updated within the filter step.
 .. Important::
 	The adaptive inflation algorithm leverages available observations to update the
 	inflation value. However, if observations suddenly become unavailable
-	(e.g., due to seasonal variations), the inf_flavor algorithm cannot adjust or reduce
+	(e.g., due to seasonal variations), the inflation algorithm cannot adjust or reduce
 	the inflation. To address this case, DART provides an **inflation damping option**.
 	This option gradually pushes the inflation value back towards 1, even in the absence
 	of observations. The recommended default value for the damping parameter is **0.9**.
 	However, in cases where inflation needs to be adjusted more aggressively, a lower value,
 	such as **0.6**, can be used.
 
-        It is important to point out that regardless of whether the inflation is updated through
-        the default (inf_flavor) algorithm (observations present) versus the inflation damping
-        option (no observations) **inflation is applied to the ensemble at all times to all variables
-        that are updated during the filter step**.  Thus the ensemble spread continues to change
-        as long as the inflation is not **1**. For circumstances where there are observation gaps
-        (in space or time) the user should take special care to set an appropriate damping parameter
-        to prevent inappropriate ensemble spread that could send the model state into undesirable
-        model space leading to unstable behavior.
+	It is important to point out that regardless of whether inflation
+	is updated through the default ``inf_flavor`` algorithm (when observations are present) or
+	solely through inflation damping (when no observations are available), **inflation
+	is applied to the ensemble at all times to all variables that are updated during the
+	filter step**. As a result, the ensemble spread will
+	continue to change as long as the inflation is not **1**. For circumstances where there are
+	observation gaps (in space or time), the user should take special care to set an appropriate
+	damping parameter to prevent inappropriate ensemble spread that could lead to
+	undesirable/unstable behavior.
 
 The following namelist items which control inflation are found in the ``input.nml`` file,
 in the ``&filter_nml`` namelist. The detailed description is in the
@@ -154,9 +156,9 @@ and the second is for **posterior inflation**.
    or decrease through time and may produce better results.
 
    In practice, we recommend starting with no inflation (both values **0**). Then try
-   the inverse gamma inflation type **5** for prior inflation and use no inflation (**0**) 
-   for the posterior. Inflation flavor **5** is recommended, over **2** or **3**, 
-   because it employs a pdf that is more suitable for describing the inflation unlike the 
+   the inverse gamma inflation type **5** for prior inflation and use no inflation (**0**)
+   for the posterior. Inflation flavor **5** is recommended, over **2** or **3**,
+   because it employs a PDF that is more suitable for describing the inflation unlike the
    other two flavors as shown in the table above.
 
    We used to support inflation in observation space (flavor **1**) but this has been deprecated.
@@ -220,14 +222,23 @@ Using Relaxation to prior spread (RTPS; flavor **4**):
 ``&filter_nml :: inf_damping``
    *valid values:* 0.0 to 1.0
 
-   Applies to all inflation types, but most frequently used with time-adaptive inflation variants. DART defaults to
-   this damping method to apply inflation updates for regions of state space that are not influenced by observations
-   either because of gaps in availability or are out of range due to localization. To update the inflation, the
-   difference between the current inflation value and 1.0 is multiplied by this ``inf_damping`` value before the next assimilation
-   cycle. So the inflation values are pushed towards 1.0, from above or below (if ``inf_lower_bound`` allows inflation
-   values less than 1.0). A value of 0.0 turns all inflation off by forcing the inflation value to 1.0. A value of 1.0
-   turns damping off by leaving the original inflation value unchanged. We recommend setting the damping to a value
-   of 0.9, which damps slowly.
+   Inflation damping applies to all types of inflation but is most commonly used with time-adaptive inflation
+   methods. It is particularly useful especially in regions of state space that are not influenced by observations,
+   either due to gaps in data availability or because they fall outside the localization range. To damp the inflation,
+   the difference between the current inflation value and 1.0 is multiplied by this ``inf_damping`` value before
+   the next assimilation cycle. So the inflation values are pushed towards 1.0, from above or below
+   (if ``inf_lower_bound`` allows inflation values less than 1.0). A value of 0.0 turns all inflation off
+   by forcing the inflation value to 1.0. A value of 1.0 turns damping off by leaving the original inflation
+   value unchanged. We recommend setting the damping to a value of 0.9, which damps slowly.
+
+	 .. note::
+		 Order of (prior) inflation operations within DART:
+
+		 - Inflation is read from file or namelist
+		 - Inflation damping is applied: :math:`\sqrt{\lambda} \leftarrow 1 + \rho(\sqrt{\lambda} - 1),` where :math:`\rho` is the damping factor
+		 - Damped Inflation is applied to the prior ensemble
+		 - Inflation is updated with observations
+		 - Updated inflation values are written out
 
 ``&filter_nml :: inf_sd_initial_from_restart``
    *valid values:* ``.true.`` or ``.false.``
@@ -288,30 +299,29 @@ does the renaming and copying of the inflation files may already be provided.
 
 .. Important::
 		Inflation is only applied to the variables that are **updated** by DART
-                by specifying ``UPDATE`` within the ``&model_nml`` section of ``input.nml``.
+		by specifying ``UPDATE`` within the ``&model_nml`` section of ``input.nml``.
 		Alternatively, if the variables are not updated (``NO_COPY_BACK``) then inflation
 		will not impact them. ``NO_COPY_BACK`` variables are often used to compute the forward
 		operators, however, they don't take part in the update and as such
 		they will not be inflated.
 
-                Assigning a variable as ``NO_COPY_BACK`` is the **only way** to prevent inflation
-                from being applied to a variable when inflation is turned on.  If a variable is
-                not updated by observations because either 1) observation gaps exist in space or time 
-                2)the state is outside the spatial localization distance, or  3) variable localization 
-                was applied through the ``obs_impact_tool``, --the inflation update for that part of the
-                state will revert to the inflation damping method, and inflation will still be applied 
-                to all parts of the state space.
+		Assigning a variable as ``NO_COPY_BACK`` is the **only way** to prevent inflation
+		from being applied to a variable when inflation is turned on.  If a variable is
+		not updated by observations because either 1) observation gaps exist in space or time
+		2) the state is outside the spatial localization distance, or  3) variable localization
+		was applied through the ``obs_impact_tool``, then inflation will only be affected by
+		damping. However, inflation will still be applied throughout the entire state space.
 
-                DART does not allow for variable specific ``inf_damping`` settings thus if an immediate
-                response time is required in the application of inflation, an alternative is to
-                customize the ``input.nml`` to switch between ``UPDATE`` and ``NO_COPY_BACK`` as needed. 
-                For an example discussing the impact of variable localization on inflation
-                see `issue 777. <https://github.com/NCAR/DART/issues/777>`_
+		DART does not allow for variable specific ``inf_damping`` settings thus if an immediate
+		response time is required in the application of inflation, an alternative is to
+		customize the ``input.nml`` to switch between ``UPDATE`` and ``NO_COPY_BACK`` as needed.
+		For an example discussing the impact of variable localization on inflation
+		see `issue 777. <https://github.com/NCAR/DART/issues/777>`_
 
 The suggested procedure for testing inflation:
 
 1. Start without any inflation; i.e., ``inf_flavor = 0, 0`` and assess the performance. For a healthy ensemble
-DA system, one expects the prior RMSE and the total spread to be of the same order. We often use the ensemble
+DA system, one expects the prior RMSE and the total spread to be of the same magnitude. We often use the ensemble
 consistency measure: RMSE/TOTALSPREAD to tell us if there is enough spread in the ensemble. Very large values
 indicate insufficient variability in the ensemble to match the prediction error. This generally means we
 need inflation.
