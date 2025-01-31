@@ -15,26 +15,180 @@ Instructions** below.
 Quickstart Instructions
 -----------------------
 
-This section provides and example of all steps required in the conversion process performed on Derecho. This is only recommended
-if you have a Derecho account, or want a comprehensive list of the required steps. Otherwise please proceed to 
-the **Prepbufr Overview** section for more details. 
+This section provides a complete list of steps within the conversion process (prepbufr file to obs_seq.out) performed on Derecho. 
+It is only recommended if you have a Derecho account, or prefer a comprehensive list of the required steps/commands. 
+Otherwise please proceed to the **Prepbufr Overview** section for more details. 
+
+-  Go into your DART prep_bufr observation converter directory and
+   install the PREPBUFR utilities as follows:
+
+   ::
+
+      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr
+      ./install.sh
+
+   You may need to edit the *install.sh* script to match your compiler
+   and system settings.
+
+-  Go to the
+   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/``
+   directory and run *quickbuild.sh* to build the DART
+   PREPBUFR-to-intermediate-file observation processor:
+
+   ::
+
+      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
+      ./quickbuild.sh
+
+-  Download the PREPBUFR observations for your desired time. Go to the
+   `NSF NCAR Research Data
+   Archive <NCEP+NCAR_obs_>`_ page for the
+   NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
+   the "Data Access" tab, and follow either the instructions for
+   external users or NSF NCAR internal users.
+
+-  The downloaded *.tar* file will often be COS-blocked. If so, the file
+   will appear corrupted if you attempt to untar it without converting
+   the data. See the `NSF NCAR COS-block <https://rda.ucar.edu/#!cosb>`__
+   page for more information on how to strip the COS-blocking off of
+   your downloaded file.
+
+-  Untar the data in your desired directory.
+
+-  In the ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
+   directory, edit the *input.nml* file. This file will control what
+   observations will be used for your experiment, so the namelist
+   options are worth investigating a bit here. For example, you could
+   use the following:
+
+   ::
+
+      &prep_bufr_nml
+         obs_window    = 1.0
+         obs_window_cw = 1.5
+         otype_use     = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0
+                         181.0, 182.0, 220.0, 221.0, 230.0, 231.0
+                         232.0, 233.0, 242.0, 243.0, 245.0, 246.0
+                         252.0, 253.0, 255.0, 280.0, 281.0, 282.0
+         qctype_use    = 0,1,2,3,15
+         /
+
+   This defines an observation time window of +/- 1.0 hours, while cloud
+   motion vectors will be used over a window of +/- 1.5 hours. This will
+   use observation types sounding temps (120), aircraft temps (130,131),
+   dropsonde temps (132), mdcars aircraft temps, marine temp (180), land
+   humidity (181), ship humidity (182), rawinsonde U,V (220), pibal U,V
+   (221), Aircraft U,V (230,231,232), cloudsat winds (242,243,245), GOES
+   water vapor (246), sat winds (252,253,255), and ship obs (280, 281,
+   282). Additionally, it will include observations with specified qc
+   types only. See the
+   `prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
+   page for more available namelist controls.
+
+-  Within the
+   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
+   directory, edit the *prepbufr.csh* file and change *BUFR_dir*,
+   *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
+   format of the data you downloaded. A little trial and error might be
+   necessary to get these set correctly.
+
+-  Copy over the executables from ``../exe``, and run the *prepbufr.csh*
+   script for a single day at a time:
+
+   ::
+
+      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
+      cp ../exe/\*.x .
+      ./prepbufr.csh \<year\> \<month\> \<day\>
+
+-  Your PREPBUFR files have now been converted to an intermediate ASCII
+   format. There is another observation converter to take the
+   observations from this format and write them into the native DART
+   format. Edit the *input.nml* namelist file in the
+   *DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work*
+   directory. Here is a basic example:
+
+   ::
+
+      &ncepobs_nml
+         year       = 2017,
+         month      = 4,
+         day        = 27,
+         tot_days   = 3,
+         max_num    = 800000,
+         select_obs = 0,
+         ObsBase = '<path to observations>/temp_obs.',
+         daily_file = .false.,
+         lat1       = 15.0,
+         lat2       = 60.0,
+         lon1       = 270.0,
+         lon2       = 330.0
+         /
+
+   Choosing "select_obs = 0" will select all the observations in the
+   ASCII file. Set "ObsBase" to the directory you output the files from
+   during the last step. If you wish to choose specific observations
+   from the ASCII intermediate file or control other program behavior,
+   there are many namelist options documented on the
+   `create_real_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
+   page.
+
+-  It is now time to build *ascii_to_obs* programs. Run the following:
+
+   ::
+
+      cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
+      ./quickbuild.sh
+
+-  Run the *create_real_obs* program to create the DART observation
+   sequence files:
+
+
+   ::
+
+      cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
+      ./create_real_obs
+
+-  The program *create_real_obs* will create observation sequence files
+   with one file for each six hour window. For a cycled experiment, the
+   typical approach is to put a single set of observations, associated
+   with a single analysis step, into a separate directory. For example,
+   within the ``output`` directory, we would create directories like
+   ``2017042700``, ``2017042706``, ``2017042712``, etc. for 6-hourly
+   cycling. Place the observation files in the appropriate directory to
+   match the contents in the files (e.g. *obs_seq2017042706*) and rename
+   as simply *obs_seq.out* (e.g. ``output/2017042706/obs_seq.out``).
+
+-  It is helpful to also run the
+   `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
+   program, which can strip away observations not in the model domain,
+   perform superobservations of dense observations, increase observation
+   errors near the lateral boundaries, check for surface observations
+   far from the model terrain height, and other helpful pre-processing
+   steps. These collectively improve system performance and simplify
+   interpreting the observation space diagnostics. There are a number of
+   namelist options to consider, and you must provide a *wrfinput* file
+   for the program to access the analysis domain information.
+
+
+
 
 
 
 Prepbufr Overview
 -----------------
 
-The prep_bufr package is free-standing and has not been completely assimilated into the DART architecture. It also
-requires adaptation of the sources codes and scripts to the computing environment where it will be run. It is not so
+The prep_bufr package is external NCEP code and has not been completely incorporated into the DART architecture. It
+requires adaptation of the source codes and scripts to the computing environment where it will be run. It is not so
 robust that it can be controlled just with input parameters. It may not have the same levels of error detection and
 warning that the rest of DART has, so the user should very careful about checking the end product for correctness.
 
 
-Installing Prepbufr package
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install Prepbufr package
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-Running the ``install.sh`` script located within the ~/observations/NCEP/prep_bufr directory will build the library and main executable. 
-You will probably have to edit this script to set which fortran compiler is available on your system.
+Running the ``install.sh`` script located within the ``~/observations/NCEP/prep_bufr`` directory will build the library
+and main executable. You will probably have to edit this script to set the fortran compiler on your system.
 
 If you have raw unblocked PREPBUFR files you will need to convert them to blocked format (what prepbufr expects as
 input). The blk/ublk section of the build script compiles the ``cword.x`` converter program.
@@ -49,17 +203,17 @@ If you are converting a single obs file, or are walking through the process by h
 the more detailed build instructions below, and then run the prep_bufr.x program by hand. This involves the following
 steps:
 
--  building the executables.
--  running the blocker if needed (generally not if you have downloaded the blocked format PREPBUFR files).
--  running the binary format converter if you are on an Intel (little-endian) machine.
--  linking the input file to a fixed input filename
--  running prepbufr.x to convert the file
--  copying the fixed output filename to the desired output filename
+-  build the executables.
+-  run the blocker if needed (generally not if you have downloaded the blocked format PREPBUFR files).
+-  run the binary format converter if you are on an Intel (little-endian) machine.
+-  link the input file to a fixed input filename
+-  run prepbufr.x to convert the file
+-  copy the fixed output filename to the desired output filename
 
 Production mode
 ^^^^^^^^^^^^^^^
 
-If you have multiple days (or months) of observations that you are intending to convert, there is a script in the work
+If you have multiple days (or months) of observations to convert, there is a script in the work
 subdirectory which is set up to run the converter on a sequence of raw data files, and concatenate the output files
 together into one output file per day. Edit the ``work/prepbufr.csh`` script and set the necessary values in the 'USER SET
 PARAMETERS' section near the top. This script can either be run from the command line, or it can be submitted to a batch
@@ -84,7 +238,7 @@ This package is currently organized into files under the ``DART/observations/NCE
    blk_ublk      Source code (cwordsh) to convert between blocked and unblocked format.
    docs          Some background information about NCEP PREPBUFR observations.
 
-The decoding program: src/prepbufr.f
+Decoding program: src/prepbufr.f
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The program ``prepbufr.f`` is used to decode the NCEP reanalysis PREPBUFR data into intermediate text files. This program
@@ -116,18 +270,17 @@ Platforms tested:
 -  SGI Altix with Intel
 -  Cray with Intel, Cray Fortran.
 
-The byte-swapping program convert_bufr/grabbufr.f
+Byte-swapping program: convert_bufr/grabbufr.f
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For platforms with little-endian binary file format (e.g. Intel, AMD®, and non-MIPS SGI processors) the program
 ``grabbufr.f`` is used to convert the big-endian format NCEP PREPBUFR data into little-endian format. The ``grabbufr.f`` code is
 written in Fortran 90, and has been compiled can be compiled with the pgf90 compiler on a Linux system, with gfortran on
-an Intel based Mac, and the ifort compiler on other Linux machines. More detailed instructions for building it can be
-found in ``convert_bufr/README``, but the base install script should build this by default. In case of problems, cd into the
-convert_bufr subdirectory, edit convert_bufr.csh to set your compiler, and run it to compile the converter code
-(grabbufr).
+an Intel based Mac, and the ifort compiler on other Linux machines. The ``install.sh`` script should build this by default, 
+however instructions are in ``convert_bufr/README``.  In case of problems, go to the ``convert_bufr`` subdirectory, 
+edit ``convert_bufr.csh`` to set your compiler, and run it to compile the converter code (grabbufr).
 
-This program reads the whole PREPBUFR file into memory, and needs to know the size of the file (in bytes).
+This program reads the PREPBUFR file into memory, and needs to know the size of the file (in bytes).
 Unfortunately, the system call STAT() returns this size as one number in an array, and the index into that array differs
 depending on the system and sometimes the word size (32 vs 64) of the compiler. To test that the program is using the
 right offset into this array, you can compile and run the stat_test.f program. It takes a single filename argument and
@@ -141,7 +294,7 @@ go into the grabbufr.f source and comment out the section which tries to parse c
 hardcoded input and output filenames. Now to run this program you must either rename the data files to these
 predetermined filenames, or you can use links to temporarily give the files the names needed.
 
-The blocking program blk_ublk/cword.x
+Blocking program blk_ublk/cword.x
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``prepbufr.x`` program expects to read a blocked input file, which is generally what is available for download. However,
@@ -150,7 +303,7 @@ build this by default, but in case of problems you can build it separately. Chan
 subdirectory and read the ``README_cwordsh`` file for more help. The cwordsh shell-script wrapper shows how to run the
 executable ``cwordsh.x`` executable.
 
-Note that if you can get the blocked file formats to begin with, this program is not needed.
+This program is not required for blocked file formats.
 
 Downloading Prepbufr raw data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
