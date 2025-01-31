@@ -298,12 +298,11 @@ it possible to restart an experiment. For many of the supported models, the scri
 does the renaming and copying of the inflation files may already be provided.
 
 .. Important::
-		Inflation is only be applied to the variables that are **updated** by DART
-		by specifying ``UPDATE`` within the ``&model_nml`` section of ``input.nml``.
-		If the variables are not updated (``NO_COPY_BACK``), then inflation should
-		not impact them. ``NO_COPY_BACK`` variables are often used to compute the forward
-		operators, however, they don't take part in the update and as such
-		they should not be inflated.
+		Inflation should only be applied to the variables that are **updated** by DART.	
+		
+		Some models have `NO_COPY_BACK`` variables which are often used to compute the forward
+		operators, however they should not be inflated. Whether a variable is `NO_COPY_BACK`, or  `UPDATE`
+		is set in the ``&model_nml``. 
 
 		In order to make sure a variable with a ``NO_COPY_BACK`` tag is not inflated, the
 		user needs to run ``fill_inflation_restart`` and assign an inflation value of 1
