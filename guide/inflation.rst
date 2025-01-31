@@ -298,25 +298,23 @@ it possible to restart an experiment. For many of the supported models, the scri
 does the renaming and copying of the inflation files may already be provided.
 
 .. Important::
-		Inflation is only applied to the variables that are **updated** by DART
+		Inflation is only be applied to the variables that are **updated** by DART
 		by specifying ``UPDATE`` within the ``&model_nml`` section of ``input.nml``.
-		Alternatively, if the variables are not updated (``NO_COPY_BACK``) then inflation
-		will not impact them. ``NO_COPY_BACK`` variables are often used to compute the forward
+		If the variables are not updated (``NO_COPY_BACK``), then inflation should
+		not impact them. ``NO_COPY_BACK`` variables are often used to compute the forward
 		operators, however, they don't take part in the update and as such
-		they will not be inflated.
+		they should not be inflated.
 
-		Assigning a variable as ``NO_COPY_BACK`` is the **only way** to prevent inflation
-		from being applied to a variable when inflation is turned on.  If a variable is
-		not updated by observations because either 1) observation gaps exist in space or time
-		2) the state is outside the spatial localization distance, or  3) variable localization
-		was applied through the ``obs_impact_tool``, then inflation will only be affected by
-		damping. However, inflation will still be applied throughout the entire state space.
+		In order to make sure a variable with a ``NO_COPY_BACK`` tag is not inflated, the
+		user needs to run ``fill_inflation_restart`` and assign an inflation value of 1
+		to that variable. Additional details on how to run the ``fill_inflation_restart``
+		program can be found in the "*Caution*" section below.
 
-		DART does not allow for variable specific ``inf_damping`` settings thus if an immediate
-		response time is required in the application of inflation, an alternative is to
-		customize the ``input.nml`` to switch between ``UPDATE`` and ``NO_COPY_BACK`` as needed.
-		For an example discussing the impact of variable localization on inflation
-		see `issue 777. <https://github.com/NCAR/DART/issues/777>`_
+		If a variable is not updated by observations because either 1) observation gaps exist
+		in space or time 2) the state is outside the spatial localization distance, or
+		3) variable localization was applied through the ``obs_impact_tool``, then inflation
+		will only be affected by damping. However, inflation will still be applied throughout
+		the entire state space.
 
 The suggested procedure for testing inflation:
 
