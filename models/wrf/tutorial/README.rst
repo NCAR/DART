@@ -613,7 +613,7 @@ you when each ensemble member has finished.
 
 
 Step 3: Prepare observations [Informational Only]
----------------------------------------
+-------------------------------------------------
 
 .. Important::
 
@@ -622,10 +622,10 @@ Step 3: Prepare observations [Informational Only]
    required tutorial steps.  If you are interested in customizing a WRF-DART experiment
    for your own application, steps 3 and 4 provide useful guidance. The obs_seq file used
    in this tutorial is roughly based on the NCEP PREPBUFR data files which are
-   located at the `NSF NCAR Research Data Archive. <https://rda.ucar.edu>`__ 
+   located at the `NSF NCAR Research Data Archive <https://rda.ucar.edu>`__ 
    (ds090 or ds337).  There are additional  observation types used in
    this tutorial besides the PREPBUFR data, and we **do not** provide instructions to 
-   reconstruct this obs_seq file exactly.
+   reconstruct the tutorial obs_seq files exactly.
 
 Observation processing is critical to the success of running
 DART and is covered in :ref:`Getting Started <Welcome page>`. In

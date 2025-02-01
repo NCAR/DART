@@ -71,7 +71,6 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
    Archive <NCEP+NCAR_obs_>`_ page for the
    NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
    the "Data Access" tab, and locate the "prepqm: BUFR observations files".
-
    Use a similar approach to  obtain the `RDA ds377 <https://rda.ucar.edu/datasets/d337000/>`__
    prepbufr files. Locate and download the GDAS PREPBUFR files of your choice.   
   
@@ -95,7 +94,7 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
       tar -xvf A25366-201706prepqmB.tar  
       gzip -d prepqm1704*nr.gz
 
-- Confirm `prepqm17042706.nr`, `prepqm17042712.nr` and `prepqm17042718.nr` exist.
+- Confirm ``prepqm17042706.nr``, ``prepqm17042712.nr`` and ``prepqm17042718.nr`` exist.
 
 
 
@@ -131,7 +130,7 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
 
 -  Within the
    ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the *prepbufr.csh* file and change *BUFR_dir*,
+   directory, edit the ``prepbufr.csh`` file and change *BUFR_dir*,
    *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
    format of the data you downloaded. A little trial and error might be
    necessary to get these set correctly. For example:
@@ -158,9 +157,9 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
 
 -  Your PREPBUFR files have now been converted to an intermediate ASCII
    format. Confirm that ``temp_obs.20170427*`` files within your 
-   ``~/data/prepout directory``. Please note that the script can function
-   with only the ``06`` prepqm input file, but will need the
-   ``12`` and ``18`` files to run to completion. 
+   ``~/data/prepout directory`` exist. Please note that the script can function
+   with only the *06* prepqm input file, but will need the
+   *12* and *18* files to run to completion. 
 
 
 -  There is another observation converter to take the
@@ -416,7 +415,7 @@ but their use is restricted and you must contact the RDA group to get access.
 
 | If you are running on a machine with direct access to the NSF NCAR HPSS, then change directories into the prep_bufr/data
   subdirectory and obtain the prepqm rawfile from:
-| *> cd /glade/campaign/collections/rda/data/d#####
+| *> cd /glade/campaign/collections/rda/data/d#####*
 | where ##### is the data set number you want.
 
 | These files may be readable tar files, or they may require running the ``cosconvert`` program first. See if the
