@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 3 2025 :: Inflation documentation. Tag v11.10.2**
+
+- Improved inflation documentation
+- CAM FV and SE checks for required state variables 
+- GitHub action to alert on files with legacy svn info
+- Fwd op documentation formatting fix
+
 **January 30 2025 :: Bug-fix: Explicitly handle BNRHF transform failures. Tag v11.10.1**
 
 - Probit transform failure is caught and an error code is returned 
