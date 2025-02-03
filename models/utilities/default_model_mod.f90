@@ -66,6 +66,7 @@ type :: state_var_type
     logical, allocatable           :: updates(:)
 end type state_var_type
 
+! note _fields is 3* and _fields_clamp is 5*MAX_STATE_VARIABLES
 integer, parameter :: MAX_STATE_VARIABLES = 100
 integer, parameter :: MAX_STATE_VARIABLE_FIELDS = 300
 integer, parameter :: MAX_STATE_VARIABLE_FIELDS_CLAMP = 500
