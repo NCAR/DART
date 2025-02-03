@@ -63,7 +63,7 @@ use  ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 use distributed_state_mod,  only : get_state
 use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
                                    get_dim_name, get_kind_index, get_num_dims, &
-                                   get_num_variables, get_varid_from_kind, &
+                                   get_num_variables, get_varid_from_kind, get_varid_from_varname, &
                                    get_model_variable_indices, state_structure_info, get_short_name, &
                                    get_long_name, get_dim_lengths, get_variable_name
 use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, nc_create_file, &
@@ -145,7 +145,7 @@ character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
 
 ! model_nml namelist variables and default values
-! Which vertical coordinate: Dry mass if for versions with CESM2 and later
+! Which vertical coordinate: Dry mass for versions with CESM2 and later
 logical            :: dry_mass_vertical_coordinate    = .true.
 ! If false, uses less precise but vastly cheaper traditional hybrid vertical coordinate for get_close
 logical            :: precise_dry_mass_get_close      = .false.
@@ -346,6 +346,8 @@ call init_globals()
 ! that can be passed to add_domain
 domain_id = add_domain(cam_template_filename, parse_variables_clamp(state_variables))
 
+
+call verify_state_var_list
 
 ! The size of the only surface pressure dimension is the number of columns
 ncol_temp = get_dim_lengths(domain_id,  get_varid_from_kind(domain_id, QTY_SURFACE_PRESSURE))
@@ -1388,8 +1390,8 @@ end subroutine get_se_four_state_values
 !-----------------------------------------------------------------------
 !>
 
-! Returns my_status 0 for success, 16 if unable to find values at lower level
-! and 17 if unable to find values at upper level.
+! Returns my_status 0 for success, 26 if unable to find values at lower level
+! and 27 if unable to find values at upper level.
 
 subroutine get_se_four_nonstate_values(state_handle, ens_size, four_corners, &
                                  four_levs1, four_levs2, four_vert_fracts, &
@@ -1414,14 +1416,14 @@ do icorner=1, 4
    call get_se_values_from_nonstate_fields(state_handle, ens_size, four_corners(icorner), &
                               four_levs1(icorner, :), obs_qty, precise, vals1, my_status)
    if (any(my_status /= 0)) then
-      my_status(:) = 16   ! cannot retrieve vals1 values
+      my_status(:) = 26   ! cannot retrieve vals1 values
       return
    endif
 
    call get_se_values_from_nonstate_fields(state_handle,  ens_size, four_corners(icorner), &
                               four_levs2(icorner, :), obs_qty, precise, vals2, my_status)
    if (any(my_status /= 0)) then
-      my_status(:) = 17   ! cannot retrieve top values
+      my_status(:) = 27   ! cannot retrieve top values
       return
    endif
 
@@ -1696,7 +1698,7 @@ integer  :: k, n, istatus
 
 ! For now, will fail all ensemble members and levels if any level/member fails
 
-! Need the water tracer specific mixing ratios for ever level in the column to compute their mass sum
+! Need the water tracer specific mixing ratios for every level in the column to compute their mass sum
 do k = 1, nlevels
 
    ! Specific Humidity
@@ -1733,7 +1735,7 @@ do k = 1, nlevels
 
 enddo
 
-! Compute the dry mass at the bottom of the column for each enseble member
+! Compute the dry mass at the bottom of the column for each ensemble member
 ! Do we need to worry about latitudinal variation in g?
 ! Nothing but dry air above the model top
 dry_mass_top = ref_model_top_pressure / gravity
@@ -3318,6 +3320,39 @@ else
 endif
 
 end subroutine solve_quadratic
+
+!-----------------------------------------------------------------------
+
+subroutine verify_state_var_list
+
+! No return is needed.  A diagnostic statement is printed before a potential failure
+! of get_varid_from_varname.  Success means carry on.
+
+! There could be more moisture variables than the traditional 3.
+character(len=32), dimension(3) :: var_names
+integer:: i, varid
+
+data var_names /'Q', 'CLDLIQ', 'CLDICE'/
+
+! PS is required for both cam-se and cam-fv, 
+! and regardless of the dry mass logical variables status.
+varid = get_varid_from_varname(domain_id, 'PS')
+if (varid == -1) then
+   write(string1, *) 'PS needs to be among the state variables.'
+   call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+endif
+
+if (dry_mass_vertical_coordinate .and. precise_dry_mass_get_close) then
+   do i = 1,size(var_names) 
+      varid = get_varid_from_varname(domain_id, var_names(i))
+      if (varid == -1) then
+         write(string1, *) trim(var_names(i)),' needs to be among the state variables for dry_mass.'
+         call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+      endif
+   enddo
+endif   
+
+end subroutine verify_state_var_list
 
 !-----------------------------------------------------------------------
 

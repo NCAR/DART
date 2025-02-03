@@ -1,0 +1,72 @@
+name: lint_for_svn_on_pr
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  find_svn_lines:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Get list of changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v41
+
+    - name: Generate and run script on changed files
+      run: |
+        # Generate the check_lines.sh script
+        cat << EOF > check_lines.sh
+        #!/bin/bash
+
+        # List of lines to check
+        lines_to_check=(
+          "DART \$Id\$"
+          " <next few lines under version control, do not edit>"
+          " \$URL\$"
+          " \$Revision\$"
+          " \$Date\$"
+        )
+
+        # Function to check if any of the lines are in the file
+        check_lines_in_file() {
+        local file=\$1
+        for line in "\${lines_to_check[@]}"; do
+          if grep -qF "\$line" "\$file"; then
+            echo "Found '\$line' in \$file"
+            return 0
+          fi
+        done
+        return 1
+        }
+
+        # Iterate over the changed files
+        found_files=()
+        for file in "\$@"; do
+          if [[ "\$file" == ".github/workflows/lint_for_svn.yml" ]]; then
+            continue
+          fi
+          if check_lines_in_file "\$file"; then
+            found_files+=("\$file")
+          fi
+        done
+
+        if [ \${#found_files[@]} -ne 0 ]; then
+            echo "The following files contain the specified lines:"
+            for file in "\${found_files[@]}"; do
+              echo "\$file"
+            done
+            exit 1
+            else
+              echo "No lines found in any of the changed files."
+            fi
+        EOF
+
+        # Make the script executable
+        chmod +x check_lines.sh
+
+        # Run the script on each changed file
+        ./check_lines.sh ${{ steps.changed-files.outputs.all_changed_files }}

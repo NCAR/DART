@@ -59,7 +59,7 @@ use  ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
 use distributed_state_mod,  only : get_state
 use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
                                    get_dim_name, get_kind_index, get_num_dims, &
-                                   get_num_variables, get_varid_from_kind, &
+                                   get_num_variables, get_varid_from_kind, get_varid_from_varname, &
                                    get_model_variable_indices, state_structure_info
 use  netcdf_utilities_mod,  only : nc_get_variable, nc_get_variable_size, &
                                    nc_add_attribute_to_variable, &
@@ -300,6 +300,9 @@ call init_globals()
 ! model_nml:model_state_variables into a state_var_type that can be
 ! passed to add_domain
 domain_id = add_domain(cam_template_filename, parse_variables_clamp(state_variables))
+
+! Verify that required variables are in the state vector.
+call verify_state_var_list
 
 call fill_cam_stagger_info(grid_stagger)
 
@@ -2381,6 +2384,24 @@ enddo
 
 end subroutine get_close_state
 
+!-----------------------------------------------------------------------
+
+subroutine verify_state_var_list
+
+! No return is needed.  A diagnostic statement is printed before a potential failure
+! of get_varid_from_varname.  Success means carry on.
+
+integer:: varid
+
+! PS is required for both cam-se and cam-fv, 
+!
+varid = get_varid_from_varname(domain_id, 'PS')
+if (varid == -1) then
+   write(string1, *) 'PS needs to be among the state variables.'
+   call error_handler(E_ERR, 'verify_state_var_list', string1, source, revision, revdate)
+endif
+
+end subroutine verify_state_var_list
 !===================================================================
 ! End of model_mod
 !===================================================================
