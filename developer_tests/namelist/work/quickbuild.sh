@@ -15,7 +15,7 @@ dev_test=1
 TEST="namelist"
 LOCATION="threed_sphere"
 
-programs=(
+serial_programs=(
 test_parse_variables
 )
 

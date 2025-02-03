@@ -4,8 +4,8 @@
 
 program test_parse_variables
 
-use        utilities_mod, only : find_namelist_in_file, check_namelist_read 
-use    mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
+use        utilities_mod, only : find_namelist_in_file, check_namelist_read, &
+                                 initialize_utilities, finalize_utilities
 use            types_mod, only : vtablenamelength, MISSING_R8, r8
 use    default_model_mod, only : parse_variables_clamp, parse_variables, &
                                  state_var_type, &
@@ -30,7 +30,7 @@ namelist /model_nml/  &
 namelist /model_nml_clamp/  &
    state_variables_clamp
 
-call initialize_mpi_utilities('test_parse_variables')
+call initialize_utilities('test_parse_variables')
 
 call plan(28)
 
@@ -80,6 +80,6 @@ call ok(state_vars_clamp%updates(1) .eqv. .true.)
 call ok(state_vars_clamp%updates(2) .eqv. .false.)
 call ok(state_vars_clamp%updates(3) .eqv. .true.)
 
-call finalize_mpi_utilities()
+call finalize_utilities()
 
 end program test_parse_variables
