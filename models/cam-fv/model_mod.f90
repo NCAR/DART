@@ -297,7 +297,7 @@ call setup_interpolation() !grid is global
 call init_globals()
 
 ! parse_variables converts the character table that was read in from
-! model_nml:model_state_variables into a state_var_type that can be
+! model_nml:state_variables into a state_var_type that can be
 ! passed to add_domain
 domain_id = add_domain(cam_template_filename, parse_variables_clamp(state_variables))
 
