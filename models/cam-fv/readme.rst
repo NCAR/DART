@@ -5,8 +5,8 @@ Overview
 --------
 
 The larger context of the Community Earth System Model and DART interactions
-is described in the `CESM readme <../CESM/readme.html>`_
-This document focuses on the several `atmospheric models <http://www2.cesm.ucar.edu/models>`__
+is described in the :doc:`CESM readme <../CESM/readme>`
+This document focuses on the several `atmospheric models <http://www2.cesm.ucar.edu/models>`_
 that have been developed or adapted to run in the CESM environment. 
 They are named according to their dynamical core ("dycore").
 As of 2021 these include Finite Volume Community Atmosphere Model (CAM-FV), 
@@ -15,18 +15,16 @@ The DART system has supported data assimilation into CAM-FV continuously for man
 An interface to CAM-SE was added to DART in 2022.
 An interface to MPAS is being developed (contact us about the current status).
 
-.. |CAM6_Rean| replace:: 1 degree reanalysis wiki
-.. _CAM6_Rean: https://github.com/NCAR/DART/wiki/1-degree,-CAM6,-ensemble-reanalysis-for-CESM-experiments-(2011-thru-2019):-DATM,-hindcasts,-model-evaluation
-
 The flexibility of the DART environment has led to its use
 by graduate students, post-graduates, and scientists at universities and
 research labs to conduct data assimilation research. Others are using the
 products of data assimilation (analyses), which were produced at NSF NCAR
 using CESM+DART, to conduct related research. 
-The latest reanalysis is described in the DART |CAM6_Rean|_
+The latest reanalysis is described in the `CAM6 Reanalysis wiki <CAM6rean_wiki_>`_
+
 
 The variety of research can be sampled on the DART  
-`Publications <https://dart.ucar.edu/pages/Publications.html>`__ page.
+`Publications page <https://dart.ucar.edu/pages/Publications.html>`__ .
 
 Terminology
 ~~~~~~~~~~~
@@ -56,7 +54,7 @@ with two independent main characteristics. CESM labels these as:
      model domain vary with those choices. 
    - The combinations of parameterizations and vertical grids are named: CAM3.5,
      CAM5, CAM#, ... WACCM, WACCM#, WACCM-X, CAM-Chem.  
-   - The compset is specified as described in the `CESM readme <../CESM/readme.html>`_.
+   - The compset is specified as described in the :doc:`CESM readme <../CESM/readme>`.
 
 **ensemble, multi-instance, and multidriver**
 
@@ -116,10 +114,11 @@ Reanalyses
 ~~~~~~~~~~
 
 There have been two large-scale reanalysis efforts using CAM-FV and DART. 
+
 The **CAM6 Data Assimilation Research Testbed (DART) Reanalysis**
-is archived in the NSF NCAR Research Data Archive 
-`DS345.0 <https://rda.ucar.edu/datasets/ds345.0/#!description>`__ .
-(See the |CAM6_Rean|_ ).
+is archived in the NSF NCAR Research Data Archive (RDA) 
+`d345000 <CAM6rean_rda_>`_.
+(See the `wiki <CAM6rean_wiki_>`_ for details).
 It contains just under 120Tb (yes Tb) of data:
 
    These CAM6+DART Reanalysis data 
@@ -136,10 +135,10 @@ It contains just under 120Tb (yes Tb) of data:
    
    
 An earlier, more limited dataset can be found in the 
-`**Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis** 
-<https://github.com/NCAR/DART/wiki/2-degree-DATM-ensemble-for-CESM-experiments-(1998-thru-2010)>`__
+`Ensemble of Atmospheric Forcing Files from a CAM4-FV Reanalysis 
+<CAM4rean_wiki_>`_
 is archived in the NSF NCAR Research Data Archive 
-`DS199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__ .
+`d199001 <CAM4rean_rda_>`_ .
 It contains about 1.5Tb of data:
 
    This dataset contains files that are an ensemble of 'coupler history' 
@@ -154,9 +153,6 @@ It contains about 1.5Tb of data:
    for CESM component sets that require a data atmosphere. Some example 
    stream text files are included in the RDA to illustrate how to use these data.
 
-..  * CAM4, 2 degree, 2000-2010, `Reanalysis <https://rda.ucar.edu/datasets/ds199.1>`__
-..  * files from the old "large file site": http://www.image.ucar.edu/pub/DART/CAM/
-
 Observations
 ------------
 
@@ -165,16 +161,16 @@ which contain the types of observations in the table below
 ("T" = temperature, "U" = zonal wind, "V" = meridional wind,
 "Q" = specific humidity, "refractivity" = the bending of light by density variations).
 These files are available on NSF NCAR's glade file system:
-/glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10.
+/glade/campaign/cisl/fs1_p_relocation/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10.
 Versions of these files, which also have the results of the reanalysis in them,
-are available from the RDA ds345.0 linked above.
+are available from the `RDA d345000 <CAM6rean_rda_>`_ .
 
 NCEP
    NCEP's PREPBUFR files (prepqm) in NSF NCAR's Research Data Archive:
-   (https://rda.ucar.edu/datasets/ds090.0/)
+   `newer <NCEP_obs_>`_ or `older <NCEP+NCAR_obs_>`_
 
 COSMIC
-   This site (http://www.cosmic.ucar.edu/) provides atmospheric refractivity 
+   `UCAR's COSMIC program <http://www.cosmic.ucar.edu/>`_ provides atmospheric refractivity 
    from a variety of satellites (including COSMIC), which receive Global Positioning System 
    radio occultation signals.
 
@@ -202,9 +198,8 @@ AIRS
 | altimeter            | Radiosondes, bouys                     | global surface           | NCEP   |
 +----------------------+----------------------------------------+--------------------------+--------+
 
-Sample sets of observations, which can be used with CAM+DART assimilations, can
-be found at http://www.image.ucar.edu/pub/DART/Obs_sets/ of which the NCEP BUFR
-observations are the most widely used.
+`Sample sets of observations <DART_obs_>`_ can be used with CAM+DART assimilations, 
+of which the NCEP BUFR observations are the most widely used.
 
 The CAM-FV DART Interface
 =========================
@@ -228,7 +223,7 @@ Setup Scripts
 Unlike pre-Manhattan versions of DART-CAM, CESM (CAM) runs using its normal scripts, 
 then stops and calls a DART script, which does the desired assimilation tasks, 
 then returns to the CESM run script for the next model advance. See the CESM
-interface documentation in the `CESM readme <../CESM/readme.html>`_
+interface documentation in the :doc:`CESM readme <../CESM/readme>`
 for more general information about
 running DART with CESM. Due to the complexity of the CESM software environment,
 the versions of CESM which can be used for assimilation are more restricted than
@@ -283,7 +278,7 @@ The scripts  in cesm#_# will handle, for that CESM version;
 Physics variants of other dycores are handled in other "model" interfaces,
 such as models/cam-se.
 
-.. _reanalysis: https://github.com/kdraeder/cesm}{github.com/kdraeder/cesm
+.. _reanalysis: https://github.com/kdraeder/cesm
 
 .. _SourceMods: 
 
@@ -886,7 +881,6 @@ before each hindcast by:
      
 -  ISSUE: Improve this page
     * Add links and references to this document.
-    * Publications web page.
     * CAM-chem; link?  More description?
 
 -  ISSUE?; ``model_interpolate`` assumes that obs with a vertical location have
@@ -905,7 +899,7 @@ before each hindcast by:
 References and Acknowledgements
 -------------------------------
 
--  `CESM homepage <https://www.cesm.ucar.edu/models/cesm1.3/>`__
+-  `CESM homepage <https://www.cesm.ucar.edu/models/cesm1.3/>`_
 
 Ave Arellano did the first work with CAM-Chem, assimilating MOPPITT CO
 observations into CAM-Chem. Jerome Barre and Benjamin Gaubert took up the

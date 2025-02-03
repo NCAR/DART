@@ -48,6 +48,11 @@ options as columns of the qceff_table:
      * lower_bound    (default -888888)
      * upper_bound    (default -888888)
 
+   .. note::
+
+      If using RTPS inflation, the probit distribution information is ignored for posterior
+      inflation.
+
 
 * Observation increment information
 
@@ -128,12 +133,16 @@ Available distributions
 
   * NORMAL_DISTRIBUTION (default)
   * BOUNDED_NORMAL_RH_DISTRIBUTION
-  * GAMMA_DISTRIBUTION
-  * BETA_DISTRIBUTION
+  * GAMMA_DISTRIBUTION (with a lower bound at 0)
+  * BETA_DISTRIBUTION (bound between 0 and 1)
   * LOG_NORMAL_DISTRIBUTION
   * UNIFORM_DISTRIBUTION
   * KDE_DISTRIBUTION
 
+.. warning::
+
+   If GAMMA_DISTRIBUTION or BETA_DISTRIBUTION is selected for a quantity, the bounds in
+   the QCEFF table are ignored and the standard bounds for the distribution are used.
 
 .. _Default values:
 
