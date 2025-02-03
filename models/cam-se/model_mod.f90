@@ -342,7 +342,7 @@ call read_cam_phis_array(cam_phis_filename)
 call init_globals()
 
 ! parse_variables converts the character table that was read in from
-! model_nml:model_state_variables and returns a state_var_type
+! model_nml:state_variables and returns a state_var_type
 ! that can be passed to add_domain
 domain_id = add_domain(cam_template_filename, parse_variables_clamp(state_variables))
 
