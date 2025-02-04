@@ -67,9 +67,9 @@ type :: state_var_type
 end type state_var_type
 
 ! note _fields is 3* and _fields_clamp is 5*MAX_STATE_VARIABLES
-integer, parameter :: MAX_STATE_VARIABLES = 100
-integer, parameter :: MAX_STATE_VARIABLE_FIELDS = 300
-integer, parameter :: MAX_STATE_VARIABLE_FIELDS_CLAMP = 500
+integer, parameter :: MAX_STATE_VARIABLES = 1000
+integer, parameter :: MAX_STATE_VARIABLE_FIELDS = 3000
+integer, parameter :: MAX_STATE_VARIABLE_FIELDS_CLAMP = 5000
 character(len=*), parameter :: source = 'utilities/default_model_mod.f90'
 
 contains
