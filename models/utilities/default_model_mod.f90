@@ -59,7 +59,7 @@ public :: get_model_size,         &
           MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 type :: state_var_type
-    integer                        :: nvars
+    integer                        :: nvars = -1
     character(len=NF90_MAX_NAME), allocatable :: netcdf_var_names(:)
     integer, allocatable           :: qtys(:)
     real(r8), allocatable          :: clamp_values(:, :)
@@ -332,6 +332,11 @@ do ivar = 1, MAX_STATE_VARIABLES
    endif
 enddo
 
+if (state_vars%nvars >= MAX_STATE_VARIABLES -1) then
+   write(string1,*) 'nvars ', state_vars%nvars, ' >= MAX_STATE_VARIABLES-1', MAX_STATE_VARIABLES-1,  'increase MAX_STATE_VARIABLES'
+   call error_handler(E_ERR, string1, source) 
+endif
+
 ! Allocate the arrays in the var derived type
 allocate(state_vars%netcdf_var_names(state_vars%nvars), state_vars%qtys(state_vars%nvars), state_vars%clamp_values(state_vars%nvars, 2), state_vars%updates(state_vars%nvars))
 
@@ -411,6 +416,11 @@ do ivar = 1, MAX_STATE_VARIABLES
       exit
    endif
 enddo
+
+if (state_vars%nvars >= MAX_STATE_VARIABLES -1) then
+   write(string1,*) 'nvars ', state_vars%nvars, ' >= MAX_STATE_VARIABLES-1', MAX_STATE_VARIABLES-1,  'increase MAX_STATE_VARIABLES'
+   call error_handler(E_ERR, string1, source) 
+endif
 
 ! Allocate the arrays in the var derived type
 allocate(state_vars%netcdf_var_names(state_vars%nvars), state_vars%qtys(state_vars%nvars), state_vars%updates(state_vars%nvars))
