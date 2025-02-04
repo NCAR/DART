@@ -22,6 +22,14 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 4 2025 :: Generic model_mod subroutine parse_variables. Tag v11.10.3**
+
+- Creates two generalized subroutines that convert the table of state variables that is
+  read in from the &model_nml to a state_var_type: parse_variables and parse_variables_clamp
+- Alternate versions for this subroutine were replaced with parse_variables in the
+  models MOM6, wrf_hydro, aether_lat-lon, cam-fv, cam-se, POP, and cice
+- New dev test test_parse_variables added
+
 **February 3 2025 :: Inflation documentation. Tag v11.10.2**
 
 - Improved inflation documentation
