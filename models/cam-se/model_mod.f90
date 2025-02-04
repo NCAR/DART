@@ -82,7 +82,9 @@ use        chem_tables_mod, only : init_chem_tables, finalize_chem_tables, &
                                    get_molar_mass, get_volume_mixing_ratio
 use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
                                    init_time => fail_init_time,    &
-                                   init_conditions => fail_init_conditions
+                                   init_conditions => fail_init_conditions, &
+                                   parse_variables_clamp, &
+                                   MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pressure_columns, build_heights, &
                                    cam_grid, cdebug_level, check_good_levels, cno_normalization_of_scale_heights, &
@@ -96,8 +98,7 @@ use    cam_common_code_mod, only : above_ramp_start, are_damping, build_cam_pres
 
 
 use cam_common_code_mod, only : nc_write_model_atts, grid_data, read_grid_info, &
-                                set_cam_variable_info, MAX_STATE_VARIABLES, &
-                                num_state_table_columns, MAX_PERT, &
+                                MAX_PERT, &
                                 shortest_time_between_assimilations, domain_id, &
                                 cuse_log_vertical_scale, &
                                 cno_normalization_of_scale_heights, &
@@ -186,8 +187,7 @@ logical :: no_normalization_of_scale_heights = .true.
 ! for no clamping, use the string 'NA'
 ! to have the assimilation change the variable use 'UPDATE', else 'NO_UPDATE'
 
-character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLES * &
-                                                   num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: state_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 
 namelist /model_nml/  &
    dry_mass_vertical_coordinate,        &
@@ -341,9 +341,11 @@ call read_cam_phis_array(cam_phis_filename)
 ! initialize global values that are used frequently
 call init_globals()
 
-! read the namelist &model_nml :: state_variables
-! to set up what will be read into the cam state vector
-call set_cam_variable_info(cam_template_filename, state_variables)
+! parse_variables converts the character table that was read in from
+! model_nml:state_variables and returns a state_var_type
+! that can be passed to add_domain
+domain_id = add_domain(cam_template_filename, parse_variables_clamp(state_variables))
+
 
 call verify_state_var_list
 
