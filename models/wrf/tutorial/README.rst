@@ -624,7 +624,8 @@ Step 3: Prepare observations [Informational Only]
    in this tutorial is roughly based on the NCEP PREPBUFR data files which are
    located at the `NSF NCAR Research Data Archive <https://rda.ucar.edu>`__ 
    (ds090 or ds337).  There are additional  observation types used in
-   this tutorial (e.g. MADIS) besides the PREPBUFR data, and we **do not** provide instructions to 
+   this tutorial (e.g. :doc:`MADIS <../../../observations/obs_converters/MADIS/MADIS>`) 
+   besides the PREPBUFR data, and we **do not** provide instructions to 
    reconstruct the tutorial obs_seq files exactly.
 
 Observation processing is critical to the success of running
@@ -651,7 +652,8 @@ as described below:
 .. Hint::
 
    The **Quickstart Instructions** included within the prepbufr link provided above
-   is the fastest way to get started to convert your own PREPBUFR observations.
+   is the fastest way to get started to convert your own PREPBUFR observations. The MADIS
+   observation converter instructions are :doc:`here <../../../observations/obs_converters/MADIS/MADIS>`.
 
 
 Step 4: Overview of forward operators [Informational Only] 

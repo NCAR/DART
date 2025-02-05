@@ -86,14 +86,14 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
    prepbufr files. Locate and download the GDAS PREPBUFR files of your choice.   
   
 
--  The campaign storage version of the tar files may need to be converted before using.
-   The cosblocking command will unblock the file in place as:
+-  You may not be able to untar the downloaded files. In that case
+   cosblocking command will unblock the file in place as:
 
    ::
 
        
       cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/data/prepqm/
-      /glade/campaign/cisl/dares/Observation/cosconvert -b A25328-201704prepqmB.tar
+      /glade/campaign/cisl/dares/Observations/cosconvert -b A25328-201704prepqmB.tar
 
 
 -  Untar the data (organized into half months), then unzip the days of interest (6 hour chunks): 
@@ -120,7 +120,7 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
 
 
 - Confirm these files exist:  ``prepqm17042706.nr``, ``prepqm17042712.nr``, ``prepqm17042718.nr``,
-  and ``prepqm17042800.nr`` and ``prepqm17042806``.
+  and ``prepqm17042800.nr`` and ``prepqm17042806.nr``.
 
 
 
@@ -174,11 +174,10 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
    in the 6-hour assimilation window, you would set obs_window 
    to 3.0 or larger to avoid excluding any observations.
 
--  Within the
-   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the ``prepbufr.csh`` file and change *BUFR_dir*,
-   *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
-   format of the data you downloaded.  For this example:
+-  Within the ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
+   directory, edit the ``prepbufr.csh`` file and change the following
+   variables to match the locations and format of the data you downloaded
+   as shown below:
   
    ::
 
@@ -262,7 +261,8 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
       ./create_real_obs
 
 -  The executable ``create_real_obs`` will create observation sequence files
-   with one file for each six hour window. For a cycled experiment, there
+   with one file for each six hour window. Confirm that the ``obs_seq20170427*``
+   files have been generated.  For a cycled experiment, there
    are several options for naming the output observation files.  Each month
    could be in a separate directory, or each 6-hour file could be in its
    own directory.
@@ -274,27 +274,30 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
 
    ::
 
-     obs_sequence
-     obs_type_definitions
-          15
+      obs_sequence
+      obs_type_definitions
+          19
+           1 RADIOSONDE_U_WIND_COMPONENT
+           2 RADIOSONDE_V_WIND_COMPONENT
+           5 RADIOSONDE_TEMPERATURE
+           6 RADIOSONDE_SPECIFIC_HUMIDITY
           12 AIRCRAFT_U_WIND_COMPONENT
           13 AIRCRAFT_V_WIND_COMPONENT
           14 AIRCRAFT_TEMPERATURE
+          16 ACARS_U_WIND_COMPONENT
+          17 ACARS_V_WIND_COMPONENT
+          18 ACARS_TEMPERATURE
           20 MARINE_SFC_U_WIND_COMPONENT
           21 MARINE_SFC_V_WIND_COMPONENT
           22 MARINE_SFC_TEMPERATURE
           23 MARINE_SFC_SPECIFIC_HUMIDITY
-          25 LAND_SFC_U_WIND_COMPONENT
-          26 LAND_SFC_V_WIND_COMPONENT
-          27 LAND_SFC_TEMPERATURE
-          28 LAND_SFC_SPECIFIC_HUMIDITY
           30 SAT_U_WIND_COMPONENT
           31 SAT_V_WIND_COMPONENT
+          40 RADIOSONDE_SURFACE_ALTIMETER
           42 MARINE_SFC_ALTIMETER
           43 LAND_SFC_ALTIMETER
-    num_copies:            1  num_qc:            1
-    num_obs:        19059  max_num_obs:        19059
-
+     num_copies:            1  num_qc:            1
+     num_obs:        68107  max_num_obs:        68107
  
 -  Some models include a preprocessing program to do additional processing
    of the observations, for example, limiting obs to a sub-domain, superobbing spatially dense obs,
