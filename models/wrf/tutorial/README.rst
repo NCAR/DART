@@ -624,7 +624,7 @@ Step 3: Prepare observations [Informational Only]
    in this tutorial is roughly based on the NCEP PREPBUFR data files which are
    located at the `NSF NCAR Research Data Archive <https://rda.ucar.edu>`__ 
    (ds090 or ds337).  There are additional  observation types used in
-   this tutorial besides the PREPBUFR data, and we **do not** provide instructions to 
+   this tutorial (e.g. MADIS) besides the PREPBUFR data, and we **do not** provide instructions to 
    reconstruct the tutorial obs_seq files exactly.
 
 Observation processing is critical to the success of running
@@ -640,13 +640,13 @@ because it requires the installation of an externally hosted package, and also
 involves a 2-stage conversion process (native format-->ascii-->obs_seq)
 as described below:
 
-- Download PREPBUFR data (ds090 or ds337) from the `RDA. <https://rda.ucar.edu>`__ 
+- Download PREPBUFR data from the NSF NCAR RDA `ds090 <NCEP+NCAR_obs_>`_  or `ds337 <NCEP_obs_>`_ 
 - Unzip RDA files, and locate the prepqm[YYMMDDHH].nr files of interest
 - Install NCEP PREPBUFR text converter package (``install.sh``)
-  See `prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
+  See :doc:`prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr>`
 - Run PREPBUFR text conversion scripting (``prepbufr.csh``) 
 - Run text (ascii) to obs_seq executable (``create_real_obs``)
-  See `ascii_to_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
+  See :doc:`ascii_to_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs>`
 
 .. Hint::
 
@@ -666,8 +666,8 @@ operator are located in the `WRF namelist documentation.
 <../../../models/wrf/readme.html#namelist>`__
 
 
-The ``obs_seq.out`` file generated as described in Step 3 includes a total
-of 30 observation types. Here we examine an excerpt of that file, focusing
+The ``obs_seq.out`` file provided with the tutorial contains
+30 different observation types. Here we examine an excerpt of that file, focusing
 on a single temperature observation to describe the process:
 
 ::

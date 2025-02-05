@@ -29,18 +29,21 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
         1) ncarenv/23.09 (S)   3) intel/2023.2.1        5) cray-mpich/8.1.27  7) netcdf/4.9.2   9) ncl/6.6.2 
         2) craype/2.7.23       4) ncarcompilers/1.0.0   6) hdf5/1.12.2        8) nco/5.2.4 
 
--  Go into your DART prep_bufr observation converter directory and
-   install the PREPBUFR utilities as follows:
+-  Go to the DART prep_bufr observation converter directory and
+   build the PREPBUFR utilities as follows:
 
    ::
 
       cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr
       ./install.sh
 
-   Confirm the exe directory contains the executables ``prepbufr.x``, ``prepbufr_03z.x``,
+   The ``install.sh`` script can be edited to use different compilers by setting the CCOMP and FCOMP 
+   sections at the start of the script.
+
+   Confirm the exe directory contains the executables ``prepbufr.x``, ``prepbufr_03Z.x``,
    ``grabbufr.x`` and ``cword.x``.
 
--  Go to ``$DART_DIR/build_templates/`` directory and use the intel build template
+-  Go to the ``$DART_DIR/build_templates/`` directory and use the intel build template
    for compiling DART
 
    ::
@@ -49,8 +52,7 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
       cp mkmf.template.intel.linux mkmf.template
 
 -  Go to the ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/``
-   directory and run *quickbuild.sh* to build the DART
-   PREPBUFR-to-intermediate-file observation processor:
+   directory and run ``quickbuild.sh`` to build the ``advance_time`` executable:
 
    ::
 
@@ -58,51 +60,77 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
       ./quickbuild.sh
 
 
--  Obtain the PREPBUFR observations for your desired time. You can go to the
-   the campaign collections directory as:
+-  Make a ``prepqm`` subdirectory in the data directory:
+
+   ::
+
+      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/data
+      mkdir prepqm
+ 
+
+-  Obtain the PREPBUFR observations for your desired time. In the following examples
+   observations from April 27, 2017 will be used.  On Derecho you can go to the
+   the campaign collections directory at:
 
    ::
 
       cd /glade/campaign/collections/rda/data/d090000/2017/
-      cp A25366-201706prepqmB.tar $DART_DIR/observations/obs_converters/NCEP/prep_bufr/data/prepqm
+      cp A25328-201704prepqmB.tar $DART_DIR/observations/obs_converters/NCEP/prep_bufr/data/prepqm/
 
 
    Alternatively, download the files directly from the `NSF NCAR Research Data
    Archive <NCEP+NCAR_obs_>`_ page for the
    NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
    the "Data Access" tab, and locate the "prepqm: BUFR observations files".
-   Use a similar approach to  obtain the `RDA ds377 <https://rda.ucar.edu/datasets/d337000/>`__
+   Use a similar approach to  obtain the `RDA ds337 <NCEP_obs_>`_
    prepbufr files. Locate and download the GDAS PREPBUFR files of your choice.   
   
 
--  The downloaded *.tar* file will often be COS-blocked. If so, the file
-   will appear corrupted if you attempt to untar it without converting
-   the data. See the `NSF NCAR COS-block <https://rda.ucar.edu/#!cosb>`__
-   page for more information on how to strip the COS-blocking off of
-   your downloaded file.
-
+-  The campaign storage version of the tar files may need to be converted before using.
    The cosblocking command will unblock the file in place as:
 
    ::
 
-      /glade/u/home/bmraczka/cosconvert -b A25366-201706prepqmB.tar
+       
+      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/data/prepqm/
+      /glade/campaign/cisl/dares/Observation/cosconvert -b A25328-201704prepqmB.tar
 
--  Untar the data (organized into half months), then unzip the day of interest (6 hour chunks):
+
+-  Untar the data (organized into half months), then unzip the days of interest (6 hour chunks): 
+   To process a full day of observations you will need both the day of interest, and the following day.
 
    ::
 
-      tar -xvf A25366-201706prepqmB.tar  
-      gzip -d prepqm1704*nr.gz
+      tar -xvf A25328-201704prepqmB.tar
+      cd 201704
+      gzip -d prepqm17042*nr.gz
 
-- Confirm ``prepqm17042706.nr``, ``prepqm17042712.nr`` and ``prepqm17042718.nr`` exist.
 
+   Some tar files create a subdirectory when the archive is unpacked.  It may be easier to
+   move all the files from the subdirectory to the main prepqm directory:
+
+   ::
+     
+     cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/data/prepqm/201704
+     mv prepqm* ..
+
+   Now all the individual 6-hour prepqm* files are in the data/prepqm directory.
+   (If you decide to leave the files in the 201704 subdirectory, edit the BUFR_in
+   variable in the prepbufr.csh script to include the subdirectory name.)
+
+
+- Confirm these files exist:  ``prepqm17042706.nr``, ``prepqm17042712.nr``, ``prepqm17042718.nr``,
+  and ``prepqm17042800.nr`` and ``prepqm17042806``.
 
 
 
 -  In the ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the *input.nml* file. This file will control what
+   directory, edit the ``input.nml`` file. This file will control what
    observations will be used for your experiment, so the namelist
-   options are worth investigating a bit here. For example, you could
+   options are worth investigating a bit here. 
+
+   For example, for weather applications 
+   where you want only atmospheric observations close to your assimilation time, you could
    use the following:
 
    ::
@@ -117,56 +145,80 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
          qctype_use    = 0,1,2,3,15
          /
 
-   This defines an observation time window of +/- 1.0 hours, while cloud
-   motion vectors will be used over a window of +/- 1.5 hours. This will
-   use observation types sounding temps (120), aircraft temps (130,131),
-   dropsonde temps (132), mdcars aircraft temps, marine temp (180), land
-   humidity (181), ship humidity (182), rawinsonde U,V (220), pibal U,V
-   (221), Aircraft U,V (230,231,232), cloudsat winds (242,243,245), GOES
-   water vapor (246), sat winds (252,253,255), and ship obs (280, 281,
-   282). Additionally, it will include observations with specified qc
+   This defines an observation time window (``obs_window``) of +/- 1.0 hours, while cloud
+   motion vectors (``obs_window_cw``) will be used over a window of +/- 1.5 hours.  Observations
+   outside of this time window are excluded from the analysis. 
+
+   This will use observation types:
+
+       - sounding temps (120),
+       - aircraft temps (130,131),
+       - dropsonde temps (132),
+       - mdcars aircraft temps (133 ???),
+       - marine temp (180),
+       - land humidity (181),
+       - ship humidity (182),
+       - rawinsonde U,V (220),
+       - pibal U,V (221),
+       - aircraft U,V (230,231,232),
+       - cloudsat winds (242,243,245),
+       - GOES water vapor (246),
+       - sat winds (252,253,255), and
+       - ship obs (280, 281,282)
+ 
+   Additionally, it will include observations with specified qc
    types only. Skip to the prepfbufr **Namelist** section at the bottom
    of this page for more available namelist controls.
+
+   For applications where you want to use all available observations 
+   in the 6-hour assimilation window, you would set obs_window 
+   to 3.0 or larger to avoid excluding any observations.
 
 -  Within the
    ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
    directory, edit the ``prepbufr.csh`` file and change *BUFR_dir*,
    *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
-   format of the data you downloaded. A little trial and error might be
-   necessary to get these set correctly. For example:
+   format of the data you downloaded.  For this example:
   
    ::
 
       set BUFR_dir  = ../data
       set BUFR_idir = ${BUFR_dir}/prepqm
-      set BUFR_idir = ${BUFR_dir}/prepout
+      set BUFR_odir = ${BUFR_dir}/prepout
+      set DART_exec_dir = ../exe
       ..
-      set BUFR_in = ${BUFR_idir}/prepqm${sdtg}
+      set BUFR_in = ${BUFR_idir}/prepqm${sdtg}.nr
+      
       
 
--  Copy over the executables from ``../exe``, and run the *prepbufr.csh*
-   script for a single day at a time:
+-  The ``daily`` variable in ``prepbufr.csh`` controls whether the
+   output of the script is a single 24 hour file or 4, 6-hour files.  Depending 
+   on what other observations you intend to merge later on,
+   one option may be easier to use.  For this example, we are
+   leaving ``daily = no``, and the script will make 4, 6-hour files.
+
+-  Run the ``prepbufr.csh`` script for a single day:
 
    ::
 
       cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
-      cp ../exe/\*.x .
       ./prepbufr.csh 2017 04 27
 
 
 
 -  Your PREPBUFR files have now been converted to an intermediate ASCII
-   format. Confirm that ``temp_obs.20170427*`` files within your 
-   ``~/data/prepout directory`` exist. Please note that the script can function
-   with only the *06* prepqm input file, but will need the
-   *12* and *18* files to run to completion. 
+   format. Confirm that ``temp_obs.20170427*`` files within 
+   ``~/data/prepout`` exist. Please note that the script can function
+   with only the *06* prepqm input file, but will also need the
+   *12*, *18*, and following day *00* files to run to completion. 
 
 
--  There is another observation converter to take the
-   observations from this format and write them into the native DART
-   format. Edit the *input.nml* namelist file in the
-   *DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work*
-   directory. For this example:
+-  There is a separate executable to convert the
+   observations from this intermediate text format into
+   the native DART format. 
+   Edit the ``input.nml`` namelist file in the
+   ``DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work``.
+   For this example:
 
    ::
 
@@ -174,7 +226,7 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
          year       = 2017,
          month      = 4,
          day        = 27,
-         tot_days   = 3,
+         tot_days   = 1,
          max_num    = 800000,
          select_obs = 0,
          ObsBase = '../../prepbufr/data/prepout/temp_obs.',
@@ -185,22 +237,22 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
          lon2       = 330.0
          /
 
-   Choosing "select_obs = 0" will select all the observations in the
-   ASCII file. Set "ObsBase" to the directory you output the files from
+   Setting ``select_obs = 0`` will select all the observations in the
+   ASCII file. Set ``ObsBase`` to the directory you output the intermediate files from
    during the last step. If you wish to choose specific observations
    from the ASCII intermediate file or control other program behavior,
    there are many namelist options documented on the
-   `create_real_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
+   :doc:`create_real_obs <../../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs>`
    page.
 
--  It is now time to build *ascii_to_obs* programs. Run the following:
+-  It is now time to build *ascii_to_obs*. Run the following:
 
    ::
 
       cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
       ./quickbuild.sh
 
--  Run the *create_real_obs* program to create the DART observation
+-  Run ``create_real_obs`` to create the DART observation
    sequence files:
 
 
@@ -209,17 +261,16 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
       cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
       ./create_real_obs
 
--  The program *create_real_obs* will create observation sequence files
-   with one file for each six hour window. For a cycled experiment, the
-   typical approach is to put a single set of observations, associated
-   with a single analysis step, into a separate directory. For example,
-   within the ``output`` directory, we would create directories like
-   ``2017042700``, ``2017042706``, ``2017042712``, etc. for 6-hourly
-   cycling. Place the observation files in the appropriate directory to
-   match the contents in the files (e.g. *obs_seq2017042706*) and rename
-   as simply *obs_seq.out* (e.g. ``output/2017042706/obs_seq.out``).
+-  The executable ``create_real_obs`` will create observation sequence files
+   with one file for each six hour window. For a cycled experiment, there
+   are several options for naming the output observation files.  Each month
+   could be in a separate directory, or each 6-hour file could be in its
+   own directory.
 
--  The observation types within the ds090 ``obs_seq2017042706`` file should look like:
+   For a single obs file per directory, you can rename each as *obs_seq.out*,
+   or you can include the timestamp in the filename, e.g. *obs_seq.2017042706.out*.
+
+-  The observation types within the file should look like:
 
    ::
 
@@ -244,17 +295,15 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
     num_copies:            1  num_qc:            1
     num_obs:        19059  max_num_obs:        19059
 
+ 
+-  Some models include a preprocessing program to do additional processing
+   of the observations, for example, limiting obs to a sub-domain, superobbing spatially dense obs,
+   and increasing the error for near boundary observations.
 
--  It is helpful to also run the
-   `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
-   program, which can strip away observations not in the model domain,
-   perform superobservations of dense observations, increase observation
-   errors near the lateral boundaries, check for surface observations
-   far from the model terrain height, and other helpful pre-processing
-   steps. These collectively improve system performance and simplify
-   interpreting the observation space diagnostics. There are a number of
-   namelist options to consider, and you must provide a *wrfinput* file
-   for the program to access the analysis domain information.
+   For example, the WRF weather model includes the
+   :doc:`wrf_dart_obs_preprocess <../../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess>`
+   program.  There may be no further processing needed for some models, and the observation sequence
+   file is ready to be used.
 
 
 **You have completed the Quickstart Instructions**. See the following sections for more details of the 
@@ -290,12 +339,12 @@ If you are converting a single obs file, or are walking through the process by h
 the more detailed build instructions below, and then run the prep_bufr.x program by hand. This involves the following
 steps:
 
--  build the executables.
--  run the blocker if needed (generally not if you have downloaded the blocked format PREPBUFR files).
--  run the binary format converter if you are on an Intel (little-endian) machine.
--  link the input file to a fixed input filename
--  run prepbufr.x to convert the file
--  copy the fixed output filename to the desired output filename
+-  Build the executables.
+-  Run the blocker if needed (generally not if you have downloaded the blocked format PREPBUFR files).
+-  Run the binary format converter if you are on an Intel (little-endian) machine.
+-  Link the input file to a fixed input filename
+-  Run prepbufr.x to convert the file
+-  Copy the fixed output filename to the desired output filename
 
 Production mode
 ^^^^^^^^^^^^^^^
@@ -344,8 +393,8 @@ package. For example
 -  module rm intel64 netcdf64 mpich64
 -  module add pgi32
 
-To compile the BUFR libraries and the decoding program, set the CPLAT variable in the install.sh script to match the
-compilers available on your system. CPLAT = linux is the default. Execute the install.sh script to complete the
+To compile the BUFR libraries and the decoding program, set the CCOMP and FCOMP variables in the install.sh script 
+to match the compilers available on your system.  Execute the install.sh script to complete the
 compilations for the main decoding program, the NCEP BUFR library, and the conversion utilities.
 
 The executables (i.e., prepbufr.x, prepbufr_03Z.x) are placed in the ../exe directory.
@@ -395,8 +444,9 @@ This program is not required for blocked file formats.
 Downloading Prepbufr raw data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis dataset, d090000, on NSF NCAR Mass Store
-System (HPSS).
+The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP/NCAR Global Reanalysis Products dataset, d090000, 
+on NSF NCAR Research Data Archive (RDA).  Operational observations can be found in the NCEP ADP Global Upper Air and 
+Surface Weather Observations dataset, d337000.
 
 To find the files:
 
@@ -424,15 +474,12 @@ but their use is restricted and you must contact the RDA group to get access.
 | If you get a good table of contents then simply rename the file and untar it:
 | *> mv rawfile data.tar*
 | *> tar -xvf data.tar*
-| However, if you get an error from the tar command you will need to run the ``cosconvert`` program to convert the file
-  into a readable tar file. On the NSF NCAR machine Derecho run:
-| *> /glade/work/bmraczka/cosconvert -b data.tar*
-| On other platforms, download the appropriate version from: http://rda.ucar.edu/libraries/io/cos_blocking/utils/ .
-  Build and run the converter and then you should have a tar file you can unpack.
+| However, if you get an error from the tar command, on the NSF NCAR machine Derecho run:
+| *> /glade/campaign/cisl/dares/Observations/cosconvert -b data.tar*
 
 The output of tar should yield individual 6-hourly NCEP PREPBUFR data files for the observations in the +/- 3-hour time
 windows of 00Z, 06Z, 12Z, and 18Z of each day. Note that DART obs_seq files are organized such that a 24 hour file with
-4 observation times would contain observations from 3:01Z to 3:00Z of the next day, centered on 6Z, 12Z, 18Z and "24Z".
+4 6-hour observation windows would contain observations from 3:01Z to 3:00Z of the next day, centered on 6Z, 12Z, 18Z and "24Z".
 In addition, there are some observations at 3:00Z on the PREPBUFR file labelled with 06Z. Then, in order to make a full
 day intermediate file incorporating all the required obs from the "next" day, you'll need the PREPBUFR files through 6Z
 of the day after the last day of interest. For example, to generate the observation sequence for Jan 1, 2003, the
@@ -481,7 +528,7 @@ namelist.
 ::
 
    &prep_bufr_nml
-      obs_window       = 1.5,
+      obs_window       = 3.0,
       obs_window_upa   = 1.5,
       obs_window_air   = 1.5,
       obs_window_sfc   = 0.8,
