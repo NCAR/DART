@@ -391,14 +391,14 @@ Your ``$BASE_DIR/rundir`` directory should contain the following:
 **executables:**
 
  
-- `advance_time <../../../assimilation_code/programs/advance_time/advance_time.html>`__,
-- `fill_inflation_restart <../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html>`__,
-- `filter <../../../assimilation_code/programs/filter/filter.html>`__,
-- `obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__,
-- `obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__,
-- `obs_sequence_tool <../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__,
+- :doc:`advance_time <../../../assimilation_code/programs/advance_time/advance_time>`__,
+- :doc:`fill_inflation_restart <../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart>`__,
+- :doc:`filter <../../../assimilation_code/programs/filter/filter>`__,
+- :doc:`obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag>`__,
+- :doc:`obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf>`__,
+- :doc:`obs_sequence_tool <../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool>`__,
 - ``pert_wrf_bc`` (no helper page),
-- `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
+- :doc:`wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess>`__
 
 **directories:** 
 

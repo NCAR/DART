@@ -154,7 +154,7 @@ Otherwise please proceed to the **Prepbufr Overview** section for more details.
        - sounding temps (120),
        - aircraft temps (130,131),
        - dropsonde temps (132),
-       - mdcars aircraft temps (133 ???),
+       - mdcars aircraft temps (133),
        - marine temp (180),
        - land humidity (181),
        - ship humidity (182),
@@ -326,7 +326,7 @@ warning that the rest of DART has, so the user should very careful about checkin
 Install Prepbufr package
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Running the ``install.sh`` script located within the ``~/observations/NCEP/prep_bufr`` directory will build the library
+Running the ``install.sh`` script located within the ``$DART_DIR$/observations/obs_converters/NCEP/prep_bufr`` directory will build the library
 and main executable. You will probably have to edit this script to set the fortran compiler on your system.
 
 If you have raw unblocked PREPBUFR files you will need to convert them to blocked format (what prepbufr expects as
