@@ -664,8 +664,7 @@ required steps to complete the tutorial. It provides a description of
 the DART settings that control the forward operator which
 calculates the prior and posterior model estimates for the observations. 
 An introduction to important namelist variables that control the operation of the forward
-operator are located in the `WRF namelist documentation. 
-<../../../models/wrf/readme.html#namelist>`__
+operator are located in the :ref:`WRF namelist documentation<wrfnamelist>`.
 
 
 The ``obs_seq.out`` file provided with the tutorial contains
@@ -740,7 +739,7 @@ observations. All other coordinates are considered non-surface observations
 only the ``VERTISSURFACE`` is a surface observation.
 
 For more information on the vertical coordinate metadata see the detailed structure of
-an `obs_seq file. <../../../guide/creating-obs-seq-real.html#observation-location>`__ 
+an :doc:`obs_seq file<observationlocation>`. 
 
 In order to connect this observation to the appropriate WRF output variables
 the ``wrf_state_variables`` within ``&model_nml`` defines the *WRF field name* and
@@ -754,8 +753,7 @@ the *WRF TYPE* in the 1st and 3rd columns as shown in the tutorial example below
  ..
  .. 
 
-For more information on the ``&model_nml`` variables see the `WRF documentation page 
-<../../../models/wrf/readme.html#namelist>`__
+For more information on the ``&model_nml`` variables see the :doc:`WRF documentation page<wrfnamelist>`.
 
 
 As described above, the linkage between the observation type and the WRF output field 
@@ -1173,9 +1171,9 @@ are limited to near the land surface.  This is because the vertical location
 of this observation type was defined to be at the land surface 
 (VERTISSURFACE), as opposed to the ``RADIOSONDE_TEMPERATURE`` observation
 in which the vertical location was defined as pressure (VERTISPRESSURE). The
-vertical coordinate system is defined in the ``obs_seq.out`` file and
-`documented here. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__ 
-
+vertical coordinate system is defined in the ``obs_seq.out`` file and 
+:ref:`documented here<observationlocations>`.
+ 
 +-------------------------------------------------------------+
 | |surface_obs|                                               |
 +-------------------------------------------------------------+
@@ -1453,8 +1451,8 @@ contact us at dart(at)ucar(dot)edu.
 Additional materials from previous in-person tutorials
 ------------------------------------------------------
 
--  Introduction - `DART Lab
-   materials <../../../guide/DART_LAB/DART_LAB.html>`__
+-  Introduction - :doc:`DART Lab
+   materials <../../../guide/DART_LAB/DART_LAB>`
 -  WRF-DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
    (some material is outdated)
