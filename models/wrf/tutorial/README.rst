@@ -739,7 +739,7 @@ observations. All other coordinates are considered non-surface observations
 only the ``VERTISSURFACE`` is a surface observation.
 
 For more information on the vertical coordinate metadata see the detailed structure of
-an :doc:`obs_seq file<observationlocation>`. 
+an :ref:`obs_seq file<observationlocations>`. 
 
 In order to connect this observation to the appropriate WRF output variables
 the ``wrf_state_variables`` within ``&model_nml`` defines the *WRF field name* and
@@ -753,7 +753,7 @@ the *WRF TYPE* in the 1st and 3rd columns as shown in the tutorial example below
  ..
  .. 
 
-For more information on the ``&model_nml`` variables see the :doc:`WRF documentation page<wrfnamelist>`.
+For more information on the ``&model_nml`` variables see the :ref:`WRF documentation page<wrfnamelist>`.
 
 
 As described above, the linkage between the observation type and the WRF output field 
