@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**February 6 2025 :: WRF tutorial and prepbufr documentation. Tag v11.10.4**
+
+- Observation section of WRF tutorial updated to match provided obs.   
+- Prepbufr docs updated to describe complete conversion process.
+
 **February 4 2025 :: Generic model_mod subroutine parse_variables. Tag v11.10.3**
 
 - Creates two generalized subroutines that convert the table of state variables that is
