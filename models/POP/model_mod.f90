@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 module model_mod
 
@@ -49,8 +48,11 @@ use distributed_state_mod, only : get_state
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, &
-                                  get_dart_vector_index
-use default_model_mod,     only : adv_1step, init_time, init_conditions, nc_write_model_vars
+                                  get_dart_vector_index, get_varid_from_kind, &
+                                  get_kind_index
+use default_model_mod,     only : adv_1step, init_time, init_conditions, &
+                                  nc_write_model_vars, parse_variables, &
+                                  MAX_STATE_VARIABLE_FIELDS
 
 use typesizes
 use netcdf 
@@ -106,24 +108,12 @@ logical, save :: module_initialized = .false.
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: max_state_variables = 10 
-integer, parameter :: num_state_table_columns = 3
-character(len=vtablenamelength) :: variable_table( max_state_variables, num_state_table_columns )
-integer :: state_kinds_list( max_state_variables )
-logical :: update_var_list( max_state_variables )
-
-! identifiers for variable_table
-integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_QTY_INDEX = 2
-integer, parameter :: VAR_UPDATE_INDEX = 3
-
 ! things which can/should be in the model_nml
 integer  :: assimilation_period_days = -1
 integer  :: assimilation_period_seconds = -1
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=vtablenamelength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! only valid values:  native, big_endian, little_endian
@@ -157,9 +147,6 @@ namelist /model_nml/  &
 ! is not being used.
 !------------------------------------------------------------------
 
-! Number of fields in the state vector
-integer :: nfields
-
 ! Grid parameters - the values will be read from a
 ! standard POP namelist and filled in here.
 
@@ -189,8 +176,6 @@ integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer(i8) :: model_size    ! the state vector length
-
-
 
 !------------------------------------------------
 
@@ -335,10 +320,6 @@ endif
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
-! verify that the model_state_variables namelist was filled in correctly.  
-! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, state_kinds_list, update_var_list)
-
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
@@ -355,10 +336,17 @@ call dpth2pres(Nz, ZC, pressure)
 ! Initialize the interpolation routines
 call init_interp()
 
+if ( model_state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
+   call use_default_state_variables( model_state_variables )
+   string1 = 'model_nml:model_state_variables not specified - using default variables'
+   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+endif
+
 !> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
-domain_id = add_domain('pop.r.nc', nfields, &
-                       var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
-                       update_list = update_var_list(1:nfields))
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables and returns a state_var_type that
+! can be passed to add_domain
+domain_id = add_domain('pop.r.nc', parse_variables(model_state_variables))
 
 model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size
@@ -841,7 +829,7 @@ if(obs_type == QTY_SEA_SURFACE_ANOMALY) then
                    source, revision, revdate, text2=string2, text3=string3)
    endif
 
-   base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE))
+   base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEA_SURFACE_PRESSURE))
    call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, &
            QTY_SEA_SURFACE_HEIGHT, 1, expected_obs, istatus, expected_mdt)
 
@@ -862,10 +850,10 @@ SELECT CASE (obs_type)
          QTY_U_CURRENT_COMPONENT,   &
          QTY_V_CURRENT_COMPONENT,   &
          QTY_SEA_SURFACE_PRESSURE)
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
 
    CASE (QTY_SEA_SURFACE_HEIGHT)
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEA_SURFACE_PRESSURE))
       convert_to_ssh = .TRUE. ! simple linear transform of PSURF
 
    CASE DEFAULT
@@ -1754,7 +1742,7 @@ integer :: lon_index, lat_index, depth_index, local_var, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
-call get_state_kind(var_id, local_var)
+local_var = get_kind_index(domain_id, var_id)
 
 if (is_on_ugrid(local_var)) then
    lon = ULON(lon_index, lat_index)
@@ -1784,52 +1772,6 @@ endif
 end subroutine get_state_meta_data
 
 
-!--------------------------------------------------------------------
-!> given a DART kind, return the variable number (position in the list)
-
-
-function get_varid_from_kind(dart_kind)
-
-integer, intent(in) :: dart_kind
-integer             :: get_varid_from_kind
-
-integer :: i
-
-do i = 1, get_num_variables(domain_id)
-   if (dart_kind == state_kinds_list(i)) then
-      get_varid_from_kind = i
-      return
-   endif
-end do
-
-write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
-call error_handler(E_MSG,'get_varid_from_kind', string1, &
-                   source, revision, revdate, text2=string2)
-
-get_varid_from_kind = -1
-
-end function get_varid_from_kind
-
-
-!------------------------------------------------------------------
-!> Given an integer index into the state vector structure, returns the kind,
-!> and both the starting offset for this kind, as well as the offset into
-!> the block of this kind.
-
-
-subroutine get_state_kind(var_ind, var_type)
-
-integer, intent(in)  :: var_ind
-integer, intent(out) :: var_type
-
-if ( .not. module_initialized ) call static_init_model
-
-var_type = state_kinds_list(var_ind)
-
-end subroutine get_state_kind
-
-
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
 !> type, taking into account the ocean bottom and dry land.
@@ -1845,7 +1787,7 @@ integer :: lon_index, lat_index, depth_index, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
-call get_state_kind(var_id, var_type)
+var_type = get_kind_index(domain_id, var_id)
 
 ! if on land or below ocean floor, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then
@@ -2361,8 +2303,8 @@ if(hstatus /= 0) then
    return
 endif
 
-offset_salt = get_index_start(domain_id, get_varid_from_kind(QTY_SALINITY))
-offset_temp = get_index_start(domain_id, get_varid_from_kind(QTY_POTENTIAL_TEMPERATURE))
+offset_salt = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SALINITY))
+offset_temp = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_POTENTIAL_TEMPERATURE))
 
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
 call do_interp(state_handle, ens_size, offset_salt, hgt_bot, hgt_top, hgt_fract, llon, llat, &
@@ -2747,103 +2689,6 @@ end subroutine vert_convert
 
 
 !------------------------------------------------------------------
-!> Verify that the namelist was filled in correctly, and check
-!> that there are valid entries for the dart_kind. 
-!> Returns a table with columns:  
-!>
-!>    netcdf_variable_name ; dart_kind_string ; update_string
-
-
-subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_var )
-
-character(len=*),  intent(inout) :: state_variables(:)
-integer,           intent(out) :: ngood
-character(len=*),  intent(out) :: table(:,:)
-integer,           intent(out) :: kind_list(:)   ! kind number
-logical, optional, intent(out) :: update_var(:) ! logical update
-
-integer :: nrows, i
-character(len=NF90_MAX_NAME) :: varname, dartstr, update
-
-if ( .not. module_initialized ) call static_init_model
-
-nrows = size(table,1)
-
-ngood = 0
-
-if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
-   call use_default_state_variables( state_variables )
-   string1 = 'model_nml:model_state_variables not specified using default variables'
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
-endif
-
-MyLoop : do i = 1, nrows
-
-   varname = trim(state_variables(3*i -2))
-   dartstr = trim(state_variables(3*i -1))
-   update  = trim(state_variables(3*i   ))
-   
-   call to_upper(update)
-
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   table(i,3) = trim(update)
-
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop ! Found end of list.
-
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
-      string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ! Make sure DART kind is valid
-
-   kind_list(i) = get_index_for_quantity(dartstr)
-   if( kind_list(i)  < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-   
-   ! Make sure the update variable has a valid name
-
-   if ( present(update_var) )then
-      SELECT CASE (update)
-         CASE ('UPDATE')
-            update_var(i) = .true.
-         CASE ('NO_COPY_BACK')
-            update_var(i) = .false.
-         CASE DEFAULT
-            write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
-            write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
-            call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
-      END SELECT
-   endif
-
-   ! Record the contents of the DART state vector
-
-   if (do_output()) then
-      write(string1,'(A,I2,6A)') 'variable ',i,' is ',trim(varname), ', ', trim(dartstr), ', ', trim(update)
-      call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ngood = ngood + 1
-enddo MyLoop
-
-! check to see if temp and salinity are both in the state otherwise you will not
-! be able to interpolate in XXX subroutine
-if ( any(kind_list == QTY_SALINITY) ) then
-   ! check to see that temperature is also in the variable list
-   if ( .not. any(kind_list == QTY_POTENTIAL_TEMPERATURE) ) then
-      write(string1,'(A)') 'in order to compute temperature you need to have both '
-      write(string2,'(A)') 'QTY_SALINITY and QTY_POTENTIAL_TEMPERATURE in the model state'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
-   endif
-endif
- 
-end subroutine verify_state_variables
-
-
-!------------------------------------------------------------------
 !> Default state_variables from the original pop model_mod.  Must
 !> keep in the same order to be consistent with previous versions.
 
@@ -2853,7 +2698,7 @@ subroutine use_default_state_variables( state_variables )
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*num_state_table_columns ) = &
+state_variables( 1:15 ) = &
    (/ 'SALT_CUR                  ', 'QTY_SALINITY              ', 'UPDATE                    ', &
       'TEMP_CUR                  ', 'QTY_POTENTIAL_TEMPERATURE ', 'UPDATE                    ', &
       'UVEL_CUR                  ', 'QTY_U_CURRENT_COMPONENT   ', 'UPDATE                    ', &
@@ -2868,8 +2713,3 @@ end subroutine use_default_state_variables
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

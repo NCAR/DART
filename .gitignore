@@ -208,6 +208,7 @@ test_beta_dist
 test_kde_dist
 test_window
 test_force_bounds
+test_parse_variables
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

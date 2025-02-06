@@ -391,14 +391,14 @@ Your ``$BASE_DIR/rundir`` directory should contain the following:
 **executables:**
 
  
-- `advance_time <../../../assimilation_code/programs/advance_time/advance_time.html>`__,
-- `fill_inflation_restart <../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html>`__,
-- `filter <../../../assimilation_code/programs/filter/filter.html>`__,
-- `obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html>`__,
-- `obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html>`__,
-- `obs_sequence_tool <../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html>`__,
+- :doc:`advance_time <../../../assimilation_code/programs/advance_time/advance_time>`,
+- :doc:`fill_inflation_restart <../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart>`,
+- :doc:`filter <../../../assimilation_code/programs/filter/filter>`,
+- :doc:`obs_diag <../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag>`,
+- :doc:`obs_seq_to_netcdf <../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf>`,
+- :doc:`obs_sequence_tool <../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool>`,
 - ``pert_wrf_bc`` (no helper page),
-- `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
+- :doc:`wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess>`
 
 **directories:** 
 
@@ -612,217 +612,63 @@ directory ``output/2017042700/PRIORS`` with names like *prior_d01.0001*,
 you when each ensemble member has finished.
 
 
-Step 3: Prepare observations [OPTIONAL]
----------------------------------------
+Step 3: Prepare observations [Informational Only]
+-------------------------------------------------
 
-.. Warning::
+.. Important::
 
-   The observation sequence files to run this tutorial are already provided
-   for you. If you want to run with the provided tutorial observations, you 
-   can skip to Step 5 right now.  If you are interested in using custom
-   observations for a WRF experiment other than the tutorial you should read on. 
-   The remaining instructions provided below in Step 3 are meant as a guideline
-   to converting raw PREPBUFR data files into the required ``obs_seq`` format
-   required by DART. Be aware that there is ongoing discussion of the proper
-   archived data set (RDA d090000 or d337000) that should be used to obtain
-   the PREPBUFR data. See the discussion in `bug report #634 <https://github.com/NCAR/DART/issues/634>`__.  
-   If you have questions please contact the DART team.
+   The observation sequence (obs_seq) files used in this tutorial are already provided
+   for you within the output directory. Proceed to step 5 if you wish to complete the 
+   required tutorial steps.  If you are interested in customizing a WRF-DART experiment
+   for your own application, steps 3 and 4 provide useful guidance. The obs_seq file used
+   in this tutorial is roughly based on the NCEP PREPBUFR data files which are
+   located at the `NSF NCAR Research Data Archive <https://rda.ucar.edu>`__ 
+   (ds090 or ds337).  There are additional  observation types used in
+   this tutorial (e.g. :doc:`MADIS <../../../observations/obs_converters/MADIS/MADIS>`) 
+   besides the PREPBUFR data, and we **do not** provide instructions to 
+   reconstruct the tutorial obs_seq files exactly.
 
 Observation processing is critical to the success of running
 DART and is covered in :ref:`Getting Started <Welcome page>`. In
 brief, to add your own observations to WRF-DART you will need to
 understand the relationship between observation definitions and
-observation sequences, observation types and observation quantities, and
+observation sequences, observation types and observation quantities (see Step 4), and
 understand how observation converters extract observations from their
-native formats into the DART specific format.
+native formats into the DART specific format. 
 
-The observation sequence files that are provided in this tutorial come
-from NCEP BUFR observations from the GDAS system. These observations
-contain a wide array of observation types from many platforms within a
-single file.
+Unlike many observation converters provided with DART, the PREPBUFR converter is unique
+because it requires the installation of an externally hosted package, and also 
+involves a 2-stage conversion process (native format-->ascii-->obs_seq)
+as described below:
 
-If you wanted to generate your own observation sequence files from
-PREPBUFR for an experiment with WRF-DART, you should follow the guidance
-on the
-`prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
-page to build the bufr conversion programs, get observation files for
-the dates you plan to build an analysis for, and run the codes to
-generate an observation sequence file.
+- Download PREPBUFR data from the NSF NCAR RDA `ds090 <NCEP+NCAR_obs_>`_  or `ds337 <NCEP_obs_>`_ 
+- Unzip RDA files, and locate the prepqm[YYMMDDHH].nr files of interest
+- Install NCEP PREPBUFR text converter package (``install.sh``)
+  See :doc:`prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr>`
+- Run PREPBUFR text conversion scripting (``prepbufr.csh``) 
+- Run text (ascii) to obs_seq executable (``create_real_obs``)
+  See :doc:`ascii_to_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs>`
 
-The steps listed below to generate these observation
-sequence files are meant as a guideline for NSF NCAR Research Data
-Archive data file d090000. **Be aware not all required software has been
-migrated to Derecho to perform this conversion.**  
-See `bug report #634 <https://github.com/NCAR/DART/issues/634>`__
-for more updated information.
+.. Hint::
 
-To reproduce the observation sequence files in the *output* directories, 
-you would do the following:
+   The **Quickstart Instructions** included within the prepbufr link provided above
+   is the fastest way to get started to convert your own PREPBUFR observations. The MADIS
+   observation converter instructions are :doc:`here <../../../observations/obs_converters/MADIS/MADIS>`.
 
--  Go into your DART prep_bufr observation converter directory and
-   install the PREPBUFR utilities as follows:
 
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr
-      ./install.sh
-
-   You may need to edit the *install.sh* script to match your compiler
-   and system settings.
-
--  Go to the
-   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/``
-   directory and run *quickbuild.sh* to build the DART
-   PREPBUFR-to-intermediate-file observation processor:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
-      ./quickbuild.sh
-
--  Download the PREPBUFR observations for your desired time. Go to the
-   `NSF NCAR Research Data
-   Archive <NCEP+NCAR_obs_>`_ page for the
-   NCEP/NSF NCAR Global Reanalysis Products. Register on the site, click on
-   the "Data Access" tab, and follow either the instructions for
-   external users or NSF NCAR internal users.
-
--  The downloaded *.tar* file will often be COS-blocked. If so, the file
-   will appear corrupted if you attempt to untar it without converting
-   the data. See the `NSF NCAR COS-block <https://rda.ucar.edu/#!cosb>`__
-   page for more information on how to strip the COS-blocking off of
-   your downloaded file.
-
--  Untar the data in your desired directory.
-
--  In the ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the *input.nml* file. This file will control what
-   observations will be used for your experiment, so the namelist
-   options are worth investigating a bit here. For example, you could
-   use the following:
-
-   ::
-
-      &prep_bufr_nml
-         obs_window    = 1.0
-         obs_window_cw = 1.5
-         otype_use     = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0
-                         181.0, 182.0, 220.0, 221.0, 230.0, 231.0
-                         232.0, 233.0, 242.0, 243.0, 245.0, 246.0
-                         252.0, 253.0, 255.0, 280.0, 281.0, 282.0
-         qctype_use    = 0,1,2,3,15
-         /
-
-   This defines an observation time window of +/- 1.0 hours, while cloud
-   motion vectors will be used over a window of +/- 1.5 hours. This will
-   use observation types sounding temps (120), aircraft temps (130,131),
-   dropsonde temps (132), mdcars aircraft temps, marine temp (180), land
-   humidity (181), ship humidity (182), rawinsonde U,V (220), pibal U,V
-   (221), Aircraft U,V (230,231,232), cloudsat winds (242,243,245), GOES
-   water vapor (246), sat winds (252,253,255), and ship obs (280, 281,
-   282). Additionally, it will include observations with specified qc
-   types only. See the
-   `prepbufr <../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html>`__
-   page for more available namelist controls.
-
--  Within the
-   ``$DART_DIR/observations/obs_converters/NCEP/prep_bufr/work``
-   directory, edit the *prepbufr.csh* file and change *BUFR_dir*,
-   *BUFR_idir*, *BUFR_odir*, and *BUFR_in* to match the locations and
-   format of the data you downloaded. A little trial and error might be
-   necessary to get these set correctly.
-
--  Copy over the executables from ``../exe``, and run the *prepbufr.csh*
-   script for a single day at a time:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/prep_bufr/work
-      cp ../exe/\*.x .
-      ./prepbufr.csh \<year\> \<month\> \<day\>
-
--  Your PREPBUFR files have now been converted to an intermediate ASCII
-   format. There is another observation converter to take the
-   observations from this format and write them into the native DART
-   format. Edit the *input.nml* namelist file in the
-   *DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work*
-   directory. Here is a basic example:
-
-   ::
-
-      &ncepobs_nml
-         year       = 2017,
-         month      = 4,
-         day        = 27,
-         tot_days   = 3,
-         max_num    = 800000,
-         select_obs = 0,
-         ObsBase = '<path to observations>/temp_obs.',
-         daily_file = .false.,
-         lat1       = 15.0,
-         lat2       = 60.0,
-         lon1       = 270.0,
-         lon2       = 330.0
-         /
-
-   Choosing "select_obs = 0" will select all the observations in the
-   ASCII file. Set "ObsBase" to the directory you output the files from
-   during the last step. If you wish to choose specific observations
-   from the ASCII intermediate file or control other program behavior,
-   there are many namelist options documented on the
-   `create_real_obs <../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html>`__
-   page.
-
--  It is now time to build *ascii_to_obs* programs. Run the following:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
-      ./quickbuild.sh
-
--  Run the *create_real_obs* program to create the DART observation
-   sequence files:
-
-   ::
-
-      cd $DART_DIR/observations/obs_converters/NCEP/ascii_to_obs/work
-      ./create_real_obs
-
--  The program *create_real_obs* will create observation sequence files
-   with one file for each six hour window. For a cycled experiment, the
-   typical approach is to put a single set of observations, associated
-   with a single analysis step, into a separate directory. For example,
-   within the ``output`` directory, we would create directories like
-   ``2017042700``, ``2017042706``, ``2017042712``, etc. for 6-hourly
-   cycling. Place the observation files in the appropriate directory to
-   match the contents in the files (e.g. *obs_seq2017042706*) and rename
-   as simply *obs_seq.out* (e.g. ``output/2017042706/obs_seq.out``).
-
--  It is helpful to also run the
-   `wrf_dart_obs_preprocess <../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html>`__
-   program, which can strip away observations not in the model domain,
-   perform superobservations of dense observations, increase observation
-   errors near the lateral boundaries, check for surface observations
-   far from the model terrain height, and other helpful pre-processing
-   steps. These collectively improve system performance and simplify
-   interpreting the observation space diagnostics. There are a number of
-   namelist options to consider, and you must provide a *wrfinput* file
-   for the program to access the analysis domain information.
-
-Step 4: Overview of forward (observation) operators [OPTIONAL] 
+Step 4: Overview of forward operators [Informational Only] 
 --------------------------------------------------------------
 
 This section is for informational purposes only and does not include any 
-instructions to complete the tutorial. It provides a description of
+required steps to complete the tutorial. It provides a description of
 the DART settings that control the forward operator which
 calculates the prior and posterior model estimates for the observations. 
 An introduction to important namelist variables that control the operation of the forward
-operator are located in the `WRF namelist documentation. 
-<../../../models/wrf/readme.html#namelist>`__
+operator are located in the :ref:`WRF namelist documentation<wrfnamelist>`.
 
 
-The ``obs_seq.out`` file generated as described in Step 3 includes a total
-of 30 observation types. Here we examine an exerpt of that file, focusing
+The ``obs_seq.out`` file provided with the tutorial contains
+30 different observation types. Here we examine an excerpt of that file, focusing
 on a single temperature observation to describe the process:
 
 ::
@@ -893,7 +739,7 @@ observations. All other coordinates are considered non-surface observations
 only the ``VERTISSURFACE`` is a surface observation.
 
 For more information on the vertical coordinate metadata see the detailed structure of
-an `obs_seq file. <../../../guide/creating-obs-seq-real.html#observation-location>`__ 
+an :ref:`obs_seq file<observationlocations>`. 
 
 In order to connect this observation to the appropriate WRF output variables
 the ``wrf_state_variables`` within ``&model_nml`` defines the *WRF field name* and
@@ -907,8 +753,7 @@ the *WRF TYPE* in the 1st and 3rd columns as shown in the tutorial example below
  ..
  .. 
 
-For more information on the ``&model_nml`` variables see the `WRF documentation page 
-<../../../models/wrf/readme.html#namelist>`__
+For more information on the ``&model_nml`` variables see the :ref:`WRF documentation page<wrfnamelist>`.
 
 
 As described above, the linkage between the observation type and the WRF output field 
@@ -1326,9 +1171,9 @@ are limited to near the land surface.  This is because the vertical location
 of this observation type was defined to be at the land surface 
 (VERTISSURFACE), as opposed to the ``RADIOSONDE_TEMPERATURE`` observation
 in which the vertical location was defined as pressure (VERTISPRESSURE). The
-vertical coordinate system is defined in the ``obs_seq.out`` file and
-`documented here. <https://docs.dart.ucar.edu/en/latest/guide/creating-obs-seq-real.html#observation-locations>`__ 
-
+vertical coordinate system is defined in the ``obs_seq.out`` file and 
+:ref:`documented here<observationlocations>`.
+ 
 +-------------------------------------------------------------+
 | |surface_obs|                                               |
 +-------------------------------------------------------------+
@@ -1606,8 +1451,8 @@ contact us at dart(at)ucar(dot)edu.
 Additional materials from previous in-person tutorials
 ------------------------------------------------------
 
--  Introduction - `DART Lab
-   materials <../../../guide/DART_LAB/DART_LAB.html>`__
+-  Introduction - :doc:`DART Lab
+   materials <../../../guide/DART_LAB/DART_LAB>`
 -  WRF-DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
    (some material is outdated)
