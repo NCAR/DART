@@ -24,11 +24,11 @@ jobs:
 
         # List of lines to check
         lines_to_check=(
-          "DART \$Id\$"
-          " <next few lines under version control, do not edit>"
-          " \$URL\$"
-          " \$Revision\$"
-          " \$Date\$"
+          "DART \\\$Id\\\$"
+          "<next few lines under version control, do not edit>"
+          "\\\$URL\\\$"
+          "\\\$Revision\\\$"
+          "\\\$Date\\\$"
         )
 
         # Function to check if any of the lines are in the file
