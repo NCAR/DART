@@ -1,3 +1,5 @@
+.. _obs_selection:
+
 program ``obs_selection``
 =========================
 
