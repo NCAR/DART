@@ -3267,7 +3267,7 @@ verttype = nint(query_location(loc))
 
 call find_surrounding_edges(lat, lon, nedges, edgelist, cellid, vertexid)
 if (nedges <= 0) then ! we are on a boundary, no interpolation
-    ier = 18
+    ier = RBF_U_COMPUTATION_ERROR
     return
  endif
 
