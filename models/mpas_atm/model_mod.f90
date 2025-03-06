@@ -110,7 +110,7 @@ use distributed_state_mod, only : get_state, get_state_array
 use netcdf
 
 use state_structure_mod, only :  add_domain, get_model_variable_indices, &
-                                 state_structure_info, get_index_start, get_index_end, &
+                                 get_index_start, get_index_end, &
                                  get_num_variables, get_domain_size, get_varid_from_varname, &
                                  get_variable_name, get_num_dims, get_dim_lengths, &
                                  get_dart_vector_index, get_num_varids_from_kind, &
@@ -298,7 +298,7 @@ namelist /model_nml/             &
 
 integer, parameter :: MAX_STATE_VARIABLES = 80
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
-integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 4 !HK @todo get rid of clamp or fail
+integer, parameter :: NUM_BOUNDS_TABLE_COLUMNS = 3
 character(len=vtablenamelength) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS )
 
 !------------------------------------------------------------------------
@@ -1726,9 +1726,6 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    write(string2,'(''there is no '',a)') trim(string1)
    call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
                  'verify_state_variables', trim(string2))
-
-   ! Make sure variable is defined by (Time,nCells) or (Time,nCells,vertical)
-   ! unable to support Edges or Vertices at this time.m !HK @todo this is not true.
 
    call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims), &
                  'verify_state_variables', 'inquire '//trim(string1))

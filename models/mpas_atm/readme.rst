@@ -289,8 +289,8 @@ mpas_vars_nml
                              'qv',                    'QTY_VAPOR_MIXING_RATIO',
                              'qc',                    'QTY_CLOUDWATER_MIXING_RATIO',
                              'surface_pressure',      'QTY_SURFACE_PRESSURE'
-      mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
-                             'qc','0.0','NULL','CLAMP',
+      mpas_state_bounds    = 'qv','0.0','NULL'
+                             'qc','0.0','NULL'
    /
 
 **mpas_state_variables**
@@ -302,7 +302,6 @@ mpas_vars_nml
 
  - The first column must match the exact NetCDF field name in the MPAS file.
  - The second and third columns are the minimum and maximum values for the field.
- - The fourth column is ignored.
 
 
 ``mpas_state_bounds`` is for variables with fixed minimum or maximum limits. 

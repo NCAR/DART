@@ -211,13 +211,12 @@
                           'qv',                    'QTY_VAPOR_MIXING_RATIO',
                           'surface_pressure',      'QTY_SURFACE_PRESSURE',
                           't2m'                    'QTY_2M_TEMPERATURE',
-   mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
+   mpas_state_bounds    = 'qv','0.0','NULL',
   /
 
 &update_mpas_states_nml
   update_input_file_list  = 'filter_out.txt'
   update_output_file_list = 'filter_in.txt'
-  print_data_ranges      = .true.
   /
 
 &update_bc_nml
