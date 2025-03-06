@@ -1,3 +1,5 @@
+.. index:: mpas atm
+
 MPAS_ATM
 ========
 
