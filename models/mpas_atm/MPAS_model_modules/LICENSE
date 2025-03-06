@@ -1,3 +1,11 @@
+The source files in this directory:
+ get_coeff_mod.f90
+ get_geometry_mod.f90
+ get_reconstruct_mod.f90 
+are modified from the version available from Los Alamos National Security, LLC (LANS)
+and the University Corporation for Atmospheric Research (UCAR). The LICENSE for these
+files is given below.
+
 Copyright (c) 2013-2019,  Los Alamos National Security, LLC (LANS) (Ocean: LA-CC-13-047;
 Land Ice: LA-CC-13-117) and the University Corporation for Atmospheric Research (UCAR).
 
