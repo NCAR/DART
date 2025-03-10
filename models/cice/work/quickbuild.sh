@@ -37,6 +37,7 @@ obs_sequence_tool
 )
 
 model_serial_programs=(
+test_quad_interp
 cice_to_dart
 dart_to_cice
 )

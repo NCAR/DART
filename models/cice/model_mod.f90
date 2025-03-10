@@ -136,7 +136,8 @@ public :: get_model_size,                &
           nc_write_model_atts,           &
           write_model_time,              &
           get_close_state,               &
-          end_model
+          end_model, &
+          quad_bilinear_interp
 
 ! the code for these routines are in other modules
 public :: init_time,                     &
@@ -1666,6 +1667,8 @@ integer :: i
 real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
 ! real(r8) :: lon_mean
 
+logical :: ok_expected
+
 ! Watch out for wraparound on x_corners.
 lon = lon_in
 x_corners = x_corners_in
@@ -1733,11 +1736,16 @@ expected_obs = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
 ! Avoid exceeding maxima or minima as stopgap for poles problem
 ! When doing bilinear interpolation in quadrangle, can get interpolated
 ! values that are outside the range of the corner values
+ok_expected = .true.
 if(expected_obs > maxval(p)) then
    expected_obs = maxval(p)
+   ok_expected = .false.
 else if(expected_obs < minval(p)) then
    expected_obs = minval(p)
+   ok_expected = .false.
 endif
+
+print*,  ok_expected,':', p, ':', lon, lat, ':', x_corners, ':', y_corners
 !********
 
 end subroutine quad_bilinear_interp
