@@ -10,7 +10,9 @@ export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
 MODEL=pywatershed
-LOCATION=oned
+LOCATION=threed_sphere
+EXTRA="$DART/models/wrf/module_map_utils.f90 \
+       $DART/observations/obs_converters/utilities/obs_utilities_mod.f90"
 
 
 programs=(
