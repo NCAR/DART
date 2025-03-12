@@ -7,7 +7,7 @@ module model_mod
 
 ! This is the interface between pywatershed and DART
 
-use types_mod,             only : r8, i8, i4, MISSING_R8, obstypelength, &
+use types_mod,             only : r8, i8, i4, MISSING_R8, vtablenamelength, &
                                   earth_radius
 
 use time_manager_mod,      only : time_type, set_time
@@ -34,8 +34,10 @@ use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain
 
-use default_model_mod,     only : adv_1step, end_model, pert_model_copies, & 
-                                  nc_write_model_vars, MAX_STATE_VARIABLE_FIELDS_CLAMP
+use default_model_mod,     only : adv_1step, end_model, pert_model_copies,              & 
+                                  nc_write_model_vars, MAX_STATE_VARIABLE_FIELDS_CLAMP, &
+                                  init_time => fail_init_time,                          & 
+                                  init_conditions => fail_init_conditions 
 
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
@@ -45,20 +47,14 @@ private
 ! required by DART code - will be called from filter and other
 ! DART executables.  interfaces to these routines are fixed and
 ! cannot be changed in any way.
-public :: get_model_size,       &
-          get_state_meta_data,  &
-          model_interpolate,    &
-          shortest_time_between_assimilations, &
-          static_init_model,    &
-          init_conditions,      &
-          init_time,            &
-          nc_write_model_atts
-
-! required by DART but passed through from another module. 
-! To write model specific versions of these routines
-! remove the routine from  use statement above and add your code to
-! this the file.
-public :: pert_model_copies,      &
+public :: get_model_size,         &
+          get_state_meta_data,    &
+          model_interpolate,      &
+          static_init_model,      &
+          init_conditions,        &
+          init_time,              &
+          nc_write_model_atts,    & 
+          pert_model_copies,      &
           nc_write_model_vars,    &
           get_close_obs,          &
           get_close_state,        &
@@ -67,7 +63,8 @@ public :: pert_model_copies,      &
           convert_vertical_obs,   &
           convert_vertical_state, &
           read_model_time,        &
-          write_model_time
+          write_model_time,       &
+          shortest_time_between_assimilations
 
 character(len=256), parameter :: source   = "pywatershed/model_mod.f90"
 
@@ -75,20 +72,23 @@ type(location_type), allocatable :: state_loc(:)  ! state locations, compute onc
 
 type(time_type) :: time_step
 integer(i8)     :: model_size
+logical, save   :: module_initialized = .false. 
 
 ! Model namelist declarations with defaults
-integer            :: assimilation_period_days     = 1           ! model instantaneous streamflow at the hour 23 of the day
-integer            :: assimilation_period_seconds  = 0           ! NA
-integer            :: debug                        = 0           ! debugging flag
-real(r8)           :: model_perturbation_amplitude = 0.1         ! perturb parameter for initial ensemble generation
-real(r8)           :: max_link_distance            = 10000.0     ! Max distance along the stream: 10 km
-character(len=256) :: perturb_distribution         = 'lognormal' ! distribution needed for initial ensemble generation
-character(len=256) :: domain_order(3)              = ''          ! Domains: channel, hru, params??
-character(len=256) :: domain_shapefiles(3)         = ''          ! template restart files for each domain
+integer            :: assimilation_period_days     = -1           ! model instantaneous streamflow at the hour 23 of the day
+integer            :: assimilation_period_seconds  = -1           ! NA
+integer            :: debug                        = 0            ! debugging flag
+real(r8)           :: model_perturbation_amplitude = 0.1          ! perturb parameter for initial ensemble generation
+real(r8)           :: max_link_distance            = 10000.0      ! Max distance along the stream: 10 km
+character(len=256) :: perturb_distribution         = 'lognormal'  ! distribution needed for initial ensemble generation
+character(len=256) :: domain_order(3)              = ''           ! Domains: channel, hru, params??
+character(len=256) :: domain_shapefiles(3)         = ''           ! template restart files for each domain
+character(len=256) :: channel_config_file          = 'dis_seg.nc' ! file with stream connectivity information
+character(len=256) :: hru_config_file              = 'PRMS.nc'    ! file relating segments to HRUs
 
-character(len=obstypelength) :: channel_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = '' ! channel state variables
-character(len=obstypelength) :: hru_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP)     = '' ! hru (hydrologic response unit) variables
-character(len=obstypelength) :: parameters(MAX_STATE_VARIABLE_FIELDS_CLAMP)        = '' ! parameters
+character(len=vtablenamelength) :: channel_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = '' ! channel state variables
+character(len=vtablenamelength) :: hru_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP)     = '' ! hru (hydrologic response unit) variables
+character(len=vtablenamelength) :: parameters(MAX_STATE_VARIABLE_FIELDS_CLAMP)        = '' ! parameters
 
 namelist /model_nml/ assimilation_period_days,     &
                      assimilation_period_seconds,  &
@@ -98,6 +98,8 @@ namelist /model_nml/ assimilation_period_days,     &
                      domain_order,                 &
                      domain_shapefiles,            &
                      debug,                        &
+                     channel_config_file,          &
+                     hru_config_file,              &
                      channel_variables,            &
                      hru_variables,                & 
                      parameters
@@ -111,8 +113,11 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-real(r8) :: x_loc
 integer  :: i, dom_id
+
+! only do this once
+if (module_initialized) return 
+module_initialized = .true. 
 
 ! Read the namelist 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -123,31 +128,13 @@ call check_namelist_read(iunit, io, "model_nml")
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
+! Time handling 
+call set_calendar_type('gregorian')
+time_step  = set_time(assimilation_period_seconds, assimilation_period_days)
+
 model_size = 0
 
 end subroutine static_init_model
-
-
-!-------------------------------------------------------------
-! The following 2 routines are only used if namelist parameter
-! start_from_restart is set to .false.
-
-subroutine init_conditions(x)
-
-real(r8), intent(out) :: x(:)
-
-x = MISSING_R8
-
-end subroutine init_conditions
-
-subroutine init_time(time)
-
-type(time_type), intent(out) :: time
-
-! for now, just set to 0
-time = set_time(0,0)
-
-end subroutine init_time
 
 
 !------------------------------------------------------------------
@@ -163,7 +150,6 @@ get_model_size = model_size
 end function get_model_size
 
 
-
 !------------------------------------------------------------------
 ! Returns the smallest increment in time that the model is capable 
 ! of advancing the state in a given implementation, or the shortest
@@ -177,7 +163,6 @@ type(time_type) :: shortest_time_between_assimilations
 shortest_time_between_assimilations = time_step
 
 end function shortest_time_between_assimilations
-
 
 
 !------------------------------------------------------------------

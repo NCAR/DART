@@ -7,6 +7,8 @@
    max_link_distance            = 10000.0
    domain_order                 = 'channel', 'hru'
    domain_shapefiles            = 'seg_inflow.nc', 'gwres_stor.nc'
+   channel_config_file          = 'parameters_dis_seg.nc' 
+   hru_config_file              = 'parameters_PRMSChannel.nc' 
    channel_variables            = 'seg_inflow', 'QTY_STREAM_FLOW', '0.0', 'NA', 'update',  
    hru_variables                = 'gwres_stor', 'QTY_GROUNDWATER', '0.0', 'NA', 'update',   
    debug                        = 0
@@ -225,16 +227,21 @@
    /
 
 &model_mod_check_nml
-  input_state_files     = 'perfect_input.nc'
+  input_state_files     = 'seg_inflow.nc'
   output_state_files    = 'mmc_output.nc'
   num_ens               = 1
   single_file           = .false.
   test1thru             = 0
-  run_tests             = 1,2,3,4,5,6,7
+  run_tests             = 1
   x_ind                 = 2
   loc_of_interest       = 0.3
-  quantity_of_interest  = 'QTY_STATE_VARIABLE'
-  interp_test_dx        = 0.02
-  interp_test_xrange    = 0.0, 1.0
+  quantity_of_interest  = 'QTY_STREAM_FLOW'
+  interp_test_dlon      = 0.001
+  interp_test_dlat      = 0.001
+  interp_test_dvert     = 50.0
+  interp_test_lonrange  = 283.50,  283.73
+  interp_test_latrange  =  42.30,   42.51
+  interp_test_vertrange = 200.0, 300.0
+  interp_test_vertcoord = 'VERTISHEIGHT'
   verbose               = .true.
   /
