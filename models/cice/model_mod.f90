@@ -828,6 +828,8 @@ real(r8)       :: temp(ens_size)
 real(r8)       :: temp1(ens_size)
 !----------------------------------------------------------------------------
 
+print*, '-- model_interpolate --'
+
 if ( .not. module_initialized ) call static_init_model
 
 ! Let's assume failure.  Set return val to missing, then the code can
@@ -852,6 +854,7 @@ if (obs_type == QTY_SEAICE_CATEGORY) then
    if (cat_index <= Ncat) then
       istatus      = 0
       expected_obs = cat_index
+print*, 'returning cat_index'
       RETURN
    endif
 endif
@@ -869,6 +872,7 @@ endif
 ! the lon_lat_interpolate() routine
 ! cat_signal says whether to aggregate multiple categories into a sum, interpolate a 3d var 
 ! on a particular level, or interpolate a simple 2d variable.
+print*, 'QTY', obs_type, get_name_for_quantity(obs_type)
 SELECT CASE (obs_type)
    CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
@@ -877,6 +881,7 @@ SELECT CASE (obs_type)
       cat_signal = -1 ! for extra special procedure to aggregate
       base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SNOWVOLUME))  
    CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
+      print*, '  case QTY_SEAICE_AGREG_CONCENTR cat_signal', cat_signal
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
       base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))  
    CASE (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
@@ -928,6 +933,7 @@ SELECT CASE (obs_type)
       base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
       cat_signal = 1 ! now same as boring 2d field
+      print*, '  case additional dim', cat_index
    CASE ( QTY_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
           QTY_V_SEAICE_COMPONENT    , &
           QTY_SEAICE_ALBEDODIRVIZ   , &
@@ -1008,6 +1014,9 @@ else if (cat_signal == -3 ) then
    endif
 
 else
+print*,  ' ' 
+print*,  ' ' 
+print*, '   calling lon_lat_interpolate'
     call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_obs, istatus)
       if (any(expected_obs<0.0))then
       print*,'obstype SIC expected concs:',expected_obs
@@ -1207,7 +1216,7 @@ work_expected_obs = 0.0_r8
 expected_obs = 0.0_r8
 
 do iterations = 1, Niterations
-
+   print*, '    iteration', iterations, 'of Niterations', Niterations
    ! FIXME: this should use the state structure routine 'get_dart_vector_index'
    ! to get the start of the next category layer.  this code assumes it knows
    ! exactly how the state vector is laid out (reasonable, but might not be true
@@ -1243,6 +1252,7 @@ do iterations = 1, Niterations
    ! Full bilinear interpolation for quads
    if(dipole_grid) then
       do e = 1, ens_size
+         print*, '    ens member ', e
          call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, work_expected_obs(e))
       enddo
    else
@@ -1667,7 +1677,7 @@ integer :: i
 real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
 ! real(r8) :: lon_mean
 
-logical :: ok_expected
+real(r8) :: before_clamp
 
 ! Watch out for wraparound on x_corners.
 lon = lon_in
@@ -1731,21 +1741,34 @@ a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
 
 ! Now do the interpolation
 expected_obs = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
+before_clamp = expected_obs
 
 !********
 ! Avoid exceeding maxima or minima as stopgap for poles problem
 ! When doing bilinear interpolation in quadrangle, can get interpolated
 ! values that are outside the range of the corner values
-ok_expected = .true.
 if(expected_obs > maxval(p)) then
    expected_obs = maxval(p)
-   ok_expected = .false.
 else if(expected_obs < minval(p)) then
    expected_obs = minval(p)
-   ok_expected = .false.
 endif
 
-print*,  ok_expected,':', p, ':', lon, lat, ':', x_corners, ':', y_corners
+print*, '       -----------'
+print*, '       values :, lon, lat : x_corners : y_corners'
+print*, '       lon, lat'
+print*, '       x_corners'
+print*, '       y_corners'
+print*, '       values'
+print*, '       expected_obs before clamping'
+print*, '       expected_obs'
+
+print*, '      ', lon, lat
+print*, '      ', x_corners
+print*, '      ', y_corners
+print*, '      ', p
+print*, '      ', before_clamp
+print*, '      ', expected_obs
+print*, '      ', '-----------'
 !********
 
 end subroutine quad_bilinear_interp
