@@ -7,8 +7,8 @@ module model_mod
 
 ! This is the interface between pywatershed and DART
 
-use types_mod,             only : r8, i8, i4, MISSING_R8, vtablenamelength, &
-                                  earth_radius
+use types_mod,             only : r4, r8, i8, i4, MISSING_R8, vtablenamelength, &
+                                  earth_radius, MISSING_I, MISSING_I8
 
 use time_manager_mod,      only : time_type, set_time, set_calendar_type
 
@@ -20,11 +20,15 @@ use utilities_mod,         only : do_nml_file, do_nml_term, E_ERR, E_MSG,       
                                   nmlfileunit, find_namelist_in_file, to_upper,  &
                                   check_namelist_read, file_exist, error_handler
 
-use location_io_mod,      only :  nc_write_location_atts, nc_write_location
+use location_io_mod,      only : nc_write_location_atts, nc_write_location
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+use mpi_utilities_mod,    only : my_task_id 
+
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file,      &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
-                                 nc_end_define_mode
+                                 nc_end_define_mode, nc_open_file_readonly,         &
+                                 nc_close_file, nc_get_global_attribute,            &
+                                 nc_get_dimension_size, nc_get_variable, nc_check 
 
 use         obs_kind_mod,  only : get_index_for_quantity, &
                                   get_name_for_quantity, &
@@ -52,6 +56,8 @@ use default_model_mod,     only : adv_1step, end_model, pert_model_copies,      
 
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
+use netcdf
+
 implicit none
 private
 
@@ -78,7 +84,51 @@ public :: get_model_size,         &
 
 character(len=256), parameter :: source = "pywatershed/model_mod.f90"
 
+integer, parameter :: IDSTRLEN = 15 ! Number of character for a USGS gauge ID
+
+!TODO: Revisit for bigger (e.g., CONUS) domain
+!For DRB the maximum number of contributing HRUs was 3
+integer, parameter :: NUM_HRU  = 10 ! Number of contributing HRUs for each segment  
+
 type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
+
+! user-defined type to enable a 'linked list' of stream links
+type link_relations
+   private
+   character(len=IDSTRLEN) :: gaugeName          = ''         ! USGS gauge ID
+   integer                 :: segID              = MISSING_I  ! National Hydrologic Model (NHM) ID
+   real(r4)                :: segLength          = 0.0_r8     ! seg length (meters)
+   real(r4)                :: segSlope           = 0.0_r8     ! seg slope (decimal fraction)
+   real(r4)                :: segWidth           = 0.0_r8     ! seg width (meters)
+   real(r4)                :: segElevation       = 0.0_r8     ! seg elevation (meters)
+   real(r4)                :: segManning         = 0.0_r8     ! seg manning's n in seconds / meter ** (1/3)
+   integer                 :: segType            = MISSING_I  ! seg type(0: seg, 1: headwater, 2: lake, ...)
+   integer(i8)             :: domain_offset      = MISSING_I8 ! into DART state vector
+   integer                 :: downstream_segID   = MISSING_I
+   integer                 :: downstream_index   = MISSING_I  ! into link_type structure
+   integer, allocatable    :: upstream_segID(:)
+   integer, allocatable    :: upstream_index(:)               ! into link_type structure
+   integer, allocatable    :: avail_hru(:)                    ! into 
+end type link_relations
+
+type(link_relations), allocatable  :: connections(:)          ! Connections structure of the entire river network
+integer, allocatable, dimension(:) :: num_up_links            ! Number of links upstream from each segment
+
+integer, allocatable, dimension(:) :: GaugeID
+integer, allocatable, dimension(:) :: segNHMid
+integer, allocatable, dimension(:) :: segGauge
+integer, allocatable, dimension(:) :: segTyp
+integer, allocatable, dimension(:) :: hruMask
+
+real(r8), allocatable, dimension(:) :: segLat
+real(r8), allocatable, dimension(:) :: segLon
+real(r8), allocatable, dimension(:) :: segLen
+real(r8), allocatable, dimension(:) :: segSlp
+real(r8), allocatable, dimension(:) :: segElv
+real(r8), allocatable, dimension(:) :: segWid
+real(r8), allocatable, dimension(:) :: segMan
+
+integer            :: nseg, ngages, nhru                                      
 
 type(time_type)    :: time_step
 integer(i8)        :: model_size
@@ -128,7 +178,7 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-integer  :: i, dom_id
+integer  :: domain_count
 
 ! only do this once
 if (module_initialized) return 
@@ -150,7 +200,12 @@ time_step  = set_time(assimilation_period_seconds, assimilation_period_days)
 ! Add, configure and manage domains
 call manage_domains()
 
+! Determine the model size
+domain_count = get_num_domains()
 model_size = 0
+do idom = 1,domain_count
+   model_size = model_size + get_domain_size(idom)
+enddo
 
 end subroutine static_init_model
 
@@ -212,11 +267,26 @@ DOMAINS: do idom = 1, adom
    if (index(domain_name, 'CHANNEL') > 0) then 
       ! Read the stream network and channel attributes   
       call read_stream_network(channel_config_file)
-      call read_channel_atts(domain_shapefiles(idom))
+      call read_channel_atts(domain_shapefiles(idom)) !TODO: may need to remove
 
       ! Add channel variables: streamflow
       idom_chn = add_domain(domain_shapefiles(idom), &
-                 parse_variables_clamp(channel_variables))
+                 parse_variables_clamp(channel_variables)) 
+      call verify_domain(idom_chn, nseg, domain_shapefiles(idom), &
+                         channel_config_file)
+  
+   elseif (index(domain_name, 'HRU') > 0) then 
+       ! Read the hru properties
+       call read_hru_properties(hru_config_file)
+ 
+       ! Add hru variables: groundwater
+       idom_hru = add_domain(domain_shapefiles(idom), &
+                  parse_variables_clamp(hru_variables))  
+       call verify_domain(idom_hru, nhru, domain_shapefiles(idom), &
+                          hru_config_file) 
+
+   elseif (index(domain_name, 'PARAMETERS') > 0) then 
+       ! To be added 
    endif
 
     
@@ -225,14 +295,233 @@ enddo DOMAINS
 end subroutine manage_domains
 
 
-!-------------------------------------------------------------
+!--------------------------------------------------------------
 ! Read stream network variables and construct the connectivity 
 
 subroutine read_stream_network(filename)
 
 character(len=*), intent(in) :: filename
+character(len=*), parameter  :: routine = 'read_stream_network'
+
+integer              :: ncid, nindex, io, varid
+integer, allocatable :: fromIndices(:)
+integer, allocatable :: fromIndsStart(:)
+integer, allocatable :: fromIndsEnd(:)
+integer, allocatable :: toIndex(:)
+
+ncid = nc_open_file_readonly(filename, routine)        
+
+! Read in the dimensions
+nseg   = nc_get_dimension_size(ncid, 'nsegment' , routine)
+nindex = nc_get_dimension_size(ncid, 'index'    , routine)
+ngages = nc_get_dimension_size(ncid, 'npoigages', routine)
+
+allocate(segLat(nseg), segLon(nseg), &
+         segSlp(nseg), segLen(nseg), &
+         segWid(nseg), segElv(nseg), &
+         segTyp(nseg), segNHMid(nseg))
+
+! Read segment properties
+call nc_get_variable(ncid, 'nhm_seg'     , segNHMid, routine)
+call nc_get_variable(ncid, 'seg_lat'     , segLat  , routine)
+call nc_get_variable(ncid, 'seg_length'  , segLen  , routine)
+call nc_get_variable(ncid, 'seg_elev'    , segElv  , routine)
+call nc_get_variable(ncid, 'seg_slope'   , segSlp  , routine)
+call nc_get_variable(ncid, 'seg_width'   , segWid  , routine)
+call nc_get_variable(ncid, 'segment_type', segTyp  , routine)
+
+allocate(GaugeID(ngages), segGauge(ngages))
+
+! Read gauge-related variables
+call nc_get_variable(ncid, 'poi_gauges'      , GaugeID , routine)
+call nc_get_variable(ncid, 'poi_gage_segment', segGauge, routine)
+
+allocate(fromIndices(nindex))
+allocate(fromIndsStart(nseg))
+allocate(fromIndsEnd(nseg))
+allocate(toIndex(nseg))
+allocate(num_up_links(nseg))
+
+! Read in temporary connection arrays
+call nc_get_variable(ncid, 'fromIndices'  , fromIndices  , routine)
+call nc_get_variable(ncid, 'fromIndsStart', fromIndsStart, routine)
+call nc_get_variable(ncid, 'fromIndsEnd'  , fromIndsEnd  , routine)
+call nc_get_variable(ncid, 'tosegment'    , toIndex      , routine)
+call nc_get_variable(ncid, 'num_up_links' , num_up_links , routine)
+
+! Fill the connections
+call fill_connections(toIndex, fromIndices, fromIndsStart, fromIndsEnd)
+
+deallocate(fromIndices, fromIndsStart, &
+           fromIndsEnd, toIndex)
 
 end subroutine read_stream_network
+
+
+!-------------------------------------------------------------
+! Populate the connections using the segment properties and 
+! the offline network calculations
+
+subroutine fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
+
+integer, intent(in) :: toIndex(:)
+integer, intent(in) :: fromIndices(:)
+integer, intent(in) :: fromIndsStart(:)
+integer, intent(in) :: fromIndsEnd(:)
+
+integer             :: iseg
+
+allocate(connections(nseg))
+
+! segment properties
+do iseg = 1, nseg
+
+   ! naming
+   connections(iseg)%segID         = segNHMid(iseg)
+   connections(iseg)%gaugeName     = ''  
+
+   ! geometry
+   connections(iseg)%segLength     = segLen(iseg)
+   connections(iseg)%segWidth      = segWid(iseg)
+   connections(iseg)%segSlope      = segSlp(iseg)
+   connections(iseg)%segElevation  = segElv(iseg)
+   connections(iseg)%segType       = segTyp(iseg)
+
+   ! dart-related
+   connections(iseg)%domain_offset = iseg 
+   
+   ! downstream
+   if (toIndex(iseg) == 0) then 
+      connections(iseg)%downstream_segID = MISSING_I
+      connections(iseg)%downstream_index = MISSING_I
+   else
+      connections(iseg)%downstream_segID = segNHMid(toIndex(iseg))
+      connections(iseg)%downstream_index = toIndex(iseg) 
+   endif
+
+   ! upstream
+   if (num_up_links(iseg) == 0) then 
+      allocate(connections(iseg)%upstream_segID(1))
+      allocate(connections(iseg)%upstream_index(1))
+
+      connections(iseg)%upstream_segID(1) = MISSING_I 
+      connections(iseg)%upstream_index(1) = MISSING_I
+   else
+      allocate(connections(iseg)%upstream_segID(num_up_links(iseg)))
+      allocate(connections(iseg)%upstream_index(num_up_links(iseg)))
+
+      connections(iseg)%upstream_segID(:) = segNHMid(fromIndices(fromIndsStart(iseg):fromIndsEnd(iseg)))
+      connections(iseg)%upstream_index(:) = fromIndices(fromIndsStart(iseg):fromIndsEnd(iseg))
+   endif
+ 
+enddo
+
+! Update USGS gauge IDs
+do iseg = 1, ngages
+   write(connections(segGauge(iseg))%gaugeName, '(i0)') GaugeID(iseg)
+enddo
+
+if (debug > 99) then 
+   write(msg1, '("PE",i2)') my_task_id()
+   do iseg = 1, nseg
+      write(*, *) ''
+      write(*, *) trim(msg1), ' Connectivity for segment: ', iseg
+      write(*, *) trim(msg1), ' Segment NHM ID          : ', connections(iseg)%segID
+      write(*, *) trim(msg1), ' Segment USGS Gauge      : ', connections(iseg)%gaugeName
+      write(*, *) trim(msg1), ' Segment Length          : ', connections(iseg)%segLength
+      write(*, *) trim(msg1), ' Segment Width           : ', connections(iseg)%segWidth
+      write(*, *) trim(msg1), ' Segment Slope           : ', connections(iseg)%segSlope
+      write(*, *) trim(msg1), ' Segment Elevation       : ', connections(iseg)%segElevation
+      write(*, *) trim(msg1), ' Segment Type            : ', connections(iseg)%segType
+      write(*, *) trim(msg1), ' Segment down segID      : ', connections(iseg)%downstream_segID
+      write(*, *) trim(msg1), ' Segment down index      : ', connections(iseg)%downstream_index
+      write(*, *) trim(msg1), ' Segment up segID        : ', connections(iseg)%upstream_segID
+      write(*, *) trim(msg1), ' Segment up index        : ', connections(iseg)%upstream_index
+   enddo
+endif
+
+end subroutine fill_connections
+
+
+!-----------------------------------------------------------
+! Make sure the domain is read properly and that shapefile
+! and restart files are consistent
+
+subroutine verify_domain(dom_id, nvars, rest_file, config_file)
+
+character(len=*), parameter  :: routine = 'verify_domain'
+
+integer, intent(in)          :: dom_id
+integer, intent(in)          :: nvars
+character(len=*), intent(in) :: rest_file, config_file
+
+integer :: var_size
+
+if (debug > 99) call state_structure_info(dom_id)
+
+var_size = get_variable_size(dom_id, 1) 
+if (var_size /= nvars) then 
+   write(msg1, *) 'Restart file and shapefile are not consustent.'
+   write(msg2, *) 'Number of variables in the restart "', & 
+                  trim(rest_file), '" is ', var_size
+   write(msg3, *) 'Number of variables in the shapefile "', &
+                  trim(config_file), '" is ', nvars
+   call error_handler(E_ERR, routine, msg1, source, text2=msg2, text3=msg3)
+endif
+
+end subroutine verify_domain
+
+
+!--------------------------------------------------------------
+! Read hru parameters and add to the segment the connectivity 
+
+subroutine read_hru_properties(filename)
+
+character(len=*), intent(in) :: filename
+character(len=*), parameter  :: routine = 'read_hru_properties'
+
+integer              :: ncid, iseg, ihru, count_hrus
+integer, allocatable :: hru_seg(:), hru_inds(:)
+
+ncid = nc_open_file_readonly(filename, routine)
+
+! Read in the HRU dimension
+nhru = nc_get_dimension_size(ncid, 'nhru' , routine)
+
+allocate(hru_seg(nhru), segMan(nseg), hruMask(nseg))
+
+! Read hru/segment relation
+call nc_get_variable(ncid, 'hru_segment', hru_seg, routine)
+call nc_get_variable(ncid, 'mann_n'     , segMan , routine)
+
+! Additional segment properties
+connections(:)%segManning = segMan
+
+! Construct some sort of a bucket mask
+! HRU index contributes (thru groundwater) to segment .. 
+allocate(hru_inds(NUM_HRU))
+do iseg = 1, nseg 
+
+   ! Find which HRUs contribute to segement iseg
+   hru_inds   = pack([(ihru, ihru = 1, nhru)], hru_seg == iseg)
+   count_hrus = size(hru_inds)
+   
+   ! Fill connections with HRU information
+   if (count_hrus == 0) then
+      allocate(connections(iseg)%avail_hru(1))
+      connections(iseg)%avail_hru(1) = MISSING_I
+   else
+      allocate(connections(iseg)%avail_hru(count_hrus))
+      connections(iseg)%avail_hru(:) = hru_inds(1:count_hrus)
+   endif
+
+   if (debug > 99) then   
+       write(msg1, '("PE",i2)') my_task_id()
+       write(*, *) trim(msg1), ' segment: ', iseg, 'Contributing HRUs: ', connections(iseg)%avail_hru(:)
+   endif  
+enddo 
+
+end subroutine read_hru_properties
 
 
 !-------------------------------------------------------------
