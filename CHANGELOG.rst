@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 14 2025 :: WRF use_theta_m check. Tag v11.10.5**
+
+- Assert USE_THETA_M=0 in WRF when initializing wrf model_mod.
+- fixed documentation broken links.
+
 **February 6 2025 :: WRF tutorial and prepbufr documentation. Tag v11.10.4**
 
 - Observation section of WRF tutorial updated to match provided obs.   
