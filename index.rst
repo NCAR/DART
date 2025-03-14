@@ -241,6 +241,8 @@ Download the appropriate tar file and untar it into your DART repository. Ignore
 any warnings about ``tar: Ignoring unknown extended header keyword``.
 
 
+.. _citeDART:
+
 Citing DART
 -----------
 
