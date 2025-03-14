@@ -2,48 +2,49 @@
 &model_nml
    assimilation_period_days     = 1 
    assimilation_period_seconds  = 0 
-   model_perturbation_amplitude = 0.1 
+   model_perturbation_amplitude = 0.05 
    perturb_distribution         = 'lognormal'
-   max_link_distance            = 10000.0
+   max_link_distance            = 100000.0
    domain_order                 = 'channel', 'hru'
    domain_shapefiles            = 'seg_inflow.nc', 'gwres_stor.nc'
    channel_config_file          = 'parameters_dis_seg.nc' 
-   hru_config_file              = 'parameters_PRMSChannel.nc' 
+   hru_config_file              = 'parameters_dis_hru.nc' 
+   hydro_config_file            = 'parameters_PRMSChannel.nc' 
    channel_variables            = 'seg_inflow', 'QTY_STREAM_FLOW', '0.0', 'NA', 'update',  
    hru_variables                = 'gwres_stor', 'QTY_GROUNDWATER', '0.0', 'NA', 'update',   
    debug                        = 100
    /   
 
 &filter_nml
-   single_file_in               = .true.,
-   input_state_files            = ''
-   input_state_file_list        = 'filter_input_list.txt'
+   single_file_in               = .false.,
+   input_state_files            = 'seg_inflow.nc', 'gwres_stor.nc'
+   input_state_file_list        = ''
 
-   stages_to_write  = 'preassim', 'analysis', 'output'
+   stages_to_write              = 'preassim', 'analysis', 'output'
 
-   single_file_out              = .true.,
+   single_file_out              = .false.,
    output_state_files           = ''
-   output_state_file_list       = 'filter_output_list.txt'
+   output_state_file_list       = 'filter_chn_outlist.txt', 'filter_hru_outlist.txt'
    output_interval              = 1,
    output_members               = .true.
-   num_output_state_members     = 20,
+   num_output_state_members     = 9,
    output_mean                  = .true.
    output_sd                    = .true.
 
-   ens_size                     = 20,
+   ens_size                     = 9,
    num_groups                   = 1,
-   perturb_from_single_instance = .false.,
+   perturb_from_single_instance = .true.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 
    async                        = 0,
    adv_ens_command              = "./advance_model.csh",
 
-   obs_sequence_in_name         = "obs_seq.out",
-   obs_sequence_out_name        = "obs_seq.final",
-   num_output_obs_members       = 20,
-   init_time_days               = 0,
-   init_time_seconds            = 0,
+   obs_sequence_in_name         = "obs_seq_1.out",
+   obs_sequence_out_name        = "obs_seq_1.final",
+   num_output_obs_members       = 9,
+   init_time_days               = -1,
+   init_time_seconds            = -1,
    first_obs_days               = -1,
    first_obs_seconds            = -1,
    last_obs_days                = -1,
@@ -68,7 +69,7 @@
    /
 
 &assim_tools_nml
-   cutoff                          = 0.02,
+   cutoff                          = 0.0078394481,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -135,6 +136,9 @@
    output_forward_op_errors   = .false.,
    silence                    = .false.,
    /
+
+&location_nml
+  /
 
 &ensemble_manager_nml
    /
@@ -227,12 +231,10 @@
    /
 
 &model_mod_check_nml
-  input_state_files     = 'seg_inflow.nc'
-  output_state_files    = 'mmc_output.nc'
-  num_ens               = 1
-  single_file           = .false.
+  input_state_files     = 'seg_inflow.nc', 'gwres_stor.nc'
+  output_state_files    = 'seg_output.nc', 'gwres_output.nc'
   test1thru             = 2
-  run_tests             = 1
+  run_tests             = 2
   x_ind                 = 2
   loc_of_interest       = 0.3
   quantity_of_interest  = 'QTY_STREAM_FLOW'

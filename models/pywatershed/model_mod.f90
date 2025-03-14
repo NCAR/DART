@@ -10,25 +10,28 @@ module model_mod
 use types_mod,             only : r4, r8, i8, i4, MISSING_R8, vtablenamelength, &
                                   earth_radius, MISSING_I, MISSING_I8
 
-use time_manager_mod,      only : time_type, set_time, set_calendar_type
-
-use location_mod,          only : location_type, set_location, get_location,  &
-                                  get_close_obs, get_close_state,             &
-                                  convert_vertical_obs, convert_vertical_state
+use time_manager_mod,      only : time_type, set_time, set_calendar_type,     &
+                                  set_date, print_date, increment_time
 
 use utilities_mod,         only : do_nml_file, do_nml_term, E_ERR, E_MSG,        &
                                   nmlfileunit, find_namelist_in_file, to_upper,  &
                                   check_namelist_read, file_exist, error_handler
 
-use location_io_mod,      only : nc_write_location_atts, nc_write_location
+use         location_mod,  only : location_type, get_close_type, get_dist, &
+                                  loc_get_close_obs => get_close_obs, &
+                                  loc_get_close_state => get_close_state, &
+                                  convert_vertical_obs, convert_vertical_state, &
+                                  set_location, set_location_missing, VERTISHEIGHT, &
+                                  write_location
 
-use mpi_utilities_mod,    only : my_task_id 
+use mpi_utilities_mod,     only : my_task_id 
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file,      &
-                                 nc_add_global_creation_time, nc_begin_define_mode, &
-                                 nc_end_define_mode, nc_open_file_readonly,         &
-                                 nc_close_file, nc_get_global_attribute,            &
-                                 nc_get_dimension_size, nc_get_variable, nc_check 
+use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file,      &
+                                  nc_add_global_creation_time, nc_begin_define_mode, &
+                                  nc_end_define_mode, nc_open_file_readonly,         &
+                                  nc_close_file, nc_get_global_attribute,            &
+                                  nc_get_dimension_size, nc_get_variable, nc_check,  &
+                                  nc_get_attribute_from_variable, nc_synchronize_file 
 
 use         obs_kind_mod,  only : get_index_for_quantity, &
                                   get_name_for_quantity, &
@@ -48,13 +51,16 @@ use state_structure_mod,   only : add_domain, get_domain_size, get_index_start, 
                                   get_varid_from_kind, get_dart_vector_index,        &
                                   get_variable_size, state_structure_info
 
-use default_model_mod,     only : adv_1step, end_model, pert_model_copies,              & 
-                                  nc_write_model_vars, MAX_STATE_VARIABLE_FIELDS_CLAMP, &
-                                  init_time => fail_init_time,                          & 
-                                  init_conditions => fail_init_conditions,              &
+use default_model_mod,     only : adv_1step, end_model, nc_write_model_vars,  & 
+                                  MAX_STATE_VARIABLE_FIELDS_CLAMP,            &
+                                  init_time => fail_init_time,                & 
+                                  init_conditions => fail_init_conditions,    &
                                   parse_variables_clamp 
 
-use dart_time_io_mod,      only : read_model_time, write_model_time
+use dart_time_io_mod,      only : write_model_time
+
+use random_seq_mod,        only : random_seq_type, init_random_seq,   &
+                                  random_gaussian, random_gamma
 
 use netcdf
 
@@ -85,12 +91,19 @@ public :: get_model_size,         &
 character(len=256), parameter :: source = "pywatershed/model_mod.f90"
 
 integer, parameter :: IDSTRLEN = 15 ! Number of character for a USGS gauge ID
+integer, parameter :: JINDEX   = 1  ! 1D river network
+integer, parameter :: KINDEX   = 1  ! 1D river network
 
 !TODO: Revisit for bigger (e.g., CONUS) domain
 !For DRB the maximum number of contributing HRUs was 3
 integer, parameter :: NUM_HRU  = 10 ! Number of contributing HRUs for each segment  
 
-type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
+type domain_locations
+   private
+   type(location_type), allocatable :: location(:,:,:)
+end type domain_locations
+
+type(domain_locations), allocatable :: domain_info(:)
 
 ! user-defined type to enable a 'linked list' of stream links
 type link_relations
@@ -108,7 +121,7 @@ type link_relations
    integer                 :: downstream_index   = MISSING_I  ! into link_type structure
    integer, allocatable    :: upstream_segID(:)
    integer, allocatable    :: upstream_index(:)               ! into link_type structure
-   integer, allocatable    :: avail_hru(:)                    ! into 
+   integer, allocatable    :: avail_hru(:)                    ! into hru_type structure 
 end type link_relations
 
 type(link_relations), allocatable  :: connections(:)          ! Connections structure of the entire river network
@@ -128,7 +141,12 @@ real(r8), allocatable, dimension(:) :: segElv
 real(r8), allocatable, dimension(:) :: segWid
 real(r8), allocatable, dimension(:) :: segMan
 
+real(r8), allocatable, dimension(:) :: hruLat
+real(r8), allocatable, dimension(:) :: hruLon
+real(r8), allocatable, dimension(:) :: hruElv
+
 integer            :: nseg, ngages, nhru                                      
+integer            :: domain_count
 
 type(time_type)    :: time_step
 integer(i8)        :: model_size
@@ -149,7 +167,8 @@ character(len=256) :: perturb_distribution         = 'lognormal'  ! distribution
 character(len=256) :: domain_order(3)              = ''           ! Domains: channel, hru, params??
 character(len=256) :: domain_shapefiles(3)         = ''           ! template restart files for each domain
 character(len=256) :: channel_config_file          = 'dis_seg.nc' ! file with stream connectivity information
-character(len=256) :: hru_config_file              = 'PRMS.nc'    ! file relating segments to HRUs
+character(len=256) :: hru_config_file              = 'dis_hru.nc' ! file with hru information
+character(len=256) :: hydro_config_file            = 'PRMS.nc'    ! file relating segments to HRUs
 
 character(len=vtablenamelength) :: channel_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = '' ! channel state variables
 character(len=vtablenamelength) :: hru_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP)     = '' ! hru (hydrologic response unit) variables
@@ -165,6 +184,7 @@ namelist /model_nml/ assimilation_period_days,     &
                      debug,                        &
                      channel_config_file,          &
                      hru_config_file,              &
+                     hydro_config_file,            &
                      channel_variables,            &
                      hru_variables,                & 
                      parameters
@@ -178,7 +198,6 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-integer  :: domain_count
 
 ! only do this once
 if (module_initialized) return 
@@ -206,6 +225,10 @@ model_size = 0
 do idom = 1,domain_count
    model_size = model_size + get_domain_size(idom)
 enddo
+
+! Locations for the domains
+allocate(domain_info(domain_count))
+call configure_domloc()
 
 end subroutine static_init_model
 
@@ -264,12 +287,12 @@ DOMAINS: do idom = 1, adom
    domain_name = domain_order(idom)
    call to_upper(domain_name)
 
+   !TODO: address variable units in the restart files 
    if (index(domain_name, 'CHANNEL') > 0) then 
       ! Read the stream network and channel attributes   
       call read_stream_network(channel_config_file)
-      call read_channel_atts(domain_shapefiles(idom)) !TODO: may need to remove
 
-      ! Add channel variables: streamflow
+      ! Add channel variables: streamflow (cfs)
       idom_chn = add_domain(domain_shapefiles(idom), &
                  parse_variables_clamp(channel_variables)) 
       call verify_domain(idom_chn, nseg, domain_shapefiles(idom), &
@@ -277,9 +300,9 @@ DOMAINS: do idom = 1, adom
   
    elseif (index(domain_name, 'HRU') > 0) then 
        ! Read the hru properties
-       call read_hru_properties(hru_config_file)
+       call read_hru_properties(hru_config_file, hydro_config_file)
  
-       ! Add hru variables: groundwater
+       ! Add hru variables: groundwater (inches)
        idom_hru = add_domain(domain_shapefiles(idom), &
                   parse_variables_clamp(hru_variables))  
        call verify_domain(idom_hru, nhru, domain_shapefiles(idom), &
@@ -288,7 +311,6 @@ DOMAINS: do idom = 1, adom
    elseif (index(domain_name, 'PARAMETERS') > 0) then 
        ! To be added 
    endif
-
     
 enddo DOMAINS 
 
@@ -309,6 +331,12 @@ integer, allocatable :: fromIndsStart(:)
 integer, allocatable :: fromIndsEnd(:)
 integer, allocatable :: toIndex(:)
 
+logical, save :: network_read = .false. 
+
+! Only do this once
+if (network_read) return 
+network_read = .true.
+
 ncid = nc_open_file_readonly(filename, routine)        
 
 ! Read in the dimensions
@@ -323,12 +351,17 @@ allocate(segLat(nseg), segLon(nseg), &
 
 ! Read segment properties
 call nc_get_variable(ncid, 'nhm_seg'     , segNHMid, routine)
-call nc_get_variable(ncid, 'seg_lat'     , segLat  , routine)
+call nc_get_variable(ncid, 'seg_lats'    , segLat  , routine)
+call nc_get_variable(ncid, 'seg_lons'    , segLon  , routine)
 call nc_get_variable(ncid, 'seg_length'  , segLen  , routine)
 call nc_get_variable(ncid, 'seg_elev'    , segElv  , routine)
 call nc_get_variable(ncid, 'seg_slope'   , segSlp  , routine)
 call nc_get_variable(ncid, 'seg_width'   , segWid  , routine)
 call nc_get_variable(ncid, 'segment_type', segTyp  , routine)
+
+! DART-style longitude for the segments
+where(segLon <    0.0_r8) segLon = segLon + 360.0_r8
+where(segLon == 360.0_r8) segLon = 0.0_r8
 
 allocate(GaugeID(ngages), segGauge(ngages))
 
@@ -351,6 +384,7 @@ call nc_get_variable(ncid, 'num_up_links' , num_up_links , routine)
 
 ! Fill the connections
 call fill_connections(toIndex, fromIndices, fromIndsStart, fromIndsEnd)
+call nc_close_file(ncid, routine)
 
 deallocate(fromIndices, fromIndsStart, &
            fromIndsEnd, toIndex)
@@ -475,15 +509,21 @@ end subroutine verify_domain
 !--------------------------------------------------------------
 ! Read hru parameters and add to the segment the connectivity 
 
-subroutine read_hru_properties(filename)
+subroutine read_hru_properties(hru_file, prms_file)
 
-character(len=*), intent(in) :: filename
+character(len=*), intent(in) :: hru_file, prms_file
 character(len=*), parameter  :: routine = 'read_hru_properties'
 
 integer              :: ncid, iseg, ihru, count_hrus
 integer, allocatable :: hru_seg(:), hru_inds(:)
 
-ncid = nc_open_file_readonly(filename, routine)
+logical, save :: basin_read = .false. 
+
+! Only do this once
+if (basin_read) return 
+basin_read = .true.
+
+ncid = nc_open_file_readonly(prms_file, routine)
 
 ! Read in the HRU dimension
 nhru = nc_get_dimension_size(ncid, 'nhru' , routine)
@@ -509,29 +549,35 @@ do iseg = 1, nseg
    ! Fill connections with HRU information
    if (count_hrus == 0) then
       allocate(connections(iseg)%avail_hru(1))
-      connections(iseg)%avail_hru(1) = MISSING_I
+      connections(iseg)%avail_hru(1) = 0       ! Similar to "Masked Buckets"
    else
       allocate(connections(iseg)%avail_hru(count_hrus))
       connections(iseg)%avail_hru(:) = hru_inds(1:count_hrus)
    endif
 
    if (debug > 99) then   
-       write(msg1, '("PE",i2)') my_task_id()
+       write(msg1, '("PE", i2)') my_task_id()
        write(*, *) trim(msg1), ' segment: ', iseg, 'Contributing HRUs: ', connections(iseg)%avail_hru(:)
    endif  
 enddo 
 
+call nc_close_file(ncid, routine)
+
+! Now, get HRU data
+ncid = nc_open_file_readonly(hru_file, routine)
+
+allocate(hruLat(nhru), hruLon(nhru), hruElv(nhru))
+
+! Read hru location variables
+call nc_get_variable(ncid, 'hru_lat' , hruLat, routine)
+call nc_get_variable(ncid, 'hru_lon' , hruLon, routine)
+call nc_get_variable(ncid, 'hru_elev', hruElv, routine)
+
+! DART-style longitude
+where(hruLon <    0.0_r8) hruLon = hruLon + 360.0_r8
+where(hruLon == 360.0_r8) hruLon = 0.0_r8
+
 end subroutine read_hru_properties
-
-
-!-------------------------------------------------------------
-! Read channel global attributes from streamflow restart file
-
-subroutine read_channel_atts(filename)
-
-character(len=*), intent(in) :: filename
-
-end subroutine read_channel_atts
 
 
 !------------------------------------------------------------------
@@ -546,6 +592,67 @@ get_model_size = model_size
 
 end function get_model_size
 
+
+!------------------------------------------------------------------
+! Read model time from restart file
+
+function read_model_time(filename)
+
+type(time_type) :: read_model_time, base_hydro_date
+character(len=*), intent(in) :: filename
+character(len=*), parameter  :: routine = 'read_model_time'
+
+integer, parameter          :: STRINGLENGTH = 30
+character(len=STRINGLENGTH) :: datestr
+integer                     :: ncid, days, pos
+integer                     :: year, month, day, hour, minute, second
+
+! Need to get time from the streamflow restart file 
+ncid = nc_open_file_readonly(filename, routine)
+
+call nc_get_variable(ncid, 'time', days, routine)
+call nc_get_attribute_from_variable(ncid, 'time', 'units', datestr)
+
+pos = scan(datestr, "0123456789") 
+
+! Read "Date since"
+read(datestr(pos:STRINGLENGTH), '(i4, 5(1x,i2))') year, month, day, hour, minute, second
+
+base_hydro_date = set_date(year, month, day, hour, minute, second)
+read_model_time = increment_time(base_hydro_date, 0, days)
+
+if (debug > 99) then 
+   write(*, *) 'Time string from restart is "'//trim(datestr)//'"'
+   call print_date(read_model_time, ' Valid time is ')
+endif
+
+end function read_model_time
+
+
+!------------------------------------------------------------------
+! write any additional attributes to the output and diagnostic files
+
+subroutine nc_write_model_atts(ncid, domain_id)
+
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: domain_id
+
+if (.not. module_initialized) call static_init_model
+
+! put file into define mode
+call nc_begin_define_mode(ncid)
+
+call nc_add_global_creation_time(ncid)
+
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model", "pywatershed")
+
+call nc_end_define_mode(ncid)
+
+! Flush the buffer and leave netCDF file open
+call nc_synchronize_file(ncid)
+
+end subroutine nc_write_model_atts
 
 !------------------------------------------------------------------
 ! Returns the smallest increment in time that the model is capable 
@@ -598,57 +705,489 @@ istatus(:) = 1
 end subroutine model_interpolate
 
 
+!------------------------------------------------------------------
+! Set the 3D location array for ach domain
+
+subroutine configure_domloc()
+
+character(len=*), parameter :: routine = 'configure_domloc'
+
+integer :: idom, iseg, ihru
+
+do idom = 1, domain_count
+   if (idom == idom_chn) then 
+      allocate(domain_info(idom)%location(nseg, JINDEX, KINDEX))
+      do iseg = 1, nseg
+         domain_info(idom)%location(iseg, JINDEX, KINDEX) = &
+                                 set_location(segLon(iseg), &
+                                              segLat(iseg), & 
+                                              segElv(iseg), &
+                                              VERTISHEIGHT)
+      enddo
+   elseif (idom == idom_hru) then
+      allocate(domain_info(idom)%location(nhru, JINDEX, KINDEX))
+      do ihru = 1, nhru
+         domain_info(idom)%location(ihru, JINDEX, KINDEX) = &
+                                 set_location(hruLon(ihru), &
+                                              hruLat(ihru), & 
+                                              hruElv(ihru), &
+                                              VERTISHEIGHT)
+      enddo
+   elseif (idom == idom_prm) then 
+      msg1 = 'Parameter locations are not supported for now.'
+      call error_handler(E_ERR, routine, msg1, source)  
+   endif
+enddo
+
+end subroutine configure_domloc
+
 
 !------------------------------------------------------------------
 ! Given an integer index into the state vector structure, returns the
 ! associated location. A second intent(out) optional argument quantity
-! (qty) can be returned if the model has more than one type of field
-! (for instance temperature and zonal wind component). This interface is
+! (qty: QTY_STREAM_FLOW). This interface is
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
 subroutine get_state_meta_data(index_in, location, qty_type)
 
-integer(i8),         intent(in)  :: index_in
-type(location_type), intent(out) :: location
+integer(i8),         intent(in)            :: index_in
+type(location_type), intent(out)           :: location
 integer,             intent(out), optional :: qty_type
 
-! these should be set to the actual location and state quantity
-location = state_loc(index_in)
+integer :: iloc, jloc, kloc, varid, idom
+
+call get_model_variable_indices(index_in, iloc, jloc, kloc, varid, idom, qty_type)
+
+location = domain_info(idom)%location(iloc, jloc, kloc)
+
+if (debug > 99) then
+   call write_location(0, location, charstring=msg1)
+   write(*, '(A, i5, i5, i3, i3, 2x, A)') 'gsmd index,i,j,k = ', index_in, iloc, jloc, kloc, trim(msg1)
+endif
 
 end subroutine get_state_meta_data
 
 
 !------------------------------------------------------------------
-! Writes model-specific attributes to a netCDF file
+! Starting from an initial state, generate perturbations to form an 
+! ensemble. 
 
-subroutine nc_write_model_atts(ncid, domain_id)
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-integer, intent(in) :: ncid
-integer, intent(in) :: domain_id
+character(len=*), parameter :: routine = 'pert_model_copies'
 
-! put file into define mode.
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size 
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
 
-integer :: msize
+logical, save         :: seed_unset = .true.
+integer, save         :: seed             
+type(random_seq_type) :: random_seq
 
-msize = int(model_size, i4)
+integer               :: idom, ind1, ind2, ivar, jvar, iens
+real(r8)              :: pert, rng
 
-call nc_begin_define_mode(ncid)
+if (.not. module_initialized) call static_init_model
 
-call nc_add_global_creation_time(ncid)
+! let's do our own perturbation
+interf_provided = .true. 
 
-call nc_add_global_attribute(ncid, "model_source", source )
+! Generate a unique (but repeatable - if task count is same)
+! seed for each ensemble member
+if (seed_unset) then
+   seed = (my_task_id()+1) * 1000
+   seed_unset = .false.
+endif
 
-call nc_add_global_attribute(ncid, "model", "template")
+call init_random_seq(random_seq, seed)
+seed = seed + 1  ! next ensemble member gets a different seed
 
-call nc_write_location_atts(ncid, msize)
-call nc_end_define_mode(ncid)
-call nc_write_location(ncid, state_loc, msize)
+pert = model_perturbation_amplitude
 
-! Flush the buffer and leave netCDF file open
-call nc_synchronize_file(ncid)
+DOMAINS: do idom = 1, domain_count
+   ! Skip the parameters for now
+   if (idom == idom_prm) cycle DOMAINS
 
-end subroutine nc_write_model_atts
+   ! Both Channel & HRU domains have 1 variable in them for now
+   ! So, get_num_variables(idom) should be just 1   
+   do ivar = 1, get_num_variables(idom)
+      ind1 = get_index_start(idom, ivar)
+      ind2 = get_index_end(  idom, ivar)
+      ! Could change perturbation size for different variables 
+      ! in different domains
+      do jvar = 1, state_ens_handle%my_num_vars
+         if (state_ens_handle%my_vars(jvar) >= ind1 .and. &
+             state_ens_handle%my_vars(jvar) <= ind2) then
+            ! Generate the ensemble members (copies) one-by-one  
+            do iens = 1, ens_size
+               if (trim(perturb_distribution) == 'lognormal') then
+                  state_ens_handle%copies(iens, jvar) = state_ens_handle%copies(iens, jvar) &
+                                 * exp(pert * random_gaussian(random_seq, 0.0_r8, 1.0_r8))             
+               elseif (trim(perturb_distribution) == 'normal') then 
+                  state_ens_handle%copies(iens, jvar) =  random_gaussian(random_seq, &
+                                   state_ens_handle%copies(iens, jvar), pert)
+               else
+                  write(msg1, *) 'pert_model_copies'
+                  write(msg2, *) 'Selected distribution "', trim(perturb_distribution), &
+                                 '" is not currently supported.'
+                  call error_handler(E_ERR, routine, msg1, source, text2=msg2)
+               endif
+            enddo ! Ensemble Members
+         endif
+      enddo ! Ensemble Handle Variables
+   enddo ! Domain Variables
+enddo DOMAINS
+
+end subroutine pert_model_copies
+
+
+!------------------------------------------------------------------
+! ATS Localization: Find close obs along the network
+! Only supports identity streamflow obs
+
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, & 
+               loc_types, num_close, close_ind, dist, ens_handle)
+
+type(get_close_type), intent(in)            :: gc           ! handle to a get_close structure
+type(location_type),  intent(inout)         :: base_loc     ! location of interest
+type(location_type),  intent(inout)         :: locs(:)      ! all locations on my task
+integer,              intent(in)            :: base_type    ! observation TYPE
+integer,              intent(in)            :: loc_qtys(:)  ! QTYs for all locations
+integer,              intent(in)            :: loc_types(:) ! TYPEs for all locations
+integer,              intent(out)           :: num_close    ! how many are close
+integer,              intent(out)           :: close_ind(:) ! index on task of close locs
+real(r8),             optional, intent(out) :: dist(:)      ! distances (in radians)
+type(ensemble_type),  optional, intent(in)  :: ens_handle   
+
+character(len=*), parameter :: routine = 'get_close_obs'
+
+!==================== local variables ====================
+integer             :: base_qty
+integer(i8)         :: full_index       ! gsmd requires a larger integer into DART state index
+type(location_type) :: location
+
+integer             :: stream_nclose
+integer(i8)         :: stream_indices(nseg), loc_indx(size(close_ind))
+real(r8)            :: stream_dists(nseg)
+
+! Only supporting identity streamflow obs for now!!
+if (base_type > 0) then 
+   write(msg1, *) 'Issue with the observation type:'
+   write(msg2, *) 'Localization is only done for streamflow obs using ', &
+                  'ATS localization strategy.'
+   write(msg3, *) 'For now, anything that is not identity obs will fail.'
+   call error_handler(E_ERR, routine, msg1, source, text2=msg2, text3=msg3)
+endif
+
+! Assert that this is a streamflow obs
+full_index = abs(base_type)
+call get_state_meta_data(full_index, location, base_qty)
+if (base_qty /= QTY_STREAM_FLOW) then 
+   write(msg1, *) 'Issue with the observation quantity:'
+   write(msg2, *) 'The observation must be QTY_STREAM_FLOW: ', &
+                  QTY_STREAM_FLOW
+   write(msg3, *) 'The used obs QTY is: ', base_qty
+   call error_handler(E_ERR, routine, msg1, source, text2=msg2, text3=msg3)  
+endif
+
+! We now have an identity streamflow observation
+! Find close downstream+upstream streamflow obs
+call close_streams(full_index, stream_nclose, stream_indices, stream_dists)  
+
+!TODO: Should I subset further based on which streams have gauges (obs)?
+
+! Determine which of the global indices are mine
+loc_indx = abs(loc_types)
+call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
+                  num_close, close_ind, dist)
+
+if (debug > 99) then
+   write(msg1,'("PE ", i3)') my_task_id()
+   write(*, *) trim(msg1), ' get_close_obs:num_close ', num_close
+   write(*, *) trim(msg1), ' get_close_obs:close_ind ', close_ind(1:num_close)
+   write(*, *) trim(msg1), ' get_close_obs:dist      ', dist(1:num_close)
+endif
+
+end subroutine get_close_obs
+
+
+!------------------------------------------------------------------
+! Determine streams that are close to me. Return a list of indices 
+! into the DART state vector. 
+
+subroutine close_streams(full_index, num_close, close_indices, distances)
+
+integer(i8), intent(in)  :: full_index       ! identity observation
+integer,     intent(out) :: num_close        ! Number of close streams
+integer(i8), intent(out) :: close_indices(:) ! full DART indices
+real(r8),    intent(out) :: distances(:)     ! in radians
+
+integer     :: depth, seg_length, seg_index
+real(r8)    :: reach_length
+
+integer     :: stream_nclose
+integer(i8) :: stream_indices(nseg)
+real(r8)    :: stream_distances(nseg)
+
+! Initialize variable
+seg_index     = full_index
+depth         = 1            ! starting value for recursive routine
+reach_length  = 0.0_r8       ! initial length along the network
+stream_nclose = 0            ! # of close streams
+distances     = huge(1.0_r8) ! initially: entire array is far away
+
+! Determine the upstream close streams
+call link_tree(seg_index, max_link_distance, depth, &
+                   reach_length, stream_nclose, stream_indices, stream_distances)
+
+! Add the close downstreams ones to the list
+call downstream_links(seg_index, max_link_distance, depth, &
+                   stream_nclose, stream_indices, stream_distances)
+
+num_close                  = stream_nclose
+close_indices(1:num_close) = stream_indices(1:stream_nclose)
+distances(1:num_close)     = stream_distances(1:stream_nclose) / 1000.0_r8  ! to km
+distances(1:num_close)     = distances(1:num_close) / earth_radius          ! to radians
+
+if (debug > 99) then
+   write(msg1, '("PE ",I3)') my_task_id()
+   write(*, *) trim(msg1), ' gc_streams: num_close     ', num_close
+   write(*, *) trim(msg1), ' gc_streams: close_indices ', close_indices(1:num_close)
+   write(*, *) trim(msg1), ' gc_streams: distances     ', distances(1:num_close)
+endif
+
+end subroutine close_streams
+
+
+!-----------------------------------------------------------------------
+! Recurrsive routine to find upstream segments for ATS localization 
+
+recursive subroutine link_tree(my_index, reach_cutoff, depth, &
+                    reach_length, nclose, close_indices, distances)
+
+integer,     intent(in)    :: my_index
+real(r8),    intent(in)    :: reach_cutoff   ! meters
+integer,     intent(in)    :: depth
+real(r8),    intent(inout) :: reach_length
+integer,     intent(inout) :: nclose
+integer(i8), intent(inout) :: close_indices(:)
+real(r8),    intent(inout) :: distances(:)
+
+real(r8) :: direct_length
+integer  :: iup
+
+direct_length = reach_length
+
+if (depth > 1) direct_length = direct_length + connections(my_index)%segLength
+
+! reach_length may also need to include elevation change
+if (direct_length >= reach_cutoff) return
+
+nclose                = nclose + 1
+close_indices(nclose) = my_index
+distances(nclose)     = direct_length
+
+if (debug > 99) then 
+   write(*, '(A, i5, f10.2, i8, i4, 5i8)') 'depth, distance, node, # upstream, up nodes: ', &
+                     depth, direct_length, my_index, num_up_links(my_index),                &
+                     connections(my_index)%upstream_index(:)
+endif
+
+do iup = 1, num_up_links(my_index)
+   call link_tree(connections(my_index)%upstream_index(iup), &
+            reach_cutoff, depth+1, direct_length, nclose, close_indices, distances)
+enddo
+
+end subroutine link_tree
+
+
+!-----------------------------------------------------------------------
+! Routine to collect the close downstream segments from me
+
+subroutine downstream_links(my_index, reach_cutoff, depth, &
+                    nclose, close_indices, distances)
+
+integer,     intent(in)    :: my_index
+real(r8),    intent(in)    :: reach_cutoff   ! meters
+integer,     intent(in)    :: depth
+integer,     intent(inout) :: nclose
+integer(i8), intent(inout) :: close_indices(:)
+real(r8),    intent(inout) :: distances(:)
+
+real(r8) :: direct_length
+integer  :: idown
+
+idown = my_index
+
+direct_length = connections(idown)%segLength
+
+do while( direct_length < reach_cutoff .and. &
+          connections(idown)%downstream_index > 0)
+
+   idown = connections(idown)%downstream_index
+
+   nclose                = nclose + 1
+   close_indices(nclose) = idown
+   distances(nclose)     = direct_length
+
+   direct_length = direct_length + connections(idown)%segLength
+enddo
+
+end subroutine downstream_links
+
+
+!-----------------------------------------------------------------------
+! determine the indices of the objects that are on this task
+!
+! num_superset         length of the superset of desired indices
+! superset_indices     superset of desired indices
+! superset_distances   superset of desired distances
+! my_task_indices      all possible indices ON MY TASK (i.e. a local subset)
+! num_close            length of desired elements ON MY TASK (i.e. intersection)
+! close_ind(:)         the list of desired indices ON MY TASK
+! dist(:)              the corresponding distances of the desired indices
+
+subroutine get_my_close(num_superset, superset_indices, superset_distances, &
+                        my_task_indices, num_close, close_ind, dist)
+
+integer,          intent(in)  :: num_superset
+integer(i8),      intent(in)  :: superset_indices(:)
+real(r8),         intent(in)  :: superset_distances(:)
+integer(i8),      intent(in)  :: my_task_indices(:)
+integer,          intent(out) :: num_close
+integer,          intent(out) :: close_ind(:)
+real(r8),         intent(out) :: dist(:)
+
+integer, dimension(:), allocatable :: index_map
+integer :: i, idx, il, ir
+
+num_close = 0
+
+! Determine the range of my_task_indices
+il = minval(my_task_indices)
+ir = maxval(my_task_indices)
+
+! Create a map for quick lookup
+allocate(index_map(il:ir))
+index_map = 0
+do i = 1, num_superset
+  idx = superset_indices(i)
+  if (idx >= il .and. idx <= ir) then
+    index_map(idx) = i
+  end if
+end do
+
+! Loop over my_task_indices and find matches using the map
+do i = 1, size(my_task_indices)
+  idx = my_task_indices(i)
+  if (idx >= il .and. idx <= ir) then
+    if (index_map(idx) > 0) then
+      num_close = num_close + 1
+      close_ind(num_close) = i 
+      dist(num_close) = superset_distances(index_map(idx))
+    end if
+  end if
+end do
+
+! Deallocate the map
+deallocate(index_map)
+
+end subroutine get_my_close
+
+
+!------------------------------------------------------------------
+! ATS Localization: Find close state along the network
+
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, & 
+                  loc_indx, num_close, close_ind, dist, ens_handle)
+
+type(get_close_type), intent(in)            :: gc           ! handle to a get_close structure
+type(location_type),  intent(inout)         :: base_loc     ! location of interest
+integer,              intent(in)            :: base_type    ! observation TYPE
+type(location_type),  intent(inout)         :: locs(:)      ! locations on my task
+integer,              intent(in)            :: loc_qtys(:)  ! QTYs for locations on my task
+integer(i8),          intent(in)            :: loc_indx(:)  ! indices into DART state on my task
+integer,              intent(out)           :: num_close    ! how many are close
+integer,              intent(out)           :: close_ind(:) ! indices in the the locs array
+real(r8),             optional, intent(out) :: dist(:)      ! distances
+type(ensemble_type),  optional, intent(in)  :: ens_handle
+
+character(len=*), parameter :: routine = 'get_close_state'
+
+!====================== local variables ======================
+integer     :: num_vars_chn, num_vars_hru, contributing_HRUs
+integer     :: num_close_seg, iclose, start_index, close_index
+integer     :: ihru, jump
+integer(i8) :: full_index       
+
+integer     :: stream_nclose
+integer(i8) :: stream_indices(nseg) 
+real(r8)    :: stream_dists(nseg)
+
+full_index   = abs(base_type)
+num_vars_chn = get_num_variables(idom_chn)
+
+if (num_vars_chn > 1) then 
+   write(msg1, *) 'Current implementation of ATS Localization ',   &
+                  'only supports streamflow and groundwater.'
+   write(msg2, *) 'If there are more variables in each of the ',   &
+                  'Channel and HRU domains, filter will fail.'
+   write(msg3, *) 'Localizing other variables require knowledge ', &
+                  'of their respective grids.'
+   call error_handler(E_ERR, routine, msg1, source, text2=msg2, text3=msg3) 
+endif
+
+! We now have an identity streamflow observation
+! Find close downstream+upstream streamflow obs
+call close_streams(full_index, stream_nclose, stream_indices, stream_dists)
+
+! Add groundwater variables if we're updating them 
+if (domain_count > 1) then 
+
+   num_vars_hru = get_num_variables(idom_hru)
+   if (num_vars_chn > 1 .or. & 
+       get_variable_name(idom_hru, 1) /= 'gwres_stor') then 
+      write(msg1, *) 'Only supports groundwater in HRU domain!'
+      call error_handler(E_ERR, routine, msg1, source)
+   endif
+
+   ! Remove groundwater in HRUs that don't contribute to the 
+   ! close segments and add the one that do contribute to the flow. 
+   num_close_seg = stream_nclose
+   start_index   = get_index_start(idom_hru, 1)
+   jump          = start_index - 1
+   
+   GWLOOP: do iclose = 1, num_close_seg
+      close_index = stream_indices(iclose)
+
+      if (connections(close_index)%avail_hru(1) == 0) cycle GWLOOP
+      
+         contributing_HRUs = size(connections(close_index)%avail_hru)
+
+         ! Add them to the list
+         do ihru = 1, contributing_HRUs
+            stream_nclose                 = stream_nclose + 1
+            stream_indices(stream_nclose) = jump + connections(close_index)%avail_hru(ihru)
+            stream_dists(  stream_nclose) = stream_dists(iclose)            
+         enddo        
+   enddo GWLOOP
+endif
+
+! Determine which of the global indices are mine
+call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
+                  num_close, close_ind, dist)
+
+if (debug > 99) then
+   write(msg1,'("PE ", i3)') my_task_id()
+   write(*, *) trim(msg1), ' get_close_state:num_close ', num_close
+   write(*, *) trim(msg1), ' get_close_state:close_ind ', close_ind(1:num_close)
+   write(*, *) trim(msg1), ' get_close_state:dist      ', dist(1:num_close)
+endif
+
+end subroutine get_close_state
+
 
 !===================================================================
 ! End of model_mod
