@@ -7,7 +7,7 @@
    max_link_distance            = 100000.0
    domain_order                 = 'channel', 'hru'
    domain_shapefiles            = 'seg_inflow.nc', 'gwres_stor.nc'
-   channel_config_file          = 'parameters_dis_seg.nc' 
+   channel_config_file          = 'parameters_dis_seg_app.nc' 
    hru_config_file              = 'parameters_dis_hru.nc' 
    hydro_config_file            = 'parameters_PRMSChannel.nc' 
    channel_variables            = 'seg_inflow', 'QTY_STREAM_FLOW', '0.0', 'NA', 'update',  

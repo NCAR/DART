@@ -552,7 +552,7 @@ do iseg = 1, nseg
       connections(iseg)%avail_hru(1) = 0       ! Similar to "Masked Buckets"
    else
       allocate(connections(iseg)%avail_hru(count_hrus))
-      connections(iseg)%avail_hru(:) = hru_inds(1:count_hrus)
+      connections(iseg)%avail_hru(:) = hru_inds
    endif
 
    if (debug > 99) then   
@@ -560,6 +560,7 @@ do iseg = 1, nseg
        write(*, *) trim(msg1), ' segment: ', iseg, 'Contributing HRUs: ', connections(iseg)%avail_hru(:)
    endif  
 enddo 
+deallocate(hru_seg, hru_inds)
 
 call nc_close_file(ncid, routine)
 
@@ -576,6 +577,8 @@ call nc_get_variable(ncid, 'hru_elev', hruElv, routine)
 ! DART-style longitude
 where(hruLon <    0.0_r8) hruLon = hruLon + 360.0_r8
 where(hruLon == 360.0_r8) hruLon = 0.0_r8
+
+call nc_close_file(ncid, routine)
 
 end subroutine read_hru_properties
 
@@ -905,9 +908,9 @@ call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
 
 if (debug > 99) then
    write(msg1,'("PE ", i3)') my_task_id()
-   write(*, *) trim(msg1), ' get_close_obs:num_close ', num_close
-   write(*, *) trim(msg1), ' get_close_obs:close_ind ', close_ind(1:num_close)
-   write(*, *) trim(msg1), ' get_close_obs:dist      ', dist(1:num_close)
+   write(*, *) trim(msg1), ' get_close_obs: num_close ', num_close
+   write(*, *) trim(msg1), ' get_close_obs: close_ind ', close_ind(1:num_close)
+   write(*, *) trim(msg1), ' get_close_obs: dist      ', dist(1:num_close)
 endif
 
 end subroutine get_close_obs
@@ -1023,8 +1026,8 @@ idown = my_index
 
 direct_length = connections(idown)%segLength
 
-do while( direct_length < reach_cutoff .and. &
-          connections(idown)%downstream_index > 0)
+do while(direct_length < reach_cutoff .and. &
+         connections(idown)%downstream_index > 0)
 
    idown = connections(idown)%downstream_index
 
@@ -1181,9 +1184,9 @@ call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
 
 if (debug > 99) then
    write(msg1,'("PE ", i3)') my_task_id()
-   write(*, *) trim(msg1), ' get_close_state:num_close ', num_close
-   write(*, *) trim(msg1), ' get_close_state:close_ind ', close_ind(1:num_close)
-   write(*, *) trim(msg1), ' get_close_state:dist      ', dist(1:num_close)
+   write(*, *) trim(msg1), ' get_close_state: num_close ', num_close
+   write(*, *) trim(msg1), ' get_close_state: close_ind ', close_ind(1:num_close)
+   write(*, *) trim(msg1), ' get_close_state: dist      ', dist(1:num_close)
 endif
 
 end subroutine get_close_state
