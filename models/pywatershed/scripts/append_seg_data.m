@@ -1,9 +1,9 @@
 function append_seg_data
 
-% Change the path 'direc_path' to netcdf files. 
-% PARAM_FILE : Original 'parameters_dis_seg.nc' file
-% CSV_TABLE  : Includes segment data from the shapefile 'river_midpoints.csv'
-% NTWRK_FILE : Similar to 'parameters_dis_seg.nc' but with appended variables 
+% Change the path 'filepath' to netcdf files. 
+% source_f: Original 'parameters_dis_seg.nc' file
+% table_f : Includes segment data from the shapefile 'river_midpoints.csv'
+% dest_f  : Similar to 'parameters_dis_seg.nc' but with appended variables 
 
 % The following variables are created and appended
 % to the parameters_dis_seg.nc geometry file:

@@ -12,7 +12,7 @@
    hydro_config_file            = 'parameters_PRMSChannel.nc' 
    channel_variables            = 'seg_inflow', 'QTY_STREAM_FLOW', '0.0', 'NA', 'update',  
    hru_variables                = 'gwres_stor', 'QTY_GROUNDWATER', '0.0', 'NA', 'update',   
-   debug                        = 100
+   debug                        = 0
    /   
 
 &filter_nml
