@@ -40,6 +40,7 @@ DART supported models:
 - :doc:`pe2lyr/readme`
 - :doc:`POP/readme`
 - :doc:`ROMS/readme`
+- :doc:`pywatershed/readme`
 - :doc:`rose/readme`
 - :doc:`seir/readme`
 - :doc:`simple_advection/readme`
