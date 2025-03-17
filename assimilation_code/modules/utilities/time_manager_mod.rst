@@ -19,7 +19,7 @@ Available calendars
 The following calendars are available in DART. The base date is used to define the origin of the 
 calendar system. For example, the Gregorian calendar has a base date of January 1, 1601, at 00:00:00. 
 This means that the all the DART time values in days,seconds in the Gregorian calendar are relative to this 
-starting point.
+starting date. If NO_CALENDAR is used, there is no concept of day, month, year: time is only days, seconds from 0.
 
 +-------------------+-----------+------------+----------+-----------+-------------+-------------+
 | Calendar          | base year | base month | base day | base hour | base minute | base second |
@@ -30,7 +30,7 @@ starting point.
 +-------------------+-----------+------------+----------+-----------+-------------+-------------+
 | JULIAN            | 1         | 1          | 1        | 0         | 0           | 0           |
 +-------------------+-----------+------------+----------+-----------+-------------+-------------+
-| NO_CALENDAR       | not applicable: only time in days, seconds                                |
+| NO_CALENDAR       | NA        | NA         | 0        | NA        | NA          |             |
 +-------------------+-----------+------------+----------+-----------+-------------+-------------+
 | NOLEAP            | 1         | 1          | 1        | 0         | 0           | 0           |
 +-------------------+-----------+------------+----------+-----------+-------------+-------------+
