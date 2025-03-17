@@ -70,6 +70,7 @@ private
 ! required by DART code - will be called from filter and other
 ! DART executables. 
 public :: get_model_size,         &
+          get_number_of_segments, &
           get_state_meta_data,    &
           model_interpolate,      &
           static_init_model,      &
@@ -1191,6 +1192,16 @@ endif
 
 end subroutine get_close_state
 
+!------------------------------------------------------------------
+! Returns the number of links in the state vector
+
+function get_number_of_segments()
+
+integer(i8) :: get_number_of_segments
+
+get_number_of_segments = nseg
+
+end function get_number_of_segments
 
 !===================================================================
 ! End of model_mod

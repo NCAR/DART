@@ -1,0 +1,2 @@
+/Users/gharamti/Documents/DART_git/dartpub/models/pywatershed/data/2021-05-30_23:00:00.15min.usgsTimeSlice.ncdf 
+/Users/gharamti/Documents/DART_git/dartpub/models/pywatershed/data/2021-05-31_23:00:00.15min.usgsTimeSlice.ncdf 

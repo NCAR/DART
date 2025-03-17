@@ -85,6 +85,15 @@
    select_localization = 1,        
    /
 
+&create_identity_streamflow_obs_nml
+   input_files            = 'list_of_obs_files.txt'
+   network_file           = 'parameters_dis_seg_app.nc'
+   gages_list_file        = 'wanted_gages_list.txt'
+   obs_fraction_for_error = 0.05
+   assimilate_all         = .false.
+   debug                  = 2 
+  /
+
 &quality_control_nml
    input_qc_threshold = 3.0,
    outlier_threshold  = 3.0,

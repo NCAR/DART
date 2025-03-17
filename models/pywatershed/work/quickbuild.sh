@@ -23,19 +23,22 @@ perfect_model_obs
 )
 
 serial_programs=(
+advance_time
 create_fixed_network_seq
 create_obs_sequence
 fill_inflation_restart
-integrate_model
 obs_common_subset
-obs_diag
+streamflow_obs_diag
 obs_sequence_tool
+obs_seq_to_netcdf
+obs_diag
 )
 
 model_programs=(
 )
 
 model_serial_programs=(
+create_identity_streamflow_obs
 )
 
 # quickbuild arguments

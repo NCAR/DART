@@ -92,3 +92,7 @@ domain choices.
 |                                     |                    | - ``0`` is as quiet as it gets                             |
 |                                     |                    | - ``>0`` provides more detailed run-time messages.         |
 +-------------------------------------+--------------------+------------------------------------------------------------+
+
+On top of the ``model_mod`` code, the other program in this directory is ``create_identity_streamflow_obs`` which is
+based on the already available USGS observation converter. This converter provides a capability of evaluating identity
+obs by adding in a desired list of gauges.    
