@@ -83,8 +83,8 @@ a set of observations.  The beginning of the assimilation starts
 from near present day (January-2011) and is initalized in 'hybrid' mode from 
 a set of CLM restart files generated from a previous CLM 5-member
 ensemble simulation. The atmospheric forcing used for the assimilation 
-comes from the Community Atmospheric Model (CAM) reanalysis 
-(`ds199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__ and `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__).
+comes from the Community Atmospheric Model (CAM) reanalyses 
+(`CAM6 <CAM6rean_rda_>`_ and `CAM4 <CAM4rean_rda_>`_).
 This reanalysis atmospheric data includes 80 total ensemble members in
 which the across-member variation represents atmospheric uncertainty.
 We use 5 different ensemble members from the CAM6 reanalysis to generate
@@ -131,7 +131,7 @@ custom initial conditions and observation sequence files for your own work.
   if you are using Derecho.  If you are using your own machine you need 
   use the following links to download these files directly:
                       
-  1. `CAM6 Reanalysis Meteorology <https://rda.ucar.edu/datasets/ds345.0/>`__,
+  1. `CAM6 Reanalysis Meteorology `CAM6 <CAM6rean_rda_>`_, 
      Year 2011, ensemble members 1-5 for three separate file types: 
      ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x3h.2011.nc``
      ``f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_000{1-5}.ha2x1hi.2011.nc``
@@ -368,10 +368,10 @@ multiple model simulations (i.e. a model ensemble) that quantifies 1) state vari
 and 2) correlation between state variables.  Given the sensitivity of CLM to 
 atmospheric conditions an established method to generate multi-instance CLM
 simulations is through weather reanalysis data generated from a CAM-DART assimilation. These
-CAM-DART reanalyses are available from 1997-2010 `ds199.1 <https://rda.ucar.edu/datasets/ds199.1/>`__,
-and 2011-2020 `ds345.0 <https://rda.ucar.edu/datasets/ds345.0/>`__. 
+CAM-DART reanalyses are available from 1997-2010 `CAM4 <CAM4rean_rda_>`_,
+and 2011-2020 `CAM6 <CAM6rean_rda_>`_.
 
-For this tutorial we will use the January 2011 CAM6 reanalysis (ds345.0) only.  
+For this tutorial we will use the January 2011 CAM6 reanalysis (d345000) only.  
 To make sure the scripts can locate the weather data first make sure
 the ``DART_params.csh``  variable ``dartroot`` is set to the path of your
 DART installation. For example, if you have a Derecho account and you
@@ -422,7 +422,7 @@ and ``State3hr``.
             doma_mask     mask
          </variableNames>
          <filePath>
-            /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/NINST
+            /glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST
          </filePath>
          <fileNames>
             f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.RUNYEAR.nc
@@ -440,7 +440,7 @@ and ``State3hr``.
             a2x3h_Faxa_lwdn      lwdn
          </variableNames>
          <filePath>
-              /glade/campaign/collections/rda/data/ds345.0/cpl_unzipped/NINST
+              /glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST
          </filePath>
          <offset>
             1800

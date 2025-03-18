@@ -298,6 +298,8 @@ types, and users can either use existing observation types in
 :doc:`/assimilation_code/programs/preprocess/preprocess`, so until you
 configure and run ``preprocess``, ``obs_kind_mod.f90`` will not exist.
 
+.. _observationlocations:
+
 Observation locations
 ~~~~~~~~~~~~~~~~~~~~~
 
