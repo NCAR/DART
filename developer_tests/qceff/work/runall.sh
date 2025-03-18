@@ -41,6 +41,9 @@ else
 fi
 }
 
+cp input.nml input.nml.bak
+cp input.nml.no_alg input.nml
+
 run_test ; should_pass "no table"
 
 run_test qcf_table.txt ; should_pass "correct v1 table"
@@ -69,3 +72,4 @@ run_test all_bnrhf_qceff_table.csv ; should_pass "lower case QTY"
 
 run_test qcf_table_lower_case_dist.txt; should_pass "lower case dist_type"
 
+cp input.nml.bak input.nml

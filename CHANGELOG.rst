@@ -22,6 +22,63 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 14 2025 :: WRF use_theta_m check. Tag v11.10.5**
+
+- Assert USE_THETA_M=0 in WRF when initializing wrf model_mod.
+- fixed documentation broken links.
+
+**February 6 2025 :: WRF tutorial and prepbufr documentation. Tag v11.10.4**
+
+- Observation section of WRF tutorial updated to match provided obs.   
+- Prepbufr docs updated to describe complete conversion process.
+
+**February 4 2025 :: Generic model_mod subroutine parse_variables. Tag v11.10.3**
+
+- Creates two generalized subroutines that convert the table of state variables that is
+  read in from the &model_nml to a state_var_type: parse_variables and parse_variables_clamp
+- Alternate versions for this subroutine were replaced with parse_variables in the
+  models MOM6, wrf_hydro, aether_lat-lon, cam-fv, cam-se, POP, and cice
+- New dev test test_parse_variables added
+
+**February 3 2025 :: Inflation documentation. Tag v11.10.2**
+
+- Improved inflation documentation
+- CAM FV and SE checks for required state variables 
+- GitHub action to alert on files with legacy svn info
+- Fwd op documentation formatting fix
+
+**January 30 2025 :: Bug-fix: Explicitly handle BNRHF transform failures. Tag v11.10.1**
+
+- Probit transform failure is caught and an error code is returned 
+- filter_mod and assim_tools_mod skip variables that fail the transform
+
+**January 23 2025 :: DART_LAB QCEFF. Tag v11.10.0**
+
+- Updated DART_LAB to include QCEFF
+- NSF NCAR RDA links updated
+- /glade RDA locations updated
+
+**January 23 2025 :: Pangu-DART. Tag v11.9.0**
+
+- Pangu-Weather ML model DART interface
+
+*contributed by Nuo Chen, University of Oklahoma*
+
+**January 22 2025 :: Bug-fix: Gamma and Beta Distributions. Tag v11.8.9**
+
+Bug fixes:
+
+    - Beta distribution only supporting standard Beta, bounded 0-1.
+    - Gamma distribution only supporting standard, lower bound 0.
+    - Beta and Gamma bounds are forced in the QCEFF table.
+
+Updates:
+
+    - Explicitly setting distribution type, now have UNSET.
+    - Message about failing to converge changed to E_ALLMSG to be visible
+      on all mpi ranks.
+    - remove unused test_obs directory
+
 **January 14 2025 :: Bug-fix MOM6 potential temperature. Tag v11.8.8**
 
 - MOM6 model_interpolate for potential temperature

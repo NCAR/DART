@@ -1,3 +1,5 @@
+.. _adding-your-observations-to-dart:
+
 Adding your observations to DART
 ================================
 

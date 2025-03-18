@@ -1,3 +1,5 @@
+.. _observations:
+
 DART Observations
 =================
 
