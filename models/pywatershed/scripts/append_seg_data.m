@@ -1,9 +1,9 @@
 function append_seg_data
 
 % Change the path 'filepath' to netcdf files. 
-% source_f: Original 'parameters_dis_seg.nc' file
-% table_f : Includes segment data from the shapefile 'river_midpoints.csv'
-% dest_f  : Similar to 'parameters_dis_seg.nc' but with appended variables 
+% PARAM_FILE : Original 'parameters_dis_seg.nc' file
+% CSV_TABLE  : Includes segment data from the shapefile 'river_midpoints.csv'
+% NTWRK_FILE : Similar to 'parameters_dis_seg.nc' but with appended variables 
 
 % The following variables are created and appended
 % to the parameters_dis_seg.nc geometry file:
@@ -46,6 +46,7 @@ lons = table2array(data(:, 7));
 lats = lats(isort);
 lons = lons(isort);
 
+n_char = 15;
 
 %% Compute Routelink style variables
 ncPARAM = ncinfo(PARAM_FILE);
@@ -55,8 +56,8 @@ n_seg = ncPARAM.Dimensions(1).Length;
 gages = ncPARAM.Dimensions(2).Length;
 
 % read variables
-to_index   = double(ncread(PARAM_FILE    , 'tosegment'));
-poi_gauges = str2double(ncread(PARAM_FILE, 'poi_gage_id')); 
+to_index   = double(ncread(PARAM_FILE, 'tosegment'));
+poi_gauges = char(pad(ncread(PARAM_FILE, 'poi_gage_id'), n_char, 'left')); 
 
 num_up_links  = zeros(1, n_seg);
 upstream_seg  = struct;
@@ -147,7 +148,7 @@ nccreate(NTWRK_FILE, 'fromIndices'  , 'Dimensions', {'index'    , n_fi }, 'DataT
 nccreate(NTWRK_FILE, 'num_up_links' , 'Dimensions', {'nsegment' , n_seg}, 'DataType', 'int64')
 nccreate(NTWRK_FILE, 'seg_lats'     , 'Dimensions', {'nsegment' , n_seg}, 'DataType', 'double')
 nccreate(NTWRK_FILE, 'seg_lons'     , 'Dimensions', {'nsegment' , n_seg}, 'DataType', 'double')
-nccreate(NTWRK_FILE, 'poi_gauges'   , 'Dimensions', {'npoigages', gages}, 'DataType', 'int64')
+nccreate(NTWRK_FILE, 'poi_gauges'   , 'Dimensions', {'IDLength' , n_char, 'npoigages', gages}, 'DataType', 'char')
 
 ncwrite(NTWRK_FILE, 'fromIndsStart', fromIndsStart)
 ncwrite(NTWRK_FILE, 'fromIndsEnd'  , fromIndsEnd)
@@ -155,6 +156,6 @@ ncwrite(NTWRK_FILE, 'fromIndices'  , fromIndices)
 ncwrite(NTWRK_FILE, 'num_up_links' , num_up_links)
 ncwrite(NTWRK_FILE, 'seg_lats'     , lats)
 ncwrite(NTWRK_FILE, 'seg_lons'     , lons)
-ncwrite(NTWRK_FILE, 'poi_gauges'   , poi_gauges)
+ncwrite(NTWRK_FILE, 'poi_gauges'   , poi_gauges')
 
 netcdf.close(ncid); 

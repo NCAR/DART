@@ -174,8 +174,9 @@ subroutine read_network_information()
 character(len=*), parameter  :: routine = 'read_network_information'
 
 integer              :: ncid, igage, iseg
-integer, allocatable :: gID(:), segGauge(:)
-character(len=10)    :: fmt
+integer, allocatable :: segGauge(:)
+
+character(len=STATIDSTRLEN), allocatable :: gID(:)
 
 ncid = nc_open_file_readonly(network_file, routine)     
 
@@ -192,16 +193,12 @@ call nc_get_variable(ncid, 'nhm_seg'         , seg, routine)
 call nc_get_variable(ncid, 'seg_lats'        , lat, routine)
 call nc_get_variable(ncid, 'seg_lons'        , lon, routine)
 call nc_get_variable(ncid, 'seg_elev'        , elv, routine)
-call nc_get_variable(ncid, 'poi_gauges'      , gID, routine)
 call nc_get_variable(ncid, 'poi_gage_segment', segGauge, routine)
 
-write(fmt, '(A, I2, A)') '(i', IDLEN, ')'
-gauge_strings(:) = ''
-do igage = 1, ngages
-   write(gauge_strings(segGauge(igage)), fmt) gID(igage)
+call get_string_array(ncid, 'IDLength', 'poi_gauges', gID)
 
-   ! Append a '0' to the gauge ID to be consistent with USGS-style
-   gauge_strings(segGauge(igage)) = '0'//adjustl(gauge_strings(segGauge(igage)))
+do igage = 1, ngages
+   gauge_strings(segGauge(igage)) = gID(igage)
 enddo
 
 ! DART-style longitude for the segments

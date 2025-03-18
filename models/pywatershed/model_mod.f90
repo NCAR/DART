@@ -113,7 +113,7 @@ end type link_relations
 type(link_relations), allocatable  :: connections(:)          ! Connections structure of the entire river network
 integer, allocatable, dimension(:) :: num_up_links            ! Number of links upstream from each segment
 
-integer, allocatable, dimension(:) :: GaugeID
+character(len=IDSTRLEN), allocatable, dimension(:) :: GaugeID
 integer, allocatable, dimension(:) :: segNHMid
 integer, allocatable, dimension(:) :: segGauge
 integer, allocatable, dimension(:) :: segTyp
@@ -311,7 +311,7 @@ subroutine read_stream_network(filename)
 character(len=*), intent(in) :: filename
 character(len=*), parameter  :: routine = 'read_stream_network'
 
-integer              :: ncid, nindex
+integer              :: ncid, nindex, strLen, igage
 integer, allocatable :: fromIndices(:)
 integer, allocatable :: fromIndsStart(:)
 integer, allocatable :: fromIndsEnd(:)
@@ -329,6 +329,7 @@ ncid = nc_open_file_readonly(filename, routine)
 nseg   = nc_get_dimension_size(ncid, 'nsegment' , routine)
 nindex = nc_get_dimension_size(ncid, 'index'    , routine)
 ngages = nc_get_dimension_size(ncid, 'npoigages', routine)
+strLen = nc_get_dimension_size(ncid, 'IDLength' , routine)
 
 allocate(segLat(nseg), segLon(nseg), &
          segSlp(nseg), segLen(nseg), &
@@ -352,7 +353,7 @@ where(segLon == 360.0_r8) segLon = 0.0_r8
 allocate(GaugeID(ngages), segGauge(ngages))
 
 ! Read gauge-related variables
-call nc_get_variable(ncid, 'poi_gauges'      , GaugeID , routine)
+call get_string_array(ncid, 'IDLength', strLen, 'poi_gauges', GaugeID)
 call nc_get_variable(ncid, 'poi_gage_segment', segGauge, routine)
 
 allocate(fromIndices(nindex))
@@ -438,7 +439,7 @@ enddo
 
 ! Update USGS gauge IDs
 do iseg = 1, ngages
-   write(connections(segGauge(iseg))%gaugeName, '(i0)') GaugeID(iseg)
+   connections(segGauge(iseg))%gaugeName = GaugeID(iseg)
 enddo
 
 if (debug > 99) then 
@@ -1187,6 +1188,39 @@ integer(i8) :: get_number_of_segments
 get_number_of_segments = nseg
 
 end function get_number_of_segments
+
+
+! -------------------------------------
+! Read array of strings from input file
+
+subroutine get_string_array(ncid, dimname, dimlen, varname, string_var)
+   
+integer,          intent(in)    :: ncid, dimlen
+character(len=*), intent(in)    :: dimname, varname
+character(len=*), intent(inout) :: string_var(:)
+   
+character(len=*), parameter  :: routine = 'get_string_array'  
+
+integer :: i, io, varid
+      
+io = nf90_inq_varid(ncid, varname, varid)
+call nc_check(io, routine, 'inq_varid "'//varname//'"')
+  
+io = nf90_get_var(ncid, varid, string_var)
+call nc_check(io, routine, 'get_var "'//varname//'"')
+   
+do i = 1, dimlen
+   string_var(i) = adjustl(string_var(i))
+enddo
+
+if (debug > 99) then
+   do i = 1, dimlen
+      write(msg1, *) i, ': "'//string_var(i)//'"'
+      call error_handler(E_MSG, routine, msg1)
+   enddo
+endif
+
+end subroutine get_string_array
 
 !===================================================================
 ! End of model_mod
