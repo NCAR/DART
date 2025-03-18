@@ -17,9 +17,6 @@ use      time_manager_mod, only : time_type, set_time, set_date, get_date, get_t
                                   operator(>),  operator(<), operator(/), &
                                   operator(/=), operator(<=)
 
-! location_mod is at rma-cice/location/xxx/location_mod.f90
-! with the specific subdir set in path_names_xxx
-! in our case, threed_sphere is the most appropriate choice
 use          location_mod, only : location_type, get_dist, get_close_type,      &
                                   set_location, get_location,                   &
                                   get_close_obs,                                &
@@ -45,7 +42,6 @@ use         utilities_mod, only : register_module, error_handler,               
                                   file_exist, find_textfile_dims, file_to_text, &
                                   do_nml_file, do_nml_term
 
-! to add more kinds, edit ../../obs_kind/DEFAULT_obs_kind_mod.F90
 use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &  
                                   QTY_SEAICE_AGREG_VOLUME    , &
                                   QTY_SEAICE_AGREG_SNOWVOLUME, &
@@ -150,19 +146,16 @@ public :: init_time,                     &
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 
-public :: get_cice_restart_filename, test_interpolation
+public :: get_cice_restart_filename
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "cice/model_mod.f90"
 
 ! message strings
 character(len=512) :: string1
 character(len=512) :: string2
 character(len=512) :: string3
 
-logical, save :: module_initialized = .false.
+logical :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
@@ -177,7 +170,6 @@ integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! valid values:  native, big_endian, little_endian
 character(len=64) :: binary_grid_file_format = 'big_endian'
-
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
 ! NOTHING.  it needs additional code to detect the cells which are
@@ -233,8 +225,6 @@ namelist /model_nml/  &
 ! standard cice namelist and filled in here.
 
 ! grid counts for each field
-! We should also make sure we never
-! hardwire the value '5' anywhere - always refer to Ncat in loops.
 integer :: Nx=-1, Ny=-1   ! size of the dipole (or irregular) grids. 
 integer :: Ncat=-1        ! number of categories in ice-thickness dist
 
@@ -320,33 +310,11 @@ contains
 
 subroutine static_init_model()
 
-! Called to do one time initialization of the model. In this case,
-! it reads in the grid information.
-
 integer :: iunit, io
 integer :: ss, dd
 
-! The Plan:
-!
-!   read in the grid sizes from the horiz grid file and the vert grid file
-!   horiz is netcdf, vert is ascii
-!  
-!   allocate space, and read in actual grid values
-!
-!   figure out model timestep (not really used in cice)
-!
-!   Compute the model size.
-!
-!   set the index numbers where the field types change
-!
-
 if ( module_initialized ) return ! only need to do this once.
 
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
-! Since this routine calls other routines that could call this routine
-! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
 
 ! Read the DART namelist for this model
@@ -355,7 +323,6 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_nml_file())  write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
@@ -363,20 +330,18 @@ call set_calendar_type('Gregorian')
 
 ! Set the time step ... causes cice namelists to be read.
 ! Ensures model_timestep is multiple of 'ice_thermo_timestep'
-
 model_timestep = set_model_time_step()
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
 write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+call error_handler(E_MSG,'static_init_model',string1,source)
 
 ! BEFORE calling grid routines, set the endian-ness of the binary files if needed.
 call set_binary_file_conversion(binary_grid_file_format)
 
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.
-
 call get_horiz_grid_dims(Nx, Ny)
 call get_ncat_dim(Ncat)
 
@@ -411,7 +376,7 @@ call init_interp()
 if ( model_state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
    call use_default_state_variables( model_state_variables )
    string1 = 'model_nml:model_state_variables not specified - using default variables'
-   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+   call error_handler(E_MSG,'static_init_model',string1,source)
 endif
 
 ! Determine the shape of the variables from "cice.r.nc"
@@ -598,11 +563,11 @@ enddo
 ! Confirm that the indices come out okay as debug
 if(u_index /= u_total + 1) then
    string1 = 'Storage indices did not balance for U grid: : contact DART developers'
-   call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'init_dipole_interp', string1, source)
 endif
 if(t_index /= t_total + 1) then
    string1 = 'Storage indices did not balance for T grid: : contact DART developers'
-   call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'init_dipole_interp', string1, source)
 endif
 
 end subroutine init_dipole_interp
@@ -771,7 +736,7 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
       ! Make sure the list storage isn't full
       if(reg_list_num(index_x, ind_y) >= max_reg_list_num) then
          write(string1,*) 'max_reg_list_num (',max_reg_list_num,') is too small ... increase'
-         call error_handler(E_ERR, 'update_reg_list', string1, source, revision, revdate)
+         call error_handler(E_ERR, 'update_reg_list', string1, source)
       endif
 
       ! Increment the count
@@ -829,13 +794,7 @@ real(r8)       :: temp1(ens_size)
 
 if ( .not. module_initialized ) call static_init_model
 
-! Let's assume failure.  Set return val to missing, then the code can
-! just set istatus to something indicating why it failed, and return.
-! If the interpolation is good, the interp_val will be set to the 
-! good value, and the last line here sets istatus to 0.
-! make any error codes set here be in the 10s
-
-expected_obs(:) = MISSING_R8     ! the DART bad value flag
+expected_obs(:) = MISSING_R8   ! the DART missing value flag
 istatus(:) = 99                ! unknown error
 
 ! Get the individual locations values
@@ -854,14 +813,6 @@ if (obs_type == QTY_SEAICE_CATEGORY) then
       RETURN
    endif
 endif
-
-if (debug > 1) then
-   print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, cat_index
-endif
-
-! The base_offset is the index of state vector that corresponds to 
-! a variable block without regard to level or location, so it can be 
-! viewed as pointing to first cat for cice 3d vars
 
 ! set the base_offset. for aggregate quantities set it to the start of the first
 ! category of the appropriate kind. set the cat_signal that will be passed into 
@@ -1032,8 +983,6 @@ if (cat_signal == -1) then
       endif
     
 endif
-
-if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
 end subroutine model_interpolate
 
@@ -1964,8 +1913,6 @@ if (has_cice_namelist) then
 endif
 
 call nc_add_global_attribute(ncid, "model_source"  , source )
-call nc_add_global_attribute(ncid, "model_revision", revision )
-call nc_add_global_attribute(ncid, "model_revdate" , revdate )
 call nc_add_global_attribute(ncid, "model"         , "CICE")
 
 !----------------------------------------------------------------------------
@@ -2131,7 +2078,7 @@ if (present(adv_to_time)) then
    write(string2,*)'called with optional advance_to_time of'
    write(string3,'(i4.4,5(1x,i2.2))')iyear,imonth,iday,ihour,imin, isec
    call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2,text3=string3)
+              source, text2=string2,text3=string3)
 endif
 
 call get_date(model_time, iyear, imonth, iday, ihour, imin, isec)
@@ -2468,15 +2415,6 @@ close(unit=15)
 
 end subroutine write_grid_interptest
 
-!------------------------------------------------------------------
-
-subroutine test_interpolation(test_casenum)
- integer, intent(in) :: test_casenum
-
-! Helen has destroyed this for now.
-
-end subroutine test_interpolation
-
 !--------------------------------------------------------------------
 
 function read_model_time(filename)
@@ -2497,7 +2435,7 @@ if ( .not. module_initialized ) call static_init_model
 
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+   call error_handler(E_ERR,'read_model_time',string1,source)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
