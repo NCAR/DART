@@ -74,16 +74,28 @@ def lon_lat_to_cartesian(lon, lat, R = 1):
 
 
 def write_blank_obs_seq(lat, lon, year, mon, day, obs_seq_in, ob_types, error = 'default', case_name=None):
+    
     # define status tracker
     status = 0
-    data = xr.open_dataset('cice.r.nc')
-    data = data.isel(ni=2)
 
-    if error == 'scaled': 
-        factors = xr.open_dataset(case_name+'_ensemble_scaling.nc')
-        scale_fac = factors.sel(time=year+'-'+mon+'-'+day)
-    else:
-        scale_fac = 1 #0.01
+    # define category bounds
+    HL_bounds = [0.0, 0.64, 1.39, 2.47, 4.57]   # category bounds
+    HR_bounds = [0.64, 1.39, 2.47, 4.57, 10]
+    uniform_errors = [((HR - HL)**2)/12 for HR, HL in zip(HR_bounds, HL_bounds)] 
+
+    # define parameters
+    rhoi = 917.0                                # sea ice density
+    rhos = 330.0                                # snow density
+    rhow = 1026.0                               # sea water density
+    fac = 1e-6                                  # tolerance for very small ice concentrations
+
+    # open the perfect-model data
+    data = xr.open_dataset('cice.r.nc').isel(ni=2)
+
+    data['aice'] = data.aicen.sum(dim='ncat')
+    data['vice'] = data.vicen.sum(dim='ncat')
+    data['hi'] = (data.vice.where(data.vice > fac)/data.aice.where(data.aice > fac)).fillna(0)
+    data['hs'] = (data.vsnon.sum(dim='ncat')/data.aice.where(data.aice > fac)).fillna(0)
 
     # Open file and begin writing to it 
     new_file = open('input.txt', 'w')
@@ -95,12 +107,69 @@ def write_blank_obs_seq(lat, lon, year, mon, day, obs_seq_in, ob_types, error = 
     # Enter quality control values per field
     new_file.writelines('0\n')
 
-    HL_bounds = [0.0, 0.64, 1.39, 2.47, 4.57]
-    HR_bounds = [0.64, 1.39, 2.47, 4.57, 10]
-    uniform_errors = [((HR - HL)**2)/12 for HR, HL in zip(HR_bounds, HL_bounds)]
-    fac = 1e-7
-
     for ob in ob_types:
+        # sea ice concentration observations
+        if ob == 'SAT_SEAICE_AGREG_CONCENTR':
+            A = data.aice.where(data.aice > fac).fillna(0).values
+            if A > 0:
+                error = -0.5 * (A**2 - A)
+            else:
+                error = fac
+        # sea ice thickness observations
+        elif ob == 'SAT_SEAICE_AGREG_THICKNESS':
+            H = data.hi.values
+            if H > 0:
+                error = 0.1 * H
+            else:
+                error = fac
+        # categorized sea ice volume observations
+        elif ob in ['SAT_SEAICE_VICE01','SAT_SEAICE_VICE02','SAT_SEAICE_VICE03','SAT_SEAICE_VICE04','SAT_SEAICE_VICE05']:
+            idx = int(ob[-1]) - 1
+            A = (data.aicen.isel(ncat = idx).where(data.aicen.isel(ncat = idx) > fac)).fillna(0).values
+            U = uniform_errors[idx]
+            if A > 0:
+                error = A**2 * U
+            else:
+                error = fac
+        # categorized sea ice area observations
+        elif ob in ['SAT_SEAICE_AICE01','SAT_SEAICE_AICE02','SAT_SEAICE_AICE03','SAT_SEAICE_AICE04','SAT_SEAICE_AICE05']:
+            idx = int(ob[-1]) - 1
+            A = (data.aicen.isel(ncat = idx).where(data.aicen.isel(ncat = idx) > fac))
+            V = (data.vicen.isel(ncat = idx).where(data.vicen.isel(ncat = idx) > fac))
+            H = V/A
+            A = A.fillna(0).values
+            H = H.fillna(0).values
+            if H > 0:
+                U = uniform_errors[idx]
+                error = (A/H)**2 * U
+            else:
+                error = fac
+        # laser altimeter sea ice freeboard observations
+        elif ob == 'SAT_SEAICE_LASER_FREEBOARD':
+            FB_L = data.hi.values * (1 - rhoi/rhow) - data.hs.values*(rhos/rhow - 1)
+            err_val1 = 0.5 * FB_L 
+            rand_elem = np.random.choice(np.linspace(-1, 1, 10000))
+            err_val2 = err_val1 * rand_elem
+            error = err_val1 + err_val2
+        # radar altimeter sea ice freeboard observations 
+        elif ob == 'SAT_SEAICE_RADAR_FREEBOARD':
+            # FB_R = data.hi.values * (1 - rhoi/rhow) - data.hs.values*(rhos/rhow)
+            # err_val1 = 0.5 * FB_R 
+            # rand_elem = np.random.choice(np.linspace(-1, 1, 10000))
+            # err_val2 = err_val1 * rand_elem
+            # error = err_val1 + err_val2
+            # this uses upper and lower error estimates from ESA'S Cryosat-2 Mission 
+            # sea ice freeboard (after processing of radar freeboard measurements)
+            error = np.random.choice(np.linspace(0.1, 0.15, 10000))
+        # if observation type is unrecognized, flag!
+        else:
+            error = 0
+            status=-1 
+
+        if error < fac:
+            error = fac
+        
+        # Resume writing obs_seq input text file
         # Enter a -1 if there are no more obs
         new_file.writelines('0\n')
         # Enter observation type (string)
@@ -115,53 +184,9 @@ def write_blank_obs_seq(lat, lon, year, mon, day, obs_seq_in, ob_types, error = 
         new_file.writelines(str(lat)+'\n')
         # Enter time (year month day hour minute second)
         new_file.writelines(year+' '+mon+' '+day+' 00 00 00\n')
-        # Enter error 
-        if ob == 'SAT_SEAICE_AGREG_CONCENTR':
-            A = data.aicen.sum(dim='ncat').values
-            error = scale_fac * -0.5*(A**2 - A) 
-        elif ob == 'SAT_SEAICE_AGREG_FREEBOARD':
-            A = data.aicen.sum(dim='ncat').values
-            V = data.vicen.sum(dim='ncat').values
-            if A > fac:
-                H_bar = V/A
-            else:
-                H_bar = 0
-            x = 0.1*H_bar
-            error = scale_fac * 0.1 * x
-        elif ob == 'SAT_SEAICE_AGREG_THICKNESS':
-            A = data.aicen.sum(dim='ncat').values
-            V = data.vicen.sum(dim='ncat').values
-            if A > 1e-7:
-                H_bar = V/A
-            else:
-                H_bar = 0
-            error = scale_fac * 0.1 * H_bar
-        ## THIS WILL HAVE TO BECOME MORE FLEXIBLE IF WE EVER THINK ABOUT MORE CATEGORIES
-        elif ob in ['SAT_SEAICE_VICE01','SAT_SEAICE_VICE02','SAT_SEAICE_VICE03','SAT_SEAICE_VICE04','SAT_SEAICE_VICE05']:
-            idx = int(ob[-1]) - 1
-            A = data.aicen.isel(ncat = idx).values
-            U = uniform_errors[idx]
-            error = A**2 * U
-        elif ob in ['SAT_SEAICE_AICE01','SAT_SEAICE_AICE02','SAT_SEAICE_AICE03','SAT_SEAICE_AICE04','SAT_SEAICE_AICE05']:
-            idx = int(ob[-1]) - 1
-            A = data.aicen.isel(ncat = idx).values
-            V = data.vicen.isel(ncat = idx).values
-            if A > 1e-7:
-                H_bar = V/A
-            else:
-                H_bar = 0
-            U = uniform_errors[idx]
-            if H_bar > 0:
-                error = (A/H_bar)**2 * U
-            else:
-                error = fac
-        else:
-            error = 0
-            status=-1
-
-        if error < fac:
-            error = fac
+        # Enter error
         new_file.writelines(str(error)+'\n')
+
     # Enter the name of the file to be output 
     new_file.writelines(obs_seq_in)
     new_file.close()
@@ -264,7 +289,7 @@ if category is True:
     ob_types = ['SAT_SEAICE_VICE01','SAT_SEAICE_VICE02','SAT_SEAICE_VICE03','SAT_SEAICE_VICE04', 'SAT_SEAICE_VICE05',
                 'SAT_SEAICE_AICE01','SAT_SEAICE_AICE02','SAT_SEAICE_AICE03','SAT_SEAICE_AICE04', 'SAT_SEAICE_AICE05']
 else:
-    ob_types = ['SAT_SEAICE_AGREG_THICKNESS', 'SAT_SEAICE_AGREG_CONCENTR', 'SAT_SEAICE_AGREG_FREEBOARD']
+    ob_types = ['SAT_SEAICE_AGREG_THICKNESS', 'SAT_SEAICE_AGREG_CONCENTR', 'SAT_SEAICE_LASER_FREEBOARD', 'SAT_SEAICE_RADAR_FREEBOARD']
 
 # create the obs output directory if it does not already exist
 if os.path.exists(obs_dir) is False:
@@ -277,20 +302,20 @@ obs_loc_data = xr.open_dataset(location_file)
 # define the state variables 
 if category is True:
     state_variables = [ 'vice01', 'QTY_SEAICE_VICE01'        , 'UPDATE',
-                    'vice02', 'QTY_SEAICE_VICE02'        , 'UPDATE',
-                    'vice03', 'QTY_SEAICE_VICE03'        , 'UPDATE',
-                    'vice04', 'QTY_SEAICE_VICE04'        , 'UPDATE',
-                    'vice05', 'QTY_SEAICE_VICE05'        , 'UPDATE',
-                    'vsno01', 'QTY_SEAICE_VSNO01'        , 'UPDATE',
-                    'vsno02', 'QTY_SEAICE_VSNO02'        , 'UPDATE',
-                    'vsno03', 'QTY_SEAICE_VSNO03'        , 'UPDATE',
-                    'vsno04', 'QTY_SEAICE_VSNO04'        , 'UPDATE',
-                    'vsno05', 'QTY_SEAICE_VSNO05'        , 'UPDATE',
-                    'aice01', 'QTY_SEAICE_AICE01'        , 'UPDATE',
-                    'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
-                    'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
-                    'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
-                    'aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
+                        'vice02', 'QTY_SEAICE_VICE02'        , 'UPDATE',
+                        'vice03', 'QTY_SEAICE_VICE03'        , 'UPDATE',
+                        'vice04', 'QTY_SEAICE_VICE04'        , 'UPDATE',
+                        'vice05', 'QTY_SEAICE_VICE05'        , 'UPDATE',
+                        'vsno01', 'QTY_SEAICE_VSNO01'        , 'UPDATE',
+                        'vsno02', 'QTY_SEAICE_VSNO02'        , 'UPDATE',
+                        'vsno03', 'QTY_SEAICE_VSNO03'        , 'UPDATE',
+                        'vsno04', 'QTY_SEAICE_VSNO04'        , 'UPDATE',
+                        'vsno05', 'QTY_SEAICE_VSNO05'        , 'UPDATE',
+                        'aice01', 'QTY_SEAICE_AICE01'        , 'UPDATE',
+                        'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
+                        'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
+                        'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
+                    '   aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
 else:   
     state_variables = ['aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE',
                        'vicen', 'QTY_SEAICE_VOLUME', 'UPDATE',

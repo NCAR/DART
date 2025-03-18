@@ -36,8 +36,6 @@ obs_dir = project_dir + '/data/processed/synthetic_obs/'+source_case+'/'+truth_m
 scratch_dir = '/glade/derecho/scratch/'+user+'/'
 
 # set the assimilation parameters
-# filter_kind = int(sys.argv[4]) #1
-# regression_kind = sys.argv[5] #'NORM'
 qceff_type = sys.argv[5]
 postprocessing = 'cice'
 
@@ -270,8 +268,6 @@ def cycle_da(case, source_case, dart_dir, qceff_type, assim_date, truth_member, 
     os.makedirs(case_dir + '/forecasts/'+date_str+'/')
     os.makedirs(case_dir + '/output_files/'+date_str+'/')
     shutil.move('output.filter', case_dir + '/output_files/'+date_str+'/')
-    # shutil.move('regression_data.txt', case_dir + '/output_files/'+date_str+'/')
-    # shutil.move('obs_inc_data.txt', case_dir + '/output_files/'+date_str+'/')
     os.remove('obs_seq.out')
 
     comd = 'mv input_*.nc ' + case_dir+ '/output_files/'+date_str+'/'

@@ -18,7 +18,7 @@ truth = int(sys.argv[3])
 if sys.argv[4] == 'all':
     stages = ['preassim','pre_filter','post_filter','postprocessed','analysis','forecast']
 else:
-    stages = [sys.argv[i] for i in range(3,len(sys.argv))]
+    stages = [sys.argv[i] for i in range(4,len(sys.argv))]
 
 # output_path = '/glade/work/'+user+'/Projects/cice-scm-da/data/processed/'+case+'/'
 output_path = '/glade/derecho/scratch/mollyw/ICEPACK_EXPERIMENTS/'+case+'/'
