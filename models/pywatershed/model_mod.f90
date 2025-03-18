@@ -7,61 +7,45 @@ module model_mod
 
 ! This is the interface between pywatershed and DART
 
-use types_mod,             only : r4, r8, i8, i4, MISSING_R8, vtablenamelength, &
+use types_mod,             only : r4, r8, i8, i4, MISSING_R8, vtablenamelength,      &
                                   earth_radius, MISSING_I, MISSING_I8
-
-use time_manager_mod,      only : time_type, set_time, set_calendar_type,     &
-                                  set_date, print_date, increment_time
-
-use utilities_mod,         only : do_nml_file, do_nml_term, E_ERR, E_MSG,        &
-                                  nmlfileunit, find_namelist_in_file, to_upper,  &
+use time_manager_mod,      only : time_type, set_time, set_calendar_type,            &
+                                  set_date, print_date, increment_time 
+use utilities_mod,         only : do_nml_file, do_nml_term, E_ERR, E_MSG,            &
+                                  nmlfileunit, find_namelist_in_file, to_upper,      &
                                   check_namelist_read, file_exist, error_handler
-
-use         location_mod,  only : location_type, get_close_type, get_dist, &
-                                  loc_get_close_obs => get_close_obs, &
-                                  loc_get_close_state => get_close_state, &
-                                  convert_vertical_obs, convert_vertical_state, &
-                                  set_location, set_location_missing, VERTISHEIGHT, &
+use         location_mod,  only : location_type, get_close_type, get_dist,           &
+                                  loc_get_close_obs => get_close_obs,                &
+                                  loc_get_close_state => get_close_state,            &
+                                  convert_vertical_obs, convert_vertical_state,      &
+                                  set_location, set_location_missing, VERTISHEIGHT,  &
                                   write_location
-
 use mpi_utilities_mod,     only : my_task_id 
-
 use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file,      &
                                   nc_add_global_creation_time, nc_begin_define_mode, &
                                   nc_end_define_mode, nc_open_file_readonly,         &
                                   nc_close_file, nc_get_global_attribute,            &
                                   nc_get_dimension_size, nc_get_variable, nc_check,  &
                                   nc_get_attribute_from_variable, nc_synchronize_file 
-
-use         obs_kind_mod,  only : get_index_for_quantity, &
-                                  get_name_for_quantity, &
-                                  get_quantity_for_type_of_obs, &
-                                  QTY_BUCKET_MULTIPLIER, &
-                                  QTY_RUNOFF_MULTIPLIER, &
-                                  QTY_STREAM_FLOW
-
+use         obs_kind_mod,  only : get_index_for_quantity, get_name_for_quantity,     &
+                                  get_name_for_quantity, QTY_STREAM_FLOW,            &
+                                  get_quantity_for_type_of_obs
 use ensemble_manager_mod,  only : ensemble_type
-
 use distributed_state_mod, only : get_state
-
 use state_structure_mod,   only : add_domain, get_domain_size, get_index_start,      &
                                   get_index_end, get_num_domains, get_num_variables, &
                                   get_num_dims, get_dim_name, get_dim_length,        &
                                   get_variable_name, get_model_variable_indices,     &
                                   get_varid_from_kind, get_dart_vector_index,        &
                                   get_variable_size, state_structure_info
-
-use default_model_mod,     only : adv_1step, end_model, nc_write_model_vars,  & 
-                                  MAX_STATE_VARIABLE_FIELDS_CLAMP,            &
-                                  init_time => fail_init_time,                & 
-                                  init_conditions => fail_init_conditions,    &
+use default_model_mod,     only : adv_1step, end_model, nc_write_model_vars,         & 
+                                  MAX_STATE_VARIABLE_FIELDS_CLAMP,                   &
+                                  init_time => fail_init_time,                       &  
+                                  init_conditions => fail_init_conditions,           &
                                   parse_variables_clamp 
-
 use dart_time_io_mod,      only : write_model_time
-
-use random_seq_mod,        only : random_seq_type, init_random_seq,   &
+use random_seq_mod,        only : random_seq_type, init_random_seq,                  &
                                   random_gaussian, random_gamma
-
 use netcdf
 
 implicit none
@@ -95,8 +79,9 @@ integer, parameter :: IDSTRLEN = 15 ! Number of character for a USGS gauge ID
 integer, parameter :: JINDEX   = 1  ! 1D river network
 integer, parameter :: KINDEX   = 1  ! 1D river network
 
-!TODO: Revisit for bigger (e.g., CONUS) domain
-!For DRB the maximum number of contributing HRUs was 3
+! TODO: Revisit for bigger (e.g., CONUS) domain
+! For DRB the maximum number of contributing HRUs 
+! (hydrologic response unit) was 3
 integer, parameter :: NUM_HRU  = 10 ! Number of contributing HRUs for each segment  
 
 type domain_locations
@@ -172,7 +157,7 @@ character(len=256) :: hru_config_file              = 'dis_hru.nc' ! file with hr
 character(len=256) :: hydro_config_file            = 'PRMS.nc'    ! file relating segments to HRUs
 
 character(len=vtablenamelength) :: channel_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = '' ! channel state variables
-character(len=vtablenamelength) :: hru_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP)     = '' ! hru (hydrologic response unit) variables
+character(len=vtablenamelength) :: hru_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP)     = '' ! hru variables
 character(len=vtablenamelength) :: parameters(MAX_STATE_VARIABLE_FIELDS_CLAMP)        = '' ! parameters
 
 namelist /model_nml/ assimilation_period_days,     &
@@ -326,7 +311,7 @@ subroutine read_stream_network(filename)
 character(len=*), intent(in) :: filename
 character(len=*), parameter  :: routine = 'read_stream_network'
 
-integer              :: ncid, nindex, io, varid
+integer              :: ncid, nindex
 integer, allocatable :: fromIndices(:)
 integer, allocatable :: fromIndsStart(:)
 integer, allocatable :: fromIndsEnd(:)
@@ -791,7 +776,7 @@ integer, save         :: seed
 type(random_seq_type) :: random_seq
 
 integer               :: idom, ind1, ind2, ivar, jvar, iens
-real(r8)              :: pert, rng
+real(r8)              :: pert
 
 if (.not. module_initialized) call static_init_model
 
@@ -928,7 +913,7 @@ integer,     intent(out) :: num_close        ! Number of close streams
 integer(i8), intent(out) :: close_indices(:) ! full DART indices
 real(r8),    intent(out) :: distances(:)     ! in radians
 
-integer     :: depth, seg_length, seg_index
+integer     :: depth, seg_index
 real(r8)    :: reach_length
 
 integer     :: stream_nclose

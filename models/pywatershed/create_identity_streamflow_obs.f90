@@ -20,8 +20,7 @@ use utilities_mod,          only : nmlfileunit, do_nml_file, do_nml_term,       
                                    error_handler, E_ERR, E_MSG, open_file,       &
                                    find_textfile_dims, close_file 
 use time_manager_mod,       only : time_type, set_calendar_type, GREGORIAN,      &
-                                   increment_time, set_time, get_time, set_date, &
-                                   operator(>=)
+                                   increment_time, set_time, get_time, set_date
 use obs_sequence_mod,       only : obs_sequence_type, obs_type, read_obs_seq,    &
                                    static_init_obs_sequence, write_obs_seq,      &
                                    init_obs, init_obs_sequence, get_num_obs,     &
@@ -60,7 +59,6 @@ integer, parameter  :: TIMESTRLEN   = 19
 
 integer             :: nseg, ngages, nobs, nfiles 
 
-character(len=256)  :: input_file
 character(len=512)  :: msg1, msg2, msg3
 character(len=34)   :: prognml = 'create_identity_streamflow_obs_nml'
 character(len=9)    :: dartnml = 'input.nml'
@@ -95,13 +93,13 @@ type(obs_type)          :: prev_obs
 type(time_type)         :: time_obs, prev_time
 
 ! namelist variables
-character(len=256) :: input_files            = ''
-character(len=256) :: output_file            = 'obs_seq.out'
-character(len=256) :: network_file           = 'dis_seg.nc'
-character(len=256) :: gages_list_file        = ''
-real(r8)           :: obs_fraction_for_error = 0.01
-logical            :: assimilate_all         = .false.
-integer            :: debug                  = 0
+character(len=256) :: input_files            = ''            ! Input raw data file; timeslices from USGS
+character(len=256) :: output_file            = 'obs_seq.out' ! Output DART-style obs-seq file
+character(len=256) :: network_file           = 'dis_seg.nc'  ! File with geometry and network information
+character(len=256) :: gages_list_file        = ''            ! List of gauges to be assimilated
+real(r8)           :: obs_fraction_for_error = 0.01          ! Parameter used to parametrize obs error
+logical            :: assimilate_all         = .false.       ! Flag to turn on assimilation of all available gauges
+integer            :: debug                  = 0             ! Verbosity
 
 namelist /create_identity_streamflow_obs_nml/ &
                input_files,                   &
@@ -126,7 +124,7 @@ call set_calendar_type(GREGORIAN)
 call static_init_model()
 
 ! Read location info from the network file 
-call read_network_information(network_file)
+call read_network_information()
 
 ! Prepare output obs seq file: create it || append to it
 call prep_obs_seq() 
@@ -171,16 +169,15 @@ end subroutine read_namelist
 !--------------------------------------------------------
 ! Open the network file and retrieve location information
 
-subroutine read_network_information(filename)
+subroutine read_network_information()
 
-character(len=*), intent(in) :: filename
 character(len=*), parameter  :: routine = 'read_network_information'
 
 integer              :: ncid, igage, iseg
 integer, allocatable :: gID(:), segGauge(:)
 character(len=10)    :: fmt
 
-ncid = nc_open_file_readonly(filename, routine)     
+ncid = nc_open_file_readonly(network_file, routine)     
 
 ! Read in the dimensions
 nseg   = nc_get_dimension_size(ncid, 'nsegment' , routine)
@@ -202,6 +199,8 @@ write(fmt, '(A, I2, A)') '(i', IDLEN, ')'
 gauge_strings(:) = ''
 do igage = 1, ngages
    write(gauge_strings(segGauge(igage)), fmt) gID(igage)
+
+   ! Append a '0' to the gauge ID to be consistent with USGS-style
    gauge_strings(segGauge(igage)) = '0'//adjustl(gauge_strings(segGauge(igage)))
 enddo
 
@@ -298,7 +297,7 @@ integer                 :: iunit, io, dart_index, key
 integer                 :: oday, osec
 real(r8)                :: oerr, qc
 logical                 :: first_obs
-character(len=512)      :: Q_unit
+character(len=256)      :: Q_unit, input_file
 
 character(len=*), parameter  :: routine = 'add_obs_from_slices'
 
@@ -329,7 +328,7 @@ FILELOOP : do ifile = 1, nfiles
    allocate(   time_str(nobs))
 
    ! Read the discharge and the associated quality
-   call nc_get_variable(ncid, 'discharge'       , discharge  , routine)
+   call nc_get_variable(ncid, 'discharge'  , discharge  , routine)
    call nc_get_attribute_from_variable(ncid, 'discharge', 'units', Q_unit, routine)
 
    if (Q_unit == 'm^3/s') then 
@@ -534,7 +533,7 @@ integer :: id, iseg
 
 character(len=*), parameter  :: routine = 'get_string_array'  
 
-id = 0  ! Indicate the station has no matching gage or is not wanted.
+id = 0  ! Indicate the station has no matching gauge or is not wanted.
 
 SEGMENTS : do iseg = 1, nseg
    if (stations(counter) == gauge_strings(iseg)) then
