@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 19 2025 :: Calendar base date documentation. Tag v11.10.6**
+
+- Added base date information to time_manager_mod docs.
+- GitHub workflow based on tj-actions changed-files removed.
+
 **March 14 2025 :: WRF use_theta_m check. Tag v11.10.5**
 
 - Assert USE_THETA_M=0 in WRF when initializing wrf model_mod.
