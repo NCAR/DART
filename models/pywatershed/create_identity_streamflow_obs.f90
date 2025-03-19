@@ -143,6 +143,7 @@ call add_obs_from_slices()
 
 contains
 
+
 !---------------------------------------------
 ! Read the namelist from DART's input.nml file
 
@@ -344,7 +345,7 @@ FILELOOP : do ifile = 1, nfiles
 
    ! Read the time and station string arrays
    call get_string_array(ncid, 'stationIdStrLen', 'stationId', stations)
-   call get_string_array(ncid, 'timeStrLen'     , 'time', time_str)
+   call get_string_array(ncid, 'timeStrLen'     , 'time'     , time_str)
 
    call nc_close_file(ncid, routine) 
 
@@ -358,11 +359,11 @@ FILELOOP : do ifile = 1, nfiles
       obind = find_matching_gauge(iob) 
       if (obind == 0) cycle OBSLOOP
 
-      ! relate the physical location to the dart state vector index
+      ! Relate the physical location to the dart state vector index
       dart_index = linkloc_to_dart(lat(obind), lon(obind))
 
-      ! desired gauges get the provided obs_err
-      ! remaining ones are for verification purposes
+      ! Desired gauges get the provided obs error
+      ! Remaining ones are for verification purposes
       if (ANY(desired_gages == stations(iob)) .or. assimilate_all) then
         oerr = max(discharge(iob)*obs_fraction_for_error, MIN_OBS_ERR_STD)
       else
@@ -399,6 +400,7 @@ call close_file(iunit)
 
 deallocate(lat, lon, elv, seg, gauge_strings)
 if (allocated(desired_gages)) deallocate(desired_gages)
+
 call finalize_utilities()
 
 end subroutine add_obs_from_slices
@@ -453,7 +455,7 @@ ngages = nlines
 end function set_desired_gages
 
 
-!-------------------------------------------------------------------------------
+!---------------------------------------------------
 ! Rough estimate of the total number of observations
 
 function estimate_total_obs_count(file_list, nfiles) result (num_obs)
@@ -664,8 +666,8 @@ end subroutine create_fast_lookup_table
 
 
 !-------------------------------------------------------------------------------
-!> read the character matrix from the netCDF file and parse into
-!> useable strings
+! read the character matrix from the netCDF file and parse into
+! useable strings
       
 subroutine convert_time_string(string, days, seconds, n)
       
