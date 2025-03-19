@@ -1,3 +1,5 @@
+.. _important-capabilities-dart:
+
 Important capabilities of DART
 ==============================
 

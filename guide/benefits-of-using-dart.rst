@@ -34,32 +34,31 @@ Here are some of the many benefits of using DART:
    system provided that you maintain the license and copyright information. Of
    course, we also ask that you credit DART in your publications, and kindly ask
    that you contribute your modifications so that other users may benefit. See
-   `How should I cite DART? <#citeDart>`__ and `How can I contribute to
-   DART? <#ContributeToDart>`__ for more information.
+   :ref:`How should I cite DART?<citeDART>` and :ref:`How can I contribute to
+   DART? <contributors-guide>` for more information.
 2. DART is **fully parallel and carefully engineered** to run on systems ranging
    from single-core research computers to the top performing multicore
    supercomputers in the world. Writing scalable parallel code is arguably the
    most difficult and time-consuming task in scientific computing today, but
    DART has already carefully implemented and tested this project, and the code
    is available for you to use out-of-the-box. For more information on how DART
-   was written (and continues to be developed), see `DART’s design
-   philosophy <#dartDesign>`__.
+   was written (and continues to be developed), see :ref:`dart-design-philosophy`.
 3. DART contains **numerous tools that accelerate getting started** on both
    research and “real-world” problems. Multiple rigorously tested inflation,
    localization, perturbation, and other auxiliary data assimilation algorithms
-   are available for immediate use and testing. See `Important capabilities of
-   DART <#dartCapabilities>`__ for more information.
+   are available for immediate use and testing. See :ref:`important-capabilities-dart`
+   for more information.
 4. DART **makes adding a new model straightforward**. A new model only needs to
    implement a list of (at most) 18 core functions or use the default behavior
-   if applicable to take advantage of DART’s mature and robust DA algorithms. A
+   if applicable to take advantage of DART's mature and robust DA algorithms. A
    basic data assimilation system for a large model can be built in
    person-weeks, and comprehensive systems have been built in a few months. See
-   `How do I run DART with my model? <#RunWithMyModel>`__ for more information.
+   :ref:`Using new models` for more information.
 5. DART **makes it easy to add new observations** in order to test their
    potential beneficial impact. Incorporating new observation types only
    requires creating a forward operator that computes the expected value of an
-   observation given a model’s state. See `How do I add my observations to
-   DART? <#RunWithMyObs>`__ for more information.
+   observation given a model's state. See :ref:`How do I add my observations to
+   DART? <adding-your-observations-to-dart>` for more information.
 6. DART **can be used to test new DA algorithms**. Many such algorithms have
    been successfully implemented, tested, and published using DART. This is not
    covered in this getting started guide as this is an “advanced user”

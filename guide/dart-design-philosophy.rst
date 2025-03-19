@@ -1,3 +1,5 @@
+.. _dart-design-philosophy:
+
 DART’s design philosophy
 ========================
 

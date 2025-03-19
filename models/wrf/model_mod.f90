@@ -314,6 +314,7 @@ TYPE wrf_static_data_for_dart
    integer  :: domain_size
    integer  :: localization_coord
    integer  :: hybrid_opt
+   integer  :: theta_m
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs, znw, c1h, c2h
    real(r8), dimension(:,:),   pointer :: mub, hgt
    real(r8), dimension(:,:),   pointer :: latitude, latitude_u, latitude_v
@@ -708,7 +709,16 @@ WRFDomains : do id=1,num_domains
                         ' for WRFv4 and later'
       call error_handler(E_ERR,'static_init_model', errstring, source, revision, revdate)
      
-   endif        
+   endif
+
+   ! DART requires that THM is the 'perturbed dry adiabatic potential temperature'
+   ! WRF USE_THETA_M namelist option must be 0
+   if (get_type_ind_from_type_string(id,'THM') >=0 .and. wrf%dom(id)%theta_m /= 0) then
+
+      write(errstring,*)'WRF namelist option USE_THETA_M must be 0, where THM = perturbed dry adiabatic potential temperature' 
+      call error_handler(E_ERR,'static_init_model', errstring, source, revision, revdate)
+
+   endif   
 
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
    wrf%dom(id)%type_v      = get_type_ind_from_type_string(id,'V')
@@ -7158,6 +7168,12 @@ integer :: ret
    call nc_check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon), &
                      'static_init_model', 'get_att STAND_LON')
    if(debug) write(*,*) ' stdlon is ',stdlon
+
+   call nc_check( nf90_get_att(ncid, nf90_global, 'USE_THETA_M', wrf%dom(id)%theta_m), &
+                     'static_init_model', 'get_att USE_THETA_M')
+   if(debug) write(*,*) ' theta_m is ',wrf%dom(id)%theta_m
+
+
 
    ! this attribute is not present in older wrf files, which means it is not
    ! using a hybrid vertical coordinate.  not having this attribute should
