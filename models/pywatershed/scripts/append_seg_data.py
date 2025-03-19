@@ -21,8 +21,13 @@ lats, lons = data[:, 1], data[:, 2]
 
 # Read NetCDF dimensions & variables
 with Dataset(PARAM_FILE, 'r') as nc:
-    n_seg, gages         = len(nc.dimensions['nsegment']), len(nc.dimensions['npoigages'])
-    to_index, poi_gauges = nc.variables['tosegment'][:].astype(int), nc.variables['poi_gage_id'][:].astype(int)
+    n_seg, gages = len(nc.dimensions['nsegment']), len(nc.dimensions['npoigages'])
+    to_index     = nc.variables['tosegment'][:].astype(int)
+    
+    # Convert poi_gage_id to a character array with padding
+    poi_gauges = nc.variables['poi_gage_id'][:].astype(str)
+    n_char     = 15
+    poi_gauges = np.array([list(g.rjust(n_char)) for g in poi_gauges], dtype='S1')
 
 # Compute upstream links
 fromIndices, num_up_links, fromIndsStart, fromIndsEnd = [], np.zeros(n_seg, int), np.zeros(n_seg, int), np.zeros(n_seg, int)
@@ -44,7 +49,8 @@ with Dataset(NTWRK_FILE, 'w', format='NETCDF4') as nc_new, Dataset(PARAM_FILE, '
     # Copy dimensions
     for dim_name, dim in nc_old.dimensions.items():
         nc_new.createDimension(dim_name, len(dim) if not dim.isunlimited() else None)
-    nc_new.createDimension('index', len(fromIndices))  
+    nc_new.createDimension('index', len(fromIndices))  # Missing dimension
+    nc_new.createDimension('IDLength', n_char)  # New character array dimension
 
     # Copy variables
     for var_name, var in nc_old.variables.items():
@@ -60,5 +66,5 @@ with Dataset(NTWRK_FILE, 'w', format='NETCDF4') as nc_new, Dataset(PARAM_FILE, '
     nc_new.createVariable('num_up_links' , 'i8', ('nsegment',))[:]  = num_up_links
     nc_new.createVariable('seg_lats'     , 'f8', ('nsegment',))[:]  = lats
     nc_new.createVariable('seg_lons'     , 'f8', ('nsegment',))[:]  = lons
-    nc_new.createVariable('poi_gauges'   , 'i8', ('npoigages',))[:] = poi_gauges
-
+   
+    nc_new.createVariable('poi_gauges', 'S1', ('npoigages', 'IDLength'))[:] = poi_gauges 
