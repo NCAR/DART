@@ -503,8 +503,8 @@ character(len=*), parameter  :: routine = 'read_hru_properties'
 
 integer              :: ncid, iseg, ihru, count_hrus
 integer, allocatable :: hru_seg(:), hru_inds(:)
-
-logical, save :: basin_read = .false. 
+character(len=256)   :: fmt
+logical, save        :: basin_read = .false. 
 
 ! Only do this once
 if (basin_read) return 
@@ -536,15 +536,19 @@ do iseg = 1, nseg
    ! Fill connections with HRU information
    if (count_hrus == 0) then
       allocate(connections(iseg)%avail_hru(1))
-      connections(iseg)%avail_hru(1) = 0       ! Similar to "Masked Buckets"
+      connections(iseg)%avail_hru(1) = MISSING_I       ! Similar to "Masked Buckets"
    else
       allocate(connections(iseg)%avail_hru(count_hrus))
       connections(iseg)%avail_hru(:) = hru_inds
    endif
+   hruMask(iseg) = count_hrus  ! Number of contributing HRUS >= 0
 
    if (debug > 99) then   
        write(msg1, '("PE", i2)') my_task_id()
-       write(*, *) trim(msg1), ' segment: ', iseg, 'Contributing HRUs: ', connections(iseg)%avail_hru(:)
+       write(fmt, '(A, i2, A)') '(2A, i5, X, A, i3, X, A,', max(count_hrus, 1), 'i10)' 
+       write(*, fmt) trim(msg1), ' segment: ', iseg, & 
+                                 'HRU Count:', hruMask(iseg), &
+                                 'Contributing HRUs:', connections(iseg)%avail_hru(:)
    endif  
 enddo 
 deallocate(hru_seg, hru_inds)
@@ -1109,7 +1113,7 @@ character(len=*), parameter :: routine = 'get_close_state'
 !====================== local variables ======================
 integer     :: num_vars_chn, num_vars_hru, contributing_HRUs
 integer     :: num_close_seg, iclose, start_index, close_index
-integer     :: ihru, jump
+integer     :: ihru, index_skip
 integer(i8) :: full_index       
 
 integer     :: stream_nclose
@@ -1144,25 +1148,32 @@ if (domain_count > 1) then
    endif
 
    ! Remove groundwater in HRUs that don't contribute to the 
-   ! close segments and add the one that do contribute to the flow. 
+   ! close segments and add the one(s) that do contribute to the flow 
    num_close_seg = stream_nclose
    start_index   = get_index_start(idom_hru, 1)
-   jump          = start_index - 1
+   index_skip    = start_index - 1
    
    GWLOOP: do iclose = 1, num_close_seg
       close_index = stream_indices(iclose)
 
-      if (connections(close_index)%avail_hru(1) == 0) cycle GWLOOP
+      if (hruMask(close_index) == 0) cycle GWLOOP
       
-         contributing_HRUs = size(connections(close_index)%avail_hru)
+      contributing_HRUs = hruMask(close_index)
 
-         ! Add them to the list
-         do ihru = 1, contributing_HRUs
-            stream_nclose                 = stream_nclose + 1
-            stream_indices(stream_nclose) = jump + connections(close_index)%avail_hru(ihru)
-            stream_dists(  stream_nclose) = stream_dists(iclose)            
-         enddo        
+      if (debug > 99) print *, 'iclose:', iclose, &
+                      'close_index:', close_index, 'HRU count:', contributing_HRUs
+
+      ! Add them to the list
+      do ihru = 1, contributing_HRUs
+         stream_nclose                 = stream_nclose + 1
+         stream_indices(stream_nclose) = index_skip + connections(close_index)%avail_hru(ihru)
+         stream_dists(  stream_nclose) = stream_dists(iclose)            
+      enddo        
    enddo GWLOOP
+   
+   if (debug > 99) write(*, '(A, i5, X, A)') &
+                   'In total, we added', stream_nclose-num_close_seg, & 
+                   'HRUs to the list of close streamflow segments'
 endif
 
 ! Determine which of the global indices are mine
@@ -1170,7 +1181,7 @@ call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
                   num_close, close_ind, dist)
 
 if (debug > 99) then
-   write(msg1,'("PE ", i3)') my_task_id()
+   write(msg1, '("PE ", i3)') my_task_id()
    write(*, *) trim(msg1), ' get_close_state: num_close ', num_close
    write(*, *) trim(msg1), ' get_close_state: close_ind ', close_ind(1:num_close)
    write(*, *) trim(msg1), ' get_close_state: dist      ', dist(1:num_close)
