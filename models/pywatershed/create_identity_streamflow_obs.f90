@@ -41,7 +41,7 @@ use netcdf
 
 implicit none
 
-character(len=*), parameter :: source  = "pywatershed/create_identity_streamflow_obs.f90"
+character(len=*), parameter :: source  = "create_identity_streamflow_obs.f90"
 
 ! Input file (USGS) has data quality control fields, whether to use or ignore them.
 integer,  parameter :: NUM_COPIES      = 1            ! number of copies in sequence
@@ -86,6 +86,12 @@ type database
    integer(i8), allocatable :: sortedindex(:)
 end type database
 type(database) :: lookup_table
+
+type gauge_lookup
+   character(len=256), allocatable :: gauge_keys(:)
+   integer, allocatable            :: gauge_indices(:)
+end type gauge_lookup
+type(gauge_lookup) :: gauge_map
 
 type(obs_type)          :: obs 
 type(obs_sequence_type) :: obs_seq
@@ -201,6 +207,9 @@ do igage = 1, ngages
    gauge_strings(segGauge(igage)) = gID(igage)
 enddo
 
+! Build gauges lookup table **once** before any searches
+call build_gauge_lookup()
+
 ! DART-style longitude for the segments
 where(lon <    0.0_r8) lon = lon + 360.0_r8
 where(lon == 360.0_r8) lon = 0.0_r8
@@ -210,9 +219,9 @@ call nc_close_file(ncid, routine)
 if (debug > 5) then 
    do iseg = 1, nseg
       write(*, '(A, i5, X, A, i6, X, A, f8.3, X, A, f8.3, X, A, f8.3, X, A, X, A)') &
-           'num:', iseg, 'segID:', seg(iseg), 'lat:', lat(iseg), &
-           'lon:', lon(iseg), 'elv:', elv(iseg), &
-           'gague:', trim(gauge_strings(iseg))
+               'num:', iseg, 'segID:', seg(iseg), 'lat:', lat(iseg), &
+               'lon:', lon(iseg), 'elv:', elv(iseg), &
+               'gauge:', adjustl(gauge_strings(iseg))
    enddo
 endif
 
@@ -320,9 +329,7 @@ FILELOOP : do ifile = 1, nfiles
    write(msg2, *) 'number of obs in the time slice is ', nobs
    call error_handler(E_MSG, routine, msg1, text2=msg2)
 
-   allocate(  discharge(nobs))
-   allocate(   stations(nobs))
-   allocate(   time_str(nobs))
+   allocate(discharge(nobs), stations(nobs), time_str(nobs))
 
    ! Read the discharge and the associated quality
    call nc_get_variable(ncid, 'discharge'  , discharge  , routine)
@@ -373,6 +380,8 @@ FILELOOP : do ifile = 1, nfiles
       call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
    enddo OBSLOOP
+   
+   ! Release memory associated with the current obs file
    deallocate(discharge, time_str, stations)
 enddo FILELOOP
 
@@ -526,30 +535,25 @@ end subroutine get_string_array
 function find_matching_gauge(counter) result(id)
 
 integer, intent(in) :: counter
-integer :: id, iseg  
+integer :: id  
 
-character(len=*), parameter  :: routine = 'get_string_array'  
+character(len=*), parameter  :: routine = 'find_matching_gauge'  
 
-id = 0  ! Indicate the station has no matching gauge or is not wanted.
+id = find_gauge_index(stations(counter))
 
-SEGMENTS : do iseg = 1, nseg
-   if (stations(counter) == gauge_strings(iseg)) then
-      if (debug > 5) then
-         write(msg1, *) 'Identified station: "', stations(counter), '"'
-         call error_handler(E_MSG, routine, msg1)
-      endif
-      id = iseg
-      exit SEGMENTS
+if (debug > 5) then 
+   if (id == 0) then
+      write(msg1, *) 'Unable to match station id for obs #', counter, &
+                  ' "', stations(counter), '"'
+      call error_handler(E_MSG, routine, msg1)
+   else
+      write(msg1, *) 'Identified station: "', stations(counter), '"'
+      call error_handler(E_MSG, routine, msg1)
    endif
-enddo SEGMENTS
-
-if (id == 0 .and. debug > 5) then
-   write(msg1, *) 'Unable to match station id for obs #', counter, &
-                  ' "',stations(counter), '"'
-   call error_handler(E_MSG, routine, msg1, source)
 endif
 
 end function find_matching_gauge
+
 
 !-----------------------------------------------
 ! Use gsmd to retreive state index from location
@@ -602,8 +606,8 @@ endif
 end function linkloc_to_dart
 
 
-!-------------------------------------------------------------------------------
-!>
+!----------------------------------------------
+! Build a sorted look up table; longitude-based
 
 subroutine create_fast_lookup_table()
 
@@ -642,7 +646,7 @@ TABLE : do indx = 1, lookup_table%nsegments
 
 enddo TABLE
 
-! do the index sort on lookup_table%longitude
+! Do the index sort on lookup_table%longitude
 call index_sort(lookup_table%lon, &
                 lookup_table%sortedindex, &
                 lookup_table%nsegments)
@@ -690,6 +694,45 @@ darttime = set_date(year, month, day, hour, minute, second)
 call get_time(darttime, seconds, days)
 
 end subroutine convert_time_string
+
+
+!---------------------------------
+! Build a gauge map for searching 
+
+subroutine build_gauge_lookup()
+  
+integer :: iseg
+
+allocate(gauge_map%gauge_keys(nseg))
+allocate(gauge_map%gauge_indices(nseg))
+
+! Fill the lookup table
+do iseg = 1, nseg
+   gauge_map%gauge_keys(iseg)    = adjustl(gauge_strings(iseg))
+   gauge_map%gauge_indices(iseg) = iseg
+end do
+
+end subroutine build_gauge_lookup
+
+
+!----------------------------------------
+! Check if gauge matches incoming station
+
+function find_gauge_index(station_id) result(idx)
+
+character(len=*), intent(in) :: station_id
+integer :: iseg, idx
+
+idx = 0 ! Default: Not found
+
+do iseg = 1, nseg
+   if (station_id == gauge_map%gauge_keys(iseg)) then
+      idx = gauge_map%gauge_indices(iseg)
+      return
+   end if
+end do
+
+end function find_gauge_index
 
 
 ! ...
