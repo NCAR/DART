@@ -19,6 +19,7 @@ modis_ist_to_obs_netcdf
 seaice_aggre_to_obs_netcdf
 obs_sequence_tool
 advance_time
+seaicedata_to_obs_netcdf
 )
 
 # build arguments
