@@ -82,13 +82,14 @@ integer, parameter :: KINDEX   = 1  ! 1D river network
 ! TODO: Revisit for bigger (e.g., CONUS) domain
 ! For DRB the maximum number of contributing HRUs 
 ! (hydrologic response unit) was 3
-integer, parameter :: NUM_HRU  = 10 ! Number of contributing HRUs for each segment  
+integer, parameter :: NUM_HRU      = 10 ! Number of contributing HRUs for each segment  
+integer, parameter :: INACTIVE_HRU = 0  ! 0=inactive; 1=land; 2=lake; 3=swale
+integer, parameter :: MASKED_HRU   = 0
 
 type domain_locations
    private
    type(location_type), allocatable :: location(:,:,:)
 end type domain_locations
-
 type(domain_locations), allocatable :: domain_info(:)
 
 ! user-defined type to enable a 'linked list' of stream links
@@ -115,9 +116,10 @@ integer, allocatable, dimension(:) :: num_up_links            ! Number of links 
 
 character(len=IDSTRLEN), allocatable, dimension(:) :: GaugeID
 integer, allocatable, dimension(:) :: segNHMid
-integer, allocatable, dimension(:) :: segGauge
-integer, allocatable, dimension(:) :: segTyp
-integer, allocatable, dimension(:) :: hruMask
+integer, allocatable, dimension(:) :: segGauge  
+integer, allocatable, dimension(:) :: segTyp     ! Segment type; could be headwater, lake, ...
+integer, allocatable, dimension(:) :: hruMask    ! Construct it as either 0 (no HRUs) or non-zero (# of contributing HRUs) 
+integer, allocatable, dimension(:) :: hruTyp     ! HRU type (could be inactive)
 
 real(r8), allocatable, dimension(:) :: segLat
 real(r8), allocatable, dimension(:) :: segLon
@@ -558,12 +560,14 @@ call nc_close_file(ncid, routine)
 ! Now, get HRU data
 ncid = nc_open_file_readonly(hru_file, routine)
 
-allocate(hruLat(nhru), hruLon(nhru), hruElv(nhru))
+allocate(hruLat(nhru), hruLon(nhru), &
+         hruElv(nhru), hruTyp(nhru))
 
 ! Read hru location variables
 call nc_get_variable(ncid, 'hru_lat' , hruLat, routine)
 call nc_get_variable(ncid, 'hru_lon' , hruLon, routine)
 call nc_get_variable(ncid, 'hru_elev', hruElv, routine)
+call nc_get_variable(ncid, 'hru_type', hruTyp, routine)
 
 ! DART-style longitude
 where(hruLon <    0.0_r8) hruLon = hruLon + 360.0_r8
@@ -1113,8 +1117,8 @@ character(len=*), parameter :: routine = 'get_close_state'
 !====================== local variables ======================
 integer     :: num_vars_chn, num_vars_hru, contributing_HRUs
 integer     :: num_close_seg, iclose, start_index, close_index
-integer     :: ihru, index_skip
-integer(i8) :: full_index       
+integer     :: ihru, index_skip, close_hru_index
+integer(i8) :: full_index 
 
 integer     :: stream_nclose
 integer(i8) :: stream_indices(nseg) 
@@ -1156,19 +1160,25 @@ if (domain_count > 1) then
    GWLOOP: do iclose = 1, num_close_seg
       close_index = stream_indices(iclose)
 
-      if (hruMask(close_index) == 0) cycle GWLOOP
+      if (hruMask(close_index) == MASKED_HRU) cycle GWLOOP
       
       contributing_HRUs = hruMask(close_index)
 
-      if (debug > 99) print *, 'iclose:', iclose, &
-                      'close_index:', close_index, 'HRU count:', contributing_HRUs
+      if (debug > 99) print *, 'iclose:', iclose,  &
+                      'close_index:', close_index, & 
+                      'HRU count:', contributing_HRUs
 
       ! Add them to the list
-      do ihru = 1, contributing_HRUs
+      HRULOOP : do ihru = 1, contributing_HRUs
+         close_hru_index = index_skip + connections(close_index)%avail_hru(ihru)
+        
+         ! Found HRU index, now make sure it's active 
+         if (hruTyp(close_hru_index) == INACTIVE_HRU) cycle HRULOOP
+
          stream_nclose                 = stream_nclose + 1
-         stream_indices(stream_nclose) = index_skip + connections(close_index)%avail_hru(ihru)
+         stream_indices(stream_nclose) = close_hru_index
          stream_dists(  stream_nclose) = stream_dists(iclose)            
-      enddo        
+      enddo HRULOOP       
    enddo GWLOOP
    
    if (debug > 99) write(*, '(A, i5, X, A)') &
