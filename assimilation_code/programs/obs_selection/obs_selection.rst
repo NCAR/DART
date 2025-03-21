@@ -1,3 +1,5 @@
+.. index:: obs selection 
+
 .. _obs_selection:
 
 program ``obs_selection``
