@@ -29,7 +29,7 @@ supplied with DART to directly compare the observation diagnostic output from mu
 (it does more than two, the script has a poor name).
 
 This is one of a set of tools which operate on observation sequence files. For a more general purpose tool see the
-:doc:`../obs_sequence_tool/obs_sequence_tool`, and for a more flexible selection tool see the obs_selection_tool.
+:ref:`obs sequence tool`, and for a more flexible selection tool see the :ref:`obs_selection`.
 
 Creating an input filelist
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
