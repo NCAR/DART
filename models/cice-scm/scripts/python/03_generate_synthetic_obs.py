@@ -315,7 +315,7 @@ if category is True:
                         'aice02', 'QTY_SEAICE_AICE02'        , 'UPDATE',
                         'aice03', 'QTY_SEAICE_AICE03'        , 'UPDATE',
                         'aice04', 'QTY_SEAICE_AICE04'        , 'UPDATE',
-                    '   aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
+                        'aice05', 'QTY_SEAICE_AICE05'        , 'UPDATE']
 else:   
     state_variables = ['aicen', 'QTY_SEAICE_CONCENTR', 'UPDATE',
                        'vicen', 'QTY_SEAICE_VOLUME', 'UPDATE',
