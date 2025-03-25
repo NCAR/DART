@@ -12,8 +12,7 @@ program cice_to_dart
 use        types_mod, only : r8,metadatalength
 use    utilities_mod, only : error_handler, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
-                             nmlfileunit,do_nml_file, do_nml_term, &
-                             initialize_utilities, finalize_utilities
+                             nmlfileunit,do_nml_file, do_nml_term
 use netcdf_utilities_mod, only : nc_check
 use netcdf
 
@@ -46,8 +45,6 @@ real(r8), allocatable :: par(:,:,:)
 
 ! message string
 character(len=512) :: string1
-
-call initialize_utilities('cice_to_dart')
 
 ! read the namelist
 call find_namelist_in_file('input.nml','cice_parameter_nml',iunit)
@@ -116,8 +113,6 @@ do ipar=1, npar
 end do
 
 call nc_check(nf90_close(ncid2),'cice to dart','close'//trim(cice_restart_input_file))
-
-call finalize_utilities()
 
 contains
 
