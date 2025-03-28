@@ -25,6 +25,7 @@ use          location_mod, only : location_type, get_dist, get_close_type,      
                                   get_close_obs,                                &
                                   loc_get_close_state => get_close_state,       &
                                   convert_vertical_obs, convert_vertical_state, &
+                                  VERTISUNDEF,                                  &
                                   VERTISLEVEL  ! treat cat as vert level
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
@@ -1242,7 +1243,7 @@ do iterations = 1, Niterations
    ! Full bilinear interpolation for quads
    if(dipole_grid) then
       do e = 1, ens_size
-         call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, work_expected_obs(e))
+         call quad_idw_interp(lon, lat, x_corners, y_corners, p(:,e), work_expected_obs(e))
       enddo
    else
       ! Rectangular bilinear interpolation - horizontal plane only
@@ -1643,28 +1644,24 @@ end subroutine line_intercept
 
 !------------------------------------------------------------
 
-subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
-                                p, ens_size, expected_obs)
+subroutine quad_idw_interp(lon_in, lat, x_corners_in, y_corners, p, expected_obs)
 
- real(r8),  intent(in) :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
- integer,   intent(in) :: ens_size
- real(r8), intent(out) :: expected_obs
+! Performs IDW interpolation using great-circle distances for a quadrilateral.
 
-! Given a longitude and latitude (lon_in, lat), the longitude and
-! latitude of the 4 corners of a quadrilateral and the values at the
-! four corners, interpolates to (lon_in, lat) which is assumed to
-! be in the quad. This is done by bilinear interpolation, fitting
-! a function of the form a + bx + cy + dxy to the four points and 
-! then evaluating this function at (lon, lat). The fit is done by
-! solving the 4x4 system of equations for a, b, c, and d. The system
-! is reduced to a 3x3 by eliminating a from the first three equations
-! and then solving the 3x3 before back substituting. There is concern
-! about the numerical stability of this implementation. Implementation
-! checks showed accuracy to seven decimal places on all tests.
+real(r8),  intent(in) :: lon_in, lat ! Interpolation point (longitude, latitude) in degrees
+real(r8),  intent(in) :: x_corners_in(4), y_corners(4) ! quadrilaterals corner points (longitude, latitude) in degrees.
+real(r8),  intent(in) :: p(4) ! values at the quadrilaterals corner points
+real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
 
-integer :: i
-real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
-! real(r8) :: lon_mean
+real(r8), parameter :: epsilon = 1.0e-12_r8  ! Define a small threshold
+real(r8) :: distances(4), weights(4)  ! Arrays for distances and weights
+real(r8) :: x_corners(4), lon
+type(location_type) :: corner(4), point
+real(r8) :: sum_weights, sum_weighted_p
+real(r8) :: power                  ! Power for IDW (2 for squared distance)
+integer :: i                       ! Loop variable
+
+power = 2.0_r8  ! Power for IDW (squared distance)
 
 ! Watch out for wraparound on x_corners.
 lon = lon_in
@@ -1680,108 +1677,37 @@ if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
    enddo
 endif
 
-
-!*******
-! Problems with extremes in polar cell interpolation can be reduced
-! by this block, but it is not clear that it is needed for actual
-! ocean grid data
-! Find the mean longitude of corners and remove
-!!!lon_mean = sum(x_corners) / 4.0_r8
-!!!x_corners = x_corners - lon_mean
-!!!lon = lon - lon_mean
-! Multiply everybody by the cos of the latitude
-!!!do i = 1, 4
-   !!!x_corners(i) = x_corners(i) * cos(y_corners(i) * deg2rad)
-!!!enddo
-!!!lon = lon * cos(lat * deg2rad)
-
-!*******
-
-
-! Fit a surface and interpolate; solve for 3x3 matrix
-do i = 1, 3
-   ! Eliminate a from the first 3 equations
-   m(i, 1) = x_corners(i) - x_corners(i + 1)
-   m(i, 2) = y_corners(i) - y_corners(i + 1)
-   m(i, 3) = x_corners(i)*y_corners(i) - x_corners(i + 1)*y_corners(i + 1)
-   v(i) = p(i) - p(i + 1)
+! Set the corner locations
+do i = 1, 4
+   corner(i) = set_location(x_corners(i), y_corners(i), MISSING_R8, VERTISUNDEF)
 enddo
 
-! Solve the matrix for b, c and d
-call mat3x3(m, v, r)
+point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
 
-! r contains b, c, and d; solve for a
-a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
-   r(3) * x_corners(4)*y_corners(4)
+! Initialize sums
+sum_weights = 0.0_r8
+sum_weighted_p = 0.0_r8
 
+! Loop over the 4 corner points
+do i = 1, 4
 
-!----------------- Implementation test block
-! When interpolating on dipole x3 never exceeded 1e-9 error in this test
-!!!do i = 1, 4
-   !!!interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
-   !!!if(abs(interp_val - p(i)) > 1e-9) then
-      !!!write(*, *) 'large interp residual ', interp_val - p(i)
-   !!!endif
-!!!enddo
-!----------------- Implementation test block
+   distances(i) = get_dist(point, corner(i), no_vert=.true.)
 
+   ! Handle division by zero (if the point coincides with a corner point)
+   if (distances(i) < epsilon) then
+      weights(i) = 1.0e12_r8  ! Assign a very large weight
+   else
+      weights(i) = 1.0d0 / (distances(i)**power) 
+   end if
 
-! Now do the interpolation
-expected_obs = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
+   ! Update sums
+   sum_weights = sum_weights + weights(i)
+   sum_weighted_p = sum_weighted_p + weights(i) * p(i)
+end do
 
-!********
-! Avoid exceeding maxima or minima as stopgap for poles problem
-! When doing bilinear interpolation in quadrangle, can get interpolated
-! values that are outside the range of the corner values
-if(expected_obs > maxval(p)) then
-   expected_obs = maxval(p)
-else if(expected_obs < minval(p)) then
-   expected_obs = minval(p)
-endif
-!********
-
-end subroutine quad_bilinear_interp
-
-!------------------------------------------------------------
-
-subroutine mat3x3(m, v, r)
- real(r8),  intent(in) :: m(3, 3), v(3)
- real(r8), intent(out) :: r(3)
-
-! Solves rank 3 linear system mr = v for r
-! using Cramer's rule. This isn't the best choice
-! for speed or numerical stability so might want to replace
-! this at some point.
-
-real(r8) :: m_sub(3, 3), numer, denom
-integer  :: i
-
-! Compute the denominator, det(m)
-denom = deter3(m)
-
-! Loop to compute the numerator for each component of r
-do i = 1, 3
-   m_sub = m
-   m_sub(:, i) = v   
-   numer = deter3(m_sub)
-   r(i) = numer / denom
-enddo
-
-end subroutine mat3x3
-
-!------------------------------------------------------------
-
-function deter3(m)
- real(r8), intent(in) :: m(3, 3)
- real(r8)             :: deter3
-
-! Computes determinant of 3x3 matrix m
-
-deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
-         m(1,3)*m(2,1)*m(3,2) - m(3,1)*m(2,2)*m(1,3) - &
-         m(1,1)*m(2,3)*m(3,2) - m(3,3)*m(2,1)*m(1,2)
-
-end function deter3
+! Compute the interpolated value
+expected_obs = sum_weighted_p / sum_weights
+end subroutine quad_idw_interp
 
 !------------------------------------------------------------------
 !> Returns the the time step of the model; the smallest increment
