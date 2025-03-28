@@ -1242,7 +1242,7 @@ do iterations = 1, Niterations
    ! Full bilinear interpolation for quads
    if(dipole_grid) then
       do e = 1, ens_size
-         call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, work_expected_obs(e))
+         call quad_idw_interp(lon, lat, x_corners, y_corners, p(:,e), work_expected_obs(e))
       enddo
    else
       ! Rectangular bilinear interpolation - horizontal plane only
@@ -1741,6 +1741,82 @@ endif
 !********
 
 end subroutine quad_bilinear_interp
+!------------------------------------------------------------
+
+subroutine quad_idw_interp(lon_in, lat, x_corners_in, y_corners, p, expected_obs)
+
+! Performs IDW interpolation using great-circle distances for a quadrilateral.
+
+real(r8),  intent(in) :: lon_in, lat ! Interpolation point (longitude, latitude) in degrees
+real(r8),  intent(in) :: x_corners_in(4), y_corners(4) ! quadrilateral's corner points (longitude, latitude) in degrees.
+real(r8),  intent(in) :: p(4) ! values at the quadrilateral's corner points
+real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
+
+real(r8), parameter :: pi = 3.141592653589793d0
+real(r8), parameter :: earth_radius = 6371.0d0  ! Earth's radius in kilometers
+real(r8), parameter :: epsilon = 1.0e-12_r8  ! Define a small threshold
+
+real(r8) :: distances(4), weights(4)  ! Arrays for distances and weights
+real(r8) :: lon_rad, lat_rad          ! Interpolation point in radians
+real(r8) :: x_rad, y_rad              ! Corner points in radians
+real(r8) :: delta_lon, delta_lat      ! Differences in longitude and latitude
+real(r8) :: a, c                      ! Variables for Haversine formula
+real(r8) :: sum_weights, sum_weighted_p, x_corners(4), lon
+real(r8) :: power                  ! Power for IDW (2 for squared distance)
+integer :: i                              ! Loop variable
+
+power = 2.0_r8  ! Power for IDW (squared distance)
+
+! Watch out for wraparound on x_corners.
+lon = lon_in
+x_corners = x_corners_in
+
+! See if the side wraps around in longitude. If the corners longitudes
+! wrap around 360, then the corners and the point to interpolate to
+! must be adjusted to be in the range from 180 to 540 degrees.
+if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
+   if(lon < 180.0_r8) lon = lon + 360.0_r8
+   do i = 1, 4
+      if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
+   enddo
+endif
+
+! Convert interpolation point to radians
+lon_rad = lon * pi / 180.0_r8
+lat_rad = lat * pi / 180.0_r8
+
+! Initialize sums
+sum_weights = 0.0_r8
+sum_weighted_p = 0.0_r8
+
+! Loop over the 4 corner points
+do i = 1, 4
+   ! Convert corner points to radians
+   x_rad = x_corners(i) * pi / 180.0_r8
+   y_rad = y_corners(i) * pi / 180.0_r8
+
+   ! Compute great-circle distance using the Haversine formula
+   delta_lon = x_rad - lon_rad
+   delta_lat = y_rad - lat_rad
+   a = sin(delta_lat / 2.0_r8)**2 + cos(lat_rad) * cos(y_rad) * sin(delta_lon / 2.0_r8)**2
+   c = 2.0_r8 * atan2(sqrt(a), sqrt(1.0_r8 - a))
+   distances(i) = earth_radius * c
+
+   ! Handle division by zero (if the point coincides with a corner point)
+   if (distances(i) < epsilon) then
+      weights(i) = 1.0e12_r8  ! Assign a very large weight
+   else
+      weights(i) = 1.0d0 / (distances(i)**power) 
+   end if
+
+   ! Update sums
+   sum_weights = sum_weights + weights(i)
+   sum_weighted_p = sum_weighted_p + weights(i) * p(i)
+end do
+
+! Compute the interpolated value
+expected_obs = sum_weighted_p / sum_weights
+end subroutine quad_idw_interp
 
 !------------------------------------------------------------
 
