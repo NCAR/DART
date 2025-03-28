@@ -25,6 +25,7 @@ use          location_mod, only : location_type, get_dist, get_close_type,      
                                   get_close_obs,                                &
                                   loc_get_close_state => get_close_state,       &
                                   convert_vertical_obs, convert_vertical_state, &
+                                  VERTISUNDEF,                                  &
                                   VERTISLEVEL  ! treat cat as vert level
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
@@ -1748,22 +1749,17 @@ subroutine quad_idw_interp(lon_in, lat, x_corners_in, y_corners, p, expected_obs
 ! Performs IDW interpolation using great-circle distances for a quadrilateral.
 
 real(r8),  intent(in) :: lon_in, lat ! Interpolation point (longitude, latitude) in degrees
-real(r8),  intent(in) :: x_corners_in(4), y_corners(4) ! quadrilateral's corner points (longitude, latitude) in degrees.
-real(r8),  intent(in) :: p(4) ! values at the quadrilateral's corner points
+real(r8),  intent(in) :: x_corners_in(4), y_corners(4) ! quadrilaterals corner points (longitude, latitude) in degrees.
+real(r8),  intent(in) :: p(4) ! values at the quadrilaterals corner points
 real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
 
-real(r8), parameter :: pi = 3.141592653589793d0
-real(r8), parameter :: earth_radius = 6371.0d0  ! Earth's radius in kilometers
 real(r8), parameter :: epsilon = 1.0e-12_r8  ! Define a small threshold
-
 real(r8) :: distances(4), weights(4)  ! Arrays for distances and weights
-real(r8) :: lon_rad, lat_rad          ! Interpolation point in radians
-real(r8) :: x_rad, y_rad              ! Corner points in radians
-real(r8) :: delta_lon, delta_lat      ! Differences in longitude and latitude
-real(r8) :: a, c                      ! Variables for Haversine formula
-real(r8) :: sum_weights, sum_weighted_p, x_corners(4), lon
+real(r8) :: x_corners(4), lon
+type(location_type) :: corner(4), point
+real(r8) :: sum_weights, sum_weighted_p
 real(r8) :: power                  ! Power for IDW (2 for squared distance)
-integer :: i                              ! Loop variable
+integer :: i                       ! Loop variable
 
 power = 2.0_r8  ! Power for IDW (squared distance)
 
@@ -1781,9 +1777,12 @@ if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
    enddo
 endif
 
-! Convert interpolation point to radians
-lon_rad = lon * pi / 180.0_r8
-lat_rad = lat * pi / 180.0_r8
+! Set the corner locations
+do i = 1, 4
+   corner(i) = set_location(x_corners(i), y_corners(i), MISSING_R8, VERTISUNDEF)
+enddo
+
+point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
 
 ! Initialize sums
 sum_weights = 0.0_r8
@@ -1791,16 +1790,8 @@ sum_weighted_p = 0.0_r8
 
 ! Loop over the 4 corner points
 do i = 1, 4
-   ! Convert corner points to radians
-   x_rad = x_corners(i) * pi / 180.0_r8
-   y_rad = y_corners(i) * pi / 180.0_r8
 
-   ! Compute great-circle distance using the Haversine formula
-   delta_lon = x_rad - lon_rad
-   delta_lat = y_rad - lat_rad
-   a = sin(delta_lat / 2.0_r8)**2 + cos(lat_rad) * cos(y_rad) * sin(delta_lon / 2.0_r8)**2
-   c = 2.0_r8 * atan2(sqrt(a), sqrt(1.0_r8 - a))
-   distances(i) = earth_radius * c
+   distances(i) = get_dist(point, corner(i), no_vert=.true.)
 
    ! Handle division by zero (if the point coincides with a corner point)
    if (distances(i) < epsilon) then
