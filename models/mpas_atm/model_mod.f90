@@ -677,6 +677,10 @@ function on_edge(dom, var)
 integer, intent(in) :: dom, var
 logical :: on_edge
 
+if (var < 0 ) then  ! not in state vector
+   on_edge = .false.
+   return
+endif
 if (get_num_dims(dom, var) == 1) then 
    on_edge = ( get_dim_name(dom, var, 1) == 'nEdges' ) 
 else
@@ -2068,7 +2072,8 @@ select case (ztypeout)
          location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
          return
       endif
-      call find_vert_level (state_handle, ens_size, location(1), n, c, -1, k_low, k_up, fract, istatus) !HK @todo needs qty to indicate center
+      call find_vert_level (state_handle, ens_size, location(1), n, c, &
+                            get_varid_from_kind(anl_domid, obs_kind), k_low, k_up, fract, istatus)
       if( all(istatus /= 0) ) then
          location(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), MISSING_R8, ztypeout)
          return
@@ -2110,7 +2115,8 @@ select case (ztypeout)
          location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
          return
       endif
-      call find_vert_level (state_handle, ens_size, location(1), n, c, -1, k_low, k_up, fract, istatus)
+      call find_vert_level (state_handle, ens_size, location(1), n, c, &
+                            get_varid_from_kind(anl_domid, obs_kind), k_low, k_up, fract, istatus)
       if( all(istatus /= 0) ) then
          location(:) = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
          return
@@ -2588,9 +2594,6 @@ end subroutine find_height_bounds
 
 subroutine find_vert_level(state_handle, ens_size, loc, nc, ids, var_id, lower, upper, fract, ier)
 
-! note that this code handles data at cell centers, at edges, but not
-! data on faces.  so far we don't have any on faces.
-
 ! loc is an intrisic funtion
 type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: loc
@@ -2639,10 +2642,14 @@ verttype = nint(query_location(loc))
 !      - edges
 !      - centers
 
-if (get_dim_name(anl_domid, var_id, 1) == 'nVertLevels') then
-   num_levs = nVertLevels
+if (var_id < 0) then
+   num_levs = nVertLevels  ! obs_qty is not a qty in the state so use nVertLevels
 else
-   num_levs = nVertLevelsP1
+   if (get_dim_name(anl_domid, var_id, 1) == 'nVertLevelsP1') then
+      num_levs = nVertLevelsP1
+   else
+   num_levs = nVertLevels
+   endif
 endif
 
 ! VERTISSURFACE describes variables on A surface (not necessarily THE surface) !HK @todo what does this mean?
@@ -2677,6 +2684,7 @@ select case (verttype)
 
    case (VERTISPRESSURE )
 
+      num_levs = nVertLevels ! pressure on nVertLevels
       vert_array(:) = vert
 
       do i=1, nc
@@ -2761,7 +2769,7 @@ call get_interp_pressure(state_handle, ens_size, cellid, nbounds, pressure(nboun
 where(ier(:) == 0) ier(:) = temp_ier(:)
 
 ! Check for out of the column range
-where(p(:) < pressure(nbounds, :)) ier(:) = 81   ! too high
+where(p(:) < pressure(nbounds, :)) ier(:) = VERTICAL_TOO_HIGH   ! too high
 !where(p(:) > pressure(      1, :)) ier(:) = 80  ! too low -> just take the lowest level
 
 if(all(ier /= 0)) return
@@ -3273,7 +3281,8 @@ if (verttype == VERTISPRESSURE) then
    ! the closest vertex.
    call make_cell_list(vertexid, 3, ncells, celllist)
 
-   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, -1, & !HK @todo this varid needs to signify pressure
+   call find_vert_level(state_handle, ens_size, loc, ncells, celllist, &
+                         -1, & ! force num_levels = nVertLevels for find_vert_level
                          lower, upper, fract, ier)
 
    if (fails(ier)) return
