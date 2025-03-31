@@ -18,6 +18,8 @@
 !SAT_SEAICE_AGREG_FY,             QTY_SEAICE_AGREG_FY
 !SAT_SEAICE_AGREG_SURFACETEMP,    QTY_SEAICE_AGREG_SURFACETEMP
 !SAT_SEAICE_AGREG_FREEBOARD,      QTY_SEAICE_AGREG_FREEBOARD
+!SAT_SEAICE_RADAR_FREEBOARD,      QTY_SEAICE_AGREG_FREEBOARD
+!SAT_SEAICE_LASER_FREEBOARD,      QTY_SEAICE_AGREG_FREEBOARD
 !SAT_SEAICE_AGREG_CONCENTR,       QTY_SEAICE_AGREG_CONCENTR
 !SAT_SEAICE_AGREG_VOLUME,         QTY_SEAICE_AGREG_VOLUME
 !SAT_SEAICE_AGREG_SNOWVOLUME,     QTY_SEAICE_AGREG_SNOWVOLUME
@@ -38,7 +40,13 @@
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !   case(SAT_SEAICE_AGREG_FREEBOARD)
 !      call get_expected_agreg_freeboard(state_handle, ens_size, location, &
-!               expected_obs, istatus)
+!               obs_kind_ind, expected_obs, istatus)
+!   case(SAT_SEAICE_RADAR_FREEBOARD)
+!      call get_expected_agreg_freeboard(state_handle, ens_size, location, &
+!               obs_kind_ind, expected_obs, istatus)
+!   case(SAT_SEAICE_LASER_FREEBOARD)
+!      call get_expected_agreg_freeboard(state_handle, ens_size, location, &
+!               obs_kind_ind, expected_obs, istatus)
 !   case(SAT_SEAICE_AGREG_THICKNESS)
 !      call get_expected_agreg_thickness(state_handle, ens_size, location, &
 !               QTY_SEAICE_VOLUME, expected_obs, istatus)
@@ -66,6 +74,8 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !    case(SAT_SEAICE_AGREG_FREEBOARD,   &
+!         SAT_SEAICE_LASER_FREEBOARD,   &
+!         SAT_SEAICE_RADAR_FREEBOARD,   &
 !         SAT_SEAICE_AGREG_THICKNESS,   &
 !         SAT_SEAICE_AGREG_SNOWDEPTH,   &
 !         SAT_SEAICE_AGREG_CONCENTR,    &
@@ -80,6 +90,8 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !    case(SAT_SEAICE_AGREG_FREEBOARD,   &
+!         SAT_SEAICE_LASER_FREEBOARD,   &
+!         SAT_SEAICE_RADAR_FREEBOARD,   &
 !         SAT_SEAICE_AGREG_THICKNESS,   &
 !         SAT_SEAICE_AGREG_SNOWDEPTH,   &
 !         SAT_SEAICE_AGREG_CONCENTR,    &
@@ -94,6 +106,8 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !    case(SAT_SEAICE_AGREG_FREEBOARD,   &
+!         SAT_SEAICE_LASER_FREEBOARD,   &
+!         SAT_SEAICE_RADAR_FREEBOARD,   &
 !         SAT_SEAICE_AGREG_THICKNESS,   &
 !         SAT_SEAICE_AGREG_SNOWDEPTH,   &
 !         SAT_SEAICE_AGREG_CONCENTR,    &
@@ -127,7 +141,8 @@ use     obs_kind_mod, only : QTY_SEAICE_VOLUME,      &
                              QTY_SEAICE_SNOWVOLUME,  &
                              QTY_SEAICE_FY,          &
                              QTY_SEAICE_SURFACETEMP, &
-                             QTY_SEAICE_CATEGORY
+                             QTY_SEAICE_CATEGORY,    &
+                             SAT_SEAICE_LASER_FREEBOARD
 
 use  ensemble_manager_mod, only : ensemble_type
 
@@ -177,11 +192,13 @@ end subroutine initialize_module
 !> 
 
 subroutine get_expected_agreg_freeboard(state_handle, ens_size, location,  &
+                                        obs_type, &
                                         agreg_fb, istatus)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_type
 real(r8),            intent(out) :: agreg_fb(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
@@ -197,6 +214,7 @@ integer  :: icat
 integer  :: istatus1(ens_size)
 integer  :: istatus2(ens_size)
 integer  :: istatus3(ens_size)
+real(r8) :: ratio
 
 type(location_type) :: location_fake
 
@@ -205,6 +223,12 @@ real(r8), parameter :: ice_dens   =  917.0_r8, &
                        water_dens = 1026.0_r8
 
 if (.not.module_initialized) call initialize_module(state_handle, ens_size)
+
+if (obs_type == SAT_SEAICE_LASER_FREEBOARD) then
+   ratio = snow_dens/water_dens - 1
+else ! SAT_SEAICE_RADAR_FREEBOARD, SAT_SEAICE_AGREG_FREEBOARD
+   ratio = snow_dens/water_dens
+endif
 
 loc_array = get_location(location)
 llat = loc_array(1)
@@ -233,7 +257,7 @@ do icat = 1, Ncat
 
    where(istatus1==0 .and. istatus2==0) &
      fb_volume = fb_volume + ice_volume*(1 - ice_dens/water_dens) - &
-                             snow_volume*snow_dens/water_dens
+                             snow_volume*ratio
 end do
 
 where(istatus3==0 .and. agreg_sic>1e-6) agreg_fb = fb_volume/agreg_sic
