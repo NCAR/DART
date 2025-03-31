@@ -260,7 +260,7 @@ do icat = 1, Ncat
                              snow_volume*ratio
 end do
 
-where(istatus3==0 .and. agreg_sic>1e-6) agreg_fb = fb_volume/agreg_sic
+where(istatus3==0 .and. agreg_sic>1e-6_r8) agreg_fb = fb_volume/agreg_sic
 where(istatus1/=0) istatus = istatus1
 where(istatus2/=0) istatus = istatus2
 where(istatus3/=0) istatus = istatus3
