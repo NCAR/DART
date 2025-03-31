@@ -1,0 +1,383 @@
+#!/bin/csh
+
+# 04_CESM2_3_assimilate
+
+#------------------------------------------------------------------------------
+# Modified from CESM2_1_setup_ensemble, provided by DART
+#------------------------------------------------------------------------------
+# Welcome message
+echo "************************************************************************************************"
+echo "Welcome back! You are now running the CESM2.3 assimilation script. This script depends on "
+echo "the existence of a CESM2.3 free ensemble. If you have not generated the free case, please see"
+echo "the 03_CESM2_3_free_ensemble script. The present script will setup an ensemble of CESM2.3 cases"
+echo "that branch from the free case, link the new case to DART's assimilation programs, and build"
+echo "the model. All functions are currently in beta testing and may not work as expected. Please take"
+echo "time to double-check your run before committing lots of resources to it."
+echo "************************************************************************************************"
+endif
+#==============================================================================
+# Options defining the experiment:
+
+# CASE        
+# compset
+# resolution
+# cesmtag
+# year_forcing
+#==============================================================================
+
+setenv num_inst    30
+setenv CASE        CICESAT2_assim_exp
+setenv resolution  TL319_g17
+setenv compset     1959_DATM%JRA-1p5-2020_SLND_CICE_DOCN%SOM_DROF%IAF_SGLC_SWAV
+setenv cesmtag     cesm2_3_beta17
+
+# ==============================================================================
+# Directories:
+# cesmdata        Location of some supporting CESM data files.
+# cesmroot        Location of the CESM code base.  This version of the script
+#                 only supports version cesm1_5_beta06c.
+# caseroot        Defines the CESM case directory - where the CESM+DART
+#                 configuration files will be stored.  This should probably not
+#                 be in scratch (on yellowstone, your 'work' partition is suggested).
+#                 This script will delete any existing caseroot, so this script,
+#                 and other useful things should be kept elsewhere.
+# rundir          Defines the location of the CESM run directory.  Will need large
+#                 amounts of disk space, generally on a scratch partition.
+# exeroot         Defines the location of the CESM executable directory , where the
+#                 CESM executables will be built.  Medium amount of space
+#                 needed, generally on a scratch partition.
+# archdir         Defines the location of the CESM short-term archive directories.
+#                 Requires large amounts of disk space, may be on a scratch partition if
+#                 the long-term archiver is invoked to move these files to permanent storage.
+#                 Files will remain here until the long-term archiver moves it to permanent storage.
+# dartroot        Location of the root of _your_ DART installation
+# baseobsdir      Part of the directory name containing the obs_seq.out files to be used in the 
+#                 assimilation. The year, month, and filename will be provided in assimilate.csh.
+#                 Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
+# ==============================================================================
+
+setenv project      P93300065
+setenv machine      derecho
+setenv cesmdata     /glade/p/cesm/cseg/inputdata
+setenv cesmroot     /glade/work/${USER}/cesm_code/$cesmtag
+setenv caseroot     /glade/work/${USER}/Projects/c-icesat-2/cases/${CASE}
+
+setenv SCRATCH      /glade/derecho/scratch/${USER}
+setenv rundir       /glade/derecho/scratch/${USER}/${CASE}/run
+setenv exeroot      /glade/derecho/scratch/${USER}/${CASE}/bld
+setenv archdir      /glade/derecho/scratch/${USER}/${CASE}/archive
+setenv projdir      /glade/work/${USER}/Projects/c-icesat-2/
+setenv dartroot     /glade/work/${USER}/dart_manhattan/
+setenv baseobsdir   /glade/derecho/scratch/${USER}/C-ICESAT-2/PROJECT_OBS/OBS_SEQS/ATL10/
+
+# ==============================================================================
+# Set runtime control namelists
+# ==============================================================================
+
+setenv runtype      branch
+setenv refcase      CICESAT2_free
+setenv refdate      2018-10-15
+setenv startdate    $refdate
+setenv refcasedir   /glade/derecho/scratch/${USER}/${refcase}/run/
+setenv refcaseens   true
+
+setenv stop_option  nday
+setenv stop_n       1
+setenv rest_option  nday
+setenv rest_n       1
+
+setenv resubmit     0
+setenv job_time     01:00:00
+
+setenv stream_year_first  2018
+setenv stream_year_last   2021
+
+setenv data_assimilation_ice TRUE
+
+# ==============================================================================
+# Develop the compset
+# ==============================================================================
+# suppress "rm" warnings if wildcard does not match anything
+set nonomatch 
+
+# The FORCE options are not optional.
+# The VERBOSE options are useful for debugging though
+# some systems don't like the -v option to any of the following
+switch ("`hostname`")
+   case be*:
+         # example of other machine
+         set   MOVE = '/usr/local/bin/mv -v'
+         set   COPY = '/usr/local/bin/cp -v --preserve=timestamps'
+         set   LINK = '/usr/local/bin/ln -vs'
+         set REMOVE = '/usr/local/bin/rm -rf'
+      breaksw
+   default:
+         # NERSC "hopper", TACC "stampede" ... many more
+         set   MOVE = 'mv -v'
+         set   COPY = 'cp -v --preserve=timestamps'
+         set   LINK = 'ln -vs'
+         set REMOVE = 'rm -rf'
+      breaksw
+endsw
+
+# If an old case exists, exit the script. If the old case is no longer needed, delete it mannually. 
+if ( -d $caseroot) then
+    echo "case existed"
+    echo "to delete the old case, please type"
+    echo "rm -rf $caseroot";exit
+endif
+
+if ( ${caseroot} == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 11
+endif
+
+echo "removing old files from ${caseroot}"
+echo "removing old files from ${exeroot}"
+echo "removing old files from ${rundir}"
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
+
+${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
+                                         --machine ${machine} \
+                                         --compset ${compset} \
+                                         --case ${caseroot} \
+                                         --project ${project} \
+                                         --output-root $SCRATCH \
+                                         --run-unsupported || exit 1
+
+# ==============================================================================
+# Modify the case configuration and set up the case 
+# ==============================================================================
+# Save a copy of this script as it was run
+set ThisFileName = $0:t
+${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
+
+# Make sure the DART configuration script is available 
+if (   -e ${dartroot}/models/cice/shell_scripts/CESM2_3_DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" \
+       -e "s#BOGUS_DART_OBS_STRING#${baseobsdir}#" \
+          ${dartroot}/models/cice/shell_scripts/CESM2_3_DART_config \
+           >! ${caseroot}/CESM_DART_config  || exit 20
+   chmod 755  ${caseroot}/CESM_DART_config
+else
+   echo "ERROR: the script to configure for data assimilation is not available."
+   echo "       ${dartroot}/models/cice/shell_scripts/CESM2_3_DART_config MUST exist."
+   exit 21
+endif
+
+# Enter case directory to modify configuration 
+cd ${caseroot}
+
+# Save a copy of xml files for debug purposes
+foreach FILE ( *xml )
+   if ( ! -e        ${FILE}.original ) then
+      ${COPY} $FILE ${FILE}.original
+   endif
+end
+
+# Turn on short-term archiving
+./xmlchange DOUT_S=TRUE
+
+# Turn on archiving interim restart files 
+./xmlchange DOUT_S_SAVE_INTERIM_RESTART_FILES=TRUE
+
+./xmlchange EXEROOT=$exeroot
+./xmlchange STOP_OPTION=$stop_option
+./xmlchange STOP_N=$stop_n
+./xmlchange REST_OPTION=$rest_option
+./xmlchange REST_N=$rest_n
+./xmlchange JOB_QUEUE='main'
+./xmlchange JOB_WALLCLOCK_TIME=$job_time
+./xmlchange RUN_STARTDATE=$startdate
+./xmlchange RUN_TYPE=$runtype
+./xmlchange DATA_ASSIMILATION_ICE=$data_assimilation_ice
+./xmlchange MULTI_DRIVER=TRUE
+
+# set up netcdf
+./xmlchange PIO_TYPENAME=netcdf
+
+# set up resource use 
+# assign each model instance to a node (128 tasks per node)
+setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE --value`
+@ nthreads = 1
+@ comptasks = -1
+./xmlchange ROOTPE=0,NTHRDS=$nthreads,NTASKS=$comptasks,NINST=$num_inst
+
+./case.setup || exit 9
+echo "case setup finished"
+
+# ==============================================================================
+# Customize the user namelists and text stream files
+# ==============================================================================
+
+@ inst = 1
+while ( $inst <= $num_inst )
+   set inst_string = `printf "%04d" $inst`
+   set inst_string2 = `printf "%02d" $inst`
+
+   #--------------------------------------------#
+   # user_nl_atms
+   #--------------------------------------------#
+   set atm_fname = "user_nl_datm_streams_${inst_string}"
+   set pfp = "/glade/derecho/scratch/mollyw/C-ICESAT-2/ENSEMBLE_PERTS/"
+   cat << EndOfText >> $atm_fname
+
+CORE_IAF_JRA_1p5_2020.GISS.SWDN: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.GISS.SWDN: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.GISS.SWDN: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.GISS.SWDN: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_swdn_2021.nc
+CORE_IAF_JRA_1p5_2020.GISS.SWDN: offset=0
+CORE_IAF_JRA_1p5_2020.GCGCS.PREC: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.GCGCS.PREC: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.GCGCS.PREC: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.GCGCS.PREC: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_prec_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_prec_2021.nc
+CORE_IAF_JRA_1p5_2020.GISS.LWDN: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.GISS.LWDN: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.GISS.LWDN: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.GISS.LWDN: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_lwdn_2021.nc
+CORE_IAF_JRA_1p5_2020.NCEP.Q_10: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.NCEP.Q_10: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.NCEP.Q_10: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.NCEP.Q_10: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_q_10_2021.nc
+CORE_IAF_JRA_1p5_2020.NCEP.SLP_: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.NCEP.SLP_: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.NCEP.SLP_: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.NCEP.SLP_: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_slp_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_slp_2021.nc
+CORE_IAF_JRA_1p5_2020.NCEP.T_10: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.NCEP.T_10: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.NCEP.T_10: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.NCEP.T_10: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_t_10_2021.nc
+CORE_IAF_JRA_1p5_2020.NCEP.U_10: year_first=$stream_year_first 
+CORE_IAF_JRA_1p5_2020.NCEP.U_10: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.NCEP.U_10: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.NCEP.U_10: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_u_10_2021.nc
+CORE_IAF_JRA_1p5_2020.NCEP.V_10: year_first=$stream_year_first
+CORE_IAF_JRA_1p5_2020.NCEP.V_10: year_last=$stream_year_last
+CORE_IAF_JRA_1p5_2020.NCEP.V_10: year_align=$stream_year_first
+CORE_IAF_JRA_1p5_2020.NCEP.V_10: datafiles=${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2000.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2001.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2002.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2003.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2004.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2005.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2006.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2007.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2008.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2009.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2010.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2011.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2012.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2013.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2014.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2015.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2016.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2017.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2018.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2019.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2020.nc,${pfp}/mem${inst_string2}_JRA.v1.5_v_10_2021.nc
+
+EndOfText
+
+   #--------------------------------------------#
+   # user_nl_cices
+   #--------------------------------------------#
+   set ice_fname = "user_nl_cice_${inst_string}"
+   if ( $runtype != "branch" || $runtype != "hybrid" ) then
+      if ( $refcaseens == "false" ) then
+         echo "ice_ic = '${refcasedir}/${refcase}.cice.r.${refdate}-00000.nc'" >> $ice_fname
+      else
+         echo "ice_ic = '${refcasedir}/${refcase}.cice_${inst_string}.r.${refdate}-00000.nc'" >> $ice_fname
+      endif
+   endif
+
+   echo "r_snw = 1.5 "                         >> $ice_fname
+   echo "dt_mlt = 1.0 "                        >> $ice_fname
+   echo "histfreq_n =  1,1,1,1,1  "            >> $ice_fname
+   echo "histfreq   = 'd','m','x','x','x' "    >> $ice_fname
+   echo "f_sst = 'dmxxx' "                     >> $ice_fname
+   echo "f_sss = 'dmxxx' "                     >> $ice_fname
+   echo "f_frzmlt = 'dmxxx' "                  >> $ice_fname
+   echo "f_frz_onset = 'dmxxx' "               >> $ice_fname
+   echo "f_aicen = 'dmxxx' "                   >> $ice_fname
+   echo "f_vicen = 'dmxxx' "                   >> $ice_fname
+   echo "f_vsnon = 'dmxxx' "                   >> $ice_fname
+   echo "f_hi = 'dmxxx' "                      >> $ice_fname
+   echo "f_hs = 'dmxxx' "                      >> $ice_fname
+   echo "f_aice = 'dmxxx' "                    >> $ice_fname
+   echo "f_snowfrac = 'dmxxx' "                >> $ice_fname
+   echo "f_albsni = 'dmxxx' "                  >> $ice_fname
+   echo "f_albsno = 'dmxxx' "                  >> $ice_fname
+   echo "f_albice = 'dmxxx' "                  >> $ice_fname
+   echo "f_albpnd = 'dmxxx' "                  >> $ice_fname
+   echo "highfreq = .false. "                  >> $ice_fname
+
+   #--------------------------------------------#
+   # user_nl_drofs
+   #--------------------------------------------#
+   set rof_fname = "user_nl_drof_streams_${inst_string}"
+
+   cat << EndofText >> $rof_fname
+   rof.diatren_iaf_rx1: year_first=$stream_year_first 
+   rof.diatren_iaf_rx1: year_last=$stream_year_last
+
+EndofText
+
+   #--------------------------------------------#
+   # user_nl_docns
+   #--------------------------------------------#
+   set ocn_fname = "user_nl_docn_streams_${inst_string}"
+   cat << EndofText >> $ocn_fname
+
+   som: datafiles = /glade/p/cesmdata/cseg/inputdata/ocn/docn7/SOM/pop_frc.b.e21.BW1850.f09_g17.CMIP6-piControl.001.190514.nc
+   som: meshfile = /glade/p/cesmdata/cseg/inputdata/share/meshes/gx1v7_151008_ESMFmesh.nc
+
+EndofText
+
+
+   @ inst = $inst + 1
+end
+
+./preview_namelists
+
+# ==============================================================================
+# Introduce SourceMods, if any
+# ==============================================================================
+
+# ==============================================================================
+# Copy the restart files and pointers to the run directory if runtype is branch
+# ==============================================================================
+if ( $runtype == "branch" || $runtype == "hybrid" ) then
+   cp ${refcasedir}/*.r.${refdate}-00000.* $rundir/
+   if ( $refcaseens == 'false' ) then
+      @ inst = 1
+      while ( $inst <= $num_inst )
+         set inst_string = `printf %04d $inst`
+         cp ${refcasedir}/rpointer.atm $rundir/rpointer.atm_${inst_string}
+         cp ${refcasedir}/rpointer.ice $rundir/rpointer.ice_${inst_string}
+         cp ${refcasedir}/rpointer.ocn $rundir/rpointer.ocn_${inst_string}
+         cp ${refcasedir}/rpointer.cpl $rundir/rpointer.cpl_${inst_string}
+         cp ${refcasedir}/rpointer.rof $rundir/rpointer.rof_${inst_string}
+         @ inst = $inst + 1
+      end
+   endif
+endif 
+
+# ==============================================================================
+# Build the case
+# ==============================================================================
+qcmd -A ${project} -- ./case.build --skip-provenance-check || exit 10
+
+# ==============================================================================
+# Output message and follow-up instructions
+# ==============================================================================
+cat << EndofText >> ! Assimilation_Instructions.text
+
+-------------------------------------------------------------------------------
+Congratulations! You have successfully created a new CESM sea ice ensemble for
+your ensemble data assimilation experiment. Your case is built but not yet run, 
+so you will need to take the following steps to perform the experiment:
+
+1) cd ${rundir}
+   and check compatibility between the namelists and the files that were staged.
+   You may also need to check the rpointer files.
+
+2) cd ${caseroot}
+   and check things (namelists, etc)
+
+3) ./case.submit
+   to run a single day, verifying that the model works as expected. Provided it
+   does...
+
+4) ./xmlchange CONTINUE_RUN=TRUE
+   (make sure to set STOP_N to the number of years left in the spinup period!)
+   etc, etc.
+-------------------------------------------------------------------------------
+
+EndofText
+
+cat Assimilation_Instructions.text
+exit 0

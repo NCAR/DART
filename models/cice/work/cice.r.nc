@@ -1,0 +1,1 @@
+/glade/scratch/mollyw/validate_dragio/run/validate_dragio.cice_0024.r.2019-01-31-00000.nc
