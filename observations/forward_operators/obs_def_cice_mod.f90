@@ -38,7 +38,6 @@
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !   case(SAT_SEAICE_AGREG_FREEBOARD)
 !      call get_expected_agreg_freeboard(state_handle, ens_size, location, &
-!               QTY_SEAICE_CONCENTR, QTY_SEAICE_VOLUME, QTY_SEAICE_SNOWVOLUME, &
 !               expected_obs, istatus)
 !   case(SAT_SEAICE_AGREG_THICKNESS)
 !      call get_expected_agreg_thickness(state_handle, ens_size, location, &
@@ -178,13 +177,11 @@ end subroutine initialize_module
 !> 
 
 subroutine get_expected_agreg_freeboard(state_handle, ens_size, location,  &
-                                       var_sic, var_siv, var_snv, &
-                                       agreg_fb, istatus)
+                                        agreg_fb, istatus)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
-integer,             intent(in)  :: var_sic, var_siv, var_snv
 real(r8),            intent(out) :: agreg_fb(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
