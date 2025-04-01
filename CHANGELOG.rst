@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 31 2025 :: Bug-fix: CAM perturb. Tag v11.10.7**
+
+- Fix fields to perturb in cam-se and cam-fv.
+- Fix documentation links for obs_selection.
+
 **March 19 2025 :: Calendar base date documentation. Tag v11.10.6**
 
 - Added base date information to time_manager_mod docs.
