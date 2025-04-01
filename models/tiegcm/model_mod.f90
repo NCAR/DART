@@ -7,7 +7,6 @@
 !  - Nick Dietrich fix_mmr. When do to this?
 !  - model_time
 !  - get_state_meta_data 2D variables
-!  - test vtec
 
 module model_mod
 
@@ -379,9 +378,9 @@ endif ! end of QTY_PRESSURE
 if ( iqty == QTY_VERTICAL_TEC ) then ! extrapolate vtec
 
    call extrapolate_vtec(state_handle, ens_size, lon_below, lat_below, val11)
-   call extrapolate_vtec(state_handle, ens_size, lon_below, lat_above, val11)
-   call extrapolate_vtec(state_handle, ens_size, lon_above, lat_below, val11)
-   call extrapolate_vtec(state_handle, ens_size, lon_above, lat_above, val11)
+   call extrapolate_vtec(state_handle, ens_size, lon_below, lat_above, val12)
+   call extrapolate_vtec(state_handle, ens_size, lon_above, lat_below, val21)
+   call extrapolate_vtec(state_handle, ens_size, lon_above, lat_above, val22)
    obs_val(:) = interpolate(ens_size, lon_fract, lat_fract, val11, val12, val21, val22)
    istatus(:) = 0
 
@@ -1111,7 +1110,7 @@ enddo
 ! ZG (interfaces)
 do i = 1, nilev
   idx = get_dart_vector_index(lon_index,lat_index, i, &
-                         domain_id(RESTART_DOM), var_id)
+                        domain_id(SECONDARY_DOM), ivarZG)
   ZG(i, :) = get_state(idx, state_handle)
 enddo
 
@@ -1135,6 +1134,7 @@ enddo
 
 earth_radiusm = earth_radius * 1000.0_r8 ! Convert earth_radius in km to m
 NE            = NE * 1.0e+6_r8           ! Convert NE in #/cm^3 to #/m^3
+ZG            = ZG * 1.0e-2_r8           ! Convert ZG in cm to m
 
 ! Gravity at the top layer
 GRAVITYtop(:) = gravity * (earth_radiusm / (earth_radiusm + ZG(nilev,:))) ** 2
