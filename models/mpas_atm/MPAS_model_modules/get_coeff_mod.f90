@@ -6,13 +6,10 @@
   implicit none
 
   private
-  save
   public :: mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = 'get_coeff_mod'
-character(len=32 ), parameter :: revision = ""
-character(len=128), parameter :: revdate  = ""
 
   character(len=256) :: string1
 
@@ -259,7 +256,7 @@ subroutine elgs (A,N,INDX)
 ! This should never happen, but just in case:
     IF (K == 0) THEN
       write(string1,*)'K was never initialized!'
-      call error_handler(E_ERR,'elgs',string1,source,revision,revdate)
+      call error_handler(E_ERR,'elgs',string1,source)
     ENDIF
 
 !
