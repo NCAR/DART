@@ -1644,38 +1644,23 @@ end subroutine line_intercept
 
 !------------------------------------------------------------
 
-subroutine quad_idw_interp(lon_in, lat, x_corners_in, y_corners, p, expected_obs)
+subroutine quad_idw_interp(lon, lat, x_corners, y_corners, p, expected_obs)
 
 ! Performs IDW interpolation using great-circle distances for a quadrilateral.
 
-real(r8),  intent(in) :: lon_in, lat ! Interpolation point (longitude, latitude) in degrees
-real(r8),  intent(in) :: x_corners_in(4), y_corners(4) ! quadrilaterals corner points (longitude, latitude) in degrees.
+real(r8),  intent(in) :: lon, lat ! Interpolation point (longitude, latitude) in degrees
+real(r8),  intent(in) :: x_corners(4), y_corners(4) ! quadrilaterals corner points (longitude, latitude) in degrees.
 real(r8),  intent(in) :: p(4) ! values at the quadrilaterals corner points
 real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
 
 real(r8), parameter :: epsilon = 1.0e-12_r8  ! Define a small threshold
 real(r8) :: distances(4), weights(4)  ! Arrays for distances and weights
-real(r8) :: x_corners(4), lon
 type(location_type) :: corner(4), point
 real(r8) :: sum_weights, sum_weighted_p
 real(r8) :: power                  ! Power for IDW (2 for squared distance)
 integer :: i                       ! Loop variable
 
 power = 2.0_r8  ! Power for IDW (squared distance)
-
-! Watch out for wraparound on x_corners.
-lon = lon_in
-x_corners = x_corners_in
-
-! See if the side wraps around in longitude. If the corners longitudes
-! wrap around 360, then the corners and the point to interpolate to
-! must be adjusted to be in the range from 180 to 540 degrees.
-if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
-   if(lon < 180.0_r8) lon = lon + 360.0_r8
-   do i = 1, 4
-      if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
-   enddo
-endif
 
 ! Set the corner locations
 do i = 1, 4
