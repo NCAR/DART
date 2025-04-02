@@ -17,7 +17,6 @@
 !SAT_SEAICE_FY,                   QTY_SEAICE_FY,                 COMMON_CODE
 !SAT_SEAICE_AGREG_FY,             QTY_SEAICE_AGREG_FY
 !SAT_SEAICE_AGREG_SURFACETEMP,    QTY_SEAICE_AGREG_SURFACETEMP
-!SAT_SEAICE_AGREG_FREEBOARD,      QTY_SEAICE_AGREG_FREEBOARD
 !SAT_SEAICE_RADAR_FREEBOARD,      QTY_SEAICE_AGREG_FREEBOARD
 !SAT_SEAICE_LASER_FREEBOARD,      QTY_SEAICE_AGREG_FREEBOARD
 !SAT_SEAICE_AGREG_CONCENTR,       QTY_SEAICE_AGREG_CONCENTR
@@ -38,9 +37,6 @@
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!   case(SAT_SEAICE_AGREG_FREEBOARD)
-!      call get_expected_agreg_freeboard(state_handle, ens_size, location, &
-!               obs_kind_ind, expected_obs, istatus)
 !   case(SAT_SEAICE_RADAR_FREEBOARD)
 !      call get_expected_agreg_freeboard(state_handle, ens_size, location, &
 !               obs_kind_ind, expected_obs, istatus)
@@ -73,8 +69,7 @@
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
-!    case(SAT_SEAICE_AGREG_FREEBOARD,   &
-!         SAT_SEAICE_LASER_FREEBOARD,   &
+!    case(SAT_SEAICE_LASER_FREEBOARD,   &
 !         SAT_SEAICE_RADAR_FREEBOARD,   &
 !         SAT_SEAICE_AGREG_THICKNESS,   &
 !         SAT_SEAICE_AGREG_SNOWDEPTH,   &
@@ -89,8 +84,7 @@
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
-!    case(SAT_SEAICE_AGREG_FREEBOARD,   &
-!         SAT_SEAICE_LASER_FREEBOARD,   &
+!    case(SAT_SEAICE_LASER_FREEBOARD,   &
 !         SAT_SEAICE_RADAR_FREEBOARD,   &
 !         SAT_SEAICE_AGREG_THICKNESS,   &
 !         SAT_SEAICE_AGREG_SNOWDEPTH,   &
@@ -105,8 +99,7 @@
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
-!    case(SAT_SEAICE_AGREG_FREEBOARD,   &
-!         SAT_SEAICE_LASER_FREEBOARD,   &
+!    case(SAT_SEAICE_LASER_FREEBOARD,   &
 !         SAT_SEAICE_RADAR_FREEBOARD,   &
 !         SAT_SEAICE_AGREG_THICKNESS,   &
 !         SAT_SEAICE_AGREG_SNOWDEPTH,   &
@@ -226,7 +219,7 @@ if (.not.module_initialized) call initialize_module(state_handle, ens_size)
 
 if (obs_type == SAT_SEAICE_LASER_FREEBOARD) then
    ratio = snow_dens/water_dens - 1
-else ! SAT_SEAICE_RADAR_FREEBOARD, SAT_SEAICE_AGREG_FREEBOARD
+else ! SAT_SEAICE_RADAR_FREEBOARD
    ratio = snow_dens/water_dens
 endif
 
