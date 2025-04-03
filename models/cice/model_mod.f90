@@ -1682,7 +1682,7 @@ do i = 1, 4
    if (distances(i) < epsilon) then
       weights(i) = 1.0e12_r8  ! Assign a very large weight
    else
-      weights(i) = 1.0d0 / (distances(i)**power) 
+      weights(i) = 1.0_r8 / (distances(i)**power) 
    end if
 
    ! Update sums
