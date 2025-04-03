@@ -25,6 +25,7 @@ use          location_mod, only : location_type, get_dist, get_close_type,      
                                   get_close_obs,                                &
                                   loc_get_close_state => get_close_state,       &
                                   convert_vertical_obs, convert_vertical_state, &
+                                  VERTISUNDEF,                                  &
                                   VERTISLEVEL  ! treat cat as vert level
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
@@ -1242,7 +1243,7 @@ do iterations = 1, Niterations
    ! Full bilinear interpolation for quads
    if(dipole_grid) then
       do e = 1, ens_size
-         call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, work_expected_obs(e))
+         call quad_idw_interp(lon, lat, x_corners, y_corners, p(:,e), work_expected_obs(e))
       enddo
    else
       ! Rectangular bilinear interpolation - horizontal plane only
@@ -1643,145 +1644,60 @@ end subroutine line_intercept
 
 !------------------------------------------------------------
 
-subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
-                                p, ens_size, expected_obs)
+subroutine quad_idw_interp(lon, lat, x_corners, y_corners, p, expected_obs)
 
- real(r8),  intent(in) :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
- integer,   intent(in) :: ens_size
- real(r8), intent(out) :: expected_obs
+! Performs IDW interpolation using great-circle distances for a quadrilateral.
 
-! Given a longitude and latitude (lon_in, lat), the longitude and
-! latitude of the 4 corners of a quadrilateral and the values at the
-! four corners, interpolates to (lon_in, lat) which is assumed to
-! be in the quad. This is done by bilinear interpolation, fitting
-! a function of the form a + bx + cy + dxy to the four points and 
-! then evaluating this function at (lon, lat). The fit is done by
-! solving the 4x4 system of equations for a, b, c, and d. The system
-! is reduced to a 3x3 by eliminating a from the first three equations
-! and then solving the 3x3 before back substituting. There is concern
-! about the numerical stability of this implementation. Implementation
-! checks showed accuracy to seven decimal places on all tests.
+real(r8),  intent(in) :: lon, lat ! Interpolation point (longitude, latitude) in degrees
+real(r8),  intent(in) :: x_corners(4), y_corners(4) ! quadrilaterals corner points (longitude, latitude) in degrees.
+real(r8),  intent(in) :: p(4) ! values at the quadrilaterals corner points
+real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
+
+! Set the power for the inverse distances
+real(r8), parameter :: power = 2.0_r8 ! Power for IDW (squared distance)
+
+! This value of epsilon radians is a distance of approximately 1 mm
+real(r8), parameter :: epsilon_radians = 1.56e-11_r8
+
+type(location_type) :: corner(4), point
+real(r8)            :: distances(4), inv_power_dist(4)
 
 integer :: i
-real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
-! real(r8) :: lon_mean
 
-! Watch out for wraparound on x_corners.
-lon = lon_in
-x_corners = x_corners_in
-
-! See if the side wraps around in longitude. If the corners longitudes
-! wrap around 360, then the corners and the point to interpolate to
-! must be adjusted to be in the range from 180 to 540 degrees.
-if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
-   if(lon < 180.0_r8) lon = lon + 360.0_r8
-   do i = 1, 4
-      if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
-   enddo
-endif
-
-
-!*******
-! Problems with extremes in polar cell interpolation can be reduced
-! by this block, but it is not clear that it is needed for actual
-! ocean grid data
-! Find the mean longitude of corners and remove
-!!!lon_mean = sum(x_corners) / 4.0_r8
-!!!x_corners = x_corners - lon_mean
-!!!lon = lon - lon_mean
-! Multiply everybody by the cos of the latitude
-!!!do i = 1, 4
-   !!!x_corners(i) = x_corners(i) * cos(y_corners(i) * deg2rad)
-!!!enddo
-!!!lon = lon * cos(lat * deg2rad)
-
-!*******
-
-
-! Fit a surface and interpolate; solve for 3x3 matrix
-do i = 1, 3
-   ! Eliminate a from the first 3 equations
-   m(i, 1) = x_corners(i) - x_corners(i + 1)
-   m(i, 2) = y_corners(i) - y_corners(i + 1)
-   m(i, 3) = x_corners(i)*y_corners(i) - x_corners(i + 1)*y_corners(i + 1)
-   v(i) = p(i) - p(i + 1)
+! Compute the distances from the point to each corner
+point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
+do i = 1, 4
+   corner(i) = set_location(x_corners(i), y_corners(i), MISSING_R8, VERTISUNDEF)
+   distances(i) = get_dist(point, corner(i), no_vert=.true.)
 enddo
 
-! Solve the matrix for b, c and d
-call mat3x3(m, v, r)
+if(minval(distances) < epsilon_radians) then
+   ! To avoid any round off issues, if smallest distance is less than epsilon radians
+   ! just assign the value at the closest gridpoint to the interpolant
+   expected_obs = p(minloc(distances,1))
+else
+   ! Get the inverse distances raised to the power
+   inv_power_dist = 1.0_r8 / (distances ** power)
 
-! r contains b, c, and d; solve for a
-a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
-   r(3) * x_corners(4)*y_corners(4)
-
-
-!----------------- Implementation test block
-! When interpolating on dipole x3 never exceeded 1e-9 error in this test
-!!!do i = 1, 4
-   !!!interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
-   !!!if(abs(interp_val - p(i)) > 1e-9) then
-      !!!write(*, *) 'large interp residual ', interp_val - p(i)
-   !!!endif
-!!!enddo
-!----------------- Implementation test block
-
-
-! Now do the interpolation
-expected_obs = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
-
-!********
-! Avoid exceeding maxima or minima as stopgap for poles problem
-! When doing bilinear interpolation in quadrangle, can get interpolated
-! values that are outside the range of the corner values
-if(expected_obs > maxval(p)) then
-   expected_obs = maxval(p)
-else if(expected_obs < minval(p)) then
-   expected_obs = minval(p)
+   ! Calculate the weights for each grid point and sum up weighted values
+   expected_obs = sum(inv_power_dist*p) / sum(inv_power_dist)
 endif
-!********
 
-end subroutine quad_bilinear_interp
+! Unclear if round-off could ever lead to result being outside of range of gridpoints
+! Test for now and terminate if this happens 
+if(expected_obs < minval(p) .or. expected_obs > maxval(p)) then
+    write(string1,*)'IDW interpolation result is outside of range of grid point values'
+   write(string2, *) 'Interpolated value, min and max are: ', &
+           expected_obs, minval(p), maxval(p)
+      call error_handler(E_MSG, 'quad_idw_interp', string1, &
+         source, text2=string2)
+endif
 
-!------------------------------------------------------------
+! Fixing out of range; this will not happen with current error check 
+expected_obs = max(expected_obs, minval(p))
+expected_obs = min(expected_obs, maxval(p))
 
-subroutine mat3x3(m, v, r)
- real(r8),  intent(in) :: m(3, 3), v(3)
- real(r8), intent(out) :: r(3)
-
-! Solves rank 3 linear system mr = v for r
-! using Cramer's rule. This isn't the best choice
-! for speed or numerical stability so might want to replace
-! this at some point.
-
-real(r8) :: m_sub(3, 3), numer, denom
-integer  :: i
-
-! Compute the denominator, det(m)
-denom = deter3(m)
-
-! Loop to compute the numerator for each component of r
-do i = 1, 3
-   m_sub = m
-   m_sub(:, i) = v   
-   numer = deter3(m_sub)
-   r(i) = numer / denom
-enddo
-
-end subroutine mat3x3
-
-!------------------------------------------------------------
-
-function deter3(m)
- real(r8), intent(in) :: m(3, 3)
- real(r8)             :: deter3
-
-! Computes determinant of 3x3 matrix m
-
-deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
-         m(1,3)*m(2,1)*m(3,2) - m(3,1)*m(2,2)*m(1,3) - &
-         m(1,1)*m(2,3)*m(3,2) - m(3,3)*m(2,1)*m(1,2)
-
-end function deter3
+end subroutine quad_idw_interp
 
 !------------------------------------------------------------------
 !> Returns the the time step of the model; the smallest increment
