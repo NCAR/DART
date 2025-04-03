@@ -1653,45 +1653,50 @@ real(r8),  intent(in) :: x_corners(4), y_corners(4) ! quadrilaterals corner poin
 real(r8),  intent(in) :: p(4) ! values at the quadrilaterals corner points
 real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
 
-real(r8), parameter :: epsilon = 1.0e-12_r8  ! Define a small threshold
-real(r8) :: distances(4), weights(4)  ! Arrays for distances and weights
+! Set the power for the inverse distances
+real(r8), parameter :: power = 2.0_r8 ! Power for IDW (squared distance)
+
+! This value of epsilon radians is a distance of approximately 1 mm
+real(r8), parameter :: epsilon_radians = 1.56e-11_r8
+
 type(location_type) :: corner(4), point
-real(r8) :: sum_weights, sum_weighted_p
-real(r8) :: power                  ! Power for IDW (2 for squared distance)
-integer :: i                       ! Loop variable
+real(r8)            :: distances(4), inv_power_dist(4)
 
-power = 2.0_r8  ! Power for IDW (squared distance)
+integer :: i
 
-! Set the corner locations
+! Compute the distances from the point to each corner
+point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
 do i = 1, 4
    corner(i) = set_location(x_corners(i), y_corners(i), MISSING_R8, VERTISUNDEF)
+   distances(i) = get_dist(point, corner(i), no_vert=.true.)
 enddo
 
-point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
+if(minval(distances) < epsilon_radians) then
+   ! To avoid any round off issues, if smallest distance is less than epsilon radians
+   ! just assign the value at the closest gridpoint to the interpolant
+   expected_obs = p(minloc(distances,1))
+else
+   ! Get the inverse distances raised to the power
+   inv_power_dist = 1.0_r8 / (distances ** power)
 
-! Initialize sums
-sum_weights = 0.0_r8
-sum_weighted_p = 0.0_r8
+   ! Calculate the weights for each grid point and sum up weighted values
+   expected_obs = sum(inv_power_dist*p) / sum(inv_power_dist)
+endif
 
-! Loop over the 4 corner points
-do i = 1, 4
+! Unclear if round-off could ever lead to result being outside of range of gridpoints
+! Test for now and terminate if this happens 
+if(expected_obs < minval(p) .or. expected_obs > maxval(p)) then
+    write(string1,*)'IDW interpolation result is outside of range of grid point values'
+   write(string2, *) 'Interpolated value, min and max are: ', &
+           expected_obs, minval(p), maxval(p)
+      call error_handler(E_MSG, 'quad_idw_interp', string1, &
+         source, text2=string2)
+endif
 
-   distances(i) = get_dist(point, corner(i), no_vert=.true.)
+! Fixing out of range; this will not happen with current error check 
+expected_obs = max(expected_obs, minval(p))
+expected_obs = min(expected_obs, maxval(p))
 
-   ! Handle division by zero (if the point coincides with a corner point)
-   if (distances(i) < epsilon) then
-      weights(i) = 1.0e12_r8  ! Assign a very large weight
-   else
-      weights(i) = 1.0_r8 / (distances(i)**power) 
-   end if
-
-   ! Update sums
-   sum_weights = sum_weights + weights(i)
-   sum_weighted_p = sum_weighted_p + weights(i) * p(i)
-end do
-
-! Compute the interpolated value
-expected_obs = sum_weighted_p / sum_weights
 end subroutine quad_idw_interp
 
 !------------------------------------------------------------------
