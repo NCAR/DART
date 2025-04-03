@@ -1242,9 +1242,7 @@ do iterations = 1, Niterations
    
    ! Full bilinear interpolation for quads
    if(dipole_grid) then
-      do e = 1, ens_size
-         work_expected_obs(e) = quad_idw_interp(lon, lat, x_corners, y_corners, p(:,e))
-      enddo
+      work_expected_obs = quad_idw_interp(ens_size, lon, lat, x_corners, y_corners, p)
    else
       ! Rectangular bilinear interpolation - horizontal plane only
       xbot = p(1, :) + lon_fract * (p(2, :) - p(1, :))  ! bot is really south
@@ -1644,14 +1642,16 @@ end subroutine line_intercept
 
 !------------------------------------------------------------
 
-function quad_idw_interp(lon, lat, x_corners, y_corners, p)
+function quad_idw_interp(ens_size, lon, lat, x_corners, y_corners, p)
 
 ! Performs IDW interpolation using great-circle distances for a quadrilateral.
 
-real(r8)              :: quad_idw_interp ! Interpolated value at (lon, lat).
+real(r8)              :: quad_idw_interp(ens_size) ! Interpolated value at (lon, lat).
+integer,   intent(in) :: ens_size
 real(r8),  intent(in) :: lon, lat ! Interpolation point (longitude, latitude) in degrees
 real(r8),  intent(in) :: x_corners(4), y_corners(4) ! Quadrilaterals corner points (longitude, latitude) in degrees
-real(r8),  intent(in) :: p(4) ! Values at the quadrilaterals corner points
+real(r8),  intent(in) :: p(4, ens_size) ! Values at the quadrilaterals corner points
+
 
 ! Set the power for the inverse distances
 real(r8), parameter :: power = 2.0_r8 ! Power for IDW (squared distance)
@@ -1662,7 +1662,7 @@ real(r8), parameter :: epsilon_radians = 1.56e-11_r8
 type(location_type) :: corner(4), point
 real(r8)            :: distances(4), inv_power_dist(4)
 
-integer :: i
+integer :: i, n
 
 ! Compute the distances from the point to each corner
 point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
@@ -1674,23 +1674,32 @@ end do
 if(minval(distances) < epsilon_radians) then
    ! To avoid any round off issues, if smallest distance is less than epsilon radians
    ! just assign the value at the closest gridpoint to the interpolant
-   quad_idw_interp = p(minloc(distances, 1))
+   quad_idw_interp = p(minloc(distances, 1), :)
 else
    ! Get the inverse distances raised to the power
    inv_power_dist = 1.0_r8 / (distances ** power)
 
    ! Calculate the weights for each grid point and sum up weighted values
-   quad_idw_interp = sum(inv_power_dist(1:4) * p(1:4)) / sum(inv_power_dist)
+   do n = 1, ens_size
+      quad_idw_interp(1:n) = sum(inv_power_dist(1:4) * p(1:4, n)) / sum(inv_power_dist)
+   end do
 endif
 
 ! Unclear if round-off could ever lead to result being outside of range of gridpoints
 ! Test for now and terminate if this happens 
-if(quad_idw_interp < minval(p) .or. quad_idw_interp > maxval(p)) then
-   write(string1,*)'IDW interpolation result is outside of range of grid point values'
-   write(string2, *) 'Interpolated value, min and max are: ', quad_idw_interp, minval(p), maxval(p)
-   call error_handler(E_ERR, 'quad_idw_interp', string1, &
-              source, revision, revdate, text2=string2,text3=string3)
-endif
+do n = 1, ens_size
+   if(quad_idw_interp(n) < minval(p(:, n)) .or. quad_idw_interp(n) > maxval(p(:, n))) then
+      write(string1,*)'IDW interpolation result is outside of range of grid point values'
+      write(string2, *) 'Interpolated value, min and max are: ', &
+         quad_idw_interp(n), minval(p, n), maxval(p, n)
+      call error_handler(E_ERR, 'quad_idw_interp', string1, &
+         source, revision, revdate, text2=string2,text3=string3)
+   endif
+
+   ! Fixing out of range; this will not happen with current error check 
+   quad_idw_interp(n) = max(quad_idw_interp(n), minval(p(:, n)))
+   quad_idw_interp(n) = min(quad_idw_interp(n), maxval(p(:, n)))
+end do
 
 end function quad_idw_interp
 
