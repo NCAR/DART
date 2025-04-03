@@ -218,7 +218,7 @@ real(r8), parameter :: ice_dens   =  917.0_r8, &
 if (.not.module_initialized) call initialize_module(state_handle, ens_size)
 
 if (obs_type == SAT_SEAICE_LASER_FREEBOARD) then
-   ratio = snow_dens/water_dens - 1
+   ratio = snow_dens/water_dens - 1.0_r8
 else ! SAT_SEAICE_RADAR_FREEBOARD
    ratio = snow_dens/water_dens
 endif
