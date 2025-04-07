@@ -7127,7 +7127,7 @@ subroutine read_wrf_file_attributes(ncid,id)
 ! id:   input, domain id
 
 integer, intent(in)   :: ncid, id
-logical, parameter    :: debug = .true.
+logical, parameter    :: debug = .false.
 integer :: ret
 
 ! get meta data and static data we need
