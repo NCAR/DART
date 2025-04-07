@@ -274,10 +274,8 @@ integer, allocatable  :: domain_id(:) ! Global storage to interface with state_s
 
 ! Private definition of domain map projection use by WRF
 
-!nc -- added in CASSINI and CYL according to module_map_utils convention
-!JPH -- change variable name from map_sphere to more specific map_latlon
-integer, parameter :: map_latlon = 0, map_lambert = 1, map_polar_stereo = 2, map_mercator = 3
-integer, parameter :: map_cassini = 6, map_cyl = 5
+integer, parameter :: map_lambert = 1, map_polar_stereo = 2, map_mercator = 3
+integer, parameter :: map_cyl = 5, map_latlon = 6, map_cassini = 106
 
 ! Private definition of model variable types
 
@@ -7129,7 +7127,7 @@ subroutine read_wrf_file_attributes(ncid,id)
 ! id:   input, domain id
 
 integer, intent(in)   :: ncid, id
-logical, parameter    :: debug = .false.
+logical, parameter    :: debug = .true.
 integer :: ret
 
 ! get meta data and static data we need
