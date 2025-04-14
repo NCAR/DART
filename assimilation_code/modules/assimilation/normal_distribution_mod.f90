@@ -380,16 +380,12 @@ endif
 
 ! If the distribution is bounded, quantiles at the limits have values at the bounds
 if(quantile == 0.0_r8) then
-   ! The following statement is required to avoid a compiler bug in gcc 13.2.0
-   quantile = 0.0_r8
    if(bounded_below) then
       x = lower_bound
       return
    endif
 endif
 if(quantile == 1.0_r8) then
-   ! The following statement is required to avoid a compiler bug in gcc 13.2.0
-   quantile = 1.0_r8
    if(bounded_above) then
       x = upper_bound
       return
