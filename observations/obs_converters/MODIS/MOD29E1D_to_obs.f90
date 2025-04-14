@@ -67,7 +67,7 @@ integer  :: year  = 2000
 integer  :: doy   = 1
 real(r8) :: terr  = 3.0_r8
 logical  :: debug = .false. ! set .true. to print info
-character(len=256) ::  input_file = 'seaicedata.input'
+character(len=256) ::  input_file = 'seaicedata.nc'
 character(len=256) :: output_file = 'obs_seq.mod29e1d'
 
 namelist /MOD29E1D_to_obs_nml/ year, doy, terr, input_file, output_file,    &
@@ -109,26 +109,35 @@ call check_namelist_read(iunit, io, 'MOD29E1D_to_obs_nml')
 if (do_nml_file()) write(nmlfileunit, nml = MOD29E1D_to_obs_nml)
 if (do_nml_file()) write(    *      , nml = MOD29E1D_to_obs_nml)
 
+! open the netcdf file to read input data
+ncid = nc_open_file_readonly(input_file, routine)
+
+call getdimlen(ncid, 'x', axdim)
+call getdimlen(ncid, 'y', aydim)
+write(*, *) 'axdim = ', axdim
+write(*, *) 'aydim = ', aydim
+
+! allocate arrays for lat/lon and sea ice temperature
+allocate(               lat(axdim, aydim))
+allocate(               lon(axdim, aydim))
+allocate(seaice_temperature(axdim, aydim))
+
+! set max_obs to 1 million
+max_obs = 1e6_r8
+
 ! initialize an obs_seq file
+num_copies = 1
+num_qc     = 1
+first_obs = .true.
 call static_init_obs_sequence()
 call init_obs(obs,      num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
-first_obs = .true.
 
 call  init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
 call set_copy_meta_data(obs_seq, 1, 'observation')
 call   set_qc_meta_data(obs_seq, 1,     'Data QC')
 
-! open the netcdf file to read input data
-ncid = nc_open_file_readonly(input_file, routine)
-
-call getdimlen(ncid, 'nlon', axdim)
-call getdimlen(ncid, 'nlat', axdim)
-
-allocate(               lat(axdim, aydim))
-allocate(               lon(axdim, aydim))
-allocate(seaice_temperature(axdim, aydim))
-
+! collect the observation data
 varname = 'tsfc'
 io = nf90_inq_varid(ncid, varname, varid)
 call nc_check(io, routine, 'nf90_inq_varid "'//trim(varname)//'"')
@@ -171,8 +180,13 @@ alongloop : do j = 1, aydim
     if (lon(i, j) <  0.0_r8 .or. lon(i, j) > 360.0_r8) cycle acrossloop
 
     ! check if temperature values are reasonable, based on state valid range of values
-    if (seaice_temperature(i, j) >    0.0_r8) qc = 6.0_r8
-    if (seaice_temperature(i, j) < -63.15_r8) qc = 6.0_r8
+    if (seaice_temperature(i, j) == -800_r8) then
+        cycle acrossloop
+    else if (seaice_temperature(i, j) > 0.0_r8 .or. seaice_temperature(i, j) < -63.15_r8) then
+        qc = 6.0_r8
+    else
+        qc = 0.0_r8
+    end if
 
     ! create obs type and add to sequence
     call create_3d_obs(lat(i, j), lon(i, j), 0.0_r8, VERTISSURFACE, seaice_temperature(i, j), &
