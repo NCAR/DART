@@ -83,7 +83,7 @@ real(r8) :: qc
 logical  :: first_obs
 
 real(r8), allocatable :: lat(:, :), lon(:, :)
-real(r8), allocatable :: ice_temperature(:, :)
+real(r8), allocatable :: seaice_temperature(:, :)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -102,8 +102,8 @@ call get_time(time_obs, osec, oday)
 
 ! read namelist
 call find_namelist_in_file('input.nml', 'MOD29E1D_to_obs_nml', iunit)
-read(iunit, nml = MOD29E1D_to_obs_nml, iostat = iocode)
-call check_namelist_read(iunit, iocode, 'MOD29E1D_to_obs_nml')
+read(iunit, nml = MOD29E1D_to_obs_nml, iostat = io)
+call check_namelist_read(iunit, io, 'MOD29E1D_to_obs_nml')
 
 ! record namlist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml = MOD29E1D_to_obs_nml)
@@ -123,11 +123,11 @@ call   set_qc_meta_data(obs_seq, 1,     'Data QC')
 ncid = nc_open_file_readonly(input_file, routine)
 
 call getdimlen(ncid, 'nlon', axdim)
-call getdimlin(ncid, 'nlat', axdim)
+call getdimlen(ncid, 'nlat', axdim)
 
-allocate(            lat(axdim, aydim))
-allocate(            lon(axdim, aydim))
-allocate(ice_temperature(axdim, aydim))
+allocate(               lat(axdim, aydim))
+allocate(               lon(axdim, aydim))
+allocate(seaice_temperature(axdim, aydim))
 
 varname = 'tsfc'
 io = nf90_inq_varid(ncid, varname, varid)
@@ -171,11 +171,11 @@ alongloop : do j = 1, aydim
     if (lon(i, j) <  0.0_r8 .or. lon(i, j) > 360.0_r8) cycle acrossloop
 
     ! check if temperature values are reasonable, based on state valid range of values
-    if (ice_temperature(i, j) >    0.0_r8) qc = 6.0_r8
-    if (ice_temperature(i, j) < -63.15_r8) qc = 6.0_r8
+    if (seaice_temperature(i, j) >    0.0_r8) qc = 6.0_r8
+    if (seaice_temperature(i, j) < -63.15_r8) qc = 6.0_r8
 
     ! create obs type and add to sequence
-    call create_3d_obs(lat(i, j), lon(i, j), 0.0_r8, VERTISSURFACE, ice_temperature(i, j), &
+    call create_3d_obs(lat(i, j), lon(i, j), 0.0_r8, VERTISSURFACE, seaice_temperature(i, j), &
                        SAT_SEAICE_AGREG_SURFACETEMP, terr, oday, osec, qc, obs)
     call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
@@ -198,7 +198,7 @@ else
 endif
 
 ! wrap up program
-deallocate(ice_temperature, lat, lon)
+deallocate(seaice_temperature, lat, lon)
 call finalize_utilities()
 
 end program MOD29E1D_to_obs
