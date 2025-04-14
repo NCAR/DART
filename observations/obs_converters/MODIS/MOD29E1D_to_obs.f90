@@ -77,7 +77,7 @@ namelist /MOD29E1D_to_obs_nml/ year, doy, terr, input_file, output_file,    &
 character(len=128) :: varname
 character(len=512) :: string1
 integer  :: n, i, j, oday, osec, rcio, iunit, otype, io
-integer  :: num_copies, num_qc, max_obs, iacc, ialo, ncid, varid
+integer  :: num_copies, num_qc, max_obs, ncid, varid
 integer  :: axdim, aydim
 real(r8) :: qc
 logical  :: first_obs
@@ -166,12 +166,6 @@ qc = 0.0_r8
 !   and suspicious observation values
 alongloop : do j = 1, aydim
     acrossloop : do i = 1, axdim
-
-    ! debug info
-    if (debug) then
-        write(string1, *) 'Start of main loop, ', iacc, ialo
-        call error_handler(E_MSG, routine, string1)
-    endif
 
     ! check lat/lon values
     if (lat(i, j) > 90.0_r8 .or. lat(i, j) <  40.0_r8) cycle acrossloop
