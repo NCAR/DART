@@ -114,8 +114,6 @@ ncid = nc_open_file_readonly(input_file, routine)
 
 call getdimlen(ncid, 'x', axdim)
 call getdimlen(ncid, 'y', aydim)
-write(*, *) 'axdim = ', axdim
-write(*, *) 'aydim = ', aydim
 
 ! allocate arrays for lat/lon and sea ice temperature
 allocate(               lat(axdim, aydim))
@@ -123,7 +121,7 @@ allocate(               lon(axdim, aydim))
 allocate(seaice_temperature(axdim, aydim))
 
 ! set max_obs to 1 million
-max_obs = 1e6_r8
+max_obs = axdim * aydim
 
 ! initialize an obs_seq file
 num_copies = 1
