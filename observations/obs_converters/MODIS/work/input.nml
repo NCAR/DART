@@ -31,6 +31,15 @@
    verbose         = .TRUE.
    /
 
+&MOD29E1D_to_obs_nml
+    year        = 2000
+    doy         = 1
+    terr        = 3.0
+    input_file  = 'seaicedata.input'
+    output_file = 'obs_seq.mod29e1d'
+    debug       = .false.
+    / 
+
 # This is appropriate for a days worth of flux tower observations 
 # the obs in the file end 1 second before the time in the name.
 # 2004-01-11-00000 is DART 147202 00000
