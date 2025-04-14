@@ -29,7 +29,7 @@ program MOD29E1D_to_obs
 !> MOD29E1D data files are provided in HDF format via the following link:
 !> https://nsidc.org/data/mod29e1d/versions/61#anchor-documentation. They
 !> must be preprocessed to netCDF files before this converter can be used. 
-!> An example conversion script titled MOD29E1D_hdf_netcdf.sh has been 
+!> An example conversion script titled MOD29E1D_hdf_to_netcdf.py has been 
 !> provided in MODIS/shell_scripts
 !> 
 !> Currently this code only converts IST for the Northern Hemisphere (lat > 40.0)
