@@ -81,6 +81,8 @@ beta = 2.0_r8
 max_diff = -1.0_r8
 do i = 0, 1000
    x = i / 1000.0_r8
+   ! Following check is required to avoid quantile exceeding 1 with CCE 17.0.1 compiler on NCAR supers
+   if(x > 1.0_r8) x = 1.0_r8
    y = beta_cdf(x, alpha, beta)
    inv = inv_beta_cdf(y, alpha, beta)
    max_diff = max(abs(x - inv), max_diff)
