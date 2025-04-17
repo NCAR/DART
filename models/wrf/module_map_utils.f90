@@ -87,6 +87,38 @@ end module misc_definitions_module
 
 MODULE map_utils
 
+! IMPORTANT. WRF-DART USERS PLEASE READ.
+! --------------------------------------
+! The remainder of this DART code was adopted directly from
+! the WRF Preprocessing system (WPS) source code 
+! See https://github.com/wrf-model/WPS
+! ~/geogrid/src/module_map_utils.f90.  All comments
+! below here were made from the WPS code.
+
+! The vast majority of applications of WRF-DART are used
+! with the WRF research version (WRF-ARW) where there are 
+! only 4 supported map projections for real data simulations: 
+! 1) Lamert Conformal, 2) Mercator 3) Polar Stereographic and 
+! 4) lat-lon (cylindrical equidistant).
+
+! There are other map projections supported in this code, but
+! most DART users will not use them and the following description
+! is for informational purposes only.  Other model versions of WRF
+! (e.g. ideal WRF cases) use cartesian coordinates. WRF-NMM  
+! (Nonhydrostic Mesoscale Model) uses rotated lat-lon coordinates.
+
+! Other map projections are not supported by any versions of WRF, but
+! are included in this code because they are required by the WRF
+! preprocessing code (WPS) to use input data to generate initial and
+! boundary conditions for WRF (i.e. geogrid, metgrid and real steps). 
+! The input data itself can be in these unsupported projections thus
+! are included here.  These projections include polar stereographic 
+! ellipsoid (WGS84), Albers Equal Area (NAD83), Cassini, Gaussian, 
+! and Cylindrical.
+
+! END WRF-DART specific comments
+! ------------------------------        
+
 ! Module that defines constants, data structures, and
 ! subroutines used to convert grid indices to lat/lon
 ! and vice versa.   
@@ -324,8 +356,6 @@ MODULE map_utils
 
    END SUBROUTINE map_init
 
-
-!nc -- Global WRF assumes proj_code = PROJ_CASSINI (=6 in misc_definitions_module)
 
    SUBROUTINE map_set(proj_code, proj, lat1, lon1, lat0, lon0, knowni, knownj, dx, latinc, &
                       loninc, stdlon, truelat1, truelat2, nlat, nlon, ixdim, jydim, &
@@ -1558,8 +1588,6 @@ MODULE map_utils
       if (i > 360.0_r8/proj%loninc) i = i - 360.0_r8/proj%loninc
 
       i = i + proj%knowni
-!nc -- typo in original I am assuming 
-!nc -- orig -->     j = j + proj%knowni
       j = j + proj%knownj
 
    END SUBROUTINE llij_cyl
