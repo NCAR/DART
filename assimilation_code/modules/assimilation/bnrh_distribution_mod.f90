@@ -462,7 +462,7 @@ do i = 1, ens_size
    
    ! Imprecision can lead to x being slightly out of bounds, fix it to bounds
    call check_bounds(x(i), curr_q, bounded_below, lower_bound, &
-                              bounded_above, upper_bound, 'inf_bnrh_cdf')
+                              bounded_above, upper_bound, 'inv_bnrh_cdf')
 enddo
    
 end subroutine inv_bnrh_cdf
@@ -591,7 +591,7 @@ do i = 1, ens_size
    
    ! Imprecision can lead to x being slightly out of bounds, fix it to bounds
    call check_bounds(x(i), curr_q, bounded_below, lower_bound, &
-                              bounded_above, upper_bound, 'inf_bnrh_cdf_like')
+                              bounded_above, upper_bound, 'inv_bnrh_cdf_like')
 enddo
 
 end subroutine inv_bnrh_cdf_like
