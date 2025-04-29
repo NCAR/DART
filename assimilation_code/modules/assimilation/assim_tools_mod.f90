@@ -78,12 +78,16 @@ use normal_distribution_mod, only : normal_cdf, inv_weighted_normal_cdf
 
 use algorithm_info_mod, only : probit_dist_info, obs_inc_info, EAKF, ENKF, &
                                BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, GAMMA_FILTER, &
-                               KERNEL, OBS_PARTICLE
+                               KERNEL, OBS_PARTICLE, KDE_FILTER
 
 use gamma_distribution_mod, only : gamma_cdf, inv_gamma_cdf, gamma_mn_var_to_shape_scale, &
                                    gamma_gamma_prod
 
 use bnrh_distribution_mod, only   :  inv_bnrh_cdf, bnrh_cdf, inv_bnrh_cdf_like
+
+use kde_distribution_mod, only : kde_cdf_params, inv_kde_cdf_params, obs_dist_types,      &
+                                 pack_kde_params, likelihood_function, separate_ensemble, &
+                                 obs_increment_kde
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params
                                
@@ -342,7 +346,7 @@ integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
 
-integer :: my_num_obs, i, j, owner, owners_index, my_num_state
+integer :: my_num_obs, i, j, owner, owners_index, my_num_state, ierr
 integer :: obs_mean_index, obs_var_index
 integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer :: num_close_obs, obs_index, num_close_states
@@ -369,6 +373,7 @@ type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time
 
+logical, allocatable :: obs_probit_trans_ok(:), state_probit_trans_ok(:)
 logical :: allow_missing_in_state
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
@@ -391,13 +396,15 @@ allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
          my_obs_indx(        obs_ens_handle%my_num_vars), &
          my_obs_kind(        obs_ens_handle%my_num_vars), &
          my_obs_type(        obs_ens_handle%my_num_vars), &
-         my_obs_loc(         obs_ens_handle%my_num_vars))
+         my_obs_loc(         obs_ens_handle%my_num_vars), &
+         obs_probit_trans_ok(obs_ens_handle%my_num_vars))
 
 allocate(close_state_dist(     ens_handle%my_num_vars), &
          close_state_ind(      ens_handle%my_num_vars), &
          my_state_indx(        ens_handle%my_num_vars), &
          my_state_kind(        ens_handle%my_num_vars), &
-         my_state_loc(         ens_handle%my_num_vars))
+         my_state_loc(         ens_handle%my_num_vars), &
+         state_probit_trans_ok(ens_handle%my_num_vars))
 ! end alloc
 
 ! Initialize assim_tools_module if needed
@@ -499,8 +506,9 @@ do i = 1, ens_handle%my_num_vars
    ! Convert all my state variables to appropriate probit space
    call transform_to_probit(ens_size, ens_handle%copies(1:ens_size, i), dist_for_state, &
       state_dist_params(i), probit_ens, .false., &
-      bounded_below, bounded_above, lower_bound, upper_bound)
-   ens_handle%copies(1:ens_size, i) = probit_ens
+      bounded_below, bounded_above, lower_bound, upper_bound, ierr)
+   state_probit_trans_ok(i) = (ierr == 0)
+   if(state_probit_trans_ok(i)) ens_handle%copies(1:ens_size, i) = probit_ens
 end do
 
 !> optionally convert all state location verticals
@@ -537,8 +545,9 @@ do i = 1, my_num_obs
       ! Convert all my obs (extended state) variables to appropriate probit space
       call transform_to_probit(ens_size, obs_ens_handle%copies(1:ens_size, i), dist_for_obs, &
          obs_dist_params(i), probit_ens, .false., &
-         bounded_below, bounded_above, lower_bound, upper_bound)
-      obs_ens_handle%copies(1:ens_size, i) = probit_ens
+         bounded_below, bounded_above, lower_bound, upper_bound, ierr)
+      obs_probit_trans_ok(i) = (ierr == 0)
+      if(obs_probit_trans_ok(i)) obs_ens_handle%copies(1:ens_size, i) = probit_ens
    endif
 end do
 
@@ -631,9 +640,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
             OBS_PRIOR_VAR_END, owners_index)
 
-         ! If QC is okay, convert this observation ensemble from probit to regular space
-         call transform_from_probit(ens_size, obs_ens_handle%copies(1:ens_size, owners_index) , &
-            obs_dist_params(owners_index), obs_ens_handle%copies(1:ens_size, owners_index))
+         ! Convert this observation ensemble from probit back to regular space if to_probit was successful
+         if(obs_probit_trans_ok(owners_index)) then 
+            call transform_from_probit(ens_size, obs_ens_handle%copies(1:ens_size, owners_index) , &
+               obs_dist_params(owners_index), obs_ens_handle%copies(1:ens_size, owners_index))
+         endif
 
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
       endif IF_QC_IS_OKAY
@@ -694,10 +705,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Convert the prior and posterior for this observation to probit space
       call transform_to_probit(grp_size, obs_prior(grp_bot:grp_top), dist_for_obs, &
          temp_dist_params, probit_obs_prior(grp_bot:grp_top), .false., &
-         bounded_below, bounded_above, lower_bound, upper_bound)
+         bounded_below, bounded_above, lower_bound, upper_bound, ierr)
+      ! If probit transform fails for any group, this observation cannot be assimimlated
+      if(ierr /= 0) cycle SEQUENTIAL_OBS
       call transform_to_probit(grp_size, obs_post(grp_bot:grp_top), dist_for_obs, &
          temp_dist_params, probit_obs_post(grp_bot:grp_top), .true., &
-         bounded_below, bounded_above, lower_bound, upper_bound)
+         bounded_below, bounded_above, lower_bound, upper_bound, ierr)
+      ! If probit transform fails for any group, this observation cannot be assimimlated
+      if(ierr /= 0) cycle SEQUENTIAL_OBS
       ! Free up the storage used for this transform
       call deallocate_distribution_params(temp_dist_params)
 
@@ -757,6 +772,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
+      ! If transform to probit failed for this state variable, don't update it
+      if(.not. state_probit_trans_ok(state_index)) cycle STATE_UPDATE
+
       if ( allow_missing_in_state ) then
          ! Don't allow update of state ensemble with any missing values
          if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
@@ -792,6 +810,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       OBS_UPDATE: do j = 1, num_close_obs
          obs_index = close_obs_ind(j)
 
+         ! If transform to probit failed for this observed variable, don't update it
+         if(.not. obs_probit_trans_ok(obs_index)) cycle OBS_UPDATE
+
          ! Only have to update obs that have not yet been used
          if(my_obs_indx(obs_index) > i) then
 
@@ -816,7 +837,7 @@ end do SEQUENTIAL_OBS
 
 ! Do the inverse probit transform for state variables
 call transform_all_from_probit(ens_size, ens_handle%my_num_vars, ens_handle%copies, &
-   state_dist_params, ens_handle%copies)
+   state_dist_params, ens_handle%copies, state_probit_trans_ok)
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
 if(local_single_ss_inflate) then
@@ -872,13 +893,15 @@ deallocate(close_obs_dist,      &
            my_obs_type,         &
            close_obs_ind,       &
            vstatus,             &
-           my_obs_loc)
+           my_obs_loc,          &
+           state_probit_trans_ok)
 
 deallocate(close_state_dist,      &
            my_state_indx,         &
            close_state_ind,       &
            my_state_kind,         &
-           my_state_loc)
+           my_state_loc,          &
+           obs_probit_trans_ok)
 
 ! end dealloc
 
@@ -1025,6 +1048,10 @@ else
       !!!endif
 
    !--------------------------------------------------------------------------
+
+   else if(filter_kind == KDE_FILTER) then
+      call obs_increment_kde(ens, ens_size, obs, obs_var, bounded_below, &
+         bounded_above, lower_bound, upper_bound, obs_inc)
    else
       call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind', source)
@@ -1165,9 +1192,6 @@ do i = 1, ens_size
 end do
 
 end subroutine obs_increment_bounded_norm_rhf
-
-
-
 
 ! Computes a normal or truncated normal (above and/or below) likelihood.
 function get_truncated_normal_like(x, obs, obs_var, &
@@ -1420,6 +1444,8 @@ if(first_inc_ran_call) then
 endif
 
 ! Generate a uniform random number and a Gaussian for each new member
+!! IG: This could be done with a single random number and in a way that
+!! preserves the order of the ensemble members
 do i = 1, ens_size
    unif = random_uniform(inc_ran_seq)
    ! Figure out which kernel it's in

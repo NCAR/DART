@@ -1,3 +1,5 @@
+.. _important-capabilities-dart:
+
 Important capabilities of DART
 ==============================
 
@@ -144,80 +146,73 @@ Data assimilation algorithms available in DART
 DART allows users to test the impact of using multiple different types of
 algorithms for filtering, inflation/deflation, and covariance localization.
 
-DART offers numerous **filter algorithms**. These determine how the posterior
-distribution is updated based on the observations and the prior ensemble. The
-following table lists the filters supported in DART along with their type (set
-by *filter_kind* in ``input.nml`` under the “assim_tools_nml” section):
+DART offers numerous **filter algorithms** in the :ref:`QCEFF`. These determine how the prior
+distribution is updated based on the observations. The
+following table lists the filters supported in DART. For other types of filters,
+such as the particle filter (PF), please contact the DART team.
 
 +--------------------+----------------------------+--------------------------------------------+
 | Filter #           | Filter Name                | References                                 |
 +====================+============================+============================================+
 | 1                  | EAKF (Ensemble Adjustment  | **Anderson, J. L.**, 2001. [1]_            |
 |                    | Kalman Filter)             | **Anderson, J. L.**, 2003. [2]_            |
-|                    |                            | **Anderson, J., Collins, N.**, 2007. [3]_  |
 +--------------------+----------------------------+--------------------------------------------+
-| 2                  | ENKF (Ensemble Kalman      | **Evensen, G.**, 2003. [4]_                |
+| 2                  | EnKF (Ensemble Kalman      | **Evensen, G.**, 2003. [3]_                |
 |                    | Filter)                    |                                            |
 +--------------------+----------------------------+--------------------------------------------+
-| 3                  | Kernel filter              |                                            |
+| 3                  | Rank Histogram filter      | **Anderson, J. L.,** 2010. [4]_            |
+|                    | (Unbounded)                |                                            |
 +--------------------+----------------------------+--------------------------------------------+
-| 4                  | Observation Space Particle |                                            |
-|                    | filter                     |                                            |
+| 4                  | Gamma filter               | **Anderson, J. L.** 2022. [11]_            |
+|                    | (aka GIGG filter)          | **Bishop, C. H.** 2016. [15]_              |
 +--------------------+----------------------------+--------------------------------------------+
-| 5                  | Random draw from posterior | None. **IMPORTANT**:                       |
-|                    |                            | *(contact dart @ ucar.edu before using)*   |
+| 5                  | Bounded Normal Rank        | **Anderson, J. L.** 2023. [12]_            |
+|                    | Histogram filter (BNRHF)   | **Anderson, J. L.** 2024. [13]_            |
 +--------------------+----------------------------+--------------------------------------------+
-| 6                  | Deterministic draw from    | None. **IMPORTANT**:                       |
-|                    | posterior with fixed       | *(contact dart @ ucar.edu before using)*   |
-|                    | kurtosis                   |                                            |
-+--------------------+----------------------------+--------------------------------------------+
-| 7                  | Boxcar kernel filter       |                                            |
-+--------------------+----------------------------+--------------------------------------------+
-| 8                  | Rank Histogram filter      | **Anderson, J. L.,** 2010. [5]_            |
-+--------------------+----------------------------+--------------------------------------------+
-| 9                  | Particle filter            | **Poterjoy, J.**, 2016. [6]_               |
+| 6                  | Kernel Density Estimation  | **Grooms, I. and C. Riedel** 2024. [14]_   |
+|                    | (KDE) filter               |                                            |
 +--------------------+----------------------------+--------------------------------------------+
 
-DART also has several **inflation algorithms** available for both prior (the
-first value in the namelist) and posterior (the second value in the namelist).
+DART also has several **inflation algorithms** (i.e. "flavors") available for both prior 
+(``inf_flavor``, first value) and posterior (``inf_flavor``, second value) inflation. The
+``inf_flavor`` setting is located under the ``&filter_nml`` heading within ``input.nml``
 The following table lists the inflation “flavors” supported in DART along with
-their type number (set by *inf_flavor* in ``input.nml`` under the “filter_nml”
-section):
+their integer value:
 
-+-----------+-----------------------------+----------------------------------+
-| Flavor #  | Inflation flavor name       | References                       |
-+===========+=============================+==================================+
-| 0         | No inflation                | n/a                              |
-+-----------+-----------------------------+----------------------------------+
-| 1         | (Not Supported)             | n/a                              |
-+-----------+-----------------------------+----------------------------------+
-| 2         | Spatially-varying           | **Anderson, J. L.**, 2009. [7]_  |
-|           | state-space (Gaussian)      |                                  |
-+-----------+-----------------------------+----------------------------------+
-| 3         | Spatially-fixed             | **Anderson, J. L.**, 2007. [8]_  |
-|           | state-space (Gaussian)      |                                  |
-+-----------+-----------------------------+----------------------------------+
-| 4         | Relaxation to prior spread  | **Whitaker, J.S.**               |
-|           | (posterior inflation only)  | **and T.M. Hamill**, 2012. [9]_  |
-+-----------+-----------------------------+----------------------------------+
-| 5         | Enhanced spatially-varying  | **El Gharamti M.**, 2018. [10]_  |
-|           | state-space (inverse gamma) |                                  |
-+-----------+-----------------------------+----------------------------------+
++-------------+-----------------------------+----------------------------------+
+| inf_flavor #| Inflation flavor name       | References                       |
++=============+=============================+==================================+
+| 0           | No inflation                | n/a                              |
++-------------+-----------------------------+----------------------------------+
+| 1           | (Not Supported)             | n/a                              |
++-------------+-----------------------------+----------------------------------+
+| 2           | Spatially-varying           | **Anderson, J. L.**, 2009. [6]_  |
+|             | state-space (Gaussian)      |                                  |
++-------------+-----------------------------+----------------------------------+
+| 3           | Spatially-fixed             | **Anderson, J. L.**, 2007. [5]_  |
+|             | state-space (Gaussian)      |                                  |
++-------------+-----------------------------+----------------------------------+
+| 4           | Relaxation to prior spread  | **Whitaker, J. S.**              |
+|             | (posterior inflation only)  | **and T. M. Hamill**, 2012. [7]_ |
++-------------+-----------------------------+----------------------------------+
+| 5           | Enhanced spatially-varying  | **El Gharamti M.**, 2018. [8]_   |
+|             | state-space (inverse gamma) |                                  |
++-------------+-----------------------------+----------------------------------+
 
-DART has the ability to correct for sampling errors in the regression 
+DART has the ability to correct for sampling errors in the regression
 caused by finite ensemble sizes. DART’s sampling error correction algorithm
-(and localization algorithm) is described in **Anderson, J.L.**, 2012 [11]_
-Sampling error correction can be turned on or off via the *sampling_error_correction* 
-variable in the ``input.nml`` under the “assim_tools_nml” section. 
+(and localization algorithm) is described in **Anderson, J. L.**, 2012 [9]_
+Sampling error correction can be turned on or off via the *sampling_error_correction*
+variable in the ``input.nml`` under the “assim_tools_nml” section.
 
-The following covariance localization options are available 
+The following covariance localization options are available
 (set by *select_localization* in ``input.nml`` under the “cov_cutoff_nml” section):
 
 +--------+----------------------------+----------------------------------+
 | Loc #  | Localization type          | References                       |
 +========+============================+==================================+
 | 1      | Gaspari-Cohn eq. 4.10      | **Gaspari, G.**                  |
-|        |                            | **and Cohn, S. E.**, 1999. [12]_ |
+|        |                            | **and S. E. Cohn**, 1999. [10]_  |
 +--------+----------------------------+----------------------------------+
 | 2      | Boxcar                     | None                             |
 +--------+----------------------------+----------------------------------+
@@ -228,7 +223,7 @@ The following image depicts all three of these options:
 
 |cutoff_fig|
 
-.. |cutoff_fig| image:: images/cutoff_fig.png
+.. |cutoff_fig| image:: images/loc_types.png
    :width: 100%
 
 
@@ -241,58 +236,74 @@ References
        `doi:10.1175/1520-0493(2001)129<2884:AEAKFF>2.0.CO;2 <https://doi.org/10.1175/1520-0493(2001)129\<2884:AEAKFF\>2.0.CO;2>`__
 
 .. [2] Anderson, J. L., 2003:
-       A local least squares framework for ensemble filtering. 
+       A local least squares framework for ensemble filtering.
        *Monthly Weather Review*, **131**, 634-642.
        `doi:10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2 <https://doi.org/10.1175/1520-0493(2003)131\<0634:ALLSFF\>2.0.CO;2>`__
 
-.. [3] Anderson, J., Collins, N., 2007:
-       Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
-       *Journal of Atmospheric and Oceanic Technology*, **24**, 1452-1463.
-       `doi:10.1175/JTECH2049.1 <https://doi.org/10.1175/JTECH2049.1>`__
-
-.. [4] Evensen, G., 2003:
+.. [3] Evensen, G., 2003:
        The Ensemble Kalman Filter: Theoretical Formulation and Practical Implementation.
        *Ocean Dynamics*. **53(4)**, 343–367.
        `doi:10.1007%2Fs10236-003-0036-9 <https://doi.org/10.1007%2Fs10236-003-0036-9>`__
 
-.. [5] Anderson, J. L., 2010:
+.. [4] Anderson, J. L., 2010:
        A Non-Gaussian Ensemble Filter Update for Data Assimilation.
        *Monthly Weather Review*, **139**, 4186-4198.
        `doi:10.1175/2010MWR3253.1 <https://doi.org/10.1175/2010MWR3253.1>`__
 
-.. [6] Poterjoy, J., 2016:
-       A localized particle filter for high-dimensional nonlinear systems. 
-       *Monthly Weather Review*, **144** 59-76.
-       `doi:10.1175/MWR-D-15-0163.1 <https://doi.org/10.1175/MWR-D-15-0163.1>`__
-
-.. [7] Anderson, J. L., 2009: 
-       Spatially and temporally varying adaptive covariance inflation for ensemble filters.
-       *Tellus A*, **61**, 72-83,
-       `doi:10.1111/j.1600-0870.2008.00361.x <https://onlinelibrary.wiley.com/doi/10.1111/j.1600-0870.2008.00361.x>`__
-.. at one point this was going nowhere despite being 'correct'   `doi:10.1111/j.1600-0870.2008.00361.x <https://doi.org/10.1111/j.1600-0870.2008.00361.x>`__
-
-.. [8] Anderson, J. L., 2007:
+.. [5] Anderson, J. L., 2007:
        An adaptive covariance inflation error correction algorithm for ensemble filters.
        *Tellus A*, **59**, 210-224,
        `doi:10.1111/j.1600-0870.2006.00216.x <https://doi.org/10.1111/j.1600-0870.2006.00216.x>`__
 
-.. [9] Whitaker, J.S. and T.M.  Hamill, 2012:
+.. [6] Anderson, J. L., 2009:
+       Spatially and temporally varying adaptive covariance inflation for ensemble filters.
+       *Tellus A*, **61**, 72-83,
+       `doi:10.1111/j.1600-0870.2008.00361.x <https://onlinelibrary.wiley.com/doi/10.1111/j.1600-0870.2008.00361.x>`__
+
+.. [7] Whitaker, J. S. and T. M.  Hamill, 2012:
        Evaluating Methods to Account for System Errors in Ensemble Data Assimilation.
-       *Monthly Weather Review*, **140**, 3078–3089, 
+       *Monthly Weather Review*, **140**, 3078–3089,
        `doi:10.1175/MWR-D-11-00276.1 <https://doi.org/10.1175/MWR-D-11-00276.1>`__
 
-.. [10] El Gharamti M., 2018: 
+.. [8] El Gharamti M., 2018:
        Enhanced Adaptive Inflation Algorithm for Ensemble Filters.
        *Monthly Weather Review*, **2**, 623-640,
        `doi:10.1175/MWR-D-17-0187.1 <https://doi.org/10.1175/MWR-D-17-0187.1>`__
 
-.. [11] Anderson, J.L., 2012:
+.. [9] Anderson, J. L., 2012:
        Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
        *Monthly Weather Review*, 140, 2359–2371.
        `doi:10.1175/MWR-D-11-00013.1 <https://doi.org/10.1175/MWR-D-11-00013.1>`__
 
-.. [12] Gaspari, G. and Cohn, S. E., 1999: 
-       Construction of correlation functions in two and three dimensions.
-       *Quarterly Journal of the Royal Meteorological Society*, **125**, 723-757.
-       `doi:10.1002/qj.49712555417 <https://doi.org/10.1002/qj.49712555417>`__
+.. [10] Gaspari, G. and S. E. Cohn, 1999:
+        Construction of correlation functions in two and three dimensions.
+        *Quarterly Journal of the Royal Meteorological Society*, **125**, 723-757.
+        `doi:10.1002/qj.49712555417 <https://doi.org/10.1002/qj.49712555417>`__
 
+.. [11] Anderson, J. L., 2022:
+        A quantile-conserving ensemble filter framework. Part I: Updating an observed variable.
+        *Monthly Weather Review*, **150**, 1061-1074.
+        `doi:10.1175/MWR-D-21-0229.1 <https://doi.org/10.1175/MWR-D-21-0229.1>`__
+
+.. [12] Anderson, J. L., 2023:
+        A quantile-conserving ensemble filter framework. Part II: Regression of
+        observation increments in a Probit and probability integral transformed space.
+        *Monthly Weather Review*, **151**, 2759–2777.
+        `doi:10.1175/MWR-D-23-0065.1 <https://doi.org/10.1175/MWR-D-23-0065.1>`__
+
+.. [13] Anderson, J. L., C. Riedel, M. Wieringa, F. Ishraque, M. Smith and H. Kershaw, 2024:
+        A quantile-conserving ensemble filter framework. Part III: Data assimilation
+        for mixed distributions with application to a low-order tracer advection model.
+        *Monthly Weather Review*, **152**, 2111–2127.
+        `doi:10.1175/MWR-D-23-0255.1 <https://doi.org/10.1175/MWR-D-23-0255.1>`__
+
+.. [14] Grooms, I. and C. Riedel, 2024:
+        A quantile-conserving ensemble filter based on kernel-density estimation.
+        *Remote Sensing*, **16**, 2377.
+        `doi:10.3390/rs16132377 <https://doi.org/10.3390/rs16132377>`__
+
+.. [15] Bishop, C. H., 2016:
+        The GIGG-EnKF: ensemble Kalman filtering for highly skewed non-negative
+        uncertainty distributions.
+        *Quarterly Journal of the Royal Meteorological Society*, **142**, 1395-1412.
+        `doi:10.1002/qj.2742 <https://doi.org/10.1002/qj.2742>`__

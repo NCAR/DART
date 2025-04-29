@@ -1,3 +1,5 @@
+.. _POP:
+
 POP
 ===
 
@@ -60,7 +62,7 @@ making minor edits to set details that are specific to your project. The setup
 scripts create a CESM case in which POP is configured using a 1° horizontal
 grid, and uses the eddy parametrization of  Gent and McWilliams (1990). [2]_
 The CICE model is active and atmospheric forcing is provided by the `CAM6 DART
-Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_.
+Reanalysis <CAM6rean_rda_>`_.
 
 The filesystem attached to NSF NCAR's supercomputer is known as the Globally
 Accessible Data Environment (GLADE). All filepaths on GLADE have the structure:
@@ -83,9 +85,10 @@ Summary
 To use DART and CESM POP2 on NSF NCAR's supercomputer, you will need to complete
 the following steps.
 
+#. Download an intial ensemble of POP2 restart files from the `NSF NCAR Geoscience
+   Data Exchange <https://gdex.ucar.edu/dataset/483.html>`_
 #. Configure the scripts for your specific experiment by editing
    ``DART_params.csh``.
-#. Stage your initial ensemble using ``copy_POP_JRA_restarts.py``.
 #. Run the appropriate DART setup script to create and build the CESM case.
 
 If the DART setup script runs to completion, it will print instructions to the
@@ -114,53 +117,6 @@ in subdirectories that correspond releases of CESM. For example:
 
 contains scripts that should be used with CESM releases 2.1.0-2.1.3.
 
-copy_POP_JRA_restarts.py
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-This script stages an intial ensemble of POP2 restart files by copying files 
-from a prior experiment run by *Who Kim*. Thanks Who!
-
-These restart files can be used as an initial ensemble of model
-states. The files are kept in a directory on GLADE that is owned by the Climate
-and Global Dynamics (CGD) Ocean Section:
-
-.. code-block::
-
-   /glade/campaign/cgd/oce/people/whokim/csm/g210.G_JRA.v14.gx1v7.01
-
-Unless you're already a member of the CGD Ocean Section, you must be granted 
-access to this directory by CISL. Use the `Service Desk
-<https://servicedesk.ucar.edu/plugins/servlet/desk>`_ to request permission. If
-you're unable to get permission, contact DAReS staff for assistance by emailing
-dart@ucar.edu.
-
-Filepaths beginning with ``/glade/campaign/*`` can't be accessed from NSF NCAR's 
-supercomputer nodes. You must log on to NSF NCAR's data visualization computer to
-copy files from ``/glade/campaign/*``.
-
-This python script was created by *Dan Amrhein*. Thanks Dan!
-
-+-------------------------------+-----------------------------------------------------------+
-| Script name                   | Description                                               |
-+===============================+===========================================================+
-| ``copy_POP_JRA_restarts.py``  | This script copies restart files from the                 |
-|                               | g210.G_JRA.v14.gx1v7.01 experiment that are saved in      |
-|                               | campaign storage. You must be granted access to the CGD   |
-|                               | Ocean Section campaign storage directory and be logged on |
-|                               | to NSF NCAR's data visualization computer in order to run |
-|                               | this script. The assignment of the ``stagedir`` variable  |
-|                               | in this script should match the assignment of the         |
-|                               | ``stagedir`` variable in ``DART_params.csh``.             |
-+-------------------------------+-----------------------------------------------------------+
-
-In order to use this script, log in to NSF NCAR's data visualization computer and
-use python to run the script. For example:
-
-.. code-block::
-
-   $ cd DART/models/POP/shell_scripts/cesm2_1
-   $ python copy_POP_JRA_restarts.py
-
 DART_params.csh
 ~~~~~~~~~~~~~~~
 
@@ -175,10 +131,17 @@ It is run by the setup scripts.
 |                     | that you need to set in order to build and run cases. You |
 |                     | must read this file carefully and configure the variables |
 |                     | to match your needs. The assignment of the ``stagedir``   |
-|                     | variable in this script should match the assignment of    |
-|                     | the ``stagedir`` variable in                              |
-|                     | ``copy_POP_JRA_restarts.py``.                             |
+|                     | variable in this script should match the directory path   |
+|                     | where the restarts from the GDEX were downloaded/stored.  |
 +---------------------+-----------------------------------------------------------+
+
+SourceMods are required to enable POP to recompute the barotropic velocity to prevent the
+barotropic solver from crashing. You can find and download the SourceMods available
+for POP-DART `here <https://www.image.ucar.edu/pub/DART/CESM/>`_. 
+
+Put the SourceMods in your home directory:
+
+~/${cesmtag}/SourceMods 
 
 Setup scripts
 ~~~~~~~~~~~~~
@@ -257,11 +220,10 @@ Karspeck et al. (2013) [3]_ find that an ensemble of 1 January model states
 selected from a multi-decade free-running integration of POP2 can be used as an
 initial ensemble.
 
-If you have access to CGD's Ocean Section directory on ``/glade/campaign`` you
-can use the `copy_POP_JRA_restarts.py`_ script to stage a collection of POP
-restart files from Who Kim's multi-century ``g210.G_JRA.v14.gx1v7.01``
-experiment to serve as an initial ensemble. This experiment uses the JRA-55
-dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
+You can access a collection of POP restart files from Who Kim's multi-century
+``g210.G_JRA.v14.gx1v7.01`` experiment to serve as an initial ensemble in the
+`NSF NCAR Geoscience Data Exchange <https://gdex.ucar.edu/dataset/483.html>`_. This
+experiment uses the JRA-55 dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
 
 Observation sequence files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -269,7 +231,7 @@ Observation sequence files
 When ``setup_CESM_hybrid_ensemble.csh`` is used to create an assimilation
 experiment, ``DART_params.csh`` configures the experiment to assimilate 
 observation sequence files from the World Ocean Database 2013 (WOD13; Boyer et
-al. 2013 [5]_).
+al. 2013 [5]_, `NSF NCAR's Research Data Archive <WOD_obs_>`_.).
 
 The WOD13 dataset comprises data from 2005-01-01 to 2016-12-31 and contains the
 following observation types:
@@ -300,7 +262,7 @@ the following directory on GLADE:
 
 .. code-block::
 
-   /glade/p/cisl/dares/Observations/WOD13
+   /glade/campaign/cisl/fs1_p_relocation/dares/Observations/WOD13
 
 The subdirectories are formatted in ``YYYYMM`` order.
 
@@ -310,7 +272,7 @@ are also stored in the following directory on GLADE:
 
 .. code-block::
 
-   /glade/p/cisl/dares/Observations/WOD09
+   /glade/campaign/cisl/fs1_p_relocation/dares/WOD09
 
 These observation sequence files can be assimilated by changing the
 ``BASEOBSDIR`` variable in ``DART_params.csh``.
@@ -323,7 +285,7 @@ Data atmosphere streams files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The setup scripts configure the CESM case with atmospheric forcing from the 
-`CAM6 DART Reanalysis <https://rda.ucar.edu/datasets/ds345.0/>`_. The coupler 
+`CAM6 DART Reanalysis <CAM6rean_rda_>`_. The coupler 
 history files from this reanalysis are referenced in
 ``user_datm.streams*template`` files. These ``user_datm.streams*template``
 files are contained in the same directory as the setup scripts and are

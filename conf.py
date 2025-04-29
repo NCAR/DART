@@ -10,7 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -21,7 +21,7 @@ copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '11.6.1'
+release = '11.10.8'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
@@ -30,6 +30,7 @@ root_doc = 'index'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+     'sphinx_copybutton',
      'sphinx_rtd_theme',
      'sphinx.ext.autodoc',
      'sphinx.ext.mathjax'
@@ -86,3 +87,9 @@ templates_path = ['guide/_templates']
 html_static_path = ['guide/_static']
 
 html_css_files = ['css/custom.css']
+
+# include references
+with open(os.path.join(os.path.dirname(__file__), 'guide/references.rst')) as f:
+    references_content = f.read()
+
+rst_prolog = references_content

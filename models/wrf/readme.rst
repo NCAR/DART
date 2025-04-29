@@ -24,7 +24,10 @@ Some important WRF-DART updates include:
   operator calculations.
 
 - Version 11.5.0: Improves compatibility with WRFv4+ versions where
-  the prognostic 3D temperature variable is THM.
+  the prognostic 3D temperature variable is THM.  It is now mandatory to
+  include THM instead of T in the ``wrf_state_variables`` namelist.
+
+
 
 It is always recommended that you update your DART version to the 
 `latest release <https://github.com/NCAR/DART/releases>`__ before beginning new research.
@@ -77,6 +80,8 @@ the namelist within ``input.nml``. See below for the documentation on the ``&mod
 There may be additional fields needed depending on the microphysics scheme selected. See the
 ascii file `wrf_state_variables_table  <https://github.com/NCAR/DART/blob/main/models/wrf/wrf_state_variables_table>`__ 
 that includes a list of fields that may be added to the DART state.
+
+.. _wrfnamelist:
 
 Namelist
 --------
@@ -334,6 +339,13 @@ For example:
                            'TH2','QTY_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
                            'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
                            'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',
+
+
+.. Important::
+
+   It is mandatory to include ``THM`` instead of ``T`` as the ``TYPE_T`` WRF 
+   temperature variable. This is because ``THM`` is the prognostic temperature variable
+   that will impact the forecast when updated. 
 
 
 - polar, periodic_x

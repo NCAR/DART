@@ -1,8 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 module model_mod
 
@@ -27,6 +25,7 @@ use          location_mod, only : location_type, get_dist, get_close_type,      
                                   get_close_obs,                                &
                                   loc_get_close_state => get_close_state,       &
                                   convert_vertical_obs, convert_vertical_state, &
+                                  VERTISUNDEF,                                  &
                                   VERTISLEVEL  ! treat cat as vert level
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
@@ -37,7 +36,8 @@ use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids
                                   nc_write_location
 
 use default_model_mod,     only : init_time, init_conditions, adv_1step, &
-                                  nc_write_model_vars
+                                  nc_write_model_vars, parse_variables, &
+                                  MAX_STATE_VARIABLE_FIELDS
 
 use         utilities_mod, only : register_module, error_handler,               &
                                   E_ERR, E_MSG, nmlfileunit, get_unit,  &
@@ -115,7 +115,8 @@ use distributed_state_mod, only : get_state
 
 use   state_structure_mod, only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
-                                  get_num_dims, get_domain_size, state_structure_info
+                                  get_num_dims, get_domain_size, state_structure_info, &
+                                  get_varid_from_kind, get_kind_index
 
 use typesizes
 use netcdf 
@@ -167,24 +168,12 @@ logical, save :: module_initialized = .false.
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: max_state_variables = 10 
-integer, parameter :: num_state_table_columns = 3
-character(len=NF90_MAX_NAME) :: variable_table( max_state_variables, num_state_table_columns )
-integer :: state_kinds_list( max_state_variables )
-logical :: update_var_list( max_state_variables )
-
-! identifiers for variable_table
-integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_QTY_INDEX = 2
-integer, parameter :: VAR_UPDATE_INDEX = 3
-
 ! things which can/should be in the model_nml
 integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=metadatalength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! valid values:  native, big_endian, little_endian
@@ -240,9 +229,6 @@ namelist /model_nml/  &
 ! dart kind string and an update string.  Currently the update string
 ! is not being used.
 !------------------------------------------------------------------
-
-! Number of fields in the state vector
-integer :: nfields
 
 ! Grid parameters - the values will be read from a
 ! standard cice namelist and filled in here.
@@ -410,11 +396,6 @@ call read_topography(Nx, Ny,  KMT,  KMU)
 if (debug > 2) call write_grid_netcdf()     ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
-! verify that the model_state_variables namelist was filled in correctly.  
-! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, &
-                            state_kinds_list, update_var_list)
-
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 2 are 2D.
 !  e.g. aicen,vicen,vsnon = 256 x 225 x 5
@@ -428,13 +409,19 @@ if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Ncat = ', &
 ! Initialize the interpolation routines
 call init_interp()
 
+if ( model_state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
+   call use_default_state_variables( model_state_variables )
+   string1 = 'model_nml:model_state_variables not specified - using default variables'
+   call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
+endif
+
 ! Determine the shape of the variables from "cice.r.nc"
 ! The assimilate.csh, perfect_model.csh must ensure the cice restart file
 ! is linked to this filename.
-domain_id = add_domain('cice.r.nc', nfields, &
-                       var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
-                       kind_list = state_kinds_list(1:nfields), &
-                       update_list = update_var_list(1:nfields))
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables and returns a state_var_type that can be
+! passed to add_domain
+domain_id = add_domain('cice.r.nc', parse_variables(model_state_variables))
 
 if (debug > 2) call state_structure_info(domain_id)
 
@@ -885,25 +872,25 @@ endif
 SELECT CASE (obs_type)
    CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_VOLUME))  
    CASE (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SNOWVOLUME))  
    CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))  
    CASE (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_VOLUME))  
    CASE (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SNOWVOLUME))  
    CASE (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
       cat_signal = -3
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_SURFACETEMP))
    CASE (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
       cat_signal = 3
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SOM_TEMPERATURE))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SOM_TEMPERATURE))
    CASE (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
          QTY_SEAICE_FY       , & 
          QTY_SEAICE_VOLUME         , &
@@ -938,7 +925,7 @@ SELECT CASE (obs_type)
          QTY_SEAICE_SNOWENTHALPY003  )
       ! move pointer to the particular category
       ! then treat as 2d field in lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
       cat_signal = 1 ! now same as boring 2d field
    CASE ( QTY_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
@@ -947,7 +934,7 @@ SELECT CASE (obs_type)
           QTY_SEAICE_ALBEDODIRNIR   , &
           QTY_SEAICE_ALBEDOINDVIZ   , &
           QTY_SEAICE_ALBEDOINDNIR   )
-      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, obs_type))
       cat_signal = 2 ! also boring 2d field (treat same as cat_signal 1)
    CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
@@ -965,12 +952,12 @@ if (cat_signal == -2) then
    do icat = 1,Ncat
       !reads in aicen 
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_conc, istatus)
       !reads in fyn
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_FY))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_FY))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_fy, istatus)
    temp = temp + expected_conc * expected_fy  !sum(aicen*fyn) = FY % over ice
@@ -993,12 +980,12 @@ else if (cat_signal == -3 ) then
    do icat = 1,Ncat
       !reads in aicen 
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_conc, istatus)
       !reads in Tsfcn
       cat_signal_interm = 1
-      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
+      base_offset = get_index_start(domain_id,get_varid_from_kind(domain_id, QTY_SEAICE_SURFACETEMP))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_tsfc, istatus)
       if (any(expected_conc<0.0) .or. any(expected_conc>1.0))then
@@ -1036,7 +1023,7 @@ endif
 
 if (cat_signal == -1) then
       ! we need to know the aggregate sea ice concentration for these special cases
-      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(domain_id, QTY_SEAICE_CONCENTR))  
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
       
@@ -1256,7 +1243,7 @@ do iterations = 1, Niterations
    ! Full bilinear interpolation for quads
    if(dipole_grid) then
       do e = 1, ens_size
-         call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, work_expected_obs(e))
+         call quad_idw_interp(lon, lat, x_corners, y_corners, p(:,e), work_expected_obs(e))
       enddo
    else
       ! Rectangular bilinear interpolation - horizontal plane only
@@ -1657,145 +1644,60 @@ end subroutine line_intercept
 
 !------------------------------------------------------------
 
-subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
-                                p, ens_size, expected_obs)
+subroutine quad_idw_interp(lon, lat, x_corners, y_corners, p, expected_obs)
 
- real(r8),  intent(in) :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
- integer,   intent(in) :: ens_size
- real(r8), intent(out) :: expected_obs
+! Performs IDW interpolation using great-circle distances for a quadrilateral.
 
-! Given a longitude and latitude (lon_in, lat), the longitude and
-! latitude of the 4 corners of a quadrilateral and the values at the
-! four corners, interpolates to (lon_in, lat) which is assumed to
-! be in the quad. This is done by bilinear interpolation, fitting
-! a function of the form a + bx + cy + dxy to the four points and 
-! then evaluating this function at (lon, lat). The fit is done by
-! solving the 4x4 system of equations for a, b, c, and d. The system
-! is reduced to a 3x3 by eliminating a from the first three equations
-! and then solving the 3x3 before back substituting. There is concern
-! about the numerical stability of this implementation. Implementation
-! checks showed accuracy to seven decimal places on all tests.
+real(r8),  intent(in) :: lon, lat ! Interpolation point (longitude, latitude) in degrees
+real(r8),  intent(in) :: x_corners(4), y_corners(4) ! quadrilaterals corner points (longitude, latitude) in degrees.
+real(r8),  intent(in) :: p(4) ! values at the quadrilaterals corner points
+real(r8), intent(out) :: expected_obs ! Interpolated value at (lon, lat).
+
+! Set the power for the inverse distances
+real(r8), parameter :: power = 2.0_r8 ! Power for IDW (squared distance)
+
+! This value of epsilon radians is a distance of approximately 1 mm
+real(r8), parameter :: epsilon_radians = 1.56e-11_r8
+
+type(location_type) :: corner(4), point
+real(r8)            :: distances(4), inv_power_dist(4)
 
 integer :: i
-real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
-! real(r8) :: lon_mean
 
-! Watch out for wraparound on x_corners.
-lon = lon_in
-x_corners = x_corners_in
-
-! See if the side wraps around in longitude. If the corners longitudes
-! wrap around 360, then the corners and the point to interpolate to
-! must be adjusted to be in the range from 180 to 540 degrees.
-if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
-   if(lon < 180.0_r8) lon = lon + 360.0_r8
-   do i = 1, 4
-      if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
-   enddo
-endif
-
-
-!*******
-! Problems with extremes in polar cell interpolation can be reduced
-! by this block, but it is not clear that it is needed for actual
-! ocean grid data
-! Find the mean longitude of corners and remove
-!!!lon_mean = sum(x_corners) / 4.0_r8
-!!!x_corners = x_corners - lon_mean
-!!!lon = lon - lon_mean
-! Multiply everybody by the cos of the latitude
-!!!do i = 1, 4
-   !!!x_corners(i) = x_corners(i) * cos(y_corners(i) * deg2rad)
-!!!enddo
-!!!lon = lon * cos(lat * deg2rad)
-
-!*******
-
-
-! Fit a surface and interpolate; solve for 3x3 matrix
-do i = 1, 3
-   ! Eliminate a from the first 3 equations
-   m(i, 1) = x_corners(i) - x_corners(i + 1)
-   m(i, 2) = y_corners(i) - y_corners(i + 1)
-   m(i, 3) = x_corners(i)*y_corners(i) - x_corners(i + 1)*y_corners(i + 1)
-   v(i) = p(i) - p(i + 1)
+! Compute the distances from the point to each corner
+point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
+do i = 1, 4
+   corner(i) = set_location(x_corners(i), y_corners(i), MISSING_R8, VERTISUNDEF)
+   distances(i) = get_dist(point, corner(i), no_vert=.true.)
 enddo
 
-! Solve the matrix for b, c and d
-call mat3x3(m, v, r)
+if(minval(distances) < epsilon_radians) then
+   ! To avoid any round off issues, if smallest distance is less than epsilon radians
+   ! just assign the value at the closest gridpoint to the interpolant
+   expected_obs = p(minloc(distances,1))
+else
+   ! Get the inverse distances raised to the power
+   inv_power_dist = 1.0_r8 / (distances ** power)
 
-! r contains b, c, and d; solve for a
-a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
-   r(3) * x_corners(4)*y_corners(4)
-
-
-!----------------- Implementation test block
-! When interpolating on dipole x3 never exceeded 1e-9 error in this test
-!!!do i = 1, 4
-   !!!interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
-   !!!if(abs(interp_val - p(i)) > 1e-9) then
-      !!!write(*, *) 'large interp residual ', interp_val - p(i)
-   !!!endif
-!!!enddo
-!----------------- Implementation test block
-
-
-! Now do the interpolation
-expected_obs = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
-
-!********
-! Avoid exceeding maxima or minima as stopgap for poles problem
-! When doing bilinear interpolation in quadrangle, can get interpolated
-! values that are outside the range of the corner values
-if(expected_obs > maxval(p)) then
-   expected_obs = maxval(p)
-else if(expected_obs < minval(p)) then
-   expected_obs = minval(p)
+   ! Calculate the weights for each grid point and sum up weighted values
+   expected_obs = sum(inv_power_dist*p) / sum(inv_power_dist)
 endif
-!********
 
-end subroutine quad_bilinear_interp
+! Unclear if round-off could ever lead to result being outside of range of gridpoints
+! Test for now and terminate if this happens 
+if(expected_obs < minval(p) .or. expected_obs > maxval(p)) then
+    write(string1,*)'IDW interpolation result is outside of range of grid point values'
+   write(string2, *) 'Interpolated value, min and max are: ', &
+           expected_obs, minval(p), maxval(p)
+      call error_handler(E_MSG, 'quad_idw_interp', string1, &
+         source, text2=string2)
+endif
 
-!------------------------------------------------------------
+! Fixing out of range; this will not happen with current error check 
+expected_obs = max(expected_obs, minval(p))
+expected_obs = min(expected_obs, maxval(p))
 
-subroutine mat3x3(m, v, r)
- real(r8),  intent(in) :: m(3, 3), v(3)
- real(r8), intent(out) :: r(3)
-
-! Solves rank 3 linear system mr = v for r
-! using Cramer's rule. This isn't the best choice
-! for speed or numerical stability so might want to replace
-! this at some point.
-
-real(r8) :: m_sub(3, 3), numer, denom
-integer  :: i
-
-! Compute the denominator, det(m)
-denom = deter3(m)
-
-! Loop to compute the numerator for each component of r
-do i = 1, 3
-   m_sub = m
-   m_sub(:, i) = v   
-   numer = deter3(m_sub)
-   r(i) = numer / denom
-enddo
-
-end subroutine mat3x3
-
-!------------------------------------------------------------
-
-function deter3(m)
- real(r8), intent(in) :: m(3, 3)
- real(r8)             :: deter3
-
-! Computes determinant of 3x3 matrix m
-
-deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
-         m(1,3)*m(2,1)*m(3,2) - m(3,1)*m(2,2)*m(1,3) - &
-         m(1,1)*m(2,3)*m(3,2) - m(3,3)*m(2,1)*m(1,2)
-
-end function deter3
+end subroutine quad_idw_interp
 
 !------------------------------------------------------------------
 !> Returns the the time step of the model; the smallest increment
@@ -1832,7 +1734,7 @@ integer  :: lon_index, lat_index, cat_index, local_var, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, cat_index, var_id=var_id)
-call get_state_kind(var_id, local_var)
+local_var = get_kind_index(domain_id, var_id)
 
 if (is_on_ugrid(local_var)) then
    lon = ULON(lon_index, lat_index)
@@ -1857,52 +1759,6 @@ end subroutine get_state_meta_data
 
 !--------------------------------------------------------------------
 
-function get_varid_from_kind(dart_kind)
-
-integer, intent(in) :: dart_kind
-integer             :: get_varid_from_kind
-
-! given a kind, return what variable number it is
-
-integer :: i
-
-do i = 1, get_num_variables(domain_id)
-   if (dart_kind == state_kinds_list(i)) then
-      get_varid_from_kind = i
-      return
-   endif
-end do
-
-if (debug > 1) then
-   write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-   write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
-   call error_handler(E_MSG,'get_varid_from_kind', string1, &
-                      source, revision, revdate, text2=string2)
-endif
-
-get_varid_from_kind = -1
-
-end function get_varid_from_kind
-
-
-!------------------------------------------------------------------
-
-subroutine get_state_kind(var_ind, var_type)
- integer, intent(in)  :: var_ind
- integer, intent(out) :: var_type
-
-! Given an integer index into the state vector structure, returns the kind,
-! and both the starting offset for this kind, as well as the offset into
-! the block of this kind.
-
-if ( .not. module_initialized ) call static_init_model
-
-var_type = state_kinds_list(var_ind)
-
-end subroutine get_state_kind
-
-!------------------------------------------------------------------
-
 subroutine get_state_kind_inc_dry(index_in, var_type)
  integer(i8), intent(in)  :: index_in
  integer,     intent(out) :: var_type
@@ -1915,7 +1771,7 @@ integer :: lon_index, lat_index, depth_index, var_id
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
-call get_state_kind(var_id, var_type)
+var_type = get_kind_index(domain_id, var_id)
 
 ! if on land, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index)) then
@@ -2588,94 +2444,6 @@ read_model_time = set_date(nyr, month, mday, hour, minute, secthismin)
 end function read_model_time
 
 !------------------------------------------------------------------
-!> Verify that the namelist was filled in correctly, and check
-!> that there are valid entries for the dart_kind. 
-!> Returns a table with columns:  
-!>
-!>    netcdf_variable_name ; dart_kind_string ; update_string
-!>
-
-subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_var )
-
-character(len=*),  intent(inout) :: state_variables(:)
-integer,           intent(out) :: ngood
-character(len=*),  intent(out) :: table(:,:)
-integer,           intent(out) :: kind_list(:)   ! kind number
-logical, optional, intent(out) :: update_var(:) ! logical update
-
-integer :: nrows, i
-character(len=NF90_MAX_NAME) :: varname, dartstr, update
-
-if ( .not. module_initialized ) call static_init_model
-
-nrows = size(table,1)
-
-ngood = 0
-
-!>@todo deprecate. Remove a hidden 'default' set of variables.
-!>@     The default is provided in the input namelist.
-
-if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
-   call use_default_state_variables( state_variables )
-   string1 = 'model_nml:model_state_variables not specified using default variables'
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
-endif
-
-MyLoop : do i = 1, nrows
-
-   varname = trim(state_variables(3*i -2))
-   dartstr = trim(state_variables(3*i -1))
-   update  = trim(state_variables(3*i   ))
-   
-   call to_upper(update)
-
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   table(i,3) = trim(update)
-
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop
-
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
-      string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ! Make sure DART kind is valid
-
-   kind_list(i) = get_index_for_quantity(dartstr)
-   if( kind_list(i)  < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-   
-   ! Make sure the update variable has a valid name
-
-   if ( present(update_var) )then
-      SELECT CASE (update)
-         CASE ('UPDATE')
-            update_var(i) = .true.
-         CASE ('NO_COPY_BACK')
-            update_var(i) = .false.
-         CASE DEFAULT
-            write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
-            write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
-            call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
-      END SELECT
-   endif
-
-   ! Record the contents of the DART state vector
-
-   if (do_output()) then
-      write(string1,'(A,I2,6A)') 'variable ',i,' is ',trim(varname), ', ', trim(dartstr), ', ', trim(update)
-      call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ngood = ngood + 1
-enddo MyLoop
-
-end subroutine verify_state_variables
-
-!------------------------------------------------------------------
 !> Default state_variables from model_mod.
 !>@todo DEPRECATE
 
@@ -2684,7 +2452,7 @@ subroutine use_default_state_variables( state_variables )
 character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
-state_variables( 1:5*num_state_table_columns ) = &
+state_variables( 1:15 ) = &
    (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
       'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
       'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    ', &

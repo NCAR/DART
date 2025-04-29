@@ -665,7 +665,8 @@ end function repeat_alarm
 !=========================================================================
 
 subroutine set_calendar_type_integer(mytype)
-
+!------------------------------------------------------------------------
+!
 ! Selects calendar for default mapping from time to date - if you know 
 ! the magic integer for the calendar of interest. 
 
@@ -684,7 +685,8 @@ end subroutine set_calendar_type_integer
 
 
 subroutine set_calendar_type_string(calstring)
-
+!------------------------------------------------------------------------
+!
 ! Selects calendar for default mapping from time to date - given a string. 
 
 character(len=*), intent(in) :: calstring
@@ -693,8 +695,6 @@ integer, parameter :: max_calendar_string_length = len_trim('THIRTY_DAY_MONTHS')
 
 character(len=len(calstring))             :: str1
 character(len=max_calendar_string_length) :: cstring
-logical :: found_calendar = .false.
-integer :: i
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -714,49 +714,25 @@ call to_upper(cstring)
 ! We must check for the gregorian_mars calendar before
 ! the gregorian calendar for similar reasons.
 
-WhichCalendar : do i = 0, max_type 
-
-   if     ( cstring == 'NO_CALENDAR' ) then
-           calendar_type  = NO_CALENDAR
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'NO CALENDAR' ) then   ! allow this as a synonym 
-           calendar_type  = NO_CALENDAR
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'NONE' ) then          ! also allow this
-           calendar_type  = NO_CALENDAR
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'THIRTY_DAY_MONTHS' ) then
-           calendar_type  = THIRTY_DAY_MONTHS
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'JULIAN' ) then
-           calendar_type  = JULIAN
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'NOLEAP' ) then
-           calendar_type  = NOLEAP
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'GREGORIAN_MARS' ) then
-           calendar_type  = GREGORIAN_MARS
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'SOLAR_MARS' ) then
-           calendar_type  = SOLAR_MARS
-           found_calendar = .true.
-           exit WhichCalendar
-   elseif ( cstring == 'GREGORIAN' ) then
-           calendar_type  = GREGORIAN
-           found_calendar = .true.
-           exit WhichCalendar
-   endif
-
-enddo WhichCalendar
-
-if( .not. found_calendar ) then
+if     ( cstring == 'NO_CALENDAR' ) then
+        calendar_type  = NO_CALENDAR
+elseif ( cstring == 'NO CALENDAR' ) then   ! allow this as a synonym 
+        calendar_type  = NO_CALENDAR
+elseif ( cstring == 'NONE' ) then          ! also allow this
+        calendar_type  = NO_CALENDAR
+elseif ( cstring == 'THIRTY_DAY_MONTHS' ) then
+        calendar_type  = THIRTY_DAY_MONTHS
+elseif ( cstring == 'JULIAN' ) then
+        calendar_type  = JULIAN
+elseif ( cstring == 'NOLEAP' ) then
+        calendar_type  = NOLEAP
+elseif ( cstring == 'GREGORIAN_MARS' ) then
+        calendar_type  = GREGORIAN_MARS
+elseif ( cstring == 'SOLAR_MARS' ) then
+        calendar_type  = SOLAR_MARS
+elseif ( cstring == 'GREGORIAN' ) then
+        calendar_type  = GREGORIAN
+else
    write(errstring,*)'Unknown calendar ',calstring
    call error_handler(E_ERR,'set_calendar_type_string',errstring,source)
 endif
@@ -785,23 +761,19 @@ subroutine get_calendar_string(mystring)
 !
 ! Returns default calendar type for mapping from time to date.
 
-character(len=*), intent(OUT) :: mystring
-
-integer :: i
+character(len=*), intent(out) :: mystring
 
 if ( .not. module_initialized ) call time_manager_init
 
-mystring = '  '
+mystring = ''
 
-do i = 0,max_type
-   if (calendar_type ==            JULIAN) mystring = 'JULIAN'
-   if (calendar_type ==            NOLEAP) mystring = 'NOLEAP'
-   if (calendar_type ==         GREGORIAN) mystring = 'GREGORIAN'
-   if (calendar_type ==       NO_CALENDAR) mystring = 'NO_CALENDAR'
-   if (calendar_type ==    GREGORIAN_MARS) mystring = 'GREGORIAN_MARS'
-   if (calendar_type ==        SOLAR_MARS) mystring = 'SOLAR_MARS'
-   if (calendar_type == THIRTY_DAY_MONTHS) mystring = 'THIRTY_DAY_MONTHS'
-enddo
+if (calendar_type ==            JULIAN) mystring = 'JULIAN'
+if (calendar_type ==            NOLEAP) mystring = 'NOLEAP'
+if (calendar_type ==         GREGORIAN) mystring = 'GREGORIAN'
+if (calendar_type ==       NO_CALENDAR) mystring = 'NO_CALENDAR'
+if (calendar_type ==    GREGORIAN_MARS) mystring = 'GREGORIAN_MARS'
+if (calendar_type ==        SOLAR_MARS) mystring = 'SOLAR_MARS'
+if (calendar_type == THIRTY_DAY_MONTHS) mystring = 'THIRTY_DAY_MONTHS'
 
 if (len_trim(mystring) < 3) then
    write(errstring,*)'unknown calendar type ', calendar_type

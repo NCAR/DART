@@ -1,3 +1,10 @@
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
    single_file_in             = .true.
@@ -89,7 +96,6 @@
 # large for the model to converge.  to test that the model is 
 # doing a successful assimilation, change cutoff to 0.02 and rerun.
 &assim_tools_nml
-   filter_kind                     = 1,
    cutoff                          = 1000000.0,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
@@ -145,12 +151,12 @@
    /
 
 &preprocess_nml
-          overwrite_output = .true.,
-    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-               input_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90',
+   input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_qty_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_1d_state_mod.f90'
+   quantity_files          = '../../../assimilation_code/modules/observations/oned_quantities_mod.f90'
    /
 
 &obs_sequence_tool_nml

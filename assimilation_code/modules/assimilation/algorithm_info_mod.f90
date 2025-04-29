@@ -22,7 +22,7 @@ use location_mod,    only : location_type
 
 use distribution_params_mod, only : NORMAL_DISTRIBUTION, BOUNDED_NORMAL_RH_DISTRIBUTION, &
    GAMMA_DISTRIBUTION, BETA_DISTRIBUTION, LOG_NORMAL_DISTRIBUTION, UNIFORM_DISTRIBUTION,  &
-   PARTICLE_FILTER_DISTRIBUTION
+   PARTICLE_FILTER_DISTRIBUTION, KDE_DISTRIBUTION
 
 implicit none
 private
@@ -40,12 +40,13 @@ integer, parameter :: KERNEL             = 3
 integer, parameter :: OBS_PARTICLE       = 4
 integer, parameter :: UNBOUNDED_RHF      = 8
 integer, parameter :: GAMMA_FILTER       = 11
-integer, parameter :: BOUNDED_NORMAL_RHF = 101 
+integer, parameter :: BOUNDED_NORMAL_RHF = 101
+integer, parameter :: KDE_FILTER        = 102
 
 public :: obs_error_info, probit_dist_info, obs_inc_info, &
           init_algorithm_info_mod, end_algorithm_info_mod, &
           EAKF, ENKF, BOUNDED_NORMAL_RHF, UNBOUNDED_RHF, &
-          GAMMA_FILTER, KERNEL, OBS_PARTICLE
+          GAMMA_FILTER, KERNEL, OBS_PARTICLE, KDE_FILTER
 
 ! type definitions for the QCF table
 type obs_error_info_type
@@ -216,13 +217,25 @@ do row = 1, size(qceff_table_data)
       case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
          qceff_table_data(row)%probit_inflation%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       case ('GAMMA_DISTRIBUTION')
+         ! Force standard Gamma distribution
          qceff_table_data(row)%probit_inflation%dist_type = GAMMA_DISTRIBUTION
+         qceff_table_data(row)%probit_inflation%bounded_above = .false.
+         qceff_table_data(row)%probit_inflation%bounded_below = .true.
+         qceff_table_data(row)%probit_inflation%upper_bound = MISSING_R8
+         qceff_table_data(row)%probit_inflation%lower_bound = 0.0_r8
       case ('BETA_DISTRIBUTION')
+         ! Force standard Beta distribution
          qceff_table_data(row)%probit_inflation%dist_type = BETA_DISTRIBUTION
+         qceff_table_data(row)%probit_inflation%bounded_above = .true.
+         qceff_table_data(row)%probit_inflation%bounded_below = .true.
+         qceff_table_data(row)%probit_inflation%upper_bound = 1.0_r8
+         qceff_table_data(row)%probit_inflation%lower_bound = 0.0_r8
       case ('LOG_NORMAL_DISTRIBUTION')
          qceff_table_data(row)%probit_inflation%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_inflation%dist_type = UNIFORM_DISTRIBUTION
+      case ('KDE_DISTRIBUTION')
+         qceff_table_data(row)%probit_inflation%dist_type = KDE_DISTRIBUTION
       !!!case ('PARTICLE_FILTER_DISTRIBUTION')
          !!!qceff_table_data(row)%probit_inflation%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
@@ -239,13 +252,25 @@ do row = 1, size(qceff_table_data)
       case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       case ('GAMMA_DISTRIBUTION')
+         ! Force standard Gamma distribution
          qceff_table_data(row)%probit_state%dist_type = GAMMA_DISTRIBUTION
+         qceff_table_data(row)%probit_state%bounded_above = .false.
+         qceff_table_data(row)%probit_state%bounded_below = .true.
+         qceff_table_data(row)%probit_state%upper_bound = MISSING_R8
+         qceff_table_data(row)%probit_state%lower_bound = 0.0_r8
       case ('BETA_DISTRIBUTION')
+         ! Force standard Beta distribution
          qceff_table_data(row)%probit_state%dist_type = BETA_DISTRIBUTION
+         qceff_table_data(row)%probit_state%bounded_above = .true.
+         qceff_table_data(row)%probit_state%bounded_below = .true.
+         qceff_table_data(row)%probit_state%upper_bound = 1.0_r8
+         qceff_table_data(row)%probit_state%lower_bound = 0.0_r8
       case ('LOG_NORMAL_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_state%dist_type = UNIFORM_DISTRIBUTION
+      case ('KDE_DISTRIBUTION')
+         qceff_table_data(row)%probit_state%dist_type = KDE_DISTRIBUTION
       !!!case ('PARTICLE_FILTER_DISTRIBUTION')
          !!!qceff_table_data(row)%probit_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
@@ -261,13 +286,25 @@ do row = 1, size(qceff_table_data)
       case ('BOUNDED_NORMAL_RH_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = BOUNDED_NORMAL_RH_DISTRIBUTION
       case ('GAMMA_DISTRIBUTION')
+         ! Force standard Gamma distribution
          qceff_table_data(row)%probit_extended_state%dist_type = GAMMA_DISTRIBUTION
+         qceff_table_data(row)%probit_extended_state%bounded_above = .false.
+         qceff_table_data(row)%probit_extended_state%bounded_below = .true.
+         qceff_table_data(row)%probit_extended_state%upper_bound = MISSING_R8
+         qceff_table_data(row)%probit_extended_state%lower_bound = 0.0_r8
       case ('BETA_DISTRIBUTION')
+         ! Force standard Beta distribution
          qceff_table_data(row)%probit_extended_state%dist_type = BETA_DISTRIBUTION
+         qceff_table_data(row)%probit_extended_state%bounded_above = .true.
+         qceff_table_data(row)%probit_extended_state%bounded_below = .true.
+         qceff_table_data(row)%probit_extended_state%upper_bound = 1.0_r8
+         qceff_table_data(row)%probit_extended_state%lower_bound = 0.0_r8
       case ('LOG_NORMAL_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = LOG_NORMAL_DISTRIBUTION
       case ('UNIFORM_DISTRIBUTION')
          qceff_table_data(row)%probit_extended_state%dist_type = UNIFORM_DISTRIBUTION
+      case ('KDE_DISTRIBUTION')
+         qceff_table_data(row)%probit_extended_state%dist_type = KDE_DISTRIBUTION
       !!!case ('PARTICLE_FILTER_DISTRIBUTION')
          !!!qceff_table_data(row)%probit_extended_state%dist_type = PARTICLE_FILTER_DISTRIBUTION
       case default
@@ -290,6 +327,8 @@ do row = 1, size(qceff_table_data)
          qceff_table_data(row)%obs_inc_info%filter_kind = GAMMA_FILTER
       case ('BOUNDED_NORMAL_RHF')
          qceff_table_data(row)%obs_inc_info%filter_kind = BOUNDED_NORMAL_RHF
+      case ('KDE_FILTER')
+         qceff_table_data(row)%obs_inc_info%filter_kind = KDE_FILTER
       case default
          write(errstring, *) 'Invalid filter kind: ', trim(filter_kind_string(row))
          call error_handler(E_ERR, 'read_qceff_table:', errstring, source)
