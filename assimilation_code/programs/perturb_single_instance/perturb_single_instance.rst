@@ -1,3 +1,5 @@
+.. index:: perturb
+
 PROGRAM ``perturb_single_instance``
 ===================================
 
