@@ -225,30 +225,21 @@ contains
    include "is_r.inc"
 end
 
-module is_r128_mod
-   use, intrinsic :: iso_fortran_env, only: wp => real128
-   use, non_intrinsic :: test_base, only: testline, tests
-contains
-   include "is_r.inc"
-end
-
 module is_r
    use is_r32_mod, only: isrel_r32 => isrel, isabs_r32 => isabs, &
                            & isnear_r32 => isnear
    use is_r64_mod, only: isrel_r64 => isrel, isabs_r64 => isabs, &
                            & isnear_r64 => isnear
-   use is_r128_mod, only: isrel_r128 => isrel, isabs_r128 => isabs, &
-                           & isnear_r128 => isnear
    interface isrel
-      module procedure isrel_r32, isrel_r64, isrel_r128 
+      module procedure isrel_r32, isrel_r64
    end interface
 
    interface isabs
-      module procedure isabs_r32, isabs_r64, isabs_r128 
+      module procedure isabs_r32, isabs_r64
    end interface
 
    interface isnear
-      module procedure isnear_r32, isnear_r64, isnear_r128 
+      module procedure isnear_r32, isnear_r64
    end interface
 end
 
@@ -258,8 +249,7 @@ module test_more
    use is_i, only: is, is_i8, is_i16, is_i32, is_i64
    use is_r, only: isabs, isrel, isnear, &
                      & isabs_r32, isrel_r32, isnear_r32, &
-                     & isabs_r64, isrel_r64, isnear_r64, &
-                     & isabs_r128, isrel_r128, isnear_r128
+                     & isabs_r64, isrel_r64, isnear_r64
 
    ! Complex numbers cannot be compared, hence no is_c module
 
