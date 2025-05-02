@@ -16,13 +16,9 @@ database format. These can be obtained from the
 Mirce, a PhD student at the time from UNAM,  converts these
 one-at-a-time to a "csv" format. The filenames have a gauge
 identifier in them. There is also another file
-that has the lat/lon of the gauge.
-
-.. code-block:: text
-
-   /glade/scratch/mirce/LaSierra/Observations/
-
-The streamflow is in cubic meters per second (cms). Each of the column headers in the daily observation files are as follows:
+that has the lat/lon of the gauge. The streamflow 
+is in cubic meters per second (cms). Each of the column 
+headers in the daily observation files are as follows:
 
 ``pk_ano = Year``, ``pk_mes = Month``, ``ngasto_d01, d02 ... = Streamflow in days``. 
 
