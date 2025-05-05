@@ -56,5 +56,5 @@ to extract from the file in addition to their uncertainties.
 +----------------------------+--------------------+-------------------------------------------------------------+
 | ``obs_min_err_sd``         | character(len=256) | Lower bound for the observation error variance              |
 +----------------------------+--------------------+-------------------------------------------------------------+
-| ``debug``                  | logical            | A switch to make the converetr more verbose                 |
+| ``debug``                  | logical            | A switch to make the converter more verbose                 |
 +----------------------------+--------------------+-------------------------------------------------------------+ 
