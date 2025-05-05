@@ -135,7 +135,8 @@ use     obs_kind_mod, only : QTY_SEAICE_VOLUME,      &
                              QTY_SEAICE_FY,          &
                              QTY_SEAICE_SURFACETEMP, &
                              QTY_SEAICE_CATEGORY,    &
-                             SAT_SEAICE_LASER_FREEBOARD
+                             SAT_SEAICE_LASER_FREEBOARD, &
+                             SAT_SEAICE_RADAR_FREEBOARD
 
 use  ensemble_manager_mod, only : ensemble_type
 
@@ -219,8 +220,11 @@ if (.not.module_initialized) call initialize_module(state_handle, ens_size)
 
 if (obs_type == SAT_SEAICE_LASER_FREEBOARD) then
    ratio = snow_dens/water_dens - 1.0_r8
-else ! SAT_SEAICE_RADAR_FREEBOARD
+elseif (obs_type == SAT_SEAICE_RADAR_FREEBOARD) then
    ratio = snow_dens/water_dens
+else
+   istatus(:) = 1
+   return
 endif
 
 loc_array = get_location(location)
