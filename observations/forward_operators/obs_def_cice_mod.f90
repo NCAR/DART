@@ -150,10 +150,7 @@ public :: get_expected_agreg_freeboard, &
           get_expected_agreg_over_grid
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "obs_def_cice_mod"
 
 logical, save :: module_initialized = .false.
 integer       :: Ncat = 0
@@ -174,7 +171,6 @@ type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 
 if (module_initialized) return
-call register_module(source, revision, revdate)
 module_initialized = .true.
 
 Ncat = get_number_of_ice_categories(state_handle, ens_size)
@@ -447,13 +443,13 @@ if (get_number_of_ice_categories == MAX_CATEGORIES) then
    write(string2,*)'If you have more than ',MAX_CATEGORIES,' ice categories'
    write(string3,*)'modify "MAX_CATEGORIES", recompile and try again.'
    call error_handler(E_ERR,'get_number_of_ice_categories',string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source, text2=string2, text3=string3)
 endif
 
 if (get_number_of_ice_categories == 0) then
    write(string1,*)'Could not determine the number of ice categories.'
    call error_handler(E_ERR,'get_number_of_ice_categories',string1, &
-              source, revision, revdate)
+              source)
 endif
 
 end function get_number_of_ice_categories
