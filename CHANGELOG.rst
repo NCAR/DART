@@ -22,6 +22,17 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 1 2025 :: Bug-fixes: TIEGCM, BNRH. Tag v11.10.9**
+
+- Fix VTEC extrapolation calculation in TIEGCM model_mod.
+- Fix loop limit in bnrh_distribution_mod, and routine name in error messages.
+- Documentation fix for perturb_single_instance.
+
+**April 22 2025 :: Bug-fix: CICE interpolation. Tag v11.10.8**
+
+- Inverse distance weighting interpolation for CICE. Replaces
+  bilinear interpolation which can produce out-of-bounds values. 
+
 **March 31 2025 :: Bug-fix: CAM perturb. Tag v11.10.7**
 
 - Fix fields to perturb in cam-se and cam-fv.

@@ -1,41 +1,60 @@
 CONAGUA
 =======
 
-The streamflow observations from CONAGUA are naturally in a Microsoft 
-database format. Mirce converts these one-at-a-time to a csv format.
-The filenames have a gage identifier in them, there is another file
-that has the lat/lon of the gage.
+Overview: 
+--------- 
+CONAGUA stands for Comision Nacional del Agua (National Water Commision).
+It is Mexico's central authority for water management.
+Established in 1989, CONAGUA is responsible for management, preservation,
+and distribution of water resources in Mexico.
 
-.. code-block:: text
+Data Source:
+------------
+The streamflow observations from CONAGUA are naturally in a Microsoft
+database format. These can be obtained from the
+`CONAGUA Webpage <https://www.gob.mx/conagua>`_.
+Mirce, a PhD student at the time from UNAM,  converts these
+one-at-a-time to a "csv" format. The filenames have a gauge
+identifier in them. There is also another file
+that has the lat/lon of the gauge. The streamflow 
+is in cubic meters per second (cms). Each of the column 
+headers in the daily observation files are as follows:
 
-   /glade/scratch/mirce/LaSierra/Observations/
+``pk_ano = Year``, ``pk_mes = Month``, ``ngasto_d01, d02 ... = Streamflow in days``. 
 
-The existing DART csv readers are:
+Observation Converter:
+----------------------
+The obs converter is a program called ``CONAGUA_convert_streamflow`` and 
+meta_data_filehas a namelist by the name ``&CONAGUA_convert_streamflow``.
+Namelists start with an ampersand '&' and terminate with a slash '/'.
 
-.. code-block:: text
+  .. code-block:: fortran 
+  
+        &CONAGUA_convert_streamflow_nml
+         meta_data_file         = 'LaSierra/Observations/LaSierra_strm_pts.csv'
+         data_file_list         = 'LaSierra/Observations/daily_files_list.txt'
+         obs_out_file           = 'obs_seq.out'
+         obs_fraction_for_error = 0.05
+         obs_min_err_sd         = 0.5
+         debug                  = .true. 
+        /
 
-   vi -R Ameriflux/level4_to_obs.f90 \
-   CHAMP/CHAMP_density_text_to_obs.f90 \
-   CNOFS/CNOFS_text_to_obs.f90 \
-   COSMOS/COSMOS_development.f90 \
-   COSMOS/COSMOS_to_obs.f90 \
-   MODIS/MOD15A2_to_obs.f90 \
-   ROMS/convert_roms_obs.f90 \
-   gnd_gps_vtec/gnd_gps_vtec_text_to_obs.f90 \
-   gps/convert_cosmic_gps_cdf.f90 \
-   gps/convert_cosmic_ionosphere.f90 \
-   quikscat/quikscat_JPL_mod.f90 \
-   snow/snow_to_obs.f90 \
-   text/text_to_obs.f90 \
-   text_GITM/text_to_obs.f90
+This namelist provides control over the kind of observations (streamflow)
+to extract from the file in addition to their uncertainties.
 
-One of these should be close enough. Some are more sophisticated in that
-they try to determine which column contains the string that identifies the year, mondy, day, etc. - 
-as opposed to hardcoding the knowledge about which column is which.
-
-These are the meanings for each of the column headers in the daily observation files:
-pk_anio = Year
-pk_mes = Month
-ngasto_d01, d02 ...and so on up to d31 = Streamflow in day 01, day 02 ...day 31
-The streamflow is in cms
-
++----------------------------+--------------------+-------------------------------------------------------------+
+| Contents                   | Type               | Description                                                 |
++============================+====================+=============================================================+
+| ``meta_data_file``         | character(len=256) | Pathname to the data file                                   |
++----------------------------+--------------------+-------------------------------------------------------------+
+| ``data_file_list``         | character(len=256) | List of data files if processing several days at once       |
++----------------------------+--------------------+-------------------------------------------------------------+
+| ``obs_out_file``           | character(len=256) | Name of output DART-style file: ``obs_seq.out``             |
++----------------------------+--------------------+-------------------------------------------------------------+
+| ``obs_fraction_for_error`` | real               | Factor to parametrize the streamflow observation error:     |
+|                            |                    | obs error variance = obs value * ``obs_fraction_for_error`` |
++----------------------------+--------------------+-------------------------------------------------------------+
+| ``obs_min_err_sd``         | character(len=256) | Lower bound for the observation error variance              |
++----------------------------+--------------------+-------------------------------------------------------------+
+| ``debug``                  | logical            | A switch to make the converter more verbose                 |
++----------------------------+--------------------+-------------------------------------------------------------+ 

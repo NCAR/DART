@@ -204,7 +204,7 @@ logical  :: do_uniform_tail_left, do_uniform_tail_right
 
 ! Given the sorted ensemble (sort_ens) that defines a bnrh CDF and all the corresponding
 ! information about that distribution, computes the value of the CDF for a vector of num
-! elsements (x) and returns those quantiles.
+! elements (x) and returns those quantiles.
 
 ! In the default filter usage, this is only used for doing the probit transform for the
 ! posterior observation ensemble. In this case, the size of vector x is the same as the
@@ -227,7 +227,7 @@ call ens_quantiles(p%ens, p%ens_size, p%bounded_below, p%bounded_above, p%lower_
 ! Loop through the values in the x vector to compute the CDF at each one.
 ! This can be done vastly more efficiently with either binary searches or by first sorting the
 ! vector of values (x) for which the CDF needs to be computed
-do i = 1, p%ens_size
+do i = 1, num
    ! Figure out which bin it is in
    call bnrh_cdf_initialized(x(i), p%ens_size, p%ens, p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound, &
       tail_amp_left,  tail_mean_left,  tail_sd_left,  do_uniform_tail_left, &
@@ -462,7 +462,7 @@ do i = 1, ens_size
    
    ! Imprecision can lead to x being slightly out of bounds, fix it to bounds
    call check_bounds(x(i), curr_q, bounded_below, lower_bound, &
-                              bounded_above, upper_bound, 'inf_bnrh_cdf')
+                              bounded_above, upper_bound, 'inv_bnrh_cdf')
 enddo
    
 end subroutine inv_bnrh_cdf
@@ -591,7 +591,7 @@ do i = 1, ens_size
    
    ! Imprecision can lead to x being slightly out of bounds, fix it to bounds
    call check_bounds(x(i), curr_q, bounded_below, lower_bound, &
-                              bounded_above, upper_bound, 'inf_bnrh_cdf_like')
+                              bounded_above, upper_bound, 'inv_bnrh_cdf_like')
 enddo
 
 end subroutine inv_bnrh_cdf_like
