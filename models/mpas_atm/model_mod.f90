@@ -162,10 +162,9 @@ public :: get_analysis_time,            &
           on_boundary_cell,             &
           on_boundary_edge,             &
           get_analysis_weight,          &
-          cell_next_to_boundary_edge
-
-public :: update_u_from_reconstruct, &
-          use_increments_for_u_update, &
+          cell_next_to_boundary_edge,   &
+          update_u_from_reconstruct,    &
+          use_increments_for_u_update,  &
           anl_domid ! HK todo accessor functions?
 
 character(len=*), parameter :: source   = 'models/mpas_atm/model_mod.f90'
@@ -900,15 +899,16 @@ if (varid > 0) then ! in the state vector
 endif
 
 select case (qty)
-case (QTY_TEMPERATURE, QTY_2M_TEMPERATURE)
-   qty_ok = .true.
-case (QTY_SURFACE_ELEVATION, QTY_GEOPOTENTIAL_HEIGHT)
-   qty_ok = .true.
-case (QTY_PRESSURE)   ! surface pressure should be in the state !HK @todo check "should"
-   qty_ok = .true.
-case (QTY_SKIN_TEMPERATURE, QTY_SURFACE_TYPE, QTY_CLOUD_FRACTION)   
-   qty_ok = .true.
-case (QTY_SPECIFIC_HUMIDITY, QTY_2M_SPECIFIC_HUMIDITY)
+case (QTY_TEMPERATURE, & 
+      QTY_2M_TEMPERATURE, &
+      QTY_SURFACE_ELEVATION, &
+      QTY_GEOPOTENTIAL_HEIGHT, &
+      QTY_PRESSURE, &   ! surface pressure should be in the state !HK @todo check "should"
+      QTY_SKIN_TEMPERATURE, &
+      QTY_SURFACE_TYPE, &
+      QTY_CLOUD_FRACTION, &   
+      QTY_SPECIFIC_HUMIDITY, &
+      QTY_2M_SPECIFIC_HUMIDITY)
    qty_ok = .true.
 case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
    if (get_varid_from_kind(anl_domid, QTY_EDGE_NORMAL_SPEED) > 0 .and. use_u_for_wind) qty_ok = .true.
@@ -4333,9 +4333,8 @@ subroutine project_uv_cell_to_edges(zonal_wind, meridional_wind, uedge)
 ! The original field on the outermost edge is left unchanged, because
 !  we do not update/compute uedge in the outermost edge in the regional MPAS.
 !
-! FIXME:
-!        we can hard-code R3 here since it comes from the (3d) x/y/z cartesian coordinate.
-!        We read cellsOnEdge and edgeNormalVectors in get_grid.
+!  we can hard-code R3 here since it comes from the (3d) x/y/z cartesian coordinate.
+!  We read cellsOnEdge and edgeNormalVectors in get_grid.
 !         
 ! This routine followed the updating part in tend_toEdges in 
 ! MPAS/src/core_atmosphere/physics/mpas_atmphys_todynamics.F.

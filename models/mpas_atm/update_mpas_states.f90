@@ -15,8 +15,8 @@ program update_mpas_states
 !         name lists for all ensemble members.
 !         The input list should be matched with output_state_file_list in &filter_nml.
 !
-!  variables that are not wind, copied from one file to the another
-!  variables that are wind, reconstructed
+!  variables that are not wind are copied from one file to the another
+!  variables that are wind are reconstructed
 !  
 ! author: Soyoung Ha 23 Aug 16
 !         Updated in 4 May 2017 for the Manhattan release
