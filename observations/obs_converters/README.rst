@@ -379,6 +379,7 @@ converters) include:
 -  ``MADIS``: :doc:`./MADIS/MADIS`
 -  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
+-  ``MODIS``: :doc:`./MODIS/MOD29E1D_to_obs`
 -  ``MPD``: See ``./MPD``
 -  ``NASA_Earthdata``:doc:`./NASA_Earthdata/README`
 -  ``NCEP``: (prepbufr-> ascii) :doc:`./NCEP/prep_bufr/prep_bufr`

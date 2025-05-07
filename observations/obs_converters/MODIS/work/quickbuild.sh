@@ -15,6 +15,7 @@ LOCATION=threed_sphere
 
 programs=(
 MOD15A2_to_obs
+MOD29E1D_to_obs
 obs_seq_to_netcdf
 obs_sequence_tool
 advance_time
