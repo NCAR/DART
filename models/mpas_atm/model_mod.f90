@@ -2691,7 +2691,10 @@ select case (verttype)
          call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), num_levs, &
                lower(i, :), upper(i, :), fract(i, :), ier)
 
-         if(fails(ier)) return
+         if(fails(ier)) then
+           where (ier == 0) ier = GENERAL_ERROR ! bailing early because of some failing ensemble members
+           return
+         endif
 
       enddo
       
@@ -2712,7 +2715,10 @@ select case (verttype)
          call find_height_bounds(vert, num_levs, vert_levels(1:num_levs), &
                                  lower(i, :), upper(i, :), fract(i, :), ier)
 
-         if(fails(ier)) return
+         if(fails(ier)) then
+           where (ier == 0) ier = GENERAL_ERROR
+           return
+         endif
 
       enddo
 
