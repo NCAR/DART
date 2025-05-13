@@ -1,0 +1,100 @@
+<!doctype html><html lang=en-us><head><meta charset=utf-8><title>Ian Grooms and Novel Algorithm Development</title>
+<meta name=viewport content="width=device-width,initial-scale=1"><meta name=author content="DAReS"><meta name=generator content="Hugo 0.145.0"><link rel=stylesheet href=https://dart.ucar.edu/css/bootstrap.min.css><link rel=stylesheet href=https://dart.ucar.edu/font-awesome/css/font-awesome.min.css><link rel=stylesheet href=https://dart.ucar.edu/icomoon/style.css><link href=https://dart.ucar.edu/scss/style.min.css rel=stylesheet><link rel="shortcut icon" href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon><link rel=icon href=https://dart.ucar.edu/images/favicon.ico type=image/x-icon></head><body><nav class="navbar navbar-expand-lg site-navigation"><div class=container><a class=navbar-brand href=https://ncar.ucar.edu/who-we-are/funding><img src=https://dart.ucar.edu/images/NSF_4-Color_bitmap_Logo.png alt=logo>
+</a><a class=navbar-second-brand href=/><img src=https://dart.ucar.edu/images/ncar-dart-logo-navy.svg alt=logo>
+</a><button class="navbar-toggler collapsed" type=button data-toggle=collapse data-target=#sitenavbar aria-label=menu>
+<span class=icon-bar></span>
+<span class=icon-bar></span>
+<span class=icon-bar></span></button><div class="collapse navbar-collapse" id=sitenavbar><ul class="navbar-nav ml-auto main-nav"><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/about>About</a></li><li class=nav-item><div class=dropdown-container><a href=# class="dropdown-toggle nav-link" data-toggle=dropdown role=button aria-haspopup=true aria-expanded=false>Research<span class=caret></span></a><ul class=dropdown-menu><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/publications>Publications</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/dissertations-and-theses>Dissertations and Theses</a></li><li><a class="dropdown-item nav-link" a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></li><li class=nav-item><a class=nav-link a href=https://docs.dart.ucar.edu/>Documentation</a></li><li class=nav-item><a class=nav-link a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li class=nav-item><a class="nav-link btn btn-sm btn-primary btn-sm-rounded" href=https://dart.ucar.edu/software><span class=btn-area><span data-text="Get DART">Get DART</span></span></a></li></ul></div></div></nav><main><section class=site-project-single-header style=background-image:url(https://dart.ucar.edu/images/hero/growth-on-wall.jpg)></section><section class=site-project-single-section><div class=container><div class=row><div class="col-lg-12 mx-auto"><div class=site-project-single><h1>Ian Grooms and Novel Algorithm Development</h1></div></div></div><div class=row><div class="col-lg-8 mx-auto"><p>Ensemble data assimilation algorithms, such as those implemented in the Data
+Assimilation Research Testbed (DART), can trace their lineage to the Kalman
+filter (Kalman, 1960) which was developed for aerospace applications in the
+1960’s. The Kalman filter uses a single mathematical model to represent how the
+state of the dynamical system evolves over time and a covariance matrix to
+represent the uncertainty in the estimation of the system’s state. Measurements
+from sensors, which inherently contain errors, are incorporated in a manner
+that minimizes mean squared error of the estimated state, given a linear model
+and Gaussian errors. The Kalman Filter was used to estimate the trajectory of
+spacecraft using measurements from onboard sensors and was incorporated into
+the guidance system for the Apollo program, helping NASA astronauts
+successfully land on the moon and return home safely.</p><p>Decades later, in 1990&rsquo;s and early 2000&rsquo;s, scientists began adapting Kalman&rsquo;s
+idea for use in the context of geophysical fluid dynamics. Instead of using a
+covariance matrix to represent the uncertainty in the state estimate, an
+ensemble of geophysical models is used, giving rise to assimilation
+methodologies such as the Ensemble Kalman Filter and Ensemble Adjustment Kalman
+Filter (Evensen, 1994; Houtekamer & Mitchell, 1998; Burgers et al., 1998;
+Anderson, 2003). The formulation of these early approaches assumes that the
+underlying probability distributions that characterize both the model
+uncertainty and observation errors are Gaussian.</p><p>In many geophysical applications this assumption of Gaussianity degrades the
+ability of such filters to provide a skillful state estimate. Examples of
+non-Gaussianity include ensemble forecasts where some ensemble members have
+cloudy conditions and other members have clear conditions, with few or no
+members in between (Chan et al., 2023). Ensemble forecasts of rain rates are
+also non-Gaussian because a Gaussian distribution would imply a positive
+probability of negative rain, and algorithms based on Gaussian assumptions can
+produce ensemble members with negative rain rates. Similarly, Gaussian
+distributions are not appropriate for quantities like concentrations, which
+must remain between 0 and 100%.</p><p>Ian Grooms, Associate Professor of Applied Mathematics at the University of
+Colorado at Boulder, studies such problems in the course of his research in
+geophysical fluid dynamics and data assimilation. Grooms (2022) reviews
+techniques used to broaden the applicability of the Ensemble Kalman Filter to
+quantities in nature that exhibit non-Gaussian behavior and discusses how the
+assumption of Gaussianity is not essential for the implementation of ensemble
+data assimilation algorithms. In particular, the two-step implementation (in
+which the first step produces an improved estimate of the observed quantity,
+and the second step updates the model variables conditionally on the updated
+observed variables) of many ensemble algorithms allows for the use of advanced
+techniques to represent non-Gaussian probability distributions of the model
+uncertainty and observation errors.</p><p>In Grooms and Riedel (2024), the authors develop a novel two-step algorithm,
+named the Kernel-based Quantile-Conserving Ensemble Filter (KQCEF), for
+assimilating sea ice concentration. Sea ice concentration is the fraction of
+area in a given region that is covered by sea ice, and is thus between 0 and
+100%. “Sea ice data assimilation is a particularly difficult problem because of
+its decidedly non-Gaussian character, and I&rsquo;m grateful to my colleagues for
+introducing me to it. I developed the KQCEF in the context of sea ice data
+assimilation, but I hope that it will prove useful for other problems with
+similar characteristics.” said Grooms.</p><p>As an applied mathematician, Grooms finds that having a particular problem in
+mind can motivate the development of new techniques. “I&rsquo;m interested in
+developing methods with wide applicability, but I&rsquo;ve decided to try to move
+from the particular to the universal rather than vice versa. That way, if I
+make progress on one particular problem, it has value even if the progress
+doesn&rsquo;t extend to other problems,” said Grooms.</p><p>Beyond publishing his results, Grooms implemented the KQCEF in DART so it can
+be shared with other members of the research community. DART is an open-source
+repository for ensemble data assimilation developed and maintained by staff at
+the NSF National Center for Atmospheric Research (NSF NCAR).</p><p>NSF NCAR is managed by the University Corporation for Atmospheric Research, a
+non-profit entity overseen by a consortium of over 130 North American colleges
+and universities, providing a governance structure that helps to ensure that
+software developed by NSF NCAR staff meets the needs of researchers in the
+university community. “A lot of fundamental research on data assimilation
+methods happens at universities,” said Grooms. “Because of the prohibitive
+costs of setting up from scratch systems that are close to real-world data
+assimilation, if it were not for projects like DART many university research
+groups in data assimilation would confine their research to toy models and
+sketches of real problems, or would spend all their time on the software with
+little time left for theory.”</p><p>Scaling computational capability of a data assimilation system up from a toy
+model to a realistic geophysical model can take years of development effort.
+Grooms continued, “DART is an example of how an open-source project, led by a
+team of experts at a government-funded research center who devote time and
+resources towards enabling community involvement, can bridge the gap between
+theory and practice, bringing cutting-edge research to operational systems,
+and opening the black box of operational software to university researchers.”</p><p>Feedback from faculty and students often helps to directly guide developments
+in DART. “Graduate students are motivated and capable, and many continue to
+learn and use DART. That said, in my experience many beginning students are
+primarily familiar with Python, and don&rsquo;t have a lot of experience with Bash
+scripting, let alone Fortran. A Python interface to configure, run, and then
+explore the output of experiments using the toy models already incorporated in
+DART might help get students started,” said Grooms.</p><p>In response to such feedback, a notable recent addition is the creation of a
+python-based diagnostics package for DART output, known as
+<a href=https://github.com/NCAR/pyDARTdiags>pyDARTdiags</a>. The package uses scientific
+python libraries that many students are familiar with such as numpy, pandas and
+plotly to display observation space diagnostics in interactive Jupyter
+notebooks.</p><p>Going forward, Grooms sees more possibilities for novel data assimilation
+applications. He continued, “I&rsquo;m currently developing two-step updates further
+in the context of sea ice data assimilation, extending beyond concentration to
+thickness observations, and to sophisticated methods for dealing with the ice
+thickness distributions and floe size distributions. Looking ahead, I&rsquo;m
+interested in using two-step updates for parameter estimation in Earth system
+models, and I&rsquo;m also looking for new challenging problems where non-Gaussian
+methods can have an impact.”</p><h3 id=references>References</h3><p>Anderson, J. L., 2003: A Local Least Squares Framework for Ensemble Filtering.
+<em>Monthly Weather Review</em>, <strong>131</strong>, 634–642, <a href=https://doi.org/10.1175/1520-0493(2003)131%3C0634:ALLSFF%3E2.0.CO;2>https://doi.org/10.1175/1520-0493(2003)131&lt;0634:ALLSFF>2.0.CO;2</a>.</p><p>Burgers, G., P. J. van Leeuwen, and G. Evensen, 1998: Analysis Scheme in the
+Ensemble Kalman Filter. <em>Monthly Weather Review</em>, <strong>126</strong>, 1719–1724, <a href=https://doi.org/10.1175/1520-0493(1998)126%3C1719:ASITEK%3E2.0.CO;2>https://doi.org/10.1175/1520-0493(1998)126&lt;1719:ASITEK>2.0.CO;2</a>.</p><p>Chan, M.-Y., X. Chen, and J. L. Anderson, 2023: The Potential Benefits of Handling Mixture Statistics via a Bi-Gaussian EnKF: Tests With All-Sky Satellite Infrared Radiances. *Journal of Advances in Modeling Earth Systems, <strong>15</strong>, e2022MS003357, <a href=https://doi.org/10.1029/2022MS003357>https://doi.org/10.1029/2022MS003357</a>.</p><p>Evensen, G., 1994: Sequential data assimilation with a nonlinear quasi-geostrophic model using Monte Carlo methods to forecast error statistics. <em>Journal of Geophysical Research: Oceans</em>, <strong>99</strong>, 10143–10162, <a href=https://doi.org/10.1029/94JC00572>https://doi.org/10.1029/94JC00572</a>.</p><p>Grooms, I., 2022: A comparison of nonlinear extensions to the ensemble Kalman
+filter. <em>Computational Geosciences</em>, <strong>26</strong>, 633–650, <a href=https://doi.org/10.1007/s10596-022-10141-x>https://doi.org/10.1007/s10596-022-10141-x</a>.</p><p>Grooms, I., and C. Riedel, 2024: A Quantile-Conserving Ensemble Filter Based on
+Kernel-Density Estimation. <em>Remote Sensing</em>, <strong>16</strong>, 2377, <a href=https://doi.org/10.3390/rs16132377>https://doi.org/10.3390/rs16132377</a>.</p><p>Houtekamer, P. L., and H. L. Mitchell, 1998: Data Assimilation Using an Ensemble Kalman Filter Technique. <em>Monthly Weather Review</em>, <strong>126</strong>, 796–811, <a href=https://doi.org/10.1175/1520-0493(1998)126%3C0796:DAUAEK%3E2.0.CO;2>https://doi.org/10.1175/1520-0493(1998)126&lt;0796:DAUAEK>2.0.CO;2</a>.</p><p>Kalman, R. E., 1960: A New Approach to Linear Filtering and Prediction Problems. <em>Journal of Basic Engineering</em>, <strong>82</strong>, 35–45, <a href=https://doi.org/10.1115/1.3662552>https://doi.org/10.1115/1.3662552</a>.</p></div><div class="col-lg-4 mx-auto"><a href=https://dart.ucar.edu/images/featured-articles/ian-grooms.jpg><img class=img-fluid src=https://dart.ucar.edu/images/featured-articles/ian-grooms.jpg></a><p>Ian Grooms in an atrium at the University of Colorado's Engineering Center.</p></div></div></div></section></main><footer class=site-footer><div class=container><div class=row><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Contact Info</h5><p class=site-footer-widget-description>1850 Table Mesa Dr.<br>Boulder, CO 80305<br><br><a href=mailto:dart@ucar.edu>dart@ucar.edu</a></p></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Sitemap</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/about>About Us</a></li><li><a href=https://dart.ucar.edu/research>Research</a></li><li><a href=https://dart.ucar.edu/tutorials>Tutorials</a></li><li><a href=https://dart.ucar.edu/contact>Contact</a></li></ul></div></div><div class="col-lg-2 col-md-4"><div class=site-footer-widget><h5 class=site-footer-widget-title>Research</h5><ul class=site-footer-widget-links><li><a href=https://dart.ucar.edu/research>Featured Projects</a></li><li><a href=https://dart.ucar.edu/publications>Publications</a></li><li><a href=https://dart.ucar.edu/presentations>Presentations</a></li></ul></div></div><div class="col-lg-4 col-md-6"><div class=site-footer-nsf>This material is based upon work supported by the NSF National Center for Atmospheric Research, a major facility sponsored by the U.S. National Science Foundation and managed by the University Corporation for Atmospheric Research. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the U.S. National Science Foundation.</div></div><div class="col-lg-2 col-md-6"><div class=site-footer-logo><a href=https://nsf.gov><img src=https://dart.ucar.edu/images/ncar-koru/footer-logo-nsf.png alt=logo-footer></a></div></div></div></div></footer><script src=https://dart.ucar.edu/js/vendor.min.js></script><script src=https://dart.ucar.edu/js/script.min.js></script><footer class=ucar-footer><div class=container><div class=row><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><center>© 2025 UCAR</center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/privacy-notice>Privacy</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/cookie-other-tracking-technologies-notice>Cookies</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/accessibility>Accessibility</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/terms-of-use>Terms of Use</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act>Copyright Issues</a></h5></div></div><div class="col-lg-2 col-md-4"><div class=ucar-footer-widget><center><h6><a href=https://nsf.gov>Sponsored by NSF</a></h5></center></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://ncar.ucar.edu>NCAR Home</a></h5></div></div><div class="col-lg-1 col-md-4"><div class=ucar-footer-widget><h6><a href=https://www.ucar.edu>UCAR Home</a></h5></div></div></div></div></div></footer></body></html>
