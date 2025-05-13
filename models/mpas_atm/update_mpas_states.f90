@@ -41,7 +41,8 @@ use state_structure_mod, only : get_num_variables, get_variable_name, &
 use netcdf_utilities_mod, only : nc_open_file_readonly, &
                                  nc_open_file_readwrite, &
                                  nc_get_variable, nc_put_variable, &
-                                 nc_close_file
+                                 nc_close_file, nc_get_variable_size, &
+                                 nc_get_variable_info
                                  
 implicit none
 
@@ -64,7 +65,10 @@ integer               :: filenum, i
 real(r8), allocatable :: variable(:)
 type(time_type)       :: model_time
 type(time_type)       :: state_time
-integer               :: dims(2) !(nVertLevels, nEdges | nCells)
+integer               :: file_dims(3) ! File (nVertLevels, nEdges | nCells, Time)
+integer               :: file_dimlens(3) 
+integer               :: dims(2) ! State (nVertLevels, nEdges | nCells)
+integer               :: dimlens(2) 
 real(r8), allocatable :: u(:,:), ucell(:,:), vcell(:,:) 
 real(r8), allocatable :: ucell_dart(:,:), vcell_dart(:,:), increments(:,:)
 !----------------------------------------------------------------------
@@ -108,14 +112,15 @@ fileloop: do        ! until out of files
   ! copy variables that are not wind from analysis to background
   varloop: do i = 1, get_num_variables(dom_id)
 
-      allocate(variable(get_variable_size(dom_id, i)))
-
       if (get_variable_name(dom_id,i) == 'uReconstructZonal' .or. &
           get_variable_name(dom_id,i) == 'uReconstructMeridional'.or. &
           get_variable_name(dom_id,i) == 'u') cycle varloop
 
-      call nc_get_variable(ncAnlID, get_variable_name(dom_id,i), variable)
-      call nc_put_variable(ncBckID, get_variable_name(dom_id,i), variable)
+      allocate(variable(get_variable_size(dom_id, i)))
+
+      call nc_get_variable_size(ncAnlId, get_variable_name(dom_id,i), file_dimlens)
+      call nc_get_variable(ncAnlID, get_variable_name(dom_id,i), variable, nc_count=file_dimlens)
+      call nc_put_variable(ncBckID, get_variable_name(dom_id,i), variable, nc_count=file_dimlens)
 
       deallocate(variable)
 
@@ -133,8 +138,8 @@ fileloop: do        ! until out of files
         ! read in u, uReconstrtuctZonal, uReconstructMeridional from background
         ! read in uReconstrtuctZonal, uReconstructMeridional from analysis
 
-        dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'u'))
-        allocate(u(dims(1), dims(2)), increments(dims(1), dims(2)))
+        call nc_get_variable_info(ncBckID, 'u', dimlens=file_dimlens) ! not in state structure
+        allocate(u(file_dimlens(1), file_dimlens(2)), increments(file_dimlens(1), file_dimlens(2)))
         call nc_get_variable(ncBckID, 'u', u)
 
         dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'uReconstructZonal'))
@@ -182,10 +187,10 @@ fileloop: do        ! until out of files
 
   else
      ! copy u from analysis to background
-    allocate(variable(get_variable_size(1, get_varid_from_varname(dom_id, 'u'))))
-
-    call nc_get_variable(ncAnlID, 'u', variable)
-    call nc_put_variable(ncBckID, 'u', variable)  
+    allocate(variable(get_variable_size(dom_id, get_varid_from_varname(dom_id, 'u'))))
+    call nc_get_variable_size(ncAnlId, get_variable_name(dom_id,i), dimlens)
+    call nc_get_variable(ncAnlID, 'u', variable, nc_count=dimlens)
+    call nc_put_variable(ncBckID, 'u', variable, nc_count=dimlens)  
 
     deallocate(variable)
 

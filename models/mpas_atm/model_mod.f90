@@ -4288,11 +4288,11 @@ function uv_increments_cell_to_edges(zonal_wind, meridional_wind) result(u_inc)
 ! Increments at the outermost edge are set to 0.0 because we do not update/compute 
 ! uedge in the outermost edge in the regional MPAS.
 
-real(r8), intent(in) :: zonal_wind(:,:)        ! u wind increments from filter
-real(r8), intent(in) :: meridional_wind(:,:)   ! v wind increments from filter
-real(r8) :: u_inc(size(zonal_wind, 1), size(zonal_wind, 2))  ! normal velocity increment on the edges
+real(r8), intent(in) :: zonal_wind(nVertLevels, nCells)        ! u wind increments from filter
+real(r8), intent(in) :: meridional_wind(nVertLevels, nCells)   ! v wind increments from filter
+real(r8) :: u_inc(nVertLevels, nEdges)  ! normal velocity increment on the edges
 
-real(r8) :: uedge(size(zonal_wind, 1), size(zonal_wind, 2))
+real(r8) :: uedge(nVertLevels, nEdges)
 
 if ( .not. module_initialized ) call static_init_model
 
