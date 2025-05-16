@@ -70,7 +70,7 @@ integer               :: file_dimlens(3)
 integer               :: dims(2) ! State (nVertLevels, nEdges | nCells)
 integer               :: dimlens(2) 
 real(r8), allocatable :: u(:,:), ucell(:,:), vcell(:,:) 
-real(r8), allocatable :: ucell_dart(:,:), vcell_dart(:,:), increments(:,:)
+real(r8), allocatable :: ucell_dart(:,:), vcell_dart(:,:)
 !----------------------------------------------------------------------
 
 call initialize_utilities(progname=source)
@@ -139,7 +139,7 @@ fileloop: do        ! until out of files
         ! read in uReconstrtuctZonal, uReconstructMeridional from analysis
 
         call nc_get_variable_info(ncBckID, 'u', dimlens=file_dimlens) ! not in state structure
-        allocate(u(file_dimlens(1), file_dimlens(2)), increments(file_dimlens(1), file_dimlens(2)))
+        allocate(u(file_dimlens(1), file_dimlens(2)))
         call nc_get_variable(ncBckID, 'u', u)
 
         dims = get_dim_lengths(dom_id, get_varid_from_varname(dom_id, 'uReconstructZonal'))
@@ -160,7 +160,7 @@ fileloop: do        ! until out of files
         call nc_put_variable(ncBckID, 'uReconstructZonal', ucell_dart)
         call nc_put_variable(ncBckID, 'uReconstructMeridional', vcell_dart)
 
-        deallocate(u, increments, ucell, vcell, ucell_dart, vcell_dart)
+        deallocate(u, ucell, vcell, ucell_dart, vcell_dart)
          
      else
         ! The state vector has updated zonal and meridional wind components.
