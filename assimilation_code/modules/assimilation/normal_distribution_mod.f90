@@ -350,7 +350,7 @@ integer, parameter :: max_half_iterations = 25
 
 ! Largest delta for computing centered difference derivative
 ! Changing this can affect accuracy for specific applications
-real(r8), parameter :: max_delta = 1e-8_r8
+real(r8), parameter :: max_delta = 2e-10_r8
 
 ! The power to which the epsilon for the current guess is raised to bound convergence
 ! Earlier versions used 0.75, but that was found to fail tests for various compilers 

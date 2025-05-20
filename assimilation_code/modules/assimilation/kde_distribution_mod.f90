@@ -22,9 +22,10 @@ use mpi_utilities_mod,    only : my_task_id
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params, &
                                     KDE_DISTRIBUTION
 
-use rootfinding_mod,         only : inv_cdf
+! Using the inv_cdf in normal_distribution_mod is faster and passes all kde tests
+!!!use rootfinding_mod,         only : inv_cdf
 
-use normal_distribution_mod, only : normal_cdf
+use normal_distribution_mod, only : normal_cdf, inv_cdf
 
 implicit none
 private
