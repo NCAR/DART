@@ -22,6 +22,27 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**May 6 2025 :: Fwd-op for SAT_SEAICE radar and laser. Tag v11.11.0**
+
+- Forward Operator for SAT_SEAICE_RADAR|LASER_FREEBOARD. 
+
+  *contributed by Molly Wieringa*
+
+Bug-fix:
+
+  - real128 removed from developer_tests for nvhpc compiler.
+
+Documentation updates:
+
+  - CONAGUA converter documentation updated.
+  - Radar observations documentation updated. 
+
+**May 1 2025 :: Bug-fixes: TIEGCM, BNRH. Tag v11.10.9**
+
+- Fix VTEC extrapolation calculation in TIEGCM model_mod.
+- Fix loop limit in bnrh_distribution_mod, and routine name in error messages.
+- Documentation fix for perturb_single_instance.
+
 **April 22 2025 :: Bug-fix: CICE interpolation. Tag v11.10.8**
 
 - Inverse distance weighting interpolation for CICE. Replaces
