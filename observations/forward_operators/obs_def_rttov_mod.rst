@@ -6,30 +6,24 @@ MODULE ``obs_def_rttov_mod``
 Overview
 --------
 
-The DART RTTOV observation module, including the observation operators for the two primary 
+The DART RTTOV observation module includes observation operators for the two primary 
 RTTOV-observation types -- visible/infrared radiances and microwave 
 radiances/brightness temperatures.
 
-DART can be built with either RTTOV v12 *or* v13. Edit :ref:`&preprocess_nml <preprocess>` to select
-the appropriate obs_def:
-
-- obs_def_rttov_mod.f90 for v12.3
-- obs_def_rttov13_mod.f90 for v13 (contributed by Lukas Kugler of the University of Vienna).  
-
-Note the namelist options for &obs_def_rttov_nml differ for v12 and v13.
-
-- `RTTOV v12 Namelist`_ &obs_def_rttov_nml
-- `RTTOV v13 Namelist`_ &obs_def_rttov_nml
-
+Observations from a wide range of satellites (e.g. GOES, FY, METOP, ...) and 
+sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported 
+(`see the complete list here<https://nwp-saf.eumetsat.int/site/software/rttov/documentation/platforms-supported/>`__).
 For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
-DART supports both RTTOV-direct for visible/infrared/microwave as well as RTTOV-scatt 
-for microwave computations. The code, in principle, supports all features of version 12.3 
-as a pass-through from the model to RTTOV, includes aerosols, trace gases, clouds, and 
-atmospheric variables. The code also includes directly specifying scattering properties.
+For build instructions, see :ref:`Radiance_support`. 
 
+Note the namelist options for &obs_def_rttov_nml differ for v12 (:ref:`nml_rttov12`) and v13 (:ref:`nml_rttov13`).
+
+The interface to RTTOV supports all features of version 12.3 as a pass-through from 
+the model to RTTOV, includes aerosols, trace gases, clouds, and atmospheric variables. 
+The code also includes directly specifying scattering properties.
 However, a model may not have all of the variables necessary for these functions 
-depending on your model's setup.  For example, DART can use any of the RTTOV clw or ice 
+depending on your model's setup. For example, DART can use any of the RTTOV clw or ice 
 schemes, but the WRF model is not directly compatible with the IR default cloud 
 classification of marine/continental stratus/cumulus clean/dirty. We also offer a simple
 classification based on maximum vertical velocity in the column and land type, but due to 
@@ -39,14 +33,26 @@ in cloud phase (ice versus water) makes a much larger difference.  Trace gases a
 may be important for actual observation system experiments using visible/infrared; this may
 depend on the precise frequencies you wish to use.
 
-For RTTOV 13 DART has a ``wfetch_value`` namelist option. This allows you to set a wfetch value
-to use when ``use_wfetch = .true.`` if the model you are using does not provide QTY_WIND_FETCH.
 
 Although a model may not have the necessary inputs by itself,
 the defaults in RTTOV based on climatology can be used.
 The impact on the quality of the results should be investigated.
 
-The quanities for each observation type are defined in obs_def_rttov{13}_mod.f90, for example:
+The RTTOV interface (`obs_def_rttov_mod.f90`) defines many observation types,
+following this convenction: 
+
+.. code:: 
+   
+   (PLATFORM)_(SATELLITE)_(SENSOR)_RADIANCE
+
+where 
+
+*  PLATFORM    is the satellite series (e.g. NOAA or DMSP),
+*  SATELLITE   is the satellite number (e.g. 18 for NOAA 18),
+*  SENSOR      is the satellite sensor name (e.g. AIRS for Aqua/EOS 2)
+
+
+Moreover the interface defines the physical quantity of the observation type:
 
 .. code::
 
@@ -153,23 +159,22 @@ file will include a list of channels (wavebands) with the associated wavelength 
   obs_seq.out channel and the coefficient file channel.  
 
 
-
-Known issues:
--------------
--  DART does not provide any type of observation bias correction. It may be appropriate to preprocess your radiance
-   observations to remove systematic  bias before assimilation, using techniques such as cumulative distribution 
-   function (CDF) matching.
--  Cross-channel error correlations are not supported. A principal component approach has been discussed. For now,
-   we recommend to use a subset of channels that are nearly independent of one another.
--  Vertical localization will need to be tuned based on the research application. Turning off vertical localization 
-   may work well if you have a large number of ensemble members. Using the maximum peak of the channel weighting 
-   function or the cloud-top height to set a vertical location for an observation may be appropriate. 
+For a list of known issues with the RTTOV interface, please refer to :ref:`Radiance_support`.
 
 
 The namelist ``&obs_def_rttov_mod_nml`` is read from file ``input.nml``. Namelists start with an ampersand '&'
 and terminate with a slash '/'.
 Character strings that contain a '/' must be enclosed in quotes to prevent them from prematurely terminating the
 namelist.
+
+Remarks:
+^^^^^^^^
+
+DART has a namelist option to use wind fetch from the model. With ``use_wfetch = .true.`` 
+DART will interpolate the quantity QTY_WIND_FETCH from the model to the observation location.
+
+
+.. _nml_rttov12:
 
 RTTOV v12 Namelist
 ------------------
@@ -477,6 +482,7 @@ RTTOV v12 Namelist
    |                        |                    | user guide).                                                         |
    +------------------------+--------------------+----------------------------------------------------------------------+
 
+.. _nml_rttov13:
 
 RTTOV v13 namelist
 ------------------

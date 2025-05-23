@@ -117,7 +117,7 @@ adding obs_def_rttov_mod.f90 to the ``&preprocess`` section of the ``input.nml``
                                  '../../../observations/forward_operators/obs_def_gts_mod.f90',
                                  '../../../observations/forward_operators/obs_def_rttov_mod.f90',
 
-   Use ``obs_def_rttov13_mod.f90`` to compile DART with RTTOV v13.
+Use ``obs_def_rttov13_mod.f90`` to compile DART with RTTOV v13.
 
 4. In your model of choice, run ``./quickbuild.sh``.
 
@@ -173,7 +173,10 @@ DART support for satellite radiances cannot be considered 100% complete.
 The following details the known issues that are being considered with
 DART’s support for satellite radiances.
 
--  DART does not yet provide satellite bias correction capabilities.
+-  DART does not yet provide satellite bias correction capabilities. 
+   It may be appropriate to preprocess your radiance
+   observations to remove systematic  bias before assimilation, 
+   using techniques such as cumulative distribution function (CDF) matching.
 -  Cross-channel error correlations are not yet supported. A principal
    component approach has been discussed. For now, the best bet is to
    use a subset of channels that are nearly independent of one another.
