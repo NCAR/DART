@@ -426,6 +426,14 @@ call find_namelist_in_file('input.nml', 'mpas_vars_nml', iunit)
 read(iunit, nml = mpas_vars_nml, iostat = io)
 call check_namelist_read(iunit, io, 'mpas_vars_nml')
 
+if (use_u_for_wind) then
+   write(string1,*) 'use_u_for_wind=.true. is deprecated'
+   write(string2,*) 'please contact the DART team if you are using this option'
+   call error_handler(E_ERR,'static_init_model',string1,source, &
+                      text2=string2)
+endif
+
+
 call set_calendar_type( calendar )   
 model_timestep = set_model_time_step()
 call get_time(model_timestep,ss,dd)
@@ -3256,6 +3264,9 @@ integer     :: verttype, lower(listsize, ens_size), upper(listsize, ens_size), n
 integer     :: var_id, dummy
 
 integer :: e ! loop index
+
+call error_handler(E_ERR, 'please contact the DART team if you are using compute_u_with_rbf', source)
+
 
 ier  = 0
 uval = MISSING_R8

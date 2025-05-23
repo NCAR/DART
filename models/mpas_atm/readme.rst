@@ -17,36 +17,86 @@ If you need to reproduce work with DART and MPAS v4 you will need to change the 
 parameters ``cp``, ``cv`` and ``rvord`` to match MPAS v4. 
 
 
+MPAS Grid
+---------
+
 The mpas-atm model uses an unstructured Voronoi grid mesh,
 formally Spherical Centriodal Voronoi Tesselations (SCVTs). This allows for both
-quasi-uniform discretization of the sphere and local refinement. The MPAS/DART
+quasi-uniform discretization of the sphere and local refinement. The MPAS-DART
 interface was built on the SCVT-dual mesh and does not regrid to regular lat/lon
 grids. In the C-grid discretization, the normal component of velocity on cell
 edges is prognosed; zonal and meridional wind components are diagnosed on the
-cell centers. We provide several options to choose from in the assimilation of
-wind observations as shown below.
-
-The grid terminology used in MPAS is as shown in the figure below:
+cell centers. The grid terminology used in MPAS is as shown in the figure below:
 
 |MPAS_grid_structure|
 
-The wind options during a DART assimilation are controlled by combinations of 4
-different namelist values. The values determine which fields the forward
-operator uses to compute expected observation values; how the horizontal
-interpolation is computed in that forward operator; and how the assimilation
-increments are applied to update the wind quantities in the state vector.
-Preliminary results based on real data assimilation experiments indicate that
-performance is better when the zonal and meridional winds are used as input to
-the forward operator that uses Barycentric interpolation, and when the
-prognostic *u* wind is updated by the incremental method described in the figure
-below. However there remain scientific questions about how best to handle the
-wind fields under different situations. Thus we have kept all implemented
-options available for use in experimental comparisons. See the figure below for
-a flow-chart representation of how the 4 namelist items interact:
+DART reads the static variables related to the grid structure
+from the MPAS_ATM NetCDF file (specified in ``init_template_filename``).
+The calculations to find the closest mesh cell to an observation location is performed in the
+cartesian coordinate to avoid the polar issues.
 
-|WindDA_options|
+MPAS winds in DART
+------------------
 
-Cycling of MPAS/DART is run in a *restart* mode. As for all DART experiments,
+The MPAS model uses the normal component of velocity on cell edges ``u`` as the prognostic variable
+for the wind field. DART uses diagnostics variables ``uReconstructZonal`` and ``uReconstructMeridional``
+in the state. Before building MPAS for use with DART, the MPAS Registry.xml must be 
+updated to output ``uReconstructZonal`` and ``uReconstructMeridional`` (u,v) winds to the MPAS 
+NetCDF restart file.
+
+.. code-block:: fortran
+   :emphasize-lines: 3, 4
+   :caption: snippet from MPAS src/core_init_atmosphere/Registry.xml
+
+   packages="vertical_stage_out;met_stage_out"/>
+       ...
+       <var name="u" packages="met_stage_out"/>
+       <var name="uReconstructZonal" packages="met_stage_out"/>
+       <var name="uReconstructMeridional" packages="met_stage_out"/>
+
+
+.. code-block:: fortran
+   :emphasize-lines: 4, 5
+   :caption: snippet from MPAS src/core_atmosphere/Registry.xml
+
+   <stream name="restart"
+       ...
+       <var name="u"/>
+       <var name="uReconstructZonal"/>
+       <var name="uReconstructMeridional"/>
+ 
+The DART updates to MPAS restart files is two step process because of the wind variables. 
+First, filter is run to update ``uReconstructZonal``, and ``uReconstructZonal``. Then update_mpas_states 
+(or udpdate_bc.f90 for regional MPAS) is run to update ``u`` from ``uReconstructZonal``, and 
+``uReconstructZonal``.  
+
+The relevant namelist options are:
+
+model_nml::update_u_from_reconstruct
+  Must be set to ``.true.`` . u is updated from uReconstructZonal and uReconstructMeridional.
+
+model_nml::use_increments_for_u_update
+  - ``.false.`` ``u`` is updated from uReconstructZonal and uReconstructMeridional.
+  - ``.true.`` ``u`` increments are calculated from the increments of ``uReconstructZonal`` and
+    ``uReconstructMeridional``, and u is updated from the increments.
+
+.. Note :: 
+   The ``use_u_for_wind=.true.`` option shown in the flow chart below is deprecated. 
+   Please contact dart@ucar.edu if you are using ``use_u_for_wind=.true.`` as there is a bug 
+   `#861 <https://github.com/NCAR/DART/issues/861>`_ in versions
+   of DART using this option since the Manhattan release.
+
+.. figure:: ../../guide/images/MPAS_WindDA_options.png
+   :alt: MPAS WindDA options
+   :width: 100%
+   
+   Options for wind data assimilation in MPAS-DART. use_u_for_wind=.true. is deprecated.
+
+
+Cycling MPAS-DART
+-----------------
+
+Cycling of MPAS-DART is run in a *restart* mode. As for all DART experiments,
 the overall design for an experiment is this: the DART program ``filter`` will
 read the initial condition file, the observation sequence file, and the DART
 namelist to decide whether or not to advance the MPAS-ATM model. All of the
@@ -85,7 +135,7 @@ namelist.
 model_nml
 ^^^^^^^^^
 
-.. code-block:: fortran
+.. code-block:: text
 
    &model_nml
       init_template_filename       = 'mpas_init.nc',
@@ -104,7 +154,6 @@ model_nml
       outside_grid_level_tolerance = -1.0,
       write_grid_to_diag_files     = .false.,
       no_normalization_of_scale_heights = .true.
-
    /
 
 +---------------------------------------+---------------------------------------+-----------------------------------------+
@@ -171,6 +220,10 @@ model_nml
 |                                       |                                       | [default]. In that case, triangular     |
 |                                       |                                       | meshes are used for the barycentric     |
 |                                       |                                       | (e.g., area-weighted) interpolation.    |
+|                                       |                                       |                                         |
+|                                       |                                       | ``.true.`` is deprecated. Please contact|
+|                                       |                                       | dart@ucar.edu if you are using          |
+|                                       |                                       | ``use_u_for_wind=.true.``               |
 |                                       |                                       | If ``.true.``, wind vectors at an       |
 |                                       |                                       | arbitrary (e.g., observation) point     |
 |                                       |                                       | are reconstructed from the normal       |
@@ -264,8 +317,6 @@ model_nml
 +---------------------------------------+---------------------------------------+-----------------------------------------+
 
 
-
-
 mpas_vars_nml
 ^^^^^^^^^^^^^
 
@@ -298,21 +349,14 @@ When writing back to MPAS NetCDF files, out-of-range values are adjusted to be i
 Note the adjustment is done only when writing to MPAS NetCDF files, not during assimilation.
 DART files, mean, sd, and inflation files are not adjusted.
 
-Note that changing values at the edges of the distribution means it is no longer completely Gaussian.
-In practice this technique has worked effectively, but if the assimilation is continually trying to 
-move the values outside the permitted range the results may be of poor quality. 
-Examine the diagnostics for these fields carefully when using bounds to restrict their values.
-You may want to consider using the :ref:`QCEFF<qceff>` filter when working with bounded quantities.
+.. Note::
 
+    Changing values at the edges of the distribution means the distribution is no longer completely Gaussian.
+    In practice this technique has worked effectively, but if the assimilation is continually trying to 
+    move the values outside the permitted range the results may be of poor quality. 
+    Examine the diagnostics for these fields carefully when using bounds to restrict their values.
+    You may want to consider using the :ref:`QCEFF<qceff>` filter when working with bounded quantities.
 
-Grid Information
-----------------
-
-As the forward operators use the unstructured grid meshes in MPAS-ATM, the
-DART/MPAS interface needs to read static variables related to the grid structure
-from the MPAS ATM netCDF file (specified in ``init_template_filename``).
-The calculations to find the closest mesh cell to an observation location is performed in the
-cartesian coordinate to avoid the polar issues.
 
 References
 ----------
@@ -322,4 +366,3 @@ http://mpas-dev.github.io.
 
 .. |MPAS_grid_structure| image:: ../../guide/images/MPAS_grid_structure.png
 
-.. |WindDA_options| image:: ../../guide/images/MPAS_WindDA_options.png
