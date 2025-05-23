@@ -8,22 +8,21 @@ Overview
 
 The DART RTTOV observation module includes observation operators for the two primary 
 RTTOV-observation types -- visible/infrared radiances and microwave 
-radiances/brightness temperatures.
-
-Observations from a wide range of satellites (e.g. GOES, FY, METOP, ...) and 
+radiances/brightness temperatures. Observations from a wide range of satellites (e.g. GOES, FY, METOP, ...) and 
 sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported 
-(`see the complete list here<https://nwp-saf.eumetsat.int/site/software/rttov/documentation/platforms-supported/>`__).
+(`see the complete list here <https://nwp-saf.eumetsat.int/site/software/rttov/documentation/platforms-supported/>`__).
 For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
-For build instructions, see :ref:`Radiance_support`. 
-
-Note the namelist options for &obs_def_rttov_nml differ for v12 (:ref:`nml_rttov12`) and v13 (:ref:`nml_rttov13`).
+For an introduction to the RTTOV interface, build instructions, 
+and a list of known issues, please refer to  :ref:`Radiance_support`.
 
 The interface to RTTOV supports all features of version 12.3 as a pass-through from 
 the model to RTTOV, includes aerosols, trace gases, clouds, and atmospheric variables. 
 The code also includes directly specifying scattering properties.
 However, a model may not have all of the variables necessary for these functions 
-depending on your model's setup. For example, DART can use any of the RTTOV clw or ice 
+depending on your model's setup. 
+
+For example, DART can use any of the RTTOV clw or ice 
 schemes, but the WRF model is not directly compatible with the IR default cloud 
 classification of marine/continental stratus/cumulus clean/dirty. We also offer a simple
 classification based on maximum vertical velocity in the column and land type, but due to 
@@ -38,25 +37,19 @@ Although a model may not have the necessary inputs by itself,
 the defaults in RTTOV based on climatology can be used.
 The impact on the quality of the results should be investigated.
 
-The RTTOV interface (`obs_def_rttov_mod.f90`) defines many observation types,
-following this convenction: 
-
-.. code:: 
-   
-   (PLATFORM)_(SATELLITE)_(SENSOR)_RADIANCE
-
-where 
-
-*  PLATFORM    is the satellite series (e.g. NOAA or DMSP),
-*  SATELLITE   is the satellite number (e.g. 18 for NOAA 18),
-*  SENSOR      is the satellite sensor name (e.g. AIRS for Aqua/EOS 2)
-
-
-Moreover the interface defines the physical quantity of the observation type:
-
+Observation types and their physical quantity are defined in `obs_def_rttov_mod.f90`. For example, 
 .. code::
 
-   ! HIMAWARI_9_AHI_RADIANCE,      QTY_RADIANCE
+   ! NOAA_19_AMSUA_TB,      QTY_BRIGHTNESS_TEMPERATURE
+
+is constructed of `(PLATFORM)_(SATELLITE)_(SENSOR)_(QTY)`
+where 
+
+*  PLATFORM    is the satellite series (NOAA),
+*  SATELLITE   is the satellite number (19 for NOAA 19),
+*  SENSOR      is the satellite sensor name (AMSUA for AMSU-A),
+*  QTY         is the physical quantity (TB for brightness temperature).
+
 
 If you want to change the quantity associated with an observation, for example, if you want
 to assimilate HIMAWARI_9_AHI_RADIANCE as QTY_BRIGHTNESS_TEMPERATURE, edit the QTY
@@ -159,7 +152,6 @@ file will include a list of channels (wavebands) with the associated wavelength 
   obs_seq.out channel and the coefficient file channel.  
 
 
-For a list of known issues with the RTTOV interface, please refer to :ref:`Radiance_support`.
 
 
 The namelist ``&obs_def_rttov_mod_nml`` is read from file ``input.nml``. Namelists start with an ampersand '&'
@@ -174,10 +166,18 @@ DART has a namelist option to use wind fetch from the model. With ``use_wfetch =
 DART will interpolate the quantity QTY_WIND_FETCH from the model to the observation location.
 
 
+Namelist
+--------
+
+The RTTOV interface changes with every version of RTTOV. Therefore, 
+the namelist section `&obs_def_rttov_nml` differs for v12 (:ref:`nml_rttov12`) 
+and v13 (:ref:`nml_rttov13`).
+
+
 .. _nml_rttov12:
 
 RTTOV v12 Namelist
-------------------
+^^^^^^^^^^^^^^^^^^
 
 ::
 
@@ -485,7 +485,7 @@ RTTOV v12 Namelist
 .. _nml_rttov13:
 
 RTTOV v13 namelist
-------------------
+^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 

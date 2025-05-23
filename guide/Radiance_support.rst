@@ -9,48 +9,10 @@ It simulates radiances by taking in a set of atmospheric and surface
 variables to simulate the radiances that would be observed by a
 satellite instrument. 
 
-
-The DART interface to RTTOV passes through model variables to RTTOV.
-This includes aerosols, trace gases, clouds, and atmospheric variables.
-A particular model may not have all of the variables necessary
-for RTTOV depending on the model and model setup. In some
-cases RTTOV default climatologies can be used, but at a minimum the
-following quantities must be defined as state variables:
-
-+-----------------------------+----------------------------------------+
-| Quantity                    | Description                            |
-+=============================+========================================+
-| **QTY_PRESSURE**            | atmospheric pressure in hPa at the     |
-|                             | model levels                           |
-+-----------------------------+----------------------------------------+
-| **QTY_TEMPERATURE**         | atmospheric temperature in K at the    |
-|                             | model levels                           |
-+-----------------------------+----------------------------------------+
-| **QTY_VAPOR_MIXING_RATIO**  | atmospheric humidity mixing ratio in   |
-|                             | kg/kg at the model levels              |
-+-----------------------------+----------------------------------------+
-| **QTY_SURFACE_PRESSURE**    | the surface pressure in hPa            |
-+-----------------------------+----------------------------------------+
-| **QTY_SURFACE_ELEVATION**   | the surface elevation in km            |
-+-----------------------------+----------------------------------------+
-| **QTY_2M_TEMPERATURE**      | the atmospheric temperature in K at 2  |
-|                             | m above the surface                    |
-+-----------------------------+----------------------------------------+
-| **QTY_SKIN_TEMPERATURE**    | the surface (skin) temperature in K    |
-+-----------------------------+----------------------------------------+
-| **QTY_SURFACE_TYPE**        | 0 = land, 1 = water, 2 = sea ice       |
-+-----------------------------+----------------------------------------+
-
-If a DART model_mod cannot provide these required quantities, the RTTOV
-forward operator will fail and cannot be used. It may be possible to
-look up surface elevation or surface type through an look-up table or
-“atlas,” although DART does not yet provide such functionality. 2M
-temperature in theory could be interpolated based on skin temperature
-and the lowest-level model temperature.
-
-Beyond these fields, there are many other optional fields (such as
-clouds, trace gases, and aerosols) that can be specified. See
-:ref:`obs_def_rttov_mod` for a complete list of values.
+The run-time behavior of RTTOV is mostly controlled by the 
+``&obs_def_rttov_nml`` section in the ``input.nml`` namelist file and
+the model variables that are passed to RTTOV (``&model_nml`` section).
+See :ref:`obs_def_rttov_mod`.
 
 .. note::
    The RTTOV support DART support cannot be considered 100% complete and 
@@ -121,9 +83,8 @@ Use ``obs_def_rttov13_mod.f90`` to compile DART with RTTOV v13.
 
 4. In your model of choice, run ``./quickbuild.sh``.
 
-
-Assimilating radiances
-----------------------
+High-level workflow
+-------------------
 
 To assimilate radiances in an OSSE (Observing System Simulation Experiment)
 with synthetic observations, you will need to do the following:
@@ -143,13 +104,85 @@ observations, you will need to do the following:
    -  Run filter and analyze the results in the usual way
 
 
-Advice regarding RTTOV
-----------------------
+Input data to RTTOV
+-------------------
 
-The run-time behavior of RTTOV is mostly controlled by the 
-``&obs_def_rttov_nml`` section in the ``input.nml`` namelist file and
-the model variables that are passed to RTTOV (``&model_nml`` section).
-See :ref:`obs_def_rttov_mod`.
+The DART interface basically passes through model variables to RTTOV.
+Besides pressure, temperature, and humidity, this can include aerosols, 
+trace gases, cloud hydrometeor mixing ratios, and surface variables.
+
+A particular model may not have all of the variables necessary
+for RTTOV depending on the model and model setup. 
+Although a model may not have the necessary inputs by itself,
+in some cases, the defaults in RTTOV based on climatology can be used, 
+but at a minimum the following quantities must be defined as state variables:
+
++-----------------------------+----------------------------------------+
+| Quantity                    | Description                            |
++=============================+========================================+
+| **QTY_PRESSURE**            | atmospheric pressure in hPa at the     |
+|                             | model levels                           |
++-----------------------------+----------------------------------------+
+| **QTY_TEMPERATURE**         | atmospheric temperature in K at the    |
+|                             | model levels                           |
++-----------------------------+----------------------------------------+
+| **QTY_VAPOR_MIXING_RATIO**  | atmospheric humidity mixing ratio in   |
+|                             | kg/kg at the model levels              |
++-----------------------------+----------------------------------------+
+| **QTY_SURFACE_PRESSURE**    | the surface pressure in hPa            |
++-----------------------------+----------------------------------------+
+| **QTY_SURFACE_ELEVATION**   | the surface elevation in km            |
++-----------------------------+----------------------------------------+
+| **QTY_2M_TEMPERATURE**      | the atmospheric temperature in K at 2  |
+|                             | m above the surface                    |
++-----------------------------+----------------------------------------+
+| **QTY_SKIN_TEMPERATURE**    | the surface (skin) temperature in K    |
++-----------------------------+----------------------------------------+
+| **QTY_SURFACE_TYPE**        | 0 = land, 1 = water, 2 = sea ice       |
++-----------------------------+----------------------------------------+
+
+
+If a DART model_mod cannot provide these required quantities, the RTTOV
+forward operator will fail and cannot be used. It may be possible to
+look up surface elevation or surface type through an look-up table or
+“atlas,” although DART does not yet provide such functionality. 2M
+temperature in theory could be interpolated based on skin temperature
+and the lowest-level model temperature.
+
+Beyond these fields, there are many other optional fields (such as
+clouds, trace gases, and aerosols) that can be specified. See
+:ref:`obs_def_rttov_mod` for a complete list of values.
+
+Simulation of cloudy radiances
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In general, the representation of clouds in a particular 
+model may not be directly compatible with RTTOV.
+For example, different microphysics schemes assume different 
+particle size distributions and have a number of hydrometeor classes, 
+while RTTOV takes only liquid water and ice mixing ratio (snow for RTTOV-scatt).
+
+Since most atmospheric models do not provide cloud optical properties,
+RTTOV provides parameterizations for them (see the RTTOV user guide for details).
+For liquid water clouds there are (abbreviated) "OPAC" and "Deff".
+
+*  The Deff scheme computes optical properties from an effective particle diameter as input.
+   This can either be a constant value, or supplied by the model.
+*  The OPAC scheme computes optical properties from based on the cloud type 
+   (marine/continental, stratus/cumulus, clean/dirty). 
+   If the user selects the OPAC scheme (`clw_scheme=1`), DART classifies the cloud type based 
+   on maximum vertical velocity in the column and land type.
+   In case of cumulus over land, DART currently assigns "Cumulus Continental Clean" , 
+   as we lack of aerosol information and cannot differentiate between clean and dirty cumulus.
+   This may have some impact on the forward calculations - but in experience the difference 
+   in cloud phase (ice versus water) makes a much larger difference. 
+
+Trace gases and aerosols may be important for actual observation system experiments 
+using visible/infrared; this may depend on the precise frequencies you wish to use.
+
+
+Converting real observations to DART format
+-------------------------------------------
 
 Note that currently obervation converters are only provided for AIRS,
 AMSU/A, GOES, and GMI. These converters can be found in the
@@ -165,6 +198,7 @@ https://github.com/NCAR/DART.
 Note that some of the observation converters may require the HDF-EOS
 libraries. See the BUILDME script in each directory for help in building
 these observation converters.
+
 
 Current list of known issues
 ----------------------------
