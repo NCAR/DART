@@ -1,4 +1,4 @@
-.. index:: mpas atm
+.. index:: mpas atm: mpas atmosphere; model for prediction across scales
 
 MPAS_ATM
 ========
@@ -102,19 +102,20 @@ model_nml
       highest_obs_pressure_mb      = 100.0,
       sfc_elev_max_diff            = -1.0,
       outside_grid_level_tolerance = -1.0,
-      extrapolate                  = .false.,
-      debug                        = 0,
+      write_grid_to_diag_files     = .false.,
+      no_normalization_of_scale_heights = .true.
+
    /
 
 +---------------------------------------+---------------------------------------+-----------------------------------------+
 | Item                                  | Type                                  | Description                             |
 +=======================================+=======================================+=========================================+
 | init_template_filename                | character(len=256)                    | The name of the MPAS analysis file to   |
-|                                       | *[default: 'mpas_init.nc']*           | be read and/or written by the DART      |
+|                                       | *[default: 'mpas_init.nc']*           | be read and/or written by the DART      |
 |                                       |                                       | programs for the state data.            |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
 | highest_obs_pressure_mb               | real(r8)                              | Observations higher than this           |
-|                                       | *[default: 100.0]*                    | pressure are ignored. Set to -1.0 to    |
+|                                       | *[default: 100.0]*                    | pressure are ignored. Set to -1.0 to    |
 |                                       |                                       | ignore this test. For models with a     |
 |                                       |                                       | prescribed top boundary layer, trying   |
 |                                       |                                       | to assimilate very high observations    |
@@ -126,7 +127,7 @@ model_nml
 |                                       |                                       | assimilation tries to effect state      |
 |                                       |                                       | vector change.                          |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| assimilation_period_days              | integer *[default: 0]*                | The number of days to advance the       |
+| assimilation_period_days              | integer *[default: 0]*                | The number of days to advance the       |
 |                                       |                                       | model for each assimilation. Even if    |
 |                                       |                                       | the model is being advanced outside     |
 |                                       |                                       | of the DART filter program, the         |
@@ -135,12 +136,12 @@ model_nml
 |                                       |                                       | time within +/- 1/2 this window size    |
 |                                       |                                       | will be assimilated.                    |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| assimilation_period_seconds           | integer *[default: 21600]*            | In addition to                          |
+| assimilation_period_seconds           | integer *[default: 21600]*            | In addition to                          |
 |                                       |                                       | ``assimilation_period_days``, the       |
 |                                       |                                       | number of seconds to advance the        |
 |                                       |                                       | model for each assimilation.            |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| vert_localization_coord               | integer *[default: 3]*                | Vertical coordinate for vertical        |
+| vert_localization_coord               | integer *[default: 3]*                | Vertical coordinate for vertical        |
 |                                       |                                       | localization.                           |
 |                                       |                                       |                                         |
 |                                       |                                       | -  1 = model level                      |
@@ -148,7 +149,7 @@ model_nml
 |                                       |                                       | -  3 = height (in meters)               |
 |                                       |                                       | -  4 = scale height (unitless)          |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| sfc_elev_max_diff                     | real(r8)\ *[default: -1.0]*           | If > 0, the maximum difference, in      |
+| sfc_elev_max_diff                     | real(r8)\ *[default: -1.0]*           | If > 0, the maximum difference, in      |
 |                                       |                                       | meters, between an observation marked   |
 |                                       |                                       | as a 'surface obs' as the vertical      |
 |                                       |                                       | type (with the surface elevation, in    |
@@ -160,11 +161,11 @@ model_nml
 |                                       |                                       | assimilated. If the value is            |
 |                                       |                                       | negative, this test is skipped.         |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| log_p_vert_interp                     | logical *[default: .true.]*           | If ``.true.``, vertical interpolation   |
+| log_p_vert_interp                     | logical *[default: .true.]*           | If ``.true.``, vertical interpolation   |
 |                                       |                                       | is done in log-pressure. Otherwise,     |
 |                                       |                                       | linear.                                 |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| use_u_for_wind                        | logical *[default: .false.]*          | If ``.false.``, zonal and meridional    |
+| use_u_for_wind                        | logical *[default: .false.]*          | If ``.false.``, zonal and meridional    |
 |                                       |                                       | winds at cell centers are used for      |
 |                                       |                                       | the wind observation operator           |
 |                                       |                                       | [default]. In that case, triangular     |
@@ -177,7 +178,7 @@ model_nml
 |                                       |                                       | *(u)* using radial basis functions      |
 |                                       |                                       | (RBFs) provided by the MPAS model.      |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| use_rbf_option                        | integer *[default: 2]*                | If ``use_u_for_wind = .true.``, this    |
+| use_rbf_option                        | integer *[default: 2]*                | If ``use_u_for_wind = .true.``, this    |
 |                                       |                                       | option controls how many points will    |
 |                                       |                                       | be used in the RBF interpolation.       |
 |                                       |                                       | Options are available as 0, 1, 2, and   |
@@ -185,7 +186,7 @@ model_nml
 |                                       |                                       | 0,1,2, or 3) neighboring cells go       |
 |                                       |                                       | into the RBF reconstruction.            |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| update_u_from_reconstruct             | logical *[default: .true.]*           | When zonal and meridional winds at      |
+| update_u_from_reconstruct             | logical *[default: .true.]*           | When zonal and meridional winds at      |
 |                                       |                                       | cell centers are used for the wind      |
 |                                       |                                       | observation operator                    |
 |                                       |                                       | (``use_u_for_wind = .false.``), this    |
@@ -204,7 +205,7 @@ model_nml
 |                                       |                                       | ``.false.`` so the edge winds can be    |
 |                                       |                                       | directly updated by filter.             |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| use_increments_for_u_update           | logical *[default: .true.]*           | Only if ``update_u_from_reconstruct     |
+| use_increments_for_u_update           | logical *[default: .true.]*           | Only if ``update_u_from_reconstruct     |
 |                                       |                                       | = .true.``, this option is used to      |
 |                                       |                                       | decide if the edge winds are replaced   |
 |                                       |                                       | by averaging from the analysis winds    |
@@ -217,7 +218,7 @@ model_nml
 |                                       |                                       | prior and used to compute the           |
 |                                       |                                       | increments [Recommended].               |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| model_perturbation_amplitude          | real(r8) *[default: 0.0001]*          | The amplitude of random noise to add    |
+| model_perturbation_amplitude          | real(r8) *[default: 0.0001]*          | The amplitude of random noise to add    |
 |                                       |                                       | when trying to perturb a single state   |
 |                                       |                                       | vector to create an ensemble. Only      |
 |                                       |                                       | used when ``start_from_restart =        |
@@ -230,9 +231,9 @@ model_nml
 |                                       |                                       | element.                                |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
 | calendar                              | character(len=32)                     | Character string specifying the         |
-|                                       | *[default: 'Gregorian']*              | calendar being used by MPAS.            |
+|                                       | *[default: 'Gregorian']*              | calendar being used by MPAS.            |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| outside_grid_level_tolerance          | real(r8) *[default: -1.0]*            | If greater than 0.0, amount of          |
+| outside_grid_level_tolerance          | real(r8) *[default: -1.0]*            | If greater than 0.0, amount of          |
 |                                       |                                       | distance in fractional model levels     |
 |                                       |                                       | that a vertical location can be above   |
 |                                       |                                       | or below the top or bottom of the       |
@@ -250,32 +251,20 @@ model_nml
 |                                       |                                       | vertical locations, or at level N for   |
 |                                       |                                       | high vertical locations.                |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| extrapolate                           | logical *[default: .false.]*          | *NOT IMPLEMENTED YET*. Vertical         |
-|                                       |                                       | locations equivalant to level 1 or      |
-|                                       |                                       | level N will be used. When this is      |
-|                                       |                                       | implemented, it will do:                |
-|                                       |                                       | If *outside_grid_level_tolerance* is    |
-|                                       |                                       | greater than 0.0, then control how      |
-|                                       |                                       | values are assigned to locations        |
-|                                       |                                       | where the vertical is exterior to the   |
-|                                       |                                       | grid. If this is ``.true.``, then       |
-|                                       |                                       | extrapolate low locations from levels   |
-|                                       |                                       | 1 and 2, and high locations from        |
-|                                       |                                       | levels N-1 and N. If this is            |
-|                                       |                                       | ``.false.``, then simply use the        |
-|                                       |                                       | corresponding values at level 1 or N.   |
-|                                       |                                       | This item is ignored if                 |
-|                                       |                                       | ``outside_grid_level_tolerance`` is     |
-|                                       |                                       | less than or equal to 0.0.              |
+| write_grid_to_diag_files              | logical *[default: .false.]*          | If ``.true.``, write the grid           |
+|                                       |                                       | information to netcdf files created     |
+|                                       |                                       | by DART. Results in larger files.       |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
-| debug                                 | integer *[default: 0]*                | The switch to specify the run-time      |
-|                                       |                                       | verbosity.                              |
-|                                       |                                       |                                         |
-|                                       |                                       | - ``0`` is as quiet as it gets          |
-|                                       |                                       | - ``>1`` prints more run-time messages  |
-|                                       |                                       | - ``>5`` prints ALL run-time messages   |
-|                                       |                                       |                                         |
+| no_normalization_of_scale_heights     | logical *[default: .true.]*           | When converting to scale height for the |
+|                                       |                                       | vertical, set this to .false. to use    | 
+|                                       |                                       | the log of the pressure. To normalize   |
+|                                       |                                       | by the surface pressure (backwards      |
+|                                       |                                       | compatible with previous code),         |
+|                                       |                                       | set to .true.                           |
 +---------------------------------------+---------------------------------------+-----------------------------------------+
+
+
+
 
 mpas_vars_nml
 ^^^^^^^^^^^^^

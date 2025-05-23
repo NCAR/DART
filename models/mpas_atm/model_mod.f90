@@ -288,8 +288,8 @@ namelist /model_nml/             &
    update_u_from_reconstruct,    &
    use_increments_for_u_update,  &
    highest_obs_pressure_mb,      &
-   outside_grid_level_tolerance, &
    sfc_elev_max_diff,            &
+   outside_grid_level_tolerance, &
    write_grid_to_diag_files,     &
    no_normalization_of_scale_heights
 
