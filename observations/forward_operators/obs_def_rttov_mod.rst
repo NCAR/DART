@@ -6,7 +6,7 @@ MODULE ``obs_def_rttov_mod``
 Overview
 --------
 
-The DART RTTOV observation module includes observation operators for the two primary 
+The DART-RTTOV observation module includes observation operators for the two primary 
 RTTOV-observation types -- visible/infrared radiances and microwave 
 radiances/brightness temperatures. Observations from a wide range of satellites (e.g. GOES, FY, METOP, ...) and 
 sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported 
@@ -14,30 +14,17 @@ sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported
 For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
 For an introduction to the RTTOV interface, build instructions, 
-and a list of known issues, please refer to  :ref:`Radiance_support`.
+and a list of known issues, please refer to :doc:`Radiance_support`.
 
-The interface to RTTOV supports all features of version 12.3 as a pass-through from 
+RTTOV features two modules, RTTOV-direct for visible/infrared/microwave, 
+as well as RTTOV-scatt for microwave computations with full scattering.
+DART supports all features of RTTOV v12.3 as a pass-through from 
 the model to RTTOV, includes aerosols, trace gases, clouds, and atmospheric variables. 
 The code also includes directly specifying scattering properties.
-However, a model may not have all of the variables necessary for these functions 
-depending on your model's setup. 
-
-For example, DART can use any of the RTTOV clw or ice 
-schemes, but the WRF model is not directly compatible with the IR default cloud 
-classification of marine/continental stratus/cumulus clean/dirty. We also offer a simple
-classification based on maximum vertical velocity in the column and land type, but due to 
-lack of aerosol information, WRF/DART cannot differentiate between clean and dirty cumulus. 
-This may have some impact on the forward calculations - but in experience the difference 
-in cloud phase (ice versus water) makes a much larger difference.  Trace gases and aerosols 
-may be important for actual observation system experiments using visible/infrared; this may
-depend on the precise frequencies you wish to use.
-
-
-Although a model may not have the necessary inputs by itself,
-the defaults in RTTOV based on climatology can be used.
-The impact on the quality of the results should be investigated.
+Moreover, DART supports RTTOV-direct in v13. 
 
 Observation types and their physical quantity are defined in `obs_def_rttov_mod.f90`. For example, 
+
 .. code::
 
    ! NOAA_19_AMSUA_TB,      QTY_BRIGHTNESS_TEMPERATURE
@@ -333,7 +320,7 @@ RTTOV v12 Namelist
    +------------------------+--------------------+----------------------------------------------------------------------+
    | cfrac_data             | logical            | Whether to use the cloud fraction from 0 to 1 (see the RTTOV user    |
    |                        |                    | guide). If true, the QTY_CLOUD_FRACTION will be requested from the   |
-   |                        |                    | model.                                                               |
+   |                        |                    | model. If false, it will be set to 1 everywhere.                     |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | clw_data               | logical            | Whether to use cloud-liquid water data (see the RTTOV user guide).   |
    |                        |                    | If true, the QTY_CLOUDWATER_MIXING_RATIO will be requested from the  |

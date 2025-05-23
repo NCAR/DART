@@ -153,8 +153,12 @@ Beyond these fields, there are many other optional fields (such as
 clouds, trace gases, and aerosols) that can be specified. See
 :ref:`obs_def_rttov_mod` for a complete list of values.
 
-Simulation of cloudy radiances
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Simulation of cloudy visible/infrared radiances
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A good overview over the most important parameters for the radiative transfer
+can be found in the RTTOV user guide section "Simulation of UV, visible and IR cloud-affected radiances".
 
 In general, the representation of clouds in a particular 
 model may not be directly compatible with RTTOV.
@@ -166,7 +170,7 @@ Since most atmospheric models do not provide cloud optical properties,
 RTTOV provides parameterizations for them (see the RTTOV user guide for details).
 For liquid water clouds there are (abbreviated) "OPAC" and "Deff".
 
-*  The Deff scheme computes optical properties from an effective particle diameter as input.
+*  The Deff scheme (`clw_scheme=2`) computes optical properties from an effective particle diameter as input.
    This can either be a constant value, or supplied by the model.
 *  The OPAC scheme computes optical properties from based on the cloud type 
    (marine/continental, stratus/cumulus, clean/dirty). 
