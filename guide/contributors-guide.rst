@@ -1,3 +1,5 @@
+.. _contributors-guide:
+
 Contributors' guide
 ===================
 
@@ -15,10 +17,10 @@ All of the source code is hosted in the `DART GitHub repository
 <https://github.com/NCAR/DART>`__.
 
 Before you start developing, you should be familiar with the `GitHub
-workflow <https://guides.github.com/introduction/flow/>`_. The GitHub worflow 
+workflow <https://guides.github.com/introduction/flow/>`_. The GitHub workflow 
 involves:
 
-1. Creating a *fork* of the DART project. A fork is a publically visible copy
+1. Creating a *fork* of the DART project. A fork is a publicly visible copy
    of the repository that is stored in your GitHub account.
 2. Creating a *branch* for your feature with an appropriate name for your
    project, and when you are finished with your changes you can commit them

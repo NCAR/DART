@@ -81,6 +81,8 @@ There may be additional fields needed depending on the microphysics scheme selec
 ascii file `wrf_state_variables_table  <https://github.com/NCAR/DART/blob/main/models/wrf/wrf_state_variables_table>`__ 
 that includes a list of fields that may be added to the DART state.
 
+.. _wrfnamelist:
+
 Namelist
 --------
 

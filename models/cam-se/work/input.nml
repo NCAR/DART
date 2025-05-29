@@ -200,6 +200,8 @@
 !========================================================================
 
 &model_nml
+   dry_mass_vertical_coordinate    = .true.
+   precise_dry_mass_get_close      = .false.
    cam_template_filename       = 'caminput.nc'
    cam_phis_filename           = 'cam_phis.nc'
    custom_routine_to_generate_ensemble = .true.

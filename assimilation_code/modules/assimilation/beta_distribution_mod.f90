@@ -4,6 +4,9 @@
 
 ! Thanks to Chris Riedel who developed the methods in this module.
 
+! This module only supports standard beta distributions for which the 
+! lower bound is 0 and the upper bound is 1. 
+
 module beta_distribution_mod
 
 use types_mod,      only : r8, PI, missing_r8
@@ -12,7 +15,7 @@ use utilities_mod,  only : E_ERR, error_handler
 
 use random_seq_mod, only : random_seq_type, random_uniform
 
-use distribution_params_mod, only : distribution_params_type
+use distribution_params_mod, only : distribution_params_type, BETA_DISTRIBUTION
 
 use normal_distribution_mod, only : inv_cdf
 
@@ -36,11 +39,11 @@ subroutine test_beta
 
 ! This routine provides limited tests of the numerics in this module. It begins
 ! by comparing a handful of cases of the pdf and cdf to results from Matlab. It
-! then tests the quality of the inverse cdf for a single shape/scale pair. Failing
+! then tests the quality of the inverse cdf for a single alpha/beta pair. Failing
 ! these tests suggests a serious problem. Passing them does not indicate that 
 ! there are acceptable results for all possible inputs. 
 
-real(r8) :: x, y, p, inv
+real(r8) :: x, y, inv
 real(r8) :: alpha, beta, max_diff
 integer :: i
 
@@ -61,10 +64,15 @@ real(r8) :: mcdf(7) = [0.204832764699133_r8, 0.002430000000000_r8, 0.87500000000
 ! Compare to matlab
 write(*, *) 'Absolute value of differences should be less than 1e-15'
 do i = 1, 7
-   pdf_diff(i) = beta_pdf(mx(i), malpha(i), mbeta(i)) - mpdf(i)
-   cdf_diff(i) = beta_cdf(mx(i), malpha(i), mbeta(i), 0.0_r8, 1.0_r8) - mcdf(i)
+   pdf_diff(i) = abs(beta_pdf(mx(i), malpha(i), mbeta(i)) - mpdf(i))
+   cdf_diff(i) = abs(beta_cdf(mx(i), malpha(i), mbeta(i)) - mcdf(i))
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
+if(maxval(pdf_diff) < 1e-15_r8 .and. maxval(cdf_diff) < 1e-15_r8) then
+   write(*, *) 'Matlab Comparison Tests: PASS'
+else
+   write(*, *) 'Matlab Comparison Tests: FAIL'
+endif
 
 ! Test many x values for cdf and inverse cdf for a single set of alpha and beta
 alpha = 5.0_r8
@@ -73,15 +81,19 @@ beta = 2.0_r8
 max_diff = -1.0_r8
 do i = 0, 1000
    x = i / 1000.0_r8
-   p = beta_pdf(x, alpha, beta)
-   y = beta_cdf(x, alpha, beta, 0.0_r8, 1.0_r8)
-   inv = inv_beta_cdf(y, alpha, beta, 0.0_r8, 1.0_r8)
+   y = beta_cdf(x, alpha, beta)
+   inv = inv_beta_cdf(y, alpha, beta)
    max_diff = max(abs(x - inv), max_diff)
 end do
 
 write(*, *) '----------------------------'
 write(*, *) 'max difference in inversion is ', max_diff
 write(*, *) 'max difference should be less than 1e-14'
+if(max_diff < 1e-14_r8) then
+   write(*, *) 'Inversion Tests: PASS'
+else
+   write(*, *) 'Inversion Tests: FAIL'
+endif
 
 end subroutine test_beta
 
@@ -93,20 +105,25 @@ real(r8)                                   :: x
 real(r8), intent(in)                       :: quantile
 type(distribution_params_type), intent(in) :: p
 
+! Only standard beta is currently supported. Fail if bounds are not 0 and 1
+if(p%lower_bound /= 0.0_r8 .or. p%upper_bound /= 1.0_r8) then
+  errstring = 'Only standard beta distribution with bounds of 0 and 1 is supported'
+  call error_handler(E_ERR, 'inv_beta_cdf_params', errstring, source)
+endif
+
 x = inv_cdf(quantile, beta_cdf_params, inv_beta_first_guess_params, p)
 
 end function inv_beta_cdf_params
 
 !-----------------------------------------------------------------------
 
-function inv_beta_cdf(quantile, alpha, beta, lower_bound, upper_bound) result(x)
+function inv_beta_cdf(quantile, alpha, beta) result(x)
 
 real(r8)             :: x
 real(r8), intent(in) :: quantile
 real(r8), intent(in) :: alpha, beta
-real(r8), intent(in) :: lower_bound,   upper_bound
 
-! Given a quantile, finds the value of x for which the scaled beta cdf
+! Given a quantile, finds the value of x for which the beta cdf
 ! with alpha and beta has approximately this quantile
 
 type(distribution_params_type) :: p
@@ -116,14 +133,12 @@ if (alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
   call error_handler(E_ERR, 'inv_beta_cdf', errstring, source)
 endif
 
+! Load the p type for the generic cdf calls
 p%params(1) = alpha;  p%params(2) = beta
-! Beta must be bounded on both sides
-p%lower_bound = lower_bound;       p%upper_bound = upper_bound
+p%bounded_below = .true.;          p%bounded_above = .true.
+p%lower_bound   = 0.0_r8;          p%upper_bound   = 1.0_r8
 
 x = inv_beta_cdf_params(quantile, p)
-
-! Undo the scaling 
-x = x * (upper_bound - lower_bound) + lower_bound
 
 end function inv_beta_cdf
 
@@ -171,25 +186,34 @@ real(r8)                                   :: beta_cdf_params
 real(r8), intent(in)                       :: x
 type(distribution_params_type), intent(in) :: p
 
+! A translation routine that is required to use the generic cdf optimization routine
+! Extracts the appropriate information from the distribution_params_type that is needed
+! for a call to the function beta_cdf below. 
+
 real(r8) :: alpha, beta
 
+! Only standard beta is currently supported. Fail if bounds are not 0 and 1
+if(p%lower_bound /= 0.0_r8 .or. p%upper_bound /= 1.0_r8) then
+  errstring = 'Only standard beta distribution with bounds of 0 and 1 is supported'
+  call error_handler(E_ERR, 'beta_cdf_params', errstring, source)
+endif
+
 alpha = p%params(1);    beta = p%params(2)
-beta_cdf_params = beta_cdf(x, alpha, beta, p%lower_bound, p%upper_bound)
+beta_cdf_params = beta_cdf(x, alpha, beta)
 
 end function beta_cdf_params
 
 !---------------------------------------------------------------------------
 
-function beta_cdf(x, alpha, beta, lower_bound, upper_bound)
+function beta_cdf(x, alpha, beta)
 
 ! Returns the cumulative distribution of a beta function with alpha and beta
 ! at the value x
 
-! Returns a large negative value if called with illegal values
+! Returns a failed_value if called with illegal values
 
 real(r8) :: beta_cdf
 real(r8), intent(in) :: x, alpha, beta
-real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Parameters must be positive
 if(alpha <= 0.0_r8 .or. beta <= 0.0_r8) then
@@ -238,7 +262,7 @@ endif
 ! Draw from U(0, 1) to get a quantile
 quantile = random_uniform(r)
 ! Invert cdf to get a draw from beta
-random_beta = inv_beta_cdf(quantile, alpha, beta, 0.0_r8, 1.0_r8)
+random_beta = inv_beta_cdf(quantile, alpha, beta)
 
 end function random_beta
 
@@ -326,24 +350,25 @@ real(r8)                                   :: inv_beta_first_guess_params
 real(r8), intent(in)                       :: quantile
 type(distribution_params_type), intent(in) :: p
 
+! A translation routine that is required to use the generic first_guess for
+! the cdf  optimization routine.
+! Extracts the appropriate information from the distribution_params_type that is needed
+! for a call to the function inv_beta_first_guess below.
+
 real(r8) :: alpha, beta
 
 alpha = p%params(1);     beta = p%params(2)
-inv_beta_first_guess_params = inv_beta_first_guess(quantile, alpha, beta, &
-   p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound)
+inv_beta_first_guess_params = inv_beta_first_guess(quantile, alpha, beta)
 
 end function inv_beta_first_guess_params
 
 !---------------------------------------------------------------------------
 
-function inv_beta_first_guess(x, alpha, beta, &
-   bounded_below, bounded_above, lower_bound, upper_bound)
+function inv_beta_first_guess(x, alpha, beta)
 
 real(r8) :: inv_beta_first_guess
 real(r8), intent(in) :: x
 real(r8), intent(in) :: alpha, beta
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Need some sort of first guess, should be smarter here
 ! For starters, take the mean for this alpha and beta
@@ -376,19 +401,22 @@ end subroutine beta_alpha_beta
 
 !---------------------------------------------------------------------------
 
-subroutine set_beta_params_from_ens(ens, num, lower_bound, upper_bound, p)
+subroutine set_beta_params_from_ens(ens, num, p)
 
-integer,                        intent(in)    :: num
-real(r8),                       intent(in)    :: ens(num)
-real(r8),                       intent(in)    :: lower_bound,   upper_bound
-type(distribution_params_type), intent(inout) :: p
+integer,  intent(in)                        :: num
+real(r8), intent(in)                        :: ens(num)
+type(distribution_params_type), intent(out) :: p
                                      
 real(r8) :: alpha, beta
 
-! Set the bounds info
-p%lower_bound   = lower_bound;    p%upper_bound   = upper_bound
+! Set up the description of the beta distribution defined by the ensemble
+p%distribution_type = BETA_DISTRIBUTION
 
-! Get alpha and beta for the scaled ensemble
+! Set the bounds info
+p%bounded_below = .true.;         p%bounded_above = .true.
+p%lower_bound   = 0.0_r8;         p%upper_bound   = 1.0_r8
+
+! Get alpha and beta for the ensemble
 call beta_alpha_beta(ens, num, alpha, beta)
 p%params(1) = alpha
 p%params(2) = beta

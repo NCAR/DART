@@ -1,11 +1,11 @@
 <dataSource>
-    The CAM6-DART Ensemble Reanalysis (NCAR RDA ds345.0) contains
+    The CAM6-DART Ensemble Reanalysis (NCAR RDA d345000) contains
     DATM forcing files particularly appropriate for CESM experiments.
-    https://rda.ucar.edu/datasets/ds345.0
+    https://rda.ucar.edu/datasets/d345000
 
     They are available on spinning disk (compressed) on
     the NCAR supercomputers at:
-    /glade/collections/rda/data/ds345.0/cpl_unzipped
+    /glade/campaign/collections/rda/data/d345000/cpl_unzipped
 </dataSource>
 <domainInfo>
     <variableNames>
@@ -16,7 +16,7 @@
         doma_mask     mask
     </variableNames>
     <filePath>
-        /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+        /glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST
     </filePath>
     <fileNames>
         f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc
@@ -34,7 +34,7 @@
         a2x3h_Sa_pslv        pslv
     </variableNames>
     <filePath>
-        /glade/collections/rda/data/ds345.0/cpl_unzipped/NINST
+        /glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST
     </filePath>
     <tInterpAlgo>
         linear

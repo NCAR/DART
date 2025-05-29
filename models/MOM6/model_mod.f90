@@ -21,11 +21,9 @@ use     location_mod, only : location_type, get_close_type, &
                              get_location, query_location, VERTISLEVEL, &
                              VERTISHEIGHT, set_vertical
 
-use    utilities_mod, only : error_handler, &
-                             E_ERR, E_MSG, &
+use    utilities_mod, only : error_handler, E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
-                             find_namelist_in_file, check_namelist_read, &
-                             to_upper
+                             find_namelist_in_file, check_namelist_read
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, &
@@ -49,7 +47,8 @@ use distributed_state_mod, only : get_state, get_state_array
 
 use obs_kind_mod, only : get_index_for_quantity, QTY_U_CURRENT_COMPONENT, &
                          QTY_V_CURRENT_COMPONENT, QTY_LAYER_THICKNESS, &
-                         QTY_DRY_LAND, QTY_SALINITY
+                         QTY_DRY_LAND, QTY_SALINITY, QTY_TEMPERATURE, &
+                         QTY_POTENTIAL_TEMPERATURE
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -60,7 +59,9 @@ use ensemble_manager_mod, only : ensemble_type
 use default_model_mod, only : pert_model_copies, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
-                              convert_vertical_obs, adv_1step
+                              convert_vertical_obs, adv_1step, &
+                              parse_variables, &
+                              MAX_STATE_VARIABLE_FIELDS
 
 implicit none
 private
@@ -105,16 +106,12 @@ type(quad_interp_handle) :: interp_t_grid,  &
 ! Ocean vs land
 real(r8), allocatable :: wet(:,:), basin_depth(:,:)
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: MAX_STATE_VARIABLES = 10
-integer, parameter :: NUM_STATE_TABLE_COLUMNS = 3
-
 ! model_interpolate failure codes
 integer, parameter :: NOT_IN_STATE = 12
 integer, parameter :: THICKNESS_NOT_IN_STATE = 13
 integer, parameter :: QUAD_LOCATE_FAILED = 14
-integer, parameter :: THICKNESS_QUAD_EVALUTATE_FAILED = 15
-integer, parameter :: QUAD_EVALUTATE_FAILED = 16
+integer, parameter :: THICKNESS_QUAD_EVALUATE_FAILED = 15
+integer, parameter :: QUAD_EVALUATE_FAILED = 16
 integer, parameter :: QUAD_ON_LAND = 17
 integer, parameter :: QUAD_ON_BASIN_EDGE = 18
 integer, parameter :: OBS_ABOVE_SURFACE = 20
@@ -127,7 +124,7 @@ character(len=256) :: static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc
 character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = -1
 integer  :: assimilation_period_seconds   = -1
-character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
+character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables
@@ -150,15 +147,6 @@ contains
 subroutine static_init_model()
 
 integer  :: iunit, io
-character(len=vtablenamelength) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS)
-
-integer :: state_qty_list(MAX_STATE_VARIABLES)
-logical :: update_var_list(MAX_STATE_VARIABLES)
-
-! identifiers for variable_table
-integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_QTY_INDEX = 2
-integer, parameter :: VAR_UPDATE_INDEX = 3
 
 module_initialized = .true.
 
@@ -166,7 +154,7 @@ call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
-! Record the namelist values used for the run 
+! Record the namelist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
@@ -180,15 +168,11 @@ call set_calendar_type('gregorian')
 assimilation_time_step = set_time(assimilation_period_seconds, &
                                   assimilation_period_days)
 
-! verify that the model_state_variables namelist was filled in correctly.
-! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, state_qty_list, update_var_list)
-
-! Define which variables are in the model state
-dom_id = add_domain(template_file, nfields, &
-                    var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
-                    kind_list = state_qty_list(1:nfields), &
-                    update_list = update_var_list(1:nfields))
+! Define which variables are in the model state;
+! parse_variables converts the character table that was read in from
+! model_nml:model_state_variables to a state_var_type that can be passed
+! to add_domain
+dom_id = add_domain(template_file, parse_variables(model_state_variables))
 
 model_size = get_domain_size(dom_id)
 
@@ -220,25 +204,29 @@ end function get_model_size
 ! 0 unless there is some problem in computing the interpolation in
 ! which case a positive istatus should be returned.
 
-subroutine model_interpolate(state_handle, ens_size, location, qty, expected_obs, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, qty_in, expected_obs, istatus)
 
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
-integer,             intent(in) :: qty
+integer,             intent(in) :: qty_in
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
+real(r8), parameter             :: CONCENTRATION_TO_PPT = 1000.0_r8
+
+integer  :: qty ! local qty
 integer  :: which_vert, four_ilons(4), four_ilats(4), lev(ens_size,2)
 integer  :: locate_status, quad_status
 real(r8) :: lev_fract(ens_size)
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2) ! level below and above obs
+real(r8) :: expected_pot_temp(ens_size), expected_salinity(ens_size), pressure_dbars(ens_size)
 type(quad_interp_handle) :: interp
 integer :: varid, i, e, thick_id
-integer(i8) :: th_indx, indx(ens_size)
+integer(i8) :: th_indx
 real(r8) :: depth_at_x(ens_size), thick_at_x(ens_size) ! depth, layer thickness at obs lat lon
 logical :: found(ens_size)
 
@@ -246,6 +234,16 @@ if ( .not. module_initialized ) call static_init_model
 
 expected_obs(:) = MISSING_R8
 istatus(:) = 1
+
+if (qty_in == QTY_TEMPERATURE) then
+   qty = QTY_POTENTIAL_TEMPERATURE  ! model has potential temperature
+   if (get_varid_from_kind(dom_id, QTY_SALINITY) < 0) then ! Require salinity to convert to temperature
+      istatus = NOT_IN_STATE
+      return
+   end if
+else
+   qty = qty_in
+endif
 
 varid = get_varid_from_kind(dom_id, qty)
 if (varid < 0) then ! not in state
@@ -310,7 +308,7 @@ FIND_LAYER: do i = 2, nz
                               thick_at_x, &
                               quad_status)
    if (quad_status /= 0) then
-      istatus(:) = THICKNESS_QUAD_EVALUTATE_FAILED
+      istatus(:) = THICKNESS_QUAD_EVALUATE_FAILED
       return
    endif
 
@@ -337,6 +335,66 @@ if (on_basin_edge(four_ilons, four_ilats, ens_size, depth_at_x)) then
    istatus(:) = QUAD_ON_BASIN_EDGE
    return
 endif
+
+
+select case (qty_in)
+   case (QTY_TEMPERATURE)
+      ! convert from potential temperature to temperature
+
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_pot_temp, quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = QUAD_EVALUATE_FAILED
+         return
+      endif
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, get_varid_from_kind(dom_id, QTY_SALINITY), expected_salinity, quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = QUAD_EVALUATE_FAILED
+         return
+      endif
+
+      pressure_dbars =  0.059808_r8*(exp(-0.025_r8*depth_at_x) - 1.0_r8)  &
+                        + 0.100766_r8*depth_at_x + 2.28405e-7_r8*lon_lat_vert(3)**2
+      expected_obs = sensible_temp(expected_pot_temp, expected_salinity, pressure_dbars)
+
+   case (QTY_SALINITY) ! convert from g of salt per kg of seawater (model) to kg of salt per kg of seawater (observation)
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
+      if (quad_status /= 0) then 
+         istatus(:) = QUAD_EVALUATE_FAILED
+         return
+      endif
+      expected_obs = expected_obs/CONCENTRATION_TO_PPT
+ 
+   case default
+      call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = QUAD_EVALUATE_FAILED
+         return
+      endif
+end select
+
+istatus(:) = 0
+
+end subroutine model_interpolate
+
+!------------------------------------------------------------------
+! Interpolate on the quad, between two levels
+subroutine state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
+
+integer,  intent(in) :: four_ilons(4), four_ilats(4) ! indices into lon, lat
+real(r8), intent(in) :: lon_lat_vert(3) ! lon, lat, vert of obs
+integer,  intent(in) :: ens_size
+integer,  intent(in) :: lev(ens_size,2) ! levels below and above obs
+real(r8), intent(in) :: lev_fract(ens_size) 
+type(quad_interp_handle), intent(in) :: interp
+type(ensemble_type), intent(in) :: state_handle
+integer,  intent(in) :: varid ! which state variable
+real(r8), intent(out) :: expected_obs(ens_size)
+integer,  intent(out) :: quad_status
+
+integer :: i, e
+integer(i8) :: indx(ens_size)
+real(r8) :: quad_vals(4, ens_size)
+real(r8) :: expected(ens_size, 2) ! state value at level below and above obs
 
 do i = 1, 2 
    !HK which corner of the quad is which?
@@ -371,12 +429,7 @@ do i = 1, 2
                               quad_vals, & ! 4 corners x ens_size
                               expected(:,i), &
                               quad_status)
-   if (quad_status /= 0) then
-      istatus(:) = QUAD_EVALUTATE_FAILED
-      return
-   else
-      istatus = 0
-   endif
+   if (quad_status /= 0) return
 
 enddo
 
@@ -384,14 +437,7 @@ enddo
 ! expected_obs = bot_val + lev_fract * (top_val - bot_val)
 expected_obs = expected(:,1) + lev_fract(:) * (expected(:,2) - expected(:,1))
 
-if (qty == QTY_SALINITY) then  ! convert from PSU (model) to MSU (obersvation)
-   expected_obs = expected_obs/1000.0_r8
-endif
-
-
-end subroutine model_interpolate
-
-
+end subroutine state_on_quad
 
 !------------------------------------------------------------------
 ! Returns the smallest increment in time that the model is capable 
@@ -627,28 +673,28 @@ mask_u(:,:) = .false.
 mask_v(:,:) = .false.
 call nc_get_attribute_from_variable(ncid, 'geolon', '_FillValue', fillval)
 where (geolon == fillval) mask = .true.  
-where (geolon == fillval) geolon = 72.51
-where (geolat == fillval) geolat = 42.56
+where (geolon == fillval) geolon = 72.51_r8
+where (geolat == fillval) geolat = 42.56_r8
 
 call nc_get_attribute_from_variable(ncid, 'geolon_u', '_FillValue', fillval)
 where (geolon_u == fillval) mask_u = .true.  
-where (geolon_u == fillval) geolon_u = 72.51
-where (geolat_u == fillval) geolat_u = 42.56
+where (geolon_u == fillval) geolon_u = 72.51_r8
+where (geolat_u == fillval) geolat_u = 42.56_r8
 
 call nc_get_attribute_from_variable(ncid, 'geolon_v', '_FillValue', fillval)
 where (geolon_v == fillval) mask_v = .true.  
-where (geolon_v == fillval) geolon_v = 72.51
-where (geolat_v == fillval) geolat_v = 42.56
+where (geolon_v == fillval) geolon_v = 72.51_r8
+where (geolat_v == fillval) geolat_v = 42.56_r8
 
 ! mom6 example files have longitude > 360 and longitudes < 0
 ! DART uses [0,360]
-geolon = mod(geolon, 360.0)
-geolon_u = mod(geolon_u, 360.0)
-geolon_v = mod(geolon_v, 360.0)
+geolon = mod(geolon, 360.0_r8)
+geolon_u = mod(geolon_u, 360.0_r8)
+geolon_v = mod(geolon_v, 360.0_r8)
 
-where (geolon < 0.0) geolon = geolon + 360
-where (geolon_u < 0.0) geolon_u = geolon_u + 360
-where (geolon_v < 0.0) geolon_v = geolon_v + 360
+where (geolon < 0.0) geolon = geolon + 360.0_r8
+where (geolon_u < 0.0) geolon_u = geolon_u + 360.0_r8
+where (geolon_v < 0.0) geolon_v = geolon_v + 360.0_r8
 
 call nc_close_file(ncid)
 
@@ -897,77 +943,63 @@ endif
 
 end function
 
+!------------------------------------------------------------
+! calculate sensible (in-situ) temperature from 
+! local pressure, salinity, and potential temperature
+elemental function sensible_temp(potemp, s, lpres)
 
-!------------------------------------------------------------------
-! Verify that the namelist was filled in correctly, and check
-! that there are valid entries for the dart_kind.
-! Returns a table with columns:
-!
-! netcdf_variable_name ; dart_qty_string ; update_string
+real(r8), intent(in)  :: potemp ! potential temperature in C
+real(r8), intent(in)  :: s      ! salinity Practical Salinity Scale 1978 (PSS-78)
+real(r8), intent(in)  :: lpres  ! pressure in decibars
+real(r8) :: sensible_temp ! in-situ (sensible) temperature (C)
 
-subroutine verify_state_variables(state_variables, ngood, table, qty_list, update_var)
+integer  :: i,j,n
+real(r8) :: dp,p,q,r1,r2,r3,r4,r5,s1,t,x
 
-character(len=*),  intent(inout) :: state_variables(:)
-integer,           intent(out) :: ngood
-character(len=*),  intent(out) :: table(:,:)
-integer,           intent(out) :: qty_list(:)   ! kind number
-logical,           intent(out) :: update_var(:) ! logical update
+s1 = s - 35.0_r8
+p  = 0.0_r8
+t  = potemp
 
-integer :: nrows, i
-character(len=NF90_MAX_NAME) :: varname, dartstr, update
-character(len=256) :: string1, string2
+dp = lpres - p
+n  = int (abs(dp)/1000.0_r8) + 1
+dp = dp/n
 
-if ( .not. module_initialized ) call static_init_model
+do i=1,n
+   do j=1,4
 
-nrows = size(table,1)
+      r1 = ((-2.1687e-16_r8 * t + 1.8676e-14_r8) * t - 4.6206e-13_r8) * p
+      r2 = (2.7759e-12_r8*t - 1.1351e-10_r8) * s1
+      r3 = ((-5.4481e-14_r8 * t + 8.733e-12_r8) * t - 6.7795e-10_r8) * t
+      r4 = (r1 + (r2 + r3 + 1.8741e-8_r8)) * p + (-4.2393e-8_r8 * t+1.8932e-6_r8) * s1
+      r5 = r4 + ((6.6228e-10_r8 * t-6.836e-8_r8) * t + 8.5258e-6_r8) * t + 3.5803e-5_r8
 
-ngood = 0
+      x  = dp*r5
 
-MyLoop : do i = 1, nrows
+      if (j == 1) then
+         t = t + 0.5_r8 * x
+         q = x
+         p = p + 0.5_r8 * dp
+      
+      else if (j == 2) then
+         t = t + 0.29298322_r8 * (x-q)
+         q = 0.58578644_r8 * x + 0.121320344_r8 * q
 
-   varname = trim(state_variables(3*i -2))
-   dartstr = trim(state_variables(3*i -1))
-   update  = trim(state_variables(3*i   ))
-   
-   call to_upper(update)
+      else if (j == 3) then
+         t = t + 1.707106781_r8 * (x-q)
+         q = 3.414213562_r8*x - 4.121320344_r8*q
+         p = p + 0.5_r8*dp
 
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   table(i,3) = trim(update)
+      else ! j must == 4
+         t = t + (x - 2.0_r8 * q) / 6.0_r8
 
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop ! Found end of list.
+      endif
 
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
-      string1 = 'model_nml:model_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1)
-   endif
+   enddo ! j loop
+enddo ! i loop
 
-   ! Make sure DART qty is valid
+sensible_temp = t
 
-   qty_list(i) = get_index_for_quantity(dartstr)
-   if( qty_list(i)  < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1)
-   endif
-   
-   ! Make sure the update variable has a valid name
-
-   select case (update)
-      case ('UPDATE')
-         update_var(i) = .true.
-      case ('NO_COPY_BACK')
-         update_var(i) = .false.
-      case default
-         write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
-         write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
-         call error_handler(E_ERR,'verify_state_variables',string1, text2=string2)
-   end select
-
-   ngood = ngood + 1
-enddo MyLoop
-
-
-end subroutine verify_state_variables
+end function sensible_temp
 
 !--------------------------------------------------------------------
 function read_model_time(filename)

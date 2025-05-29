@@ -1,3 +1,5 @@
+.. index:: time manager, time manager mod
+
 MODULE time_manager_mod
 =======================
 
@@ -10,6 +12,33 @@ Overview
   intervals. Seconds which roll over 86400 (the number of seconds in a day) are converted into days.
 | Calendars interpret time intervals in terms of years, months, days. Various calendars commonly in use in the
   scientific community are supported.
+
+Available calendars
+-------------------
+
+The following calendars are available in DART. The base date is used to define the origin of the 
+calendar system. For example, the Gregorian calendar has a base date of January 1, 1601, at 00:00:00. 
+This means that the all the DART time values in days,seconds in the Gregorian calendar are relative to this 
+starting date. If NO_CALENDAR is used, there is no concept of day, month, year: time is only days, seconds from 0.
+
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| Calendar          | base year | base month | base day | base hour | base minute | base second |
++===================+===========+============+==========+===========+=============+=============+
+| GREGORIAN         | 1601      | 1          | 1        | 0         | 0           | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| GREGORIAN_MARS    | 1         | 1          | 1        | 0         | 0           | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| JULIAN            | 1         | 1          | 1        | 0         | 0           | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| NO_CALENDAR       | NA        | NA         | 0        | NA        | NA          | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| NOLEAP            | 1         | 1          | 1        | 0         | 0           | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| SOLAR_MARS        | 1         | 1          | 1        | 0         | 0           | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+| THIRTY_DAY_MONTHS | 1         | 1          | 1        | 0         | 0           | 0           |
++-------------------+-----------+------------+----------+-----------+-------------+-------------+
+
 
 Other modules used
 ------------------

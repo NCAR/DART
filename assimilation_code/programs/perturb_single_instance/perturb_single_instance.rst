@@ -1,3 +1,5 @@
+.. index:: perturb
+
 PROGRAM ``perturb_single_instance``
 ===================================
 
@@ -16,8 +18,8 @@ namelist.
 
 ::
 
-   &perturb_single_instance
-      ens_size               = ''
+   &perturb_single_instance_nml
+      ens_size               = 50
       input_files            = ''      
       output_files           = ''
       output_file_list       = ''

@@ -2,6 +2,9 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
+! This module only supports standard gamma distributions for which the 
+! lower bound is 0.
+
 module gamma_distribution_mod
 
 use types_mod,               only : r8, PI, missing_r8
@@ -10,7 +13,7 @@ use utilities_mod,           only : E_ERR, error_handler
 
 use normal_distribution_mod, only : normal_cdf, inv_cdf
 
-use distribution_params_mod, only : distribution_params_type
+use distribution_params_mod, only : distribution_params_type, GAMMA_DISTRIBUTION
 
 use random_seq_mod,          only : random_seq_type, random_uniform
 
@@ -60,12 +63,17 @@ real(r8) :: mcdf(7) = [0.393469340287367_r8, 0.264241117657115_r8, 0.19115316946
 ! Compare to matlab
 write(*, *) 'Absolute value of differences should be less than 1e-15'
 do i = 1, 7
-   pdf_diff(i) = gamma_pdf(mx(i), mshape(i), mscale(i)) - mpdf(i)
-   cdf_diff(i) = gamma_cdf(mx(i), mshape(i), mscale(i), .true., .false., 0.0_r8, missing_r8) - mcdf(i)
+   pdf_diff(i) = abs(gamma_pdf(mx(i), mshape(i), mscale(i)) - mpdf(i))
+   cdf_diff(i) = abs(gamma_cdf(mx(i), mshape(i), mscale(i)) - mcdf(i))
    write(*, *) i, pdf_diff(i), cdf_diff(i)
 end do
+if(maxval(pdf_diff) < 1e-15_r8 .and. maxval(cdf_diff) < 1e-15_r8) then
+   write(*, *) 'Matlab Comparison Tests: PASS'
+else
+   write(*, *) 'Matlab Compariosn Tests: FAIL'
+endif
 
-! Input a mean and variance
+! Test many x values for cdf and inverse cdf for a single mean and sd (shape and scale)
 mean = 10.0_r8
 sd = 1.0_r8
 variance = sd**2
@@ -78,14 +86,19 @@ gamma_scale = variance / mean
 max_diff = -1.0_r8
 do i = 0, 1000
    x = mean + ((i - 500.0_r8) / 500.0_r8) * 5.0_r8 * sd
-   y = gamma_cdf(x, gamma_shape, gamma_scale, .true., .false., 0.0_r8, missing_r8)
-   inv = inv_gamma_cdf(y, gamma_shape, gamma_scale, .true., .false., 0.0_r8, missing_r8)
+   y = gamma_cdf(x, gamma_shape, gamma_scale)
+   inv = inv_gamma_cdf(y, gamma_shape, gamma_scale)
    max_diff = max(abs(x-inv), max_diff)
 end do
 
 write(*, *) '----------------------------'
 write(*, *) 'max difference in inversion is ', max_diff
 write(*, *) 'max difference should be less than 1e-11'
+if(max_diff < 1e-11_r8) then
+   write(*, *) 'Inversion Tests: PASS'
+else
+   write(*, *) 'Inversion Tests: FAIL'
+endif
 
 end subroutine test_gamma
 
@@ -97,21 +110,23 @@ real(r8)                                   :: x
 real(r8),                       intent(in) :: quantile
 type(distribution_params_type), intent(in) :: p
 
-! Could do error checks for gamma_shape and gamma_scale values here
+! Only standard gamma currently supported 
+if(p%lower_bound /= 0.0_r8 .and. p%upper_bound /= missing_r8) then 
+   errstring = 'Only standard gamma distribution with lower bound of 0 is supported' 
+   call error_handler(E_ERR, 'inv_gamma_cdf_params', errstring, source)
+end if
+
 x = inv_cdf(quantile, gamma_cdf_params, inv_gamma_first_guess_params, p)
 
 end function inv_gamma_cdf_params
 !-----------------------------------------------------------------------
 
-function inv_gamma_cdf(quantile, gamma_shape, gamma_scale, &
-               bounded_below, bounded_above, lower_bound, upper_bound) result(x)
+function inv_gamma_cdf(quantile, gamma_shape, gamma_scale) result(x)
 
 real(r8)             :: x
 real(r8), intent(in) :: quantile
 real(r8), intent(in) :: gamma_shape
 real(r8), intent(in) :: gamma_scale
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! Given a quantile q, finds the value of x for which the gamma cdf
 ! with shape and scale has approximately this quantile
@@ -119,9 +134,9 @@ real(r8), intent(in) :: lower_bound,   upper_bound
 type(distribution_params_type) :: p
 
 ! Load the p type for the generic cdf calls
-p%params(1) = gamma_shape; p%params(2) = gamma_scale
-p%bounded_below = bounded_below;      p%bounded_above = bounded_above
-p%lower_bound   = lower_bound;        p%upper_bound   = upper_bound
+p%params(1)     = gamma_shape; p%params(2)     = gamma_scale
+p%bounded_below = .true.;      p%bounded_above = .false.
+p%lower_bound   = 0.0_r8;      p%upper_bound   = missing_r8
 
 x = inv_gamma_cdf_params(quantile, p)
 
@@ -161,23 +176,28 @@ type(distribution_params_type), intent(in) :: p
 
 real(r8) :: gamma_shape, gamma_scale
 
+! Only standard gamma currently supported 
+if(p%lower_bound /= 0.0_r8 .and. p%upper_bound /= missing_r8) then 
+   errstring = 'Only standard gamma distribution with lower bound of 0 is supported' 
+   call error_handler(E_ERR, 'gamma_cdf_params', errstring, source)
+end if
+
 gamma_shape = p%params(1);     gamma_scale = p%params(2)
-gamma_cdf_params = gamma_cdf(x, gamma_shape, gamma_scale, &
-                     p%bounded_below, p%bounded_above, p%lower_bound, p%upper_bound)
+gamma_cdf_params = gamma_cdf(x, gamma_shape, gamma_scale)
 
 end function gamma_cdf_params
 
 !---------------------------------------------------------------------------
 
-function gamma_cdf(x, gamma_shape, gamma_scale, bounded_below, bounded_above, lower_bound, upper_bound)
+function gamma_cdf(x, gamma_shape, gamma_scale)
 
 ! Returns the cumulative distribution of a gamma function with shape and scale
 ! at the value x
 
+! Returns a failed_value if called with illegal values
+
 real(r8) :: gamma_cdf
 real(r8), intent(in) :: x, gamma_shape, gamma_scale
-logical,  intent(in) :: bounded_below, bounded_above
-real(r8), intent(in) :: lower_bound,   upper_bound
 
 ! All inputs must be nonnegative
 if(x < 0.0_r8 .or. gamma_shape < 0.0_r8 .or. gamma_scale < 0.0_r8) then
@@ -347,7 +367,7 @@ endif
 ! Draw from U(0, 1) to get a quantile
 quantile = random_uniform(r)
 ! Invert cdf to get a draw from gamma
-random_gamma = inv_gamma_cdf(quantile, rshape, rscale, .true., .false., 0.0_r8, missing_r8)
+random_gamma = inv_gamma_cdf(quantile, rshape, rscale)
 
 end function random_gamma
 
@@ -412,7 +432,7 @@ type(distribution_params_type), intent(in) :: p
 ! A translation routine that is required to use the generic first_guess for
 ! the cdf  optimization routine.
 ! Extracts the appropriate information from the distribution_params_type that is needed
-! for a call to the function approx_inv_normal_cdf below (which is nothing).
+! for a call to the function inv_gamma_first_guess below.
 
 real(r8) :: gamma_shape, gamma_scale
 
@@ -433,26 +453,25 @@ real(r8), intent(in) :: gamma_shape, gamma_scale
 ! For starters, take the mean for this shape and scale
 inv_gamma_first_guess = gamma_shape * gamma_scale
 ! Could use info about sd to further refine mean and reduce iterations
-!!!sd = sqrt(gamma_shape * gamma_scale**2)
 
 end function inv_gamma_first_guess
 
 !---------------------------------------------------------------------------
 
-subroutine set_gamma_params_from_ens(ens, num, bounded_below, bounded_above, &
-                                     lower_bound, upper_bound, p)
+subroutine set_gamma_params_from_ens(ens, num, p)
 
 integer,                        intent(in)    :: num
 real(r8),                       intent(in)    :: ens(num)
-logical,                        intent(in)    :: bounded_below, bounded_above
-real(r8),                       intent(in)    :: lower_bound,   upper_bound
-type(distribution_params_type), intent(inout) :: p
+type(distribution_params_type), intent(out)   :: p
 
 real(r8) :: gamma_shape, gamma_scale
 
+! Set up the description of the gamma distribution defined by the ensemble
+p%distribution_type = GAMMA_DISTRIBUTION
+
 ! Set the bounds info
-p%bounded_below = bounded_below;  p%bounded_above = bounded_above
-p%lower_bound   = lower_bound;    p%upper_bound   = upper_bound
+p%bounded_below = .true.;    p%bounded_above = .false.
+p%lower_bound   = 0.0_r8;    p%upper_bound   = missing_r8
 
 ! Get shape and scale
 call gamma_shape_scale(ens, num, gamma_shape, gamma_scale)
