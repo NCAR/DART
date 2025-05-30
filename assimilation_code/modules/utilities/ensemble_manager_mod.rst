@@ -1,3 +1,5 @@
+.. index:: ensemble manager, transpose
+
 MODULE ensemble_manager_mod
 ===========================
 
@@ -8,14 +10,13 @@ Manages storage and a number of operations for multiple copies of a vector. The 
 of model state vectors. In this case, the number of copies stored for each state vector element is the ensemble size
 plus one or more additional copies like the mean, variance, associated inflation values, etc. The ensemble_manager
 provides routines to compute the mean and variance of a subset of the copies, to track the time associated with the
-copies, and to write and read restart files. Most importantly, it provides a capability to do transposes between two
+copies. Most importantly, it provides a capability to do transposes between two
 storage representations of an ensemble. In one representation, each process stores all copies of a subset of the state
 variables while in the other, each process stores all of the state variables for a subset of copies. The ensemble
 manager is also used to manage ensembles of observation priors and quality control and ensembles of forward observation
 operator error status.
 
-The ensemble manager interacts strongly with the multiple process capability of the Message Passing Interface (MPI)
-libraries. It is used to partition the data so each MPI process stores only a subset of the copies and variables,
+The ensemble manager uses MPI to partition ensemble data so each MPI process stores only a subset of the copies and variables,
 dividing the data as evenly as possible across the processes. At no time during the execution does any one process have
 to store the entire dataset for all ensemble members (unless running in serial mode without MPI, or if running with 1
 MPI task).
@@ -25,13 +26,6 @@ information is not marked private which means other modules can directly manipul
 much care must be taken to access the most recently updated representation of the data, either the copies or variables
 arrays.
 
-A set of sanity check routines have been added to track the last modified version of the data: the copies array or the
-vars array. Before directly reading or writing these arrays call one of the 'prepare' routines to indicate what kind of
-data access you are about to make. If the most recently updated data is not as expected an error message will occur.
-After the direct access if the following operations detect that the data they are operating on is not the most recently
-updated they will print an error message. Routines inside the ensemble manager that alter the copies or vars will set
-the state automatically so these routines are only necessary to call if you are directly accessing the copies or vars
-arrays from outside the ensemble manager.
 
 Namelist
 --------
@@ -102,48 +96,6 @@ namelist.
 
 | 
 
-Other modules used
-------------------
-
-::
-
-   types_mod
-   utilities_mod
-   assim_model_mod
-   time_manager_mod
-   random_seq_mod
-   mpi_utilities_mod
-   sort_mod
-
-Public interfaces
------------------
-
-================================== ===========================
-*use ensemble_manager_mod, only :* init_ensemble_manager
-\                                  read_ensemble_restart
-\                                  write_ensemble_restart
-\                                  get_copy
-\                                  put_copy
-\                                  broadcast_copy
-\                                  set_ensemble_time
-\                                  get_ensemble_time
-\                                  end_ensemble_manager
-\                                  duplicate_ens
-\                                  get_my_num_copies
-\                                  get_my_copies
-\                                  get_my_num_vars
-\                                  get_my_vars
-\                                  get_copy_owner_index
-\                                  get_var_owner_index
-\                                  all_vars_to_all_copies
-\                                  all_copies_to_all_vars
-\                                  compute_copy_mean
-\                                  compute_copy_mean_sd
-\                                  compute_copy_mean_var
-\                                  print_ens_handle
-\                                  map_pe_to_task
-\                                  map_task_to_pe
-================================== ===========================
 
 A note about documentation style. Optional arguments are enclosed in brackets *[like this]*.
 
@@ -263,77 +215,6 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
    |                        | task before the nodes are assigned a second task. If running with more MPI tasks than      |
    |                        | ``num_copies``, this can result in a more uniform usage of memory across the nodes.        |
    +------------------------+--------------------------------------------------------------------------------------------+
-
-| 
-
-.. container:: routine
-
-   *call read_ensemble_restart(ens_handle, start_copy, end_copy, start_from_restart, file_name [, init_time] [,
-   force_single_file])*
-   ::
-
-      type(ensemble_type),       intent(inout) :: ens_handle
-      integer,                   intent(in)    :: start_copy
-      integer,                   intent(in)    :: end_copy
-      logical,                   intent(in)    :: start_from_restart
-      character(len=*),          intent(in)    :: file_name
-      type(time_type), optional, intent(in)    :: init_time
-      logical, optional,         intent(in)    :: force_single_file
-
-.. container:: indent1
-
-   Read in a set of copies of a vector from file ``file_name``. The copies read are place into global copies
-   start_copy:end_copy in the ens_handle. If start_from_restart is false, then only a single copy of the vector is read
-   from the file and then it is perturbed using routines in assim_model_mod to generate the required number of copies.
-   The read can be from a single file that contains all needed copies or from a different file for each copy. This
-   choice is controlled by the namelist entry single_restart_file_in. However, the optional argument force_single_file
-   forces the read to be from a single file if it is present and true. This is used for ensembles that contain the
-   inflation values for state space inflation. If multiple files are to be read, the file names are generated by
-   appending integers to the input file_name. If the input is a single file all reads are done sequentially by process 0
-   and then shipped to the PE that stores that copy. If the input is multiple files each MPI task reads the copies it
-   stores directly and independently.
-
-   ====================== ===============================================================================================
-   ``ens_handle``         Handle of ensemble.
-   ``start_copy``         Global index of first of continguous set of copies to be read.
-   ``end_copy``           Global index of last of contiguous set of copies to be read, copies(start_copy:end_copy).
-   ``start_from_restart`` If true, read all copies from file. If false, read one copy and perturb to get required number.
-   ``file_name``          Name of file from which to read.
-   *init_time*            If present, set time of all copies read to this value.
-   *force_single_file*    If present and true, force the read to be from a single file which contains all copies.
-   ====================== ===============================================================================================
-
-| 
-
-.. container:: routine
-
-   *call write_ensemble_restart(ens_handle, file_name, start_copy, end_copy [, force_single_file])*
-   ::
-
-      type(ensemble_type), intent(inout) :: ens_handle
-      character(len=*),    intent(in)    :: file_name
-      integer,             intent(in)    :: start_copy
-      integer,             intent(in)    :: end_copy
-      logical, optional,   intent(in)    :: force_single_file
-
-.. container:: indent1
-
-   Writes a set of copies of a vector to file file_name. The copies written are from global copies start_copy:end_copy
-   in the ens_handle. The write can be to a single file or to a different file for each copy. This choice is controlled
-   by the namelist entry single_restart_file_out. However, the optional argument force_single_file forces the write to
-   be to a single file if it is present and true. This is used for ensembles that contain the inflation values for state
-   space inflation. If multiple files are to be written, the file names are generated by appending integers to the input
-   file_name. If the output is a single file all copies are shipped from the PE that stores that copy to process 0, and
-   then written out sequentially. If the output is to multiple files each MPI task writes the copies it stores directly
-   and independently.
-
-   =================== ============================================================================================
-   ``ens_handle``      Handle of ensemble.
-   ``file_name``       Name of file from which to read.
-   ``start_copy``      Global index of first of continguous set of copies to be written.
-   ``end_copy``        Global index of last of contiguous set of copies to be written, copies(start_copy:end_copy).
-   *force_single_file* If present and true, force the write to be to a single file which contains all copies.
-   =================== ============================================================================================
 
 | 
 
@@ -1087,23 +968,6 @@ Finds the of number nodes and how many tasks are on the last node, given the num
       ``ens_handle`` Handle for an ensemble.
       ``t``          Return the PE corresponding to the given MPI task number.
       ============== =========================================================
-
-   .. rubric:: Files
-      :name: files
-
-   -  input.nml
-   -  State vector restart files, either one for all copies or one per copy.
-   -  State vector output files, either one for all copies or one per copy.
-
-   .. rubric:: References
-      :name: references
-
-   #. none
-
-   .. rubric:: Private components
-      :name: private-components
-
-   N/A
 
 .. |communication pattern| image:: ../../../guide/images/comm_pattern96.png
    :width: 400px
