@@ -186,13 +186,13 @@ subroutine model_to_dart()
 
       ! In the block files, time does not have units
       if (trim(name) /= 'time') then
-         block_files(iblock)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
+         block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
          filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', attribute)
       end if
 
       ! In the block files, only lon, lat and z have long_name
       if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
-         block_files(iblock)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'long_name', attribute)
+         block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'long_name', attribute)
          filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', attribute)
       end if
 
