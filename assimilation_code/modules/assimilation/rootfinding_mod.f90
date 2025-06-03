@@ -111,25 +111,27 @@ function inv_cdf(cdf_in, cdf, first_guess, p) result(quantile)
       return
    end if
 
-   ! If bounded below and target probability is between 0 and u_guess, go to ITP
-   if (bounded_below .and. (u .lt. u_guess)) then
-      a  = lower_bound
-      b  = x_guess
-      fa = 0._r8 - u
-      fb = u_guess - u
-      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS, p)
-      return
-   end if
-
-   ! If bounded above and target probability is between u_guess and 1, go to ITP
-   if (bounded_above .and. (u_guess .lt. u)) then
-      a  = x_guess
-      b  = upper_bound
-      fa = u_guess
-      fb = 1._r8
-      quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS, p)
-      return
-   end if
+!    ! If bounded below and target probability is between 0 and u_guess, go to ITP
+!    ! This is inefficient when the ensemble is far from the lower bound
+!    if (bounded_below .and. (u .lt. u_guess)) then
+!       a  = lower_bound
+!       b  = x_guess
+!       fa = 0._r8 - u
+!       fb = u_guess - u
+!       quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS, p)
+!       return
+!    end if
+!
+!    ! If bounded above and target probability is between u_guess and 1, go to ITP
+!    ! This is inefficient when the ensemble is far from the upper bound
+!    if (bounded_above .and. (u_guess .lt. u)) then
+!       a  = x_guess
+!       b  = upper_bound
+!       fa = u_guess
+!       fb = 1._r8
+!       quantile = inv_cdf_ITP(cdf, u, a, b, fa, fb, MAX_ITERATIONS, p)
+!       return
+!    end if
 
    ! If we reach this line, then we can't yet bracket the true value of x, so we start
    ! doing steps of the secant method, either until convergence or until we bracket
@@ -231,16 +233,17 @@ function inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p) result(x)
    real(r8) :: delta
    real(r8) :: x_t, x_f, x_half, f_ITP
    real(r8) :: eps, r
+   real(r8), save :: ln_2 = log(2._r8)
    integer  :: i, n_max, n_half
 
    kappa1 = 0.2_r8 / (b - a)
    eps = TOL * max(abs(a), abs(b))
    ! Max number of iterations is either (i) input max, or (ii) number of bisection
    ! iterations (plus N0) needed to achieve the desired relative tolerance on x.
-   n_half = max(0, ceiling(log(0.5_r8 * (b - a) / eps) / log(2._r8)))
+   n_half = max(0, ceiling(log(0.5_r8 * (b - a) / eps) / ln_2))
    n_max = min(max_iterations, N0 + n_half)
 
-   do i=1,n_max
+   do i=0,n_max-1
       x_half = 0.5_r8 * (a + b) ! Bisection guess
       x_f    = (b* fa - a * fb) / (fa - fb) ! Secant/Regula-Falsi guess
       delta  = kappa1 * abs(b - a)**KAPPA2
@@ -249,7 +252,7 @@ function inv_cdf_ITP(cdf, u, a, b, fa, fb, max_iterations, p) result(x)
       else
          x_t = x_half
       end if
-      r = max(0._r8, eps * 2**(n_half - i) - 0.5_r8 * (b - a))
+      r = max(0._r8, eps * 2**(n_max - i) - 0.5_r8 * (b - a))
       if (abs(x_t - x_half) .le. r) then
          x = x_t
       else
