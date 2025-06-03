@@ -126,7 +126,7 @@
    /
 
 &model_nml
-   template_file       = 'aether_restart_m0001.nc'
+   template_file       = 'aether_restart.nc'
    time_step_days      = 0,
    time_step_seconds   = 3600
    variables           = 'Temperature',    'QTY_TEMPERATURE',      '0.0',  'NA',   'UPDATE',
@@ -192,7 +192,7 @@
    /
 
 &model_mod_check_nml
-   input_state_files     = 'aether_restart_m0001.nc'
+   input_state_files     = 'aether_restart.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,5,6,7
