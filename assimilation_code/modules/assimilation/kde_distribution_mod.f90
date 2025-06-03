@@ -22,10 +22,12 @@ use mpi_utilities_mod,    only : my_task_id
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params, &
                                     KDE_DISTRIBUTION
 
-! Using the inv_cdf in normal_distribution_mod is faster and passes all kde tests
-!!!use rootfinding_mod,         only : inv_cdf
+! Using the inv_cdf in normal_distribution_mod may be faster and also passes all kde tests
+! If you want to use the normal_distribution_mod version, commend out the line below and
+! add inv_cdf to the next use statement
+use rootfinding_mod,         only : inv_cdf
 
-use normal_distribution_mod, only : normal_cdf, inv_cdf
+use normal_distribution_mod, only : normal_cdf!, inv_cdf
 
 implicit none
 private
@@ -257,12 +259,12 @@ function kde_pdf(x, p)
       u_lower = 0._r8; lx_lower = 1._r8 ; mx_lower = 0._r8
       u_upper = 0._r8; lx_upper = 1._r8 ; mx_upper = 0._r8
       if (p%bounded_below) then ! Bounded below
-         u_lower = min( 1._r8, max( 0._r8, (x - p%lower_bound) / p%more_params(i) ) ) ! p%more_params(i) holds kernel width for ensemble member i
-         call boundary_correction(u_lower, lx_lower, mx_lower)
+         u_lower = (x - p%lower_bound) / p%more_params(i) ! p%more_params(i) holds kernel width for ensemble member i
+         if ((u_lower >= 0._r8) .and. (u_lower <= 1._r8)) call boundary_correction(u_lower, lx_lower, mx_lower)
       end if
       if (p%bounded_above) then ! Bounded above
-         u_upper = min( 1._r8, max( 0._r8, (p%upper_bound - x) / p%more_params(i) ) )
-         call boundary_correction(u_upper, lx_upper, mx_upper)
+         u_upper = (p%upper_bound - x) / p%more_params(i)
+         if ((u_upper >= 0._r8) .and. (u_upper <= 1._r8)) call boundary_correction(u_upper, lx_upper, mx_upper)
       end if
       u_lower = (x - p%ens(i)) / p%more_params(i) ! Not u_lower any more, just (x-x_i)/h_i
       kde_pdf = kde_pdf + (1._r8 / p%more_params(i)) * &
@@ -319,6 +321,49 @@ subroutine get_kde_bandwidths(ens_size, ens, bandwidths)
    end if
 
 end subroutine get_kde_bandwidths
+
+!---------------------------------------------------------------------------
+
+function gq3(left, right, p) result(q)
+   real(r8)                                   :: q
+   real(r8),                       intent(in) :: left, right
+   type(distribution_params_type), intent(in) :: p
+
+   ! Uses 3-point Gauss quadrature to approximate \int_left^right l(s; y) p(s) ds
+   !  where p(x) is the prior pdf and l(x; y) is the likelihood. This only works
+   !  correctly if left >= lower_bound and right <= upper_bound. The result is
+   ! **Not Normalized**.
+
+   real(r8) :: y
+   real(r8) :: obs_param ! See likelihood function for interpretation
+   integer  :: obs_dist_type  ! See likelihood function for interpretation
+   real(r8) :: xi ! quadrature point
+   real(r8), save :: chi(3) = [-sqrt(3._r8 / 5._r8), &
+                                0._r8, &
+                                sqrt(3._r8 / 5._r8)] ! Gauss quadrature points
+   real(r8), save :: w(3)   = [5._r8 / 9._r8, 8._r8 / 9._r8, 5._r8 / 9._r8] ! GQ weights
+   real(r8) :: l ! value of the likelihood function
+   integer  :: k
+
+   ! Unpack obs info from param struct
+   y         = p%more_params(p%ens_size + 2)
+   obs_param = p%more_params(p%ens_size + 3)
+   obs_dist_type  = nint(p%more_params(p%ens_size + 4))
+
+   q = 0._r8
+   do k=1,3
+      xi = 0.5_r8 * ((right - left) * chi(k) + left + right)
+      if (obs_dist_type .eq. obs_dist_types%truncated_normal) then
+         l = likelihood_function(xi, y, obs_param, obs_dist_type, &
+            bounded_above=p%bounded_above, bounded_below=p%bounded_below, &
+            upper_bound=p%upper_bound, lower_bound=p%lower_bound)
+      else
+         l = likelihood_function(xi, y, obs_param, obs_dist_type)
+      end if
+      q  = q + 0.5_r8 * (right - left) * w(k) * kde_pdf(xi, p) * l
+   end do
+
+end function gq3
 
 !---------------------------------------------------------------------------
 
@@ -418,12 +463,12 @@ function integrate_pdf(x, p) result(q)
    ! If we haven't returned yet, then there is at least one subinterval.
    i = 1
    right = min(x, edges(2)) ! left was computed above
-   q = gq5(left, right, p)
+   q = gq3(left, right, p)
    do while ((x > right) .and. (i+1 < 2*p%ens_size))
       i     = i + 1
       left  = right
       right = min(x, edges(i+1))
-      q     = q + gq5(left, right, p)
+      q     = q + gq3(left, right, p)
    end do
    ! Note that it is possible to have maxval(edges) < x < upper_bound,
    ! but that last sub-interval from maxval(edges) to x has zero integral,
@@ -523,7 +568,7 @@ subroutine pack_kde_params(ens_size, bounded_below, bounded_above, lower_bound, 
          ! The subinterval [edges(i-1), edges(i)] is empty or outside the bounds
          p%more_params(3*ens_size+6+i) = p%more_params(3*ens_size+6+i-1) + 0._r8
       else
-         p%more_params(3*ens_size+6+i) = p%more_params(3*ens_size+6+i-1) + gq5(edges(i-1), edges(i), p)
+         p%more_params(3*ens_size+6+i) = p%more_params(3*ens_size+6+i-1) + gq3(edges(i-1), edges(i), p)
       end if
    end do
    p%more_params(ens_size+1) = maxval(p%more_params(3*ens_size+7:5*ens_size+8))
@@ -566,13 +611,12 @@ function kde_cdf_params(x, p) result(quantile)
          quantile = quantile + epanechnikov_cdf( (x - p%ens(i)) / bandwidths(i) ) / p%ens_size
       end do
    else ! Compute cdf using quadrature
-      !quantile  = min(1._r8, max(0._r8, integrate_pdf(x, p)))
       if (x < edges(1)) then
          return
       end if
       do i=2,2*p%ens_size+2
          if ((edges(i-1) <= x) .and. (x <= edges(i))) then
-            quantile = min(1._r8, max(0._r8, cdfs(i-1) + gq5(edges(i-1), x, p)))
+            quantile = min(1._r8, max(0._r8, cdfs(i-1) + gq3(edges(i-1), x, p)))
             return
          else
             cycle
