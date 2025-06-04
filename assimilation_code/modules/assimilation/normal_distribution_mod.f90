@@ -349,8 +349,7 @@ integer, parameter :: max_iterations = 50
 integer, parameter :: max_half_iterations = 25
 
 ! Largest delta for computing centered difference derivative
-! Changing this can affect accuracy for specific applications like Ian Grooms KDE
-! Changing to 1e-9 allows all of the KDE tests to PASS
+! Changing this can affect accuracy for specific applications
 real(r8), parameter :: max_delta = 1e-8_r8
 
 ! The power to which the epsilon for the current guess is raised to bound convergence
