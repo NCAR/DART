@@ -1,41 +1,30 @@
-#######################
-Locating netCDF library
-#######################
+##################
+Installing NetCDF 
+##################
 
-DART uses the `netCDF <https://www.unidata.ucar.edu/software/netcdf/>`__
-self-describing data format for storing the results of assimilation
-experiments. These files have the extension *.nc* and can be read by a
-number of standard data analysis tools. In particular, DART also makes
-use of the F90 netCDF interface which is available through the
-``netcdf.mod`` and ``typesizes.mod`` modules and the ``libnetcdf``
-library. Depending on the version, the ``libnetcdff`` library is also
-often required.
+DART requires the `NetCDF libraries <https://www.unidata.ucar.edu/software/netcdf/>`__.
+NetCDF is a set of software libraries and machine-independent data formats 
+that support the creation, access, and sharing of array-oriented scientific data.
 
-If the netCDF library does not exist on your system, you must build it
-(as well as the F90 interface modules).
+DART Requirements:
 
-.. warning::
+- NetCDF-C library (version ≥ 4.0)
+- NetCDF-Fortran library (compatible with your compiler and NetCDF-C version)
 
-   You must build netCDF with the same compiler (including version) you plan to
-   use for compiling DART. In practice this means that even if you have a netCDF
-   distribution on your system, you may need to recompile netCDF in a separate
-   location to match the compiler you will use for DART. The library and
-   instructions for building the library or installing from a package manager
-   may be found at the
-   `netCDF home page <https://www.unidata.ucar.edu/software/netcdf/>`_.
+Instructions for install netcdf can be found at the
+`NetCDF home page <https://www.unidata.ucar.edu/software/netcdf/>`_.
+Note, most Supercomputers and HPC clusters have a NetCDF module available,
+and NetCDF is available from many package managers (e.g., apt, yum, macports, conda).
 
-.. important::
+Ensure that both NetCDF libraries (C and Fortran) are compiled with support for 
+your preferred compiler (e.g., gfortran, ifx).
 
-   The normal location for the netCDF Fortran modules and libraries would be in
-   the ``include`` and ``lib`` subdirectories of the netCDF installation.
-   However, different compilers or package managers sometimes place the modules
-   and/or libraries into non-standard locations. It is required that both
-   modules and the libraries be present.
+Once you have installed netCDF, you will need to tell DART where to find the
+NetCDF headers and libraries.
 
-.. note::
+.. code-block:: bash
 
-   The location of the netCDF library, ``libnetcdf.a``, and the locations of
-   both ``netcdf.mod`` and ``typesizes.mod`` will be needed later. Depending on
-   the version of netCDF and the build options selected, the Fortran interface
-   routines may be in a separate library named ``libnetcdff.a`` (note the two
-   F’s). In this case both libraries are required to build executables.
+   nf-config --all  
+
+will show you the NetCDF install location (prefix) and the paths to the NetCDF 
+Fortran headers and libraries.
