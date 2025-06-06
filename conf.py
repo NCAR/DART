@@ -21,7 +21,7 @@ copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '11.11.0'
+release = '11.11.1'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
@@ -40,28 +40,6 @@ extensions = [
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*',
-        'guide/Manhattan_release.rst',
-        'guide/Lanai_release.rst',
-        'guide/history/Kodiak_release.rst',
-        'guide/history/Jamaica_release.rst',
-        'guide/history/Iceland_release.rst',
-        'guide/history/hawaii_release.rst',
-        'guide/history/Guam_release.rst',
-        'guide/history/Fiji_release.rst',
-        'guide/Lanai_diffs_from_Kodiak.rst',
-        'guide/history/Jamaica_diffs_from_I.rst',
-        'guide/history/pre_j_release.rst',
-        'guide/history/PostI_diffs_from_I.rst',
-        'guide/history/Post_Iceland_release.rst',
-        'guide/history/I_diffs_from_workshop.rst',
-        'guide/history/pre_hawaii_release.rst',
-        'guide/history/pre_guam_release.rst',
-        'guide/bitwise_considerations.rst',
-        'guide/rma.rst',
-        'guide/vertical_conversion.rst',
-        'guide/boilerplate/boilerplate.rst',
-        'guide/boilerplate/template.rst'
-
 ]
 
 

@@ -2203,8 +2203,8 @@ if (present(dimlens) .or. present(dimnames)) then  ! more work to do
 endif
 
 if (present(   ndims)) ndims             = myndims
-if (present( dimlens)) dimlens(1:ndims)  = mydimlens(1:ndims)
-if (present(dimnames)) dimnames(1:ndims) = mydimnames(1:ndims)
+if (present( dimlens)) dimlens(1:myndims)  = mydimlens(1:myndims)
+if (present(dimnames)) dimnames(1:myndims) = mydimnames(1:myndims)
 
 end subroutine nc_get_variable_info
 
