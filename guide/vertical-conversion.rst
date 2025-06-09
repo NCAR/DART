@@ -87,11 +87,11 @@ The default setting for vertical conversion in assim_tools_nml:
 
 When deciding to when to convert verticals, consider the following:
 
-- How many state elements are updated, e.g. if you have a large :ref:`cuttoff <localization>`
+- How many state elements are updated, e.g. if you have a large :ref:`cutoff <localization>`
   and most of the state is being updated  during assimilation, then converting all state verticals first 
   may be more efficient.
 - If you are :ref:`distributing the mean <data-distribution>` across MPI processes this will increase the cost of
-  of each conversion. You many not want to convert all state verticals first if the mean is distributed and 
+  of each conversion. You may not want to convert all state verticals first if the mean is distributed and 
   few state elements are updated.
 - How many observations are being assimilated, e.g. if you have a large number of observations, then converting
   all observation verticals first may be more efficient as the conversion is done in parallel.

@@ -38,8 +38,8 @@ across multiple tasks.
 IO - reading and writing of the model state
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The first N logical MPI tasks read and write the state vector from disk, where N is the ensemble size.
-The state vector is read into memory in a single MPI task, and then distributed across the
+The first N logical MPI tasks read and write the N state vectors from disk, where N is the ensemble size.
+A state vector is read into memory in a single MPI task, and then distributed across the
 MPI tasks.  To minimize per node memory and IO contention, the logical MPI tasks are assigned to physical
 MPI tasks in a round-robin fashion.
 
