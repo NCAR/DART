@@ -29,8 +29,8 @@ There are three phases in DART that require access to the whole state vector:
 
 There is an inherent trade-off between memory usage and internode communication.
 DART provides multiple runtime strategies to balance this trade-off: 
-users can choose to reduce memory usage per process at the cost of increased communication
-overhead, or to use more memory per node in order to minimize data transfer between processes.
+users can choose to reduce memory usage per MPI task at the cost of increased communication
+overhead, or to use more memory per node in order to minimize data transfer between MPI tasks.
 The whole state is always logically visible to all MPI tasks, but physically it may be distributed 
 across multiple tasks.
 
@@ -39,11 +39,11 @@ IO - reading and writing of the model state
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first N logical MPI tasks read and write the N state vectors from disk, where N is the ensemble size.
-A state vector is read into memory in a single MPI task, and then distributed across the
-MPI tasks.  To minimize per node memory and IO contention, the logical MPI tasks are assigned to physical
-MPI tasks in a round-robin fashion.
+A state vector is read into memory in a single MPI task, and then distributed across all the
+MPI tasks.  To minimize per node memory and IO contention, we recommend you assign the logical MPI tasks 
+to physical MPI tasks using a round-robin layout in the ensemble_manager_nml namelist.
 
-Recommended setting for the layout in ensemble_manager_nml:
+Recommended setting for a round-robin layout in ensemble_manager_nml:
 
 .. code-block:: text
 
@@ -74,12 +74,12 @@ Forward Operator (FO) computation
 
 The majority of calculation in an assimilation is done across the ensemble, for example,
 means, variances, increments, inflation, etc. and so the ideal data layout for assimilation is to have 
-all ensemble members for a given element of the state vector on the same MPI process. 
+all ensemble members for a given element of the state vector on the same MPI task. 
 However, :ref:`forward operator <FO>` calculations may need data from any part of the state
 vector, and so the ideal data layout for the forward operator is the entire state vector on 
-the same MPI process.
+the same MPI task.
 
-By default, DART runs in distributed mode, ``distribute_state = .true.`` (ideal for assimilation)
+By default, DART runs in distributed mode, ``distributed_state = .true.`` (ideal for assimilation)
 where each MPI task has all the ensemble members for subset of the state vector.
 The forward operator calculation is vectorized across the whole ensemble, and DART takes 
 care of retrieving any state values needed for the forward operator calculation from other MPI
@@ -106,16 +106,16 @@ Conversion of observation or state location
 
 The vertical location of an observation or state element may depend on the model state. For example, 
 an observation might be reported in pressure coordinates, requiring conversion based on the model state.
-For localization calculations, all MPI processes use the ensemble mean state for any vertical coordinate 
+For localization calculations, all MPI tasks use the ensemble mean state for any vertical coordinate 
 transformations that depend on the model state.
 
 If your state is small or your system has ample memory, it can be advantageous to store a full copy of the 
-mean on each MPI process for use in vertical calculations. However, if the state is very large and you're 
+mean on each MPI task for use in vertical calculations. However, if the state is very large and you're 
 approaching (or exceeding) the available memory per node, it may be more efficient to distribute the mean 
-across MPI processes to reduce memory usage
+across MPI tasks to reduce memory usage
 
 The default for ``distribute_mean`` is ``.false.``  but for models with large state vectors or models that 
-do no vertical coordinate conversions, it may be beneficial to set this to ``.true.``.
+do not perform vertical coordinate conversions, it may be beneficial to set this to ``.true.``.
 
 .. code-block:: text
 
