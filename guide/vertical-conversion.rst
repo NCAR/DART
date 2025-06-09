@@ -70,12 +70,31 @@ the entire state.
 Choice of when conversion is done 
 ---------------------------------
 
-During the assimilation phase of filter there are two options for when vertical
-conversion is done: all at the start, or on demand.  If the observations to be
-assimilated are expected to impact all or almost all of the state, doing all
-vertical conversion at the start is more efficient. If the observations are
-expected to impact only a small percentage of the state variables then doing it
-on demand is more efficient.
+During assimilation there is a choice for when vertical
+conversion is done: all at the start, before the sequential assimilation loop;
+or on demand, as each observation is processed. 
 
-The options here are namelist selectable at runtime and the impact on total
-runtime can be easily measured and compared.
+The default behavior is to convert all observation locations before the sequential
+assimilation loop, and convert all model state locations on demand. 
+The default setting for vertical conversion in assim_tools_nml:
+
+.. code-block:: text
+
+    &assim_tools_nml
+       convert_all_obs_verticals_first   = .true.,
+       convert_all_state_verticals_first = .false.,
+    /
+
+When deciding to when to convert verticals, consider the following:
+
+- How many state elements are updated, e.g. if you have a large :ref:`cutoff <localization>`
+  and most of the state is being updated  during assimilation, then converting all state verticals first 
+  may be more efficient.
+- If you are :ref:`distributing the mean <data-distribution>` across MPI processes this will increase the cost of
+  each conversion. You may not want to convert all state verticals first if the mean is distributed and 
+  few state elements are updated.
+- How many observations are being assimilated, e.g. if you have a large number of observations, then converting
+  all observation verticals first may be more efficient as the conversion is done in parallel.
+
+Before doing large scale experiments, we recommend profiling the assimilation to determine the best setting 
+for your model and assimilation setup.
