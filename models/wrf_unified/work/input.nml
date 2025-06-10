@@ -201,14 +201,14 @@
 
 &model_nml
    default_state_variables = .false.,
-   wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'UPDATE','2',
+   wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'UPDATE','999',
                          'V',     'QTY_V_WIND_COMPONENT',     'UPDATE','999',
                          'W',     'QTY_VERTICAL_VELOCITY',    'UPDATE','999',
                          'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'UPDATE','999',
                          'T',     'QTY_POTENTIAL_TEMPERATURE','UPDATE','999',
                          'MU',    'QTY_PRESSURE',             'UPDATE','999',
-                         'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'UPDATE','12',
-                         'PSFC',  'QTY_SURFACE_PRESSURE',     'UPDATE','1',
+                         'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'UPDATE','999',
+                         'PSFC',  'QTY_SURFACE_PRESSURE',     'UPDATE','999',
    wrf_state_bounds    = 'QVAPOR','0.0','NULL',
                          'QRAIN', '0.0','NULL',
                          'QCLOUD','0.0','NULL',
@@ -219,8 +219,6 @@
    center_search_half_length   = 500000.,
    center_spline_grid_scale    = 10,
    sfc_elev_max_diff           = -1.0,
-   circulation_pres_level      = 80000.0,
-   circulation_radius          = 108000.0,
    allow_obs_below_vol         = .false.
    /
 

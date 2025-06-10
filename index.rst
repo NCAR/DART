@@ -494,6 +494,7 @@ References
    models/wrf/readme
    models/wrf/WRF_DART_utilities/replace_wrf_fields
    models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
+   models/wrf_unified/readme
    models/template/readme
    models/utilities/default_model_mod
 

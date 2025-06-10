@@ -148,7 +148,6 @@ integer, allocatable :: wrf_dom(:) ! This needs a better name, it is the id from
                                    ! for each wrf_domain added to the state
 
 !-- Namelist with default values --
-logical :: default_state_variables = .true.
 character(len=NF90_MAX_NAME) :: wrf_state_variables(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS) = 'NULL'
 character(len=NF90_MAX_NAME) :: wrf_state_bounds(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES) = 'NULL'
 integer :: num_domains = 1
@@ -158,10 +157,6 @@ integer :: assimilation_period_seconds = 21600
 ! and still be accepted (in meters)
 real (kind=r8) :: sfc_elev_max_diff  = -1.0_r8   ! could be something like 200.0_r8
 
-real (kind=r8) :: center_search_half_length = 500000.0_r8
-real(r8) :: circulation_pres_level = 80000.0_r8
-real(r8) :: circulation_radius     = 108000.0_r8
-integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
 
 ! Allow observations above the surface but below the lowest sigma level.
@@ -169,6 +164,7 @@ logical :: allow_obs_below_vol = .false.
 
 ! Do the interpolation of pressure values only after taking the log (.true.)
 ! vs doing a linear interpolation directly in pressure units (.false.)
+! HK @todo these are not in the namelist in main:wrf. Should they be?
 logical :: log_vert_interp  = .true.
 logical :: log_horz_interpM = .false.
 logical :: log_horz_interpQ = .false.
@@ -184,17 +180,12 @@ logical :: allow_perturbed_ics = .false.
 logical, parameter :: restrict_polar = .false. !HK what is this for? Hardcoded in original code
 
 namelist /model_nml/ &
-default_state_variables, &
 wrf_state_variables, &
 wrf_state_bounds, &
 num_domains, &
 calendar_type, &
 assimilation_period_seconds, &
 sfc_elev_max_diff, &
-center_search_half_length, &
-circulation_pres_level, &
-circulation_radius, &
-center_spline_grid_scale, &
 vert_localization_coord, &
 allow_perturbed_ics, &
 allow_obs_below_vol, &
