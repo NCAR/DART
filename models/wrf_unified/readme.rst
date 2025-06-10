@@ -242,7 +242,7 @@ Description of each namelist entry
 | polar                                 | logical           | If *.true.*, points at the poles are  |
 |                                       |                   | wrapped across the grid. It is not    |
 |                                       |                   | clear this is a good idea since the   |
-|                                       |                   | grid is degnerate here.               |
+|                                       |                   | grid is degenerate here.              |
 +---------------------------------------+-------------------+---------------------------------------+
 | scm                                   | logical           | If *.true.* the Single Column Model   |
 |                                       |                   | is assumed. The grid is a single      |
