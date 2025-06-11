@@ -13,8 +13,9 @@ sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported
 (`see the complete list here <https://nwp-saf.eumetsat.int/site/software/rttov/documentation/platforms-supported/>`__).
 For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
-For an introduction to the RTTOV interface, build instructions, 
-and a list of known issues, please refer to :doc:`Radiance_support`.
+.. seealso::
+   :doc:`Radiance_support` introduces DART-RTTOV, build instructions, 
+   and a list of known issues.
 
 RTTOV features two modules, RTTOV-direct for visible/infrared/microwave, 
 as well as RTTOV-scatt for microwave computations with full scattering.
@@ -23,13 +24,14 @@ the model to RTTOV, includes aerosols, trace gases, clouds, and atmospheric vari
 The code also includes directly specifying scattering properties.
 Moreover, DART supports RTTOV-direct in v13. 
 
-Observation types and their physical quantity are defined in `obs_def_rttov_mod.f90`. For example, 
+Observation types and their physical quantity are defined in `obs_def_rttov_mod.f90`. 
+For example, type ``NOAA_19_AMSUA_TB`` is defined in the line
 
 .. code::
 
    ! NOAA_19_AMSUA_TB,      QTY_BRIGHTNESS_TEMPERATURE
 
-is constructed of `(PLATFORM)_(SATELLITE)_(SENSOR)_(QTY)`
+as a combination of `(PLATFORM)_(SATELLITE)_(SENSOR)_(QTY)`
 where 
 
 *  PLATFORM    is the satellite series (NOAA),

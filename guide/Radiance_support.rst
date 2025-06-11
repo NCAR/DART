@@ -19,10 +19,9 @@ This documentation describes
 6. Current list of known issues
 
 
-The run-time behavior of RTTOV is mostly controlled by the 
-``&obs_def_rttov_nml`` section in the ``input.nml`` namelist file and
-the model variables that are passed to RTTOV (``&model_nml`` section).
-See :ref:`obs_def_rttov_mod`.
+.. seealso::
+   The page :ref:`obs_def_rttov_mod` describes the 
+   ``&obs_def_rttov_nml`` section of the DART namelist.
 
 .. note::
    The RTTOV support in DART is experimental and may not work under all circumstances.
@@ -181,24 +180,26 @@ Moreover, the representation might not be entirely compatible with RTTOV.
 For example, the Thompson microphysics has five cloud hydrometeor categories (cloud water, ice, snow, graupel, and rain), 
 while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-scatt).
 
-Since cloud optical properties are often not provided by the model, 
-RTTOV provides parameterizations for liquid and ice clouds (see the RTTOV user guide for details).
-For liquid water clouds there are (abbreviated) "OPAC" and "Deff".
 
-*  The Deff scheme (`clw_scheme=2`) computes optical properties from an effective particle diameter as input.
-   By default, DART accesses the model state variable associated to ``QTY_CLOUDWATER_DE`` in the DART namelist.
-   Alternatively, users can modify to code to provide a constant value.
-*  The OPAC scheme computes optical properties from based on the cloud type 
-   (marine/continental, stratus/cumulus, clean/dirty). 
-   If the user selects the OPAC scheme (`clw_scheme=1`), DART classifies the cloud type based 
-   on maximum vertical velocity in the column and land type.
-   In case of cumulus over land, DART currently assigns "Cumulus Continental Clean" , 
-   as we lack of aerosol information and cannot differentiate between clean and dirty cumulus.
-   This may have some impact on the forward calculations - but in experience the difference 
-   in cloud phase (ice versus water) makes a much larger difference. 
+RTTOV provides parameterizations for cloud optical properties of liquid and ice clouds (see the RTTOV user guide for details):
 
-Trace gases and aerosols may be important for actual observation system experiments 
-using visible/infrared; this may depend on the precise frequencies you wish to use.
+#. Liquid water clouds
+
+   *  The Deff scheme (`clw_scheme=2`) computes optical properties from an effective particle diameter as input.
+      By default, DART accesses the model state variable associated to ``QTY_CLOUDWATER_DE`` in the DART namelist.
+      Alternatively, users can modify to code to provide a constant value.
+   *  The OPAC scheme computes optical properties from based on the cloud type 
+      (marine/continental, stratus/cumulus, clean/dirty). 
+      If the user selects the OPAC scheme (`clw_scheme=1`), DART classifies the cloud type based 
+      on maximum vertical velocity in the column and land type.
+      In case of cumulus over land, DART currently assigns "Cumulus Continental Clean" , 
+      as we lack of aerosol information and cannot differentiate between clean and dirty cumulus.
+      This may have some impact on the forward calculations - but in experience the difference 
+      in cloud phase (ice versus water) makes a much larger difference. 
+
+#. Ice clouds
+
+   *  See the RTTOV user guide.
 
 
 Converting real observations to DART format
