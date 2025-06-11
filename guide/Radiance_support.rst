@@ -4,10 +4,20 @@ Introduction to DART’s support for RTTOV
 DART supports satellite radiance assimilation through an interface to 
 the radiative transfer model RTTOV. 
 RTTOV is a fast radiative transfer model that is widely used in research 
-and operations to simulate microwave, infrared, and visible radiances.
-It simulates radiances by taking in a set of atmospheric and surface
-variables to simulate the radiances that would be observed by a
-satellite instrument. 
+and operations. RTTOV contains observation operators for visible/infrared and microwave 
+radiances/brightness temperatures. Observations from a wide range of satellites 
+(e.g. GOES, FY, METOP, ...) and sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported 
+(`see the complete list here <https://nwp-saf.eumetsat.int/site/software/rttov/documentation/platforms-supported/>`__).
+For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
+
+This documentation describes 
+1. Compilation and setup
+2. High-level workflow
+3. Input data to RTTOV
+4. Tips for the assimilation of visible/infrared radiances  
+5. Converting real observations to DART format
+6. Current list of known issues
+
 
 The run-time behavior of RTTOV is mostly controlled by the 
 ``&obs_def_rttov_nml`` section in the ``input.nml`` namelist file and
@@ -15,13 +25,13 @@ the model variables that are passed to RTTOV (``&model_nml`` section).
 See :ref:`obs_def_rttov_mod`.
 
 .. note::
-   The RTTOV support DART support cannot be considered 100% complete and 
-   may not work under all circumstances.
+   The RTTOV support in DART is experimental and may not work under all circumstances.
    Moreover, satellite radiance assimilation is an active area of research. 
    If you encounter issues, please submit them through `Github
    Issues <https://github.com/NCAR/DART/issues>`__.
 
-Setting up DART+RTTOV
+
+Compilation and setup
 ---------------------
 
 At present, DART supports RTTOV v12.3 and v13.  
@@ -66,7 +76,7 @@ Add a selection of the observation types listed in
 (either to ``assimilate_these_obs_types`` or ``evaluate_these_obs_types``).
 
 Add the observation operators to the build by 
-adding obs_def_rttov_mod.f90 to the ``&preprocess`` section of the ``input.nml`` file:
+adding ``obs_def_rttov_mod.f90`` to the ``&preprocess`` section of the ``input.nml`` file:
 
 .. code-block:: bash
 
@@ -83,16 +93,17 @@ Use ``obs_def_rttov13_mod.f90`` to compile DART with RTTOV v13.
 
 4. In your model of choice, run ``./quickbuild.sh``.
 
+
 High-level workflow
 -------------------
 
 To assimilate radiances in an OSSE (Observing System Simulation Experiment)
 with synthetic observations, you will need to do the following:
 
-   -  Create an observation sequence file using ./create_obs_sequence
-      and ./create_fixed_network_seq as detailed in the DART
+   -  Create an observation sequence file using ``./create_obs_sequence``
+      and ``./create_fixed_network_seq`` as detailed in the DART
       Getting_Started documentation
-   -  Run ./perfect_model_obs
+   -  Run ``./perfect_model_obs``
    -  Setup your ensemble as appropriate
    -  Run filter and analyze the results in the usual way
 
@@ -106,6 +117,10 @@ observations, you will need to do the following:
 
 Input data to RTTOV
 -------------------
+
+RTTOV simulates radiances by taking in a set of atmospheric and surface
+variables to simulate the radiances that would be observed by a
+satellite instrument. 
 
 The DART interface basically passes through model variables to RTTOV.
 Besides pressure, temperature, and humidity, this can include aerosols, 
@@ -154,24 +169,25 @@ clouds, trace gases, and aerosols) that can be specified. See
 :ref:`obs_def_rttov_mod` for a complete list of values.
 
 
-Simulation of cloudy visible/infrared radiances
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Tips for the assimilation of visible/infrared radiances 
+-------------------------------------------------------
 
 A good overview over the most important parameters for the radiative transfer
 can be found in the RTTOV user guide section "Simulation of UV, visible and IR cloud-affected radiances".
 
-In general, the representation of clouds in a particular 
-model may not be directly compatible with RTTOV.
-For example, different microphysics schemes assume different 
-particle size distributions and have a number of hydrometeor classes, 
-while RTTOV takes only liquid water and ice mixing ratio (snow for RTTOV-scatt).
+In general, the representation of clouds differs among microphysics parameterizations, which can lead
+to biases in comparison with observed radiances.
+Moreover, the representation might not be entirely compatible with RTTOV.  
+For example, the Thompson microphysics has five cloud hydrometeor categories (cloud water, ice, snow, graupel, and rain), 
+while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-scatt).
 
-Since most atmospheric models do not provide cloud optical properties,
-RTTOV provides parameterizations for them (see the RTTOV user guide for details).
+Since cloud optical properties are often not provided by the model, 
+RTTOV provides parameterizations for liquid and ice clouds (see the RTTOV user guide for details).
 For liquid water clouds there are (abbreviated) "OPAC" and "Deff".
 
 *  The Deff scheme (`clw_scheme=2`) computes optical properties from an effective particle diameter as input.
-   This can either be a constant value, or supplied by the model.
+   By default, DART accesses the model state variable associated to ``QTY_CLOUDWATER_DE`` in the DART namelist.
+   Alternatively, users can modify to code to provide a constant value.
 *  The OPAC scheme computes optical properties from based on the cloud type 
    (marine/continental, stratus/cumulus, clean/dirty). 
    If the user selects the OPAC scheme (`clw_scheme=1`), DART classifies the cloud type based 
