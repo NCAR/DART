@@ -14,7 +14,7 @@ sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported
 For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
 .. seealso::
-   :doc:`Radiance_support` introduces DART-RTTOV, build instructions, 
+   :ref:`Radiance_support` introduces DART-RTTOV, build instructions, 
    and a list of known issues.
 
 RTTOV features two modules, RTTOV-direct for visible/infrared/microwave, 
