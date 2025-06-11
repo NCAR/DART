@@ -22,6 +22,16 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 6 2024 :: Bug-fix: nc_get_variable_info. Tag v11.11.1**
+
+- nc_get_variable_info: Use local variable rather than optional argument which may not be present
+
+Documentation updates:
+
+   - Fortran compiler and NetCDF requirements
+   - Removed unused .rst files
+   - Comment on damping vs applying posterior inflation clarification
+
 **May 6 2025 :: Fwd-op for SAT_SEAICE radar and laser. Tag v11.11.0**
 
 - Forward Operator for SAT_SEAICE_RADAR|LASER_FREEBOARD. 
