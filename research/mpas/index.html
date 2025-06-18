@@ -12,7 +12,7 @@ and MPAS-Ocean are available as part of the standard DART package.</p><p>In coll
 related efforts are also underway to explore ensemble data assimilation
 for MPAS-Atmosphere with the
 Gridpoint Statistical Interpolation (GSI) scheme that is operational at
-<a href=http://www.ncep.noaa.gov>the National Centers for Environmental Prediction</a>.</p><figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_spaghetti_Z500mb_anal.2008090512.png></figure><p>Grid structure used in the MPAS/DART interface
+<a href=http://www.ncep.noaa.gov>the National Centers for Environmental Prediction</a>.</p><figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_spaghetti_Z500mb_anal.2008090512.webp></figure><p>Grid structure used in the MPAS/DART interface
 The MPAS/DART interface is
 built on MPAS&rsquo;s unstructured centroidal Voronoi mesh,
 and does not regrid to latitude-longitude grids. In MPAS, the finite-volume
@@ -22,7 +22,7 @@ at the center of finite-volume cells and for the normal component of velocity
 The normal component of velocity <em>(u)</em> at cell edges is then used to
 reconstruct zonal and meridional winds at cell centers <em>(V)</em>
 using radial basis functions (RBFs).
-To avoid the singularity issue on the poles, the cartesian coordinate is employed.</p><figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_grid_components.png></figure><p>The forward operators on the unstructured grid mesh are constructed as follows.
+To avoid the singularity issue on the poles, the cartesian coordinate is employed.</p><figure class=site-project-single-image><img src=/images/science_nuggets/MPAS_grid_components.webp></figure><p>The forward operators on the unstructured grid mesh are constructed as follows.
 The dual of the Voronoi mesh, or the triangular mesh (shown as dashed lines in the
 figure), is used to search the closest cell center to an arbitrary (or observation)
 point, then find three cell centers of the triangle enclosing the desired point.
