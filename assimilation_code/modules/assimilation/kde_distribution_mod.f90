@@ -10,14 +10,15 @@ module kde_distribution_mod
 
 use types_mod,               only : r8, MISSING_R8
 
-use utilities_mod,           only : E_ERR, E_MSG, error_handler
+use utilities_mod,           only : E_ERR, E_MSG, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
+                                    find_namelist_in_file, check_namelist_read
 
 use sort_mod,                only : sort
 
-use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, &
+use random_seq_mod,          only : random_seq_type, random_gaussian, init_random_seq, &
                                  random_uniform
 
-use mpi_utilities_mod,    only : my_task_id
+use mpi_utilities_mod,       only : my_task_id
 
 use distribution_params_mod, only : distribution_params_type, deallocate_distribution_params, &
                                     KDE_DISTRIBUTION
@@ -48,7 +49,34 @@ character(len=*), parameter :: source = 'kde_distribution_mod.f90'
 logical                :: first_inc_ran_call = .true.
 type (random_seq_type) :: inc_ran_seq
 
+! Has the module been initialized?
+logical :: module_initialized = .false.
+
+! Namelist options
+integer :: quadrature_order = 9 ! Default 5-point Gauss-Legendre quadrature from Grooms & Riedel (2024)
+namelist / kde_nml / quadrature_order
+
 contains
+
+!---------------------------------------------------------------------------
+
+subroutine kde_module_init
+   integer :: iunit, io
+
+   ! Reads the namelise kde_nml to determine the value of quadrature_order
+
+   ! Read the namelist entry
+   call find_namelist_in_file("input.nml", "kde_nml", iunit) ! <- this will kill the program if kde_nml is not in the input.nml
+   read(iunit, nml = kde_nml, iostat = io)
+   call check_namelist_read(iunit, io, "kde_nml")
+
+   ! These log the namelist values
+   if (do_nml_file()) write(nmlfileunit,nml=kde_nml)
+   if (do_nml_term()) write(     *     ,nml=kde_nml)
+
+   module_initialized = .true.
+
+end subroutine
 
 !---------------------------------------------------------------------------
 
@@ -321,26 +349,53 @@ end subroutine get_kde_bandwidths
 
 !---------------------------------------------------------------------------
 
-function gq3(left, right, p) result(q)
+function gq(left, right, p) result(q)
    real(r8)                                   :: q
    real(r8),                       intent(in) :: left, right
    type(distribution_params_type), intent(in) :: p
 
-   ! Uses 3-point Gauss quadrature to approximate \int_left^right l(s; y) p(s) ds
-   !  where p(x) is the prior pdf and l(x; y) is the likelihood. This only works
-   !  correctly if left >= lower_bound and right <= upper_bound. The result is
+   ! Uses Gauss quadrature to approximate \int_left^right l(s; y) p(s) ds
+   ! where p(x) is the prior pdf and l(x; y) is the likelihood. This only works
+   ! correctly if left >= lower_bound and right <= upper_bound. The result is
    ! **Not Normalized**.
 
    real(r8) :: y
    real(r8) :: obs_param ! See likelihood function for interpretation
    integer  :: obs_dist_type  ! See likelihood function for interpretation
    real(r8) :: xi ! quadrature point
-   real(r8), save :: chi(3) = [-sqrt(3._r8 / 5._r8), &
-                                0._r8, &
-                                sqrt(3._r8 / 5._r8)] ! Gauss quadrature points
-   real(r8), save :: w(3)   = [5._r8 / 9._r8, 8._r8 / 9._r8, 5._r8 / 9._r8] ! GQ weights
+   real(r8), save :: chi(5) = 0._r8 ! GQ points in (-1,1)
+   real(r8), save :: w(5) = 0._r8   ! GQ weights for (-1,1)
+   logical,  save :: first_call = .true.
    real(r8) :: l ! value of the likelihood function
    integer  :: k
+   integer, save :: k_max
+
+   if (first_call) then
+      first_call = .false.
+      select case (quadrature_order)
+         case(5)
+            k_max = 3
+            chi(1:3) = [-sqrt(3._r8 / 5._r8), &
+                         0._r8, &
+                         sqrt(3._r8 / 5._r8)] ! Gauss quadrature points
+            w(1:3)   = [5._r8 / 9._r8, 8._r8 / 9._r8, 5._r8 / 9._r8] ! GQ weights
+         case(9)
+            k_max = 5
+            chi(1:5) = [-sqrt(5._r8 + 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
+                        -sqrt(5._r8 - 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
+                         0._r8, &
+                         sqrt(5._r8 - 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
+                         sqrt(5._r8 + 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8] ! Gauss quadrature points
+            w(1:5) = [(322._r8 - 13._r8 * sqrt(70._r8)) / 900._r8, &
+                      (322._r8 + 13._r8 * sqrt(70._r8)) / 900._r8, &
+                      128._r8/225._r8, &
+                      (322._r8 + 13._r8 * sqrt(70._r8)) / 900._r8, &
+                      (322._r8 - 13._r8 * sqrt(70._r8)) / 900._r8] ! GQ weights
+         case DEFAULT
+            write(errstring, *) 'unrecognized quadrature_order ', quadrature_order, ' allowable values are 5 and 9'
+            call error_handler(E_ERR, 'kde_distribution_mod:gq', errstring, source)
+      end select
+   end if
 
    ! Unpack obs info from param struct
    y         = p%more_params(p%ens_size + 2)
@@ -348,7 +403,7 @@ function gq3(left, right, p) result(q)
    obs_dist_type  = nint(p%more_params(p%ens_size + 4))
 
    q = 0._r8
-   do k=1,3
+   do k=1,k_max
       xi = 0.5_r8 * ((right - left) * chi(k) + left + right)
       if (obs_dist_type .eq. obs_dist_types%truncated_normal) then
          l = likelihood_function(xi, y, obs_param, obs_dist_type, &
@@ -360,56 +415,7 @@ function gq3(left, right, p) result(q)
       q  = q + 0.5_r8 * (right - left) * w(k) * kde_pdf(xi, p) * l
    end do
 
-end function gq3
-
-!---------------------------------------------------------------------------
-
-function gq5(left, right, p) result(q)
-   real(r8)                                   :: q
-   real(r8),                       intent(in) :: left, right
-   type(distribution_params_type), intent(in) :: p
-
-   ! Uses 5-point Gauss quadrature to approximate \int_left^right l(s; y) p(s) ds
-   !  where p(x) is the prior pdf and l(x; y) is the likelihood. This only works
-   !  correctly if left >= lower_bound and right <= upper_bound. The result is
-   ! **Not Normalized**.
-
-   real(r8) :: y
-   real(r8) :: obs_param ! See likelihood function for interpretation
-   integer  :: obs_dist_type  ! See likelihood function for interpretation
-   real(r8) :: xi ! quadrature point
-   real(r8), save :: chi(5) = [-sqrt(5._r8 + 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
-                               -sqrt(5._r8 - 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
-                                0._r8, &
-                                sqrt(5._r8 - 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
-                                sqrt(5._r8 + 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8] ! Gauss quadrature points
-   real(r8), save :: w(5)   = [(322._r8 - 13._r8 * sqrt(70._r8)) / 900._r8, &
-                               (322._r8 + 13._r8 * sqrt(70._r8)) / 900._r8, &
-                               128._r8/225._r8, &
-                               (322._r8 + 13._r8 * sqrt(70._r8)) / 900._r8, &
-                               (322._r8 - 13._r8 * sqrt(70._r8)) / 900._r8] ! GQ weights
-   real(r8) :: l ! value of the likelihood function
-   integer  :: k
-
-   ! Unpack obs info from param struct
-   y         = p%more_params(p%ens_size + 2)
-   obs_param = p%more_params(p%ens_size + 3)
-   obs_dist_type  = nint(p%more_params(p%ens_size + 4))
-
-   q = 0._r8
-   do k=1,5
-      xi = 0.5_r8 * ((right - left) * chi(k) + left + right)
-      if (obs_dist_type .eq. obs_dist_types%truncated_normal) then
-         l = likelihood_function(xi, y, obs_param, obs_dist_type, &
-            bounded_above=p%bounded_above, bounded_below=p%bounded_below, &
-            upper_bound=p%upper_bound, lower_bound=p%lower_bound)
-      else
-         l = likelihood_function(xi, y, obs_param, obs_dist_type)
-      end if
-      q  = q + 0.5_r8 * (right - left) * w(k) * kde_pdf(xi, p) * l
-   end do
-
-end function gq5
+end function gq
 
 !---------------------------------------------------------------------------
 
@@ -460,12 +466,12 @@ function integrate_pdf(x, p) result(q)
    ! If we haven't returned yet, then there is at least one subinterval.
    i = 1
    right = min(x, edges(2)) ! left was computed above
-   q = gq3(left, right, p)
+   q = gq(left, right, p)
    do while ((x > right) .and. (i+1 < 2*p%ens_size))
       i     = i + 1
       left  = right
       right = min(x, edges(i+1))
-      q     = q + gq3(left, right, p)
+      q     = q + gq(left, right, p)
    end do
    ! Note that it is possible to have maxval(edges) < x < upper_bound,
    ! but that last sub-interval from maxval(edges) to x has zero integral,
@@ -535,7 +541,7 @@ subroutine pack_kde_params(ens_size, bounded_below, bounded_above, lower_bound, 
    edges(:) = sort(edges(:))
    p%more_params(ens_size+5:3*ens_size+6) = edges(:)
 
-   ! If the ensemble is sufficiently far from the boundary, that we can use the unbounded code, which is cheaper.
+   ! If the ensemble is sufficiently far from the boundary, then we can use the unbounded code, which is cheaper.
    edge = minval(p%ens(:) - 2*bandwidths(:))
    if (bounded_below .and. (edge > lower_bound)) then
       p%bounded_below = .false.
@@ -545,7 +551,7 @@ subroutine pack_kde_params(ens_size, bounded_below, bounded_above, lower_bound, 
       p%lower_bound = lower_bound
    end if
 
-   ! If the ensemble is sufficiently far from the boundary, that we can use the unbounded code, which is cheaper.
+   ! If the ensemble is sufficiently far from the boundary, then we can use the unbounded code, which is cheaper.
    edge = maxval(p%ens(:) + 2*bandwidths(:))
    if (bounded_above .and. (edge < upper_bound)) then
       p%bounded_above = .false.
@@ -565,7 +571,7 @@ subroutine pack_kde_params(ens_size, bounded_below, bounded_above, lower_bound, 
          ! The subinterval [edges(i-1), edges(i)] is empty or outside the bounds
          p%more_params(3*ens_size+6+i) = p%more_params(3*ens_size+6+i-1) + 0._r8
       else
-         p%more_params(3*ens_size+6+i) = p%more_params(3*ens_size+6+i-1) + gq3(edges(i-1), edges(i), p)
+         p%more_params(3*ens_size+6+i) = p%more_params(3*ens_size+6+i-1) + gq(edges(i-1), edges(i), p)
       end if
    end do
    p%more_params(ens_size+1) = maxval(p%more_params(3*ens_size+7:5*ens_size+8))
@@ -613,7 +619,7 @@ function kde_cdf_params(x, p) result(quantile)
       end if
       do i=2,2*p%ens_size+2
          if ((edges(i-1) <= x) .and. (x <= edges(i))) then
-            quantile = min(1._r8, max(0._r8, cdfs(i-1) + gq3(edges(i-1), x, p)))
+            quantile = min(1._r8, max(0._r8, cdfs(i-1) + gq(edges(i-1), x, p)))
             return
          else
             cycle
@@ -831,6 +837,9 @@ subroutine obs_increment_kde(ens, ens_size, y, obs_param, bounded_below, &
       obs_dist_type = obs_dist_types%normal
    endif
 
+   ! If not initialized, read in the namelist
+   if(.not. module_initialized) call kde_module_init
+
    ! If this is first time through, need to initialize the random sequence.
    ! This will reproduce exactly for multiple runs with the same task count,
    ! but WILL NOT reproduce for a different number of MPI tasks.
@@ -960,6 +969,9 @@ subroutine test_kde
    type(distribution_params_type) :: p
    real(r8)                       :: x, y, inv, max_diff, lx, mx, like, obs_param
    integer                        :: i, obs_dist_type
+
+   ! Read in the namelist
+   if(.not. module_initialized) call kde_module_init
 
    ! Test the boundary correction code against a Mathematica implementation
    x = 0.5_r8
