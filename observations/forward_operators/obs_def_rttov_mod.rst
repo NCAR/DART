@@ -13,18 +13,18 @@ sensors (e.g. ABI, AMSU-A, SEVIRI, ...) are supported
 (`see the complete list here <https://nwp-saf.eumetsat.int/site/software/rttov/documentation/platforms-supported/>`__).
 For more detail on RTTOV see the `RTTOV user guide <https://www.nwpsaf.eu/site/software/rttov/documentation/>`__.
 
-.. seealso::
-   :doc:`Radiance_support` introduces DART-RTTOV, build instructions, 
-   and a list of known issues.
+.. Important::
+   See the documentation :doc:`../../guide/Radiance_support` that provides and introduction to DART-RTTOV, build instructions, 
+   and a list of tips and  known technical issues.
 
 RTTOV features two modules, RTTOV-direct for visible/infrared/microwave, 
 as well as RTTOV-scatt for microwave computations with full scattering.
 DART supports all features of RTTOV v12.3 as a pass-through from 
 the model to RTTOV, includes aerosols, trace gases, clouds, and atmospheric variables. 
-The code also includes directly specifying scattering properties.
+The code also allows for the specification of scattering properties.
 Moreover, DART supports RTTOV-direct in v13. 
 
-Observation types and their physical quantity are defined in `obs_def_rttov_mod.f90`. 
+Observation types and their physical quantity are defined in ``obs_def_rttov_mod.f90``. 
 For example, type ``NOAA_19_AMSUA_TB`` is defined in the line
 
 .. code::
@@ -92,9 +92,13 @@ localize the impact of the observation on the model state.
 
 In this example where the observation is infrared (IR) radiance, the  metadata is located after
 the ``visir`` line (Note: for microwave observations the metadata would follow ``mw``).  
-The metadata includes the azimuth and elevation angle of the satellite and the sun respectively. In this instance the sun azimuth/elevation are given missing values (-888888) because
-solar reflectance has no impact on an IR radiance observation.  Also note, the observation
-provides a 4 integer description (31/9/56/8) of the platform/satellite/sensor/channel
+The metadata includes the azimuth and elevation angle of the satellite and the sun respectively. In this example,
+the sun azimuth/elevation are given missing values (-888888) because
+solar reflectance has no impact on an IR radiance observation.
+In general, RTTOV is capable of calculating the impact of solar reflectance on radiance without
+azimuth/elevation, using instead the lat, lon, date and time information included in the obs_seq.out.
+
+Note that the observation provides a 4 integer description (31/9/56/8) of the platform/satellite/sensor/channel
 combination specific to this satellite observation.  For more information on this
 metadata refer to this GOES observation converter example here: 
 :doc:`../../observations/obs_converters/GOES/README`
@@ -102,14 +106,14 @@ metadata refer to this GOES observation converter example here:
 .. Important ::
 
     It is important that the user confirms the satellite integer metadata within
-    the obs_seq.out file matches the metadata within  rttov_sensor_db.csv.  Furthermore,
+    the ``obs_seq.out`` file matches the metadata within  ``rttov_sensor_db.csv``.  Furthermore,
     confirm that the channel as defined in the obs_seq.out file matches the channel
     available in the RTTOV coefficient file (.dat).  See next section for more information.
 
 RTTOV coefficient files
 -----------------------
 
-The RTTOV coefficent file (.dat) contains the appropriate parameter values for a specific satellite
+The RTTOV coefficent file (.dat) contains the parameter values for a specific satellite
 radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficent
 file.  For the ``HIMAWARI_9_AHI_RADIANCE`` observation type, for example, the following information
 is provided within ``rttov_sensor_db.csv``:
@@ -152,7 +156,7 @@ Remarks:
 ^^^^^^^^
 
 DART has a namelist option to use wind fetch from the model. With ``use_wfetch = .true.`` 
-DART will interpolate the quantity QTY_WIND_FETCH from the model to the observation location.
+DART will interpolate the quantity ``QTY_WIND_FETCH`` from the model to the observation location.
 
 
 Namelist
@@ -320,9 +324,11 @@ RTTOV v12 Namelist
    | apply_band_correction  | logical            | Whether to apply band correction from the coefficient field for      |
    |                        |                    | microwave data (see the RTTOV user guide).                           |
    +------------------------+--------------------+----------------------------------------------------------------------+
-   | cfrac_data             | logical            | Whether to use the cloud fraction from 0 to 1 (see the RTTOV user    |
-   |                        |                    | guide). If true, the QTY_CLOUD_FRACTION will be requested from the   |
-   |                        |                    | model. If false, it will be set to 1 everywhere.                     |
+   | cfrac_data             | logical            | Whether to use the cloud fraction from 0 to 1. If true,              |
+   |                        |                    | the QTY_CLOUD_FRACTION will be requested from the model. If false,   |
+   |                        |                    | it will be set to 1 everywhere.                                      |
+   |                        |                    | See :doc:`../../guide/Radiance_support` or the                       |
+   |                        |                    | RTTOV user guide for more information.                               |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | clw_data               | logical            | Whether to use cloud-liquid water data (see the RTTOV user guide).   |
    |                        |                    | If true, the QTY_CLOUDWATER_MIXING_RATIO will be requested from the  |
@@ -352,7 +358,8 @@ RTTOV v12 Namelist
    |                        |                    | of visible/infrared calculations. If true, the QTY_VERTICAL_VELOCITY |
    |                        |                    | will be requested from the model.                                    |
    +------------------------+--------------------+----------------------------------------------------------------------+
-   | clw_scheme             | integer            | The clw_scheme to use (see the RTTOV user guide).                    |
+   | clw_scheme             | integer            | The clw_scheme to use. For more information see the                  |
+   |                        |                    | :doc:`../../guide/Radiance_support` or the RTTOV user guide.         |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | clw_cloud_top          | real(r8)           | Lower hPa limit for clw calculations (see the RTTOV user guide).     |
    +------------------------+--------------------+----------------------------------------------------------------------+
@@ -389,9 +396,10 @@ RTTOV v12 Namelist
    | so2_data               | logical            | Whether to use sulfur dioxide (SO2) (see the RTTOV user guide). If   |
    |                        |                    | true, the QTY_SO2 will be requested from the model.                  |
    +------------------------+--------------------+----------------------------------------------------------------------+
-   | addsolar               | logical            | Whether to use solar angles (see the RTTOV user guide). If true, the |
+   | addsolar               | logical            | Whether to use solar angles for radiance calculation. If true, the   |
    |                        |                    | sun_ze and sun_az from the observation metadata will be used for     |
-   |                        |                    | visible/infrared.                                                    |
+   |                        |                    | visible/infrared. For more information see                           |
+   |                        |                    | :doc:`../../guide/Radiance_support` or the RTTOV user guide.         |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | rayleigh_single_scatt  | logical            | Whether to use only single scattering for Rayleigh scattering for    |
    |                        |                    | visible calculations (see the RTTOV user guide).                     |
