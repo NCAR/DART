@@ -17,6 +17,7 @@ LOCATION="threed_sphere"
 
 serial_programs=(
 test_parse_variables
+test_optional
 )
 
 

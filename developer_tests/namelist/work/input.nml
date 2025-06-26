@@ -12,7 +12,6 @@
 
 &utilities_nml
    module_details = .false.
-   write_nml = 'none'
   /
 
 &preprocess_nml
