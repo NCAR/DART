@@ -11,7 +11,7 @@ module kde_distribution_mod
 use types_mod,               only : r8, MISSING_R8
 
 use utilities_mod,           only : E_ERR, E_MSG, error_handler, do_nml_file, do_nml_term, nmlfileunit, &
-                                    find_namelist_in_file, check_namelist_read
+                                    find_namelist_in_file, check_namelist_read, NAMELIST_NOT_PRESENT
 
 use sort_mod,                only : sort
 
@@ -66,10 +66,11 @@ subroutine kde_module_init
    ! Reads the namelise kde_nml to determine the value of quadrature_order
 
    ! Read the namelist entry
-   call find_namelist_in_file("input.nml", "kde_nml", iunit) ! <- this will kill the program if kde_nml is not in the input.nml
-   read(iunit, nml = kde_nml, iostat = io)
-   call check_namelist_read(iunit, io, "kde_nml")
-
+   call find_namelist_in_file("input.nml", "kde_nml", iunit, optional_nml = .true.)
+   if (iunit /= NAMELIST_NOT_PRESENT) then
+      read(iunit, nml = kde_nml, iostat = io)
+      call check_namelist_read(iunit, io, "kde_nml")
+   endif
    ! These log the namelist values
    if (do_nml_file()) write(nmlfileunit,nml=kde_nml)
    if (do_nml_term()) write(     *     ,nml=kde_nml)
