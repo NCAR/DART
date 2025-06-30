@@ -1,3 +1,5 @@
+.. _FO:
+
 =================
 Forward Operators
 =================
@@ -93,7 +95,7 @@ present in the model state.
 See the radar forward operator for an example in the 'expected fall velocity'
 section.  If this has already been computed by the model and is
 available in the model state, the code interpolates in this field
-and returns.  If not, it interpolates values for other consitituent
+and returns.  If not, it interpolates values for other constituent
 fields and does a generic computation.
 
 
@@ -128,12 +130,12 @@ is desired. For example, if the forward operator is being read from a file, or t
 Or when debugging it may be easier to have 1 task per ensemble member.
 
 To transpose and do the forward operators without using MPI one-sided communication, 
-you can use the filter_nml namelist option ``distribute_state = .false.`` 
+you can use the filter_nml namelist option ``distributed_state = .false.`` 
 The process is the same as above except the window creation and destruction are transposing the state.
 
 #. State window created (state ensemble is transposed var complete)
 #. Forward operator called
-#. State window destroyed (state ensemble is tranaposed to copy complete)
+#. State window destroyed (state ensemble is transposed to copy complete)
 #. QC calculated for the ensemble
 
 Note, that if you have fewer tasks than ensemble members some tasks will still be doing vectorized forward operators
