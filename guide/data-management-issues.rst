@@ -25,7 +25,7 @@ There are three phases in DART that require access to the whole state vector:
 
 1. IO - reading and writing of the model state.
 2. Forward Operator (FO) computation. 
-3. Conversion of of a observation or state location from one vertical coordinate system to another.
+3. Conversion of an observation or state location from one vertical coordinate system to another.
 
 There is an inherent trade-off between memory usage and internode communication.
 DART provides multiple runtime strategies to balance this trade-off: 
@@ -105,7 +105,8 @@ Conversion of observation or state location
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The vertical location of an observation or state element may depend on the model state. For example, 
-an observation might be reported in pressure coordinates, requiring conversion based on the model state.
+an observation might be reported in pressure coordinates, requiring conversion to, for example, height,
+based on the model state.
 For localization calculations, all MPI tasks use the ensemble mean state for any vertical coordinate 
 transformations that depend on the model state.
 
