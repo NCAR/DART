@@ -148,8 +148,8 @@ Available distributions
 
    KDE_DISTRIBUTION and KDE_FILTER use Gauss-Legendre quadrature to evaluate cumulative
    distribution functions. The computational cost can be reduced by reducing the order
-   of the quadrature from 9 to 5. This is accomplished by adding an optional namelist,
-   named kde_nml, to input.nml. In this namelist set quadrature_order = 5.
+   of the quadrature from 9 to 7 or 5. This is accomplished by adding an optional namelist,
+   named kde_nml, to input.nml. In this namelist set quadrature_order = 5 or 7.
 
 .. _Default values:
 

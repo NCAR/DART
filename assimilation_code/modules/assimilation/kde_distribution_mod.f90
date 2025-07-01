@@ -380,6 +380,16 @@ function gq(left, right, p) result(q)
                          0._r8, &
                          sqrt(3._r8 / 5._r8)] ! Gauss quadrature points
             w(1:3)   = [5._r8 / 9._r8, 8._r8 / 9._r8, 5._r8 / 9._r8] ! GQ weights
+         case(7)
+            k_max = 4
+            chi(1:4) = [-sqrt((3._r8 + 2._r8 * sqrt(6._r8 / 5._r8)) / 7._r8), &
+                        -sqrt((3._r8 - 2._r8 * sqrt(6._r8 / 5._r8)) / 7._r8), &
+                         sqrt((3._r8 - 2._r8 * sqrt(6._r8 / 5._r8)) / 7._r8), &
+                         sqrt((3._r8 + 2._r8 * sqrt(6._r8 / 5._r8)) / 7._r8)] ! Gauss quadrature points
+            w(1:4) = [(18._r8 - sqrt(30._r8)) / 36._r8, &
+                      (18._r8 + sqrt(30._r8)) / 36._r8, &
+                      (18._r8 + sqrt(30._r8)) / 36._r8, &
+                      (18._r8 - sqrt(30._r8)) / 36._r8] ! GQ weights
          case(9)
             k_max = 5
             chi(1:5) = [-sqrt(5._r8 + 2._r8 * sqrt(10._r8 / 7._r8)) / 3._r8, &
@@ -393,7 +403,7 @@ function gq(left, right, p) result(q)
                       (322._r8 + 13._r8 * sqrt(70._r8)) / 900._r8, &
                       (322._r8 - 13._r8 * sqrt(70._r8)) / 900._r8] ! GQ weights
          case DEFAULT
-            write(errstring, *) 'unrecognized quadrature_order ', quadrature_order, ' allowable values are 5 and 9'
+            write(errstring, *) 'unrecognized quadrature_order ', quadrature_order, ' allowable values are 5, 7, and 9'
             call error_handler(E_ERR, 'kde_distribution_mod:gq', errstring, source)
       end select
    end if
@@ -417,68 +427,6 @@ function gq(left, right, p) result(q)
    end do
 
 end function gq
-
-!---------------------------------------------------------------------------
-
-function integrate_pdf(x, p) result(q)
-   real(r8)                                   :: q
-   real(r8),                       intent(in) :: x
-   type(distribution_params_type), intent(in) :: p
-
-   ! Uses quadrature to approximate \int_{-\infty}^x l(x; y) p(s) ds where
-   ! p(s) is the prior pdf and l(x; y) is the likelihood. The interval is
-   ! broken up into sub-intervals whose boundaries are either one of the bounds,
-   ! or the edge of support of one of the kernels, or the value of x. On each
-   ! sub-interval the integral is approximated using Gauss-Legendre quadrature
-   ! with 5 points. When the likelihood is flat and the boundaries are far
-   ! from the ensemble, the result is exact up to roundoff error.
-
-   real(r8) :: y
-   real(r8) :: obs_param ! See likelihood function for interpretation
-   integer  :: obs_dist_type  ! See likelihood function for interpretation
-   real(r8) :: edges(2*p%ens_size)
-   real(r8) :: left, right ! edges of current sub-interval, quadrature point
-   integer  :: i
-
-   ! Unpack obs info from param struct
-   y         = p%more_params(p%ens_size + 2)
-   obs_param = p%more_params(p%ens_size + 3)
-   obs_dist_type  = nint(p%more_params(p%ens_size + 4))
-
-   edges(1:p%ens_size)                = p%ens(1:p%ens_size) - p%more_params(1:p%ens_size)
-   edges(p%ens_size + 1:2*p%ens_size) = p%ens(1:p%ens_size) + p%more_params(1:p%ens_size)
-   edges(:) = sort(edges(:)) ! If bandwidths were constant we would not need to sort
-
-   ! If x is outside the support of the pdf then we can skip the quadrature.
-   left = edges(1)
-   if (p%bounded_below) left = max(left, p%lower_bound)
-   if (x <= left) then
-      q = 0._r8
-      return
-   end if
-
-   ! Important to use x > upper_bound here because I use
-   ! x = upper_bound to compute the normalization constant.
-   if ((p%bounded_above) .and. (x > p%upper_bound)) then
-      q = 1._r8
-      return
-   end if
-
-   ! If we haven't returned yet, then there is at least one subinterval.
-   i = 1
-   right = min(x, edges(2)) ! left was computed above
-   q = gq(left, right, p)
-   do while ((x > right) .and. (i+1 < 2*p%ens_size))
-      i     = i + 1
-      left  = right
-      right = min(x, edges(i+1))
-      q     = q + gq(left, right, p)
-   end do
-   ! Note that it is possible to have maxval(edges) < x < upper_bound,
-   ! but that last sub-interval from maxval(edges) to x has zero integral,
-   ! so it can be safely skipped.
-
-end function integrate_pdf
 
 !-----------------------------------------------------------------------
 
@@ -1272,22 +1220,19 @@ subroutine test_kde
 
    call deallocate_distribution_params(p)
 
-   ! Test the quadrature: Construct a case with bounds, but where the bounds are
-   ! far enough from the data that they are not used. In this case the kernel
-   ! density estimate should integrate exactly to one.
-   call pack_kde_params(ens_size, .true., .true., -2._r8, 2._r8, &
-      ensemble, 0._r8, 1._r8, obs_dist_types%uninformative, p)
-   p%lower_bound = -20._r8
-   p%upper_bound =  20._r8
-   p%more_params(ens_size + 1) = 1._r8
+   ! Test the quadrature: Construct a case with median at 0, and check
+   ! whether cdf evaluated at 0 is 0.5. With only 2 ensemble members
+   ! we need a wide likelihood to get accuracy.
+   call pack_kde_params(ens_size, .false., .false., 0._r8, 0._r8, &
+      ensemble, 0._r8, 900._r8, obs_dist_types%normal, p)
 
-   y = integrate_pdf(0._r8, p)
+   y = kde_cdf_params(0._r8, p)
    max_diff = abs(0.5_r8 - y)
    write(*, *) '----------------------------'
    write(*, *) 'test quadrature'
    write(*, *) 'abs difference is ', max_diff
-   write(*, *) 'abs difference should be less than 1e-15'
-   if (max_diff > 1E-15_r8) then
+   write(*, *) 'abs difference should be less than 1e-8'
+   if (max_diff > 1E-8_r8) then
       write(*, *) 'FAIL'
    else
       write(*, *) 'PASS'
