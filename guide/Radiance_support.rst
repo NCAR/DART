@@ -38,10 +38,10 @@ This documentation describes:
 Compilation and setup
 ---------------------
 
-At present, DART supports RTTOV v12.3 and v13.  
-In version 12.3, RTTOV-direct for visible/infrared/microwave without 
-scattering as well as RTTOV-scatt for microwave computations with full 
-scattering are supported. The interface to v13 is limited to RTTOV-direct.
+New versions of RTTOV are released regularly.
+At present, DART supports RTTOV v12.3 and v13.
+To simulate microwave radiances, use RTTOV v12.3.
+For UV/visible/infrared radiances, you can use either RTTOV v12.3 or v13.
 
 If you haven't compiled DART before, it is recommended to compile DART
 without RTTOV first, to confirm that everything is working. Refer to the 
