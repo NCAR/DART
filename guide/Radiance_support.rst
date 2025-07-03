@@ -51,20 +51,21 @@ To compile DART with RTTOV, perform the following steps:
 
 **1. Install RTTOV**
 
-Download the RTTOV code and coefficients (for the sensors you need) from this 
-`page. <https://www.nwpsaf.eu/site/software/rttov>`__
-You will need to register for a free account before downloading the code.
-Read the RTTOV user guide carefully as DART primarily passes the atmospheric model state variables
-from the atmospheric model to RTTOV. Refer to the setup instructions included with the RTTOV documentation.
-Place the coeffient files in the respective directories.
-Be aware that there are more coefficient files available once you
-download the RTTOV package. There is a
-``rtcoef_rttov12/rttov_coef_download.sh`` script that assists in the
-process and you can select specific coefficient files or large batches.
-There is also a website
-for `RTTOVv12 <https://nwp-saf.eumetsat.int/site/software/rttov/download/coefficients/rttov-v12-coefficient-download/>`__ 
-and `RTTOVv13 <https://nwp-saf.eumetsat.int/site/software/rttov/download/coefficients/rttov-v13-coefficient-download/>`__ 
-coefficent files.  Build RTTOV as per the instructions.
+Downloading the RTTOV package requires a free account 
+`at the EUMETSAT website <https://www.nwpsaf.eu/site/software/rttov>`__. 
+Detailed installation instructions can be found in the 'quick start beginners guide' 
+under `Software-RTTOV-Documentation <https://nwp-saf.eumetsat.int/site/software/rttov/documentation/>`__.
+
+Apart from the RTTOV source code, you will also need to download the
+RTTOV coefficient files. These files contain the necessary coefficients
+for the radiative transfer calculations. The coefficient files are
+available for different satellite instruments and sensors, and they are
+essential for simulating the radiances.
+You can select individual files or download all using the ``rttov_coef_download.sh`` script 
+which comes with the RTTOV package in the ``rtcoef_rttov?/`` directory.
+
+Lastly, read the RTTOV user guide carefully as DART primarily passes the 
+atmospheric model state variables from the atmospheric model to RTTOV.
 
 **2. Include RTTOV to the DART build system**
 
