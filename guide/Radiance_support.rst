@@ -265,8 +265,10 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
       This is because large particles tend to have a smaller scattering cross-section than many small particles of the same total mass.
       The percentage value can be seen as a tuning parameter in real applications.
 
-Li et al. (2022) “Satellite All-Sky Infrared Radiance Assimilation: Recent Progress and Future Perspectives.” Advances in Atmospheric Sciences 39(1): 9–21. doi:10.1007/s00376-021-1088-9.
-Kostka et al. (2014) “Observation Operator for Visible and Near-Infrared Satellite Reﬂectances.” Journal of Atmospheric and Oceanic Technology 31(6): 1216–33. doi:10.1175/JTECH-D-13-00116.1.
+
+References
+  *  Li et al. (2022) “Satellite All-Sky Infrared Radiance Assimilation: Recent Progress and Future Perspectives.” Advances in Atmospheric Sciences 39(1): 9–21. doi:10.1007/s00376-021-1088-9.
+  *  Kostka et al. (2014) “Observation Operator for Visible and Near-Infrared Satellite Reﬂectances.” Journal of Atmospheric and Oceanic Technology 31(6): 1216–33. doi:10.1175/JTECH-D-13-00116.1.
 
 
 **Specifying addsolar namelist option:** See :ref:`obs_def_rttov_mod` for namelist options.
