@@ -98,7 +98,7 @@ adding ``obs_def_rttov_mod.f90`` to the ``&preprocess`` section of the ``input.n
 .. Important::
    Use ``obs_def_rttov13_mod.f90`` to compile DART with RTTOV v13.
 
-**4. For your model of choice, run ``./quickbuild.sh``.**
+**4. For your model of choice, run ./quickbuild.sh.**
 
 .. _workflow:
 
