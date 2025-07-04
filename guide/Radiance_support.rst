@@ -212,7 +212,19 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
 
 #. Ice clouds
 
-   *  See the RTTOV user guide.
+   *  There is a large uncertainty in the representation of ice-phase clouds in forecast models and 
+      radiative transfer models (see Li et al. 2022), due to different assumptions in particle size distributions
+      and particle shape.
+   *  For a realistic simulation of infrared radiances, include at least the hydrometeor categories
+      `ice` and `snow` in the DART state vector. Only the variables in the DART state vector 
+      will be passed to RTTOV to compute the expected radiance.
+   *  Regarding visible reflectance, you may want to follow Kostka et al. (2014), section 3.a, 
+      and modify ``obs_def_rttov_mod.f90`` to only count 10% of 'snow' towards the cloud ice concentration.
+      This is because large particles tend to have a smaller scattering cross-section than many small particles of the same total mass.
+      The percentage value can be seen as a tuning parameter in real applications.
+
+Li et al. (2022) “Satellite All-Sky Infrared Radiance Assimilation: Recent Progress and Future Perspectives.” Advances in Atmospheric Sciences 39(1): 9–21. doi:10.1007/s00376-021-1088-9.
+Kostka et al. (2014) “Observation Operator for Visible and Near-Infrared Satellite Reﬂectances.” Journal of Atmospheric and Oceanic Technology 31(6): 1216–33. doi:10.1175/JTECH-D-13-00116.1.
 
 
 **Specifying addsolar namelist option:** See :ref:`obs_def_rttov_mod` for namelist options.
@@ -278,3 +290,4 @@ address the following challenges in satellite DA.
    Another approach is to assign a vertical location based on the maximum peak of 
    the weighting function (i.e. vertical location of highest sensitivity to property of interest) 
    or the cloud-top as appropriate.
+
