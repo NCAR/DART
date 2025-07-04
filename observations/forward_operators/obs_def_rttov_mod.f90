@@ -1831,7 +1831,7 @@ if (clw_data) then
 
    if (clw_scheme == 2) then
       allocate(clouds%clwde(ens_size, numlevels)) 
-      clouds%clwde = 0.0_jprb
+      clouds%clwde = 20.0_jprb  ! reasonable default value
    end if
 end if
 
@@ -1845,7 +1845,7 @@ if (ciw_data) then
    clouds%ciw = 0.0_jprb
    if (ice_scheme == 1 .and. use_icede) then
       allocate(clouds%icede(ens_size, numlevels))
-      clouds%icede = 0.0_jprb
+      clouds%icede = 60.0_jprb  ! reasonable default value
    end if
 end if
 
