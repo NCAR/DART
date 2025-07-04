@@ -183,8 +183,9 @@ clouds, trace gases, and aerosols) that can be specified. See
 Tips for the assimilation of visible/infrared radiances 
 -------------------------------------------------------
 
-A good overview over the most important parameters for the radiative transfer
-can be found in the RTTOV user guide section "Simulation of UV, visible and IR cloud-affected radiances".
+We recommended to study the user guide for `RTTOV-v12 <https://nwp-saf.eumetsat.int/site/software/rttov/rttov-v12/>`__ 
+or `RTTOV-v13 <https://nwp-saf.eumetsat.int/site/software/rttov/rttov-v13/>`__,
+especially section 8.5. "Simulation of UV, visible and IR cloud-affected radiances".
 
 In general, the representation of clouds differs among microphysics parameterizations, which can lead
 to biases in comparison with observed radiances.
