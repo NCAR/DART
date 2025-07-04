@@ -80,12 +80,17 @@ Add a selection of the observation types listed in
 ``obs_def_rttov_mod.f90`` to the ``input.nml`` namelist 
 (either to ``assimilate_these_obs_types`` or ``evaluate_these_obs_types``).
 
-Include the necessary observation operators within the RTTOV-DART build by 
-adding ``obs_def_rttov_mod.f90`` or ``obs_def_rttov13_mod.f90`` to the ``&preprocess`` section of the ``input.nml`` file:
+Include the RTTOV observation operators to the build process by
+extending ``input_files`` and ``quantity_files`` in the ``&preprocess`` section of the ``input.nml`` file:
+
 
 .. code-block:: bash
 
    &preprocess_nml
+      quantity_files          =  '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
+                                 '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90',
+                                 '../../../assimilation_code/modules/observations/chemistry_quantities_mod.f90',
+                                 '../../../assimilation_code/modules/observations/land_quantities_mod.f90'
       input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                                  '../../../observations/forward_operators/obs_def_radar_mod.f90',
                                  '../../../observations/forward_operators/obs_def_metar_mod.f90',
@@ -93,6 +98,7 @@ adding ``obs_def_rttov_mod.f90`` or ``obs_def_rttov13_mod.f90`` to the ``&prepro
                                  '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
                                  '../../../observations/forward_operators/obs_def_gts_mod.f90',
                                  '../../../observations/forward_operators/obs_def_rttov_mod.f90',
+
 
 **4. For your model of choice, run ./quickbuild.sh.**
 
