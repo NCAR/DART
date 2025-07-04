@@ -264,8 +264,7 @@ public repository. Please issue a pull request to
 https://github.com/NCAR/DART.
 
 Note that some of the observation converters may require the HDF-EOS
-libraries. See the BUILDME script in each directory for help in building
-these observation converters.
+libraries, available from https://hdfeos.org/.
 
 .. _knownissues:
 
