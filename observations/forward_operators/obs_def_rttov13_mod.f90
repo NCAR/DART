@@ -1838,7 +1838,7 @@ if (clw_data) then
 
    if (clw_scheme == 2) then
       allocate(clouds%clwde(ens_size, numlevels)) 
-      clouds%clwde = 20.0_jprb  ! lkugler default value
+      clouds%clwde = 20.0_jprb  ! reasonable default value
    end if
 end if
 
@@ -1852,7 +1852,7 @@ if (ciw_data) then
    clouds%ciw = 0.0_jprb
    if (ice_scheme == 1 .and. use_icede) then
       allocate(clouds%icede(ens_size, numlevels))
-      clouds%icede = 60.0_jprb  ! lkugler default value
+      clouds%icede = 60.0_jprb  ! reasonable default value
    end if
 end if
 
@@ -3732,11 +3732,12 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
    end if
 
-   ! clwde should be specified when clw_scheme == 2 (takes particle diameter from model); clw_scheme = 1 would parametrize diameters depending on cloud type
    if (clw_scheme == 2) then
-      ! The effective diameter must also be specified with clw_scheme 2
-      ! call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
-      !clouds%clwde(:, i) = 2*1e6*clouds%clwde(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
+      ! clw_scheme = 1 would parameterize diameters depending on cloud type
+      ! clw_scheme = 2 requires setting clwde (effective diameter)
+      ! by default clwde is read from model
+      ! comment out the next line to use the default clwde value
+      call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
       call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
       if (return_now) return
    end if
@@ -3762,9 +3763,10 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
 
       if (ice_scheme == 1 .and. use_icede) then
-         ! if use_icede with ice_scheme 1, must also specify ice effective diameter
-         !call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
-         !clouds%icede(:, i) = 2*1e6*clouds%icede(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
+         ! in this case, we must specify icede (ice effective diameter)
+         ! by default icede is read from model
+         ! comment out the next line to use the default icede value
+         call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
          call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
