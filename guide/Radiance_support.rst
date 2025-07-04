@@ -57,10 +57,7 @@ Detailed installation instructions can be found in the 'quick start beginners gu
 under `Software-RTTOV-Documentation <https://nwp-saf.eumetsat.int/site/software/rttov/documentation/>`__.
 
 Apart from the RTTOV source code, you will also need to download the
-RTTOV coefficient files. These files contain the necessary coefficients
-for the radiative transfer calculations. The coefficient files are
-available for different satellite instruments and sensors, and they are
-essential for simulating the radiances.
+RTTOV coefficient files, available for different satellite instruments and sensors.
 You can select individual files or download all using the ``rttov_coef_download.sh`` script 
 which comes with the RTTOV package in the ``rtcoef_rttov?/`` directory.
 
@@ -82,7 +79,7 @@ Add a selection of the observation types listed in
 (either to ``assimilate_these_obs_types`` or ``evaluate_these_obs_types``).
 
 Include the necessary observation operators within the RTTOV-DART build by 
-adding ``obs_def_rttov_mod.f90`` to the ``&preprocess`` section of the ``input.nml`` file:
+adding ``obs_def_rttov_mod.f90`` or ``obs_def_rttov13_mod.f90`` to the ``&preprocess`` section of the ``input.nml`` file:
 
 .. code-block:: bash
 
@@ -95,9 +92,6 @@ adding ``obs_def_rttov_mod.f90`` to the ``&preprocess`` section of the ``input.n
                                  '../../../observations/forward_operators/obs_def_gts_mod.f90',
                                  '../../../observations/forward_operators/obs_def_rttov_mod.f90',
 
-.. Important::
-   Use ``obs_def_rttov13_mod.f90`` to compile DART with RTTOV v13.
-
 **4. For your model of choice, run ./quickbuild.sh.**
 
 .. _workflow:
@@ -105,23 +99,63 @@ adding ``obs_def_rttov_mod.f90`` to the ``&preprocess`` section of the ``input.n
 High-level workflow
 -------------------
 
-To assimilate synthetic radiance observations in an OSSE (Observing System Simulation Experiment)
-you will need to do the following:
+Before running ``./perfect_model_obs`` or ``./filter``, you need to link 
+the RTTOV coefficient files to the expected coefficient filename in 
+the work directory of your model.
+For example, I needed to link these files:
 
+.. code-block:: bash
+
+   DART=/path/to/DART
+   RTTOV=/path/to/RTTOV13
+   cd $DART"/models/wrf/work/"
+   ln -sf $DART"/observations/forward_operators/rttov_sensor_db.csv" .
+   ln -sf $RTTOV"/rtcoef_rttov13/cldaer_visir/sccldcoef_msg_4_seviri.dat"  .
+   ln -sf $RTTOV"/rtcoef_rttov13/mfasis_lut/rttov_mfasis_cld_msg_4_seviri_deff.H5" rttov_mfasis_cld_msg_4_seviri.H5
+
+
+The input.nml must be edited to
+
+   *  select the RTTOV options
+   *  the WRF variables necessary to support the forward operators
+   *  all the rest of the DA options
+
+
+You can test the DART-RTTOV interface by the following steps:
+
+   -  Prepare a nature run state file. 
+      If you are using WRF, you can copy any wrfout file to the work directory 
+      and rename it to ``wrfinput_d01``. If you use WRF in ideal mode, make sure 
+      that the file contains valid geographical coordiantes.
    -  Create an observation sequence file using ``./create_obs_sequence``
       and ``./create_fixed_network_seq`` as detailed in the DART
       :doc:`creating-obs-seq-synthetic` documentation to generate an ``obs_seq.in``
-   -  Run ``./perfect_model_obs`` to generate synthetic obs within the ``obs_seq.out``
-   -  Setup your ensemble as appropriate
-   -  Run ``./filter`` and analyze the results in the usual way
+      for the same valid time as the nature run state file.
+   -  Run ``./perfect_model_obs`` to generate a synthetic observation
+   -  Check the file ``obs_seq.out`` if there is a QC value not equal 0 (see below).
 
-To assimilate real radiance observations in an OSE (Observing System Experiment)
-you will need to do the following:
+The advantage of doing a simple perfect_model_obs (pmo) test is that it runs the forward operators 
+exactly as is done in filter, at a much lower cost (only need 1 WRF state!). 
+If the DART QC code in the obs_seq.out is not 0, there is a problem. If the forward 
+operator fails in pmo, it gets assigned a QC value of 1000 in addition to any error code 
+from the model. For instance, an error code of 1003 means that the WRF 
+``model_mod:model_interpolate()`` routine returned an error code of 3 ... 
+"3 = unsupported obs kind". You can determine what variables were needed by the 
+``$DART/observations/forward_operators/obs_def_rttov_mod.f90`` 
+get_expected_radiance() routine and check to see that they are specified to be part of the DART 
+WRF state and that the WRF model_interpolate() routine supports them.
 
-   -  Run the observation converter following the :doc:`creating-obs-seq-real` documentation 
-      for your desired radiance observation.
-   -  Setup your ensemble as appropriate
-   -  Run ``./filter`` and analyze the results in the usual way
+
+**To assimilate real observations**
+Running a real experiment requires real observations. 
+Run an observation converter following the :doc:`creating-obs-seq-real` documentation.
+At present, there are three observation converters: AIRS, GMI, and AMSU/A.
+Be advised that the units of the forward operator must match the units of the observations 
+in the observation sequence files. Presently, the DART/RTTOV implementation is such that 
+all observations of QTY_BRIGHTNESS_TEMPERATURE are in degrees Kelvin, all observations of 
+QTY_RADIANCE are as described in the RTTOV v12 user guide V1.3 (p54): "mW/cm-1/sr/sq.m" 
+(Doc ID: NWPSAF-MO-UD-037, Date: 05/03/2019)
+
 
 .. _inputdata:
 
