@@ -1,3 +1,5 @@
+.. index:: radiance
+
 Introduction to DART’s support for RTTOV
 ========================================
 
