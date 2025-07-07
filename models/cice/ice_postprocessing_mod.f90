@@ -7,7 +7,9 @@ module ice_postprocessing_mod
 
 use types_mod, only : r8
 use  utilities_mod, only : E_ERR, error_handler
-use  netcdf_utilities_mod, only : nc_check
+use  netcdf_utilities_mod, only : nc_check, nc_get_variable_size, &
+                                  nc_get_variable, nc_open_file_readonly, &
+                                  nc_close_file
 use netcdf
 
 implicit none
@@ -15,7 +17,7 @@ private
 
 ! routines available from this module
 public :: area_simple_squeeze, volume_simple_squeeze, &
-          cice_rebalancing 
+          cice_rebalancing, read_cice_state_variable
 
 ! general variable initialization
 character(len=3)   :: nchar
@@ -27,61 +29,88 @@ integer :: n, i, j
 contains
 ! -----------------------------------------------------------------------------
 
-subroutine get_3d_variable(ncid, varname, var, filename)
+subroutine read_cice_state_variable(varname, var_array, filename)
 
-    integer,               intent(in)  :: ncid
-    character(len=*),      intent(in)  :: varname
-    real(r8), allocatable, intent(out) :: var(:,:,:)
-    character(len=*),      intent(in)  :: filename
+   ! read a 3D variable from a CICE restart file. This code is based on
+   ! a similar routine in the CAM-FV model module, 'read_cam_phis_array',
+   ! but needed to be generalized to function for any user-supplied 3D 
+   ! variable. It replaces the previous 'get_3d_variable' routine in the 
+   ! 'dart_to_cice' module.
+
+   character(len=*),      intent(in)  :: filename
+   character(len=*),      intent(in)  :: varname
+   character(len=*),      parameter   :: routine = 'read_cice_state_variable'
+   real(r8), allocatable, intent(out) :: var_array(:,:,:)
+
+   integer :: ncid, nsize(3)     ! ni, nj, ncat
+
+   ncid = nc_open_file_readonly(filename, routine)
+
+   call nc_get_variable_size(ncid, varname, nsize, routine)
+   allocate(var_array(nsize(1), nsize(2), nsize(3)))
+
+   call nc_get_variable(ncid, varname, var_array, routine)
+
+   call nc_close_file(ncid, routine)
+
+end subroutine read_cice_state_variable
+
+
+! subroutine get_3d_variable(ncid, varname, var, filename)
+
+!     integer,               intent(in)  :: ncid
+!     character(len=*),      intent(in)  :: varname
+!     real(r8), allocatable, intent(out) :: var(:,:,:)
+!     character(len=*),      intent(in)  :: filename
  
-    integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
-    integer                               :: ndims, VarID, io
-    character(len=NF90_MAX_NAME)          :: dimName
+!     integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
+!     integer                               :: ndims, VarID, io
+!     character(len=NF90_MAX_NAME)          :: dimName
     
-    write(msgstring,*) trim(varname)//' '//trim(filename)
+!     write(msgstring,*) trim(varname)//' '//trim(filename)
     
-    io = nf90_inq_varid(ncid, trim(varname), VarID)
-    call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(msgstring))
+!     io = nf90_inq_varid(ncid, trim(varname), VarID)
+!     call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(msgstring))
     
-    io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=ndims)
-    call nc_check(io, 'dart_to_cice', 'inquire_variable '//trim(msgstring))
+!     io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=ndims)
+!     call nc_check(io, 'dart_to_cice', 'inquire_variable '//trim(msgstring))
     
-    if (ndims /= 3) then
-       write(string2,*) 'expected 3 dimension, got ', ndims
-       call error_handler(E_ERR,'dart_to_cice',msgstring,text2=string2)
-    endif
+!     if (ndims /= 3) then
+!        write(string2,*) 'expected 3 dimension, got ', ndims
+!        call error_handler(E_ERR,'dart_to_cice',msgstring,text2=string2)
+!     endif
     
-    dimLengths = 1
-    DimensionLoop : do i = 1,ndims
+!     dimLengths = 1
+!     DimensionLoop : do i = 1,ndims
     
-       write(string1,'(''inquire dimension'',i2,A)') i,trim(msgstring)
-       io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimLengths(i))
-       call nc_check(io, 'dart_to_cice', string1)
+!        write(string1,'(''inquire dimension'',i2,A)') i,trim(msgstring)
+!        io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimLengths(i))
+!        call nc_check(io, 'dart_to_cice', string1)
     
-    enddo DimensionLoop
+!     enddo DimensionLoop
     
-    allocate( var(dimLengths(1), dimLengths(2), dimLengths(3)) )
+!     allocate( var(dimLengths(1), dimLengths(2), dimLengths(3)) )
     
-    call nc_check(nf90_get_var(ncid, VarID, var), 'dart_to_cice', &
-             'get_var '//trim(msgstring))
+!     call nc_check(nf90_get_var(ncid, VarID, var), 'dart_to_cice', &
+!              'get_var '//trim(msgstring))
     
- end subroutine get_3d_variable
+!  end subroutine get_3d_variable
 
 ! -----------------------------------------------------------------------------
- subroutine write_3d_variable(ncid, varname, var, filename)
+!  subroutine write_3d_variable(ncid, varname, var, filename)
 
-   integer,               intent(in)  :: ncid
-   character(len=*),      intent(in)  :: varname, filename
-   real(r8), allocatable, intent(in)  :: var(:,:,:)
-   integer                            :: VarID, io
+!    integer,               intent(in)  :: ncid
+!    character(len=*),      intent(in)  :: varname, filename
+!    real(r8), allocatable, intent(in)  :: var(:,:,:)
+!    integer                            :: VarID, io
 
-   ! write a variable to the netcdf file
-   io = nf90_inq_varid(ncid, trim(varname), VarID)
-   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(filename))
-   io = nf90_put_var(ncid, VarID, var)
-   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(filename))
+!    ! write a variable to the netcdf file
+!    io = nf90_inq_varid(ncid, trim(varname), VarID)
+!    call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(filename))
+!    io = nf90_put_var(ncid, VarID, var)
+!    call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(filename))
 
-end subroutine write_3d_variable
+! end subroutine write_3d_variable
 
 ! ----------------------------------------------------------------------------- 
 

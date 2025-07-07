@@ -21,9 +21,9 @@ use  utilities_mod, only : initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, &
                            file_exist, error_handler, E_ERR, E_MSG, to_upper
 use ice_postprocessing_mod, only : cice_rebalancing, area_simple_squeeze, &
-                                   volume_simple_squeeze, get_3d_variable, &
-                                   write_3d_variable
-use  netcdf_utilities_mod,  only : nc_check
+                                   volume_simple_squeeze, read_cice_state_variable
+use  netcdf_utilities_mod,  only : nc_check, nc_open_file_readwrite, nc_put_variable, &
+                                   nc_close_file
 use  netcdf 
 
 implicit none
@@ -91,61 +91,35 @@ endif
 ! READ VARIABLES FROM RESTART FILES               
 !------------------------------------------------------------------
 ! Read the pre-assim variables
-call nc_check( nf90_open(trim(original_cice_restart_file), NF90_NOWRITE, ncid), &
-                  'dart_to_cice', 'open "'//trim(original_cice_restart_file)//'"')
-
-! get dimension information
-call nc_check(nf90_inq_dimid(ncid, "ncat", dimid), &
-              'dart_to_cice', 'inquire ncat dimid from "'//trim(original_cice_restart_file)//'"')
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Ncat), &
-              'dart_to_cice', 'inquire ncat from "'//trim(original_cice_restart_file)//'"')
-call nc_check(nf90_inq_dimid(ncid,"ni",dimid), &
-               'dart_to_cice', 'inquire ni dimid from "'//trim(original_cice_restart_file)//'"')
-call nc_check(nf90_inquire_dimension(ncid,dimid,len=Nx),&
-               'dart_to_cice', 'inquire ni from "'//trim(original_cice_restart_file)//'"')
-call nc_check(nf90_inq_dimid(ncid,"nj",dimid), &
-               'dart_to_cice', 'inquire nj dimid from "'//trim(original_cice_restart_file)//'"')
-call nc_check(nf90_inquire_dimension(ncid,dimid,len=Ny),&
-               'dart_to_cice', 'inquire nj from "'//trim(original_cice_restart_file)//'"')
-
-call get_3d_variable(ncid, 'aicen', aicen_original, original_cice_restart_file)
-call get_3d_variable(ncid, 'vicen', vicen_original, original_cice_restart_file)
-call get_3d_variable(ncid, 'vsnon', vsnon_original, original_cice_restart_file)
-
-call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(original_cice_restart_file))
+call read_cice_state_variable('aicen', aicen_original, original_cice_restart_file)
+call read_cice_state_variable('vicen', vicen_original, original_cice_restart_file)
+call read_cice_state_variable('vsnon', vsnon_original, original_cice_restart_file)
 
 ! Read the post-assim variables 
-call nc_check( nf90_open(trim(dart_to_cice_input_file), NF90_WRITE, ncid), &
-                  'dart_to_cice', 'open "'//trim(dart_to_cice_input_file)//'"')
+call read_cice_state_variable('aicen', aicen, dart_to_cice_input_file)
+call read_cice_state_variable('vicen', vicen, dart_to_cice_input_file)
+call read_cice_state_variable('vsnon', vsnon, dart_to_cice_input_file)
+call read_cice_state_variable('Tsfcn', Tsfcn, dart_to_cice_input_file)
+call read_cice_state_variable('qice001', qice001, dart_to_cice_input_file)
+call read_cice_state_variable('qice002', qice002, dart_to_cice_input_file)
+call read_cice_state_variable('qice003', qice003, dart_to_cice_input_file)
+call read_cice_state_variable('qice004', qice004, dart_to_cice_input_file)
+call read_cice_state_variable('qice005', qice005, dart_to_cice_input_file)
+call read_cice_state_variable('qice006', qice006, dart_to_cice_input_file)
+call read_cice_state_variable('qice007', qice007, dart_to_cice_input_file)
+call read_cice_state_variable('qice008', qice008, dart_to_cice_input_file)
+call read_cice_state_variable('sice001', sice001, dart_to_cice_input_file)
+call read_cice_state_variable('sice002', sice002, dart_to_cice_input_file)
+call read_cice_state_variable('sice003', sice003, dart_to_cice_input_file)
+call read_cice_state_variable('sice004', sice004, dart_to_cice_input_file)
+call read_cice_state_variable('sice005', sice005, dart_to_cice_input_file)
+call read_cice_state_variable('sice006', sice006, dart_to_cice_input_file)
+call read_cice_state_variable('sice007', sice007, dart_to_cice_input_file)
+call read_cice_state_variable('sice008', sice008, dart_to_cice_input_file)
+call read_cice_state_variable('qsno001', qsno001, dart_to_cice_input_file)
+call read_cice_state_variable('qsno002', qsno002, dart_to_cice_input_file)
+call read_cice_state_variable('qsno003', qsno003, dart_to_cice_input_file)
 
-! get the key restart variables post-assimilation (allocated in routine)
-call get_3d_variable(ncid, 'aicen', aicen, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'vicen', vicen, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'vsnon', vsnon, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'Tsfcn', Tsfcn, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice001', sice001, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice002', sice002, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice003', sice003, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice004', sice004, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice005', sice005, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice006', sice006, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice007', sice007, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'sice008', sice008, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice001', qice001, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice002', qice002, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice003', qice003, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice004', qice004, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice005', qice005, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice006', qice006, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice007', qice007, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qice008', qice008, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qsno001', qsno001, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qsno002', qsno002, dart_to_cice_input_file)
-call get_3d_variable(ncid, 'qsno003', qsno003, dart_to_cice_input_file)
-
-call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(dart_to_cice_input_file))
-
-! write(*,*) 'aicen dimensions are ', shape(aicen)
 !------------------------------------------------------------------
 ! PERFORM POSTPROCESSING 
 !------------------------------------------------------------------
@@ -214,35 +188,31 @@ end if
 !------------------------------------------------------------------
 ! WRITE VARIABLES TO RESTART FILE
 !------------------------------------------------------------------
-call nc_check( nf90_open(trim(postprocessed_output_file), NF90_WRITE, ncid), &
-                  'dart_to_cice', 'open "'//trim(postprocessed_output_file)//'"')
-
-call write_3d_variable(ncid, 'aicen', aicen, postprocessed_output_file)
-call write_3d_variable(ncid, 'vicen', vicen, postprocessed_output_file)
-call write_3d_variable(ncid, 'vsnon', vsnon, postprocessed_output_file)
-call write_3d_variable(ncid, 'Tsfcn', Tsfcn, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice001', qice001, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice002', qice002, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice003', qice003, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice004', qice004, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice005', qice005, postprocessed_output_file)     
-call write_3d_variable(ncid, 'qice006', qice006, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice007', qice007, postprocessed_output_file)
-call write_3d_variable(ncid, 'qice008', qice008, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice001', sice001, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice002', sice002, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice003', sice003, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice004', sice004, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice005', sice005, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice006', sice006, postprocessed_output_file)     
-call write_3d_variable(ncid, 'sice007', sice007, postprocessed_output_file)
-call write_3d_variable(ncid, 'sice008', sice008, postprocessed_output_file)
-call write_3d_variable(ncid, 'qsno001', qsno001, postprocessed_output_file)
-call write_3d_variable(ncid, 'qsno002', qsno002, postprocessed_output_file)
-call write_3d_variable(ncid, 'qsno003', qsno003, postprocessed_output_file)
-
-call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(postprocessed_output_file))
-
+ncid = nc_open_file_readwrite(postprocessed_output_file)
+call nc_put_variable(ncid, 'aicen', aicen)
+call nc_put_variable(ncid, 'vicen', vicen)
+call nc_put_variable(ncid, 'vsnon', vsnon)
+call nc_put_variable(ncid, 'Tsfcn', Tsfcn)
+call nc_put_variable(ncid, 'qice001', qice001)
+call nc_put_variable(ncid, 'qice002', qice002)
+call nc_put_variable(ncid, 'qice003', qice003)
+call nc_put_variable(ncid, 'qice004', qice004)
+call nc_put_variable(ncid, 'qice005', qice005)
+call nc_put_variable(ncid, 'qice006', qice006)
+call nc_put_variable(ncid, 'qice007', qice007)
+call nc_put_variable(ncid, 'qice008', qice008)
+call nc_put_variable(ncid, 'sice001', sice001)
+call nc_put_variable(ncid, 'sice002', sice002)
+call nc_put_variable(ncid, 'sice003', sice003)
+call nc_put_variable(ncid, 'sice004', sice004)
+call nc_put_variable(ncid, 'sice005', sice005)
+call nc_put_variable(ncid, 'sice006', sice006)
+call nc_put_variable(ncid, 'sice007', sice007)
+call nc_put_variable(ncid, 'sice008', sice008)
+call nc_put_variable(ncid, 'qsno001', qsno001)
+call nc_put_variable(ncid, 'qsno002', qsno002)
+call nc_put_variable(ncid, 'qsno003', qsno003)
+call nc_close_file(ncid)
 
 !------------------------------------------------------------------
 ! DEALLOCATE AND FINALIZE                
