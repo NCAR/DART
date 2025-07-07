@@ -1,0 +1,10 @@
+# Python files
+dist
+.ipynb_checkpoints
+__pycache__/
+*.egg-info/
+.coverage 
+
+# macOS
+.DS_Store
+.vscode
