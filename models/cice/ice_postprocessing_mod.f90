@@ -11,6 +11,11 @@ use  netcdf_utilities_mod, only : nc_check
 use netcdf
 
 implicit none
+private
+
+! routines available from this module
+public :: area_simple_squeeze, volume_simple_squeeze, &
+          cice_rebalancing 
 
 ! general variable initialization
 character(len=3)   :: nchar
