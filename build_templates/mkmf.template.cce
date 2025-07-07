@@ -18,6 +18,6 @@ LD = ftn
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O2  $(INCS)
+FFLAGS  = -O2 -hfp0 $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
