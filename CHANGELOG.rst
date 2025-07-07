@@ -22,7 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**June 6 2024 :: Bug-fix: nc_get_variable_info. Tag v11.11.1**
+**July 7 2024 :: Documentation for Data Management. Tag v11.11.2**
+
+- Document namelist options for state distribution and vertical conversion
+- IEEE flag set for Cray Compiler Environment mkmf.template
+
+**June 6 2025 :: Bug-fix: nc_get_variable_info. Tag v11.11.1**
 
 - nc_get_variable_info: Use local variable rather than optional argument which may not be present
 
