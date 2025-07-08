@@ -103,6 +103,9 @@ type(quad_interp_handle) :: interp_t_grid,  &
                             interp_u_grid,  &
                             interp_v_grid
 
+! Ocean vertical
+real(r8), allocatable :: zstar(:) ! pseudo depth for each layer
+
 ! Ocean vs land
 real(r8), allocatable :: wet(:,:), basin_depth(:,:)
 
@@ -125,9 +128,12 @@ character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = -1
 integer  :: assimilation_period_seconds   = -1
 character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
+character(len=NF90_MAX_NAME) :: layer_name = 'Layer'
+logical :: use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
-                     assimilation_period_seconds, model_state_variables
+                     assimilation_period_seconds, model_state_variables, layer_name, &
+                     use_pseudo_depth
 
 
 interface on_land
@@ -217,12 +223,13 @@ integer,            intent(out) :: istatus(ens_size)
 real(r8), parameter             :: CONCENTRATION_TO_PPT = 1000.0_r8
 
 integer  :: qty ! local qty
-integer  :: which_vert, four_ilons(4), four_ilats(4), lev(ens_size,2)
+integer  :: which_vert, four_ilons(4), four_ilats(4)
+integer  :: lev(ens_size,2), levz(2) ! level below and above obs
 integer  :: locate_status, quad_status
-real(r8) :: lev_fract(ens_size)
+real(r8) :: lev_fract(ens_size), levz_fract ! fraction between bottom and top level
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
-real(r8) :: expected(ens_size, 2) ! level below and above obs
+real(r8) :: expected(ens_size, 2)
 real(r8) :: expected_pot_temp(ens_size), expected_salinity(ens_size), pressure_dbars(ens_size)
 type(quad_interp_handle) :: interp
 integer :: varid, i, e, thick_id
@@ -251,10 +258,12 @@ if (varid < 0) then ! not in state
    return
 endif
 
-thick_id = get_varid_from_kind(dom_id, QTY_LAYER_THICKNESS)
-if (thick_id < 0) then ! thickness not in state
-   istatus = THICKNESS_NOT_IN_STATE
-   return ! HK else use pseudo depth?
+if (.not. use_pseudo_depth) then
+   thick_id = get_varid_from_kind(dom_id, QTY_LAYER_THICKNESS)
+   if (thick_id < 0) then ! thickness not in state
+      istatus = THICKNESS_NOT_IN_STATE
+      return
+   endif
 endif
 
 ! find which grid the qty is on
@@ -278,57 +287,74 @@ if (on_land(four_ilons, four_ilats)) then
    return
 endif
 
-! find which layer the observation is in. Layer thickness is a state variable.
-! HK @todo Do you need to use t_grid interp for thickess four_ilons, four_ilats?
-found(:) = .false.
-depth_at_x(:) = 0
-FIND_LAYER: do i = 2, nz
+if (use_pseudo_depth) then 
 
-   ! corner1
-   th_indx = get_dart_vector_index(four_ilons(1), four_ilats(1), i, dom_id, thick_id)
-   quad_vals(1, :) = get_state(th_indx, state_handle)
-   
-   ! corner2
-   th_indx = get_dart_vector_index(four_ilons(1), four_ilats(2), i, dom_id, thick_id)
-   quad_vals(2, :) = get_state(th_indx, state_handle)
-   
-   ! corner3
-   th_indx = get_dart_vector_index(four_ilons(2), four_ilats(1), i, dom_id, thick_id)
-   quad_vals(3, :) = get_state(th_indx, state_handle)
-   
-   ! corner4
-   th_indx = get_dart_vector_index(four_ilons(2), four_ilats(2), i, dom_id, thick_id)
-   quad_vals(4, :) = get_state(th_indx, state_handle)
-   
-   call quad_lon_lat_evaluate(interp, &
-                              lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
-                              four_ilons, four_ilats, &
-                              ens_size, &
-                              quad_vals, & ! 4 corners x ens_size
-                              thick_at_x, &
-                              quad_status)
-   if (quad_status /= 0) then
-      istatus(:) = THICKNESS_QUAD_EVALUATE_FAILED
+   ! Get the bounding vertical levels and the fraction between bottom and top
+   call find_level_bounds(lon_lat_vert(3), which_vert, levz, levz_fract, locate_status)
+   if (locate_status /= 0) then
+      istatus(:) = locate_status
+      return
+   endif   
+   ! pseudo depth is the same for all ensemble members
+   lev(:,1) = levz(1) ! layer_below
+   lev(:,2) = levz(2) ! layer_above
+   lev_fract(:) = levz_fract
+   depth_at_x(:) = zstar(levz(1)) ! pseudo depth at obs lat lon
+else
+
+   ! find which layer the observation is in. Layer thickness is a state variable.
+   ! HK @todo Do you need to use t_grid interp for thickness four_ilons, four_ilats?
+   found(:) = .false.
+   depth_at_x(:) = 0
+   FIND_LAYER: do i = 2, nz
+
+      ! corner1
+      th_indx = get_dart_vector_index(four_ilons(1), four_ilats(1), i, dom_id, thick_id)
+      quad_vals(1, :) = get_state(th_indx, state_handle)
+      
+      ! corner2
+      th_indx = get_dart_vector_index(four_ilons(1), four_ilats(2), i, dom_id, thick_id)
+      quad_vals(2, :) = get_state(th_indx, state_handle)
+      
+      ! corner3
+      th_indx = get_dart_vector_index(four_ilons(2), four_ilats(1), i, dom_id, thick_id)
+      quad_vals(3, :) = get_state(th_indx, state_handle)
+      
+      ! corner4
+      th_indx = get_dart_vector_index(four_ilons(2), four_ilats(2), i, dom_id, thick_id)
+      quad_vals(4, :) = get_state(th_indx, state_handle)
+      
+      call quad_lon_lat_evaluate(interp, &
+                                 lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
+                                 four_ilons, four_ilats, &
+                                 ens_size, &
+                                 quad_vals, & ! 4 corners x ens_size
+                                 thick_at_x, &
+                                 quad_status)
+      if (quad_status /= 0) then
+         istatus(:) = THICKNESS_QUAD_EVALUATE_FAILED
+         return
+      endif
+
+      depth_at_x = depth_at_x + thick_at_x
+
+      do e = 1, ens_size
+         if (lon_lat_vert(3) < depth_at_x(e)) then
+            lev(e,1) = i ! layer_below
+            lev(e,2) = i-1 ! layer_above
+            lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
+            found(e) = .true.
+            if (all(found)) exit FIND_LAYER
+         endif
+      enddo
+
+   enddo FIND_LAYER
+
+   if (any(found .eqv. .false.)) then
+      istatus(:) = OBS_TOO_DEEP
       return
    endif
 
-   depth_at_x = depth_at_x + thick_at_x
-
-   do e = 1, ens_size
-      if (lon_lat_vert(3) < depth_at_x(e)) then
-         lev(e,1) = i ! layer_below
-         lev(e,2) = i-1 ! layer_above
-         lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
-         found(e) = .true.
-         if (all(found)) exit FIND_LAYER
-      endif
-   enddo
-
-enddo FIND_LAYER
-
-if (any(found .eqv. .false.)) then
-   istatus(:) = OBS_TOO_DEEP
-   return
 endif
 
 if (on_basin_edge(four_ilons, four_ilats, ens_size, depth_at_x)) then
@@ -505,6 +531,21 @@ real(r8) :: depth(1)
 
 ! assert(which_vert == VERTISHEIGHT)
 
+if (use_pseudo_depth) then
+   do ii = 1, num
+      if (loc_qtys(ii) == QTY_DRY_LAND) then
+         call set_vertical(locs(ii), 0.0_r8, VERTISHEIGHT)
+      else
+         call get_model_variable_indices(loc_indx(ii), i, j, k)
+         depth(1) = zstar(k) ! pseudo depth
+         call set_vertical(locs(ii), depth(1), VERTISHEIGHT)
+      endif
+   enddo
+   istatus = 0
+   return
+endif
+
+! If not using pseudo depth, then sum the layer thicknesses to get vertical location
 thick_id = get_varid_from_kind(dom_id, QTY_LAYER_THICKNESS)
 if (thick_id < 0) then
    istatus = THICKNESS_NOT_IN_STATE
@@ -710,7 +751,11 @@ character(len=*), parameter :: routine = 'read_num_layers'
 
 ncid = nc_open_file_readonly(template_file)
 
-call nc_get_variable_size(ncid, 'Layer', nz)
+call nc_get_variable_size(ncid, layer_name, nz)
+if (use_pseudo_depth) then
+   allocate(zstar(nz))
+   call nc_get_variable(ncid, layer_name, zstar, routine)
+endif
 
 call nc_close_file(ncid)
 
@@ -1028,6 +1073,41 @@ read_model_time = set_time(0,dart_days)
 
 end function read_model_time
 
+!--------------------------------------------------------------------
+!                  Surface
+!                    --- 0 i=1  Interface pseudo-depth
+! Layer pseudo-depth  .
+!                    --- 1 i=2
+!                     .
+!                    --- 1 i=3
+!
+
+subroutine find_level_bounds(vert_loc, which_vert, lev, lev_fract, istatus)
+
+real(r8), intent(in) :: vert_loc   ! observation location
+integer,  intent(in) :: which_vert ! obs vertical coordinate
+integer,  intent(out) :: lev(2)    ! bottom, top
+real(r8), intent(out) :: lev_fract
+integer,  intent(out) :: istatus
+
+integer :: i
+
+! HK assert(which_vert == height meters) ?
+
+do i = 2, nz
+   if(vert_loc < zstar(i)) then
+      lev(1) = i   ! bottom
+      lev(2) = i-1 ! top
+
+      lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(2)) - zstar(lev(1)))
+      istatus = 0
+      return
+   endif
+enddo
+
+istatus = OBS_TOO_DEEP
+
+end subroutine find_level_bounds
 
 !===================================================================
 ! End of model_mod
