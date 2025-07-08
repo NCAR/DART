@@ -36,6 +36,7 @@ use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_MOLEC_OXYGEN_MIXING_RATIO, &
                                    QTY_ION_O_MIXING_RATIO, QTY_ATOMIC_H_MIXING_RATIO, &
                                    QTY_ATOMIC_OXYGEN_MIXING_RATIO, QTY_NITROGEN, &
+                                   !QTY_CO, QTY_NO2, QTY_CH2O, QTY_O3, &
                                    get_index_for_quantity, get_num_quantities, &
                                    get_name_for_quantity, get_quantity_for_type_of_obs
 

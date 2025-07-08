@@ -224,7 +224,7 @@
    vertical_localization_coord         = 'SCALEHEIGHT'
    no_obs_assim_above_level            = 5
    model_damping_ends_at_level         = -1
-   using_chemistry                = .false.
+   using_chemistry                = .true.
    assimilation_period_days       = 0
    assimilation_period_seconds    = 21600
    suppress_grid_info_in_output   = .false.
