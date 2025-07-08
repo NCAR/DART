@@ -1,0 +1,29 @@
+# Template for GNU Fortran Compiler on macOS (Apple M2)
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+MPIFC = mpif90
+MPILD = mpif90
+FC = gfortran
+LD = gfortran
+
+# NETCDF and LIBS need to be customized for your site
+NETCDF = /opt/homebrew
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+
+FFLAGS  = -O2 -march=native -ffree-form -ffree-line-length-none $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# for development or debugging, use this instead:
+# FFLAGS = -g -fbacktrace -ffree-form -ffree-line-length-none $(INCS)
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
