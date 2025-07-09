@@ -253,8 +253,11 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
 #. Liquid water clouds
 
    *  The Deff scheme (`clw_scheme=2`) computes optical properties from an effective particle diameter as input.
-      By default, DART accesses the model state variable associated with ``QTY_CLOUDWATER_DE`` in the DART namelist.
-      Alternatively, users can modify DART to specify a constant value.
+      If the model state variable associated with ``QTY_CLOUDWATER_DE`` exists in the DART state (&model_nml) then
+      DART will pass these modeled values onto RTTOV. Alternatively, if that model state does not exist, then
+      the code defaults to a contant value (e.g. clwde = 20.0 microns) as defined in the ``obs_def_rttov_mod.f90``.
+      Be aware that the code does not account for unit conversion.  WRF effective particle diameter, for example, 
+      requires a meter to micron conversion.
    *  The OPAC scheme computes optical properties based on the cloud type 
       (marine/continental, stratus/cumulus, clean/dirty). 
       If the user selects the OPAC scheme (`clw_scheme=1`), DART classifies the cloud type based 
@@ -273,8 +276,10 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
       `ice` and `snow` in the DART state vector. Only the variables in the DART state vector 
       will be passed to RTTOV to compute the expected radiance. If you want to prescribe the ice particle
       diameter directly from the model to RTTOV, assign the appropriate model variable to 
-      ``QTY_CLOUD_ICE_DE`` within ``&model_nml``.  If this is not defined then DART assumes
-      a fixed particle diameter.
+      ``QTY_CLOUD_ICE_DE`` within ``&model_nml`` and set ``ice_scheme = 1`` and ``use_icede = .true.``.  
+      If ``QTY_CLOUD_ICE_DE`` is not defined then DART defaults to a fixed particle 
+      size diameter (e.g. icede = 60.0 microns). Be aware that the code does not account for unit conversion.  
+      WRF effective particle diameter, for example, requires a meter to micron conversion.
    *  Regarding visible reflectance, DART follows Kostka et al. (2014), section 3.a, 
       and counts only 10% of 'snow' towards the cloud ice concentration.
       This is because large particles tend to have a smaller scattering cross-section than 
