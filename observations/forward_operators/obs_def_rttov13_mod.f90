@@ -2192,7 +2192,12 @@ DO imem = 1, ens_size
          end if 
 
          if (allocated(clouds % snow)) then
+            ! Following Kostka et al., 2014
+            if (is_vis) then
+            totalice(:) = totalice(:) + max(clouds % snow(imem,:)*0.10,0.0_r8)
+            else
             totalice(:) = totalice(:) + max(clouds % snow(imem,:),0.0_r8)
+            end if
          end if 
 
          if (allocated(clouds % graupel)) then
