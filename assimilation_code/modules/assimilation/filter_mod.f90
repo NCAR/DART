@@ -907,7 +907,7 @@ AdvanceTime : do
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-   ! This block applies posterior inflation
+   ! This block damps the posterior inflation
 
    if(do_ss_inflate(post_inflate)) then
 
