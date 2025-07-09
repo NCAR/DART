@@ -147,7 +147,8 @@ end subroutine read_cice_state_variable
  
     real(r8), dimension(Nx,Ny,Ncat) :: hicen_original, hsnon_original, aicen_temp
     real(r8), dimension(Nx,Ny) :: aice, aice_temp
-    real(r8), dimension(Ncat) :: hin_max, hcat_midpoint
+    real(r8), dimension(Ncat) :: hcat_midpoint
+    real(r8), dimension(0:Ncat) :: hin_max
     real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new
     real(r8), parameter :: Tsmelt = 0._r8,        &
                            cc3 = 3._r8,           &
