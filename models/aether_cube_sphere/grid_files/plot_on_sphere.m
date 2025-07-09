@@ -7,13 +7,17 @@ X = r * cos(P) .* cos(T);
 Y = r * cos(P) .* sin(T);
 Z = r * sin(P);
 
-% Temporarily make the color the face returned by get_face.m
+% Make the color the face returned by get_face.m
 for i = 1:size(X, 1)
    for j = 1:size(X, 2)
-      lat(i, j) = asind(Z(i, j));
-      lon(i, j) = atan2d(Y(i, j), X(i, j));
-      if(lon(i, j) < 0) lon(i, j) =  lon(i, j) + 360; end
-      face = get_face(lat(i, j), lon(i, j));
+      lat(i, j) = asin(Z(i, j));
+      lon(i, j) = atan2(Y(i, j), X(i, j));
+      if(lon(i, j) < 0) lon(i, j) =  lon(i, j) + 2*pi; end
+      if(lon(i, j) == 2*pi) lon(i, j) = 0; end
+      [face, lona, lonb, lena, lenb] = get_face(lat(i, j), lon(i, j));
+      tlona(i, j) = lona;
+      tlena(i, j) = lena;
+      
       C(i, j) = face;
    end
 end
@@ -31,38 +35,35 @@ RZ = [cosd(45) sind(45) 0; -sind(45) cosd(45) 0; 0 0 1];
 % Or rotate z the other way
 NRZ = [cosd(135) sind(135) 0; -sind(135) cosd(135) 0; 0 0 1];
 
-% The first rotation puts the poles at z = 0 and 45 and 225 degrees
-% The second rotation puts the poles at z = 0 and 135 and 315 degrees
-
 % First figure out where to stop each boundary line
-% This is where the longitude in the rotated boundary is also 90
-lond = 0;
-latd = -45:0.01:45;
-xt = cosd(latd) * cosd(lond);
-yt = cosd(latd) * sind(lond);
-zt = sind(latd);
+% This is where the longitude in the rotated boundary is also pi/2
+lon = 0;
+lat = -pi/4:0.001:pi/4;
+xt = cos(lat) * cos(lon);
+yt = cos(lat) * sin(lon);
+zt = sin(lat);
 vect = [xt; yt; zt];
 
 % Do first rotation
 rot_vect = RZ * RX * RY * vect;
 
 % Compute the longitude in the rotated space
-rlont = atan2d(rot_vect(2, :), rot_vect(1, :));
+rlont = atan2(rot_vect(2, :), rot_vect(1, :));
 
 % Find the index that is closest to zero
 [min_val, min_index] = min(abs(rlont));
-lat_min = latd(min_index);
-[max_val, max_index] = min(abs(rlont - 90));
-lat_max = latd(max_index);
+lat_min = lat(min_index);
+[max_val, max_index] = min(abs(rlont - pi/2));
+lat_max = lat(max_index);
 
 
 % Now add on single highlighted longitude great circles
-for lond = 0:90:270
+for lon = 0:pi/2:3*pi/2
    % Do a whole bunch of latitudes to get a nice line
-   latd = lat_min:0.01:lat_max;
-   x = cosd(latd) * cosd(lond);
-   y = cosd(latd) * sind(lond);
-   z = sind(latd);
+   lat = lat_min:0.001:lat_max;
+   x = cos(lat) * cos(lon);
+   y = cos(lat) * sin(lon);
+   z = sin(lat);
    vec = [x; y; z];
 
    % Do first rotation
@@ -76,6 +77,6 @@ for lond = 0:90:270
    plot3(rot_vec(1, :), rot_vec(2, :), rot_vec(3, :), 'color', 'b', 'linewidth', 3);
    plot3(rot_vec2(1, :), rot_vec2(2, :), rot_vec2(3, :), 'color', 'g', 'linewidth', 3);
 end
-
+stop
 hold on
 plot3_grid();

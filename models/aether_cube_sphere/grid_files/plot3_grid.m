@@ -26,6 +26,22 @@ for i = 1:size(x, 1);
    end
 end
 
+out0 = [lon(1, :)' rlon(:, 1)]
+
+% Equidistant projection?
+% Try 37 points total from -1 to 1 along a cube edge
+% Corner of inscribed cube in radius 1 sphere is sqrt(1/3)
+% Along an edge with constant z = sqrt(1/3), y = sqrt(1/3)
+% Total of 37 x points equally spaced from - to + sqrt(1/3)
+delx = 2 * sqrt(1/3) / 36;
+for i = 1:37
+   x = -sqrt(1/3) + delx * (i - 1);
+   box_lon(i) = atan2(sqrt(1/3), x);
+end
+
+box_lon = box_lon - pi/4;
+
+
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -52,6 +68,8 @@ for i = 1:size(x, 1);
       if(rlon(i, j) < 0) rlon(i, j) = rlon(i, j) + 2*pi; end
    end
 end
+
+out1 = [lon(1, :)' rlon(:, 1)]
 
 %------------------------------------------------------------------------
 
@@ -81,6 +99,8 @@ for i = 1:size(x, 1);
    end
 end
 
+out2 = [lon(1, :)' rlon(:, 1)]
+
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -107,6 +127,8 @@ for i = 1:size(x, 1);
       if(rlon(i, j) < 0) rlon(i, j) = rlon(i, j) + 2*pi; end
    end
 end
+
+out3 = [lon(1, :)' rlon(:, 1)]
 
 %------------------------------------------------------------------------
 
@@ -148,6 +170,8 @@ for i = 1:size(x, 1);
    end
 end
 
+out4 = [rlon(1, :)' rlon2(:, 1)]
+
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -187,6 +211,8 @@ for i = 1:size(x, 1);
       if(rlon2(i, j) < 0) rlon2(i, j) = rlon2(i, j) + 2*pi; end
    end
 end
+
+out5 = [rlon(1, :)' rlon2(:, 1)]
 
 %------------------------------------------------------------------------
  
