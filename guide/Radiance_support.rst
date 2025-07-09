@@ -118,8 +118,8 @@ for your application:
 
 .. code-block:: bash
 
-   DART=${DART_install}
-   RTTOV=${RTTOV_install}
+   export DART=${DART_install}
+   export RTTOV=${RTTOV_install}
    cd $DART/models/wrf/work/
    ln -sf $DART/observations/forward_operators/rttov_sensor_db.csv .
    ln -sf $RTTOV/rtcoef_rttov13/cldaer_visir/sccldcoef_msg_4_seviri.dat  .
@@ -133,12 +133,12 @@ Edit ``input.nml`` to define the:
    *  All DART specifc namelist variables including ``&filter_nml`` or ``&perfect_model_obs_nml`` 
 
 
-**You can test the DART-RTTOV interface by performing an OSSE (e.g. perfect model experiment (PMO))** 
+**You can test the DART-RTTOV interface by performing an OSSE (e.g. perfect model experiment (PMO)).** 
 This uses the forward operators, exactly as is done in a real assimilation using
 ``filter``, but at a much lower cost (i.e. only 1 model member required).  To perform a PMO 
 complete the following steps:
 
-   -  Generate a nature run state file from which to harvest the sythetic observation(s).
+   -  Generate a nature run state file from which to harvest the synthetic observation(s).
       If you are using WRF, you can copy any wrfout file to the work directory 
       and rename it to ``wrfinput_d01``. If you use WRF in ideal mode, make sure 
       that the file contains valid geographical coordinates.
@@ -287,22 +287,21 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
       The percentage value can be used as a tuning parameter in real applications.
 
 
-References
-  *  Li et al. (2022) “Satellite All-Sky Infrared Radiance Assimilation: Recent Progress and Future Perspectives.” Advances in Atmospheric Sciences 39(1): 9–21. doi:10.1007/s00376-021-1088-9.
-  *  Kostka et al. (2014) “Observation Operator for Visible and Near-Infrared Satellite Reﬂectances.” Journal of Atmospheric and Oceanic Technology 31(6): 1216–33. doi:10.1175/JTECH-D-13-00116.1.
 
-
-**Specifying addsolar namelist option:** See :ref:`obs_def_rttov_mod` for namelist options.
+**Specifying addsolar namelist option:** 
+See :ref:`obs_def_rttov_mod` for namelist options.
 
 The ``addsolar`` option allows the user to specify the azimuth and zenith angle of the sun such that the
 expected radiance values account for scattering of solar radiation.  It should be noted that specifying the
 azimth and zenith angle are not mandatory metadata to account for solar. Alternatively,  RTTOV can also 
 calculate the impact of solar based on the latitude, longitude, date and time associated with the observation.
 
-**Specifying cfrac_data namelist option:**  See :ref:`obs_def_rttov_mod` for namelist options.
+**Specifying cfrac_data namelist option:**  
+See :ref:`obs_def_rttov_mod` for namelist options.
 
-The default setting in DART is **not** to use cloud fraction data (``cfrac_data = false``) to account for the impact of clouds
-on radiation.  This may seem counter-intuitive given that RTTOV uses a weighted linear combination of cloudy 
+The default setting in DART is **not** to use cloud fraction data (``cfrac_data = false``) 
+to account for the impact of clouds on radiation.  This may seem counter-intuitive given 
+that RTTOV uses a weighted linear combination of cloudy 
 and clear sky fraction to calculate radiance, where the cloudy fraction is specified by the 
 hydrometeor data (e.g. clw_data, rain_data, ciw_data, snow_data, graupel_data, hail_data). However, when 
 ``cfrac_data`` is not specified DART will automatically prescribe a cloud fraction of 1 for all locations.  
@@ -355,3 +354,8 @@ address the following challenges in satellite DA.
    the weighting function (i.e. vertical location of highest sensitivity to property of interest) 
    or the cloud-top as appropriate.
 
+
+References
+----------
+  *  Li et al. (2022) “Satellite All-Sky Infrared Radiance Assimilation: Recent Progress and Future Perspectives.” Advances in Atmospheric Sciences 39(1): 9–21. doi:10.1007/s00376-021-1088-9.
+  *  Kostka et al. (2014) “Observation Operator for Visible and Near-Infrared Satellite Reﬂectances.” Journal of Atmospheric and Oceanic Technology 31(6): 1216–33. doi:10.1175/JTECH-D-13-00116.1.
