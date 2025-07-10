@@ -2291,9 +2291,8 @@ DO imem = 1, ens_size
       ! nhydro_frac = 1 or nhydro
 
       if (allocated(clouds % cfrac) .and. runtime % opts_scatt % lusercfrac) then
-         ! Use custom cfrac values
-         ! TODO: specify cfrac (scalar?!)
-         ! runtime % cld_profiles(imem) % cfrac = ? not implemented
+         ! Custom cfrac = vertical maximum of the cloud fraction
+         runtime % cld_profiles(imem) % cfrac = max(min(maxval(clouds % cfrac(imem,lvlidx)), 1.0_r8), 0.0_r8)
       else
          ! normally calculated internally in RTTOV-SCATT
          runtime % cld_profiles(imem) % cfrac = -1
