@@ -2300,25 +2300,37 @@ DO imem = 1, ens_size
 
       ! cloud fraction per hydrometeor type 
       ! TODO: How do we get this from model data? From the 3D rain field?
-      runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
+      ! Assume equal to cloud fraction for now
+      if (allocated(clouds % cfrac)) then
+         ! TODO: fixme
+         runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
+         ! runtime % cld_profiles(imem) % hydro_frac(:,:) = clouds % cfrac(imem,lvlidx)
+      else
+         ! Assume cloud fraction is 1 everywhere.
+         runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
+      endif
 
-      ! code proposed, depends on the hydrotables of RTTOV?
-      ! TODO: adapt to hydrotable, change indices of hydro(:,X) <--- here
+      ! This code may depend on hydrotables of RTTOV
       runtime % cld_profiles(imem) % hydro = 0.0_jprb
-      if (allocated(clouds % clw)) then
-         runtime % cld_profiles(imem) % hydro(:,0) = max(clouds % clw(imem,:),0.0_r8)
-      endif
       if (allocated(clouds % rain)) then
-         runtime % cld_profiles(imem) % hydro(:,1) = max(clouds % rain(imem,:),0.0_r8)
-      endif
-      if (allocated(clouds % ciw)) then
-         runtime % cld_profiles(imem) % hydro(:,2) = max(clouds % ciw(imem,:),0.0_r8)
+         runtime % cld_profiles(imem) % hydro(:,1) = max(clouds % rain(imem,lvlidx),0.0_r8)
       endif
       if (allocated(clouds % snow)) then
-         runtime % cld_profiles(imem) % hydro(:,3) = max(clouds % snow(imem,:),0.0_r8)
+         runtime % cld_profiles(imem) % hydro(:,2) = max(clouds % snow(imem,lvlidx),0.0_r8)
+      endif
+      if (allocated(clouds % graupel)) then
+         runtime % cld_profiles(imem) % hydro(:,3) = max(clouds % graupel(imem,lvlidx),0.0_r8)
       endif
       if (allocated(clouds % hail)) then
-         runtime % cld_profiles(imem) % hydro(:,4) = max(clouds % hail(imem,:),0.0_r8)
+         ! RTTOV only knows graupel -> add hail to graupel
+         runtime % cld_profiles(imem) % hydro(:,3) =  & 
+            runtime % cld_profiles(imem) % hydro(:,3) + max(clouds % hail(imem,lvlidx),0.0_r8)
+      endif
+      if (allocated(clouds % clw)) then
+         runtime % cld_profiles(imem) % hydro(:,4) = max(clouds % clw(imem,lvlidx),0.0_r8)
+      endif
+      if (allocated(clouds % ciw)) then
+         runtime % cld_profiles(imem) % hydro(:,5) = max(clouds % ciw(imem,lvlidx),0.0_r8)
       endif
 
       ! also add "half-level pressures" as requested by RTTOV-Scatt
