@@ -7,6 +7,7 @@ Script to read and pretty print QCEFF table information from a CSV file.
 import csv
 import sys
 from typing import Dict, List, Any
+import argparse
 
 
 def read_qceff_table(filename: str) -> Dict[str, Any]:
@@ -245,10 +246,7 @@ def display_summary_table(data: List[List[str]]) -> None:
 
         print(f"{qty_name:<{col_width}} {obs_error_info:<{short_col_width}} {probit_infl:<{col_width}} {probit_state:<{col_width}} {probit_ext:<{col_width}} {obs_inc_info:<{col_width}}")
 
-
-def main():
-    """Main function to run the script."""
-    import argparse
+def get_parser():
     parser = argparse.ArgumentParser(description="Display QCEFF table summary and details.")
     parser.add_argument("csv_file", help="Path to QCEFF table CSV file")
     parser.add_argument(
@@ -258,7 +256,24 @@ def main():
         metavar="QTY",
         help="Print detailed information for all quantities, or for a specific quantity QTY"
     )
-    args = parser.parse_args()
+    parser.usage = "%(prog)s csv_file [--details [QTY]]"
+    return parser
+
+
+def main():
+    """Main function to run the script."""
+    
+    parser = get_parser()
+    # Enforce csv_file is always first argument, but allow --help/-h anywhere
+    if any(arg in ('--help', '-h') for arg in sys.argv[1:]):
+        parser.parse_args()  # argparse will handle help and exit
+        return
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+        args = parser.parse_args()
+    else:
+        parser.print_usage()
+        print("\nError: csv_file must be the first argument.")
+        sys.exit(2)
 
     filename = args.csv_file
 
