@@ -116,9 +116,9 @@ call getdimlen(ncid, 'x', axdim)
 call getdimlen(ncid, 'y', aydim)
 
 ! allocate arrays for lat/lon and sea ice temperature
-allocate(               lat(axdim, aydim))
-allocate(               lon(axdim, aydim))
-allocate(seaice_temperature(axdim, aydim))
+allocate(               lat(aydim, axdim))
+allocate(               lon(aydim, axdim))
+allocate(seaice_temperature(aydim, axdim))
 
 ! set max_obs to 1 million
 max_obs = axdim * aydim
@@ -168,20 +168,20 @@ alongloop : do j = 1, aydim
     acrossloop : do i = 1, axdim
 
     ! check lat/lon values
-    if (lat(i, j) > 90.0_r8 .or. lat(i, j) <  40.0_r8) cycle acrossloop
-    if (lon(i, j) <  0.0_r8 .or. lon(i, j) > 360.0_r8) cycle acrossloop
+    if (lat(j, i) > 90.0_r8 .or. lat(j, i) <  40.0_r8) cycle acrossloop
+    if (lon(j, i) <  0.0_r8 .or. lon(j, i) > 360.0_r8) cycle acrossloop
 
     ! check if temperature values are reasonable, based on state valid range of values
-    if (seaice_temperature(i, j) == -800_r8) then
+    if (seaice_temperature(j, i) == -800_r8) then
         cycle acrossloop
-    else if (seaice_temperature(i, j) > 0.0_r8 .or. seaice_temperature(i, j) < -63.15_r8) then
+    else if (seaice_temperature(j, i) > 0.0_r8 .or. seaice_temperature(j, i) < -63.15_r8) then
         qc = 6.0_r8
     else
         qc = 0.0_r8
     end if
 
     ! create obs type and add to sequence
-    call create_3d_obs(lat(i, j), lon(i, j), 0.0_r8, VERTISSURFACE, seaice_temperature(i, j), &
+    call create_3d_obs(lat(j, i), lon(j, i), 0.0_r8, VERTISSURFACE, seaice_temperature(j, i), &
                        SAT_SEAICE_AGREG_SURFACETEMP, terr, oday, osec, qc, obs)
     call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
