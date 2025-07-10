@@ -169,6 +169,7 @@ convert_airs_L2
 convert_amsu_L1
 convert_L2b
 convert_goes_ABI_L1b
+MOD29E1D_to_obs
 
 # Test programs built by developer_tests
 rttov_test
