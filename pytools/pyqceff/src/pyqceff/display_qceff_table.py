@@ -201,7 +201,6 @@ def display_summary_table(data: List[List[str]]) -> None:
     col_width = 24
     short_col_width = 15
     print(f"{'QUANTITY':<{col_width}} {'OBS_ERROR':<{short_col_width}} {'PROBIT_INFL':<{col_width}} {'PROBIT_STATE':<{col_width}} {'PROBIT_EXT':<{col_width}} {'FILTER_KIND':<{col_width}}")
-    #print(f"{'':<30} {'distribution':<30} {'distribution':<30} {'distribution':<30} {'filter kind':<30}")
     print(f"{'-'*col_width} {'-'*short_col_width} {'-'*col_width} {'-'*col_width} {'-'*col_width} {'-'*col_width}")
 
     for row in data:
@@ -270,8 +269,6 @@ def main():
         print(f"File: {filename}")
         print(f"Version: {table_data['version']}")
 
-        # Only display summary table if not a single quantity request
-        #if not (args.details and args.details is not True):
         display_summary_table(table_data['data'])
 
         if args.details:
@@ -289,7 +286,18 @@ def main():
                 found = False
                 for row in table_data['data']:
                     qty_name = row[0].upper()
-                    if qty_name == args.details.upper():
+                    # Accept QTY_NAME, NAME, or just the name (case-insensitive)
+                    arg = args.details.upper()
+                    # Remove QTY_ prefix for comparison if present
+                    qty_name_noprefix = qty_name
+                    if qty_name.startswith('QTY_'):
+                        qty_name_noprefix = qty_name[4:]
+                    if (
+                        qty_name == arg or
+                        qty_name_noprefix == arg or
+                        ('QTY_' + arg) == qty_name or
+                        qty_name_noprefix == arg.replace('QTY_', '')
+                    ):
                         display_quantity_info(qty_name, row)
                         found = True
                         break
