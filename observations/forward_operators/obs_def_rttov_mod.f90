@@ -2024,13 +2024,19 @@ if (.not. allocated(lvlidx)) then
    allocate(totalice(nlevels))
 end if
 
-! finally set the array to the correct order
+! We would like a level index array to allow either surface first or surface last order
+! We assume that the input arrays (p, T, q, ...) are defined at levels.
+! For RTTOV-direct, cloud hydrometeors and aersols are averaged to layers. 
+
 if (first_lvl_is_sfc) then
+   ! input data is ordered from surface to TOA
+   ! so we need to reverse the array
    do ilvl=1,nlevels
       lvlidx(ilvl) = nlevels - ilvl + 1
    end do
 else
-   do ilvl=nlevels,1,-1
+   ! do nothing, as the input data is ordered from TOA to surface
+   do ilvl=1,nlevels
       lvlidx(ilvl) = ilvl
    end do
 end if
