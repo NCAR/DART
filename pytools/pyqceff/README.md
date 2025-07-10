@@ -23,7 +23,7 @@ After installation, you can use the `display_qceff_table.py` script to read and 
 display_qceff_table <path_to_csv_file> [--details] [QTY]
 ```
 
-To view the helxp
+To view the help
 
 ```sh
 display-qceff-table --help
