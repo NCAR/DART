@@ -2189,7 +2189,12 @@ DO imem = 1, ens_size
          end if 
 
          if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
+            ! Following Kostka et al., 2014
+            if (is_vis) then
+            totalice(:) = totalice(:) + max(clouds % snow(imem,:)*0.10,0.0_r8)
+            else
+            totalice(:) = totalice(:) + max(clouds % snow(imem,:),0.0_r8)
+            end if
          end if 
 
          if (allocated(clouds % graupel)) then
@@ -3751,8 +3756,11 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
 
       if (clw_scheme == 2) then
-         ! The effective diameter must also be specified with clw_scheme 2
-         call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
+      ! clw_scheme = 1 Parameterizes diameters depending on cloud type
+      ! clw_scheme = 2 requires setting clwde (effective diameter)
+      ! By default clwde is prescribed as constant value for clw_scheme = 2, otherwise uses QTY_CLOUDWATER_DE from model
+      call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
+      !clouds%clwde(:, i) = 2*1e6*clouds%clwde(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
          call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
@@ -3772,8 +3780,10 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
 
       if (ice_scheme == 1 .and. use_icede) then
-         ! if use_icede with ice_scheme 1, must also specify ice effective diameter
+         ! In this case, we must specify icede (ice effective diameter)
+         ! It is read from model
          call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
+         !clouds%icede(:, i) = 2*1e6*clouds%icede(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
          call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
