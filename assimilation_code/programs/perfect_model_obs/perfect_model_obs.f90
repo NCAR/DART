@@ -9,7 +9,7 @@ program perfect_model_obs
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
 use    utilities_mod,     only : error_handler, &
                                  find_namelist_in_file, check_namelist_read, &
-                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
+                                 E_ERR, E_MSG, E_ALLMSG, E_DBG, nmlfileunit, timestamp, &
                                  do_nml_file, do_nml_term, logfileunit, &
                                  open_file, close_file
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time,   &
@@ -485,6 +485,8 @@ AdvanceTime: do
    ! Compute the forward observation operator for each observation in set
    do j = 1, fwd_op_ens_handle%my_num_vars
 
+      global_obs_num = fwd_op_ens_handle%my_vars(j)
+
       ! Some compilers do not like mod by 0, so test first.
       if (print_every_nth_obs > 0) nth_obs = mod(j, print_every_nth_obs)
 
@@ -492,15 +494,20 @@ AdvanceTime: do
       ! to indicate progress is being made and to allow estimates
       ! of how long the assim will take.
       if (nth_obs == 0) then
-         write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', j, &
-                                            ' of ', num_obs_in_set
-         call trace_message(msgstring, 'perfect_model_obs:', -1)
+         if(task_count() == 1) then
+            write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', j, &
+                                         ' of ', num_obs_in_set
+            call trace_message(msgstring, 'perfect_model_obs:', -1)
+         else
+            write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', global_obs_num, &
+                                         ' of ', num_obs_in_set
+            call error_handler(E_ALLMSG, 'perfect_model_obs:' ,trim(msgstring))
+         endif
          ! or if you want timestamps:
          !     call timestamp(msgstring, pos="debug")
       endif
-      
+
       ! Compute the observations from the state
-      global_obs_num = fwd_op_ens_handle%my_vars(j)
       call get_expected_obs_distrib_state(seq, keys(global_obs_num:global_obs_num), &
          curr_ens_time, .true., &
          istatus, assimilate_this_ob, evaluate_this_ob, &
