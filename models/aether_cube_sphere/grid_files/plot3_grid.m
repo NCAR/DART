@@ -41,7 +41,8 @@ end
 
 box_lon = box_lon - pi/4;
 
-
+box_lon
+lon(1, :)
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -70,7 +71,6 @@ for i = 1:size(x, 1);
 end
 
 out1 = [lon(1, :)' rlon(:, 1)]
-
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -100,7 +100,6 @@ for i = 1:size(x, 1);
 end
 
 out2 = [lon(1, :)' rlon(:, 1)]
-
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -129,7 +128,6 @@ for i = 1:size(x, 1);
 end
 
 out3 = [lon(1, :)' rlon(:, 1)]
-
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section
@@ -171,7 +169,6 @@ for i = 1:size(x, 1);
 end
 
 out4 = [rlon(1, :)' rlon2(:, 1)]
-
 %------------------------------------------------------------------------
 
 % Plot grid corners from an Aether cube sphere grid file section

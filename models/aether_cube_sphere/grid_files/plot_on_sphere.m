@@ -14,9 +14,7 @@ for i = 1:size(X, 1)
       lon(i, j) = atan2(Y(i, j), X(i, j));
       if(lon(i, j) < 0) lon(i, j) =  lon(i, j) + 2*pi; end
       if(lon(i, j) == 2*pi) lon(i, j) = 0; end
-      [face, lona, lonb, lena, lenb] = get_face(lat(i, j), lon(i, j));
-      tlona(i, j) = lona;
-      tlena(i, j) = lena;
+      [face, lon_grid, len] = get_face(lat(i, j), lon(i, j));
       
       C(i, j) = face;
    end
@@ -77,6 +75,6 @@ for lon = 0:pi/2:3*pi/2
    plot3(rot_vec(1, :), rot_vec(2, :), rot_vec(3, :), 'color', 'b', 'linewidth', 3);
    plot3(rot_vec2(1, :), rot_vec2(2, :), rot_vec2(3, :), 'color', 'g', 'linewidth', 3);
 end
-stop
+
 hold on
 plot3_grid();

@@ -1,4 +1,4 @@
-function [face, lona, lonb, lena, lenb] = get_face(lat, lon)
+function [face, lon_grid, len] = get_face(lat, lon)
 % Routine to efficiently interpolate on aether cube sphere grid
 % Returns which face contains (lat, lon) and the pair of longitudes
 % for the two rotations whose poles do not lie in that face.
@@ -59,14 +59,14 @@ rside = floor(rlon / (pi/2)) + 1;
 % Which rotated 2 side
 rside2 = floor(rlon2 / (pi/2)) + 1;
 
-% Figure out the face from here (0 to 5, 4 is north, 5 is south)
+% Figure out the face from here (0 to 5, 4 is south, 5 is north)
 % These are consistent with the numbering on Aether grid files for the cubed sphere
-if(side == 1 && rside == 1)       face = 0; lona = lon;  lonb = rlon;
-elseif(side == 2 && rside2 == 1)  face = 1; lona = lon;  lonb = rlon2;
-elseif(side == 3 && rside == 3)   face = 2; lona = lon;  lonb = rlon;
-elseif(side == 4 && rside2 == 3)  face = 3; lona = lon;  lonb = rlon2;
-elseif(rside == 2 && rside2 == 2) face = 4; lona = rlon; lonb = rlon2;
-elseif(rside == 4 && rside2 == 4) face = 5; lona = rlon; lonb = rlon2;
+if(side == 1 && rside == 1)       face = 0; lon_grid(1) = lon;  lon_grid(2) = rlon;
+elseif(side == 2 && rside2 == 1)  face = 1; lon_grid(1) = lon;  lon_grid(2) = rlon2;
+elseif(side == 3 && rside == 3)   face = 2; lon_grid(1) = lon;  lon_grid(2) = rlon;
+elseif(side == 4 && rside2 == 3)  face = 3; lon_grid(1) = lon;  lon_grid(2) = rlon2;
+elseif(rside == 4 && rside2 == 4) face = 4; lon_grid(1) = rlon; lon_grid(2) = rlon2;
+elseif(rside == 2 && rside2 == 2) face = 5; lon_grid(1) = rlon; lon_grid(2) = rlon2;
 else
    [lat, lon, rlon]
    [side, rside, rside2]
@@ -76,19 +76,21 @@ end
 % Can also use the fact that the projection is equidistant on the imbedded cube to get what fraction 
 % across the imbedded rectangle we are
 % Take the longitudes and turn them into a number between -sqrt(1/3) and sqrt(1/3)
-lona_m = mod(lona, pi/2);
-lonb_m = mod(lonb, pi/2);
+lon_grid_m = mod(lon_grid, pi/2);
 
 % Use law of sines to go from lon back to position along edge of imbedded cube 
 % The triangle of interest has a side of length sqrt(2/3) (1/2 of the planar diagonal of the imbedded cube)
 % The angles adjacent to this side are the longitude and 45 degrees
 % The angle opposite the side of length sqrt(2/3) is pi - (longitude + pi/4)
 % The side opposite the longitude is how far along the side of the cube
-% The cube side is 2sqrt(3), so the length along the side is between zero and this value
-gama = pi - (pi/4 + lona_m);
-lena = sqrt(2/3) * sin(lona_m) / sin(gama);
-[lona lona_m gama lena]
+% The cube side is 2sqrt(1/3), so the length along the side is between zero and this value
+gama = pi - (pi/4 + lon_grid_m(1));
+len(1) = sqrt(2/3) * sin(lon_grid_m(1)) / sin(gama);
 
-gamb = pi - (pi/4 + lonb_m);
-lenb = sqrt(2/3) * sin(lonb_m) / sin(gamb);
+gamb = pi - (pi/4 + lon_grid_m(2));
+len(2) = sqrt(2/3) * sin(lon_grid_m(2)) / sin(gamb);
 
+% If we are on sides 2 or 3, the lengths need to be modified because the grid storage
+% for Aether goes from smallest latitude to largest and the longitudes of the shifted
+% poles are going the opposite way
+if(face == 2 | face == 3) len(2) = 2 * sqrt(1/3) - len(2); end
