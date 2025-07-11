@@ -101,7 +101,6 @@ use quad_utils_mod,       only : quad_interp_handle, print_quad_handle, set_quad
                                  GRID_QUAD_FULLY_IRREGULAR, QUAD_LOCATED_CELL_CENTERS, &
                                  QUAD_LOCATED_LON_EDGES, QUAD_LOCATED_LAT_EDGES
 
-use typesizes
 use netcdf
 
 implicit none
@@ -157,16 +156,6 @@ character(len=256) :: roms_grid_file     = 'roms_grid.nc'
 character(len=256) :: roms_filename      = 'roms_input.nc'
 integer  :: vert_transform               = 4
 
-namelist /model_nml/  &
-   assimilation_period_days,    &
-   assimilation_period_seconds, &
-   roms_grid_file,              &
-   roms_filename,               &
-   vert_transform,              &
-   vert_localization_coord,     &
-   debug,                       &
-   variables
-
 ! DART contents are specified in the input.nml:&model_nml namelist.
 !>@todo  NF90_MAX_NAME is 256 ... this makes the namelist output unreadable
 integer, parameter :: MAX_STATE_VARIABLES = 8
@@ -176,6 +165,16 @@ character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
 logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+
+namelist /model_nml/  &
+   assimilation_period_days,    &    
+   assimilation_period_seconds, &
+   roms_grid_file,              &    
+   roms_filename,               &    
+   vert_transform,              &    
+   vert_localization_coord,     &    
+   debug,                       &    
+   variables
 
 integer :: nfields   ! This is the number of variables in the DART state vector.
 
