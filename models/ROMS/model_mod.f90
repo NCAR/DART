@@ -31,8 +31,8 @@
 module model_mod
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI, &
-                             MISSING_I, MISSING_R4, MISSING_R8, i4, i8, &
+use        types_mod, only : r4, r8, digits12, &
+                             MISSING_I, MISSING_R8, i4, i8, &
                              vtablenamelength
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
@@ -43,17 +43,17 @@ use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, 
                              operator(/=), operator(<=)
 
 use     location_mod, only : location_type, set_location, get_location,         &
-                             write_location, set_location_missing,              &
+                             set_location_missing,              &
                              get_close_obs, get_close_state,                    &
                              convert_vertical_obs, convert_vertical_state,      &
                              VERTISHEIGHT, VERTISSURFACE, is_vertical
 
 use    utilities_mod, only : error_handler, do_nml_term,       &
-                             E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,    &
-                             get_unit, do_output, to_upper, do_nml_file,        &
+                             E_ERR, E_MSG, logfileunit, nmlfileunit,    &
+                             do_output, to_upper, do_nml_file,        &
                              find_namelist_in_file, check_namelist_read,        &
-                             open_file, file_exist, find_textfile_dims,         &
-                             file_to_text, do_output, close_file,               &
+                             open_file, file_exist,       &
+                             do_output, close_file,               &
                              string_to_real, string_to_logical
 
 use     obs_kind_mod, only : QTY_TEMPERATURE,           &
@@ -61,40 +61,26 @@ use     obs_kind_mod, only : QTY_TEMPERATURE,           &
                              QTY_U_CURRENT_COMPONENT,   &
                              QTY_V_CURRENT_COMPONENT,   &
                              QTY_SEA_SURFACE_HEIGHT,    &
-                             QTY_SEA_SURFACE_PRESSURE,  &
-                             QTY_POTENTIAL_TEMPERATURE, &
                              get_index_for_quantity,    &
                              get_name_for_quantity
-
-use     mpi_utilities_mod, only : my_task_id
-
-use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 use  ensemble_manager_mod, only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
 use   state_structure_mod, only : add_domain, get_model_variable_indices, &
-                                  get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, get_varid_from_kind, &
                                   get_dart_vector_index, state_structure_info, &
-                                  get_index_start, get_index_end, get_variable_name, &
-                                  get_kind_index, get_kind_string, get_dim_length, &
-                                  get_dim_name, get_missing_value, get_units, &
-                                  get_long_name, get_xtype, get_has_missing_value, &
-                                  get_dim_lengths
+                                  get_kind_index, get_dim_length
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_begin_define_mode, &
                                  nc_end_define_mode, nc_check
 
-use location_io_mod,      only : nc_write_location_atts, nc_get_location_varids, &
-                                 nc_write_location
-
 use default_model_mod,    only : pert_model_copies, nc_write_model_vars, init_conditions, &
                                  init_time, adv_1step
 
-use quad_utils_mod,       only : quad_interp_handle, print_quad_handle, set_quad_coords, &
+use quad_utils_mod,       only : quad_interp_handle, set_quad_coords, &
                                  init_quad_interp, finalize_quad_interp, &
                                  quad_lon_lat_locate, quad_lon_lat_evaluate, &
                                  GRID_QUAD_FULLY_IRREGULAR, QUAD_LOCATED_CELL_CENTERS, &
