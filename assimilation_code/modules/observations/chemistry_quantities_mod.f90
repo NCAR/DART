@@ -17,7 +17,8 @@
 !   QTY_CO
 !   QTY_NO
 !   QTY_NO2
-!   QTY_N2O
+!   QTY_CH2O
+!   QTY_NH3
 !
 !   QTY_CO01
 !   QTY_CO02
@@ -48,8 +49,8 @@
 !   QTY_SFOC202
 !
 !   QTY_CO2
-!   QTY_NH3
 !   QTY_CH4
+!   QTY_N2O
 !
 !   QTY_MOLEC_OXYGEN_MIXING_RATIO
 !   QTY_ION_O_MIXING_RATIO
