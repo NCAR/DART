@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 !----------------------------------------------------------------
 !>
 !> This is the interface between the ROMS ocean model and DART.
@@ -49,7 +48,7 @@ use     location_mod, only : location_type, set_location, get_location,         
                              convert_vertical_obs, convert_vertical_state,      &
                              VERTISHEIGHT, VERTISSURFACE, is_vertical
 
-use    utilities_mod, only : register_module, error_handler, do_nml_term,       &
+use    utilities_mod, only : error_handler, do_nml_term,       &
                              E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,    &
                              get_unit, do_output, to_upper, do_nml_file,        &
                              find_namelist_in_file, check_namelist_read,        &
@@ -131,15 +130,8 @@ public :: nc_write_model_vars,           &
           get_close_obs,                 &
           get_close_state
 
-! not required interfaces but useful for utility programs
-public :: get_time_information!,          &
-!          get_location_from_ijk
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "ROMS/model_mod.f90"
 
 character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
@@ -197,30 +189,23 @@ integer :: Ns_w
 real(r8) :: theta_s, theta_b
 real(r8) :: Tcline,  hc
  
-!>@todo FIXME ... nancy suggested creating pointers for each of these so
-!    we could simply use the myvarid as the index in the pointer ...
 
 !>@todo FIXME ... technically, there should be separate BATHY variables for each
 !grid. Right now, there is a function in get_state_meta_data() that estimates
 !the bathymetry on the U and V grids given the rho bathymetry. Similar problems
 !with ssh (for vertical interpolation)
 
-real(r8), allocatable, target :: ULAT(:,:), ULON(:,:), &
+real(r8), allocatable :: ULAT(:,:), ULON(:,:), &
                                  TLAT(:,:), TLON(:,:), &
                                  VLAT(:,:), VLON(:,:), &
                                  BATHY(:,:)
-logical, allocatable, target :: UMASK(:,:), VMASK(:,:), TMASK(:,:)
+logical, allocatable :: UMASK(:,:), VMASK(:,:), TMASK(:,:)
 
 type(time_type) :: model_timestep
 
-integer :: model_size    ! the state vector length
+integer(i8) :: model_size
 
 contains
-
-
-!-----------------------------------------------------------------------
-! All the REQUIRED interfaces come first - by convention.
-!-----------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------
@@ -228,7 +213,6 @@ contains
 !> Returns the size of the DART state vector (i.e. model) as an integer.
 !> Required for all applications.
 !>
-
 function get_model_size()
 
 integer(i8) :: get_model_size
@@ -240,25 +224,21 @@ get_model_size = model_size
 end function get_model_size
 
 
-
 !-----------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
-!> associated location. A second intent(out) optional argument kind
-!> can be returned if the model has more than one type of field (for
-!> instance temperature and zonal wind component). This interface is
-!> required for all filter applications as it is required for computing
-!> the distance between observations and state variables.
+!> associated location. A second intent(out) optional argument qty
+!> can be returned 
 !>
 !> @param index_in the index into the DART state vector
 !> @param location the location at that index
-!> @param var_type the DART KIND at that index
+!> @param qty the DART QTY at that index
 !>
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, optional,   intent(out) :: var_type
+integer, optional,   intent(out) :: qty
 
 ! Local variables
 
@@ -295,41 +275,38 @@ else  ! Everything else is assumed to be on the rho points
 endif
 
 ! return state quantity for this index if requested
-if (present(var_type)) var_type = myqty
+if (present(qty)) qty = myqty
 
 end subroutine get_state_meta_data
 
 
 !-----------------------------------------------------------------------
 !>
-!> Model interpolate will interpolate any DART state variable
-!> (i.e. S, T, U, V, Eta) to the given location given a state vector.
-!> The type of the variable being interpolated is obs_type since
-!> normally this is used to find the expected value of an observation
-!> at some location. The interpolated value is returned in expected_obs
+!> Model interpolate will interpolate any DART state quantity
+!> (i.e. S, T, U, V, Eta) to the given location.
+!> The interpolated value is returned in expected_obs
 !> and istatus is 0 for success. NOTE: This is a workhorse routine and is
 !> the basis for all the forward observation operator code.
 !>
 !> @param state_handle DART ensemble handle
 !> @param ens_size DART ensemble size
 !> @param location the location of interest
-!> @param obs_type the DART KIND of interest
+!> @param qty the DART QTY of interest
 !> @param expected_obs the estimated value of the DART state at the location
 !>          of interest (the interpolated value).
 !> @param istatus interpolation status ... 0 == success, /=0 is a failure
 !>
 
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, &
+subroutine model_interpolate(state_handle, ens_size, location, qty, &
                              expected_obs, istatus)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_type
+integer,             intent(in)  :: qty
 real(r8),            intent(out) :: expected_obs(:)
 integer,             intent(out) :: istatus(:)
 
-! Local storage
 integer       :: icorn, imem, ilev, N_lev_un
 integer       :: lstatus, hstatus
 integer       :: Ns_var
@@ -350,7 +327,7 @@ if ( .not. module_initialized ) call static_init_model
 expected_obs = MISSING_R8
 istatus = 99
 
-var_id = get_varid_from_kind(domain_id, obs_type)
+var_id = get_varid_from_kind(domain_id, qty)
 
 ! Get the individual locations values
 loc_array = get_location(location)
@@ -358,32 +335,26 @@ llon    = loc_array(1)
 llat    = loc_array(2)
 lheight = loc_array(3)
 
-if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', &
-                         llon, llat, lheight
-
 ! kind (in-situ) temperature is a combination of potential temp,
 ! salinity, and pressure based on depth.  call a routine that
 ! interpolates all three, does the conversion, and returns the
 ! sensible/in-situ temperature.
-if(obs_type == QTY_TEMPERATURE) then
+if(qty == QTY_TEMPERATURE) then
    ! we know how to interpolate this from potential temp,
    ! salinity, and pressure based on depth.
    call compute_temperature(state_handle, ens_size, llon, llat, lheight, &
                             expected_obs, istatus)
-   if (debug > 1) print *, 'expected_obs, istatus = ', expected_obs, istatus
    return
 endif
 
 ! Find horizontal corners
-if(obs_type == QTY_U_CURRENT_COMPONENT) then
+if(qty == QTY_U_CURRENT_COMPONENT) then
    call quad_lon_lat_locate(ugrid_handle, llon, llat, lon_corner, lat_corner, lstatus)
-elseif (obs_type == QTY_V_CURRENT_COMPONENT) then
+elseif (qty == QTY_V_CURRENT_COMPONENT) then
    call quad_lon_lat_locate(vgrid_handle, llon, llat, lon_corner, lat_corner, lstatus)
 else
    call quad_lon_lat_locate(tgrid_handle, llon, llat, lon_corner, lat_corner, lstatus)
 endif
-
-!PRINT *, "RE: (model_interpolate) lstatus", lstatus
 
 if (lstatus /= 0) return
 
@@ -444,10 +415,10 @@ endif
 
 
 ! Do the horizontal interpolation
-if(obs_type == QTY_U_CURRENT_COMPONENT) then
+if(qty == QTY_U_CURRENT_COMPONENT) then
    call quad_lon_lat_evaluate(ugrid_handle, llon, llat, lon_corner, lat_corner,&
                               ens_size, val_corners, expected_obs, lstatus)
-elseif(obs_type == QTY_V_CURRENT_COMPONENT) then
+elseif(qty == QTY_V_CURRENT_COMPONENT) then
    call quad_lon_lat_evaluate(vgrid_handle, llon, llat, lon_corner, lat_corner,&
                               ens_size, val_corners, expected_obs, lstatus)
 else
@@ -1065,17 +1036,6 @@ type(time_type) :: model_time
 
 if ( module_initialized ) return
 
-! The Plan:
-!
-! * read in the grid sizes from grid file
-! * allocate space, and read in actual grid values
-! * figure out model timestep
-! * Compute the model size.
-! * set the index numbers where the field types change
-
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
 module_initialized = .true.
 
 ! Read the DART namelist for this model
@@ -1092,7 +1052,7 @@ model_timestep = set_model_time_step()
 call get_time(model_timestep,ss,dd)
 
 write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,'static_init_model:',string1,source,revision,revdate)
+call error_handler(E_MSG,'static_init_model:',string1,source)
 
 call nc_check( nf90_open(trim(roms_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(roms_filename))
@@ -1148,14 +1108,7 @@ end subroutine static_init_model
 
 
 !-----------------------------------------------------------------------
-!>
-!> Does any shutdown and clean-up needed for model.
-!>
-
 subroutine end_model()
-
-! good style ... perhaps you could deallocate stuff (from static_init_model?).
-! deallocate(state_loc)
 
 call finalize_quad_interp(ugrid_handle)
 call finalize_quad_interp(vgrid_handle)
@@ -1179,6 +1132,7 @@ end subroutine end_model
 
 
 !-----------------------------------------------------------------------
+!HK @todo what if any of this needs to get written? 
 !>
 !> Writes the model-specific attributes to a DART 'diagnostic' netCDF file.
 !> This includes coordinate variables and some metadata, but NOT the
@@ -1199,8 +1153,6 @@ integer :: nxirhoDimID, nxiuDimID, nxivDimID
 integer :: netarhoDimID, netauDimID, netavDimID
 integer :: nsrhoDimID, nswDimID
 integer :: VarID
-
-! local variables
 
 character(len=256) :: filename
 
@@ -1386,13 +1338,11 @@ end subroutine nc_write_model_atts
 !>
 !> @param ncfile_out name of the file
 !> @param model_time the current time of the model state
-!> @param adv_to_time the time in the future of the next assimilation.
 !>
 
-subroutine write_model_time(ncid, model_time, adv_to_time)
+subroutine write_model_time(ncid, model_time)
 integer,         intent(in)           :: ncid
 type(time_type), intent(in)           :: model_time
-type(time_type), intent(in), optional :: adv_to_time
 
 integer :: io, varid, seconds, days
 type(time_type) :: origin_time, deltatime
@@ -1400,16 +1350,8 @@ real(digits12)  :: run_duration
 
 if ( .not. module_initialized ) call static_init_model
 
-if (present(adv_to_time)) then
-   string3 = time_to_string(adv_to_time)
-   write(string1,*)'ROMS/DART not configured to advance ROMS.'
-   write(string2,*)'called with optional advance_to_time of'
-   call error_handler(E_ERR, 'write_model_time', string1, &
-              source, revision, revdate, text2=string2,text3=string3)
-endif
-
 ! If the ocean_time variable exists, we are updating a ROMS file,
-! if not ... must be updating a DART diagnostic file.
+! if not ... must be updating a DART diagnostic file. !HK @todo who cares?
 
 io = nf90_inq_varid(ncid,'ocean_time',varid)
 if (io == NF90_NOERR) then
@@ -1453,7 +1395,7 @@ if ( .not. module_initialized ) call static_init_model
 
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+   call error_handler(E_ERR,'read_model_time',string1,source)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
@@ -1738,14 +1680,14 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
 
    if ( varname == ' ' .or. dartstr == ' ' ) then
       string1 = 'model_nml:model "variables" not fully specified'
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+      call error_handler(E_ERR,routine,string1,source)
    endif
 
    ! Make sure DART kind is valid
 
    if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+      call error_handler(E_ERR,routine,string1,source)
    endif
 
    call to_upper(minvalstring)
@@ -1765,7 +1707,7 @@ enddo MyLoop
 if (ngood == MAX_STATE_VARIABLES) then
    string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+   call error_handler(E_MSG,routine,string1,source,text2=string2)
 endif
 
 end subroutine parse_variable_input
@@ -1839,7 +1781,7 @@ if (index(calendarstring,'gregorian') == 0) then
    write(string2,*)'got '//trim(calendarstring)
    write(string3,*)'from file "'//trim(filename)//'"'
    call error_handler(E_MSG,routine, string1, &
-             source, revision, revdate, text2=string2, text3=string3)
+             source, text2=string2, text3=string3)
 else
    ! coerce all forms of gregorian to the one DART supports
    ! 'gregorian_proleptic' needs to be changed, for example.
@@ -1878,7 +1820,7 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
          write(string2,*)'expected "seconds since YYYY-MM-DD HH:MM:SS"'
          write(string3,*)'was      "'//trim(unitstring)//'"'
          call error_handler(E_ERR, routine, string1, &
-                source, revision, revdate, text2=string2, text3=string3)
+                source, text2=string2, text3=string3)
       endif
       offset_in_seconds = .true.
 
@@ -1889,7 +1831,7 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
          write(string2,*)'expected "days since YYYY-MM-DD HH:MM:SS"'
          write(string3,*)'was      "'//trim(unitstring)//'"'
          call error_handler(E_ERR, routine, string1, &
-                source, revision, revdate, text2=string2, text3=string3)
+                source, text2=string2, text3=string3)
       endif
       offset_in_seconds = .false.
 
@@ -1898,7 +1840,7 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
       write(string2,*)'                              "days since ..."'
       write(string3,*)'got "'//trim(unitstring)//'"'
       call error_handler(E_ERR,routine, string1, &
-                source, revision, revdate, text2=string2, text3=string3)
+                source, text2=string2, text3=string3)
    endif
 
    base_time = set_date(year, month, day, hour, minute, second)
@@ -2014,7 +1956,7 @@ if (dointerval) then
    if (ndays > 99) then
       write(string1, *) 'interval number of days is ', ndays
       call error_handler(E_ERR,'time_to_string:', 'interval days cannot be > 99', &
-                         source, revision, revdate, text2=string1)
+                         source, text2=string1)
    endif
    ihour = nsecs / 3600
    nsecs = nsecs - (ihour * 3600)
@@ -2106,7 +2048,7 @@ if (ios /= 0) then
    write(string1,*)'Unable to write new DSTART. Error status was ',ios
    write(string2,*)'dstart = ', dstart
    call error_handler(E_ERR, 'write_roms_time_information:', string1, &
-          source, revision, revdate, text2=string2)
+          source, text2=string2)
 endif
 
 ! The next records are totally optional - not checking write status
@@ -2176,7 +2118,7 @@ end subroutine write_roms_time_information
 !
 !write(string1,*)'Routine not finished.'
 !call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
-!                      source, revision, revdate)
+!                      source)
 !
 !! start out assuming bad istatus
 !istatus  = 99
@@ -2213,7 +2155,7 @@ end subroutine write_roms_time_information
 !   write(string1,*)'Not interpolating ', get_name_for_quantity(my_kind), ' at the moment.'
 !   write(string2,*)'Need to check that we are using the right grid for location interpolation'
 !   call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
-!                      source, revision, revdate, text2=string2)
+!                      source, text2=string2)
 !   if (filoc < 1 .or. filoc > Nxi_u-1 .or. &
 !       fjloc < 1 .or. fjloc > Neta_u-1 ) then
 !     istatus = 12
@@ -2226,7 +2168,7 @@ end subroutine write_roms_time_information
 !   write(string1,*)'Not interpolating ', get_name_for_quantity(my_kind), ' at the moment.'
 !   write(string2,*)'Need to check that we are using the right grid for location interpolation'
 !   call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
-!                      source, revision, revdate, text2=string2)
+!                      source, text2=string2)
 !   if (filoc < 1 .or. filoc > Nxi_v-1 .or. &
 !       fjloc < 1 .or. fjloc > Neta_v-1 ) then
 !     istatus = 13
@@ -2335,8 +2277,3 @@ end subroutine write_roms_time_information
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
