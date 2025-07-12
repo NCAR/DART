@@ -4,9 +4,9 @@ on:
   
 jobs:
   setup:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     container: 
-      image: hkershaw/dart-dep-external:3.2
+      image: hkershaw/dart-dep-external:4.2
       options: "--cap-add=SYS_PTRACE"   
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
@@ -43,7 +43,7 @@ jobs:
     needs: [ setup ]
     runs-on: macos-latest
     container: 
-      image: hkershaw/dart-dep-external:3.2
+      image: hkershaw/dart-dep-external:4.2
       options: "--cap-add=SYS_PTRACE"
     strategy:
       fail-fast: false 
