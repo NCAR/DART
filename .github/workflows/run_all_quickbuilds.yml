@@ -41,7 +41,7 @@ jobs:
         shell: bash
   build:
     needs: [ setup ]
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     container: 
       image: hkershaw/dart-dep-external:4.2
       options: "--cap-add=SYS_PTRACE"
