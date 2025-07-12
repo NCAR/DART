@@ -7,7 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     container: 
       image: hkershaw/dart-dep-external:3.2
-      options: "--cap-add=SYS_PTRACE"    
+      options: "--cap-add=SYS_PTRACE"   
+      platform: linux/amd64
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
     steps:
@@ -44,7 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     container: 
       image: hkershaw/dart-dep-external:3.2
-      options: "--cap-add=SYS_PTRACE"    
+      options: "--cap-add=SYS_PTRACE"
+      platform: linux/amd64    
     strategy:
       fail-fast: false 
       matrix:
