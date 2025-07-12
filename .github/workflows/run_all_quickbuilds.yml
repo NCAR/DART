@@ -4,11 +4,10 @@ on:
   
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     container: 
       image: hkershaw/dart-dep-external:3.2
       options: "--cap-add=SYS_PTRACE"   
-      platform: linux/amd64
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
     steps:
@@ -42,11 +41,10 @@ jobs:
         shell: bash
   build:
     needs: [ setup ]
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     container: 
       image: hkershaw/dart-dep-external:3.2
       options: "--cap-add=SYS_PTRACE"
-      platform: linux/amd64    
     strategy:
       fail-fast: false 
       matrix:
