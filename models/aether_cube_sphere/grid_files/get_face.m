@@ -1,7 +1,7 @@
-function [face, lon_grid, len] = get_face(lat, lon)
+function [face, len] = get_face(lat, lon)
 % Routine to efficiently interpolate on aether cube sphere grid
-% Returns which face contains (lat, lon) and the pair of longitudes
-% for the two rotations whose poles do not lie in that face.
+% Returns which face contains (lat, lon) and the length from the edge of the point
+% along each of the axes.
 
 % Range adjustment
 if(lon == 2*pi) lon = 0; end
@@ -94,3 +94,13 @@ len(2) = sqrt(2/3) * sin(lon_grid_m(2)) / sin(gamb);
 % for Aether goes from smallest latitude to largest and the longitudes of the shifted
 % poles are going the opposite way
 if(face == 2 | face == 3) len(2) = 2 * sqrt(1/3) - len(2); end
+
+% Same for face 4 (the bottom) but it's the other coordinate that's reversed
+if(face == 4) len(1) = 2*sqrt(1/3) - len(1); end
+
+
+
+
+
+
+

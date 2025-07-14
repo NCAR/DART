@@ -37,7 +37,7 @@ for i = 1:size(X, 1)
       lon(i, j) = atan2(Y(i, j), X(i, j));
       if(lon(i, j) < 0) lon(i, j) =  lon(i, j) + 2*pi; end
       if(lon(i, j) == 2*pi) lon(i, j) = 0; end
-      [face, lon_grid, len] = get_face(lat(i, j), lon(i, j));
+      [face, len] = get_face(lat(i, j), lon(i, j));
       C(i, j) = face;
    end
 end
@@ -75,8 +75,8 @@ end
 %-------------------------------------------
 
 % Enter lats and lons in degrees for starters
-pt_lon_d = 1;
-pt_lat_d = 0;
+pt_lon_d = 349;
+pt_lat_d = -40;
 % Convert to radians since this is generally used in algorithm
 pt_lon = deg2rad(pt_lon_d);
 pt_lat = deg2rad(pt_lat_d);
@@ -84,18 +84,46 @@ pt_lat = deg2rad(pt_lat_d);
 px = cos(pt_lat) .* cos(pt_lon);
 py = cos(pt_lat) .* sin(pt_lon);
 pz = sin(pt_lat);
+% Plot the point in green
+plot3(px, py, pz, '.', 'markersize', 24, 'color', 'green', 'linewidth', 16);
 
 % Get the face, the longitudes on the two projections that don't have a pole in this face
 % and the length along the two imbedded cube faces.
-[face, lon_grid, len] = get_face(pt_lat, pt_lon); 
+[face, len] = get_face(pt_lat, pt_lon); 
+
+% Each of the four bounding points gets this face initially
+% Points go counterclockwise starting from lower left 
+grid_face(1:4) = face;
 
 % Figure out which interval this is in along each cube face; This gives 0 to np intervals
 low_grid = floor((len + half_del) / del);
 hi_grid = low_grid + 1;
 
-% Plot the point in green
-plot3(px, py, pz, '.', 'markersize', 24, 'color', 'green', 'linewidth', 16);
+% The longitude grid values are
+lat_grid(1) = low_grid(2); lat_grid(2) = hi_grid(2); lat_grid(3) = lat_grid(2); lat_grid(4) = lat_grid(1);
+lon_grid(1) = low_grid(1); lon_grid(2) = lon_grid(1); lon_grid(3) = hi_grid(1); lon_grid(4) = lon_grid(3);
 
+% If points are on the edge or at corners, map to adjacent faces
+f_lon_grid(1:4) = 0; f_lat_grid(1:4) = 0;
+for i = 1:4
+   [f_face(i), f_lon_grid(i), f_lat_grid(i)] = fix_face(face, lon_grid(i), lat_grid(i), np);
+end
+
+% Highlight the bounding points;
+for i = 1:4
+   bp_lon(i) = glon(f_face(i) + 1, f_lat_grid(i), f_lon_grid(i));
+   bp_lat(i) = glat(f_face(i) + 1, f_lat_grid(i), f_lon_grid(i));
+
+   % Convert each to x, y, z and plot
+   bpx = cos(bp_lat(i)) .* cos(bp_lon(i));
+   bpy = cos(bp_lat(i)) .* sin(bp_lon(i));
+   bpz = sin(bp_lat(i));
+   % Plot the bounding points in red
+   plot3(bpx, bpy, bpz, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
+end
+stop
+
+% Find the face, lat_index and lon_index for the boundary points
 % Straightfoward if not in one of the boundaries
 if(all(low_grid > 0) && all(hi_grid < np)) 
 
@@ -142,7 +170,6 @@ else
 
 end
 
-
 % Convert each to x, y, z and plot
 for i = 1:4
    bpx = cos(bp_lat(i)) .* cos(bp_lon(i));
@@ -151,4 +178,7 @@ for i = 1:4
    % Plot the bounding points in red
    plot3(bpx, bpy, bpz, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
 end
+
+bp_lon'
+bp_lat'
 
