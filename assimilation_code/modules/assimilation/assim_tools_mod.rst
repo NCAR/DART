@@ -12,6 +12,8 @@ for both mean and spread. In addition, algorithms to do a variety of flavors of 
 particle filter, and kernel filters are included. The parallel implementation that allows each observation to update all
 state variables that are close to it at the same time is described in Anderson and Collins, 2007.
 
+.. _localization:
+
 Localization
 ------------
 
