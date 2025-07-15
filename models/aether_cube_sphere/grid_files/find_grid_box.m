@@ -75,8 +75,8 @@ end
 %-------------------------------------------
 
 % Enter lats and lons in degrees for starters
-pt_lon_d = 349;
-pt_lat_d = -40;
+pt_lon_d = 269.7;
+pt_lat_d = -35;
 % Convert to radians since this is generally used in algorithm
 pt_lon = deg2rad(pt_lon_d);
 pt_lat = deg2rad(pt_lat_d);
@@ -103,14 +103,26 @@ hi_grid = low_grid + 1;
 lat_grid(1) = low_grid(2); lat_grid(2) = hi_grid(2); lat_grid(3) = lat_grid(2); lat_grid(4) = lat_grid(1);
 lon_grid(1) = low_grid(1); lon_grid(2) = lon_grid(1); lon_grid(3) = hi_grid(1); lon_grid(4) = lon_grid(3);
 
-% If points are on the edge or at corners, map to adjacent faces
+% If points are on the edge map to adjacent faces
 f_lon_grid(1:4) = 0; f_lat_grid(1:4) = 0;
 for i = 1:4
-   [f_face(i), f_lon_grid(i), f_lat_grid(i)] = fix_face(face, lon_grid(i), lat_grid(i), np);
+   [f_face(i), f_lat_grid(i), f_lon_grid(i), corner_detected] = fix_face(face, lat_grid(i), lon_grid(i), np);
+   if(corner_detected) 
+      corner_index = i;
+      break
+   end
+end
+
+% At this point, either plot for corner triangles or for quads
+if(corner_detected) 
+   num_bound_points = 3;
+   [f_face, f_lat_grid, f_lon_grid] = get_corners(face, lat_grid(corner_index), lon_grid(corner_index), np);
+else 
+   num_bound_points = 4;
 end
 
 % Highlight the bounding points;
-for i = 1:4
+for i = 1:num_bound_points
    bp_lon(i) = glon(f_face(i) + 1, f_lat_grid(i), f_lon_grid(i));
    bp_lat(i) = glat(f_face(i) + 1, f_lat_grid(i), f_lon_grid(i));
 
@@ -121,64 +133,4 @@ for i = 1:4
    % Plot the bounding points in red
    plot3(bpx, bpy, bpz, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
 end
-stop
-
-% Find the face, lat_index and lon_index for the boundary points
-% Straightfoward if not in one of the boundaries
-if(all(low_grid > 0) && all(hi_grid < np)) 
-
-   % Highlight the bounding points;
-   bp_lon(1) = glon(face + 1, low_grid(2), low_grid(1)); bp_lat(1) = glat(face + 1, low_grid(2), low_grid(1));
-   bp_lon(2) = glon(face + 1, low_grid(2), hi_grid(1));  bp_lat(2) = glat(face + 1, low_grid(2), hi_grid(1));
-   bp_lon(3) = glon(face + 1, hi_grid(2),  low_grid(1)); bp_lat(3) = glat(face + 1, hi_grid(2),  low_grid(1));
-   bp_lon(4) = glon(face + 1, hi_grid(2),  hi_grid(1));  bp_lat(4) = glat(face + 1, hi_grid(2),  hi_grid(1));
-else
-   % Start with face 1, then generalize
-   if(face == 0)
-    
-      if(low_grid(1) == 0) 
-         % On left side
-         if(low_grid(2) == 0)
-            % Lower left corner
-         elseif(hi_grid(2) == np)
-            % Upper left Corner
-         else
-            % Interior left side; Face 3 is to the left
-            bp_lon(1) = glon(3 + 1, low_grid(2), np);          bp_lat(1) = glat(3 + 1, low_grid(2), np);
-            bp_lon(2) = glon(0 + 1, low_grid(2), hi_grid(1));  bp_lat(2) = glat(0 + 1, low_grid(2), hi_grid(1));
-            bp_lon(3) = glon(3 + 1, hi_grid(2),  np);          bp_lat(3) = glat(3 + 1, hi_grid(2), np);
-            bp_lon(4) = glon(0 + 1, hi_grid(2),  hi_grid(1));  bp_lat(4) = glat(0 + 1, hi_grid(2),  hi_grid(1));
-         end
-      elseif(low_grid(1) == np)
-         if(low_grid(2) == 0)
-            % Lower right corner
-         elseif(hi_grid(2) == np)
-            % Upper right corner
-         else
-            % Interior right side; Face 1 is to the right
-            bp_lon(1) = glon(0 + 1, low_grid(2), hi_grid(2));  bp_lat(1) = glat(1 + 1, low_grid(2), hi_grid(2));
-            bp_lon(2) = glon(1 + 1, low_grid(2), hi_grid(1));  bp_lat(2) = glat(0 + 1, low_grid(2), hi_grid(1));
-            bp_lon(3) = glon(1 + 1, hi_grid(2),  np);          bp_lat(3) = glat(1 + 1, hi_grid(2), np);
-            bp_lon(4) = glon(0 + 1, hi_grid(2),  hi_grid(1));  bp_lat(4) = glat(0 + 1, hi_grid(2),  np);
-         end
-      elseif(low_grid(2) == 0)
-         % Lower side
-      elseif(hi_grid(2) == 0)
-         % Top side
-      end
-   end
-
-end
-
-% Convert each to x, y, z and plot
-for i = 1:4
-   bpx = cos(bp_lat(i)) .* cos(bp_lon(i));
-   bpy = cos(bp_lat(i)) .* sin(bp_lon(i));
-   bpz = sin(bp_lat(i));
-   % Plot the bounding points in red
-   plot3(bpx, bpy, bpz, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
-end
-
-bp_lon'
-bp_lat'
 
