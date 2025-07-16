@@ -33,25 +33,17 @@
 !    inf_sd_from_restart      inflation restart files from the values in inf*_initial
 !                             if needed.
 
-&probit_transform_nml
-   /
-
-&algorithm_info_nml
-   qceff_table_filename = ''
-   /
 
 &filter_nml
-   input_state_file_list        = 'cam_init_files'
-   input_state_files            = ''
+   input_state_files            = 'cam_0001.2018-04-24-21600.nc','cam_0002.2018-04-24-21600.nc','cam_0001.2018-04-24-21600.nc'
    single_file_in               = .false.
    perturb_from_single_instance = .false.
    init_time_days               = -1
    init_time_seconds            = -1
 
-   stages_to_write              = 'forecast','output'
+   stages_to_write              = 'forecast','output', 'analysis'
 
-   output_state_files           = ''
-   output_state_file_list       = 'cam_out_files'
+   output_state_files           = 'cam_0001.2018-04-24-21600.out.nc','cam_0002.2018-04-24-21600.out.nc','cam_0001.2018-04-24-21600.out.nc'
    output_mean                  = .true.
    output_sd                    = .true.
    output_members               = .true.
@@ -60,7 +52,7 @@
    write_all_stages_at_end      = .false.
    output_interval              = 1
 
-   ens_size                     = 20
+   ens_size                     = 3
    num_groups                   = 1
    distributed_state            = .true.
 
@@ -68,7 +60,7 @@
    inf_initial_from_restart    = .true.,                  .false.
    inf_initial                 = 1.0,                     1.0
    inf_lower_bound             = 0.0,                     0.0
-   inf_upper_bound             = 100.0,                   100.0
+   inf_upper_bound             = 25.0,                   100.0
    inf_sd_initial_from_restart = .true.,                  .false.
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
@@ -80,7 +72,6 @@
    obs_sequence_out_name    = 'obs_seq.final'
    num_output_obs_members   = 3
    compute_posterior        = .true.
-
    trace_execution          = .true.
    output_timestamps        = .true.
    output_forward_op_errors = .false.
@@ -205,19 +196,14 @@
 !========================================================================
 
 &model_nml
-   !cam_template_filename       = 'caminput.nc'
-   cam_template_filename       = 'Rean_SST0Z_2020.cam_0001.i.2019-12-02-00000.nc'
+   cam_template_filename       = 'caminput.nc'
    cam_phis_filename           = 'cam_phis.nc'
    custom_routine_to_generate_ensemble = .false.
-   fields_to_perturb                   = 'QTY_TEMPERATURE', 'QTY_U_WIND_COMPONENT', 'QTY_V_WIND_COMPONENT', 'QTY_SURFACE_PRESSURE'
-   perturbation_amplitude              = 1.0, 1.0, 1.0, 100.0
-   state_variables  = 'T',     'QTY_TEMPERATURE',         'NA', 'NA', 'UPDATE'
-                      'US',    'QTY_U_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
-                      'VS',    'QTY_V_WIND_COMPONENT',    'NA', 'NA', 'UPDATE'
-                      'Q',     'QTY_SPECIFIC_HUMIDITY',   'NA', 'NA', 'UPDATE'
-                      'CLDLIQ','QTY_CLOUD_LIQUID_WATER',  'NA', 'NA', 'UPDATE'
-                      'CLDICE','QTY_CLOUD_ICE',           'NA', 'NA', 'UPDATE'
-                      'PS',    'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
+   fields_to_perturb                   = ''
+   perturbation_amplitude              = 0.1
+   state_variables  = 'PS',       'QTY_SURFACE_PRESSURE',    'NA', 'NA', 'UPDATE'
+                      'CO',       'QTY_CO',                  '0.', 'NA', 'UPDATE'
+
    use_log_vertical_scale              = .true.
    use_variable_mean_mass              = .false.
    no_normalization_of_scale_heights   = .true.
@@ -231,44 +217,13 @@
    debug_level                    = 0
    /
 
-! Other fields in the CAM initial file, which could be included in the model state:
-! These QTYs should be changed to physically meaningful values before any real assim.
-!                       'DMS',   'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'H2O2',  'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'H2SO4', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'NUMICE','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'NUMLIQ','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'NUMRAI','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'NUMSNO','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'RAINQM','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'SNOWQM','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'SO2',   'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'SOAG',  'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'bc_a1', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'bc_a4', 'QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'dst_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'dst_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'dst_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'ncl_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'ncl_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'ncl_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'num_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'num_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'num_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'num_a4','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'pom_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'pom_a4','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'so4_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'so4_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'so4_a3','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'soa_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
-!                       'soa_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
 &location_nml
    horiz_dist_only                 = .false.
    vert_normalization_pressure     = 20000.0
    vert_normalization_height       = 10000.0
    vert_normalization_level        = 20.0
-   vert_normalization_scale_height = 1.5
+   vert_normalization_scale_height = 2.25   		
+! instead of 1.5, note that cutoff is different
    approximate_distance            = .true.
    nlon                            = 141
    nlat                            = 72
@@ -295,10 +250,10 @@
    verbose           = .false.
    /
 
-! to use chemistry or saber temperatures, include the following below.
-!                             '../../../observations/forward_operators/obs_def_CO_Nadir_mod.f90',
-!                             '../../../observations/forward_operators/obs_def_SABER_mod.f90',
-!                             '../../../observations/forward_operators/obs_def_MOPITT_CO_mod.f90',
+! to assimilate profiles or columns from MOPITT CO, or CLIMCAPS CO profiles, use
+!                             '../../../observations/forward_operators/obs_def_profile_mopitt.f90',
+!                             '../../../observations/forward_operators/obs_def_mopitt_col.f90',
+!                             '../../../observations/forward_operators/obs_def_climcaps_prof.f90',
 
 &preprocess_nml
    overwrite_output        = .true.
@@ -306,14 +261,12 @@
    output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
    input_obs_def_mod_file  = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   obs_type_files          = '../../../observations/forward_operators/obs_def_gps_mod.f90',
-                             '../../../observations/forward_operators/obs_def_upper_atm_mod.f90',
-                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
-                             '../../../observations/forward_operators/obs_def_altimeter_mod.f90'
+   obs_type_files          = '../../../observations/forward_operators/obs_def_profile_mopitt.f90',
    quantity_files          = '../../../assimilation_code/modules/observations/atmosphere_quantities_mod.f90',
                              '../../../assimilation_code/modules/observations/space_quantities_mod.f90',
                              '../../../assimilation_code/modules/observations/chemistry_quantities_mod.f90'
    /
+
 
 ! Not usually assimilated.  No fundamental reason not to.
 !                               'RADIOSONDE_SPECIFIC_HUMIDITY',
@@ -324,23 +277,7 @@
 !                               'SABER_TEMPERATURE',
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT', 
-                                'RADIOSONDE_V_WIND_COMPONENT',
-                                'RADIOSONDE_TEMPERATURE'
-!   assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT',
-!                                'RADIOSONDE_V_WIND_COMPONENT',
-!                                'RADIOSONDE_TEMPERATURE',
-!                                'AIRCRAFT_U_WIND_COMPONENT',
-!                                'AIRCRAFT_V_WIND_COMPONENT',
-!                                'AIRCRAFT_TEMPERATURE',
-!                                'ACARS_U_WIND_COMPONENT',
-!                                'ACARS_V_WIND_COMPONENT',
-!                                'ACARS_TEMPERATURE',
-!                                'SAT_U_WIND_COMPONENT',
-!                                'SAT_V_WIND_COMPONENT',
-!                                'GPSRO_REFRACTIVITY'
-
-!   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+   assimilate_these_obs_types = 'MOPITT_CO_RETRIEVAL',
    /
 
 
@@ -360,7 +297,8 @@
 
 
 &assim_tools_nml
-   cutoff                            = 0.15
+   filter_kind                       = 1
+   cutoff                            = 0.1
    sort_obs_inc                      = .false.
    spread_restoration                = .false.
    sampling_error_correction       = .true.
@@ -640,11 +578,4 @@
    debug = 0
    /
 
-&cam_dart_obs_preprocessor_nml
-   filename_in  = 'obs_seq.out'
-   filename_out = 'obs_seq.nohighobs'
-   verbose      = .false.
-   calendar     = 'Gregorian'
-   print_every  = 5000
-   /
 
