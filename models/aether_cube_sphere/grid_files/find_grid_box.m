@@ -20,6 +20,24 @@ for i = 1:18
 end
 box_lon = box_lon - pi / 4;
 
+% Some extra stuff to get the lats for a given grid point on face 0 (0 to 90 degrees)
+for i = 1:18
+   x(i) = -sqrt(1/3) + half_del + del * (i - 1);
+   box_lon(i) = atan2(sqrt(1 / 3), x(i));
+end
+
+for i = 1:18
+   x(i) = -sqrt(1/3) + half_del + del * (i - 1);
+   for j = 1:18
+      y(j) = -sqrt(1/3) + half_del + del * (j - 1);
+      % Compute lat of i and j
+      box_lat(i, j) = atan2(y(j), sqrt(1/3 + x(i)^2));
+   end
+end
+
+box_lon = box_lon - pi / 4;
+
+
 %-------------------------------------------
 % Plot a background spherical surface
 th = linspace(0,2*pi, 1000) ;
@@ -70,8 +88,30 @@ for face = 0:5
    % Plot points on each face with distinct colors 
    h = plot3(squeeze(x), squeeze(y), squeeze(z), '.', 'markersize', 24, 'color', 'blue', 'linewidth', 16);
    hold on
-
 end
+
+% Compare computed lat lon to grid files for a given face
+face = 4;
+for i = 1:18
+   for j = 1:18
+      [dlat(j, i), dlon(j, i)] = grid_to_lat_lon(face, j, i, np);
+   end
+end
+
+% Plot the d grids
+   % Get x, y, z for this face for plotting
+   x = cos(dlat) .* cos(dlon);
+   y = cos(dlat) .* sin(dlon);
+   z = sin(dlat);
+   % Plot points on each face with distinct colors 
+   h = plot3(x, y, z, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
+
+% Compute the max of the differences
+max(max(abs(squeeze(glon(face + 1, :, :)) - dlon)))
+max(max(abs(squeeze(glat(face + 1, :, :)) - dlat)))
+
+
+stop
 %-------------------------------------------
 
 % Enter lats and lons in degrees for starters

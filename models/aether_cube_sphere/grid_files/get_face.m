@@ -79,9 +79,9 @@ end
 lon_grid_m = mod(lon_grid, pi/2);
 
 % Use law of sines to go from lon back to position along edge of imbedded cube 
-% The triangle of interest has a side of length sqrt(2/3) (1/2 of the planar diagonal of the imbedded cube)
+% The triangle of interest has a side of length 2sqrt(1/3) (1/2 of the planar diagonal of the imbedded cube)
 % The angles adjacent to this side are the longitude and 45 degrees
-% The angle opposite the side of length sqrt(2/3) is pi - (longitude + pi/4)
+% The angle opposite the side of length 2sqrt(1/3) is pi - (longitude + pi/4)
 % The side opposite the longitude is how far along the side of the cube
 % The cube side is 2sqrt(1/3), so the length along the side is between zero and this value
 gama = pi - (pi/4 + lon_grid_m(1));
