@@ -104,19 +104,17 @@ end
    y = cos(dlat) .* sin(dlon);
    z = sin(dlat);
    % Plot points on each face with distinct colors 
-   h = plot3(x, y, z, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
+   %%%h = plot3(x, y, z, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
 
 % Compute the max of the differences
 max(max(abs(squeeze(glon(face + 1, :, :)) - dlon)))
 max(max(abs(squeeze(glat(face + 1, :, :)) - dlat)))
 
-
-stop
 %-------------------------------------------
 
 % Enter lats and lons in degrees for starters
 pt_lon_d = 269.7;
-pt_lat_d = -35;
+pt_lat_d = -25;
 % Convert to radians since this is generally used in algorithm
 pt_lon = deg2rad(pt_lon_d);
 pt_lat = deg2rad(pt_lat_d);
