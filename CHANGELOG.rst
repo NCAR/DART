@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 16 2025 :: GitHub actions and MOM6 PMO defaults. Tag v11.11.3**
+
+- non-root user for containers
+- run_all_quickbuilds can now use rttov13
+- default PMO options updated for MOM6
+
 **July 7 2025 :: Documentation for Data Management. Tag v11.11.2**
 
 - Document namelist options for state distribution and vertical conversion
