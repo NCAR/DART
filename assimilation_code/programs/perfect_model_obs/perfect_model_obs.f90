@@ -494,15 +494,9 @@ AdvanceTime: do
       ! to indicate progress is being made and to allow estimates
       ! of how long the assim will take.
       if (nth_obs == 0) then
-         if(task_count() == 1) then
-            write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', j, &
-                                         ' of ', num_obs_in_set
-            call trace_message(msgstring, 'perfect_model_obs:', -1)
-         else
-            write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', global_obs_num, &
-                                         ' of ', num_obs_in_set
-            call error_handler(E_ALLMSG, 'perfect_model_obs:' ,trim(msgstring))
-         endif
+         write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', global_obs_num, &
+                                      ' of ', num_obs_in_set
+         call error_handler(E_ALLMSG, 'perfect_model_obs:' ,trim(msgstring))
          ! or if you want timestamps:
          !     call timestamp(msgstring, pos="debug")
       endif
