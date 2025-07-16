@@ -5,39 +5,6 @@
 % This does not include halos; the points are offset from the boundaries
 np = 18;
 
-% Some geometry about the grid point distribution
-% Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
-% two exterior intervals of half  width, sqrt(1/3) / np 
-cube_side = 2 * sqrt(1 / 3); 
-del = cube_side / np;
-half_del = del / 2;
-
-% Precompute the positions of the points along the cube
-% These are only used to verify that these grid computations give the same values as the grid files
-for i = 1:18
-   x(i) = -sqrt(1/3) + half_del + del * (i - 1);
-   box_lon(i) = atan2(sqrt(1 / 3), x(i));
-end
-box_lon = box_lon - pi / 4;
-
-% Some extra stuff to get the lats for a given grid point on face 0 (0 to 90 degrees)
-for i = 1:18
-   x(i) = -sqrt(1/3) + half_del + del * (i - 1);
-   box_lon(i) = atan2(sqrt(1 / 3), x(i));
-end
-
-for i = 1:18
-   x(i) = -sqrt(1/3) + half_del + del * (i - 1);
-   for j = 1:18
-      y(j) = -sqrt(1/3) + half_del + del * (j - 1);
-      % Compute lat of i and j
-      box_lat(i, j) = atan2(y(j), sqrt(1/3 + x(i)^2));
-   end
-end
-
-box_lon = box_lon - pi / 4;
-
-
 %-------------------------------------------
 % Plot a background spherical surface
 th = linspace(0,2*pi, 1000) ;
@@ -114,7 +81,7 @@ max(max(abs(squeeze(glat(face + 1, :, :)) - dlat)))
 
 % Enter lats and lons in degrees for starters
 pt_lon_d = 269.7;
-pt_lat_d = -25;
+pt_lat_d = -29;
 % Convert to radians since this is generally used in algorithm
 pt_lon = deg2rad(pt_lon_d);
 pt_lat = deg2rad(pt_lat_d);
@@ -125,44 +92,20 @@ pz = sin(pt_lat);
 % Plot the point in green
 plot3(px, py, pz, '.', 'markersize', 24, 'color', 'green', 'linewidth', 16);
 
-% Get the face, the longitudes on the two projections that don't have a pole in this face
-% and the length along the two imbedded cube faces.
-[face, len] = get_face(pt_lat, pt_lon); 
 
-% Each of the four bounding points gets this face initially
-% Points go counterclockwise starting from lower left 
-grid_face(1:4) = face;
+[grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, corner_detected] = ...
+   get_bounding_box(pt_lat, pt_lon, np);
 
-% Figure out which interval this is in along each cube face; This gives 0 to np intervals
-low_grid = floor((len + half_del) / del);
-hi_grid = low_grid + 1;
-
-% The longitude grid values are
-lat_grid(1) = low_grid(2); lat_grid(2) = hi_grid(2); lat_grid(3) = lat_grid(2); lat_grid(4) = lat_grid(1);
-lon_grid(1) = low_grid(1); lon_grid(2) = lon_grid(1); lon_grid(3) = hi_grid(1); lon_grid(4) = lon_grid(3);
-
-% If points are on the edge map to adjacent faces
-f_lon_grid(1:4) = 0; f_lat_grid(1:4) = 0;
-for i = 1:4
-   [f_face(i), f_lat_grid(i), f_lon_grid(i), corner_detected] = fix_face(face, lat_grid(i), lon_grid(i), np);
-   if(corner_detected) 
-      corner_index = i;
-      break
-   end
-end
-
-% At this point, either plot for corner triangles or for quads
-if(corner_detected) 
+if(corner_detected)
    num_bound_points = 3;
-   [f_face, f_lat_grid, f_lon_grid] = get_corners(face, lat_grid(corner_index), lon_grid(corner_index), np);
-else 
+else
    num_bound_points = 4;
 end
 
 % Highlight the bounding points;
 for i = 1:num_bound_points
-   bp_lon(i) = glon(f_face(i) + 1, f_lat_grid(i), f_lon_grid(i));
-   bp_lat(i) = glat(f_face(i) + 1, f_lat_grid(i), f_lon_grid(i));
+   bp_lon(i) = glon(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
+   bp_lat(i) = glat(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
 
    % Convert each to x, y, z and plot
    bpx = cos(bp_lat(i)) .* cos(bp_lon(i));
@@ -170,5 +113,24 @@ for i = 1:num_bound_points
    bpz = sin(bp_lat(i));
    % Plot the bounding points in red
    plot3(bpx, bpy, bpz, '.', 'markersize', 24, 'color', 'red', 'linewidth', 16);
+
+   % Also plot the lat lon pairs determined automatically
+   % Convert each to x, y, z and plot
+   cpx = cos(grid_pt_lat(i)) .* cos(grid_pt_lon(i));
+   cpy = cos(grid_pt_lat(i)) .* sin(grid_pt_lon(i));
+   cpz = sin(grid_pt_lat(i));
+   % Plot the bounding points in red
+   plot3(cpx, cpy, cpz, 'o', 'markersize', 16, 'color', 'red', 'linewidth', 3);
+
 end
+
+
+
+
+
+
+
+
+
+
 
