@@ -9,7 +9,11 @@ cube_side = 2 * sqrt(1 / 3);
 del = cube_side / np;
 half_del = del / 2;
 x = sqrt(1/3) - (half_del + del * (lon_ind - 1));
-y = -sqrt(1/3) + (half_del + del * (lat_ind - 1));
+if(face == 5)
+   y = sqrt(1/3) - (half_del + del * (lat_ind - 1));
+else
+   y = -sqrt(1/3) + (half_del + del * (lat_ind - 1));
+end
 
 if(face < 4)
    blon = atan2(sqrt(1 / 3), x);
@@ -22,7 +26,9 @@ if(face < 4)
 elseif(face == 4 | face == 5)
    % Face 4 is tangent to south pole
    lon = atan2(y, x);
-   lat = -atan2(sqrt(1/3), sqrt(x^2 + y^2));
+   lat = atan2(sqrt(1/3), sqrt(x^2 + y^2));
+
+   if(face == 4) lat = -lat; end
 
    %  Get ready for rotation
    xt = cos(lat) * cos(lon);
@@ -37,7 +43,11 @@ elseif(face == 4 | face == 5)
 
    lat = asin(rot_vect(3));
    lon = atan2(rot_vect(2), rot_vect(1));
+   % Note that there are inconsistent treatments of the value near longitude
+   % 0 in the grid files for Aether. Some points have a value near or just less
+   % than 2pi, other points have values just greater than 0. This code tries
+   % to avoid values near to 2pi and have 0 instead.
    if(lon < 0) lon =  lon + 2*pi; end
-   if(lon == 2*pi) lon = 0; end
+   if(lon >= 2*pi) lon = 0; end
 
 end
