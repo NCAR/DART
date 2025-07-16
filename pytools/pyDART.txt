@@ -1,1 +1,1 @@
--e pyqceff
+-e ./pyqceff
