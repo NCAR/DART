@@ -33,6 +33,12 @@
 !    inf_sd_from_restart      inflation restart files from the values in inf*_initial
 !                             if needed.
 
+&probit_transform_nml
+   /
+
+&algorithm_info_nml
+   qceff_table_filename = ''
+   /
 
 &filter_nml
    input_state_files            = 'cam_0001.2018-04-24-21600.nc','cam_0002.2018-04-24-21600.nc','cam_0001.2018-04-24-21600.nc'
@@ -43,7 +49,7 @@
 
    stages_to_write              = 'forecast','output', 'analysis'
 
-   output_state_files           = 'cam_0001.2018-04-24-21600.out.nc','cam_0002.2018-04-24-21600.out.nc','cam_0001.2018-04-24-21600.out.nc'
+   output_state_files           = 'cam_0001.2018-04-24-21600.out.nc','cam_0002.2018-04-24-21600.out.nc','cam_0003.2018-04-24-21600.out.nc'
    output_mean                  = .true.
    output_sd                    = .true.
    output_members               = .true.
@@ -56,20 +62,20 @@
    num_groups                   = 1
    distributed_state            = .true.
 
-   inf_flavor                  = 5,                       0
-   inf_initial_from_restart    = .true.,                  .false.
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                  .false.
    inf_initial                 = 1.0,                     1.0
    inf_lower_bound             = 0.0,                     0.0
    inf_upper_bound             = 25.0,                   100.0
-   inf_sd_initial_from_restart = .true.,                  .false.
+   inf_sd_initial_from_restart = .false.,                  .false.
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
    inf_sd_max_change           = 1.05,                    1.05
    inf_damping                 = 0.9,                     0.9
    inf_deterministic           = .true.,                  .true.
 
-   obs_sequence_in_name     = 'obs_seq.out'
-   obs_sequence_out_name    = 'obs_seq.final'
+   obs_sequence_in_name     = 'obs_seq.2018-04-24-21600'
+   obs_sequence_out_name    = 'obs_seq.2018-04-24-21600.out'
    num_output_obs_members   = 3
    compute_posterior        = .true.
    trace_execution          = .true.
@@ -236,7 +242,7 @@
 #========================================================================
 
 &fill_inflation_restart_nml
-   write_prior_inf = .true.
+   write_prior_inf = .false.
    prior_inf_mean  = 1.01
    prior_inf_sd    = 0.6
 
@@ -297,11 +303,10 @@
 
 
 &assim_tools_nml
-   filter_kind                       = 1
    cutoff                            = 0.1
    sort_obs_inc                      = .false.
    spread_restoration                = .false.
-   sampling_error_correction       = .true.
+   sampling_error_correction       = .false.
    adaptive_localization_threshold   = -1
    output_localization_diagnostics   = .false.
    localization_diagnostics_file     = 'localization_diagnostics'
