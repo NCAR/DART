@@ -449,8 +449,10 @@ AdvanceTime: do
    write(msgstring, '(A,I7)') 'Number of observations to be evaluated', &
       num_obs_in_set
    call trace_message(msgstring)
-   call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
-   call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
+   if(my_task_id() == 0) then
+      call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
+      call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
+   endif
 
    ! for multi-core runs, each core needs to store the forward operator and the qc value
    call init_ensemble_manager(fwd_op_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
