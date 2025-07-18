@@ -4,18 +4,13 @@ import netCDF4 as nc4
 from datetime import datetime, timedelta
 import numpy as np
 import re
+import pydartdiags.obs_sequence.obs_sequence as obsq
 
-def ioda2df(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
-    """Creates pandas dataframe from netCDF.
-
-    Note:
-
-        ObsBias = obsvalue - corvalue,  OR
-        ObsBias = initial_obsvalue - corvalue
-        corvalue = @ObsValue - @ObsBias = bgvalue + fg_depar, if @ObsBias is valid  # noqa
-        corvalue = @ObsValue, otherwise
+def ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
+    """Creates pandas dataframe from a IODA observation data file.
 
     Args:
+        1. iodaFile - IODA observation data file
         mask_obsvalue (None, optional): Mask ObsValue _FillValue and NaN
             Set this to something like netCDF4.default_fillvals[dtype]
             where dtype can be 'f4' or 'f8' for floating point arrays
@@ -23,8 +18,7 @@ def ioda2df(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
         derived: Set to true if using @DerivedObsValue
 
     Returns:
-        pandas.DataFrame: Dataframe of 1D arrays in the NetCDF with
-        exceptions for DateTime and Station ID which are 2D arrays.
+        pandas.DataFrame: IODA formatted dataframe
 
     """
     df = pd.DataFrame()
@@ -95,3 +89,55 @@ def ioda2df(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
         df.sort_values(by=sort_by, kind='mergesort', inplace=True)
 
     return df
+
+def buildObsSeqFromObsqDF(obsqDF, maxNumObs=None, nonQcNames=None, qcNames=None):
+    """Construct a pyDARTdiags ObsSequence ojbect from an obs_seq format pandas dataframe
+
+    Args:
+        1. obsqDF - input obs_seq formatted dataframe
+        2. maxNumObs - maximum number of obs for the file header
+        3. nonQcNames - default setting for the ObsSequence object "non_qc_copie_names" attribute
+        4. qcNames - default setting for the ObsSequence object "qc_copie_names" attribute
+
+        The default for the maxNumObs (-1) tells this function to use the length of the
+        input dataframe for the ObsSequence object's "max_num_obs" entry in its header attribute
+
+    Return:
+        This function returns an ObsSequence object based on the input dataframe
+
+    """
+
+    # set up defaults for function arguments
+    if maxNumObs is None:
+        maxNumObs = -1
+    if nonQcNames is None:
+        nonQcNames = [ 'observation' ]
+    if qcNames is None:
+        qcNames = [ 'Data_QC' ]
+ 
+    # Steps:
+    #   1. Construct an empty ObsSequence object
+    #   2. assign the input dataframe to objects data frame (shallow copy)
+    #   3. update the object attributes from the input dataframe
+    #   4. fix the "copie" related ojbect attributes
+    #   5. generate the header attribute from the ojbect attributes
+    obsSeq = obsq.ObsSequence(file=None)
+    obsSeq.df = obsqDF
+    obsSeq.update_attributes_from_df()
+
+    # An actual file header was never read, so the obsSeq methods have no
+    # way of figuring out which columns are non-qc vs qc. They need hints
+    # which are given by setting the non_qc_copie_names and qc_copie_names
+    # attributes.
+    obsSeq.non_qc_copie_names = nonQcNames
+    obsSeq.qc_copie_names = qcNames
+    obsSeq.n_non_qc = len(obsSeq.non_qc_copie_names)
+    obsSeq.n_qc = len(obsSeq.qc_copie_names)
+
+    if maxNumObs < 0:
+        obsSeq.create_header(len(obsSeq.df))
+    else:
+        obsSeq.create_header(maxNumObs)
+
+    return obsSeq
+
