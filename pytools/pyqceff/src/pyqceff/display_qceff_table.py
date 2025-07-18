@@ -199,13 +199,14 @@ def display_summary_table(data: List[List[str]]) -> None:
     print(f"\n{'='*154}")
     
     # Header
+    qty_width = 31
     col_width = 24
     short_col_width = 15
-    print(f"{'QUANTITY':<{col_width}} {'OBS_ERROR':<{short_col_width}} {'PROBIT_INFL':<{col_width}} {'PROBIT_STATE':<{col_width}} {'PROBIT_EXT':<{col_width}} {'FILTER_KIND':<{col_width}}")
-    print(f"{'-'*col_width} {'-'*short_col_width} {'-'*col_width} {'-'*col_width} {'-'*col_width} {'-'*col_width}")
+    print(f"{'QUANTITY':<{qty_width}} {'OBS_ERROR':<{short_col_width}} {'PROBIT_INFL':<{col_width}} {'PROBIT_STATE':<{col_width}} {'PROBIT_EXT':<{col_width}} {'FILTER_KIND':<{col_width}}")
+    print(f"{'-'*qty_width} {'-'*short_col_width} {'-'*col_width} {'-'*col_width} {'-'*col_width} {'-'*col_width}")
 
     for row in data:
-        qty_name = row[0].replace('QTY_', '').upper()
+        qty_name = row[0].upper()
         # obs_error_info
         obs_error_below = row[1] if len(row) > 1 else ''
         obs_error_above = row[2] if len(row) > 2 else ''
@@ -244,7 +245,7 @@ def display_summary_table(data: List[List[str]]) -> None:
         obs_inc_up = row[24] if len(row) > 24 else ''
         obs_inc_info = format_kind(filter_kind, obs_inc_below, obs_inc_above, obs_inc_low, obs_inc_up)
 
-        print(f"{qty_name:<{col_width}} {obs_error_info:<{short_col_width}} {probit_infl:<{col_width}} {probit_state:<{col_width}} {probit_ext:<{col_width}} {obs_inc_info:<{col_width}}")
+        print(f"{qty_name:<{qty_width}} {obs_error_info:<{short_col_width}} {probit_infl:<{col_width}} {probit_state:<{col_width}} {probit_ext:<{col_width}} {obs_inc_info:<{col_width}}")
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Display QCEFF table summary and details.")
