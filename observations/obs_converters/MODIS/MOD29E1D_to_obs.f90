@@ -44,7 +44,7 @@ use        utilities_mod, only : initialize_utilities, finalize_utilities,   &
 use     time_manager_mod, only : time_type, set_calendar_type, set_date,     &
                                  set_time, get_time, GREGORIAN,              &
                                  operator(>=), operator(-), operator(+)
-use     obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,  &
+use     obs_sequence_mod, only : obs_sequence_type, obs_type,                &
                                  static_init_obs_sequence, init_obs,         &
                                  write_obs_seq, init_obs_sequence,           &
                                  get_num_obs, set_copy_meta_data,            &
@@ -59,7 +59,6 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file,       &
 
 implicit none
 
-character(len=*), parameter :: source = 'MOD29E1D_to_obs.f90'
 character(len=*), parameter :: routine = 'MOD29E1D_to_obs'
 
 ! Namelist input with default values
@@ -76,7 +75,7 @@ namelist /MOD29E1D_to_obs_nml/ year, doy, terr, input_file, output_file,    &
 ! Variable definition
 character(len=128) :: varname
 character(len=512) :: string1
-integer  :: n, i, j, oday, osec, rcio, iunit, otype, io
+integer  :: i, j, oday, osec, iunit, io
 integer  :: num_copies, num_qc, max_obs, ncid, varid
 integer  :: axdim, aydim
 real(r8) :: qc
@@ -90,7 +89,7 @@ type(obs_type)          :: obs, prev_obs
 type(time_type)         :: comp_day0, time_obs, prev_time
 
 !-----------------------------------------------------------------------
-! Begin exectuable code
+! Begin executable code
 
 call initialize_utilities(routine)
 
@@ -107,7 +106,7 @@ call check_namelist_read(iunit, io, 'MOD29E1D_to_obs_nml')
 
 ! record namlist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml = MOD29E1D_to_obs_nml)
-if (do_nml_file()) write(    *      , nml = MOD29E1D_to_obs_nml)
+if (do_nml_term()) write(    *      , nml = MOD29E1D_to_obs_nml)
 
 ! open the netcdf file to read input data
 ncid = nc_open_file_readonly(input_file, routine)
