@@ -25,8 +25,8 @@ lonx = lonx.where((lonx <= 180) & (lonx >= -180))
 lon, lat = np.meshgrid(lonx, laty)
 
 pre_file['tsfc'] = pre_file.Ice_Surface_Temperature_NP[0]/100 - 273.15
-pre_file['lat'] = ({'y','x'}, lat)
-pre_file['lon'] = ({'y','x'}, lon)
+pre_file['lat'] = (('y','x'), lat)
+pre_file['lon'] = (('y','x'), lon)
 
 post_file = pre_file.drop_vars({'Sea_Ice_by_Reflectance_NP', 
                                 'Ice_Surface_Temperature_NP',
