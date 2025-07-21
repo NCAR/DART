@@ -7,11 +7,11 @@
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
-   single_file_in             = .true.
+   single_file_in             = .false.
    input_state_files          = "perfect_input.nc"
 
-   write_output_state_to_file = .true.,
-   single_file_out            = .true.
+   write_output_state_to_file = .false.,
+   single_file_out            = .false.
    output_state_files         = "perfect_output.nc"
    output_interval            = 1,
 
