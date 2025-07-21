@@ -1,6 +1,7 @@
 .. index::
    pair: MODIS; MOD29E1D_to_obs
    pair: MOD29E1D_to_obs; MODIS
+   sea ice temperature
 
 PROGRAM ``MOD29E1D_to_obs``
 ===========================
