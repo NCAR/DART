@@ -55,63 +55,6 @@ subroutine read_cice_state_variable(varname, var_array, filename)
 
 end subroutine read_cice_state_variable
 
-
-! subroutine get_3d_variable(ncid, varname, var, filename)
-
-!     integer,               intent(in)  :: ncid
-!     character(len=*),      intent(in)  :: varname
-!     real(r8), allocatable, intent(out) :: var(:,:,:)
-!     character(len=*),      intent(in)  :: filename
- 
-!     integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
-!     integer                               :: ndims, VarID, io
-!     character(len=NF90_MAX_NAME)          :: dimName
-    
-!     write(msgstring,*) trim(varname)//' '//trim(filename)
-    
-!     io = nf90_inq_varid(ncid, trim(varname), VarID)
-!     call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(msgstring))
-    
-!     io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=ndims)
-!     call nc_check(io, 'dart_to_cice', 'inquire_variable '//trim(msgstring))
-    
-!     if (ndims /= 3) then
-!        write(string2,*) 'expected 3 dimension, got ', ndims
-!        call error_handler(E_ERR,'dart_to_cice',msgstring,text2=string2)
-!     endif
-    
-!     dimLengths = 1
-!     DimensionLoop : do i = 1,ndims
-    
-!        write(string1,'(''inquire dimension'',i2,A)') i,trim(msgstring)
-!        io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimLengths(i))
-!        call nc_check(io, 'dart_to_cice', string1)
-    
-!     enddo DimensionLoop
-    
-!     allocate( var(dimLengths(1), dimLengths(2), dimLengths(3)) )
-    
-!     call nc_check(nf90_get_var(ncid, VarID, var), 'dart_to_cice', &
-!              'get_var '//trim(msgstring))
-    
-!  end subroutine get_3d_variable
-
-! -----------------------------------------------------------------------------
-!  subroutine write_3d_variable(ncid, varname, var, filename)
-
-!    integer,               intent(in)  :: ncid
-!    character(len=*),      intent(in)  :: varname, filename
-!    real(r8), allocatable, intent(in)  :: var(:,:,:)
-!    integer                            :: VarID, io
-
-!    ! write a variable to the netcdf file
-!    io = nf90_inq_varid(ncid, trim(varname), VarID)
-!    call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(filename))
-!    io = nf90_put_var(ncid, VarID, var)
-!    call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(filename))
-
-! end subroutine write_3d_variable
-
 ! ----------------------------------------------------------------------------- 
 
  subroutine area_simple_squeeze(qice001, qice002,     &
@@ -363,7 +306,8 @@ end subroutine read_cice_state_variable
  
     real(r8), dimension(Nx,Ny,Ncat) :: hicen_original, hsnon_original, aicen_temp
     real(r8), dimension(Nx,Ny) :: aice, vice, vice_temp
-    real(r8), dimension(Ncat) :: hin_max, hcat_midpoint
+    real(r8), dimension(0:Ncat) :: hin_max
+    real(r8), dimension(Ncat) :: hcat_midpoint
     real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new
     real(r8), parameter :: Tsmelt = 0._r8,        &
                            cc3 = 3._r8,           &
@@ -582,7 +526,8 @@ end subroutine read_cice_state_variable
     integer, intent(in) :: Ncat, Nx, Ny
  
     real(r8), dimension(Nx,Ny) :: aice, vice, vsno, aice_temp, vice_temp, vsno_temp 
-    real(r8), dimension(Ncat) :: hin_max, hcat_midpoint
+    real(r8), dimension(0:Ncat) :: hin_max
+    real(r8), dimension(Ncat) :: hcat_midpoint
     real(r8) :: squeeze, cc1, cc2, x1, Si0new, Ti, qsno_hold, qi0new, hicen
     real(r8), parameter :: Tsmelt = 0._r8,        &
                            cc3 = 3._r8,           &

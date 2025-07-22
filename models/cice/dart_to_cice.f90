@@ -23,15 +23,13 @@ use  utilities_mod, only : initialize_utilities, finalize_utilities, &
 use ice_postprocessing_mod, only : cice_rebalancing, area_simple_squeeze, &
                                    volume_simple_squeeze, read_cice_state_variable
 use  netcdf_utilities_mod,  only : nc_check, nc_open_file_readwrite, nc_put_variable, &
-                                   nc_close_file
-use  netcdf 
+                                   nc_close_file, nc_open_file_readonly, &
+                                   nc_get_variable_size
+use  netcdf
 
 implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = 'dart_to_cice'
 
 !------------------------------------------------------------------
 ! SET NAMELIST AND ALLOCATE VARIABLES    
@@ -53,7 +51,7 @@ character(len=512) :: string1, string2, msgstring
 character(len=128) :: method
 character(len=3)   :: nchar
 
-integer :: iunit, io, ncid, dimid, Ncat, Nx, Ny
+integer :: iunit, io, ncid, dimid, Ncat, Nx, Ny, nsize(3)
 real(r8), allocatable :: aicen_original(:,:,:), vicen_original(:,:,:), vsnon_original(:,:,:)
 real(r8), allocatable :: aicen(:,:,:), vicen(:,:,:), vsnon(:,:,:), Tsfcn(:,:,:)
 real(r8), allocatable :: qice001(:,:,:), qice002(:,:,:), qice003(:,:,:), qice004(:,:,:), qice005(:,:,:), qice006(:,:,:), qice007(:,:,:), qice008(:,:,:)
@@ -63,7 +61,7 @@ real(r8), allocatable :: qsno001(:,:,:), qsno002(:,:,:), qsno003(:,:,:)
 !------------------------------------------------------------------
 ! INIALIZE AND PERFORM CHECKS ON FILES                
 !------------------------------------------------------------------
-call initialize_utilities(progname='dart_to_cice')
+call initialize_utilities(progname=source)
 
 call find_namelist_in_file("input.nml", "dart_to_cice_nml", iunit)
 read(iunit, nml = dart_to_cice_nml, iostat = io)
@@ -75,27 +73,34 @@ call to_upper(method)
 write(string1,*) 'converting DART output file "'// &
                  &trim(dart_to_cice_input_file)//'" to one CICE will like'
 write(string2,*) 'using the "'//trim(balance_method)//'" method.'
-call error_handler(E_MSG,'dart_to_cice',string1,text2=string2)
+call error_handler(E_MSG,source,string1,text2=string2)
 
 if ( .not. file_exist(dart_to_cice_input_file) ) then
    write(string1,*) 'cannot open "', trim(dart_to_cice_input_file),'" for updating.'
-   call error_handler(E_ERR,'dart_to_cice:filename not found ',trim(dart_to_cice_input_file))
+   call error_handler(E_ERR,source,'filename not found ',trim(dart_to_cice_input_file))
 endif
 
 if ( .not. file_exist(original_cice_restart_file) ) then
    write(string1,*) 'cannot open "', trim(original_cice_restart_file),'" for reading.'
-   call error_handler(E_ERR,'dart_to_cice:filename not found ',trim(original_cice_restart_file))
+   call error_handler(E_ERR,source,'filename not found ',trim(original_cice_restart_file))
 endif
 
 !------------------------------------------------------------------
 ! READ VARIABLES FROM RESTART FILES               
 !------------------------------------------------------------------
+ncid = nc_open_file_readonly(original_cice_restart_file, source)
+call nc_get_variable_size(ncid, 'aicen', nsize, source)
+Nx = nsize(1)
+Ny = nsize(2)
+Ncat = nsize(3)
+call nc_close_file(ncid, source)
+
 ! Read the pre-assim variables
 call read_cice_state_variable('aicen', aicen_original, original_cice_restart_file)
 call read_cice_state_variable('vicen', vicen_original, original_cice_restart_file)
 call read_cice_state_variable('vsnon', vsnon_original, original_cice_restart_file)
 
-! Read the post-assim variables 
+! Read the post-assim variables
 call read_cice_state_variable('aicen', aicen, dart_to_cice_input_file)
 call read_cice_state_variable('vicen', vicen, dart_to_cice_input_file)
 call read_cice_state_variable('vsnon', vsnon, dart_to_cice_input_file)
