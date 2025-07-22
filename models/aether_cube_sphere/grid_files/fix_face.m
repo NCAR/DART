@@ -1,10 +1,11 @@
-function [f_face, f_lat_grid, f_lon_grid, corner_detected] = fix_face(face, lat_grid, lon_grid, np)
+function [f_face, f_lat_grid, f_lon_grid, edge, corner] = fix_face(face, lat_grid, lon_grid, np)
 
 % For points past the edge of a face, finds the corresponding points on the adjacent face
 % Need to do something more special for corner points
 
-% Default is not a corner
-corner_detected = false;
+% Default is not a corner or an edge
+corner = false;
+edge   = false;
 
 % Just return if no edge
 if(lon_grid > 0 && lon_grid < np + 1 && lat_grid > 0 && lat_grid < np + 1)
@@ -15,12 +16,14 @@ if(lon_grid > 0 && lon_grid < np + 1 && lat_grid > 0 && lat_grid < np + 1)
 end
 
 if((lat_grid == 0 | lat_grid == np + 1) && (lon_grid == 0 | lon_grid == np + 1))
-   corner_detected = true;
+   corner = true;
    % Matlab likes all return arguments to be set, even if they won't be used
    f_face = -99; f_lon_grid = -99; f_lat_grid = -99;
    return
 end
 
+% Otherwise, on an edge
+edge = true;
 % Deal with each side of faces separately
 if(lon_grid == 0)
    % On left edge not corner

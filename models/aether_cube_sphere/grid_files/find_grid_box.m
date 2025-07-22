@@ -7,7 +7,7 @@ np = 18;
 
 %-------------------------------------------
 % Plotting is available to give insight but can be turned off by
-do_plotting = false;
+do_plotting = true;
 
 if(do_plotting)
    % Plot a background spherical surface
@@ -95,37 +95,92 @@ end
 % 2. Are the computed latitude and longitude the same as those in the Aether grid files?
 
 % Enter lats and lons in degrees for starters
-pt_lon_d = 269.7;
-pt_lat_d = -29;
+pt_lon_d = 180.1
+pt_lat_d = 33.8
+
+%%%for pt_lon_d = 0:0.1:360
+   %%%for pt_lat_d = -90:0.1:90
+
 % Convert to radians since this is generally used in algorithm
 pt_lon = deg2rad(pt_lon_d);
 pt_lat = deg2rad(pt_lat_d);
 
-[grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, corner_detected] = ...
+% Get the x, y, z coords for this point
+pxyz(1) = cos(pt_lat) .* cos(pt_lon);
+pxyz(2) = cos(pt_lat) .* sin(pt_lon);
+pxyz(3) = sin(pt_lat);
+
+[grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, edge, corner] = ...
    get_bounding_box(pt_lat, pt_lon, np);
 
-if(corner_detected)
+
+
+if(corner)
    num_bound_points = 3;
 else
    num_bound_points = 4;
 end
 
 % Get the latitude and longitude of the bounding points from the grid files
+tolerance = 1e-6;
 for i = 1:num_bound_points
    bp_lat(i) = glat(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
    bp_lon(i) = glon(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
    % Compare to the computed ones
-   abs(grid_pt_lat(i) - bp_lat(i))
-   abs(grid_pt_lon(i) - bp_lon(i))
+   if(abs(grid_pt_lat(i) - bp_lat(i)) > tolerance) 
+      fprintf('grid pt lat failed \n');
+      [i grid_pt_lat(i) bp_lat(i) grid_pt_lat(i)-bp_lat(i)]
+      stop
+   end
+   % Have to watch out for grid files sometimes being negative 2pi and other times being positive
+   if(abs(grid_pt_lon(i) - 2*pi) < tolerance) grid_pt_lon(i) = 0; end
+   if(abs(bp_lon(i) - 2*pi) < tolerance) bp_lon(i) = 0; end
+   if(abs(bp_lon(i) + 2*pi) < tolerance) bp_lon(i) = 0; end
+   if(abs(grid_pt_lon(i) - bp_lon(i)) > tolerance)
+      fprintf('grid pt lon failed \n');
+      [i grid_pt_lon(i) bp_lon(i) grid_pt_lon(i)-bp_lon(i)]
+      stop
+   end
+
+   % Convert to x, y, z coords to check for whether points are in tris/quads
+   qxyz(i, 1) = cos(bp_lat(i)) .* cos(bp_lon(i));
+   qxyz(i, 2) = cos(bp_lat(i)) .* sin(bp_lon(i));
+   qxyz(i, 3) = sin(bp_lat(i));
 end
 
-
-% See if the point is inside the grid box
+% Keep track of max_dif_frac for interior points on grid which are believed to be working
+max_dif_frac = 0;
 if(num_bound_points == 3)
+   % See if the point is inside a triangle
+   [inside, dif_frac] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
+else
+   inside_t(1:4) = false; 
+   % See if the point is inside a quad; it's inside if it's in one or more contained triangles
+   [inside_t(1), dif_frac_t(1)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz); 
+   [inside_t(2), dif_frac_t(2)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(4, :), pxyz); 
+   [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz); 
+   [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz); 
+%%%dif_frac_t
+   % Only keeping overall stats for now on interior points, edges are not all working
+   if(all(grid_lat_ind) > 0 && all(grid_lon_ind > 0) && all(grid_lat_ind) < np && all(grid_lon_ind < np)) 
+      dif_frac = min(abs(dif_frac_t));
+      max_dif_frac = max(max_dif_frac, dif_frac);
+   end
+   if(any(inside_t))
+      inside = true;
+   else
+      inside = false;
+   end
 end
 
+if(inside == false)
+   fprintf('inside is false\n')
+   [pt_lat pt_lon num_bound_points]
+   if(num_bound_points == 4) stop; end
+end
 
-
+%%end
+%%end
 
 
 if(do_plotting) 
@@ -159,15 +214,4 @@ if(do_plotting)
    end
 
 end
-
-
-
-
-
-
-
-
-
-
-
 

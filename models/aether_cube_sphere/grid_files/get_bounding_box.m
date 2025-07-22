@@ -76,46 +76,74 @@ if(on_edge)
    [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz);
 
    % Do our own temporary version of whether or not we are in the quad
-   if(min(dif_frac_t) > 1e-3)
-      change_lat = false;
-      change_lon = false;
+   if(min(dif_frac_t) > 0.05)
       % Not really in this box, need to move 'equatorward'
-      dif_frac_t
-      grid_face
-      grid_lat_ind
-      grid_lon_ind
-      % Figure out if it is the latitude or longitude indices that need to be shifted
-      % The ones that don't need to be shifted will be on the edges (indices 1 and np)
-      % See if the longitude grid is the one that is already on great circles
-      is_one = grid_lon_ind == 1;
-      is_np  = grid_lon_ind == 18;
-      if(sum(is_one) + sum(is_np) == 4) 
-         change_lat = true; 
-         fprintf('lat needs changed\n');
-         %change the latitudes to move towards the 'equator'
-         for i = 1:4
-            if(grid_lat_ind(i) >= np/2) 
-               grid_lat_ind(i) = grid_lat_ind(i) - 1;
-            else
-               grid_lat_ind(i) = grid_lat_ind(i) + 1;
-            end
+      %%%dif_frac_t
+      %%%grid_face
+      %%%grid_lat_ind
+      %%%grid_lon_ind
+
+      % Find indices (from 1 to 4) of points on the same face
+      face1_pts(1:2) = 0; face2_pts(1:2) = 0;
+      face1_count = 0;    face2_count = 0;
+      for i = 1:4
+         if(grid_face(i) == grid_face(1)) 
+            face1_count = face1_count + 1;    face1_pts(face1_count) = i;
+         else
+            face2_count = face2_count + 1;    face2_pts(face2_count) = i;
          end
-       
-      else
-         change_lon = true;
-         fprintf('lon needs changed\n');
-         % Change the longitudes to move towards the 'equator'
-         for i = 1:4
-            if(grid_lon_ind(i) >= np/2) 
-               grid_lon_ind(i) = grid_lon_ind(i) - 1;
-            else
-               grid_lon_ind(i) = grid_lon_ind(i) + 1;
-            end
-         end
-         
       end
-      grid_lat_ind
-      grid_lon_ind
+
+      % First process points of the first face
+      % Are the latitudes or the longitudes on the edge
+      if(grid_lon_ind(face1_pts(1)) == grid_lon_ind(face1_pts(2)))
+         % Adjust the face1 latitudes
+         for i = 1:2
+            my_pt = face1_pts(i);
+            if(grid_lat_ind(my_pt) >= np/2) 
+               grid_lat_ind(my_pt) = grid_lat_ind(my_pt) - 1;
+            else
+               grid_lat_ind(my_pt) = grid_lat_ind(my_pt) + 1;
+            end
+         end
+      else
+         % Adjust the face1 longitudes
+         for i = 1:2
+            my_pt = face1_pts(i);
+            if(grid_lon_ind(my_pt) >= np/2) 
+               grid_lon_ind(my_pt) = grid_lon_ind(my_pt) - 1;
+            else
+               grid_lon_ind(my_pt) = grid_lon_ind(my_pt) + 1;
+            end
+         end
+      end
+
+      % Do the same thing for face2 (this could be done with less code, but fear the 2x2 arrays
+      % Are the latitudes or the longitudes on the edge
+      if(grid_lon_ind(face2_pts(1)) == grid_lon_ind(face2_pts(2)))
+         % Adjust the face1 latitudes
+         for i = 1:2
+            my_pt = face2_pts(i);
+            if(grid_lat_ind(my_pt) >= np/2) 
+               grid_lat_ind(my_pt) = grid_lat_ind(my_pt) - 1;
+            else
+               grid_lat_ind(my_pt) = grid_lat_ind(my_pt) + 1;
+            end
+         end
+      else
+         % Adjust the face1 longitudes
+         for i = 1:2
+            my_pt = face2_pts(i);
+            if(grid_lon_ind(my_pt) >= np/2) 
+               grid_lon_ind(my_pt) = grid_lon_ind(my_pt) - 1;
+            else
+               grid_lon_ind(my_pt) = grid_lon_ind(my_pt) + 1;
+            end
+         end
+      end
+
+      %%%grid_lat_ind
+      %%%grid_lon_ind
       % Compute the lat and lon corresponding to these point
       for i = 1:num_bound_points
          [grid_pt_lat(i), grid_pt_lon(i)] = grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), np);
@@ -123,12 +151,4 @@ if(on_edge)
    end
 
 end
-
-
-
-
-
-
-
-
 
