@@ -6,8 +6,8 @@
 module ice_postprocessing_mod
 
 use types_mod, only : r8
-use  utilities_mod, only : E_ERR, error_handler
-use  netcdf_utilities_mod, only : nc_check, nc_get_variable_size, &
+use  utilities_mod, only : E_MSG, error_handler
+use  netcdf_utilities_mod, only : nc_get_variable_size, &
                                   nc_get_variable, nc_open_file_readonly, &
                                   nc_close_file
 use netcdf
@@ -15,15 +15,11 @@ use netcdf
 implicit none
 private
 
+character(len=256), parameter :: source = 'ice_postprocessing'
+
 ! routines available from this module
 public :: area_simple_squeeze, volume_simple_squeeze, &
           cice_rebalancing, read_cice_state_variable
-
-! general variable initialization
-character(len=3)   :: nchar
-character(len=512) :: string1, string2, msgstring
-character(len=15)  :: varname
-integer :: n, i, j
 
 ! -----------------------------------------------------------------------------
 contains
@@ -100,6 +96,8 @@ end subroutine read_cice_state_variable
                            dSin0_frazil = 3.0_r8, &
                            sss = 34.7_r8
  
+    integer :: i, j, n ! loop indices
+
     ! calculate dependent variables 
     cc1 = cc3/real(Ncat,kind=r8)
     cc2 = 15.0_r8*cc1
@@ -316,6 +314,8 @@ end subroutine read_cice_state_variable
                            dSin0_frazil = 3.0_r8, &
                            sss = 34.7_r8
  
+    integer :: i, j, n ! loop indices
+
    ! calculate dependent variables 
      cc1 = cc3/real(Ncat,kind=r8)
      cc2 = 15.0_r8*cc1
@@ -536,6 +536,8 @@ end subroutine read_cice_state_variable
                            dSin0_frazil = 3.0_r8, &
                            sss = 34.7_r8
  
+    integer :: i, j, n ! loop indices
+
     ! calculate dependent variables 
     cc1 = cc3/real(Ncat,kind=r8)
     cc2 = 15.0_r8*cc1
@@ -551,7 +553,7 @@ end subroutine read_cice_state_variable
     enddo
 
     ! Begin process 
-    write(*,*) 'beginning cice postprocessing process...'
+    call error_handler(E_MSG, source,  'beginning cice postprocessing process...')
     sice001  = max(0.0_r8, sice001)  ! salinities must be non-negative
     sice002  = max(0.0_r8, sice002)  ! salinities must be non-negative
     sice003  = max(0.0_r8, sice003)  ! salinities must be non-negative
@@ -575,7 +577,7 @@ end subroutine read_cice_state_variable
     aicen = min(1.0_r8,aicen)  ! concentrations must not exceed 1 
     
     ! calculate aggregates for post-adjustment category variables  
-    write(*,*) 'calculating aggregates...'
+    call error_handler(E_MSG, source,  'calculating aggregates...')
     aice = aicen(:,:,1)
     vice = vicen(:,:,1)
     vsno = vsnon(:,:,1)
@@ -586,13 +588,13 @@ end subroutine read_cice_state_variable
     enddo
  
     ! impose bounds on categories
-    write(*,*) 'imposing bounds on categories...'
+    call error_handler(E_MSG, source,  'imposing bounds on categories...')
     aicen = max(0.0_r8,aicen) ! concentration must be non-negative
     vicen = max(0.0_r8,vicen) ! volumes (ice) must be non-negative
     vsnon = max(0.0_r8,vsnon) ! volumes (snow) must be non-negative
  
     ! re-calculate aggregates once bounds are enforced
-    write(*,*) 'recalculating aggregates...'
+    call error_handler(E_MSG, source,  'recalculating aggregates...')
     aice_temp = aicen(:,:,1)
     vice_temp = vicen(:,:,1)
     vsno_temp = vsnon(:,:,1)
@@ -601,8 +603,8 @@ end subroutine read_cice_state_variable
        vice_temp = vice_temp+vicen(:,:,n)
        vsno_temp = vsno_temp+vsnon(:,:,n)
     enddo
-    
-    write(*,*) 'begin squeezing...'
+
+    call error_handler(E_MSG, source,  'begin squeezing...')
     do j = 1, Ny
        do i = 1, Nx
        ! if the post-adjustment concentartion was 0 or less than 0, remove all ice 
@@ -751,7 +753,7 @@ end subroutine read_cice_state_variable
        enddo
     enddo
  
- write(*,*) 'finishing squeezing and reinitalizing associated variables...'
+ call error_handler(E_MSG, source,  'finishing squeezing and reinitalizing associated variables...')
  
  end subroutine cice_rebalancing
  !------------------------------------------------------------------------

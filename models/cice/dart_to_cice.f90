@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 program dart_to_cice
 
@@ -22,7 +21,7 @@ use  utilities_mod, only : initialize_utilities, finalize_utilities, &
                            file_exist, error_handler, E_ERR, E_MSG, to_upper
 use ice_postprocessing_mod, only : cice_rebalancing, area_simple_squeeze, &
                                    volume_simple_squeeze, read_cice_state_variable
-use  netcdf_utilities_mod,  only : nc_check, nc_open_file_readwrite, nc_put_variable, &
+use  netcdf_utilities_mod,  only : nc_open_file_readwrite, nc_put_variable, &
                                    nc_close_file, nc_open_file_readonly, &
                                    nc_get_variable_size
 use  netcdf
@@ -46,12 +45,11 @@ namelist /dart_to_cice_nml/ dart_to_cice_input_file,    &
                             balance_method,             &
                             postprocess
 
-! general variable iniatlization
-character(len=512) :: string1, string2, msgstring
+! general variable initialization
+character(len=512) :: string1, string2
 character(len=128) :: method
-character(len=3)   :: nchar
 
-integer :: iunit, io, ncid, dimid, Ncat, Nx, Ny, nsize(3)
+integer :: iunit, io, ncid, Ncat, Nx, Ny, nsize(3)
 real(r8), allocatable :: aicen_original(:,:,:), vicen_original(:,:,:), vsnon_original(:,:,:)
 real(r8), allocatable :: aicen(:,:,:), vicen(:,:,:), vsnon(:,:,:), Tsfcn(:,:,:)
 real(r8), allocatable :: qice001(:,:,:), qice002(:,:,:), qice003(:,:,:), qice004(:,:,:), qice005(:,:,:), qice006(:,:,:), qice007(:,:,:), qice008(:,:,:)
@@ -59,7 +57,7 @@ real(r8), allocatable :: sice001(:,:,:), sice002(:,:,:), sice003(:,:,:), sice004
 real(r8), allocatable :: qsno001(:,:,:), qsno002(:,:,:), qsno003(:,:,:)
 
 !------------------------------------------------------------------
-! INIALIZE AND PERFORM CHECKS ON FILES                
+! INITIALIZE AND PERFORM CHECKS ON FILES                
 !------------------------------------------------------------------
 call initialize_utilities(progname=source)
 
@@ -129,7 +127,7 @@ call read_cice_state_variable('qsno003', qsno003, dart_to_cice_input_file)
 ! PERFORM POSTPROCESSING 
 !------------------------------------------------------------------
 if (postprocess == 'cice') then
-   write(*,*) 'calling cice postprocessing...'
+   call error_handler(E_MSG, source, 'calling cice postprocessing...')
    call cice_rebalancing(qice001, qice002,     &
                          qice003, qice004,     &
                          qice005, qice006,     &
@@ -146,10 +144,10 @@ if (postprocess == 'cice') then
                          vsnon_original,       &
                          Tsfcn,                &
                          Ncat, Nx, Ny)
-   write(*,*) 'cice postprocessing function completed...'
+   call error_handler(E_MSG, source, 'cice postprocessing function completed...')
 
-else if (postprocess == 'aice') then 
-   write(*,*) 'calling aice postprocessing...'
+else if (postprocess == 'aice') then
+   call error_handler(E_MSG, source, 'calling aice postprocessing...')
    call area_simple_squeeze(qice001, qice002,     &
                             qice003, qice004,     &
                             qice005, qice006,     &
@@ -166,9 +164,9 @@ else if (postprocess == 'aice') then
                             vsnon_original,       &
                             Tsfcn,                &
                             Ncat, Nx, Ny)
-   write(*,*) 'aice postprocessing function completed...'
+   call error_handler(E_MSG, source, 'aice postprocessing function completed...')
 else if (postprocess == 'vice') then
-   write(*,*) 'calling vice postprocessing...'
+   call error_handler(E_MSG, source, 'calling vice postprocessing...')
    call volume_simple_squeeze(qice001, qice002,     &
                               qice003, qice004,     &
                               qice005, qice006,     &
@@ -185,9 +183,10 @@ else if (postprocess == 'vice') then
                               vsnon_original,       &
                               Tsfcn,                &
                               Ncat, Nx, Ny)
-   write(*,*) 'vice postprocessing function completed...'
+
+   call error_handler(E_MSG, source, 'vice postprocessing function completed...')
 else
-   write(*,*) 'No valid postprocessing method called. No adjustments will be made.'
+   call error_handler(E_MSG, source, 'No valid postprocessing method called. No adjustments will be made.')
 end if
 
 !------------------------------------------------------------------
@@ -233,8 +232,3 @@ call finalize_utilities('dart_to_cice')
 !------------------------------------------------------------------
 end program dart_to_cice
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
