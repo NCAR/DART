@@ -6,6 +6,47 @@ import numpy as np
 import re
 import pydartdiags.obs_sequence.obs_sequence as obsq
 
+def iodaDtime2obsqDtime(epoch, iodaDtime):
+    """Convert IODA datetime into obs_seq datetime
+
+    This function will convert the IODA epoch style dateTime format to
+    the obs_seq days, seconds, time format.
+
+    Args:
+        1. epoch - IODA style epoch (ISO 8601 string format) datetime
+        2. iodaDtime - integer vector holding the offset in seconds from
+                       the epoch reference datetime
+
+    Returns:
+        Tuple containing the obs_seq (seconds, days, time) values.
+
+    """
+
+    # Steps
+    #    1. Convert the IODA datetime to numpy datetimes
+    #    2. Generate the days, seconds and time values from the numpy datetimes
+    #       Use python datetime objects to get the days since 1601-01-01
+    #       via the Gregorian calendar.
+
+    # Create the numpy datetimes
+    epochDT = np.datetime64(epoch.rstrip('Z'))
+    numLocs = len(iodaDtime)
+    dTime = np.full(numLocs, epochDT, dtype='datetime64[s]')
+    offset = iodaDtime.astype('timedelta64[s]')
+    dTime = dTime + offset
+
+    # Create the time vector
+    time = np.char.replace(dTime.astype('str'), 'T', ' ')
+
+    # Create the days
+    gregDTref = np.datetime64('1601-01-01')
+    days = (np.array(time, dtype='datetime64[D]') - gregDTref).astype(np.int32)
+
+    # Create the seconds
+    seconds = np.array(time, dtype='datetime64[s]').astype(np.int32) % 86400
+    
+    return (seconds, days, time)
+
 def ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
     """Creates pandas dataframe from a IODA observation data file.
 
@@ -31,7 +72,6 @@ def ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
         # With epoch time representation need offset (window start)
         assert('dateTime' in ds.groups['MetaData'].variables)
         epochdatetime = ds.groups['MetaData'].variables['dateTime'].units.split()[-1]
-        dt_epoch = datetime.strptime(epochdatetime, '%Y-%m-%dT%H:%M:%SZ')
 
         loc = 0
         for var in dsets:
@@ -88,7 +128,7 @@ def ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
     if sort_by is not None:
         df.sort_values(by=sort_by, kind='mergesort', inplace=True)
 
-    return df
+    return (df, epochdatetime)
 
 def buildObsSeqFromObsqDF(obsqDF, maxNumObs=None, nonQcNames=None, qcNames=None):
     """Construct a pyDARTdiags ObsSequence ojbect from an obs_seq format pandas dataframe
@@ -141,3 +181,40 @@ def buildObsSeqFromObsqDF(obsqDF, maxNumObs=None, nonQcNames=None, qcNames=None)
 
     return obsSeq
 
+def iodaDF2obsqDF(iodaDF, epochDT):
+    """Reformat a pandas dataframe built with ioda2iodaDF into a dataframe suitable
+       for buildObsSeqFromObsqDF.
+
+     Args:
+         1. iodaDF - pandas dataframe in the ioda layout
+         2. epochDT - IODA dateTime epoch value in ISO 8601 string format
+
+     Return:
+         This function returns a pandas dataframe in the obs_seq layout. This dataframe
+         is suitable as input to the buildObsSeqFromObsqDF function.
+
+    """
+
+    # The ioda dataframe layout has these features:
+    #   1. Each separate variable is in a separate column
+    #   2. The datetime variable (MetaData/dateTime) has
+    #     a. A reference datetime in a variable attribute named "units"
+    #     b. An offset in seconds from that reference in the variable values (int64)
+    #   3. There are additional metadata variable (eg MetaData/staionIdentification)
+    #      beyond lat, lon, datetime, and vertical coordinate
+
+    # convert the datetime from the iodaDF into the obs_seq (seconds, days, time) format
+    iodaDT = np.array(iodaDF['MetaData/dateTime'], dtype=np.int64)
+    (obsqSec, obsqDays, obsqTime) = iodaDtime2obsqDtime(epochDT, iodaDT)
+    
+    # go through the 15 columns in the obs_seq.out example
+    obsqDF = pd.DataFrame()
+    obsqDF.insert(0, 'obs_num', np.arange(1, (len(iodaDT) + 1), 1, np.int32))
+    obsqDF.insert(1, 'observation', np.array(iodaDF['ObsValue/airTemperature'], dtype=np.float32))
+    obsqDF.insert(2, 'Data_QC', np.array(iodaDF['PreQC/airTemperature'], dtype=np.float32))
+
+#    obsqDF.insert(colPos, 'seconds', obsqSec)
+#    obsqDF.insert(colPos + 1, 'days', obsqDays)
+#    obsqDF.insert(colPos + 2, 'time', obsqTime)
+
+    return obsqDF
