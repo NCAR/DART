@@ -90,13 +90,13 @@ end
 
 %-------------------------------------------
 
-% Test one or more points for the following:
+% Test points for the following:
 % 1. Does the bounding box found contain the observed point?
-% 2. Are the computed latitude and longitude the same as those in the Aether grid files?
+% 2. Are the computed vertex latitudes and longitudes the same as those in the Aether grid files?
 
 % Enter lats and lons in degrees for starters
-pt_lon_d = 10
-pt_lat_d = -78.5
+%%%pt_lon_d = 10
+%%%pt_lat_d = -78.5
 
 for pt_lon_d = 0:0.1:360
    for pt_lat_d = -90:0.1:90
@@ -108,22 +108,13 @@ pt_lon = deg2rad(pt_lon_d);
 pt_lat = deg2rad(pt_lat_d);
 
 % Get the x, y, z coords for this point
-pxyz(1) = cos(pt_lat) .* cos(pt_lon);
-pxyz(2) = cos(pt_lat) .* sin(pt_lon);
-pxyz(3) = sin(pt_lat);
+pxyz = lat_lon_to_xyz(pt_lat, pt_lon);
 
-[grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, edge, corner] = ...
+[grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points] = ...
    get_bounding_box(pt_lat, pt_lon, np);
 
-
-
-if(corner)
-   num_bound_points = 3;
-else
-   num_bound_points = 4;
-end
-
 % Get the latitude and longitude of the bounding points from the grid files
+% Note the need to index matlab arrays as positive while faces are numbered 0 to 5 in model
 tolerance = 1e-6;
 for i = 1:num_bound_points
    bp_lat(i) = glat(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
@@ -145,13 +136,11 @@ for i = 1:num_bound_points
    end
 
    % Convert to x, y, z coords to check for whether points are in tris/quads
-   qxyz(i, 1) = cos(bp_lat(i)) .* cos(bp_lon(i));
-   qxyz(i, 2) = cos(bp_lat(i)) .* sin(bp_lon(i));
-   qxyz(i, 3) = sin(bp_lat(i));
+   qxyz(i, 1:3) = lat_lon_to_xyz(bp_lat(i), bp_lon(i));
 end
 
 if(num_bound_points == 3)
-   % See if the point is inside a triangle
+   % See if the point is inside a local approximately tangent triangle
    [inside, dif_frac] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
 else
    inside_t(1:4) = false; 
@@ -161,14 +150,10 @@ else
    [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz); 
    [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz); 
 
-   if(any(inside_t))
-      inside = true;
-   else
-      inside = false;
-   end
+   inside = any(inside_t);
 end
 
-if(inside == false)
+if(~inside)
    fprintf('inside is false\n')
    [pt_lat pt_lon num_bound_points]
    stop

@@ -1,4 +1,5 @@
-function [f_face, f_lat_grid, f_lon_grid, num_bound_points] = get_corners(face, lat_grid, lon_grid, lat, lon, np)
+function [f_face, f_lat_grid, f_lon_grid, num_bound_points] = ...
+   get_corners(face, lat_grid, lon_grid, lat, lon, np)
 
 % Checks to see if the point under consideration is at a corner
 % If it is, return the face, lat_index, and lon_index for each of the three bounding points
@@ -46,59 +47,59 @@ end
 
 % Harvest the information on the grid points bounding the appropriate corner
 % Arrays of info for adjacent quads for bulges (three of them, first index)
-quad_lon_grid(1:3, 1:4) = 0;  quad_lat_grid(1:3, 1:4) = 0; quad_face_grid(1:3, 1:4) = -99;
+quad_lon_grid(1:3, 1:4) = -99;  quad_lat_grid(1:3, 1:4) = -99; quad_face_grid(1:3, 1:4) = -99;
 
 if(corner == 1)
-   f_face(1:3) = [3 0 4];
+   f_face(1:3) =     [3  0 4];
    f_lon_grid(1:3) = [np 1 1];
    f_lat_grid(1:3) = [1  1 1];
    quad_face =     [3  0 0 3 ;    0  0 4 4;     3    3  4 4];
    quad_lat_grid = [1  1 2 2 ;    1  1 1 2;     1    1  1 1];
    quad_lon_grid = [np 1 1 np;    1  2 1 1;     np-1 np 1 2];
 elseif(corner == 2)
-   f_face(1:3) = [0 1 4];
+   f_face(1:3) =     [0  1 4 ];
    f_lon_grid(1:3) = [np 1 1 ];
    f_lat_grid(1:3) = [1  1 np];
    quad_face =     [0  1 1 0 ;    1 1 4  4 ;      0    0  4  4   ];
    quad_lat_grid = [1  1 2 2 ;    1 1 np np;      1    1  np np-1];
    quad_lon_grid = [np 1 1 np;    1 2 2  1 ;      np-1 np 1  1   ];
 elseif(corner == 3)
-   f_face(1:3) = [1 2 4];
+   f_face(1:3) =     [1  2 4 ];
    f_lon_grid(1:3) = [np 1 np];
    f_lat_grid(1:3) = [1  1 np];
    quad_face =     [1  2 2 1 ;  2 2 4    4 ;      1    1  4  4   ];
    quad_lat_grid = [1  1 2 2 ;  1 1 np-1 np;      1    1  np np  ];
    quad_lon_grid = [np 1 1 np;  1 2 np   np;      np-1 np np np-1];
 elseif(corner == 4)
-   f_face(1:3) = [2 3 4];
+   f_face(1:3) =     [2  3 4 ];
    f_lon_grid(1:3) = [np 1 np];
    f_lat_grid(1:3) = [1  1 1 ];
-   quad_face = [2 3 3 2;         3  3 4    4 ;     2    2  4  4 ];
-   quad_lat_grid = [1 1 2 2;     1  1 1    1 ;     1    1  1  2 ];
+   quad_face =     [2  3 3 2 ;   3  3 4    4 ;     2    2  4  4 ];
+   quad_lat_grid = [1  1 2 2 ;   1  1 1    1 ;     1    1  1  2 ];
    quad_lon_grid = [np 1 1 np;   1  2 np-1 np;     np-1 np np np];
 elseif(corner == 5)
-   f_face(1:3) = [3 0 5];
+   f_face(1:3) =     [3  0  5 ];
    f_lon_grid(1:3) = [np 1  1 ];
    f_lat_grid(1:3) = [np np np];
    quad_face =     [3    0    0  3 ;   0  0  5  5   ;  3    3  5  5 ];
    quad_lat_grid = [np-1 np-1 np np;   np np np np-1;  np   np np np];
-   quad_lon_grid = [np 1 1    np   ;   1  2  1  1   ;  np-1 np 1  2 ];
+   quad_lon_grid = [np   1    1  np;   1  2  1  1   ;  np-1 np 1  2 ];
 elseif(corner == 6)
-   f_face(1:3) = [0 1 5];
+   f_face(1:3) =     [0  1 5 ];
    f_lon_grid(1:3) = [np 1  1];
    f_lat_grid(1:3) = [np np 1];
    quad_face =     [0    1    1  0 ;   1  1  5 5;    0    0  5  5];
    quad_lat_grid = [np-1 np-1 np np;   np np 1 1;    np   np 1  2];
    quad_lon_grid = [np   1    1  np;   1  2  2 1;    np-1 np 1  1];
 elseif(corner == 7)
-   f_face(1:3) = [1 2 5];
+   f_face(1:3) =     [1  2  5 ];
    f_lon_grid(1:3) = [np 1  np];
    f_lat_grid(1:3) = [np np 1 ];
    quad_face =     [1    2    2  1 ;   2  2  5   5 ;     1    1  5  5   ];
    quad_lat_grid = [np-1 np-1 np np;   np np 1   2 ;     np   np 1  1   ];
    quad_lon_grid = [np   1    1  np;   1  2  np  np;     np-1 np np np-1];
 elseif(corner == 8)
-   f_face(1:3) = [2 3 5];
+   f_face(1:3) =     [2  3  5 ];
    f_lon_grid(1:3) = [np 1  np];
    f_lat_grid(1:3) = [np np np];
    quad_face =     [2    3    3  2 ;    3  3  5    5 ;    2    2   5  5   ];
@@ -106,26 +107,21 @@ elseif(corner == 8)
    quad_lon_grid = [np   1    1  np;    1  2  np-1 np;    np-1 np  np np  ];
 end
 
-% See if the point is in the triangle; if so, all is good
 % Load up the array for the point
-pxyz(1) = cos(lat) .* cos(lon);
-pxyz(2) = cos(lat) .* sin(lon);
-pxyz(3) = sin(lat);
+pxyz = lat_lon_to_xyz(lat, lon);
 
 % Get lats and lons of the triangle vertices
-% Compute the lat and lon corresponding to these point
 for i = 1:3
    [grid_pt_lat(i), grid_pt_lon(i)] = grid_to_lat_lon(f_face(i), f_lat_grid(i), f_lon_grid(i), np);
    % Convert to x, y, z coords to check for whether points are in tris/quads
-   qxyz(i, 1) = cos(grid_pt_lat(i)) .* cos(grid_pt_lon(i));
-   qxyz(i, 2) = cos(grid_pt_lat(i)) .* sin(grid_pt_lon(i));
-   qxyz(i, 3) = sin(grid_pt_lat(i));
+   qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat(i), grid_pt_lon(i));
 end
 
+% See if the point is in the triangle; if so, all is good
 [inside, dif_frac] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
 if(inside) return; end
 
-% If it's not in the triangle, have to check the adjacent quads
+% If it's not in the triangle, have to check the three adjacent quads at the corner
 num_bound_points = 4;
 
 for quad = 1:3
@@ -134,9 +130,7 @@ for quad = 1:3
       [grid_pt_lat(i), grid_pt_lon(i)] = ...
          grid_to_lat_lon(quad_face(quad, i), quad_lat_grid(quad, i), quad_lon_grid(quad, i), np);
       % Convert to x, y, z coords to check for whether points are in tris/quads
-      qxyz(i, 1) = cos(grid_pt_lat(i)) .* cos(grid_pt_lon(i));
-      qxyz(i, 2) = cos(grid_pt_lat(i)) .* sin(grid_pt_lon(i));
-      qxyz(i, 3) = sin(grid_pt_lat(i));
+      qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat(i), grid_pt_lon(i));
    end
 
    % See if the point is inside this quad; it's inside if it's in one or more contained triangles
@@ -156,8 +150,3 @@ end
 % Falling of the end is not happy
 fprintf('UNEXPECTED FAILURE IN GET_CORNERS.M\n');
 stop
-
-
-
-
-

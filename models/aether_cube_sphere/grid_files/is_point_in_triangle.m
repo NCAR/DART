@@ -1,18 +1,13 @@
-% Uses easy to code 3d method to determine if point is in triangle given
-% three d coordinates of coplanar vertices and a point
-% If point is inside the triangle, the sum of the angles between the vectors connecting
-% the point and the vertices should be 2pi. If the point is outside, the sum is not 2pi.
-
-% This code actually works for vertices in 2 or 3 dimensions. The 3-dimensional case
-% has to have coplanar points.
+% Determines if the projection of a point p onto the plane of a triangle with vertices
+% v1, v2 and v3 is inside the triangle or not. Computes the areas of each of the triangles
+% between p and a pair of vertices. These should sum to the area of the triangle if p
+% is inside and be larger than that if p is outside. 
 
 function [inside, dif_frac ] = is_point_in_triangle(v1, v2, v3, p)
 
-% Compute the area of the original triangle and the three sub triangles with Heron's formula
-% from the 3d lengths. Is sum of the three subs equal to the whole?
 
 % Get the projection of the point p onto the plane containing the triangle
-% Start by getting perpendicular vector by cross product
+% Start by getting perpendicular vector to plane by cross product
 perp = cross((v1-v2), v2-v3);
 % Get unit vector in direction of perp
 unit_perp = perp / norm(perp);
@@ -38,15 +33,21 @@ at1 = heron(len_p1, len_p2, len_s1);
 at2 = heron(len_p2, len_p3, len_s2);
 at3 = heron(len_p3, len_p1, len_s3);
 
+% Difference between sub triangles and the triangle area
 area_dif = at1 + at2 + at3 - at;
 
-% Spherical geometry conversion to x,y,z means that the points aren't really co-planar
-% in three dimensions so areas don't get very close to zero. Can still approximately check.
-% This test has revealed errors in the identification of boxes on the boundaries and the
-% corner triangles. The value of 7e-1 prevents failure to allow all tests to proceed
-% but will need to be greatly reduced for final testing.
+% Quadrilaterals on the interior of the cube sphere sides are really spherical quads,
+% There sides are great circles. This routine assumes that the triangles composing the quads
+% have straight sides in regular space. The algorithm finds points that are inside the 
+% spherical quads. These quads actually 'bulge' out compared to the regular sides, so it is possible
+% to have points that are inside the spherical quad but just barely outside of the regular
+% quads. This threshold is tuned so that these points still show as inside. The tuning is for
+% np = 18 (number of points along a grid face is 18). Fewer points might require a larger
+% threshold while more points might be okay with a smaller one.
+threshold = 0.002;
+
 dif_frac = area_dif / at;
-inside = abs(dif_frac) < 0.002;
+inside = abs(dif_frac) < threshold;
 
 return
 

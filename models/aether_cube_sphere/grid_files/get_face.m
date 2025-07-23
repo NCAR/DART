@@ -1,17 +1,12 @@
 function [face, len] = get_face(lat, lon)
-% Routine to efficiently interpolate on aether cube sphere grid
 % Returns which face contains (lat, lon) and the length from the edge of the point
-% along each of the axes.
+% along each of the great circle axes.
 
 % Range adjustment
 if(lon == 2*pi) lon = 0; end
 
 % Convert lat lon to x y z on unit sphere
-x = cos(lat) * cos(lon);
-y = cos(lat) * sin(lon);
-z = sin(lat);
-vec = [x; y; z];
-
+vec = (lat_lon_to_xyz(lat, lon))';
 
 % Get the longitudes for this point in the two rotated spaces
 
@@ -50,9 +45,7 @@ rot_vec2 = [-0.5 0.5 -inv_sqrt_2; -0.5 0.5 inv_sqrt_2; inv_sqrt_2 inv_sqrt_2 0] 
 rlon2 = atan2(rot_vec2(2, :), rot_vec2(1, :));
 if(rlon2 < 0) rlon2 = rlon2 + 2*pi; end
 
-
-
-% Which side could we be on, 1 to 4
+% Which non-polar side could we be on, 1 to 4
 side = floor(lon / (pi/2)) + 1;
 % Which rotated 1 side are we on 
 rside = floor(rlon / (pi/2)) + 1;
@@ -61,13 +54,14 @@ rside2 = floor(rlon2 / (pi/2)) + 1;
 
 % Figure out the face from here (0 to 5, 4 is south, 5 is north)
 % These are consistent with the numbering on Aether grid files for the cubed sphere
-if(side == 1 && rside == 1)       face = 0; lon_grid(1) = lon;  lon_grid(2) = rlon;
-elseif(side == 2 && rside2 == 1)  face = 1; lon_grid(1) = lon;  lon_grid(2) = rlon2;
-elseif(side == 3 && rside == 3)   face = 2; lon_grid(1) = lon;  lon_grid(2) = rlon;
-elseif(side == 4 && rside2 == 3)  face = 3; lon_grid(1) = lon;  lon_grid(2) = rlon2;
-elseif(rside == 4 && rside2 == 4) face = 4; lon_grid(1) = rlon; lon_grid(2) = rlon2;
-elseif(rside == 2 && rside2 == 2) face = 5; lon_grid(1) = rlon; lon_grid(2) = rlon2;
+if    ( side == 1 && rside  == 1)  face = 0; lon_grid(1) = lon;  lon_grid(2) = rlon;
+elseif( side == 2 && rside2 == 1)  face = 1; lon_grid(1) = lon;  lon_grid(2) = rlon2;
+elseif( side == 3 && rside  == 3)  face = 2; lon_grid(1) = lon;  lon_grid(2) = rlon;
+elseif( side == 4 && rside2 == 3)  face = 3; lon_grid(1) = lon;  lon_grid(2) = rlon2;
+elseif(rside == 4 && rside2 == 4)  face = 4; lon_grid(1) = rlon; lon_grid(2) = rlon2;
+elseif(rside == 2 && rside2 == 2)  face = 5; lon_grid(1) = rlon; lon_grid(2) = rlon2;
 else
+   fprintf('Error finding face in get_face\n');
    [lat, lon, rlon]
    [side, rside, rside2]
    stop
@@ -97,10 +91,4 @@ if(face == 2 | face == 3) len(2) = 2 * sqrt(1/3) - len(2); end
 
 % Same for face 4 (the bottom) but it's the other coordinate that's reversed
 if(face == 4) len(1) = 2*sqrt(1/3) - len(1); end
-
-
-
-
-
-
 

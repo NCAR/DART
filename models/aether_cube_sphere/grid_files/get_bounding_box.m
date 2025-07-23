@@ -1,13 +1,12 @@
 % Given the latitude and longitude of a point, returns the face, array indices, latitude
-% and longitude of the bounding three or four grid points along with a flag that indicates
-% if the bounding polygon is a triangle (grid corner) or quadrilateral. np is the number
-% of grid points across each face.
-function [grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, on_edge, corner] = ...
+% and longitude of the bounding three or four grid points along the number of points
+% (3 triangle; 4 quad). np is the number of grid points across each face of the cube sphere.
+
+function [grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points] = ...
    get_bounding_box(lat, lon, np)
 
-% Some geometry about the grid point distribution
 % Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
-% two exterior intervals of half  width, sqrt(1/3) / np 
+% two exterior intervals with half the width, sqrt(1/3) / np 
 cube_side = 2 * sqrt(1 / 3); 
 del = cube_side / np; 
 half_del = del / 2;
@@ -15,7 +14,7 @@ half_del = del / 2;
 % Get the face and the length along the two imbedded cube faces for the point
 [face, len] = get_face(lat, lon);
 
-% Figure out which interval this is in along each cube face; This gives 0 to np intervals
+% Figure out which interval this is in along each cube face; This gives 0 to np grid indices
 low_grid = floor((len + half_del) / del);
 hi_grid = low_grid + 1;
 
@@ -38,12 +37,15 @@ for i = 1:4
 end
 
 % If it's at a corner, need to find the triangles in a different fashion
+% It is possible that the point initially looks like it is in a corner due to the fact 
+% that the edges of the grid are on great circles from the corresponding faces, but the
+% grid point at the edge are not connected by these great circles.
 if(corner)
    [grid_face, grid_lat_ind, grid_lon_ind, num_bound_points] = ...
       get_corners(face, lat_grid(corner_index), lon_grid(corner_index), lat, lon, np);
    if(num_bound_points == 4) corner = false; end
 else
-   % If not at corner it's definitely in a quad
+   % If not initially at a corner it's definitely in a quad
    num_bound_points = 4;
 end
 
@@ -61,15 +63,11 @@ if(on_edge)
    % Load up the arrays for the vertex points
    for i = 1:num_bound_points   
       % Convert to x, y, z coords to check for whether points are in tris/quads
-      qxyz(i, 1) = cos(grid_pt_lat(i)) .* cos(grid_pt_lon(i));
-      qxyz(i, 2) = cos(grid_pt_lat(i)) .* sin(grid_pt_lon(i));
-      qxyz(i, 3) = sin(grid_pt_lat(i));
+      qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat(i), grid_pt_lon(i));
    end
 
-   % Load up the array for the point
-   pxyz(1) = cos(lat) .* cos(lon);
-   pxyz(2) = cos(lat) .* sin(lon);
-   pxyz(3) = sin(lat);
+   % Convert point to xyz
+   pxyz = lat_lon_to_xyz(lat, lon);
    inside_t(1:4) = false;
    % See if the point is inside a quad; it's inside if it's in one or more contained triangles
    [inside_t(1), dif_frac_t(1)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
@@ -78,8 +76,7 @@ if(on_edge)
    [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz);
 
    if(~any(inside_t))
-      % Not really in this box, need to move 'equatorward'
-
+      % Not in this box, need to move 'equatorward'
       % Find indices (from 1 to 4) of points on the same face
       face1_pts(1:2) = 0; face2_pts(1:2) = 0;
       face1_count = 0;    face2_count = 0;
@@ -115,7 +112,7 @@ if(on_edge)
          end
       end
 
-      % Do the same thing for face2 (this could be done with less code, but fear the 2x2 arrays
+      % Do the same thing for face2 
       % Are the latitudes or the longitudes on the edge
       if(grid_lon_ind(face2_pts(1)) == grid_lon_ind(face2_pts(2)))
          % Adjust the face1 latitudes
@@ -139,8 +136,6 @@ if(on_edge)
          end
       end
 
-      %%%grid_lat_ind
-      %%%grid_lon_ind
       % Compute the lat and lon corresponding to these point
       for i = 1:num_bound_points
          [grid_pt_lat(i), grid_pt_lon(i)] = grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), np);
