@@ -207,14 +207,29 @@ def iodaDF2obsqDF(iodaDF, epochDT):
     iodaDT = np.array(iodaDF['MetaData/dateTime'], dtype=np.int64)
     (obsqSec, obsqDays, obsqTime) = iodaDtime2obsqDtime(epochDT, iodaDT)
     
-    # go through the 15 columns in the obs_seq.out example
+    # For now, follow the radiosonde example. Put in the configuration and generic
+    # code later. Also only do T for now, and put in the multiple variable handling
+    # later.
+    numLocs = len(iodaDT)
+    emptyList = [ ]
     obsqDF = pd.DataFrame()
-    obsqDF.insert(0, 'obs_num', np.arange(1, (len(iodaDT) + 1), 1, np.int32))
+    obsqDF.insert(0, 'obs_num', np.arange(1, (numLocs + 1), 1, np.int32))
     obsqDF.insert(1, 'observation', np.array(iodaDF['ObsValue/airTemperature'], dtype=np.float32))
     obsqDF.insert(2, 'Data_QC', np.array(iodaDF['PreQC/airTemperature'], dtype=np.float32))
+    obsqDF.insert(3, 'linked_list', np.full(numLocs, '1, 1, -1', dtype=object))
 
-#    obsqDF.insert(colPos, 'seconds', obsqSec)
-#    obsqDF.insert(colPos + 1, 'days', obsqDays)
-#    obsqDF.insert(colPos + 2, 'time', obsqTime)
+    obsqDF.insert(4, 'longitude', np.array(iodaDF['MetaData/longitude'], dtype=np.float32))
+    obsqDF.insert(5, 'latitude', np.array(iodaDF['MetaData/latitude'], dtype=np.float32))
+    obsqDF.insert(6, 'vertical', np.array(iodaDF['MetaData/height'], dtype=np.float32))
+    obsqDF.insert(7, 'vert_unit', np.full(numLocs, 'height (m)', dtype=object))
 
+    obsqDF.insert(8, 'type', np.full(numLocs, 'RADIOSONDE_TEMPERATURE', dtype=object))
+    obsqDF.insert(9, 'metadata', np.full(numLocs, '', dtype=object))
+    obsqDF.insert(10, 'external_FO', np.full(numLocs, '', dtype=object))
+
+    obsqDF.insert(11, 'seconds', obsqSec)
+    obsqDF.insert(12, 'days', obsqDays)
+    obsqDF.insert(13, 'time', obsqTime)
+
+    obsqDF.insert(14, 'obs_err_var', np.array(iodaDF['ObsError/airTemperature'], dtype=np.float32))
     return obsqDF
