@@ -95,8 +95,8 @@ end
 % 2. Are the computed latitude and longitude the same as those in the Aether grid files?
 
 % Enter lats and lons in degrees for starters
-pt_lon_d = 268.4 
-pt_lat_d = -35.9
+pt_lon_d = 10
+pt_lat_d = -78.5
 
 for pt_lon_d = 0:0.1:360
    for pt_lat_d = -90:0.1:90
@@ -150,8 +150,6 @@ for i = 1:num_bound_points
    qxyz(i, 3) = sin(bp_lat(i));
 end
 
-% Keep track of max_dif_frac for interior points on grid which are believed to be working
-max_dif_frac = 0;
 if(num_bound_points == 3)
    % See if the point is inside a triangle
    [inside, dif_frac] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
@@ -163,11 +161,6 @@ else
    [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz); 
    [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz); 
 
-   % Only keeping overall stats for now on interior points, edges are not all working
-   if(all(grid_lat_ind) > 0 && all(grid_lon_ind > 0) && all(grid_lat_ind) < np && all(grid_lon_ind < np)) 
-      dif_frac = min(abs(dif_frac_t));
-      max_dif_frac = max(max_dif_frac, dif_frac);
-   end
    if(any(inside_t))
       inside = true;
    else

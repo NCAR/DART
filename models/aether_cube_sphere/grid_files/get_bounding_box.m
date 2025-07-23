@@ -77,13 +77,8 @@ if(on_edge)
    [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz);
    [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz);
 
-   % Do our own temporary version of whether or not we are in the quad
-   if(min(dif_frac_t) > 0.05)
+   if(~any(inside_t))
       % Not really in this box, need to move 'equatorward'
-      %%%dif_frac_t
-      %%%grid_face
-      %%%grid_lat_ind
-      %%%grid_lon_ind
 
       % Find indices (from 1 to 4) of points on the same face
       face1_pts(1:2) = 0; face2_pts(1:2) = 0;
@@ -102,7 +97,7 @@ if(on_edge)
          % Adjust the face1 latitudes
          for i = 1:2
             my_pt = face1_pts(i);
-            if(grid_lat_ind(my_pt) >= np/2) 
+            if(grid_lat_ind(my_pt) > np/2) 
                grid_lat_ind(my_pt) = grid_lat_ind(my_pt) - 1;
             else
                grid_lat_ind(my_pt) = grid_lat_ind(my_pt) + 1;
@@ -112,7 +107,7 @@ if(on_edge)
          % Adjust the face1 longitudes
          for i = 1:2
             my_pt = face1_pts(i);
-            if(grid_lon_ind(my_pt) >= np/2) 
+            if(grid_lon_ind(my_pt) > np/2) 
                grid_lon_ind(my_pt) = grid_lon_ind(my_pt) - 1;
             else
                grid_lon_ind(my_pt) = grid_lon_ind(my_pt) + 1;
@@ -126,7 +121,7 @@ if(on_edge)
          % Adjust the face1 latitudes
          for i = 1:2
             my_pt = face2_pts(i);
-            if(grid_lat_ind(my_pt) >= np/2) 
+            if(grid_lat_ind(my_pt) > np/2) 
                grid_lat_ind(my_pt) = grid_lat_ind(my_pt) - 1;
             else
                grid_lat_ind(my_pt) = grid_lat_ind(my_pt) + 1;
@@ -136,7 +131,7 @@ if(on_edge)
          % Adjust the face1 longitudes
          for i = 1:2
             my_pt = face2_pts(i);
-            if(grid_lon_ind(my_pt) >= np/2) 
+            if(grid_lon_ind(my_pt) > np/2) 
                grid_lon_ind(my_pt) = grid_lon_ind(my_pt) - 1;
             else
                grid_lon_ind(my_pt) = grid_lon_ind(my_pt) + 1;

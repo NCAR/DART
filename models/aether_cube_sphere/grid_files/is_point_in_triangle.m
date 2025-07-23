@@ -8,9 +8,17 @@
 
 function [inside, dif_frac ] = is_point_in_triangle(v1, v2, v3, p)
 
-
 % Compute the area of the original triangle and the three sub triangles with Heron's formula
 % from the 3d lengths. Is sum of the three subs equal to the whole?
+
+% Get the projection of the point p onto the plane containing the triangle
+% Start by getting perpendicular vector by cross product
+perp = cross((v1-v2), v2-v3);
+% Get unit vector in direction of perp
+unit_perp = perp / norm(perp);
+% Projection of vector from v1 to p on the unit perp vector is how much to move to get to plane
+offset = dot((p-v1), unit_perp);
+p_proj = p - offset * unit_perp;
 
 % Compute lengths of the sides
 len_s1 = norm((v1 - v2));
@@ -18,9 +26,9 @@ len_s2 = norm((v3 - v2));
 len_s3 = norm((v1 - v3));
 
 % Compute the lengths from the point p
-len_p1 = norm((p - v1));
-len_p2 = norm((p - v2));
-len_p3 = norm((p - v3));
+len_p1 = norm((p_proj - v1));
+len_p2 = norm((p_proj - v2));
+len_p3 = norm((p_proj - v3));
 
 % Area of triangle
 at = heron(len_s1, len_s2, len_s3);
@@ -38,20 +46,7 @@ area_dif = at1 + at2 + at3 - at;
 % corner triangles. The value of 7e-1 prevents failure to allow all tests to proceed
 % but will need to be greatly reduced for final testing.
 dif_frac = area_dif / at;
-inside = abs(dif_frac) < 0.05;
+inside = abs(dif_frac) < 0.002;
 
-
-
-%fprintf('areas of triangles\n');
-%format long
-%[at1 at2 at3 at area_dif area_dif / at]
-
-
-
-
-
-
-
-
-
+return
 
