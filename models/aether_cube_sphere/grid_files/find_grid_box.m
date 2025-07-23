@@ -7,7 +7,7 @@ np = 18;
 
 %-------------------------------------------
 % Plotting is available to give insight but can be turned off by
-do_plotting = true;
+do_plotting = false;
 
 if(do_plotting)
    % Plot a background spherical surface
@@ -95,11 +95,13 @@ end
 % 2. Are the computed latitude and longitude the same as those in the Aether grid files?
 
 % Enter lats and lons in degrees for starters
-pt_lon_d = 180.1
-pt_lat_d = 33.8
+pt_lon_d = 268.4 
+pt_lat_d = -35.9
 
-%%%for pt_lon_d = 0:0.1:360
-   %%%for pt_lat_d = -90:0.1:90
+for pt_lon_d = 0:0.1:360
+   for pt_lat_d = -90:0.1:90
+
+pt_lon_d
 
 % Convert to radians since this is generally used in algorithm
 pt_lon = deg2rad(pt_lon_d);
@@ -160,7 +162,7 @@ else
    [inside_t(2), dif_frac_t(2)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(4, :), pxyz); 
    [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz); 
    [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz); 
-%%%dif_frac_t
+
    % Only keeping overall stats for now on interior points, edges are not all working
    if(all(grid_lat_ind) > 0 && all(grid_lon_ind > 0) && all(grid_lat_ind) < np && all(grid_lon_ind < np)) 
       dif_frac = min(abs(dif_frac_t));
@@ -176,11 +178,11 @@ end
 if(inside == false)
    fprintf('inside is false\n')
    [pt_lat pt_lon num_bound_points]
-   if(num_bound_points == 4) stop; end
+   stop
 end
 
-%%end
-%%end
+end
+end
 
 
 if(do_plotting) 

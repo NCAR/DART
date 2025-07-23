@@ -39,9 +39,11 @@ end
 
 % If it's at a corner, need to find the triangles in a different fashion
 if(corner)
-   [grid_face, grid_lat_ind, grid_lon_ind] = get_corners(face, lat_grid(corner_index), lon_grid(corner_index), np);
-   num_bound_points = 3;
+   [grid_face, grid_lat_ind, grid_lon_ind, num_bound_points] = ...
+      get_corners(face, lat_grid(corner_index), lon_grid(corner_index), lat, lon, np);
+   if(num_bound_points == 4) corner = false; end
 else
+   % If not at corner it's definitely in a quad
    num_bound_points = 4;
 end
 
