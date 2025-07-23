@@ -97,8 +97,9 @@ character(len=256) :: grid_centers_file_prefix, grid_centers_file_suffix, grid_c
 namelist /grid_nml/ grid_centers_file_prefix, grid_centers_file_suffix, grid_corners_file_prefix, grid_corners_file_suffix
 
 integer :: nblocks, nhalos
-character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suffix, filter_input_prefix, filter_input_suffix
-namelist /transform_state_nml/ nblocks, nhalos,restart_file_prefix, restart_file_middle, restart_file_suffix, filter_input_prefix, filter_input_suffix
+character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suffix
+character(len=256) :: filter_input_prefix, filter_input_suffix, filter_output_prefix, filter_output_suffix
+namelist /transform_state_nml/ nblocks, nhalos,restart_file_prefix, restart_file_middle, restart_file_suffix, filter_input_prefix, filter_input_suffix, filter_output_prefix, filter_output_suffix
 
 ! Assign initialized variables
 max_lon = 360.0

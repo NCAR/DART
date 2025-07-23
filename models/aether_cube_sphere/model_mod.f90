@@ -667,7 +667,7 @@ subroutine inside_triangle(t1, t2, t3, r, lat, lon, inside, weights)
    ! real valued computations define a lower bound for
    ! numerical roundoff error and be sure that the
    ! weights are not just *slightly* negative.
-   call get_3d_weights(r, t1, t2, t3, lat, lon, weights)
+   call get_3d_weights(r, t1, t2, t3, weights)
    
    if (any(weights < -roundoff)) then
       inside = .false.
@@ -682,7 +682,7 @@ subroutine inside_triangle(t1, t2, t3, r, lat, lon, inside, weights)
    
 end subroutine inside_triangle
 
-subroutine get_3d_weights(p, v1, v2, v3, lat, lon, weights)
+subroutine get_3d_weights_old(p, v1, v2, v3, lat, lon, weights)
 
    ! Given a point p (x,y,z) inside a triangle, and the (x,y,z)
    ! coordinates of the triangle corner points (v1, v2, v3),
@@ -712,7 +712,7 @@ subroutine get_3d_weights(p, v1, v2, v3, lat, lon, weights)
       cys(1) = v1(2)
       cys(2) = v2(2)
       cys(3) = v3(2)
-      call get_barycentric_weights(p(1), p(2), cxs, cys, weights)
+      !call get_barycentric_weights(p(1), p(2), cxs, cys, weights)
       return
    endif
    
@@ -725,7 +725,7 @@ subroutine get_3d_weights(p, v1, v2, v3, lat, lon, weights)
       cys(1) = v1(3)
       cys(2) = v2(3)
       cys(3) = v3(3)
-      call get_barycentric_weights(p(2), p(3), cxs, cys, weights)
+      !call get_barycentric_weights(p(2), p(3), cxs, cys, weights)
       return
    endif
    
@@ -736,29 +736,102 @@ subroutine get_3d_weights(p, v1, v2, v3, lat, lon, weights)
    cys(1) = v1(3)
    cys(2) = v2(3)
    cys(3) = v3(3)
-   call get_barycentric_weights(p(1), p(3), cxs, cys, weights)
+   !call get_barycentric_weights(p(1), p(3), cxs, cys, weights)
    
+end subroutine get_3d_weights_old
+
+subroutine get_3d_weights(p, v1, v2, v3, weights)
+
+   ! MEG: 
+   ! This replaces 'get_3d_weights_old' which to me it seems
+   ! like it's trying to guess which side to draw flat based on the address.
+
+   ! The code below looks at the triangle itself and picks the best 
+   ! angle so it is flattest and least distorted. I also added a 'success' 
+   ! option in 'get_barycentric_weights' to check for the collinearity issue. 
+
+   ! Obviously, we can do better, but for now I think this keeps us going.
+
+   real(r8), intent(in)  :: p(3), v1(3), v2(3), v3(3)
+   real(r8), intent(out) :: weights(3)
+
+   real(r8) :: e1(3), e2(3), n(3)
+   real(r8) :: cxs(3), cys(3)
+   logical  :: success
+
+   ! Compute triangle edge vectors
+   e1(1) = v2(1) - v1(1)
+   e1(2) = v2(2) - v1(2)
+   e1(3) = v2(3) - v1(3)
+
+   e2(1) = v3(1) - v1(1)
+   e2(2) = v3(2) - v1(2)
+   e2(3) = v3(3) - v1(3)
+
+   ! Cross product (normal vector)
+   n(1) = e1(2)*e2(3) - e1(3)*e2(2)
+   n(2) = e1(3)*e2(1) - e1(1)*e2(3)
+   n(3) = e1(1)*e2(2) - e1(2)*e2(1)
+
+   ! Try projection on XY plane
+   if (abs(n(3)) >= abs(n(1)) .and. abs(n(3)) >= abs(n(2))) then
+      cxs(1) = v1(1); cxs(2) = v2(1); cxs(3) = v3(1)
+      cys(1) = v1(2); cys(2) = v2(2); cys(3) = v3(2)
+      call get_barycentric_weights(p(1), p(2), cxs, cys, weights, success)
+      if (success) return
+   endif
+
+   ! Try projection on YZ plane
+   if (abs(n(1)) >= abs(n(2))) then
+      cxs(1) = v1(2); cxs(2) = v2(2); cxs(3) = v3(2)
+      cys(1) = v1(3); cys(2) = v2(3); cys(3) = v3(3)
+      call get_barycentric_weights(p(2), p(3), cxs, cys, weights, success)
+      if (success) return
+   endif
+
+   ! Fallback: try projection on XZ plane
+   cxs(1) = v1(1); cxs(2) = v2(1); cxs(3) = v3(1)
+   cys(1) = v1(3); cys(2) = v2(3); cys(3) = v3(3)
+   call get_barycentric_weights(p(1), p(3), cxs, cys, weights, success)
+
+   if (.not. success) then
+      ! Tried all planes and it didn't work out, so ...
+      print *, 'Carefull: get_3d_weights failed to compute weights.'
+      weights(1) = -1.0_r8
+      weights(2) = -1.0_r8
+      weights(3) = -1.0_r8
+   endif
+
 end subroutine get_3d_weights
 
-subroutine get_barycentric_weights(x, y, cxs, cys, weights)
+
+subroutine get_barycentric_weights(x, y, cxs, cys, weights, success)
 
    ! Computes the barycentric weights for a 2d interpolation point
    ! (x,y) in a 2d triangle with the given (cxs,cys) corners.
    
    real(r8), intent(in)  :: x, y, cxs(3), cys(3)
    real(r8), intent(out) :: weights(3)
+   logical, intent(out)  :: success
    
    real(r8) :: denom
    
    ! Get denominator
    denom = (cys(2) - cys(3)) * (cxs(1) - cxs(3)) + &
       (cxs(3) - cxs(2)) * (cys(1) - cys(3))
-   
+
+   ! If the vertices are collinear then the triangle is degenerate
+   if (abs(denom) < roundoff) then
+      success = .false.
+      weights = 0.0_r8
+      return
+   endif
+ 
    weights(1) = ((cys(2) - cys(3)) * (x - cxs(3)) + &
-      (cxs(3) - cxs(2)) * (y - cys(3))) / denom
+                (cxs(3) - cxs(2)) * (y - cys(3))) / denom
    
    weights(2) = ((cys(3) - cys(1)) * (x - cxs(3)) + &
-      (cxs(1) - cxs(3)) * (y - cys(3))) / denom
+                (cxs(1) - cxs(3)) * (y - cys(3))) / denom
    
    weights(3) = 1.0_r8 - weights(1) - weights(2)
    
@@ -766,7 +839,10 @@ subroutine get_barycentric_weights(x, y, cxs, cys, weights)
       where (abs(weights) < roundoff) weights = 0.0_r8
       where (abs(1.0_r8 - abs(weights)) < roundoff) weights = 1.0_r8
    endif
-   
+
+   ! I'm here so it must be a good looking triangle
+   success = .true.  
+ 
 end subroutine get_barycentric_weights
 
 subroutine latlon_to_xyz(lat, lon, x, y, z)
