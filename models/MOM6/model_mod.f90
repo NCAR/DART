@@ -630,11 +630,11 @@ if (.not. present(dist)) return
 ! so they are not updated by assimilation
 do ii = 1, num_close
 
-  if(loc_qtys(close_ind(ii)) == QTY_DRY_LAND) dist = 1.0e9_r8
+  if(loc_qtys(close_ind(ii)) == QTY_DRY_LAND) dist(ii) = 1.0e9_r8
 
   lon_lat_vert = get_location(locs(close_ind(ii))) ! assuming VERTISHEIGHT
   call get_model_variable_indices(loc_indx(ii), i, j, k)
-  if ( below_sea_floor(i,j,lon_lat_vert(3)) ) dist = 1.0e9_r8
+  if ( below_sea_floor(i,j,lon_lat_vert(3)) ) dist(ii) = 1.0e9_r8
 
 enddo
 
