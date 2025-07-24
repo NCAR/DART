@@ -808,10 +808,7 @@ function on_land_point(ilon, ilat)
 integer :: ilon, ilat ! these are indices into lon, lat
 logical :: on_land_point
 
-if ( wet(ilon, ilat) + &
-     wet(ilon, ilat) + &
-     wet(ilon, ilat) + &
-     wet(ilon, ilat)  < 4) then
+if ( wet(ilon, ilat) == 0) then
    on_land_point = .true.
 else
    on_land_point = .false.
