@@ -144,6 +144,13 @@ Available distributions
    If GAMMA_DISTRIBUTION or BETA_DISTRIBUTION is selected for a quantity, the bounds in
    the QCEFF table are ignored and the standard bounds for the distribution are used.
 
+.. note::
+
+   KDE_DISTRIBUTION and KDE_FILTER use Gauss-Legendre quadrature to evaluate cumulative
+   distribution functions. The computational cost can be reduced by reducing the order
+   of the quadrature from 9 to 7 or 5. This is accomplished by adding an optional namelist,
+   named kde_nml, to input.nml. In this namelist set quadrature_order = 5 or 7.
+
 .. _Default values:
 
 Default values
