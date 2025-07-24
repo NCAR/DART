@@ -1117,7 +1117,7 @@ character(len=*), parameter :: routine = 'get_close_state'
 !====================== local variables ======================
 integer     :: num_vars_chn, num_vars_hru, contributing_HRUs
 integer     :: num_close_seg, iclose, start_index, close_index
-integer     :: ihru, index_skip, close_hru_index
+integer     :: ihru, index_skip, close_hru_index, local_hru_index
 integer(i8) :: full_index 
 
 integer     :: stream_nclose
@@ -1170,10 +1170,14 @@ if (domain_count > 1) then
 
       ! Add them to the list
       HRULOOP : do ihru = 1, contributing_HRUs
-         close_hru_index = index_skip + connections(close_index)%avail_hru(ihru)
-        
+         local_hru_index = connections(close_index)%avail_hru(ihru)
+         close_hru_index = index_skip + local_hru_index
+
+         print *, 'index_skip: ', index_skip
+         print *, 'connections(close_index)%avail_hru(ihru): ', connections(close_index)%avail_hru(ihru)       
+ 
          ! Found HRU index, now make sure it's active 
-         if (hruTyp(close_hru_index) == INACTIVE_HRU) cycle HRULOOP
+         if (hruTyp(local_hru_index) == INACTIVE_HRU) cycle HRULOOP
 
          stream_nclose                 = stream_nclose + 1
          stream_indices(stream_nclose) = close_hru_index
