@@ -1173,9 +1173,6 @@ if (domain_count > 1) then
          local_hru_index = connections(close_index)%avail_hru(ihru)
          close_hru_index = index_skip + local_hru_index
 
-         print *, 'index_skip: ', index_skip
-         print *, 'connections(close_index)%avail_hru(ihru): ', connections(close_index)%avail_hru(ihru)       
- 
          ! Found HRU index, now make sure it's active 
          if (hruTyp(local_hru_index) == INACTIVE_HRU) cycle HRULOOP
 
