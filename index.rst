@@ -383,8 +383,8 @@ References
    observations/obs_converters/GTSPP/GTSPP
    observations/obs_converters/MADIS/MADIS
    observations/obs_converters/MIDAS/MIDAS_to_obs
-   observations/obs_converters/MODIS/readme
    observations/obs_converters/MODIS/MOD15A2_to_obs
+   observations/obs_converters/MODIS/MOD29E1D_to_obs
    observations/obs_converters/MPD/README
    observations/obs_converters/NASA_Earthdata/README
    observations/obs_converters/NCEP/prep_bufr/prep_bufr

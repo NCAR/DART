@@ -81,7 +81,9 @@ The namelist options for DART-MOM6 are as follows:
                                       'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
                                       'h    ', 'QTY_LAYER_THICKNESS      ', 'UPDATE',
        assimilation_period_days     = 1
-       assimilation_period_seconds  = 1
+       assimilation_period_seconds  = 0
+       use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
+       layer_name = 'Layer' ! name of the layer variable in the restart file
        /
 
 * ``template_file`` is a MOM6 restart file. The size and shape of the state variables will be read from this netCDF file.
@@ -119,6 +121,8 @@ To get the depth in meters at a particular layer, you must sum the layer thickne
    Layer interface thickness maybe available from MOM6. But the restarts we have
    available have "Layer thickness" only.
 
+The namelist option ``use_pseudo_depth`` can be set to `.true.` to use the pseudo depth
+instead of the sum of layer thicknesses for the vertical location.
 
 Land in the state
 ------------------
