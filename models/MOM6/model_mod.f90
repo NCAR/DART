@@ -977,7 +977,7 @@ integer, intent(in) :: qty
 
 if (on_v_grid(qty)) then
   get_interp_handle = interp_v_grid
-elseif (on_v_grid(qty)) then
+elseif (on_u_grid(qty)) then
   get_interp_handle = interp_u_grid
 else
   get_interp_handle = interp_t_grid
