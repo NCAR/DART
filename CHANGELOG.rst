@@ -22,6 +22,61 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 24 2025 :: MOM6 pseudo depth, MODIS ice surface temp. Tag v11.12.0**
+
+New features:
+
+- MODIS ice surface temperature observation converter
+  *contributed by Molly Wieringa*
+- Option to use pseudo depth for vertical location in MOM6-DART
+- QCEFF table pretty printer: display-qceff-table
+
+Bug fix:
+
+  - perfect_model_obs progress print info 
+
+**July 16 2025 :: GitHub actions and MOM6 PMO defaults. Tag v11.11.3**
+
+- non-root user for containers
+- run_all_quickbuilds can now use rttov13
+- default PMO options updated for MOM6
+
+**July 7 2025 :: Documentation for Data Management. Tag v11.11.2**
+
+- Document namelist options for state distribution and vertical conversion
+- IEEE flag set for Cray Compiler Environment mkmf.template
+
+**June 6 2025 :: Bug-fix: nc_get_variable_info. Tag v11.11.1**
+
+- nc_get_variable_info: Use local variable rather than optional argument which may not be present
+
+Documentation updates:
+
+   - Fortran compiler and NetCDF requirements
+   - Removed unused .rst files
+   - Comment on damping vs applying posterior inflation clarification
+
+**May 6 2025 :: Fwd-op for SAT_SEAICE radar and laser. Tag v11.11.0**
+
+- Forward Operator for SAT_SEAICE_RADAR|LASER_FREEBOARD. 
+
+  *contributed by Molly Wieringa*
+
+Bug-fix:
+
+  - real128 removed from developer_tests for nvhpc compiler.
+
+Documentation updates:
+
+  - CONAGUA converter documentation updated.
+  - Radar observations documentation updated. 
+
+**May 1 2025 :: Bug-fixes: TIEGCM, BNRH. Tag v11.10.9**
+
+- Fix VTEC extrapolation calculation in TIEGCM model_mod.
+- Fix loop limit in bnrh_distribution_mod, and routine name in error messages.
+- Documentation fix for perturb_single_instance.
+
 **April 22 2025 :: Bug-fix: CICE interpolation. Tag v11.10.8**
 
 - Inverse distance weighting interpolation for CICE. Replaces
