@@ -141,16 +141,9 @@ end
 
 if(num_bound_points == 3)
    % See if the point is inside a local approximately tangent triangle
-   [inside, dif_frac] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
+   inside = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
 else
-   inside_t(1:4) = false; 
-   % See if the point is inside a quad; it's inside if it's in one or more contained triangles
-   [inside_t(1), dif_frac_t(1)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz); 
-   [inside_t(2), dif_frac_t(2)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(4, :), pxyz); 
-   [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz); 
-   [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz); 
-
-   inside = any(inside_t);
+   inside = is_point_in_quad(qxyz, pxyz);
 end
 
 if(~inside)

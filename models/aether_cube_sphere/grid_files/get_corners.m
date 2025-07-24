@@ -118,7 +118,7 @@ for i = 1:3
 end
 
 % See if the point is in the triangle; if so, all is good
-[inside, dif_frac] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
+inside = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
 if(inside) return; end
 
 % If it's not in the triangle, have to check the three adjacent quads at the corner
@@ -134,12 +134,9 @@ for quad = 1:3
    end
 
    % See if the point is inside this quad; it's inside if it's in one or more contained triangles
-   [inside_t(1), dif_frac_t(1)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
-   [inside_t(2), dif_frac_t(2)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(4, :), pxyz);
-   [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz);
-   [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz);
+   inside = is_point_in_quad(qxyz, pxyz)
 
-   if(any(inside_t))
+   if(inside)
       f_face = quad_face(quad, :);
       f_lat_grid = quad_lat_grid(quad, :);
       f_lon_grid = quad_lon_grid(quad, :);

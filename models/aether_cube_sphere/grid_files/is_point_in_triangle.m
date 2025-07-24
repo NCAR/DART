@@ -3,7 +3,7 @@
 % between p and a pair of vertices. These should sum to the area of the triangle if p
 % is inside and be larger than that if p is outside. 
 
-function [inside, dif_frac ] = is_point_in_triangle(v1, v2, v3, p)
+function [inside] = is_point_in_triangle(v1, v2, v3, p)
 
 
 % Get the projection of the point p onto the plane containing the triangle

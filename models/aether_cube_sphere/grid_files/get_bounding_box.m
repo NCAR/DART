@@ -68,14 +68,9 @@ if(on_edge)
 
    % Convert point to xyz
    pxyz = lat_lon_to_xyz(lat, lon);
-   inside_t(1:4) = false;
-   % See if the point is inside a quad; it's inside if it's in one or more contained triangles
-   [inside_t(1), dif_frac_t(1)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
-   [inside_t(2), dif_frac_t(2)] = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(4, :), pxyz);
-   [inside_t(3), dif_frac_t(3)] = is_point_in_triangle(qxyz(1, :), qxyz(3, :), qxyz(4, :), pxyz);
-   [inside_t(4), dif_frac_t(4)] = is_point_in_triangle(qxyz(2, :), qxyz(3, :), qxyz(4, :), pxyz);
+   inside = is_point_in_quad(qxyz, pxyz);
 
-   if(~any(inside_t))
+   if(~inside)
       % Not in this box, need to move 'equatorward'
       % Find indices (from 1 to 4) of points on the same face
       face1_pts(1:2) = 0; face2_pts(1:2) = 0;
