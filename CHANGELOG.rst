@@ -22,6 +22,19 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 24 2025 :: MOM6 pseudo depth, MODIS ice surface temp. Tag v11.12.0**
+
+New features:
+
+- MODIS ice surface temperature observation converter
+  *contributed by Molly Wieringa*
+- Option to use pseudo depth for vertical location in MOM6-DART
+- QCEFF table pretty printer: display-qceff-table
+
+Bug fix:
+
+  - perfect_model_obs progress print info 
+
 **July 16 2025 :: GitHub actions and MOM6 PMO defaults. Tag v11.11.3**
 
 - non-root user for containers
