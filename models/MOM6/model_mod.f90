@@ -230,7 +230,7 @@ real(r8) :: lev_fract(ens_size), levz_fract ! fraction between bottom and top le
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2)
-real(r8) :: expected_pot_temp(ens_size), expected_salinity(ens_size), pressure_dbars(ens_size)
+real(r8) :: expected_pot_temp(ens_size), expected_salinity(ens_size), pressure_bars(ens_size)
 type(quad_interp_handle) :: interp
 integer :: varid, i, e, thick_id, corner
 integer(i8) :: th_indx
@@ -368,9 +368,9 @@ select case (qty_in)
          return
       endif
 
-      pressure_dbars =  0.059808_r8*(exp(-0.025_r8*lon_lat_vert(3)) - 1.0_r8)  &
+      pressure_bars =  0.059808_r8*(exp(-0.025_r8*lon_lat_vert(3)) - 1.0_r8)  &
                         + 0.100766_r8*lon_lat_vert(3) + 2.28405e-7_r8*lon_lat_vert(3)**2
-      expected_obs = sensible_temp(expected_pot_temp, expected_salinity, pressure_dbars)
+      expected_obs = sensible_temp(expected_pot_temp, expected_salinity, pressure_bars*10.0_r8)
 
    case (QTY_SALINITY) ! convert from g of salt per kg of seawater (model) to kg of salt per kg of seawater (observation)
       call state_on_quad(four_ilons, four_ilats, lon_lat_vert, ens_size, lev, lev_fract, interp, state_handle, varid, expected_obs, quad_status)
