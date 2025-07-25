@@ -47,7 +47,7 @@ end
 
 % Harvest the information on the grid points bounding the appropriate corner
 % Arrays of info for adjacent quads for bulges (three of them, first index)
-quad_lon_grid(1:3, 1:4) = -99;  quad_lat_grid(1:3, 1:4) = -99; quad_face_grid(1:3, 1:4) = -99;
+quad_lon_grid(1:3, 1:4) = -99;  quad_lat_grid(1:3, 1:4) = -99; quad_face(1:3, 1:4) = -99;
 
 if(corner == 1)
    f_face(1:3) =     [3  0 4];
