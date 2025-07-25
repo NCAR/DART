@@ -2305,13 +2305,16 @@ DO imem = 1, ens_size
          runtime % cld_profiles(imem) % cfrac = -1
       end if
 
-      ! cloud fraction per hydrometeor type 
-      ! TODO: How do we get this from model data? From the 3D rain field?
-      ! Assume equal to cloud fraction for now
+      ! Assign cloud fraction per hydrometeor type 
+      ! Not clear how to obtain hydrometeor specific cloud fraction information
+      ! Assume the cloud fraction profile is identical for each hydrometeor type
       if (allocated(clouds % cfrac)) then
-         ! TODO: fixme
-         runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
-         ! runtime % cld_profiles(imem) % hydro_frac(:,:) = clouds % cfrac(imem,lvlidx)
+         ! runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
+         runtime % cld_profiles(imem) % hydro_frac(:,1) = max(clouds % cfrac(imem,lvlidx), 0.0_r8)
+         runtime % cld_profiles(imem) % hydro_frac(:,2) = max(clouds % cfrac(imem,lvlidx), 0.0_r8)
+         runtime % cld_profiles(imem) % hydro_frac(:,3) = max(clouds % cfrac(imem,lvlidx), 0.0_r8)
+         runtime % cld_profiles(imem) % hydro_frac(:,4) = max(clouds % cfrac(imem,lvlidx), 0.0_r8)
+         runtime % cld_profiles(imem) % hydro_frac(:,5) = max(clouds % cfrac(imem,lvlidx), 0.0_r8)
       else
          ! Assume cloud fraction is 1 everywhere.
          runtime % cld_profiles(imem) % hydro_frac(:,:) = 1.0_jprb
