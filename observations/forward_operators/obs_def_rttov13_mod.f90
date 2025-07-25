@@ -3763,8 +3763,8 @@ GETLEVELDATA : do i = 1,numlevels
       ! clw_scheme = 1 Parameterizes diameters depending on cloud type
       ! clw_scheme = 2 requires setting clwde (effective diameter)
       ! By default clwde is prescribed as constant value for clw_scheme = 2, otherwise uses QTY_CLOUDWATER_DE from model
+      ! If necessary model_mod should perform radius to diameter and units conversion
       call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
-      !clouds%clwde(:, i) = 2*1e6*clouds%clwde(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
       call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
       if (return_now) return
    end if
@@ -3790,10 +3790,9 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
 
       if (ice_scheme == 1 .and. use_icede) then
-         ! In this case, we must specify icede (ice effective diameter)
-         ! It is read from model
+         ! In this case, we must specify icede (ice effective diameter) from model
+         ! If necessary model_mod should perform radius to diameter and units conversion
          call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
-         !clouds%icede(:, i) = 2*1e6*clouds%icede(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
          call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
