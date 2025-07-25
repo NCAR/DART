@@ -368,8 +368,8 @@ select case (qty_in)
          return
       endif
 
-      pressure_dbars =  0.059808_r8*(exp(-0.025_r8*depth_at_x) - 1.0_r8)  &
-                        + 0.100766_r8*depth_at_x + 2.28405e-7_r8*lon_lat_vert(3)**2
+      pressure_dbars =  0.059808_r8*(exp(-0.025_r8*lon_lat_vert(3)) - 1.0_r8)  &
+                        + 0.100766_r8*lon_lat_vert(3) + 2.28405e-7_r8*lon_lat_vert(3)**2
       expected_obs = sensible_temp(expected_pot_temp, expected_salinity, pressure_dbars)
 
    case (QTY_SALINITY) ! convert from g of salt per kg of seawater (model) to kg of salt per kg of seawater (observation)
