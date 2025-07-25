@@ -6,7 +6,7 @@ Introduction to DART’s support for RTTOV
 DART supports satellite radiance assimilation through an interface to 
 the radiative transfer model RTTOV.  RTTOV is a fast radiative transfer model
 that is widely used in research and operations. RTTOV contains 
-observation operators for visible/infrared/microwave radiances/brightness temperatures. 
+observation operators for UV/visible/infrared/microwave radiances/brightness temperatures. 
 RTTOV uses the atmospheric state provided by DART to generate the expected radiance 
 observation. The minimum list of atmospheric state variables required is listed in the section below
 :ref:`Input data to RTTOV<inputdata>`.  Observations from a wide range of satellites 
@@ -41,9 +41,8 @@ Compilation and setup
 ---------------------
 
 New versions of RTTOV are released regularly.
-At present, DART supports RTTOV v12.3 and v13.
-To simulate microwave radiances, use RTTOV v12.3.
-For UV/visible/infrared radiances, you can use either RTTOV v12.3 or v13.
+At present, DART supports RTTOV v12.3 and v13 for
+the simulation of UV/visible/infrared and microwave radiances.
 
 If you haven't compiled DART before, it is recommended to compile DART
 first without RTTOV, to confirm that everything is working. Refer to the 
@@ -257,7 +256,10 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
       DART will pass these modeled values onto RTTOV. Alternatively, if that model state does not exist, then
       the code defaults to a contant value (e.g. clwde = 20.0 microns) as defined in the ``obs_def_rttov_mod.f90``.
       Be aware that the code does not account for unit conversion.  WRF effective particle diameter, for example, 
-      requires a meter to micron conversion.
+      requires a meter to micron conversion.  If using WRF you should provide the ``&model_nml`` with the 
+      effective liquid water radius variable (``RE_QC``).  This is not a default WRF output, but can be added through
+      the WRF diagnostic namelist setting (``&diags solar_diagnostics = 1``). Be aware that the units conversion
+      (radius (meters) to diameter (microns)) is applied within the ``model_mod.f90`` and not the RTTOV related code.
    *  The OPAC scheme computes optical properties based on the cloud type 
       (marine/continental, stratus/cumulus, clean/dirty). 
       If the user selects the OPAC scheme (`clw_scheme=1`), DART classifies the cloud type based 
@@ -278,8 +280,10 @@ while RTTOV only accepts liquid water and ice mixing ratio (plus snow for RTTOV-
       diameter directly from the model to RTTOV, assign the appropriate model variable to 
       ``QTY_CLOUD_ICE_DE`` within ``&model_nml`` and set ``ice_scheme = 1`` and ``use_icede = .true.``.  
       If ``QTY_CLOUD_ICE_DE`` is not defined then DART defaults to a fixed particle 
-      size diameter (e.g. icede = 60.0 microns). Be aware that the code does not account for unit conversion.  
-      WRF effective particle diameter, for example, requires a meter to micron conversion.
+      size diameter (e.g. icede = 60.0 microns). If using WRF you should provide the ``&model_nml`` with the 
+      effective ice radius variable (``RE_QI``).  This is not a default WRF output, but can be added through
+      the WRF diagnostic namelist setting (``&diags solar_diagnostics = 1``). Be aware that the units conversion
+      (radius (meters) to diameter (microns)) is applied within the ``model_mod.f90`` and not the RTTOV related code.
    *  Regarding visible reflectance, DART follows Kostka et al. (2014), section 3.a, 
       and counts only 10% of 'snow' towards the cloud ice concentration.
       This is because large particles tend to have a smaller scattering cross-section than 
