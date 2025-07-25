@@ -232,7 +232,7 @@ real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2)
 real(r8) :: expected_pot_temp(ens_size), expected_salinity(ens_size), pressure_dbars(ens_size)
 type(quad_interp_handle) :: interp
-integer :: varid, i, e, thick_id
+integer :: varid, i, e, thick_id, corner
 integer(i8) :: th_indx
 real(r8) :: depth_at_x(ens_size), thick_at_x(ens_size) ! depth, layer thickness at obs lat lon
 logical :: found(ens_size)
@@ -308,21 +308,11 @@ else
    depth_at_x(:) = 0
    FIND_LAYER: do i = 2, nz
 
-      ! corner1
-      th_indx = get_dart_vector_index(four_ilons(1), four_ilats(1), i, dom_id, thick_id)
-      quad_vals(1, :) = get_state(th_indx, state_handle)
-      
-      ! corner2
-      th_indx = get_dart_vector_index(four_ilons(1), four_ilats(2), i, dom_id, thick_id)
-      quad_vals(2, :) = get_state(th_indx, state_handle)
-      
-      ! corner3
-      th_indx = get_dart_vector_index(four_ilons(2), four_ilats(1), i, dom_id, thick_id)
-      quad_vals(3, :) = get_state(th_indx, state_handle)
-      
-      ! corner4
-      th_indx = get_dart_vector_index(four_ilons(2), four_ilats(2), i, dom_id, thick_id)
-      quad_vals(4, :) = get_state(th_indx, state_handle)
+      do corner = 1, 4
+         th_indx = get_dart_vector_index(four_ilons(corner), four_ilats(corner), i, dom_id, thick_id)
+          quad_vals(corner, :) = get_state(th_indx, state_handle)
+      enddo
+
       
       call quad_lon_lat_evaluate(interp, &
                                  lon_lat_vert(1), lon_lat_vert(2), & ! lon, lat of obs
@@ -423,7 +413,6 @@ real(r8) :: quad_vals(4, ens_size)
 real(r8) :: expected(ens_size, 2) ! state value at level below and above obs
 
 do i = 1, 2 
-   !HK which corner of the quad is which?
    ! corner1
    do e = 1, ens_size
       indx(e) = get_dart_vector_index(four_ilons(1), four_ilats(1), lev(e, i), dom_id, varid)
@@ -432,19 +421,19 @@ do i = 1, 2
 
    ! corner2
    do e = 1, ens_size
-      indx(e) = get_dart_vector_index(four_ilons(1), four_ilats(2), lev(e, i), dom_id, varid)
+      indx(e) = get_dart_vector_index(four_ilons(2), four_ilats(2), lev(e, i), dom_id, varid)
    enddo
    call get_state_array(quad_vals(2, :), indx, state_handle)
 
    ! corner3
    do e = 1, ens_size
-      indx(e) = get_dart_vector_index(four_ilons(2), four_ilats(1), lev(e, i), dom_id, varid)
+      indx(e) = get_dart_vector_index(four_ilons(3), four_ilats(3), lev(e, i), dom_id, varid)
    enddo
    call get_state_array(quad_vals(3, :), indx, state_handle)
 
    ! corner4
    do e = 1, ens_size
-      indx(e) = get_dart_vector_index(four_ilons(2), four_ilats(2), lev(e, i), dom_id, varid)
+      indx(e) = get_dart_vector_index(four_ilons(4), four_ilats(4), lev(e, i), dom_id, varid)
    enddo
    call get_state_array(quad_vals(4, :), indx, state_handle)
 
@@ -792,9 +781,9 @@ integer :: ilon(4), ilat(4) ! these are indices into lon, lat
 logical ::  on_land_quad
 
 if ( wet(ilon(1), ilat(1)) + &
-     wet(ilon(1), ilat(2)) + &
-     wet(ilon(2), ilat(1)) + &
-     wet(ilon(2), ilat(2))  < 4) then
+     wet(ilon(2), ilat(2)) + &
+     wet(ilon(3), ilat(3)) + &
+     wet(ilon(4), ilat(4))  < 4) then
    on_land_quad = .true.
 else
    on_land_quad = .false.
@@ -831,9 +820,9 @@ integer  :: i, e
 real(r8) :: d(4) ! basin depth at each corner
 
 d(1) = basin_depth(ilon(1), ilat(1))
-d(2) = basin_depth(ilon(1), ilat(2))
-d(3) = basin_depth(ilon(2), ilat(1))
-d(4) = basin_depth(ilon(2), ilat(2))
+d(2) = basin_depth(ilon(2), ilat(2))
+d(3) = basin_depth(ilon(3), ilat(3))
+d(4) = basin_depth(ilon(4), ilat(4))
 
 do e = 1, ens_size
    do i = 1, 4
