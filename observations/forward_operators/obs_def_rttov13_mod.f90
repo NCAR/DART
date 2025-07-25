@@ -1949,6 +1949,7 @@ real(jprb) :: maxw
 
 logical :: is_visir
 logical :: is_mw
+logical :: is_vis
 logical :: is_cumulus
 integer :: instrument(3)
 integer :: surftype
@@ -1968,6 +1969,7 @@ instrument(3) = sensor % sensor_id
 
 is_visir = associated(visir_md)
 is_mw    = associated(mw_md)
+is_vis   = sensor%sensor_type_name == 'vis'
 
 if (.not. is_visir .and. .not. is_mw) then
    write(string1,*)'Neither vis/ir nor mw metadata were present for platform/sat/sensor id combination:',&
