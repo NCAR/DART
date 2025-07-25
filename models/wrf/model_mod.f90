@@ -760,8 +760,8 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
    !wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'VT_DBZ_WT')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
-   wrf%dom(id)%type_clwde  = get_type_ind_from_type_string(id,'RE_CLOUD')
-   wrf%dom(id)%type_icede  = get_type_ind_from_type_string(id,'RE_ICE')
+   wrf%dom(id)%type_clwde  = get_type_ind_from_type_string(id,'RE_QC')
+   wrf%dom(id)%type_icede  = get_type_ind_from_type_string(id,'RE_QI')
 
    ! variable bound table for setting upper and lower bounds of variables 
    var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,1) = wrf%dom(id)%lower_bound
