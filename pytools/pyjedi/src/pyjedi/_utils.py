@@ -235,7 +235,7 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, vertCoordName, ver
 
     obsqDF.insert(14, 'obs_err_var', np.array(iodaDF[obsErrorName], dtype=np.float32))
 
-    # Remove rows with missing obs data, or missing location data
-    obsqDF.dropna(subset=['observation', 'longitude', 'latitude', 'vertical'], inplace=True)
+    # Remove rows with missing obs data, or missing location, timestamp data
+    obsqDF.dropna(subset=['observation', 'longitude', 'latitude', 'vertical', 'seconds', 'days'], inplace=True)
 
     return obsqDF

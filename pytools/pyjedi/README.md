@@ -17,12 +17,36 @@ where DART is the path to DART.
 
 ## Usage
 
-After installation, you can use the `ioda2df.py` function to read a IODA observation file into a pandas dataframe:
+After installation, you can use the `ioda2obsq` script to convert a IODA observation file into a DART obs_seq.out file:
 
 ```sh
-python3
->> import pyjedi as pj
-df = pj.ioda2df('path_to_ioda_file')
+ioda2obsq yamlConfigFile inputIodaFile outputObsqFile
 ```
 
+To view the help
+```sh
+ioda2obsq -h
+```
 
+The yamConfigFile is used to tell ioda2obsq which variables, and their type, from the input IODA file to convert, as well as define the vertical coordinate.
+Here is a sample from the radiosonde test case:
+```yaml
+---
+
+ioda to obsq converter:
+  assim variables:
+    - name: airTemperature
+      type: RADIOSONDE_TEMPERATURE
+    - name: specificHumidity
+      type: RADIOSONDE_SPECIFIC_HUMIDITY
+    - name: windEastward
+      type: RADIOSONDE_U_WIND_COMPONENT
+    - name: windNorthward
+      type: RADIOSONDE_V_WIND_COMPONENT
+
+  vertical coordinate:
+    name: MetaData/height
+    units: "height (m)"
+```
+
+Note "assim variables" is the list of variables you intend to assimilate in the DA job.
