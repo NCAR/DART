@@ -67,7 +67,7 @@ def main():
     obs_seq = _buildObsSeqFromObsqDF(obsqDF)
     obs_seq.write_obs_seq(outFile)
 
-    print("INFO: Converted ", len(obsqDF), " observations")
+    print("INFO: Converted", len(obsqDF), "observations")
 
 if __name__ == "__main__":
     main()
