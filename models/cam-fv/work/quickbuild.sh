@@ -49,6 +49,8 @@ arguments "$@"
 
 # build and run preprocess before making any other DART executables
 buildpreprocess
+mpif90 $FFLAGS -c $DART/assimilation_code/modules/utilities/types_mod.f90
+mpif90 $FFLAGS -c $DART/observations/forward_operators/obs_def_profile_mopitt_mod.f90
 
 # build DART
 buildit

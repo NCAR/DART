@@ -47,16 +47,15 @@
 module obs_def_profile_mopitt_mod
 
 use typeSizes
-use        types_mod, only : r8, MISSING_R8
+use        types_mod, only : i8, r8, MISSING_R8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     location_mod, only : location_type, set_location, get_location, VERTISPRESSURE, &
-                             VERTISLEVEL, VERTISSURFACE
+use     location_mod, only : location_type, set_location, get_location, query_location, &
+                             VERTISPRESSURE, VERTISLEVEL, VERTISSURFACE 
 
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate, get_state_meta_data
 use    obs_kind_mod, only  : QTY_CO, QTY_PRESSURE, QTY_SURFACE_PRESSURE
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
-
 
 implicit none
 
@@ -73,6 +72,7 @@ integer                          :: num_mopitt_co_obs = 0
 ! real(r8), dimension(max_mopitt_co_obs,10) :: avg_kernel
 real(r8), dimension(max_mopitt_co_obs,mopitt_dim) :: avg_kernel
 real(r8), dimension(max_mopitt_co_obs)            :: mopitt_prior
+! Hardcoded pressure levels for MOPITT CO obs, it shouldn't be...
 real(r8)   :: mopitt_pressure(mopitt_dim) =(/ &
                               95000.,90000.,80000.,70000.,60000.,50000.,40000.,30000.,20000.,10000. /)
 real(r8), dimension(max_mopitt_co_obs)   :: mopitt_psurf
@@ -95,7 +95,7 @@ contains
 
 !----------------------------------------------------------------------
 
-  subroutine initialize_module
+subroutine initialize_module
 !----------------------------------------------------------------------------
 ! subroutine initialize_module
 
@@ -106,7 +106,7 @@ end subroutine initialize_module
 
 
 
- subroutine read_mopitt_co(key, ifile, fform)
+subroutine read_mopitt_co(key, ifile, fform)
 !----------------------------------------------------------------------
 !subroutine read_mopitt_co(key, ifile, fform)
 
@@ -155,7 +155,7 @@ call set_obs_def_mopitt_co(key, avg_kernels_1, mopitt_prior_1, mopitt_psurf_1, &
 
 end subroutine read_mopitt_co
 
- subroutine write_mopitt_co(key, ifile, fform)
+subroutine write_mopitt_co(key, ifile, fform)
 !----------------------------------------------------------------------
 !subroutine write_mopitt_co(key, ifile, fform)
 
@@ -197,7 +197,7 @@ END SELECT
 end subroutine write_mopitt_co
 
 
- subroutine interactive_mopitt_co(key)
+subroutine interactive_mopitt_co(key)
 !----------------------------------------------------------------------
 !subroutine interactive_mopitt_co(key)
 !
@@ -234,7 +234,7 @@ read(*, *) avg_kernel(key,:)
 
 end subroutine interactive_mopitt_co
 
- subroutine get_expected_mopitt_co(state_handle, ens_size, location, key, val, istatus)
+subroutine get_expected_mopitt_co(state_handle, ens_size, location, key, val, istatus)
 !----------------------------------------------------------------------
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
@@ -244,249 +244,240 @@ real(r8),            intent(out) :: val(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
 integer :: i,j
-type(location_type) :: loc1,loc2,loc3,loc3p,loc3m,locS
-real(r8)            :: mloc(3), mloc1(3), mloc2(3)
-real(r8)            :: obs_val(ens_size), obs_val_int(ens_size)
+type(location_type)     :: loc0,loc1,loc2,loc3,loc3p,loc3m,locS
+real(r8)                :: mloc(3), mloc1(3), mloc2(3)
+real(r8)                :: obs_val(ens_size), obs_val_int(ens_size)
 
-integer             :: nlevels, start_i, end_i
-integer             :: iens ! BG
+integer                 :: nlevels, start_i, end_i
+integer                 :: iens ! BG
 
-real(r8)            :: top_pres(ens_size), bot_pres(ens_size), coef(ens_size), mop_layer_wght(ens_size)
-real(r8)            :: i_top_pres(ens_size), i_bot_pres(ens_size), i_pres
-integer             :: num_levs, lev
-real(r8)            :: p_col(ens_size, max_model_levs)
-real(r8)            :: mopitt_pres_local(ens_size, mopitt_dim)
-integer,  allocatable :: dim_sizes(:)
-integer             :: p_col_istatus(ens_size), obs_val_int_istatus(ens_size)
-logical             :: return_now
-integer             :: imem
+real(r8)                :: top_pres(ens_size), bot_pres(ens_size), coef(ens_size), mop_layer_wght(ens_size)
+real(r8)                :: i_top_pres(ens_size), i_bot_pres(ens_size), i_pres
+integer                 :: lev, n_model_lev, n_obs_lev
+real(r8)                :: p0(ens_size), p1(ens_size)
+real(r8), allocatable   :: p_col(:, :), co_col(:, :)
+real(r8), allocatable   :: mopitt_pres_local(:, :)
+integer                 :: p_col_istatus(ens_size), co_col_istatus(ens_size), obs_val_int_istatus(ens_size)
+logical                 :: return_now, islog
+integer                 :: imem
 
 if ( .not. module_initialized ) call initialize_module
 mloc = get_location(location)
 
-! Apply MOPITT Column Averaging kernel vector a_t and MOPITT Prior xa- a_t xa
-! x = a_t xm + xa- a_t xa , where x is a 10 element vector 
-! xm is the 10-element partial columnis at MOPITT grid
-! also here, the averaging kernel is operated in log VMR.
-! i.e. the state vector CO is in log VMR 
-! edit dart_to_cam and cam_to_dart for the transformation
-! also, it turns our xa - a_txa is a scalar quantity  
-! KDR Why not initialize to mopitt_prior(key), instead of adding it after 
-!     the end of the i-loop?
 val = 0.0_r8
 
+! prelude - Check if position is valid
 if (mloc(2)>90.0_r8) then
     mloc(2)=90.0_r8
 elseif (mloc(2)<-90.0_r8) then
     mloc(2)=-90.0_r8
 endif
 
-do imem = 1, ens_size
-   mopitt_pres_local(imem, :) = mopitt_pressure
-enddo
+! part 1 - get model quatities
+! model profile of pressure at interfaces
+! model profile of concentration
 
-nlevels = mopitt_nlevels(key)
-! Modify AFAJ (072513)
-! KDR start_i >= 1
-start_i = mopitt_dim-nlevels+1
-! KDR Ack! redefining one element of a global array.
-!     Various elements will be redefined during various calls to this subroutine,
-!     because the array is initialized in the specification statement.
-mopitt_pres_local(:, start_i)=mopitt_psurf(key)
-end_i = mopitt_dim
-
-!write(*,*) 'BG in get_expected_mopitt_co'
-
-! Find the number of model levels and the pressures on them.
+! "silly" way to get model levels but no other way to do this...
 istatus = 0
 p_col = MISSING_R8
 lev = 1
 model_levels: do
    locS = set_location(mloc(1),mloc(2),real(lev,r8),VERTISLEVEL)
-
-   !write(*,*) 'call interpolate'
-   call interpolate(state_handle, ens_size, locS, QTY_PRESSURE, p_col(:, lev), p_col_istatus)
-   !write(*,*) 'After call interpolate'
-
-   !write(*,*) p_col_istatus
-   !write(*,*) p_col(:, lev)
-   if (any(p_col_istatus /= 2)) then
-      if (any(p_col_istatus /= 0)) then
-         !write(*,*) 'bb'
-         p_col(:, lev) = MISSING_R8
-         num_levs = lev - 1
-         !write(*,*) 'BG in loop loop BG EXITING'
-         !write(*,*) num_levs
-         !write(*,*) 'EXIT loop loop BG EXITING'
+   call interpolate(state_handle, ens_size, loc0, QTY_PRESSURE, p0, istatus)
+   if (any(istatus /= 2)) then
+      if (any(istatus /= 0)) then
+         n_model_lev = lev
          exit model_levels
-       endif
+      endif
    endif
-   !write(*,*) 'cc'
-
    lev = lev + 1
-   !write(*,*) 'lev = lev + 1'
-   !write(*,*) lev
-
 enddo model_levels
+write(*,*) 'number of levels'
+write(*,*) n_model_lev
 
-!write(*,*) 'after model_levels loop BG'
-!write(*,*) lev
-!write(*,*) num_levs
+allocate(p_col(ens_size, n_model_lev+1), co_col(ens_size, n_model_lev))
+! get profile concentration and profile pressure at interfaces (approximate).
+do i = 1, n_model_lev
 
-!Barre: here p_col is the pressure levels at the grid points, we will need to have in
-!the future the pressure values at the mid-points (need to create a new function
-!plevs_cam in model_mod using the the mid-levels hybrid coefs)
-! KDR This comment looks confused.  plevs_cam returns pressures on what CESM refers to
-!     as layer midpoints.  Maybe MOPITT needs pressures on the model interfaces,
-!     in which case a new subroutine using hyai and hybi would replace hyam and hybm.
-!     Anyway, p_col(30) is being redefined as the CAM surface pressure,
-!     but the rest of the p_col is not redefined.
-!     This all may be fine, since val is an accumulation of contributions 
-!     from pressure sub-layers.
+   ! get locations
+   loc0 = set_location(mloc(1),mloc(2),real(i,r8),VERTISLEVEL)
+   loc1 = set_location(mloc(1),mloc(2),real(i+1,r8),VERTISLEVEL)
+
+   ! get pressure at interfaces
+   call interpolate(state_handle, ens_size, loc0, QTY_PRESSURE, p0, istatus)
+   call interpolate(state_handle, ens_size, loc1, QTY_PRESSURE, p1, istatus)
+   if (i == 1) then
+      p_col(:, i) = 0.5_r8 * p0 ! approximation since there not such capability in model mods to get pressure at INTERFACES
+   else
+      p_col(:, i) = 0.5_r8 * (p0 + p1) ! approximation since there not such capability in model mods to get pressure at INTERFACES
+   endif
+
+   !get concentration profile at grid cell center
+   call interpolate(state_handle, ens_size, loc0, QTY_CO, co_col(:, lev), istatus)
+enddo
+
+!get surface pressure at the bottom
+call interpolate(state_handle, ens_size, locS, QTY_SURFACE_PRESSURE, p_col(:, n_model_lev+1), istatus)
 
 locS = set_location(mloc(1),mloc(2),0.0_r8, VERTISSURFACE)
 
-!write(*,*) 'after set_location BG ## VERTISSURFACE'
-
-call interpolate(state_handle, ens_size, locS, QTY_SURFACE_PRESSURE, p_col(:, num_levs), p_col_istatus)
-call track_status(ens_size, p_col_istatus, p_col(:,num_levs), istatus, return_now)
+call track_status(ens_size, p_col_istatus, p_col(:,n_model_lev+1), istatus, return_now)
 if (return_now) return
 
-! KDR Ack! redefining one element of a global array.
-!> @todo not global array
-!     This may be the 2nd redefinition of (1), or the first, if start_i /= 1.
-mopitt_pres_local(:,1) = p_col(:,num_levs)
+! part 2 - get retrieval info
+! avg_kernel
+! mopitt_prior
+! mopitt_pressure at interfaces
 
-! KDR; Algorithm; 
-!      Work through the MOPITT pressure level layers. (i loop)
-!      Find CAM levels that are in each layer. (j loop)
-!      Calculate CO from CAM state using level as the vertical location.
-!      Accumulate contributions of CO from the CAM layers,
-!         weighted by the the thickness of the CAM layer that lies within the MOPITT layer.
-! Work through the MOPITT pressure level layers. (i loop)
-! Loop from some number to 10; the mopitt pressure layers above the ground at this location.
-! BG January 10 2019
-! let's start over with V8
+! to be changed later once the obs seq are updated: convention is that we want to work with increasing pressure coordinates as in model
+! therefore we indexing like (n:1:-1)
+n_obs_lev = mopitt_nlevels(key)
+avg_kernel(key,:) = avg_kernel(key,n_obs_lev:1:-1)
 
-do i=start_i, end_i
-   obs_val=0.0_r8
-
-   bot_pres(:)=mopitt_pres_local(:, i)
-   if (i == mopitt_dim) then
-      top_pres(:)=mopitt_pres_local(:, i)/2.0_r8 
-   else
-      top_pres(:)=mopitt_pres_local(:, i+1)
-   endif
-
-   ! This is used in all 'coef's, below.
-   ! first simplification  I agree it is used in all cases
-   mop_layer_wght = 1.0_r8/abs(bot_pres-top_pres)
-
-   !do j=10,num_levs
-   !   i_bot_pres(:)=p_col(:,j)
-   !   write(*,*) 'level j, i_bot_pres', j, i_bot_pres
-   !enddo
-   !write(*,*) '****************************************************** MOPITT obs '
-   !write(*,*) 'MOPITT bot_pres :: ', bot_pres
-   !write(*,*) 'MOPITT top_pres :: ', top_pres
-
-
-   !  KDR Search through CAM layers for the ones which overlap the current mopitt layer.
-   ! Yes
-   do j=15,num_levs
-      i_bot_pres(:)=p_col(:,j)
-      if (j == 1) then
-         i_top_pres(:)=0.0_r8
-      else
-         i_top_pres(:)=p_col(:,j-1)
-      endif
-
-      coef=0.0_r8
-      obs_val_int=0.0_r8
-      !write(*,*) 'level j, i_bot_pres ', j, i_bot_pres(1)
-      !write(*,*) '         i_top_pres ', i_top_pres(1)
-      ! purpose of the loop
-      ! find the level pressures [i_bot_pres(iens) and i_top_pres(iens)]  that match MOPITT layers [bot_pres(iens) and top_pres(iens)] 
-      ! and weight the respective CO accordingly
-      if ( bot_pres(1) > top_pres(1) ) then
-         if (i_bot_pres(1) <= bot_pres(1) .and. i_bot_pres(1) > top_pres(1)) then
-            if (i_top_pres(1) <= top_pres(1)) then
-               loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-
-               coef=abs(i_bot_pres(1)-top_pres(1))/abs(bot_pres(1)-top_pres(1))
-               call interpolate(state_handle, ens_size, loc3, QTY_CO, obs_val_int, obs_val_int_istatus)
-
-!               if (istatus /= 0) then
-!                  if ( obs_val_int > 0. ) then
-!                       istatus=0
-!                  endif
-!                       write(*,*) 'Case 1 obs_val_int :', obs_val_int, coef
-!                       write(*,*) 'Case 1:', i_bot_pres, i_top_pres
-!                       write(*,*) 'Case 1: / istatus', bot_pres, top_pres, istatus
-!               endif
-            endif
-            if (i_top_pres(1) > top_pres(1)) then
-               loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-               coef=abs(i_bot_pres(1)-i_top_pres(1))/abs(bot_pres(1)-top_pres(1))
-               call interpolate(state_handle, ens_size, loc3, QTY_CO, obs_val_int, obs_val_int_istatus)
-
-!               if (istatus /= 0) then
-!                  if ( obs_val_int > 0. ) then
-!                       istatus=0
-!                  endif
-!                 write(*,*) 'Case 2 obs_val_int :', obs_val_int, coef
-!                 write(*,*) 'Case 2:', i_bot_pres(1), i_top_pres(1)
-!                 write(*,*) 'Case 2: / istatus', bot_pres(1), top_pres(1), istatus
-!               endif
-            endif
-         endif
-         if (i_bot_pres(1) > bot_pres(1) .and. i_top_pres(1) < bot_pres(1)) then
-            if (i_top_pres(1) <= top_pres(1)) then
-               loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-               coef=abs(bot_pres(1)-top_pres(1))/abs(bot_pres(1)-top_pres(1))
-               call interpolate(state_handle, ens_size, loc3, QTY_CO, obs_val_int, obs_val_int_istatus)
-!              if (istatus /= 0) then
-!                 if ( obs_val_int > 0. ) then
-!                      istatus=0
-!                 endif
-!              write(*,*) 'Case 3 obs_val_int :', obs_val_int, coef
-!              write(*,*) 'Case 3:', i_bot_pres(1), i_top_pres(1)
-!              write(*,*) 'Case 3: / istatus ', bot_pres(1), top_pres(1), istatus
-!              endif
-            endif
-            if (i_top_pres(1) > top_pres(1)) then
-               loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-               coef=abs(bot_pres(1)-i_top_pres(1))/abs(bot_pres(1)-top_pres(1))
-               call interpolate(state_handle, ens_size, loc3, QTY_CO, obs_val_int, obs_val_int_istatus)
-!               if (istatus /= 0) then
-!                  if ( obs_val_int > 0. ) then
-!                       istatus=0
-!                  endif
-!              write(*,*) 'Case 4 obs_val_int :', obs_val_int, coef
-!              write(*,*) 'Case 4:', i_bot_pres(1), i_top_pres(1)
-!              write(*,*) 'Case 4: / istatus', bot_pres(1), top_pres(1), istatus
-!               endif
-            endif
-         endif
-      endif
-
-      obs_val=obs_val+obs_val_int*coef
-   enddo 
-   where (obs_val > 0.0_r8 .and. avg_kernel(key,i) > -700) val = val + avg_kernel(key,i) * log10(obs_val)
+allocate(mopitt_pres_local(ens_size, n_obs_lev+1))
+do imem = 1, ens_size
+   mopitt_pres_local(imem, 2:n_obs_lev+1) = mopitt_pressure(n_obs_lev:1:-1)
+   mopitt_pres_local(imem, n_obs_lev+1) = p_col(imem,n_model_lev+1) ! here we want to make sure havew have the same surface pressure as in model
+   mopitt_pres_local(imem, 1) = p_col(imem, 1) ! mopitt top interface pressure is TOA but we want to have the same top interface pressure as model top
 enddo
 
-where (istatus == 0) val = val + mopitt_prior(key)
-where (istatus == 0) val=10.0**val
+! part 3 - call the column operator function and then deallocate
 
-where (val < 0.0_r8)
-   val=MISSING_R8
-   istatus = 6
-end where
+do imem = 1, ens_size
+   call simulate_column_ob(n_obs_lev, n_model_lev, avg_kernel, &
+   mopitt_pres_local(imem, :), p_col(imem, :), co_col(imem, :), obs_val(imem), islog=.true.)
+enddo
+
+deallocate(p_col, co_col, mopitt_pres_local)
 
 end subroutine get_expected_mopitt_co
 
+!!!! BEGIN: THIS SOULD GO IN A SEPARATE MODULE
 
- subroutine set_obs_def_mopitt_co(key, co_avgker, co_prior, co_psurf, co_nlevels)
+subroutine simulate_column_ob(nlayers_obs, nlayers_model, avgkernel_obs, &
+                              prsi_obs, prsi_model, profile_model, hofx, islog)
+
+integer, intent(in   ) :: nlayers_obs, nlayers_model
+real(r8), intent(in   ), dimension(nlayers_obs) :: avgkernel_obs
+real(r8), intent(in   ), dimension(nlayers_obs+1) :: prsi_obs
+real(r8), intent(in   ), dimension(nlayers_model+1) :: prsi_model
+real(r8), intent(in   ), dimension(nlayers_model) :: profile_model
+real(r8), intent(  out) :: hofx
+real(r8) :: wf_a, wf_b, avgkernel, grav, M_dryair
+real(r8), dimension(nlayers_obs) :: profile_obslayers
+real(r8), dimension(nlayers_obs+1) :: pobs
+real(r8), dimension(nlayers_model+1) :: pmod
+integer, parameter :: max_string=800
+character(len=max_string) :: err_msg
+integer :: k, j, wi_a, wi_b
+logical :: islog
+
+hofx = 0.0_r8
+profile_obslayers = 0.0_r8
+grav = 9.80665_r8
+M_dryair = 0.0289645_r8 ! kg/mol, dry air molar mass
+avgkernel = 1.0_r8
+do k=1,nlayers_obs
+   ! get obs layer bound model indexes and weights for staggered
+   ! obs and geoval levels
+   call vert_interp_weights(nlayers_model+1, pobs(k), pmod, wi_a, wf_a)
+   call vert_interp_weights(nlayers_model+1, pobs(k+1), pmod, wi_b, wf_b)
+
+   !check if pmod is monotonic and decreasing
+   if ((pmod(wi_a+1) < pmod(wi_a)) .or. (pmod(wi_b+1) < pmod(wi_b))) then
+     write(*, *) "Error: inverted pressure coordinate in geovals, &
+             &convention: top->bottom, decreasing pressures"
+     call abor1_ftn(err_msg)
+   end if
+
+   ! when multiple mopdel levels are in a obs layer
+   if ( wi_a < wi_b ) then
+      profile_obslayers(k) = profile_obslayers(k) + profile_model(wi_a) * &
+           (pmod(wi_a+1)-pmod(wi_a)) * wf_a / (M_dryair*grav)
+      do j=wi_a+1,wi_b-1
+         profile_obslayers(k) = profile_obslayers(k) + profile_model(j) * &
+              (pmod(j+1)-pmod(j)) / (M_dryair*grav)
+      enddo
+      profile_obslayers(k) = profile_obslayers(k) + profile_model(wi_b) * &
+           (pmod(wi_b+1)-pmod(wi_b)) * (1.0_r8-wf_b) / (M_dryair*grav)
+
+   ! when multiple obs layers are in a model level
+   else if ( wi_a == wi_b ) then
+      profile_obslayers(k) = profile_obslayers(k) + profile_model(wi_a) * &
+           (pmod(wi_a+1)-pmod(wi_a)) * (wf_a-wf_b) / (M_dryair*grav)
+
+   ! if pressures coordinates are inverted return exception
+   else if ( wi_a > wi_b ) then
+      write(*, *) "Error: inverted pressure coordinate in obs, &
+              &convention: top->bottom, decreasing pressures"
+      call abor1_ftn(err_msg)
+   end if
+
+   if (islog) then
+      hofx = hofx + (avgkernel * log10(profile_obslayers(k)))
+   else if (.not. islog) then
+      ! if not log, then just multiply by the avg kernel
+      hofx = hofx + (avgkernel * profile_obslayers(k))
+   else
+      write(*, *) "Error: islog must be .true. or .false."
+      call abor1_ftn(err_msg)
+   end if
+end do
+
+if (islog) then
+   hofx = 10.0**hofx
+endif
+
+end subroutine simulate_column_ob
+
+subroutine vert_interp_weights(nlev,obl,vec,wi,wf)
+
+   implicit none
+   integer,         intent(in ) :: nlev       !Number of model levels
+   real(r8), intent(in ) :: obl        !Observation location
+   real(r8), intent(in ) :: vec(nlev)  !Structured vector of grid points
+   integer,         intent(out) :: wi         !Index for interpolation
+   real(r8), intent(out) :: wf         !Weight for interpolation
+   
+   integer         :: k
+   
+   if (vec(1) < vec(nlev)) then !Pressure increases with index
+     if (obl < vec(1)) then
+        wi = 1
+        wf = 1.0
+     elseif (obl > vec(nlev)) then
+        wi = nlev - 1
+        wf = 0.0
+     else
+        do k = 1,nlev-1
+           if (obl >= vec(k) .and. obl <= vec(k+1)) then
+              wi = k
+           endif
+        enddo
+        wf = (vec(wi+1) - obl)/(vec(wi+1) - vec(wi))
+     endif
+   else !Pressure decreases with index
+     if (obl > vec(1)) then
+        wi = 1
+        wf = 1.0
+     elseif (obl < vec(nlev)) then
+        wi = nlev - 1
+        wf = 0.0
+     else
+        do k = 1,nlev-1
+           if (obl >= vec(k+1) .and. obl <= vec(k)) then
+              wi = k
+           endif
+        enddo
+        wf = (vec(wi+1) - obl)/(vec(wi+1) - vec(wi))
+     endif
+   endif
+   
+end subroutine vert_interp_weights
+
+!!!! THIS SOULD GO IN A SEPARATE MODULE: END
+
+subroutine set_obs_def_mopitt_co(key, co_avgker, co_prior, co_psurf, co_nlevels)
 !----------------------------------------------------------------------
 ! Allows passing of obs_def special information 
 
