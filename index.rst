@@ -490,6 +490,7 @@ References
    models/pe2lyr/readme
    models/POP/readme
    models/POP/dart_pop_mod
+   models/pywatershed/readme
    models/ROMS/readme
    models/rose/readme
    models/seir/readme
