@@ -624,6 +624,8 @@ if (debug > 99) then
    call print_date(read_model_time, ' Valid time is ')
 endif
 
+call nc_close_file(ncid, routine)
+
 end function read_model_time
 
 
