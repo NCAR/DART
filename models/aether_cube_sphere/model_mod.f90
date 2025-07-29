@@ -11,7 +11,7 @@ module model_mod
 
 use           netcdf
 
-use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, radius => earth_radius, PI
+use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG, radius => earth_radius, PI
 
 use time_manager_mod, only : time_type, set_time
 
@@ -192,9 +192,6 @@ end function get_model_size
 ! 0 unless there is some problem in computing the interpolation in
 ! which case a positive istatus should be returned.
 !
-! For applications in which only perfect model experiments
-! with identity observations (i.e. only the value of a particular
-! state variable is observed), this can be a NULL INTERFACE.
 
 subroutine model_interpolate(state_handle, ens_size, location, qty, expected_obs, istatus)
 
@@ -237,141 +234,145 @@ real(r8), dimension(nquad_neighbors)             :: x_neighbors_quad, y_neighbor
 ! Begin local variables for model_interpolate
 integer  :: varid
 
-! Begin variables for horiziontal interpolation
+! Initialize module if not already done
+if ( .not. module_initialized ) call static_init_model
+
+! Set all obs to MISSING_R8 initially
+expected_obs(:) = MISSING_R8
+! JLA: Is this successful default
+istatus(:) = 0
 
 ! End variables for horizontal interpolation
 cyclic = .true.
 
+! Determine the vertical location type
 lon_lat_alt = get_location(location)
-which_vertical = nint(query_location(location))
+which_vertical = nint(query_location(location, 'WHICH_VERT'))
+
+! Only height currently supported for observations
+if (.not. which_vertical == VERTISHEIGHT ) then
+   istatus(:) = INVALID_VERT_COORD_ERROR_CODE
+   !!!write(error_string_1, *) 'unsupported vertical type: ', which_vertical
+   !!!call error_handler(E_ERR, 'model_interpolate', error_string_1, source)
+   return
+endif
 
 ! See if the state contains the obs quantity
 varid = get_varid_from_kind(dom_id, qty)
-
-if (varid > 0) then
-    istatus = 0
-else
-    istatus = UNKNOWN_OBS_QTY_ERROR_CODE
+if(varid <= 0) then
+   istatus = UNKNOWN_OBS_QTY_ERROR_CODE
+   return
 endif
 
-if ( .not. module_initialized ) call static_init_model
-
-expected_obs(:) = MISSING_R8
-istatus(:) = 1
-
-! Find the vertical levels
-if ( which_vertical == VERTISHEIGHT ) then
-   call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), below_index, &
-                               above_index, fraction, enclosing_status)
-   if (enclosing_status /= 0) then
-      istatus(:) = INVALID_ALTITUDE_VAL_ERROR_CODE
-   end if
-else
-   istatus(:) = INVALID_VERT_COORD_ERROR_CODE
-   write(error_string_1, *) 'unsupported vertical type: ', which_vertical
-   call error_handler(E_ERR, 'model_interpolate', error_string_1, source)
-end if
+! Find the bounding vertical levels and the fractional distance between
+call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), below_index, &
+   above_index, fraction, enclosing_status)
+if (enclosing_status /= 0) then
+   istatus(:) = INVALID_ALTITUDE_VAL_ERROR_CODE
+   return
+endif
 
 ! If the vertical location is acceptable, then do the horizontal interpolation
-if (istatus(1) == 1) then
+! Find the enclosing triangle or quad
+!!!call get_bounding_box(pt_lat, pt_lon, np, &
+   !!!grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
+! Map the grid_face, latitude index and longitude index to the one dimensional index used in the state vector
+!JLA
 
-   ! Find the enclosing triangle or quad
-   inside = .false.
-   do icolumn = 1, nvertex_columns
+inside = .false.
+! This is trying to search every single column
+do icolumn = 1, nvertex_columns
+   do ineighbor = 1, nvertex_neighbors
+      call latlon_to_xyz(center_latitude(vertex_neighbor_indices(icolumn, ineighbor)), &
+         center_longitude(vertex_neighbor_indices(icolumn, ineighbor)), &
+         vertex_xyz(ineighbor, 1), vertex_xyz(ineighbor, 2), vertex_xyz(ineighbor, 3))
+   end do
+
+   call latlon_to_xyz(lon_lat_alt(2), lon_lat_alt(1), r(1), r(2), r(3))
+
+   call inside_triangle(vertex_xyz(1, :), vertex_xyz(2, :), vertex_xyz(3, :), r, lon_lat_alt(2), lon_lat_alt(1), inside, weights)
+
+   if (inside) then
+
+      ! Do above level
       do ineighbor = 1, nvertex_neighbors
-         call latlon_to_xyz(center_latitude(vertex_neighbor_indices(icolumn, ineighbor)), &
-                           center_longitude(vertex_neighbor_indices(icolumn, ineighbor)), &
-                           vertex_xyz(ineighbor, 1), &
-                           vertex_xyz(ineighbor, 2), &
-                           vertex_xyz(ineighbor, 3))
+         state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
+         vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
       end do
 
-      call latlon_to_xyz(lon_lat_alt(2), lon_lat_alt(1), r(1), r(2), r(3))
+      above_values = barycentric_average(ens_size, weights, vertex_temp_values)
 
-      call inside_triangle(vertex_xyz(1, :), vertex_xyz(2, :), vertex_xyz(3, :), r, lon_lat_alt(2), lon_lat_alt(1), inside, weights)
+      ! Do below level
+      do ineighbor = 1, nvertex_neighbors
+         state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
+         vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+      end do
+
+      below_values = barycentric_average(ens_size, weights, vertex_temp_values)
+
+      call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
+
+      exit
+   end if
+end do
+
+! If the location is not inside any of the vertex triangles, do the quad loop
+
+if (.not. inside) then
+
+   do icolumn = 1, nquad_columns
+      if (icolumn == inorth_pole_quad_column) then
+         inside = .true.
+      else if  (icolumn == isouth_pole_quad_column) then
+         inside = .true.
+      else
+         do ineighbor = 1, nquad_neighbors
+            x_neighbors_quad(ineighbor) = center_longitude(quad_neighbor_indices(icolumn, ineighbor))
+            y_neighbors_quad(ineighbor) = center_latitude(quad_neighbor_indices(icolumn, ineighbor))
+         end do
+         inside = in_quad(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, y_neighbors_quad)
+      end if
 
       if (inside) then
+            
+         ! Get quad temp_values for the above level
+         do ineighbor = 1, nquad_neighbors
 
-         ! Do above level
-         do ineighbor = 1, nvertex_neighbors
-            state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
-            vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+            state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
+
+            quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
          end do
 
-         above_values = barycentric_average(ens_size, weights, vertex_temp_values)
+         do iens = 1, ens_size
+            call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
+                                       y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
+                                       above_values(iens))
+         enddo
 
-         ! Do below level
-         do ineighbor = 1, nvertex_neighbors
-            state_index = get_dart_vector_index(vertex_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
-            vertex_temp_values(ineighbor, :) = get_state(state_index, state_handle)
+         ! Get quad temp_values for the below level
+         do ineighbor =1, nquad_neighbors
+            state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
+            quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
          end do
 
-         below_values = barycentric_average(ens_size, weights, vertex_temp_values)
+         do iens = 1, ens_size
+            call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
+                                          y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
+                                          below_values(iens))
+         enddo
 
          call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
 
          exit
       end if
+
    end do
 
-   ! If the location is not inside any of the vertex triangles, do the quad loop
-
-   if (.not. inside) then
-
-      do icolumn = 1, nquad_columns
-         if (icolumn == inorth_pole_quad_column) then
-            inside = .true.
-         else if  (icolumn == isouth_pole_quad_column) then
-            inside = .true.
-         else
-            do ineighbor = 1, nquad_neighbors
-               x_neighbors_quad(ineighbor) = center_longitude(quad_neighbor_indices(icolumn, ineighbor))
-               y_neighbors_quad(ineighbor) = center_latitude(quad_neighbor_indices(icolumn, ineighbor))
-            end do
-            inside = in_quad(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, y_neighbors_quad)
-         end if
-
-         if (inside) then
-            
-            ! Get quad temp_values for the above level
-            do ineighbor = 1, nquad_neighbors
-
-               state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), above_index, no_third_dimension, dom_id, varid)
-
-               quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
-            end do
-
-            do iens = 1, ens_size
-               call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
-                                          y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
-                                          above_values(iens))
-            enddo
-
-            ! Get quad temp_values for the below level
-            do ineighbor =1, nquad_neighbors
-               state_index = get_dart_vector_index(quad_neighbor_indices(icolumn, ineighbor), below_index, no_third_dimension, dom_id, varid)
-               quad_temp_values(ineighbor, :) = get_state(state_index, state_handle)
-            end do
-
-            do iens = 1, ens_size
-               call quad_bilinear_interp(lon_lat_alt(1), lon_lat_alt(2), x_neighbors_quad, &
-                                          y_neighbors_quad, cyclic, quad_temp_values(:,iens), &
-                                          below_values(iens))
-            enddo
-
-            call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
-
-            exit
-         end if
-
-      end do
-
-   end if
-
-   ! All good.
-   istatus(:) = 0
-
 end if
+
+! All good.
+istatus(:) = 0
+
 
 end subroutine model_interpolate
 
@@ -1596,11 +1597,16 @@ end subroutine get_bounding_box
 
 subroutine test_grid_box
 
-integer  :: np, i, num_bound_points
+integer  :: np, i, j, num_bound_points
 integer  :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4)
 real(r8) :: pt_lon_d, pt_lat_d, pt_lon, pt_lat 
 real(r8) :: qxyz(4, 3), pxyz(3), grid_pt_lat(4), grid_pt_lon(4)
 logical  :: inside
+
+type(location_type) :: location
+integer             :: qty, lon_count, lat_count, my_face, my_level, my_qty, my_lon_ind, my_lat_ind
+integer(i8)         :: state_index, state_index2
+real(r8)            :: lon_lat_hgt(3), my_lat, my_lon
 
 ! Parameter that has the number of model grid points along each dimension 
 ! This does not include halos; the points are offset from the boundaries
@@ -1620,13 +1626,12 @@ np = 18
 ! 1. Does the bounding box found contain the observed point?
 ! 2. Are the computed vertex latitudes and longitudes the same as those in the Aether grid files?
 
-! Enter lats and lons in degrees for starters
-pt_lon_d = 10.0_r8
-pt_lat_d = -78.5_r8
-
-do pt_lon_d = 0.0_r8, 360.0_r8, 0.01_r8
+do lon_count = 0, 36000
+   pt_lon_d = lon_count / 100.0_r8
    write(*, *) pt_lon_d
-   do pt_lat_d = -90.0_r8, 90.0_r8, 0.01_r8
+   do lat_count = -9000, 9000
+   pt_lat_d = lat_count / 100.0_r8
+
 
 ! Convert to radians
 pt_lon = DEG2RAD * pt_lon_d
@@ -1643,47 +1648,72 @@ do i = 1, num_bound_points
    qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat(i), grid_pt_lon(i));
 enddo
 
-! Get the latitude and longitude of the bounding points from the grid files
-! Note the need to index matlab arrays as positive while faces are numbered 0 to 5 in model
-!!!tolerance = 1e-6;
-!!!for i = 1:num_bound_points
-   !!!bp_lat(i) = glat(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
-   !!!bp_lon(i) = glon(grid_face(i) + 1, grid_lat_ind(i), grid_lon_ind(i));
-   !!!! Compare to the computed ones
-   !!!if(abs(grid_pt_lat(i) - bp_lat(i)) > tolerance) 
-      !!!fprintf('grid pt lat failed \n');
-      !!![i grid_pt_lat(i) bp_lat(i) grid_pt_lat(i)-bp_lat(i)]
-      !!!stop
-   !!!end
-   !!!! Have to watch out for grid files sometimes being negative 2pi and other times being positive
-   !!!if(abs(grid_pt_lon(i) - 2*pi) < tolerance) grid_pt_lon(i) = 0; end
-   !!!if(abs(bp_lon(i) - 2*pi) < tolerance) bp_lon(i) = 0; end
-   !!!if(abs(bp_lon(i) + 2*pi) < tolerance) bp_lon(i) = 0; end
-   !!!if(abs(grid_pt_lon(i) - bp_lon(i)) > tolerance)
-      !!!fprintf('grid pt lon failed \n');
-      !!![i grid_pt_lon(i) bp_lon(i) grid_pt_lon(i)-bp_lon(i)]
-      !!!stop
-   !!!end
 
-   ! Convert to x, y, z coords to check for whether points are in tris/quads
-   !!!qxyz(i, 1:3) = lat_lon_to_xyz(bp_lat(i), bp_lon(i));
-!!!end
+! Get the latitude and longitude of the bounding points from get_state_meta_data as a confirmation test
+do i = 1, num_bound_points
+   state_index = get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
+      1, 1, np, 44, 2)
+   call get_state_meta_data(state_index, location, qty)
+   lon_lat_hgt = get_location(location)       
+   ! Deal with Aether file round off
+   if(abs(lon_lat_hgt(1) - 360.0_r8) < 0.0001) lon_lat_hgt(1) = 0.0_r8 
+   if(abs(RAD2DEG*grid_pt_lat(i) - lon_lat_hgt(2)) > 0.0001_r8 .or. &
+      abs(RAD2DEG*grid_pt_lon(i) - lon_lat_hgt(1)) > 0.0001_r8) then
+      write(*, *) grid_pt_lat(i), grid_pt_lon(i), lon_lat_hgt(2), lon_lat_hgt(1)
+      stop
+   endif
+enddo
 
 if(num_bound_points == 3) then
    ! See if the point is inside a local approximately tangent triangle
    inside = is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz);
 else
+   ! Or quadrilateral
    inside = is_point_in_quad(qxyz, pxyz);
 endif
 
 if(.not. inside) then
-   write(*, *) 'inside is false'
+   write(*, *) 'ERROR: inside is false'
    write(*, *)pt_lat, pt_lon, num_bound_points
    stop
 endif
 
 enddo
 enddo
+
+!-------------------
+! Block that loops through all state variables and confirms that the algorithms for mapping
+! state vector (face/lon/lat) indices and get_state_meta_data correcty match up.
+do my_qty = 1, 2
+   do my_level = 1, 44
+      do my_face = 0, 5
+         do my_lat_ind = 1, np
+            do my_lon_ind = 1, np
+               state_index = get_state_index(my_face, my_lat_ind, my_lon_ind, &
+                  my_level, my_qty, np, 44, 2)
+               call get_state_meta_data(state_index, location, qty)
+               lon_lat_hgt = get_location(location)       
+
+               ! Want to compare the lat lon directly from code to that from get_state_meta_data
+               call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, np, my_lat, my_lon)
+                
+               ! ROUNDOFF FROM AETHER, NEED TO FIX somewhere.
+               if(abs(lon_lat_hgt(1) - 360.0_r8) < 0.0001) lon_lat_hgt(1) = 0.0_r8 
+
+               ! Check that things are consistent            
+               if(abs(RAD2DEG*my_lat - lon_lat_hgt(2)) > 0.0001_r8 .or. &
+                  abs(RAD2DEG*my_lon - lon_lat_hgt(1)) > 0.0001_r8) then
+                  write(*, *) 'ERROR: grid points not appropriately mapping'
+                  write(*, *) my_face, my_qty, my_level, my_lat_ind, my_lon_ind
+                  stop
+               endif
+   
+            enddo
+         enddo
+      enddo
+   enddo
+enddo
+!-------------------------------
 
 end subroutine test_grid_box
 
@@ -1730,6 +1760,43 @@ else
 endif
 
 end function heron
+
+!-----------------------------------------------------------------------
+
+function get_state_index(face, lat_ind, lon_ind, lev_ind, var_ind, np, n_lev, n_var)
+
+integer             :: get_state_index
+integer, intent(in) :: face, lat_ind, lon_ind, lev_ind, var_ind, np, n_lev, n_var
+
+! Given the cube face, latitude (first) index, longitude (second) index on the face,
+! the level index and the variable index, returns the state index for use
+! by get_state_meta_data. Needs to know (are these in global storage) the number
+! of lat and lon points across the face (np), the number of levels (n_lev) and
+! the number of variables (n_var).
+
+! This function makes the explicit assumption that the state is mapped to 
+! the state index in the following fashion:
+! From fastest to slowest varying index:
+! 1. longitude index : 1 to np
+! 2. latitude index  : 1 to np
+! 3. face            : 0 to 5 consistent with Aether defs
+! 4. level index     : 1 to n_lev
+! 4. variable index  : 1 to number of variables
+
+integer :: temp
+
+get_state_index = lon_ind + np * ((lat_ind -1) + &
+   np * (face + 6 * ((lev_ind - 1) + n_lev * (var_ind - 1))))
+
+!!!temp = lon_ind + np *(lat_ind - 1) + np*np*face + &
+   !!!np*np*6 * (lev_ind - 1) + np*np*6*n_lev * (var_ind - 1)
+!!!if(get_state_index .ne. temp) then
+   !!!write(*, *) 'get_state_index error ', get_state_index, temp
+   !!!write(*, *) face, lat_ind, lon_ind, lev_ind, var_ind
+   !!!stop
+!!!endif
+
+end function get_state_index
 
 !-----------------------------------------------------------------------
 ! interpolate in the vertical between 2 arrays of items.
