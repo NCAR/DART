@@ -4,36 +4,6 @@
 !
 ! $Id$
 
-! BEGIN DART PREPROCESS KIND LIST
-! END DART PREPROCESS KIND LIST
-
-! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-
-! BEGIN DART PREPROCESS READ_OBS_DEF
-! END DART PREPROCESS READ_OBS_DEF
-
-! BEGIN DART PREPROCESS WRITE_OBS_DEF
-! END DART PREPROCESS WRITE_OBS_DEF
-
-! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
-! END DART PREPROCESS INTERACTIVE_OBS_DEF
-
-! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-! use column_calculation_mod, only :simulate_column_ob, &
-!                                   vert_interp_weights
-! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-
-! BEGIN DART PREPROCESS SIMULATE_COLUMN_OB
-!         call simulate_column_ob(nlayers_obs, nlayers_model, avgkernel_obs, &
-!                                  prsi_obs, prsi_model, profile_model, hofx, islog)
-! END DART PREPROCESS SIMULATE_COLUMN_OB
-
-! BEGIN DART PREPROCESS VERT_INTERP_WEIGHTS
-!         call vert_interp_weights(nlev, obl, vec, wi, wf)
-! END DART PREPROCESS VERT_INTERP_WEIGHTS
-
-! BEGIN DART PREPROCESS MODULE CODE
 module column_calculation_mod
 
     ! Generic module for column calculations
@@ -46,13 +16,16 @@ module column_calculation_mod
     ! This module is orignially form JEDI UFO and is now part of the DART system.
     ! Jerome Barre, 2025-07-28
 
-    use typeSizes
+    use types_mod,     only : r8
     use utilities_mod, only : error_handler, E_MSG
     implicit none
     private
     
     public :: simulate_column_ob, vert_interp_weights
     
+    ! version controlled file description for error handling, do not edit
+    character(len=256), parameter :: source = "column_calculation_mod.f90"
+ 
     contains
 
     subroutine simulate_column_ob(nlayers_obs, nlayers_model, avgkernel_obs, &
@@ -89,7 +62,7 @@ module column_calculation_mod
             if ((pmod(wi_a+1) < pmod(wi_a)) .or. (pmod(wi_b+1) < pmod(wi_b))) then
                 write(msgstring, *) "Error: inverted pressure coordinate in geovals, &
                 &convention: top->bottom, decreasing pressures"
-                call error_handler(E_MSG,'simulate_column_ob',msgstring,source,revision,revdate)
+                call error_handler(E_MSG,'simulate_column_ob', msgstring, source)
             end if
 
             ! when multiple mopdel levels are in a obs layer
@@ -112,7 +85,7 @@ module column_calculation_mod
             else if ( wi_a > wi_b ) then
                 write(msgstring, *) "Error: inverted pressure coordinate in obs, &
                 &convention: top->bottom, decreasing pressures"
-                call error_handler(E_MSG,'simulate_column_ob',msgstring,source,revision,revdate)
+                call error_handler(E_MSG,'simulate_column_ob', msgstring, source)
             end if
 
             if (islog) then
@@ -122,7 +95,7 @@ module column_calculation_mod
                 hofx = hofx + (avgkernel * profile_obslayers(k))
             else
                 write(msgstring, *) "Error: islog must be .true. or .false."
-                call error_handler(E_MSG,'simulate_column_ob',msgstring,source,revision,revdate)
+                call error_handler(E_MSG,'simulate_column_ob',msgstring,source)
             end if
         end do
 

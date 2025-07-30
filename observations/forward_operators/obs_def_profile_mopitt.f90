@@ -42,10 +42,6 @@
 !         call set_obs_def_mopitt_co(obs_def%key)
 ! END DART PREPROCESS SET_OBS_DEF_MOPITT_CO
 
-! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-! use column_calculation_mod, only : simulate_column_ob, vert_interp_weights
-! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_profile_mopitt_mod
 
