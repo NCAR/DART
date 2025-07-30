@@ -1,0 +1,18 @@
+---
+
+ioda to obsq converter:
+  assim variables:
+    - name: airTemperature
+      type: RADIOSONDE_TEMPERATURE
+    - name: specificHumidity
+      type: RADIOSONDE_SPECIFIC_HUMIDITY
+    - name: windEastward
+      type: RADIOSONDE_U_WIND_COMPONENT
+    - name: windNorthward
+      type: RADIOSONDE_V_WIND_COMPONENT
+
+  vertical coordinate:
+    name: MetaData/height
+    units: "height (m)"
+
+
