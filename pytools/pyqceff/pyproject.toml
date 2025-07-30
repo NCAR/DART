@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyqceff"
+version = "0.1.0"
+description = "Python package for QCEFF utilities."
+authors = [
+    { name = "DART", email = "dart@ucar.edu" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+display-qceff-table = "pyqceff.display_qceff_table:main"
+
+[project.urls]
+Homepage = "https://github.com/NCAR/DART"
+Repository = "https://github.com/NCAR/DART"
