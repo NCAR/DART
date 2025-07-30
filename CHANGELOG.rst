@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 30 2025 :: MOM6 interpolation bug-fixes. Tag v11.12.1**
+
+- Fixes quad points assignment in model_interpolate
+- Fixes u/v interpolation handle selection
+- Fixes get_close_state dry land distance setting
+- Fixes pressure calculation for sensible temperature
+
 **July 24 2025 :: MOM6 pseudo depth, MODIS ice surface temp. Tag v11.12.0**
 
 New features:
