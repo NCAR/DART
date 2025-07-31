@@ -1,5 +1,5 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id$
+! DART $Id: wod_read_routines.f90 6256 2013-06-12 16:19:10Z thoar $
 
      module WOD_read_routines_mod      
 
@@ -109,7 +109,7 @@ private
       
         subroutine WODreadDART(nf,iyear,month,iday, &              
                           time,rlat,rlon,levels,istdlev,nvar,ip2,nsecond, &
-                          bmiss,castid,ieof)
+                          bmiss,castid,ieof,iVERSflag)
 
 !     This subroutine reads in the WOD ASCII format and loads it
 !     into arrays which are common/shared with the calling program.
@@ -205,6 +205,7 @@ private
 !******************************************************************
       integer :: nf,iyear,month,iday,levels,istdlev,nvar,ip2(0:maxlevel)
       integer :: nsecond, ieof
+      integer :: iVERSflag
       real    :: time,rlat,rlon,bmiss
 
       
@@ -325,16 +326,16 @@ private
       if ( xchar(1:1) .ne. 'B' .and. xchar(1:1) .ne. 'A' .and. &
            xchar(1:1) .ne. 'C' ) then
 
-         !iVERSflag = 1 !- not WOD-2005 format, must be WOD-1998
+         iVERSflag = 1 !- not WOD-2005 format, must be WOD-1998
          write(6, *) 'file not in WOD-2005 format; cannot be read'
          stop
          !return
 
       else
          if ( xchar(1:1) .eq. 'C' ) then
-          !iVERSflag=2   !- WOD-2013 format
+          iVERSflag=2   !- WOD-2013 format
          else
-          !iVERSflag = 0 !- WOD-2005 format
+          iVERSflag = 0 !- WOD-2005 format
          endif
       endif
       
@@ -486,9 +487,9 @@ private
 !     
 !*****************************************************************
 
-      call charout(istartc,isig(1),iprec(1),itotfig(3),ichar, &
+      call charout(istartc,isig(1),iprec(1),itotfig(1),ichar, &
                   rlat,bmiss)
-      call charout(istartc,isig(2),iprec(2),itotfig(3),ichar, &
+      call charout(istartc,isig(2),iprec(2),itotfig(1),ichar, &
                   rlon,bmiss)
 
 !print *, '2.'
@@ -778,7 +779,7 @@ private
 
       do 50 n = 1,levels
 
-       if ( istdlev.eq.0 ) then
+       if ( istdlev.eq.0 .or. iVERSflag .eq. 2 ) then
 
         call charout(istartc,idsig(n),idprec(n),idtot(n),ichar, &
                      depth(n),bmiss)
@@ -807,7 +808,7 @@ private
        else
     
          iderror(n,ip2(i))=0
-         iorigflag(n,ip2(1))=0
+         iorigflag(n,ip2(i))=0
          msig(n,ip2(i))=0
          mprec(n,ip2(i))=0
          mtot(n,ip2(i))=0
@@ -938,7 +939,7 @@ private
       end module WOD_read_routines_mod      
 
 ! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/observations/obs_converters/WOD/wod_read_routines.f90 $
+! $Id: wod_read_routines.f90 6256 2013-06-12 16:19:10Z thoar $
+! $Revision: 6256 $
+! $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $
