@@ -1,0 +1,30 @@
+obs_sequence
+obs_kind_definitions
+           0
+  num_copies:            1  num_qc:            1
+  num_obs:            2  max_num_obs:            2
+observation
+Data QC
+first:            1  last:            2
+OBS            1
+5.03
+1.0000000000000000
+-1          2          -1
+obdef
+loc3d
+   4.959        0.6987          180.29     3
+kind
+-416
+0     138061
+1.0
+OBS            2   
+80.57
+1.0000000000000000
+1          -1          -1  
+obdef
+loc3d
+   4.9721        0.7267         274.37      3   
+kind
+-231
+0     138061
+0.5
