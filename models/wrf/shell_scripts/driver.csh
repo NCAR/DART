@@ -451,6 +451,7 @@ while ( 1 == 1 )
 
       set ensstring = `echo $n + 10000 | bc | cut -b2-5`
       set keep_trying = true
+      set max_retry = 1
 
       while ( $keep_trying == 'true' )
 
@@ -489,7 +490,6 @@ while ( 1 == 1 )
          end
          set start_time = `head -1 start_member_${n}`
          echo "Member $n has started.  Start time $start_time"
-         set max_retry = 1
         
          #  Wait for the output file
          while ( 1 == 1 )
@@ -509,10 +509,10 @@ while ( 1 == 1 )
                if ($max_retry > 2) then
                
                echo "Stopping the driver.csh script! The WRF ensemble member ${n}" 
-               echo "has exceeded the maximum resubmission attempts (2) without completing"
-               echo "This typically means the WRF integration has failed"
-               echo "Check your BASE_DIR/rundir/advance_ens${n} directory and locate"
-               echo "the WRF rsl.out.0000 or rsl.error.0000 log files for further information"
+               echo "has exceeded the maximum resubmission attempts (2) without completing."
+               echo "This typically means the WRF integration has failed."
+               echo "Check your BASE_DIR/rundir/advance_temp${n} directory and locate"
+               echo "the WRF rsl.out.0000 or rsl.error.0000 log files for further information."
                echo "If applicable, check the DART analysis_increment.nc from previous assimilation step"
                exit
 
