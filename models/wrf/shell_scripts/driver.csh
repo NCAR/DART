@@ -489,7 +489,8 @@ while ( 1 == 1 )
          end
          set start_time = `head -1 start_member_${n}`
          echo "Member $n has started.  Start time $start_time"
-
+         set max_retry = 1
+        
          #  Wait for the output file
          while ( 1 == 1 )
 
@@ -503,9 +504,24 @@ while ( 1 == 1 )
                break
 
             else if ( $length_time > $advance_thresh ) then
+            
+               #  If WRF member has exceeded max_retry, immediately stop driver.csh
+               if ($max_retry > 2) then
+               
+               echo "Stopping the driver.csh script! The WRF ensemble member ${n}" 
+               echo "has exceeded the maximum resubmission attempts (2) without completing"
+               echo "This typically means the WRF integration has failed"
+               echo "Check your BASE_DIR/rundir/advance_ens${n} directory and locate"
+               echo "the WRF rsl.out.0000 or rsl.error.0000 log files for further information"
+               echo "If applicable, check the DART analysis_increment.nc from previous assimilation step"
+               exit
 
-      	       #  Obviously, the job crashed.  Resubmit to queue
+               endif
+
+      	       # The WRF job did not complete. Resubmit to queue
       	       ${REMOVE} start_member_${n}
+               @ max_retry++
+
                echo "didn't find the member done file"
                if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 

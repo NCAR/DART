@@ -191,7 +191,7 @@ EOF
 
       qsub real.csh
 
-      # need to look for sometihng to know when this job is done
+      # Identify when this job is done
       while ( ! -e ${ICBC_DIR}/real_done )
           sleep 15
       end
