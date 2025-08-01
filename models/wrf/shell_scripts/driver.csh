@@ -519,10 +519,11 @@ while ( 1 == 1 )
                endif
 
       	       # The WRF job did not complete. Resubmit to queue
-      	       ${REMOVE} start_member_${n}
+      	       ${REMOVE} start_member_${n}  
+               echo "Did not find the member done file, WRF run did not complete"
+               echo "Attempting resubmission $max_retry"
                @ max_retry++
 
-               echo "didn't find the member done file"
                if ( $SUPER_PLATFORM == 'LSF queuing system' ) then
 
                   if ( $?reservation ) then
