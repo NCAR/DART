@@ -1,4 +1,4 @@
-ROMS_UCLA
+ROMS-UCLA
 =========
 
 There are several DART users who have working DART interface code
