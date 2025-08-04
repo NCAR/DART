@@ -1,3 +1,5 @@
+.. index:: sea ice
+
 CICE
 ====
 
@@ -82,6 +84,44 @@ Description of each namelist entry
 |                              |               | mean more debug reporting.      |
 +------------------------------+---------------+---------------------------------+
 | model_state_variables        | character(*)  | List of model state variables   |
++------------------------------+---------------+---------------------------------+
+
+
+Postprocessing
+---------------
+
+The CICE model interface includes a postprocessing program ``dart_to_cice`` that modifies
+the CICE state to be consistent with the state output from DART assimilation.
+
+The postprocessing options for ``dart_to_cice`` are controlled by the namelist
+``dart_to_cice_nml``. 
+
+
+.. code-block:: fortran
+
+  &dart_to_cice_nml
+     dart_to_cice_input_file    = 'dart_restart.nc'
+     original_cice_restart_file = 'cice_restart.nc'
+     postprocessed_output_file  = 'postprocessed_restart.nc'
+     postprocess                = 'cice'
+  /
+
+
++------------------------------+---------------+---------------------------------+
+| Item                         | Type          | Description                     |
++==============================+===============+=================================+
+| dart_to_cice_input_file      | character(*)  | Output from filter              |
++------------------------------+---------------+---------------------------------+
+| original_cice_restart_file   | character(*)  | Original CICE restart file that |
+|                              |               | was input to filter             |
++------------------------------+---------------+---------------------------------+
+| postprocessed_output_file    | character(*)  | Postprocessed CICE restart file |
++------------------------------+---------------+---------------------------------+
+| postprocess                  | character(*)  | Postprocessing method. Must be  |
+|                              |               | one of the following:           |
+|                              |               | 'cice',                         |
+|                              |               | 'aice',                         |
+|                              |               | 'vice'                          |
 +------------------------------+---------------+---------------------------------+
 
 References
