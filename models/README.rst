@@ -39,7 +39,7 @@ DART supported models:
 - :doc:`PBL_1d/readme`
 - :doc:`pe2lyr/readme`
 - :doc:`POP/readme`
-- :doc:`ROMS/readme`
+- :doc:`ROMS_ucla/readme`
 - :doc:`rose/readme`
 - :doc:`seir/readme`
 - :doc:`simple_advection/readme`
