@@ -21,12 +21,8 @@ def join_continued_lines(lines):
     return joined_lines
 
 # Find unused subroutines written in the module
-def find_unused_subroutines(fortran_file):
-    with open(fortran_file, 'r') as f:
-        lines = f.readlines()
-    lines = join_continued_lines(lines)
-
-    # Find all subroutine definitions
+def find_unused_subroutines(lines):
+    # Find all subroutine definitions and extract routines
     subroutine_pattern = re.compile(r'^\s*subroutine\s+(\w+)', re.IGNORECASE)
     subroutines = []
     for idx, line in enumerate(lines):
@@ -54,20 +50,11 @@ def find_unused_subroutines(fortran_file):
                 usage[subroutine] = True
                 break
     unused = [s for s in subroutines if not usage[s]]
-
-    print("Routines written in '{}' NOT USED:".format(fortran_file))
-    for subroutine in unused:
-        print(subroutine)
-
-    return unused, subroutines, lines
+    return unused
 
 # Find unused routines from other modules
-def find_unused_routines_from_other_modules(fortran_file):
-    with open(fortran_file, 'r') as f:
-        lines = f.readlines()
-    lines = join_continued_lines(lines)
-
-    # Find all routines listed in 'use ... only : ...'
+def find_unused_routines_from_other_modules(lines):
+    # Find all 'use ... only :' statements and extract routines
     use_pattern = re.compile(r'^\s*use\s+\w+.*only\s*:\s*(.*)', re.IGNORECASE)
     routines = []
     use_lines = []
@@ -97,27 +84,33 @@ def find_unused_routines_from_other_modules(fortran_file):
                 break
     # Find unused routines
     unused = [r for r in routines if not usage[r]]
-
-    print("'use ... only :' routines from '{}' NOT USED:".format(fortran_file))
-    for routine in unused:
-        print(routine)
-
-    return unused, use_lines, lines
+    return unused
 
 def main():
     import argparse
     
-    parser = argparse.ArgumentParser(description="Check for unused subroutines written in Fortran file.")
+    parser = argparse.ArgumentParser(description="Check for unused subroutines in Fortran module.")
     parser.add_argument('fortran_file', help="Path to the Fortran file to check")
     args = parser.parse_args()
 
-    find_unused_subroutines(args.fortran_file)
+    with open(args.fortran_file, 'r') as f:
+        lines = f.readlines()
+        lines = join_continued_lines(lines)
+
+    # Check if the file is a Fortran module
+    last_line = lines[-1].strip()
+    if not last_line.startswith('end module'):
+        raise ValueError('The file {} is not a Fortran module.'.format(args.fortran_file))
     
-    parser = argparse.ArgumentParser(description="Check for unused 'use ... only :' routines in Fortran file.")
-    parser.add_argument('fortran_file', help="Path to the Fortran file to check")
-    args = parser.parse_args()
+    unused = find_unused_subroutines(lines)
+    print("Routines written in '{}' NOT USED:".format(args.fortran_file))
+    for subroutine in unused:
+        print(subroutine)
 
-    find_unused_routines_from_other_modules(args.fortran_file)
+    unused = find_unused_routines_from_other_modules(lines)
+    print("'use ... only :' routines from '{}' NOT USED:".format(args.fortran_file))
+    for subroutine in unused:
+        print(subroutine)
     
 if __name__ == "__main__":
     main()
