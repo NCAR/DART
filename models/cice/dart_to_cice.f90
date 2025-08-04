@@ -18,7 +18,7 @@ program dart_to_cice
 use  types_mod, only : r8
 use  utilities_mod, only : initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, &
-                           file_exist, error_handler, E_ERR, E_MSG, to_upper
+                           file_exist, error_handler, E_ERR, E_MSG
 use ice_postprocessing_mod, only : cice_rebalancing, area_simple_squeeze, &
                                    volume_simple_squeeze, read_cice_state_variable
 use  netcdf_utilities_mod,  only : nc_open_file_readwrite, nc_put_variable, &
@@ -36,18 +36,15 @@ character(len=*), parameter :: source   = 'dart_to_cice'
 character(len=256) :: dart_to_cice_input_file = 'post_filter_restart.nc'
 character(len=256) :: original_cice_restart_file = 'pre_filter_restart.nc'
 character(len=256) :: postprocessed_output_file = 'postprocessed_restart.nc'
-character(len=128) :: balance_method = 'simple_squeeze'
 character(len=128) :: postprocess = 'cice'
 
 namelist /dart_to_cice_nml/ dart_to_cice_input_file,    &
                             original_cice_restart_file, &
                             postprocessed_output_file,  &
-                            balance_method,             &
                             postprocess
 
 ! general variable initialization
-character(len=512) :: string1, string2
-character(len=128) :: method
+character(len=512) :: string1
 
 integer :: iunit, io, ncid, Ncat, Nx, Ny, nsize(3)
 real(r8), allocatable :: aicen_original(:,:,:), vicen_original(:,:,:), vsnon_original(:,:,:)
@@ -64,14 +61,6 @@ call initialize_utilities(progname=source)
 call find_namelist_in_file("input.nml", "dart_to_cice_nml", iunit)
 read(iunit, nml = dart_to_cice_nml, iostat = io)
 call check_namelist_read(iunit, io, "dart_to_cice_nml")
-
-method = balance_method
-call to_upper(method)
-
-write(string1,*) 'converting DART output file "'// &
-                 &trim(dart_to_cice_input_file)//'" to one CICE will like'
-write(string2,*) 'using the "'//trim(balance_method)//'" method.'
-call error_handler(E_MSG,source,string1,text2=string2)
 
 if ( .not. file_exist(dart_to_cice_input_file) ) then
    write(string1,*) 'cannot open "', trim(dart_to_cice_input_file),'" for updating.'
