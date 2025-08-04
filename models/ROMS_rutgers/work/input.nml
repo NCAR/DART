@@ -309,7 +309,7 @@
    input_state_files     = 'roms_hist_z.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0 
-   run_tests             = 1
+   run_tests             = 1, 3, 4, 7
    x_ind                 = 160920480
    loc_of_interest       = 100.0, -10.0, 2500.0
    quantity_of_interest  = 'QTY_TEMPERATURE'
