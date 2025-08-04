@@ -9,8 +9,9 @@ def join_continued_lines(lines):
     buffer = ''
     for line in lines:
         stripped = line.rstrip()
-        if stripped.endswith('&'):
-            buffer += stripped[:-1] + ' '
+        if '&' in stripped:
+            position = stripped.find('&')
+            buffer += stripped[:position] + ' '
         else:
             buffer += stripped
             joined_lines.append(buffer)
@@ -44,13 +45,14 @@ def find_unused_subroutines(fortran_file):
                 continue
             # Assuming subroutines marked as public are used in other modules
             if subroutine in line and 'public' in line:
-                print("line", line)
+                usage[subroutine] = True
+                break
+            if subroutine in line and 'module procedure' in line:
                 usage[subroutine] = True
                 break
             if pattern.search(line):
                 usage[subroutine] = True
                 break
-
     unused = [s for s in subroutines if not usage[s]]
 
     print("Routines written in '{}' NOT USED:".format(fortran_file))
@@ -93,8 +95,7 @@ def find_unused_routines_from_other_modules(fortran_file):
             if pattern.search(line):
                 usage[routine] = True
                 break
-
-    print("usage[]: ", usage)
+    # Find unused routines
     unused = [r for r in routines if not usage[r]]
 
     print("'use ... only :' routines from '{}' NOT USED:".format(fortran_file))
