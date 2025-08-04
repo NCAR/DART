@@ -1,2 +1,2 @@
 -e ./pyqceff
--e ./pyutils_module_usage
+-e ./pyfortran
