@@ -66,6 +66,16 @@ via interpolation routines implemented using the `quad_utils` module. Interpolat
 to the observed location is done both horizontally and vertically. Observations outside the
 model domain or falling on masked grid cells are excluded from the assimilation process.
 
+The image below shows an example assimilating Temperature observations from different
+sources including: XBT, CTD, BOTTLE, MOORING, and FLOAT. The experiment, designed for
+illustration purposes, uses only 3 members within the Indonesian archipelago. The
+effective localization radius is set to 800 km. Temperature ensemble mean at a depth
+of ~100 m is shown in the left panel. Ensemble mean increment (i.e., posterior -
+prior) at the same depth is shown on the right.
+
+.. image:: ../../guide/images/ROMS_temp_example.png
+   :width: 95% 
+
 .. warning::
    This interface only supports **single time-level** variables in ROMS history files.
    Variables with multiple time levels (e.g., leapfrog schemes in restart files) 

@@ -17,7 +17,7 @@
    assimilation_period_days    = 8
    assimilation_period_seconds = 0
    perturbation_amplitude      = 0.02
-   debug                       = 10
+   debug                       = 0
    variables                   = 'temp', 'QTY_TEMPERATURE'        , 'NA' , 'NA', 'update'
                                  'salt', 'QTY_SALINITY'           , '0.0', 'NA', 'update'
                                  'u'   , 'QTY_U_CURRENT_COMPONENT', 'NA' , 'NA', 'update'
@@ -226,6 +226,9 @@
    quantity_files          = '../../../assimilation_code/modules/observations/ocean_quantities_mod.f90'
   /
 
+&forward_operator_nml
+  /
+
 &obs_sequence_tool_nml
    num_input_files   = 1
    filename_seq      = 'obs_seqs/obs_seq.0Z.20140718'
@@ -300,9 +303,6 @@
    latlim1           = -90.0
    latlim2           =  90.0
    verbose           = .true.
-  /
-
-&forward_operator_nml
   /
 
 &model_mod_check_nml
