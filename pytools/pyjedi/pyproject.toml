@@ -17,6 +17,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "numpy",
+    "pandas>=2.2.0",
+    "PyYAML",
+    "netCDF4",
+    "pydartdiags>=0.6.1",
+]
 
 [project.scripts]
 ioda2obsq = "pyjedi.ioda2obsq:main"

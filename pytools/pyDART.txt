@@ -1,3 +1,2 @@
 -e ./pyqceff
 -e ./pyjedi
-pyDARTdiags>=0.6.1
