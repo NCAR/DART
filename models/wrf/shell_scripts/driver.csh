@@ -514,7 +514,7 @@ while ( 1 == 1 )
                echo "Check your BASE_DIR/rundir/advance_temp${n} directory and locate"
                echo "the WRF rsl.out.0000 or rsl.error.0000 log files for further information."
                echo "If applicable, check the DART analysis_increment.nc from previous assimilation step"
-               exit
+               exit 7
 
                endif
 
