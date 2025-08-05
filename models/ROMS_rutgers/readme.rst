@@ -59,12 +59,27 @@ supports:
 - Vertical coordinate transformation and interpolation,
 - Mapping between DART's state vector and ROMS fields.
 
+Observation Handling and Interpolation
+--------------------------------------
 Unlike the UCLA ROMS-DART interface, this version **does not rely on precomputed 
 observation-space values** output by ROMS (e.g., from `MODname` in `s4dvar.in`). 
 Instead, it **computes observation-space equivalents directly** 
 via interpolation routines implemented using the `quad_utils` module. Interpolation 
 to the observed location is done both horizontally and vertically. Observations outside the
-model domain or falling on masked grid cells are excluded from the assimilation process.
+model domain or falling on masked grid cells are excluded from the assimilation process 
+(see failure codes below). The interpolation further assumes the model depth to be ordered 
+from deepest to shallowest. It also handles extrapolation gracefully for values above 
+or below the model domain.
+
+   .. code-block:: fortran
+
+      ! Failure codes: model_interpolate 
+      integer, parameter :: QUAD_LOCATE_FAILED   = 13 
+      integer, parameter :: QUAD_EVALUATE_FAILED = 21 
+      integer, parameter :: SSH_QUAD_EVAL_FAILED = 34 
+      integer, parameter :: QUAD_MAYBE_ON_LAND   = 55 
+      integer, parameter :: OBS_TOO_DEEP         = 89
+
 
 The image below shows an example assimilating Temperature observations from different
 sources including: XBT, CTD, BOTTLE, MOORING, and FLOAT. The experiment, designed for
@@ -74,7 +89,7 @@ of ~100 m is shown in the left panel. Ensemble mean increment (i.e., posterior -
 prior) at the same depth is shown on the right.
 
 .. image:: ../../guide/images/ROMS_temp_example.png
-   :width: 95% 
+  :width: 95% 
 
 .. warning::
    This interface only supports **single time-level** variables in ROMS history files.
@@ -125,24 +140,9 @@ The table below describes the configurable variables in this namelist:
      - `' '` 
      - Specifies the list of ROMS variables to be assimilated. The variable table is parsed as flat strings with metadata.
 
-Additional internal variables derived from this configuration:
 
-.. code-block:: fortran
-
-   integer, parameter              :: MAX_STATE_VARIABLES = 8
-   integer, parameter              :: table_columns       = 5
-   character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES)
-   logical                         :: update_list(MAX_STATE_VARIABLES)
-   integer                         :: kind_list(MAX_STATE_VARIABLES)
-   real(r8)                        :: clamp_vals(MAX_STATE_VARIABLES, 2)
-
-These are used to manage variable selection, quantity mapping, and optional clamping during assimilation. 
-More details are found below. 
-
-
-Variable Table Format
----------------------
-
+Variables Table Format
+----------------------
 The `variables` field in the `&model_nml` namelist is used to declare each state variable to be included in the DART state vector. 
 Each variable entry consists of **five elements** (columns), listed in a single Fortran character array:
 
@@ -210,117 +210,6 @@ namelist in ``input.nml`` and this program will randomly perturb the
 temperature and salinity fields of an initial ROMS history file to generate 
 the ensemble. The size of the perturbation is set using the namelist parameter
 ``perturbation_amplitude`` and the resulting initial distribution is Gaussian. 
-
-
-Key Interface Routines
-----------------------
-
-.. _static_init_model:
-
-.. function:: subroutine static_init_model()
-
-   Initializes the ROMS model interface for DART. Reads configuration from the namelist
-   and loads static grid, bathymetry, and vertical coordinate information.
-
-   **Reads:**
-     - `roms_filename` from `model_nml`
-     - Grid variables from the ROMS netCDF file
-
-   **Actions:**
-     - Validates namelist variables 
-     - Allocates space and constructs the grid
-     - Computes physical grid coordinates (if not available in the ROMS file)
-     - Determines the model size
-
-.. _model_interpolate:
-
-.. function:: subroutine model_interpolate(state, ens_size, location, obs_type, expected_obs, istatus)
-
-   Interpolates the model state to a given physical location.
-
-   :param state_handle: DART ensemble handle (type(ensemble_type))
-   :param ens_size: Ensemble size (integer)
-   :param location: Observation location (type(location_type))
-   :param obs_type: DART quantity (integer)
-   :param expected_obs: Ensmeble interpolated values (real(r8), dimension(ens_size))
-   :param istatus: Status flag (integer)
-
-   Uses bilinear interpolation in the horizontal and linear vertical interpolation
-   (via `vert_interp`) to compute model values at arbitrary locations.
-
-   **Interpolation method:**
-     - Horizontal: Bilinear in latitude/longitude
-     - Vertical: Based on ROMS s-coordinate or z-levels
-
-.. _get_state_meta_data:
-
-.. function:: subroutine get_state_meta_data(index_in, location, var_type)
-
-   Maps an index in the DART state vector to a physical model location and DART :code:`quantity`.
-
-   :param index_in: Index in the state vector (integer)
-   :param location: Output location (type(location_type))
-   :param var_type: DART quantity type (integer)
-
-   Converts the flattened index into 3D coordinates and identifies which ROMS variable
-   is represented at that location.
-
-.. _vert_interp:
-
-.. function:: subroutine vert_interp(id, ens_size, lon_lat_vert, lon, lat, state, SSH, corners, status) 
-
-   Performs vertical interpolation to the target depth at the 4 corners of the quad. 
-
-   :param id: State Variable ID (integer)
-   :param ens_size: Ensemble size (integer))
-   :param lon_lat_vert: lon, lat, vert of the point to interpolate (real(r8), dimension(3))
-   :param lon: Longitude indices of the 4 quad corners (integer, dimension(4))
-   :param lat: Latitude indices of the 4 quad corners (real(r8), dimension(3))
-   :param state: DART ensemble handle (type(ensemble_type))
-   :param SSH: SSH ensemble values at the quad corners (real(r8), dimension(4, ens_size))
-   :param corners: State ensemble values at the quad corners (real(r8), dimension(4, ens_size))
-   :param status: Interpolation status (integer)
-   :returns: Interpolated values if successful or a failure status.
-
-   .. code-block:: fortran
-
-      ! Failure codes: model_interpolate 
-      integer, parameter :: QUAD_LOCATE_FAILED   = 13 
-      integer, parameter :: QUAD_EVALUATE_FAILED = 21 
-      integer, parameter :: SSH_QUAD_EVAL_FAILED = 34 
-      integer, parameter :: QUAD_MAYBE_ON_LAND   = 55 
-      integer, parameter :: OBS_TOO_DEEP         = 89
-
-   Assumes the model depth is ordered from deepest to shallowest. It also handles extrapolation
-   gracefully for values above or below the model domain.
-
-.. _compute_physical_depth:
-
-.. function:: subroutine compute_physical_depth(z_r, z_w)
-
-   Computes the physical depth (in meters) for ROMS vertical levels.
-
-   :param z_r: Depths at rho-points (real(r8), 3D array)
-   :param z_w: Depths at w-points (real(r8), 3D array)
-
-   Uses ROMS vertical transformation equations along with bathymetry and
-   surface elevation (`zeta`) to calculate the full 3D grid depth. Used in
-   both vertical interpolation and localization routines.
-
-.. _sensible_temp:
-
-.. function:: function sensible_temp(pot_temp, salinity, local_pres) result(sensible_temp)
-
-   Computes sensible (in-situ) temperature from local pressure, salinity, and 
-   poterntial temperature.
-
-   :param pot_temp: Potential temperature in C (real(r8))
-   :param salinity: Salinity Practical Salinity Scale 1978 (real(r8))
-   :param local_pres: Pressure in decibars (real(r8))
-
-   This function is used to convert model potential temperature into in-situ temperature 
-   for comparison with observations reported at depth under local pressure.
-
 
 References
 ==========
