@@ -94,20 +94,20 @@ type(time_type) :: assimilation_time_step
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
 ! Geometry variables that are used throughout the module
-integer                          :: ncenter_altitudes ! The number altitudes is read from the geometry file
+integer               :: np                ! Number of grid rows across a face
+integer               :: ncenter_altitudes ! The number altitudes is read from the geometry file
+real(r8), allocatable :: center_altitude(:)
 
 ! Just like in cam-se, the aether cube_sphere filter input files are created to have a horizonal
 ! column dimension rather than being functions of latitude and longitude.
 integer                          :: no_third_dimension = -99
 
-real(r8), allocatable, dimension(:)       :: center_altitude
 
 ! Error codes
 integer, parameter :: INVALID_VERT_COORD_ERROR_CODE = 15
 integer, parameter :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
 integer, parameter :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
 
-! Example Namelist
 ! Use the namelist for options to be set at runtime.
 character(len=256) :: template_file = 'model_restart.nc'
 integer  :: time_step_days      = 0
@@ -163,7 +163,8 @@ assimilation_time_step = set_time(time_step_seconds, &
 
 var = assign_var(variables, MAX_STATE_VARIABLES)
 
-call read_geometry_file()
+! Get the altitudes and the number of grid rows
+call read_template_file()
 
 ! Define which variables are in the model state
 dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
@@ -216,9 +217,6 @@ integer(i8) :: bounding_state_index(4, 2)
 integer     :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4), num_bound_points
 integer     :: var_id, n_lev, i
 
-! Needs to come from global storage
-integer, parameter :: np = 18
-
 write(*, *) 'ENTERING MODEL_INTERPOLATE'
 
 ! Initialize module if not already done
@@ -259,18 +257,17 @@ endif
 
 ! If the vertical location is acceptable, then do the horizontal interpolation
 ! Find the enclosing triangle or quad
-! JLA; Need to get np in global storage
-call get_bounding_box(pt_lat, pt_lon, np, &
+call get_bounding_box(pt_lat, pt_lon, &
    grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
 
 ! Map the grid_face, latitude index and longitude index to the one dimensional index used in the state vector
 ! Then get the state values
 do i = 1, num_bound_points
    bounding_state_index(i, 1) =  get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      below_index, var_id, np)
+      below_index, var_id)
    bounding_value(i, 1, :) = get_state(bounding_state_index(i, 1), state_handle)
    bounding_state_index(i, 2) =  get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      above_index, var_id, np)
+      above_index, var_id)
    bounding_value(i, 2, :) = get_state(bounding_state_index(i, 2), state_handle)
 enddo
 
@@ -316,9 +313,7 @@ integer,             intent(out), optional :: qty
 
 ! Local variables
 
-integer :: lev_index, col_index
-integer :: my_var_id, my_qty
-integer, parameter :: np = 18
+integer :: lev_index, col_index, my_var_id, my_qty
 
 real(r8) :: lat, lon
 
@@ -328,7 +323,7 @@ call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimensi
                                 var_id=my_var_id, kind_index=my_qty)
 
 ! Get the latitude and longitude of this columm; These lats and lons are in radians
-call col_index_to_lat_lon(col_index, np, lat, lon)
+call col_index_to_lat_lon(col_index, lat, lon)
 
 ! Set the location type
 location = set_location(RAD2DEG*lon, RAD2DEG*lat, center_altitude(lev_index), VERTISHEIGHT)
@@ -491,37 +486,41 @@ enddo
    
 end function assign_var
 
-subroutine read_geometry_file()
+!-----------------------------------------------------------------------
 
-   integer               :: dimid, varid
-   character(len=256)      :: name
+subroutine read_template_file()
 
-   type(file_type)       :: geometry_file
-   character(len=256)    :: restart_directory, grid_directory, filter_directory
-   namelist /directory_nml/ restart_directory, grid_directory, filter_directory
+integer               :: dimid, varid, number_of_columns
+character(len=256)    :: name
+type(file_type)       :: templatefile
 
-   call find_namelist_in_file('input.nml', 'directory_nml', iunit)
-   read(iunit, nml = directory_nml, iostat = io)
-   call check_namelist_read(iunit, io, 'directory_nml')
+! Getting the altitudes and the number of points per face row from
+! This should be getting this from one of the retart files; is that info available at the model_mod level?
+! Working with template file for now which has to be named in the model_mod_nml
+templatefile%file_path = trim(template_file)
+templatefile%ncid = nc_open_file_readonly(templatefile%file_path)
 
-   geometry_file%file_path = trim(filter_directory) // 'geometry_file.nc'
+! Get the number of vertical levels
+templatefile%ncstatus = nf90_inq_dimid(templatefile%ncid, 'z', dimid)
+templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, name, ncenter_altitudes)
 
-   geometry_file%ncid = nc_open_file_readonly(geometry_file%file_path)
+! Allocate space for vertical levels
+allocate(center_altitude(ncenter_altitudes))
 
-   ! dimensions
-   geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'center_altitudes', dimid)
-   geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, ncenter_altitudes)
+! Get the vertical levels
+templatefile%ncstatus = nf90_inq_varid(templatefile%ncid, 'alt', varid)
+templatefile%ncstatus = nf90_get_var(templatefile%ncid, varid, center_altitude)
 
-   ! allocate arrays
-   allocate(center_altitude(ncenter_altitudes))
+! Get the number of columns
+templatefile%ncstatus = nf90_inq_dimid(templatefile%ncid, 'col', dimid)
+templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, name, number_of_columns)
 
-   ! variables
-   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_altitude', varid)
-   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_altitude)
+call nc_close_file(templatefile%ncid)
 
-   call nc_close_file(geometry_file%ncid)
+! Compute the number of grid rows across a face
+np = nint(sqrt(number_of_columns / 6.0_r8))
 
-end subroutine read_geometry_file
+end subroutine read_template_file
 
 
 
@@ -606,9 +605,9 @@ end function lat_lon_to_xyz
 ! Given the face (from 0 to 5) the number of lons/lats on a face (np) and
 ! the indices of the i and j grid point, returns the latitude and longitude of the point
 
-subroutine grid_to_lat_lon(face, lat_ind, lon_ind, np, lat, lon)
+subroutine grid_to_lat_lon(face, lat_ind, lon_ind, lat, lon)
 
-integer,  intent(in)  :: face, lat_ind, lon_ind, np
+integer,  intent(in)  :: face, lat_ind, lon_ind
 real(r8), intent(out) :: lat, lon
 
 real(r8) :: cube_side, del, half_del, x, y, blon, blat, rot_angle
@@ -669,9 +668,9 @@ end subroutine grid_to_lat_lon
 
 !-----------------------------------------------------------------------
 
-subroutine fix_face(face, lat_grid, lon_grid, np, f_face, f_lat_grid, f_lon_grid, edge, corner)
+subroutine fix_face(face, lat_grid, lon_grid, f_face, f_lat_grid, f_lon_grid, edge, corner)
 
-integer, intent(in)  :: face, lat_grid, lon_grid, np
+integer, intent(in)  :: face, lat_grid, lon_grid
 integer, intent(out) :: f_face, f_lat_grid, f_lon_grid
 logical, intent(out) :: edge, corner
 
@@ -858,10 +857,10 @@ if(face == 4) len(1) = 2.0_r8*sqrt(1.0_r8/3.0_r8) - len(1)
 end subroutine get_face
 
 !-----------------------------------------------------------------------
-subroutine get_corners(face, lat_grid, lon_grid, lat, lon, np,   &
+subroutine get_corners(face, lat_grid, lon_grid, lat, lon, &
    f_face, f_lat_grid, f_lon_grid, num_bound_points)
    
-integer, intent(in) :: face, lat_grid, lon_grid, np
+integer, intent(in) :: face, lat_grid, lon_grid
 real(r8), intent(in) :: lat, lon
 integer, intent(out) :: f_face(4), f_lat_grid(4), f_lon_grid(4), num_bound_points
 
@@ -1054,7 +1053,7 @@ pxyz = lat_lon_to_xyz(lat, lon)
 
 ! Get lats and lons of the triangle vertices
 do i = 1, 3
-   call grid_to_lat_lon(f_face(i), f_lat_grid(i), f_lon_grid(i), np, grid_pt_lat, grid_pt_lon)
+   call grid_to_lat_lon(f_face(i), f_lat_grid(i), f_lon_grid(i), grid_pt_lat, grid_pt_lon)
    ! Convert to x, y, z coords to check for whether points are in tris/quads
    qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat, grid_pt_lon)
 enddo
@@ -1069,7 +1068,7 @@ do quad = 1, 3
    ! Compute lat and lon for a quad
    do i = 1, 4
          call grid_to_lat_lon(quad_face(quad, i), quad_lat_grid(quad, i), quad_lon_grid(quad, i), &
-            np, grid_pt_lat, grid_pt_lon)
+            grid_pt_lat, grid_pt_lon)
       ! Convert to x, y, z coords to check for whether points are in tris/quads
       qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat, grid_pt_lon)
    enddo
@@ -1095,11 +1094,10 @@ end subroutine get_corners
 ! and longitude of the bounding three or four grid points along the number of points
 ! (3 triangle; 4 quad). np is the number of grid points across each face of the cube sphere.
 
-subroutine get_bounding_box(lat, lon, np, &
+subroutine get_bounding_box(lat, lon, &
    grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
 
 real(r8), intent(in)  :: lat, lon
-integer,  intent(in)  :: np
 real(r8), intent(out) :: grid_pt_lat(4), grid_pt_lon(4)
 integer,  intent(out) :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4), num_bound_points
 
@@ -1130,7 +1128,7 @@ lon_grid(1) = low_grid(1); lon_grid(2) = lon_grid(1); lon_grid(3) = hi_grid(1); 
 ! If points are on the edge map to adjacent faces
 on_edge = .false.
 do i = 1, 4
-   call fix_face(face, lat_grid(i), lon_grid(i), np, &
+   call fix_face(face, lat_grid(i), lon_grid(i), &
       grid_face(i), grid_lat_ind(i), grid_lon_ind(i), edge, corner)
    ! If any point is on an edge, on_edge is true
    if(edge) on_edge = .true.
@@ -1145,7 +1143,7 @@ enddo
 ! that the edges of the grid are on great circles from the corresponding faces, but the
 ! grid point at the edge are not connected by these great circles.
 if(corner) then
-   call get_corners(face, lat_grid(corner_index), lon_grid(corner_index), lat, lon, np, &
+   call get_corners(face, lat_grid(corner_index), lon_grid(corner_index), lat, lon, &
       grid_face, grid_lat_ind, grid_lon_ind, num_bound_points)
    if(num_bound_points == 4) corner = .false.
 else
@@ -1155,7 +1153,7 @@ endif
 
 ! Compute the lat and lon corresponding to these point
 do i = 1, num_bound_points
-   call grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), np, &
+   call grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
       grid_pt_lat(i), grid_pt_lon(i))
 enddo
 
@@ -1237,7 +1235,7 @@ if(on_edge) then
 
       ! Compute the lat and lon corresponding to these point
       do i = 1, num_bound_points
-         call grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), np, &
+         call grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
             grid_pt_lat(i), grid_pt_lon(i))
       enddo
    endif
@@ -1250,7 +1248,7 @@ end subroutine get_bounding_box
 
 subroutine test_grid_box
 
-integer  :: np, i, j, num_bound_points
+integer  :: i, j, num_bound_points
 integer  :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4)
 real(r8) :: pt_lon_d, pt_lat_d, pt_lon, pt_lat 
 real(r8) :: qxyz(4, 3), pxyz(3), grid_pt_lat(4), grid_pt_lon(4)
@@ -1260,10 +1258,6 @@ type(location_type) :: location
 integer             :: qty, lon_count, lat_count, my_face, my_level, my_qty, my_lon_ind, my_lat_ind
 integer(i8)         :: state_index, state_index2
 real(r8)            :: lon_lat_hgt(3), my_lat, my_lon, base_dist, dist_sum
-
-! Parameter that has the number of model grid points along each dimension 
-! This does not include halos; the points are offset from the boundaries
-np = 18
 
 ! Test points for the following:
 ! 1. Does the bounding box found contain the observed point?
@@ -1294,7 +1288,7 @@ pt_lat = DEG2RAD * pt_lat_d
 ! Get the x, y, z coords for this point
 pxyz = lat_lon_to_xyz(pt_lat, pt_lon);
 
-call get_bounding_box(pt_lat, pt_lon, np, &
+call get_bounding_box(pt_lat, pt_lon, &
    grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
 
 do i = 1, num_bound_points
@@ -1306,7 +1300,7 @@ enddo
 ! Get the latitude and longitude of the bounding points from get_state_meta_data as a confirmation test
 do i = 1, num_bound_points
    state_index = get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      1, 1, np)
+      1, 1)
    call get_state_meta_data(state_index, location, qty)
    lon_lat_hgt = get_location(location)       
    ! Deal with Aether file round off
@@ -1372,12 +1366,12 @@ do my_qty = 1, 2
          do my_lat_ind = 1, np
             do my_lon_ind = 1, np
                state_index = get_state_index(my_face, my_lat_ind, my_lon_ind, &
-                  my_level, my_qty, np)
+                  my_level, my_qty)
                call get_state_meta_data(state_index, location, qty)
                lon_lat_hgt = get_location(location)       
 
                ! Want to compare the lat lon directly from code to that from get_state_meta_data
-               call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, np, my_lat, my_lon)
+               call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, my_lat, my_lon)
                 
                ! ROUNDOFF FROM AETHER, NEED TO FIX somewhere.
                if(abs(lon_lat_hgt(1) - 360.0_r8) < 0.0001) lon_lat_hgt(1) = 0.0_r8 
@@ -1447,10 +1441,10 @@ end function heron
 
 !-----------------------------------------------------------------------
 
-function get_state_index(face, lat_ind, lon_ind, lev_ind, var_ind, np)
+function get_state_index(face, lat_ind, lon_ind, lev_ind, var_ind)
 
 integer             :: get_state_index
-integer, intent(in) :: face, lat_ind, lon_ind, lev_ind, var_ind, np
+integer, intent(in) :: face, lat_ind, lon_ind, lev_ind, var_ind
 
 ! Given the cube face, latitude (first) index, longitude (second) index on the face,
 ! the level index and the variable index, returns the state index for use
@@ -1478,9 +1472,9 @@ end function get_state_index
 
 !-----------------------------------------------------------------------
 
-subroutine col_index_to_lat_lon(col_index, np, lat, lon)
+subroutine col_index_to_lat_lon(col_index, lat, lon)
 
-integer,  intent(in)  :: col_index, np
+integer,  intent(in)  :: col_index
 real(r8), intent(out) :: lat, lon
 
 integer :: face, resid, lat_ind, lon_ind
@@ -1497,7 +1491,7 @@ lat_ind = (resid - 1) / np + 1
 lon_ind = resid - (lat_ind - 1) * np
 
 ! Get the corresponding latitude and longitude
-call grid_to_lat_lon(face, lat_ind, lon_ind, np, lat, lon)
+call grid_to_lat_lon(face, lat_ind, lon_ind, lat, lon)
 
 end subroutine col_index_to_lat_lon
 
