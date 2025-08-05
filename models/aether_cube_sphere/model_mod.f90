@@ -233,10 +233,12 @@ real(r8)    :: grid_pt_lat(4), grid_pt_lon(4), pt_lat, pt_lon, bounding_value(4,
 real(r8)    :: below_values(ens_size), above_values(ens_size)
 integer(i8) :: bounding_state_index(4, 2)
 integer     :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4), num_bound_points
-integer     :: var_ind, varid, n_lev, i
+integer     :: var_id, n_lev, i
 
 ! Needs to come from global storage
 integer, parameter :: np = 18
+
+write(*, *) 'ENTERING MODEL_INTERPOLATE'
 
 ! Initialize module if not already done
 if ( .not. module_initialized ) call static_init_model
@@ -259,8 +261,9 @@ if (.not. which_vertical == VERTISHEIGHT ) then
 endif
 
 ! See if the state contains the obs quantity
-varid = get_varid_from_kind(dom_id, qty)
-if(varid <= 0) then
+var_id = get_varid_from_kind(dom_id, qty)
+write(*, *) 'GETTING VARID ', var_id, qty
+if(var_id <= 0) then
    istatus = UNKNOWN_OBS_QTY_ERROR_CODE
    return
 endif
@@ -283,21 +286,23 @@ call get_bounding_box(pt_lat, pt_lon, np, &
 ! Then get the state values
 do i = 1, num_bound_points
    bounding_state_index(i, 1) =  get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      below_index, var_ind, np)
+      below_index, var_id, np)
    bounding_value(i, 1, :) = get_state(bounding_state_index(i, 1), state_handle)
    bounding_state_index(i, 2) =  get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      above_index, var_ind, np)
+      above_index, var_id, np)
    bounding_value(i, 2, :) = get_state(bounding_state_index(i, 2), state_handle)
 enddo
 
 ! Do inverse distance weighted horizontal interpolation on both levels
 below_values =  idw_interp(ens_size, RAD2DEG*pt_lat, &
-   RAD2DEG*pt_lon, RAD2DEG*grid_pt_lat, RAD2DEG*grid_pt_lon, bounding_value(1, :, :), num_bound_points)
+   RAD2DEG*pt_lon, RAD2DEG*grid_pt_lat, RAD2DEG*grid_pt_lon, bounding_value(:, 1, :), num_bound_points)
 above_values =  idw_interp(ens_size, RAD2DEG*pt_lat, &
-   RAD2DEG*pt_lon, RAD2DEG*grid_pt_lat, RAD2DEG*grid_pt_lon, bounding_value(2, :, :), num_bound_points)
+   RAD2DEG*pt_lon, RAD2DEG*grid_pt_lat, RAD2DEG*grid_pt_lon, bounding_value(:, 2, :), num_bound_points)
 
 ! Do the vertical interpolation, linear in height to get final
 call vert_interp(ens_size, below_values, above_values, fraction, expected_obs)
+
+write(*, *) 'EXITING MODEL_INTERPOLATE ', expected_obs
 
 end subroutine model_interpolate
 
@@ -1742,6 +1747,8 @@ integer :: column
 
 ! Get the index of the column in DART storage
 column = lon_ind + np * ((lat_ind - 1) + np * face)
+write(*, *) 'in get_state_index calling get_dart_vector_index'
+write(*, *) 'column, lev_index, no_third, var_ind', column, lev_ind, no_third_dimension, var_ind
 get_state_index = get_dart_vector_index(column, lev_ind, no_third_dimension, dom_id, var_ind)
 
 end function get_state_index
@@ -1780,6 +1787,10 @@ do i = 1, num_corners
    distances(i) = get_dist(point, corner(i), no_vert=.true.)
 end do
 
+write(*, *) 'point ', lat, lon
+do i = 1, num_corners
+   write(*, *) 'bound ', i, y_corners(i), x_corners(i)
+enddo
 write(*, *) 'distances ', distances
  
 if(minval(distances) < epsilon_radians) then
@@ -1793,17 +1804,24 @@ else
 
    ! Calculate the weights for each grid point and sum up weighted values
    do n = 1, ens_size
-      idw_interp(1:n) = sum(inv_power_dist(1:num_corners) * p(1:num_corners, n)) / sum(inv_power_dist)
+      idw_interp(n) = sum(inv_power_dist(1:num_corners) * p(1:num_corners, n)) / sum(inv_power_dist)
    end do
 endif
+
+do n = 1, ens_size
+   write(*, *) 'idw_interp ', n, idw_interp(n), p(1:num_corners, n)
+enddo
+
 
 ! Unclear if round-off could ever lead to result being outside of range of gridpoints
 ! Test for now and terminate if this happens 
 do n = 1, ens_size
    if(idw_interp(n) < minval(p(:, n)) .or. idw_interp(n) > maxval(p(:, n))) then
       write(string1,*)'IDW interpolation result is outside of range of grid point values'
+write(*, *) 'n ', n, idw_interp(n), minval(p(:, n)), maxval(p(:, n))
       write(string2, *) 'Interpolated value, min and max are: ', &
-         idw_interp(n), minval(p, n), maxval(p, n)
+         idw_interp(n), minval(p(:, n)), maxval(p(:, n))
+write(*, *) 'string2 ', string2
       call error_handler(E_ERR, 'idw_interp', string1, &
          source, revision, revdate, text2=string2)
    endif
