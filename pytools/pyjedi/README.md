@@ -34,7 +34,7 @@ Here is a sample from the radiosonde test case:
 ---
 
 ioda to obsq converter:
-  assim variables:
+  observation variables:
     - name: airTemperature
       type: RADIOSONDE_TEMPERATURE
     - name: specificHumidity
@@ -49,4 +49,4 @@ ioda to obsq converter:
     units: "height (m)"
 ```
 
-Note "assim variables" is the list of variables you intend to assimilate in the DA job.
+Note "observation variables" is the list of variables you intend to assimilate in the DA job.

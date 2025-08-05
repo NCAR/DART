@@ -34,7 +34,7 @@ def main():
     # Parse the YAML configuration
     with open(configFile, 'r') as file:
         config = yaml.safe_load(file)
-    iodaVarsConfig = config['ioda to obsq converter']['assim variables']
+    iodaVarsConfig = config['ioda to obsq converter']['observation variables']
     vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
     if (verbose):
         print("DEBUG: IODA variable configuration: ", iodaVarsConfig)

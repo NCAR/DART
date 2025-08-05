@@ -1,7 +1,7 @@
 ---
 
 ioda to obsq converter:
-  assim variables:
+  observation variables:
     - name: airTemperature
       type: RADIOSONDE_TEMPERATURE
     - name: specificHumidity
