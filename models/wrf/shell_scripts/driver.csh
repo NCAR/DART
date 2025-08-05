@@ -505,7 +505,7 @@ while ( 1 == 1 )
 
             else if ( $length_time > $advance_thresh ) then
             
-               #  If WRF member has exceeded max_retry, immediately stop driver.csh
+               #  If WRF member has failed 2 resubmission attempts, immediately stop driver.csh
                if ($max_retry > 2) then
                
                echo "Stopping the driver.csh script! The WRF ensemble member ${n}" 
