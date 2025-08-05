@@ -11,7 +11,7 @@ module model_mod
 
 use           netcdf
 
-use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG, radius => earth_radius, PI
+use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG, PI
 
 use time_manager_mod, only : time_type, set_time
 
@@ -23,7 +23,7 @@ use     location_mod, only : location_type, get_close_type, get_dist, &
 
 use    utilities_mod, only : register_module, error_handler, &
                              E_ERR, E_MSG, &
-                             nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+                             nmlfileunit, do_nml_file, do_nml_term,  &
                              find_namelist_in_file, check_namelist_read, to_upper, &
                              find_enclosing_indices
 
@@ -49,8 +49,6 @@ use default_model_mod, only : pert_model_copies, read_model_time, write_model_ti
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
                               convert_vertical_obs, convert_vertical_state, adv_1step
-
-use quad_utils_mod,    only : in_quad, quad_bilinear_interp
 
 implicit none
 private
@@ -96,19 +94,13 @@ type(time_type) :: assimilation_time_step
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
 ! Geometry variables that are used throughout the module
-integer                          :: ncenter_columns, ncenter_altitudes ! The number of center_columns and altitudes are read from the geometry file
-integer, parameter               :: nvertex_columns = 8
-integer, parameter               :: nvertex_neighbors = 3
-integer                          :: nquad_columns ! The number of quad_columns is read from the geometry file
-integer, parameter               :: nquad_neighbors = 4
+integer                          :: ncenter_altitudes ! The number altitudes is read from the geometry file
 
 ! Just like in cam-se, the aether cube_sphere filter input files are created to have a horizonal
 ! column dimension rather than being functions of latitude and longitude.
 integer                          :: no_third_dimension = -99
 
-integer :: inorth_pole_quad_column, isouth_pole_quad_column
-real(r8), allocatable, dimension(:)       :: center_latitude, center_longitude, center_altitude
-integer, allocatable, dimension(:, :)     :: quad_neighbor_indices, vertex_neighbor_indices
+real(r8), allocatable, dimension(:)       :: center_altitude
 
 ! Error codes
 integer, parameter :: INVALID_VERT_COORD_ERROR_CODE = 15
@@ -211,23 +203,12 @@ integer,             intent(in) :: qty
 real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 integer,            intent(out) :: istatus(ens_size)
 
-character(len=512) :: error_string_1
-
 ! Location values stored in a vector
 real(r8), dimension(3)                           :: lon_lat_alt
 
 ! Vertical interpolation variables
-integer(i8) :: state_index
 integer     :: below_index, above_index, enclosing_status, which_vertical
 real(r8)    :: fraction
-
-real(r8), dimension(nvertex_neighbors, ens_size) :: vertex_temp_values
-
-! Actual variables needed for this routine
-
-integer :: icolumn, ineighbor, iens
-
-logical :: inside
 
 real(r8)    :: grid_pt_lat(4), grid_pt_lon(4), pt_lat, pt_lon, bounding_value(4, 2, ens_size)
 real(r8)    :: below_values(ens_size), above_values(ens_size)
@@ -337,14 +318,20 @@ integer,             intent(out), optional :: qty
 
 integer :: lev_index, col_index
 integer :: my_var_id, my_qty
+integer, parameter :: np = 18
+
+real(r8) :: lat, lon
 
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimension, &
                                 var_id=my_var_id, kind_index=my_qty)
 
-! should be set to the actual location using set_location()
-location = set_location(center_longitude(col_index), center_latitude(col_index), center_altitude(lev_index), VERTISHEIGHT)
+! Get the latitude and longitude of this columm; These lats and lons are in radians
+call col_index_to_lat_lon(col_index, np, lat, lon)
+
+! Set the location type
+location = set_location(RAD2DEG*lon, RAD2DEG*lat, center_altitude(lev_index), VERTISHEIGHT)
 
 ! should be set to the physical quantity, e.g. QTY_TEMPERATURE
 if (present(qty)) qty = my_qty
@@ -521,285 +508,21 @@ subroutine read_geometry_file()
 
    geometry_file%ncid = nc_open_file_readonly(geometry_file%file_path)
 
-   ! attributes
-   geometry_file%ncstatus = nf90_get_att(geometry_file%ncid, NF90_GLOBAL, 'index_of_north_pole_quad_column', inorth_pole_quad_column)
-   geometry_file%ncstatus = nf90_get_att(geometry_file%ncid, NF90_GLOBAL, 'index_of_south_pole_quad_column', isouth_pole_quad_column)
-
    ! dimensions
    geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'center_altitudes', dimid)
    geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, ncenter_altitudes)
 
-   geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'quad_columns', dimid)
-   geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, nquad_columns)
-
-   geometry_file%ncstatus = nf90_inq_dimid(geometry_file%ncid, 'center_columns', dimid)
-   geometry_file%ncstatus = nf90_inquire_dimension(geometry_file%ncid, dimid, name, ncenter_columns)
-
    ! allocate arrays
    allocate(center_altitude(ncenter_altitudes))
-   allocate(center_latitude(ncenter_columns))
-   allocate(center_longitude(ncenter_columns))
-
-   allocate(vertex_neighbor_indices(nvertex_columns, nvertex_neighbors))
-   allocate(quad_neighbor_indices(nquad_columns, nquad_neighbors))
 
    ! variables
    geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_altitude', varid)
    geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_altitude)
 
-   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_longitude', varid)
-   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_longitude)
-
-   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'center_latitude', varid)
-   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, center_latitude)
-
-   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'vertex_neighbor_indices', varid)
-   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, vertex_neighbor_indices)
-
-   geometry_file%ncstatus = nf90_inq_varid(geometry_file%ncid, 'quad_neighbor_indices', varid)
-   geometry_file%ncstatus = nf90_get_var(geometry_file%ncid, varid, quad_neighbor_indices)
-
    call nc_close_file(geometry_file%ncid)
 
 end subroutine read_geometry_file
 
-! Barycentric procedures
-
-subroutine inside_triangle(t1, t2, t3, r, lat, lon, inside, weights)
-
-   ! given 3 corners of a triangle and an xyz point, compute whether
-   ! the point is inside the triangle.  this assumes r is coplanar
-   ! with the triangle - the caller must have done the lat/lon to
-   ! xyz conversion with a constant radius and then this will be
-   ! true (enough).  sets inside to true/false, and returns the
-   ! weights if true.  weights are set to 0 if false.
-   
-   real(r8), intent(in)  :: t1(3), t2(3), t3(3)
-   real(r8), intent(in)  :: r(3), lat, lon
-   logical,  intent(out) :: inside
-   real(r8), intent(out) :: weights(3)
-   
-   ! check for degenerate cases first - is the test point located
-   ! directly on one of the vertices?  (this case may be common
-   ! if we're computing on grid point locations.)
-   if (all(abs(r - t1) < roundoff)) then
-      inside = .true.
-      weights = (/ 1.0_r8, 0.0_r8, 0.0_r8 /)
-      return
-   else if (all(abs(r - t2) < roundoff)) then
-      inside = .true.
-      weights = (/ 0.0_r8, 1.0_r8, 0.0_r8 /)
-      return
-   else if (all(abs(r - t3) < roundoff)) then
-      inside = .true.
-      weights = (/ 0.0_r8, 0.0_r8, 1.0_r8 /)
-      return
-   endif
-   
-   ! not a vertex. compute the weights.  if any are
-   ! negative, the point is outside.  since these are
-   ! real valued computations define a lower bound for
-   ! numerical roundoff error and be sure that the
-   ! weights are not just *slightly* negative.
-   call get_3d_weights(r, t1, t2, t3, weights)
-   
-   if (any(weights < -roundoff)) then
-      inside = .false.
-      weights = 0.0_r8
-      return
-   endif
-   
-   ! truncate barely negative values to 0
-   inside = .true.
-   where (weights < 0.0_r8) weights = 0.0_r8
-   return
-   
-end subroutine inside_triangle
-
-subroutine get_3d_weights_old(p, v1, v2, v3, lat, lon, weights)
-
-   ! Given a point p (x,y,z) inside a triangle, and the (x,y,z)
-   ! coordinates of the triangle corner points (v1, v2, v3),
-   ! find the weights for a barycentric interpolation.  this
-   ! computation only needs two of the three coordinates, so figure
-   ! out which quadrant of the sphere the triangle is in and pick
-   ! the 2 axes which are the least planar:
-   !  (x,y) near the poles,
-   !  (y,z) near 0 and 180 longitudes near the equator,
-   !  (x,z) near 90 and 270 longitude near the equator.
-   ! (lat/lon are the coords of p. we could compute them here
-   ! but since in all cases we already have them, pass them
-   ! down for efficiency)
-   
-   real(r8), intent(in)  :: p(3)
-   real(r8), intent(in)  :: v1(3), v2(3), v3(3)
-   real(r8), intent(in)  :: lat, lon
-   real(r8), intent(out) :: weights(3)
-   
-   real(r8) :: cxs(3), cys(3)
-   
-   ! above or below 45 in latitude, where -90 < lat < 90:
-   if (lat >= 45.0_r8 .or. lat <= -45.0_r8) then
-      cxs(1) = v1(1)
-      cxs(2) = v2(1)
-      cxs(3) = v3(1)
-      cys(1) = v1(2)
-      cys(2) = v2(2)
-      cys(3) = v3(2)
-      !call get_barycentric_weights(p(1), p(2), cxs, cys, weights)
-      return
-   endif
-   
-   ! nearest 0 or 180 in longitude, where 0 < lon < 360:
-   if ( lon <= 45.0_r8 .or. lon >= 315.0_r8 .or. &
-       (lon >= 135.0_r8 .and. lon <= 225.0_r8)) then
-      cxs(1) = v1(2)
-      cxs(2) = v2(2)
-      cxs(3) = v3(2)
-      cys(1) = v1(3)
-      cys(2) = v2(3)
-      cys(3) = v3(3)
-      !call get_barycentric_weights(p(2), p(3), cxs, cys, weights)
-      return
-   endif
-   
-   ! last option, nearest 90 or 270 in lon:
-   cxs(1) = v1(1)
-   cxs(2) = v2(1)
-   cxs(3) = v3(1)
-   cys(1) = v1(3)
-   cys(2) = v2(3)
-   cys(3) = v3(3)
-   !call get_barycentric_weights(p(1), p(3), cxs, cys, weights)
-   
-end subroutine get_3d_weights_old
-
-subroutine get_3d_weights(p, v1, v2, v3, weights)
-
-   ! MEG: 
-   ! This replaces 'get_3d_weights_old' which to me it seems
-   ! like it's trying to guess which side to draw flat based on the address.
-
-   ! The code below looks at the triangle itself and picks the best 
-   ! angle so it is flattest and least distorted. I also added a 'success' 
-   ! option in 'get_barycentric_weights' to check for the collinearity issue. 
-
-   ! Obviously, we can do better, but for now I think this keeps us going.
-
-   real(r8), intent(in)  :: p(3), v1(3), v2(3), v3(3)
-   real(r8), intent(out) :: weights(3)
-
-   real(r8) :: e1(3), e2(3), n(3)
-   real(r8) :: cxs(3), cys(3)
-   logical  :: success
-
-   ! Compute triangle edge vectors
-   e1(1) = v2(1) - v1(1)
-   e1(2) = v2(2) - v1(2)
-   e1(3) = v2(3) - v1(3)
-
-   e2(1) = v3(1) - v1(1)
-   e2(2) = v3(2) - v1(2)
-   e2(3) = v3(3) - v1(3)
-
-   ! Cross product (normal vector)
-   n(1) = e1(2)*e2(3) - e1(3)*e2(2)
-   n(2) = e1(3)*e2(1) - e1(1)*e2(3)
-   n(3) = e1(1)*e2(2) - e1(2)*e2(1)
-
-   ! Try projection on XY plane
-   if (abs(n(3)) >= abs(n(1)) .and. abs(n(3)) >= abs(n(2))) then
-      cxs(1) = v1(1); cxs(2) = v2(1); cxs(3) = v3(1)
-      cys(1) = v1(2); cys(2) = v2(2); cys(3) = v3(2)
-      call get_barycentric_weights(p(1), p(2), cxs, cys, weights, success)
-      if (success) return
-   endif
-
-   ! Try projection on YZ plane
-   if (abs(n(1)) >= abs(n(2))) then
-      cxs(1) = v1(2); cxs(2) = v2(2); cxs(3) = v3(2)
-      cys(1) = v1(3); cys(2) = v2(3); cys(3) = v3(3)
-      call get_barycentric_weights(p(2), p(3), cxs, cys, weights, success)
-      if (success) return
-   endif
-
-   ! Fallback: try projection on XZ plane
-   cxs(1) = v1(1); cxs(2) = v2(1); cxs(3) = v3(1)
-   cys(1) = v1(3); cys(2) = v2(3); cys(3) = v3(3)
-   call get_barycentric_weights(p(1), p(3), cxs, cys, weights, success)
-
-   if (.not. success) then
-      ! Tried all planes and it didn't work out, so ...
-      print *, 'Carefull: get_3d_weights failed to compute weights.'
-      weights(1) = -1.0_r8
-      weights(2) = -1.0_r8
-      weights(3) = -1.0_r8
-   endif
-
-end subroutine get_3d_weights
-
-
-subroutine get_barycentric_weights(x, y, cxs, cys, weights, success)
-
-   ! Computes the barycentric weights for a 2d interpolation point
-   ! (x,y) in a 2d triangle with the given (cxs,cys) corners.
-   
-   real(r8), intent(in)  :: x, y, cxs(3), cys(3)
-   real(r8), intent(out) :: weights(3)
-   logical, intent(out)  :: success
-   
-   real(r8) :: denom
-   
-   ! Get denominator
-   denom = (cys(2) - cys(3)) * (cxs(1) - cxs(3)) + &
-      (cxs(3) - cxs(2)) * (cys(1) - cys(3))
-
-   ! If the vertices are collinear then the triangle is degenerate
-   if (abs(denom) < roundoff) then
-      success = .false.
-      weights = 0.0_r8
-      return
-   endif
- 
-   weights(1) = ((cys(2) - cys(3)) * (x - cxs(3)) + &
-                (cxs(3) - cxs(2)) * (y - cys(3))) / denom
-   
-   weights(2) = ((cys(3) - cys(1)) * (x - cxs(3)) + &
-                (cxs(1) - cxs(3)) * (y - cys(3))) / denom
-   
-   weights(3) = 1.0_r8 - weights(1) - weights(2)
-   
-   if (any(abs(weights) < roundoff)) then
-      where (abs(weights) < roundoff) weights = 0.0_r8
-      where (abs(1.0_r8 - abs(weights)) < roundoff) weights = 1.0_r8
-   endif
-
-   ! I'm here so it must be a good looking triangle
-   success = .true.  
- 
-end subroutine get_barycentric_weights
-
-!-----------------------------------------------------------------------
-
-subroutine latlon_to_xyz(lat, lon, x, y, z)
-
-   ! Given a lat, lon in degrees, return the cartesian x,y,z coordinate
-   ! on the surface of a specified radius relative to the origin
-   ! at the center of the earth.
-   
-   real(r8), intent(in)  :: lat, lon
-   real(r8), intent(out) :: x, y, z
-   
-   real(r8) :: rlat, rlon
-   
-   rlat = lat * deg2rad
-   rlon = lon * deg2rad
-   
-   x = radius * cos(rlon) * cos(rlat)
-   y = radius * sin(rlon) * cos(rlat)
-   z = radius * sin(rlat)
-   
-end subroutine latlon_to_xyz
 
 
 !-----------------------------------------------------------------------
@@ -907,10 +630,10 @@ endif
 if(face < 4) then
    blon = atan2(sqrt(1.0_r8 / 3.0_r8), x)
    blat = atan2(y, sqrt(1.0_r8/3.0_r8 + x**2.0_r8))
-   blon = blon - pi/4.0_r8
+   blon = blon - PI/4.0_r8
 
-   ! Above is for face 0; add pi/2 for each additional face tangent to equator
-   lon = blon + pi/2.0_r8 * face; 
+   ! Above is for face 0; add PI/2 for each additional face tangent to equator
+   lon = blon + PI/2.0_r8 * face; 
    lat = blat;
 elseif(face == 4 .or. face == 5) then
    ! Face 4 is tangent to south pole
@@ -923,7 +646,7 @@ elseif(face == 4 .or. face == 5) then
    vect = lat_lon_to_xyz(lat, lon)
 
    ! Then rotate 45 degrees around Z
-   rot_angle = -pi/4.0_r8;
+   rot_angle = -PI/4.0_r8;
 
    ! Create the rotation matrix
    RZ(1, 1:3) = [cos(rot_angle),  sin(rot_angle), 0.0_r8]
@@ -935,10 +658,10 @@ elseif(face == 4 .or. face == 5) then
    lon = atan2(rot_vect(2), rot_vect(1))
    ! Note that there are inconsistent treatments of the value near longitude
    ! 0 in the grid files for Aether. Some points have a value near or just less
-   ! than 2pi, other points have values just greater than 0. This code 
-   ! avoids values near to 2pi and have 0 instead.
+   ! than 2PI, other points have values just greater than 0. This code 
+   ! avoids values near to 2PI and have 0 instead.
    if(lon < 0.0_r8) lon =  lon + 2.0_r8*PI
-   if(lon >= 2.0_r8*pi) lon = 0.0_r8
+   if(lon >= 2.0_r8*PI) lon = 0.0_r8
 
 endif
 
@@ -1115,7 +838,7 @@ lon_grid_m = mod(lon_grid, PI/2.0_r8)
 ! Use law of sines to go from lon back to position along edge of imbedded cube 
 ! The triangle of interest has a side of length 2sqrt(1/3) (1/2 of the planar diagonal of the imbedded cube)
 ! The angles adjacent to this side are the longitude and 45 degrees
-! The angle opposite the side of length 2sqrt(1/3) is pi - (longitude + pi/4)
+! The angle opposite the side of length 2sqrt(1/3) is PI - (longitude + PI/4)
 ! The side opposite the longitude is how far along the side of the cube
 ! The cube side is 2sqrt(1/3), so the length along the side is between zero and this value
 gama = PI - (PI/4.0_r8 + lon_grid_m(1))
@@ -1747,11 +1470,36 @@ integer :: column
 
 ! Get the index of the column in DART storage
 column = lon_ind + np * ((lat_ind - 1) + np * face)
-write(*, *) 'in get_state_index calling get_dart_vector_index'
-write(*, *) 'column, lev_index, no_third, var_ind', column, lev_ind, no_third_dimension, var_ind
+!!!write(*, *) 'in get_state_index calling get_dart_vector_index'
+!!!write(*, *) 'column, lev_index, no_third, var_ind', column, lev_ind, no_third_dimension, var_ind
 get_state_index = get_dart_vector_index(column, lev_ind, no_third_dimension, dom_id, var_ind)
 
 end function get_state_index
+
+!-----------------------------------------------------------------------
+
+subroutine col_index_to_lat_lon(col_index, np, lat, lon)
+
+integer,  intent(in)  :: col_index, np
+real(r8), intent(out) :: lat, lon
+
+integer :: face, resid, lat_ind, lon_ind
+
+! Given the index of a horizontal column, returns the latitude and longitude in radians
+
+! Which face are we on? np**2 points per face
+face = (col_index - 1) / (np**2)
+resid = col_index - face * np**2
+
+! Get latitude index
+lat_ind = (resid - 1) / np + 1
+
+lon_ind = resid - (lat_ind - 1) * np
+
+! Get the corresponding latitude and longitude
+call grid_to_lat_lon(face, lat_ind, lon_ind, np, lat, lon)
+
+end subroutine col_index_to_lat_lon
 
 !-----------------------------------------------------------------------
 
@@ -1854,26 +1602,6 @@ subroutine vert_interp(nitems, levs1, levs2, vert_fract, out_vals)
 end subroutine vert_interp
 
 !-----------------------------------------------------------------------
-
-function barycentric_average(nitems, weights, vertex_temp_values) result (averaged_values)
-
-   integer, intent(in)                                        :: nitems
-   real(r8), dimension(nvertex_neighbors), intent(in)         :: weights
-   real(r8), dimension(nvertex_neighbors, nitems), intent(in) :: vertex_temp_values
-
-   real(r8), dimension(nitems)                :: averaged_values
-
-   integer :: iweight, iitem
-
-   averaged_values(:) = 0
-
-   do iitem = 1, nitems
-      do iweight = 1, nvertex_neighbors
-         averaged_values(iitem) = averaged_values(iitem) + weights(iweight)*vertex_temp_values(iweight, iitem)
-      end do
-   end do
-
-end function barycentric_average
 
 !===================================================================
 ! End of model_mod
