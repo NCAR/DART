@@ -63,7 +63,7 @@ use          location_mod, only : location_type, set_location, get_location,    
                                   convert_vertical_obs, convert_vertical_state,        &
                                   VERTISHEIGHT, VERTISSURFACE, query_location,         &
                                   set_vertical, get_close_type
-use         utilities_mod, only : register_module, error_handler, do_nml_term,         &
+use         utilities_mod, only : error_handler, do_nml_term,                          &
                                   E_MSG, logfileunit, nmlfileunit, file_to_text,       &
                                   get_unit, do_output, to_upper, do_nml_file,          &
                                   find_namelist_in_file, check_namelist_read,          &
@@ -79,7 +79,7 @@ use          obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_DRY_LAND,  
                                   QTY_SEA_SURFACE_HEIGHT, get_index_for_quantity
 use   state_structure_mod, only : get_dart_vector_index, get_model_variable_indices,   &
                                   get_domain_size, get_varid_from_kind,  add_domain,   &
-                                  state_structure_info, get_kind_index, get_num_dims
+                                  get_kind_index, get_num_dims
 use  netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file,        &    
                                   nc_add_global_creation_time, nc_begin_define_mode,   &
                                   nc_end_define_mode, nc_open_file_readonly,           &    
@@ -90,7 +90,7 @@ use  netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, 
 use       location_io_mod, only : nc_write_location_atts, nc_get_location_varids,      &
                                   nc_write_location
 use     default_model_mod, only : nc_write_model_vars, init_conditions, init_time,     &
-                                  adv_1step
+                                  adv_1step, parse_variables_clamp, MAX_STATE_VARIABLE_FIELDS
 use     mpi_utilities_mod, only : my_task_id
 use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  ensemble_manager_mod, only : ensemble_type
@@ -100,7 +100,8 @@ use netcdf
 implicit none
 private
 
-! Routines in this list have code in this module
+! Routines required by DART, called by filter
+! and other executables
 public :: get_model_size,                      &
           get_state_meta_data,                 &
           model_interpolate,                   &
@@ -109,10 +110,8 @@ public :: get_model_size,                      &
           end_model,                           &
           nc_write_model_atts,                 &
           write_model_time,                    &
-          read_model_time
-
-! Code for these routines are in other modules
-public :: nc_write_model_vars,                 &
+          read_model_time,                     & 
+          nc_write_model_vars,                 &
           pert_model_copies,                   &
           adv_1step,                           &
           init_time,                           &
@@ -120,12 +119,9 @@ public :: nc_write_model_vars,                 &
           convert_vertical_obs,                &
           convert_vertical_state,              &
           get_close_obs,                       &
-          get_close_state
-
-! Useful for utility programs
-public :: get_time_information
+          get_close_state,                     &
+          get_time_information
           
-! Version controlled file description for error handling, do not edit
 character(len=256), parameter :: source  = 'ROMS_rutgers/model_mod.f90'
 logical,            save      :: module_initialized = .false.
 
@@ -136,14 +132,7 @@ integer  :: assimilation_period_seconds  = 0                ! Assimilation windo
 real(r8) :: perturbation_amplitude       = 0.02             ! Perturbation size for generating an ensemble
 integer  :: debug                        = 0                ! Turn up for more debug messages
 
-! DART contents are specified in the input.nml:&model_nml namelist.
-integer, parameter              :: MAX_STATE_VARIABLES                          = 8
-integer, parameter              :: table_columns                                = 5
-character(len=vtablenamelength) :: variables(MAX_STATE_VARIABLES*table_columns) = ' '
-character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES)               = ' '
-logical                         :: update_list(MAX_STATE_VARIABLES)             = .FALSE.
-integer                         :: kind_list(MAX_STATE_VARIABLES)               = MISSING_I
-real(r8)                        :: clamp_vals(MAX_STATE_VARIABLES, 2)           = MISSING_R8
+character(len=vtablenamelength) :: variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
@@ -182,7 +171,7 @@ integer               :: Vt                                 ! Transformation for
 character(len=512) :: string1, string2, string3             ! Reserved for Output/Warning/Error messages
 integer            :: ix, iy, ik                            ! Counters 
 type(time_type)    :: model_timestep                        ! DA time window 
-integer            :: model_size                            ! State vector length
+integer(i8)        :: model_size                            ! State vector length
 integer            :: nfields                               ! This is the number of variables in the DART state vector
 integer            :: domid                                 ! Global variable for state_structure_mod routines
 integer            :: Nc = 4                                ! Number of corners of the quad for interpolation
@@ -221,9 +210,6 @@ if (module_initialized) return
 ! * figure out model timestep
 ! * Compute the model size
 
-! Print module information to log file
-call register_module(source)
-
 module_initialized = .true.
 
 ! Read the DART namelist for this model
@@ -249,17 +235,8 @@ call set_calendar_type(trim(calendar))
 call get_grid_dimensions()
 call get_grid()
 
-! Fill var_names, kind_list, clamp_vals, update_list
-call parse_variable_input(variables, nfields)
-
-domid = add_domain(roms_filename, & 
-                         nfields, &
-                       var_names, &
-                       kind_list, &
-                      clamp_vals, &
-                     update_list)
-
-if (debug > 0) call state_structure_info(domid)
+! Add domain using the provided template file 
+domid = add_domain(roms_filename, parse_variables_clamp(variables))
 
 call nc_close_file(ncid, routine)
 
@@ -1131,71 +1108,6 @@ enddo ! i loop
 sensible_temp = t
 
 end function sensible_temp
-
-
-!-----------------------------------------------------------------------
-! Fill the array of requested variables, dart kinds, possible min/max
-! values and whether or not to update the field in the output file.
-!
-! state_variables: List of variables and kinds from model_mod_nml
-! ngood:           Number of variable/KIND pairs specified
-
-subroutine parse_variable_input(state_variables, ngood)
-
-character(len=*), parameter   :: routine = 'parse_variable_input'
-character(len=*), intent(in)  :: state_variables(:)
-integer,          intent(out) :: ngood
-
-integer :: i
-character(len=NF90_MAX_NAME) :: varname       ! column 1
-character(len=NF90_MAX_NAME) :: dartstr       ! column 2
-character(len=NF90_MAX_NAME) :: minvalstring  ! column 3
-character(len=NF90_MAX_NAME) :: maxvalstring  ! column 4
-character(len=NF90_MAX_NAME) :: state_or_aux  ! column 5   change to updateable
-
-ngood = 0
-MyLoop : do i = 1, MAX_STATE_VARIABLES
-
-   varname      = trim(state_variables(table_columns*i-4))
-   dartstr      = trim(state_variables(table_columns*i-3))
-   minvalstring = trim(state_variables(table_columns*i-2))
-   maxvalstring = trim(state_variables(table_columns*i-1))
-   state_or_aux = trim(state_variables(table_columns*i  ))
-
-   if (varname == ' ' .and. dartstr == ' ') exit MyLoop ! Found end of list.
-
-   if (varname == ' ' .or. dartstr == ' ') then
-      string1 = 'model_nml:model "variables" not fully specified'
-      call error_handler(E_ERR, routine, string1, source)
-   endif
-
-   ! Make sure DART kind is valid
-   if(get_index_for_quantity(dartstr) < 0) then
-      write(string1, '(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR, routine, string1, source)
-   endif
-
-   call to_upper(minvalstring)
-   call to_upper(maxvalstring)
-   call to_upper(state_or_aux)
-
-   var_names(   i) = varname
-   kind_list(   i) = get_index_for_quantity(dartstr)
-   clamp_vals(i,1) = string_to_real(minvalstring)
-   clamp_vals(i,2) = string_to_real(maxvalstring)
-   update_list( i) = string_to_logical(state_or_aux, 'UPDATE')
-
-   ngood = ngood + 1
-
-enddo MyLoop
-
-if (ngood == MAX_STATE_VARIABLES) then
-   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
-   write(string2, '(''WARNING: you have specified at least '',i4,'' perhaps more.'')') ngood
-   call error_handler(E_MSG, routine, string1, source, text2=string2)
-endif
-
-end subroutine parse_variable_input
 
 
 !-----------------------------------------------------------------------
