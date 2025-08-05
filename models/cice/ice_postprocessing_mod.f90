@@ -404,7 +404,12 @@ end subroutine read_cice_state_variable
     where(hsnon_original < 0)  hsnon_original = 0.0_r8
    
     ! calculate the area implied by original category thickness and updated volume
-    aicen = vicen/hicen_original
+    where(hicen_original /= 0.0_r8)
+        aicen = vicen/hicen_original
+    else where
+        aicen = 0.0_r8
+    end where
+    
     aice = aicen(:,:,1)
     do n = 2, Ncat  
        aice = aice+aicen(:,:,n)
