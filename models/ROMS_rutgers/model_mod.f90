@@ -1084,34 +1084,6 @@ end function sensible_temp
 
 
 !-----------------------------------------------------------------------
-! Convert a fractional day to a dart time type
-
-function convert_to_time_offset(offset, offset_in_seconds)
-
-real(digits12), intent(in) :: offset
-logical,        intent(in) :: offset_in_seconds
-type(time_type)            :: convert_to_time_offset
-
-integer(i8) :: big_integer
-integer     :: some_seconds, some_days
-
-if (offset_in_seconds) then
-   big_integer  = int(offset,i8)
-   some_days    = big_integer / (24*60*60)
-   big_integer  = big_integer - (some_days * (24*60*60))
-   some_seconds = int(big_integer,i4)
-else
-   ! offset in fractional days
-   some_days    = int(offset)
-   some_seconds = (offset - some_days) * (24*60*60)
-endif
-
-convert_to_time_offset = set_time(some_seconds, some_days)
-
-end function convert_to_time_offset
-
-
-!-----------------------------------------------------------------------
 ! Initialize the quad interpolation tools
 
 subroutine setup_interpolation
