@@ -5,10 +5,6 @@
 
 module model_mod
 
-! This is a template showing the interfaces required for a model to be compliant
-! with the DART data assimilation infrastructure. Do not change the arguments
-! for the public routines.
-
 use           netcdf
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG, PI
@@ -91,17 +87,17 @@ logical :: module_initialized = .false.
 integer :: dom_id ! used to access the state structure
 type(time_type) :: assimilation_time_step
 
+! Parameter controlling tolerance for ???
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
-! Geometry variables that are used throughout the module
+! Geometry variables that are used throughout the module; read from a template file
 integer               :: np                ! Number of grid rows across a face
-integer               :: ncenter_altitudes ! The number altitudes is read from the geometry file
+real(r8)              :: del, half_del     ! Grid row spacing and half of that
+integer               :: ncenter_altitudes ! The number of altitudes and the altitudes
 real(r8), allocatable :: center_altitude(:)
 
-! Just like in cam-se, the aether cube_sphere filter input files are created to have a horizonal
-! column dimension rather than being functions of latitude and longitude.
+! Horizontal column dimension rather than being direct functions of latitude and longitude.
 integer                          :: no_third_dimension = -99
-
 
 ! Error codes
 integer, parameter :: INVALID_VERT_COORD_ERROR_CODE = 15
@@ -131,14 +127,12 @@ contains
 
 !------------------------------------------------------------------
 !
-! Called to do one time initialization of the model. As examples,
-! might define information about the model size or model timestep.
-! In models that require pre-computed static data, for instance
-! spherical harmonic weights, these would also be computed here.
+! Called to do one time initialization of the model. 
 
 subroutine static_init_model()
 
 type(var_type) :: var
+real(r8)       :: cube_side
 
 module_initialized = .true.
 
@@ -156,8 +150,7 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 ! This time is both the minimum time you can ask the model to advance
 ! (for models that can be advanced by filter) and it sets the assimilation
 ! window.  All observations within +/- 1/2 this interval from the current
-! model time will be assimilated. If this is not settable at runtime 
-! feel free to hardcode it and remove from the namelist.
+! model time will be assimilated.
 assimilation_time_step = set_time(time_step_seconds, &
                                   time_step_days)
 
@@ -165,6 +158,13 @@ var = assign_var(variables, MAX_STATE_VARIABLES)
 
 ! Get the altitudes and the number of grid rows
 call read_template_file()
+
+! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
+! two exterior intervals of half  width, sqrt(1/3) / np 
+cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
+! These grid spacings are in module storage since they are used repeatedly in many routines
+del = cube_side / np
+half_del = del / 2.0_r8
 
 ! Define which variables are in the model state
 dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
@@ -224,7 +224,7 @@ if ( .not. module_initialized ) call static_init_model
 
 ! Set all obs to MISSING_R8 initially
 expected_obs(:) = MISSING_R8
-! JLA: Is this successful default
+! Successful default
 istatus(:) = 0
 
 ! Determine the vertical location type
@@ -610,14 +610,9 @@ subroutine grid_to_lat_lon(face, lat_ind, lon_ind, lat, lon)
 integer,  intent(in)  :: face, lat_ind, lon_ind
 real(r8), intent(out) :: lat, lon
 
-real(r8) :: cube_side, del, half_del, x, y, blon, blat, rot_angle
+real(r8) :: x, y, blon, blat, rot_angle
 real(r8) :: vect(3), RZ(3, 3), rot_vect(3)
 
-! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
-! two exterior intervals of half  width, sqrt(1/3) / np 
-cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
-del = cube_side / np
-half_del = del / 2.0_r8
 
 x = sqrt(1.0_r8/3.0_r8) - (half_del + del * (lon_ind - 1))
 if(face == 5) then 
@@ -665,6 +660,24 @@ elseif(face == 4 .or. face == 5) then
 endif
 
 end subroutine grid_to_lat_lon
+
+!-----------------------------------------------------------------------
+
+subroutine lat_lon_to_grid(lat, lon, face, lat_ind, lon_ind)
+
+real(r8), intent(in)  :: lat, lon
+integer,  intent(out) :: face, lat_ind, lon_ind
+
+real(r8) :: len(2)
+
+! Get the face and the length along the two imbedded cube faces for the point
+call get_face(lat, lon, face, len);
+
+! Figure out which interval this is in along each cube face; This gives 0 to np grid indices
+lon_ind = nint((len(1) + half_del) / del)
+lat_ind = nint((len(2) + half_del) / del)
+
+end subroutine lat_lon_to_grid
 
 !-----------------------------------------------------------------------
 
@@ -1101,16 +1114,10 @@ real(r8), intent(in)  :: lat, lon
 real(r8), intent(out) :: grid_pt_lat(4), grid_pt_lon(4)
 integer,  intent(out) :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4), num_bound_points
 
-real(r8) :: cube_side, del, half_del, len(2), qxyz(4, 3), pxyz(3)
+real(r8) :: len(2), qxyz(4, 3), pxyz(3)
 integer  :: face, low_grid(2), hi_grid(2), i, my_pt, corner_index
 integer  :: lat_grid(4), lon_grid(4), face1_pts(2), face2_pts(2), face1_count, face2_count
 logical  :: on_edge, edge, corner
-
-! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
-! two exterior intervals with half the width, sqrt(1/3) / np 
-cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8) 
-del = cube_side / np 
-half_del = del / 2.0_r8
 
 ! Get the face and the length along the two imbedded cube faces for the point
 call get_face(lat, lon, face, len);
@@ -1258,6 +1265,34 @@ type(location_type) :: location
 integer             :: qty, lon_count, lat_count, my_face, my_level, my_qty, my_lon_ind, my_lat_ind
 integer(i8)         :: state_index, state_index2
 real(r8)            :: lon_lat_hgt(3), my_lat, my_lon, base_dist, dist_sum
+integer             :: test_face, test_lat_ind, test_lon_ind, col_index, test_col_index
+
+
+! Temporary test that grid_to_lat_lon and lat_lon_to_grid are inverses of each other
+do my_face = 0, 5
+   do my_lat_ind = 1, np
+      do my_lon_ind = 1, np
+         call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, pt_lat, pt_lon)
+         call lat_lon_to_grid(pt_lat, pt_lon, test_face, test_lat_ind, test_lon_ind)
+         if(my_face .ne. test_face .or. my_lat_ind .ne. test_lat_ind .or. my_lon_ind .ne. test_lon_ind) then
+            write(*, *) 'lat_lon_to_grid is not inverse of grid_to_lat_lon'
+            write(*, *) my_face, test_face, my_lat_ind, test_lat_ind, my_lon_ind, test_lon_ind
+            stop
+         endif
+
+         col_index = my_lon_ind + (my_lat_ind - 1) * np + my_face * np*np
+         call col_index_to_lat_lon(col_index, pt_lat, pt_lon)
+         test_col_index = lat_lon_to_col_index(pt_lat, pt_lon)
+write(*, *) col_index, test_col_index
+         if(col_index .ne. test_col_index) then
+            write(*, *) 'lat_lon_to_col_index is not inverse of col_index_to_lat_lon'
+            write(*, *) my_face, my_lat_ind, my_lon_ind, col_index, test_col_index
+            stop
+         endif
+
+      enddo
+   enddo
+enddo
 
 ! Test points for the following:
 ! 1. Does the bounding box found contain the observed point?
@@ -1494,6 +1529,23 @@ lon_ind = resid - (lat_ind - 1) * np
 call grid_to_lat_lon(face, lat_ind, lon_ind, lat, lon)
 
 end subroutine col_index_to_lat_lon
+
+!-----------------------------------------------------------------------
+
+function lat_lon_to_col_index(lat, lon)
+
+integer              :: lat_lon_to_col_index
+real(r8), intent(in) :: lat, lon
+
+integer :: face, lat_ind, lon_ind
+
+! Get the face, lat_ind and lon_ind
+call lat_lon_to_grid(lat, lon, face, lat_ind, lon_ind)
+
+! Get column index using first level, first variable
+lat_lon_to_col_index = get_state_index(face, lat_ind, lon_ind, lev_ind = 1, var_ind = 1)
+
+end function lat_lon_to_col_index
 
 !-----------------------------------------------------------------------
 
