@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyfortran"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python package for Fortran-based utilities, including a program to determine subroutine usage in a Fortran module."
 authors = [
     { name = "DART", email = "dart@ucar.edu" }

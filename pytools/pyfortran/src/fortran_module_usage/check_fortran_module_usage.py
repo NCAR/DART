@@ -3,6 +3,14 @@
 import re
 from collections import defaultdict
 
+def get_parser():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Check for unused subroutines in a given Fortran module.")
+    parser.add_argument('fortran_file', help="Path to the Fortran file to check")
+    parser.usage = "%(prog)s fortran_file"
+    return parser
+
 # Join continuation lines ending with '&'
 def join_continued_lines(lines):
     joined_lines = []
@@ -87,20 +95,20 @@ def find_unused_routines_from_other_modules(lines):
     return unused
 
 def main():
-    import argparse
+    import sys
     
-    parser = argparse.ArgumentParser(description="Check for unused subroutines in Fortran module.")
-    parser.add_argument('fortran_file', help="Path to the Fortran file to check")
+    parser = get_parser()
+    # Allow --help/-h anywhere
+    if any(arg in ('--help', '-h') for arg in sys.argv[1:]):
+        parser.parse_args()  # argparse will handle help and exit
+        return
     args = parser.parse_args()
+    if not args.fortran_file:
+        parser.error("Fortran file path is required.")
 
     with open(args.fortran_file, 'r') as f:
         lines = f.readlines()
         lines = join_continued_lines(lines)
-
-    # Check if the file is a Fortran module
-    last_line = lines[-1].strip()
-    if not last_line.startswith('end module'):
-        raise ValueError('The file {} is not a Fortran module.'.format(args.fortran_file))
     
     unused = find_unused_subroutines(lines)
     print("Routines written in '{}' NOT USED:".format(args.fortran_file))
