@@ -57,8 +57,7 @@ use      time_manager_mod, only : time_type, set_time, set_date, get_date, get_t
                                   operator(>),  operator(<), operator(/),              &
                                   operator(/=), operator(<=)
 use          location_mod, only : location_type, set_location, get_location,           &
-                                  write_location, set_location_missing,                &
-                                  loc_get_close_obs => get_close_obs,                  &
+                                  write_location, set_location_missing, get_close_obs, &
                                   loc_get_close_state => get_close_state,              &
                                   convert_vertical_obs, convert_vertical_state,        &
                                   VERTISHEIGHT, VERTISSURFACE, query_location,         &
@@ -363,10 +362,7 @@ expected_obs = MISSING_R8
 istatus = 99
 
 ! Get the id of the state variable for interpolation 
-! Numbered according to the table list in the input.nml
-! For instance: 
-! T -> 1; S -> 2; U -> 3; V -> 4, Z -> 5
-! If it's 0 then, it's not in the state and 
+! If it's negative then, it's not in the state and 
 ! we should just fail
 varid = get_varid_from_kind(domid, qty)
 if (varid < 0) return 
@@ -563,10 +559,11 @@ interf_provided = .true.
 call init_random_seq(random_seq, my_task_id())
 
 ! Perturb the salinity and temperature fields
-do i = 1, state_ens_handle%my_num_vars
+PERTURB: do i = 1, state_ens_handle%my_num_vars
    dart_index = state_ens_handle%my_vars(i)
    call get_state_meta_data(dart_index, location, var_type)
 
+   if (var_type == QTY_DRY_LAND) cycle PERTURB 
    if (var_type == QTY_TEMPERATURE .or. var_type == QTY_SALINITY) then
       do j = 1, ens_size
          state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
@@ -574,7 +571,7 @@ do i = 1, state_ens_handle%my_num_vars
       enddo
    endif
 
-enddo
+enddo PERTURB
 
 end subroutine pert_model_copies
 
@@ -587,31 +584,19 @@ end subroutine pert_model_copies
 !
 ! ncid:        File id
 ! model_time:  The current time of the model state
-! adv_to_time: The time in the future of the next assimilation.
 
-subroutine write_model_time(ncid, model_time, adv_to_time)
+subroutine write_model_time(ncid, model_time)
 
 character(len=*), parameter :: routine = 'write_model_time'
 
 integer,         intent(in)           :: ncid
 type(time_type), intent(in)           :: model_time
-type(time_type), intent(in), optional :: adv_to_time
 
 integer         :: io, varid, seconds, days
 type(time_type) :: origin_time, deltatime
 real(digits12)  :: run_duration
 
 if (.not. module_initialized) call static_init_model
-
-if (present(adv_to_time)) then
-   string3 = time_to_string(adv_to_time)
-   
-   write(string1, *) 'ROMS/DART not configured to advance ROMS.'
-   write(string2, *) 'called with optional advance_to_time of'
-   
-   call error_handler(E_ERR, routine, string1, &
-              source, text2=string2,text3=string3)
-endif
 
 ! If the ocean_time variable exists, we are updating a ROMS file,
 ! if not ... must be updating a DART diagnostic file.
@@ -993,31 +978,6 @@ end subroutine vert_interp
 !------------------------------------------------------------------
 ! Any model specific distance calcualtion can be done here
 
-subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind, dist, ens_handle)
-
-type(get_close_type),          intent(in)    :: gc            ! handle to a get_close structure
-integer,                       intent(in)    :: base_type     ! observation TYPE
-type(location_type),           intent(inout) :: base_loc      ! location of interest
-type(location_type),           intent(inout) :: locs(:)       ! obs locations
-integer,                       intent(in)    :: loc_qtys(:)   ! QTYS for obs
-integer,                       intent(in)    :: loc_types(:)  ! TYPES for obs
-integer,                       intent(out)   :: num_close     ! how many are close
-integer,                       intent(out)   :: close_ind(:)  ! incidies into the locs array
-real(r8),            optional, intent(out)   :: dist(:)       ! distances in radians
-type(ensemble_type), optional, intent(in)    :: ens_handle
-
-character(len=*), parameter :: routine = 'get_close_obs'
-
-call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                          num_close, close_ind, dist, ens_handle)
-
-end subroutine get_close_obs
-
-
-!------------------------------------------------------------------
-! Any model specific distance calcualtion can be done here
-
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
 
@@ -1306,64 +1266,6 @@ end function convert_to_time_offset
 
 
 !-----------------------------------------------------------------------
-! Convert DART time type into a character string with the
-! format of YYYYMMDDhh ... or DDhh
-!
-! time_to_string: Character string containing the time
-! t:              Time
-! interval:       Logical flag describing if the time is to be
-!                 interpreted as a calendar date or a time increment.
-!                 If the flag is merely present, the time is to be
-!                 interpreted as an increment and the format is simply
-!                 DDhh. If the flag is not present, the time is a full
-!                 calendar (Gregorian) date and will be renedered with
-!                 the YYYYMMDDhh format.
-
-function time_to_string(t, interval)
-
-character(len=*), parameter   :: routine = 'time_to_string'
-
-character(len=19)             :: time_to_string
-type(time_type),   intent(in) :: t
-logical, optional, intent(in) :: interval
-
-! local variables
-integer :: iyear, imonth, iday, ihour, imin, isec
-integer :: ndays, nsecs
-logical :: dointerval
-
-if (present(interval)) then
-   dointerval = interval
-else
-   dointerval = .false.
-endif
-
-! for interval output, output the number of days, then hours, mins, secs
-! for date output, use the calendar routine to get the year/month/day hour:min:sec
-if (dointerval) then
-   call get_time(t, nsecs, ndays)
-   if (ndays > 99) then
-      write(string1, *) 'interval number of days is ', ndays
-      call error_handler(E_ERR, routine, 'interval days cannot be > 99', &
-                         source, text2=string1)
-   endif
-   ihour = nsecs / 3600
-   nsecs = nsecs - (ihour * 3600)
-   imin  = nsecs / 60
-   nsecs = nsecs - (imin * 60)
-   isec  = nsecs
-   
-   write(time_to_string, '(I2.2,I2.2)') ndays, ihour
-else
-   call get_date(t, iyear, imonth, iday, ihour, imin, isec)
-   write(time_to_string, '(I4.4,5(A1,I2.2))') &
-          iyear, '-', imonth, '-', iday, ' ', ihour, ':', imin, ':', isec
-endif
-
-end function time_to_string
-
-
-!-----------------------------------------------------------------------
 ! Initialize the quad interpolation tools
 
 subroutine setup_interpolation
@@ -1371,22 +1273,28 @@ subroutine setup_interpolation
 ! temp
 call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, Nx, Ny, &
                       QUAD_LOCATED_CELL_CENTERS,         &
-                      .false., .false., .false.,         & 
-                      interp_t_grid)
+                      global         = .false.,          & 
+                      spans_lon_zero = .true.,           &
+                      pole_wrap      = .true.,           & 
+                      interp_handle  = interp_t_grid)
 call set_quad_coords(interp_t_grid, TLON, TLAT, TMSK)
 
 ! u-momentum
 call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, Nu, Ny, &
                       QUAD_LOCATED_LON_EDGES,            &    
-                      .false., .false., .false.,         &    
-                      interp_u_grid)
+                      global         = .false.,          &    
+                      spans_lon_zero = .true.,           &    
+                      pole_wrap      = .true.,           &
+                      interp_handle  = interp_u_grid)
 call set_quad_coords(interp_u_grid, ULON, ULAT, UMSK)
 
 ! v-momentum
 call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, Nx, Nv, &
                       QUAD_LOCATED_LAT_EDGES,            &    
-                      .false., .false., .false.,         &    
-                      interp_v_grid)
+                      global         = .false.,          &    
+                      spans_lon_zero = .true.,           &    
+                      pole_wrap      = .true.,           &
+                      interp_handle  = interp_v_grid)
 call set_quad_coords(interp_v_grid, VLON, VLAT, VMSK)
 
 end subroutine setup_interpolation
