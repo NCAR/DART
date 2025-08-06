@@ -51,7 +51,7 @@ module model_mod
 use             types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI,   &
                                   MISSING_I, MISSING_R8, i4, i8, vtablenamelength
 use      time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,   &
-                                  print_time, print_date,                              &
+                                  print_time, print_date, increment_time,              &
                                   set_calendar_type, get_calendar_type,                &
                                   operator(*),  operator(+), operator(-),              &
                                   operator(>),  operator(<), operator(/),              &
@@ -89,12 +89,12 @@ use  netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, 
 use       location_io_mod, only : nc_write_location_atts, nc_get_location_varids,      &
                                   nc_write_location
 use     default_model_mod, only : nc_write_model_vars, init_conditions, init_time,     &
-                                  adv_1step, parse_variables_clamp, MAX_STATE_VARIABLE_FIELDS
+                                  adv_1step, parse_variables_clamp, write_model_time,  &
+                                  MAX_STATE_VARIABLE_FIELDS
 use     mpi_utilities_mod, only : my_task_id
 use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  ensemble_manager_mod, only : ensemble_type
 use distributed_state_mod, only : get_state, get_state_array
-use netcdf
 
 implicit none
 private
@@ -109,7 +109,7 @@ public :: get_model_size,                      &
           end_model,                           &
           nc_write_model_atts,                 &
           write_model_time,                    &
-          read_model_time,                     & 
+          read_model_time,                     &
           nc_write_model_vars,                 &
           pert_model_copies,                   &
           adv_1step,                           &
@@ -118,8 +118,7 @@ public :: get_model_size,                      &
           convert_vertical_obs,                &
           convert_vertical_state,              &
           get_close_obs,                       &
-          get_close_state,                     &
-          get_time_information
+          get_close_state                     
           
 character(len=256), parameter :: source  = 'ROMS_rutgers/model_mod.f90'
 logical,            save      :: module_initialized = .false.
@@ -169,7 +168,7 @@ integer               :: Vt                                 ! Transformation for
 ! Other model-mod variables 
 character(len=512) :: string1, string2, string3             ! Reserved for Output/Warning/Error messages
 integer            :: ix, iy, ik                            ! Counters 
-type(time_type)    :: model_timestep                        ! DA time window 
+type(time_type)    :: assimilation_timestep                 ! DA time window 
 integer(i8)        :: model_size                            ! State vector length
 integer            :: nfields                               ! This is the number of variables in the DART state vector
 integer            :: domid                                 ! Global variable for state_structure_mod routines
@@ -196,11 +195,7 @@ subroutine static_init_model()
 character(len=*), parameter :: routine = 'static_init_model'
 
 integer :: iunit, io
-integer :: ss, dd
 integer :: ncid
-
-character(len=32) :: calendar
-type(time_type)   :: model_time
 
 if (module_initialized) return
 
@@ -220,27 +215,24 @@ call check_namelist_read(iunit, io, 'model_nml')
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
-model_timestep = set_model_time_step()
-call get_time(model_timestep, ss, dd)
-
-ncid = nc_open_file_readonly(roms_filename, routine)
-
-call get_time_information(roms_filename, ncid, 'ocean_time', 'ocean_time', &
-                          calendar=calendar, last_time=model_time)
-
-call set_calendar_type(trim(calendar))
+! All observations within +/- 1/2 this interval from the current
+! model time will be assimilated
+call set_calendar_type('gregorian')
+assimilation_timestep = set_time(assimilation_period_seconds, assimilation_period_days)
 
 ! Get the ROMS grid -- sizes and variables
+ncid = nc_open_file_readonly(roms_filename, routine)
 call get_grid_dimensions()
 call get_grid()
+call nc_close_file(ncid, routine)
 
 ! Add domain using the provided template file 
 domid = add_domain(roms_filename, parse_variables_clamp(variables))
 
-call nc_close_file(ncid, routine)
-
+! Assign model size
 model_size = get_domain_size(domid)
 
+! Initialize interpolation after defining the grids
 call setup_interpolation()
 
 end subroutine static_init_model
@@ -488,7 +480,7 @@ type(time_type) :: shortest_time_between_assimilations
 
 if (.not. module_initialized) call static_init_model
 
-shortest_time_between_assimilations = model_timestep
+shortest_time_between_assimilations = assimilation_timestep
 
 end function shortest_time_between_assimilations
 
@@ -576,98 +568,119 @@ enddo PERTURB
 end subroutine pert_model_copies
 
 
-!-----------------------------------------------------------------------
-! Writes the time of the current state and (optionally) the time
-! to be conveyed to ROMS to dictate the length of the forecast.
-! This file is then used by scripts to modify the ROMS run.
-! The format in the time information is totally at your discretion.
-!
-! ncid:        File id
-! model_time:  The current time of the model state
-
-subroutine write_model_time(ncid, model_time)
-
-character(len=*), parameter :: routine = 'write_model_time'
-
-integer,         intent(in)           :: ncid
-type(time_type), intent(in)           :: model_time
-
-integer         :: io, varid, seconds, days
-type(time_type) :: origin_time, deltatime
-real(digits12)  :: run_duration
-
-if (.not. module_initialized) call static_init_model
-
-! If the ocean_time variable exists, we are updating a ROMS file,
-! if not ... must be updating a DART diagnostic file.
-
-io = nf90_inq_varid(ncid, 'ocean_time', varid)
-if (io == NF90_NOERR) then
-   call get_time_information('unknown', ncid, 'ocean_time', 'ocean_time', &
-                myvarid=varid, origin_time=origin_time)
-   deltatime = model_time - origin_time
-   call get_time(deltatime, seconds, days)
-   run_duration = real(days,digits12)*86400.0_digits12 + real(seconds,digits12)
-   call nc_check(nf90_put_var(ncid, varid, run_duration), routine, 'put_var')
-   return
-endif
-
-io = nf90_inq_varid(ncid, 'time', varid)
-if (io == NF90_NOERR) then
-   call get_time_information('unknown', ncid, 'time', 'time', &
-                myvarid=varid, origin_time=origin_time)
-   deltatime = model_time - origin_time
-   call get_time(deltatime, seconds, days)
-   run_duration = real(days,digits12)*86400.0_digits12 + real(seconds,digits12)
-   call nc_check(nf90_put_var(ncid, varid, run_duration), routine, 'put_var')
-   return
-endif
-
-end subroutine write_model_time
-
-
 !--------------------------------------------------------------------
 ! Read the time from the input file
 ! filename: Name of file that contains the time
 
 function read_model_time(filename)
 
-character(len=*), parameter :: routine = 'read_model_time'
+character(len=*), parameter  :: routine = 'read_model_time'
 
 character(len=*), intent(in) :: filename
 type(time_type)              :: read_model_time
 
-integer :: ncid
+integer           :: ncid, ios
+integer           :: year, month, day, hour, minute, second
+real(digits12)    :: time_since_init
+character(len=64) :: datestr
+logical           :: style_days
+type(time_type)   :: roms_base_date, dart_time
 
 if (.not. module_initialized) call static_init_model
 
-if (.not. file_exist(filename)) then
-   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR, routine, string1, source)
-endif
-
 ncid = nc_open_file_readonly(trim(filename), routine)
 
-call get_time_information(filename, ncid, 'ocean_time', 'ocean_time', last_time=read_model_time)
+! Get the ocean time and associated units attribute
+call nc_get_variable(ncid, 'ocean_time', time_since_init, routine)
+call nc_get_attribute_from_variable(ncid, 'ocean_time', 'units', datestr)
+call parse_model_time(datestr, year, month, day, hour, minute, second, style_days)
+
+! ROMS date
+roms_base_date  = set_date(year, month, day, hour, minute, second)
+read_model_time = increment_roms_time(time_since_init, style_days, roms_base_date)
+
 call nc_close_file(ncid, routine)
 
 end function read_model_time
 
 
 !-----------------------------------------------------------------------
-! Set the desired minimum model advance time. This is generally NOT the
-! dynamical timestep of the model, but rather the shortest forecast length
-! you are willing to make. This impacts how frequently the observations
-! may be assimilated.
+! Read the grid dimensions from the ROMS grid netcdf file.
 
-function set_model_time_step()
+subroutine parse_model_time(model_date, yy, mo, dd, hh, mm, ss, in_days)
 
-type(time_type) :: set_model_time_step
+character(len=*), parameter  :: routine = 'parse_model_time'
 
-! assimilation_period_seconds, assimilation_period_days are from the namelist
-set_model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
+character(len=*), intent(in) :: model_date
+integer, intent(out)         :: yy, mo, dd, hh, mm, ss
+logical, intent(out)         :: in_days
 
-end function set_model_time_step
+integer :: ios
+
+in_days = .false.
+
+! Parse ocean_time units: it should come in second 
+! but can also support days
+if(model_date(1:13) == 'seconds since') then
+  ! Format in seconds 
+  read(model_date, '(14x, i4, 5(1x,i2))', iostat=ios) yy, mo, dd, hh, mm, ss
+  if (ios /= 0) then
+     write(string1, *) 'Unable to read time variable units. Error status was ', ios
+     write(string2, *) 'expected "seconds since YYYY-MM-DD HH:MM:SS"'
+     write(string3, *) 'was      "'//trim(model_date)//'"'
+     call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
+  endif
+
+elseif (model_date(1:10) == 'days since') then
+  ! Format in days
+   read(model_date, '(11x, i4, 5(1x,i2))', iostat=ios) yy, mo, dd, hh, mm, ss
+  if (ios /= 0) then
+     write(string1, *) 'Unable to read time variable units. Error status was ', ios
+     write(string2, *) 'expected "days since YYYY-MM-DD HH:MM:SS"'
+     write(string3, *) 'was      "'//trim(model_date)//'"'
+     call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
+  endif
+  in_days = .true.
+
+else
+  ! Unknown time format
+  write(string1, *) 'expecting time attribute units of "seconds since ..." -OR-'
+  write(string2, *) '                              "days since ..."'
+  write(string3, *) 'got "'//trim(model_date)//'"'
+  call error_handler(E_ERR, routine, string1, source, text2=string2, text3=string3)
+endif
+
+end subroutine parse_model_time
+
+
+!-----------------------------------------------------------------------
+! Increment ROMS base time given the current time 
+! Simlar to 'increment_time' but for large numbers
+
+function increment_roms_time(ocean_time, days, roms_base_time) result(roms_time)
+
+real(digits12)  :: ocean_time
+logical         :: days
+type(time_type) :: roms_base_time
+type(time_type) :: roms_time
+
+integer(i8) :: big_integer
+integer     :: some_seconds, some_days
+
+if (.not. days) then
+   big_integer  = int(ocean_time, i8)
+   some_days    = big_integer / (24*60*60)
+   big_integer  = big_integer - (some_days * (24*60*60))
+   some_seconds = int(big_integer, i4)
+else
+   ! offset in fractional days
+   some_days    = int(ocean_time)
+   some_seconds = (ocean_time - some_days) * (24*60*60)
+endif
+
+roms_time = roms_base_time + set_time(some_seconds, some_days)
+
+end function increment_roms_time
 
 
 !-----------------------------------------------------------------------
@@ -1068,173 +1081,6 @@ enddo ! i loop
 sensible_temp = t
 
 end function sensible_temp
-
-
-!-----------------------------------------------------------------------
-! Find the named variable (often 'ocean_time') in a ROMS netCDF file.
-! If it is not found, it is a fatal error.
-!
-! filename:        Name of ROMS file (used to generate useful error messages)
-! ncid:            NetCDF handle to the ROMS netCDF file
-! var_name:        Name which contains the time
-! dim_name:        Dimension name of the time variable
-! myvarid:         Optional output of the variable id 
-! calendar:        Character string indicating the calendar in use
-! last_time_index: Value of the last time dimension
-! last_time:       Time/date of the last time
-! origin_time:     Base time other times are relative to
-! all_times:       Array of all times in the variable
-
-subroutine get_time_information(filename, ncid, var_name, dim_name, myvarid, &
-               calendar, last_time_index, last_time, origin_time, all_times)
-
-character(len=*),            intent(in)  :: filename
-integer,                     intent(in)  :: ncid
-character(len=*),            intent(in)  :: var_name
-character(len=*),            intent(in)  :: dim_name
-integer,           optional, intent(out) :: myvarid
-character(len=32), optional, intent(out) :: calendar
-integer,           optional, intent(out) :: last_time_index
-type(time_type),   optional, intent(out) :: last_time
-type(time_type),   optional, intent(out) :: origin_time
-type(time_type),   optional, intent(out) :: all_times(:)
-
-character(len=*), parameter :: routine = 'get_time_information'
-
-integer                     :: ios, DimID, VarID, dimlen, i
-character(len=64)           :: unitstring
-character(len=32)           :: calendarstring
-
-integer                     :: year, month, day, hour, minute, second, rc
-real(digits12), allocatable :: these_times(:)
-type(time_type)             :: time_offset, base_time
-
-logical :: offset_in_seconds  ! if .false., assuming offset in days
-integer :: original_calendar_type
-
-call nc_check(nf90_inq_dimid(ncid,dim_name,dimid=DimID), &
-       routine,'cannot find "'//trim(dim_name)//'" dimension in '//trim(filename))
-
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-       routine, 'inquire_dimension '//trim(dim_name)//' from '//trim(filename))
-if (present(last_time_index)) last_time_index = dimlen
-
-call nc_check(nf90_inq_varid(ncid, var_name, VarID), &
-       routine, 'inq_varid '//trim(var_name)//' from '//trim(filename))
-if (present(myvarid)) myvarid = VarID
-
-! assume gregorian calendar unless there's a calendar attribute saying elsewise
-rc = nf90_get_att(ncid, VarID, 'calendar', calendarstring)
-if (rc /= nf90_noerr) calendarstring = 'gregorian'
-
-if (index(calendarstring, 'gregorian') == 0) then
-   write(string1, *) 'expecting '//trim(var_name)//' calendar of "gregorian"'
-   write(string2, *) 'got '//trim(calendarstring)
-   write(string3, *) 'from file "'//trim(filename)//'"'
-   call error_handler(E_MSG,routine, string1, &
-             source, text2=string2, text3=string3)
-else
-   ! coerce all forms of gregorian to the one DART supports
-   ! 'gregorian_proleptic' needs to be changed, for example.
-   calendarstring = 'gregorian'
-endif
-
-if (present(calendar)) calendar = trim(calendarstring)
-
-if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
-
-   ! May need to put the calendar back to some original value
-   original_calendar_type = get_calendar_type()
-
-   ! We need to set the calendar to interpret the time values
-   ! do we need to preserve the original calendar setting if there is one?
-   call set_calendar_type(trim(calendarstring))
-
-   ! Make sure the calendar is expected form
-   ! var_name:units    = "seconds since 1999-01-01 00:00:00" ;
-   !                      1234567890123
-   !   OR
-   ! var_name:units    = "days since 1999-01-01 00:00:00" ;
-   !                      1234567890
-
-   call nc_check(nf90_get_att(ncid, VarID, 'units', unitstring), &
-          routine, 'get_att '//trim(var_name)//' units '//trim(filename))
-
-   ! decode the start time of the time variable - expecting time to be coded
-   ! as an offset to some base
-   if (unitstring(1:13) == 'seconds since') then
-      read(unitstring,'(14x,i4,5(1x,i2))',iostat=ios)year,month,day,hour,minute,second
-      if (ios /= 0) then
-         write(string1, *) 'Unable to read time variable units. Error status was ',ios
-         write(string2, *) 'expected "seconds since YYYY-MM-DD HH:MM:SS"'
-         write(string3, *) 'was      "'//trim(unitstring)//'"'
-         call error_handler(E_ERR, routine, string1, &
-                source, text2=string2, text3=string3)
-      endif
-      offset_in_seconds = .true.
-
-   elseif (unitstring(1:10) == 'days since') then
-      read(unitstring,'(11x,i4,5(1x,i2))',iostat=ios)year,month,day,hour,minute,second
-      if (ios /= 0) then
-         write(string1,*)'Unable to read time variable units. Error status was ',ios
-         write(string2,*)'expected "days since YYYY-MM-DD HH:MM:SS"'
-         write(string3,*)'was      "'//trim(unitstring)//'"'
-         call error_handler(E_ERR, routine, string1, &
-                source, text2=string2, text3=string3)
-      endif
-      offset_in_seconds = .false.
-
-   else
-      write(string1,*)'expecting time attribute units of "seconds since ..." -OR-'
-      write(string2,*)'                              "days since ..."'
-      write(string3,*)'got "'//trim(unitstring)//'"'
-      call error_handler(E_ERR,routine, string1, &
-                source, text2=string2, text3=string3)
-   endif
-
-   base_time = set_date(year, month, day, hour, minute, second)
-
-   if (present(origin_time)) origin_time = base_time
-
-   if (present(last_time) .or. present(all_times)) then
-
-      ! big_integer may overflow a 32bit integer, so declare it 64bit
-      ! and parse it into an integer number of days and seconds, both
-      ! of which can be 32bit. Our set_time, set_date routines need 32bit integers.
-
-      allocate(these_times(dimlen))
-
-      call nc_check(nf90_get_var( ncid, VarID, these_times), &
-             routine, 'get_var '//trim(var_name)//' from '//trim(filename))
-
-      if (present(last_time)) then
-         time_offset = convert_to_time_offset(these_times(dimlen), offset_in_seconds)
-         last_time = base_time + time_offset
-      endif
-
-      if (present(all_times)) then
-         do i=1, dimlen
-            time_offset = convert_to_time_offset(these_times(i), offset_in_seconds)
-            all_times(i) = base_time + time_offset
-         enddo
-      endif
-
-      if (do_output() .and. debug > 0 .and. present(last_time)) then
-         call print_time(last_time, str='last roms time is ',iunit=logfileunit)
-         call print_time(last_time, str='last roms time is ')
-         call print_date(last_time, str='last roms date is ',iunit=logfileunit)
-         call print_date(last_time, str='last roms date is ')
-      endif
-
-      deallocate(these_times)
-
-   endif
-
-   call set_calendar_type(original_calendar_type)
-
-endif
-
-end subroutine get_time_information
 
 
 !-----------------------------------------------------------------------
