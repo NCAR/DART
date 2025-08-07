@@ -47,7 +47,7 @@
 
 module model_mod
 
-! Modules that are absolutely required for use are listed
+! Modules that are required for use are listed
 use             types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI,   &
                                   MISSING_I, MISSING_R8, i4, i8, vtablenamelength
 use      time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,   &
@@ -90,11 +90,11 @@ use       location_io_mod, only : nc_write_location_atts, nc_get_location_varids
                                   nc_write_location
 use     default_model_mod, only : nc_write_model_vars, init_conditions, init_time,     &
                                   adv_1step, parse_variables_clamp, write_model_time,  &
-                                  MAX_STATE_VARIABLE_FIELDS
+                                  MAX_STATE_VARIABLE_FIELDS_CLAMP
 use     mpi_utilities_mod, only : my_task_id
 use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  ensemble_manager_mod, only : ensemble_type
-use distributed_state_mod, only : get_state, get_state_array
+use distributed_state_mod, only : get_state
 
 implicit none
 private
@@ -130,7 +130,8 @@ integer  :: assimilation_period_seconds  = 0                ! Assimilation windo
 real(r8) :: perturbation_amplitude       = 0.02             ! Perturbation size for generating an ensemble
 integer  :: debug                        = 0                ! Turn up for more debug messages
 
-character(len=vtablenamelength) :: variables(MAX_STATE_VARIABLE_FIELDS) = ' '
+character(len=vtablenamelength) ::                &
+          variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '  ! Table of state variables and associated metadata
 
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
@@ -156,9 +157,9 @@ integer  :: Nx = -1, Ny = -1, Nz = -1                       ! Nx, Ny and Nz are 
 integer  :: Nu = -1, Nv = -1, Nw = -1                       ! Staggered grid dimensions
 
 ! ROMS related grid variables
-real(r8), allocatable :: ULAT(:,:), ULON(:,:), UDEP(:,:,:)  ! U-momentum component; lat, lon, depth 
-real(r8), allocatable :: TLAT(:,:), TLON(:,:), TDEP(:,:,:)  ! T, S, zeta;           lat, lon, depth
-real(r8), allocatable :: VLAT(:,:), VLON(:,:), VDEP(:,:,:)  ! V-momentum component; lat, lon, depth
+real(r8), allocatable :: ULAT(:,:), ULON(:,:)               ! U-momentum component; lat, lon
+real(r8), allocatable :: VLAT(:,:), VLON(:,:)               ! V-momentum component; lat, lon
+real(r8), allocatable :: TLAT(:,:), TLON(:,:)               ! T, S, zeta;           lat, lon
 logical,  allocatable :: TMSK(:,:), UMSK(:,:), VMSK(:,:)    ! Logical masks for land points 
 real(r8), allocatable :: h(:,:)                             ! Bathymetry (m) at RHO points
 real(r8), allocatable :: Cr(:), sr(:)                       ! S-coordinate related stretching curves
@@ -167,7 +168,6 @@ integer               :: Vt                                 ! Transformation for
 
 ! Other model-mod variables 
 character(len=512) :: string1, string2, string3             ! Reserved for Output/Warning/Error messages
-integer            :: ix, iy, ik                            ! Counters 
 type(time_type)    :: assimilation_timestep                 ! DA time window 
 integer(i8)        :: model_size                            ! State vector length
 integer            :: nfields                               ! This is the number of variables in the DART state vector
@@ -175,9 +175,14 @@ integer            :: domid                                 ! Global variable fo
 integer            :: Nc = 4                                ! Number of corners of the quad for interpolation
 integer            :: Nd = 3                                ! 3D location for the obs
 
+! Interface block for computing single 
+! and array depths of ROMS 
+interface compute_physical_depth
+   module procedure compute_physical_depth_all
+   module procedure compute_physical_depth_one
+end interface
 
 contains
-
 
 !-----------------------------------------------------------------------
 ! Called to do one time initialization of the model.
@@ -274,6 +279,7 @@ integer, optional,   intent(out) :: qty
 ! Local variables
 integer  :: iloc, jloc, kloc
 integer  :: myvarid, myqty
+real(r8) :: depth
 
 if (.not. module_initialized) call static_init_model
 
@@ -281,17 +287,25 @@ call get_model_variable_indices(index_in, iloc, jloc, kloc, var_id=myvarid)
 
 myqty = get_kind_index(domid, myvarid)
 
+depth = 0.0_r8
+if (myqty /= QTY_SEA_SURFACE_HEIGHT) then
+   ! This is a scalar call to compute_physical_depth
+   ! The result is a single depth value
+   ! We don't have access to the free surface here 
+   call compute_physical_depth(iloc, jloc, depth, ik=kloc, var_kind=myqty)
+endif
+
 if (myqty == QTY_U_CURRENT_COMPONENT) then
-   location = set_location(ULON(iloc,jloc), ULAT(iloc,jloc), UDEP(iloc,jloc,kloc), VERTISHEIGHT)
+   location = set_location(ULON(iloc,jloc), ULAT(iloc,jloc), depth, VERTISHEIGHT)
 
 elseif (myqty == QTY_V_CURRENT_COMPONENT) then
-   location = set_location(VLON(iloc,jloc), VLAT(iloc,jloc), VDEP(iloc,jloc,kloc), VERTISHEIGHT)
+   location = set_location(VLON(iloc,jloc), VLAT(iloc,jloc), depth, VERTISHEIGHT)
 
 elseif (myqty == QTY_SEA_SURFACE_HEIGHT) then
-   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), 0.0_r8, VERTISSURFACE)
+   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), depth, VERTISSURFACE)
 
 else  ! Everything else is assumed to be on the rho points
-   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), TDEP(iloc,jloc,kloc), VERTISHEIGHT)
+   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), depth, VERTISHEIGHT)
 
 endif
 
@@ -419,7 +433,7 @@ endif
 
 ! If the qty is not at the surface, then 
 ! we need to do some vertical interpolation 
-call vert_interp(varid, ens_size, lon_lat_vrt, lon_c, lat_c, &
+call vert_interp(varid, qty, ens_size, lon_lat_vrt, lon_c, lat_c, &
                  state_handle, SSHcorn, corners, vstatus)
 
 if (vstatus /= 0) then 
@@ -449,8 +463,8 @@ if(qty == QTY_TEMPERATURE) then
           1.00766_r8*lon_lat_vrt(3) + 2.28405e-6_r8*lon_lat_vrt(3)**2
 
   ! Vertical interp for salt
-  call vert_interp(salid, ens_size, lon_lat_vrt, lon_c, lat_c, &
-                 state_handle, SSHcorn, corners, vstatus)
+  call vert_interp(salid, QTY_SALINITY, ens_size, lon_lat_vrt, &
+                   lon_c, lat_c, state_handle, SSHcorn, corners, vstatus)
   
   call quad_lon_lat_evaluate(interp, lon_lat_vrt(1), lon_lat_vrt(2), &
                              lon_c, lat_c, ens_size, corners,        &
@@ -555,7 +569,6 @@ PERTURB: do i = 1, state_ens_handle%my_num_vars
    dart_index = state_ens_handle%my_vars(i)
    call get_state_meta_data(dart_index, location, var_type)
 
-   if (var_type == QTY_DRY_LAND) cycle PERTURB 
    if (var_type == QTY_TEMPERATURE .or. var_type == QTY_SALINITY) then
       do j = 1, ens_size
          state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
@@ -739,20 +752,11 @@ real(r8), allocatable       :: zeta(:,:), zeta_lf(:,:,:)
 real(r8), allocatable       :: mask(:,:)                 ! Land mask: 0 land & 1 water
 real(r8)                    :: Zm = -20000.0_r8          ! a masking factor to account for land
 
-allocate(ULAT(Nu, Ny), ULON(Nu, Ny), UMSK(Nu, Ny), UDEP(Nu, Ny, Nz))
-allocate(VLAT(Nx, Nv), VLON(Nx, Nv), VMSK(Nx, Nv), VDEP(Nx, Nv, Nz))
-allocate(TLAT(Nx, Ny), TLON(Nx, Ny), TMSK(Nx, Ny), TDEP(Nx, Ny, Nz))
+allocate(ULAT(Nu, Ny), ULON(Nu, Ny), UMSK(Nu, Ny))
+allocate(VLAT(Nx, Nv), VLON(Nx, Nv), VMSK(Nx, Nv))
+allocate(TLAT(Nx, Ny), TLON(Nx, Ny), TMSK(Nx, Ny))
 
 allocate(h(Nx,Ny), Cr(Nz), sr(Nz))
-
-! s-coordinates at RHO-points
-!do ik = 1, Nz
-!   sr(ik) = (ik - 0.5_r8 - Nz) / Nz
-!enddo
-! s-coordinates at W-points
-!do ik = 0, Nz
-!   sw(ik+1) = (real(ik) - Nz) / Nz
-!enddo
 
 ! Read the vertical information 
 ncid = nc_open_file_readonly(roms_filename, routine)
@@ -763,41 +767,6 @@ call nc_get_variable(ncid, 'hc'        , hc, routine)
 call nc_get_variable(ncid, 'Cs_r'      , Cr, routine)
 call nc_get_variable(ncid, 's_rho'     , sr, routine)
 call nc_get_variable(ncid, 'Vtransform', Vt, routine)
-
-! Check whether physical depth data exist in the restart file
-if (nc_variable_exists(ncid, 'z_rho')) then 
-
-   ! It exists, so grab all of them
-   call nc_get_variable(ncid, 'z_rho', TDEP, routine)
-   call nc_get_variable(ncid, 'z_u'  , UDEP, routine)
-   call nc_get_variable(ncid, 'z_v'  , VDEP, routine)
-   TDEP = -TDEP
-   UDEP = -UDEP
-   VDEP = -VDEP
-else
-   
-   ! Need to compute the physical depth
-   ! Check whether zeta is coming from a history or a restart file
-   ! The 3rd dimension shouldn't exist in a history file
-   allocate(zeta(Nx, Ny))
-
-   if (nc_dimension_exists(ncid, 'three')) then 
-      allocate(zeta_lf(Nx, Ny, 3))
-      zeta = zeta_lf(:, :, 1)
-   else 
-      call nc_get_variable(ncid, 'zeta', zeta, routine)
-   endif 
-
-   ! Find depth at the center of the cells
-   do ix = 1, Nx
-      do iy = 1, Ny 
-         call compute_physical_depth(h(ix, iy), zeta(ix, iy), TDEP(ix, iy, :))
-      enddo
-   enddo
-
-   ! Average in xi and eta directions
-   call U_V_depths()
-endif
 
 ! Read in the land mask
 TMSK = .false.
@@ -831,25 +800,6 @@ where (TLON < 0.0_r8) TLON = TLON + 360.0_r8
 where (ULON < 0.0_r8) ULON = ULON + 360.0_r8
 where (VLON < 0.0_r8) VLON = VLON + 360.0_r8
 
-! Be aware that all the depths are negative values.
-! The surface of the ocean is 0.0, the deepest is a big negative value.
-if (do_output() .and. debug > 0) then
-    write(string1,*) '    min/max ULON ', minval(ULON), maxval(ULON)
-    write(string2,*)     'min/max ULAT ', minval(ULAT), maxval(ULAT)
-    write(string3,*)     'min/max UDEP ', minval(UDEP, MASK=UDEP>Zm), maxval(UDEP)
-    call error_handler(E_MSG, routine, string1, text2=string2, text3=string3)
-
-    write(string1,*) '    min/max VLON ', minval(VLON), maxval(VLON)
-    write(string2,*)     'min/max VLAT ', minval(VLAT), maxval(VLAT)
-    write(string3,*)     'min/max VDEP ', minval(VDEP, MASK=VDEP>Zm), maxval(VDEP)
-    call error_handler(E_MSG, routine, string1, text2=string2, text3=string3)
-
-    write(string1,*) '    min/max TLON ', minval(TLON), maxval(TLON)
-    write(string2,*)     'min/max TLAT ', minval(TLAT), maxval(TLAT)
-    write(string3,*)     'min/max TDEP ', minval(TDEP, MASK=TDEP>Zm), maxval(TDEP)
-    call error_handler(E_MSG, routine, string1, text2=string2, text3=string3)
-endif
-
 call nc_close_file(ncid, routine)
 
 end subroutine get_grid
@@ -858,29 +808,44 @@ end subroutine get_grid
 !-----------------------------------------------------------------------
 ! Get physical depth z_rho using ROMS formulations:
 ! refer to set_depth.F
+! To get an entire depth array, this routine is 
+! mainly called by model_interpolate.
 
-subroutine compute_physical_depth(b, z, d)
+subroutine compute_physical_depth_all(ix, iy, d, zeta, var_kind)
 
-character(len=*), parameter :: routine = 'compute_physical_depth'
+character(len=*), parameter :: routine = 'compute_physical_depth_all'
 
-real(r8), intent(in)  :: b, z   ! bathymetry and free surface
-real(r8), intent(out) :: d(Nz)  ! depth at all levels
-real(r8)              :: z0
+integer,  intent(in)           :: ix, iy    ! rho and eta indices
+real(r8), intent(out)          :: d(Nz)     ! depth at all levels
+real(r8), intent(in), optional :: zeta      ! sea surface height
+integer, intent(in)            :: var_kind  ! DART quantity
 
-if (debug > 100) then 
-   do ik = 1, Nz
-      write(*, '(A, i3, A, f10.7)') 'Layer: ', ik, ', S_RHO: ', sr(ik) 
-   enddo
-endif
+real(r8) :: b, z0, zsurf
+integer  :: ik
+
+zsurf = 0.0_r8
+
+! Free surface if zeta is provided
+if (present(zeta)) zsurf = zeta
+
+! Bathymetry
+select case (var_kind)
+  case (QTY_U_CURRENT_COMPONENT)
+    b = 0.5_r8 * (h(ix, iy) + h(ix+1, iy))
+  case (QTY_V_CURRENT_COMPONENT)
+    b = 0.5_r8 * (h(ix, iy) + h(ix, iy+1))
+  case default
+    b = h(ix, iy)
+end select
 
 ! Compute z at RHO points 
 do ik = 1, Nz
    if (Vt == 1) then ! Original transformation
       z0    = hc*(sr(ik) - Cr(ik)) + Cr(ik)*b 
-      d(ik) = z0 + z * (1.0_r8 + z0/b)
+      d(ik) = z0 + zsurf * (1.0_r8 + z0/b)
    elseif (Vt == 2) then ! New transformation
       z0    = (hc*sr(ik) + Cr(ik)*b)/(hc+b) 
-      d(ik) = z + z0*(z+b) 
+      d(ik) = zsurf + z0*(zsurf+b) 
    else
       string1 = 'Unsupported Vtransform'
       call error_handler(E_ERR, routine, string1)
@@ -893,38 +858,75 @@ enddo
 ! Above the surface is -ve depth
 d = -d
 
-end subroutine compute_physical_depth
+end subroutine compute_physical_depth_all
 
 
 !-----------------------------------------------------------------------
-! Using z_rho, compute z_u and z_v
+! Get physical depth at a single vertical level
+! To get depth at a single level, this routine is primarily 
+! called by gsmd. 
 
-subroutine U_V_depths()
+subroutine compute_physical_depth_one(ix, iy, d, ik, zeta, var_kind)
 
-! Compute z_u; average in xi direction 
-do ix = 1, Nx-1
-   do iy = 1, Ny
-      UDEP(ix, iy, :) = 0.5_r8 * (TDEP(ix, iy, :) + TDEP(ix+1, iy, :))
-   enddo
-enddo
+character(len=*), parameter :: routine = 'compute_physical_depth_one'
 
-! Compute z_v; average in eta direction 
-do ix = 1, Nx
-   do iy = 1, Ny-1
-      VDEP(ix, iy, :) = 0.5_r8 * (TDEP(ix, iy, :) + TDEP(ix, iy+1, :))
-   enddo
-enddo
+integer,  intent(in)           :: ix, iy
+real(r8), intent(out)          :: d         ! depth at a single level
+integer,  intent(in)           :: ik        ! depth level
+real(r8), intent(in), optional :: zeta      ! SSH
+integer, intent(in)            :: var_kind  ! DART quantity
 
-end subroutine U_V_depths 
+real(r8) :: b, z0, zsurf
+
+if (ik < 1 .or. ik > Nz) then
+   string1 = 'Invalid vertical level'
+   call error_handler(E_ERR, routine, string1)
+endif
+
+zsurf = 0.0_r8
+if (present(zeta)) zsurf = zeta
+
+! Bathymetry
+select case (var_kind)
+  case (QTY_U_CURRENT_COMPONENT)
+    b = 0.5_r8 * (h(ix, iy) + h(ix+1, iy))
+  case (QTY_V_CURRENT_COMPONENT)
+    b = 0.5_r8 * (h(ix, iy) + h(ix, iy+1))
+  case default
+    b = h(ix, iy)
+end select
+
+! Compute z at RHO points 
+if (Vt == 1) then ! Original transformation
+   z0 = hc*(sr(ik) - Cr(ik)) + Cr(ik)*b 
+   d  = z0 + zsurf * (1.0_r8 + z0/b)
+elseif (Vt == 2) then ! New transformation
+   z0 = (hc*sr(ik) + Cr(ik)*b)/(hc+b) 
+   d  = zsurf + z0*(zsurf+b) 
+else 
+   string1 = 'Unsupported Vtransform'
+   call error_handler(E_ERR, routine, string1)
+endif 
+
+! Reverse the sign: 
+d = -d 
+
+!write(*, '(3(A6, i5), A, f5.3, A, i2, A, f15.6)')  &
+!         'ix: ', ix, ', iy: ', iy, ', ik: ', ik,   & 
+!         ', zsurf: ', zsurf, ', kind: ', var_kind, &
+!         ', d: ', d
+
+end subroutine compute_physical_depth_one
 
 
 !-----------------------------------------------------------------------
 ! Apply vertical interpolation using the four corners of the quad
 
-subroutine vert_interp(varid, ens_size, lon_lat_vrt, lon_c, lat_c, &
+subroutine vert_interp(varid, myqty, ens_size, lon_lat_vrt, lon_c, lat_c, &
                        state_handle, SSHcorn, corners, dstatus)
 
 integer, intent(in)             :: varid
+integer, intent(in)             :: myqty
 integer, intent(in)             :: ens_size 
 real(r8), intent(in)            :: lon_lat_vrt(Nd)   
 integer, intent(in)             :: lon_c(Nc)
@@ -947,12 +949,13 @@ integer(i8) :: dartidx
 levels = 0
 
 do i = 1, Nc
-   bath = h(lon_c(i), lat_c(i))
-  
    ! Physical depth is a function of SSH and differs 
    ! across the ensemble
-   do ie = 1, ens_size
-      call compute_physical_depth(bath, SSHcorn(i, ie), depths) 
+   do ie = 1, ens_size 
+      ! Get the depth on the entire water column at quad corner 'i'
+      ! then, find the associated top and bottom levels as well as 
+      ! the fractional depth for each layer
+      call compute_physical_depth(lon_c(i), lat_c(i), depths, zeta=SSHcorn(i, ie), var_kind=myqty)
       call depth_bounds(lon_lat_vrt(3), depths, lev(ie, 1), lev(ie, 2), lev_frc(ie), dstatus)
      
       if (dstatus /= 0) return
@@ -1340,9 +1343,9 @@ end subroutine unique_levels
 
 subroutine end_model()
 
-deallocate(ULAT, ULON, UDEP, UMSK)
-deallocate(VLAT, VLON, VDEP, VMSK)
-deallocate(TLAT, TLON, TDEP, TMSK)
+deallocate(ULAT, ULON, UMSK)
+deallocate(VLAT, VLON, VMSK)
+deallocate(TLAT, TLON, TMSK)
 deallocate(h, Cr, sr)  
 
 end subroutine end_model
