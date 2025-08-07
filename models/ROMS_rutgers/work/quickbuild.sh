@@ -9,7 +9,7 @@ main() {
 export DART=$(git rev-parse --show-toplevel)
 source "$DART"/build_templates/buildfunctions.sh
 
-MODEL=ROMS
+MODEL=ROMS_rutgers
 LOCATION=threed_sphere
 
 
