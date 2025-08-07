@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyjedi"
+version = "0.1.0"
+description = "Python package for JEDI utilities."
+authors = [
+    { name = "DART", email = "dart@ucar.edu" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "pandas>=2.2.0",
+    "PyYAML",
+    "netCDF4",
+    "pydartdiags>=0.6.1",
+]
+
+[project.scripts]
+ioda2obsq = "pyjedi.ioda2obsq:main"
+
+[project.urls]
+Homepage = "https://github.com/NCAR/DART"
+Repository = "https://github.com/NCAR/DART"
