@@ -46,7 +46,7 @@ def _iodaDtime2obsqDtime(epoch, iodaDtime):
     
     return (seconds, days, time)
 
-def _ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
+def _ioda2iodaDF(iodaFile, obsChannels=[], mask_obsvalue=None, sort_by=None, derived=False):
     """Creates pandas dataframe from a IODA observation data file.
 
     Args:
@@ -72,12 +72,19 @@ def _ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
         assert('dateTime' in ds.groups['MetaData'].variables)
         epochdatetime = ds.groups['MetaData'].variables['dateTime'].units.split()[-1]
 
+        # Grab the channel numbers if available
+        channelNums = None
+        if ('Channel' in ds.variables):
+            channelNums = ds.variables['Channel'][:]
+        print("Channel numbers: ", channelNums)
+        print("Observation channels: ", obsChannels)
+
         loc = 0
         for var in dsets:
             fullVarName = var.group().name + "/" + var.name
             if (var.dimensions[0] != 'Location'):
-                print('WARNING: Can only process variables with Location as the first dimension')
-                print('WARNING:     skipping variable: ', fullVarName)
+                log.warning('Can only process variables with Location as the first dimension')
+                log.warning('    Skipping variable: %s', fullVarName)
                 continue
 
             if var.group().name != 'VarMetaData':
@@ -88,18 +95,39 @@ def _ioda2iodaDF(iodaFile, mask_obsvalue=None, sort_by=None, derived=False):
                         loc += 1
                     # multi-channel BT
                     if var.name in ("brightnessTemperature", "emissivity"):
-                        if 'Channel' not in var.dimensions:
-                            log.warning("Expected channel dim not found")
+                        if (var.dimensions[1] != 'Channel'):
+                            log.warning("Can only process variables with Channel as the second dimension")
+                            log.warning("    Skipping variable: %s", fullVarName)
                             continue
 
-                        # 2D BT are usually of (Location, Channel) shape
-                        # but the order may not be guaranteed so
-                        # force nchan as first dim before looping over
-                        # individual channels
-                        channelIndex = var.dimensions.index('Channel')
-                        outarr = np.moveaxis(var[:], channelIndex, 0)
-                        for ci in range(0, channelIndex):
-                            df.insert(loc, fullVarName, outarr[ci, :])
+                        # If obsChannels is empty, skip the variable
+                        if not obsChannels:
+                            log.warning("No observation channels specified")
+                            log.warning("    Please add desired channels to the YAML configuration file.")
+                            log.warning("    Skipping variable: %s", fullVarName)
+                            continue
+
+                        # Walk through the observation channels and form separate columns
+                        # for each channel
+                        for obsChannel in obsChannels:
+                            # Find the index of the channel in the Channel dimension
+                            if (obsChannel in channelNums):
+                                channelIndex = np.where(channelNums == obsChannel)[0][0]
+                            else:
+                                log.warning("Channel number %s not found in Channel dimension", obsChannel)
+                                log.warning("    Skipping channel number: %s", obsChannel)
+                                continue
+
+                            # Insert the column for the specific channel
+                            fullVarNameChannel = f"{fullVarName}_{obsChannel}"
+                            if fullVarNameChannel in df.columns:
+                                log.warning("Column %s already exists")
+                                log.warning("    Skipping column: %s", fullVarNameChannel)
+                                continue
+
+                            # Insert the data for the specific channel
+                            outarr = var[:, channelIndex]
+                            df.insert(loc, fullVarNameChannel, outarr)
                             loc += 1
 
                 if var.ndim == 1:
