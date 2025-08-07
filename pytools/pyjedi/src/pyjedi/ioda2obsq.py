@@ -32,17 +32,31 @@ def main():
     print("")
 
     # Parse the YAML configuration
+    # The configuration file should contain the following sections:
+    #   - observation variables:
+    #     Required
+    #     List of IODA variable names and types (and optional channels) to convert
+    #   - vertical coordinate:
+    #     Required if no channels are specified in the observation variables,
+    #     otherwise is ignored (ie, optional)
+    #     name and units of the vertical coordinate variable
     with open(configFile, 'r') as file:
         config = yaml.safe_load(file)
     iodaVarsConfig = config['ioda to obsq converter']['observation variables']
-    vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
+    vertCoordConfig = None
+    vertCoordName = None
+    vertCoordUnits = None
+    if any('channels' not in d for d in iodaVarsConfig):
+        # have at least one variable without channels, so vertical coordinate is required
+        vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
+        vertCoordName = vertCoordConfig['name']
+        vertCoordUnits = vertCoordConfig['units']
     if (verbose):
         print("DEBUG: IODA variable configuration: ", iodaVarsConfig)
-        print("DEBUG: vertical coordinate configuration: ", vertCoordConfig)
+        if vertCoordConfig:
+            print("DEBUG: vertical coordinate configuration: ", vertCoordConfig)
         print("")
 
-    vertCoordName = vertCoordConfig['name']
-    vertCoordUnits = vertCoordConfig['units']
 
     # Conversion steps
     #   1. read ioda file into a pandas dataframe (which will have a different layout

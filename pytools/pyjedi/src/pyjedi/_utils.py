@@ -76,8 +76,6 @@ def _ioda2iodaDF(iodaFile, obsChannels=[], mask_obsvalue=None, sort_by=None, der
         channelNums = None
         if ('Channel' in ds.variables):
             channelNums = ds.variables['Channel'][:]
-        print("Channel numbers: ", channelNums)
-        print("Observation channels: ", obsChannels)
 
         loc = 0
         for var in dsets:
