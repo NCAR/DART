@@ -103,8 +103,6 @@ def main():
         parser.parse_args()  # argparse will handle help and exit
         return
     args = parser.parse_args()
-    if not args.fortran_file:
-        parser.error("Fortran file path is required.")
 
     with open(args.fortran_file, 'r') as f:
         lines = f.readlines()
