@@ -1,11 +1,14 @@
 module transform_state_mod
 
 use netcdf
-use types_mod,            only : r4, r8, varnamelength
+use types_mod,            only : r4, r8, varnamelength, DEG2RAD
 use netcdf_utilities_mod, only : nc_open_file_readonly, nc_open_file_readwrite, nc_close_file, &
                                  nc_create_file, nc_end_define_mode
 use utilities_mod,        only : open_file, close_file, find_namelist_in_file, &
                                  check_namelist_read, error_handler, E_ERR, string_to_integer
+
+! TEMPORARY USE OF MODEL MODE UNTIL GEOMETRY IS MOVED TO ITS OWN MODULE
+use model_mod,           only : static_init_model, lat_lon_to_col_index
 
 implicit none
 private
@@ -80,6 +83,173 @@ end subroutine finalize_transform_state_mod
 !---------------------------------------------------------------
 
 subroutine model_to_dart()
+
+! JLA
+integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
+integer :: lat_varid, lon_varid, i, j, k, txs, tys
+integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
+integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
+integer :: dimids(NF90_MAX_VAR_DIMS)
+real(r8) :: blat, blon
+character(len=NF90_MAX_NAME) :: name, attribute
+integer, allocatable :: dart_varids(:), col_index(:, :)
+real(r8), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
+
+do iblock = 1, nblocks
+   ! Open the block files, read only
+   block_files(iblock)%ncid = nc_open_file_readonly(block_files(iblock)%file_path)
+   ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
+   ! netcdf_utilities_mod so this uses the external function directly from the netcdf library
+   block_files(iblock)%ncstatus = nf90_inquire(block_files(iblock)%ncid, &
+      block_files(iblock)%nDimensions, block_files(iblock)%nVariables, &
+      block_files(iblock)%nAttributes,  block_files(iblock)%unlimitedDimId, &
+      block_files(iblock)%formatNum)
+
+   ! Allow the files to be of different size, but all must have the same number of halos from namelist
+
+   ! Loop through each of the dimensions to find the metadata values
+   do dimid = 1, block_files(iblock)%nDimensions
+      ! There doesn't seem to be a helper procedure corresponding to nf90_inquire_dimension that
+      ! assigns name and length in netcdf_utilities_mod so this uses the external function
+      ! directly from the netcdf library
+      block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, name, length)
+
+      if (trim(name) == 'time') then
+         !JLA Error if more than one time???
+         ntimes(iblock) = length
+      else if (trim(name) == 'x') then
+         nxs(iblock)         = length-2*nhalos
+         haloed_nxs(iblock)  = length
+      else if (trim(name) == 'y') then
+         nys(iblock)        = length-2*nhalos
+         haloed_nys(iblock) = length
+      else if (trim(name) == 'z') then
+         nzs(iblock) = length
+      end if
+   end do
+   write(*, *) 'nxs, nys, nzs , nVars', iblock, nxs(iblock), nys(iblock), nzs(iblock), block_files(iblock)%nVariables
+
+   ! Create temporary storage for this blocks variables (storage inefficient) 
+end do
+
+! Do some consistency checks to make sure the files have the same number of variables, levels and times
+if(any(ntimes - ntimes(1) .ne. 0)) then
+   write(*, *) 'inconsistent ntimes'
+   stop
+endif
+if(any(nzs - nzs(1) .ne. 0)) then
+   write(*, *) 'inconsistent ntimes'
+   stop
+endif
+if(any(block_files(:)%nVariables - block_files(1)%nVariables .ne. 0)) then
+   write(*, *) 'inconsistent ntimes'
+   stop
+endif
+
+! Space for identifiers for variables
+allocate(dart_varids(block_files(1)%nVariables))
+
+! Compute the number of columns (without haloes)
+ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
+
+! Initialize the filter input file that will be created
+filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, &
+   filter_input_prefix, '.nc')
+! Create the filter file
+filter_input_file%ncid = nc_create_file(filter_input_file%file_path)
+
+! Create dimensions in filter_input_file; save for use during variable definition
+filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'time', NF90_UNLIMITED, dart_dimid(3))
+filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'z',    nzs(1),         dart_dimid(2))
+filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'col',  ncols,          dart_dimid(1))
+
+! The filter_input_file is still in define mode. Create all of the variables before entering data mode.
+do varid = 1, block_files(1)%nVariables
+   block_files(1)%ncstatus = nf90_inquire_variable(block_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
+   if (trim(name) == 'time') then
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(3), dart_varids(varid))
+   else if (trim(name) == 'z') then
+      ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, dart_dimid(2), dart_varids(varid))
+   else if (trim(name) == 'lat') then
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(1), dart_varids(varid))
+      lat_varid = varid
+   else if (trim(name) == 'lon') then
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(1), dart_varids(varid))
+      lon_varid = varid
+   else
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid, dart_varids(varid))
+   end if
+
+   ! In the block files, time does not have units
+   if (trim(name) /= 'time') then
+      block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', attribute)
+   end if
+
+   ! In the block files, only lon, lat and z have long_name
+   if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
+      block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'long_name', attribute)
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', attribute)
+   end if
+end do
+
+! End of define mode, ready to add data
+call nc_end_define_mode(filter_input_file%ncid)
+
+
+! Temporary until grid geometry routines have their own module
+call static_init_model
+
+! Loop through the blocks to get latitude and longitude arrays
+k = 0
+do iblock = 1, nblocks
+   ! Get the latitude and longtidue values 
+   ! JLA BE SURE I UNNDERSTAND THE X Y ORDER ON THESE
+   txs = nxs(iblock) + 2*nhalos
+   tys = nys(iblock) + 2*nhalos
+   ! Careful of the storage order, z, y, x is read by get_var
+   ! The array of column_index given y and x; storage order consistent with blocks
+   allocate(block_lats(nzs(1), tys, txs), block_lons(nzs(1), tys, txs))
+   allocate(col_index(nys(iblock), nxs(iblock)))
+
+   block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lat_varid, block_lats)
+   block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lon_varid, block_lons)
+
+   ! Need to avoid initializing model_mod, should move grid routines to a separate module
+   do i = 1, nxs(iblock)
+      do j = 1, nys(iblock)
+         blat = block_lats(1, nhalos + j, nhalos + i);
+         blon = block_lons(1, nhalos + j, nhalos + i);
+         col_index(j, i) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon)
+         !write(*, *) i, j, blat, blon, col_index(j, i)
+      end do
+   end do
+
+   ! Print them out in the lon lat order for the non halo as a check
+   do j = 1, nys(iblock)
+      do i = 1, nxs(iblock)
+k = k+1
+         write(*, *) i, j, col_index(j, i)
+if(k .ne. col_index(j, i)) then
+   write(*, *) 'k col ', j, i, k, col_index(j, i)
+   write(*, *) 'a mess'
+   stop
+endif
+      end do
+   end do
+
+   deallocate(block_lats, block_lons)
+   deallocate(col_index)
+end do
+
+stop
+
+end subroutine model_to_dart
+
+!---------------------------------------------------------------
+
+subroutine model_to_dart_orig()
 
 integer :: iblock, dimid, dart_dimid, ix, iy, iz, icol, varid
 integer :: length, xtype, nDimensions, nAtts, ntimes, nzs, nxs_per_block, nys_per_block
@@ -186,7 +356,7 @@ do varid = 1, block_files(1)%nVariables
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, time_lev_col_dims, dart_varids(varid))
    end if
 
-   ! In the block files, time does not have units
+   ! Add attribute from block file except for time which has none
    if (trim(name) /= 'time') then
       block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', attribute)
@@ -269,7 +439,7 @@ end do
 
 call nc_close_file(filter_input_file%ncid)
 
-end subroutine model_to_dart
+end subroutine model_to_dart_orig
 
 !---------------------------------------------------------------
 

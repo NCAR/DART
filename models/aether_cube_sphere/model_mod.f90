@@ -33,8 +33,6 @@ use distributed_state_mod, only : get_state
 use state_structure_mod, only : add_domain, get_dart_vector_index, get_domain_size, &
                                 get_model_variable_indices, get_varid_from_kind
 
-use transform_state_mod, only : file_type
-
 use ensemble_manager_mod, only : ensemble_type
 
 ! These routines are passed through from default_model_mod.
@@ -71,6 +69,8 @@ public :: get_model_size,         &
 
 ! Routine for comprehensive test of interpolation
 public :: test_grid_box
+! Only until things are moved
+public :: lat_lon_to_col_index
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "$URL$"
@@ -120,6 +120,13 @@ type :: var_type
     real(r8),          allocatable :: clamp_values(:, :)
     logical,           allocatable :: updates(:)
 end type var_type
+
+! This is redundant with type defined in transform_state_mod
+type :: file_type
+   character(len=256) :: file_path
+   integer            :: ncid, ncstatus, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
+end type file_type
+
 
 namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
