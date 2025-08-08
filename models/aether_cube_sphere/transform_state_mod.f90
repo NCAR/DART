@@ -84,9 +84,8 @@ end subroutine finalize_transform_state_mod
 
 subroutine model_to_dart()
 
-! JLA
 integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
-integer :: lat_varid, lon_varid, i, j, k, txs, tys
+integer :: lat_varid, lon_varid, ix, iy, iz, txs, tys, icol
 integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: dimids(NF90_MAX_VAR_DIMS)
@@ -94,6 +93,12 @@ real(r8) :: blat, blon
 character(len=NF90_MAX_NAME) :: name, attribute
 integer, allocatable :: dart_varids(:), col_index(:, :)
 real(r8), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
+! The time variable in the block files is a double
+real(r8), allocatable, dimension(:) :: time_array
+! File for reading in variables from block file; 
+real(r8), allocatable :: block_array(:, :, :)
+real(r8), allocatable :: spatial_array(:)
+real(r8), allocatable :: variable_array(:, :, :)
 
 do iblock = 1, nblocks
    ! Open the block files, read only
@@ -147,7 +152,7 @@ if(any(block_files(:)%nVariables - block_files(1)%nVariables .ne. 0)) then
 endif
 
 ! Space for identifiers for variables
-allocate(dart_varids(block_files(1)%nVariables))
+allocate(dart_varids(block_files(1)%nVariables), time_array(ntimes(1)))
 
 ! Compute the number of columns (without haloes)
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
@@ -197,52 +202,100 @@ end do
 ! End of define mode, ready to add data
 call nc_end_define_mode(filter_input_file%ncid)
 
-
 ! Temporary until grid geometry routines have their own module
 call static_init_model
 
-! Loop through the blocks to get latitude and longitude arrays
-k = 0
-do iblock = 1, nblocks
-   ! Get the latitude and longtidue values 
-   ! JLA BE SURE I UNNDERSTAND THE X Y ORDER ON THESE
-   txs = nxs(iblock) + 2*nhalos
-   tys = nys(iblock) + 2*nhalos
-   ! Careful of the storage order, z, y, x is read by get_var
-   ! The array of column_index given y and x; storage order consistent with blocks
-   allocate(block_lats(nzs(1), tys, txs), block_lons(nzs(1), tys, txs))
-   allocate(col_index(nys(iblock), nxs(iblock)))
+! Choose to minimize storage rather than redundant computation
+! Will get full spatial field for one variable at a time
+do varid = 1, block_files(1)%nVariables
 
-   block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lat_varid, block_lats)
-   block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lon_varid, block_lons)
-
-   ! Need to avoid initializing model_mod, should move grid routines to a separate module
-   do i = 1, nxs(iblock)
-      do j = 1, nys(iblock)
-         blat = block_lats(1, nhalos + j, nhalos + i);
-         blon = block_lons(1, nhalos + j, nhalos + i);
-         col_index(j, i) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon)
-         !write(*, *) i, j, blat, blon, col_index(j, i)
+   ! Loop through all the blocks for this variable
+   do iblock = 1, nblocks
+      txs = nxs(iblock) + 2*nhalos
+      tys = nys(iblock) + 2*nhalos
+      ! Careful of the storage order, z, y, x is read by get_var
+      ! Allocate storage for the latitude and longitude from the blocks and the map to col_index
+      allocate(block_lats(nzs(1), tys, txs), block_lons(nzs(1), tys, txs), &
+         col_index(nys(iblock), nxs(iblock)), block_array(nzs(1), tys, txs), &
+         spatial_array(ncols), variable_array(ncols, nzs(1), ntimes(1)))
+     
+      ! Get the latitude and longitude full arrays 
+      block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lat_varid, block_lats)
+      block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lon_varid, block_lons)
+  
+      ! Compute the col_index for each of the horizontal locations in this block 
+      do ix = 1, nxs(iblock)
+         do iy = 1, nys(iblock)
+            blat = block_lats(1, nhalos + iy, nhalos + ix);
+            blon = block_lons(1, nhalos + iy, nhalos + ix);
+            col_index(iy, ix) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon)
+         end do
       end do
-   end do
+ 
+      ! Get metadata for this variable from block file 
+      block_files(iblock)%ncstatus = nf90_inquire_variable(block_files(iblock)%ncid, &
+         varid, name, xtype, nDimensions, dimids, nAtts)
 
-   ! Print them out in the lon lat order for the non halo as a check
-   do j = 1, nys(iblock)
-      do i = 1, nxs(iblock)
-k = k+1
-         write(*, *) i, j, col_index(j, i)
-if(k .ne. col_index(j, i)) then
-   write(*, *) 'k col ', j, i, k, col_index(j, i)
-   write(*, *) 'a mess'
-   stop
-endif
-      end do
-   end do
+      ! This is a 1-D time array
+      if (trim(name) == 'time') then
+         ! Time must be the same in all files, so just deal with it from the first one
+         if (iblock == 1) then
+            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
+            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+               dart_varids(varid), time_array)
+         end if
+      else if (trim(name) == 'z') then
+         ! Vertical coords also must be the same in all files, so just set from the first
+         if (iblock == 1) then
+            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
+            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+        ! JLA REVIEW THE DART_VARIDS STUFF
+               dart_varids(varid), block_array(:,1,1))
+         endif
+      else
 
-   deallocate(block_lats, block_lons)
-   deallocate(col_index)
+         ! All of the other variables can be read into the full 3Dblock array
+         block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
+         
+         if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
+            do iy = 1, nys(iblock)
+               do ix = 1, nxs(iblock)
+                  icol = col_index(iy, ix)
+                  spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix)
+               end do
+            end do
+            
+            if (iblock == nblocks) then
+               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+                  dart_varids(varid), spatial_array)
+            end if
+         else
+            ! This is one of the other non-spatial variables
+            
+            do iy = 1, nys(iblock)
+               do ix = 1, nxs(iblock)
+                  icol = col_index(iy, ix)
+                  do iz = 1, nzs(1)
+                     variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
+                  end do
+               end do
+            end do
+
+            if (iblock == nblocks) then
+               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+                  dart_varids(varid), variable_array)
+            end if
+         end if
+      end if
+
+ 
+      deallocate(block_lats, block_lons, col_index, block_array, spatial_array, variable_array)
+   end do
 end do
 
+call nc_close_file(filter_input_file%ncid)
+
+deallocate(dart_varids, time_array)
 stop
 
 end subroutine model_to_dart
