@@ -91,14 +91,12 @@ integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon
 character(len=NF90_MAX_NAME) :: name, attribute
-integer, allocatable :: dart_varids(:), col_index(:, :)
-real(r8), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
+integer,  allocatable         :: dart_varids(:), col_index(:, :)
 ! The time variable in the block files is a double
 real(r8), allocatable, dimension(:) :: time_array
-! File for reading in variables from block file; 
-real(r8), allocatable :: block_array(:, :, :)
-real(r8), allocatable :: spatial_array(:)
-real(r8), allocatable :: variable_array(:, :, :)
+! File for reading in variables from block file; These can probably be R4
+real(r4), allocatable :: block_array(:, :, :), spatial_array(:), variable_array(:, :, :)
+real(r4), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
 
 do iblock = 1, nblocks
    ! Open the block files, read only
@@ -156,6 +154,11 @@ allocate(dart_varids(block_files(1)%nVariables), time_array(ntimes(1)))
 
 ! Compute the number of columns (without haloes)
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
+
+! Allocate ncols size storage
+allocate(spatial_array(ncols), variable_array(ncols, nzs(1), ntimes(1)))
+spatial_array = 0.0_r8
+variable_array = 0.0_r8
 
 ! Initialize the filter input file that will be created
 filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, &
@@ -216,8 +219,7 @@ do varid = 1, block_files(1)%nVariables
       ! Careful of the storage order, z, y, x is read by get_var
       ! Allocate storage for the latitude and longitude from the blocks and the map to col_index
       allocate(block_lats(nzs(1), tys, txs), block_lons(nzs(1), tys, txs), &
-         col_index(nys(iblock), nxs(iblock)), block_array(nzs(1), tys, txs), &
-         spatial_array(ncols), variable_array(ncols, nzs(1), ntimes(1)))
+         col_index(nys(iblock), nxs(iblock)), block_array(nzs(1), tys, txs))
      
       ! Get the latitude and longitude full arrays 
       block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, lat_varid, block_lats)
@@ -264,19 +266,20 @@ do varid = 1, block_files(1)%nVariables
                   spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix)
                end do
             end do
-            
+
             if (iblock == nblocks) then
                filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
                   dart_varids(varid), spatial_array)
             end if
          else
             ! This is one of the other non-spatial variables
-            
+!!!write(*, *) 'field name ', trim(name), varid, block_array(1, 1, 1)
             do iy = 1, nys(iblock)
                do ix = 1, nxs(iblock)
                   icol = col_index(iy, ix)
                   do iz = 1, nzs(1)
                      variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
+!write(*, *) icol, iz, iy, ix, variable_array(icol, iz, 1)
                   end do
                end do
             end do
@@ -289,12 +292,13 @@ do varid = 1, block_files(1)%nVariables
       end if
 
  
-      deallocate(block_lats, block_lons, col_index, block_array, spatial_array, variable_array)
+      deallocate(block_lats, block_lons, col_index, block_array)
    end do
 end do
 
 call nc_close_file(filter_input_file%ncid)
 
+deallocate(spatial_array, variable_array)
 deallocate(dart_varids, time_array)
 stop
 
@@ -318,9 +322,9 @@ character(len=NF90_MAX_NAME) :: attribute
 ! The time variable in the block files is a double
 real(r8), allocatable, dimension(:) :: time_array
 ! The other variables are floats JLA Can't we use R8?
-real(r4), allocatable :: block_array(:, :, :)
-real(r4), allocatable :: spatial_array(:)
-real(r4), allocatable :: variable_array(:, :, :)
+real(r8), allocatable :: block_array(:, :, :)
+real(r8), allocatable :: spatial_array(:)
+real(r8), allocatable :: variable_array(:, :, :)
 
 filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, &
    filter_input_prefix, filter_input_suffix)
