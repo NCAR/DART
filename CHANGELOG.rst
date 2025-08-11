@@ -22,6 +22,32 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 30 2025 :: MOM6 interpolation bug-fixes. Tag v11.12.1**
+
+- Fixes quad points assignment in model_interpolate
+- Fixes u/v interpolation handle selection
+- Fixes get_close_state dry land distance setting
+- Fixes pressure calculation for sensible temperature
+
+**July 24 2025 :: MOM6 pseudo depth, MODIS ice surface temp. Tag v11.12.0**
+
+New features:
+
+- MODIS ice surface temperature observation converter
+  *contributed by Molly Wieringa*
+- Option to use pseudo depth for vertical location in MOM6-DART
+- QCEFF table pretty printer: display-qceff-table
+
+Bug fix:
+
+  - perfect_model_obs progress print info 
+
+**July 16 2025 :: GitHub actions and MOM6 PMO defaults. Tag v11.11.3**
+
+- non-root user for containers
+- run_all_quickbuilds can now use rttov13
+- default PMO options updated for MOM6
+
 **July 7 2025 :: Documentation for Data Management. Tag v11.11.2**
 
 - Document namelist options for state distribution and vertical conversion
