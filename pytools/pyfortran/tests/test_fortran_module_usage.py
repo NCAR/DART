@@ -6,7 +6,7 @@ from fortran_module_usage.check_fortran_module_usage import (
 
 def test_join_continued_lines():
     lines = [
-        "test1 &",
+        "test1 & !hello",
         "  (arg1, arg2)",
         "test2",
     ]
@@ -23,6 +23,11 @@ def test_find_unused_subroutines():
         "subroutine test2",
         "call test1",
         "end subroutine test2",
+        "subroutine test3",
+        "! call test2",
+        "module procedure test3",
+        "subroutine test4",
+        "public :: test4",
     ]
     unused = find_unused_subroutines(lines)
     assert unused == ["test2"]
@@ -33,6 +38,7 @@ def test_find_unused_routines_from_other_modules():
         "call routine1",
         "! call routine2",
         "call routine3",
+        "subroutine routine4",
     ]
     unused = find_unused_routines_from_other_modules(lines)
     assert unused == ["routine2"]
