@@ -1,7 +1,7 @@
 import argparse
-import yaml
 import numpy as np
 import pandas as pd
+from ._utils import _parseYamlConfig
 from ._utils import _ioda2iodaDF
 from ._utils import _iodaDF2obsqDF
 from ._utils import _buildObsSeqFromObsqDF
@@ -31,32 +31,14 @@ def main():
     print("INFO:    obs_seq output file: ", outFile)
     print("")
 
-    # Parse the YAML configuration
-    # The configuration file should contain the following sections:
-    #   - observation variables:
-    #     Required
-    #     List of IODA variable names and types (and optional channels) to convert
-    #   - vertical coordinate:
-    #     Required if no channels are specified in the observation variables,
-    #     otherwise is ignored (ie, optional)
-    #     name and units of the vertical coordinate variable
-    with open(configFile, 'r') as file:
-        config = yaml.safe_load(file)
-    iodaVarsConfig = config['ioda to obsq converter']['observation variables']
-    vertCoordConfig = None
-    vertCoordName = None
-    vertCoordUnits = None
-    if any('channels' not in d for d in iodaVarsConfig):
-        # have at least one variable without channels, so vertical coordinate is required
-        vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
-        vertCoordName = vertCoordConfig['name']
-        vertCoordUnits = vertCoordConfig['units']
+    (iodaVarsConfig, vertCoordConfig, channelNumbers) = _parseYamlConfig(configFile)
     if (verbose):
         print("DEBUG: IODA variable configuration: ", iodaVarsConfig)
         if vertCoordConfig:
             print("DEBUG: vertical coordinate configuration: ", vertCoordConfig)
+        if channelNumbers:
+            print("DEBUG: channel numbers: ", channelNumbers)
         print("")
-
 
     # Conversion steps
     #   1. read ioda file into a pandas dataframe (which will have a different layout
@@ -67,7 +49,14 @@ def main():
     #      and then concatenate that dataframe to the main dataframe
     #   3. build a pyDARTdiags ObsSequence object from the main dataframe
     #   4. call the ObsSequence.write_obs_seq method to create the output file
-    (iodaDF, epochDT) = _ioda2iodaDF(inFile)
+    (iodaDF, epochDT) = _ioda2iodaDF(inFile, channelNumbers)
+
+    vertCoordName = None
+    vertCoordUnits = None
+    if vertCoordConfig:
+        vertCoordName = vertCoordConfig['name']
+        vertCoordUnits = vertCoordConfig['units']
+
     obsqDF = pd.DataFrame()
     for iodaVarConfig in iodaVarsConfig:
         iodaVarName = iodaVarConfig['name']

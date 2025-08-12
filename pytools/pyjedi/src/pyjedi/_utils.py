@@ -3,7 +3,93 @@ import pandas as pd
 import netCDF4 as nc4
 import numpy as np
 import re
+import yaml
 import pydartdiags.obs_sequence.obs_sequence as obsq
+
+def _expandChanNums(chanNumsStr):
+    """Expand channel numbers YAML spec into a list of channel numbers
+
+    Args: chanNumsStr (str): Comma-separated string of channel numbers with optional ranges
+
+    The optional ranges is of the form (<start>-<end>) where both <start> and <end> are
+    inclusive. Eg, 12-15 expands to [12, 13, 14, 15].
+
+    """
+    chanNums = []
+    for part in chanNumsStr.split(','):
+        part = part.strip()
+        if '-' in part:
+            start, end = part.split('-')
+            chanNums.extend(range(int(start), int(end) + 1))
+        else:
+            chanNums.append(int(part))
+    return chanNums
+
+def _parseYamlConfig(configFile):
+    """Parse the YAML configuration file
+
+    Args:
+        configFile (str): Path to the YAML configuration file
+
+    Returns:
+        Tuple containing the parsed "observation variables", "vertical coordinate" configurations
+        and a list of channel numbers.
+
+    The configuration file should contain the following sections:
+      - observation variables:
+        Required
+        List of IODA variable names and types (and optional channels) to convert
+      - vertical coordinate:
+        Required for conventional obs types
+        name and units of the vertical coordinate variable
+      - channel numbers:
+        Required for radiance obs types
+        list of numbers which can include ranges of numbers (eg, 12-15 for 12, 13, 14, 15)
+
+    Must either specify the "vertical coordinate" section (conventional obs types), or the
+    "channel numbers" section (radiance obs types), but not both. The parser discerns
+    between conventional and radiance observations based on the presence of these sections.
+
+    """
+
+    with open(configFile, 'r') as file:
+        config = yaml.safe_load(file)
+    iodaVarsConfig = config['ioda to obsq converter']['observation variables']
+    vertCoordConfig = None
+    channelNumbers = None
+
+    if ('vertical coordinate' in config['ioda to obsq converter']):
+        # Conventional obs type. Check for proper configuration
+        #    - channels must not be specified
+        if ('channel numbers' in config['ioda to obsq converter']):
+            raise ValueError("Must not specify 'channel numbers' for conventional observations.")
+        vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
+    elif ('channel numbers' in config['ioda to obsq converter']):
+        # Radiance obs type.
+        # Chek for proper configuration
+        if ('vertical coordinate' in config['ioda to obsq converter']):
+            raise ValueError("Must not specify 'vertical coordinate' for radiance observations.")
+
+        # Expand the channel numbers into the variable names by creating variable
+        # names with the given name and each channel number appended to the end of the given name.
+        # This is how the separate channels are stored in the ioda dataframe (see _ioda2iodaDF below).
+        channelNumbers = _expandChanNums(config['ioda to obsq converter']['channel numbers'])
+        newIodaVarsConfig = []
+        for iodaVarConfig in iodaVarsConfig:
+            varName = iodaVarConfig['name']
+            varType = iodaVarConfig['type']
+            for chanNum in channelNumbers:
+                newConfig = {}
+                newConfig['name'] = f"{varName}_{chanNum}"
+                newConfig['type'] = varType
+                newIodaVarsConfig.append(newConfig)
+        iodaVarsConfig = newIodaVarsConfig
+    else:
+        errStr = "Must either specify 'vertical coordinate' (conventional obs) " + \
+                 "or 'channel numbers' (radiance obs), but not both."
+        raise ValueError(errStr)
+
+    return iodaVarsConfig, vertCoordConfig, channelNumbers
 
 def _iodaDtime2obsqDtime(epoch, iodaDtime):
     """Convert IODA datetime into obs_seq datetime
@@ -51,11 +137,13 @@ def _ioda2iodaDF(iodaFile, obsChannels=[], mask_obsvalue=None, sort_by=None, der
 
     Args:
         1. iodaFile - IODA observation data file
-        mask_obsvalue (None, optional): Mask ObsValue _FillValue and NaN
-            Set this to something like netCDF4.default_fillvals[dtype]
-            where dtype can be 'f4' or 'f8' for floating point arrays
-        sort_by (list of str, optional): Sort dataframe by columns
-        derived: Set to true if using @DerivedObsValue
+        2. obsChannels (list of int, optional): List of observation channel numbers to include
+             Assumes that every variable with channels, uses the same list of channel numbers
+        3. mask_obsvalue (None, optional): Mask ObsValue _FillValue and NaN
+             Set this to something like netCDF4.default_fillvals[dtype]
+             where dtype can be 'f4' or 'f8' for floating point arrays
+        4. sort_by (list of str, optional): Sort dataframe by columns
+        5 derived: Set to true if using @DerivedObsValue
 
     Returns:
         pandas.DataFrame: IODA formatted dataframe
@@ -248,8 +336,13 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, vertCoordName, ver
 
     obsqDF.insert(4, 'longitude', np.array(iodaDF['MetaData/longitude'], dtype=np.float32))
     obsqDF.insert(5, 'latitude', np.array(iodaDF['MetaData/latitude'], dtype=np.float32))
-    obsqDF.insert(6, 'vertical', np.array(iodaDF[vertCoordName], dtype=np.float32))
-    obsqDF.insert(7, 'vert_unit', np.full(numLocs, vertCoordUnits, dtype=object))
+    if vertCoordName:
+        obsqDF.insert(6, 'vertical', np.array(iodaDF[vertCoordName], dtype=np.float32))
+        obsqDF.insert(7, 'vert_unit', np.full(numLocs, vertCoordUnits, dtype=object))
+    else:
+        # Dummy vertical coordinate values for radiance type
+        obsqDF.insert(6, 'vertical', np.full(numLocs, 35000.0, dtype=np.float32))
+        obsqDF.insert(7, 'vert_unit', np.full(numLocs, 'pressure (Pa)', dtype=object))
 
     obsqDF.insert(8, 'type', np.full(numLocs, iodaVarType, dtype=object))
     obsqDF.insert(9, 'metadata', np.full(numLocs, '', dtype=object))
