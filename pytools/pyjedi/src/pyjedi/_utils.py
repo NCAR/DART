@@ -32,48 +32,67 @@ def _parseYamlConfig(configFile):
         configFile (str): Path to the YAML configuration file
 
     Returns:
-        Tuple containing the parsed "observation variables", "vertical coordinate" configurations
-        and a list of channel numbers.
+        Tuple containing the processed "observation variables" configuration, and
+        the processed "observation category" configuration
 
     The configuration file should contain the following sections:
       - observation variables:
         Required
-        List of IODA variable names and types (and optional channels) to convert
-      - vertical coordinate:
-        Required for conventional obs types
-        name and units of the vertical coordinate variable
-      - channel numbers:
-        Required for radiance obs types
-        list of numbers which can include ranges of numbers (eg, 12-15 for 12, 13, 14, 15)
-
-    Must either specify the "vertical coordinate" section (conventional obs types), or the
-    "channel numbers" section (radiance obs types), but not both. The parser discerns
-    between conventional and radiance observations based on the presence of these sections.
+        - List of IODA variable names and types (and optional channels) to convert
+      - observation category:
+        Required
+        - name
+          Name of the category. For now, accept: "radiance" or "conventional"
+          Some possibilities for the future could be "radar", "gpsro", etc.
+        The remaining contents of this section are dependent on the name of the category
+        - vertical coordinate:
+          Required for radiance conventional obs types
+          name and units of the vertical coordinate variable for conventional
+          units and data value of the vertical coordinate variable for radiance
+        - channel numbers:
+          Required for radiance obs types
+          list of numbers which can include ranges of numbers (eg, 12-15 for 12, 13, 14, 15)
 
     """
 
     with open(configFile, 'r') as file:
         config = yaml.safe_load(file)
     iodaVarsConfig = config['ioda to obsq converter']['observation variables']
-    vertCoordConfig = None
-    channelNumbers = None
+    obsCategoryConfig = config['ioda to obsq converter']['observation category']
 
-    if ('vertical coordinate' in config['ioda to obsq converter']):
-        # Conventional obs type. Check for proper configuration
-        #    - channels must not be specified
-        if ('channel numbers' in config['ioda to obsq converter']):
-            raise ValueError("Must not specify 'channel numbers' for conventional observations.")
-        vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
-    elif ('channel numbers' in config['ioda to obsq converter']):
+    # check for proper values of the obs category name
+    if (obsCategoryConfig['name'] not in ['radiance', 'conventional']):
+        raise ValueError("Invalid observation category name: " + obsCategoryConfig['name'])
+    obsCategory = obsCategoryConfig['name']
+
+    # check for proper obs category configuration
+    if (obsCategory == 'conventional'):
+        # Conventional obs type.
+        if ('vertical coordinate' not in obsCategoryConfig):
+            raise ValueError("Must specify 'vertical coordinate' for conventional observations.")
+        else:
+            # need name and units for vertical coordinate
+            if ('name' not in obsCategoryConfig['vertical coordinate']):
+                raise ValueError("Must specify 'name' for vertical coordinate in conventional observations.")
+            if ('units' not in obsCategoryConfig['vertical coordinate']):
+                raise ValueError("Must specify 'units' for vertical coordinate in conventional observations.")
+    elif (obsCategory == 'radiance'):
         # Radiance obs type.
-        # Chek for proper configuration
-        if ('vertical coordinate' in config['ioda to obsq converter']):
-            raise ValueError("Must not specify 'vertical coordinate' for radiance observations.")
+        if ('vertical coordinate' not in obsCategoryConfig):
+            raise ValueError("Must specify 'vertical coordinate' for radiance observations.")
+        else:
+            # need units and data value for vertical coordinate
+            if ('units' not in obsCategoryConfig['vertical coordinate']):
+                raise ValueError("Must specify 'units' for vertical coordinate in radiance observations.")
+            if ('data value' not in obsCategoryConfig['vertical coordinate']):
+                raise ValueError("Must specify 'data value' for vertical coordinate in radiance observations.")
+        if ('channel numbers' not in obsCategoryConfig):
+            raise ValueError("Must specify 'channel numbers' for radiance observations.")
 
         # Expand the channel numbers into the variable names by creating variable
         # names with the given name and each channel number appended to the end of the given name.
         # This is how the separate channels are stored in the ioda dataframe (see _ioda2iodaDF below).
-        channelNumbers = _expandChanNums(config['ioda to obsq converter']['channel numbers'])
+        channelNumbers = _expandChanNums(obsCategoryConfig['channel numbers'])
         newIodaVarsConfig = []
         for iodaVarConfig in iodaVarsConfig:
             varName = iodaVarConfig['name']
@@ -84,12 +103,15 @@ def _parseYamlConfig(configFile):
                 newConfig['type'] = varType
                 newIodaVarsConfig.append(newConfig)
         iodaVarsConfig = newIodaVarsConfig
-    else:
-        errStr = "Must either specify 'vertical coordinate' (conventional obs) " + \
-                 "or 'channel numbers' (radiance obs), but not both."
-        raise ValueError(errStr)
 
-    return iodaVarsConfig, vertCoordConfig, channelNumbers
+        # Replace the channel numbers string in the category config with the expanded channel numbers
+        obsCategoryConfig['channel numbers'] = channelNumbers
+    else:
+        # Currently, can only use conventional or radiance
+        raise ValueError("Invalid observation category name: " + obsCategory, \
+                         ", must use one of 'radiance' or 'conventional'")
+
+    return iodaVarsConfig, obsCategoryConfig
 
 def _iodaDtime2obsqDtime(epoch, iodaDtime):
     """Convert IODA datetime into obs_seq datetime
@@ -132,13 +154,12 @@ def _iodaDtime2obsqDtime(epoch, iodaDtime):
     
     return (seconds, days, time)
 
-def _ioda2iodaDF(iodaFile, obsChannels=[], mask_obsvalue=None, sort_by=None, derived=False):
+def _ioda2iodaDF(iodaFile, obsCategoryConfig, mask_obsvalue=None, sort_by=None, derived=False):
     """Creates pandas dataframe from a IODA observation data file.
 
     Args:
         1. iodaFile - IODA observation data file
-        2. obsChannels (list of int, optional): List of observation channel numbers to include
-             Assumes that every variable with channels, uses the same list of channel numbers
+        2. obsCategoryConfig (dict): Observation category configuration
         3. mask_obsvalue (None, optional): Mask ObsValue _FillValue and NaN
              Set this to something like netCDF4.default_fillvals[dtype]
              where dtype can be 'f4' or 'f8' for floating point arrays
@@ -164,6 +185,9 @@ def _ioda2iodaDF(iodaFile, obsChannels=[], mask_obsvalue=None, sort_by=None, der
         channelNums = None
         if ('Channel' in ds.variables):
             channelNums = ds.variables['Channel'][:]
+
+        # Grab the observation category config channel numbers
+        obsChannels = obsCategoryConfig.get('channel numbers', [])
 
         loc = 0
         for var in dsets:
@@ -294,19 +318,36 @@ def _buildObsSeqFromObsqDF(obsqDF, maxNumObs=None, nonQcNames=None, qcNames=None
 
     return obsSeq
 
-def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, vertCoordName, vertCoordUnits):
+def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, obsCategoryConfig):
     """Reformat a pandas dataframe built with ioda2iodaDF into a dataframe suitable
        for buildObsSeqFromObsqDF.
 
      Args:
          1. iodaDF - pandas dataframe in the ioda layout
          2. epochDT - IODA dateTime epoch value in ISO 8601 string format
+         3. iodaVarName - IODA dataframe column name
+         4. iodaVarType - IODA dataframe column type
+         5. obsCategoryConfig - Observation category configuration
 
      Return:
          This function returns a pandas dataframe in the obs_seq layout. This dataframe
          is suitable as input to the buildObsSeqFromObsqDF function.
 
     """
+
+    # Infer conventional vs radiance obs type according to the vertCoordName value
+    #     None - radiance
+    #     not None - conventional
+    obsCategory = obsCategoryConfig['name']
+    vertCoordName = None
+    vertCoordUnits = None
+    vertCoordValue = None
+    if (obsCategory == 'conventional'):
+        vertCoordName = obsCategoryConfig['vertical coordinate']['name']
+        vertCoordUnits = obsCategoryConfig['vertical coordinate']['units']
+    elif (obsCategory == 'radiance'):
+        vertCoordUnits = obsCategoryConfig['vertical coordinate']['units']
+        vertCoordValue = obsCategoryConfig['vertical coordinate']['data value']
 
     # The ioda dataframe layout has these features:
     #   1. Each separate variable is in a separate column
@@ -336,13 +377,12 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, vertCoordName, ver
 
     obsqDF.insert(4, 'longitude', np.array(iodaDF['MetaData/longitude'], dtype=np.float32))
     obsqDF.insert(5, 'latitude', np.array(iodaDF['MetaData/latitude'], dtype=np.float32))
-    if vertCoordName:
+    if obsCategory == 'conventional':
         obsqDF.insert(6, 'vertical', np.array(iodaDF[vertCoordName], dtype=np.float32))
         obsqDF.insert(7, 'vert_unit', np.full(numLocs, vertCoordUnits, dtype=object))
-    else:
-        # Dummy vertical coordinate values for radiance type
-        obsqDF.insert(6, 'vertical', np.full(numLocs, 35000.0, dtype=np.float32))
-        obsqDF.insert(7, 'vert_unit', np.full(numLocs, 'pressure (Pa)', dtype=object))
+    elif obsCategory == 'radiance':
+        obsqDF.insert(6, 'vertical', np.full(numLocs, vertCoordValue, dtype=np.float32))
+        obsqDF.insert(7, 'vert_unit', np.full(numLocs, vertCoordUnits, dtype=object))
 
     obsqDF.insert(8, 'type', np.full(numLocs, iodaVarType, dtype=object))
     obsqDF.insert(9, 'metadata', np.full(numLocs, '', dtype=object))

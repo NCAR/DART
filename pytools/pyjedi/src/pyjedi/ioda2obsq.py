@@ -31,13 +31,10 @@ def main():
     print("INFO:    obs_seq output file: ", outFile)
     print("")
 
-    (iodaVarsConfig, vertCoordConfig, channelNumbers) = _parseYamlConfig(configFile)
+    (iodaVarsConfig, obsCategoryConfig) = _parseYamlConfig(configFile)
     if (verbose):
         print("DEBUG: IODA variable configuration: ", iodaVarsConfig)
-        if vertCoordConfig:
-            print("DEBUG: vertical coordinate configuration: ", vertCoordConfig)
-        if channelNumbers:
-            print("DEBUG: channel numbers: ", channelNumbers)
+        print("DEBUG: Observation category configuration: ", obsCategoryConfig)
         print("")
 
     # Conversion steps
@@ -49,21 +46,19 @@ def main():
     #      and then concatenate that dataframe to the main dataframe
     #   3. build a pyDARTdiags ObsSequence object from the main dataframe
     #   4. call the ObsSequence.write_obs_seq method to create the output file
-    (iodaDF, epochDT) = _ioda2iodaDF(inFile, channelNumbers)
-
-    vertCoordName = None
-    vertCoordUnits = None
-    if vertCoordConfig:
-        vertCoordName = vertCoordConfig['name']
-        vertCoordUnits = vertCoordConfig['units']
+    (iodaDF, epochDT) = _ioda2iodaDF(inFile, obsCategoryConfig)
+    if (verbose):
+        print("DEBUG: IODA dataframe columns: ", iodaDF.columns.tolist())
+        print("DEBUG: IODA dataframe shape: ", iodaDF.shape)
+        print("")
 
     obsqDF = pd.DataFrame()
     for iodaVarConfig in iodaVarsConfig:
         iodaVarName = iodaVarConfig['name']
         iodaVarType = iodaVarConfig['type']
         print("INFO: IODA input variable: ", iodaVarName, " (", iodaVarType, ")")
-        obsqDF = pd.concat([obsqDF, _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType,
-                                                   vertCoordName, vertCoordUnits)],
+        obsqDF = pd.concat([obsqDF, _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName,
+                                                   iodaVarType, obsCategoryConfig)],
                            ignore_index = True)
     print("")
 
