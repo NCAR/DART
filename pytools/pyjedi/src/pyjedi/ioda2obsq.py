@@ -31,6 +31,7 @@ def main():
     print("INFO:    obs_seq output file: ", outFile)
     print("")
 
+    # Parse the YAML config
     (iodaVarsConfig, obsCategoryConfig) = _parseYamlConfig(configFile)
     if (verbose):
         print("DEBUG: IODA variable configuration: ", iodaVarsConfig)

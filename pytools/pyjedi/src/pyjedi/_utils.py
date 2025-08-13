@@ -46,12 +46,15 @@ def _parseYamlConfig(configFile):
           Some possibilities for the future could be "radar", "gpsro", etc.
         The remaining contents of this section are dependent on the name of the category
         - vertical coordinate:
-          Required for radiance conventional obs types
+          Required for radiance and conventional obs types
           name and units of the vertical coordinate variable for conventional
           units and data value of the vertical coordinate variable for radiance
         - channel numbers:
           Required for radiance obs types
           list of numbers which can include ranges of numbers (eg, 12-15 for 12, 13, 14, 15)
+        - metadata:
+          Required for radiance obst types
+          sensor key and rttov sensor db (path to the db file)
 
     """
 
@@ -88,6 +91,14 @@ def _parseYamlConfig(configFile):
                 raise ValueError("Must specify 'data value' for vertical coordinate in radiance observations.")
         if ('channel numbers' not in obsCategoryConfig):
             raise ValueError("Must specify 'channel numbers' for radiance observations.")
+        if ('metadata' not in obsCategoryConfig):
+            raise ValueError("Must specify 'metadata' for radiance observations.")
+        else:
+            # need sensor key and rttov sensor db for metadata
+            if ('sensor key' not in obsCategoryConfig['metadata']):
+                raise ValueError("Must specify 'sensor key' for metadata in radiance observations.")
+            if ('rttov sensor db' not in obsCategoryConfig['metadata']):
+                raise ValueError("Must specify 'rttov sensor db' for metadata in radiance observations.")
 
         # Expand the channel numbers into the variable names by creating variable
         # names with the given name and each channel number appended to the end of the given name.
@@ -106,12 +117,39 @@ def _parseYamlConfig(configFile):
 
         # Replace the channel numbers string in the category config with the expanded channel numbers
         obsCategoryConfig['channel numbers'] = channelNumbers
+
+        # Build the sensor db dictionary, and extract the sensor key entry
+        # Do this here to be able to look up the sensor entry in one shot.
+        sensorDB = _buildSensorDict(obsCategoryConfig)
+        sensorKey = obsCategoryConfig['metadata']['sensor key']
+        sensorDbEntry = sensorDB.get(sensorKey, None)
+        if (sensorDbEntry == None):
+            raise ValueError("No entry in the sensor DB for sensor key: " + sensorKey)
+        obsCategoryConfig['metadata']['sensor db entry'] = sensorDbEntry
+
     else:
         # Currently, can only use conventional or radiance
         raise ValueError("Invalid observation category name: " + obsCategory, \
                          ", must use one of 'radiance' or 'conventional'")
 
     return iodaVarsConfig, obsCategoryConfig
+
+def _buildSensorDict(obsCategoryConfig):
+    """Build the sensor database dictionary from the observation category config.
+
+    Args:
+        obsCategoryConfig (dict): Observation category configuration
+
+    Returns:
+        dict: Sensor database dictionary
+    """
+
+    sensorDB = {}
+    sensorDF = pd.read_csv(obsCategoryConfig['metadata']['rttov sensor db'], header=None)
+    sensorDF.columns = ['key', 'platform_id', 'sat_id', 'sensor_id', 'spectral_band', 'rttov_coeff_file']
+    sensorDB = sensorDF.set_index('key').to_dict(orient='index')
+
+    return sensorDB
 
 def _iodaDtime2obsqDtime(epoch, iodaDtime):
     """Convert IODA datetime into obs_seq datetime
@@ -335,19 +373,22 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, obsCategoryConfig)
 
     """
 
-    # Infer conventional vs radiance obs type according to the vertCoordName value
-    #     None - radiance
-    #     not None - conventional
+    # Set up obs category specific variables. At this point we only recognize
+    # two categories:
+    #     conventional
+    #     radiance
     obsCategory = obsCategoryConfig['name']
     vertCoordName = None
     vertCoordUnits = None
     vertCoordValue = None
+    sensorDbEntry = None
     if (obsCategory == 'conventional'):
         vertCoordName = obsCategoryConfig['vertical coordinate']['name']
         vertCoordUnits = obsCategoryConfig['vertical coordinate']['units']
     elif (obsCategory == 'radiance'):
         vertCoordUnits = obsCategoryConfig['vertical coordinate']['units']
         vertCoordValue = obsCategoryConfig['vertical coordinate']['data value']
+        sensorDbEntry = obsCategoryConfig['metadata']['sensor db entry']
 
     # The ioda dataframe layout has these features:
     #   1. Each separate variable is in a separate column
