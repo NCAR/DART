@@ -1,6 +1,6 @@
-
 &dart_to_cice_nml
-   dart_to_cice_input_file = 'dart_restart.nc'
-   balance_method          = 'simple_squeeze'
+   dart_to_cice_input_file    = 'dart_restart.nc'
+   original_cice_restart_file = 'cice_restart.nc'
+   postprocessed_output_file  = 'postprocessed_restart.nc'
+   postprocess                = 'cice'
    /
-
