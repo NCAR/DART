@@ -1,0 +1,21 @@
+---
+
+ioda to obsq converter:
+  observation variables:
+    - name: brightnessTemperature
+      type: NOAA_19_AMSUA_TB
+
+  observation category:
+    name: radiance
+    channel numbers: 1, 2, 3, 12-15
+    vertical coordinate:
+      units: "pressure (Pa)"
+      data value: 35000.0
+      #units: "undefined"
+      #data value: -1.0
+    metadata:
+      sensor key: NOAA_19_AMSUA
+      rttov sensor db: /home/stephenh/projects/NCAR_DART/DART/observations/forward_operators/rttov_sensor_db.csv
+      sat az variable: MetaData/sensorAzimuthAngle
+      sat ze variable: MetaData/sensorZenithAngle
+  
