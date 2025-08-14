@@ -6,6 +6,8 @@ import re
 import yaml
 import pydartdiags.obs_sequence.obs_sequence as obsq
 
+missingVal = -888888.0
+
 def _expandChanNums(chanNumsStr):
     """Expand channel numbers YAML spec into a list of channel numbers
 
@@ -99,6 +101,10 @@ def _parseYamlConfig(configFile):
                 raise ValueError("Must specify 'sensor key' for metadata in radiance observations.")
             if ('rttov sensor db' not in obsCategoryConfig['metadata']):
                 raise ValueError("Must specify 'rttov sensor db' for metadata in radiance observations.")
+            if ('sat az variable' not in obsCategoryConfig['metadata']):
+                raise ValueError("Must specify 'sat az variable' for metadata in radiance observations.")
+            if ('sat ze variable' not in obsCategoryConfig['metadata']):
+                raise ValueError("Must specify 'sat ze variable' for metadata in radiance observations.")
 
         # Expand the channel numbers into the variable names by creating variable
         # names with the given name and each channel number appended to the end of the given name.
@@ -356,6 +362,65 @@ def _buildObsSeqFromObsqDF(obsqDF, maxNumObs=None, nonQcNames=None, qcNames=None
 
     return obsSeq
 
+def _buildRadianceMetadata(iodaDF, obsCategoryConfig, chanNum):
+    """Build metadata for radiance observations.
+
+    Args:
+        1. iodaDF - pandas dataframe in the ioda layout
+        2. obsCategoryConfig - Observation category configuration
+        3. chanNum - Channel number
+
+    Return:
+        A list of metadata entries for the radiance observations.
+    """
+
+    # Grab the sensor database info
+    sensorDbEntry = obsCategoryConfig['metadata']['sensor db entry']
+    spectralBand = sensorDbEntry['spectral_band']
+    platformId = sensorDbEntry['platform_id']
+    satId = sensorDbEntry['sat_id']
+    sensorId = sensorDbEntry['sensor_id']
+
+    # Grab the instrument metadata variable names
+    satAzVar = obsCategoryConfig['metadata']['sat az variable']
+    satZeVar = obsCategoryConfig['metadata']['sat ze variable']
+
+    # Form the line in the metadata containing the instrument info
+    instrumentInfo = f"    {platformId} {satId} {sensorId} {chanNum}"
+
+    # For now we only handle infrared and microwave instruments
+    radMetaData = []
+    if (spectralBand == 'ir'):
+        # Format contains five strings:
+        #     'visir'
+        #     '    sat_az sat_ze sun_az sun_ze'
+        #     '    {instrumentInfo}'
+        #     '    specularity'
+        #     '    oldkey'
+        specularityInfo = f"    {missingVal}"
+        for i, (satAz, satZe) in enumerate(zip(iodaDF[satAzVar], iodaDF[satZeVar])):
+            orientationInfo = f"    {satAz} {satZe} {missingVal} {missingVal}"
+            oldKeyInfo = f"    {i + 1}"
+            radMetaData.append([ 'visr', orientationInfo, instrumentInfo, specularityInfo, oldKeyInfo ])
+    elif (spectralBand == 'mw'):
+        # Format contains six strings:
+        #     'mw'
+        #     '    sat_az sat_ze
+        #     '    {instrumentInfo}'
+        #     '    magfield cosbk'
+        #     '    fastem_p1 fastem_p2 fastem_p3 fastem_p4 fastem_p5'
+        #     '    oldkey'
+        magfieldInfo = f"    {missingVal} {missingVal}"
+        fastemInfo = f"    {missingVal} {missingVal} {missingVal} {missingVal} {missingVal}"
+        for i, (satAz, satZe) in enumerate(zip(iodaDF[satAzVar], iodaDF[satZeVar])):
+            orientationInfo = f"    {satAz} {satZe}"
+            oldKeyInfo = f"    {i + 1}"
+            radMetaData.append([ 'mw', orientationInfo, instrumentInfo, magfieldInfo, fastemInfo, oldKeyInfo ])
+    else:
+        raise ValueError("Unrecognized spectral band: " + spectralBand)
+
+    return radMetaData
+
 def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, obsCategoryConfig):
     """Reformat a pandas dataframe built with ioda2iodaDF into a dataframe suitable
        for buildObsSeqFromObsqDF.
@@ -381,14 +446,12 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, obsCategoryConfig)
     vertCoordName = None
     vertCoordUnits = None
     vertCoordValue = None
-    sensorDbEntry = None
     if (obsCategory == 'conventional'):
         vertCoordName = obsCategoryConfig['vertical coordinate']['name']
         vertCoordUnits = obsCategoryConfig['vertical coordinate']['units']
     elif (obsCategory == 'radiance'):
         vertCoordUnits = obsCategoryConfig['vertical coordinate']['units']
         vertCoordValue = obsCategoryConfig['vertical coordinate']['data value']
-        sensorDbEntry = obsCategoryConfig['metadata']['sensor db entry']
 
     # The ioda dataframe layout has these features:
     #   1. Each separate variable is in a separate column
@@ -426,7 +489,12 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, obsCategoryConfig)
         obsqDF.insert(7, 'vert_unit', np.full(numLocs, vertCoordUnits, dtype=object))
 
     obsqDF.insert(8, 'type', np.full(numLocs, iodaVarType, dtype=object))
-    obsqDF.insert(9, 'metadata', np.full(numLocs, '', dtype=object))
+    if (obsCategory == 'conventional'):
+        obsqDF.insert(9, 'metadata', np.full(numLocs, '', dtype=object))
+    elif (obsCategory == 'radiance'):
+        chanNum = int(iodaVarName.split('_')[-1])
+        radMetaData = _buildRadianceMetadata(iodaDF, obsCategoryConfig, chanNum)
+        obsqDF.insert(9, 'metadata', radMetaData)
     obsqDF.insert(10, 'external_FO', np.full(numLocs, '', dtype=object))
 
     obsqDF.insert(11, 'seconds', obsqSec)
