@@ -490,7 +490,8 @@ References
    models/pe2lyr/readme
    models/POP/readme
    models/POP/dart_pop_mod
-   models/ROMS/readme
+   models/ROMS_rutgers/readme
+   models/ROMS_ucla/readme
    models/rose/readme
    models/seir/readme
    models/simple_advection/readme

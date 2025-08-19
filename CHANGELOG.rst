@@ -22,6 +22,25 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 19 2025 :: ROMS Rutgers. Tag v11.14.0**
+
+New Features:
+  - ROMS Rutgers interface
+
+Fixes:
+  - Limit number of resubmits in WRF-DART
+  - CLM documentation link fix 
+
+Developer tools:
+  - pyfortran utility to find unused routines
+
+**August 13 2025 :: IODA2obsq. Tag v11.13.0-pyjedi**
+
+- Initial pyjedi package for DART JEDI interoperability.
+- ioda2obsq tool for conventional observations.  
+
+*contributed by Stephen Herbener, DART collaboration with JCSDA*
+
 **July 30 2025 :: MOM6 interpolation bug-fixes. Tag v11.12.1**
 
 - Fixes quad points assignment in model_interpolate
