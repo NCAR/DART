@@ -17,11 +17,6 @@ public :: lat_lon_to_col_index, get_bounding_box, col_index_to_lat_lon, &
           is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
           lat_lon_to_xyz, lat_lon_to_grid, get_face, fix_face, get_corners
 
-! Geometry variables that are used throughout the module; read from a template file
-integer               :: np                ! Number of grid rows across a face
-real(r8)              :: del, half_del     ! Grid row spacing and half of that
-
-
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
@@ -712,10 +707,11 @@ end subroutine col_index_to_lat_lon
 
 !-----------------------------------------------------------------------
 
-function lat_lon_to_col_index(lat, lon, del, half_del)
+function lat_lon_to_col_index(lat, lon, del, half_del, np)
 
 integer              :: lat_lon_to_col_index
 real(r8), intent(in) :: lat, lon, del, half_del
+integer,  intent(in) :: np 
 
 integer :: face, lat_ind, lon_ind
 
@@ -725,11 +721,8 @@ call lat_lon_to_grid(lat, lon, del, half_del, face, lat_ind, lon_ind)
 ! Confirm that this duplicates the version that requires initialization;
 lat_lon_to_col_index = face * np * np + (lat_ind - 1) * np + lon_ind
 
-!!!! Get column index using first level, first variable
-!!!lat_lon_to_col_index = get_state_index(face, lat_ind, lon_ind, lev_ind = 1, &
-   !!!var_ind = 1, np = np)
-
 end function lat_lon_to_col_index
+
 !-----------------------------------------------------------------------
 
 function lat_lon_to_xyz(lat, lon)          

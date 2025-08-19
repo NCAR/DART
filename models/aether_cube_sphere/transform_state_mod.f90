@@ -234,7 +234,7 @@ do varid = 1, block_files(1)%nVariables
          do iy = 1, nys(iblock)
             blat = block_lats(1, nhalos + iy, nhalos + ix);
             blon = block_lons(1, nhalos + iy, nhalos + ix);
-            col_index(iy, ix) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon, del, half_del)
+            col_index(iy, ix) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon, del, half_del, np)
          end do
       end do
  

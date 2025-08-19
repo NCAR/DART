@@ -37,7 +37,7 @@ use ensemble_manager_mod, only : ensemble_type
 
 use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
                                        lat_lon_to_xyz, col_index_to_lat_lon, lat_lon_to_grid,   &
-                                       get_bounding_box
+                                       get_bounding_box, lat_lon_to_col_index
 
 ! These routines are passed through from default_model_mod.
 ! To write model specific versions of these routines
@@ -562,7 +562,7 @@ do my_face = 0, 5
 
          col_index = my_lon_ind + (my_lat_ind - 1) * np + my_face * np*np
          call col_index_to_lat_lon(col_index, np, del, half_del, pt_lat, pt_lon)
-         test_col_index = lat_lon_to_col_index(pt_lat, pt_lon)
+         test_col_index = lat_lon_to_col_index(pt_lat, pt_lon, del, half_del, np)
 write(*, *) col_index, test_col_index
          if(col_index .ne. test_col_index) then
             write(*, *) 'lat_lon_to_col_index is not inverse of col_index_to_lat_lon'
@@ -738,23 +738,6 @@ column = lon_ind + np * ((lat_ind - 1) + np * face)
 get_state_index = get_dart_vector_index(column, lev_ind, no_third_dimension, dom_id, var_ind)
 
 end function get_state_index
-
-!-----------------------------------------------------------------------
-
-function lat_lon_to_col_index(lat, lon)
-
-integer              :: lat_lon_to_col_index
-real(r8), intent(in) :: lat, lon
-
-integer :: face, lat_ind, lon_ind
-
-! Get the face, lat_ind and lon_ind
-call lat_lon_to_grid(lat, lon, del, half_del, face, lat_ind, lon_ind)
-
-! Get column index using the agreed upon storage order
-lat_lon_to_col_index = face * np * np + (lat_ind - 1) * np + lon_ind
-
-end function lat_lon_to_col_index
 
 !-----------------------------------------------------------------------
 
