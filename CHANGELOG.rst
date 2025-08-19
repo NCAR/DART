@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 13 2025 :: IODA2obsq. Tag v11.13.0**
+
+- Initial pyjedi package for DART JEDI interoperability.
+- ioda2obsq tool for conventional observations.  
+
+*contributed by Stephen Herbener, DART collaboration with JCSDA*
+
 **July 30 2025 :: MOM6 interpolation bug-fixes. Tag v11.12.1**
 
 - Fixes quad points assignment in model_interpolate
