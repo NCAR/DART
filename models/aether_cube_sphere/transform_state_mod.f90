@@ -7,8 +7,7 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, nc_open_file_readwrite, 
 use utilities_mod,        only : open_file, close_file, find_namelist_in_file, &
                                  check_namelist_read, error_handler, E_ERR, string_to_integer
 
-! TEMPORARY USE OF MODEL MODE UNTIL GEOMETRY IS MOVED TO ITS OWN MODULE
-use model_mod,           only : static_init_model, lat_lon_to_col_index
+use cube_sphere_grid_tools_mod, only : lat_lon_to_col_index
 
 implicit none
 private
@@ -33,11 +32,12 @@ end type file_type
 type(file_type), allocatable :: block_files(:)
 type(file_type)              :: filter_input_file, filter_output_file
 
-integer            :: nblocks, nhalos
+! It would be nice to get this information from the Aether input files, but that may not be possible
+integer            :: np, nblocks, nhalos
 character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suffix, &
                       filter_input_prefix, filter_input_suffix, filter_output_prefix, &
                       filter_output_suffix
-namelist /transform_state_nml/ nblocks, nhalos, restart_file_prefix, restart_file_middle, &
+namelist /transform_state_nml/ np, nblocks, nhalos, restart_file_prefix, restart_file_middle, &
                                restart_file_suffix, filter_input_prefix, filter_input_suffix, &
                                filter_output_prefix, filter_output_suffix
 
@@ -89,7 +89,7 @@ integer :: lat_varid, lon_varid, ix, iy, iz, txs, tys, icol
 integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: dimids(NF90_MAX_VAR_DIMS)
-real(r8) :: blat, blon
+real(r8) :: blat, blon, cube_side, del, half_del
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,  allocatable         :: dart_varids(:), col_index(:, :)
 ! The time variable in the block files is a double
@@ -97,6 +97,13 @@ real(r8), allocatable, dimension(:) :: time_array
 ! File for reading in variables from block file; These can probably be R4
 real(r4), allocatable :: block_array(:, :, :), spatial_array(:), variable_array(:, :, :)
 real(r4), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
+
+! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
+! two exterior intervals of half  width, sqrt(1/3) / np 
+cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
+! These grid spacings are in module storage since they are used repeatedly in many routines
+del = cube_side / np  
+half_del = del / 2.0_r8
 
 do iblock = 1, nblocks
    ! Open the block files, read only
@@ -205,9 +212,6 @@ end do
 ! End of define mode, ready to add data
 call nc_end_define_mode(filter_input_file%ncid)
 
-! Temporary until grid geometry routines have their own module
-call static_init_model
-
 ! Choose to minimize storage rather than redundant computation
 ! Will get full spatial field for one variable at a time
 do varid = 1, block_files(1)%nVariables
@@ -230,7 +234,7 @@ do varid = 1, block_files(1)%nVariables
          do iy = 1, nys(iblock)
             blat = block_lats(1, nhalos + iy, nhalos + ix);
             blon = block_lons(1, nhalos + iy, nhalos + ix);
-            col_index(iy, ix) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon)
+            col_index(iy, ix) = lat_lon_to_col_index(DEG2RAD*blat, DEG2RAD*blon, del, half_del)
          end do
       end do
  

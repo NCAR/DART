@@ -1549,8 +1549,8 @@ integer :: face, lat_ind, lon_ind
 ! Get the face, lat_ind and lon_ind
 call lat_lon_to_grid(lat, lon, face, lat_ind, lon_ind)
 
-! Get column index using first level, first variable
-lat_lon_to_col_index = get_state_index(face, lat_ind, lon_ind, lev_ind = 1, var_ind = 1)
+! Get column index using the agreed upon storage order
+lat_lon_to_col_index = face * np * np + (lat_ind - 1) * np + lon_ind
 
 end function lat_lon_to_col_index
 
