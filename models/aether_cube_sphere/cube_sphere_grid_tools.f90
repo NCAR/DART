@@ -15,7 +15,7 @@ private
 
 public :: lat_lon_to_col_index, get_bounding_box, col_index_to_lat_lon, &
           is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
-          lat_lon_to_xyz, lat_lon_to_grid, get_face, fix_face
+          lat_lon_to_xyz, lat_lon_to_grid, get_face, fix_face, get_corners
 
 ! Geometry variables that are used throughout the module; read from a template file
 integer               :: np                ! Number of grid rows across a face
