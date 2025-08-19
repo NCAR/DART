@@ -36,7 +36,8 @@ use state_structure_mod, only : add_domain, get_dart_vector_index, get_domain_si
 use ensemble_manager_mod, only : ensemble_type
 
 use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
-                                       lat_lon_to_xyz, col_index_to_lat_lon
+                                       lat_lon_to_xyz, col_index_to_lat_lon, lat_lon_to_grid,   &
+                                       get_face, fix_face
 
 ! These routines are passed through from default_model_mod.
 ! To write model specific versions of these routines
@@ -532,213 +533,6 @@ end subroutine read_template_file
 
 !-----------------------------------------------------------------------
 
-subroutine lat_lon_to_grid(lat, lon, face, lat_ind, lon_ind)
-
-real(r8), intent(in)  :: lat, lon
-integer,  intent(out) :: face, lat_ind, lon_ind
-
-real(r8) :: len(2)
-
-! Get the face and the length along the two imbedded cube faces for the point
-call get_face(lat, lon, face, len);
-
-! Figure out which interval this is in along each cube face; This gives 0 to np grid indices
-lon_ind = nint((len(1) + half_del) / del)
-lat_ind = nint((len(2) + half_del) / del)
-
-end subroutine lat_lon_to_grid
-
-!-----------------------------------------------------------------------
-
-subroutine fix_face(face, lat_grid, lon_grid, f_face, f_lat_grid, f_lon_grid, edge, corner)
-
-integer, intent(in)  :: face, lat_grid, lon_grid
-integer, intent(out) :: f_face, f_lat_grid, f_lon_grid
-logical, intent(out) :: edge, corner
-
-integer :: left_neighbor(6),   right_neighbor(6)
-integer :: bottom_neighbor(6), top_neighbor(6)
-integer :: left_lon_grid(6),   right_lon_grid(6)
-integer :: left_lat_grid(6),   right_lat_grid(6)
-integer :: bottom_lon_grid(6), top_lon_grid(6)
-integer :: bottom_lat_grid(6), top_lat_grid(6)
-! For points past the edge of a face, finds the corresponding points on the adjacent face
-! Need to do something more special for corner points
-
-! Default is not a corner or an edge
-corner = .false.
-edge   = .false.
-
-! Just return if no edge
-if(lon_grid > 0 .and. lon_grid < np + 1 .and. lat_grid > 0 .and. lat_grid < np + 1) then
-   f_face = face
-   f_lon_grid = lon_grid
-   f_lat_grid = lat_grid
-   return
-endif
-
-if((lat_grid == 0 .or. lat_grid == np + 1) .and. (lon_grid == 0 .or. lon_grid == np + 1)) then
-   corner = .true.
-   f_face     = -99
-   f_lon_grid = -99
-   f_lat_grid = -99
-   return
-endif
-
-! Otherwise, on an edge
-edge = .true.
-! Deal with each side of faces separately
-if(lon_grid == 0) then
-   ! On left edge not corner
-   left_neighbor = [3, 0, 1, 2, 0, 0]
-   f_face = left_neighbor(face + 1)
-   left_lon_grid = [np, np, np, np, lat_grid, np+1-lat_grid]
-   f_lon_grid = left_lon_grid(face + 1)
-   left_lat_grid = [lat_grid, lat_grid, lat_grid, lat_grid, 1, np]
-   f_lat_grid = left_lat_grid(face + 1)
-elseif(lon_grid == np + 1) then
-   ! On right edge not corner
-   right_neighbor = [1, 2, 3, 0, 2, 2]
-   f_face = right_neighbor(face + 1)
-   right_lon_grid = [1, 1, 1, 1, np+1-lat_grid, lat_grid]
-   f_lon_grid = right_lon_grid(face + 1)
-   right_lat_grid = [lat_grid, lat_grid, lat_grid, lat_grid, 1, np]
-   f_lat_grid = right_lat_grid(face + 1)
-elseif(lat_grid == 0) then
-   ! On bottom edge not corner
-   bottom_neighbor = [4, 4, 4, 4, 3, 1]
-   f_face = bottom_neighbor(face + 1)
-   bottom_lon_grid = [1, lon_grid, np, np+1-lon_grid, np+1-lon_grid, lon_grid]
-   f_lon_grid = bottom_lon_grid(face + 1)
-   bottom_lat_grid = [lon_grid, np, np+1-lon_grid, 1, 1, np]
-   f_lat_grid = bottom_lat_grid(face + 1)
-elseif(lat_grid == np + 1) then
-   ! On top edge not corner
-   top_neighbor = [5, 5, 5, 5, 1, 3]
-   f_face = top_neighbor(face + 1)
-   top_lon_grid = [1, lon_grid, np, np+1-lon_grid, lon_grid, np+1-lon_grid]
-   f_lon_grid = top_lon_grid(face + 1)
-   top_lat_grid = [np+1-lon_grid, 1, lon_grid, np, 1, np]
-   f_lat_grid = top_lat_grid(face + 1)
-endif
-
-end subroutine fix_face
-
-!-----------------------------------------------------------------------
-
-subroutine get_face(lat, lon_in, face, len)
-
-real(r8), intent(in)  :: lat, lon_in
-integer,  intent(out) :: face
-real(r8), intent(out) :: len(2)
-
-integer :: side, rside, rside2
-real(r8) :: inv_sqrt_2, rlon, rlon2, gama, gamb, lon
-real(r8) :: vec(3), rot_vec(3), rot_vec2(3), rot(3, 3), rot2(3, 3), lon_grid(2), lon_grid_m(2)
-! Returns which face contains (lat, lon) and the length from the edge of the point
-! along each of the great circle axes.
-
-! Range adjustment
-lon = lon_in
-if(lon >= 2.0_r8*PI) lon = 0.0_r8
-
-! Convert lat lon to x y z on unit sphere
-vec = lat_lon_to_xyz(lat, lon)
-
-! Get the longitudes for this point in the two rotated spaces
-
-!====================================================================
-! Following code shows individual rotations;
-! Single matrix at the end multiplies them together off-line for single rotation
-! Can collapse these to a single rotation vector for efficiency
-! Rotation 90 degrees around y to put pole on equator
-!RY = [cosd(90) 0 -sind(90); 0 1 0; sind(90) 0 cosd(90)];
-! Rotate 45 degrees around x
-!RX = [1 0 0; 0 cosd(45) sind(45); 0 -sind(45) cosd(45)];
-! Then rotate 45 degrees around Z
-!RZ = [cosd(45) sind(45) 0; -sind(45) cosd(45) 0; 0 0 1];
-! Get longitude in the two rotated spaces
-!rot_vec = RZ * RX * RY * vec;
-!====================================================================
-inv_sqrt_2 = 1.0_r8 / sqrt(2.0_r8);
-rot(1, 1:3) = [0.5_r8,     0.5_r8,      -inv_sqrt_2]
-rot(2, 1:3) = [0.5_r8,     0.5_r8,      inv_sqrt_2]
-rot(3, 1:3) = [inv_sqrt_2, -inv_sqrt_2, 0.0_r8]
-rot_vec = matmul(rot, vec)
-! Compute the longitude in the rotated space
-rlon = atan2(rot_vec(2), rot_vec(1))
-if(rlon < 0.0_r8) rlon = rlon + 2.0_r8*PI
-
-!====================================================================
-! Can collapse these to a single rotation vector for efficiency
-! Rotation 90 degrees around y to put pole on equator
-!RY = [cosd(90) 0 -sind(90); 0 1 0; sind(90) 0 cosd(90)];
-! Rotate -45 degrees around x
-!RX2 = [1 0 0; 0 cosd(-45) sind(-45); 0 -sind(-45) cosd(-45)];
-! Then rotate 45 degrees around Z
-!RZ = [cosd(45) sind(45) 0; -sind(45) cosd(45) 0; 0 0 1];
-! Get longitude in the two rotated spaces
-!rot_vec2 = RZ * RX2 * RY * vec;
-!====================================================================
-rot2(1, 1:3) = [-0.5_r8,     0.5_r8,        -inv_sqrt_2]
-rot2(2, 1:3) = [-0.5_r8,     0.5_r8,        inv_sqrt_2]
-rot2(3, 1:3) = [inv_sqrt_2,  inv_sqrt_2,    0.0_r8]
-rot_vec2 = matmul(rot2, vec)
-! Compute the longitude in the rotated space
-rlon2 = atan2(rot_vec2(2), rot_vec2(1))
-if(rlon2 < 0.0_r8) rlon2 = rlon2 + 2.0_r8*PI
-
-! Which non-polar side could we be on, 1 to 4
-side = floor(lon / (PI/2.0_r8)) + 1.0_r8
-! Which rotated 1 side are we on 
-rside = floor(rlon / (PI/2.0_r8)) + 1.0_r8
-! Which rotated 2 side
-rside2 = floor(rlon2 / (PI/2.0_r8)) + 1.0_r8
-
-! Figure out the face from here (0 to 5, 4 is south, 5 is north)
-! These are consistent with the numbering on Aether grid files for the cubed sphere
-if    ( side == 1 .and. rside  == 1) then
-   face = 0; lon_grid(1) = lon;  lon_grid(2) = rlon
-elseif( side == 2 .and. rside2 == 1) then
-   face = 1; lon_grid(1) = lon;  lon_grid(2) = rlon2
-elseif( side == 3 .and. rside  == 3) then 
-   face = 2; lon_grid(1) = lon;  lon_grid(2) = rlon
-elseif( side == 4 .and. rside2 == 3) then
-   face = 3; lon_grid(1) = lon;  lon_grid(2) = rlon2
-elseif(rside == 4 .and. rside2 == 4) then
-   face = 4; lon_grid(1) = rlon; lon_grid(2) = rlon2
-elseif(rside == 2 .and. rside2 == 2) then
-   face = 5; lon_grid(1) = rlon; lon_grid(2) = rlon2
-endif
-
-! Can also use the fact that the projection is equidistant on the imbedded cube to get what fraction 
-! across the imbedded rectangle we are
-! Take the longitudes and turn them into a number between -sqrt(1/3) and sqrt(1/3)
-lon_grid_m = mod(lon_grid, PI/2.0_r8)
-
-! Use law of sines to go from lon back to position along edge of imbedded cube 
-! The triangle of interest has a side of length 2sqrt(1/3) (1/2 of the planar diagonal of the imbedded cube)
-! The angles adjacent to this side are the longitude and 45 degrees
-! The angle opposite the side of length 2sqrt(1/3) is PI - (longitude + PI/4)
-! The side opposite the longitude is how far along the side of the cube
-! The cube side is 2sqrt(1/3), so the length along the side is between zero and this value
-gama = PI - (PI/4.0_r8 + lon_grid_m(1))
-len(1) = sqrt(2.0_r8/3.0_r8) * sin(lon_grid_m(1)) / sin(gama)
-
-gamb = PI - (PI/4 + lon_grid_m(2))
-len(2) = sqrt(2.0_r8/3.0_r8) * sin(lon_grid_m(2)) / sin(gamb)
-
-! If we are on sides 2 or 3, the lengths need to be modified because the grid storage
-! for Aether goes from smallest latitude to largest and the longitudes of the shifted
-! poles are going the opposite way
-if(face == 2 .or. face == 3) len(2) = 2.0_r8 * sqrt(1.0_r8/3.0_r8) - len(2)
-
-! Same for face 4 (the bottom) but it's the other coordinate that's reversed
-if(face == 4) len(1) = 2.0_r8*sqrt(1.0_r8/3.0_r8) - len(1)
-
-end subroutine get_face
-
-!-----------------------------------------------------------------------
 subroutine get_corners(face, lat_grid, lon_grid, lat, lon, &
    f_face, f_lat_grid, f_lon_grid, num_bound_points)
    
@@ -1004,7 +798,7 @@ lon_grid(1) = low_grid(1); lon_grid(2) = lon_grid(1); lon_grid(3) = hi_grid(1); 
 ! If points are on the edge map to adjacent faces
 on_edge = .false.
 do i = 1, 4
-   call fix_face(face, lat_grid(i), lon_grid(i), &
+   call fix_face(face, lat_grid(i), lon_grid(i), np, &
       grid_face(i), grid_lat_ind(i), grid_lon_ind(i), edge, corner)
    ! If any point is on an edge, on_edge is true
    if(edge) on_edge = .true.
@@ -1142,7 +936,7 @@ do my_face = 0, 5
    do my_lat_ind = 1, np
       do my_lon_ind = 1, np
          call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, del, half_del, pt_lat, pt_lon)
-         call lat_lon_to_grid(pt_lat, pt_lon, test_face, test_lat_ind, test_lon_ind)
+         call lat_lon_to_grid(pt_lat, pt_lon, del, half_del, test_face, test_lat_ind, test_lon_ind)
          if(my_face .ne. test_face .or. my_lat_ind .ne. test_lat_ind .or. my_lon_ind .ne. test_lon_ind) then
             write(*, *) 'lat_lon_to_grid is not inverse of grid_to_lat_lon'
             write(*, *) my_face, test_face, my_lat_ind, test_lat_ind, my_lon_ind, test_lon_ind
@@ -1338,7 +1132,7 @@ real(r8), intent(in) :: lat, lon
 integer :: face, lat_ind, lon_ind
 
 ! Get the face, lat_ind and lon_ind
-call lat_lon_to_grid(lat, lon, face, lat_ind, lon_ind)
+call lat_lon_to_grid(lat, lon, del, half_del, face, lat_ind, lon_ind)
 
 ! Get column index using the agreed upon storage order
 lat_lon_to_col_index = face * np * np + (lat_ind - 1) * np + lon_ind
