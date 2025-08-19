@@ -35,7 +35,8 @@ use state_structure_mod, only : add_domain, get_dart_vector_index, get_domain_si
 
 use ensemble_manager_mod, only : ensemble_type
 
-use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon
+use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
+                                       lat_lon_to_xyz, col_index_to_lat_lon
 
 ! These routines are passed through from default_model_mod.
 ! To write model specific versions of these routines
@@ -71,8 +72,6 @@ public :: get_model_size,         &
 
 ! Routine for comprehensive test of interpolation
 public :: test_grid_box
-! Only until things are moved
-public :: lat_lon_to_col_index
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "$URL$"
@@ -332,7 +331,7 @@ call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimensi
                                 var_id=my_var_id, kind_index=my_qty)
 
 ! Get the latitude and longitude of this columm; These lats and lons are in radians
-call col_index_to_lat_lon(col_index, lat, lon)
+call col_index_to_lat_lon(col_index, np, del, half_del, lat, lon)
 
 ! Set the location type
 location = set_location(RAD2DEG*lon, RAD2DEG*lat, center_altitude(lev_index), VERTISHEIGHT)
@@ -530,19 +529,6 @@ call nc_close_file(templatefile%ncid)
 np = nint(sqrt(number_of_columns / 6.0_r8))
 
 end subroutine read_template_file
-
-!-----------------------------------------------------------------------
-
-function lat_lon_to_xyz(lat, lon)
-
-real(r8)             :: lat_lon_to_xyz(3)
-real(r8), intent(in) :: lat, lon
-
-lat_lon_to_xyz(1) = cos(lat) * cos(lon)
-lat_lon_to_xyz(2) = cos(lat) * sin(lon)
-lat_lon_to_xyz(3) = sin(lat)
-
-end function lat_lon_to_xyz
 
 !-----------------------------------------------------------------------
 
@@ -1164,7 +1150,7 @@ do my_face = 0, 5
          endif
 
          col_index = my_lon_ind + (my_lat_ind - 1) * np + my_face * np*np
-         call col_index_to_lat_lon(col_index, pt_lat, pt_lon)
+         call col_index_to_lat_lon(col_index, np, del, half_del, pt_lat, pt_lon)
          test_col_index = lat_lon_to_col_index(pt_lat, pt_lon)
 write(*, *) col_index, test_col_index
          if(col_index .ne. test_col_index) then
@@ -1341,31 +1327,6 @@ column = lon_ind + np * ((lat_ind - 1) + np * face)
 get_state_index = get_dart_vector_index(column, lev_ind, no_third_dimension, dom_id, var_ind)
 
 end function get_state_index
-
-!-----------------------------------------------------------------------
-
-subroutine col_index_to_lat_lon(col_index, lat, lon)
-
-integer,  intent(in)  :: col_index
-real(r8), intent(out) :: lat, lon
-
-integer :: face, resid, lat_ind, lon_ind
-
-! Given the index of a horizontal column, returns the latitude and longitude in radians
-
-! Which face are we on? np**2 points per face
-face = (col_index - 1) / (np**2)
-resid = col_index - face * np**2
-
-! Get latitude index
-lat_ind = (resid - 1) / np + 1
-
-lon_ind = resid - (lat_ind - 1) * np
-
-! Get the corresponding latitude and longitude
-call grid_to_lat_lon(face, lat_ind, lon_ind, del, half_del, lat, lon)
-
-end subroutine col_index_to_lat_lon
 
 !-----------------------------------------------------------------------
 
