@@ -1,5 +1,5 @@
-ROMS
-====
+ROMS-UCLA
+=========
 
 There are several DART users who have working DART interface code
 to the Regional Ocean Modeling System (ROMS), as the model is a community ocean
