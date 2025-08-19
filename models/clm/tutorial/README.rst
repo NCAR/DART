@@ -187,7 +187,7 @@ Compiling CLM5 on the NSF NCAR machine Derecho is straightforward because the
 run and build environment settings are already defined within the ``config_machines.xml``
 file located within the CESM installation: ``<cesmroot>/cime/config/cesm/machines``. If
 you are using your own machine please follow the porting instructions located 
-`here <https://esmci.github.io/cime/versions/master/html/users_guide/porting-cime.html>`__.
+`here <https://esmci.github.io/cime/versions/cesm2.2/html/users_guide/porting-cime.html>`__.
 When performing a CLM5-DART assimilation run, the compiling step for CLM5 occurs within
 the ``CLM5_setup_assimilation`` script described later within this tutorial.
 
