@@ -9,4 +9,8 @@
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
    obs_type_files          = '../../../observations/forward_operators/obs_def_gps_mod.f90'
    quantity_files          = '../../../assimilation_code/modules/observations/default_quantities_mod.f90'
-   / 
+   /
+
+&kde_nml
+   quadrature_order = 9
+   /
