@@ -183,11 +183,10 @@
 
 
 &dart_to_cice_nml
-   dart_to_cice_input_file   = 'dart_restart.nc'
-   original_cice_input_file  = 'cice_restart.nc'
-   previous_cice_input_file  = 'pre_restart.nc'
-   balance_method            = 'simple_squeeze'
-   r_snw_name                = 'r_snw_vary'
+   dart_to_cice_input_file     = 'dart_restart.nc'
+   original_cice_restart_file  = 'PRELIM.cice_0021.r.2018-10-14-00000.nc'
+   postprocessed_output_file   = 'pre_restart.nc'
+   postprocess                 = 'cice'
    /
 
 

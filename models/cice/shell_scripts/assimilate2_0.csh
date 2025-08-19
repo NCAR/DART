@@ -611,34 +611,15 @@ while ( $member <= $ensemble_size )
    set PRIOR_FILENAME = `printf cice_prior.r.%04d.nc $member`
    ln -sf ../${PRIOR_FILENAME} cice_restart.nc
 
-   #========================================================
-   # FEI: link yesterday's restart file 
-   # to pre_restart.nc  
-   #========================================================
-   cd ${CASEROOT}
+   # create a postprocessed_restart.nc file for changes to be written to
+   cp ../${ICE_FILENAME} postprocessed_restart.nc
 
-   if ( ${CONTINUE_RUN} == "TRUE" ) then
-
-      set date_yesterday = `date -d "${CPL_DATE[1]}-${CPL_DATE[2]}-${CPL_DATE[3]} 1 day ago" +%F`-${CPL_DATE[4]}
-      echo "the forecast began at " $date_yesterday
-      set pre_restart = `printf $RUNDIR/${CASE}.cice_%04d.r.${date_yesterday}.nc $member`
-
-   else
-
-      set infile   = `printf $RUNDIR/ice_in_%04d $member`
-      set MYSTRING = `grep 'ice_ic' $infile`
-      set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
-      set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-      set pre_restart = $MYSTRING[2]
-
-   endif
-
-  cd $RUNDIR/assimilate_ice/${member_dir}          #go back to the assim dir
-  ${LINK} $pre_restart pre_restart.nc
-
-
+   # run dart_to_cice
    echo "starting dart_to_ice for member ${member} at "`date`
    ${EXEROOT}/dart_to_cice >! output.${member}.dart_to_ice &
+
+   # copy the postprocessed_restart.nc back to the restart file in the model run directory
+   cp postprocessed_restart.nc ../${ICE_FILENAME}
 
    cd ..
 
