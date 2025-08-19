@@ -35,6 +35,8 @@ use state_structure_mod, only : add_domain, get_dart_vector_index, get_domain_si
 
 use ensemble_manager_mod, only : ensemble_type
 
+use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon
+
 ! These routines are passed through from default_model_mod.
 ! To write model specific versions of these routines
 ! remove the routine from this use statement and add your code to
@@ -529,71 +531,6 @@ np = nint(sqrt(number_of_columns / 6.0_r8))
 
 end subroutine read_template_file
 
-
-
-!-----------------------------------------------------------------------
-! Determines if the projection of a point p onto the plane of a triangle with vertices
-! v1, v2 and v3 is inside the triangle or not. Computes the areas of each of the triangles
-! between p and a pair of vertices. These should sum to the area of the triangle if p
-! is inside and be larger than that if p is outside. 
-
-function is_point_in_triangle(v1, v2, v3, p)
-
-logical              :: is_point_in_triangle
-real(r8), intent(in) :: v1(3), v2(3), v3(3), p(3)    
-
-real(r8) :: a(3), b(3), perp(3), unit_perp(3), p_proj(3)
-real(r8) :: offset, len_s1, len_s2, len_s3, len_p1, len_p2, len_p3, at, at1, at2, at3
-real(r8) :: area_dif, dif_frac, threshold
-
-! Get the projection of the point p onto the plane containing the triangle
-! Start by getting perpendicular vector to plane by cross product
-a = v1 - v2
-b = v2 - v3
-perp(1) = a(2) * b(3) - a(3) * b(2)
-perp(2) = a(3) * b(1) - a(1) * b(3)
-perp(3) = a(1) * b(2) - a(2) * b(1)
-! Get unit vector in direction of perp
-unit_perp = perp / sqrt(dot_product(perp, perp))
-! Projection of vector from v1 to p on the unit perp vector is how much to move to get to plane
-offset = dot_product((p-v1), unit_perp)
-p_proj = p - offset * unit_perp
-
-! Compute lengths of the sides
-len_s1 = sqrt(dot_product(v1-v2, v1-v2))
-len_s2 = sqrt(dot_product(v3-v2, v3-v2))
-len_s3 = sqrt(dot_product(v1-v3, v1-v3))
-
-! Compute the lengths from the point p
-len_p1 = sqrt(dot_product(p_proj-v1, p_proj-v1))
-len_p2 = sqrt(dot_product(p_proj-v2, p_proj-v2))
-len_p3 = sqrt(dot_product(p_proj-v3, p_proj-v3))
-
-! Area of triangle
-at = heron(len_s1, len_s2, len_s3)
-
-! Compute areas of sub triangles
-at1 = heron(len_p1, len_p2, len_s1)
-at2 = heron(len_p2, len_p3, len_s2)
-at3 = heron(len_p3, len_p1, len_s3)
-
-! Difference between sub triangles and the triangle area
-area_dif = at1 + at2 + at3 - at
-
-! Quadrilaterals on the interior of the cube sphere sides are really spherical quads,
-! There sides are great circles. This routine assumes that the triangles composing the quads
-! have straight sides in regular space. The algorithm finds points that are inside the 
-! spherical quads. These quads actually 'bulge' out compared to the regular sides, so it is possible
-! to have points that are inside the spherical quad but just barely outside of the regular
-! quads. This threshold is tuned so that these points still show as inside. The tuning is for
-! np = 18 (number of points along a grid face is 18). Fewer points might require a larger
-! threshold while more points might be okay with a smaller one.
-threshold = 0.002_r8
-
-dif_frac = area_dif / at
-is_point_in_triangle = abs(dif_frac) < threshold
-
-end function is_point_in_triangle
 !-----------------------------------------------------------------------
 
 function lat_lon_to_xyz(lat, lon)
@@ -606,67 +543,6 @@ lat_lon_to_xyz(2) = cos(lat) * sin(lon)
 lat_lon_to_xyz(3) = sin(lat)
 
 end function lat_lon_to_xyz
-
-!-----------------------------------------------------------------------
-
-! Given the face (from 0 to 5) the number of lons/lats on a face (np) and
-! the indices of the i and j grid point, returns the latitude and longitude of the point
-
-subroutine grid_to_lat_lon(face, lat_ind, lon_ind, lat, lon)
-
-integer,  intent(in)  :: face, lat_ind, lon_ind
-real(r8), intent(out) :: lat, lon
-
-real(r8) :: x, y, blon, blat, rot_angle
-real(r8) :: vect(3), RZ(3, 3), rot_vect(3)
-
-
-x = sqrt(1.0_r8/3.0_r8) - (half_del + del * (lon_ind - 1))
-if(face == 5) then 
-   y =  sqrt(1.0_r8/3.0_r8) - (half_del + del * (lat_ind - 1))
-else
-   y = -sqrt(1.0_r8/3.0_r8) + (half_del + del * (lat_ind - 1))
-endif
-
-if(face < 4) then
-   blon = atan2(sqrt(1.0_r8 / 3.0_r8), x)
-   blat = atan2(y, sqrt(1.0_r8/3.0_r8 + x**2.0_r8))
-   blon = blon - PI/4.0_r8
-
-   ! Above is for face 0; add PI/2 for each additional face tangent to equator
-   lon = blon + PI/2.0_r8 * face; 
-   lat = blat;
-elseif(face == 4 .or. face == 5) then
-   ! Face 4 is tangent to south pole
-   lon = atan2(y, x)
-   lat = atan2(sqrt(1.0_r8/3.0_r8), sqrt(x**2.0_r8 + y**2.0_r8))
-
-   if(face == 4) lat = -lat
-
-   !  Get ready for rotation
-   vect = lat_lon_to_xyz(lat, lon)
-
-   ! Then rotate 45 degrees around Z
-   rot_angle = -PI/4.0_r8;
-
-   ! Create the rotation matrix
-   RZ(1, 1:3) = [cos(rot_angle),  sin(rot_angle), 0.0_r8]
-   RZ(2, 1:3) = [-sin(rot_angle), cos(rot_angle), 0.0_r8]
-   RZ(3, 1:3) = [0.0_r8,          0.0_r8,         1.0_r8]
-   rot_vect = matmul(RZ, vect)
-
-   lat = asin(rot_vect(3))
-   lon = atan2(rot_vect(2), rot_vect(1))
-   ! Note that there are inconsistent treatments of the value near longitude
-   ! 0 in the grid files for Aether. Some points have a value near or just less
-   ! than 2PI, other points have values just greater than 0. This code 
-   ! avoids values near to 2PI and have 0 instead.
-   if(lon < 0.0_r8) lon =  lon + 2.0_r8*PI
-   if(lon >= 2.0_r8*PI) lon = 0.0_r8
-
-endif
-
-end subroutine grid_to_lat_lon
 
 !-----------------------------------------------------------------------
 
@@ -1073,7 +949,7 @@ pxyz = lat_lon_to_xyz(lat, lon)
 
 ! Get lats and lons of the triangle vertices
 do i = 1, 3
-   call grid_to_lat_lon(f_face(i), f_lat_grid(i), f_lon_grid(i), grid_pt_lat, grid_pt_lon)
+   call grid_to_lat_lon(f_face(i), f_lat_grid(i), f_lon_grid(i), del, half_del, grid_pt_lat, grid_pt_lon)
    ! Convert to x, y, z coords to check for whether points are in tris/quads
    qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat, grid_pt_lon)
 enddo
@@ -1088,7 +964,7 @@ do quad = 1, 3
    ! Compute lat and lon for a quad
    do i = 1, 4
          call grid_to_lat_lon(quad_face(quad, i), quad_lat_grid(quad, i), quad_lon_grid(quad, i), &
-            grid_pt_lat, grid_pt_lon)
+            del, half_del, grid_pt_lat, grid_pt_lon)
       ! Convert to x, y, z coords to check for whether points are in tris/quads
       qxyz(i, 1:3) = lat_lon_to_xyz(grid_pt_lat, grid_pt_lon)
    enddo
@@ -1168,7 +1044,7 @@ endif
 ! Compute the lat and lon corresponding to these point
 do i = 1, num_bound_points
    call grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      grid_pt_lat(i), grid_pt_lon(i))
+      del, half_del, grid_pt_lat(i), grid_pt_lon(i))
 enddo
 
 ! Make on_edge true only if we are on an edge but not at a corner
@@ -1250,7 +1126,7 @@ if(on_edge) then
       ! Compute the lat and lon corresponding to these point
       do i = 1, num_bound_points
          call grid_to_lat_lon(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-            grid_pt_lat(i), grid_pt_lon(i))
+            del, half_del, grid_pt_lat(i), grid_pt_lon(i))
       enddo
    endif
 
@@ -1279,7 +1155,7 @@ integer             :: test_face, test_lat_ind, test_lon_ind, col_index, test_co
 do my_face = 0, 5
    do my_lat_ind = 1, np
       do my_lon_ind = 1, np
-         call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, pt_lat, pt_lon)
+         call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, del, half_del, pt_lat, pt_lon)
          call lat_lon_to_grid(pt_lat, pt_lon, test_face, test_lat_ind, test_lon_ind)
          if(my_face .ne. test_face .or. my_lat_ind .ne. test_lat_ind .or. my_lon_ind .ne. test_lon_ind) then
             write(*, *) 'lat_lon_to_grid is not inverse of grid_to_lat_lon'
@@ -1413,7 +1289,7 @@ do my_qty = 1, 2
                lon_lat_hgt = get_location(location)       
 
                ! Want to compare the lat lon directly from code to that from get_state_meta_data
-               call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, my_lat, my_lon)
+               call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, del, half_del, my_lat, my_lon)
                 
                ! ROUNDOFF FROM AETHER, NEED TO FIX somewhere.
                if(abs(lon_lat_hgt(1) - 360.0_r8) < 0.0001) lon_lat_hgt(1) = 0.0_r8 
@@ -1434,52 +1310,6 @@ enddo
 !-------------------------------
 
 end subroutine test_grid_box
-
-!-----------------------------------------------------------------------
-
-function is_point_in_quad(v, p)
-
-logical              :: is_point_in_quad
-real(r8), intent(in) :: v(4, 3), p(3)
-
-logical :: inside_t(4)
-
-integer :: i
-
-! See if the point is inside this quad; it's inside if it's in one or more contained triangles
-inside_t(1) = is_point_in_triangle(v(1, :), v(2, :), v(3, :), p)
-inside_t(2) = is_point_in_triangle(v(1, :), v(2, :), v(4, :), p)
-inside_t(3) = is_point_in_triangle(v(1, :), v(3, :), v(4, :), p)
-inside_t(4) = is_point_in_triangle(v(2, :), v(3, :), v(4, :), p)
-
-is_point_in_quad = any(inside_t)
-
-end function is_point_in_quad
-   
-
-!-----------------------------------------------------------------------
-
-! Computes Herons formula to get area of triangle from lenghts of sides
-! Super accuracy is not needed in the area calculation here
-
-function heron(a, b, c)
-
-real(r8)             :: heron
-real(r8), intent(in) :: a, b, c
-
-real(r8) :: s, arg
-
-s = (a + b + c) /2
-arg = (s * (s - a) * (s - b) * (s - c))
-
-! Make sure we don't roundoff to a negative
-if(arg <= 0.0_r8) then
-   heron = 0.0_r8
-else
-   heron = sqrt(arg)
-endif
-
-end function heron
 
 !-----------------------------------------------------------------------
 
@@ -1533,7 +1363,7 @@ lat_ind = (resid - 1) / np + 1
 lon_ind = resid - (lat_ind - 1) * np
 
 ! Get the corresponding latitude and longitude
-call grid_to_lat_lon(face, lat_ind, lon_ind, lat, lon)
+call grid_to_lat_lon(face, lat_ind, lon_ind, del, half_del, lat, lon)
 
 end subroutine col_index_to_lat_lon
 

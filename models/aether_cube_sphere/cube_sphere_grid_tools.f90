@@ -13,7 +13,8 @@ use        types_mod, only : r8, PI
 implicit none
 private
 
-public :: lat_lon_to_col_index, get_bounding_box, col_index_to_lat_lon
+public :: lat_lon_to_col_index, get_bounding_box, col_index_to_lat_lon, &
+          is_point_in_triangle, is_point_in_quad, grid_to_lat_lon
 
 ! Geometry variables that are used throughout the module; read from a template file
 integer               :: np                ! Number of grid rows across a face
