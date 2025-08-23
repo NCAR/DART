@@ -15,7 +15,8 @@ private
 
 public :: lat_lon_to_col_index, get_bounding_box, col_index_to_lat_lon, &
           is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
-          lat_lon_to_xyz, lat_lon_to_grid, get_face, fix_face, get_corners
+          lat_lon_to_xyz, lat_lon_to_grid, get_face, fix_face, get_corners, &
+          get_grid_delta
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "$URL$"
@@ -23,6 +24,24 @@ character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
 contains
+
+!------------------------------------------------------------------
+
+subroutine get_grid_delta(np, del, half_del)
+
+integer,  intent(in)  :: np
+real(r8), intent(out) :: del, half_del
+
+real(r8) :: cube_side
+
+! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
+! two exterior intervals of half  width, sqrt(1/3) / np 
+cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
+! These grid spacings are in module storage since they are used repeatedly in many routines
+del = cube_side / np  
+half_del = del / 2.0_r8
+
+end subroutine get_grid_delta
 
 !------------------------------------------------------------------
 

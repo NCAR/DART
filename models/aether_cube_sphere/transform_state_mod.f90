@@ -7,7 +7,7 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, nc_open_file_readwrite, 
 use utilities_mod,        only : open_file, close_file, find_namelist_in_file, &
                                  check_namelist_read, error_handler, E_ERR, string_to_integer
 
-use cube_sphere_grid_tools_mod, only : lat_lon_to_col_index
+use cube_sphere_grid_tools_mod, only : lat_lon_to_col_index, get_grid_delta
 
 implicit none
 private
@@ -98,12 +98,8 @@ real(r8), allocatable, dimension(:) :: time_array
 real(r4), allocatable :: block_array(:, :, :), spatial_array(:), variable_array(:, :, :)
 real(r4), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
 
-! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
-! two exterior intervals of half  width, sqrt(1/3) / np 
-cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
-! These grid spacings are in module storage since they are used repeatedly in many routines
-del = cube_side / np  
-half_del = del / 2.0_r8
+! Get grid spacing from number of points across each face
+call get_grid_delta(np, del, half_del)
 
 do iblock = 1, nblocks
    ! Open the block files, read only

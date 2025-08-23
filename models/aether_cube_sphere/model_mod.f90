@@ -37,7 +37,7 @@ use ensemble_manager_mod, only : ensemble_type
 
 use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
                                        lat_lon_to_xyz, col_index_to_lat_lon, lat_lon_to_grid,   &
-                                       get_bounding_box, lat_lon_to_col_index
+                                       get_bounding_box, lat_lon_to_col_index, get_grid_delta
 
 ! These routines are passed through from default_model_mod.
 ! To write model specific versions of these routines
@@ -168,12 +168,8 @@ var = assign_var(variables, MAX_STATE_VARIABLES)
 ! Get the altitudes and the number of grid rows
 call read_template_file()
 
-! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
-! two exterior intervals of half  width, sqrt(1/3) / np 
-cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
-! These grid spacings are in module storage since they are used repeatedly in many routines
-del = cube_side / np
-half_del = del / 2.0_r8
+! Get the grid spacing
+call get_grid_delta(np, del, half_del)
 
 ! Define which variables are in the model state
 dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
