@@ -255,28 +255,22 @@ do varid = 1, 4
    else if (trim(name) == 'Altitude') then
       ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, dart_dimid(2), dart_varids(varid))
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'crazym')
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'm')
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', &
          'height above mean sea level')
    else if (trim(name) == 'Latitude') then
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lat', xtype, dart_dimid(1), dart_varids(varid))
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'degrees north')
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'degrees_north')
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', 'latitude')
       lat_varid = varid
    else if (trim(name) == 'Longitude') then
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lon', xtype, dart_dimid(1), dart_varids(varid))
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'degrees east')
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'degrees_east')
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', 'longitude')
       lon_varid = varid
    else
       write(*, *) 'Unexpected variable name in grid file', trim(name)
       stop
-   end if
-
-   ! In the block files, time does not have units
-   if (trim(name) /= 'time') then
-      grid_files(1)%ncstatus = nf90_get_att(grid_files(1)%ncid, varid, 'units', attribute)
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', attribute)
    end if
 
 end do
@@ -290,9 +284,15 @@ do varid = 1, block_files(1)%nVariables
    block_files(1)%ncstatus = nf90_inquire_variable(block_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    ! Only time should occur once we switch to ions and neutrals files
    if (trim(name) == 'time' .or. trim(name) == 'z' .or. trim(name) == 'lat' .or. trim(name) == 'lon') then
-      ! Time has already been incorporated
+      ! These fields have already been defined; the geometry ones aren't even in the neutral/ion files
    else
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid, dart_varids(varid))
+
+      ! In the block files, time does not have units
+      if (trim(name) /= 'time') then
+         block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
+         filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', attribute)
+      end if
    end if
 end do
 
@@ -336,12 +336,7 @@ do varid = 1, 4
 
       ! This is a 1-D time array
       if (trim(name) == 'time') then
-         ! Time must be the same in all files, so just deal with it from the first one
-         if (iblock == 1) then
-            grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, varid, time_array)
-            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-               dart_varids(varid), time_array)
-         end if
+         ! Time value comes from the data files
       else if (trim(name) == 'Altitude') then
          ! Vertical coords also must be the same in all files, so just set from the first
          if (iblock == 1) then
@@ -360,12 +355,10 @@ do varid = 1, 4
                do ix = 1, nxs(iblock)
                   icol = col_index(iblock, iy, ix)
                   spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix) * RAD2DEG
-write(*, *) 'iy, ix, icol, value ', iy, ix, icol, spatial_array(icol)
                end do
             end do
 
             if (iblock == nblocks) then
-write(*, *) 'spatial array ', trim(name), spatial_array
                filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
                   dart_varids(varid), spatial_array)
             end if
@@ -399,19 +392,24 @@ do varid = 1, block_files(1)%nVariables
          varid, name, xtype, nDimensions, dimids, nAtts)
 
       ! Time was taken care of already fron grid file
-      if (trim(name) .ne. 'time') then
+      if(trim(name) == 'time') then
+         ! Time must be the same in all files, so just deal with it from the first one
+         if (iblock == 1) then
+            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
+            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+               dart_varids(varid), time_array)
+         end if
+      else
 
          ! All of the other variables can be read into the full 3Dblock array
          block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
          
          ! This is one of the other non-spatial variables
-!!!write(*, *) 'field name ', trim(name), varid, block_array(1, 1, 1)
          do iy = 1, nys(iblock)
             do ix = 1, nxs(iblock)
                icol = col_index(iblock, iy, ix)
                do iz = 1, nzs(1)
                   variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
-!write(*, *) icol, iz, iy, ix, variable_array(icol, iz, 1)
                end do
             end do
          end do
