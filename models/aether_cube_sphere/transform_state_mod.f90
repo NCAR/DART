@@ -107,7 +107,7 @@ call get_grid_delta(np, del, half_del)
 !==================================== get info from grid file block ===================
 
 do iblock = 1, nblocks
-   ! Open the block files, read only
+   ! Open the grid files, read only
    grid_files(iblock)%ncid = nc_open_file_readonly(grid_files(iblock)%file_path)
    ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
    ! netcdf_utilities_mod so this uses the external function directly from the netcdf library
@@ -145,7 +145,6 @@ do iblock = 1, nblocks
       end if
    end do
 
-   ! Create temporary storage for this blocks variables (storage inefficient) 
 end do
 
 ! Do some consistency checks to make sure the files have the same number of variables, levels and times
@@ -629,7 +628,114 @@ end subroutine model_to_dart_orig
 
 !---------------------------------------------------------------
 
-subroutine dart_to_model()
+subroutine dart_to_model
+
+integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
+integer :: lat_varid, lon_varid, ix, iy, iz, txs, tys, icol
+integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
+integer :: final_ntimes, final_nxs, final_nys, final_nzs
+integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
+integer :: dimids(NF90_MAX_VAR_DIMS)
+real(r8) :: blat, blon, cube_side, del, half_del
+character(len=NF90_MAX_NAME) :: name, attribute
+integer,  allocatable         :: dart_varids(:), col_index(:, :, :)
+! The time variable in the block files is a double
+real(r8), allocatable, dimension(:) :: time_array
+! File for reading in variables from block file; These can probably be R4
+real(r4), allocatable :: block_array(:, :, :), spatial_array(:), variable_array(:, :, :)
+real(r4), allocatable :: block_lats(:, :, :), block_lons(:, :, :)
+
+! Harvest updated state info from DART restart file and put it into the 
+! Aether ions and neutrals files
+
+! Get grid spacing from number of points across each face
+call get_grid_delta(np, del, half_del)
+
+!==================================== get info from grid file block ===================
+
+
+! ISNT THIS MORE EASILY AVAILABLE IN THE FILTER_OUTPUT FILE?
+do iblock = 1, nblocks
+   ! Open the grid files, read only
+   grid_files(iblock)%ncid = nc_open_file_readonly(grid_files(iblock)%file_path)
+   ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
+   ! netcdf_utilities_mod so this uses the external function directly from the netcdf library
+   grid_files(iblock)%ncstatus = nf90_inquire(grid_files(iblock)%ncid, &
+      grid_files(iblock)%nDimensions, grid_files(iblock)%nVariables, &
+      grid_files(iblock)%nAttributes,  grid_files(iblock)%unlimitedDimId, &
+      grid_files(iblock)%formatNum)
+
+   ! The number of variables should be 4: longitude, latitude, altitude, time
+   if(grid_files(iblock)%nVariables .ne. 4) then
+      write(*, *) 'nunmber of vars in grid files should be 4', grid_files(iblock)%nVariables
+      stop
+   endif
+
+   ! Allow the files to be of different size, but all must have the same number of halos from namelist
+
+   ! Loop through each of the dimensions to find the metadata values
+   do dimid = 1, grid_files(iblock)%nDimensions
+      ! There doesn't seem to be a helper procedure corresponding to nf90_inquire_dimension that
+      ! assigns name and length in netcdf_utilities_mod so this uses the external function
+      ! directly from the netcdf library
+      grid_files(iblock)%ncstatus = nf90_inquire_dimension(grid_files(iblock)%ncid, dimid, name, length)
+
+      if (trim(name) == 'time') then
+         !JLA Error if more than one time???
+         ntimes(iblock) = length
+      else if (trim(name) == 'x') then
+         nxs(iblock)         = length-2*nhalos
+         haloed_nxs(iblock)  = length
+      else if (trim(name) == 'y') then
+         nys(iblock)        = length-2*nhalos
+         haloed_nys(iblock) = length
+      else if (trim(name) == 'z') then
+         nzs(iblock) = length
+      end if
+   end do
+
+end do
+
+! Do some consistency checks to make sure the files have the same number of variables, levels and times
+if(any(ntimes - ntimes(1) .ne. 0)) then
+   write(*, *) 'inconsistent ntimes'
+   stop
+endif
+if(any(nzs - nzs(1) .ne. 0)) then
+   write(*, *) 'inconsistent number of vertical levels'
+   stop
+endif
+
+! Final consistent times, x, y and levels
+final_ntimes = ntimes(1)
+final_nxs = nxs(1)
+final_nys = nys(1)
+final_nzs = nzs(1)
+write(*, *) 'times, nx, ny, nz', final_ntimes, final_nxs, final_nys, final_nzs
+
+! Compute the number of columns (without haloes)
+ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
+write(*, *) 'ncols is ', ncols
+
+! Allocate ncols size temporary storage
+allocate(spatial_array(ncols), variable_array(ncols, nzs(1), ntimes(1)))
+spatial_array = 0.0_r8
+
+!==================================== end of get info from grid file block ===================
+
+! Initialize the filter output file that will be read from
+filter_output_file = assign_filter_file(dart_ensemble_member, filter_directory, &
+   filter_output_prefix, '.nc')
+! The dart filter output file is read only
+filter_output_file%ncid = nc_open_file_readonly(filter_output_file%file_path)
+
+stop
+
+end subroutine dart_to_model
+
+!---------------------------------------------------------------
+
+subroutine dart_to_model_orig()
 
 integer :: iblock, icol, ix, iy, iz, ntimes, nxs, nys, nzs, ncols
 integer :: filter_varid, block_varid, dimid, filter_xtype, filter_nDimensions, filter_nAtts
@@ -720,7 +826,7 @@ end do
    
 call nc_close_file(filter_output_file%ncid)
 
-end subroutine dart_to_model
+end subroutine dart_to_model_orig
 
 !---------------------------------------------------------------
 
