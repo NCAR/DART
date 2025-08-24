@@ -90,6 +90,7 @@ integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimension
 integer :: lat_varid, lon_varid, ix, iy, iz, txs, tys, icol
 integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
 integer :: final_ntimes, final_nxs, final_nys, final_nzs
+integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, cube_side, del, half_del
@@ -174,10 +175,10 @@ spatial_array = 0.0_r8
 
 !==================================== end of get info from grid file block ===================
 
-! Start with block files, then switch to ions and neutrals
+! Get data fields from the neutrals files
 
 do iblock = 1, nblocks
-   ! Open the block files, read only
+   ! Open the neutrals files, read only
    block_files(iblock)%ncid = nc_open_file_readonly(block_files(iblock)%file_path)
 write(*, *) 'block files ', iblock, block_files(iblock)%file_path
    ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
@@ -250,22 +251,22 @@ filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'col',  ncols,
 do varid = 1, 4
    grid_files(1)%ncstatus = nf90_inquire_variable(grid_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    if (trim(name) == 'time') then
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(3), dart_varids(varid))
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(3), filter_time_id)
    else if (trim(name) == 'Altitude') then
       ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, dart_dimid(2), dart_varids(varid))
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'm')
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', &
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, dart_dimid(2), filter_alt_id)
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_alt_id, 'units', 'm')
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_alt_id, 'long_name', &
          'height above mean sea level')
    else if (trim(name) == 'Latitude') then
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lat', xtype, dart_dimid(1), dart_varids(varid))
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'degrees_north')
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', 'latitude')
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lat', xtype, dart_dimid(1), filter_lat_id)
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lat_id, 'units', 'degrees_north')
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lat_id, 'long_name', 'latitude')
       lat_varid = varid
    else if (trim(name) == 'Longitude') then
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lon', xtype, dart_dimid(1), dart_varids(varid))
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', 'degrees_east')
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', 'longitude')
+      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lon', xtype, dart_dimid(1), filter_lon_id)
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lon_id, 'units', 'degrees_east')
+      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lon_id, 'long_name', 'longitude')
       lon_varid = varid
    else
       write(*, *) 'Unexpected variable name in grid file', trim(name)
@@ -342,7 +343,7 @@ do varid = 1, 4
             grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, varid, block_array)
             filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
         ! JLA REVIEW THE DART_VARIDS STUFF
-               dart_varids(varid), block_array(:,1,1))
+               filter_alt_id, block_array(:,1,1))
          endif
       else
 
@@ -358,8 +359,13 @@ do varid = 1, 4
             end do
 
             if (iblock == nblocks) then
-               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-                  dart_varids(varid), spatial_array)
+               if(trim(name) == 'Latitude') then
+                  filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+                     filter_lat_id, spatial_array)
+               else
+                  filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+                     filter_lon_id, spatial_array)
+               endif
             end if
          else
             ! Error if it isn't one of the 4 fields
@@ -428,7 +434,6 @@ call nc_close_file(filter_input_file%ncid)
 deallocate(spatial_array, variable_array)
 deallocate(dart_varids, time_array)
 deallocate(col_index)
-stop
 
 end subroutine model_to_dart
 
@@ -890,6 +895,7 @@ allocate(grid_files(nblocks))
 ! Want more control over pathnames from namelist 
 do iblock = 1, nblocks
    block_name = zero_fill(integer_to_string(iblock-1), 4)
+!JLA THIS SHOULD NOT BE HARD_CODED
    grid_files(iblock)%file_path = "../grid_files/grid_g" // block_name // ".nc"
    !!!grid_files(iblock)%file_path = "../NEW_RESTART_FILES/restartOut//grid_g" // block_name // ".nc"
 end do
