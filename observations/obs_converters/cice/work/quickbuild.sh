@@ -15,7 +15,6 @@ LOCATION=threed_sphere
 
 programs=(
 cice_to_obs
-modis_ist_to_obs_netcdf
 seaice_aggre_to_obs_netcdf
 obs_sequence_tool
 advance_time
