@@ -295,6 +295,8 @@ call nc_end_define_mode(filter_input_file%ncid)
 allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
 
 ! Allocate storage for the latitude and longitude from the blocks
+txs = nxs(iblock) + 2*nhalos
+tys = nys(iblock) + 2*nhalos
 allocate(block_lats(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
          block_lons(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
          block_array(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)))
@@ -348,40 +350,26 @@ end do
 filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
    filter_lon_id, spatial_array)
 
-deallocate(block_lats, block_lons, block_array)
 
 !=========== End of Block to get lat lon and alt from grid files =================
 
-! Choose to minimize storage rather than redundant computation
 ! Will get full spatial field for one variable at a time
 do varid = 1, block_files(1)%nVariables
+   ! Get metadata for this variable from first block file 
+   block_files(1)%ncstatus = nf90_inquire_variable(block_files(1)%ncid, &
+      varid, name, xtype, nDimensions, dimids, nAtts)
 
-   ! Loop through all the blocks for this variable
-   do iblock = 1, nblocks
-      txs = nxs(iblock) + 2*nhalos
-      tys = nys(iblock) + 2*nhalos
-      ! Careful of the storage order, z, y, x is read by get_var
-      ! Allocate storage for the fields
-      allocate(block_array(final_nzs, tys, txs))
-     
-      ! Get metadata for this variable from block file 
-      block_files(iblock)%ncstatus = nf90_inquire_variable(block_files(iblock)%ncid, &
-         varid, name, xtype, nDimensions, dimids, nAtts)
-
-      ! Time was taken care of already fron grid file
-      if(trim(name) == 'time') then
-         ! Time must be the same in all files, so just deal with it from the first one
-         if (iblock == 1) then
-            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
-            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-               filter_time_id, time_array)
-         end if
-      else
-
-         ! All of the other variables can be read into the full 3Dblock array
+   if(trim(name) == 'time') then
+      ! Time must be the same in all files, so just deal with it from the first one
+      block_files(1)%ncstatus = nf90_get_var(block_files(1)%ncid, varid, time_array)
+      filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+         filter_time_id, time_array)
+   else
+      ! Loop through all the blocks for this variable
+      do iblock = 1, nblocks
+         ! Read into the full 3Dblock array
          block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
          
-         ! This is one of the other non-spatial variables
          do iy = 1, nys(iblock)
             do ix = 1, nxs(iblock)
                icol = col_index(iblock, iy, ix)
@@ -391,18 +379,16 @@ do varid = 1, block_files(1)%nVariables
             end do
          end do
 
-         if (iblock == nblocks) then
-            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-               filter_ions_ids(varid), variable_array)
-         end if
-      end if
- 
-      deallocate(block_array)
-   end do
+      end do
+      filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+         filter_ions_ids(varid), variable_array)
+   end if
+
 end do
 
 call nc_close_file(filter_input_file%ncid)
 
+deallocate(block_lats, block_lons, block_array)
 deallocate(spatial_array, variable_array)
 deallocate(time_array)
 deallocate(col_index)
@@ -410,200 +396,6 @@ deallocate(filter_ions_ids)
 stop
 
 end subroutine model_to_dart
-
-!---------------------------------------------------------------
-
-subroutine model_to_dart_orig()
-
-integer :: iblock, dimid, dart_dimid, ix, iy, iz, icol, varid
-integer :: length, xtype, nDimensions, nAtts, ntimes, nzs, nxs_per_block, nys_per_block
-integer :: truncated_nxs_per_block, truncated_nys_per_block, total_truncated_ncols
-integer :: time_lev_col_dims(3)
-integer :: dimids(NF90_MAX_VAR_DIMS)
-integer, allocatable :: dart_varids(:)
-
-character(len=NF90_MAX_NAME) :: name
-character(len=NF90_MAX_NAME) :: attribute
-
-
-! The time variable in the block files is a double
-real(r8), allocatable, dimension(:) :: time_array
-! The other variables are floats JLA Can't we use R8?
-real(r8), allocatable :: block_array(:, :, :)
-real(r8), allocatable :: spatial_array(:)
-real(r8), allocatable :: variable_array(:, :, :)
-
-filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, &
-   filter_input_prefix, filter_input_suffix)
-
-! The block files are read only
-do iblock = 1, nblocks
-   block_files(iblock)%ncid = nc_open_file_readonly(block_files(iblock)%file_path)
-end do
-
-! The dart file is create
-filter_input_file%ncid = nc_create_file(filter_input_file%file_path)
-
-! The first set of nested loops iterates through all of the block files and all of the dimensions
-! of each block file and counts the lengths of each dimension.
-
-do iblock = 1, nblocks
-   ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
-   ! netcdf_utilities_mod so this uses the external function directly from the netcdf library
-!JLA DO I REALLY NEED A LOOP OVER IBLOCK HERE OR CAN I JUST GET THIS FROM THE FIRST BLOCK
-   block_files(iblock)%ncstatus = nf90_inquire(block_files(iblock)%ncid, &
-      block_files(iblock)%nDimensions, block_files(iblock)%nVariables, &
-      block_files(iblock)%nAttributes,  block_files(iblock)%unlimitedDimId, &
-      block_files(iblock)%formatNum)
-      
-   if (iblock == 1) then
-      do dimid = 1, block_files(iblock)%nDimensions
-         ! There doesn't seem to be a helper procedure corresponding to nf90_inquire_dimension that
-         ! assigns name and length in netcdf_utilities_mod so this uses the external function
-         ! directly from the netcdf library
-         block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, name, length)
-
-         if (trim(name) == 'time') then
-            !JLA Error if more than one time???
-            ntimes = length
-         else if (trim(name) == 'x') then
-            truncated_nxs_per_block = length-2*nhalos
-            nxs_per_block = length
-         else if (trim(name) == 'y') then
-            truncated_nys_per_block = length-2*nhalos
-            nys_per_block = length
-         else if (trim(name) == 'z') then
-            nzs = length
-         end if
-      end do
-   end if
-end do
-
-! Could do some gross error checks on things we are taking for granted in these block files at this point JLA
-
-! JLA: Need to check with Aaron to make sure blocks are homogenous, maybe just do each block separately
-total_truncated_ncols = truncated_nxs_per_block*truncated_nys_per_block*nblocks
-
-! All of the lengths have been counted properly, create each dimension in the filter_input_file and save
-! the dimensions to the time_x_y_z and x_y_z arrays used during variable definition
-filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'time', NF90_UNLIMITED, dart_dimid)
-time_lev_col_dims(3) = dart_dimid
-
-filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'z', nzs, dart_dimid)
-time_lev_col_dims(2) = dart_dimid
-
-filter_input_file%ncstatus = nf90_def_dim(filter_input_file%ncid, 'col', total_truncated_ncols, dart_dimid)
-time_lev_col_dims(1) = dart_dimid
-
-! Allocate all of the storage arrays
-allocate(time_array(ntimes))
-allocate(block_array(nzs, nys_per_block, nxs_per_block))
-allocate(spatial_array(total_truncated_ncols))
-allocate(variable_array(total_truncated_ncols, nzs, ntimes))
-allocate(dart_varids(block_files(1)%nVariables))
-
-block_array(:, :, :) = 0
-spatial_array(:) = 0
-variable_array(:, :, :) = 0
-
-! The filter_input_file is still in define mode. Create all of the variables before entering data mode.
-do varid = 1, block_files(1)%nVariables
-   block_files(1)%ncstatus = nf90_inquire_variable(block_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
-   if (trim(name) == 'time') then
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, time_lev_col_dims(3), dart_varids(varid))
-   else if (trim(name) == 'z') then
-      ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, time_lev_col_dims(2), dart_varids(varid))
-   else if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, time_lev_col_dims(1), dart_varids(varid))
-   else
-      filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, time_lev_col_dims, dart_varids(varid))
-   end if
-
-   ! Add attribute from block file except for time which has none
-   if (trim(name) /= 'time') then
-      block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'units', attribute)
-   end if
-
-   ! In the block files, only lon, lat and z have long_name
-   if ((trim(name) == 'lon') .or. (trim(name) == 'lat') .or. (trim(name) == 'z')) then
-      block_files(1)%ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'long_name', attribute)
-      filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, dart_varids(varid), 'long_name', attribute)
-   end if
-
-   ! print *, 'name: ' // name
-   ! print *, 'dart_varids(varid): ' // integer_to_string(dart_varids(varid))
-
-end do
-
-call nc_end_define_mode(filter_input_file%ncid)
-
-! The second set of nested loops has a different loop order. The outer loop is all of the
-! variables while the inner loop is all of the blocks. The order is switched because all of the
-! ncid pointers to each of the block files have already been assigned and it is more
-! straightforward to assign all of the elements in the variable arrays if the blocks are the
-! inner loop.
-
-do varid = 1, block_files(1)%nVariables
-   icol = 0
-   do iblock = 1, nblocks
-      block_files(iblock)%ncstatus = nf90_inquire_variable(block_files(iblock)%ncid, &
-         varid, name, xtype, nDimensions, dimids, nAtts)
-      
-      if (trim(name) == 'time') then
-         ! This is a 1-D time array
-         if (iblock == 1) then
-            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, time_array)
-            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-               dart_varids(varid), time_array)
-         end if
-      else if (trim(name) == 'z') then
-         if (iblock == 1) then
-            block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
-            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-               dart_varids(varid), block_array(:,1,1))
-         end if
-      else
-         ! All of the variables besides time can be read into the block array
-         block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
-         
-         if ((trim(name) == 'lon') .or. (trim(name) == 'lat')) then
-            do iy = 1, truncated_nys_per_block
-               do ix = 1, truncated_nxs_per_block
-                  icol = icol + 1
-                  spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix)
-               end do
-            end do
-            
-            if (iblock == nblocks) then
-               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-                  dart_varids(varid), spatial_array)
-            end if
-         else
-            ! This is one of the other non-spatial variables
-            
-            do iy = 1, truncated_nys_per_block
-               do ix = 1, truncated_nxs_per_block
-                  icol = icol + 1
-                  do iz = 1, nzs
-                     variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
-                  end do
-               end do
-            end do
-
-            if (iblock == nblocks) then
-               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-                  dart_varids(varid), variable_array)
-            end if
-         end if
-      end if
-   end do
-end do
-
-call nc_close_file(filter_input_file%ncid)
-
-end subroutine model_to_dart_orig
 
 !---------------------------------------------------------------
 
