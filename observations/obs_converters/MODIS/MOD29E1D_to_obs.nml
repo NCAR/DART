@@ -1,0 +1,8 @@
+&MOD29E1D_to_obs_nml
+    year        = 2000
+    doy         = 55
+    terr        = 3.0
+    input_file  = 'seaicedata.nc'
+    output_file = 'obs_seq.mod29e1d'
+    debug       = .false.
+    / 
