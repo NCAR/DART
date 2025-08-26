@@ -93,6 +93,7 @@ integer :: ion_ntimes(nblocks), ion_nzs(nblocks), ion_nxs(nblocks), ion_nys(nblo
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: final_ntimes, final_nzs
 integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
+integer :: grid_time_id,   grid_alt_id,   grid_lat_id,   grid_lon_id
 integer, allocatable :: filter_ions_ids(:)
 integer :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del
@@ -237,20 +238,24 @@ do varid = 1, 4
    grid_files(1)%ncstatus = nf90_inquire_variable(grid_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    if (trim(name) == 'time') then
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(3), filter_time_id)
+      grid_time_id = varid
    else if (trim(name) == 'Altitude') then
       ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, dart_dimid(2), filter_alt_id)
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_alt_id, 'units', 'm')
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_alt_id, 'long_name', &
          'height above mean sea level')
+      grid_alt_id = varid
    else if (trim(name) == 'Latitude') then
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lat', xtype, dart_dimid(1), filter_lat_id)
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lat_id, 'units', 'degrees_north')
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lat_id, 'long_name', 'latitude')
+      grid_lat_id = varid
    else if (trim(name) == 'Longitude') then
       filter_input_file%ncstatus = nf90_def_var(filter_input_file%ncid, 'lon', xtype, dart_dimid(1), filter_lon_id)
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lon_id, 'units', 'degrees_east')
       filter_input_file%ncstatus = nf90_put_att(filter_input_file%ncid, filter_lon_id, 'long_name', 'longitude')
+      grid_lon_id = varid
    else
       write(*, *) 'Unexpected variable name in grid file', trim(name)
       stop
@@ -289,77 +294,61 @@ call nc_end_define_mode(filter_input_file%ncid)
 ! The col_index array will keep track of mapping from x and y for each block to final columns
 allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
 
-! Get full spatial field for one variable at a time; only lat, lon, alt, time in grid files
-do varid = 1, 4
+! Allocate storage for the latitude and longitude from the blocks
+allocate(block_lats(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
+         block_lons(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
+         block_array(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)))
 
-   ! Loop through all the blocks for this variable
-   do iblock = 1, nblocks
-      ! Careful of the storage order, z, y, x is read by get_var
-      ! Allocate storage for the latitude and longitude from the blocks
-      allocate(block_lats(final_nzs, haloed_nys(iblock), haloed_nxs(iblock)), &
-         block_lons(final_nzs, haloed_nys(iblock), haloed_nxs(iblock)), &
-         block_array(final_nzs, haloed_nys(iblock), haloed_nxs(iblock)))
-     
-      ! Get the latitude and longitude full arrays 
-      grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, filter_lat_id, block_lats)
-      grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, filter_lon_id, block_lons)
-  
-      ! Compute the col_index for each of the horizontal locations in this block 
-      do ix = 1, nxs(iblock)
-         do iy = 1, nys(iblock)
-            blat = block_lats(1, nhalos + iy, nhalos + ix);
-            blon = block_lons(1, nhalos + iy, nhalos + ix);
-            col_index(iblock, iy, ix) = lat_lon_to_col_index(blat, blon, del, half_del, np)
-         end do
+! Loop through all the blocks for this variable
+do iblock = 1, nblocks
+   ! Get the latitude and longitude full arrays 
+   grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lat_id, block_lats)
+   grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lon_id, block_lons)
+
+   ! Compute the col_index for each of the horizontal locations in this block 
+   do ix = 1, nxs(iblock)
+      do iy = 1, nys(iblock)
+         blat = block_lats(1, nhalos + iy, nhalos + ix);
+         blon = block_lons(1, nhalos + iy, nhalos + ix);
+         col_index(iblock, iy, ix) = lat_lon_to_col_index(blat, blon, del, half_del, np)
       end do
- 
-      ! Get metadata for this variable from block file 
-      grid_files(iblock)%ncstatus = nf90_inquire_variable(grid_files(iblock)%ncid, &
-         varid, name, xtype, nDimensions, dimids, nAtts)
-
-      ! This is a 1-D time array
-      if (trim(name) == 'time') then
-         ! Time value comes from the data files
-      else if (trim(name) == 'Altitude') then
-         ! Vertical coords also must be the same in all files, so just set from the first
-         if (iblock == 1) then
-            grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, varid, block_array)
-            filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-        ! JLA REVIEW THE DART_VARIDS STUFF
-               filter_alt_id, block_array(:,1,1))
-         endif
-      else
-
-         ! The lat, and lon variables can be read into the full 3Dblock array
-         grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, varid, block_array)
-         
-         if ((trim(name) == 'Longitude') .or. (trim(name) == 'Latitude')) then
-            do iy = 1, nys(iblock)
-               do ix = 1, nxs(iblock)
-                  icol = col_index(iblock, iy, ix)
-                  spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix) * RAD2DEG
-               end do
-            end do
-
-            if (iblock == nblocks) then
-               if(trim(name) == 'Latitude') then
-               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-                  filter_lat_id, spatial_array)
-               else
-               filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
-                  filter_lon_id, spatial_array)
-               endif
-            end if
-         else
-            ! Error if it isn't one of the 4 fields
-            write(*, *) 'Unknown variable in grid file ', trim(name)
-            stop
-         end if
-      end if
- 
-      deallocate(block_lats, block_lons, block_array)
    end do
 end do
+
+! Only need altitude from 1 block
+grid_files(1)%ncstatus = nf90_get_var(grid_files(1)%ncid, grid_alt_id, block_array)
+filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+   filter_alt_id, block_array(:,1,1))
+
+! Loop through blocks to get lat values
+do iblock = 1, nblocks
+   ! Get lat values for this block
+   grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lat_id, block_array)
+   do iy = 1, nys(iblock)
+      do ix = 1, nxs(iblock)
+         icol = col_index(iblock, iy, ix)
+         spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix) * RAD2DEG
+      end do
+   end do
+end do
+filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+   filter_lat_id, spatial_array)
+
+! Loop through blocks to get lon values
+do iblock = 1, nblocks
+   ! Get lon values for this block
+   grid_files(iblock)%ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lon_id, block_array)
+   do iy = 1, nys(iblock)
+      do ix = 1, nxs(iblock)
+         icol = col_index(iblock, iy, ix)
+         spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix) * RAD2DEG
+      end do
+   end do
+end do
+filter_input_file%ncstatus = nf90_put_var(filter_input_file%ncid, &
+   filter_lon_id, spatial_array)
+
+deallocate(block_lats, block_lons, block_array)
 
 !=========== End of Block to get lat lon and alt from grid files =================
 
