@@ -13,7 +13,6 @@ implicit none
 private
 
 public :: initialize_transform_state_mod, &
-          finalize_transform_state_mod, &
           model_to_dart, &
           dart_to_model, &
           integer_to_string, &
@@ -67,20 +66,6 @@ ions_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_
 grid_files = assign_grid_files_array(nblocks)
 
 end subroutine initialize_transform_state_mod
-
-!---------------------------------------------------------------
-
-subroutine finalize_transform_state_mod()
-   
-integer :: iblock
-
-! Close all of the files
-
-do iblock = 1, nblocks
-   call nc_close_file(ions_files(iblock)%ncid)
-end do
-
-end subroutine finalize_transform_state_mod
 
 !---------------------------------------------------------------
 
@@ -380,13 +365,14 @@ do varid = 1, ions_files(1)%nVariables
 end do
 
 call nc_close_file(filter_input_file%ncid)
+do iblock = 1, nblocks
+   ! Close the grid files and ions files
+   call nc_close_file(grid_files(iblock)%ncid)
+   call nc_close_file(ions_files(iblock)%ncid)
+end do
 
-deallocate(block_lats, block_lons, block_array)
-deallocate(spatial_array, variable_array)
-deallocate(time_array)
-deallocate(col_index)
-deallocate(filter_ions_ids)
-stop
+deallocate(block_lats, block_lons, block_array, spatial_array, variable_array)
+deallocate(time_array, col_index, filter_ions_ids)
 
 end subroutine model_to_dart
 
@@ -394,23 +380,22 @@ end subroutine model_to_dart
 
 subroutine dart_to_model
 
-integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
+real(r8) :: blat, blon, del, half_del
+integer :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
 integer :: ix, iy, iz, icol, ncstatus, filter_varid
 integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
-real(r8) :: blat, blon, del, half_del
-integer,  allocatable         :: col_index(:, :, :)
-integer :: final_ntimes, final_nzs
+integer :: final_nzs
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
-integer, allocatable :: filter_ions_ids(:)
-integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
-integer :: grid_time_id,   grid_alt_id,   grid_lat_id,   grid_lon_id
+integer :: filter_alt_id, filter_lat_id, filter_lon_id
+integer :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer :: dimids(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_NAME) :: name, attribute
-! The time variable in the block files is a double
-real(r8), allocatable, dimension(:) :: time_array
+integer,  allocatable         :: col_index(:, :, :)
 ! File for reading in variables from block file; These can probably be R4
-real(r4), allocatable :: spatial_array(:), variable_array(:, :, :)
+real(r4), allocatable :: variable_array(:, :, :)
 real(r4), allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
+
+! JUST DEAL WITH ONE TIME LEVEL?
 
 ! Get grid spacing from number of points across each face
 call get_grid_delta(np, del, half_del)
@@ -419,10 +404,8 @@ call get_grid_delta(np, del, half_del)
 
 do iblock = 1, nblocks
    ! Open the grid files, read only
-write(*, *) grid_files(iblock)%file_path
    grid_files(iblock)%ncid = nc_open_file_readonly(grid_files(iblock)%file_path)
-   ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
-   ! netcdf_utilities_mod so this uses the external function directly from the netcdf library
+   ! Get the info for this block
    ncstatus = nf90_inquire(grid_files(iblock)%ncid, &
       grid_files(iblock)%nDimensions, grid_files(iblock)%nVariables, &
       grid_files(iblock)%nAttributes,  grid_files(iblock)%unlimitedDimId, &
@@ -473,7 +456,6 @@ final_nzs = nzs(1)
 
 ! Compute the number of columns (without haloes)
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
-allocate(spatial_array(ncols), variable_array(ncols, final_nzs, final_ntimes), time_array(final_ntimes))
 write(*, *) 'ncols is ', ncols
 
 !==================================== end of get info from grid file block ===================
@@ -486,11 +468,11 @@ ncstatus = nf90_inq_varid(grid_files(1)%ncid, 'Longitude', grid_lon_id)
 !=========== Block to get lat lon and alt from grid files =================
 
 ! The col_index array will keep track of mapping from x and y for each block to final columns
-allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
-
 ! Allocate storage for the latitude and longitude from the blocks
-allocate(block_lats(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
-         block_lons(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
+allocate(col_index(nblocks, maxval(nys), maxval(nxs)), &
+         variable_array(ncols, final_nzs, 1), &
+         block_lats(final_nzs,  maxval(haloed_nys), maxval(haloed_nxs)), &
+         block_lons(final_nzs,  maxval(haloed_nys), maxval(haloed_nxs)), &
          block_array(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)))
 
 ! Loop through all the blocks for this variable
@@ -557,6 +539,16 @@ do varid = 1, ions_files(1)%nVariables
          end do
       endif
    end if
+end do
+
+deallocate(col_index, variable_array, block_lats, block_lons, block_array)
+
+! Close the netcdf files
+call nc_close_file(filter_output_file%ncid)
+do iblock = 1, nblocks
+   ! Close the grid files and ions files
+   call nc_close_file(grid_files(iblock)%ncid)
+   call nc_close_file(ions_files(iblock)%ncid)
 end do
 
 end subroutine dart_to_model
