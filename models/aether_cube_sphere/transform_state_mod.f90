@@ -1,11 +1,11 @@
 module transform_state_mod
 
 use netcdf
-use types_mod,            only : r4, r8, varnamelength, DEG2RAD, RAD2DEG
-use netcdf_utilities_mod, only : nc_open_file_readonly, nc_open_file_readwrite, nc_close_file, &
-                                 nc_create_file, nc_end_define_mode
-use utilities_mod,        only : open_file, close_file, find_namelist_in_file, &
-                                 check_namelist_read, error_handler, E_ERR, string_to_integer
+use types_mod,                  only : r4, r8, varnamelength, RAD2DEG
+use netcdf_utilities_mod,       only : nc_open_file_readonly, nc_open_file_readwrite, &
+                                       nc_close_file, nc_create_file, nc_end_define_mode
+use utilities_mod,              only : find_namelist_in_file, check_namelist_read,  &
+                                       error_handler, E_ERR, string_to_integer
 
 use cube_sphere_grid_tools_mod, only : lat_lon_to_col_index, get_grid_delta
 
@@ -14,24 +14,26 @@ private
 
 public :: initialize_transform_state_mod, &
           model_to_dart, &
-          dart_to_model, &
-          integer_to_string, &
-          file_type, &
-          zero_fill
+          dart_to_model
 
 integer  :: iunit, io
+
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = 'aether_cube_sphere/transform_state_mod.f90'
+character(len=*), parameter :: revision = ''
+character(len=*), parameter :: revdate  = ''
 
 character(len=4) :: restart_ensemble_member, dart_ensemble_member
 
 type :: file_type
    character(len=256) :: file_path
-   integer            :: ncid, ncstatus, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
+   integer            :: ncid, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
 end type file_type
 
 type(file_type), allocatable :: ions_files(:), grid_files(:)
 type(file_type)              :: filter_input_file, filter_output_file
 
-! It would be nice to get this information from the Aether input files, but that may not be possible
+! It would be nice to get this information from the Aether input files, not possible for now
 integer            :: np, nblocks, nhalos
 character(len=256) :: restart_file_prefix, restart_file_middle, restart_file_suffix, &
                       filter_input_prefix, filter_input_suffix, filter_output_prefix, &
@@ -77,13 +79,12 @@ integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
 integer :: ion_ntimes(nblocks), ion_nzs(nblocks), ion_nxs(nblocks), ion_nys(nblocks)
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: final_ntimes, final_nzs
-integer, allocatable :: filter_ions_ids(:)
 integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
 integer :: grid_time_id,   grid_alt_id,   grid_lat_id,   grid_lon_id
 integer :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del
 character(len=NF90_MAX_NAME) :: name, attribute
-integer,  allocatable         :: col_index(:, :, :)
+integer,  allocatable         :: col_index(:, :, :), filter_ions_ids(:)
 ! The time variable in the block files is a double
 real(r8), allocatable, dimension(:) :: time_array
 ! File for reading in variables from block file; These can probably be R4
@@ -93,77 +94,30 @@ real(r4), allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:
 ! Get grid spacing from number of points across each face
 call get_grid_delta(np, del, half_del)
 
-!==================================== get info from grid file block ===================
+!======================== Get info on x, y and z dimensions from grid files
 
 do iblock = 1, nblocks
    ! Open the grid files, read only
    grid_files(iblock)%ncid = nc_open_file_readonly(grid_files(iblock)%file_path)
-   ! There doesn't seem to be a helper procedure corresponding to nf90_inquire in
-   ! netcdf_utilities_mod so this uses the external function directly from the netcdf library
-   ncstatus = nf90_inquire(grid_files(iblock)%ncid, &
-      grid_files(iblock)%nDimensions, grid_files(iblock)%nVariables, &
-      grid_files(iblock)%nAttributes,  grid_files(iblock)%unlimitedDimId, &
-      grid_files(iblock)%formatNum)
-
-   ! The number of variables should be 4: longitude, latitude, altitude, time
-   if(grid_files(iblock)%nVariables .ne. 4) then
-      write(*, *) 'nunmber of vars in grid files should be 4', grid_files(iblock)%nVariables
-      stop
-   endif
-
-   ! Allow the files to be of different size, but all must have the same number of halos from namelist
-
-   ! Loop through each of the dimensions to find the metadata values
-   do dimid = 1, grid_files(iblock)%nDimensions
-      ! There doesn't seem to be a helper procedure corresponding to nf90_inquire_dimension that
-      ! assigns name and length in netcdf_utilities_mod so this uses the external function
-      ! directly from the netcdf library
-      ncstatus = nf90_inquire_dimension(grid_files(iblock)%ncid, dimid, name, length)
-
-      if (trim(name) == 'time') then
-         ! Don't care about times in the grid files
-      else if (trim(name) == 'x') then
-         nxs(iblock)         = length-2*nhalos
-         haloed_nxs(iblock)  = length
-      else if (trim(name) == 'y') then
-         nys(iblock)        = length-2*nhalos
-         haloed_nys(iblock) = length
-      else if (trim(name) == 'z') then
-         nzs(iblock) = length
-      end if
-   end do
-
 end do
 
-! Do some consistency checks to make sure the files have the same number of variables, levels and times
-if(any(ntimes - ntimes(1) .ne. 0)) then
-   write(*, *) 'inconsistent ntimes'
-   stop
-endif
-if(any(nzs - nzs(1) .ne. 0)) then
-   write(*, *) 'inconsistent number of vertical levels'
-   stop
-endif
-
-! Final consistent times, x, y and levels
-final_nzs = nzs(1)
+call get_aether_block_dimensions(grid_files, nblocks, nhalos, nxs, nys, final_nzs)
+! Get the full dimension size with the halos for all blocks
+haloed_nxs = nxs + 2*nhalos
+haloed_nys = nys + 2*nhalos
 
 ! Compute the number of columns (without haloes)
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
 write(*, *) 'ncols is ', ncols
 
-
-!==================================== end of get info from grid file block ===================
-
-! Start with ion files, add in neutrals later, test with old aether_restart files first
+!=============================== Get x, y, z dimensions from ions files ===============
 
 do iblock = 1, nblocks
    ! Open the ions block files, read only, and get the metadata
    ions_files(iblock)%ncid = nc_open_file_readonly(ions_files(iblock)%file_path)
-   ncstatus = nf90_inquire(ions_files(iblock)%ncid, &
-      ions_files(iblock)%nDimensions, ions_files(iblock)%nVariables, &
-      ions_files(iblock)%nAttributes,  ions_files(iblock)%unlimitedDimId, &
-      ions_files(iblock)%formatNum)
+   ncstatus = nf90_inquire(ions_files(iblock)%ncid, ions_files(iblock)%nDimensions, &
+      ions_files(iblock)%nVariables, ions_files(iblock)%nAttributes, &
+       ions_files(iblock)%unlimitedDimId, ions_files(iblock)%formatNum)
 
    ! Loop through each of the dimensions to find the metadata values
    do dimid = 1, ions_files(iblock)%nDimensions
@@ -553,6 +507,64 @@ end do
 
 end subroutine dart_to_model
 
+!--------------------------------------------------------------------
+
+subroutine get_aether_block_dimensions(files, nblocks, nhalos, nxs, nys, nzs) 
+
+integer,         intent(in)    :: nblocks, nhalos
+type(file_type), intent(inout) :: files(nblocks)
+integer,         intent(out)   :: nxs(nblocks), nys(nblocks), nzs
+
+integer :: iblock, b_nzs(nblocks), ncstatus, dimid, length
+character(len=NF90_MAX_NAME) :: name
+
+do iblock = 1, nblocks
+   ! Get info about the grid file
+   ncstatus = nf90_inquire(files(iblock)%ncid, files(iblock)%nDimensions, &
+      files(iblock)%nVariables, files(iblock)%nAttributes, &
+       files(iblock)%unlimitedDimId, files(iblock)%formatNum)
+
+   ! Verify that a single time level exists
+   ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'time', dimid)
+   ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
+   if(length .ne. 1 .or. ncstatus .ne. 0) &
+      call error_handler(E_ERR, 'get_aether_block_dimensions', &
+         'Number of times in input grid files should be 1', source, revision, revdate)
+
+   ! Get the length of x dimension
+   ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'x', dimid)
+   ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
+   if(ncstatus .ne. 0) &
+      call error_handler(E_ERR, 'get_aether_block_dimensions', &
+         'input grid files must have x dimension', source, revision, revdate)
+   nxs(iblock)         = length-2*nhalos
+
+   ! Get the length of y dimension
+   ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'y', dimid)
+   ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
+   if(ncstatus .ne. 0) &
+      call error_handler(E_ERR, 'get_aether_block_dimensions', &
+         'input grid files must have y dimension', source, revision, revdate)
+   nys(iblock)         = length-2*nhalos
+
+   ! Get the length of z dimension
+   ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'z', dimid)
+   ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
+   if(ncstatus .ne. 0) &
+      call error_handler(E_ERR, 'get_aether_block_dimensions', &
+         'input grid files must have z dimension', source, revision, revdate)
+
+end do
+
+! Make sure all grid blocks have same number of vertical levels
+if(any(b_nzs - b_nzs(1) .ne. 0)) then
+   call error_handler(E_ERR, 'model_to_dart', &
+         'grid files have different lengths for z dimension', source, revision, revdate)
+else
+   nzs = b_nzs(1)
+endif
+
+end subroutine get_aether_block_dimensions
 !---------------------------------------------------------------
 
 function get_ensemble_member_from_command_line() result(ensemble_member)
