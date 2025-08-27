@@ -1,5 +1,4 @@
 ! This code is not protected by the DART copyright agreement.
-! DART $Id: wod_read_routines.f90 6256 2013-06-12 16:19:10Z thoar $
 
      module WOD_read_routines_mod      
 
@@ -938,8 +937,3 @@ private
 
       end module WOD_read_routines_mod      
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/observations/obs_converters/WOD/wod_read_routines.f90 $
-! $Id: wod_read_routines.f90 6256 2013-06-12 16:19:10Z thoar $
-! $Revision: 6256 $
-! $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $

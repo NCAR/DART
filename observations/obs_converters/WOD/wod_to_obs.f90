@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: wod_to_obs.f90 11243 2017-03-08 21:35:09Z nancy@ucar.edu $
 
 program wod_to_obs
 
@@ -717,8 +716,3 @@ end function date_ok
 
 end program wod_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/observations/obs_converters/WOD/wod_to_obs.f90 $
-! $Id: wod_to_obs.f90 11243 2017-03-08 21:35:09Z nancy@ucar.edu $
-! $Revision: 11243 $
-! $Date: 2017-03-08 14:35:09 -0700 (Wed, 08 Mar 2017) $
