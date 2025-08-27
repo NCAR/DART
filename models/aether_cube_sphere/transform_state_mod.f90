@@ -29,7 +29,7 @@ type :: file_type
    integer            :: ncid, ncstatus, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
 end type file_type
 
-type(file_type), allocatable :: block_files(:), grid_files(:)
+type(file_type), allocatable :: ions_files(:), grid_files(:)
 type(file_type)              :: filter_input_file, filter_output_file
 
 ! It would be nice to get this information from the Aether input files, but that may not be possible
@@ -61,7 +61,7 @@ call find_namelist_in_file('input.nml', 'directory_nml', iunit)
 read(iunit, nml = directory_nml, iostat = io)
 call check_namelist_read(iunit, io, 'directory_nml')
 
-block_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_directory, &
+ions_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_directory, &
    restart_file_prefix, restart_file_middle, restart_file_suffix)
 
 grid_files = assign_grid_files_array(nblocks)
@@ -77,7 +77,7 @@ integer :: iblock
 ! Close all of the files
 
 do iblock = 1, nblocks
-   call nc_close_file(block_files(iblock)%ncid)
+   call nc_close_file(ions_files(iblock)%ncid)
 end do
 
 end subroutine finalize_transform_state_mod
@@ -173,16 +173,16 @@ write(*, *) 'ncols is ', ncols
 ! Start with ion files, add in neutrals later, test with old aether_restart files first
 
 do iblock = 1, nblocks
-   ! Open the block files, read only, and get the metadata
-   block_files(iblock)%ncid = nc_open_file_readonly(block_files(iblock)%file_path)
-   ncstatus = nf90_inquire(block_files(iblock)%ncid, &
-      block_files(iblock)%nDimensions, block_files(iblock)%nVariables, &
-      block_files(iblock)%nAttributes,  block_files(iblock)%unlimitedDimId, &
-      block_files(iblock)%formatNum)
+   ! Open the ions block files, read only, and get the metadata
+   ions_files(iblock)%ncid = nc_open_file_readonly(ions_files(iblock)%file_path)
+   ncstatus = nf90_inquire(ions_files(iblock)%ncid, &
+      ions_files(iblock)%nDimensions, ions_files(iblock)%nVariables, &
+      ions_files(iblock)%nAttributes,  ions_files(iblock)%unlimitedDimId, &
+      ions_files(iblock)%formatNum)
 
    ! Loop through each of the dimensions to find the metadata values
-   do dimid = 1, block_files(iblock)%nDimensions
-      ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, dimid, name, length)
+   do dimid = 1, ions_files(iblock)%nDimensions
+      ncstatus = nf90_inquire_dimension(ions_files(iblock)%ncid, dimid, name, length)
 
       if (trim(name) == 'time') then
          !JLA Error if more than one time???
@@ -211,7 +211,7 @@ if(any(ion_nzs - final_nzs .ne. 0)) then
    write(*, *) 'inconsistent nunber of vertical levels in ion files'
    stop
 endif
-if(any(block_files(:)%nVariables - block_files(1)%nVariables .ne. 0)) then
+if(any(ions_files(:)%nVariables - ions_files(1)%nVariables .ne. 0)) then
    write(*, *) 'inconsistent number of variables in ion files'
    stop
 endif
@@ -269,18 +269,18 @@ end do
 ! aether_restarts being used for tests also have lat, lon, alt
 
 ! Pointers to the different data fields in the filter nc file
-allocate(filter_ions_ids(block_files(1)%nVariables))
+allocate(filter_ions_ids(ions_files(1)%nVariables))
 
 ! The filter_input_file is still in define mode. Create all of the variables before entering data mode.
-do varid = 1, block_files(1)%nVariables
-   ncstatus = nf90_inquire_variable(block_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
+do varid = 1, ions_files(1)%nVariables
+   ncstatus = nf90_inquire_variable(ions_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    ! Only time should occur once we switch to ions and neutrals files
    if (trim(name) /= 'time' .and. trim(name) /= 'z' .and. trim(name) /= 'lat' .and. trim(name) /= 'lon') then
       ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid, filter_ions_ids(varid))
       ! Note that the filter_ions_id maps from the ids for fields in the ions files
 
       ! Add the units, same in all files so just get from the first
-      ncstatus = nf90_get_att(block_files(1)%ncid, varid, 'units', attribute)
+      ncstatus = nf90_get_att(ions_files(1)%ncid, varid, 'units', attribute)
       ncstatus = nf90_put_att(filter_input_file%ncid, filter_ions_ids(varid), 'units', attribute)
    end if
 end do
@@ -349,20 +349,20 @@ ncstatus = nf90_put_var(filter_input_file%ncid, filter_lon_id, spatial_array)
 !=========== End of Block to get lat lon and alt from grid files =================
 
 ! Will get full spatial field for one variable at a time
-do varid = 1, block_files(1)%nVariables
+do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
-   ncstatus = nf90_inquire_variable(block_files(1)%ncid, &
+   ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
 
    if(trim(name) == 'time') then
       ! Time must be the same in all files, so just deal with it from the first one
-      ncstatus = nf90_get_var(block_files(1)%ncid, varid, time_array)
+      ncstatus = nf90_get_var(ions_files(1)%ncid, varid, time_array)
       ncstatus = nf90_put_var(filter_input_file%ncid, filter_time_id, time_array)
    else
       ! Loop through all the blocks for this variable
       do iblock = 1, nblocks
          ! Read into the full 3Dblock array
-         ncstatus = nf90_get_var(block_files(iblock)%ncid, varid, block_array)
+         ncstatus = nf90_get_var(ions_files(iblock)%ncid, varid, block_array)
          
          do iy = 1, nys(iblock)
             do ix = 1, nxs(iblock)
@@ -411,7 +411,7 @@ filter_output_file = assign_filter_file(dart_ensemble_member, filter_directory, 
 
 ! The block files are read/write
 do iblock = 1, nblocks
-   block_files(iblock)%ncid = nc_open_file_readwrite(block_files(iblock)%file_path)
+   ions_files(iblock)%ncid = nc_open_file_readwrite(ions_files(iblock)%file_path)
 end do
 ! The dart file is read only
 filter_output_file%ncid = nc_open_file_readonly(filter_output_file%file_path)
@@ -451,23 +451,23 @@ do filter_varid = 1, filter_output_file%nVariables
          
       do iblock = 1, nblocks
          if (filter_varid == 1 .and. iblock == 1) then
-            block_files(iblock)%ncstatus = nf90_inq_dimid(block_files(iblock)%ncid, &
+            ions_files(iblock)%ncstatus = nf90_inq_dimid(ions_files(iblock)%ncid, &
                'x', dimid)
-            block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, &
+            ions_files(iblock)%ncstatus = nf90_inquire_dimension(ions_files(iblock)%ncid, &
                dimid, block_name, nxs)
 
-            block_files(iblock)%ncstatus = nf90_inq_dimid(block_files(iblock)%ncid, &
+            ions_files(iblock)%ncstatus = nf90_inq_dimid(ions_files(iblock)%ncid, &
                'y', dimid)
-            block_files(iblock)%ncstatus = nf90_inquire_dimension(block_files(iblock)%ncid, &
+            ions_files(iblock)%ncstatus = nf90_inquire_dimension(ions_files(iblock)%ncid, &
                 dimid, block_name, nys)
 
             allocate(block_array(nzs, nys, nxs))
             block_array(:, :, :) = 0
          end if
 
-         block_files(iblock)%ncstatus = nf90_inq_varid(block_files(iblock)%ncid, &
+         ions_files(iblock)%ncstatus = nf90_inq_varid(ions_files(iblock)%ncid, &
             filter_name, block_varid)
-         block_files(iblock)%ncstatus = nf90_get_var(block_files(iblock)%ncid, &
+         ions_files(iblock)%ncstatus = nf90_get_var(ions_files(iblock)%ncid, &
             block_varid, block_array)
 
          do iy = 1, nys-2*nhalos
@@ -479,9 +479,9 @@ do filter_varid = 1, filter_output_file%nVariables
             end do
          end do
 
-         block_files(iblock)%ncstatus = nf90_put_var(block_files(iblock)%ncid, &
+         ions_files(iblock)%ncstatus = nf90_put_var(ions_files(iblock)%ncid, &
             block_varid, block_array)
-         print *, block_files(iblock)%ncstatus
+         print *, ions_files(iblock)%ncstatus
       
       end do
    end if
