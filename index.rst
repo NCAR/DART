@@ -292,6 +292,13 @@ References
    guide/verifying-installation
 
 .. toctree::
+   :hidden:
+   :caption: DART Python tools
+
+   guide/pytools
+
+
+.. toctree::
    :maxdepth: 2
    :caption: What is data assimilation?
 
@@ -376,8 +383,8 @@ References
    observations/obs_converters/GTSPP/GTSPP
    observations/obs_converters/MADIS/MADIS
    observations/obs_converters/MIDAS/MIDAS_to_obs
-   observations/obs_converters/MODIS/readme
    observations/obs_converters/MODIS/MOD15A2_to_obs
+   observations/obs_converters/MODIS/MOD29E1D_to_obs
    observations/obs_converters/MPD/README
    observations/obs_converters/NASA_Earthdata/README
    observations/obs_converters/NCEP/prep_bufr/prep_bufr
@@ -483,7 +490,8 @@ References
    models/pe2lyr/readme
    models/POP/readme
    models/POP/dart_pop_mod
-   models/ROMS/readme
+   models/ROMS_rutgers/readme
+   models/ROMS_ucla/readme
    models/rose/readme
    models/seir/readme
    models/simple_advection/readme
