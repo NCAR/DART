@@ -2,7 +2,6 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
 
 program wod_to_obs
 
@@ -23,7 +22,7 @@ use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_output,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
-                             find_textfile_dims, finalize_utilities,         &
+                             find_textfile_dims, finalize_utilities, &
                              open_file, close_file
 use     location_mod, only : VERTISHEIGHT, set_location
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
@@ -90,9 +89,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/observations/obs_converters/WOD/wod_to_obs.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 11243 $"
+character(len=128), parameter :: revdate  = "$Date: 2017-03-08 14:35:09 -0700 (Wed, 08 Mar 2017) $"
 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
@@ -103,7 +102,7 @@ integer :: j, k, nfiles, num_new_obs, castid, l
 integer :: oday, osec                   
 integer :: obsyear, obsmonth, obsday, obssec
 integer :: obs_num, io, iunit, filenum, dummy
-integer :: funit, levels, istdlev, nvar, nsecond, ieof
+integer :: funit, levels, istdlev, nvar, nsecond, ieof, iVERSflag
 integer :: ip2(0:maxlevel), cast, itype
 logical :: file_exist, did_obs, from_list = .false.
 logical :: have_temp, have_salt
@@ -266,7 +265,7 @@ print *, 'opening file ', trim(next_infile)
    castloop: do    ! until out of data
    call WODreadDART(funit,obsyear,obsmonth,obsday, &
               dtime,lato,lono,levels,istdlev,nvar,ip2,nsecond, &
-              bmiss,castid,ieof)
+              bmiss,castid,ieof,iVERSflag)
 
 !if (ieof /= 0) print *, 'ieof is ', ieof
 
@@ -717,8 +716,3 @@ end function date_ok
 
 end program wod_to_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

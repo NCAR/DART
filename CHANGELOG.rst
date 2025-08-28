@@ -22,6 +22,21 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 27 2025 :: WOD bug-fix and QCEFF tolerance. Tag v11.14.1**
+
+Bug-fixes:
+  - WOD observation converter fixed to be compatible with WOD2023.   
+    *Contributed by Kate Boden, University of Colorado Boulder*
+  - Build fixes for ROMS observation converter, and CICE observation converter.
+
+QCEFF update:
+  - Reduced tolerance on convergence in normal_distribution_mod::inv_cdf.
+  - Early return if initial guess is correct.
+
+Documentation update:
+  - POP initial ensemble now available on Zenodoo.
+
+
 **August 19 2025 :: ROMS Rutgers. Tag v11.14.0**
 
 New Features:
