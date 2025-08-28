@@ -86,7 +86,7 @@ To use DART and CESM POP2 on NSF NCAR's supercomputer, you will need to complete
 the following steps.
 
 #. Download an intial ensemble of POP2 restart files from the `NSF NCAR Geoscience
-   Data Exchange <https://gdex.ucar.edu/dataset/483.html>`_
+   Data Exchange <https://doi.org/10.5065/k8ry-pk58>`_
 #. Configure the scripts for your specific experiment by editing
    ``DART_params.csh``.
 #. Run the appropriate DART setup script to create and build the CESM case.
@@ -222,7 +222,7 @@ initial ensemble.
 
 You can access a collection of POP restart files from Who Kim's multi-century
 ``g210.G_JRA.v14.gx1v7.01`` experiment to serve as an initial ensemble in the
-`NSF NCAR Geoscience Data Exchange <https://gdex.ucar.edu/dataset/483.html>`_. This
+`NSF NCAR Geoscience Data Exchange <https://doi.org/10.5065/k8ry-pk58>`_. This
 experiment uses the JRA-55 dataset for atmospheric forcing (Tsujino et al. 2018 [4]_).
 
 Observation sequence files

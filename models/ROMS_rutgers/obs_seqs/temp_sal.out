@@ -1,0 +1,32 @@
+obs_sequence
+obs_kind_definitions
+           2
+          10 ARGO_TEMPERATURE
+           9 ARGO_SALINITY
+  num_copies:      1  num_qc:            1
+  num_obs:         2  max_num_obs:       2
+observation
+Data QC
+  first:            1  last:         2
+ OBS            1
+   29.1686498006185
+  0.000000000000000E+000
+          -1           2          -1
+obdef
+loc3d
+     1.832595714594046        0.087266462599716         30.00000000000000      3
+kind
+          10
+21600     155061
+0.10000000000000
+ OBS            2
+   34.2190002441406
+  0.000000000000000E+000
+          1           -1          -1
+obdef
+loc3d
+     1.972222054753592        0.209439510239320         10.00000000000000      3
+kind
+          9
+43200     155062
+0.1000000000000
