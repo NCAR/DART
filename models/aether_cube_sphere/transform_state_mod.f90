@@ -75,10 +75,10 @@ subroutine model_to_dart()
 
 integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
 integer :: ix, iy, iz, icol, ncstatus
-integer :: ntimes(nblocks), nzs(nblocks), nxs(nblocks), nys(nblocks)
-integer :: ion_ntimes(nblocks), ion_nzs(nblocks), ion_nxs(nblocks), ion_nys(nblocks)
+integer :: ntimes(nblocks), nxs(nblocks), nys(nblocks)
+integer :: ions_ntimes(nblocks), ions_nzs(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
-integer :: final_ntimes, final_nzs
+integer :: final_ntimes, final_nzs, ions_final_nzs
 integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
 integer :: grid_time_id,   grid_alt_id,   grid_lat_id,   grid_lon_id
 integer :: dimids(NF90_MAX_VAR_DIMS)
@@ -110,53 +110,29 @@ haloed_nys = nys + 2*nhalos
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
 write(*, *) 'ncols is ', ncols
 
-!=============================== Get x, y, z dimensions from ions files ===============
+!=============================== Check that ions files are consistent with grids =========
 
 do iblock = 1, nblocks
    ! Open the ions block files, read only, and get the metadata
    ions_files(iblock)%ncid = nc_open_file_readonly(ions_files(iblock)%file_path)
-   ncstatus = nf90_inquire(ions_files(iblock)%ncid, ions_files(iblock)%nDimensions, &
-      ions_files(iblock)%nVariables, ions_files(iblock)%nAttributes, &
-       ions_files(iblock)%unlimitedDimId, ions_files(iblock)%formatNum)
-
-   ! Loop through each of the dimensions to find the metadata values
-   do dimid = 1, ions_files(iblock)%nDimensions
-      ncstatus = nf90_inquire_dimension(ions_files(iblock)%ncid, dimid, name, length)
-
-      if (trim(name) == 'time') then
-         !JLA Error if more than one time???
-         ion_ntimes(iblock) = length
-      else if (trim(name) == 'x') then
-         ion_nxs(iblock)         = length-2*nhalos
-      else if (trim(name) == 'y') then
-         ion_nys(iblock)        = length-2*nhalos
-      else if (trim(name) == 'z') then
-         ion_nzs(iblock) = length
-      end if
-   end do
-
 end do
 
-! Do some consistency checks to make sure the files have the same number of variables, levels and times
-! Comparison is to grid files for times and levels, but just among block files for number of variables
-if(any(ion_ntimes - ion_ntimes(1) .ne. 0)) then
-   write(*, *) 'inconsistent ntimes in ion files'
-   stop
-endif
+call get_aether_block_dimensions(ions_files, nblocks, nhalos, ions_nxs, ions_nys, ions_final_nzs)
 
-final_ntimes = ion_ntimes(1)
+! Check for inconsistent number of vertical levels in ion and grid files
+if(ions_final_nzs .ne. final_nzs) &
+   call error_handler(E_ERR, 'model_to_dart', &
+      'Number of altitudes in grid and ions files differs', source, revision, revdate)
 
-if(any(ion_nzs - final_nzs .ne. 0)) then
-   write(*, *) 'inconsistent nunber of vertical levels in ion files'
-   stop
-endif
-if(any(ions_files(:)%nVariables - ions_files(1)%nVariables .ne. 0)) then
-   write(*, *) 'inconsistent number of variables in ion files'
-   stop
-endif
+! Make sure ions and grid files have same horizontal sizes
+if(any(ions_nxs .ne. nxs) .or. any(ions_nys .ne. nys)) &
+   call error_handler(E_ERR, 'model_to_dart', &
+      'Number of Latitudes and Longitudes in grid and ion files differ', source, revision, revdate)
+
+!==================================== Write dimensions in the filter_input nc file ========
 
 ! Allocate ncols size temporary storage
-allocate(spatial_array(ncols), variable_array(ncols, final_nzs, final_ntimes), time_array(final_ntimes))
+allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1), time_array(1))
 
 ! Initialize the filter input file that will be created
 filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, &
@@ -166,7 +142,7 @@ filter_input_file%ncid = nc_create_file(filter_input_file%file_path)
 
 ! Create dimensions in filter_input_file; save for use during variable definition
 ncstatus = nf90_def_dim(filter_input_file%ncid, 'time', NF90_UNLIMITED, dart_dimid(3))
-ncstatus = nf90_def_dim(filter_input_file%ncid, 'z',    nzs(1),         dart_dimid(2))
+ncstatus = nf90_def_dim(filter_input_file%ncid, 'z',    final_nzs,      dart_dimid(2))
 ncstatus = nf90_def_dim(filter_input_file%ncid, 'col',  ncols,          dart_dimid(1))
 
 !=========================================================
@@ -306,7 +282,7 @@ do varid = 1, ions_files(1)%nVariables
          do iy = 1, nys(iblock)
             do ix = 1, nxs(iblock)
                icol = col_index(iblock, iy, ix)
-               do iz = 1, nzs(1)
+               do iz = 1, final_nzs
                   variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
                end do
             end do
@@ -553,6 +529,7 @@ do iblock = 1, nblocks
    if(ncstatus .ne. 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
          'input grid files must have z dimension', source, revision, revdate)
+   b_nzs(iblock) = length
 
 end do
 
@@ -563,6 +540,11 @@ if(any(b_nzs - b_nzs(1) .ne. 0)) then
 else
    nzs = b_nzs(1)
 endif
+
+! Make sure all grid files have the same number of variables
+if(any(files(:)%nAttributes .ne. files(1)%nAttributes)) &
+   call error_handler(E_ERR, 'model_to_dart', &
+         'All blocks must have same nunber of variables', source, revision, revdate)
 
 end subroutine get_aether_block_dimensions
 !---------------------------------------------------------------
