@@ -194,11 +194,11 @@ References
 
 .. [7] Riedel, C. P., M. M. Wieringa, and J. L. Anderson, 2025: Exploring Bounded 
        Nonparametric Ensemble Filter Impacts on Sea Ice Data Assimilation. 
-       *Monthly Weather Review*, **153**, 637–654, `doi:/10.1175/MWR-D-24-0096.1
-       <https://doi.org//10.1175/MWR-D-24-0096.1>`__
+       *Monthly Weather Review*, **153**, 637–654, `doi:10.1175/MWR-D-24-0096.1
+       <https://doi.org/10.1175/MWR-D-24-0096.1>`__
 
 .. [8] Wieringa, M. M., Riedel, C., Anderson, J. L., and Bitz, C. M., 2024: Bounded 
        and categorized: targeting data assimilation for sea ice fractional coverage 
        and nonnegative quantities in a single-column multi-category sea ice model.
-       *The Cryosphere*, **18**, 5365–5382, `doi:0.5194/tc-18-5365-2024
-       <https://doi.org/0.5194/tc-18-5365-2024>`__
+       *The Cryosphere*, **18**, 5365–5382, `doi:10.5194/tc-18-5365-2024
+       <https://doi.org/10.5194/tc-18-5365-2024>`__
