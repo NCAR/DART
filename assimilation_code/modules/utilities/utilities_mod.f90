@@ -19,6 +19,7 @@ private
 
 integer, parameter :: E_DBG = -2, E_MSG = -1, E_ALLMSG = 0, E_WARN = 1, E_ERR = 2, E_CONTINUE = 3
 integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
+integer, parameter :: NAMELIST_NOT_PRESENT = -79
 
 real(r8), parameter :: TWOPI = PI * 2.0_r8
 
@@ -53,6 +54,7 @@ public :: get_unit, &
           E_ALLMSG, &
           E_WARN, &
           E_ERR, &
+          NAMELIST_NOT_PRESENT, &
           is_longitude_between, &
           get_next_filename, &
           ascii_file_format, &
@@ -385,14 +387,16 @@ end function do_nml_term
 !> returns true. Otherwise, error message and terminates
 !>
 
-subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit)
+subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, optional_nml)
 
 character(len=*),  intent(in)  :: namelist_file_name
 character(len=*),  intent(in)  :: nml_name
 integer,           intent(out) :: iunit
+logical, optional, intent(in)  :: optional_nml
 
 character(len=256) :: next_nml_string, test_string, string1
 integer            :: io
+logical            :: is_optional
 
 if (.not. module_initialized) call fatal_not_initialized('find_namelist_in_file')
 
@@ -420,13 +424,22 @@ string1 = adjustl(nml_name)
 call to_upper(string1)             ! works in-place
 test_string = '&' // trim(string1)
 
+is_optional = .false.
+if (present(optional_nml)) is_optional = optional_nml
+
 do
    read(iunit, '(A)', iostat = io) next_nml_string
    if(io /= 0) then
       ! Reached end of file and didn't find this namelist
-      write(msgstring1, *) 'Namelist entry &', trim(nml_name), &
-                           ' must exist in file ', trim(namelist_file_name)
-      call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, source)
+      if (is_optional) then
+         call close_file(iunit)
+         iunit = NAMELIST_NOT_PRESENT
+         return
+      else
+         write(msgstring1, *) 'Namelist entry &', trim(nml_name), &
+                              ' must exist in file ', trim(namelist_file_name)
+         call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, source)
+      endif
    else
       ! see if this line starts the namelist we are asking for
       string1 = adjustl(next_nml_string)
