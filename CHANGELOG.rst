@@ -22,6 +22,21 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 28 2025 :: KDE and CICE-DART improvements. Tag v11.14.2**
+
+KDE performance improvements:
+  - Fixed ITP algorithm in the rootfinding mod, faster convergence.
+  - Namelist option for KDE to use 5th, 7th or 9th order Gaussian quadrature.
+  - Boundary correction has been updated to reduce unnecessary computation.
+  - Unused function removed.
+
+  *contributed by Ian Grooms*
+
+CICE-DART postprocessing improvements:
+  - Two new post processing options.
+
+  *contributed by Molly Wieringa*
+
 **August 27 2025 :: WOD bug-fix and QCEFF tolerance. Tag v11.14.1**
 
 Bug-fixes:
