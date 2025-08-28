@@ -321,8 +321,8 @@ for i = 1:gauges.want.num
         % check if there is a time-offset issue or 
         % just small number of data from this gauge
         gauge_data_in_time = sum(el);
-        if gauge_data_in_time == 0
-            % no data; early time shift
+        if gauge_data_in_time >= 0
+            % account for any time shift
             td = current(1) - exp_time(1);
             exp_time = exp_time + td;
             [~, et] = ismember(current, exp_time); et(et == 0) = NaN;
