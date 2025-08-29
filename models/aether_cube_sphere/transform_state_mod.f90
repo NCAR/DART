@@ -76,11 +76,11 @@ subroutine model_to_dart()
 integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
 integer :: ix, iy, iz, icol, ncstatus
 integer :: ntimes(nblocks), nxs(nblocks), nys(nblocks)
-integer :: ions_ntimes(nblocks), ions_nzs(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
+integer :: ions_ntimes(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
-integer :: final_ntimes, final_nzs, ions_final_nzs
+integer :: final_nzs, ions_final_nzs
 integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
-integer :: grid_time_id,   grid_alt_id,   grid_lat_id,   grid_lon_id
+integer :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del
 character(len=NF90_MAX_NAME) :: name, attribute
@@ -131,9 +131,6 @@ if(any(ions_nxs .ne. nxs) .or. any(ions_nys .ne. nys)) &
 
 !==================================== Write dimensions in the filter_input nc file ========
 
-! Allocate ncols size temporary storage
-allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1), time_array(1))
-
 ! Initialize the filter input file that will be created
 filter_input_file = assign_filter_file(dart_ensemble_member, filter_directory, &
    filter_input_prefix, '.nc')
@@ -146,13 +143,12 @@ ncstatus = nf90_def_dim(filter_input_file%ncid, 'z',    final_nzs,      dart_dim
 ncstatus = nf90_def_dim(filter_input_file%ncid, 'col',  ncols,          dart_dimid(1))
 
 !=========================================================
-! Create the variables from the grid files first. Should have only time, lat, lon, alt
+! Create the variables from the grid files; lat, lon, alt
 
 do varid = 1, 4
    ncstatus = nf90_inquire_variable(grid_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    if (trim(name) == 'time') then
       ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid(3), filter_time_id)
-      grid_time_id = varid
    else if (trim(name) == 'Altitude') then
       ! Rename the 'z' variable as 'alt' so there isn't a dimension and a variable with the same name
       ncstatus = nf90_def_var(filter_input_file%ncid, 'alt', xtype, dart_dimid(2), filter_alt_id)
@@ -174,17 +170,32 @@ do varid = 1, 4
       write(*, *) 'Unexpected variable name in grid file', trim(name)
       stop
    end if
-
 end do
 
 !=========================================================
 
-! Now get the other data fields from the block files (soon to be ions and neutrals)
-! The ions and neutrals files have time and all their physical variables, but not latitude, longitude, or altitude
-! aether_restarts being used for tests also have lat, lon, alt
+! Allocate storage 
 
 ! Pointers to the different data fields in the filter nc file
 allocate(filter_ions_ids(ions_files(1)%nVariables))
+! Allocate ncols size temporary storage
+allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1), time_array(1))
+! The col_index array will keep track of mapping from x and y for each block to final columns
+allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
+
+! Allocate storage for the latitude and longitude from the blocks
+allocate(block_lats(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
+         block_lons(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
+         block_array(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)))
+
+!=========================================================
+
+! Get the metadata for variable fields from the ions block files
+! The ions and neutrals files have time and all their physical variables, but not latitude, longitude, or altitude
+! aether_restarts being used for tests also have lat, lon, alt
+
+! Illegal value of filter file index for default
+filter_ions_ids = -99
 
 ! The filter_input_file is still in define mode. Create all of the variables before entering data mode.
 do varid = 1, ions_files(1)%nVariables
@@ -192,7 +203,6 @@ do varid = 1, ions_files(1)%nVariables
    ! Only time should occur once we switch to ions and neutrals files
    if (trim(name) /= 'time' .and. trim(name) /= 'z' .and. trim(name) /= 'lat' .and. trim(name) /= 'lon') then
       ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid, filter_ions_ids(varid))
-      ! Note that the filter_ions_id maps from the ids for fields in the ions files
 
       ! Add the units, same in all files so just get from the first
       ncstatus = nf90_get_att(ions_files(1)%ncid, varid, 'units', attribute)
@@ -203,15 +213,7 @@ end do
 ! End of define mode for filter nc file, ready to add data
 call nc_end_define_mode(filter_input_file%ncid)
 
-!=========== Block to get lat lon and alt from grid files =================
-
-! The col_index array will keep track of mapping from x and y for each block to final columns
-allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
-
-! Allocate storage for the latitude and longitude from the blocks
-allocate(block_lats(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
-         block_lons(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
-         block_array(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)))
+!=========== Block to get lat lon and alt data from grid files =================
 
 ! Loop through all the blocks for this variable
 do iblock = 1, nblocks
@@ -231,8 +233,7 @@ end do
 
 ! Only need altitude from 1 block
 ncstatus = nf90_get_var(grid_files(1)%ncid, grid_alt_id, block_array)
-ncstatus = nf90_put_var(filter_input_file%ncid, &
-   filter_alt_id, block_array(:,1,1))
+ncstatus = nf90_put_var(filter_input_file%ncid, filter_alt_id, block_array(:,1,1))
 
 ! Loop through blocks to get lat values
 do iblock = 1, nblocks
@@ -260,8 +261,7 @@ do iblock = 1, nblocks
 end do
 ncstatus = nf90_put_var(filter_input_file%ncid, filter_lon_id, spatial_array)
 
-
-!=========== End of Block to get lat lon and alt from grid files =================
+!=========== Copy data from ions files =================
 
 ! Will get full spatial field for one variable at a time
 do varid = 1, ions_files(1)%nVariables
