@@ -30,7 +30,7 @@ type :: file_type
    integer            :: ncid, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
 end type file_type
 
-type(file_type), allocatable :: ions_files(:), grid_files(:)
+type(file_type), allocatable :: ions_files(:), neutrals_files(:), grid_files(:)
 type(file_type)              :: filter_input_file, filter_output_file
 
 ! It would be nice to get this information from the Aether input files, not possible for now
@@ -62,17 +62,10 @@ call find_namelist_in_file('input.nml', 'directory_nml', iunit)
 read(iunit, nml = directory_nml, iostat = io)
 call check_namelist_read(iunit, io, 'directory_nml')
 
-ions_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_directory, &
-   restart_file_prefix, restart_file_middle, restart_file_suffix)
+!!!ions_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_directory, &
+   !!!restart_file_prefix, restart_file_middle, restart_file_suffix)
 
-grid_files = assign_grid_files_array(nblocks)
-
-
-!!!ions_files = assign_block_file_names(nblocks, restart_directory, &
-   !!!'ions', restart_ensemble_member)
-
-!!!grid_files = assign_block_file_names(nblocks, restart_directory, &
-   !!!'grid')
+!!!grid_files = assign_grid_files_array(nblocks)
 
 end subroutine initialize_transform_state_mod
 
@@ -84,19 +77,32 @@ integer :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimension
 integer :: ix, iy, iz, icol, ncstatus
 integer :: ntimes(nblocks), nxs(nblocks), nys(nblocks)
 integer :: ions_ntimes(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
+integer :: neutrals_ntimes(nblocks), neutrals_nxs(nblocks), neutrals_nys(nblocks)
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
-integer :: final_nzs, ions_final_nzs
+integer :: final_nzs, ions_final_nzs, neutrals_final_nzs
 integer :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
 integer :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del
 character(len=NF90_MAX_NAME) :: name, attribute
-integer,  allocatable         :: col_index(:, :, :), filter_ions_ids(:)
+integer,  allocatable         :: col_index(:, :, :), filter_ions_ids(:), filter_neutrals_ids(:)
 ! The time variable in the block files is a double
 real(r8), allocatable, dimension(:) :: time_array
 ! File for reading in variables from block file; These can probably be R4
 real(r4), allocatable :: spatial_array(:), variable_array(:, :, :)
 real(r4), allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
+
+! Open the grid and ions and neutrals files here for now with fixed directory names
+restart_directory = '../NEW_RESTART_FILES/restartOut/'
+
+ions_files = assign_block_file_names(nblocks, restart_directory, &
+   'ions', restart_ensemble_member)
+
+neutrals_files = assign_block_file_names(nblocks, restart_directory, &
+   'neutrals', restart_ensemble_member)
+
+grid_files = assign_block_file_names(nblocks, restart_directory, &
+   'grid')
 
 ! Get grid spacing from number of points across each face
 call get_grid_delta(np, del, half_del)
@@ -134,7 +140,26 @@ if(ions_final_nzs .ne. final_nzs) &
 ! Make sure ions and grid files have same horizontal sizes
 if(any(ions_nxs .ne. nxs) .or. any(ions_nys .ne. nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of Latitudes and Longitudes in grid and ion files differ', source, revision, revdate)
+      'Number of Latitudes and Longitudes in grid and ions files differ', source, revision, revdate)
+
+!=============================== Check that neutrals files are consistent with grids =========
+
+do iblock = 1, nblocks
+   ! Open the neutrals block files, read only, and get the metadata
+   neutrals_files(iblock)%ncid = nc_open_file_readonly(neutrals_files(iblock)%file_path)
+end do
+
+call get_aether_block_dimensions(neutrals_files, nblocks, nhalos, neutrals_nxs, neutrals_nys, neutrals_final_nzs)
+
+! Check for inconsistent number of vertical levels in ion and grid files
+if(neutrals_final_nzs .ne. final_nzs) &
+   call error_handler(E_ERR, 'model_to_dart', &
+      'Number of altitudes in grid and neutrals files differs', source, revision, revdate)
+
+! Make sure neutrals and grid files have same horizontal sizes
+if(any(neutrals_nxs .ne. nxs) .or. any(neutrals_nys .ne. nys)) &
+   call error_handler(E_ERR, 'model_to_dart', &
+      'Number of Latitudes and Longitudes in grid and neutrals files differ', source, revision, revdate)
 
 !==================================== Write dimensions in the filter_input nc file ========
 
@@ -185,6 +210,8 @@ end do
 
 ! Pointers to the different data fields in the filter nc file
 allocate(filter_ions_ids(ions_files(1)%nVariables))
+! Pointers to the different data fields in the filter nc file
+allocate(filter_neutrals_ids(neutrals_files(1)%nVariables))
 ! Allocate ncols size temporary storage
 allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1), time_array(1))
 ! The col_index array will keep track of mapping from x and y for each block to final columns
@@ -214,6 +241,28 @@ do varid = 1, ions_files(1)%nVariables
       ! Add the units, same in all files so just get from the first
       ncstatus = nf90_get_att(ions_files(1)%ncid, varid, 'units', attribute)
       ncstatus = nf90_put_att(filter_input_file%ncid, filter_ions_ids(varid), 'units', attribute)
+   end if
+end do
+
+!=========================================================
+
+! Get the metadata for variable fields from the neutrals block files
+! The ions and neutrals files have time and all their physical variables, but not latitude, longitude, or altitude
+! aether_restarts being used for tests also have lat, lon, alt
+
+! Illegal value of filter file index for default
+filter_neutrals_ids = -99
+
+! The filter_input_file is still in define mode. Create all of the variables before entering data mode.
+do varid = 1, neutrals_files(1)%nVariables
+   ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
+   ! Only time should occur once we switch to ions and neutrals files
+   if (trim(name) /= 'time' .and. trim(name) /= 'z' .and. trim(name) /= 'lat' .and. trim(name) /= 'lon') then
+      ncstatus = nf90_def_var(filter_input_file%ncid, name, xtype, dart_dimid, filter_neutrals_ids(varid))
+
+      ! Add the units, same in all files so just get from the first
+      ncstatus = nf90_get_att(neutrals_files(1)%ncid, varid, 'units', attribute)
+      ncstatus = nf90_put_att(filter_input_file%ncid, filter_neutrals_ids(varid), 'units', attribute)
    end if
 end do
 
@@ -301,15 +350,49 @@ do varid = 1, ions_files(1)%nVariables
 
 end do
 
+!=========== Copy data from neutrals files =================
+
+! Will get full spatial field for one variable at a time
+do varid = 1, neutrals_files(1)%nVariables
+   ! Get metadata for this variable from first block file 
+   ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
+      varid, name, xtype, nDimensions, dimids, nAtts)
+
+   if(trim(name) == 'time') then
+      ! Time must be the same in all files, so just deal with it from the first one
+      ncstatus = nf90_get_var(neutrals_files(1)%ncid, varid, time_array)
+      ncstatus = nf90_put_var(filter_input_file%ncid, filter_time_id, time_array)
+   else
+      ! Loop through all the blocks for this variable
+      do iblock = 1, nblocks
+         ! Read into the full 3Dblock array
+         ncstatus = nf90_get_var(neutrals_files(iblock)%ncid, varid, block_array)
+         
+         do iy = 1, nys(iblock)
+            do ix = 1, nxs(iblock)
+               icol = col_index(iblock, iy, ix)
+               do iz = 1, final_nzs
+                  variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
+               end do
+            end do
+         end do
+
+      end do
+      ncstatus = nf90_put_var(filter_input_file%ncid, filter_neutrals_ids(varid), variable_array)
+   end if
+
+end do
+
 call nc_close_file(filter_input_file%ncid)
 do iblock = 1, nblocks
-   ! Close the grid files and ions files
+   ! Close the grid files and ions and neutrals files
    call nc_close_file(grid_files(iblock)%ncid)
    call nc_close_file(ions_files(iblock)%ncid)
+   call nc_close_file(neutrals_files(iblock)%ncid)
 end do
 
 deallocate(block_lats, block_lons, block_array, spatial_array, variable_array)
-deallocate(time_array, col_index, filter_ions_ids)
+deallocate(time_array, col_index, filter_ions_ids, filter_neutrals_ids)
 
 end subroutine model_to_dart
 
@@ -322,6 +405,7 @@ integer :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
 integer :: ix, iy, iz, icol, ncstatus, filter_varid
 integer :: nxs(nblocks), nys(nblocks), final_nzs
 integer :: ions_nxs(nblocks), ions_nys(nblocks), ions_final_nzs
+integer :: neutrals_nxs(nblocks), neutrals_nys(nblocks), neutrals_final_nzs
 integer :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer :: dimids(NF90_MAX_VAR_DIMS)
@@ -330,6 +414,18 @@ integer,  allocatable         :: col_index(:, :, :)
 ! File for reading in variables from block file; These can probably be R4
 real(r4), allocatable :: variable_array(:, :, :)
 real(r4), allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
+
+! Open the grid and ions and neutrals files here for now with fixed directory names
+restart_directory = '../NEW_RESTART_FILES/restartOut/'
+
+ions_files = assign_block_file_names(nblocks, restart_directory, &
+   'ions', restart_ensemble_member)
+
+neutrals_files = assign_block_file_names(nblocks, restart_directory, &
+   'neutrals', restart_ensemble_member)
+
+grid_files = assign_block_file_names(nblocks, restart_directory, &
+   'grid')
 
 ! Get grid spacing from number of points across each face
 call get_grid_delta(np, del, half_del)
@@ -369,6 +465,26 @@ if(any(ions_nxs .ne. nxs) .or. any(ions_nys .ne. nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of Latitudes and Longitudes in grid and ion files differ', source, revision, revdate)
 
+!==================================== Open and check dimensions for neutrals files
+
+! The neutrals block files need to be open read write
+do iblock = 1, nblocks
+   neutrals_files(iblock)%ncid = nc_open_file_readwrite(neutrals_files(iblock)%file_path)
+end do
+
+! Check that neutrals files are consistent with grids
+call get_aether_block_dimensions(neutrals_files, nblocks, nhalos, neutrals_nxs, neutrals_nys, neutrals_final_nzs)
+
+! Check for inconsistent number of vertical levels in ion and grid files
+if(neutrals_final_nzs .ne. final_nzs) &
+   call error_handler(E_ERR, 'model_to_dart', &
+      'Number of altitudes in grid and neutrals files differs', source, revision, revdate)
+
+! Make sure neutrals and grid files have same horizontal sizes
+if(any(neutrals_nxs .ne. nxs) .or. any(neutrals_nys .ne. nys)) &
+   call error_handler(E_ERR, 'model_to_dart', &
+      'Number of Latitudes and Longitudes in grid and neutrals files differ', source, revision, revdate)
+
 !=========== Get lat lon and alt from grid files =================
 
 ! Find the latitude and longitude information from the grid files and get the column mapping
@@ -406,6 +522,7 @@ filter_output_file = assign_filter_file(dart_ensemble_member, filter_directory, 
    filter_output_prefix, '.nc')
 filter_output_file%ncid = nc_open_file_readonly(filter_output_file%file_path)
 
+!==========================================================================
 ! Loop through ions fields and replace with values from filter_output
 
 ncstatus = nf90_inquire(ions_files(1)%ncid, ions_files(1)%nDimensions, &
@@ -446,14 +563,56 @@ do varid = 1, ions_files(1)%nVariables
    end if
 end do
 
+!==========================================================================
+! Loop through neutrals fields and replace with values from filter_output
+
+ncstatus = nf90_inquire(neutrals_files(1)%ncid, neutrals_files(1)%nDimensions, &
+   neutrals_files(1)%nVariables, neutrals_files(1)%nAttributes,  neutrals_files(1)%unlimitedDimId, &
+   neutrals_files(1)%formatNum)
+
+! Will get full spatial field for one variable at a time
+do varid = 1, neutrals_files(1)%nVariables
+   ! Get metadata for this variable from first block file 
+   ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
+      varid, name, xtype, nDimensions, dimids, nAtts)
+   write(*, *) 'var loop ', varid, name
+   if(trim(name) .ne. 'time' .and. trim(name) .ne. 'Altitude' .and. trim(name) .ne. 'Latitude' &
+      .and. trim(name) .ne. 'Longitude') then
+      ! See if this variable is also in the filter output file
+      ncstatus = nf90_inq_varid(filter_output_file%ncid, trim(name), filter_varid)
+      ! Check on failed ncstatus. 0 is successful but should use the proper name
+      if(ncstatus == 0) then
+         write(*, *) 'fetching variable ', trim(name)
+         ! Read this field from filter_output file 
+         ncstatus = nf90_get_var(filter_input_file%ncid, filter_varid, variable_array)
+
+! CAN WE UPDATE THE HALOS TOO WHEN WRITING BACK???
+         ! Loop through all the blocks for this variable
+         do iblock = 1, nblocks
+            do iy = 1, nys(iblock)
+               do ix = 1, nxs(iblock)
+                  icol = col_index(iblock, iy, ix)
+                  do iz = 1, final_nzs
+                     block_array(iz, nhalos+iy, nhalos+ix) = variable_array(icol, iz, 1)
+                  end do
+               end do
+            end do
+            ! Write into the full file for this block
+            ncstatus = nf90_put_var(neutrals_files(iblock)%ncid, varid, block_array)
+         end do
+      endif
+   end if
+end do
+
 deallocate(col_index, variable_array, block_lats, block_lons, block_array)
 
 ! Close the netcdf files
 call nc_close_file(filter_output_file%ncid)
 do iblock = 1, nblocks
-   ! Close the grid files and ions files
+   ! Close the grid files and ions and neutrals files
    call nc_close_file(grid_files(iblock)%ncid)
    call nc_close_file(ions_files(iblock)%ncid)
+   call nc_close_file(neutrals_files(iblock)%ncid)
 end do
 
 end subroutine dart_to_model
