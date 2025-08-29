@@ -67,6 +67,13 @@ ions_files = assign_block_files_array(nblocks, restart_ensemble_member, restart_
 
 grid_files = assign_grid_files_array(nblocks)
 
+
+!!!ions_files = assign_block_file_names(nblocks, restart_directory, &
+   !!!'ions', restart_ensemble_member)
+
+!!!grid_files = assign_block_file_names(nblocks, restart_directory, &
+   !!!'grid')
+
 end subroutine initialize_transform_state_mod
 
 !---------------------------------------------------------------
@@ -594,7 +601,7 @@ end do
 
 end function assign_block_files_array
 
-!---------------------------------------------------------------
+!----------------------------------------------------------------
 
 function assign_grid_files_array(nblocks) result(grid_files)
    
@@ -614,6 +621,44 @@ do iblock = 1, nblocks
 end do
 
 end function assign_grid_files_array
+
+!---------------------------------------------------------------
+
+function assign_block_file_names(nblocks, directory, &
+   file_prefix, ensemble_member) result(block_files)
+
+integer,          intent(in)             :: nblocks
+character(len=*), intent(in)             :: directory
+character(len=*), intent(in)             :: file_prefix
+character(len=4), intent(in), optional   :: ensemble_member
+type(file_type),  allocatable            :: block_files(:)
+
+character(len=256) :: file
+character(len=4)   :: block_name
+integer            :: iblock
+
+write(*, *) 'in assign blcok file names'
+write(*, *) 'nblocks ', nblocks
+write(*, *) 'diretory ', trim(directory)
+write(*, *) 'file prefix ', trim(file_prefix)
+if(present(ensemble_member)) write(*, *) 'ensemmble member ', ensemble_member
+
+allocate(block_files(nblocks))
+
+do iblock = 1, nblocks
+   block_name = zero_fill(integer_to_string(iblock - 1), 4)
+
+   file = trim(directory) // trim(file_prefix) 
+   ! Add in ensemble member if needed
+   if(present(ensemble_member)) then
+      file = trim(file) // '_m' // ensemble_member
+   endif
+   block_files(iblock)%file_path = trim(file) //  '_g' // block_name // '.nc'
+
+   write(*, *) iblock, block_files(iblock)%file_path
+end do
+
+end function assign_block_file_names
 
 !---------------------------------------------------------------
 
