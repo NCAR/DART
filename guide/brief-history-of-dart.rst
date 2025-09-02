@@ -13,58 +13,62 @@ From Manhattan onwards, DART releases follow the rules of semantic versioning.
 The full list of releases including release notes can be found on GitHub at
 `NCAR/DART/releases <https://github.com/NCAR/DART/releases>`__.
 
-+--------------------+----------------------------+----------------------------+
-| Release            | Date                       | Brief description          |
-+====================+============================+============================+
-| Easter             | 08 Mar 2004                | Initial release            |
-+--------------------+----------------------------+----------------------------+
-| Fiji               | 29 Apr 2004                | Enhanced portability;      |
-|                    |                            | support for CAM and WRF    |
-+--------------------+----------------------------+----------------------------+
-| Guam               | 12 Aug 2004                | New observation modules    |
-+--------------------+----------------------------+----------------------------+
-| Pre-Hawaii         | 20 Dec 2004                | New filtering algorithms   |
-+--------------------+----------------------------+----------------------------+
-| Hawaii             | 28 Feb 2005                | New filtering algorithms   |
-+--------------------+----------------------------+----------------------------+
-| DA Workshop 2005   | 13 Jun 2005                | Tutorial, observation      |
-|                    |                            | preprocessing              |
-+--------------------+----------------------------+----------------------------+
-| Pre-Iceland        | 20 Oct 2005                | Huge expansion of real     |
-|                    |                            | observation capability     |
-+--------------------+----------------------------+----------------------------+
-| Iceland            | 23 Nov 2005                | Huge expansion of real     |
-|                    |                            | observation capability     |
-+--------------------+----------------------------+----------------------------+
-| Post-Iceland       | 20 Jun 2006                | Observation-space adaptive |
-|                    |                            | inflation                  |
-+--------------------+----------------------------+----------------------------+
-| Pre-J              | 02 Oct 2006                | Updated scalable filter    |
-|                    |                            | algorithm                  |
-+--------------------+----------------------------+----------------------------+
-| Jamaica            | 12 Apr 2007                | Vertical localization,     |
-|                    |                            | extensive MPI testing      |
-+--------------------+----------------------------+----------------------------+
-| Kodiak             | 30 Jun 2011                | New obs types, new         |
-|                    |                            | diagnostics, new           |
-|                    |                            | utilities                  |
-+--------------------+----------------------------+----------------------------+
-| Lanai              | 13 Dec 2013                | Support for many new       |
-|                    |                            | models, chemistry/aerosol  |
-|                    |                            | types, new diagnostics,    |
-|                    |                            | new utilities              |
-+--------------------+----------------------------+----------------------------+
-| Manhattan v9.0     | 15 May 2017                | Native netCDF support,     |
-|                    |                            | better                     |
-|                    |                            | scaling/performance        |
-+--------------------+----------------------------+----------------------------+
-| v10.0              | 24 May 2023                | New build tools            |
-+--------------------+----------------------------+----------------------------+
-| v11.0              | 11 Jan 2024                | Quantile-Conserving        |
-|                    |                            | Ensemble Filtering         |
-|                    |                            | Framework (QCEFF)          |
-+--------------------+----------------------------+----------------------------+
 
+.. list-table:: DART Major Releases
+    :widths: 15 15 45
+    :header-rows: 1
+
+    * - Release
+      - Date
+      - Brief description
+    * - Easter
+      - 08 Mar 2004
+      - Initial release
+    * - Fiji
+      - 29 Apr 2004
+      - Enhanced portability; support for CAM and WRF
+    * - Guam
+      - 12 Aug 2004
+      - New observation modules
+    * - Pre-Hawaii
+      - 20 Dec 2004
+      - New filtering algorithms
+    * - Hawaii
+      - 28 Feb 2005
+      - New filtering algorithms
+    * - DA Workshop 2005
+      - 13 Jun 2005
+      - Tutorial, observation preprocessing
+    * - Pre-Iceland
+      - 20 Oct 2005
+      - Huge expansion of real observation capability
+    * - Iceland
+      - 23 Nov 2005
+      - Huge expansion of real observation capability
+    * - Post-Iceland
+      - 20 Jun 2006
+      - Observation-space adaptive inflation
+    * - Pre-J
+      - 02 Oct 2006
+      - Updated scalable filter algorithm
+    * - Jamaica
+      - 12 Apr 2007
+      - Vertical localization, extensive MPI testing
+    * - Kodiak
+      - 30 Jun 2011
+      - New obs types, new diagnostics, new utilities
+    * - Lanai
+      - 13 Dec 2013
+      - Support for many new models, chemistry/aerosol types, new diagnostics, new utilities
+    * - Manhattan v9.0
+      - 15 May 2017
+      - Native netCDF support, better scaling/performance
+    * - v10.0
+      - 24 May 2023
+      - New build tools
+    * - v11.0
+      - 11 Jan 2024
+      - Quantile-Conserving Ensemble Filtering Framework (QCEFF)
 
 
 
