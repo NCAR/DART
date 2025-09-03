@@ -11,7 +11,7 @@ source "$DART"/build_templates/buildconvfunctions.sh
 
 CONVERTER=ROMS
 LOCATION=threed_sphere
-EXTRA="$DART/models/ROMS/model_mod.f90"
+EXTRA="$DART/models/ROMS_ucla/model_mod.f90"
 
 
 programs=(

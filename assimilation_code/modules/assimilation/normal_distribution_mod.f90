@@ -349,9 +349,13 @@ integer, parameter :: max_iterations = 50
 integer, parameter :: max_half_iterations = 25
 
 ! Largest delta for computing centered difference derivative
-! Changing this can affect accuracy for specific applications like Ian Grooms KDE
-! Changing to 1e-9 allows all of the KDE tests to PASS
+! Changing this can affect accuracy for specific applications
 real(r8), parameter :: max_delta = 1e-8_r8
+
+! The power to which the epsilon for the current guess is raised to bound convergence
+! Earlier versions used 0.75, but that was found to fail tests for various compilers 
+! on Derecho. The value of 0.52 passes all current normal, beta and gamma distribution tests
+real(r8), parameter :: epsilon_exponent = 0.52_r8
 
 real(r8) :: quantile
 real(r8) :: reltol, dq_dx, delta
@@ -397,6 +401,12 @@ q_guess = cdf(x_guess, p)
 
 del_q = q_guess - quantile
 
+! If the preliminary guess is exact, no need to do iterative search below
+if(del_q == 0.0_r8) then
+   x = x_guess
+   return
+endif
+
 ! Iterations of the Newton method to approximate the root
 do iter = 1, max_iterations
    ! Analytically, the PDF is derivative of CDF but this can be numerically inaccurate for extreme values
@@ -415,7 +425,7 @@ do iter = 1, max_iterations
    x_new = x_guess - del_x
 
    ! Look for convergence; If the change in x is smaller than approximate precision 
-   reltol = (epsilon(x_guess))**(0.75_r8)
+   reltol = (epsilon(x_guess))**(epsilon_exponent)
    if(abs(del_x) <= reltol) then
       x = x_new
       return
