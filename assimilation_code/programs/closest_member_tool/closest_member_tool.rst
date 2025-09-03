@@ -101,10 +101,7 @@ namelist.
    |                                       |                                       | model interface code to determine     |
    |                                       |                                       | which possible quantities are         |
    |                                       |                                       | returned by the                       |
-   |                                       |                                       | `get_state_me                         |
-   |                                       |                                       | ta_data() <../../../models/template/m |
-   |                                       |                                       | odel_mod.html#get_state_meta_data>`__ |
-   |                                       |                                       | routine.                              |
+   |                                       |                                       | `get_state_meta_data` routine.        |
    +---------------------------------------+---------------------------------------+---------------------------------------+
    | single_restart_file_in                | logical                               | **Not supported yet.** Contact        |
    |                                       |                                       | dart@ucar.edu if you are interested   |
