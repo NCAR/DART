@@ -8,14 +8,16 @@ module cube_sphere_grid_tools_mod
 ! This module provides tools that know about the horizontal geometry and relation to 
 ! storage patterns for the Aether cube sphere grid. 
 
-use        types_mod, only : r8, PI
+use types_mod,     only : r8, PI
+
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 private
 
-public :: lat_lon_to_col_index, get_bounding_box, col_index_to_lat_lon, &
-          is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
-          lat_lon_to_xyz, lat_lon_to_grid, get_face, fix_face, get_corners, &
+public :: lat_lon_to_col_index, col_index_to_lat_lon, get_bounding_box,      &
+          is_point_in_triangle, is_point_in_quad, lat_lon_to_xyz,            & 
+          grid_to_lat_lon, lat_lon_to_grid, get_face, fix_face, get_corners, &
           get_grid_delta
 
 ! version controlled file description for error handling, do not edit
@@ -27,6 +29,8 @@ contains
 
 !------------------------------------------------------------------
 
+! Compute the spacing between grid rows on a face
+
 subroutine get_grid_delta(np, del, half_del)
 
 integer,  intent(in)  :: np
@@ -37,6 +41,7 @@ real(r8) :: cube_side
 ! Cube side is divided into np-1 interior intervals of width 2sqrt(1/3) / np and
 ! two exterior intervals of half  width, sqrt(1/3) / np 
 cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
+! Get the spacing of the grid points
 ! These grid spacings are in module storage since they are used repeatedly in many routines
 del = cube_side / np  
 half_del = del / 2.0_r8
@@ -46,7 +51,7 @@ end subroutine get_grid_delta
 !------------------------------------------------------------------
 
 ! Given the face (from 0 to 5) the number of lons/lats on a face (np) and
-! the indices of the i and j grid point, returns the latitude and longitude of the point
+! the i and j indices of the grid point, returns the latitude and longitude of the point
 
 subroutine grid_to_lat_lon(face, lat_ind, lon_ind, del, half_del, lat, lon)
 
@@ -55,9 +60,10 @@ real(r8), intent(in)  :: del, half_del
 real(r8), intent(out) :: lat, lon
 
 real(r8) :: x, y, blon, blat, rot_angle
-real(r8) :: vect(3), RZ(3, 3), rot_vect(3)
+real(r8) :: vect(3), rot_vect(3), RZ(3, 3)
 
 
+! Get the x and y positions on the face
 x = sqrt(1.0_r8/3.0_r8) - (half_del + del * (lon_ind - 1))
 if(face == 5) then 
    y =  sqrt(1.0_r8/3.0_r8) - (half_del + del * (lat_ind - 1))
@@ -65,6 +71,7 @@ else
    y = -sqrt(1.0_r8/3.0_r8) + (half_del + del * (lat_ind - 1))
 endif
 
+! These are the faces tangent to the equator
 if(face < 4) then
    blon = atan2(sqrt(1.0_r8 / 3.0_r8), x)
    blat = atan2(y, sqrt(1.0_r8/3.0_r8 + x**2.0_r8))
@@ -94,10 +101,10 @@ elseif(face == 4 .or. face == 5) then
 
    lat = asin(rot_vect(3))
    lon = atan2(rot_vect(2), rot_vect(1))
-   ! Note that there are inconsistent treatments of the value near longitude
+   ! There are inconsistent treatments of the value near longitude
    ! 0 in the grid files for Aether. Some points have a value near or just less
    ! than 2PI, other points have values just greater than 0. This code 
-   ! avoids values near to 2PI and have 0 instead.
+   ! avoids values near to 2PI and converts to near 0 instead.
    if(lon < 0.0_r8) lon =  lon + 2.0_r8*PI
    if(lon >= 2.0_r8*PI) lon = 0.0_r8
 
@@ -106,6 +113,9 @@ endif
 end subroutine grid_to_lat_lon
 
 !-----------------------------------------------------------------------
+
+! Convert from latitude longitude, to the face and indices on the face
+! of a correpsonding grid point
 
 subroutine lat_lon_to_grid(lat, lon, del, half_del, face, lat_ind, lon_ind)
 
@@ -126,6 +136,8 @@ end subroutine lat_lon_to_grid
 
 !-----------------------------------------------------------------------
 
+! For points past the edge of a face, finds the corresponding points on the adjacent face
+
 subroutine fix_face(face, lat_grid, lon_grid, np, f_face, f_lat_grid, f_lon_grid, edge, corner)
 
 integer, intent(in)  :: face, lat_grid, lon_grid, np
@@ -138,8 +150,6 @@ integer :: left_lon_grid(6),   right_lon_grid(6)
 integer :: left_lat_grid(6),   right_lat_grid(6)
 integer :: bottom_lon_grid(6), top_lon_grid(6)
 integer :: bottom_lat_grid(6), top_lat_grid(6)
-! For points past the edge of a face, finds the corresponding points on the adjacent face
-! Need to do something more special for corner points
 
 ! Default is not a corner or an edge
 corner = .false.
@@ -153,6 +163,7 @@ if(lon_grid > 0 .and. lon_grid < np + 1 .and. lat_grid > 0 .and. lat_grid < np +
    return
 endif
 
+! Return illegal value for face information if on a corner
 if((lat_grid == 0 .or. lat_grid == np + 1) .and. (lon_grid == 0 .or. lon_grid == np + 1)) then
    corner = .true.
    f_face     = -99
@@ -165,7 +176,7 @@ endif
 edge = .true.
 ! Deal with each side of faces separately
 if(lon_grid == 0) then
-   ! On left edge not corner
+   ! On left edge 
    left_neighbor = [3, 0, 1, 2, 0, 0]
    f_face = left_neighbor(face + 1)
    left_lon_grid = [np, np, np, np, lat_grid, np+1-lat_grid]
@@ -173,7 +184,7 @@ if(lon_grid == 0) then
    left_lat_grid = [lat_grid, lat_grid, lat_grid, lat_grid, 1, np]
    f_lat_grid = left_lat_grid(face + 1)
 elseif(lon_grid == np + 1) then
-   ! On right edge not corner
+   ! On right edge
    right_neighbor = [1, 2, 3, 0, 2, 2]
    f_face = right_neighbor(face + 1)
    right_lon_grid = [1, 1, 1, 1, np+1-lat_grid, lat_grid]
@@ -181,7 +192,7 @@ elseif(lon_grid == np + 1) then
    right_lat_grid = [lat_grid, lat_grid, lat_grid, lat_grid, 1, np]
    f_lat_grid = right_lat_grid(face + 1)
 elseif(lat_grid == 0) then
-   ! On bottom edge not corner
+   ! On bottom edge 
    bottom_neighbor = [4, 4, 4, 4, 3, 1]
    f_face = bottom_neighbor(face + 1)
    bottom_lon_grid = [1, lon_grid, np, np+1-lon_grid, np+1-lon_grid, lon_grid]
@@ -189,7 +200,7 @@ elseif(lat_grid == 0) then
    bottom_lat_grid = [lon_grid, np, np+1-lon_grid, 1, 1, np]
    f_lat_grid = bottom_lat_grid(face + 1)
 elseif(lat_grid == np + 1) then
-   ! On top edge not corner
+   ! On top edge
    top_neighbor = [5, 5, 5, 5, 1, 3]
    f_face = top_neighbor(face + 1)
    top_lon_grid = [1, lon_grid, np, np+1-lon_grid, lon_grid, np+1-lon_grid]
@@ -202,19 +213,20 @@ end subroutine fix_face
 
 !-----------------------------------------------------------------------
 
+! Returns which face contains (lat, lon) and the length from the edge of the point
+! along each of the great circle axes.
+
 subroutine get_face(lat, lon_in, face, len)
 
 real(r8), intent(in)  :: lat, lon_in
 integer,  intent(out) :: face
 real(r8), intent(out) :: len(2)
 
-integer :: side, rside, rside2
+integer  :: side, rside, rside2
 real(r8) :: inv_sqrt_2, rlon, rlon2, gama, gamb, lon
 real(r8) :: vec(3), rot_vec(3), rot_vec2(3), rot(3, 3), rot2(3, 3), lon_grid(2), lon_grid_m(2)
-! Returns which face contains (lat, lon) and the length from the edge of the point
-! along each of the great circle axes.
 
-! Range adjustment
+! Range adjustment due to Aether roundoff around 2 PI
 lon = lon_in
 if(lon >= 2.0_r8*PI) lon = 0.0_r8
 
@@ -225,7 +237,6 @@ vec = lat_lon_to_xyz(lat, lon)
 
 !====================================================================
 ! Following code shows individual rotations;
-! Single matrix at the end multiplies them together off-line for single rotation
 ! Can collapse these to a single rotation vector for efficiency
 ! Rotation 90 degrees around y to put pole on equator
 !RY = [cosd(90) 0 -sind(90); 0 1 0; sind(90) 0 cosd(90)];
@@ -238,8 +249,8 @@ vec = lat_lon_to_xyz(lat, lon)
 !====================================================================
 inv_sqrt_2 = 1.0_r8 / sqrt(2.0_r8);
 rot(1, 1:3) = [0.5_r8,     0.5_r8,      -inv_sqrt_2]
-rot(2, 1:3) = [0.5_r8,     0.5_r8,      inv_sqrt_2]
-rot(3, 1:3) = [inv_sqrt_2, -inv_sqrt_2, 0.0_r8]
+rot(2, 1:3) = [0.5_r8,     0.5_r8,      inv_sqrt_2 ]
+rot(3, 1:3) = [inv_sqrt_2, -inv_sqrt_2, 0.0_r8     ]
 rot_vec = matmul(rot, vec)
 ! Compute the longitude in the rotated space
 rlon = atan2(rot_vec(2), rot_vec(1))
@@ -257,8 +268,8 @@ if(rlon < 0.0_r8) rlon = rlon + 2.0_r8*PI
 !rot_vec2 = RZ * RX2 * RY * vec;
 !====================================================================
 rot2(1, 1:3) = [-0.5_r8,     0.5_r8,        -inv_sqrt_2]
-rot2(2, 1:3) = [-0.5_r8,     0.5_r8,        inv_sqrt_2]
-rot2(3, 1:3) = [inv_sqrt_2,  inv_sqrt_2,    0.0_r8]
+rot2(2, 1:3) = [-0.5_r8,     0.5_r8,        inv_sqrt_2 ]
+rot2(3, 1:3) = [inv_sqrt_2,  inv_sqrt_2,    0.0_r8     ]
 rot_vec2 = matmul(rot2, vec)
 ! Compute the longitude in the rotated space
 rlon2 = atan2(rot_vec2(2), rot_vec2(1))
@@ -287,7 +298,7 @@ elseif(rside == 2 .and. rside2 == 2) then
    face = 5; lon_grid(1) = rlon; lon_grid(2) = rlon2
 endif
 
-! Can also use the fact that the projection is equidistant on the imbedded cube to get what fraction 
+! Can use the fact that the projection is equidistant on the imbedded cube to get what fraction 
 ! across the imbedded rectangle we are
 ! Take the longitudes and turn them into a number between -sqrt(1/3) and sqrt(1/3)
 lon_grid_m = mod(lon_grid, PI/2.0_r8)
@@ -298,10 +309,10 @@ lon_grid_m = mod(lon_grid, PI/2.0_r8)
 ! The angle opposite the side of length 2sqrt(1/3) is PI - (longitude + PI/4)
 ! The side opposite the longitude is how far along the side of the cube
 ! The cube side is 2sqrt(1/3), so the length along the side is between zero and this value
-gama = PI - (PI/4.0_r8 + lon_grid_m(1))
+gama   = PI - (PI/4.0_r8 + lon_grid_m(1))
 len(1) = sqrt(2.0_r8/3.0_r8) * sin(lon_grid_m(1)) / sin(gama)
 
-gamb = PI - (PI/4 + lon_grid_m(2))
+gamb   = PI - (PI/4 + lon_grid_m(2))
 len(2) = sqrt(2.0_r8/3.0_r8) * sin(lon_grid_m(2)) / sin(gamb)
 
 ! If we are on sides 2 or 3, the lengths need to be modified because the grid storage
@@ -315,19 +326,20 @@ if(face == 4) len(1) = 2.0_r8*sqrt(1.0_r8/3.0_r8) - len(1)
 end subroutine get_face
 
 !-----------------------------------------------------------------------
-subroutine get_corners(face, lat_grid, lon_grid, np, lat, lon, del, half_del, &
-   f_face, f_lat_grid, f_lon_grid, num_bound_points)
-   
-integer, intent(in) :: face, lat_grid, lon_grid, np
-real(r8), intent(in) :: lat, lon, del, half_del
-integer, intent(out) :: f_face(4), f_lat_grid(4), f_lon_grid(4), num_bound_points
-
-integer :: corner, quad, i
-integer :: quad_lon_grid(3, 4), quad_lat_grid(3, 4), quad_face(3, 4)
-real(r8) :: pxyz(3), qxyz(4, 3), grid_pt_lat, grid_pt_lon
 
 ! Checks to see if the point under consideration is at a corner
 ! If it is, return the face, lat_index, and lon_index for each of the three bounding points
+
+subroutine get_corners(face, lat_grid, lon_grid, np, lat, lon, del, half_del, &
+   f_face, f_lat_grid, f_lon_grid, num_bound_points)
+   
+integer,  intent(in)  :: face, lat_grid, lon_grid, np
+real(r8), intent(in)  :: lat, lon, del, half_del
+integer,  intent(out) :: f_face(4), f_lat_grid(4), f_lon_grid(4), num_bound_points
+
+integer  :: corner, quad, i
+integer  :: quad_lon_grid(3, 4), quad_lat_grid(3, 4), quad_face(3, 4)
+real(r8) :: pxyz(3), qxyz(4, 3), grid_pt_lat, grid_pt_lon
 
 ! Default is to find a triangle
 num_bound_points = 3
@@ -398,7 +410,7 @@ endif
 ! Arrays of info for adjacent quads for bulges (three of them, first index)
 quad_lon_grid(1:3, 1:4)  = -99
 quad_lat_grid(1:3, 1:4)  = -99
-quad_face(1:3, 1:4) = -99
+quad_face(1:3, 1:4)      = -99
 
 if(corner == 1) then
    f_face(1:3) =     [3,  0, 4]
@@ -443,7 +455,7 @@ elseif(corner == 4) then
    f_face(1:3) =     [2,  3, 4 ]
    f_lon_grid(1:3) = [np, 1, np]
    f_lat_grid(1:3) = [1,  1, 1 ]
-   quad_face(1, 1:4) = [2, 3, 3,2]
+   quad_face(1, 1:4) = [2, 3, 3, 2]
    quad_face(2, 1:4) = [3, 3, 4, 4]
    quad_face(3, 1:4) = [2, 2, 4, 4]
    quad_lat_grid(1, 1:4) = [1, 1, 2, 2]
@@ -521,6 +533,7 @@ enddo
 if(is_point_in_triangle(qxyz(1, :), qxyz(2, :), qxyz(3, :), pxyz)) return
 
 ! If it's not in the triangle, have to check the three adjacent quads at the corner
+! This can happen because edges are really on great circles
 num_bound_points = 4
 
 do quad = 1, 3
@@ -541,9 +554,9 @@ do quad = 1, 3
    endif
 enddo
 
-! Falling of the end is not happy
-!!!fprintf('UNEXPECTED FAILURE IN GET_CORNERS.M\n');
-!!!stop
+! Falling of the end should not happen;
+call error_handler(E_ERR, 'get_corners', 'Reached end of subroutine get_corners', &
+   source, revision, revdate, 'This should not be possible')
 
 end subroutine get_corners
 
@@ -556,14 +569,14 @@ end subroutine get_corners
 subroutine get_bounding_box(lat, lon, del, half_del, np, &
    grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
 
-real(r8), intent(in)  :: lat, lon, del, half_del
 integer,  intent(in)  :: np
-real(r8), intent(out) :: grid_pt_lat(4), grid_pt_lon(4)
+real(r8), intent(in)  :: lat, lon, del, half_del
 integer,  intent(out) :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4), num_bound_points
+real(r8), intent(out) :: grid_pt_lat(4), grid_pt_lon(4)
 
-real(r8) :: len(2), qxyz(4, 3), pxyz(3)
 integer  :: face, low_grid(2), hi_grid(2), i, my_pt, corner_index
 integer  :: lat_grid(4), lon_grid(4), face1_pts(2), face2_pts(2), face1_count, face2_count
+real(r8) :: len(2), qxyz(4, 3), pxyz(3)
 logical  :: on_edge, edge, corner
 
 ! Get the face and the length along the two imbedded cube faces for the point
@@ -595,7 +608,7 @@ enddo
 ! If it's at a corner, need to find the triangles in a different fashion
 ! It is possible that the point initially looks like it is in a corner due to the fact 
 ! that the edges of the grid are on great circles from the corresponding faces, but the
-! grid point at the edge are not connected by these great circles.
+! grid points at the edge are not connected by these great circles.
 if(corner) then
    call get_corners(face, lat_grid(corner_index), lon_grid(corner_index), np, &
       lat, lon, del, half_del, grid_face, grid_lat_ind, grid_lon_ind, num_bound_points)
@@ -612,7 +625,7 @@ do i = 1, num_bound_points
 enddo
 
 ! Make on_edge true only if we are on an edge but not at a corner
-on_edge = (on_edge .and.  .not. corner)
+on_edge = (on_edge .and. .not. corner)
 
 if(on_edge) then
    ! If this is an edge, may need to revise box selection
@@ -700,6 +713,8 @@ end subroutine get_bounding_box
 
 !-----------------------------------------------------------------------
 
+! Given the index of a horizontal column, returns the latitude and longitude in radians
+
 subroutine col_index_to_lat_lon(col_index, np, del, half_del, lat, lon)
 
 integer,  intent(in)  :: col_index, np
@@ -707,8 +722,6 @@ real(r8), intent(in)  :: del, half_del
 real(r8), intent(out) :: lat, lon
 
 integer :: face, resid, lat_ind, lon_ind
-
-! Given the index of a horizontal column, returns the latitude and longitude in radians
 
 ! Which face are we on? np**2 points per face
 face = (col_index - 1) / (np**2)
@@ -725,6 +738,8 @@ call grid_to_lat_lon(face, lat_ind, lon_ind, del, half_del, lat, lon)
 end subroutine col_index_to_lat_lon
 
 !-----------------------------------------------------------------------
+
+! Given a latitude and longitude, return corresponding model column index
 
 function lat_lon_to_col_index(lat, lon, del, half_del, np)
 
@@ -744,6 +759,8 @@ end function lat_lon_to_col_index
 
 !-----------------------------------------------------------------------
 
+! Convert latitude and longitude to 3D x,y,z
+
 function lat_lon_to_xyz(lat, lon)          
 
 real(r8)             :: lat_lon_to_xyz(3)
@@ -756,6 +773,7 @@ lat_lon_to_xyz(3) = sin(lat)
 end function lat_lon_to_xyz
 
 !-----------------------------------------------------------------------
+
 ! Determines if the projection of a point p onto the plane of a triangle with vertices
 ! v1, v2 and v3 is inside the triangle or not. Computes the areas of each of the triangles
 ! between p and a pair of vertices. These should sum to the area of the triangle if p
@@ -788,7 +806,6 @@ len_s1 = sqrt(dot_product(v1-v2, v1-v2))
 len_s2 = sqrt(dot_product(v3-v2, v3-v2))
 len_s3 = sqrt(dot_product(v1-v3, v1-v3))
 
-
 ! Compute the lengths from the point p
 len_p1 = sqrt(dot_product(p_proj-v1, p_proj-v1))
 len_p2 = sqrt(dot_product(p_proj-v2, p_proj-v2))
@@ -806,7 +823,7 @@ at3 = heron(len_p3, len_p1, len_s3)
 area_dif = at1 + at2 + at3 - at
 
 ! Quadrilaterals on the interior of the cube sphere sides are really spherical quads,
-! There sides are great circles. This routine assumes that the triangles composing the quads
+! Their sides are great circles. This routine assumes that the triangles composing the quads
 ! have straight sides in regular space. The algorithm finds points that are inside the 
 ! spherical quads. These quads actually 'bulge' out compared to the regular sides, so it is possible
 ! to have points that are inside the spherical quad but just barely outside of the regular
@@ -821,6 +838,8 @@ is_point_in_triangle = abs(dif_frac) < threshold
 end function is_point_in_triangle
 
 !-----------------------------------------------------------------------
+
+! Returns true if point p is in quadrilateral with vertices v
    
 function is_point_in_quad(v, p)
 

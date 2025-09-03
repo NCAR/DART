@@ -146,7 +146,7 @@ if(any(neutrals_nxs .ne. nxs) .or. any(neutrals_nys .ne. nys)) &
 !==================================== Write dimensions in the filter nc file ========
 
 ! Initialize the filter file that will be created
-filter_file%file_path = trim(dart_file_dir) // 'filter_outputT' // &
+filter_file%file_path = trim(dart_file_dir) // 'filter_input_' // &
    dart_ensemble_member // '.nc'
 ! Create the filter netcdf file
 filter_file%ncid = nc_create_file(filter_file%file_path)
@@ -495,7 +495,7 @@ do iblock = 1, nblocks
 end do
 
 ! Open the filter file that will be read
-filter_file%file_path = trim(dart_file_dir) // 'filter_outputT' // &
+filter_file%file_path = trim(dart_file_dir) // 'filter_output_' // &
    dart_ensemble_member // '.nc'
 ! Open the filter netcdf file
 filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
