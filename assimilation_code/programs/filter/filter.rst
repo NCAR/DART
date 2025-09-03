@@ -83,16 +83,10 @@ DART is distributed as a toolkit/library/facility that can be used as-is with th
 is also designed so that users can add new models, new observation types and forward operators, and new assimilation
 algorithms.
 
-The locations in the DART `code tree <../../../docs/index.html#Directories>`__ which are intended to be modified by
-users are:
+The locations in the DART code tree which are intended to be modified by users are:
 
 New Models
-   Add a new directory in the ``models`` subdirectory. Copy (recursively, e.g. ``cp -r``) the contents of the
-   ``template`` directory and modify from there. Note that the ``model_mod.f90`` file in the template dir is appropriate
-   for small models; for large geophysical models see the ``full_model_mod.f90`` file and also examine other model
-   directories for ideas. See additional documentation in the :doc:`../../../models/template/readme` documentation,
-   and the `DART web pages <http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model>`__ on adding
-   new models.
+ To add a new model to DART see :ref:`Porting new models`.
 New Observation Platforms
    To convert observations from other formats to DART format, add a new directory in the ``observations/obs_converters``
    subdirectory and populate it with converter code.
