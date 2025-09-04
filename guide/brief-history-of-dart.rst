@@ -92,5 +92,16 @@ DART have also been cited many more times. For example, the core EAKF algorithm
 2001 <https://journals.ametsoc.org/doi/full/10.1175/1520-0493%282001%29129%3C2884%3AAEAKFF%3E2.0.CO%3B2>`__)
 used in DART has over 2000 citations according to `Google Scholar <https://scholar.google.com/scholar?cites=16669101874434899646&as_sdt=40000005&sciodt=0,22&hl=en>`__.
 
+Since the Manhattan release (v9.0), DART has averaged ~700 commits and ~16 releases per year. 
+Most of the code updates are backwards-compatible, ensuring that user codes continue to run 
+unchanged while still benefiting from new capabilities. The bar chart below shows the number of 
+releases per 12-months interval, while the shaded area represents the commit activity over the 
+same period. Major releases such as Manhattan, v10.0, v11.0 are also annotated. This image
+highlights the relationship between code-release milestones and overall development activity.
+
+.. image:: images/rel_com_hist.png
+   :width: 90%
+   :align: center 
+
 .. |BAMS-cover| image:: images/BAMS-cover.png
    :width: 100%
