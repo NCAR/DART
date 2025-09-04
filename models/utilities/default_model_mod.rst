@@ -1,36 +1,26 @@
-MODULE model_mod
-================
+.. index:: default model mod
 
-Overview
---------
+MODULE default_model_mod
+=========================
 
-| Every model that is DART compliant must provide an set of interfaces that will be called by DART code. For models
-  which have no special code for some of these routines, they can pass through the call to this default module, which
-  satisfies the call but does no work. To use these routines in a ``model_mod.f90``, add at the top:
+The default_model_mod provides model_mod interfaces and utility routines that you can use in your model_mod.f90.
 
-::
+For example, to use ``pert_model_copies`` from the default_model_mod, add the
+following line to your model_mod.f90:
 
-   use default_model_mod, only : xxx, yyy
+.. code-block:: fortran
 
-and then leave them in the public list.
+   use default_model_mod, only : pert_model_copies
 
-Namelist
---------
+   public :: pert_model_copies
 
-The default routines have no namelist.
+If you are using the 'fail' default routines, for example if you have model that cannot be initialized inside
+DART, you will need to rename the routines in the use statement:
 
-Other modules used
-------------------
+.. code-block:: fortran
 
-::
-
-   types_mod
-   time_manager_mod
-   location_mod
-   utilities_mod
-   netcdf_utilities_mod
-   ensemble_manager_mod
-   dart_time_io_mod
+   use default_model_mod, only : init_time => fail_init_time, &
+                                 init_conditions => fail_init_conditions, &
 
 Public interfaces
 -----------------
@@ -555,17 +545,3 @@ A note about documentation style. Optional arguments are enclosed in brackets *[
 
    Does nothing.
 
-Files
------
-
-none
-
-References
-----------
-
-#. none
-
-Private components
-------------------
-
-N/A

@@ -496,13 +496,11 @@ References
    models/seir/readme
    models/simple_advection/readme
    models/sqg/readme
-   models/template/new_model
    models/tiegcm/readme
    models/wrf_hydro/readme
    models/wrf/readme
    models/wrf/WRF_DART_utilities/replace_wrf_fields
    models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
-   models/template/readme
    models/utilities/default_model_mod
 
 
