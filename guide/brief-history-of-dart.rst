@@ -77,7 +77,7 @@ The full list of releases including release notes can be found on GitHub at
 In September 2009, DART was featured on the cover of the Bulletin of the
 American Meteorological Society (BAMS):
 
-|BAMS-cover400|
+|BAMS-cover|
 
 To access the issue, see the 
 `September 2009 issue here <https://journals.ametsoc.org/view/journals/bams/90/9/1520-0477-90_9_fmi.xml>`__. To read the DART article
@@ -92,5 +92,5 @@ DART have also been cited many more times. For example, the core EAKF algorithm
 2001 <https://journals.ametsoc.org/doi/full/10.1175/1520-0493%282001%29129%3C2884%3AAEAKFF%3E2.0.CO%3B2>`__)
 used in DART has over 2000 citations according to `Google Scholar <https://scholar.google.com/scholar?cites=16669101874434899646&as_sdt=40000005&sciodt=0,22&hl=en>`__.
 
-.. |BAMS-cover400| image:: images/BAMS-cover400.jpg
+.. |BAMS-cover| image:: images/BAMS-cover.png
    :width: 100%
