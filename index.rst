@@ -587,7 +587,6 @@ References
    :caption: Developer tests
    :hidden:
 
-   developer_tests/location/location_mod
    developer_tests/forward_operators/readme
    developer_tests/utilities/PrecisionCheck
 
