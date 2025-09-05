@@ -11,6 +11,7 @@ module utilities_mod
 !> another util module?
 
 use types_mod, only : r4, r8, digits12, i2, i4, i8, PI, MISSING_R8, MISSING_I
+use version_mod, only : get_dart_version
 
 implicit none
 private
@@ -225,7 +226,7 @@ if ( io /= 0 ) call fatal_opening_log('initialize_utilities', lname)
 if (do_output_flag) then
    if ( present(progname) ) then
       call log_time (logfileunit, label='Starting ', &
-                     string1='Program '//trim(progname))
+                     string1='Program '//trim(progname)//' '//trim(get_dart_version()))
    else
       call log_time (logfileunit, label='Starting ')
    endif 
@@ -259,7 +260,7 @@ endif
 if (do_output_flag) then
    if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
       if ( present(progname) ) then
-         write(nmlfileunit, *) '!Starting Program '//trim(progname)
+         write(nmlfileunit, *) '!Starting Program '//trim(progname)//' '//trim(get_dart_version())
       else
          write(nmlfileunit, *) '!Starting Program '
       endif 
@@ -290,14 +291,14 @@ endif
 if (do_output_flag) then
    if ( present(progname) ) then
       call log_time (logfileunit, label='Finished ', &
-                     string1='Program '//trim(progname))
+                     string1='Program '//trim(progname)//' '//trim(get_dart_version()))
    else
       call log_time (logfileunit, label='Finished ')
    endif 
 
    if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
       if ( present(progname) ) then
-         write(nmlfileunit, *) '!Finished Program '//trim(progname)
+         write(nmlfileunit, *) '!Finished Program '//trim(progname)//' '//trim(get_dart_version())
       else
          write(nmlfileunit, *) '!Finished Program '
       endif 

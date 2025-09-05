@@ -131,7 +131,7 @@ if ( $opt_t ) {
 } else {
     my $deftemp = $ENV{DART}."/build_templates/mkmf.template";
     die "ERROR: $deftemp must exist\n" unless -e $deftemp; 
-    print  MAKEFILE "include $deftemp"
+    print  MAKEFILE "include $deftemp\n"
 }
 
 if ( $opt_c ) {
