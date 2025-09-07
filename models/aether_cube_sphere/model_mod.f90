@@ -15,7 +15,8 @@ use     location_mod, only : location_type, get_close_type, get_dist, &
                              loc_get_close_obs => get_close_obs,      &
                              loc_get_close_state => get_close_state,  &
                              set_location, query_location,            &
-                             get_location, VERTISHEIGHT, VERTISUNDEF
+                             get_location, VERTISHEIGHT, VERTISUNDEF, &
+                             VERTISLEVEL
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,         &
                              nmlfileunit, do_nml_file, do_nml_term,                &
@@ -76,9 +77,10 @@ character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
 ! Error codes
-integer, parameter :: INVALID_VERT_COORD_ERROR_CODE = 15
+integer, parameter :: INVALID_VERT_COORD_ERROR_CODE   = 15
 integer, parameter :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
-integer, parameter :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
+integer, parameter :: INVALID_MODEL_LEVEL_ERROR_CODE  = 18
+integer, parameter :: UNKNOWN_OBS_QTY_ERROR_CODE      = 20
 
 ! Error message strings                
 character(len=512) :: string1
@@ -223,8 +225,13 @@ pt_lat         = lon_lat_alt(2) * DEG2RAD
 pt_lon         = lon_lat_alt(1) * DEG2RAD
 which_vertical = nint(query_location(location, 'WHICH_VERT'))
 
-! Only height currently supported for observations; fail if other is selected
-if (.not. which_vertical == VERTISHEIGHT ) then
+write(*, *) 'which_vertical ', which_vertical
+if(which_vertical == VERTISLEVEL) write(*, *) 'vertical coord is VERTISLEVEL'
+if(which_vertical == VERTISHEIGHT) write(*, *) 'vertical coord is VERTISHEIGHT'
+write(*, *) 'lonlatalt(3)', lon_lat_alt(3)
+
+! Only heights currently supported for observations; fail if other is selected
+if (.not. (which_vertical == VERTISHEIGHT .or. which_vertical == VERTISLEVEL )) then
    istatus = INVALID_VERT_COORD_ERROR_CODE
    return
 endif
@@ -237,11 +244,23 @@ if(var_id <= 0) then
 endif
 
 ! Find the bounding vertical levels and the fractional distance between
-call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), below_index, &
-   above_index, fract, enclosing_status)
-if (enclosing_status /= 0) then
-   istatus = INVALID_ALTITUDE_VAL_ERROR_CODE
-   return
+if(which_vertical == VERTISHEIGHT) then
+   call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), below_index, &
+      above_index, fract, enclosing_status)
+   if (enclosing_status /= 0) then
+      istatus = INVALID_ALTITUDE_VAL_ERROR_CODE
+      return
+   endif
+else
+   ! If VERTISLEVEL, bounds are both the vertical level
+   ! This does twice the needed computation, could get rid of this
+   above_index = abs(nint(lon_lat_alt(3)))
+   ! Fail if level is outside of model bounds
+   if(above_index < 1 .or. above_index > ncenter_altitudes) then
+      istatus = INVALID_MODEL_LEVEL_ERROR_CODE
+      return
+   endif
+   below_index = above_index
 endif
 
 ! If the vertical location is acceptable, then do the horizontal interpolation
