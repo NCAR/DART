@@ -766,18 +766,22 @@ endif
 ! Round-off can lead to result being outside of range of gridpoints
 ! Test for now and fix if this happens
 do n = 1, ens_size
-   if(idw_interp(n) < minval(p(:, n)) .or. idw_interp(n) > maxval(p(:, n))) then
-      write(*, *)'IDW interpolation result is outside of range of grid point values'
+   ! If all vertices have the same value, just return that value
+   ! This avoids some issues with roundoff leading to interpolated being outside of range
+   if(all(p(2:num_corners, n) .eq. p(1, n))) then
+      idw_interp(n) = p(1, n)
+   elseif(idw_interp(n) < minval(p(:, n)) .or. idw_interp(n) > maxval(p(:, n))) then
       write(string1,*)'IDW interpolation result is outside of range of grid point values'
       write(string2, *) 'Interpolated value, min and max are: ', &
          idw_interp(n), minval(p(:, n)), maxval(p(:, n))
       call error_handler(E_MSG, 'idw_interp', string1, &
          source, revision, revdate, text2=string2)
+   
+      ! Fixing out of range
+      idw_interp(n) = max(idw_interp(n), minval(p(:, n)))
+      idw_interp(n) = min(idw_interp(n), maxval(p(:, n)))
    endif
 
-   ! Fixing out of range
-   idw_interp(n) = max(idw_interp(n), minval(p(:, n)))
-   idw_interp(n) = min(idw_interp(n), maxval(p(:, n)))
 end do
 
 end function idw_interp
