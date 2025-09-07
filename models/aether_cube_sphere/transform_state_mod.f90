@@ -57,10 +57,11 @@ integer  :: ions_ntimes(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
 integer  :: neutrals_ntimes(nblocks), neutrals_nxs(nblocks), neutrals_nys(nblocks)
 integer  :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer  :: final_nzs, ions_final_nzs, neutrals_final_nzs
-integer  :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id
+integer  :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id 
+integer  :: tec_varid, f10_7_varid
 integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
-real(r8) :: blat, blon, del, half_del
+real(r8) :: blat, blon, del, half_del, f10_7_val
 real(r8) :: time_array(1)
 character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
@@ -244,6 +245,21 @@ do varid = 1, neutrals_files(1)%nVariables
    end if
 end do
 
+!=========================================================
+
+! Initial look at putting in derived fields to state, total electron content goal JLA
+! xtype is currently set to value of last field from neutrals file
+! The dimensions are column (1) and unlimited (3)
+ncstatus = nf90_def_var(filter_file%ncid, 'Total electron content', xtype, &
+   dart_dimid(1:3:2), tec_varid)
+ncstatus = nf90_put_att(filter_file%ncid, tec_varid, 'units', 'tec units')
+
+! Putting in scalar F10.7 
+ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
+   dart_dimid(3), f10_7_varid)
+ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
+ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
+
 ! End of define mode for filter nc file, ready to add data
 call nc_end_define_mode(filter_file%ncid)
 
@@ -357,6 +373,16 @@ do varid = 1, neutrals_files(1)%nVariables
    end if
 
 end do
+
+!===================== Add in the TEC data ====================
+! Assuming columns array is already full
+ncstatus = nf90_put_var(filter_file%ncid, tec_varid, variable_array(:, 1, 1))
+
+! Add in f01.7
+f10_7_val = 11.0_r8
+ncstatus = nf90_put_var(filter_file%ncid, f10_7_varid, f10_7_val)
+
+!===============================================================
 
 ! Close files and release storage
 call nc_close_file(filter_file%ncid)
