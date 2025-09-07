@@ -12,9 +12,8 @@ use cube_sphere_grid_tools_mod, only : lat_lon_to_col_index, get_grid_delta
 implicit none
 private
 
-public :: initialize_transform_state_mod, &
-          model_to_dart, &
-          dart_to_model
+public :: initialize_transform_state_mod,  model_to_dart, dart_to_model, &
+          get_ensemble_range_from_command_line
 
 integer  :: iunit, io
 
@@ -22,8 +21,6 @@ integer  :: iunit, io
 character(len=*), parameter :: source   = 'aether_cube_sphere/transform_state_mod.f90'
 character(len=*), parameter :: revision = ''
 character(len=*), parameter :: revdate  = ''
-
-character(len=4) :: restart_ensemble_member, dart_ensemble_member
 
 type :: file_type
    character(len=256) :: file_path
@@ -40,9 +37,6 @@ contains
 
 subroutine initialize_transform_state_mod()
 
-restart_ensemble_member = get_ensemble_member_from_command_line()
-dart_ensemble_member = zero_fill(integer_to_string(string_to_integer(restart_ensemble_member)+1), 4)
-
 call find_namelist_in_file('input.nml', 'transform_state_nml', iunit)
 read(iunit, nml = transform_state_nml, iostat = io)
 call check_namelist_read(iunit, io, 'transform_state_nml')
@@ -51,9 +45,10 @@ end subroutine initialize_transform_state_mod
 
 !---------------------------------------------------------------
 
-subroutine model_to_dart(aether_block_file_dir, dart_file_dir)
+subroutine model_to_dart(aether_block_file_dir, dart_file_dir, ensemble_number)
 
 character(len=*), intent(in) :: aether_block_file_dir, dart_file_dir
+integer,          intent(in) :: ensemble_number
 
 integer  :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
 integer  :: ix, iy, iz, icol, ncstatus
@@ -67,6 +62,7 @@ integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del
 real(r8) :: time_array(1)
+character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :), filter_ions_ids(:), filter_neutrals_ids(:)
 ! The time variable in the block files is a double
@@ -78,10 +74,10 @@ type(file_type)              :: filter_file
 
 ! Open the grid and ions and neutrals files here for now with fixed directory names
 ions_files = assign_block_file_names(nblocks, aether_block_file_dir, &
-   'ions', restart_ensemble_member)
+   'ions', ensemble_number)
 
 neutrals_files = assign_block_file_names(nblocks, aether_block_file_dir, &
-   'neutrals', restart_ensemble_member)
+   'neutrals', ensemble_number)
 
 grid_files = assign_block_file_names(nblocks, aether_block_file_dir, 'grid')
 
@@ -146,8 +142,10 @@ if(any(neutrals_nxs .ne. nxs) .or. any(neutrals_nys .ne. nys)) &
 !==================================== Write dimensions in the filter nc file ========
 
 ! Initialize the filter file that will be created
+ensemble_string = zero_fill(integer_to_string(ensemble_number), 4)
 filter_file%file_path = trim(dart_file_dir) // 'filter_input_' // &
-   dart_ensemble_member // '.nc'
+   ensemble_string // '.nc'
+
 ! Create the filter netcdf file
 filter_file%ncid = nc_create_file(filter_file%file_path)
 
@@ -376,9 +374,10 @@ end subroutine model_to_dart
 
 !---------------------------------------------------------------
 
-subroutine dart_to_model(dart_file_dir, aether_block_file_dir)
+subroutine dart_to_model(dart_file_dir, aether_block_file_dir, ensemble_number)
 
 character(len=*), intent(in) :: dart_file_dir, aether_block_file_dir
+integer,          intent(in) :: ensemble_number
 
 real(r8) :: blat, blon, del, half_del
 integer  :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
@@ -389,6 +388,7 @@ integer  :: neutrals_nxs(nblocks), neutrals_nys(nblocks), neutrals_final_nzs
 integer  :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
+character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :)
 ! File for reading in variables from block file; These can be R4
@@ -399,10 +399,10 @@ type(file_type)              :: filter_file
 
 ! Open the grid and ions and neutrals files here for now with fixed directory names
 ions_files = assign_block_file_names(nblocks, aether_block_file_dir, &
-   'ions', restart_ensemble_member)
+   'ions', ensemble_number)
 
 neutrals_files = assign_block_file_names(nblocks, aether_block_file_dir, &
-   'neutrals', restart_ensemble_member)
+   'neutrals', ensemble_number)
 
 grid_files = assign_block_file_names(nblocks, aether_block_file_dir, 'grid')
 
@@ -495,8 +495,9 @@ do iblock = 1, nblocks
 end do
 
 ! Open the filter file that will be read
+ensemble_string = zero_fill(integer_to_string(ensemble_number), 4)
 filter_file%file_path = trim(dart_file_dir) // 'filter_output_' // &
-   dart_ensemble_member // '.nc'
+   ensemble_string // '.nc'
 ! Open the filter netcdf file
 filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
 
@@ -659,53 +660,70 @@ if(any(files(:)%nAttributes .ne. files(1)%nAttributes)) &
          'All blocks must have same nunber of variables', source, revision, revdate)
 
 end subroutine get_aether_block_dimensions
+
 !---------------------------------------------------------------
 
-function get_ensemble_member_from_command_line() result(ensemble_member)
-! Calls Fortran intrinsic subroutine get_command_argument and returns
-! a string with four characters
+subroutine get_ensemble_range_from_command_line(start_ensemble, end_ensemble)
 
-character(len=4) :: ensemble_member
+integer, intent(out) :: start_ensemble, end_ensemble
+
+! Gets the first and last ensemble members to be converted from command line
+
+character(len=4) :: start_ensemble_string, end_ensemble_string
 integer          :: nargs
 
 nargs = command_argument_count()
 
-if (nargs /= 1) then
-   call error_handler(E_ERR, 'get_ensemble_member_from_command_line', &
-      'ensemble member must be passed as a command line argument')
-end if
+if (nargs /= 2) &
+   call error_handler(E_ERR, 'get_ensemble_range_from_command_line', &
+      'starting and ending ensemble members must be in command line argument')
 
-call get_command_argument(1, ensemble_member)
+call get_command_argument(1, start_ensemble_string)
+call get_command_argument(2, end_ensemble_string)
 
-end function get_ensemble_member_from_command_line
+! Convert these to integer values
+read(start_ensemble_string, *) start_ensemble
+read(end_ensemble_string,   *) end_ensemble
+
+! Not prepared to deal with more than 4 digit ensemble count
+if(start_ensemble > 9999 .or. end_ensemble > 9999) &
+   call error_handler(E_ERR, 'get_ensemble_range_from_command_line', &
+      'Ensemble numbers on command line must be less than 10000')
+
+end subroutine get_ensemble_range_from_command_line
 
 !---------------------------------------------------------------
 
 function assign_block_file_names(nblocks, directory, &
-   file_prefix, ensemble_member) result(block_files)
+   file_prefix, ensemble_number) result(block_files)
 
 integer,          intent(in)             :: nblocks
 character(len=*), intent(in)             :: directory
 character(len=*), intent(in)             :: file_prefix
-character(len=4), intent(in), optional   :: ensemble_member
+integer,          intent(in), optional   :: ensemble_number
 type(file_type),  allocatable            :: block_files(:)
 
 character(len=256) :: file
-character(len=4)   :: block_num
+character(len=4)   :: block_num, ensemble_string
 integer            :: iblock
 
 ! Storage for each block
 allocate(block_files(nblocks))
 
+if(present(ensemble_number)) then
+   ensemble_string = zero_fill(integer_to_string(ensemble_number - 1), 4)
+endif
+
 do iblock = 1, nblocks
    block_num = zero_fill(integer_to_string(iblock - 1), 4)
    file = trim(directory) // trim(file_prefix) 
    ! Add in ensemble member if needed
-   if(present(ensemble_member)) then
-      file = trim(file) // '_m' // ensemble_member
+   if(present(ensemble_number)) then
+      file = trim(file) // '_m' // ensemble_string
    endif
    block_files(iblock)%file_path = trim(file) //  '_g' // block_num // '.nc'
 end do
+
 
 end function assign_block_file_names
 
@@ -737,8 +755,9 @@ length_of_string = len_trim(string)
 difference_of_string_lengths = desired_length - length_of_string
 
 if (difference_of_string_lengths < 0) then
-   print *, 'Error: input string is longer than the desired output string.'
-   stop
+   call error_handler(E_ERR, 'zero_fill', &
+      'Input string is longer than desired output => ensemble size too large', &
+      source, revision, revdate)
 else if (difference_of_string_lengths > 0) then
    do string_index = 1, difference_of_string_lengths
       filled_string(string_index:string_index) = '0'
