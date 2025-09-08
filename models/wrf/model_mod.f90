@@ -72,6 +72,7 @@ use      obs_kind_mod,   only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
                                 QTY_RAINWATER_MIXING_RATIO, QTY_HAIL_MIXING_RATIO, &
                                 QTY_GRAUPEL_MIXING_RATIO, QTY_SNOW_MIXING_RATIO, &
                                 QTY_CLOUDWATER_MIXING_RATIO, QTY_ICE_MIXING_RATIO, &
+                                QTY_CLOUDWATER_DE, QTY_CLOUD_ICE_DE, &
                                 QTY_CLOUD_FRACTION, QTY_CONDENSATIONAL_HEATING,  &
                                 QTY_VAPOR_MIXING_RATIO, QTY_2M_TEMPERATURE, &
                                 QTY_2M_SPECIFIC_HUMIDITY, QTY_10M_U_WIND_COMPONENT, &
@@ -331,7 +332,7 @@ TYPE wrf_static_data_for_dart
               type_qndrp, type_qnsnow, type_qnrain, type_qngraupel, type_qnice, &
               type_qc, type_qg, type_qi, type_qs, type_gz, type_refl, type_fall_spd, &
               type_dref, type_spdp, type_qh, type_qnhail, type_qhvol, type_qgvol, &
-              type_cldfra
+              type_cldfra, type_clwde, type_icede
 
    integer :: type_u10, type_v10, type_t2, type_th2, type_q2, &
               type_ps, type_mu, type_tsk, type_tslb, type_sh2o, &
@@ -759,6 +760,8 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
    !wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'VT_DBZ_WT')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
+   wrf%dom(id)%type_clwde  = get_type_ind_from_type_string(id,'RE_QC')
+   wrf%dom(id)%type_icede  = get_type_ind_from_type_string(id,'RE_QI')
 
    ! variable bound table for setting upper and lower bounds of variables 
    var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,1) = wrf%dom(id)%lower_bound
@@ -1406,6 +1409,8 @@ else
        obs_kind == QTY_SNOW_MIXING_RATIO .or. &
        obs_kind == QTY_ICE_MIXING_RATIO .or. &
        obs_kind == QTY_CLOUDWATER_MIXING_RATIO .or. &
+       obs_kind == QTY_CLOUDWATER_DE .or. &
+       obs_kind == QTY_CLOUD_ICE_DE .or. &
        obs_kind == QTY_DROPLET_NUMBER_CONCENTR .or. &
        obs_kind == QTY_ICE_NUMBER_CONCENTRATION .or. &
        obs_kind == QTY_SNOW_NUMBER_CONCENTR .or. &
@@ -1422,6 +1427,13 @@ else
        call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle)
        if (all(fld == missing_r8)) goto 200
       
+         ! Need to convert units
+         ! QTY_CLOUDWATER_DE and QTY_CLOUD_ICE_DE are diameters in micrometer (see RTTOV)
+         ! but the WRF variable is radius in meter
+         if (obs_kind == QTY_CLOUDWATER_DE .or. &
+             obs_kind == QTY_CLOUD_ICE_DE) then
+            fld = 2.0e6_r8 * fld  ! convert to diameter (*2) in micrometer (*1e6)
+         endif
 
       ! don't accept negative fld
       if (obs_kind == QTY_RAINWATER_MIXING_RATIO .or. &
@@ -1430,6 +1442,8 @@ else
           obs_kind == QTY_SNOW_MIXING_RATIO .or. &
           obs_kind == QTY_ICE_MIXING_RATIO .or. &
           obs_kind == QTY_CLOUDWATER_MIXING_RATIO .or. &
+          obs_kind == QTY_CLOUDWATER_DE .or. &
+          obs_kind == QTY_CLOUD_ICE_DE .or. &
           obs_kind == QTY_DROPLET_NUMBER_CONCENTR .or. &
           obs_kind == QTY_ICE_NUMBER_CONCENTRATION .or. &
           obs_kind == QTY_SNOW_NUMBER_CONCENTR .or. &
@@ -1440,6 +1454,8 @@ else
           fld = max(0.0_r8, fld) ! Don't accept negative
 
       endif
+
+
 
    !-----------------------------------------------------
    ! 1.a Horizontal Winds (U, V, U10, V10)
@@ -8334,6 +8350,12 @@ else if( ( obs_kind == QTY_ICE_MIXING_RATIO )                   .and. ( wrf%dom(
 else if( ( obs_kind == QTY_CLOUDWATER_MIXING_RATIO )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qc
+else if( ( obs_kind == QTY_CLOUDWATER_DE )          .and. ( wrf%dom(id)%type_clwde >= 0 ) ) then
+   part_of_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_clwde
+else if( ( obs_kind == QTY_CLOUD_ICE_DE )          .and. ( wrf%dom(id)%type_icede >= 0 ) ) then
+   part_of_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_icede
 else if ( ( obs_kind == QTY_CLOUD_FRACTION )             .and. ( wrf%dom(id)%type_cldfra >= 0 ) )then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_cldfra

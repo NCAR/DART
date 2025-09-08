@@ -1831,7 +1831,7 @@ if (clw_data) then
 
    if (clw_scheme == 2) then
       allocate(clouds%clwde(ens_size, numlevels)) 
-      clouds%clwde = 0.0_jprb
+      clouds%clwde = 20.0_jprb  ! reasonable default value
    end if
 end if
 
@@ -1845,7 +1845,7 @@ if (ciw_data) then
    clouds%ciw = 0.0_jprb
    if (ice_scheme == 1 .and. use_icede) then
       allocate(clouds%icede(ens_size, numlevels))
-      clouds%icede = 0.0_jprb
+      clouds%icede = 60.0_jprb  ! reasonable default value
    end if
 end if
 
@@ -2024,13 +2024,19 @@ if (.not. allocated(lvlidx)) then
    allocate(totalice(nlevels))
 end if
 
-! finally set the array to the correct order
+! We would like a level index array to allow either surface first or surface last order
+! We assume that the input arrays (p, T, q, ...) are defined at levels.
+! For RTTOV-direct, cloud hydrometeors and aersols are averaged to layers. 
+
 if (first_lvl_is_sfc) then
+   ! input data is ordered from surface to TOA
+   ! so we need to reverse the array
    do ilvl=1,nlevels
       lvlidx(ilvl) = nlevels - ilvl + 1
    end do
 else
-   do ilvl=nlevels,1,-1
+   ! do nothing, as the input data is ordered from TOA to surface
+   do ilvl=1,nlevels
       lvlidx(ilvl) = ilvl
    end do
 end if
@@ -2183,7 +2189,12 @@ DO imem = 1, ens_size
          end if 
 
          if (allocated(clouds % snow)) then
-            totalice(:) = totalice(:) + max(clouds % snow(imem,lvlidx),0.0_r8)
+            ! Following Kostka et al., 2014
+            if (is_vis) then
+            totalice(:) = totalice(:) + max(clouds % snow(imem,:)*0.10_r8,0.0_r8)
+            else
+            totalice(:) = totalice(:) + max(clouds % snow(imem,:),0.0_r8)
+            end if
          end if 
 
          if (allocated(clouds % graupel)) then
@@ -3745,8 +3756,11 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
 
       if (clw_scheme == 2) then
-         ! The effective diameter must also be specified with clw_scheme 2
-         call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
+      ! clw_scheme = 1 Parameterizes diameters depending on cloud type
+      ! clw_scheme = 2 requires setting clwde (effective diameter)
+      ! By default clwde is prescribed as constant value for clw_scheme = 2, otherwise uses QTY_CLOUDWATER_DE from model
+      call interpolate(state_handle, ens_size, loc, QTY_CLOUDWATER_DE, clouds%clwde(:, i), this_istatus)
+      !clouds%clwde(:, i) = 2*1e6*clouds%clwde(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
          call check_status('QTY_CLOUDWATER_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
@@ -3766,8 +3780,10 @@ GETLEVELDATA : do i = 1,numlevels
       if (return_now) return
 
       if (ice_scheme == 1 .and. use_icede) then
-         ! if use_icede with ice_scheme 1, must also specify ice effective diameter
+         ! In this case, we must specify icede (ice effective diameter)
+         ! It is read from model
          call interpolate(state_handle, ens_size, loc, QTY_CLOUD_ICE_DE, clouds%icede(:, i), this_istatus)
+         !clouds%icede(:, i) = 2*1e6*clouds%icede(:, i)  ! convert from WRF variable radius in m to DART diameter in micrometer
          call check_status('QTY_CLOUD_ICE_DE', ens_size, this_istatus, val, loc, istatus, routine, source, revision, revdate, .false., return_now)
          if (return_now) return
       end if
