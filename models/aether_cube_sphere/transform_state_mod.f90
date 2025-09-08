@@ -250,13 +250,22 @@ end do
 ! Initial look at putting in derived fields to state, total electron content goal JLA
 ! xtype is currently set to value of last field from neutrals file
 ! The dimensions are column (1) and unlimited (3)
-ncstatus = nf90_def_var(filter_file%ncid, 'Total electron content', xtype, &
-   dart_dimid(1:3:2), tec_varid)
-ncstatus = nf90_put_att(filter_file%ncid, tec_varid, 'units', 'tec units')
+!!!ncstatus = nf90_def_var(filter_file%ncid, 'Total electron content', xtype, &
+   !!!dart_dimid(1:3:2), tec_varid)
+!!!ncstatus = nf90_put_att(filter_file%ncid, tec_varid, 'units', 'tec units')
 
 ! Putting in scalar F10.7 
-ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
-   dart_dimid(3), f10_7_varid)
+!!!ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
+   !!!dart_dimid(3), f10_7_varid)
+!!!ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
+!!!ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
+
+! Putting in a two-dimensional F10.7
+! WARNING: QUANTITY AS PS UNTIL FURTHER STUDY
+!!!ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
+
+ncstatus = nf90_def_var(filter_file%ncid, 'PS', xtype, &
+   dart_dimid(1:3:2), f10_7_varid)
 ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
 ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
 
@@ -376,11 +385,12 @@ end do
 
 !===================== Add in the TEC data ====================
 ! Assuming columns array is already full
-ncstatus = nf90_put_var(filter_file%ncid, tec_varid, variable_array(:, 1, 1))
+!!!ncstatus = nf90_put_var(filter_file%ncid, tec_varid, variable_array(:, 1, 1))
 
-! Add in f01.7
-f10_7_val = 11.0_r8
-ncstatus = nf90_put_var(filter_file%ncid, f10_7_varid, f10_7_val)
+! Add in f01.7 as a two-dimensional field
+f10_7_val = 1.0_r8 * ensemble_number
+variable_array(:, 1, 1) = f10_7_val
+ncstatus = nf90_put_var(filter_file%ncid, f10_7_varid, variable_array(:, 1, 1))
 
 !===============================================================
 
