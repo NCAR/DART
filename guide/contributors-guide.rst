@@ -12,7 +12,10 @@ follow the contributors guide.
 What Can I Do?
 ----------------
 
-There are many ways you can contribute to DART:
+Contributors come from many backgrounds: scientists working with models, 
+students learning data assimilation, software developers, general 
+researchers and others. No matter your expertise, there are ways you can 
+contribute.
 
 * **Report Bugs**: If you find a bug, please report it by opening an issue on our 
   `GitHub repository <https://github.com/NCAR/DART/issues>`__.
@@ -46,16 +49,17 @@ Include as much detail as necessary to help us understand and reproduce the issu
 A bug report should contain the following:
 
 * The steps someone needs to take to reproduce the bug.
-
 * What you expected to happen.
-
 * What actually happened.
+* Details about your system environment (e.g., compiler version, operating system, 
+  MPI/NetCDF library version, etc). 
+* Any relevant logs, error messages, or (if possible) a minimal reproducible example. 
 
 
 Pull Requests
 --------------
 
-We welcome pull requests! Please take a read through this contributor's guide
+We welcome pull requests! Please take a read through this contributors guide
 before developing with DART. As a small team maintaining a community code, 
 we may not always be able to accept every contribution, but we greatly 
 appreciate your efforts and interest.
@@ -82,7 +86,8 @@ DART follows the `GitHub Flow <https://guides.github.com/introduction/flow/>`__ 
 * **Make Changes**: Make your changes and commit them.
 
   Be as helpful to your reviewers and the DAReS team as you can. Only include changes relevant
-  to your issue and avoid changes that are not relevant to the particular issue.
+  to your issue and avoid changes that are not relevant to the particular issue. Keep
+  PRs small and focused as this makes them much easier to review. 
 
 * **Push to Your Fork**: Push your changes to your forked repository.
 
