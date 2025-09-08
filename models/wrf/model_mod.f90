@@ -1432,7 +1432,7 @@ else
          ! but the WRF variable is radius in meter
          if (obs_kind == QTY_CLOUDWATER_DE .or. &
              obs_kind == QTY_CLOUD_ICE_DE) then
-            fld = 2*1e6*fld  ! convert to diameter (*2) in micrometer (*1e6)
+            fld = 2.0e6_r8 * fld  ! convert to diameter (*2) in micrometer (*1e6)
          endif
 
       ! don't accept negative fld
