@@ -23,7 +23,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,      
                              find_namelist_in_file, check_namelist_read, to_upper, &
                              find_enclosing_indices
 
-use obs_kind_mod,     only : get_index_for_quantity
+use obs_kind_mod,     only : get_index_for_quantity, QTY_GEOMETRIC_HEIGHT
 
 use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file,           &
                                  nc_add_global_creation_time, nc_begin_define_mode,       & 
@@ -203,7 +203,7 @@ integer,             intent(out) :: istatus(ens_size)
 
 
 ! Vertical interpolation variables
-integer     :: below_index, above_index, enclosing_status, which_vertical
+integer     :: below_index, above_index, enclosing_status, which_vertical, level
 integer     :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4), num_bound_points, var_id, i
 integer(i8) :: bounding_state_index(4, 2)
 
@@ -233,6 +233,18 @@ write(*, *) 'lonlatalt(3)', lon_lat_alt(3)
 ! Only heights currently supported for observations; fail if other is selected
 if (.not. (which_vertical == VERTISHEIGHT .or. which_vertical == VERTISLEVEL )) then
    istatus = INVALID_VERT_COORD_ERROR_CODE
+   return
+endif
+
+! Geometric height is a special case
+if(qty == QTY_GEOMETRIC_HEIGHT) then
+   level = nint(lon_lat_alt(3))
+   if(level < 1 .or. level > ncenter_altitudes) then
+      istatus = INVALID_MODEL_LEVEL_ERROR_CODE
+      return
+   else
+      expected_obs = center_altitude(nint(lon_lat_alt(3))) 
+   endif
    return
 endif
 
