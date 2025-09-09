@@ -31,6 +31,9 @@ end type file_type
 integer            :: np, nblocks, nhalos
 namelist /transform_state_nml/ np, nblocks, nhalos
 
+! Temporary switch between scalar and horizontal f10.7
+logical  :: scalar_f10_7 = .false.
+
 contains
 
 !---------------------------------------------------------------
@@ -58,17 +61,18 @@ integer  :: neutrals_ntimes(nblocks), neutrals_nxs(nblocks), neutrals_nys(nblock
 integer  :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer  :: final_nzs, ions_final_nzs, neutrals_final_nzs
 integer  :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id 
-integer  :: tec_varid, f10_7_varid
+integer  :: electron_varid, f10_7_varid
 integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del, f10_7_val
 real(r8) :: time_array(1)
+logical  :: add_to_electrons
 character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :), filter_ions_ids(:), filter_neutrals_ids(:)
 ! The time variable in the block files is a double
 ! File for reading in variables from block file; These can be R4
-real(r4),        allocatable :: spatial_array(:), variable_array(:, :, :)
+real(r4),        allocatable :: spatial_array(:), variable_array(:, :, :), electron_array(:, :)
 real(r4),        allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
 type(file_type), allocatable :: ions_files(:), neutrals_files(:), grid_files(:)
 type(file_type)              :: filter_file
@@ -194,7 +198,7 @@ allocate(filter_ions_ids(ions_files(1)%nVariables))
 ! Pointers to the different data fields in the filter nc file
 allocate(filter_neutrals_ids(neutrals_files(1)%nVariables))
 ! Allocate ncols size temporary storage
-allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1))
+allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1), electron_array(ncols, final_nzs))
 ! The col_index array will keep track of mapping from x and y for each block to final columns
 allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
 
@@ -247,27 +251,24 @@ end do
 
 !=========================================================
 
-! Initial look at putting in derived fields to state, total electron content goal JLA
+! Add a derived vertical total electron content field
 ! xtype is currently set to value of last field from neutrals file
-! The dimensions are column (1) and unlimited (3)
-!!!ncstatus = nf90_def_var(filter_file%ncid, 'Total electron content', xtype, &
-   !!!dart_dimid(1:3:2), tec_varid)
-!!!ncstatus = nf90_put_att(filter_file%ncid, tec_varid, 'units', 'tec units')
+ncstatus = nf90_def_var(filter_file%ncid, 'ION_E', xtype, dart_dimid, electron_varid)
+ncstatus = nf90_put_att(filter_file%ncid, electron_varid, 'units', '/m3')
 
-! Putting in scalar F10.7 
-!!!ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
-   !!!dart_dimid(3), f10_7_varid)
-!!!ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
-!!!ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
-
-! Putting in a two-dimensional F10.7
-! WARNING: QUANTITY AS PS UNTIL FURTHER STUDY
-!!!ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
-
-ncstatus = nf90_def_var(filter_file%ncid, 'PS', xtype, &
-   dart_dimid(1:3:2), f10_7_varid)
-ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
-ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
+if(scalar_f10_7) then
+   ! Add a scalar F10.7 
+   ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, dart_dimid(3), f10_7_varid)
+   ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
+   ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
+else
+   ! Add a two-dimensional F10.7
+   ! WARNING: QUANTITY AS PS UNTIL FURTHER STUDY
+   ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
+      dart_dimid(1:3:2), f10_7_varid)
+   ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
+   ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
+endif
 
 ! End of define mode for filter nc file, ready to add data
 call nc_end_define_mode(filter_file%ncid)
@@ -322,11 +323,19 @@ ncstatus = nf90_put_var(filter_file%ncid, filter_lon_id, spatial_array)
 
 !=========== Copy data from ions files =================
 
+! Electron density is sum of all the ion densities; sum them up
+electron_array = 0.0_r8
+
 ! Will get full spatial field for one variable at a time
 do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
+
+   ! See if this is a density; if so, needs to be added into electrons
+   ncstatus = nf90_get_att(ions_files(1)%ncid, varid, 'units', attribute)
+   add_to_electrons = trim(attribute) == '/m3'
+   if(add_to_electrons) write(*, *) varid, attribute
 
    if(trim(name) == 'time') then
       ! Time must be the same in all files, so just deal with it from the first one
@@ -343,6 +352,9 @@ do varid = 1, ions_files(1)%nVariables
                icol = col_index(iblock, iy, ix)
                do iz = 1, final_nzs
                   variable_array(icol, iz, 1) = block_array(iz, nhalos+iy, nhalos+ix)
+                  ! Add into electrons if it is a density
+                  if(add_to_electrons) electron_array(icol, iz) = &
+                     electron_array(icol, iz) + variable_array(icol, iz, 1)
                end do
             end do
          end do
@@ -383,14 +395,20 @@ do varid = 1, neutrals_files(1)%nVariables
 
 end do
 
-!===================== Add in the TEC data ====================
-! Assuming columns array is already full
-!!!ncstatus = nf90_put_var(filter_file%ncid, tec_varid, variable_array(:, 1, 1))
+!===================== Add in the additional variables ==================
+! Write out the electron density field
+variable_array(:, :, 1) = electron_array
+ncstatus = nf90_put_var(filter_file%ncid, electron_varid, variable_array)
 
-! Add in f01.7 as a two-dimensional field
-f10_7_val = 1.0_r8 * ensemble_number
-variable_array(:, 1, 1) = f10_7_val
-ncstatus = nf90_put_var(filter_file%ncid, f10_7_varid, variable_array(:, 1, 1))
+if(scalar_f10_7) then
+   ! Add in f10.7 as a zero_dimensional field
+   ncstatus = nf90_put_var(filter_file%ncid, f10_7_varid, 1.0_r8 * ensemble_number)
+else
+   ! Add in f10.7 as a two-dimensional field
+   f10_7_val = 1.0_r8 * ensemble_number
+   variable_array(:, 1, 1) = f10_7_val
+   ncstatus = nf90_put_var(filter_file%ncid, f10_7_varid, variable_array(:, 1, 1))
+endif
 
 !===============================================================
 
@@ -404,7 +422,7 @@ do iblock = 1, nblocks
 end do
 
 deallocate(block_lats, block_lons, block_array, spatial_array, variable_array)
-deallocate(col_index, filter_ions_ids, filter_neutrals_ids)
+deallocate(electron_array, col_index, filter_ions_ids, filter_neutrals_ids)
 
 end subroutine model_to_dart
 
@@ -415,7 +433,7 @@ subroutine dart_to_model(dart_file_dir, aether_block_file_dir, ensemble_number)
 character(len=*), intent(in) :: dart_file_dir, aether_block_file_dir
 integer,          intent(in) :: ensemble_number
 
-real(r8) :: blat, blon, del, half_del
+real(r8) :: blat, blon, del, half_del, f10_7_scalar
 integer  :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
 integer  :: ix, iy, iz, icol, ncstatus, filter_varid
 integer  :: nxs(nblocks), nys(nblocks), final_nzs
@@ -617,6 +635,26 @@ do varid = 1, neutrals_files(1)%nVariables
       endif
    end if
 end do
+
+!==============================================================================
+
+! Need more information about where F10.7 will be in Aether input files to complete copy back
+ncstatus = nf90_inq_varid(filter_file%ncid, 'F10.7', filter_varid)
+if(scalar_f10_7) then
+   ! Read a scalar f10_7 value
+   ncstatus = nf90_get_var(filter_file%ncid, filter_varid, f10_7_scalar)
+   write(*, *) 'reading a scalar f10.7 from filter file', f10_7_scalar
+else
+   ! Read a column sized f10_7 value
+   ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array(:, 1, 1))
+   ! Average the updated value over all the columns
+   f10_7_scalar = sum(variable_array(:, 1, 1)) / ncols
+   write(*, *) 'reading column f10.7 ', f10_7_scalar
+endif
+! Write the updated F10.7 to the appropriate Aether file
+!!! NEED MORE INFO TO IMPLEMENT
+
+!==============================================================================
 
 ! Free storage and close files
 deallocate(col_index, variable_array, block_lats, block_lons, block_array)
