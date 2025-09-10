@@ -9,7 +9,7 @@ use           netcdf
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG
 
-use time_manager_mod, only : time_type, set_time
+use time_manager_mod, only : time_type, set_time, get_time
 
 use     location_mod, only : location_type, get_close_type, get_dist, &
                              loc_get_close_obs => get_close_obs,      &
@@ -32,7 +32,8 @@ use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file, 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain, get_dart_vector_index, get_domain_size, &
-                                get_model_variable_indices, get_varid_from_kind
+                                get_model_variable_indices, get_varid_from_kind,      &
+                                get_variable_name
 
 use ensemble_manager_mod,  only : ensemble_type
 
@@ -97,6 +98,9 @@ integer               :: np                ! Number of grid rows across a face
 real(r8)              :: del, half_del     ! Grid row spacing and half of that
 integer               :: ncenter_altitudes ! The number of altitudes and the altitudes
 real(r8), allocatable :: center_altitude(:)
+
+! Current model time needed for computing location for scalar F10.7
+type(time_type) :: state_time
 
 ! Horizontal column dimension rather than being direct functions of latitude and longitude.
 integer               :: no_third_dimension = -99
@@ -167,6 +171,10 @@ call read_template_file()
 
 ! Get the grid spacing; these quantities are in module storage
 call get_grid_delta(np, del, half_del)
+
+! Need a way to get time from Aether for scalar F10.7 location definition
+! Just set to random time for now
+state_time = set_time(0, 1)
 
 end subroutine static_init_model
 
@@ -326,15 +334,29 @@ integer,             intent(out), optional :: qty
 
 ! Local variables
 
-integer :: lev_index, col_index, my_var_id, my_qty
-
+integer :: lev_index, col_index, my_var_id, my_qty, dom_id
 real(r8) :: lat, lon
+integer  :: seconds, days ! for f10.7 location
+real(r8) :: longitude     ! for f10.7 location
 
 if ( .not. module_initialized ) call static_init_model
 
 call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimension, &
-                                var_id=my_var_id, kind_index=my_qty)
+                                var_id=my_var_id, dom_id=dom_id, kind_index=my_qty)
 
+! Have to do something different for f10.7 scalar location since it does not have a column
+if(trim(get_variable_name(dom_id, my_var_id)) == 'SCALAR_F10.7') then
+   ! Set the location as per TIEGCM example for now
+   ! f10_7 is most accurately located at local noon at equator.
+   ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
+   call get_time(state_time, seconds, days)
+   longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
+   if (longitude < 0.0_r8) longitude = longitude + 360.0_r8  
+   write(*, *) 'longitude for F10.7 is ', longitude
+   location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
+   return                    
+end if      
+   
 ! Get the latitude and longitude of this columm; These lats and lons are in radians
 call col_index_to_lat_lon(col_index, np, del, half_del, lat, lon)
 

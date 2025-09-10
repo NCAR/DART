@@ -29,10 +29,11 @@ end type file_type
 
 ! It would be nice to get this information from the Aether input files, not possible for now
 integer            :: np, nblocks, nhalos
-namelist /transform_state_nml/ np, nblocks, nhalos
 
 ! Temporary switch between scalar and horizontal f10.7
-logical  :: scalar_f10_7 = .false.
+logical  :: scalar_f10_7 = .true.
+
+namelist /transform_state_nml/ np, nblocks, nhalos, scalar_f10_7
 
 contains
 
@@ -54,6 +55,7 @@ character(len=*), intent(in) :: aether_block_file_dir, dart_file_dir
 integer,          intent(in) :: ensemble_number
 
 integer  :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensions, nAtts
+integer  :: param_dimid(2), nparams
 integer  :: ix, iy, iz, icol, ncstatus
 integer  :: ntimes(nblocks), nxs(nblocks), nys(nblocks)
 integer  :: ions_ntimes(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
@@ -159,6 +161,11 @@ ncstatus = nf90_def_dim(filter_file%ncid, 'time', NF90_UNLIMITED, dart_dimid(3))
 ncstatus = nf90_def_dim(filter_file%ncid, 'z',    final_nzs,      dart_dimid(2))
 ncstatus = nf90_def_dim(filter_file%ncid, 'col',  ncols,          dart_dimid(1))
 
+! Test of parameter axis
+nparams = 1
+ncstatus = nf90_def_dim(filter_file%ncid, 'param',  nparams,      param_dimid(1))
+param_dimid(2) = dart_dimid(3)
+
 !=========================================================
 ! Create the variables from the grid files; lat, lon, alt
 
@@ -258,13 +265,13 @@ ncstatus = nf90_put_att(filter_file%ncid, electron_varid, 'units', '/m3')
 
 if(scalar_f10_7) then
    ! Add a scalar F10.7 
-   ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, dart_dimid(3), f10_7_varid)
+   ncstatus = nf90_def_var(filter_file%ncid, 'SCALAR_F10.7', xtype, param_dimid, f10_7_varid)
    ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
    ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
 else
    ! Add a two-dimensional F10.7
    ! WARNING: QUANTITY AS PS UNTIL FURTHER STUDY
-   ncstatus = nf90_def_var(filter_file%ncid, 'F10.7', xtype, &
+   ncstatus = nf90_def_var(filter_file%ncid, '2D_F10.7', xtype, &
       dart_dimid(1:3:2), f10_7_varid)
    ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
    ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
