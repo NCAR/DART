@@ -225,11 +225,6 @@ pt_lat         = lon_lat_alt(2) * DEG2RAD
 pt_lon         = lon_lat_alt(1) * DEG2RAD
 which_vertical = nint(query_location(location, 'WHICH_VERT'))
 
-write(*, *) 'which_vertical ', which_vertical
-if(which_vertical == VERTISLEVEL) write(*, *) 'vertical coord is VERTISLEVEL'
-if(which_vertical == VERTISHEIGHT) write(*, *) 'vertical coord is VERTISHEIGHT'
-write(*, *) 'lonlatalt(3)', lon_lat_alt(3)
-
 ! Only heights currently supported for observations; fail if other is selected
 if (.not. (which_vertical == VERTISHEIGHT .or. which_vertical == VERTISLEVEL )) then
    istatus = INVALID_VERT_COORD_ERROR_CODE

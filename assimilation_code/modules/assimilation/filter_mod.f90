@@ -362,9 +362,10 @@ real(r8), allocatable   :: prior_qc_copy(:)
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
+! This should be replaced by a test program in the developer_tests directory
 ! Temporary entry for testing
-call test_grid_box
-stop
+!!!call test_grid_box
+!!!stop
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "filter_nml", iunit)

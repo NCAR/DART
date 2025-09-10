@@ -335,7 +335,6 @@ do varid = 1, ions_files(1)%nVariables
    ! See if this is a density; if so, needs to be added into electrons
    ncstatus = nf90_get_att(ions_files(1)%ncid, varid, 'units', attribute)
    add_to_electrons = trim(attribute) == '/m3'
-   if(add_to_electrons) write(*, *) varid, attribute
 
    if(trim(name) == 'time') then
       ! Time must be the same in all files, so just deal with it from the first one
@@ -567,19 +566,18 @@ do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
-   write(*, *) 'var loop ', varid, name
    if(trim(name) .ne. 'time' .and. trim(name) .ne. 'Altitude' .and. trim(name) .ne. 'Latitude' &
       .and. trim(name) .ne. 'Longitude') then
       ! See if this variable is also in the filter output file
       ncstatus = nf90_inq_varid(filter_file%ncid, trim(name), filter_varid)
       ! Check on failed ncstatus. 0 is successful but should use the proper name
       if(ncstatus == 0) then
-         write(*, *) 'fetching variable ', trim(name)
          ! Read this field from filter file 
          ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array)
 
 ! CAN WE UPDATE THE HALOS TOO WHEN WRITING BACK???
          ! Loop through all the blocks for this variable
+         block_array = 0.0_r8
          do iblock = 1, nblocks
             do iy = 1, nys(iblock)
                do ix = 1, nxs(iblock)
@@ -608,18 +606,17 @@ do varid = 1, neutrals_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
-   write(*, *) 'neutrals var loop ', varid, name
    if(trim(name) .ne. 'time' .and. trim(name) .ne. 'Altitude' .and. trim(name) .ne. 'Latitude' &
       .and. trim(name) .ne. 'Longitude') then
       ! See if this variable is also in the filter output file
       ncstatus = nf90_inq_varid(filter_file%ncid, trim(name), filter_varid)
       ! Check on failed ncstatus. 0 is successful but should use the proper name
       if(ncstatus == 0) then
-         write(*, *) 'fetching variable ', trim(name)
          ! Read this field from filter file 
          ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array)
 
          ! Loop through all the blocks for this variable
+         block_array = 0.0_r8
          do iblock = 1, nblocks
             do iy = 1, nys(iblock)
                do ix = 1, nxs(iblock)
