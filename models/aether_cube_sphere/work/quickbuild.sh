@@ -36,7 +36,6 @@ model_programs=(
 model_serial_programs=(
 aether_to_dart
 dart_to_aether
-create_geometry_file
 )
 
 # quickbuild arguments
