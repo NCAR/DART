@@ -73,11 +73,11 @@ runs:
       if: ${{ inputs.use-mpi == 'mpi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
-        mpirun -n ${{ inputs.mpi-n-tasks }} --allow-run-as-root ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
+        mpirun -n ${{ inputs.mpi-n-tasks }} ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
       shell: bash
     - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=mpif08)
       if: ${{ inputs.use-mpi == 'mpif08' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
-        mpirun -n ${{ inputs.mpi-n-tasks }} --allow-run-as-root ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
+        mpirun -n ${{ inputs.mpi-n-tasks }} ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
       shell: bash

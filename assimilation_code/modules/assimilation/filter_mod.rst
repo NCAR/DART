@@ -8,7 +8,7 @@ Main module for driving ensemble filter assimilations. Used by filter.f90, perfe
 and a variety of test programs. See the :doc:`../../programs/filter/filter` for a general description of filter
 capabilities and controls.
 
-``filter_mod`` is a Fortran 90 module, and provides a large number of options for controlling execution behavior and
+``filter_mod`` is a Fortran module, and provides a large number of options for controlling execution behavior and
 parameter configuration that are driven from its namelist. See the namelist section below for more details. The number
 of assimilation steps to be done is controlled by the input observation sequence and by the time-stepping capabilities
 of the model being used in the assimilation.

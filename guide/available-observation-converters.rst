@@ -27,6 +27,7 @@ Each directory has at least one converter:
 -  ``MADIS``: :doc:`../observations/obs_converters/MADIS/MADIS`
 -  ``MIDAS``: :doc:`../observations/obs_converters/MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`../observations/obs_converters/MODIS/MOD15A2_to_obs`
+-  ``MODIS``: :doc:`../observations/obs_converters/MODIS/MOD29E1D_to_obs`
 -  ``MPD``: See ``DART/observations/obs_converters/MPD``
 -  ``NCEP``: (prepbufr -> ascii) :doc:`../observations/obs_converters/NCEP/prep_bufr/prep_bufr`
 -  ``NCEP``: (ascii -> obs_seq) :doc:`../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs`

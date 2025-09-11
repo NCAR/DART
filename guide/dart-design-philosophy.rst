@@ -13,7 +13,7 @@ The main design goals of DART are to:
    carefully engineered to have self-contained programs that each do one job and
    do it well. Likewise, DART *just does DA, and does it well.*
 2. Release source code that is **as compatible as possible** with the widest
-   possible number of systems. The code is written in Fortran 90, which is one
+   possible number of systems. The code is written in Fortran 2008, which is one
    of the lowest possible common denominators available on virtually all
    systems. See the section `Why Fortran?`_ if this seems like a
    questionable decision to you in this modern world of Matlab, C++, Java,

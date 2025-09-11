@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     # Deploy container on top of runner instance
     container: 
-      image: hkershaw/dart-dep:1.0
-      options: "--cap-add=SYS_PTRACE"
+      image: hkershaw/dart-dep:2.0
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -31,8 +30,7 @@ jobs:
   build-run-lorenz_63-nompi:
     runs-on: ubuntu-latest
     container:
-      image: hkershaw/dart-dep:1.0
-      options: '--cap-add=SYS_PTRACE'
+      image: hkershaw/dart-dep:2.0
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -49,8 +47,7 @@ jobs:
   build-run-lorenz_96-mpif08:
     runs-on: ubuntu-latest
     container:
-      image: hkershaw/dart-dep:1.0
-      options: '--cap-add=SYS_PTRACE'
+      image: hkershaw/dart-dep:2.0
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

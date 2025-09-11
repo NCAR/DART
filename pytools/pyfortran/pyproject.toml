@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyfortran"
+version = "0.1.2"
+description = "Python package for Fortran-based utilities, including a program to determine subroutine usage in a Fortran module."
+authors = [
+    { name = "DART", email = "dart@ucar.edu" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+check_fortran_module_usage = "fortran_module_usage.check_fortran_module_usage:main"
+
+[project.urls]
+Homepage = "https://github.com/NCAR/DART"
+Repository = "https://github.com/NCAR/DART"

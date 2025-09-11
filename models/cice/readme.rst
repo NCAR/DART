@@ -1,3 +1,5 @@
+.. index:: sea ice
+
 CICE
 ====
 
@@ -10,9 +12,10 @@ Ice Model. Its code base and capabilities have grown as a result of continued
 development by the broader geosciences community, an effort organized by the
 CICE Consortium.
 
-Dr. Cecilia Bitz implemented support for the CICE model (as part of CESM) in DART.
-The DART model interface was developed to work with CICE's dynamical core on an
-Arakawa B-grid. [1]_ When CICE is coupled to POP in CESM, the ocean and sea ice
+Dr. Cecilia Bitz implemented support for the CICE (v5) model (as part of CESM)
+in DART; this was later updated for compatibility with CICE v6. The DART model 
+interface was developed to work with CICE's dynamical core on an Arakawa B-grid.
+[1]_ When CICE is coupled to POP in CESM, the ocean and sea ice
 grids are identical.
 
 According to the CICE manual:
@@ -84,6 +87,76 @@ Description of each namelist entry
 | model_state_variables        | character(*)  | List of model state variables   |
 +------------------------------+---------------+---------------------------------+
 
+
+Postprocessing
+---------------
+
+The CICE model interface includes a postprocessing program ``dart_to_cice`` that 
+modifies the CICE state to be consistent with the state output from DART assimilation.
+
+This postprocessing is required when the assimilation configuration cannot appropriately 
+account for the bounds on sea ice variables in the model. Prior to the introduction of 
+the QCEF framework, the use of Gaussian distributions in the EAKF, in particular, often 
+results in updates to sea ice concentration (SIC) that exceeded 0 or 1; it was also 
+possible to produce adjustments to sea ice volume or thickness that were negative. [6]_ 
+While these errors do not hamper the DA filtering, they result in various CICE and 
+Icepack model crashes when the adjusted restart files are used to initialize subsequent 
+forecasts. 
+
+The utilization of bounded distributions in the QCEF framework reduces erroneous updates 
+in the observation space, removing a source of the errors postprocessing seeks to address. 
+[7]_ [8]_ However, the need for postprocessing remains, since the model’s state variables are 
+represented using an ice thickness distribution, [5]_ which divides sea ice area and volume 
+in each grid cell into discrete ice thickness categories. Observable sea ice variables like 
+SIC and SIT are aggregated from the individual category fractions of sea ice area and volume.
+During the filtering process, observation increments are regressed onto categorized state 
+variables, and the final updated aggregate variable is recalculated as the sum (or weighted
+sum) of the categories. In some cases, it is still not possible to appropriately account for
+bounds on each category of a state variable and the bounds on their sum. [8]_ This is the case
+for categorized sea ice area and total SIC, since SIC itself cannot be less than 0 or greater
+than 1, but each area category can only berestricted to the interval [0, 1] in the DA process.
+As such, it is still currently possible to assimilate observations that result in SIC greater
+than 1 and postprocessing steps are still required for CICE-DART. 
+
+There are currently 3 CICE/Icepack postprocessing options available in DART. The first two
+(``aicen_simple_squeeze`` or ``vice_simple_squeeze``) are mass-aware rescaling approaches 
+that conserve sea ice area or volume post-DA, respectively. The third and recommended default 
+option is ``cice_rebalancing``, which adapts a series of functions originally developed to 
+internally “rebalance” the CICE ice thickness distribution under conditions of unusually 
+rapid or unexpected ice change. These routines are housed in the ``ice_postprocessing`` 
+module, but called and deployed in ``dart_to_cice``. 
+
+The postprocessing options for ``dart_to_cice`` are controlled by the namelist
+``dart_to_cice_nml``. 
+
+
+.. code-block:: fortran
+
+  &dart_to_cice_nml
+     dart_to_cice_input_file    = 'dart_restart.nc'
+     original_cice_restart_file = 'cice_restart.nc'
+     postprocessed_output_file  = 'postprocessed_restart.nc'
+     postprocess                = 'cice'
+  /
+
+
++------------------------------+---------------+---------------------------------+
+| Item                         | Type          | Description                     |
++==============================+===============+=================================+
+| dart_to_cice_input_file      | character(*)  | Output from filter              |
++------------------------------+---------------+---------------------------------+
+| original_cice_restart_file   | character(*)  | Original CICE restart file that |
+|                              |               | was input to filter             |
++------------------------------+---------------+---------------------------------+
+| postprocessed_output_file    | character(*)  | Postprocessed CICE restart file |
++------------------------------+---------------+---------------------------------+
+| postprocess                  | character(*)  | Postprocessing method. Must be  |
+|                              |               | one of the following:           |
+|                              |               | 'cice' (default),               |
+|                              |               | 'aice',                         |
+|                              |               | 'vice'                          |
++------------------------------+---------------+---------------------------------+
+
 References
 ~~~~~~~~~~
 
@@ -107,3 +180,25 @@ References
        *Monthly Weather Review*, **130**, 1848–1865, 
        `doi:10.1175/1520-0493(2002)130%3C1848:TEVPSI%3E2.0.CO;2
        <https://doi.org/10.1175/1520-0493(2002)130%3C1848:TEVPSI%3E2.0.CO;2>`__
+
+.. [5] Thorndike, A. S., D. A. Rothrock, G. A. Maykut, and R. Colony, 1975: 
+       The thickness distribution of sea ice. *Journal of Geophysical Research*, 
+       **80(33)**, 4501–4513, `doi:10.1029/JC080i033p04501 
+       <https://doi.org/10.1029/JC080i033p04501>`__
+
+.. [6] Zhang, Y., C. M. Bitz, J. L. Anderson, N. Collins, J. Hendricks, T. Hoar, 
+       K. Raeder, and F. Massonnet, 2018: Insights on Sea Ice Data Assimilation 
+       from Perfect Model Observing System Simulation Experiments. 
+       *Journal of Climate*, **31**, 5911–5926, `doi:10.1175/JCLI-D-17-0904.1 
+       <https://doi.org/10.1175/JCLI-D-17-0904.1>`__
+
+.. [7] Riedel, C. P., M. M. Wieringa, and J. L. Anderson, 2025: Exploring Bounded 
+       Nonparametric Ensemble Filter Impacts on Sea Ice Data Assimilation. 
+       *Monthly Weather Review*, **153**, 637–654, `doi:10.1175/MWR-D-24-0096.1
+       <https://doi.org/10.1175/MWR-D-24-0096.1>`__
+
+.. [8] Wieringa, M. M., Riedel, C., Anderson, J. L., and Bitz, C. M., 2024: Bounded 
+       and categorized: targeting data assimilation for sea ice fractional coverage 
+       and nonnegative quantities in a single-column multi-category sea ice model.
+       *The Cryosphere*, **18**, 5365–5382, `doi:10.5194/tc-18-5365-2024
+       <https://doi.org/10.5194/tc-18-5365-2024>`__
