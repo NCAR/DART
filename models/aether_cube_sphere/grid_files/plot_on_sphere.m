@@ -14,7 +14,7 @@ for i = 1:size(X, 1)
       lon(i, j) = atan2(Y(i, j), X(i, j));
       if(lon(i, j) < 0) lon(i, j) =  lon(i, j) + 2*pi; end
       if(lon(i, j) == 2*pi) lon(i, j) = 0; end
-      [face, lon_grid, len] = get_face(lat(i, j), lon(i, j));
+      [face, len] = get_face(lat(i, j), lon(i, j));
       
       C(i, j) = face;
    end

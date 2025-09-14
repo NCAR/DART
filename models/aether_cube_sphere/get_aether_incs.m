@@ -1,14 +1,14 @@
 % Do some straightforward perturbing of aether ensemble files
 
 % Plot values from aether neutrals block files on sphere
-nblocks = 6;
+nblocks = 24;
 ens_size = 10;
 
-n_prior_base_name = 'B6_AETHER_INPUT_FILES/restartOut/neutrals_m';
-n_post_base_name = 'B6_AETHER_OUTPUT_FILES/neutrals_m';
+n_prior_base_name = 'B24_AETHER_INPUT_FILES/restartOut/neutrals_m';
+n_post_base_name = 'B24_AETHER_OUTPUT_FILES/neutrals_m';
 n_inc_base_name = './increments//neutrals_inc_m';
-i_prior_base_name = 'B6_AETHER_INPUT_FILES/restartOut/ions_m';
-i_post_base_name = 'B6_AETHER_OUTPUT_FILES/ions_m';
+i_prior_base_name = 'B24_AETHER_INPUT_FILES/restartOut/ions_m';
+i_post_base_name = 'B24_AETHER_OUTPUT_FILES/ions_m';
 i_inc_base_name = './increments/ions_inc_m';
 
 % Loop through the blocks and set values

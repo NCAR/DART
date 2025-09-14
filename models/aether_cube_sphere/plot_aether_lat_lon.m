@@ -1,16 +1,16 @@
 % Plot values from aether neutrals block files on sphere
-%nblocks = 24;
-%field_name = 'O';
-%level = 11;
-nblocks = 6;
+nblocks = 24;
 nhalos = 2;
-%field_name = 'O2+';
-field_name = 'Temperature';
-level = 31;
 
-g_base_name = 'B6_AETHER_INPUT_FILES/restartOut/grid_g';
-n_base_name = 'increments/neutrals_inc_m0009_g';
-%n_base_name = 'increments/ions_inc_m0009_g';
+field_name = 'O2+';
+%field_name = 'O+';
+%field_name = 'Temperature';
+%field_name = 'O';
+level = 21;
+
+g_base_name = 'B24_AETHER_INPUT_FILES/restartOut/grid_g';
+%n_base_name = 'increments/neutrals_inc_m0001_g';
+n_base_name = 'increments/ions_inc_m0001_g';
 
 % Loop through the fields from each block first to get min and max for plot colors
 for i = 0:nblocks - 1
@@ -48,22 +48,15 @@ for i = 0:nblocks -1
    % Read in the field from the neutrals file
    field = ncread(n_file_name, field_name);
 
-   % Begin by confirming that the grids look like cube sphere
-   % Convert points from lat/lon to x, y, z
-   x = squeeze(cos(lat(level, :, :)) .* cos(lon(level, :, :)));
-   y = squeeze(cos(lat(level, :, :)) .* sin(lon(level, :, :)));
-   z = squeeze(sin(lat(level, :, :)));
-
-   %WARNING: NOT MAX OF ALL BLOCKS
    % Get color range index
    range = n_max - n_min;
    color_range = 256;
    col = colormap;
 
    % Loop to get colors
-   for i = nhalos+1:size(x, 1) - nhalos
-      for j = nhalos+1:size(x, 2) - nhalos
-         frac = (field(level, i, j) - n_min) / range
+   for i = nhalos+1:size(field, 2) - nhalos
+      for j = nhalos+1:size(field, 3) - nhalos
+         frac = (field(level, i, j) - n_min) / range;
          color_index = floor(frac * color_range) + 1;
          color_index = min(color_index, 256);
          %plot(x(i, j), y(i, j), z(i, j), 'o', 'markersize', 24, 'color', col(color_index, :), 'linewidth', 16);
