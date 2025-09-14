@@ -1,0 +1,37 @@
+End to end procedure to make aether cube sphere demo work
+
+1.	Remove all netcdf files from the work directory
+2.	Remove all netcdf files from the increments directory
+3.	Remove all netcdf files from the aether output directory
+4.	Remove the aether input directory at the level below the gz file
+5.	Untar the gz file, use the finder
+6.	Perturb_aether_ensemble.m from the model directory to generate perturbations
+7.	Run aether_to_dart 1, ens_size to transform to filter_input files
+8.	If looking at filter posteriors, copy each filter_input to a filter_output
+9.	Run filter
+10.	Copy all tiles from the aether input directory to the aether output directory
+11.	Run dart_to_aether 1, ens_size
+12.	Matlab get_aether_incs
+13.	Run plot_aether_lat_lon programs to verify increments
+
+Changing resolution for tests:
+1.	Remove all nc files from the work directory
+2.	Delete the aether input directory and then recreate by unpacking gz
+3.	In perturb_aether_ensemble.m: 
+a.	Change the input file directory
+b.	Change nblocks
+4.	Run perturb_aether_ensemble
+5.	Copy all the files from the aether input directory to the aether output directory
+6.	In input.nml, change the input directory for aether files in aether_to_dart_nml and dart_to_aether_nml. Also change the np and nblocks in transform_state_nml
+7.	Run aether_to_dart 1, ens_size
+8.	Cp filter_input files to filter_output files if you want to do diagnostics in dart state space
+9.	Run dart_to_aether 1, ens_size
+10.	In get_aether_incs.m
+a.	Change nblocks
+b.	Change the directory for the input and output files
+11.	Run get_aether_incs
+12.	In plot_aether_lat_lon.m:
+a.	Change nblocks
+b.	Change the directory for input grid files
+c.	
+
