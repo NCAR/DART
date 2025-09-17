@@ -1,67 +1,108 @@
+.. index:: contributing, contribute
+
 .. _contributors-guide:
 
-Contributors' guide
+Contributors Guide
 ===================
 
-Contributing to DART
---------------------
+Welcome to the DART contributors guide! We appreciate your interest in 
+contributing to the project. As an open-source project, we rely on the 
+creativity and expertise of people like you. Whether you're fixing bugs, 
+adding new features, improving documentation, or writing tests, please 
+follow the contributors guide.
 
-This section describes how you can contribute your work to DART. Because DART
-is an open-source project, your contributions are welcome. Many user-provided
-contributions have widely benefited the earth science community.
+What Can I Do?
+----------------
 
-To ensure you aren't duplicating efforts, contact DAReS staff by emailing 
-dart@ucar.edu before you expend considerable development time.
+Contributors come from many backgrounds: scientists working with models, 
+students learning data assimilation, software developers, general 
+researchers and others. No matter your expertise, there are ways you can 
+contribute.
 
-All of the source code is hosted in the `DART GitHub repository
-<https://github.com/NCAR/DART>`__.
+* **Report Bugs**: If you find a bug, please report it by opening an issue on our 
+  `GitHub repository <https://github.com/NCAR/DART/issues>`__.
 
-Before you start developing, you should be familiar with the `GitHub
-workflow <https://guides.github.com/introduction/flow/>`_. The GitHub workflow 
-involves:
+* **Fix Bugs**: Look through the `issue tracker <https://github.com/NCAR/DART/issues>`__
+  for bugs that need fixing. Please comment on the issue to let us know you're working on it
+  or reach out to the DAReS team at dart@ucar.edu. This helps make sure your work isn't
+  duplicating someone else's efforts.
 
-1. Creating a *fork* of the DART project. A fork is a publicly visible copy
-   of the repository that is stored in your GitHub account.
-2. Creating a *branch* for your feature with an appropriate name for your
-   project, and when you are finished with your changes you can commit them
-   to your fork. After testing locally on your machine, you can push them to
-   your fork.
+* **Add Features**: If you have an idea for a new feature, open an issue to 
+  discuss it before starting work.
 
-   .. Important::
-   
-      At this point, everyone can see the changes you made on your fork.
+* **Improve Documentation**: Help us improve our documentation by making it
+  clearer and more comprehensive, or by simplifying complex concepts.
 
-   When you are ready to begin the conversation about merging your work into
-   the original project (called the DART repository master), you can create a
-   pull request, which will show your changes. After reviewing and testing
-   your changes, the pull request will be addressed appropriately by the DART
-   development team.
+* **Write Tests**: Help us ensure the quality of DART by writing tests or 
+  supplying test cases for your model.
 
-Keeping your work private until you publish
--------------------------------------------
+Source Code
+------------
+The source code for DART is available on our GitHub repository `NCAR/DART <https://github.com/NCAR/DART>`__.
+Feel free to explore and understand the codebase.
 
-You may want to keep your work private until it is ready for publication or
-public viewing.
 
-Follow these steps to hide sensitive code until you are ready to contribute it 
-to DART your work has been published.
+Reporting a Bug
+----------------
 
-1. First, create a public fork of the DART repository by following the 
-   steps listed above.
-2. Next, `create a private <https://help.github.com/en/articles/create-a-repo>`__
-   repository on GitHub.com. The name of your private repository is arbitrary,
-   since only you and your private collaborators can see it.
-3. Add your public fork as a
-   `remote repository <https://help.github.com/en/articles/adding-a-remote>`__
-   of your private repository. Your remote repository can be named
-   "public_fork" or "upstream."
-4. Add additional team members, if necessary.
-5. Instead of pulling and pushing from your public fork, `develop on your
-   private repository <https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes>`__.
+If you find a bug, please report it by opening an issue on our `GitHub repository <https://github.com/NCAR/DART/issues>`__.
+Include as much detail as necessary to help us understand and reproduce the issue.
 
-.. note::
-   
-   Only three collaborators are allowed on a free non-institutional private
-   repository. DAReS staff can collaborate with you on your private repository,
-   but keep this three collaborator limit in mind if you using a free GitHub
-   account.
+A bug report should contain the following:
+
+* The steps someone needs to take to reproduce the bug.
+* What you expected to happen.
+* What actually happened.
+* Details about your system environment (e.g., compiler version, operating system, 
+  MPI/NetCDF library version, etc). 
+* Any relevant logs, error messages, or (if possible) a minimal reproducible example. 
+
+
+Pull Requests
+--------------
+
+We welcome pull requests! Please take a read through this contributors guide
+before developing with DART. As a small team maintaining a community code, 
+we may not always be able to accept every contribution, but we greatly 
+appreciate your efforts and interest.
+
+DART follows the `GitHub Flow <https://guides.github.com/introduction/flow/>`__ workflow.
+
+* **Fork the Repository**: Click the “Fork” button on the `NCAR/DART GitHub page <https://github.com/NCAR/DART>`__.
+
+* **Clone Your Fork**: Clone your forked repository to your local machine.
+
+   .. code-block:: bash
+
+       git clone https://github.com/your-github-username/DART.git
+
+* **Create a Branch**: Create a new branch for your work.
+
+   .. code-block:: bash
+
+       cd DART
+       git checkout -b my-feature-branch
+
+  Replace my-feature-branch with a name for your branch that describes your feature or fix.
+
+* **Make Changes**: Make your changes and commit them.
+
+  Be as helpful to your reviewers and the DAReS team as you can. Only include changes relevant
+  to your issue and avoid changes that are not relevant to the particular issue. Keep
+  PRs small and focused as this makes them much easier to review. 
+
+* **Push to Your Fork**: Push your changes to your forked repository.
+
+   .. code-block:: bash
+
+       git push -u origin my-feature-branch
+
+* **Open a Pull Request**: From your fork, open a pull request to the main repository. 
+  
+  Include a short description of your changes —the “why”— and reference any related issues.
+
+* **Be responsive to the review**: Your pull request will be reviewed by the DAReS team.
+
+  We may ask for changes or clarifications.
+  Please be patient as we work through the review process. If accepted, your pull request will be
+  merged into the main repository and released in the next version of DART.

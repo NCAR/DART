@@ -82,7 +82,7 @@ Add the appropriate  observation types for your application listed in
 
 Include the RTTOV observation operators within the build process by editing
 the ``input_files`` and ``quantity_files`` namelist variables in the
- ``&preprocess`` section of the ``input.nml`` file:
+``&preprocess`` section of the ``input.nml`` file:
 
 
 .. code-block:: bash
