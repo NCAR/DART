@@ -1,3 +1,5 @@
+.. index:: contributing, contribute
+
 .. _contributors-guide:
 
 Contributors Guide
