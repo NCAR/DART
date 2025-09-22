@@ -88,7 +88,7 @@
 ! case(GND_GPS_VTEC)
 !      continue
 ! case(SLANT_GPS_VTEC)
-!      call write_slant_gps_vtec(obs_def%key, ifile, fform)
+!      call read_slant_gps_vtec(obs_def%key, ifile, fform)
 ! case(SSUSI_O_N2_RATIO)
 !      continue
 ! case(COSMIC_ELECTRON_DENSITY)

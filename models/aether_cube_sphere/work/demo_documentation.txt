@@ -45,20 +45,20 @@ Changing resolution for tests:
 1.	Remove all nc files from the work directory
 2.	Delete the aether input directory and then recreate by unpacking gz
 3.	In perturb_aether_ensemble.m: 
-a.	Change the input file directory
-b.	Change nblocks
+   a.	Change the input file directory
+   b.	Change nblocks
 4.	Run perturb_aether_ensemble
 5.	Copy all the files from the aether input directory to the aether output directory
 6.	In input.nml, change the input directory for aether files in aether_to_dart_nml and dart_to_aether_nml. Also change the np and nblocks in transform_state_nml
 7.	Run aether_to_dart 1, ens_size
 8.	Cp filter_input files to filter_output files if you want to do diagnostics in dart state space
-9.	Run dart_to_aether 1, ens_size
-10.	In get_aether_incs.m
-a.	Change nblocks
-b.	Change the directory for the input and output files
-11.	Run get_aether_incs
-12.	In plot_aether_lat_lon.m:
-a.	Change nblocks
-b.	Change the directory for input grid files
-c.	
+9. Run filter
+10.	Run dart_to_aether 1, ens_size
+11.	In get_aether_incs.m
+   a.	Change nblocks
+   b.	Change the directory for the input and output files
+12.	Run get_aether_incs
+13.	In plot_aether_lat_lon.m:
+   a.	Change nblocks
+   b.	Change the directory for input grid files
 
