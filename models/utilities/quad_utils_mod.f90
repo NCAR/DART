@@ -2125,6 +2125,12 @@ real(r8)            :: distances(4), inv_power_dist(4)
 
 integer :: i
 
+! If all vertices have the same value, just return that value
+if(all(p(2:4) .eq. p(1))) then
+   expected_obs = p(1)
+   return
+endif
+
 ! Compute the distances from the point to each corner
 point = set_location(lon, lat, MISSING_R8, VERTISUNDEF)
 do i = 1, 4
@@ -2144,19 +2150,19 @@ else
    expected_obs = sum(inv_power_dist*p) / sum(inv_power_dist)
 endif
 
-! Unclear if round-off could ever lead to result being outside of range of gridpoints
-! Test for now and terminate if this happens 
+! Round-off can lead to result being outside of range of gridpoints
+! Test for now and fix if this happens 
 if(expected_obs < minval(p) .or. expected_obs > maxval(p)) then
-    write(string1,*)'IDW interpolation result is outside of range of grid point values'
+   write(string1,*)'IDW interpolation result is outside of range of grid point values'
    write(string2, *) 'Interpolated value, min and max are: ', &
            expected_obs, minval(p), maxval(p)
-      call error_handler(E_MSG, 'quad_idw_interp', string1, &
-         source, text2=string2)
-endif
+   call error_handler(E_MSG, 'quad_idw_interp', string1, &
+      source, text2=string2)
 
-! Fixing out of range; this will not happen with current error check 
-expected_obs = max(expected_obs, minval(p))
-expected_obs = min(expected_obs, maxval(p))
+   ! Fixing out of range
+   expected_obs = max(expected_obs, minval(p))
+   expected_obs = min(expected_obs, maxval(p))
+endif
 
 end subroutine quad_idw_interp
 
