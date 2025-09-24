@@ -8,7 +8,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
    single_file_in             = .false.
-   input_state_files          = "perfect_input.nc"
+   input_state_files          = "filter_input_0001.nc"
 
    write_output_state_to_file = .false.,
    single_file_out            = .false.
@@ -61,11 +61,11 @@
    async                        = 4,
    adv_ens_command              = "./advance_model.csh",
 
-   obs_sequence_in_name         = "obs_seq.out.sample",
+   obs_sequence_in_name         = "obs_seq.out",
    obs_sequence_out_name        = "obs_seq.final",
    num_output_obs_members       = 20,
-   init_time_days               = 153130,
-   init_time_seconds            = 84600,
+   init_time_days               = 0,
+   init_time_seconds            = 0,
    first_obs_days               = -1,
    first_obs_seconds            = -1,
    last_obs_days                = -1,
@@ -94,7 +94,7 @@
    /
 
 &assim_tools_nml
-   cutoff                          = 0.8
+   cutoff                          = 0.4
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -123,20 +123,22 @@
 &obs_kind_nml
    assimilate_these_obs_types = 'GND_GPS_VTEC',
    'SLANT_GPS_VTEC', 
-   'AIRS_TEMPERATURE',
-   'SAT_DENSITY_ION_O2DP'
+   'SAT_TEMPERATURE',
+   'SAT_DENSITY_ION_O2P',
+   'SAT_DENSITY_NEUTRAL_O2',
+   'SAT_DENSITY_ION_N2P'
    /
 
 &model_nml
    template_file       = 'filter_input_0001.nc'
    time_step_days      = 0,
    time_step_seconds   = 3600
-   variables           = 'Temperature',    'QTY_TEMPERATURE',      '0.0',  'NA',   'UPDATE',
-                         'O2+',             'QTY_DENSITY_ION_O2P',   '0.0',  'NA',   'UPDATE', 
-                         'O+',             'QTY_DENSITY_ION_O2DP',   '0.0',  'NA',   'UPDATE', 
-                         'O',             'QTY_DENSITY_NEUTRAL_O2',   '0.0',  'NA',   'UPDATE', 
-                         'ION_E',          'QTY_DENSITY_ION_E',       '0.0',  'NA',   'UPDATE'
-                         '2D_F10.7',          'QTY_1D_PARAMETER',  '0.0', 'NA', 'UPDATE'
+   variables           = 'Temperature','QTY_TEMPERATURE',        '0.0',  'NA',   'UPDATE',
+                         'O2+',        'QTY_DENSITY_ION_O2P',    '0.0',  'NA',   'UPDATE', 
+                         'O2',         'QTY_DENSITY_NEUTRAL_O2', '0.0',  'NA',   'UPDATE', 
+                         'N2+',        'QTY_DENSITY_ION_N2P',    '0.0',  'NA',   'UPDATE', 
+                         'ION_E',      'QTY_DENSITY_ION_E',      '0.0',  'NA',   'UPDATE',
+                         '2D_F10.7',   'QTY_1D_PARAMETER',       '0.0',  'NA',   'UPDATE'
    /
 
 &utilities_nml
@@ -221,9 +223,9 @@
 /
 
 &location_nml              
-   horiz_dist_only                 = .true.
+   horiz_dist_only                 = .false.
    vert_normalization_pressure     = 20000.0
-   vert_normalization_height       = 10000.0
+   vert_normalization_height       = 100000.0
    vert_normalization_level        = 20.0
    vert_normalization_scale_height = 1.5
    approximate_distance            = .false.
@@ -234,19 +236,19 @@
    /
 
 &aether_to_dart_nml
-   aether_file_directory = '../B24_AETHER_INPUT_FILES/restartOut/'
+   aether_file_directory = '../TEST_INPUT/'
    dart_file_directory =  './'
    /
 
 &dart_to_aether_nml
    dart_file_directory =  './'
-   aether_file_directory = '../B24_AETHER_OUTPUT_FILES/'
+   aether_file_directory = '../TEST_OUTPUT/'
 
    /
 
 &transform_state_nml
-   np      = 36
-   nblocks = 24 
+   np      = 18
+   nblocks = 6 
    nhalos = 2
    scalar_f10_7 = .false.
    /

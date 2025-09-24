@@ -266,12 +266,8 @@ end subroutine get_expected_upper_atm_density
 
 !-----------------------------------------------------------------------------
 
-! Given DART state vector and a location, 
-! it computes ground GPS vertical total electron content
-! The istatus variable should be returned as 0 unless there is a problem
-!>@todo Is the logic correct in this code on the Trunk
-!>  Should you return from the subroutine instead of exiting 
-!> the loop at exit LEVELS
+! THIS SUBROUTINE NEEDS ADDITIONAL INPUT FROM AETHER SCIENTISTS
+
 subroutine get_expected_gnd_gps_vtec(state_handle, ens_size, location, obs_val, istatus)
 
 type(ensemble_type), intent(in) :: state_handle
@@ -285,7 +281,6 @@ integer,            intent(out) :: istatus(ens_size)
 ! integrated column from an instrument looking straight down at the tangent point.
 ! 'istatus' is the return code.  0 is success; any positive value signals an
 ! error (different values can be used to indicate different error types).
-! Negative istatus values are reserved for internal use only by DART.
 
 integer  :: nAlts, iAlt, this_istatus(ens_size)
 real(r8), dimension(ens_size, MAXLEVELS) :: ALT, IDensityS_ie  ! num_ens by num levels
@@ -332,12 +327,13 @@ LEVELS: do iAlt=1, size(ALT,2)+1
    nAlts = nAlts+1
 enddo LEVELS
 
-! failed first time through loop - no values to return.
+! failed first time through loop - no values to return. istatus was set to non-zero in loop.
 if (nAlts == 0) then
    obs_val(:) = MISSING_R8
    return
 endif
 
+! This is redundant but makes it clear that there are no errors at this point
 istatus(:) = 0
 
 do i=1,ens_size
@@ -347,8 +343,8 @@ do i=1,ens_size
    end if
 end do
 
-! clear the error from the last level and start again?
-tec=0.0_r8 !start with zero for the summation
+! Set all ensemble members tec to zero for summation
+tec=0.0_r8
 
 do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
    !area of a trapezoid: A = (h2-h1) * (f2+f1)/2
@@ -366,12 +362,12 @@ end subroutine get_expected_gnd_gps_vtec
 
 !-----------------------------------------------------------------------------
 
-! Given DART state vector and a location, 
-! it computes ground GPS vertical total electron content
-! The istatus variable should be returned as 0 unless there is a problem
-!>@todo Is the logic correct in this code on the Trunk
-!>  Should you return from the subroutine instead of exiting 
-!> the loop at exit LEVELS
+! THIS SUBROUTINE NEEDS ADDITIONAL INPUT FROM AETHER SCIENTISTS
+! The current version has access to two additional triples of numbers that are a lon/lat/height,
+! but makes no use of those. Need to decide what the appropriate additional metadata is to 
+! describe a slant tec obs and then implement ray-tracing given that. For now, this just duplicates
+! the plain vtec forward operator above.
+
 subroutine get_expected_slant_gps_vtec(state_handle, ens_size, location, igrkey, obs_val, istatus)
 
 type(ensemble_type), intent(in) :: state_handle
@@ -381,12 +377,12 @@ integer,             intent(in) :: igrkey
 real(r8),           intent(out) :: obs_val(ens_size)
 integer,            intent(out) :: istatus(ens_size)
 
+! For now, this is just the same as vtec.
 ! Given a location and the state vector from one of the ensemble members, 
 ! compute the model-predicted total electron content that would be in the
 ! integrated column from an instrument looking straight down at the tangent point.
 ! 'istatus' is the return code.  0 is success; any positive value signals an
 ! error (different values can be used to indicate different error types).
-! Negative istatus values are reserved for internal use only by DART.
 
 integer  :: nAlts, iAlt, this_istatus(ens_size)
 real(r8), dimension(ens_size, MAXLEVELS) :: ALT, IDensityS_ie  ! num_ens by num levels
@@ -404,6 +400,7 @@ istatus = 0     ! must be 0 to use track_status()
 loc_vals = get_location(location)
 
 ! Get the information about the satellite and ground point
+! The interactive input defines these as longitude in degrees, latitude in degrees, and height in meters
 sat_pos = sat_position(1:3, igrkey)
 ground_pos = ground_position(1:3, igrkey)
 
@@ -453,8 +450,8 @@ do i=1,ens_size
    end if
 end do
 
-! clear the error from the last level and start again?
-tec=0.0_r8 !start with zero for the summation
+! Set all ensemble members tec to zero for summation
+tec=0.0_r8
 
 do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
    !area of a trapezoid: A = (h2-h1) * (f2+f1)/2
@@ -569,19 +566,71 @@ call check_valid_key(igrkey, 'GENERATED', 'interactive_slant_gps_vtec')
 ! Prompt for input for the three required metadata items
 write(*, *) 'Creating an interactive_slant_gps_vtec observation'
 
-write(*, *) 'Input the latitude of the satellite in degrees from 0-360'
- read(*, *) sat_position(1, igrkey)
-write(*, *) 'Input the longitude of the satellite in degrees from -90 to 90'
- read(*, *) sat_position(2, igrkey)
-write(*, *) 'Input the height of the satellite in meters'
- read(*, *) sat_position(3, igrkey)
+! Get the longitude of satellite
+do
+   write(*, *) 'Input the longitude of the satellite in degrees from 0 to 360'
+   read(*, *) sat_position(1, igrkey)  
+   if(sat_position(1, igrkey) < 0 .or. sat_position(1, igrkey) > 360) then
+      write(*, *) 'Value must be from 0 to 360'
+   else
+      exit
+   endif
+enddo
 
-write(*, *) 'Input the latitude of the ground point in degrees from 0-360'
- read(*, *) ground_position(1, igrkey)
-write(*, *) 'Input the longitude of the ground point in degrees from -90 to 90'
- read(*, *) ground_position(2, igrkey)
-write(*, *) 'Input the height of the ground point in meters'
- read(*, *) ground_position(3, igrkey)
+! Get latitude of satellite
+do
+   write(*, *) 'Input the latitude of the satellite in degrees from -90 to 90'
+   read(*, *) sat_position(2, igrkey)  
+   if(sat_position(2, igrkey) < -90 .or. sat_position(2, igrkey) > 90) then
+      write(*, *) 'Value must be from -90 to 90'
+   else
+      exit
+   endif
+enddo
+
+! Get height of satellite
+do
+   write(*, *) 'Input the height of the satellite in meters'
+   read(*, *) sat_position(3, igrkey)  
+   if(sat_position(3, igrkey) < 0) then
+      write(*, *) 'Value must be non-negative'
+   else
+      exit
+   endif
+enddo
+
+! Get the longitude of ground point
+do
+   write(*, *) 'Input the longitude of the ground point in degrees from 0 to 360'
+   read(*, *) ground_position(1, igrkey)  
+   if(ground_position(1, igrkey) < 0 .or. ground_position(1, igrkey) > 360) then
+      write(*, *) 'Value must be from 0 to 360'
+   else
+      exit
+   endif
+enddo
+
+! Get latitude of ground point
+do
+   write(*, *) 'Input the latitude of the ground point in degrees from -90 to 90'
+   read(*, *) ground_position(2, igrkey)  
+   if(ground_position(2, igrkey) < -90 .or. ground_position(2, igrkey) > 90) then
+      write(*, *) 'Value must be from -90 to 90'
+   else
+      exit
+   endif
+enddo
+
+! Get height of ground point
+do
+   write(*, *) 'Input the height of the ground point in meters'
+   read(*, *) ground_position(3, igrkey)  
+   if(ground_position(3, igrkey) < 0) then
+      write(*, *) 'Value must be non-negative'
+   else
+      exit
+   endif
+enddo
 
 end subroutine interactive_slant_gps_vtec
 

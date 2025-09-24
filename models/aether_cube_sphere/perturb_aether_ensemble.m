@@ -1,19 +1,22 @@
 % Do some straightforward perturbing of aether ensemble files
+% Resulting correlations are all 1
 
 % Plot values from aether neutrals block files on sphere
-nblocks = 24;
+nblocks = 6;
 ens_size = 10;
 
-g_base_name = 'B24_AETHER_INPUT_FILES/restartOut/grid_g';
-n_base_name = 'B24_AETHER_INPUT_FILES/restartOut/neutrals_m';
-i_base_name = 'B24_AETHER_INPUT_FILES/restartOut/ions_m';
+% Directory containing files to be perturbed
+pert_dir = 'TEST_INPUT';
+g_base_name = strcat(pert_dir, '/grid_g');
+n_base_name = strcat(pert_dir, '/neutrals_m');
+i_base_name = strcat(pert_dir, '/ions_m');
 
 % Loop through the blocks and set values
 for block = 0:nblocks -1 
    % Get the lat and lon info for this block
    block_prelim = int2str(10000 + block);
    block_final = block_prelim(2:5);
-   g_file_name = strcat(g_base_name, block_final, '.nc')
+   g_file_name = strcat(g_base_name, block_final, '.nc');
 
    % Get the lat and lon for more advanced perturbing
    % Read the grid file lat and lons

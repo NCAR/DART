@@ -105,7 +105,6 @@ haloed_nys = nys + 2*nhalos
 
 ! Compute the number of columns (without haloes)
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
-write(*, *) 'ncols is ', ncols
 
 !=============================== Check that ions files are consistent with grids =========
 
@@ -482,7 +481,6 @@ haloed_nys = nys + 2*nhalos
 
 ! Compute the number of columns (without haloes)
 ncols = sum(nxs(1:nblocks) * nys(1:nblocks))
-write(*, *) 'ncols is ', ncols
 
 !==================================== Open and check dimensions for ions files
 
@@ -647,13 +645,11 @@ ncstatus = nf90_inq_varid(filter_file%ncid, 'F10.7', filter_varid)
 if(scalar_f10_7) then
    ! Read a scalar f10_7 value
    ncstatus = nf90_get_var(filter_file%ncid, filter_varid, f10_7_scalar)
-   write(*, *) 'reading a scalar f10.7 from filter file', f10_7_scalar
 else
    ! Read a column sized f10_7 value
    ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array(:, 1, 1))
    ! Average the updated value over all the columns
    f10_7_scalar = sum(variable_array(:, 1, 1)) / ncols
-   write(*, *) 'reading column f10.7 ', f10_7_scalar
 endif
 ! Write the updated F10.7 to the appropriate Aether file
 !!! NEED MORE INFO TO IMPLEMENT
