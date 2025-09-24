@@ -36,7 +36,7 @@ convert it into DART observation sequence format.
    The 'crocolake_path' in the scripts should be replaced with your own path to CrocoLake.
 
 
-Run the example scripts from the command line:
+To run the example scripts from the command line:
 
 .. code-block:: bash
 
