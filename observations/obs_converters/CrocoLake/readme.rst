@@ -42,3 +42,18 @@ To run the example scripts from the command line:
 
    python3 crocolake_to_obsseq_example1.py
    python3 crocolake_to_obsseq_example2.py
+
+The arguments for that can be passed to the CrocoLake class ObsSequence are:
+
+
+.. code-block:: text
+
+
+   crocolake_path (str):  path to desired CrocoLake database
+   selected_vars (list):  list of variables to be extracted from the database
+   db_filters (list):     list of db_filters to be applied to the database
+   fill_na_qc (int):      replace value for NA in QC flags (default: None)
+   fill_na_error (float): replace value for NA in error variables (default: None)
+   obs_seq_out (str):     obs_seq file name
+   loose (bool):          if True, store observation values also when
+                          their QC and error are not present (default: False)
