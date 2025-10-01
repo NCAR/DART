@@ -1,8 +1,10 @@
 % Do some straightforward perturbing of aether ensemble files
-% Resulting correlations are all 1
+% found in the TEST_INPUT directory
+% The perturbations are all constant scaled fields; resulting correlations are all 1.
 
-% Plot values from aether neutrals block files on sphere
+% Number of blocks for default aether restart files
 nblocks = 6;
+% Size of ensemble to create
 ens_size = 10;
 
 % Directory containing files to be perturbed
@@ -11,22 +13,19 @@ g_base_name = strcat(pert_dir, '/grid_g');
 n_base_name = strcat(pert_dir, '/neutrals_m');
 i_base_name = strcat(pert_dir, '/ions_m');
 
-% Loop through the blocks and set values
+% Loop through the blocks
 for block = 0:nblocks -1 
-   % Get the lat and lon info for this block
    block_prelim = int2str(10000 + block);
    block_final = block_prelim(2:5);
    g_file_name = strcat(g_base_name, block_final, '.nc');
 
    % Get the lat and lon for more advanced perturbing
-   % Read the grid file lat and lons
    lat = ncread(g_file_name, 'Latitude');
    lon = ncread(g_file_name, 'Longitude');
 
-   % --------- Loop through the variables for the neutrals files --------
-   % Get info about the variables from the first ensemble member 0000 file
    ens_prelim = int2str(10000 + 0);
    ens_final = ens_prelim(2:5);
+   % File names for neutral and ions ensemble member 0
    n_file_name_0 = strcat(n_base_name, ens_final, '_g', block_final, '.nc');
    i_file_name_0 = strcat(i_base_name, ens_final, '_g', block_final, '.nc');
 
@@ -40,7 +39,6 @@ for block = 0:nblocks -1
       var_name = nc_info.Variables(ivar).Name;
 
       % Get the base variable from the first ensemble member, the current file name
-      % Read variable for this variable from ensemble member 0
       var = ncread(n_file_name_0, var_name);
     
       % Loop through the rest of the ensemble members and perturb
@@ -53,7 +51,7 @@ for block = 0:nblocks -1
          % Copy the ensemble member 0 file to the ensemble ens using the shell; first ivar only
          if(ivar == 2) copyfile(n_file_name_0, n_file_name); end
 
-         % Perturb the variable
+         % Compute a normalized range for perturbation size
          if(block == 0) 
             neutrals_var_range(ivar) = range(var, 'all');
             if(neutrals_var_range(ivar) == 0) 
@@ -61,6 +59,7 @@ for block = 0:nblocks -1
             end
          end
 
+         % Perturb the variable
          pert_var = var + neutrals_var_range(ivar) * 0.01 * ens;
 
          % Write the variable
@@ -78,7 +77,6 @@ for block = 0:nblocks -1
       var_name = nc_info.Variables(ivar).Name;
 
       % Get the base variable from the first ensemble member, the current file name
-      % Read variable for this variable from ensemble member 0
       var = ncread(i_file_name_0, var_name);
     
       % Loop through the rest of the ensemble members and perturb
@@ -91,7 +89,7 @@ for block = 0:nblocks -1
          % Copy the ensemble member 0 file to the ensemble 1 using the shell
          if(ivar == 2) copyfile(i_file_name_0, i_file_name); end
 
-         % Perturb the variable
+         % Compute a normalized range for perturbation size
          if(block == 0) 
             ions_var_range(ivar) = range(var, 'all');
             if(ions_var_range(ivar) == 0) 
@@ -99,6 +97,7 @@ for block = 0:nblocks -1
             end
          end
 
+         % Perturb the variable
          pert_var = var + ions_var_range(ivar) * 0.01 * ens;
 
          % Write the variable

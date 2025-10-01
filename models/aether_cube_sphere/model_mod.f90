@@ -105,7 +105,6 @@ type(time_type) :: state_time
 ! Horizontal column dimension rather than being direct functions of latitude and longitude.
 integer               :: no_third_dimension = -99
 
-
 type :: var_type
     integer :: count
     character(len=64), allocatable :: names(:)
@@ -117,13 +116,14 @@ end type var_type
 ! This is redundant with type defined in transform_state_mod
 type :: file_type
    character(len=256) :: file_path
-   integer            :: ncid, ncstatus, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
+   integer            :: ncid, ncstatus, unlimitedDimId
+   integer            ::  nDimensions, nVariables, nAttributes, formatNum
 end type file_type
 
 ! Namelist for options to be set at runtime.
-character(len=256) :: template_file = 'filter_input_0001.nc'
-integer                         :: time_step_days      = 0
-integer                         :: time_step_seconds   = 3600
+character(len=256)              :: template_file           = 'filter_input_0001.nc'
+integer                         :: time_step_days          = 0
+integer                         :: time_step_seconds       = 3600
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
 integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
 character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
@@ -172,8 +172,9 @@ call read_template_file()
 ! Get the grid spacing; these quantities are in module storage
 call get_grid_delta(np, del, half_del)
 
+! NOTE TO AETHER MODELERS
 ! Need a way to get time from Aether for scalar F10.7 location definition
-! Just set to random time for now
+! Just set to arbitrary time for now
 state_time = set_time(0, 1)
 
 end subroutine static_init_model
@@ -220,7 +221,7 @@ real(r8)    :: grid_pt_lat(4), grid_pt_lon(4), pt_lat, pt_lon, bounding_value(4,
 real(r8)    :: below_values(ens_size), above_values(ens_size)
 
 ! Initialize module if not already done
-if ( .not. module_initialized ) call static_init_model
+if(.not. module_initialized ) call static_init_model
 
 ! Set all obs to MISSING_R8 initially
 expected_obs(:) = MISSING_R8
@@ -244,7 +245,6 @@ if(qty == QTY_GEOMETRIC_HEIGHT) then
    level = nint(lon_lat_alt(3))
    if(level < 1 .or. level > ncenter_altitudes) then
       istatus = INVALID_MODEL_LEVEL_ERROR_CODE
-      return
    else
       expected_obs = center_altitude(nint(lon_lat_alt(3))) 
    endif
@@ -260,8 +260,8 @@ endif
 
 ! Find the bounding vertical levels and the fractional distance between
 if(which_vertical == VERTISHEIGHT) then
-   call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), below_index, &
-      above_index, fract, enclosing_status)
+   call find_enclosing_indices(ncenter_altitudes, center_altitude, lon_lat_alt(3), & 
+      below_index, above_index, fract, enclosing_status)
    if (enclosing_status /= 0) then
       istatus = INVALID_ALTITUDE_VAL_ERROR_CODE
       return
@@ -280,17 +280,17 @@ endif
 
 ! If the vertical location is acceptable, then do the horizontal interpolation
 ! Find the enclosing triangle or quad
-call get_bounding_box(pt_lat, pt_lon, del, half_del, np, &
-   grid_face, grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
+call get_bounding_box(pt_lat, pt_lon, del, half_del, np, grid_face, &
+   grid_lat_ind, grid_lon_ind, grid_pt_lat, grid_pt_lon, num_bound_points)
 
-! Map the grid_face, latitude index and longitude index to the one dimensional index used in the state vector
+! Map grid_face, latitude index and longitude index to 1D index used in the state vector
 ! Then get the state values
 do i = 1, num_bound_points
-   bounding_state_index(i, 1) =  get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      below_index, var_id)
+   bounding_state_index(i, 1) =  get_state_index(grid_face(i), grid_lat_ind(i), &
+      grid_lon_ind(i), below_index, var_id)
    bounding_value(i, 1, :) = get_state(bounding_state_index(i, 1), state_handle)
-   bounding_state_index(i, 2) =  get_state_index(grid_face(i), grid_lat_ind(i), grid_lon_ind(i), &
-      above_index, var_id)
+   bounding_state_index(i, 2) =  get_state_index(grid_face(i), grid_lat_ind(i), &
+      grid_lon_ind(i), above_index, var_id)
    bounding_value(i, 2, :) = get_state(bounding_state_index(i, 2), state_handle)
 enddo
 
@@ -315,7 +315,7 @@ function shortest_time_between_assimilations()
 
 type(time_type) :: shortest_time_between_assimilations
 
-if ( .not. module_initialized ) call static_init_model
+if(.not. module_initialized) call static_init_model
 
 shortest_time_between_assimilations = assimilation_time_step
 
@@ -334,18 +334,19 @@ integer,             intent(out), optional :: qty
 
 ! Local variables
 
-integer :: lev_index, col_index, my_var_id, my_qty, dom_id
+integer  :: lev_index, col_index, my_var_id, my_qty, dom_id
 real(r8) :: lat, lon
 integer  :: seconds, days ! for f10.7 location
 real(r8) :: longitude     ! for f10.7 location
 
-if ( .not. module_initialized ) call static_init_model
+if(.not. module_initialized) call static_init_model
 
-call get_model_variable_indices(index_in, col_index, lev_index, no_third_dimension, &
-                                var_id=my_var_id, dom_id=dom_id, kind_index=my_qty)
+call get_model_variable_indices(index_in, col_index, lev_index, &
+   no_third_dimension, var_id=my_var_id, dom_id=dom_id, kind_index=my_qty)
 
-! Have to do something different for f10.7 scalar location since it does not have a column
+! F10.7 scalar location does not have a column
 if(trim(get_variable_name(dom_id, my_var_id)) == 'SCALAR_F10.7') then
+   ! AETHER MODELERS SHOULD REFINE THIS AS NEEDED
    ! Set the location as per TIEGCM example for now
    ! f10_7 is most accurately located at local noon at equator.
    ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
@@ -357,14 +358,15 @@ if(trim(get_variable_name(dom_id, my_var_id)) == 'SCALAR_F10.7') then
    return                    
 end if      
    
-! Get the latitude and longitude of this columm; These lats and lons are in radians
+! Get the latitude and longitude of this columm; These are in radians
 call col_index_to_lat_lon(col_index, np, del, half_del, lat, lon)
 
 ! Set the location type, lat and lon converted to degrees
-location = set_location(RAD2DEG*lon, RAD2DEG*lat, center_altitude(lev_index), VERTISHEIGHT)
+location = set_location(RAD2DEG*lon, RAD2DEG*lat, &
+   center_altitude(lev_index), VERTISHEIGHT)
 
 ! Set the physical quantity, e.g. QTY_TEMPERATURE
-if (present(qty)) qty = my_qty
+if(present(qty)) qty = my_qty
 
 end subroutine get_state_meta_data
 
@@ -434,7 +436,7 @@ subroutine nc_write_model_atts(ncid, domain_id)
 integer, intent(in) :: ncid      ! netCDF file identifier
 integer, intent(in) :: domain_id
 
-if ( .not. module_initialized ) call static_init_model
+if(.not. module_initialized) call static_init_model
 
 ! put file into define mode.
 
@@ -461,8 +463,8 @@ function assign_var(variables, MAX_STATE_VARIABLES) result(var)
 character(len=vtablenamelength), intent(in) :: variables(:, :)
 integer, intent(in)                         :: MAX_STATE_VARIABLES
 
-type(var_type) :: var
-integer        :: ivar
+type(var_type)                  :: var
+integer                         :: ivar
 character(len=vtablenamelength) :: table_entry
 
 !-----------------------------------------------------------------------
@@ -476,14 +478,15 @@ integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
 ! Loop through the variables array to get the actual count of the number of variables
 do ivar = 1, MAX_STATE_VARIABLES
    ! If the element is an empty string, the loop has exceeded the extent of the variables
-   if (variables(1, ivar) == '') then
+   if(variables(1, ivar) == '') then
       var%count = ivar-1
       exit
    endif 
 enddo
 
 ! Allocate the arrays in the var derived type
-allocate(var%names(var%count), var%qtys(var%count), var%clamp_values(var%count, 2), var%updates(var%count))
+allocate(var%names(var%count), var%qtys(var%count), &
+   var%clamp_values(var%count, 2), var%updates(var%count))
 
 ! Load the table for each variable
 do ivar = 1, var%count
@@ -494,13 +497,13 @@ do ivar = 1, var%count
 
    var%qtys(ivar) = get_index_for_quantity(table_entry)
 
-   if (variables(MIN_VAL_INDEX, ivar) /= 'NA') then
+   if(variables(MIN_VAL_INDEX, ivar) /= 'NA') then
       read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
    else
       var%clamp_values(ivar,1) = MISSING_R8
    endif
 
-   if (variables(MAX_VAL_INDEX, ivar) /= 'NA') then
+   if(variables(MAX_VAL_INDEX, ivar) /= 'NA') then
       read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
    else
       var%clamp_values(ivar,2) = MISSING_R8
@@ -509,7 +512,7 @@ do ivar = 1, var%count
    table_entry = variables(UPDATE_INDEX, ivar)
    call to_upper(table_entry)
 
-   if (table_entry == 'UPDATE') then
+   if(table_entry == 'UPDATE') then
       var%updates(ivar) = .true.
    else
       var%updates(ivar) = .false.
@@ -527,13 +530,14 @@ integer               :: dimid, varid, number_of_columns
 character(len=256)    :: name
 type(file_type)       :: templatefile
 
-! Gets the altitudes and the number of points per face row from a filter template file
+! Gets altitudes and number of points per face row from a filter template file
 templatefile%file_path = trim(template_file)
 templatefile%ncid = nc_open_file_readonly(templatefile%file_path)
 
 ! Get the number of vertical levels
 templatefile%ncstatus = nf90_inq_dimid(templatefile%ncid, 'z', dimid)
-templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, name, ncenter_altitudes)
+templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, &
+   name, ncenter_altitudes)
 
 ! Allocate space for vertical levels
 allocate(center_altitude(ncenter_altitudes))
@@ -544,7 +548,8 @@ templatefile%ncstatus = nf90_get_var(templatefile%ncid, varid, center_altitude)
 
 ! Get the number of columns
 templatefile%ncstatus = nf90_inq_dimid(templatefile%ncid, 'col', dimid)
-templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, name, number_of_columns)
+templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, &
+   name, number_of_columns)
 
 call nc_close_file(templatefile%ncid)
 
@@ -564,6 +569,7 @@ integer             :: i, j, num_bound_points, qty, lon_count, lat_count
 integer             :: grid_face(4), grid_lat_ind(4), grid_lon_ind(4)
 integer             :: my_face, my_level, my_qty, my_lon_ind, my_lat_ind
 integer             :: test_face, test_lat_ind, test_lon_ind, col_index, test_col_index
+integer             :: num_test_lats, num_test_lons
 integer(i8)         :: state_index
 real(r8)            :: pt_lon_d, pt_lat_d, pt_lon, pt_lat 
 real(r8)            :: qxyz(4, 3), pxyz(3), grid_pt_lat(4), grid_pt_lon(4)
@@ -572,26 +578,28 @@ logical             :: inside
 
 type(location_type) :: location
 
-! Temporary test that grid_to_lat_lon and lat_lon_to_grid are inverses of each other
+! Test that grid_to_lat_lon and lat_lon_to_grid are inverses of each other
 do my_face = 0, 5
    do my_lat_ind = 1, np
       do my_lon_ind = 1, np
          call grid_to_lat_lon(my_face, my_lat_ind, my_lon_ind, del, half_del, pt_lat, pt_lon)
          call lat_lon_to_grid(pt_lat, pt_lon, del, half_del, test_face, test_lat_ind, test_lon_ind)
-         if(my_face .ne. test_face .or. my_lat_ind .ne. test_lat_ind .or. my_lon_ind .ne. test_lon_ind) then
-            write(*, *) 'lat_lon_to_grid is not inverse of grid_to_lat_lon'
-            write(*, *) my_face, test_face, my_lat_ind, test_lat_ind, my_lon_ind, test_lon_ind
-            stop
+         if(my_face /= test_face .or. my_lat_ind /= test_lat_ind .or. my_lon_ind /= test_lon_ind) then
+            write(string1, *) 'Test failed: lat_lon_to_grid is not inverse of grid_to_lat_lon'
+            write(string2, *) my_face, test_face, my_lat_ind, test_lat_ind, my_lon_ind, test_lon_ind
+            call error_handler(E_ERR, 'test_grid_box', string1, &
+               source, revision, revdate, text2=string2)
          endif
 
+         ! Test that col_index_to_lat_lon and lat_lon_to_col_index are inverses of each other
          col_index = my_lon_ind + (my_lat_ind - 1) * np + my_face * np*np
          call col_index_to_lat_lon(col_index, np, del, half_del, pt_lat, pt_lon)
          test_col_index = lat_lon_to_col_index(pt_lat, pt_lon, del, half_del, np)
-         if(col_index .ne. test_col_index) then
-            write(*, *) 'Test failed:'
-            write(*, *) 'lat_lon_to_col_index is not inverse of col_index_to_lat_lon'
-            write(*, *) my_face, my_lat_ind, my_lon_ind, col_index, test_col_index
-            stop
+         if(col_index /= test_col_index) then
+            write(string1, *) 'Test failed: lat_lon_to_col_index is not inverse of col_index_to_lat_lon'
+            write(string2, *) my_face, my_lat_ind, my_lon_ind, col_index, test_col_index
+            call error_handler(E_ERR, 'test_grid_box', string1, &
+               source, revision, revdate, text2=string2)
          endif
       enddo
    enddo
@@ -613,12 +621,12 @@ enddo
 base_dist = sqrt(sum((qxyz(1, :) - qxyz(2, :))**2))
 
 ! Loop through many longitude and latitude points for testing
-do lon_count = 0, 3600
-   pt_lon_d = lon_count / 10.0_r8
-   ! Output the longitude since this can take a long time to run
-   !!!write(*, *) pt_lon_d
+num_test_lons = 3600
+do lon_count = 0, num_test_lons
+   pt_lon_d = lon_count * (360.0_r8 / num_test_lons)
+   num_test_lats = 1800
       do lat_count = -900, 900
-      pt_lat_d = lat_count / 10.0_r8
+      pt_lat_d = lat_count * (180.0_r8 / num_test_lats)
 
       ! Convert to radians
       pt_lon = DEG2RAD * pt_lon_d
@@ -644,10 +652,10 @@ do lon_count = 0, 3600
          if(abs(lon_lat_hgt(1) - 360.0_r8) < 0.0001) lon_lat_hgt(1) = 0.0_r8 
          if(abs(RAD2DEG*grid_pt_lat(i) - lon_lat_hgt(2)) > 0.0001_r8 .or. &
             abs(RAD2DEG*grid_pt_lon(i) - lon_lat_hgt(1)) > 0.0001_r8) then
-            write(*, *) 'Test failed:'
-            write(*, *) 'Grid points from aether files are not consistent get_state_meta_data'
-            write(*, *) grid_pt_lat(i), grid_pt_lon(i), lon_lat_hgt(2), lon_lat_hgt(1)
-            stop
+            write(string1, *) 'Test failed: Aether files grid points inconsistent with get_state_meta_data'
+            write(string2, *) grid_pt_lat(i), grid_pt_lon(i), lon_lat_hgt(2), lon_lat_hgt(1)
+            call error_handler(E_ERR, 'test_grid_box', string1, &
+               source, revision, revdate, text2=string2)
          endif
       enddo
 
@@ -660,10 +668,10 @@ do lon_count = 0, 3600
       endif
 
       if(.not. inside) then
-         write(*, *) 'Test failed:'
-         write(*, *) 'Point is not inside the triangle or quadrilateral'
-         write(*, *) pt_lat, pt_lon, num_bound_points
-         stop
+         write(string1, *) 'Test failed: Point is not inside the triangle or quadrilateral'
+         write(string2, *) pt_lat, pt_lon, num_bound_points
+         call error_handler(E_ERR, 'test_grid_box', string1, &
+            source, revision, revdate, text2=string2)
       endif
 
       ! Also check on distance to vertices; this greatly reduces the possibility that
@@ -677,22 +685,22 @@ do lon_count = 0, 3600
       if(num_bound_points == 4) then
          ! For quad, sum should be less than 3.5 times the baseline
          if(dist_sum / base_dist > 3.5_r8) then
-            write(*, *) 'Test failed:'
-            write(*, *) 'Ratio of sum of distances to vertices is too large for quad'
-            do i = 1, num_bound_points
-               write(*, *) 'grid ', i, grid_pt_lat(i), grid_pt_lon(i)
-               write(*, *) 'grid xyz ', i, qxyz(i, :) 
-            enddo
-            write(*, *) 'point ', pt_lat, pt_lon
-            write(*, *) 'point xyz ', pxyz
-            stop
+            write(string1, *) 'Test failed: Ratio of sum of distances to vertices is too large for quad'
+            ! Additional info that could be helpful
+            !!!do i = 1, num_bound_points
+               !!!write(*, *) 'grid ', i, grid_pt_lat(i), grid_pt_lon(i)
+               !!!write(*, *) 'grid xyz ', i, qxyz(i, :) 
+            !!!enddo
+            write(string2, *) 'point ', pt_lat, pt_lon, 'point xyz ', pxyz
+            call error_handler(E_ERR, 'test_grid_box', string1, &
+               source, revision, revdate, text2=string2)
          endif
       elseif(num_bound_points == 3) then
          ! For triangle, sum should be less than 3 times the baseline
          if(dist_sum / base_dist > 3.0_r8) then
-            write(*, *) 'Test failed:'
-            write(*, *) 'ratio of sum of distances to vertices is too large for triangle'
-            stop
+            write(string1, *) 'Test failed: ratio of sum of distances to vertices is too large for triangle'
+            call error_handler(E_ERR, 'test_grid_box', string1, &
+               source, revision, revdate)
          endif
       endif
    enddo
@@ -720,10 +728,10 @@ do my_qty = 1, 2
                ! Check that things are consistent            
                if(abs(RAD2DEG*my_lat - lon_lat_hgt(2)) > 0.0001_r8 .or. &
                   abs(RAD2DEG*my_lon - lon_lat_hgt(1)) > 0.0001_r8) then
-                  write(*, *) 'Test Failed:'
-                  write(*, *) 'Grid points not appropriately mapping'
-                  write(*, *) my_face, my_qty, my_level, my_lat_ind, my_lon_ind
-                  stop
+                  write(string1, *) 'Test Failed: Grid points not appropriately mapping'
+                  write(string2, *) my_face, my_qty, my_level, my_lat_ind, my_lon_ind
+                  call error_handler(E_ERR, 'test_grid_box', string1, &
+                     source, revision, revdate)
                endif
    
             enddo
@@ -732,7 +740,8 @@ do my_qty = 1, 2
    enddo
 enddo
 
-write(*, *) 'All tests passed'
+write(string1, *) 'ALL TESTS PASSED'
+call error_handler(E_MSG, 'test_grid_box', string1, source, revision, revdate)
 
 end subroutine test_grid_box
 
@@ -772,9 +781,9 @@ end function get_state_index
 
 function idw_interp(ens_size, lat, lon, y_corners, x_corners, p, num_corners)
       
-real(r8)              :: idw_interp(ens_size) ! Interpolated value at (lon, lat).
+real(r8)              :: idw_interp(ens_size) ! Interpolated value at (lat, lon).
 integer,   intent(in) :: ens_size
-real(r8),  intent(in) :: lon, lat ! Interpolation point (longitude, latitude) in degrees
+real(r8),  intent(in) :: lat, lon ! Interpolation point (latitude, longitude) in degrees
 real(r8),  intent(in) :: y_corners(:), x_corners(:) ! corner points (latitude, longitude) in degrees
 real(r8),  intent(in) :: p(:, :) ! Values at the quadrilaterals corner points, second dimension is ens_size
 integer,   intent(in) :: num_corners
@@ -801,6 +810,7 @@ if(minval(distances) < epsilon_radians) then
    ! To avoid any round off issues, if smallest distance is less than epsilon radians
    ! just assign the value at the closest gridpoint to the interpolant
    idw_interp = p(minloc(distances, 1), :)
+   return
 else
    ! Get the inverse distances raised to the power
    inv_power_dist = 1.0_r8 / (distances ** power)
@@ -816,7 +826,7 @@ endif
 do n = 1, ens_size
    ! If all vertices have the same value, just return that value
    ! This avoids some issues with roundoff leading to interpolated being outside of range
-   if(all(p(2:num_corners, n) .eq. p(1, n))) then
+   if(all(p(2:num_corners, n) == p(1, n))) then
       idw_interp(n) = p(1, n)
    elseif(idw_interp(n) < minval(p(:, n)) .or. idw_interp(n) > maxval(p(:, n))) then
       write(string1,*)'IDW interpolation result is outside of range of grid point values'

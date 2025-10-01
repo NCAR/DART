@@ -1,3 +1,12 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
+! Provides tools to do transforms from Aether block files to DART filter files
+! and back.
+
 module transform_state_mod
 
 use netcdf
@@ -30,7 +39,7 @@ end type file_type
 ! It would be nice to get this information from the Aether input files, not possible for now
 integer            :: np, nblocks, nhalos
 
-! Temporary switch between scalar and horizontal f10.7
+! Switch between scalar and horizontal f10.7
 logical  :: scalar_f10_7 = .true.
 
 namelist /transform_state_nml/ np, nblocks, nhalos, scalar_f10_7
@@ -41,6 +50,7 @@ contains
 
 subroutine initialize_transform_state_mod()
 
+! Just read the namelist
 call find_namelist_in_file('input.nml', 'transform_state_nml', iunit)
 read(iunit, nml = transform_state_nml, iostat = io)
 call check_namelist_read(iunit, io, 'transform_state_nml')
@@ -58,21 +68,20 @@ integer  :: iblock, dimid, length, ncols, dart_dimid(3), varid, xtype, nDimensio
 integer  :: param_dimid(2), nparams
 integer  :: ix, iy, iz, icol, ncstatus
 integer  :: ntimes(nblocks), nxs(nblocks), nys(nblocks)
-integer  :: ions_ntimes(nblocks), ions_nxs(nblocks), ions_nys(nblocks)
+integer  :: ions_ntimes(nblocks),     ions_nxs(nblocks),     ions_nys(nblocks)
 integer  :: neutrals_ntimes(nblocks), neutrals_nxs(nblocks), neutrals_nys(nblocks)
 integer  :: haloed_nxs(nblocks), haloed_nys(nblocks)
 integer  :: final_nzs, ions_final_nzs, neutrals_final_nzs
 integer  :: filter_time_id, filter_alt_id, filter_lat_id, filter_lon_id 
+integer  :: grid_alt_id,    grid_lat_id,   grid_lon_id
 integer  :: electron_varid, f10_7_varid
-integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
 real(r8) :: blat, blon, del, half_del, f10_7_val
 real(r8) :: time_array(1)
 logical  :: add_to_electrons
-character(len = 4) :: ensemble_string
+character(len = 4)           :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :), filter_ions_ids(:), filter_neutrals_ids(:)
-! The time variable in the block files is a double
 ! File for reading in variables from block file; These can be R4
 real(r4),        allocatable :: spatial_array(:), variable_array(:, :, :), electron_array(:, :)
 real(r4),        allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
@@ -116,12 +125,12 @@ end do
 call get_aether_block_dimensions(ions_files, nblocks, nhalos, ions_nxs, ions_nys, ions_final_nzs)
 
 ! Check for inconsistent number of vertical levels in ion and grid files
-if(ions_final_nzs .ne. final_nzs) &
+if(ions_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of altitudes in grid and ions files differs', source, revision, revdate)
 
 ! Make sure ions and grid files have same horizontal sizes
-if(any(ions_nxs .ne. nxs) .or. any(ions_nys .ne. nys)) &
+if(any(ions_nxs /= nxs) .or. any(ions_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of Latitudes and Longitudes in grid and ions files differ', source, revision, revdate)
 
@@ -135,13 +144,13 @@ end do
 call get_aether_block_dimensions(neutrals_files, nblocks, nhalos, neutrals_nxs, neutrals_nys, &
    neutrals_final_nzs)
 
-! Check for inconsistent number of vertical levels in ion and grid files
-if(neutrals_final_nzs .ne. final_nzs) &
+! Check for inconsistent number of vertical levels in neutral and grid files
+if(neutrals_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of altitudes in grid and neutrals files differs', source, revision, revdate)
 
 ! Make sure neutrals and grid files have same horizontal sizes
-if(any(neutrals_nxs .ne. nxs) .or. any(neutrals_nys .ne. nys)) &
+if(any(neutrals_nxs /= nxs) .or. any(neutrals_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of Latitudes and Longitudes in grid and neutrals files differ', source, revision, revdate)
 
@@ -160,14 +169,15 @@ ncstatus = nf90_def_dim(filter_file%ncid, 'time', NF90_UNLIMITED, dart_dimid(3))
 ncstatus = nf90_def_dim(filter_file%ncid, 'z',    final_nzs,      dart_dimid(2))
 ncstatus = nf90_def_dim(filter_file%ncid, 'col',  ncols,          dart_dimid(1))
 
-! Test of parameter axis
+! Add a parameter axis for F10.7
 nparams = 1
 ncstatus = nf90_def_dim(filter_file%ncid, 'param',  nparams,      param_dimid(1))
 param_dimid(2) = dart_dimid(3)
 
 !=========================================================
-! Create the variables from the grid files; lat, lon, alt
+! Create the variables from the grid files; time, alt, lat, lon
 
+! Loop through the aether grid files to find the three needed fields
 do varid = 1, 4
    ncstatus = nf90_inquire_variable(grid_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    if (trim(name) == 'time') then
@@ -205,6 +215,7 @@ allocate(filter_ions_ids(ions_files(1)%nVariables))
 allocate(filter_neutrals_ids(neutrals_files(1)%nVariables))
 ! Allocate ncols size temporary storage
 allocate(spatial_array(ncols), variable_array(ncols, final_nzs, 1), electron_array(ncols, final_nzs))
+
 ! The col_index array will keep track of mapping from x and y for each block to final columns
 allocate(col_index(nblocks, maxval(nys), maxval(nxs)))
 
@@ -216,7 +227,7 @@ allocate(block_lats (final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
 !=========================================================
 
 ! Get the metadata for variable fields from the ions block files
-! The ions and neutrals files have time and all their physical variables, but not latitude, longitude, or altitude
+! The ions files have time and all their physical variables, but not latitude, longitude, or altitude
 
 ! Illegal value of filter file index for default
 filter_ions_ids = -99
@@ -224,8 +235,8 @@ filter_ions_ids = -99
 ! The filter_file is still in define mode. Create all of the variables before entering data mode.
 do varid = 1, ions_files(1)%nVariables
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
-   ! Only time should actually occur in ions and neutrals files
-   if (trim(name) /= 'time' .and. trim(name) /= 'z' .and. trim(name) /= 'lat' .and. trim(name) /= 'lon') then
+   ! Find the physcial field
+   if (trim(name) /= 'time') then
       ncstatus = nf90_def_var(filter_file%ncid, name, xtype, dart_dimid, filter_ions_ids(varid))
 
       ! Add the units, same in all files so just get from the first
@@ -237,7 +248,7 @@ end do
 !=========================================================
 
 ! Get the metadata for variable fields from the neutrals block files
-! The ions and neutrals files have time and all their physical variables, but not latitude, longitude, or altitude
+! The neutrals files have time and all their physical variables, but not latitude, longitude, or altitude
 
 ! Illegal value of filter file index for default
 filter_neutrals_ids = -99
@@ -245,8 +256,8 @@ filter_neutrals_ids = -99
 ! The filter_file is still in define mode. Create all of the variables before entering data mode.
 do varid = 1, neutrals_files(1)%nVariables
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
-   ! Only time should occur once we switch to ions and neutrals files
-   if (trim(name) /= 'time' .and. trim(name) /= 'z' .and. trim(name) /= 'lat' .and. trim(name) /= 'lon') then
+   ! Find the physcial fields
+   if (trim(name) /= 'time') then
       ncstatus = nf90_def_var(filter_file%ncid, name, xtype, dart_dimid, filter_neutrals_ids(varid))
 
       ! Add the units, same in all files so just get from the first
@@ -262,6 +273,7 @@ end do
 ncstatus = nf90_def_var(filter_file%ncid, 'ION_E', xtype, dart_dimid, electron_varid)
 ncstatus = nf90_put_att(filter_file%ncid, electron_varid, 'units', '/m3')
 
+! NOTE TO AETHER MODELERS: F10.7 needs to come from one of the restart files
 if(scalar_f10_7) then
    ! Add a scalar F10.7 
    ncstatus = nf90_def_var(filter_file%ncid, 'SCALAR_F10.7', xtype, param_dimid, f10_7_varid)
@@ -269,7 +281,6 @@ if(scalar_f10_7) then
    ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'long_name', 'Solar Radio Flux at 10.7 cm')
 else
    ! Add a two-dimensional F10.7
-   ! WARNING: QUANTITY AS PS UNTIL FURTHER STUDY
    ncstatus = nf90_def_var(filter_file%ncid, '2D_F10.7', xtype, &
       dart_dimid(1:3:2), f10_7_varid)
    ncstatus = nf90_put_att(filter_file%ncid, f10_7_varid, 'units', 'sfu: W/m^2/Hz')
@@ -308,6 +319,7 @@ do iblock = 1, nblocks
    do iy = 1, nys(iblock)
       do ix = 1, nxs(iblock)
          icol = col_index(iblock, iy, ix)
+         ! DART wants latitude in degrees
          spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix) * RAD2DEG
       end do
    end do
@@ -321,6 +333,7 @@ do iblock = 1, nblocks
    do iy = 1, nys(iblock)
       do ix = 1, nxs(iblock)
          icol = col_index(iblock, iy, ix)
+         ! DART wants longitude in degrees
          spatial_array(icol) = block_array(1, nhalos+iy, nhalos+ix) * RAD2DEG
       end do
    end do
@@ -338,6 +351,7 @@ do varid = 1, ions_files(1)%nVariables
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
 
+   ! NOTE TO AETHER MODELERS: Make sure this is the correct way to get total
    ! See if this is a density; if so, needs to be added into electrons
    ncstatus = nf90_get_att(ions_files(1)%ncid, varid, 'units', attribute)
    add_to_electrons = trim(attribute) == '/m3'
@@ -351,7 +365,8 @@ do varid = 1, ions_files(1)%nVariables
       do iblock = 1, nblocks
          ! Read into the full 3Dblock array
          ncstatus = nf90_get_var(ions_files(iblock)%ncid, varid, block_array)
-         
+      
+         ! Transfer data to columns array   
          do iy = 1, nys(iblock)
             do ix = 1, nxs(iblock)
                icol = col_index(iblock, iy, ix)
@@ -379,7 +394,7 @@ do varid = 1, neutrals_files(1)%nVariables
       varid, name, xtype, nDimensions, dimids, nAtts)
 
    ! Already got time from ions files
-   if(trim(name) .ne. 'time') then
+   if(trim(name) /= 'time') then
       ! Loop through all the blocks for this variable
       do iblock = 1, nblocks
          ! Read into the full 3Dblock array
@@ -441,10 +456,10 @@ integer,          intent(in) :: ensemble_number
 real(r8) :: blat, blon, del, half_del, f10_7_scalar
 integer  :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
 integer  :: ix, iy, iz, icol, ncstatus, filter_varid
-integer  :: nxs(nblocks), nys(nblocks), final_nzs
-integer  :: ions_nxs(nblocks), ions_nys(nblocks), ions_final_nzs
+integer  :: nxs(nblocks),          nys(nblocks),          final_nzs
+integer  :: ions_nxs(nblocks),     ions_nys(nblocks),     ions_final_nzs
 integer  :: neutrals_nxs(nblocks), neutrals_nys(nblocks), neutrals_final_nzs
-integer  :: haloed_nxs(nblocks), haloed_nys(nblocks)
+integer  :: haloed_nxs(nblocks),   haloed_nys(nblocks)
 integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
 character(len = 4) :: ensemble_string
@@ -493,12 +508,12 @@ end do
 call get_aether_block_dimensions(ions_files, nblocks, nhalos, ions_nxs, ions_nys, ions_final_nzs)
 
 ! Check for inconsistent number of vertical levels in ion and grid files
-if(ions_final_nzs .ne. final_nzs) &
+if(ions_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of altitudes in grid and ions files differs', source, revision, revdate)
 
 ! Make sure ions and grid files have same horizontal sizes
-if(any(ions_nxs .ne. nxs) .or. any(ions_nys .ne. nys)) &
+if(any(ions_nxs /= nxs) .or. any(ions_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of Latitudes and Longitudes in grid and ion files differ', source, revision, revdate)
 
@@ -512,17 +527,17 @@ end do
 ! Check that neutrals files are consistent with grids
 call get_aether_block_dimensions(neutrals_files, nblocks, nhalos, neutrals_nxs, neutrals_nys, neutrals_final_nzs)
 
-! Check for inconsistent number of vertical levels in ion and grid files
-if(neutrals_final_nzs .ne. final_nzs) &
+! Check for inconsistent number of vertical levels in neutrals and grid files
+if(neutrals_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of altitudes in grid and neutrals files differs', source, revision, revdate)
 
 ! Make sure neutrals and grid files have same horizontal sizes
-if(any(neutrals_nxs .ne. nxs) .or. any(neutrals_nys .ne. nys)) &
+if(any(neutrals_nxs /= nxs) .or. any(neutrals_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
       'Number of Latitudes and Longitudes in grid and neutrals files differ', source, revision, revdate)
 
-!=========== Get lat lon and alt from grid files =================
+!=========== Get alt lat and lon from grid files =================
 
 ! Find the latitude and longitude information from the grid files and get the column mapping
 ncstatus = nf90_inq_varid(grid_files(1)%ncid, 'Altitude',  grid_alt_id)
@@ -536,7 +551,7 @@ allocate(col_index(nblocks, maxval(nys), maxval(nxs)), &
          block_lons(final_nzs,  maxval(haloed_nys), maxval(haloed_nxs)), &
          block_array(final_nzs, maxval(haloed_nys), maxval(haloed_nxs)))
 
-! Loop through all the blocks for this variable
+! Loop through all the blocks
 do iblock = 1, nblocks
    ! Get the latitude and longitude full arrays 
    ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lat_id, block_lats)
@@ -561,6 +576,8 @@ filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
 
 !==========================================================================
 ! Loop through ions fields and replace with values from filter_file
+! Note that this preserves all fields in the ions and neutrals files that
+! were not part of the DART state
 
 ncstatus = nf90_inquire(ions_files(1)%ncid, ions_files(1)%nDimensions, &
    ions_files(1)%nVariables, ions_files(1)%nAttributes,  ions_files(1)%unlimitedDimId, &
@@ -571,8 +588,8 @@ do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
-   if(trim(name) .ne. 'time' .and. trim(name) .ne. 'Altitude' .and. trim(name) .ne. 'Latitude' &
-      .and. trim(name) .ne. 'Longitude') then
+   if(trim(name) /= 'time' .and. trim(name) /= 'Altitude' .and. trim(name) /= 'Latitude' &
+      .and. trim(name) /= 'Longitude') then
       ! See if this variable is also in the filter output file
       ncstatus = nf90_inq_varid(filter_file%ncid, trim(name), filter_varid)
       ! Check on failed ncstatus. 0 is successful but should use the proper name
@@ -611,8 +628,8 @@ do varid = 1, neutrals_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
-   if(trim(name) .ne. 'time' .and. trim(name) .ne. 'Altitude' .and. trim(name) .ne. 'Latitude' &
-      .and. trim(name) .ne. 'Longitude') then
+   if(trim(name) /= 'time' .and. trim(name) /= 'Altitude' .and. trim(name) /= 'Latitude' &
+      .and. trim(name) /= 'Longitude') then
       ! See if this variable is also in the filter output file
       ncstatus = nf90_inq_varid(filter_file%ncid, trim(name), filter_varid)
       ! Check on failed ncstatus. 0 is successful but should use the proper name
@@ -640,6 +657,7 @@ end do
 
 !==============================================================================
 
+! NOTE FOR AETHER MODELERS:
 ! Need more information about where F10.7 will be in Aether input files to complete copy back
 ncstatus = nf90_inq_varid(filter_file%ncid, 'F10.7', filter_varid)
 if(scalar_f10_7) then
@@ -652,7 +670,6 @@ else
    f10_7_scalar = sum(variable_array(:, 1, 1)) / ncols
 endif
 ! Write the updated F10.7 to the appropriate Aether file
-!!! NEED MORE INFO TO IMPLEMENT
 
 !==============================================================================
 
@@ -674,6 +691,9 @@ end subroutine dart_to_model
 
 subroutine get_aether_block_dimensions(files, nblocks, nhalos, nxs, nys, nzs) 
 
+! Gets the dimesions of the aether block files and the overall grid
+! Does consistency checks across the blocks
+
 integer,         intent(in)    :: nblocks, nhalos
 type(file_type), intent(inout) :: files(nblocks)
 integer,         intent(out)   :: nxs(nblocks), nys(nblocks), nzs
@@ -681,6 +701,7 @@ integer,         intent(out)   :: nxs(nblocks), nys(nblocks), nzs
 integer :: iblock, b_nzs(nblocks), ncstatus, dimid, length
 character(len=NF90_MAX_NAME) :: name
 
+! Look at each block
 do iblock = 1, nblocks
    ! Get info about the block file
    ncstatus = nf90_inquire(files(iblock)%ncid, files(iblock)%nDimensions, &
@@ -690,14 +711,14 @@ do iblock = 1, nblocks
    ! Verify that a single time level exists
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'time', dimid)
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
-   if(length .ne. 1 .or. ncstatus .ne. 0) &
+   if(length /= 1 .or. ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
          'Number of times in input block files should be 1', source, revision, revdate)
 
    ! Get the length of x dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'x', dimid)
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
-   if(ncstatus .ne. 0) &
+   if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
          'input block files must have x dimension', source, revision, revdate)
    nxs(iblock)         = length-2*nhalos
@@ -705,7 +726,7 @@ do iblock = 1, nblocks
    ! Get the length of y dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'y', dimid)
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
-   if(ncstatus .ne. 0) &
+   if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
          'input block files must have y dimension', source, revision, revdate)
    nys(iblock)         = length-2*nhalos
@@ -713,7 +734,7 @@ do iblock = 1, nblocks
    ! Get the length of z dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'z', dimid)
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
-   if(ncstatus .ne. 0) &
+   if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
          'input block files must have z dimension', source, revision, revdate)
    b_nzs(iblock) = length
@@ -721,7 +742,7 @@ do iblock = 1, nblocks
 end do
 
 ! Make sure all blocks have same number of vertical levels
-if(any(b_nzs - b_nzs(1) .ne. 0)) then
+if(any(b_nzs - b_nzs(1) /= 0)) then
    call error_handler(E_ERR, 'model_to_dart', &
          'block files have different lengths for z dimension', source, revision, revdate)
 else
@@ -729,7 +750,7 @@ else
 endif
 
 ! Make sure all block files have the same number of attributes
-if(any(files(:)%nAttributes .ne. files(1)%nAttributes)) &
+if(any(files(:)%nAttributes /= files(1)%nAttributes)) &
    call error_handler(E_ERR, 'model_to_dart', &
          'All blocks must have same nunber of variables', source, revision, revdate)
 
@@ -771,6 +792,8 @@ end subroutine get_ensemble_range_from_command_line
 function assign_block_file_names(nblocks, directory, &
    file_prefix, ensemble_number) result(block_files)
 
+! Gets the file information for blocks
+
 integer,          intent(in)             :: nblocks
 character(len=*), intent(in)             :: directory
 character(len=*), intent(in)             :: file_prefix
@@ -784,10 +807,12 @@ integer            :: iblock
 ! Storage for each block
 allocate(block_files(nblocks))
 
+! Grid files don't have ensembles
 if(present(ensemble_number)) then
    ensemble_string = zero_fill(integer_to_string(ensemble_number - 1), 4)
 endif
 
+! Get the name for each block
 do iblock = 1, nblocks
    block_num = zero_fill(integer_to_string(iblock - 1), 4)
    file = trim(directory) // trim(file_prefix) 
@@ -797,7 +822,6 @@ do iblock = 1, nblocks
    endif
    block_files(iblock)%file_path = trim(file) //  '_g' // block_num // '.nc'
 end do
-
 
 end function assign_block_file_names
 

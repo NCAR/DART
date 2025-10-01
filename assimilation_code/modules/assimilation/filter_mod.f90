@@ -93,8 +93,6 @@ use algorithm_info_mod, only : probit_dist_info, init_algorithm_info_mod, end_al
 
 use distribution_params_mod, only : distribution_params_type
 
-use model_mod, only : test_grid_box
-
 !------------------------------------------------------------------------------
 
 implicit none
@@ -361,11 +359,6 @@ logical :: all_gone, allow_missing
 real(r8), allocatable   :: prior_qc_copy(:)
 
 call filter_initialize_modules_used() ! static_init_model called in here
-
-! This should be replaced by a test program in the developer_tests directory
-! Temporary entry for testing
-!!!call test_grid_box
-!!!stop
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "filter_nml", iunit)

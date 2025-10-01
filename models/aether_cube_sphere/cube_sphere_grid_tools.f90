@@ -42,7 +42,6 @@ real(r8) :: cube_side
 ! two exterior intervals of half  width, sqrt(1/3) / np 
 cube_side = 2.0_r8 * sqrt(1.0_r8 / 3.0_r8)
 ! Get the spacing of the grid points
-! These grid spacings are in module storage since they are used repeatedly in many routines
 del = cube_side / np  
 half_del = del / 2.0_r8
 
@@ -61,7 +60,6 @@ real(r8), intent(out) :: lat, lon
 
 real(r8) :: x, y, blon, blat, rot_angle
 real(r8) :: vect(3), rot_vect(3), RZ(3, 3)
-
 
 ! Get the x and y positions on the face
 x = sqrt(1.0_r8/3.0_r8) - (half_del + del * (lon_ind - 1))
@@ -119,8 +117,7 @@ end subroutine grid_to_lat_lon
 
 subroutine lat_lon_to_grid(lat, lon, del, half_del, face, lat_ind, lon_ind)
 
-real(r8), intent(in)  :: lat, lon
-real(r8), intent(in)  :: del, half_del
+real(r8), intent(in)  :: lat, lon, del, half_del
 integer,  intent(out) :: face, lat_ind, lon_ind
 
 real(r8) :: len(2)
@@ -213,7 +210,7 @@ end subroutine fix_face
 
 !-----------------------------------------------------------------------
 
-! Returns which face contains (lat, lon) and the length from the edge of the point
+! Returns which face contains (lat, lon_in) and the length from the edge of the point
 ! along each of the great circle axes.
 
 subroutine get_face(lat, lon_in, face, len)
@@ -679,7 +676,7 @@ if(on_edge) then
       ! Do the same thing for face2 
       ! Are the latitudes or the longitudes on the edge
       if(grid_lon_ind(face2_pts(1)) == grid_lon_ind(face2_pts(2))) then
-         ! Adjust the face1 latitudes
+         ! Adjust the face2 latitudes
          do i = 1, 2
             my_pt = face2_pts(i);
             if(grid_lat_ind(my_pt) > np/2) then
@@ -689,7 +686,7 @@ if(on_edge) then
             endif
          enddo
       else
-         ! Adjust the face1 longitudes
+         ! Adjust the face2 longitudes
          do i = 1, 2
             my_pt = face2_pts(i);
             if(grid_lon_ind(my_pt) > np/2) then

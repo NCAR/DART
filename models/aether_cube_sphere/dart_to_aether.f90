@@ -1,3 +1,11 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
+! Convert DART filter files to Aether block restart files
+
 program dart_to_aether
 
 use       utilities_mod, only : initialize_utilities, finalize_utilities, &
@@ -26,11 +34,10 @@ call check_namelist_read(iunit, io, 'dart_to_aether_nml')
 
 call initialize_transform_state_mod()
 
+! Convert for a range of ensemble members
 call get_ensemble_range_from_command_line(start_ens, end_ens)
 
 ! The DART SE team has pointed out concerns about having the loop in the program
-! In the long-term, this may need to be moved back to be a command line argument
-! and the program will only tranform a single file. 
 ! Loop through the ensemble members and transform each
 do ens = start_ens, end_ens
    call dart_to_model(dart_file_directory, aether_file_directory, ens)
