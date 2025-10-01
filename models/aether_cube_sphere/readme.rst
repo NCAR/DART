@@ -5,170 +5,193 @@ This document describes the DART interface to the Aether ionosphere-thermosphere
 sphere implementation.
 
 In addition to the standard DART programs associated with a given model, this interface creates
-three additional programs for the Aether cube sphere: ``aether_to_dart``, ``dart_to_aether``, and 
-``create_geometry_file``.
-
-Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_restart_files.zip>`__ to
-download a set of Aether cube sphere restart files.
+two additional programs for the Aether cube sphere: ``aether_to_dart``, ``dart_to_aether``.
+It also has a program in the developer_tests directory,, ``test_aether_grid`` 
+that tests the geometry related aspects of the grid,
+verifies model interpolation assumptions, and compares to a template filter_input_file. 
 
 aether_to_dart
 --------------
 
-This program takes six Aether restart files and combines them into a single filter input file for
+This program reads Aether restart files and combines them into a single filter input file for
 DART. This program reads entries from two namelists in ``input.nml``:
 
-In ``&directory_nml``:
+In ``&aether_to_dart_nml``:
 
-- ``restart_directory`` specifies the path where the restart files are saved
-- ``filter_directory`` specifies the path where the ``filter_input`` file will be created (this
-  entry can be the same as ``restart_directory`` but an additional entry is included for
-  flexibility)
+- ``aether_file_directory`` Path to the Aether restart files
+- ``dart_file_directory``  Path to the where ``filter_input`` files will be created
 
 In ``&transform_state_nml``:
 
-- ``restart_file_prefix``, ``restart_file_middle``, and ``restart_file_suffix`` specify substrings
-  of the restart filename that are combined to create the full
-  filename. The ensemble member string is inserted in between ``restart_file_prefix`` and
-  ``restart_file_middle``. The grid face is inserted in between ``restart_file_middle`` and 
-  ``restart_file suffix``.
-- ``filter_input_prefix`` and ``filter_input_suffix`` specify substrings of the filter input
-  filename. The ensemble member string is inserted in between ``filter_input_prefix`` and
-  ``filter_input_suffix``.
+- ``np`` Number of grid points across each cube sphere face (no halos)
+- ``nblocks`` Total number of Aether grid files 
+- ``nhalos`` Number of Aether halo rows
+- ``scalar_f10_7`` True if F10.7 is a scalar in the DART state vector, false means it is has a
+value at each column.
 
 Using aether_to_dart
 ~~~~~~~~~~~~~~~~~~~~
 
-When executing ``aether_to_dart`` the ensemble member must be specified as a command line argument:
+When executing ``aether_to_dart`` a range of ensemble members must be specified as 
+command line arguments:
 
 .. code-block::
 
-    ./aether_to_dart 0000
+    aether_to_dart 1 10
 
-The program must be run once for each ensemble member, ``./aether_to_dart 0000``,
-``./aether_to_dart 0001`` and so on. 
+This example would translate ensemble members 1 to 10. There are three types of Aether netcdf
+restart files required in the Aether input directory. The first are grid files that include the 
+metadata that defines the location of Aether grid points and halos for each block. These file
+are named grid_g####.nc where #### is the number of the block, starting from 0000. The second
+are neutrals files that contain the data for neutral quantities. There is one file for each
+block for each ensemble member. These are named neutrals_m&&&&_g#### where &&&& is the ensemble
+member starting from 0000 and #### is the block. The third are ions files named 
+ions_m&&&&_g#### with the same numbering as the neutrals files. A single filter input file is 
+created for each ensemble with the name filter_input_&&&& where &&&& is the ensemble number
+starting at 0001 (note the offset in numbering from the Aether files). 
 
 dart_to_aether
 --------------
 
-This program takes a single filter output file and inserts them back into the six initial Aether 
-restart files. This program uses all of the same namelist entries as ``aether_to_dart`` except for
-instead of using ``filter_input_prefix`` and ``filter_input_suffix`` in ``&transform_state_nml`` it 
-uses:
+This program reads filter output files and inserts the data into Aether block restart files.
+This program reads entries from two namelists in ``input.nml``"
 
-- ``filter_output_prefix`` and ``filter_output_suffix`` specify substrings of the filter output
-  filename. The ensemble member string is inserted in between ``filter_output_prefix`` and
-  ``filter_output_suffix``.
+In ``&dart_to_aether_nml``:
+
+- ``dart_file_directory``  Path to the ``filter_output`` files that are read
+- ``aether_file_directory`` Path to the Aether restart files that will be modified
+
+In ``&transform_state_nml``:
+
+- ``np`` Number of grid points across each cube sphere face (no halos)
+- ``nblocks`` Total number of Aether grid files 
+- ``nhalos`` Number of Aether halo rows
+- ``scalar_f10_7`` True if F10.7 is a scalar in the DART state vector, false means it is has a
 
 Using dart_to_aether
 ~~~~~~~~~~~~~~~~~~~~
 
-When executing ``aether_to_dart`` the ensemble member must be specified as a command line argument:
-
+When executing ``dart_to_aether`` a range of ensemble members must be specified as 
+command line arguments:
 .. code-block::
 
-    ./dart_to_aether 0000
+    ./dart_to_aether 1 10
 
-The program must be run once for each ensemble member, ``./dart_to_aether 0000``,
-``./dart_to_aether 0001`` and so on. 
+This example would translate ensemble members 1 to 10. A single filter input file is 
+read for each ensemble with the name filter_output_&&&& where &&&& is the ensemble number
+starting at 0001. The results are written into previously created aether neutrals and ions files
+that are named as described above for aether_to_dart. The Aether directory must also contain
+grid files that contain the metadata for the Aether restarts. It is possible to overwrite the
+Aether files in the same directory that was used for input to aether_to_dart, or to copy the files
+from that directory to a new directory to be updated by dart_to_aether.
 
-create_geometry_file
---------------------
+Using perfect_model_obs or filter with the aether model_mod
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This program takes two sets of six Aether grid files:
 
-- ``grid_corners_g000?.nc``, where ``?`` corresponds to the six grid corner files, numbered 0-5, and
-- ``grid_g000?.nc``, where ``?`` corresponds to the six grid center files, numbered 0-5.
+Simple example workflow
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Use `this link <https://www.image.ucar.edu/pub/DART/aether_cube_sphere_grid_files.zip>`__ to
-download a set of Aether cube sphere grid files.
+This section describes a simple workflow that demonstrates and tests the capabilities of
+the DART/Aether system. The directory models/aether_cube_sphere/TEST_INPUT contains a small
+set of Aether grid input files. There are 6 blocks, one covering each face of the cubed sphere. 
+The neutrals files contain two variables, O2 and Temperature. The ions files contain two variables, 
+O2+ and N2+. The TEST_INPUT directory only contains a single ensemble member for the ions and 
+neutrals files. 
 
-Aether's model fields are defined at the grid centers. The grid corners are at locations 
-approximately equidistant from either three (if the grid corner is at at a cube vertex) or four 
-(if the grid corner is on a cube face) grid centers.
+Demonstration steps:
+1. In the models/aether_cube_sphere directory, execute the matlab script 
+``perturb_aether_ensemble.m``. This generates 10 ensemble members in the TEST_INPUT
+directory. All variables are perturbed
+so that the prior correlations between any two variables are one. 
+2. Copy all files from the models/aether_cube_sphere/TEST_INPUT/ directory to the
+models/aether_cube_sphere_TEST_OUTPUT directory. 
+3. Build all of the DART programs by executing ``quickbuild.sh nompi`` in the 
+aether_cube_sphere/work directory. 
+4. Run ``aether_to_dart 1 10`` in the aether_cube_sphere/work directory.
+5. Run ``perfect_model_obs`` in the aether_cube_sphere/work directory. This creates 
+synthetic observations using the file obs_seq.in for metadata and creating the file
+obs_seq.out.
+5. Run ``filter`` in the work directory to do a single step ensemble assimilation.
+6. Run ``dart_to_aether 1 10`` in the work directory to create updated aether restart
+files in the aether_cube_sphere/TEST_OUTPUT directory.
+7. Use matlab script ``plot_filter_lat_lon.m`` in the aether_cube_sphere directory to
+interactively view the increments for different variables for the DART
+filter_input_&&&&.nc and filter_output_&&&&.nc files
+8. Use matlab script ``plot_aether_lat_lon.m`` in the aether_cube_sphere directory to
+view increments between the input aether restart files in the TEST_INPUT directory
+and the updated aether restart filtes in the TEST_OUTPUT directory.
 
-The program iterates through the grid corners and finds the nearest three or four grid centers in 
-order to create a single ``geometry_file.nc`` that saves the cube sphere grid topology so that the
-center fields can be used for interpolated by DART.
+The obs_seq.in file defines the observations that are created by perfect_model_obs and
+then assimilated by filter. In this case, there are 6 observations, one each of 
+temperature, density of O2, density of O2P, density of N2P, a ground station GPS
+vertical total electron content, and a slant GPS total electron content. Each is at
+a different horizontal location and the first 4 are at different vertical locations.
 
-The two key compontents of the ``geometry_file.nc`` are:
+The file create_obs_seq.input in the aether_cube_sphere directory contains input that
+can be read by the program create_obs_sequence to create the default obs_seq.in file
 
-1. The locations of the eight grid corners that coincide with the cube vertices and the column
-   indices of the nearest three grid centers to each of the cube vertices. This structure defines a
-   triangle surrounding each cube vertex.
-2. The locations of the remaining ``N`` grid corners that lie on the cube faces and the column
-   indices of the nearest four grid centers to each of the cube face grid corners. This structure 
-   defines a quadrilateral surrouding each of the grid corners that lie on a cube face.
+Work in Progress
+~~~~~~~~~~~~~~~~
 
-.. note::
-   
-   The ``in_quad`` function in DART's ``quad_utilities_mod`` does not implement a method to
-   determine whether a point is in a quad if the given quad encloses either the North or South Pole.
-   Thus ``create_geometry_file`` also determines which two grid corners coincide with the North and
-   South Poles and stores the index of these corners as global attributes in ``geometry_file.nc``
-   that can be read and used by the model mod to account for the special case where a quad encloses
-   a pole.
+Time:
+The method by which model time is read into DART has not been finalized at this time. All tests
+to date use time that is manually inserted into the perfect_model_obs and filter namelist entries
+init_time_days and init_time_seconds. The specifics of the how time is included in Aether input 
+files needs to be clarified so that the model_mod can read this directly from the filter restart
+files. Aether is not currently using time that is consistent with any calendar supported by DART,
+so this may require code in aether_to_dart.f90 that translates the aether time to a time that 
+DART understands.
 
-The header of the ``geometry_file.nc`` created by ``create_geometry_file`` should resemble the
-following:
+F10.7:
+Aether restart netcdf files do not currently include parameter values like F10.7. For now, 
+the aether_to_dart and dart_to_aether programs do not do not do input/output with Aether,
+but obvious hooks are available in transform_state_mod.f90. This module implements the
+basics of two ways to do F10.7 estimation. The first is to have a single scalar value of 
+F10.7 in the DART state. Subroutine get_state_meta_data provides some initial suggestions for
+the location associated with a scalar F10.7 that are taken from Alexey Morozov's work in 
+GITM. Because this requires the time, which is not yet available from Aether, this requires
+additional implementation. Aether scientists also need to confirm that the subsolar point
+is the right choice for a location. Alexey also implemented a different localization 
+algorithm for F10.7 in GITM. Aether scientists should work with DART experts to determine
+if and how this would be implemented in Aether. Under namelist control, aether_to_dart
+can also treat F10.7 as a horizontally distributed variable, basically copying the same value
+of F10.7 to each horizontal column. The value at each column is updated and dart_to_aether
+currently just averages the posterior values. Other choices for weighted averages are
+scientifically interesting and could be explored by aether/DART collaborations.
 
-.. code-block::
 
-   netcdf geometry_file {
-   dimensions:
-      center_altitudes = 44 ;
-      vertex_columns = 8 ;
-      vertex_neighbors = 3 ;
-      quad_columns = 1938 ;
-      quad_neighbors = 4 ;
-      center_columns = 1944 ;
-   variables:
-	  float center_altitude(center_altitudes) ;
-	  float vertex_longitude(vertex_columns) ;
-	  float vertex_latitude(vertex_columns) ;
-	  float quad_longitude(quad_columns) ;
-	  float quad_latitude(quad_columns) ;
-	  float center_longitude(center_columns) ;
-	  float center_latitude(center_columns) ;
-	  int vertex_neighbor_indices(vertex_neighbors, vertex_columns) ;
-	  int quad_neighbor_indices(quad_neighbors, quad_columns) ;
+VTEC:
+The established forward operator for vertically integrated electron content in DART is found in 
+the observations/forward_operators/obs_def_upper_atm_mod.f90. It assumes that the DART state 
+includes a 3D field with quantity QTY_DENSITY_ION_E and that the state also includes the 
+geometric height of each grid point in QTY_GEOMETRIC_HEIGHT. The subroutine 
+get_expected_gnd_gps_vtec integrates the density in a column. This subroutine was originally 
+developed for GITM and then extended for TIEGCM. Unlike GITM, Aether does not include the
+ION density in its restart netcdf files. The aether_to_dart.f90 sums up the density of all 
+variables in the ions files that have units of /m3 and puts this into the filter_input file that
+is created. Aether model experts should verify both the creation of the density field and the
+way that a vertical integral is computed to confirm that these are consistent with the model
+and the available observations. Note that there are other electron content forward operators
+that may also need to be evaluated by model experts before use.
 
-   // global attributes:
-		:index_of_north_pole_quad_column = 1760 ;
-		:index_of_south_pole_quad_column = 1403 ;
-   }
+Slant VTEC: There is a subroutine called get_expected_slant_gps_vtec in
+/observations/forward_operators/obs_def_upper_atm_mod.f90. It does exaclty the same thing
+as the vtec described above. However, it includes extended metadata in the obs_seq files. 
+These are two locations descriptions, one for the satellite postion (lon, lat, height), 
+and one for a ground point (lon, lat, height). One way to implement a slant vtec forward
+operator would be to trace a ray between the satellite and the ground and get the density
+at each level along the ray. Other ways of describing the geometry of the ray may be more
+appropriate. Aether developers and observation experts should be able to use the example
+code to easily implement the forward operator once the exact method for tracing the ray
+from the satellite is implemented. 
 
-geometry_file.nc dimensions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Testing the grid computations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The program test_aether_grid in developer_tests/aether_grid can be run 
+with the namelist setting used for a filter run to 
+verify the geometry in the model_mod and to confirm consistency with the aether template file
+selected by the template_file entry in the model_nml namelist. Note that an aether template
+filter file must have been created in the aether_cube_sphere/work directory before this test
+is run.
 
-The ``vertex_columns`` and ``quad_columns`` correspond to all of the grid corners on the sphere. 
-Each of the ``vertex_columns`` are enclosed by three grid centers, which are referred to as
-``vertex_neighbors``. Each of the ``quad_columns`` are enclosed by four grid centers, which are
-refered to as ``quad_neighbors``.
-
-The dimensions of the grid centers are ``center_altitudes`` in the vertical and ``center_columns``
-in the horizontal.
-
-geometry_file.nc variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The longitudes and latitudes for each of grid corners corresponding to the eight cube vertices are
-stored in the ``vertex_longitude`` and ``vertex_latitude`` fields, respectively.
-
-The longitudes and latitudes for each of the grid corners on the cube faces enclosed by
-quadrilaterals are stored in the ``quad_longitude`` and ``quad_latitude`` fields, respectively.
-
-The altitudes, longitudes and latitudes for each of the grid centers are stored in the
-``center_altitude``, ``center_longitude`` and ``center_latitude`` fields, respectively.
-
-.. important::
-
-   The key feature of the ``geometry_file.nc`` is the relationship between the grid corners and the
-   grid centers. This relationship is stored in the ``vertex_neighbor_indices`` and
-   ``quad_neighbor_indices`` integer fields.
-
-``vertex_neighbor_indices`` is a 3x8 integer array where each of the 8 columns corresponds to the 
-a grid corner coinciding with a cube vertex and each of the three rows corresponds to the indices of
-the center columns that define a triangle enclosing the cube vertex. 
-``quad_neighbor_indices`` is a 4xN integer array where each of the N columns corresponds to 
-a grid corner on a cube face and each of the four rows corresponds to the indices of the center
-columns that define a quad that encloses the grid corner.
