@@ -152,14 +152,13 @@ class ObsSequence:
         if "JULD" in ddf.columns:
             ddf = ddf.rename(columns={"JULD": "TIME"})
 
-        # Convert lat and lon to radians
         ddf = ddf.rename(columns={"LONGITUDE": "LONGITUDE_DEG", "LATITUDE": "LATITUDE_DEG"})
 
         # Generate vertical coordinate in meters (positive downwards, gsw returns positive upwards)
         ddf['VERTICAL'] = -gsw.conversions.z_from_p(ddf['PRES'], ddf['LATITUDE_DEG'], 0)
 
-        # CrocoLake is in -180:180 range, convert to 0:360
-        # # not elegant but pyarrow backend does not support modulo operator
+        # Convert lat and lon to radians and lon to 0:360 range (CrocoLake is in -180:180)
+        # not elegant but pyarrow backend does not support modulo operator
         ddf['LONGITUDE_DEG'] = ddf['LONGITUDE_DEG'].astype("float64")
         ddf['LONGITUDE_DEG'] = ddf['LONGITUDE_DEG'] % 360
         ddf['LONGITUDE_DEG'] = ddf['LONGITUDE_DEG'].astype("float64[pyarrow]")
@@ -170,10 +169,6 @@ class ObsSequence:
         # Convert salinity from PSUs (g/kg) to kg/kg
         if 'PSAL' in ddf.columns:
             ddf['PSAL'] = ddf['PSAL']*1e-3
-
-
-        # Convert pressure from dbar to Pascals
-        #ddf['PRES'] = ddf['PRES']*1e4
 
         # Sort dataframe by TIME columns
         ddf = ddf.repartition(npartitions=1)
