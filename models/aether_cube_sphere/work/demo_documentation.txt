@@ -1,3 +1,7 @@
+This file provides step-by-step instructions for testing the Aether/DART
+system with a variety of test restart files available from the University of
+Michigan.
+
 Check out aether_michigan branch of dart
 	git clone https://github.com/NCAR/DART.git
 	git checkout aether_michigan
@@ -52,6 +56,7 @@ Changing resolution for tests:
 6.	In input.nml, change the input directory for aether files in aether_to_dart_nml and dart_to_aether_nml. Also change the np and nblocks in transform_state_nml
 7.	Run aether_to_dart 1, ens_size
 8.	Cp filter_input files to filter_output files if you want to do diagnostics in dart state space
+8a. Run perfect_model_obs
 9. Run filter
 10.	Run dart_to_aether 1, ens_size
 11.	In get_aether_incs.m
