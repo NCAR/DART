@@ -98,6 +98,7 @@ O2+ and N2+. The ``TEST_INPUT`` directory only contains a single ensemble member
 neutrals files. 
 
 Demonstration steps:
+
 1. In the models/aether_cube_sphere directory, execute the matlab script 
 ``perturb_aether_ensemble.m``. This generates 10 ensemble members in the ``TEST_INPUT``
 directory. All variables are perturbed
@@ -115,16 +116,16 @@ so that the prior correlations between any two variables are one.
 synthetic observations using the file ``obs_seq.in`` for metadata and creating the file
 ``obs_seq.out``.
 
-5. Run ``filter`` in the ``work`` directory to do a single step ensemble assimilation.
+6. Run ``filter`` in the ``work`` directory to do a single step ensemble assimilation.
 
-6. Run ``dart_to_aether 1 10`` in the ``work`` directory to create updated aether restart
+7. Run ``dart_to_aether 1 10`` in the ``work`` directory to create updated aether restart
 files in the ``aether_cube_sphere/TEST_OUTPUT`` directory.
 
-7. Use matlab script ``plot_filter_lat_lon.m`` in the ``aether_cube_sphere`` directory to
+8. Use matlab script ``plot_filter_lat_lon.m`` in the ``aether_cube_sphere`` directory to
 interactively view the increments for different variables for the DART
 ``filter_input_&&&&.nc`` and ``filter_output_&&&&.nc`` files
 
-8. Use matlab script ``plot_aether_lat_lon.m`` in the ``aether_cube_sphere`` directory to
+9. Use matlab script ``plot_aether_lat_lon.m`` in the ``aether_cube_sphere`` directory to
 view increments between the input aether restart files in the ``TEST_INPUT`` directory
 and the updated aether restart filtes in the ``TEST_OUTPUT`` directory.
 
