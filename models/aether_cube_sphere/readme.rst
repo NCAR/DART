@@ -89,10 +89,13 @@ Using perfect_model_obs or filter with the aether model_mod
 
 Simple example workflow
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 This section describes a simple workflow that demonstrates and tests the capabilities of
-the DART/Aether system. The directory ``models/aether_cube_sphere/TEST_INPUT`` contains a small
-set of Aether grid input files. There are 6 blocks, one covering each face of the cubed sphere. 
+the DART/Aether system.  To do this simple example, you will need to contact 
+Jeff Anderson, jla@ucar.edu, or dart@ucar.edu to request a copy of the file ``TEST_INPUT.tar.gz``. 
+Place this file in the ``models/aether_cube_sphere/`` directory and execute the command
+``tar -xzvf TEST_INPUT.tar.gz`` to create the ``TEST_INPUT`` directory.
+that contains a small set of Aether grid input files. 
+There are 6 blocks, one covering each face of the cubed sphere. 
 The neutrals files contain two variables, O2 and Temperature. The ions files contain two variables, 
 O2+ and N2+. The ``TEST_INPUT`` directory only contains a single ensemble member for the ions and 
 neutrals files. 
