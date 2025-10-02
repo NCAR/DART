@@ -17,6 +17,7 @@ Each directory has at least one converter:
 -  ``CNOFS``: See ``DART/observations/obs_converters/CNOFS``
 -  ``CONAGUA``: :doc:`../observations/obs_converters/CONAGUA/README`
 -  ``COSMOS``: :doc:`../observations/obs_converters/COSMOS/COSMOS_to_obs`
+-  ``CrocoLake``: :doc:`../observations/obs_converters/CrocoLake/readme`
 -  ``DWL``: :doc:`../observations/obs_converters/DWL/dwl_to_obs`
 -  ``GMI``: :doc:`../observations/obs_converters/GMI/README`
 -  ``GOES``: :doc:`../observations/obs_converters/GOES/README`

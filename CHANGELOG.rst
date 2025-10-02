@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**October 2 2025 :: CrocoLake observation converter. Tag v11.16.0**
+
+- Observation converter for CrocoLake.
+
+*contributed by Enrico Milanese, Woods Hole Oceanographic Institution*
+
 **September 17 2025 :: Radiance Updates. Tag v11.15.0**
 
 Radiance updates:
