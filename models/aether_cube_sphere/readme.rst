@@ -107,8 +107,8 @@ Demonstration steps:
 directory. All variables are perturbed
 so that the prior correlations between any two variables are one. 
 
-2. Copy all files from the ``models/aether_cube_sphere/TEST_INPUT/`` directory to the
-``models/aether_cube_sphere_TEST_OUTPUT`` directory. 
+2. In the ``aether_cube_sphere`` direcctory, copy the ``TEST_INPUT`` directory to the
+``TEST_OUTPUT`` directory, ``cp -rf TEST_INPUT TEST_OUTPUT``.
 
 3. Build all of the DART programs by executing ``quickbuild.sh nompi`` in the 
 ``aether_cube_sphere/work`` directory. 
