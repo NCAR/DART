@@ -369,6 +369,7 @@ converters) include:
 -  ``CNOFS``: See ``./CNOFS``
 -  ``CONAGUA``: :doc:`./CONAGUA/README`
 -  ``COSMOS``: :doc:`./COSMOS/COSMOS_to_obs`
+-  ``CrocoLake``: :doc:`./CrocoLake/readme`
 -  ``DWL``: :doc:`./DWL/dwl_to_obs`
 -  ``GMI``: :doc:`./GMI/README`
 -  ``GOES``: :doc:`./GOES/README`

@@ -317,6 +317,7 @@ References
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/COSMOS/COSMOS_to_obs
    observations/obs_converters/COSMOS/COSMOS_development
+   observations/obs_converters/CrocoLake/readme
    observations/obs_converters/DWL/dwl_to_obs
    observations/obs_converters/GMI/README
    observations/obs_converters/GOES/README
