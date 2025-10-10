@@ -102,6 +102,10 @@ Surface Skin Temperature:
 Land Mask:
    'XLAND', 'QTY_LANDMASK', 'TYPE_XLAND', 'UPDATE', '999',
 
+Effective radius cloud water:
+   'RE_ICE', 'QTY_CLOUD_ICE_DE', 'TYPE_DE', 'UPDATE', '999',
+   'RE_CLOUD', 'QTY_CLOUDWATER_DE', 'TYPE_DE', 'UPDATE', '999',
+
 Vortex Center (Center Lat, Center Lon, Min Pressure, Max Winds):
   The vortex obs kinds will be supported if the following fields are
   in the state vector:   U, V, T, QVAPOR, MU

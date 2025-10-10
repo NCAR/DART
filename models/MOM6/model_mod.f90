@@ -19,7 +19,7 @@ use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_state => get_close_state, &
                              set_location, set_location_missing, &
                              get_location, query_location, VERTISLEVEL, &
-                             VERTISHEIGHT, set_vertical
+                             VERTISHEIGHT, set_vertical, get_dist
 
 use    utilities_mod, only : error_handler, E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
@@ -607,11 +607,13 @@ type(ensemble_type), optional, intent(in)    :: ens_handle
 character(len=*), parameter :: routine = 'get_close_state'
 
 integer :: ii ! loop index
-integer :: i, j, k
+integer :: i, j, k, istatus
 real(r8) :: lon_lat_vert(3)
+integer(i8) :: ind
+
 
 call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                            num_close, close_ind, dist, ens_handle)
+                            num_close, close_ind)
 
 if (.not. present(dist)) return
 
@@ -619,11 +621,22 @@ if (.not. present(dist)) return
 ! so they are not updated by assimilation
 do ii = 1, num_close
 
-  if(loc_qtys(close_ind(ii)) == QTY_DRY_LAND) dist(ii) = 1.0e9_r8
+  ind = close_ind(ii)
+  if(loc_qtys(ind) == QTY_DRY_LAND) then 
+    dist(ii) = 1.0e9_r8
+    cycle
+  endif
 
-  lon_lat_vert = get_location(locs(close_ind(ii))) ! assuming VERTISHEIGHT
-  call get_model_variable_indices(loc_indx(ii), i, j, k)
-  if ( below_sea_floor(i,j,lon_lat_vert(3)) ) dist(ii) = 1.0e9_r8
+  lon_lat_vert = get_location(locs(ind))
+  if (query_location(locs(ind)) /= VERTISHEIGHT) then ! assuming VERTISHEIGHT
+    call convert_vertical_state(ens_handle, 1, locs(ind:ind), loc_qtys(ind:ind), loc_indx(ind:ind), VERTISHEIGHT, istatus)
+  endif
+  call get_model_variable_indices(loc_indx(ind), i, j, k)
+  if ( below_sea_floor(i,j,lon_lat_vert(3)) ) then 
+    dist(ii) = 1.0e9_r8
+    cycle
+  endif
+  dist(ii) = get_dist(base_loc, locs(ind), base_type, loc_qtys(ind))
 
 enddo
 
