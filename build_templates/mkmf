@@ -497,7 +497,7 @@ if( $suffix eq '.a' ) {
 close MAKEFILE;
 print " $opt_m is ready.\n";
 
-exec 'make', '-f', $opt_m if $opt_x;
+exec 'make', '-f' ,$opt_m if $opt_x;
 
 # <next few lines under version control, do not edit>
 # $URL$
