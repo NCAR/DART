@@ -125,6 +125,7 @@ logical,            save      :: module_initialized = .false.
 
 ! Things which can/should be in the model_nml
 character(len=256) :: roms_filename      = 'roms_input.nc'  ! Template model file to retrieve grid info
+logical  :: template_ensemble_mean       = .false.          ! If the template file is mean of input ensemble
 integer  :: assimilation_period_days     = 1                ! Assimilation window in days
 integer  :: assimilation_period_seconds  = 0                ! Assimilation window in secs
 real(r8) :: perturbation_amplitude       = 0.02             ! Perturbation size for generating an ensemble
@@ -135,6 +136,7 @@ character(len=vtablenamelength) ::                &
 
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
+                     template_ensemble_mean,      &
                      perturbation_amplitude,      &
                      roms_filename,               &
                      debug,                       &
@@ -162,6 +164,7 @@ real(r8), allocatable :: VLAT(:,:), VLON(:,:)               ! V-momentum compone
 real(r8), allocatable :: TLAT(:,:), TLON(:,:)               ! T, S, zeta;           lat, lon
 logical,  allocatable :: TMSK(:,:), UMSK(:,:), VMSK(:,:)    ! Logical masks for land points 
 real(r8), allocatable :: h(:,:)                             ! Bathymetry (m) at RHO points
+real(r8), allocatable :: zeta_mean(:,:)                     ! SSH: ensemble average (m)
 real(r8), allocatable :: Cr(:), sr(:)                       ! S-coordinate related stretching curves
 real(r8)              :: hc                                 ! Critical depth (m)
 integer               :: Vt                                 ! Transformation formula from ROMS
@@ -226,10 +229,8 @@ call set_calendar_type('gregorian')
 assimilation_timestep = set_time(assimilation_period_seconds, assimilation_period_days)
 
 ! Get the ROMS grid -- sizes and variables
-ncid = nc_open_file_readonly(roms_filename, routine)
 call get_grid_dimensions()
 call get_grid()
-call nc_close_file(ncid, routine)
 
 ! Add domain using the provided template file 
 domid = add_domain(roms_filename, parse_variables_clamp(variables))
@@ -512,17 +513,6 @@ subroutine nc_write_model_atts(ncid, domain_id)
 integer, intent(in) :: ncid      ! netCDF file identifier
 integer, intent(in) :: domain_id
 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-
-! for the dimensions and coordinate variables
-integer :: nxirhoDimID, nxiuDimID, nxivDimID
-integer :: netarhoDimID, netauDimID, netavDimID
-integer :: nsrhoDimID, nswDimID
-integer :: VarID
-
-! local variables
-character(len=256) :: filename
-
 if (.not. module_initialized) call static_init_model
 
 ! Write Global Attributes
@@ -748,7 +738,6 @@ subroutine get_grid()
 integer                     :: ncid
 character(len=*), parameter :: routine = 'get_grid'
 
-real(r8), allocatable       :: zeta(:,:), zeta_lf(:,:,:) 
 real(r8), allocatable       :: mask(:,:)                 ! Land mask: 0 land & 1 water
 real(r8)                    :: Zm = -20000.0_r8          ! a masking factor to account for land
 
@@ -767,6 +756,11 @@ call nc_get_variable(ncid, 'hc'        , hc, routine)
 call nc_get_variable(ncid, 'Cs_r'      , Cr, routine)
 call nc_get_variable(ncid, 's_rho'     , sr, routine)
 call nc_get_variable(ncid, 'Vtransform', Vt, routine)
+
+if (template_ensemble_mean) then 
+   allocate(zeta_mean(Nx,Ny))
+   call nc_get_variable(ncid, 'zeta', zeta_mean, routine)
+endif
 
 ! Read in the land mask
 TMSK = .false.
@@ -826,7 +820,15 @@ integer  :: ik
 zsurf = 0.0_r8
 
 ! Free surface if zeta is provided
-if (present(zeta)) zsurf = zeta
+if (present(zeta)) then
+   ! This is probably coming from 
+   ! the interpolation routine
+   zsurf = zeta
+elseif (template_ensemble_mean) then 
+   ! Ensemble mean is provided as
+   ! the template file.
+   zsurf = zeta_mean(ix, iy)
+endif
 
 ! Bathymetry
 select case (var_kind)
@@ -884,7 +886,11 @@ if (ik < 1 .or. ik > Nz) then
 endif
 
 zsurf = 0.0_r8
-if (present(zeta)) zsurf = zeta
+if (present(zeta)) then 
+   zsurf = zeta
+elseif (template_ensemble_mean) then 
+   zsurf = zeta_mean(ix, iy)
+endif
 
 ! Bathymetry
 select case (var_kind)
@@ -1347,6 +1353,8 @@ deallocate(ULAT, ULON, UMSK)
 deallocate(VLAT, VLON, VMSK)
 deallocate(TLAT, TLON, TMSK)
 deallocate(h, Cr, sr)  
+
+if (allocated(zeta_mean)) deallocate(zeta_mean)
 
 end subroutine end_model
 
