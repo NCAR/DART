@@ -24,7 +24,7 @@ set NUM_DOMAINS        = 2
 #  Directories where things are run
 #  IMPORTANT : Scripts provided rely on this directory structure and names relative to BASE_DIR.
 #              Do not change, otherwise tutorial will fail.    
-set BASE_DIR         = /glade/derecho/scratch/bmraczka/WRFv4.5_nest     # set this appropriately #%%%#
+set BASE_DIR         = /glade/derecho/scratch/bmraczka/WRFv4.5_nested     # set this appropriately #%%%#
 set RUN_DIR          = ${BASE_DIR}/rundir
 set TEMPLATE_DIR     = ${BASE_DIR}/template
 set OBSPROC_DIR      = ${BASE_DIR}/obsproc

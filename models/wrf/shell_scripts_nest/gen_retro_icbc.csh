@@ -41,8 +41,8 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 #                output/${date}/wrfinput_d02_{days}_{time_step1}_mean
 ########################################################################
 
-set datea     = 2024051900
-set datefnl   = 2024051900  # set this appropriately #%%%#
+set datea     = 2024051812
+set datefnl   = 2024052018 # set this appropriately #%%%#
 set paramfile = /glade/derecho/scratch/bmraczka/WRFv4.5_nested/scripts/param.csh   # set this appropriately #%%%#
 
 echo "Sourcing parameter file"
@@ -77,7 +77,7 @@ while ( 1 == 1 )
  /start_date/c\
  start_date = ${start_date},${start_date}
  /end_date/c\
- end_date   = ${end_date},${start_date}
+ end_date   = ${end_date},${end_date}
 EOF
 
    # build grib file names - may need to change for other data sources.
@@ -97,7 +97,6 @@ EOF
 
    ${LINK} $gribfile_a GRIBFILE.AAA
    ${LINK} $gribfile_b GRIBFILE.AAB
-
    sed -f script.sed ${TEMPLATE_DIR}/namelist.wps.template >! namelist.wps
    ${LINK} ${WPS_SRC_DIR}/ungrib/Variable_Tables/Vtable.${GRIB_SRC} Vtable
 
@@ -198,7 +197,7 @@ EOF
       echo "#PBS -j oe\"                               >> script.sed
       echo "#PBS -k eod\"                              >> script.sed
       #echo "#PBS -l select=1:ncpus=128:mpiprocs=128\"  >> script.sed
-      echo "#PBS -l select=1:ncpus=8:mpiprocs=8\"      >> script.sed
+      echo "#PBS -l select=1:ncpus=4:mpiprocs=4\"      >> script.sed
       echo "#PBS -V\"                                  >> script.sed
       echo "#======================================\"  >> script.sed
       echo "\"                                         >> script.sed
@@ -217,6 +216,7 @@ EOF
       #  move output files to storage
       set gdate = (`echo $date1 0 -g | ${DART_DIR}/models/wrf/work/advance_time`)
       ${MOVE} wrfinput_d01 ${OUTPUT_DIR}/${datea}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean
+      ${MOVE} wrfinput_d02 ${OUTPUT_DIR}/${datea}/wrfinput_d02_${gdate[1]}_${gdate[2]}_mean
       if ( $n == 1 ) ${MOVE} wrfbdy_d01 ${OUTPUT_DIR}/${datea}/wrfbdy_d01_${gdatef[1]}_${gdatef[2]}_mean
 
       @ n++
