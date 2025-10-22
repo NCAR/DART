@@ -46,7 +46,7 @@ fi
 
  # build preprocess, link, run
  cd $pp_dir
- $DART/build_templates/mkmf -c $version_mod -x -p $pp_dir/preprocess \
+ $DART/build_templates/mkmf -c $version_def -x -p $pp_dir/preprocess \
       -a $DART $pp_dir/path_names_preprocess
  cd -
  ln -s $pp_dir/preprocess .
