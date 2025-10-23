@@ -31,5 +31,5 @@ environment to use MATLAB and the DART diagnostics, see the documentation for
 
 .. raw:: html
 
-   <iframe src="https://ncar.github.io/dart-tutorial/DART_LAB_Section06.pdf" width="100%" height="800px">
+   <iframe src="https://ncar.github.io/dart-tutorial/DART_LAB_Section06.pdf" width="100%" height="500px">
    </iframe>
