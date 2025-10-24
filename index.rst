@@ -324,6 +324,7 @@ References
    observations/obs_converters/GPSPW/README
    observations/obs_converters/GSI2DART/readme
    observations/obs_converters/GTSPP/GTSPP
+   observations/obs_converters/HFradar/readme
    observations/obs_converters/MADIS/MADIS
    observations/obs_converters/MIDAS/MIDAS_to_obs
    observations/obs_converters/MODIS/MOD15A2_to_obs
