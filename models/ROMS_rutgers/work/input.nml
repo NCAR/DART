@@ -30,7 +30,7 @@
    async                    = 0
    adv_ens_command          = 'DART_trying_to_advance_ROMS_not_supported'
    ens_size                 = 80
-   obs_sequence_in_name     = '../obs_seqs/wod_T2.out'
+   obs_sequence_in_name     = '../obs_seqs/obs_seq.hf'
    obs_sequence_out_name    = 'obs_seq.final'
    init_time_days           = -1
    init_time_seconds        = -1
@@ -93,7 +93,7 @@
 # special_localization_cutoffs   =            0.01,           0.02,               0.03 
 # Similar special treatment need to be applied in the vertical
 &assim_tools_nml
-   cutoff                          = 0.0627
+   cutoff                          = 0.0236
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
@@ -108,6 +108,11 @@
    input_qc_threshold          = 5.0
    enable_special_outlier_code = .false.
    outlier_threshold           = 3.0
+  /
+
+&obs_def_ocean_nml
+   max_radial_vel_obs = 10000000
+   debug              = .false.
   /
 
 &state_vector_io_nml
@@ -203,7 +208,10 @@
                                 'GLIDER_SALINITY',
                                 'SATELLITE_BLENDED_SST',
                                 'SATELLITE_MICROWAVE_SST',
-                                'SATELLITE_INFRARED_SST'
+                                'SATELLITE_INFRARED_SST', 
+                                'HFRADAR_U_CURRENT_COMPONENT', 
+                                'HFRADAR_V_CURRENT_COMPONENT', 
+                                'HFRADAR_RADIAL_VELOCITY'
   /
 
 &location_nml
