@@ -170,13 +170,22 @@
  ntmax                               = 200,
  eps                                 = 0.01,
  /
+
+ as1                                 = PERT_SCALING, HORIZ_SCALE, VERT_SCALE,
+ as2                                 = PERT_SCALING, HORIZ_SCALE, VERT_SCALE,
+ as3                                 = PERT_SCALING, HORIZ_SCALE, VERT_SCALE,
+ as4                                 = PERT_SCALING, HORIZ_SCALE, VERT_SCALE,
+ as5                                 = PERT_SCALING, HORIZ_SCALE, VERT_SCALE,
+
+
+
  &wrfvar7
  cv_options                          = 3,
- as1                                 = PERT_SCALING, 2.0, 1.5,
- as2                                 = PERT_SCALING, 2.0, 1.5,
- as3                                 = PERT_SCALING, 2.0, 1.5,
- as4                                 = PERT_SCALING, 2.0, 1.5,
- as5                                 = PERT_SCALING, 2.0, 1.5,
+ as1                                 = 0.001, 0.5, 0.5,
+ as2                                 = 0.001, 0.5, 0.5,
+ as3                                 = 0.1,  0.7, 0.7,
+ as4                                 = 0.01, 0.5, 0.5,
+ as5                                 = 0.5, 0.5, 0.5,
  rf_passes                           = 6,
  var_scaling1                        = 1.0,
  var_scaling2                        = 1.0,
