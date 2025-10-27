@@ -14,14 +14,17 @@ use           radinfo, only : radinfo_read, radinfo_clean
 use       mpi_readobs, only : mpi_getobs
 use  dart_obs_seq_mod, only : dart_obs_seq, set_debug
 use     utilities_mod, only : find_namelist_in_file, check_namelist_read
-use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
+use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, broadcast_send, broadcast_recv, send_to, &
+    receive_from
+use               mpi, only : mpi_barrier, mpi_comm_world
+use               types_mod, only: r8
 
 implicit none
 
 logical         :: debug = .false.
 integer(i_kind) :: nobs_sat, nobs_oz, nobs_conv, nobstot
 integer(i_kind) :: nobs_start, nobs_end
-integer(i_kind) :: i, irank
+integer(i_kind) :: i, irank, j
 integer(i_kind) :: ierr
 integer(i_kind) :: unitnml, io
 integer(i_kind) :: pe_write_conv,pe_write_rad
@@ -30,6 +33,7 @@ character(len=4) :: char_proc
 character(len=256) :: my_output_filename
 character(len=256) :: obs_seq_out_filename_conv, obs_seq_out_filename_sat
 real(r_single),    allocatable, dimension(:) :: workgrid_in, workgrid_out
+real(r8),          allocatable, dimension(:) :: multibuffer
 
 ! namelist variables are declared and initialized in params and radinfo
 namelist /gsi_to_dart_nml/ ens_size, &
@@ -52,7 +56,7 @@ namelist /gsi_to_dart_nml/ ens_size, &
 call mpi_initialize
 
 ! Print out some info
-call initialize_mpi_utilities('gsi_to_dart',communicator=mpi_comm_world)
+! call initialize_mpi_utilities('gsi_to_dart',communicator=mpi_comm_world)
 
 ! The barrier makes sure the 'starting' banner from initialize_mpi_utilities is
 ! printed before any subsequent print statements. Some tasks were printing the
@@ -127,8 +131,25 @@ if(nproc == 0) write(*,*) 'total number of obs ',nobstot
 ! output obs_sequence file
 if ( output_option .eq. 3 ) then
    if ( .not. allocated(anal_ob)) allocate(anal_ob(ens_size,nobstot)) ! may have been allocated in mpi_getobs
-   call mpi_bcast(anal_ob,nobstot*ens_size,mpi_real4,0,mpi_comm_world,ierr) !  should really do mpi_scatterv...but doing so doesn't seem to save memory overall...
-
+   !call mpi_bcast(anal_ob,nobstot*ens_size,mpi_real4,0,mpi_comm_world,ierr) !  should really do mpi_scatterv...but doing so doesn't seem to save memory overall...
+   allocate(multibuffer(ens_size*nobstot))
+   ! note: column-major order for faster copy
+   do j = 1, nobstot
+        do i = 1, ens_size
+            multibuffer(((i-1)*nobstot) + j) = anal_ob(i, j)
+        enddo
+   enddo
+   if (nproc == 0) then
+       call broadcast_send(0, array1=multibuffer)
+   else
+       call broadcast_recv(0, array1=multibuffer)
+       do j = 1, nobstot
+            do i = 1, ens_size
+                anal_ob(i, j) = multibuffer(((i-1)*nobstot) + j)
+            enddo
+       enddo
+   end if
+   deallocate(multibuffer)
    if ( convert_conv ) then
       nobs_start = 1
       nobs_end = nobs_conv
@@ -185,8 +206,27 @@ else if ( output_option .eq. 2 ) then
    if ( convert_sat .and. nproc == pe_write_rad) then
       if ( .not. allocated(anal_ob)) allocate(anal_ob(ens_size,nobstot)) ! may have been allocated in mpi_getobs
    endif
-   if ( convert_sat .and. nproc==0)            call mpi_send(anal_ob,nobstot*ens_size,mpi_real4,pe_write_rad,1,mpi_comm_world,ierr) ! send from nproc=0
-   if ( convert_sat .and. nproc==pe_write_rad) call mpi_recv(anal_ob,nobstot*ens_size,mpi_real4,0,1,mpi_comm_world,mpi_status,ierr) ! recieve on nproc=pe_write_rad
+   ! if ( convert_sat .and. nproc==0)            call mpi_send(anal_ob,nobstot*ens_size,mpi_real4,pe_write_rad,1,mpi_comm_world,ierr) ! send from nproc=0
+   allocate(multibuffer(nobstot*ens_size))
+   do j = 1, nobstot
+        do i = 1, ens_size
+            multibuffer(((i-1)*nobstot) + j) = anal_ob(i, j)
+        enddo
+   enddo
+   if (convert_sat .and. nproc==0) then
+       call send_to(1, multibuffer)
+   end if
+   ! if ( convert_sat .and. nproc==pe_write_rad) call mpi_recv(anal_ob,nobstot*ens_size,mpi_real4,0,1,mpi_comm_world,mpi_status,ierr) ! recieve on nproc=pe_write_rad
+   if ( convert_sat .and. nproc == pe_write_rad) then
+       call receive_from(0, multibuffer)
+       do j = 1, nobstot
+            do i = 1, ens_size
+                ! multibuffer(((i-1)*nobstot) + j) = anal_ob(i, j)
+                anal_ob(i, j) = multibuffer(((i-1)*nobstot) + j)
+            enddo
+       enddo
+   end if
+   deallocate(multibuffer)
    ! what if pe_write_rad == 0?  will the mpi_send/recv fail (sending and receiving from same processor)?
 
    obs_seq_out_filename_conv = trim(adjustl(obs_seq_out_filename))//'.conv'
@@ -228,7 +268,7 @@ call obsmod_cleanup ! from params
 if ( convert_sat ) call radinfo_clean  ! from radinfo
 
 ! print ending info
-call finalize_mpi_utilities(callfinalize=.false.)
+! call finalize_mpi_utilities(callfinalize=.false.)
 
 ! finalize MPI
 call mpi_cleanup
@@ -241,7 +281,7 @@ subroutine stop2(ierror_code)
 ! adapted from GSI/src/main/stop1.f90
 
   use kinds, only: i_kind
-  use mpisetup, only : mpi_comm_world, MPI_SUCCESS
+  ! use mpisetup, only : mpi_comm_world, MPI_SUCCESS
   implicit none
 
   integer(i_kind), intent(in) :: ierror_code
@@ -249,7 +289,8 @@ subroutine stop2(ierror_code)
 
   write(*,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
   write(0,*)'****STOP2****  ABORTING EXECUTION w/code=',ierror_code
-  call mpi_abort(mpi_comm_world,ierror_code,ierr)
+  !call mpi_abort(mpi_comm_world,ierror_code,ierr)
+  call exit_all(ierror_code)
   stop
   return
 end subroutine stop2

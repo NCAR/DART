@@ -31,11 +31,13 @@ module mpi_readobs
 !$$$
   
 use kinds, only: r_kind, r_single, i_kind
+use types_mod, only: r8
 use radinfo, only: npred
 use readconvobs
 use readsatobs
 use readozobs
 use mpisetup
+use mpi_utilities_mod, only : initialize_mpi_utilities, broadcast_send, broadcast_recv, send_to, receive_from
 
 implicit none
 
@@ -62,6 +64,7 @@ subroutine mpi_getobs(obspath, datestring, nobs_conv, nobs_oz, nobs_sat, nobs_to
     integer(i_kind) nob, ierr, iozproc, isatproc, &
             nobs_conv, nobs_oz, nobs_sat, nobs_tot, nanal
     integer(i_kind), intent(in) :: nanals
+    real(r8), allocatable, dimension(:) :: buffer
     !include 'mpif.h'
     !integer mpi_status(mpi_status_size)
     iozproc=max(0,min(1,numproc-1))
@@ -71,9 +74,32 @@ subroutine mpi_getobs(obspath, datestring, nobs_conv, nobs_oz, nobs_sat, nobs_to
     if(nproc == 0)call get_num_convobs(obspath,datestring,nobs_conv,id)
     if(nproc == iozproc)call get_num_ozobs(obspath,datestring,nobs_oz,id)
     if(nproc == isatproc)call get_num_satobs(obspath,datestring,nobs_sat,id)
-    call mpi_bcast(nobs_conv,1,mpi_integer,0,mpi_comm_world,ierr)
-    call mpi_bcast(nobs_oz,1,mpi_integer,iozproc,mpi_comm_world,ierr)
-    call mpi_bcast(nobs_sat,1,mpi_integer,isatproc,mpi_comm_world,ierr)
+    ! call mpi_bcast(nobs_conv,1,mpi_integer,0,mpi_comm_world,ierr)
+    allocate(buffer(1))
+    buffer(1) = real(nobs_conv, 8)
+    if (nproc == 0)  then
+        call broadcast_send(0, array1=buffer) 
+    else
+        call broadcast_recv(0, array1=buffer)
+        nobs_conv = int(buffer(1))
+    end if
+    buffer(1) = real(nobs_oz, 8)
+    if (nproc == iozproc) then
+        call broadcast_send(iozproc, array1=buffer)
+    else
+        call broadcast_recv(iozproc, array1=buffer)
+        nobs_oz = int(buffer(1))
+    end if
+    buffer(1) = real(nobs_sat, 8)
+    if (nproc == isatproc) then
+        call broadcast_send(isatproc, array1=buffer)
+    else 
+        call broadcast_recv(isatproc, array1=buffer)
+        nobs_sat = int(buffer(1))
+    end if
+    if (allocated(buffer)) deallocate(buffer)
+    ! call mpi_bcast(nobs_oz,1,mpi_integer,iozproc,mpi_comm_world,ierr)
+    ! call mpi_bcast(nobs_sat,1,mpi_integer,isatproc,mpi_comm_world,ierr)
     if(nproc == 0)print *,'nobs_conv, nobs_oz, nobs_sat = ',nobs_conv,nobs_oz,nobs_sat
     nobs_tot = nobs_conv + nobs_oz + nobs_sat
 ! if nobs_tot != 0 (there were some obs to read)
@@ -145,11 +171,14 @@ subroutine mpi_getobs(obspath, datestring, nobs_conv, nobs_oz, nobs_sat, nobs_to
 !     if (nanal <= nanals) print *,id,id2,'read sat obs'
     end if
 
+    allocate(buffer(nobs_tot))
     if (nanal <= nanals) then
      if (nanal == 0) then
         do nanal=1,nanals
-           call mpi_recv(h_xnobc,nobs_tot,mpi_real4,nanal, &
-                         1,mpi_comm_world,mpi_status,ierr)
+           !call mpi_recv(h_xnobc,nobs_tot,mpi_real4,nanal, &
+           !              1,mpi_comm_world,mpi_status,ierr)
+           call receive_from(nanal, buffer)
+           h_xnobc(1:nobs_tot) = buffer(1:nobs_tot)
            anal_ob(nanal,:) = h_xnobc(:)
         enddo
         analsi=1._r_single/float(nanals)
@@ -166,12 +195,30 @@ subroutine mpi_getobs(obspath, datestring, nobs_conv, nobs_oz, nobs_sat, nobs_to
 !$omp end parallel do
        else ! nanal/nproc != 0
         ! send to root.
-        call mpi_send(h_xnobc,nobs_tot,mpi_real4,0,1,mpi_comm_world,ierr)
+        ! call mpi_send(h_xnobc,nobs_tot,mpi_real4,0,1,mpi_comm_world,ierr)
+        buffer(1:nobs_tot) = h_xnobc(1:nobs_tot)
+        call send_to(0, buffer)
        end if ! if nanal == 0
     end if ! nproc <= nanals
-    call mpi_bcast(ensmean_ob,nobs_tot,mpi_real4,0,mpi_comm_world,ierr)
-    call mpi_bcast(sprd_ob,nobs_tot,mpi_real4,0,mpi_comm_world,ierr)
+    !call mpi_bcast(ensmean_ob,nobs_tot,mpi_real4,0,mpi_comm_world,ierr)
+    ! allocate(buffer(nobs_tot))
+    buffer(1:nobs_tot) = ensmean_ob(1:nobs_tot)
+    if (nproc == 0) then
+        call broadcast_send(0, buffer)
+    else
+        call broadcast_recv(0, buffer)
+        ensmean_ob(1:nobs_tot) = buffer(1:nobs_tot)
+    end if
+    ! call mpi_bcast(sprd_ob,nobs_tot,mpi_real4,0,mpi_comm_world,ierr)
+    buffer(1:nobs_tot) = sprd_ob(1:nobs_tot)
+    if (nproc == 0) then
+        call broadcast_send(0, buffer)
+    else
+        call broadcast_recv(0, buffer)
+        sprd_ob(1:nobs_tot) = buffer(1:nobs_tot)
+    end if
     deallocate(h_xnobc)
+    deallocate(buffer)
 
  end subroutine mpi_getobs
 
