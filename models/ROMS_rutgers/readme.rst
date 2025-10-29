@@ -131,6 +131,10 @@ The table below describes the configurable variables in this namelist:
      - `real(r8)`
      - `0.02`
      - Amplitude used to perturb ensemble members for ensemble generation.
+   * - ``template_ensemble_mean``
+     - `logical`
+     - `.false.`
+     - Indicates whether the template file is the mean of the input ensemble.
    * - ``debug``
      - `integer`
      - `0`
@@ -199,6 +203,9 @@ Each variable must appear as a consecutive 5-element group in the flat `variable
     - Only variables in **restart files** can be updated in ROMS. Ensure `roms_filename` points to a restart file 
       (e.g., `roms_input.nc`) when using `'UPDATE'`.
     - Observation times are assimilated if they fall within `±0.5 × assimilation_period_days` from the model forecast time.
+    - It's recommended to set ``template_ensemble_mean`` to `.true.` and provide the ensemble mean as the template file 
+      ``roms_filename``. This ensures the right SSH values are used in the localization routine.  
+      
 
 
 Generating an Initial Ensemble
