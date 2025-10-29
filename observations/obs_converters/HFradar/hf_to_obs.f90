@@ -39,10 +39,9 @@ use obs_sequence_mod,     only : obs_type, obs_sequence_type, init_obs, get_num_
                                  set_copy_meta_data, set_qc_meta_data, write_obs_seq,    & 
                                  destroy_obs_sequence, insert_obs_in_seq, set_qc,        &
                                  set_obs_values, set_obs_def, destroy_obs
-use obs_utilities_mod,    only : create_3d_obs, add_obs_to_seq
-use obs_kind_mod,         only : QTY_U_CURRENT_COMPONENT, HFRADAR_U_CURRENT_COMPONENT,   & 
-                                 QTY_V_CURRENT_COMPONENT, HFRADAR_V_CURRENT_COMPONENT,   &
-                                 QTY_VELOCITY, HFRADAR_RADIAL_VELOCITY
+use obs_utilities_mod,    only : add_obs_to_seq
+use obs_kind_mod,         only : HFRADAR_U_CURRENT_COMPONENT, HFRADAR_RADIAL_VELOCITY,   &
+                                 HFRADAR_V_CURRENT_COMPONENT
 use obs_def_mod,          only : obs_def_type, set_obs_def_time, set_obs_def_key,        &
                                  set_obs_def_error_variance, set_obs_def_location,       &
                                  set_obs_def_type_of_obs
@@ -75,7 +74,7 @@ character(len=256)      :: next_infile, instrument
 character(len=512)      :: string1, string2, string3
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: obs_time
+type(time_type)         :: obs_time, prev_time
 
 integer                 :: ncid, io, iunit, filenum
 integer                 :: num_new_obs, nfiles, dummy
@@ -83,7 +82,7 @@ integer                 :: hf_kind, obs_num
 integer                 :: ilon, ilat, nlat, nlon
 integer                 :: ix, iy, nx, ny
 
-logical                 :: from_list = .false.
+logical                 :: from_list = .false., first_obs = .true.
 real(r8)                :: obs_qc, rmin_km, rmax_km 
 real(r8)                :: missing_u, missing_v
 
@@ -220,16 +219,16 @@ FILELOOP: do
         do ilat = 1, nlat
            ! Adding a U obs
            if (good_total_obs(u(ilon,ilat), 'U')) then
-              call fill_obs(obs, prev_obs, obs_num, lon(ilon), lat(ilat),   &
-                   HFRADAR_U_CURRENT_COMPONENT, obs_time, sd_u(ilon, ilat), &
-                   u(ilon, ilat), obs_qc)
+              call fill_obs(obs, prev_obs, prev_time, obs_num, lon(ilon), &
+                   lat(ilat), HFRADAR_U_CURRENT_COMPONENT, obs_time,      & 
+                   sd_u(ilon, ilat), u(ilon, ilat), obs_qc)
               totals_kept = totals_kept + 1
            endif
            ! Adding a V obs
            if (good_total_obs(v(ilon,ilat), 'V')) then
-              call fill_obs(obs, prev_obs, obs_num, lon(ilon), lat(ilat),   &   
-                   HFRADAR_V_CURRENT_COMPONENT, obs_time, sd_v(ilon, ilat), &
-                   v(ilon, ilat), obs_qc)
+              call fill_obs(obs, prev_obs, prev_time, obs_num, lon(ilon), &
+                   lat(ilat), HFRADAR_V_CURRENT_COMPONENT, obs_time,      &
+                   sd_v(ilon, ilat), v(ilon, ilat), obs_qc)
               totals_kept = totals_kept + 1
            endif
            call bump_val_total(u(ilon,ilat), v(ilon,ilat))
@@ -244,8 +243,8 @@ FILELOOP: do
         do iy = 1, ny
            ! Adding radial velocity obs
            if (good_radial_obs(rvel(iy, ix), rflg(iy, ix), rnge(iy, ix))) then 
-              call fill_obs(obs, prev_obs, obs_num, rlon(iy, ix),   & 
-                   rlat(iy, ix), HFRADAR_RADIAL_VELOCITY, obs_time, &
+              call fill_obs(obs, prev_obs, prev_time, obs_num, rlon(iy, ix), & 
+                   rlat(iy, ix), HFRADAR_RADIAL_VELOCITY, obs_time,          &
                    rstd(iy, ix), rvel(iy, ix), obs_qc, phi(iy, ix))
               call bump_radials(rvel(iy, ix), rstd(iy, ix))
               radials_kept = radials_kept + 1
@@ -272,16 +271,15 @@ contains
 !------------------------------------------------------------
 ! Fill in an obs: loc in 3D in this case (at the surface).
 ! Once filled, add it to the sequence.
-subroutine fill_obs(obs, prev_obs, onum, olon, olat, otype, otime, oerr, oval, oqc, angle)
+subroutine fill_obs(obs, prev_obs, prev_time, onum, olon, olat, otype, otime, oerr, oval, oqc, angle)
 
 type(obs_type),     intent(inout) :: obs, prev_obs
+type(time_type),    intent(inout) :: prev_time
 integer,            intent(inout) :: onum
 real(r8),           intent(in)    :: olon, olat, oerr, oval, oqc
 integer,            intent(in)    :: otype
 type(time_type),    intent(in)    :: otime
 real(r8), optional, intent(in)    :: angle
-
-logical, save      :: first_obs = .true.
 
 type(obs_def_type) :: obs_def
 real(r8)           :: ovalue(1), oqcval(1)
@@ -311,13 +309,8 @@ call set_qc(obs, oqcval)
 onum = onum + 1  
 
 ! Add the obs to the sequence
-if (first_obs) then
-   call insert_obs_in_seq(obs_seq, obs)
-   first_obs = .false.
-else
-   call insert_obs_in_seq(obs_seq, obs, prev_obs)
-endif
-prev_obs = obs
+! and handle time properly
+call add_obs_to_seq(obs_seq, obs, otime, prev_obs, prev_time, first_obs)
 
 end subroutine fill_obs
 
