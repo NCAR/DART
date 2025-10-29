@@ -364,6 +364,7 @@ converters) include:
 -  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
 -  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
 -  ``BATS``: :doc:`./BATS/readme`
+-  ``BMKG_insitu``: :doc:`./BMKG_insitu/readme`
 -  ``CHAMP``: :doc:`./CHAMP/work/README`
 -  ``cice``: :doc:`./cice/cice_to_obs`
 -  ``CNOFS``: See ``./CNOFS``

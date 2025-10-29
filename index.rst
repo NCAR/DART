@@ -313,6 +313,7 @@ References
    observations/obs_converters/Ameriflux/level4_to_obs
    observations/obs_converters/CHAMP/work/README
    observations/obs_converters/BATS/readme
+   observations/obs_converters/BMKG_insitu/readme
    observations/obs_converters/cice/cice_to_obs
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/COSMOS/COSMOS_to_obs
