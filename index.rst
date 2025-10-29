@@ -392,6 +392,7 @@ References
 
    models/9var/readme
    models/aether_lat-lon/readme
+   models/aether_cube_sphere/readme
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme

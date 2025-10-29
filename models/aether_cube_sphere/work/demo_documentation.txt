@@ -1,0 +1,69 @@
+This file provides step-by-step instructions for testing the Aether/DART
+system with a variety of test restart files available from the University of
+Michigan.
+
+Check out aether_michigan branch of dart
+	git clone https://github.com/NCAR/DART.git
+	git checkout aether_michigan
+
+Set an appropriate build template
+	In build_templates/ directory, copy appropriate template (mkmf.template.gfortran)
+		 to mkfm.template
+
+Build the DART software:
+	Go to directory models/aether_cube_sphere/work
+	quickbuild.sh nompi
+
+Get the sample aether restart gz files
+	mkdir B24_AETHER_INPUT_FILES
+	mkdir B24_AETHER_OUTPUT_FILES
+	mkdir B6_AETHER_INPUT_FILES
+	mkdir B6_AETHER_OUTPUT_FILES
+
+	Put the gz files from Aaron in the appropriate input files directory
+
+Make an increments directory under the model directory
+	mkdir increments
+
+
+
+
+End to end procedure to make aether cube sphere demo work
+
+1.	Remove all netcdf files from the work directory
+2.	Remove all netcdf files from the increments directory
+3.	Remove all netcdf files from the aether output directory
+4.	Remove the aether input directory at the level below the gz file
+5.	Untar the gz file, use the finder
+6.	Perturb_aether_ensemble.m from the model directory to generate perturbations
+7.	Run aether_to_dart 1, ens_size to transform to filter_input files in work directory
+8.	If looking at filter posteriors, copy each filter_input nc file to a filter_output
+		cp filter_input_0001.nc filter_output_0001.nc, for all ensemble members
+9.	Run filter in work directory
+10.	Copy all files from the aether input directory to the aether output directory
+11.	Run dart_to_aether 1, ens_size in work directory
+12.	Matlab get_aether_incs in model directory
+13.	Run plot_aether_lat_lon programs to verify increments in model directory
+
+Changing resolution for tests:
+1.	Remove all nc files from the work directory
+2.	Delete the aether input directory and then recreate by unpacking gz
+3.	In perturb_aether_ensemble.m: 
+   a.	Change the input file directory
+   b.	Change nblocks
+4.	Run perturb_aether_ensemble
+5.	Copy all the files from the aether input directory to the aether output directory
+6.	In input.nml, change the input directory for aether files in aether_to_dart_nml and dart_to_aether_nml. Also change the np and nblocks in transform_state_nml
+7.	Run aether_to_dart 1, ens_size
+8.	Cp filter_input files to filter_output files if you want to do diagnostics in dart state space
+8a. Run perfect_model_obs
+9. Run filter
+10.	Run dart_to_aether 1, ens_size
+11.	In get_aether_incs.m
+   a.	Change nblocks
+   b.	Change the directory for the input and output files
+12.	Run get_aether_incs
+13.	In plot_aether_lat_lon.m:
+   a.	Change nblocks
+   b.	Change the directory for input grid files
+
