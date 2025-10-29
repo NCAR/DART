@@ -326,7 +326,7 @@ do k = 1, 2
    ! OBS
 enddo
 
-end subroutine 
+end subroutine add_arvor_profile 
 
 
 !---------------------------------------------------
@@ -838,6 +838,7 @@ g    = 9.780318_r8 * (1._r8 + 5.2788e-3_r8*sin2 + 2.36e-5_r8*sin4) &
 ! depth = (((-1.82e-15*p + 2.279e-10)*p - 2.2512e-5)*p + 9.72659)*p / g
 depth_m = (((-1.82e-15_r8*p_dbar + 2.279e-10_r8)*p_dbar - 2.2512e-5_r8)*p_dbar + 9.72659_r8) &
           * p_dbar / g
+
 end function depth_from_pressure
 
 
