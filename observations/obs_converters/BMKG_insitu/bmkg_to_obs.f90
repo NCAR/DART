@@ -64,7 +64,7 @@ integer, parameter  :: PRODUCT_ARVORI  = 3
 integer, parameter  :: MAX_NUM_FIELDS  = 1000
 integer, parameter  :: MAX_FIELDS_LEN  = 15000 
 
-character(len=*), parameter :: EMPTY_ENTRY = '_EMPTY_'
+character(len=*), parameter :: EMPTY_ENTRY = '_EMPTY_'  ! Fill in missing data in the raw file 
 
 character(len=512) :: string1, string2
 
@@ -403,7 +403,7 @@ OBSLOOP: do i = 1, catalog%nrows-1
    surf(k)%vvel = vvel
 
    if (debug) then
-      write(string1, '(A, i3, 6(A,f10.4), A)') ' * obs #',   k , ', lat:  ', surf(k)%lat, &
+      write(string1, '(A, i3, 6(A,f10.4), A)') ' * obs #',   k , ', lat:  ', surf(k)%lat,  &
                                        ', lon:'  , surf(k)%lon , ', dep:  ', surf(k)%dep,  &
                                        ', SST:'  , surf(k)%sst , ', Uvel: ', surf(k)%uvel, &
                                        ', Vvel: ', surf(k)%vvel, ', date: '
@@ -492,10 +492,10 @@ OBSLOOP: do i = 1, catalog%nrows-1
    prof(k)%sal  = sal 
 
    if (debug) then
-      write(string1, '(A, i3, 5(A,f10.4), A)') ' * obs #', k,   ', lat:', prof(k)%lat, &
-                                    ', lon:', prof(k)%lon,  ', dep:', prof(k)%dep, &
-                                    ', T:'  , prof(k)%temp, ', S:'  , prof(k)%sal, &
-                                    ', date: '
+      write(string1, '(A, i3, 5(A,f10.4), A)') ' * obs #', k , ', lat:', prof(k)%lat, &
+                                       ', lon:', prof(k)%lon , ', dep:', prof(k)%dep, &
+                                       ', T:'  , prof(k)%temp, ', S:'  , prof(k)%sal, &
+                                       ', date: '
       
       call print_date(prof(k)%dat, str=string1)
    endif  
@@ -835,7 +835,6 @@ g    = 9.780318_r8 * (1._r8 + 5.2788e-3_r8*sin2 + 2.36e-5_r8*sin4) &
        + 1.092e-6_r8 * p_dbar
 
 ! Polynomial (UNESCO 1983): depth (m) from pressure (dbar)
-! depth = (((-1.82e-15*p + 2.279e-10)*p - 2.2512e-5)*p + 9.72659)*p / g
 depth_m = (((-1.82e-15_r8*p_dbar + 2.279e-10_r8)*p_dbar - 2.2512e-5_r8)*p_dbar + 9.72659_r8) &
           * p_dbar / g
 
