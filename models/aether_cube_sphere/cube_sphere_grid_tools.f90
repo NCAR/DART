@@ -21,9 +21,7 @@ public :: lat_lon_to_col_index, col_index_to_lat_lon, get_bounding_box,      &
           get_grid_delta
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "cube_sphere_grid_tools"
 
 contains
 
@@ -553,7 +551,7 @@ enddo
 
 ! Falling of the end should not happen;
 call error_handler(E_ERR, 'get_corners', 'Reached end of subroutine get_corners', &
-   source, revision, revdate, 'This should not be possible')
+   source, 'This should not be possible')
 
 end subroutine get_corners
 

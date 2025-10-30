@@ -26,8 +26,6 @@ integer  :: iunit, io
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'aether_cube_sphere/transform_state_mod.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 type :: file_type
    character(len=256) :: file_path
@@ -125,12 +123,12 @@ call get_aether_block_dimensions(ions_files, nblocks, nhalos, ions_nxs, ions_nys
 ! Check for inconsistent number of vertical levels in ion and grid files
 if(ions_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of altitudes in grid and ions files differs', source, revision, revdate)
+      'Number of altitudes in grid and ions files differs', source)
 
 ! Make sure ions and grid files have same horizontal sizes
 if(any(ions_nxs /= nxs) .or. any(ions_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of Latitudes and Longitudes in grid and ions files differ', source, revision, revdate)
+      'Number of Latitudes and Longitudes in grid and ions files differ', source)
 
 !=============================== Check that neutrals files are consistent with grids =========
 
@@ -145,12 +143,12 @@ call get_aether_block_dimensions(neutrals_files, nblocks, nhalos, neutrals_nxs, 
 ! Check for inconsistent number of vertical levels in neutral and grid files
 if(neutrals_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of altitudes in grid and neutrals files differs', source, revision, revdate)
+      'Number of altitudes in grid and neutrals files differs', source)
 
 ! Make sure neutrals and grid files have same horizontal sizes
 if(any(neutrals_nxs /= nxs) .or. any(neutrals_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of Latitudes and Longitudes in grid and neutrals files differ', source, revision, revdate)
+      'Number of Latitudes and Longitudes in grid and neutrals files differ', source)
 
 !==================================== Write dimensions in the filter nc file ========
 
@@ -199,7 +197,7 @@ do varid = 1, 4
       grid_lon_id = varid
    else
       call error_handler(E_ERR, 'model_to_dart', &
-         'Unexpected variable name in grid file ' // trim(name), source, revision, revdate)
+         'Unexpected variable name in grid file ' // trim(name), source)
    end if
 end do
 
@@ -508,12 +506,12 @@ call get_aether_block_dimensions(ions_files, nblocks, nhalos, ions_nxs, ions_nys
 ! Check for inconsistent number of vertical levels in ion and grid files
 if(ions_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of altitudes in grid and ions files differs', source, revision, revdate)
+      'Number of altitudes in grid and ions files differs', source)
 
 ! Make sure ions and grid files have same horizontal sizes
 if(any(ions_nxs /= nxs) .or. any(ions_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of Latitudes and Longitudes in grid and ion files differ', source, revision, revdate)
+      'Number of Latitudes and Longitudes in grid and ion files differ', source)
 
 !==================================== Open and check dimensions for neutrals files
 
@@ -528,12 +526,12 @@ call get_aether_block_dimensions(neutrals_files, nblocks, nhalos, neutrals_nxs, 
 ! Check for inconsistent number of vertical levels in neutrals and grid files
 if(neutrals_final_nzs /= final_nzs) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of altitudes in grid and neutrals files differs', source, revision, revdate)
+      'Number of altitudes in grid and neutrals files differs', source)
 
 ! Make sure neutrals and grid files have same horizontal sizes
 if(any(neutrals_nxs /= nxs) .or. any(neutrals_nys /= nys)) &
    call error_handler(E_ERR, 'model_to_dart', &
-      'Number of Latitudes and Longitudes in grid and neutrals files differ', source, revision, revdate)
+      'Number of Latitudes and Longitudes in grid and neutrals files differ', source)
 
 !=========== Get alt lat and lon from grid files =================
 
@@ -711,14 +709,14 @@ do iblock = 1, nblocks
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(length /= 1 .or. ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
-         'Number of times in input block files should be 1', source, revision, revdate)
+         'Number of times in input block files should be 1', source)
 
    ! Get the length of x dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'x', dimid)
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
-         'input block files must have x dimension', source, revision, revdate)
+         'input block files must have x dimension', source)
    nxs(iblock)         = length-2*nhalos
 
    ! Get the length of y dimension
@@ -726,7 +724,7 @@ do iblock = 1, nblocks
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
-         'input block files must have y dimension', source, revision, revdate)
+         'input block files must have y dimension', source)
    nys(iblock)         = length-2*nhalos
 
    ! Get the length of z dimension
@@ -734,7 +732,7 @@ do iblock = 1, nblocks
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
-         'input block files must have z dimension', source, revision, revdate)
+         'input block files must have z dimension', source)
    b_nzs(iblock) = length
 
 end do
@@ -742,7 +740,7 @@ end do
 ! Make sure all blocks have same number of vertical levels
 if(any(b_nzs - b_nzs(1) /= 0)) then
    call error_handler(E_ERR, 'model_to_dart', &
-         'block files have different lengths for z dimension', source, revision, revdate)
+         'block files have different lengths for z dimension', source)
 else
    nzs = b_nzs(1)
 endif
@@ -750,7 +748,7 @@ endif
 ! Make sure all block files have the same number of attributes
 if(any(files(:)%nAttributes /= files(1)%nAttributes)) &
    call error_handler(E_ERR, 'model_to_dart', &
-         'All blocks must have same nunber of variables', source, revision, revdate)
+         'All blocks must have same nunber of variables', source)
 
 end subroutine get_aether_block_dimensions
 
@@ -853,7 +851,7 @@ difference_of_string_lengths = desired_length - length_of_string
 if (difference_of_string_lengths < 0) then
    call error_handler(E_ERR, 'zero_fill', &
       'Input string is longer than desired output => ensemble size too large', &
-      source, revision, revdate)
+      source)
 else if (difference_of_string_lengths > 0) then
    do string_index = 1, difference_of_string_lengths
       filled_string(string_index:string_index) = '0'

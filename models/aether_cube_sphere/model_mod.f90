@@ -73,9 +73,7 @@ public :: get_model_size,                      &
 public :: test_grid_box
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "aether_cube_sphere/model_mod"
 
 ! Error codes
 integer, parameter :: INVALID_VERT_COORD_ERROR_CODE   = 15
@@ -587,8 +585,7 @@ do my_face = 0, 5
          if(my_face /= test_face .or. my_lat_ind /= test_lat_ind .or. my_lon_ind /= test_lon_ind) then
             write(string1, *) 'Test failed: lat_lon_to_grid is not inverse of grid_to_lat_lon'
             write(string2, *) my_face, test_face, my_lat_ind, test_lat_ind, my_lon_ind, test_lon_ind
-            call error_handler(E_ERR, 'test_grid_box', string1, &
-               source, revision, revdate, text2=string2)
+            call error_handler(E_ERR, 'test_grid_box', string1, source, text2=string2)
          endif
 
          ! Test that col_index_to_lat_lon and lat_lon_to_col_index are inverses of each other
@@ -598,8 +595,7 @@ do my_face = 0, 5
          if(col_index /= test_col_index) then
             write(string1, *) 'Test failed: lat_lon_to_col_index is not inverse of col_index_to_lat_lon'
             write(string2, *) my_face, my_lat_ind, my_lon_ind, col_index, test_col_index
-            call error_handler(E_ERR, 'test_grid_box', string1, &
-               source, revision, revdate, text2=string2)
+            call error_handler(E_ERR, 'test_grid_box', string1, source, text2=string2)
          endif
       enddo
    enddo
@@ -654,8 +650,7 @@ do lon_count = 0, num_test_lons
             abs(RAD2DEG*grid_pt_lon(i) - lon_lat_hgt(1)) > 0.0001_r8) then
             write(string1, *) 'Test failed: Aether files grid points inconsistent with get_state_meta_data'
             write(string2, *) grid_pt_lat(i), grid_pt_lon(i), lon_lat_hgt(2), lon_lat_hgt(1)
-            call error_handler(E_ERR, 'test_grid_box', string1, &
-               source, revision, revdate, text2=string2)
+            call error_handler(E_ERR, 'test_grid_box', string1, source, text2=string2)
          endif
       enddo
 
@@ -670,8 +665,7 @@ do lon_count = 0, num_test_lons
       if(.not. inside) then
          write(string1, *) 'Test failed: Point is not inside the triangle or quadrilateral'
          write(string2, *) pt_lat, pt_lon, num_bound_points
-         call error_handler(E_ERR, 'test_grid_box', string1, &
-            source, revision, revdate, text2=string2)
+         call error_handler(E_ERR, 'test_grid_box', string1, source, text2=string2)
       endif
 
       ! Also check on distance to vertices; this greatly reduces the possibility that
@@ -692,15 +686,13 @@ do lon_count = 0, num_test_lons
                !!!write(*, *) 'grid xyz ', i, qxyz(i, :) 
             !!!enddo
             write(string2, *) 'point ', pt_lat, pt_lon, 'point xyz ', pxyz
-            call error_handler(E_ERR, 'test_grid_box', string1, &
-               source, revision, revdate, text2=string2)
+            call error_handler(E_ERR, 'test_grid_box', string1, source, text2=string2)
          endif
       elseif(num_bound_points == 3) then
          ! For triangle, sum should be less than 3 times the baseline
          if(dist_sum / base_dist > 3.0_r8) then
             write(string1, *) 'Test failed: ratio of sum of distances to vertices is too large for triangle'
-            call error_handler(E_ERR, 'test_grid_box', string1, &
-               source, revision, revdate)
+            call error_handler(E_ERR, 'test_grid_box', string1, source) 
          endif
       endif
    enddo
@@ -730,8 +722,7 @@ do my_qty = 1, 2
                   abs(RAD2DEG*my_lon - lon_lat_hgt(1)) > 0.0001_r8) then
                   write(string1, *) 'Test Failed: Grid points not appropriately mapping'
                   write(string2, *) my_face, my_qty, my_level, my_lat_ind, my_lon_ind
-                  call error_handler(E_ERR, 'test_grid_box', string1, &
-                     source, revision, revdate)
+                  call error_handler(E_ERR, 'test_grid_box', string1, source) 
                endif
    
             enddo
@@ -741,7 +732,7 @@ do my_qty = 1, 2
 enddo
 
 write(string1, *) 'ALL TESTS PASSED'
-call error_handler(E_MSG, 'test_grid_box', string1, source, revision, revdate)
+call error_handler(E_MSG, 'test_grid_box', string1, source)
 
 end subroutine test_grid_box
 
@@ -832,8 +823,7 @@ do n = 1, ens_size
       write(string1,*)'IDW interpolation result is outside of range of grid point values'
       write(string2, *) 'Interpolated value, min and max are: ', &
          idw_interp(n), minval(p(:, n)), maxval(p(:, n))
-      call error_handler(E_MSG, 'idw_interp', string1, &
-         source, revision, revdate, text2=string2)
+      call error_handler(E_MSG, 'idw_interp', string1, source, text2=string2)
    
       ! Fixing out of range
       idw_interp(n) = max(idw_interp(n), minval(p(:, n)))
