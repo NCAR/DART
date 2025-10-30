@@ -36,6 +36,7 @@ model_programs=(
 model_serial_programs=(
 aether_to_dart
 dart_to_aether
+test_aether_grid
 )
 
 # quickbuild arguments
