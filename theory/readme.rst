@@ -1,3 +1,5 @@
+.. _DART-tutorial:
+
 DART Tutorial
 =============
 

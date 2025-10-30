@@ -7,6 +7,8 @@ DART_LAB is a MATLAB®-based tutorial that introduces the fundamental concepts o
 ensemble data assimilation through a combination of PDF slides and hands-on MATLAB® 
 exercises. The full tutorial is designed to take about 1.5 days in a workshop setting.
 
+If you are already familiar with ensemble DA, you can skip straight to the :ref:`DART-tutorial`.
+
 DART_LAB tutorial slides
 ------------------------
 
