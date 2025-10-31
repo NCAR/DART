@@ -52,7 +52,7 @@ use     location_mod, only : location_type, get_dist, &
                              VERTISUNDEF
 
 use    utilities_mod, only : register_module, error_handler,         &
-                             E_ERR, E_WARN, E_MSG, nmlfileunit,      &
+                             E_ERR, E_WARN, E_MSG, E_ALLMSG, nmlfileunit, &
                              do_output, do_nml_file, do_nml_term,    &
                              find_namelist_in_file, check_namelist_read, &
                              log_it, array_dump
@@ -2152,7 +2152,7 @@ if(expected_obs < minval(p) .or. expected_obs > maxval(p)) then
    write(string1,*)'IDW interpolation result is outside of range of grid point values'
    write(string2, *) 'Interpolated value, min and max are: ', &
            expected_obs, minval(p), maxval(p)
-   call error_handler(E_MSG, 'quad_idw_interp', string1, &
+   call error_handler(E_ALLMSG, 'quad_idw_interp', string1, &
       source, text2=string2)
 
    ! Fixing out of range
