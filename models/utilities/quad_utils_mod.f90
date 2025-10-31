@@ -2126,7 +2126,7 @@ real(r8)            :: distances(4), inv_power_dist(4)
 integer :: i
 
 ! If all vertices have the same value, just return that value
-if(all(p(2:4) .eq. p(1))) then
+if(maxval(p) - minval(p) < epsilon(p(1))) then
    expected_obs = p(1)
    return
 endif
