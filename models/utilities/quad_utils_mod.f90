@@ -2252,7 +2252,6 @@ integer  :: e
 
 character(len=*), parameter :: routine = 'quad_lon_lat_evaluate:quad_lon_lat_evaluate_ii_array'
 
-! Full bilinear interpolation for quads
 if(interp_handle%grid_type == GRID_QUAD_FULLY_IRREGULAR) then
 
    ! lons and lats are integer indices.  x_corners and y_corners are the real*8 locations.
@@ -2331,7 +2330,6 @@ integer  :: i
 
 character(len=*), parameter :: routine = 'quad_lon_lat_evaluate:quad_lon_lat_evaluate_ir_array'
 
-! Full bilinear interpolation for quads
 if(interp_handle%grid_type == GRID_QUAD_FULLY_IRREGULAR) then
 
    string1 = 'wrong interface for this grid'
@@ -2341,7 +2339,6 @@ if(interp_handle%grid_type == GRID_QUAD_FULLY_IRREGULAR) then
               source,  text2=string2, text3=string3)
 endif
 
-! Rectangular bilinear interpolation
 !>@todo FIXME should this code check invals(:) for MISSING_R8?
 !> it costs time and for grids that don't have missing data it is
 !> not needed.  should it call allow_missing_in_state() on init and
