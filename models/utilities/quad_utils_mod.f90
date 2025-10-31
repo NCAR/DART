@@ -83,11 +83,7 @@ public :: quad_interp_handle,              & ! derived type which holds the grid
 
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
-
+character(len=*), parameter :: source   = 'models/utilities/quad_utils_mod.f90'
 ! message strings
 character(len=512) :: string1, string2, string3
 
@@ -455,7 +451,7 @@ select case (grid_type)
       write(string2, *) 'should be one of: GRID_QUAD_FULLY_REGULAR, ', &
                         'GRID_QUAD_IRREG_SPACED_REGULAR, GRID_QUAD_FULLY_IRREGULAR'
       call error_handler(E_ERR, 'init_quad_interp', string1, &
-                         source, revision, revdate, text2=string2)
+                         source,  text2=string2)
 
 end select
 
@@ -470,7 +466,7 @@ select case (cell_relative)
             'QUAD_LOCATED_LON_EDGES, QUAD_LOCATED_LAT_EDGES, QUAD_LOCATED_CELL_CORNERS'
       write(string3, *) 'important if handling poles and/or longitude wrap across prime meridian'
       call error_handler(E_ERR, 'init_quad_interp', string1, &
-                         source, revision, revdate, text2=string2, text3=string3)
+                         source, text2=string2, text3=string3)
 
 end select
 
@@ -525,7 +521,7 @@ select case (interp_handle%grid_type)
       write(string2, *) 'should be one of: GRID_QUAD_FULLY_REGULAR, '&
                         &'GRID_QUAD_IRREG_SPACED_REGULAR, GRID_QUAD_FULLY_IRREGULAR'
       call error_handler(E_ERR, 'print_quad_handle', string1, &
-                         source, revision, revdate, text2=string2)
+                         source,  text2=string2)
 
 end select
 
@@ -583,7 +579,7 @@ if (lon_delta == 0.0_r8 .or. lat_delta == 0.0_r8) then
    write(string1, *) 'neither lon_delta nor lat_delta can equal 0'
    write(string2, *) 'lon_delta: ', lon_delta, ' lat_delta: ', lat_delta
    call error_handler(E_ERR, 'set_quad_coords', string1, &
-                      source, revision, revdate, text2=string2)
+                      source, text2=string2)
 endif
 
 end subroutine set_reg_quad_coords
@@ -600,14 +596,14 @@ if (size(lons) /= interp_handle%nlon) then
    write(string1, *) 'longitude count in handle: ', interp_handle%nlon, &
                        ' must match length of 1D lons array: ', size(lons)
    call error_handler(E_ERR, 'set_irregspaced_quad_coords', string1, &
-                      source, revision, revdate)
+                      source)
 endif
 
 if (size(lats) /= interp_handle%nlat) then
    write(string1, *) 'latitude count in handle: ', interp_handle%nlat, &
                        ' must match length of 1D lats array: ', size(lats)
    call error_handler(E_ERR, 'set_irregspaced_quad_coords', string1, &
-                      source, revision, revdate)
+                      source)
 endif
 
 ! lons and lats are declared intent(in).  any code that just needs to
@@ -639,7 +635,7 @@ if (any(interp_handle%ir%lats_1D < -90.0_r8) .or. any(interp_handle%ir%lats_1D >
    write(string2, *) 'min, max values: ', minval(interp_handle%ir%lats_1D), &
                                           maxval(interp_handle%ir%lats_1D)
    call error_handler(E_ERR, 'set_irregspaced_quad_coords', string1, &
-                      source, revision, revdate, text2=string2)
+                      source, text2=string2)
 endif
 
 if (any(interp_handle%ir%lons_1D < 0.0_r8) .or. any(interp_handle%ir%lons_1D > 360.0_r8)) then
@@ -648,7 +644,7 @@ if (any(interp_handle%ir%lons_1D < 0.0_r8) .or. any(interp_handle%ir%lons_1D > 3
    write(string2, *) 'min, max values: ', minval(interp_handle%ir%lons_1D), &
                                           maxval(interp_handle%ir%lons_1D)
    call error_handler(E_ERR, 'set_irregspaced_quad_coords', string1, &
-                      source, revision, revdate, text2=string2)
+                      source, text2=string2)
 endif
 
 !>@todo FIXME i would like to put something like this to check
@@ -662,7 +658,7 @@ endif
 !      write(string1, *) 'no lon_deltas can equal 0'
 !      write(string2, *) 'i, lons_1d(i), lons_1d(i+1): ', i, lons_1d(i), lons_1d(i+1)
 !      call error_handler(E_ERR, 'set_quad_coords', string1, &
-!                         source, revision, revdate, text2=string2)
+!                         source,  text2=string2)
 !   endif
 !enddo
 !do j=1, nlats-1
@@ -671,7 +667,7 @@ endif
 !      write(string1, *) 'no lat_deltas can equal 0'
 !      wrjte(string2, *) 'j, lats_1d(j), lats_1d(j+1): ', j, lats_1d(j), lats_1d(j+1)
 !      call error_handler(E_ERR, 'set_quad_coords', string1, &
-!                         source, revision, revdate, text2=string2)
+!                         source,  text2=string2)
 !   endif
 !enddo
 
@@ -722,7 +718,7 @@ character(len=*),         intent(in) :: name
 if (gridsize(1) /= h%nlon .or. gridsize(2) /= h%nlat) then
    write(string1, *) 'longitude/latitude counts in handle: ', h%nlon, h%nlat, &
                        ' must match shape of 2D '//trim(name)//' array: ', gridsize
-   call error_handler(E_ERR, 'shapecheck', string1, source, revision, revdate)
+   call error_handler(E_ERR, 'shapecheck', string1, source)
 endif
 
 end subroutine shapecheck
@@ -776,7 +772,7 @@ if (.not. h%opt%global_grid) then
          write(string1,*)'min_lon, max_lon, lon_width, spans_lon_zero: ', &
                     h%ii%min_lon, h%ii%max_lon, h%ii%lon_width, h%opt%spans_lon_zero
          call error_handler(E_ERR,routine,'regional grid with bad longitudes', &
-                          source, revision, revdate, text2=string1)
+                          source,  text2=string1)
       endif
    endif
 
@@ -882,7 +878,7 @@ enddo
 ! Confirm that the indices come out okay as debug
 if(u_index /= u_total + 1) then
    string1 = 'Storage indices did not balance for U grid: : contact DART developers'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source)
 endif
 
 deallocate(reg_list_lon, reg_list_lat)
@@ -1032,11 +1028,11 @@ end subroutine init_irreg_interp
 !%! ! Confirm that the indices come out okay as debug
 !%! if(u_index /= u_total + 1) then
 !%!    string1 = 'Storage indices did not balance for U grid: : contact DART developers'
-!%!    call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
+!%!    call error_handler(E_ERR, 'init_dipole_interp', string1, source)
 !%! endif
 !%! if(t_index /= t_total + 1) then
 !%!    string1 = 'Storage indices did not balance for T grid: : contact DART developers'
-!%!    call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
+!%!    call error_handler(E_ERR, 'init_dipole_interp', string1, source)
 !%! endif
 !%!
 !%! end subroutine init_dipole_interp
@@ -1325,7 +1321,7 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
          write(string2,*) 'index_x may be out-of-range: ', 1, index_x, nrx
          write(string3,*) 'index_y may be out-of-range: ', 1, index_y, nry
          call error_handler(E_ERR,'update_reg_list',string1, &
-                 source, revision, revdate, text2=string2, text3=string3)
+                 source,  text2=string2, text3=string3)
       endif
 
       ! Make sure the list storage isn't full
@@ -1336,7 +1332,7 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
          write(string3,*) 'bins: ', reg_lon_ind(1), reg_lon_ind(2), &
                                     reg_lat_ind(1), reg_lat_ind(2)
          call error_handler(E_ERR, 'update_reg_list', string1, &
-                            source, revision, revdate, text2=string2, text3=string3)
+                            source,  text2=string2, text3=string3)
       endif
 
       ! Increment the count
@@ -1427,7 +1423,7 @@ select case (interp_handle%grid_type)
       string1 = 'got into a quad where at least one of the corners is not valid. should not happen'
       write(string2,*) 'lon/lat bot, nx, lon/lat', lon_bot, lat_bot, nx, lon, lat
       call error_handler(E_ERR, routine, string1, &
-                         source, revision, revdate, text2=string2)
+                         source,  text2=string2)
    endif
 
    ! Fail if point is in one of the U boxes that go through the
@@ -1441,11 +1437,11 @@ select case (interp_handle%grid_type)
  case (GRID_QUAD_IRREG_SPACED_REGULAR)
  case (GRID_QUAD_FULLY_REGULAR)
    string1 = 'this version of the call only work on fully irregular grids'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source)
 
  case default
    call error_handler(E_ERR, routine, 'unrecognized grid type', &
-                      source, revision, revdate)
+                      source)
 end select
 
 call quad_index_neighbors(lon_bot, lat_bot, nx, ny, cyclic, pole, &
@@ -1523,7 +1519,7 @@ select case (interp_handle%grid_type)
 
  case (GRID_QUAD_FULLY_IRREGULAR)
    string1 = 'this version of the call only work on partially or fully regular grids'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+   call error_handler(E_ERR, routine, string1, source)
 
  case (GRID_QUAD_IRREG_SPACED_REGULAR)
    ! This is an irregular grid (irregular == spacing; still completely orthogonal)
@@ -1541,7 +1537,7 @@ select case (interp_handle%grid_type)
 
  case default
    call error_handler(E_ERR, routine, 'unrecognized grid type', &
-                      source, revision, revdate)
+                      source)
 end select
 
 if (istatus /= 0) return
@@ -1789,7 +1785,7 @@ else
    string1 = 'end reached. internal error, should not happen'
    write(string2,*)'lon of interest is ',lon
    call error_handler(E_ERR, 'lon_bounds', string1, &
-                      source, revision, revdate, text2=string2)
+                      source,  text2=string2)
 endif
 
 
@@ -1874,7 +1870,7 @@ enddo
 string1 = 'end reached. internal error, should not happen'
 write(string2,*)'lat of interest is ',lat
 call error_handler(E_ERR, 'lat_bounds', string1, &
-                   source, revision, revdate, text2=string2)
+                   source,  text2=string2)
 
 end subroutine lat_bounds
 
@@ -2284,7 +2280,7 @@ else
    write(string2,*)'grid type is ',interp_handle%grid_type
    write(string3,*)'expected     ',GRID_QUAD_FULLY_IRREGULAR
    call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source,  text2=string2, text3=string3)
 endif
 
 istatus = 0
@@ -2342,7 +2338,7 @@ if(interp_handle%grid_type == GRID_QUAD_FULLY_IRREGULAR) then
    write(string2,*)'grid type is ',interp_handle%grid_type
    write(string3,*)'cannot be    ',GRID_QUAD_FULLY_IRREGULAR
    call error_handler(E_ERR, routine, string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+              source,  text2=string2, text3=string3)
 endif
 
 ! Rectangular bilinear interpolation
