@@ -57,7 +57,7 @@ else if ( $SUPER_PLATFORM == 'derecho' ) then
  ${gdate[2]}   ${gdate[1]}
  $yyyy $mm $dd $hh $nn $ss
            $domains
- mpiexec -n 128 -ppn 128 ./wrf.exe
+ mpiexec -n 4 -ppn 4 ./wrf.exe
 EOF
 
 endif
@@ -66,15 +66,18 @@ cd $RUN_DIR
 
 echo $emember                      >! ${RUN_DIR}/filter_control${icnum}
 echo filter_restart_d01.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
+echo filter_restart_d02.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
 echo prior_d01.${icnum}            >> ${RUN_DIR}/filter_control${icnum}
+echo prior_d02.${icnum}            >> ${RUN_DIR}/filter_control${icnum}
 
 #  integrate the model forward in time
-${RUN_DIR}/new_advance_model.csh ${emember} 1 filter_control${icnum} $paramfile
+${RUN_DIR}/new_advance_model.csh ${emember} ${domains} filter_control${icnum} $paramfile
 ${REMOVE} ${RUN_DIR}/filter_control${icnum}
 
 # move the output to the appropriate directory
 mkdir -p ${OUTPUT_DIR}/${datea}/PRIORS
 mv $RUN_DIR/prior_d01.${icnum} ${OUTPUT_DIR}/${datea}/PRIORS/prior_d01.${icnum}
+mv $RUN_DIR/prior_d02.${icnum} ${OUTPUT_DIR}/${datea}/PRIORS/prior_d02.${icnum}
 
 set end_time   = `date  +%s`
 @ length_time  = $end_time - $start_time

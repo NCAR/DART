@@ -183,16 +183,20 @@ sleep 5
 set USE_WRFVAR = 1
 set state_copy = 1
 set ensemble_member_line = 1
-set input_file_line = 2    # MUTIPLE DOMAINS - this doesn't work for multiple domains, need something more general, maybe just a header name
-set output_file_line = 3
+set input_file1_line = 2    
+set input_file2_line = 3
+set output_file1_line = 4
+set output_file2_line = 5
 
-# MULTIPLE DOMAINS - need a way to tell this shell script if there are multiple wrf domains in the analysis
+# MULTIPLE DOMAINS - hard coding for 2 domains, but should make more general
 
 while($state_copy <= $num_states)     # MULTIPLE DOMAINS - we don't expect advance model to run more than one member anymore. Reuse num_states for # domains?
 
    set ensemble_member = `head -n $ensemble_member_line ${CENTRALDIR}/${control_file} | tail -n 1`
-   set input_file      = `head -n $input_file_line      ${CENTRALDIR}/${control_file} | tail -n 1`
-   set output_file     = `head -n $output_file_line     ${CENTRALDIR}/${control_file} | tail -n 1`
+   set input_file1      = `head -n $input_file1_line      ${CENTRALDIR}/${control_file} | tail -n 1`
+   set input_file2      = `head -n $input_file2_line      ${CENTRALDIR}/${control_file} | tail -n 1`
+   set output_file1     = `head -n $output_file1_line     ${CENTRALDIR}/${control_file} | tail -n 1`
+   set output_file2     = `head -n $output_file2_line     ${CENTRALDIR}/${control_file} | tail -n 1`
 
    set infl = 0.0
 
@@ -541,8 +545,9 @@ EOF
 #         mpiexec_mpt dplace -s 1  ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe >>&! out.wrfvar
           cp fg wrfvar_output
           cp ${CENTRALDIR}/add_bank_perts.ncl .
-          set cmd3 = "ncl 'MEM_NUM=${ensemble_member}' 'PERTS_DIR="\""${PERTS_DIR}"\""' ${CENTRALDIR}/advance_temp${ensemble_member}/add_bank_perts.ncl"
+          set cmd3 = "ncl 'MEM_NUM=${ensemble_member}' 'PERTS_DIR="\""${PERTS_DIR}/work/boundary_perts"\""' ${CENTRALDIR}/advance_temp${ensemble_member}/add_bank_perts.ncl"
           ${REMOVE} nclrun3.out
+
           cat >! nclrun3.out << EOF
           $cmd3
 EOF
@@ -734,6 +739,11 @@ EOF
       while ( $dn <= $num_domains )
          ${MOVE} wrfinput_d0${dn} wrfinput_d0${dn}_${ensemble_member} 
          gzip wrfinput_d0${dn}_${ensemble_member} &
+         # Wait for zip operation to complete
+          while ( -e wrfinput_d0${dn}_${ensemble_member} )
+             sleep 3
+             touch ${CENTRALDIR}/HAD_TO_WAIT
+          end
          @ dn ++
       end
 
@@ -741,13 +751,12 @@ EOF
       set dn = 1
       while ( $dn <= $num_domains )
          if ( $ensemble_member <= $save_ensemble_member ) ${COPY} wrfout_d0${dn}_${END_STRING} ${WRFOUTDIR}/wrfout_d0${dn}_${END_STRING}_${ensemble_member}
-# if the wrfinput file zip operation is finished, wrfinput_d0${dn}_$ensemble_member should no 
-# longer be in the directory
-# test for this, and wait if the zip operation is not yet finished
-          while ( -e wrfinput_d0${dn}_${ensemble_member} )
-             sleep 3
-             touch ${CENTRALDIR}/HAD_TO_WAIT
-          end
+      ## if the wrfinput file zip operation is finished, wrfinput_d0${dn}_$ensemble_member should no 
+      ## longer be in the directory
+      #    while ( -e wrfinput_d0${dn}_${ensemble_member} )
+      #       sleep 3
+      #       touch ${CENTRALDIR}/HAD_TO_WAIT
+      #    end
           ${MOVE} wrfinput_d0${dn}_${ensemble_member}.gz ../WRFIN/wrfinput_d0${dn}_${ensemble_member}.gz
           ${MOVE} wrfout_d0${dn}_${END_STRING} wrfinput_d0${dn}
           @ dn ++

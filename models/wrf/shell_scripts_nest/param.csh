@@ -14,7 +14,7 @@ module load nco          # set this appropriately #%%%#
 module load ncl/6.6.2    # set this appropriately #%%%#
 
 #  Set the assimilation parameters
-set NUM_ENS            = 50
+set NUM_ENS            = 3
 set ASSIM_INT_MINUTES  = 0   # 0 means use ASSIM_INT_HOURS
 set ASSIM_INT_HOURS    = 6   # ignored if ASSIM_INT_MINUTES > 0
 set IC_PERT_SCALE      = 0.25
@@ -51,8 +51,7 @@ set GRIB_SRC          = 'GFS'                                     # set this app
 set extract_vars_a   = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                          U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
 set extract_vars_b   = ( U V W PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
-                         REFL_10CM VT_DBZ_WT )
+                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
 set cycle_vars_a     =   ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                            U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
 set increment_vars_a = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )

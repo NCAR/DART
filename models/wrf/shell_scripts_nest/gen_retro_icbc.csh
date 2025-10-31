@@ -39,6 +39,7 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 #                output/${date}/wrfinput_d01_{days}_{time_step1}_mean
 #                output/${date}/wrfinput_d01_{days}_{time_step2}_mean
 #                output/${date}/wrfinput_d02_{days}_{time_step1}_mean
+#                output/${date}/wrfinput_d02_{days}_{time_step2}_mean
 ########################################################################
 
 set datea     = 2024051812
