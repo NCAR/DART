@@ -7,7 +7,8 @@ module model_mod
 
 use           netcdf
 
-use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG
+use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG, &
+                             vtablenamelength
 
 use time_manager_mod, only : time_type, set_time, get_time
 
@@ -45,7 +46,8 @@ use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, g
 use default_model_mod, only : pert_model_copies, read_model_time, write_model_time,    &
                               init_time => fail_init_time,                             &
                               init_conditions => fail_init_conditions,                 &
-                              convert_vertical_obs, convert_vertical_state, adv_1step
+                              convert_vertical_obs, convert_vertical_state, adv_1step, &
+                              parse_variables_clamp, MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 implicit none
 private
@@ -104,14 +106,6 @@ type(time_type) :: state_time
 ! Horizontal column dimension rather than being direct functions of latitude and longitude.
 integer               :: no_third_dimension = -99
 
-type :: var_type
-    integer :: count
-    character(len=64), allocatable :: names(:)
-    integer,           allocatable :: qtys(:)
-    real(r8),          allocatable :: clamp_values(:, :)
-    logical,           allocatable :: updates(:)
-end type var_type
-
 ! This is redundant with type defined in transform_state_mod
 type :: file_type
    character(len=256) :: file_path
@@ -125,7 +119,8 @@ integer                         :: time_step_days          = 0
 integer                         :: time_step_seconds       = 3600
 integer, parameter              :: MAX_STATE_VARIABLES     = 100
 integer, parameter              :: NUM_STATE_TABLE_COLUMNS = 5
-character(len=vtablenamelength) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
+character(len=vtablenamelength) ::                &
+          variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '  ! Table of state variables and associated metadata
 
 namelist /model_nml/ template_file, time_step_days, time_step_seconds, variables
 
@@ -136,8 +131,6 @@ contains
 ! Called to do one time initialization of the model. 
 
 subroutine static_init_model()
-
-type(var_type) :: var
 
 module_initialized = .true.
 
@@ -156,11 +149,8 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 ! model time will be assimilated.
 assimilation_time_step = set_time(time_step_seconds, time_step_days)
 
-! Load the table of variable metadata
-var = assign_var(variables, MAX_STATE_VARIABLES)
 ! Define which variables are in the model state
-dom_id = add_domain(template_file, var%count, var%names, var%qtys, &
-                    var%clamp_values, var%updates)
+dom_id = add_domain(template_file, parse_variables_clamp(variables))
 
 ! Get the altitudes and the number of grid rows
 call read_template_file()
@@ -450,74 +440,6 @@ call nc_end_define_mode(ncid)
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
-
-!-----------------------------------------------------------------------
-
-! Parse the table of variables characteristics into arrays for easier access.
-
-function assign_var(variables, MAX_STATE_VARIABLES) result(var)
-
-character(len=vtablenamelength), intent(in) :: variables(:, :)
-integer, intent(in)                         :: MAX_STATE_VARIABLES
-
-type(var_type)                  :: var
-integer                         :: ivar
-character(len=vtablenamelength) :: table_entry
-
-!-----------------------------------------------------------------------
-! Codes for interpreting the NUM_STATE_TABLE_COLUMNS of the variables table
-integer, parameter :: NAME_INDEX      = 1 ! ... variable name
-integer, parameter :: QTY_INDEX       = 2 ! ... DART qty
-integer, parameter :: MIN_VAL_INDEX   = 3 ! ... minimum value if any
-integer, parameter :: MAX_VAL_INDEX   = 4 ! ... maximum value if any
-integer, parameter :: UPDATE_INDEX    = 5 ! ... update (state) or not
-
-! Loop through the variables array to get the actual count of the number of variables
-do ivar = 1, MAX_STATE_VARIABLES
-   ! If the element is an empty string, the loop has exceeded the extent of the variables
-   if(variables(1, ivar) == '') then
-      var%count = ivar-1
-      exit
-   endif 
-enddo
-
-! Allocate the arrays in the var derived type
-allocate(var%names(var%count), var%qtys(var%count), &
-   var%clamp_values(var%count, 2), var%updates(var%count))
-
-! Load the table for each variable
-do ivar = 1, var%count
-   var%names(ivar) = trim(variables(NAME_INDEX, ivar))
-
-   table_entry = variables(QTY_INDEX, ivar)
-   call to_upper(table_entry)
-
-   var%qtys(ivar) = get_index_for_quantity(table_entry)
-
-   if(variables(MIN_VAL_INDEX, ivar) /= 'NA') then
-      read(variables(MIN_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,1)
-   else
-      var%clamp_values(ivar,1) = MISSING_R8
-   endif
-
-   if(variables(MAX_VAL_INDEX, ivar) /= 'NA') then
-      read(variables(MAX_VAL_INDEX, ivar), '(d16.8)') var%clamp_values(ivar,2)
-   else
-      var%clamp_values(ivar,2) = MISSING_R8
-   endif
-
-   table_entry = variables(UPDATE_INDEX, ivar)
-   call to_upper(table_entry)
-
-   if(table_entry == 'UPDATE') then
-      var%updates(ivar) = .true.
-   else
-      var%updates(ivar) = .false.
-   endif
-
-enddo
-   
-end function assign_var
 
 !-----------------------------------------------------------------------
 
