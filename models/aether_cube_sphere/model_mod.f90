@@ -141,9 +141,6 @@ type(var_type) :: var
 
 module_initialized = .true.
 
-! Print module information to log file and stdout.
-call register_module(source)
-
 ! Read the namelist contents
 call find_namelist_in_file('input.nml', 'model_nml', iunit)
 read(iunit, nml = model_nml, iostat = io)
@@ -351,8 +348,9 @@ if(trim(get_variable_name(dom_id, my_var_id)) == 'SCALAR_F10.7') then
    ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
    call get_time(state_time, seconds, days)
    longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
-   if (longitude < 0.0_r8) longitude = longitude + 360.0_r8  
-   write(*, *) 'longitude for F10.7 is ', longitude
+   if (longitude < 0.0_r8) longitude = longitude + 30.0_r8  
+   write(string1,*)'Longitude assigned for F10.7 state variable is', longitude
+   call error_handler(E_MSG, 'get_state_meta_data', string1, source)
    location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
    return                    
 end if      
@@ -529,7 +527,7 @@ integer               :: dimid, varid, number_of_columns
 character(len=256)    :: name
 type(file_type)       :: templatefile
 
-! Gets altitudes and number of points per face row from a filter template file
+! Gets altitudes and number of points per face row from an Aether template file
 templatefile%file_path = trim(template_file)
 templatefile%ncid = nc_open_file_readonly(templatefile%file_path)
 
@@ -593,8 +591,8 @@ end function get_state_index
 
 function idw_interp(ens_size, lat, lon, y_corners, x_corners, p, num_corners)
       
-real(r8)              :: idw_interp(ens_size) ! Interpolated value at (lat, lon).
 integer,   intent(in) :: ens_size
+real(r8)              :: idw_interp(ens_size) ! Interpolated value at (lat, lon).
 real(r8),  intent(in) :: lat, lon ! Interpolation point (latitude, longitude) in degrees
 real(r8),  intent(in) :: y_corners(:), x_corners(:) ! corner points (latitude, longitude) in degrees
 real(r8),  intent(in) :: p(:, :) ! Values at the quadrilaterals corner points, second dimension is ens_size
