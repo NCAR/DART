@@ -22,6 +22,13 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 3 2025 :: DART tutorial. Tag 11.17.0**
+
+- DART tutorial updated to QCEFF v11
+- DART tutorial now an extension of DART_LAB
+- Lorenz_96/work directory contains input files needed for DART_LAB6:DART_tutorial
+- PDF tutorial slides relocated to a separate repo: https://github.com/NCAR/dart-tutorial
+
 **October 10 2025 :: Bug-fix: MOM6 localization. Tag v11.16.1**
 
 - Fix state index passed to below_sea_floor
