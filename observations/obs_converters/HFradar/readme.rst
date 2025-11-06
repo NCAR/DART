@@ -62,7 +62,8 @@ Input data expectations
    + ``rnge(y,x)`` kilometers from instrument
    + ``vflg(y,x)`` QC flag; treated as a non-negative scalar; typical good range [0,1023]
 
-- Global attributes: ``Site`` (instrument/site name)
+- Global attributes: ``Site`` (instrument/site name). If the attribute is not available, 
+  the converter sets the instrument to "UNKNOWN".
 
 .. note::
  
@@ -80,13 +81,28 @@ Input data expectations
 Build & run
 -----------
 Build like other DART converters. Then run with an ``input.nml`` that includes
-``obs_def_ocean_nml`` for the forward operator and ``hf_to_obs_nml`` (see below):
+``obs_def_ocean_nml`` for the forward operator and ``hf_to_obs_nml``.
+The program writes a single output sequence defined by ``file_out``.
 
 .. code-block:: bash
 
    ./hf_to_obs
 
-The program writes a single output sequence defined by ``file_out``.
+Observation Errors
+^^^^^^^^^^^^^^^^^^
+- Observation error standard deviations for totals U and V are 
+  read from input HF radar NetCDF file, if available. If the 
+  uncertainties are not part of the raw data, they are set 0.001 m/s.
+- Radial (single-site) files almost never include explicit per-cell
+  uncertainties, because each radial velocity comes from a spectral peak fit in the Doppler spectrum,
+  and the uncertainty often depends on SNR, spectral width, antenna pattern, and geometric precision.
+- The radial observation errors are set based on the `IOOS <https://ioos.noaa.gov/>`_,
+  `SEACOOS <https://sccoos.org/>`_ guidelines, where a typical :math:`\sigma_0`
+  range for a coastal CODAR radial is 0.15 m/s.
+- We also apply an error growth with range to mimic degradation:
+  :math:`\sigma(r) = \sigma_0 \left(1 + \alpha \frac{r}{r_{max}}\right)`;
+  :math:`\alpha \approx 1.0`
+- Finally, all error SD values are clamped to the range [0.001, 0.4] m/s.
 
 Namelist
 --------
@@ -99,8 +115,8 @@ with an ampersand '&' and terminate with a slash '/'.
       file_in          = 'CODAR_BADA_2025_10_06_0310-1759720200.nc',  ! single file (or '')
       file_list        = 'HF_file_list',                              ! text file of paths (or '')
       file_out         = 'obs_seq.hf',
-      radial_rmin_km   = -1.0,     ! <0 → derive from data (skip ~first 1 km)
-      radial_rmax_km   = -1.0,     ! <0 → derive from data (max finite range)
+      radial_rmin_km   = -1.0,     ! <0: derive from data (skip ~first 1 km)
+      radial_rmax_km   = -1.0,     ! <0: derive from data (max finite range)
       avg_obs_per_file = 500000,   ! pre-allocation hint
       debug            = .true.
    /
@@ -142,14 +158,14 @@ with an ampersand '&' and terminate with a slash '/'.
    * - ``radial_rmin_km``
      - real(r8)
      - ``-1.0``  
-       (< 0 → derived from data)
+       (< 0 means it will be derived from data)
      - Minimum accepted range (km) for radial observations.  
        If negative, the converter uses the data minimum + 1 km as the lower bound.
 
    * - ``radial_rmax_km``
      - real(r8)
      - ``-1.0``  
-       (< 0 → derived from data)
+       (< 0 means it will be derived from data)
      - Maximum accepted range (km) for radial observations.  
        If negative, the converter uses the data maximum range found in the file.
 
@@ -193,22 +209,6 @@ Below are brief descriptions of the main routines used in ``hf_to_obs``:
   For radials, it assigns a unique instrument ID and calls
   ``set_hf_radial_vel()`` to store the instrument geometry for use by
   the forward operator.
-
-Observation Errors
-^^^^^^^^^^^^^^^^^^
-- Observation error standard deviations for totals U and V are
-  read from input HF radar NetCDF file, if available. If the
-  uncertainties are not part of the raw data, they are set 0.001 m/s.
-- Radial (single-site) files almost never include explicit per-cell
-  uncertainties, because each radial velocity comes from a spectral peak fit in the Doppler spectrum,
-  and the uncertainty often depends on SNR, spectral width, antenna pattern, and geometric precision.
-- The radial observation errors are set based on the `IOOS <https://ioos.noaa.gov/>`_,
-  `SEACOOS <https://sccoos.org/>`_ guidelines, where a typical :math:`\sigma_0`
-  range a coastal CODAR radial is 0.15 m/s.
-- We also apply an error growth with range to mimic degradation:
-  :math:`\sigma(r) = \sigma_0 \left(1 + \alpha \frac{r}{r_{max}}\right)`;
-  :math:`\alpha \approx 1.0`
-- Finally, all error SD values are clamped to the range [0.001, 0.4] m/s.
 
 Output
 ------
@@ -347,12 +347,10 @@ Troubleshooting
 Performance & other tips
 ^^^^^^^^^^^^^^^^^^^^^^^^
 * Set ``avg_obs_per_file`` in the namelist close to your typical per-file
-  observation count to reduce reallocation.
+  observation count for efficiency.
 * Set ``debug = .false.`` in the namelist for production runs. Printing timestamps,
-  unit conversions, and summaries for every file can dominate wall time.
+  unit conversions, and summaries for every file may dominate wall-time.
 
 .. tip::
-  * When converting many files, prefer ``file_list`` for clearer logging and
-    correct pre-allocation.
   * Promote radial error parameters (baseline growth; :math:`\alpha`) to the 
-    namelist if you want to tune them per network/season.
+    namelist if you want to tune them for obs error computations per network/season.

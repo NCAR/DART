@@ -48,7 +48,8 @@ use obs_def_mod,          only : obs_def_type, set_obs_def_time, set_obs_def_key
 use netcdf_utilities_mod, only : nc_check, nc_open_file_readonly, nc_close_file,         &
                                  nc_get_variable, nc_get_attribute_from_variable,        &
                                  nc_get_dimension_size, nc_get_variable_size,            &
-                                 nc_variable_exists, nc_get_global_attribute
+                                 nc_variable_exists, nc_get_global_attribute,            &
+                                 nc_global_attribute_exists
 use obs_def_ocean_mod,    only : set_hf_radial_vel
 use netcdf
 
@@ -328,7 +329,7 @@ if (obs_num > 0) then
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 else
    string1 = 'No obs were converted.'
-   call error_handler(E_ERR, source, string1)
+   call error_handler(E_MSG, source, string1)
 endif
 call error_handler(E_MSG, source, 'Finished successfully.')
 
@@ -370,8 +371,8 @@ call nc_get_attribute_from_variable(ncid, 'u', '_FillValue', missing_u, routine)
 call nc_get_attribute_from_variable(ncid, 'v', '_FillValue', missing_v, routine)
 
 ! Read U, V and provided obs errors
-call nc_get_variable(ncid,    'u',    u, routine)
-call nc_get_variable(ncid,    'v',    v, routine)
+call nc_get_variable(ncid, 'u', u, routine)
+call nc_get_variable(ncid, 'v', v, routine)
 
 ! Make sure the errors are in the netcdf file
 sd_u = OBS_ERROR_SD_MIN
@@ -395,8 +396,8 @@ call velocity_units(adjustl(vel_unit), v, obs_names(2))
 ! Adjust obs errors
 do ilon = 1, nlon
    do ilat = 1, nlat
-      if (.not.(sd_u(ilon,ilat) == sd_u(ilon,ilat))) sd_u(ilon,ilat) = OBS_ERROR_SD_MIN
-      if (.not.(sd_v(ilon,ilat) == sd_v(ilon,ilat))) sd_v(ilon,ilat) = OBS_ERROR_SD_MIN
+      if (sd_u(ilon,ilat) /= sd_u(ilon,ilat)) sd_u(ilon,ilat) = OBS_ERROR_SD_MIN
+      if (sd_v(ilon,ilat) /= sd_v(ilon,ilat)) sd_v(ilon,ilat) = OBS_ERROR_SD_MIN
       
       uval = abs(u(ilon, ilat))
       vval = abs(v(ilon, ilat)) 
@@ -422,6 +423,7 @@ integer, intent(in) :: ncid
 real(r8)            :: sigma, r
 real(r8)            :: sigma0, grow
 character(len=64)   :: vel_unit, angle_unit
+logical             :: attin
 
 ! Coastal CODAR radials 0.10 - 0.25
 ! Source: IOOS, SEACOOS guidelines
@@ -473,7 +475,7 @@ else
    call error_handler(E_ERR, routine, string1, source)
 endif
 
-! Make sure we get u and v in m/s
+! Make sure we get line-of-sight vel in m/s
 call nc_get_attribute_from_variable(ncid, 'velo', 'units', vel_unit)
 call velocity_units(adjustl(vel_unit), rvel, obs_names(3))
 
@@ -496,13 +498,13 @@ enddo
 
 if (debug) write(*, '(3X, A)') '* Computed obs errors using a range-dependent strategy.'
 
-! Assign an instrument 
-call nc_get_global_attribute(ncid, 'Site', instrument)
-call clarify_instrument(instrument)
+! Assign an instrument
+attin = nc_global_attribute_exists(ncid, 'Site') 
 
-if (len_trim(instrument) == 0) then
-   ! If perhaps the global "Site" attribute is not available
-   ! fallback: set a default
+if (attin) then 
+   call nc_get_global_attribute(ncid, 'Site', instrument)
+   call clarify_instrument(instrument)
+else
    instrument = 'UNKNOWN'
 endif
 call register_instrument(instrument)

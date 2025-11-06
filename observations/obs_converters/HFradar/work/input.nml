@@ -9,9 +9,6 @@
   /
 
 
-../data/CODAR_BADA_2025_10_06_0310-1759720200.nc
-../data/BATU_2025_10_06_00_10_00_radial.nc
-
 &hf_to_obs_nml
    file_in         = ''
    file_list       = 'all_files.txt'
