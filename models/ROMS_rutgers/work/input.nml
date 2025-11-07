@@ -18,7 +18,7 @@
    assimilation_period_seconds = 0
    perturbation_amplitude      = 0.02
    debug                       = 0
-   template_ensemble_mean      = .false.       
+   use_mean_SSH_from_template  = .true.       
    variables                   = 'temp', 'QTY_TEMPERATURE'        , 'NA' , 'NA', 'update'
                                  'salt', 'QTY_SALINITY'           , '0.0', 'NA', 'update'
                                  'u'   , 'QTY_U_CURRENT_COMPONENT', 'NA' , 'NA', 'update'
@@ -310,7 +310,7 @@
    input_state_files     = 'roms_hist_z.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0 
-   run_tests             = 1
+   run_tests             = 1,2,3,4
    x_ind                 = 160920480
    loc_of_interest       = 100.0, -10.0, 2500.0
    quantity_of_interest  = 'QTY_TEMPERATURE'

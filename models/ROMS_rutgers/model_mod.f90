@@ -125,7 +125,7 @@ logical,            save      :: module_initialized = .false.
 
 ! Things which can/should be in the model_nml
 character(len=256) :: roms_filename      = 'roms_input.nc'  ! Template model file to retrieve grid info
-logical  :: template_ensemble_mean       = .false.          ! If the template file is mean of input ensemble
+logical  :: use_mean_SSH_from_template   = .false.          ! Use SSH for loc if the template file is mean of input ensemble
 integer  :: assimilation_period_days     = 1                ! Assimilation window in days
 integer  :: assimilation_period_seconds  = 0                ! Assimilation window in secs
 real(r8) :: perturbation_amplitude       = 0.02             ! Perturbation size for generating an ensemble
@@ -136,7 +136,7 @@ character(len=vtablenamelength) ::                &
 
 namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
-                     template_ensemble_mean,      &
+                     use_mean_SSH_from_template,  &
                      perturbation_amplitude,      &
                      roms_filename,               &
                      debug,                       &
@@ -177,13 +177,6 @@ integer            :: nfields                               ! This is the number
 integer            :: domid                                 ! Global variable for state_structure_mod routines
 integer            :: Nc = 4                                ! Number of corners of the quad for interpolation
 integer            :: Nd = 3                                ! 3D location for the obs
-
-! Interface block for computing single 
-! and array depths of ROMS 
-interface compute_physical_depth
-   module procedure compute_physical_depth_all
-   module procedure compute_physical_depth_one
-end interface
 
 contains
 
@@ -280,7 +273,7 @@ integer, optional,   intent(out) :: qty
 ! Local variables
 integer  :: iloc, jloc, kloc
 integer  :: myvarid, myqty
-real(r8) :: depth
+real(r8) :: zeta, depth(Nz)
 
 if (.not. module_initialized) call static_init_model
 
@@ -290,23 +283,22 @@ myqty = get_kind_index(domid, myvarid)
 
 depth = 0.0_r8
 if (myqty /= QTY_SEA_SURFACE_HEIGHT) then
-   ! This is a scalar call to compute_physical_depth
-   ! The result is a single depth value
-   ! We don't have access to the free surface here 
-   call compute_physical_depth(iloc, jloc, depth, ik=kloc, var_kind=myqty)
+   ! Compute the depth
+   zeta = get_zeta(iloc, jloc) 
+   call compute_physical_depth(iloc, jloc, myqty, zeta, depth)
 endif
 
 if (myqty == QTY_U_CURRENT_COMPONENT) then
-   location = set_location(ULON(iloc,jloc), ULAT(iloc,jloc), depth, VERTISHEIGHT)
+   location = set_location(ULON(iloc,jloc), ULAT(iloc,jloc), depth(kloc), VERTISHEIGHT)
 
 elseif (myqty == QTY_V_CURRENT_COMPONENT) then
-   location = set_location(VLON(iloc,jloc), VLAT(iloc,jloc), depth, VERTISHEIGHT)
+   location = set_location(VLON(iloc,jloc), VLAT(iloc,jloc), depth(kloc), VERTISHEIGHT)
 
 elseif (myqty == QTY_SEA_SURFACE_HEIGHT) then
-   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), depth, VERTISSURFACE)
+   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), depth(kloc), VERTISSURFACE)
 
 else  ! Everything else is assumed to be on the rho points
-   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), depth, VERTISHEIGHT)
+   location = set_location(TLON(iloc,jloc), TLAT(iloc,jloc), depth(kloc), VERTISHEIGHT)
 
 endif
 
@@ -738,8 +730,7 @@ subroutine get_grid()
 integer                     :: ncid
 character(len=*), parameter :: routine = 'get_grid'
 
-real(r8), allocatable       :: mask(:,:)                 ! Land mask: 0 land & 1 water
-real(r8)                    :: Zm = -20000.0_r8          ! a masking factor to account for land
+real(r8), allocatable       :: mask(:,:)   ! Land mask: 0 land & 1 water
 
 allocate(ULAT(Nu, Ny), ULON(Nu, Ny), UMSK(Nu, Ny))
 allocate(VLAT(Nx, Nv), VLON(Nx, Nv), VMSK(Nx, Nv))
@@ -757,7 +748,7 @@ call nc_get_variable(ncid, 'Cs_r'      , Cr, routine)
 call nc_get_variable(ncid, 's_rho'     , sr, routine)
 call nc_get_variable(ncid, 'Vtransform', Vt, routine)
 
-if (template_ensemble_mean) then 
+if (use_mean_SSH_from_template) then 
    allocate(zeta_mean(Nx,Ny))
    call nc_get_variable(ncid, 'zeta', zeta_mean, routine)
 endif
@@ -802,56 +793,84 @@ end subroutine get_grid
 !-----------------------------------------------------------------------
 ! Get physical depth z_rho using ROMS formulations:
 ! refer to set_depth.F
-! To get an entire depth array, this routine is 
-! mainly called by model_interpolate.
 
-subroutine compute_physical_depth_all(ix, iy, d, zeta, var_kind)
+subroutine compute_physical_depth(x, y, otype, zeta, d)
 
-character(len=*), parameter :: routine = 'compute_physical_depth_all'
+integer,  intent(in)  :: x, y  ! rho and eta indices
+integer,  intent(in)  :: otype ! DART quantity
+real(r8), intent(in)  :: zeta  ! sea surface height
+real(r8), intent(out) :: d(Nz) ! depth at all levels
 
-integer,  intent(in)           :: ix, iy    ! rho and eta indices
-real(r8), intent(out)          :: d(Nz)     ! depth at all levels
-real(r8), intent(in), optional :: zeta      ! sea surface height
-integer, intent(in)            :: var_kind  ! DART quantity
+real(r8) :: b
 
-real(r8) :: b, z0, zsurf
-integer  :: ik
+b = get_bathymetry(x, y, otype)
+d = roms_depth(zeta, b)
 
-zsurf = 0.0_r8
+end subroutine compute_physical_depth
 
-! Free surface if zeta is provided
-if (present(zeta)) then
-   ! This is probably coming from 
-   ! the interpolation routine
-   zsurf = zeta
-elseif (template_ensemble_mean) then 
-   ! Ensemble mean is provided as
-   ! the template file.
-   zsurf = zeta_mean(ix, iy)
-endif
+
+!---------------------------------------------
+! Get sea surface height for depth computation 
+
+function get_zeta(x, y) result(zeta)
+
+integer, intent(in) :: x, y
+
+real(r8) :: zeta
+
+zeta = 0.0_r8
+if (use_mean_SSH_from_template) zeta = zeta_mean(x, y) 
+
+end function get_zeta
+
+
+!---------------------------------------
+! Find bathymetry for U/V grid variables
+
+function get_bathymetry(x, y, otype) result(b)
+
+integer, intent(in) :: x, y, otype
+real(r8) :: b 
 
 ! Bathymetry
-select case (var_kind)
+select case (otype)
   case (QTY_U_CURRENT_COMPONENT)
-    b = 0.5_r8 * (h(ix, iy) + h(ix+1, iy))
+    b = 0.5_r8 * (h(x, y) + h(x+1, y))
   case (QTY_V_CURRENT_COMPONENT)
-    b = 0.5_r8 * (h(ix, iy) + h(ix, iy+1))
+    b = 0.5_r8 * (h(x, y) + h(x, y+1))
   case default
-    b = h(ix, iy)
+   b = h(x, y)
 end select
 
+end function get_bathymetry 
+
+
+!--------------------------------------------------------------
+! Given bathy, compute depth for different ROMS transformations
+
+function roms_depth(z, b) result(d)
+
+real(r8), intent(in) :: z, b
+
+integer  :: k
+real(r8) :: z0, d(Nz)
+
 ! Compute z at RHO points 
-do ik = 1, Nz
-   if (Vt == 1) then ! Original transformation
-      z0    = hc*(sr(ik) - Cr(ik)) + Cr(ik)*b 
-      d(ik) = z0 + zsurf * (1.0_r8 + z0/b)
-   elseif (Vt == 2) then ! New transformation
-      z0    = (hc*sr(ik) + Cr(ik)*b)/(hc+b) 
-      d(ik) = zsurf + z0*(zsurf+b) 
+do k = 1, Nz
+   if (Vt == 1) then 
+      ! Original transformation
+      
+      z0   = hc*(sr(k) - Cr(k)) + Cr(k)*b
+      d(k) = z0 + z * (1.0_r8 + z0/b)
+   elseif (Vt == 2) then 
+      ! New transformation
+      
+      z0   = (hc*sr(k) + Cr(k)*b)/(hc+b)
+      d(k) = z + z0*(z+b)
    else
-      string1 = 'Unsupported Vtransform'
-      call error_handler(E_ERR, routine, string1)
-   endif 
+      ! unknown transformation 
+      call error_handler(E_ERR, 'roms_depth', 'Unsupported Vtransform')
+   endif
 enddo
 
 ! Reverse the sign: 
@@ -860,69 +879,7 @@ enddo
 ! Above the surface is -ve depth
 d = -d
 
-end subroutine compute_physical_depth_all
-
-
-!-----------------------------------------------------------------------
-! Get physical depth at a single vertical level
-! To get depth at a single level, this routine is primarily 
-! called by gsmd. 
-
-subroutine compute_physical_depth_one(ix, iy, d, ik, zeta, var_kind)
-
-character(len=*), parameter :: routine = 'compute_physical_depth_one'
-
-integer,  intent(in)           :: ix, iy
-real(r8), intent(out)          :: d         ! depth at a single level
-integer,  intent(in)           :: ik        ! depth level
-real(r8), intent(in), optional :: zeta      ! SSH
-integer, intent(in)            :: var_kind  ! DART quantity
-
-real(r8) :: b, z0, zsurf
-
-if (ik < 1 .or. ik > Nz) then
-   string1 = 'Invalid vertical level'
-   call error_handler(E_ERR, routine, string1)
-endif
-
-zsurf = 0.0_r8
-if (present(zeta)) then 
-   zsurf = zeta
-elseif (template_ensemble_mean) then 
-   zsurf = zeta_mean(ix, iy)
-endif
-
-! Bathymetry
-select case (var_kind)
-  case (QTY_U_CURRENT_COMPONENT)
-    b = 0.5_r8 * (h(ix, iy) + h(ix+1, iy))
-  case (QTY_V_CURRENT_COMPONENT)
-    b = 0.5_r8 * (h(ix, iy) + h(ix, iy+1))
-  case default
-    b = h(ix, iy)
-end select
-
-! Compute z at RHO points 
-if (Vt == 1) then ! Original transformation
-   z0 = hc*(sr(ik) - Cr(ik)) + Cr(ik)*b 
-   d  = z0 + zsurf * (1.0_r8 + z0/b)
-elseif (Vt == 2) then ! New transformation
-   z0 = (hc*sr(ik) + Cr(ik)*b)/(hc+b) 
-   d  = zsurf + z0*(zsurf+b) 
-else 
-   string1 = 'Unsupported Vtransform'
-   call error_handler(E_ERR, routine, string1)
-endif 
-
-! Reverse the sign: 
-d = -d 
-
-!write(*, '(3(A6, i5), A, f5.3, A, i2, A, f15.6)')  &
-!         'ix: ', ix, ', iy: ', iy, ', ik: ', ik,   & 
-!         ', zsurf: ', zsurf, ', kind: ', var_kind, &
-!         ', d: ', d
-
-end subroutine compute_physical_depth_one
+end function roms_depth
 
 
 !-----------------------------------------------------------------------
@@ -949,7 +906,6 @@ real(r8)    :: depths(Nz)            ! Depths for each ensemble member
 real(r8)    :: lev_frc(ens_size)     ! Fractional distances between bot and top 
 real(r8)    :: Zvals(Nz, ens_size)   ! All ensemble values to be interpolated
 real(r8)    :: tops, bots            ! Ensemble level values
-real(r8)    :: bath                  ! Bathymetry at a single point
 integer(i8) :: dartidx     
 
 levels = 0
@@ -961,7 +917,7 @@ do i = 1, Nc
       ! Get the depth on the entire water column at quad corner 'i'
       ! then, find the associated top and bottom levels as well as 
       ! the fractional depth for each layer
-      call compute_physical_depth(lon_c(i), lat_c(i), depths, zeta=SSHcorn(i, ie), var_kind=myqty)
+      call compute_physical_depth(lon_c(i), lat_c(i), myqty, SSHcorn(i, ie),  depths)
       call depth_bounds(lon_lat_vrt(3), depths, lev(ie, 1), lev(ie, 2), lev_frc(ie), dstatus)
      
       if (dstatus /= 0) return
