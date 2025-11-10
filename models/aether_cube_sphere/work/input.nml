@@ -46,7 +46,7 @@
    output_state_file_list       = 'filter_output_files.txt'
    output_interval              = 1,
    output_members               = .true.
-   num_output_state_members     = 20,
+   num_output_state_members     = 10,
    output_mean                  = .true.
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
@@ -63,7 +63,7 @@
 
    obs_sequence_in_name         = "obs_seq.out",
    obs_sequence_out_name        = "obs_seq.final",
-   num_output_obs_members       = 20,
+   num_output_obs_members       = 10,
    init_time_days               = 0,
    init_time_seconds            = 0,
    first_obs_days               = -1,
