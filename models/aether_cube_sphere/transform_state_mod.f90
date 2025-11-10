@@ -9,17 +9,17 @@ module transform_state_mod
 
 use types_mod,                  only : r8, varnamelength, RAD2DEG
 
-use netcdf_utilities_mod,       only : nc_open_file_readonly, nc_open_file_readwrite, &
-                                       nc_close_file, nc_create_file, nc_end_define_mode, &
-                                       nc_add_attribute_to_variable, &
-                                       nc_get_attribute_from_variable, &
+use netcdf_utilities_mod,       only : nc_open_file_readonly, nc_open_file_readwrite,      &
+                                       nc_close_file, nc_create_file, nc_end_define_mode,  &
+                                       nc_add_attribute_to_variable, nc_check,             &
+                                       nc_get_attribute_from_variable,                     &
                                        nc_define_double_scalar, nc_define_double_variable, &
-                                       nc_get_variable, nc_put_variable, &
+                                       nc_get_variable, nc_put_variable,                   &
                                        nc_define_dimension, nc_define_unlimited_dimension
 
 use netcdf,                     only : NF90_MAX_VAR_DIMS, NF90_MAX_NAME, nf90_noerr, &
-                                       nf90_inquire_variable, nf90_inquire, &
-                                       nf90_inq_varid, nf90_inq_dimid, &
+                                       nf90_inquire_variable, nf90_inquire,          &
+                                       nf90_inq_varid, nf90_inq_dimid,               &
                                        nf90_inquire_dimension
 
 use utilities_mod,              only : find_namelist_in_file, check_namelist_read,  &
@@ -217,6 +217,7 @@ allocate(block_lats (final_nzs, maxval(haloed_nys), maxval(haloed_nxs)), &
 do varid = 1, ions_files(1)%nVariables
    ! I do not know the names and it looks like the nc utilities don't have a way to find those
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
+   call nc_check(ncstatus, 'model_to_dart', 'nf90_inquire for ions files')
    ! Find the physcial field
    if (name /= 'time') then
       call nc_define_double_variable(filter_file%ncid, name, dart_dimnames)
@@ -234,6 +235,7 @@ end do
 ! The filter_file is still in define mode. Create all of the variables before entering data mode.
 do varid = 1, neutrals_files(1)%nVariables
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
+   call nc_check(ncstatus, 'model_to_dart', 'nf90_inquire for neutrals files')
    ! Find the physcial fields
    if (name /= 'time') then
       call nc_define_double_variable(filter_file%ncid, name, dart_dimnames)
@@ -328,6 +330,7 @@ do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
+   call nc_check(ncstatus, 'model_to_dart', 'nf90_inquire_variable for ions files')
 
    if(name == 'time') then
       ! Time must be the same in all files, so just deal with it from the first one
@@ -370,6 +373,7 @@ do varid = 1, neutrals_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
+   call nc_check(ncstatus, 'model_to_dart', 'nf90_inquire_variable for neutrals files')
 
    ! Already got time from ions files
    if(name /= 'time') then
@@ -554,12 +558,14 @@ filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
 ncstatus = nf90_inquire(ions_files(1)%ncid, ions_files(1)%nDimensions, &
    ions_files(1)%nVariables, ions_files(1)%nAttributes,  ions_files(1)%unlimitedDimId, &
    ions_files(1)%formatNum)
+call nc_check(ncstatus, 'dart_to_model', 'nf90_inquire for ions files')
 
 ! Get full spatial field for one variable at a time
 do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
+   call nc_check(ncstatus, 'dart_to_model', 'nf90_inquire_variable for ions files')
    if(name /= 'time' .and. name /= 'Altitude' .and. name /= 'Latitude' &
       .and. name /= 'Longitude') then
       ! See if this variable is also in the filter output file
@@ -594,12 +600,14 @@ end do
 ncstatus = nf90_inquire(neutrals_files(1)%ncid, neutrals_files(1)%nDimensions, &
    neutrals_files(1)%nVariables, neutrals_files(1)%nAttributes,  neutrals_files(1)%unlimitedDimId, &
    neutrals_files(1)%formatNum)
+   call nc_check(ncstatus, 'dart_to_model', 'nf90_inquire for neutrals files')
 
 ! Get full spatial field for one variable at a time
 do varid = 1, neutrals_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
+   call nc_check(ncstatus, 'dart_to_model', 'nf90_inquire_variable for neutrals files')
    if(name /= 'time' .and. name /= 'Altitude' .and. name /= 'Latitude' &
       .and. name /= 'Longitude') then
       ! See if this variable is also in the filter output file
@@ -678,9 +686,11 @@ do iblock = 1, nblocks
    ncstatus = nf90_inquire(files(iblock)%ncid, files(iblock)%nDimensions, &
       files(iblock)%nVariables, files(iblock)%nAttributes, &
        files(iblock)%unlimitedDimId, files(iblock)%formatNum)
+   call nc_check(ncstatus, 'get_aether_block_dimensions', 'nf90_inquire')
 
    ! Verify that a single time level exists
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'time', dimid)
+   call nc_check(ncstatus, 'get_aether_block_dimensions', 'nf90_inq_dimid')
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(length /= 1 .or. ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
@@ -688,6 +698,7 @@ do iblock = 1, nblocks
 
    ! Get the length of x dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'x', dimid)
+   call nc_check(ncstatus, 'get_aether_block_dimensions', 'nf90_inq_dimid')
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
@@ -696,6 +707,7 @@ do iblock = 1, nblocks
 
    ! Get the length of y dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'y', dimid)
+   call nc_check(ncstatus, 'get_aether_block_dimensions', 'nf90_inq_dimid')
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
@@ -704,6 +716,7 @@ do iblock = 1, nblocks
 
    ! Get the length of z dimension
    ncstatus = nf90_inq_dimid(files(iblock)%ncid, 'z', dimid)
+   call nc_check(ncstatus, 'get_aether_block_dimensions', 'nf90_inq_dimid')
    ncstatus = nf90_inquire_dimension(files(iblock)%ncid, dimid, name, length)
    if(ncstatus /= 0) &
       call error_handler(E_ERR, 'get_aether_block_dimensions', &
