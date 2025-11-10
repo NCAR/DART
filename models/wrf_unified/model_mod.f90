@@ -36,7 +36,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
 
 use state_structure_mod, only : add_domain, get_domain_size, get_model_variable_indices, &
                                 get_dim_name, get_num_dims, get_dart_vector_index, &
-                                get_varid_from_kind, get_varid_from_varname
+                                get_varid_from_kind, get_varid_from_varname, state_structure_info
 
 use distributed_state_mod, only : get_state_array, get_state
 
@@ -109,7 +109,6 @@ use         map_utils, only : latlon_to_ij, &
 
 use netcdf ! no get_char in netcdf_utilities_mod
 
-implicit none
 private
 
 ! routines required by DART code - will be called from filter and other
@@ -151,6 +150,9 @@ integer, allocatable :: wrf_dom(:) ! This needs a better name, it is the id from
 character(len=NF90_MAX_NAME) :: wrf_state_variables(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS) = 'NULL'
 character(len=NF90_MAX_NAME) :: wrf_state_bounds(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES) = 'NULL'
 integer :: num_domains = 1
+logical :: chemistry_separate_file = .false.
+character(len=NF90_MAX_NAME) :: chem_state_variables(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS) = 'NULL'
+character(len=NF90_MAX_NAME) :: chem_state_bounds(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES) = 'NULL'
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
 ! Max height a surface obs can be away from the actual model surface
@@ -182,6 +184,9 @@ logical, parameter :: restrict_polar = .false. !HK what is this for? Hardcoded i
 namelist /model_nml/ &
 wrf_state_variables, &
 wrf_state_bounds, &
+chemistry_separate_file, &
+chem_state_variables, &
+chem_state_bounds, &
 num_domains, &
 calendar_type, &
 assimilation_period_seconds, &
@@ -251,6 +256,8 @@ logical, allocatable :: domain_mask(:)
 integer :: i, field ! loop indices
 character (len=1)     :: idom ! assumes <=9
 
+character(len=256) :: errstring
+
 module_initialized = .true.
 
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -263,7 +270,7 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar_type)
 
-allocate(wrf_dom(num_domains), grid(num_domains), stat_dat(num_domains))
+allocate(wrf_dom(num_state_domains()), grid(num_domains), stat_dat(num_domains))
 
 call verify_state_variables(nfields, varname, state_qty, update_var, in_domain)
 allocate(domain_mask(nfields))
@@ -290,14 +297,48 @@ do i = 1, num_domains
    
 enddo
 
+deallocate(domain_mask)
+
+if (chemistry_separate_file) then
+   call verify_chem_state_variables(nfields, varname, state_qty, update_var, in_domain)
+   allocate(domain_mask(nfields))
+   bounds(:,:) = MISSING_R8 ! default to no clamping
+
+   do i = 1, num_domains
+
+     do field = 1, nfields
+        domain_mask(field) = variable_is_on_domain(in_domain(field), i)
+        call get_chem_variable_bounds(varname(field),lower(field),upper(field))
+     end do
+
+     n = count(domain_mask)
+     bounds(1:n, 1) = pack(lower(1:nfields),domain_mask)
+     bounds(1:n, 2) = pack(upper(1:nfields),domain_mask)
+
+     write( idom , '(I1)') i
+     wrf_dom(num_domains + i) = add_domain('wrfchem_d0'//idom, &
+                     num_vars = n, &
+                     var_names = pack(varname(1:nfields), domain_mask), &
+                     kind_list = pack(state_qty(1:nfields), domain_mask), &
+                     clamp_vals  = bounds(1:n,:), &
+                     update_list = pack(update_var(1:nfields), domain_mask) )
+   
+   enddo
+
+   deallocate(domain_mask)
+
+endif
+
 call read_grid()
 call read_static_data()
 
 call set_vertical_localization_coord(vert_localization_coord)
- 
-deallocate(domain_mask)
 
-end subroutine static_init_model
+write(errstring,*) ' wrf model size is ', get_model_size()
+call error_handler(E_MSG, 'static_init_model', errstring)
+
+
+end subroutine static_init_model 
 
 !------------------------------------------------------------------
 ! Returns the number of items in the state vector as an i8 integer.
@@ -309,11 +350,26 @@ integer :: i
 if ( .not. module_initialized ) call static_init_model
 
 get_model_size = 0
-do i = 1, num_domains
+do i = 1, num_state_domains()
    get_model_size = get_model_size + get_domain_size(wrf_dom(i))
 enddo
 
 end function get_model_size
+!------------------------------------------------------------------
+
+function num_state_domains()
+
+integer :: num_state_domains
+
+if ( .not. module_initialized ) call static_init_model
+
+if (chemistry_separate_file) then
+   num_state_domains = num_domains * 2
+else
+   num_state_domains = num_domains
+endif
+
+end function num_state_domains
 
 !------------------------------------------------------------------
 subroutine model_interpolate(state_handle, ens_size, location, qty_in, expected_obs, istatus)
@@ -366,6 +422,7 @@ if (.not. able_to_interpolate_qty(id, qty_in) ) then
    return
 endif
 
+! HK @todo should this go before the able_to_interpolate_qty check?
 qty = update_qty_if_location_is_surface(qty_in, location)
 
 ! horizontal location mass point
@@ -856,13 +913,14 @@ end subroutine get_wrf_date
 !------------------------------------------------------------------
 ! Verify that the namelist was filled in correctly
 ! and check there are valid entries for the dart qty.
-subroutine verify_state_variables(nvar, varname, qty, update, in_domain)
 
+subroutine verify_state_variables_generic(nvar, varname, qty, update, in_domain, variable_table)
 integer,           intent(out) :: nvar
 character(len=NF90_MAX_NAME), intent(out) :: varname(MAX_STATE_VARIABLES)
 integer,           intent(out) :: qty(MAX_STATE_VARIABLES)
 logical,           intent(out) :: update(MAX_STATE_VARIABLES)
 character(len=9),  intent(out) :: in_domain(MAX_STATE_VARIABLES) ! assumes <=9 or 999
+character(len=NF90_MAX_NAME), intent(in) :: variable_table(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS)
 
 integer :: i
 character(len=NF90_MAX_NAME) :: qty_str, update_str
@@ -872,16 +930,14 @@ if ( .not. module_initialized ) call static_init_model
 
 nvar = 0
 varloop: do i = 1, MAX_STATE_VARIABLES
+   if ( variable_table(NUM_STATE_TABLE_COLUMNS*i -3) == 'NULL ' ) exit varloop ! Found end of list.
 
-   if ( wrf_state_variables(NUM_STATE_TABLE_COLUMNS*i -3) == 'NULL ' ) exit varloop ! Found end of list. !HK do you need to test all columns for ' '?
-
-   varname(i)   = trim(wrf_state_variables(NUM_STATE_TABLE_COLUMNS*i -3))
-   qty_str      = trim(wrf_state_variables(NUM_STATE_TABLE_COLUMNS*i -2))
-   update_str   = trim(wrf_state_variables(NUM_STATE_TABLE_COLUMNS*i -1))
-   in_domain(i) = trim(wrf_state_variables(NUM_STATE_TABLE_COLUMNS*i   ))
+   varname(i)   = trim(variable_table(NUM_STATE_TABLE_COLUMNS*i -3))
+   qty_str      = trim(variable_table(NUM_STATE_TABLE_COLUMNS*i -2))
+   update_str   = trim(variable_table(NUM_STATE_TABLE_COLUMNS*i -1))
+   in_domain(i) = trim(variable_table(NUM_STATE_TABLE_COLUMNS*i   ))
 
    call to_upper(update_str)
-   
 
    ! Make sure DART qty is valid
    qty(i) = get_index_for_quantity(qty_str)
@@ -889,7 +945,7 @@ varloop: do i = 1, MAX_STATE_VARIABLES
       write(string1,'(''there is no QTY <'',a,''> in obs_kind_mod.f90'')') trim(qty_str)
       call error_handler(E_ERR,'verify_state_variables',string1)
    endif
-   
+
    ! Force QTY_TEMPERATURE to  QTY_POTENTIAL_TEMPERATURE
    if (qty(i) == QTY_TEMPERATURE) qty(i) = QTY_POTENTIAL_TEMPERATURE
 
@@ -912,40 +968,59 @@ varloop: do i = 1, MAX_STATE_VARIABLES
          write(string2,'(6A)') 'you provided : ', trim(varname(i)), ', ', trim(qty_str), ', ', trim(update_str)
          call error_handler(E_ERR,'verify_state_variables',string1, text2=string2)
    end select
-   
+
    nvar = nvar + 1
-
 enddo varloop
+end subroutine verify_state_variables_generic
 
+! Wrapper for state variables
+subroutine verify_state_variables(nvar, varname, qty, update, in_domain)
+  integer,           intent(out) :: nvar
+  character(len=NF90_MAX_NAME), intent(out) :: varname(MAX_STATE_VARIABLES)
+  integer,           intent(out) :: qty(MAX_STATE_VARIABLES)
+  logical,           intent(out) :: update(MAX_STATE_VARIABLES)
+  character(len=9),  intent(out) :: in_domain(MAX_STATE_VARIABLES)
+  call verify_state_variables_generic(nvar, varname, qty, update, in_domain, wrf_state_variables)
 end subroutine verify_state_variables
+
+! Wrapper for chemistry variables
+subroutine verify_chem_state_variables(nvar, varname, qty, update, in_domain)
+  integer,           intent(out) :: nvar
+  character(len=NF90_MAX_NAME), intent(out) :: varname(MAX_STATE_VARIABLES)
+  integer,           intent(out) :: qty(MAX_STATE_VARIABLES)
+  logical,           intent(out) :: update(MAX_STATE_VARIABLES)
+  character(len=9),  intent(out) :: in_domain(MAX_STATE_VARIABLES)
+  call verify_state_variables_generic(nvar, varname, qty, update, in_domain, chem_state_variables)
+end subroutine verify_chem_state_variables
 
 !------------------------------------------------------------------
 ! matches WRF variable name in bounds table to input name, and assigns
 ! the bounds and if the variable is in the state
-subroutine get_variable_bounds(var_name, lower, upper)
+subroutine get_variable_bounds_generic(var_name, lower, upper, bounds_table)
 
 character(len=*), intent(in)    :: var_name
 real(r8),         intent(out)   :: lower,upper  ! bounds
+character(len=NF90_MAX_NAME), intent(in) :: bounds_table(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES)
 character(len=50)               :: bound_trim
 integer :: ivar
 
-! defualt to no bounds
+! default to no bounds
 lower = MISSING_R8
 upper = MISSING_R8
 
 ivar = 1
-do while ( trim(wrf_state_bounds(1,ivar)) /= 'NULL' )
+do while ( trim(bounds_table(1,ivar)) /= 'NULL' )
 
-  if ( trim(wrf_state_bounds(1,ivar)) == trim(var_name) ) then
+  if ( trim(bounds_table(1,ivar)) == trim(var_name) ) then
 
-     bound_trim = trim(wrf_state_bounds(2,ivar))
+     bound_trim = trim(bounds_table(2,ivar))
      if ( bound_trim  /= 'NULL' ) then
         read(bound_trim,'(d16.8)') lower
      else
         lower = MISSING_R8
      endif
 
-     bound_trim = trim(wrf_state_bounds(3,ivar))
+     bound_trim = trim(bounds_table(3,ivar))
      if ( bound_trim  /= 'NULL' ) then
         read(bound_trim,'(d16.8)') upper
      else
@@ -958,7 +1033,21 @@ do while ( trim(wrf_state_bounds(1,ivar)) /= 'NULL' )
 
 enddo
 
+end subroutine get_variable_bounds_generic
+
+! Wrapper for state variables
+subroutine get_variable_bounds(var_name, lower, upper)
+character(len=*), intent(in)  :: var_name
+real(r8),         intent(out) :: lower, upper
+call get_variable_bounds_generic(var_name, lower, upper, wrf_state_bounds)
 end subroutine get_variable_bounds
+
+! Wrapper for chemistry variables
+subroutine get_chem_variable_bounds(var_name, lower, upper)
+character(len=*), intent(in)  :: var_name
+real(r8),         intent(out) :: lower, upper
+call get_variable_bounds_generic(var_name, lower, upper, chem_state_bounds)
+end subroutine get_chem_variable_bounds
 
 
 !------------------------------------------------------------------
@@ -1892,12 +1981,14 @@ integer :: get_wrf_domain
 
 integer :: i
 
-do i = 1, num_domains
+do i = 1, num_state_domains()
    if (wrf_dom(i) == state_id) then
-      get_wrf_domain = i
+      get_wrf_domain = mod(i-1, num_domains) + 1
       return
    endif
 enddo
+
+get_wrf_domain = -1 ! not found
 
 end function get_wrf_domain
 
@@ -2889,10 +2980,10 @@ integer :: dom_id
 
 dom_id = get_wrf_domain(state_id)
 
-if ( on_u_grid(state_id, var_id) ) then
+if ( on_u_grid(dom_id, var_id) ) then
    long = grid(dom_id)%longitude_u(i,j)
    lat = grid(dom_id)%latitude_u(i,j)
-elseif ( on_v_grid(state_id, var_id) ) then
+elseif ( on_v_grid(dom_id, var_id) ) then
    long = grid(dom_id)%longitude_v(i,j)
    lat = grid(dom_id)%latitude_v(i,j)
 else ! on mass grid
@@ -2998,7 +3089,7 @@ end function within_bounds_horizontal
 !------------------------------------------------------------------
 function able_to_interpolate_qty(id, qty)
 
-integer, intent(in) :: id
+integer, intent(in) :: id ! grid domain id
 integer, intent(in) :: qty
 
 logical :: able_to_interpolate_qty
@@ -3029,7 +3120,12 @@ select case (qty)
       able_to_interpolate_qty = qty_in_domain(id, QTY_POTENTIAL_TEMPERATURE)
 
    case default
-     able_to_interpolate_qty = qty_in_domain(id, qty)
+     if (chemistry_separate_file) then
+       able_to_interpolate_qty = qty_in_domain(id, qty) .or. &
+                                 qty_in_domain(id+num_domains, qty)  ! chemistry variables stored in separate file
+     else
+       able_to_interpolate_qty = qty_in_domain(id, qty)
+     endif
 
 end select
 
