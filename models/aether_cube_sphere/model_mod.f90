@@ -5,8 +5,6 @@
 
 module model_mod
 
-use           netcdf
-
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength, DEG2RAD, RAD2DEG, &
                              vtablenamelength
 
@@ -439,12 +437,10 @@ end subroutine nc_write_model_atts
 
 subroutine read_template_file()
 
-integer               :: dimid, varid, number_of_columns, ncid, ncstatus
-character(len=256)    :: name, file_path
+integer               :: number_of_columns, ncid
 
 ! Gets altitudes and number of points per face row from an Aether template file
-file_path = trim(template_file)
-ncid = nc_open_file_readonly(file_path)
+ncid = nc_open_file_readonly(trim(template_file))
 
 ! Get the number of vertical levels
 ncenter_altitudes =  nc_get_dimension_size(ncid, 'z')
