@@ -267,6 +267,8 @@ end subroutine get_expected_upper_atm_density
 !-----------------------------------------------------------------------------
 
 ! THIS SUBROUTINE NEEDS ADDITIONAL INPUT FROM AETHER SCIENTISTS
+! This routine is legacy and it is unclear that the method for getting the total
+! electon content by summing the ions concentrations is scientifically correct.
 
 subroutine get_expected_gnd_gps_vtec(state_handle, ens_size, location, obs_val, istatus)
 
@@ -404,66 +406,8 @@ loc_vals = get_location(location)
 sat_pos = sat_position(1:3, igrkey)
 ground_pos = ground_position(1:3, igrkey)
 
-nAlts = 0
-LEVELS: do iAlt=1, size(ALT,2)+1
-   ! loop over levels.  if we get to one more than the allocated array size,
-   ! this model must have more levels than we expected.  increase array sizes,
-   ! recompile, and try again.
-
-   if (iAlt > size(ALT,2)) then
-      write(string1,'(''more than '',i4,'' levels in the model.'')') MAXLEVELS
-      string2='increase MAXLEVELS in obs_def_upper_atm_mod.f90, rerun preprocess and recompile.'
-      call error_handler(E_ERR, 'get_expected_slant_gps_vtec', string1, &
-           source, revision, revdate, text2=string2)
-   endif
-
-   ! At each altitude interpolate the 2D IDensityS_ie to the lon-lat where data 
-   ! point is located. After this loop we will have a column centered at the data 
-   ! point's lon-lat and at all model altitudes.
-   probe = set_location(loc_vals(1), loc_vals(2), real(iAlt, r8), VERTISLEVEL) !probe is where we have data 
-
-   call interpolate(state_handle, ens_size, probe, QTY_DENSITY_ION_E, IDensityS_ie(:, iAlt), this_istatus) 
-   call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
-   if (any(istatus /= 0)) exit LEVELS
-
-   call interpolate(state_handle, ens_size, probe, QTY_GEOMETRIC_HEIGHT, ALT(:, iAlt), this_istatus) 
-
-   call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
- 
-   if (any(istatus /= 0)) exit LEVELS
-   
-   nAlts = nAlts+1
-enddo LEVELS
-
-! failed first time through loop - no values to return.
-if (nAlts == 0) then
-   obs_val(:) = MISSING_R8
-   return
-endif
-
-istatus(:) = 0
-
-do i=1,ens_size
-   if (any(IDensityS_ie(i,1:nAlts) == MISSING_R8) .or. any(ALT(i,1:nAlts) == MISSING_R8)) then
-      ! mark the ensemble member as having failed
-      istatus(i) = 1
-   end if
-end do
-
-! Set all ensemble members tec to zero for summation
-tec=0.0_r8
-
-do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
-   !area of a trapezoid: A = (h2-h1) * (f2+f1)/2
-   where (istatus == 0) &
-      tec = tec + ( ALT(:, iAlt+1)-ALT(:, iAlt) )  * ( IDensityS_ie(:, iAlt+1)+IDensityS_ie(:, iAlt) ) /2.0_r8
-enddo
-
-where (istatus == 0) 
-   obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
-elsewhere 
-   obs_val = MISSING_R8
-end where
+! Until slant gps operator is written, just default to regular vtec
+call get_expected_gnd_gps_vtec(state_handle, ens_size, location, obs_val, istatus)
 
 end subroutine get_expected_slant_gps_vtec
 
