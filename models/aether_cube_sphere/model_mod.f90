@@ -28,7 +28,8 @@ use obs_kind_mod,     only : get_index_for_quantity, QTY_GEOMETRIC_HEIGHT
 
 use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file,           &
                                  nc_add_global_creation_time, nc_begin_define_mode,       & 
-                                 nc_end_define_mode, nc_open_file_readonly, nc_close_file
+                                 nc_end_define_mode, nc_open_file_readonly, nc_close_file, &
+                                 nc_get_dimension_size, nc_get_variable
 
 use distributed_state_mod, only : get_state
 
@@ -105,13 +106,6 @@ type(time_type) :: state_time
 
 ! Horizontal column dimension rather than being direct functions of latitude and longitude.
 integer               :: no_third_dimension = -99
-
-! This is redundant with type defined in transform_state_mod
-type :: file_type
-   character(len=256) :: file_path
-   integer            :: ncid, ncstatus, unlimitedDimId
-   integer            ::  nDimensions, nVariables, nAttributes, formatNum
-end type file_type
 
 ! Namelist for options to be set at runtime.
 character(len=256)              :: template_file           = 'filter_input_0001.nc'
@@ -445,32 +439,26 @@ end subroutine nc_write_model_atts
 
 subroutine read_template_file()
 
-integer               :: dimid, varid, number_of_columns
-character(len=256)    :: name
-type(file_type)       :: templatefile
+integer               :: dimid, varid, number_of_columns, ncid, ncstatus
+character(len=256)    :: name, file_path
 
 ! Gets altitudes and number of points per face row from an Aether template file
-templatefile%file_path = trim(template_file)
-templatefile%ncid = nc_open_file_readonly(templatefile%file_path)
+file_path = trim(template_file)
+ncid = nc_open_file_readonly(file_path)
 
 ! Get the number of vertical levels
-templatefile%ncstatus = nf90_inq_dimid(templatefile%ncid, 'z', dimid)
-templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, &
-   name, ncenter_altitudes)
+ncenter_altitudes =  nc_get_dimension_size(ncid, 'z')
 
 ! Allocate space for vertical levels
 allocate(center_altitude(ncenter_altitudes))
 
 ! Get the vertical levels
-templatefile%ncstatus = nf90_inq_varid(templatefile%ncid, 'alt', varid)
-templatefile%ncstatus = nf90_get_var(templatefile%ncid, varid, center_altitude)
+call nc_get_variable(ncid, 'alt', center_altitude)
 
 ! Get the number of columns
-templatefile%ncstatus = nf90_inq_dimid(templatefile%ncid, 'col', dimid)
-templatefile%ncstatus = nf90_inquire_dimension(templatefile%ncid, dimid, &
-   name, number_of_columns)
+number_of_columns = nc_get_dimension_size(ncid, 'col')
 
-call nc_close_file(templatefile%ncid)
+call nc_close_file(ncid)
 
 ! Compute the number of grid rows across a face
 np = nint(sqrt(number_of_columns / 6.0_r8))
