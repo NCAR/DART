@@ -7,7 +7,7 @@
 
 module transform_state_mod
 
-use types_mod,                  only : r4, r8, varnamelength, RAD2DEG
+use types_mod,                  only : r8, varnamelength, RAD2DEG
 
 use netcdf_utilities_mod,       only : nc_open_file_readonly, nc_open_file_readwrite, &
                                        nc_close_file, nc_create_file, nc_end_define_mode, &
@@ -89,9 +89,9 @@ logical  :: add_to_electrons
 character(len = 4)           :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :)
-! File for reading in variables from block file; These can be R4
-real(r4),        allocatable :: spatial_array(:), variable_array(:, :, :), electron_array(:, :)
-real(r4),        allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
+! File for reading in variables from block file
+real(r8),        allocatable :: spatial_array(:), variable_array(:, :, :), electron_array(:, :)
+real(r8),        allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
 type(file_type), allocatable :: ions_files(:), neutrals_files(:), grid_files(:)
 type(file_type)              :: filter_file
 
@@ -441,9 +441,9 @@ integer  :: dimids(NF90_MAX_VAR_DIMS)
 character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :)
-! File for reading in variables from block file; These can be R4
-real(r4),        allocatable :: variable_array(:, :, :)
-real(r4),        allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
+! File for reading in variables from block file
+real(r8),        allocatable :: variable_array(:, :, :)
+real(r8),        allocatable :: block_array(:, :, :), block_lats(:, :, :), block_lons(:, :, :)
 type(file_type), allocatable :: ions_files(:), neutrals_files(:), grid_files(:)
 type(file_type)              :: filter_file
 
