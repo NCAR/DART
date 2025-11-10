@@ -7,8 +7,8 @@
 
 module transform_state_mod
 
-use netcdf
 use types_mod,                  only : r4, r8, varnamelength, RAD2DEG
+
 use netcdf_utilities_mod,       only : nc_open_file_readonly, nc_open_file_readwrite, &
                                        nc_close_file, nc_create_file, nc_end_define_mode, &
                                        nc_add_attribute_to_variable, &
@@ -17,8 +17,13 @@ use netcdf_utilities_mod,       only : nc_open_file_readonly, nc_open_file_readw
                                        nc_get_variable, nc_put_variable, &
                                        nc_define_dimension, nc_define_unlimited_dimension
 
+use netcdf,                     only : NF90_MAX_VAR_DIMS, NF90_MAX_NAME, nf90_noerr, &
+                                       nf90_inquire_variable, nf90_inquire, &
+                                       nf90_inq_varid, nf90_inq_dimid, &
+                                       nf90_inquire_dimension
+
 use utilities_mod,              only : find_namelist_in_file, check_namelist_read,  &
-                                       error_handler, E_ERR, string_to_integer
+                                       error_handler, E_ERR
 
 use cube_sphere_grid_tools_mod, only : lat_lon_to_col_index, get_grid_delta
 
@@ -69,7 +74,7 @@ subroutine model_to_dart(aether_block_file_dir, dart_file_dir, ensemble_number)
 character(len=*), intent(in) :: aether_block_file_dir, dart_file_dir
 integer,          intent(in) :: ensemble_number
 
-integer  :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
+integer  :: iblock, length, ncols, varid, xtype, nDimensions, nAtts
 integer  :: nparams
 integer  :: ix, iy, iz, icol, ncstatus
 integer  :: ntimes(nblocks), nxs(nblocks), nys(nblocks)
@@ -213,7 +218,7 @@ do varid = 1, ions_files(1)%nVariables
    ! I do not know the names and it looks like the nc utilities don't have a way to find those
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    ! Find the physcial field
-   if (trim(name) /= 'time') then
+   if (name /= 'time') then
       call nc_define_double_variable(filter_file%ncid, name, dart_dimnames)
       ! Add the units, same in all files so just get from the first
       call nc_get_attribute_from_variable(ions_files(1)%ncid, name, 'units', attribute)
@@ -230,7 +235,7 @@ end do
 do varid = 1, neutrals_files(1)%nVariables
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, varid, name, xtype, nDimensions, dimids, nAtts)
    ! Find the physcial fields
-   if (trim(name) /= 'time') then
+   if (name /= 'time') then
       call nc_define_double_variable(filter_file%ncid, name, dart_dimnames)
       ! Add the units, same in all files so just get from the first
       call nc_get_attribute_from_variable(neutrals_files(1)%ncid, name, 'units', attribute)
@@ -324,7 +329,7 @@ do varid = 1, ions_files(1)%nVariables
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
 
-   if(trim(name) == 'time') then
+   if(name == 'time') then
       ! Time must be the same in all files, so just deal with it from the first one
       call nc_get_variable(ions_files(1)%ncid, 'time', time_array)
       call nc_put_variable(filter_file%ncid, 'time', time_array)
@@ -332,7 +337,7 @@ do varid = 1, ions_files(1)%nVariables
       ! NOTE TO AETHER MODELERS: Make sure this is the correct way to get total
       ! See if this is a density; if so, needs to be added into electrons
       call nc_get_attribute_from_variable(ions_files(1)%ncid, name, 'units', attribute)
-      add_to_electrons = trim(attribute) == '/m3'
+      add_to_electrons = attribute == '/m3'
 
       ! Loop through all the blocks for this variable
       do iblock = 1, nblocks
@@ -367,7 +372,7 @@ do varid = 1, neutrals_files(1)%nVariables
       varid, name, xtype, nDimensions, dimids, nAtts)
 
    ! Already got time from ions files
-   if(trim(name) /= 'time') then
+   if(name /= 'time') then
       ! Loop through all the blocks for this variable
       do iblock = 1, nblocks
          ! Read into the full 3Dblock array
@@ -426,13 +431,12 @@ character(len=*), intent(in) :: dart_file_dir, aether_block_file_dir
 integer,          intent(in) :: ensemble_number
 
 real(r8) :: blat, blon, del, half_del, f10_7_scalar
-integer  :: iblock, dimid, length, ncols, varid, xtype, nDimensions, nAtts
+integer  :: iblock, length, ncols, varid, xtype, nDimensions, nAtts
 integer  :: ix, iy, iz, icol, ncstatus, filter_varid
 integer  :: nxs(nblocks),          nys(nblocks),          final_nzs
 integer  :: ions_nxs(nblocks),     ions_nys(nblocks),     ions_final_nzs
 integer  :: neutrals_nxs(nblocks), neutrals_nys(nblocks), neutrals_final_nzs
 integer  :: haloed_nxs(nblocks),   haloed_nys(nblocks)
-integer  :: grid_alt_id,   grid_lat_id,   grid_lon_id
 integer  :: dimids(NF90_MAX_VAR_DIMS)
 character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
@@ -511,11 +515,6 @@ if(any(neutrals_nxs /= nxs) .or. any(neutrals_nys /= nys)) &
 
 !=========== Get alt lat and lon from grid files =================
 
-! Find the latitude and longitude information from the grid files and get the column mapping
-ncstatus = nf90_inq_varid(grid_files(1)%ncid, 'Altitude',  grid_alt_id)
-ncstatus = nf90_inq_varid(grid_files(1)%ncid, 'Latitude',  grid_lat_id)
-ncstatus = nf90_inq_varid(grid_files(1)%ncid, 'Longitude', grid_lon_id)
-
 ! Allocate storage for the latitude and longitude from the blocks
 allocate(col_index(nblocks, maxval(nys), maxval(nxs)), &
          variable_array(ncols, final_nzs, 1), &
@@ -526,8 +525,8 @@ allocate(col_index(nblocks, maxval(nys), maxval(nxs)), &
 ! Loop through all the blocks
 do iblock = 1, nblocks
    ! Get the latitude and longitude full arrays 
-   ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lat_id, block_lats)
-   ncstatus = nf90_get_var(grid_files(iblock)%ncid, grid_lon_id, block_lons)
+   call nc_get_variable(grid_files(iblock)%ncid, 'Latitude', block_lats)
+   call nc_get_variable(grid_files(iblock)%ncid, 'Longitude', block_lons)
 
    ! Compute the col_index for each of the horizontal locations in this block 
    do ix = 1, nxs(iblock)
@@ -551,6 +550,7 @@ filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
 ! Note that this preserves all fields in the ions and neutrals files that
 ! were not part of the DART state
 
+! Get number of variables in the ions files
 ncstatus = nf90_inquire(ions_files(1)%ncid, ions_files(1)%nDimensions, &
    ions_files(1)%nVariables, ions_files(1)%nAttributes,  ions_files(1)%unlimitedDimId, &
    ions_files(1)%formatNum)
@@ -560,16 +560,16 @@ do varid = 1, ions_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(ions_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
-   if(trim(name) /= 'time' .and. trim(name) /= 'Altitude' .and. trim(name) /= 'Latitude' &
-      .and. trim(name) /= 'Longitude') then
+   if(name /= 'time' .and. name /= 'Altitude' .and. name /= 'Latitude' &
+      .and. name /= 'Longitude') then
       ! See if this variable is also in the filter output file
-      ncstatus = nf90_inq_varid(filter_file%ncid, trim(name), filter_varid)
-      ! Check on failed ncstatus. 0 is successful but should use the proper name
-      if(ncstatus == 0) then
+      ncstatus = nf90_inq_varid(filter_file%ncid, name, filter_varid)
+      ! Check for successful return status
+      if(ncstatus == nf90_noerr) then
          ! Read this field from filter file 
-         ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array)
+         call nc_get_variable(filter_file%ncid, name, variable_array)
 
-! CAN WE UPDATE THE HALOS TOO WHEN WRITING BACK???
+! WE COULD UPDATE THE HALOS TOO WHEN WRITING BACK
          ! Loop through all the blocks for this variable
          block_array = 0.0_r8
          do iblock = 1, nblocks
@@ -582,7 +582,7 @@ do varid = 1, ions_files(1)%nVariables
                end do
             end do
             ! Write into the full file for this block
-            ncstatus = nf90_put_var(ions_files(iblock)%ncid, varid, block_array)
+            call nc_put_variable(ions_files(iblock)%ncid, name, block_array)
          end do
       endif
    end if
@@ -600,14 +600,14 @@ do varid = 1, neutrals_files(1)%nVariables
    ! Get metadata for this variable from first block file 
    ncstatus = nf90_inquire_variable(neutrals_files(1)%ncid, &
       varid, name, xtype, nDimensions, dimids, nAtts)
-   if(trim(name) /= 'time' .and. trim(name) /= 'Altitude' .and. trim(name) /= 'Latitude' &
-      .and. trim(name) /= 'Longitude') then
+   if(name /= 'time' .and. name /= 'Altitude' .and. name /= 'Latitude' &
+      .and. name /= 'Longitude') then
       ! See if this variable is also in the filter output file
-      ncstatus = nf90_inq_varid(filter_file%ncid, trim(name), filter_varid)
-      ! Check on failed ncstatus. 0 is successful but should use the proper name
-      if(ncstatus == 0) then
+      ncstatus = nf90_inq_varid(filter_file%ncid, name, filter_varid)
+      ! Check for successful return status
+      if(ncstatus == nf90_noerr) then
          ! Read this field from filter file 
-         ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array)
+         call nc_get_variable(filter_file%ncid, name, variable_array)
 
          ! Loop through all the blocks for this variable
          block_array = 0.0_r8
@@ -621,7 +621,7 @@ do varid = 1, neutrals_files(1)%nVariables
                end do
             end do
             ! Write into the full file for this block
-            ncstatus = nf90_put_var(neutrals_files(iblock)%ncid, varid, block_array)
+            call nc_put_variable(neutrals_files(iblock)%ncid, name, block_array)
          end do
       endif
    end if
@@ -631,13 +631,12 @@ end do
 
 ! NOTE FOR AETHER MODELERS:
 ! Need more information about where F10.7 will be in Aether input files to complete copy back
-ncstatus = nf90_inq_varid(filter_file%ncid, 'F10.7', filter_varid)
 if(scalar_f10_7) then
    ! Read a scalar f10_7 value
-   ncstatus = nf90_get_var(filter_file%ncid, filter_varid, f10_7_scalar)
+   call nc_get_variable(filter_file%ncid, 'F10.7', f10_7_scalar)
 else
    ! Read a column sized f10_7 value
-   ncstatus = nf90_get_var(filter_file%ncid, filter_varid, variable_array(:, 1, 1))
+   call nc_get_variable(filter_file%ncid, '2D_F10.7', variable_array(:, 1, 1))
    ! Average the updated value over all the columns
    f10_7_scalar = sum(variable_array(:, 1, 1)) / ncols
 endif
