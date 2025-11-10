@@ -40,7 +40,7 @@ character(len=*), parameter :: source   = 'aether_cube_sphere/transform_state_mo
 
 type :: file_type
    character(len=256) :: file_path
-   integer            :: ncid, unlimitedDimId, nDimensions, nVariables, nAttributes, formatNum
+   integer            :: ncid, nVariables, nAttributes
 end type file_type
 
 ! Dimension name strings for dart filter files
@@ -442,6 +442,7 @@ integer  :: ions_nxs(nblocks),     ions_nys(nblocks),     ions_final_nzs
 integer  :: neutrals_nxs(nblocks), neutrals_nys(nblocks), neutrals_final_nzs
 integer  :: haloed_nxs(nblocks),   haloed_nys(nblocks)
 integer  :: dimids(NF90_MAX_VAR_DIMS)
+integer  :: temp_nDimensions, temp_unlimitedDimId, temp_formatNum
 character(len = 4) :: ensemble_string
 character(len=NF90_MAX_NAME) :: name, attribute
 integer,         allocatable :: col_index(:, :, :)
@@ -555,9 +556,9 @@ filter_file%ncid = nc_open_file_readonly(filter_file%file_path)
 ! were not part of the DART state
 
 ! Get number of variables in the ions files
-ncstatus = nf90_inquire(ions_files(1)%ncid, ions_files(1)%nDimensions, &
-   ions_files(1)%nVariables, ions_files(1)%nAttributes,  ions_files(1)%unlimitedDimId, &
-   ions_files(1)%formatNum)
+ncstatus = nf90_inquire(ions_files(1)%ncid, temp_nDimensions, &
+   ions_files(1)%nVariables, ions_files(1)%nAttributes,  temp_unlimitedDimId, &
+   temp_formatNum)
 call nc_check(ncstatus, 'dart_to_model', 'nf90_inquire for ions files')
 
 ! Get full spatial field for one variable at a time
@@ -597,9 +598,9 @@ end do
 !==========================================================================
 ! Loop through neutrals fields and replace with values from filter
 
-ncstatus = nf90_inquire(neutrals_files(1)%ncid, neutrals_files(1)%nDimensions, &
-   neutrals_files(1)%nVariables, neutrals_files(1)%nAttributes,  neutrals_files(1)%unlimitedDimId, &
-   neutrals_files(1)%formatNum)
+ncstatus = nf90_inquire(neutrals_files(1)%ncid, temp_nDimensions, &
+   neutrals_files(1)%nVariables, neutrals_files(1)%nAttributes, temp_unlimitedDimId, &
+   temp_formatNum)
    call nc_check(ncstatus, 'dart_to_model', 'nf90_inquire for neutrals files')
 
 ! Get full spatial field for one variable at a time
@@ -678,14 +679,15 @@ type(file_type), intent(inout) :: files(nblocks)
 integer,         intent(out)   :: nxs(nblocks), nys(nblocks), nzs
 
 integer :: iblock, b_nzs(nblocks), ncstatus, dimid, length
+integer :: temp_nDimensions, temp_unlimitedDimID, temp_formatNum
 character(len=NF90_MAX_NAME) :: name
 
 ! Look at each block
 do iblock = 1, nblocks
    ! Get info about the block file
-   ncstatus = nf90_inquire(files(iblock)%ncid, files(iblock)%nDimensions, &
+   ncstatus = nf90_inquire(files(iblock)%ncid, temp_nDimensions, &
       files(iblock)%nVariables, files(iblock)%nAttributes, &
-       files(iblock)%unlimitedDimId, files(iblock)%formatNum)
+       temp_unlimitedDimId, temp_formatNum)
    call nc_check(ncstatus, 'get_aether_block_dimensions', 'nf90_inquire')
 
    ! Verify that a single time level exists
