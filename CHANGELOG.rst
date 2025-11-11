@@ -22,6 +22,11 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 11 2025 :: Aether Cube Sphere. Tag v11.18.0**
+
+- Aether cube sphere interface added to DART.
+- SLANT_GPS_VTEC QTY and obs_def
+
 **November 3 2025 :: DART tutorial. Tag 11.17.0**
 
 - DART tutorial updated to QCEFF v11
