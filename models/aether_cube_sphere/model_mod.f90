@@ -17,7 +17,7 @@ use     location_mod, only : location_type, get_close_type, get_dist, &
                              get_location, VERTISHEIGHT, VERTISUNDEF, &
                              VERTISLEVEL
 
-use    utilities_mod, only : error_handler, E_MSG,         &
+use    utilities_mod, only : error_handler, E_MSG, E_ALLMSG,  &
                              nmlfileunit, do_nml_file, do_nml_term,                &
                              find_namelist_in_file, check_namelist_read,           &
                              find_enclosing_indices
@@ -331,7 +331,7 @@ if(trim(get_variable_name(dom_id, my_var_id)) == 'SCALAR_F10.7') then
    longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
    if (longitude < 0.0_r8) longitude = longitude + 30.0_r8  
    write(string1,*)'Longitude assigned for F10.7 state variable is', longitude
-   call error_handler(E_MSG, 'get_state_meta_data', string1, source)
+   call error_handler(E_ALLMSG, 'get_state_meta_data', string1, source)
    location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
    return                    
 end if      
