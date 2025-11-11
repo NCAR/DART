@@ -17,12 +17,12 @@ use     location_mod, only : location_type, get_close_type, get_dist, &
                              get_location, VERTISHEIGHT, VERTISUNDEF, &
                              VERTISLEVEL
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,         &
+use    utilities_mod, only : error_handler, E_MSG,         &
                              nmlfileunit, do_nml_file, do_nml_term,                &
-                             find_namelist_in_file, check_namelist_read, to_upper, &
+                             find_namelist_in_file, check_namelist_read,           &
                              find_enclosing_indices
 
-use obs_kind_mod,     only : get_index_for_quantity, QTY_GEOMETRIC_HEIGHT
+use obs_kind_mod,     only : QTY_GEOMETRIC_HEIGHT
 
 use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file,           &
                                  nc_add_global_creation_time, nc_begin_define_mode,       & 
@@ -37,9 +37,8 @@ use state_structure_mod,   only : add_domain, get_dart_vector_index, get_domain_
 
 use ensemble_manager_mod,  only : ensemble_type
 
-use cube_sphere_grid_tools_mod, only : is_point_in_triangle, is_point_in_quad, grid_to_lat_lon, &
-                                       lat_lon_to_xyz, col_index_to_lat_lon, lat_lon_to_grid,   &
-                                       get_bounding_box, lat_lon_to_col_index, get_grid_delta
+use cube_sphere_grid_tools_mod, only : col_index_to_lat_lon,    &
+                                       get_bounding_box,  get_grid_delta
 
 ! These routines are passed through from default_model_mod.
 use default_model_mod, only : pert_model_copies, read_model_time, write_model_time,    &
