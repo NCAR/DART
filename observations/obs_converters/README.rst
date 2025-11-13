@@ -377,7 +377,7 @@ converters) include:
 -  ``GRACE``: See ``./GRACE``
 -  ``GSI2DART``: :doc:`./GSI2DART/readme`
 -  ``GTSPP``: :doc:`./GTSPP/GTSPP`
--  ``HFradr``: :doc:`./HFradr/readme`
+-  ``HFradar``: :doc:`./HFradar/readme`
 -  ``MADIS``: :doc:`./MADIS/MADIS`
 -  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
