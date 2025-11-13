@@ -110,6 +110,11 @@
    outlier_threshold           = 3.0
   /
 
+&obs_def_ocean_nml
+   max_radial_vel_obs = 10000000
+   debug              = .false.
+  /
+
 &state_vector_io_nml
    buffer_state_io = .false.
    single_precision_output = .false.
@@ -203,7 +208,10 @@
                                 'GLIDER_SALINITY',
                                 'SATELLITE_BLENDED_SST',
                                 'SATELLITE_MICROWAVE_SST',
-                                'SATELLITE_INFRARED_SST'
+                                'SATELLITE_INFRARED_SST', 
+                                'HFRADAR_U_CURRENT_COMPONENT', 
+                                'HFRADAR_V_CURRENT_COMPONENT', 
+                                'HFRADAR_RADIAL_VELOCITY'
   /
 
 &location_nml
