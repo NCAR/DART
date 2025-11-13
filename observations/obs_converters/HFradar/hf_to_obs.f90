@@ -67,9 +67,9 @@ real(r8), parameter :: CM2M             = 1.0e-2_r8  ! Conversion from cm to met
 integer  :: num_copies = 1,   &   ! number of copies in sequence
             num_qc     = 1        ! number of QC entries
 
-character(len=30), dimension(3) :: obs_names = ['Eastward Sea Water Velocity' , &
+character(len=30), dimension(3) :: obs_names = ['Eastward Sea Water Velocity ' , &
                                                 'Northward Sea Water Velocity', & 
-                                                'Radial Sea Water Velocity'   ]
+                                                'Radial Sea Water Velocity   '   ]
 
 character(len=256)      :: next_infile, instrument
 character(len=512)      :: string1, string2, string3
