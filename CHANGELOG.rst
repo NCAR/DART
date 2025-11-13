@@ -22,6 +22,18 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 13 2025 :: HF Radar converter. Tag 11.19.0**
+
+New features:
+
+- High Frequency (HF) Radar ocean observation converter
+- ROMS–Rutgers: Option to use Sea Surface Height from the template file, 
+  assuming the ensemble mean is provided in that file.
+
+Bug-fix:
+
+- Corrected consistency check across restarts when fill or missing attributes are NaN. 
+
 **November 11 2025 :: Aether Cube Sphere. Tag v11.18.0**
 
 - Aether cube sphere interface added to DART.
