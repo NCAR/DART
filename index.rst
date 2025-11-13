@@ -372,12 +372,12 @@ References
    :maxdepth: 2
    :caption: Theory
 
-   theory/readme
    theory/conditional-probability-bayes-theorem
    guide/DART_LAB/DART_LAB
+   theory/readme
+   guide/qceff-examples.rst
    CLM-DART Tutorial <models/clm/tutorial/README>
    WRF-DART Tutorial <models/wrf/tutorial/README>
-   guide/qceff-examples.rst
    
 .. toctree::
    :maxdepth: 2
@@ -392,6 +392,7 @@ References
 
    models/9var/readme
    models/aether_lat-lon/readme
+   models/aether_cube_sphere/readme
    models/am2/readme
    models/bgrid_solo/readme
    models/cam-fv/readme
