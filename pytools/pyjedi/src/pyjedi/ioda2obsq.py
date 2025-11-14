@@ -1,7 +1,7 @@
 import argparse
-import yaml
 import numpy as np
 import pandas as pd
+from ._utils import _parseYamlConfig
 from ._utils import _ioda2iodaDF
 from ._utils import _iodaDF2obsqDF
 from ._utils import _buildObsSeqFromObsqDF
@@ -31,18 +31,12 @@ def main():
     print("INFO:    obs_seq output file: ", outFile)
     print("")
 
-    # Parse the YAML configuration
-    with open(configFile, 'r') as file:
-        config = yaml.safe_load(file)
-    iodaVarsConfig = config['ioda to obsq converter']['observation variables']
-    vertCoordConfig = config['ioda to obsq converter']['vertical coordinate']
+    # Parse the YAML config
+    (iodaVarsConfig, obsCategoryConfig) = _parseYamlConfig(configFile)
     if (verbose):
         print("DEBUG: IODA variable configuration: ", iodaVarsConfig)
-        print("DEBUG: vertical coordinate configuration: ", vertCoordConfig)
+        print("DEBUG: Observation category configuration: ", obsCategoryConfig)
         print("")
-
-    vertCoordName = vertCoordConfig['name']
-    vertCoordUnits = vertCoordConfig['units']
 
     # Conversion steps
     #   1. read ioda file into a pandas dataframe (which will have a different layout
@@ -53,14 +47,19 @@ def main():
     #      and then concatenate that dataframe to the main dataframe
     #   3. build a pyDARTdiags ObsSequence object from the main dataframe
     #   4. call the ObsSequence.write_obs_seq method to create the output file
-    (iodaDF, epochDT) = _ioda2iodaDF(inFile)
+    (iodaDF, epochDT) = _ioda2iodaDF(inFile, obsCategoryConfig)
+    if (verbose):
+        print("DEBUG: IODA dataframe columns: ", iodaDF.columns.tolist())
+        print("DEBUG: IODA dataframe shape: ", iodaDF.shape)
+        print("")
+
     obsqDF = pd.DataFrame()
     for iodaVarConfig in iodaVarsConfig:
         iodaVarName = iodaVarConfig['name']
         iodaVarType = iodaVarConfig['type']
         print("INFO: IODA input variable: ", iodaVarName, " (", iodaVarType, ")")
-        obsqDF = pd.concat([obsqDF, _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType,
-                                                   vertCoordName, vertCoordUnits)],
+        obsqDF = pd.concat([obsqDF, _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName,
+                                                   iodaVarType, obsCategoryConfig)],
                            ignore_index = True)
     print("")
 
