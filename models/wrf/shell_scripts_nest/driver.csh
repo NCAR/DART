@@ -20,13 +20,12 @@
 ########################################################################
 # Set the correct values here
 set paramfile = `readlink -f ${2}` # Get absolute path for param.csh from command line arg
-set datefnl   =  2017042712 # target date   YYYYMMDDHH  # set this appropriately #%%%#
+set datefnl   =  2024051912 # target date   YYYYMMDDHH  # set this appropriately #%%%#
 ########################################################################
 # Likely do not need to change anything below
 ########################################################################
 
 source $paramfile
-
 echo `uname -a`
 cd ${RUN_DIR}
 
@@ -59,11 +58,14 @@ while ( 1 == 1 )
 
    echo 'ready to check inputs'
    set domains = $NUM_DOMAINS   # from the param file
+   
    #  Check to make sure all input data exists
-   if  ( $domains == 1 ) then
-      foreach infile ( wrfinput_d01_${gdate[1]}_${gdate[2]}_mean \
-                      wrfinput_d01_${gdatef[1]}_${gdatef[2]}_mean \
-                        wrfbdy_d01_${gdatef[1]}_${gdatef[2]}_mean obs_seq.out )
+   set dn = 1
+   while ( $dn <= $domains )
+   set dchar = `echo $dn + 100 | bc | cut -b2-3`  
+      foreach infile ( wrfinput_d${dchar}_${gdate[1]}_${gdate[2]}_mean \
+                      wrfinput_d${dchar}_${gdatef[1]}_${gdatef[2]}_mean \
+                        wrfbdy_d${dchar}_${gdatef[1]}_${gdatef[2]}_mean obs_seq.out )
 
          if ( ! -e ${OUTPUT_DIR}/${datea}/${infile} ) then
             echo  "${OUTPUT_DIR}/${datea}/${infile} is missing!  Stopping the system"
@@ -71,7 +73,8 @@ while ( 1 == 1 )
             exit 2
          endif
       end
-   endif
+      @ dn++  
+   end        # loop through domains
 
    #  Clear the advance_temp directory, write in new template file, and
    # overwrite variables with the compact prior netcdf files
@@ -159,7 +162,6 @@ while ( 1 == 1 )
    ${MOVE}  icgen.o* ${OUTPUT_DIR}/${datea}/logs/
 
    #  Get wrfinput source information
-   ${COPY} ${OUTPUT_DIR}/${datea}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean wrfinput_d01
    set dn = 1
    while ( $dn <= $domains )
 
@@ -169,36 +171,38 @@ while ( 1 == 1 )
 
    end
 
-   # Copy the inflation files from the previous time, update for domains
-   #TJH ADAPTIVE_INFLATION comes from scripts/param.csh but is disjoint from input.nml
+   # Copy the inflation files from the previous time and for all  domains
+   # The ADAPTIVE_INFLATION variable is set in scripts/param.csh and should
+   # be consistent with DART's input.nml inflation setting (inf_flavor)
 
    if ( $ADAPTIVE_INFLATION == 1 ) then
       # Create the home for inflation and future state space diagnostic files
-      # Should try to check each file here, but shortcutting for prior (most common) and link them all
 
       mkdir -p ${RUN_DIR}/{Inflation_input,Output}
 
-      if ( $domains == 1) then
-         if ( -e ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean.nc ) then
 
-            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf*.nc ${RUN_DIR}/.
-            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf*.nc ${RUN_DIR}/.
+      set dn = 1
+      while ( $dn <= $domains )
+      set dchar = `echo $dn + 100 | bc | cut -b2-3`
+         
+         if ( -e ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc ) then
+
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${char}.nc ${RUN_DIR}/.
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_mean_d${char}.nc ${RUN_DIR}/.
+
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_sd_d${char}.nc ${RUN_DIR}/.
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_sd_d${char}.nc ${RUN_DIR}/.
 
          else
 
-            echo "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean.nc file does not exist.  Stopping"
+            echo "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${char}.nc file does not exist. Stopping"
+            echo "If first assimilation cycle make sure fill_inflation_restart was used to generate mean and sd inflation files"
             touch ABORT_RETRO
             exit 3
 
          endif
-
-      else    # multiple domains so multiple inflation files for each domain
-              # TJH this should error out much earlier
-         echo "This script doesn't support multiple domains.  Stopping"
-         touch ABORT_RETRO
-         exit 4
-
-      endif # number of domains check
+         @dn ++
+      end # Loop through domains
 
    endif   # ADAPTIVE_INFLATION file check
 
@@ -322,14 +326,33 @@ while ( 1 == 1 )
    # First, create the difference of a subset of variables
    # Second, create a netCDF file with just the static data
    # Third, append the static data onto the difference.
-   ncdiff -F -O -v $extract_str postassim_mean.nc preassim_mean.nc analysis_increment.nc
-   ncks -F -O -x -v ${extract_str} postassim_mean.nc static_data.nc
-   ncks -A static_data.nc analysis_increment.nc
+   
+
+   set dn = 1
+   while ( $dn <= $domains )
+        set dchar = `echo $dn + 100 | bc | cut -b2-3`   
+        ncdiff -F -O -v $extract_str postassim_mean_d${dchar}.nc preassim_mean_d${dchar}.nc analysis_increment_d${dchar}.nc
+        ncks -F -O -x -v ${extract_str} postassim_mean_d${dchar}.nc static_data_d${dchar}.nc
+        ncks -A static_data_d${dchar}.nc analysis_increment_d${dchar}.nc
 
    # Move diagnostic and obs_seq.final data to storage directories
+        #
+        if (dn == 1 && -e obs_seq.final) then
+             ${MOVE} obs_seq.final ${OUTPUT_DIR}/${datea}/.
+             if ( ! $status == 0 ) then
+                 echo "failed moving ${RUN_DIR}/obs_seq.final"
+                 touch BOMBED
+             endif
+        else
+              echo "${OUTPUT_DIR}/obs_seq.final does not exist and should."
+              ls -l
+              touch BOMBED
+        endif
+        
 
-   foreach FILE ( postassim_mean.nc preassim_mean.nc postassim_sd.nc preassim_sd.nc \
-                  obs_seq.final analysis_increment.nc output_mean.nc output_sd.nc )
+        foreach FILE ( postassim_mean_d${dchar}.nc preassim_mean_d${dchar}.nc postassim_sd_d${dchar}.nc preassim_sd_d${dchar}.nc \
+                  obs_seq.final analysis_increment_d${dchar}.nc output_mean_d${dchar}.nc output_sd_d${dchar}.nc )
+
       if ( -e $FILE && ! -z $FILE ) then
          ${MOVE} $FILE ${OUTPUT_DIR}/${datea}/.
          if ( ! $status == 0 ) then
@@ -342,16 +365,23 @@ while ( 1 == 1 )
          touch BOMBED
       endif
    end
+      @ dn++
+   end # loop through domains
 
    echo "past the analysis file moves"
 
    # Move inflation files to storage directories
    # The output inflation file is used as the input for the next cycle,
-   # so rename the file 'on the fly'.
-   cd ${RUN_DIR}   # TJH is this necessary?
+   # so rename the current inflation output for the next cycle input.
+   cd ${RUN_DIR} 
+   
    if ( $ADAPTIVE_INFLATION == 1 ) then
-      set old_file = ( input_postinf_mean.nc  input_postinf_sd.nc  input_priorinf_mean.nc  input_priorinf_sd.nc )
-      set new_file = ( output_postinf_mean.nc output_postinf_sd.nc output_priorinf_mean.nc output_priorinf_sd.nc )
+
+   set dn = 1
+   while ( $dn <= $domains )
+      set dchar = `echo $dn + 100 | bc | cut -b2-3`  
+      set old_file = ( input_postinf_mean_d${dchar}.nc  input_postinf_sd_d${dchar}.nc  input_priorinf_mean_d${dchar}.nc  input_priorinf_sd_d${dchar}.nc )
+      set new_file = ( output_postinf_mean_d${dchar}.nc output_postinf_sd_d${dchar}.nc output_priorinf_mean_d${dchar}.nc output_priorinf_sd_d${dchar}.nc )
       set i = 1
       set nfiles = $#new_file
       while ($i <= $nfiles)
@@ -364,6 +394,9 @@ while ( 1 == 1 )
          endif
          @ i++
       end
+       @ dn++
+    end  # loop through domains
+
       echo "past the inflation file moves"
    endif   # adaptive_inflation file moves
 
@@ -549,18 +582,28 @@ while ( 1 == 1 )
       end
 
       #  Move output data to correct location
-      echo "moving ${n} ${ensstring}"
-      ${MOVE} ${RUN_DIR}/assim_advance_${n}.o*              ${OUTPUT_DIR}/${datea}/logs/.
-      ${MOVE} WRFOUT/wrf.out_${gdatef[1]}_${gdatef[2]}_${n} ${OUTPUT_DIR}/${datea}/logs/.
-      ${MOVE} WRFIN/wrfinput_d01_${n}.gz                    ${OUTPUT_DIR}/${datea}/WRFIN/.
-      ${MOVE} ${RUN_DIR}/prior_d01.${ensstring}             ${OUTPUT_DIR}/${datea}/PRIORS/.
-      ${REMOVE} start_member_${n} done_member_${n} filter_restart_d01.${ensstring}
-      if ( -e assim_advance_mem${n}.csh )  ${REMOVE} assim_advance_mem${n}.csh
-      set pert = `cat ${RUN_DIR}/advance_temp${n}/mem${n}_pert_bank_num`
-      echo "Member $n uses perturbation bank ensemble member $pert" >>  ${OUTPUT_DIR}/${datea}/pert_bank_members.txt
+      set dn = 1
+      while ( $dn <= $domains )
+          set dchar = `echo $dn + 100 | bc | cut -b2-3`
+          echo "moving ${n} ${ensstring} for domain ${dn}"
+          
+          if ( $dn == 1)
+             ${MOVE} ${RUN_DIR}/assim_advance_${n}.o*              ${OUTPUT_DIR}/${datea}/logs/.
+             ${MOVE} WRFOUT/wrf.out_${gdatef[1]}_${gdatef[2]}_${n} ${OUTPUT_DIR}/${datea}/logs/.
+             ${REMOVE} start_member_${n} done_member_${n}
+             if ( -e assim_advance_mem${n}.csh )  ${REMOVE} assim_advance_mem${n}.csh
+             set pert = `cat ${RUN_DIR}/advance_temp${n}/mem${n}_pert_bank_num`
+             echo "Member $n uses perturbation bank ensemble member $pert" >>  ${OUTPUT_DIR}/${datea}/pert_bank_members.txt
+          endif
+             
+          ${MOVE} WRFIN/wrfinput_d${dchar}_${n}.gz              ${OUTPUT_DIR}/${datea}/WRFIN/.
+          ${MOVE} ${RUN_DIR}/prior_d${dchar}.${ensstring}       ${OUTPUT_DIR}/${datea}/PRIORS/.
+          ${REMOVE} filter_restart_d${dchar}.${ensstring}
+          
+         @ dn ++
+      end #loop through domains
 
       @ n++
-
    end
 
    # ---------------------------------------------------------------------------

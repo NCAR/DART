@@ -31,7 +31,7 @@ if ( $dn == 1 ) then
    set cycle_str = `echo ${cycle_str}$cycle_vars_a[$num_vars]`
    echo ${cycle_str}
 
-else   # larger domain numbers use a different list of cycled variables (includes radar)
+else   # larger (nested) domains can use a different list of cycled variables (e.g. radar)
 
    set num_vars = $#cycle_vars_b    # defined in paramfile
    set cycle_str = ''   # these are variables we want to cycle

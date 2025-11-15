@@ -78,8 +78,6 @@ set control_file = $3
 set num_states = 1      # forcing option of only one model advance per execution
 set paramfile = $4      # Need this to load modules/environment
 source $paramfile
-# MULTIPLE DOMAINS - pass along the # of domains here?  We just default a value of 1 for the second variable, process is the ensemble member #
-
 
 # Setting to vals > 0 saves wrfout files,
 # will save all member output files <= to this value
@@ -160,7 +158,6 @@ if ( -x ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe ) then
 else
    set USE_WRFVAR = 0
 endif
- 
 # set this flag here if the radar additive noise script is found
 if ( -e ${CENTRALDIR}/add_noise.csh ) then
    set USE_NOISE = 1
@@ -183,20 +180,28 @@ sleep 5
 set USE_WRFVAR = 1
 set state_copy = 1
 set ensemble_member_line = 1
-set input_file1_line = 2    
-set input_file2_line = 3
-set output_file1_line = 4
-set output_file2_line = 5
 
-# MULTIPLE DOMAINS - hard coding for 2 domains, but should make more general
+#  Note:  The input and output file information not required, leaving in as placeholder
+#  Leaving in place if wrf_to_dart/dart_to_wrf functionality required in future.
 
-while($state_copy <= $num_states)     # MULTIPLE DOMAINS - we don't expect advance model to run more than one member anymore. Reuse num_states for # domains?
+#  Code identifies input and output file from control file from multiple domains
+#  Works with both first_advance.csh and assim_advance.csh scripting
+#  Assumes input (filter_restart) and output (prior) files are appended to control_file
+#  in consecutive pairs ordered by domain
 
-   set ensemble_member = `head -n $ensemble_member_line ${CENTRALDIR}/${control_file} | tail -n 1`
-   set input_file1      = `head -n $input_file1_line      ${CENTRALDIR}/${control_file} | tail -n 1`
-   set input_file2      = `head -n $input_file2_line      ${CENTRALDIR}/${control_file} | tail -n 1`
-   set output_file1     = `head -n $output_file1_line     ${CENTRALDIR}/${control_file} | tail -n 1`
-   set output_file2     = `head -n $output_file2_line     ${CENTRALDIR}/${control_file} | tail -n 1`
+while($state_copy <= $num_states)  # We don't expect advance model to run more than one member anymore. Reuse num_states for # domains?
+
+set ensemble_member = `head -n $ensemble_member_line ${CENTRALDIR}/${control_file} | tail -n 1`
+set dn = 1
+set i  = 1
+while ( $dn <= $domains )
+
+   set input_file${i}      = `head -n \`expr ${i}+1\`  ${CENTRALDIR}/${control_file} | tail -n 1`
+   set output_file${i}     = `head -n \`expr ${i}+2\`  ${CENTRALDIR}/${control_file} | tail -n 1`
+   
+    @ dn ++
+    @  i = i+2
+end # loop through domains
 
    set infl = 0.0
 
@@ -242,14 +247,12 @@ while($state_copy <= $num_states)     # MULTIPLE DOMAINS - we don't expect advan
    hostname >! nfile
    hostname >>! nfile
 
-   #  Add number of domains information
 
 # MULTIPLE_DOMAINS - need a more general instrument here
    if ( -e ${CENTRALDIR}/moving_domain_info ) then
 
       set MY_NUM_DOMAINS = `head -n 1 ${CENTRALDIR}/moving_domain_info | tail -n 1`
       ${MOVE} input.nml input.nml--
-#      sed /num_domains/c\ "   num_domains = ${MY_NUM_DOMAINS}," input.nml-- >! input.nml
       cat >! script.sed << EOF
       /num_domains/c\
       num_domains = ${MY_NUM_DOMAINS},
@@ -268,15 +271,17 @@ EOF
 #      ${COPY} wrfinput_d01 wrfinput_mean
 #      ${REMOVE} wrf.info dart_wrf_vector
 #   endif
-#
-#   # ICs for this wrf run; Convert DART file to wrfinput netcdf file
+
+#   Execution of dart_to_wrf not required. Leaving as placeholder
+#   ICs for this wrf run; Convert DART file to wrfinput netcdf file
 #   ${MOVE} ${CENTRALDIR}/${input_file} dart_wrf_vector 
 #   ${CENTRALDIR}/dart_to_wrf >&! out.dart_to_wrf
 #   ${REMOVE} dart_wrf_vector
 
   set stuff_vars = $increment_vars_a
 
-# may want multiple lists here, e.g. do we want w from the analysis?
+# Currently hard coded to overwrite only increment_vars_a to 
+# all domains. No custom increment_vars_a and increment_vars_b
 
   set stuff_str = ''   # these are variables we want to cycle
   set i = 1
@@ -301,13 +306,13 @@ EOF
      if ( -e ../${this_file} ) then
         ncks -A -v ${stuff_str} ../${this_file} wrfinput_d${dchar}
      else
-        echo "WARNING: ../${this_file} does not exist ..."
-        echo "WARNING: this is expected for the first cycle ONLY!"
+        echo "WARNING: ../${this_file} is the posterior from filter and does not exist"
+        echo "WARNING: this is expected for the first cycle ONLY when only forecast is run"
      endif
 
      @ dn ++  #
   end  
-   #  Move and remove unnecessary domains    MULTIPLE DOMAINS - this problably needs to be removed to avoid confusion
+   #  Move and remove unnecessary domains   
    if ( -e ${CENTRALDIR}/moving_domain_info ) then
 
       set REMOVE_STRING = `cat ${CENTRALDIR}/remove_domain_info`
@@ -322,10 +327,6 @@ EOF
 
    endif
 
-   # The program dart_to_wrf has created the file wrf.info.
-   # Time information is extracted from wrf.info.
-   # (bc in the following few lines is the calculator program,
-   # not boundary conditions.)
 
 # DMODS - note the wrf.info file was pre-generated, not from dart_to_wrf
    set secday = `head -n 1 wrf.info`
@@ -340,13 +341,15 @@ EOF
 
    echo "wrf.info is read" 
    echo $USE_WRFVAR
-   # Find all BC's file available and sort them with "keys".
+   
+   # Find all BC's file available and sort them with "keys".  BC's are required
+   # for real WRF simulations
    # NOTE: this needs a fix for the idealized wrf case in which there are no
    # boundary files (also same for global wrf).  right now some of the
    # commands below give errors, which are ok to ignore in the idealized case
    # but it is not good form to generate spurious error messages.
 
-   # check if LBCs are "specified" (in which case wrfbdy files are req'd)
+   # check if BCs are "specified" (in which case wrfbdy files are req'd)
    # and we need to set up a key list to manage target times
    set SPEC_BC = `grep specified ${CENTRALDIR}/namelist.input | grep true | wc -l`
 
@@ -442,6 +445,7 @@ EOF
       set isec = `echo "$keys[$ifile] % 86400" | bc`
 
       # Copy the boundary condition file to the temp directory if needed.
+      # Note: BC's only exist for parent domain (d01)
       if ( $SPEC_BC > 0 ) then
 
          if ( $USE_WRFVAR ) then
@@ -489,6 +493,7 @@ EOF
          @ iseed2 = $ensemble_member * 10
 
          ${REMOVE} script.sed
+         # Note: For WRFDA perturbation code, max_domain = 1, even for nested domain setups
          cat >! script.sed << EOF
             /analysis_date/c\
             analysis_date = \'${END_STRING}.0000\',
@@ -537,6 +542,7 @@ EOF
 
          sed -f script.sed ${CENTRALDIR}/namelist.input >! namelist.input
 
+         # Only need parent domain (d01) here, even for nested domain setups
          ${LN} ${CENTRALDIR}/WRF/wrfinput_d01_${targdays}_${targsecs}_mean ./fg
 ################################
 ## instead of running wrfda, just add static pertubations from the pert bank
@@ -698,7 +704,7 @@ EOF
       # clean out any old rsl files
       if ( -e rsl.out.integration )  ${REMOVE} rsl.*
 
-      # run WRF here
+      # RUNNING  WRF HERE !!
       setenv MPI_SHEPHERD FALSE
       ${ADV_MOD_COMMAND} >>&! rsl.out.integration
 
@@ -798,10 +804,13 @@ EOF
       ln -sf ${CENTRALDIR}/wrfinput_d01 wrfinput_d01_base
       ${CENTRALDIR}/recalc_wrf_base >&! out.recalc_wrf_base
    endif
-#   extract the cycle variables
-#   # create new input to DART (taken from "wrfinput")
-#   ${CENTRALDIR}/wrf_to_dart >&! out.wrf_to_dart
-#   ${MOVE} dart_wrf_vector ${CENTRALDIR}/${output_file}
+
+# Execution of wrf_to_dart not required. Leaving as placeholder 
+# Create new input to DART (taken from "wrfinput")
+# ${CENTRALDIR}/wrf_to_dart >&! out.wrf_to_dart
+# ${MOVE} dart_wrf_vector ${CENTRALDIR}/${output_file}
+
+# Extract the cycle variables
   set num_vars = $#extract_vars_a
   set extract_str_a = ''
   set i = 1
@@ -823,21 +832,21 @@ EOF
   echo ${extract_str_b}
 
 
-# MULTIPLE DOMAINS - loop through wrf files that are present
+# Loop through all wrf domain files that are present
   set dn = 1
   while ( $dn <= $num_domains )
      set dchar = `echo $dn + 100 | bc | cut -b2-3`
      set icnum = `echo $ensemble_member + 10000 | bc | cut -b2-5`
      set outfile =  prior_d${dchar}.${icnum}
      if ( $dn == 1) then
-       ncks -O -v ${extract_str_a} wrfinput_d${dchar} ../$outfile   # MULTIPLE DOMAINS - output file is incomplete filename?
+       ncks -O -v ${extract_str_a} wrfinput_d${dchar} ../$outfile   
      else
-       ncks -O -v ${extract_str_b} wrfinput_d${dchar} ../$outfile   # MULTIPLE DOMAINS - output file is incomplete filename?
+       ncks -O -v ${extract_str_b} wrfinput_d${dchar} ../$outfile  
      endif
      @ dn ++
      echo "should have made $outfile"
   end
-# MULTIPLE DOMAINS - may need to remove below to avoid confusion
+
    if ( -e ${CENTRALDIR}/moving_domain_info && $ensemble_member == 1 ) then
       set dn = 2
       while ( $dn <= $num_domains )
@@ -851,7 +860,7 @@ EOF
 
    cd $CENTRALDIR
 
-   #  delete the temp directory for each member if desired
+   #  Delete the temp directory for each member if desired
    if ( $delete_temp_dir == true )  ${REMOVE} ${temp_dir}
    echo "Ensemble Member $ensemble_member completed"
 

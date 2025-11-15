@@ -75,9 +75,20 @@ endif
 
 cd $RUN_DIR
 
+# filter_control accounts for multiple domains
+# Appends input (filter_restart) and output (prior) in consecutive pairs
+# Should be consistent with filter_control setup for first_advance.csh
+# during intial forecast step
+
 echo $emember                      >! ${RUN_DIR}/filter_control${icnum}
-echo filter_restart_d01.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
-echo prior_d01.${icnum}            >> ${RUN_DIR}/filter_control${icnum}
+
+set dn = 1
+while ( $dn <= $domains )
+      set  dchar = `echo $dn + 100 | bc | cut -b2-3`
+      echo filter_restart_d${dchar}.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
+      echo prior_d${dchar}.${icnum}            >> ${RUN_DIR}/filter_control${icnum}
+    @ dn ++
+end # loop through domains
 
 #  integrate the model forward in time
 ${RUN_DIR}/new_advance_model.csh ${emember} $domains filter_control${icnum} $paramfile

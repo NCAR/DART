@@ -1,11 +1,11 @@
 ; find the mean state space increment, output the fields to a single mean file
 ; that can be used to make plots
 ; G. Romine 2011-12
-; Updating for 1 domain only B. Raczka 2024-08
+; Run for parent domain (d01) only B. Raczka 2024-08
 begin
 
 ; get the list of files to read in
- fname = "analysis_increment.nc"
+ fname = "analysis_increment_d01.nc"
  flist = systemfunc("ls ../*/" + fname)
  nfils = dimsizes(flist)
 ; if we only want say the last 7 days, then grab only the last 28
@@ -27,7 +27,7 @@ begin
  npulls = dimsizes(pull_2D_field_names)
 
 ; Below will dump out the data to a file for replotting later
-    cnew = addfile("mean_increments"+".nc","c")
+    cnew = addfile("mean_increments_d01"+".nc","c")
 ; work through 2D fields
   do i=0,npulls-1
    print("   Extracting 2d variable "+pull_2D_field_names(i))
