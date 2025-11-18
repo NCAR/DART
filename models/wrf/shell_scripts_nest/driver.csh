@@ -65,7 +65,7 @@ while ( 1 == 1 )
    set dchar = `echo $dn + 100 | bc | cut -b2-3`  
       foreach infile ( wrfinput_d${dchar}_${gdate[1]}_${gdate[2]}_mean \
                       wrfinput_d${dchar}_${gdatef[1]}_${gdatef[2]}_mean \
-                        wrfbdy_d${dchar}_${gdatef[1]}_${gdatef[2]}_mean obs_seq.out )
+                        wrfbdy_d01_${gdatef[1]}_${gdatef[2]}_mean obs_seq.out )
 
          if ( ! -e ${OUTPUT_DIR}/${datea}/${infile} ) then
             echo  "${OUTPUT_DIR}/${datea}/${infile} is missing!  Stopping the system"
@@ -187,15 +187,15 @@ while ( 1 == 1 )
          
          if ( -e ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc ) then
 
-            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${char}.nc ${RUN_DIR}/.
-            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_mean_d${char}.nc ${RUN_DIR}/.
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc ${RUN_DIR}/.
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_mean_d${dchar}.nc ${RUN_DIR}/.
 
-            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_sd_d${char}.nc ${RUN_DIR}/.
-            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_sd_d${char}.nc ${RUN_DIR}/.
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_sd_d${dchar}.nc ${RUN_DIR}/.
+            ${LINK} ${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_sd_d${dchar}.nc ${RUN_DIR}/.
 
          else
 
-            echo "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${char}.nc file does not exist. Stopping"
+            echo "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc file does not exist. Stopping"
             echo "If first assimilation cycle make sure fill_inflation_restart was used to generate mean and sd inflation files"
             touch ABORT_RETRO
             exit 3
@@ -341,7 +341,8 @@ while ( 1 == 1 )
              ${MOVE} obs_seq.final ${OUTPUT_DIR}/${datea}/.
              if ( ! $status == 0 ) then
                  echo "failed moving ${RUN_DIR}/obs_seq.final"
-                 touch BOMBED
+                 touch BOMBED      @ dn++
+   end        # loop through domains
              endif
         else
               echo "${OUTPUT_DIR}/obs_seq.final does not exist and should."
@@ -587,7 +588,7 @@ while ( 1 == 1 )
           set dchar = `echo $dn + 100 | bc | cut -b2-3`
           echo "moving ${n} ${ensstring} for domain ${dn}"
           
-          if ( $dn == 1)
+          if ( $dn == 1 ) then
              ${MOVE} ${RUN_DIR}/assim_advance_${n}.o*              ${OUTPUT_DIR}/${datea}/logs/.
              ${MOVE} WRFOUT/wrf.out_${gdatef[1]}_${gdatef[2]}_${n} ${OUTPUT_DIR}/${datea}/logs/.
              ${REMOVE} start_member_${n} done_member_${n}
@@ -626,18 +627,17 @@ while ( 1 == 1 )
       gzip -f wrfinput_d*_${gdate[1]}_${gdate[2]}_mean wrfinput_d*_${gdatef[1]}_${gdatef[2]}_mean wrfbdy_d*_mean
       tar -cvf retro.tar obs_seq.out wrfin*.gz wrfbdy_d*.gz
       tar -rvf dart_data.tar obs_seq.out obs_seq.final wrfinput_d*.gz wrfbdy_d*.gz \
-                            Inflation_input/* logs/* *.dat input.nml
+                            Inflation_input/* logs/* input.nml
       ${REMOVE} wrfinput_d*_${gdate[1]}_${gdate[2]}_mean.gz wrfbdy_d*.gz
       gunzip -f wrfinput_d*_${gdatef[1]}_${gdatef[2]}_mean.gz
 
       cd $RUN_DIR
       ${MOVE} ${RUN_DIR}/assim*.o*            ${OUTPUT_DIR}/${datea}/logs/.
-      ${MOVE} ${RUN_DIR}/*log                 ${OUTPUT_DIR}/${datea}/logs/.
       ${REMOVE} ${RUN_DIR}/input_priorinf_*
       ${REMOVE} ${RUN_DIR}/static_data*
       touch prev_cycle_done
       touch $RUN_DIR/cycle_finished_${datea}
-      rm $RUN_DIR/cycle_started_${datea}
+      if ( -e cycle_started_${datea} rm $RUN_DIR/cycle_started_${datea}
 
       # If doing a reanalysis, increment the time if not done.  Otherwise, let the script exit
       if ( $restore == 1 ) then

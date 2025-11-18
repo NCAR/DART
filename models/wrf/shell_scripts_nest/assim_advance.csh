@@ -68,7 +68,7 @@ ${gdatef[2]}  ${gdatef[1]}
 ${gdate[2]}   ${gdate[1]}
 $yyyy $mm $dd $hh $nn $ss
            $domains
- mpiexec -n 128 -ppn 128  ./wrf.exe
+ mpiexec -n 4 -ppn 4 ./wrf.exe
 EOF
 
 endif
@@ -81,7 +81,6 @@ cd $RUN_DIR
 # during intial forecast step
 
 echo $emember                      >! ${RUN_DIR}/filter_control${icnum}
-
 set dn = 1
 while ( $dn <= $domains )
       set  dchar = `echo $dn + 100 | bc | cut -b2-3`

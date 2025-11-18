@@ -177,9 +177,12 @@ sleep 5
 # This control file has the actual ensemble number, the input filename,
 # and the output filename for each advance.  Be prepared to loop and
 # do the rest of the script more than once.
+
 set USE_WRFVAR = 1
 set state_copy = 1
 set ensemble_member_line = 1
+set linein = 2
+set lineout = 3
 
 #  Note:  The input and output file information not required, leaving in as placeholder
 #  Leaving in place if wrf_to_dart/dart_to_wrf functionality required in future.
@@ -190,19 +193,17 @@ set ensemble_member_line = 1
 #  in consecutive pairs ordered by domain
 
 while($state_copy <= $num_states)  # We don't expect advance model to run more than one member anymore. Reuse num_states for # domains?
-
 set ensemble_member = `head -n $ensemble_member_line ${CENTRALDIR}/${control_file} | tail -n 1`
 set dn = 1
-set i  = 1
-while ( $dn <= $domains )
+while ( $dn <= $num_domains )
 
-   set input_file${i}      = `head -n \`expr ${i}+1\`  ${CENTRALDIR}/${control_file} | tail -n 1`
-   set output_file${i}     = `head -n \`expr ${i}+2\`  ${CENTRALDIR}/${control_file} | tail -n 1`
+   set input_file${dn} = `head -n $linein  ${CENTRALDIR}/${control_file} | tail -n 1`
+   set output_file${dn} = `head -n $lineout  ${CENTRALDIR}/${control_file} | tail -n 1`
    
     @ dn ++
-    @  i = i+2
+    @ linein = $linein + 2
+    @ lineout = $lineout + 2
 end # loop through domains
-
    set infl = 0.0
 
    #  create a new temp directory for each member unless requested to keep and it exists already
@@ -297,9 +298,7 @@ EOF
   while ( $dn <= $num_domains )
 
      set dchar = `echo $dn + 100 | bc | cut -b2-3` 
-     set dchar = `printf %02d $dn` 
      set icnum = `echo $ensemble_member + 10000 | bc | cut -b2-5`
-     set icnum = `printf %04d $ensemble_member`
 
      set this_file = filter_restart_d${dchar}.${icnum}
 
@@ -312,6 +311,7 @@ EOF
 
      @ dn ++  #
   end  
+  
    #  Move and remove unnecessary domains   
    if ( -e ${CENTRALDIR}/moving_domain_info ) then
 
@@ -326,7 +326,6 @@ EOF
       end
 
    endif
-
 
 # DMODS - note the wrf.info file was pre-generated, not from dart_to_wrf
    set secday = `head -n 1 wrf.info`

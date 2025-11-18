@@ -7,17 +7,23 @@
 if ( $#argv > 0 ) then
    set n     = ${1}   # pass in the ensemble member number
    set datep = ${2}   # needed for correct path to file
-   set dn    = ${3}
+   set domains   = ${3}
    set paramfile = ${4}
 else # values come from environment variables   #TJH If these are not set ....
    set n     = $mem_num
    set datep = $date
-   set dn    = $domain
+   set domains   = $domain
    set paramfile = $paramf
 endif
 source $paramfile
 
-echo "prep_ic.csh using n=$n datep=$datep dn=$dn paramfile=$paramf"
+echo "prep_ic.csh using n=$n datep=$datep domains=$domains paramfile=$paramf"
+echo "domain 1 using cycle_vars_a, any other nested domains using cycle_vars_b"
+
+set dn = 1
+while ( $dn <= $domains )
+set dchar = `echo $dn + 100 | bc | cut -b2-3`
+
 
 if ( $dn == 1 ) then
 
@@ -53,6 +59,10 @@ ncks -A -v ${cycle_str} \
           ${RUN_DIR}/advance_temp${n}/wrfinput_d${dchar}
 
 touch ${RUN_DIR}/ic_d${dchar}_${n}_ready
+
+   @ dn++
+end  # loop through domains
+
 
 exit 0
 
