@@ -329,6 +329,7 @@ References
    observations/obs_converters/AIRS/README
    observations/obs_converters/AIRS/convert_airs_L2
    observations/obs_converters/AIRS/convert_amsu_L1
+   observations/obs_converters/ARVOR/arvor_to_obs
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
@@ -370,6 +371,7 @@ References
    observations/obs_converters/obs_error/README
    observations/obs_converters/radar/README
    observations/obs_converters/snow/snow_to_obs
+   observations/obs_converters/SVP/svp_to_obs
    observations/obs_converters/text/text_to_obs
    observations/obs_converters/tpw/tpw
    observations/obs_converters/tropical_cyclone/tc_to_obs
