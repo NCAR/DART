@@ -60,6 +60,9 @@ public :: get_args_from_string,           &
           csv_get_obs_num,                &
           csv_get_field,                  &
           csv_file_type,                  &
+          csv_field_exists,               &
+          csv_print_header,               & 
+          csv_get_field_index,            & 
           csv_open,                       &
           csv_close
 
@@ -883,6 +886,48 @@ else
 endif
 
 end function detect_delim
+
+
+!--------------------------------------------------------------
+! Help function to get field/column index of requested variable
+integer function csv_get_field_index(cf, varname) result(idx)
+
+type(csv_file_type), intent(in) :: cf
+character(len=*),    intent(in) :: varname
+
+idx = csv_find_field(cf, varname)
+
+end function csv_get_field_index
+
+
+!---------------------------------------------
+! Check if a field exist in the csv file
+logical function csv_field_exists(cf, varname) result(found)
+
+type(csv_file_type), intent(in) :: cf
+character(len=*),    intent(in) :: varname
+
+integer :: idx
+
+idx = csv_find_field(cf, varname)
+found = (idx > 0)
+
+end function csv_field_exists
+
+
+!----------------------------------------
+! Print the fields names in the csv file
+subroutine csv_print_header(cf)
+
+type(csv_file_type), intent(in) :: cf
+
+integer :: i
+
+write(*, '(2X, A, I0, A)') 'CSV Header Fields (', cf%ncols, ' columns):'
+do i = 1, cf%ncols
+   print '(I5,2X,A)', i, trim(cf%fields(i))
+end do
+end subroutine csv_print_header
 
 
 !-------------------------------------------
