@@ -130,6 +130,7 @@ integer  :: assimilation_period_days     = 1                ! Assimilation windo
 integer  :: assimilation_period_seconds  = 0                ! Assimilation window in secs
 real(r8) :: perturbation_amplitude       = 0.02             ! Perturbation size for generating an ensemble
 integer  :: debug                        = 0                ! Turn up for more debug messages
+logical  :: convert_salinity_to_kgkg     = .true.           ! model_interpolate salinity ouput in kg/kg 
 
 character(len=vtablenamelength) ::                &
           variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '  ! Table of state variables and associated metadata
@@ -140,7 +141,8 @@ namelist /model_nml/ assimilation_period_days,    &
                      perturbation_amplitude,      &
                      roms_filename,               &
                      debug,                       &
-                     variables
+                     variables,                   &
+                     convert_salinity_to_kgkg
 
 ! Interpolation grid handles 
 type(quad_interp_handle) :: interp_t_grid, &
@@ -352,6 +354,8 @@ integer(i8) :: dartidx               ! Index into the DART state
 logical     :: on_land              
 
 
+real(r8), parameter :: CONCENTRATION_TO_PPT = 1000.0_r8
+
 type(quad_interp_handle) :: interp
 
 if (.not. module_initialized) call static_init_model
@@ -471,6 +475,8 @@ if(qty == QTY_TEMPERATURE) then
   ! Deduce the in-situ temperature values
   expected_obs = sensible_temp(expected_T, expected_S, pdbar) 
 endif
+
+if (convert_salinity_to_kgkg .and. qty == QTY_SALINITY) expected_obs = expected_obs / CONCENTRATION_TO_PPT
 
 istatus = 0
 
