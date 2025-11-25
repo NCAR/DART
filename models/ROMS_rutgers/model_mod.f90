@@ -404,6 +404,7 @@ endif
 ! because we need to compute the depth using it.
 ! Recall that SSH can be both -ve and +ve
 sshid = get_varid_from_kind(domid, QTY_SEA_SURFACE_HEIGHT)
+if (sshid < 0 ) call error_handler(E_ERR, 'model_interpolate', 'requires sea surface height in the state')
 do i = 1, Nc
    dartidx       = get_dart_vector_index(lon_c(i), lat_c(i), 1, domid, sshid)
    SSHcorn(i, :) = get_state(dartidx, state_handle)
