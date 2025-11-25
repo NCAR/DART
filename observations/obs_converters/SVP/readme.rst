@@ -10,7 +10,7 @@ This utility converts **Surface Velocity Program (SVP)** drifter data
 
 Overview
 --------
-SVP drifters measure near–surface ocean temperature and currents. For the
+SVP drifters measure near-surface ocean temperature and currents. For the
 InaCAWO project, BMKG/Baron provide ASCII (CSV-like) files with:
 
 - Header line of field names  
@@ -20,7 +20,7 @@ The converter reads:
  - ``dat``  – timestamp  
  - ``lat``  – latitude (degrees)  
  - ``lon``  – longitude (degrees)  
- - ``sea_temperature`` – SST (Kelvin; converted to °C)  
+ - ``sea_temperature`` – SST (Kelvin; converted to C)  
  - ``u`` / ``v`` – eastward / northward surface velocity (m/s)
 
 Each valid row becomes up to three DART observations at the surface
@@ -54,7 +54,7 @@ This namelist is added to ``input.nml``:
       file_in          = ''                         ! single ASCII file (or '')
       file_list        = ''                         ! text file of paths (or '')
       file_out         = 'obs_seq.svp',             ! output obs_seq file
-      obs_error_sst    = 0.20_r8,                   ! SST error (°C)
+      obs_error_sst    = 0.20_r8,                   ! SST error (C)
       obs_error_vel    = 0.10_r8,                   ! U/V error (m/s)
       avg_obs_per_file = 500000,                    ! pre-allocation hint
       debug            = .true.

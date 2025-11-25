@@ -16,7 +16,7 @@
 ! surface currents. 
 !
 ! Note on units:  
-! SST in Kelvin: convert to °C.
+! SST in Kelvin: convert to C.
 ! U and V is in m/s.
 
 program svp_to_obs
@@ -47,7 +47,7 @@ implicit none
 
 character(len=*), parameter :: source = 'svp_to_obs'
 
-character(len=512) :: string1, string2
+character(len=512) :: string1
 
 ! File variables
 character(len=256) :: next_infile
@@ -80,7 +80,6 @@ type svp
     type(time_type) :: dat 
     real(r8) :: lat
     real(r8) :: lon
-    real(r8) :: dep
     real(r8) :: sst
     real(r8) :: u
     real(r8) :: v 
@@ -265,6 +264,7 @@ type(time_type) :: odat
 real(r8)        :: olon, olat, odep, oval, oerr
 integer         :: otype, iobs, osec, oday, k
 
+! Surface drifter data
 odep = 0.0_r8
 
 ! SST, U, V

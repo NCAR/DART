@@ -42,7 +42,7 @@ Build as usual with DART converters. Then run, ``./arvor_to_hf``, with an
       file_in           = 'ARVOR_20251006_300534063313500.csv',
       file_list         = '',               ! path to list of files (or '')
       file_out          = 'obs_seq.arvor',
-      obs_error_temp    = 0.02,             ! temperature error standard deviation (°C)
+      obs_error_temp    = 0.02,             ! temperature error standard deviation (C)
       obs_error_sal     = 0.02,             ! salinity error standard deviation (PSU)
       avg_obs_per_file  = 500000,           ! pre-allocation hint
       debug             = .true.

@@ -859,7 +859,7 @@ end function csv_find_field
 
 !-------------------------------------------------
 ! Detect the delimiter of a CSV file. One should expect a ','
-! but certain data file can come with a ';' so
+! but certain data files can come with a ';' so
 ! let's take care of both cases
 function detect_delim(line) result(delim)
 
@@ -968,8 +968,8 @@ if (io /= 0) then
 endif
 
 cf%delim = detect_delim(line)
-call split_fields(line, cf%delim, cf%ncols, cf%fields)
 
+call split_fields(line, cf%delim, cf%ncols, cf%fields)
 call close_file(iunit)
 
 cf%is_open = .true.

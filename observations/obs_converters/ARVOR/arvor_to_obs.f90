@@ -18,7 +18,7 @@
 ! temperature, and salinity. 
 !
 ! Note on units:  
-! temp in Kelvin: convert to °C.
+! temp in Kelvin: convert to C.
 ! pres in dbar: convert to depth (m, +down).
 
 program arvor_to_obs
@@ -234,7 +234,7 @@ do i = 1, nobs
    prof(k)%dat = parse_time(dat(i))
    prof(k)%dep = depth_from_pressure(pres(i), lat(i))
    prof(k)%tmp = temp(i) - t_kelvin
-   prof(k)%sal = saln(i) ! Salinity is assumed to be in PSU (dimensionless)
+   prof(k)%sal = saln(i) ! Salinity is in PSU; consistent with ROMS
 enddo
 num_valid_obs = k
 
