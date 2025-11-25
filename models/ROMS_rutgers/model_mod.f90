@@ -354,6 +354,8 @@ logical     :: on_land
 
 type(quad_interp_handle) :: interp
 
+real(r8), parameter             :: CONCENTRATION_TO_PPT = 1000.0_r8
+
 if (.not. module_initialized) call static_init_model
 
 ! Successful istatus is 0
@@ -471,6 +473,8 @@ if(qty == QTY_TEMPERATURE) then
   ! Deduce the in-situ temperature values
   expected_obs = sensible_temp(expected_T, expected_S, pdbar) 
 endif
+
+if (qty == QTY_SALINITY) expected_obs = expected_obs / CONCENTRATION_TO_PPT
 
 istatus = 0
 
