@@ -11,8 +11,6 @@ source "$DART"/build_templates/buildfunctions.sh
 
 MODEL=wrf_unified
 LOCATION=threed_sphere
-EXCLUDE=experiments
-
 
 programs=(
 closest_member_tool
