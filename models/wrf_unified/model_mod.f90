@@ -58,7 +58,6 @@ use obs_kind_mod, only : get_index_for_quantity, &
                          QTY_DENSITY, &
                          QTY_VERTICAL_VELOCITY, &
                          QTY_SPECIFIC_HUMIDITY, &
-                         QTY_VAPOR_MIXING_RATIO, &
                          QTY_SURFACE_PRESSURE, &
                          QTY_VORTEX_LAT, &
                          QTY_VORTEX_LON, &
@@ -465,8 +464,6 @@ select case (qty)
    case (QTY_SPECIFIC_HUMIDITY)
       fld_k1 = specific_humidity_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
       fld_k2 = specific_humidity_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
-   case (QTY_VAPOR_MIXING_RATIO)
-      fld_k1(:) = surface_type_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_PRESSURE)
       fld_k1 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
       fld_k2 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
