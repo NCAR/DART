@@ -788,7 +788,9 @@ select case (qty)
          QTY_10M_U_WIND_COMPONENT, &
          QTY_10M_V_WIND_COMPONENT, &
          QTY_SURFACE_TYPE, &
-         QTY_SKIN_TEMPERATURE)
+         QTY_SURFACE_PRESSURE, &
+         QTY_SKIN_TEMPERATURE, &
+         QTY_SURFACE_ELEVATION)
       surface_qty = .true.
    case default
       surface_qty = .false.
@@ -1879,7 +1881,7 @@ integer :: e
 
 pres1 = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
 pres2 = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
-pres3 = model_pressure_s(ul(1), ul(2), id, state_handle, ens_size)
+pres3 = model_pressure_s(ul(1), lr(2), id, state_handle, ens_size)
 pres4 = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
 
 ! Pressure at location
