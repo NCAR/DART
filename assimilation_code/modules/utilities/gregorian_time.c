@@ -37,7 +37,7 @@ void convert(int direction, int *days, int *secs,
 enum err vet_time(int days, int secs);
 enum err vet_date(int year, int month, int day, int hour, int min, int sec);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     int days, secs, year, month, day, hour, min, sec;
     enum err error;

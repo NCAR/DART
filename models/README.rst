@@ -6,6 +6,8 @@ Supported Models
 DART supported models:
 
 - :doc:`9var/readme`
+- :doc:`aether_lat-lon/readme`
+- :doc:`aether_cube_sphere/readme`
 - :doc:`am2/readme`
 - :doc:`bgrid_solo/readme`
 - :doc:`cam-fv/readme`

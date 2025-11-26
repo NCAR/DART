@@ -22,6 +22,65 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 13 2025 :: HF Radar converter. Tag 11.19.0**
+
+New features:
+
+- High Frequency (HF) Radar ocean observation converter
+- ROMS–Rutgers: Option to use Sea Surface Height from the template file, 
+  assuming the ensemble mean is provided in that file.
+
+Bug-fix:
+
+- Corrected consistency check across restarts when fill or missing attributes are NaN. 
+
+**November 11 2025 :: Aether Cube Sphere. Tag v11.18.0**
+
+- Aether cube sphere interface added to DART.
+- SLANT_GPS_VTEC QTY and obs_def
+
+**November 3 2025 :: DART tutorial. Tag 11.17.0**
+
+- DART tutorial updated to QCEFF v11
+- DART tutorial now an extension of DART_LAB
+- Lorenz_96/work directory contains input files needed for DART_LAB6:DART_tutorial
+- PDF tutorial slides relocated to a separate repo: https://github.com/NCAR/dart-tutorial
+
+**October 10 2025 :: Bug-fix: MOM6 localization. Tag v11.16.1**
+
+- Fix state index passed to below_sea_floor
+- Convert state vertical location to meters inside get_close_state
+
+**October 2 2025 :: CrocoLake observation converter. Tag v11.16.0**
+
+- Observation converter for CrocoLake.
+
+*contributed by Enrico Milanese, Woods Hole Oceanographic Institution*
+
+**September 17 2025 :: Radiance Updates. Tag v11.15.0**
+
+Radiance updates:
+  - Enables microwave radiance emission for RTTOV13
+  - Allows user to bring in liquid/ice effective droplet radius from model as an alternative to the fixed default value
+  - Specifies the max cloud fraction from the model as the effective cloud fraction
+  - Fixes hydrometeor type 'hydrotable' to expect the order: rain, snow, graupel, cloud water cloud ice
+  - For visible radiance applies empirical 0.1 factor against snow when calculating total cloud ice
+  - Documentation rewritten to give an overview over capabilities, list advice, and give references to further material
+  - WRF model_mod: added type_clwde type_icede
+
+  *Developed in collaboration with Lukas Kugler*
+
+Documentation updates:
+  - Improved contributors guide 
+  - Default_model_mod routines docs improved for usage in model_mods
+  - Brief history of  DART extended to present day
+  - Duplicate/out-of-date location_mod doc remoted
+
+Bug fixes:
+  - Standard C compliance for gregorian_time.c
+  - obs_def_rttov_mod.f90 TOA indexing
+
+
 **August 28 2025 :: KDE and CICE-DART improvements. Tag v11.14.2**
 
 KDE performance improvements:

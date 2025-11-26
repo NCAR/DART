@@ -139,22 +139,3 @@ point in meters. The conversion from model layer to depth in meters is done in
 ``convert_vertical_state``. The depth is then used to identify points below the
 basin depth in ``get_close_state``.
 
-
-.. code-block:: fortran
-   :emphasize-lines: 5, 9
-   :caption: snippet from get_close_state
-
-    ! Put any land or sea floor points very far away
-    ! so they are not updated by assimilation
-    do ii = 1, num_close
-    
-      if(loc_qtys(close_ind(ii)) == QTY_DRY_LAND) dist(ii) = 1.0e9_r8
-    
-      lon_lat_vert = get_location(locs(close_ind(ii))) ! assuming VERTISHEIGHT
-      call get_model_variable_indices(loc_indx(ii), i, j, k)
-      if ( below_sea_floor(i,j,lon_lat_vert(3)) ) dist(ii) = 1.0e9_r8
-    
-    enddo
-
-
-
