@@ -1267,7 +1267,9 @@ fail = .false.
 
 select case (which_vert)
    case(VERTISLEVEL)
-      zloc(:) = lon_lat_vert(3); fail = .false.
+      zloc(:) = lon_lat_vert(3)
+      level_below(:) = nint(zloc(:))
+      fail = .false.
    case(VERTISPRESSURE)
       call get_model_pressure_profile(id, ll, ul, lr, ur, dx, dy, dxm, dym, ens_size, state_handle, v_p)
       do e = 1, ens_size
