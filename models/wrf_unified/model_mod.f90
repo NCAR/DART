@@ -1873,23 +1873,23 @@ integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four c
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8) :: surface_pressure_interpolate(ens_size)
 
-real(r8), dimension(ens_size) :: pres1, pres2, pres3, pres4
+real(r8), dimension(ens_size) :: x_ill, x_iul, x_ilr, x_iur
 integer :: e
 
-pres1 = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
-pres2 = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
-pres3 = model_pressure_s(ul(1), lr(2), id, state_handle, ens_size)
-pres4 = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
+x_ill = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
+x_iul = model_pressure_s(ul(1), ul(2), id, state_handle, ens_size)
+x_ilr = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
+x_iur = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
 
 ! Pressure at location
 
 do e = 1, ens_size
    ! HK todo original code comment:
    ! I'm not quite sure where this comes from, but I will trust them on it....
-   if ( pres1 (e) /= 0.0_r8 .and. pres2(e) /= 0.0_r8 .and. pres3(e) /= 0.0_r8 .and. &
-        pres4(e) /= 0.0_r8 ) then
-
-    surface_pressure_interpolate(e) = dym*( dxm*pres1(e) + dx*pres2(e) ) + dy*( dxm*pres3(e) + dx*pres4(e) )
+   if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
+      x_iur(e) /= 0.0_r8 ) then
+      
+      surface_pressure_interpolate(e) = dym*( dxm*x_ill(e) + dx*x_ilr(e) ) + dy*( dxm*x_iul(e) + dx*x_iur(e) )
    endif  !HK todo initialize to missing_r8?
 enddo
 
