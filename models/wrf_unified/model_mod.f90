@@ -436,10 +436,15 @@ endif
 call getCorners(i, j, id, qty, ll, ul, lr, ur, rc)
 
 ! vertical location
-call get_level_below_obs(which_vert, id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
-if (fail) then
-   istatus(:) = VERTICAL_LOCATION_FAIL
-   return
+if (surface_qty(qty)) then
+   zloc(:) = 1.0_r8
+   k = 1
+else
+  call get_level_below_obs(which_vert, id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
+  if (fail) then
+      istatus(:) = VERTICAL_LOCATION_FAIL
+      return
+  endif
 endif
 
 
@@ -447,6 +452,8 @@ select case (qty)
    case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT )
       fld_k1 = wind_interpolate(ens_size, state_handle, qty, id, k,   xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
       fld_k2 = wind_interpolate(ens_size, state_handle, qty, id, k+1, xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
+   case (QTY_10M_U_WIND_COMPONENT, QTY_10M_V_WIND_COMPONENT)
+      fld_k1(:) = wind_interpolate(ens_size, state_handle, qty, id, k,   xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
    case (QTY_TEMPERATURE)
       fld_k1 = temperature_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
       fld_k2 = temperature_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
@@ -480,7 +487,7 @@ select case (qty)
       fld_k1 = surface_elevation_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_SURFACE_TYPE)
       fld_k1(:) = surface_type_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
-   case (QTY_SKIN_TEMPERATURE, QTY_10M_U_WIND_COMPONENT, QTY_10M_V_WIND_COMPONENT, QTY_2M_TEMPERATURE, QTY_2M_SPECIFIC_HUMIDITY)
+   case (QTY_SKIN_TEMPERATURE,  QTY_2M_TEMPERATURE, QTY_2M_SPECIFIC_HUMIDITY)
       fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
    case default ! simple interpolation
       ! HK todo 2D variables
@@ -1934,6 +1941,7 @@ real(r8) :: wind_interpolate(ens_size)
 
 real(r8), dimension(ens_size) :: u_wind_grid, v_wind_grid, u_wind, v_wind
 real(r8) :: xloc_u, yloc_v  ! x ugrid, y vgrid
+integer :: u_qty, v_qty ! quantity ids for u and v components
 real(r8) :: dx_u, dxm_u, dy_v, dym_v
 integer :: i_u, j_v
 integer :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
@@ -1946,8 +1954,19 @@ integer :: e, rc
 ! xloc and yloc are indices on mass-grid.  If we are on a periodic longitude domain,
 !   then xloc can range from [1 wes).  This means that simply adding 0.5 to xloc has
 !   the potential to render xloc_u out of the valid mass-grid index bounds (>wes).
-xloc_u = xloc + 0.5_r8
-yloc_v = yloc + 0.5_r8
+! Only add 0.5 offset for 3D winds, not surface winds
+if (qty == QTY_U_WIND_COMPONENT .or. qty == QTY_V_WIND_COMPONENT) then
+   xloc_u = xloc + 0.5_r8 
+   yloc_v = yloc + 0.5_r8
+   u_qty = QTY_U_WIND_COMPONENT
+   v_qty = QTY_V_WIND_COMPONENT
+else
+   ! For surface winds (QTY_10M_U_WIND_COMPONENT, QTY_10M_V_WIND_COMPONENT), no offset
+   xloc_u = xloc
+   yloc_v = yloc
+   u_qty = QTY_10M_U_WIND_COMPONENT
+   v_qty = QTY_10M_V_WIND_COMPONENT
+endif
 
 ! HK TODO what about periodic_y?
 if ( grid(id)%periodic_x .and. xloc_u > real(grid(id)%wes,r8) ) xloc_u = xloc_u - real(grid(id)%we,r8)
@@ -1955,16 +1974,16 @@ if ( grid(id)%periodic_x .and. xloc_u > real(grid(id)%wes,r8) ) xloc_u = xloc_u 
 call toGrid(xloc_u,i_u,dx_u,dxm_u)
 call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-call getCorners(i_u, j, id, QTY_U_WIND_COMPONENT, ll, ul, lr, ur, rc)
-u_wind_grid = simple_interpolation(ens_size, state_handle, QTY_U_WIND_COMPONENT, id, ll, ul, lr, ur, k, dxm_u, dx_u, dy, dym)
-call getCorners(i, j_v, id, QTY_V_WIND_COMPONENT, ll, ul, lr, ur, rc)
-v_wind_grid = simple_interpolation(ens_size, state_handle, QTY_V_WIND_COMPONENT, id, ll, ul, lr, ur, k, dxm, dx, dy_v, dym_v)
+call getCorners(i_u, j, id, u_qty, ll, ul, lr, ur, rc)
+u_wind_grid = simple_interpolation(ens_size, state_handle, u_qty, id, ll, ul, lr, ur, k, dxm_u, dx_u, dy, dym)
+call getCorners(i, j_v, id, v_qty, ll, ul, lr, ur, rc)
+v_wind_grid = simple_interpolation(ens_size, state_handle, v_qty, id, ll, ul, lr, ur, k, dxm, dx, dy_v, dym_v)
 
 do e = 1, ens_size
    call gridwind_to_truewind(lon, grid(id)%proj, u_wind_grid(e), v_wind_grid(e), u_wind(e), v_wind(e))
 enddo
 
-if ( qty == QTY_U_WIND_COMPONENT ) then
+if ( qty == u_qty ) then
    wind_interpolate = u_wind
 else
    wind_interpolate = v_wind
