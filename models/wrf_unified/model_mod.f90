@@ -1303,9 +1303,11 @@ select case (which_vert)
       enddo
    case(VERTISSURFACE)
        zloc(:) = 1.0_r8
+       level_below(:) = 1
        ! HK todo call check to see if the station height is too far away from the model surface height
    case(VERTISUNDEF)
        zloc = 0.0_r8
+       level_below(:) = 1
    case default
        fail = .true.
 end select
