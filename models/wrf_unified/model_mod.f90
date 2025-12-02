@@ -1939,8 +1939,7 @@ real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8) :: specific_humidity_interpolate(ens_size)
 
 real(r8), dimension(ens_size) :: a1
-
-a1 = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+a1 = simple_interpolation(ens_size, state_handle, QTY_VAPOR_MIXING_RATIO, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
 
 specific_humidity_interpolate = a1(:) /(1.0_r8 + a1(:))
 
@@ -3117,6 +3116,7 @@ select case (qty_in)
    case (QTY_LANDMASK); qty = QTY_POTENTIAL_TEMPERATURE ! land mask XLAND is static data on mass grid
    case (QTY_SURFACE_ELEVATION); qty = QTY_POTENTIAL_TEMPERATURE ! terrain height HGT is static data on mass grid
    case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! Force QTY_TEMPERATURE to QTY_POTENTIAL_TEMPERATURE
+   case (QTY_SPECIFIC_HUMIDITY); qty = QTY_VAPOR_MIXING_RATIO ! we use vapor mixing ratio to compute specific humidity
    case default
       qty = qty_in
 end select
@@ -3159,6 +3159,9 @@ select case (qty)
 
    case (QTY_TEMPERATURE, QTY_POTENTIAL_TEMPERATURE)
       able_to_interpolate_qty = qty_in_domain(id, QTY_POTENTIAL_TEMPERATURE)
+
+   case (QTY_SPECIFIC_HUMIDITY) ! we use vapor mixing ratio to compute specific humidity
+      able_to_interpolate_qty = qty_in_domain(id, QTY_VAPOR_MIXING_RATIO)
 
    case default
      if (chemistry_separate_file) then
