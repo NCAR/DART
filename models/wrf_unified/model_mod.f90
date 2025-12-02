@@ -485,6 +485,8 @@ select case (qty)
       fld_k2 = geopotential_height_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_SURFACE_ELEVATION)
       fld_k1 = surface_elevation_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+   case (QTY_LANDMASK)
+      fld_k1 = landmask_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_SURFACE_TYPE)
       fld_k1(:) = surface_type_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_SKIN_TEMPERATURE,  QTY_2M_TEMPERATURE, QTY_2M_SPECIFIC_HUMIDITY)
@@ -794,7 +796,8 @@ select case (qty)
          QTY_SURFACE_TYPE, &
          QTY_SURFACE_PRESSURE, &
          QTY_SKIN_TEMPERATURE, &
-         QTY_SURFACE_ELEVATION)
+         QTY_SURFACE_ELEVATION, &
+         QTY_LANDMASK)
       surface_qty = .true.
    case default
       surface_qty = .false.
@@ -1774,12 +1777,27 @@ integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four c
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8) :: surface_type_interpolate(ens_size) ! same across the ensemble
 
-surface_type_interpolate(:) = -1 + dym*( dxm*stat_dat(id)%land(ll(1), ll(2))      + &
-                                         dx*stat_dat(id)%land(lr(1), lr(2)) )     + &
-                                         dy*( dxm*stat_dat(id)%land(ul(1), ul(2)) + &
-                                         dx*stat_dat(id)%land(ur(1), ur(2)) )
+surface_type_interpolate(:) = -1 + landmask_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
 
 end function surface_type_interpolate
+
+!------------------------------------------------------------------
+! land mask is static data XLAND  1 = land, 0 = wate
+function landmask_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+
+integer,             intent(in) :: ens_size
+integer,             intent(in) :: id
+integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
+real(r8),            intent(in) :: dxm, dx, dy, dym
+real(r8) :: surface_type_interpolate(ens_size) ! same across the ensemble
+
+landmask_interpolate = dym*( dxm*stat_dat(id)%land(ll(1), ll(2))      + &
+			     dx*stat_dat(id)%land(lr(1), lr(2)) )     + &
+                             dy*( dxm*stat_dat(id)%land(ul(1), ul(2)) + &
+                             dx*stat_dat(id)%land(ur(1), ur(2)) )
+
+end function landmask_interpolate
+
 
 !------------------------------------------------------------------
 function surface_elevation_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
