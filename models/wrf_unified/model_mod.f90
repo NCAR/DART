@@ -416,13 +416,12 @@ if (id == 0) then
    return
 endif
 
-if (.not. able_to_interpolate_qty(id, qty_in) ) then
+qty = update_qty_if_location_is_surface(qty_in, location)
+
+if (.not. able_to_interpolate_qty(id, qty) ) then
    istatus(:) = CANNOT_INTERPOLATE_QTY
    return
 endif
-
-! HK @todo should this go before the able_to_interpolate_qty check?
-qty = update_qty_if_location_is_surface(qty_in, location)
 
 ! horizontal location mass point
 call toGrid(xloc,i,dx,dxm)
@@ -497,6 +496,7 @@ select case (qty)
       fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
 end select
 
+! @todo HK if vertissurface should you only use fld_k1?
 if (surface_qty(qty)) then
   expected_obs(:) = fld_k1(:)
 else
@@ -823,10 +823,11 @@ select case (qty_in)
 
    case (QTY_U_WIND_COMPONENT); qty = QTY_10M_U_WIND_COMPONENT
    case (QTY_V_WIND_COMPONENT); qty = QTY_10M_V_WIND_COMPONENT
-   case (QTY_POTENTIAL_TEMPERATURE); qty = QTY_2M_TEMPERATURE
+   case (QTY_POTENTIAL_TEMPERATURE); qty = QTY_2M_POTENTIAL_TEMPERATURE
    case (QTY_SPECIFIC_HUMIDITY); qty = QTY_2M_SPECIFIC_HUMIDITY
    case (QTY_VAPOR_MIXING_RATIO); qty = QTY_2M_SPECIFIC_HUMIDITY  ! Vapor Mixing Ratio (QV, Q2)
    case (QTY_PRESSURE); qty = QTY_SURFACE_PRESSURE
+   case (QTY_TEMPERATURE); qty = QTY_2M_TEMPERATURE
    case default; qty = qty_in
 
 end select
