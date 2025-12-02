@@ -155,6 +155,7 @@ call print_test_message('TEST 0', &
 call static_init_assim_model()
 
 num_domains = get_num_domains()
+model_size = get_model_size()
 
 call print_test_message('TEST 0', ending=.true.)
 
