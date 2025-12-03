@@ -389,6 +389,7 @@ integer, parameter :: CANNOT_INTERPOLATE_QTY = 55
 integer, parameter :: POLAR_RESTRICTED = 10 ! polar observation while restrict_polar = .true.
 integer, parameter :: NOT_IN_ANY_DOMAIN = 11
 integer, parameter :: VERTICAL_LOCATION_FAIL = 66
+integer, parameter :: SURFACE_ELEVATION_DIFF_FAIL = 77
 real(r8) :: lon_lat_vert(3)
 real(r8) :: xloc, yloc ! WRF i,j in the grid
 integer  :: i, j ! grid
@@ -438,9 +439,14 @@ endif
 call getCorners(i, j, id, qty, ll, ul, lr, ur, rc)
 
 ! vertical location
-if (surface_qty(qty)) then
+if (surface_qty(qty) .or. which_vert==VERTISSUFACE) then
    zloc(:) = 1.0_r8
    k = 1
+   fail = surface_elevation_difference_too_big(id, ll, ul, lr, ur, dx, dy, dxm, dym, lon_lat_vert(3), sfc_elev_max_diff)
+   if (fail) then
+      istatus(:) = SURFACE_ELEVATION_DIFF_FAIL
+      return
+  endif
 else
   call get_level_below_obs(which_vert, id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
   if (fail) then
@@ -1326,9 +1332,8 @@ select case (which_vert)
          endif
       enddo
    case(VERTISSURFACE)
-       zloc(:) = 1.0_r8
-       level_below(:) = 1
-       ! HK todo call check to see if the station height is too far away from the model surface height
+      zloc(:) = 1.0_r8
+      level_below(:) = 1
    case(VERTISUNDEF)
        zloc = 0.0_r8
        level_below(:) = 1
@@ -1337,6 +1342,34 @@ select case (which_vert)
 end select
 
 end subroutine get_level_below_obs
+
+!------------------------------------------------------------------
+! Check that the surface elevation difference between the model and
+! the observation is within acceptable limits
+pure function surface_elevation_difference_too_big(id, ll, ul, lr, ur, dx, dy, dxm, dym, elev, tol) result(too_big)
+
+integer,  intent(in) :: id
+integer,  intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) mass grid corners
+real(r8), intent(in) :: dx, dy, dxm, dym
+real(r8), intent(in) :: elev ! observation surface elevation
+real(r8), intent(in) :: tol ! tolerance for elevation difference
+logical :: too_big
+
+real(r8) :: sfc_elevation
+
+if ( tol < 0.0_r8 ) then 
+ too_big = .false.
+ return
+endif
+
+sfc_elevation = dym*( dxm*stat_dat(id)%hgt(ll(1), ll(2)) + &
+                       dx*stat_dat(id)%hgt(lr(1), lr(2)) ) + &
+                dy*(  dxm*stat_dat(id)%hgt(ul(1), ul(2)) + &
+                       dx*stat_dat(id)%hgt(ur(1), ur(2)) )
+
+too_big = (abs(elev-sfc_elevation) > tol)
+
+end function surface_elevation_difference_too_big
 
 !------------------------------------------------------------------
 ! Calculate the model pressure profile on half (mass) levels,
