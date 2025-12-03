@@ -3115,7 +3115,7 @@ select case (qty_in)
    case (QTY_SURFACE_TYPE); qty = QTY_POTENTIAL_TEMPERATURE ! uses land mask XLAND which is static data on mass grid
    case (QTY_LANDMASK); qty = QTY_POTENTIAL_TEMPERATURE ! land mask XLAND is static data on mass grid
    case (QTY_SURFACE_ELEVATION); qty = QTY_POTENTIAL_TEMPERATURE ! terrain height HGT is static data on mass grid
-   case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! Force QTY_TEMPERATURE to QTY_POTENTIAL_TEMPERATURE
+   case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! QTY_TEMPERATURE is not in the state, use QTY_POTENTIAL_TEMPERATURE
    case (QTY_SPECIFIC_HUMIDITY); qty = QTY_VAPOR_MIXING_RATIO ! we use vapor mixing ratio to compute specific humidity
    case (QTY_DENSITY); qty = QTY_GEOPOTENTIAL_HEIGHT ! density interpolated from geopotential height and pressure
    case default
