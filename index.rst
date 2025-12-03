@@ -4,7 +4,7 @@ Welcome to the Data Assimilation Research Testbed
 =================================================
 
 The Data Assimilation Research Testbed (DART) is an open-source, freely
-available community facility for ensemble data assimilation (DA). [1]_ DART is
+available community facility for ensemble data assimilation (DA) [1]_ [5]_. DART is
 developed and maintained by the `Data Assimilation Research Section
 (DAReS) <https://dart.ucar.edu/about/>`_ at the NSF `National Center
 for Atmospheric Research (NSF NCAR) <https://ncar.ucar.edu>`_.
@@ -190,12 +190,12 @@ Citing DART
 If you use DART in research, publications, presentations, or software, 
 please cite the following paper as the **primary reference**: 
 
-**El Gharamti, M., H. Kershaw, K. Raeder, B. Raczka, B. Johnson, M. Smith, 
-J. L. Anderson, D. Amrhein, N. Collins, I. Grooms, and L. Kugler (2025):**
-*The Data Assimilation Research Testbed: A Robust, Scalable Software Facility
-with Groundbreaking Capabilities for Model-Data Integration.* 
-Bulletin of the American Meteorological Society, **106** (11), E2328-E2345.
-`doi.org/10.1175/BAMS-D-24-0214.1 <https://doi.org/10.1175/BAMS-D-24-0214.1>`_
+   **El Gharamti, M., H. Kershaw, K. Raeder, B. Raczka, B. Johnson, M. Smith, 
+   J. L. Anderson, D. Amrhein, N. Collins, I. Grooms, and L. Kugler (2025):**
+   *The Data Assimilation Research Testbed: A Robust, Scalable Software Facility
+   with Groundbreaking Capabilities for Model-Data Integration.* 
+   Bulletin of the American Meteorological Society, **106** (11), E2328-E2345.
+   `doi.org/10.1175/BAMS-D-24-0214.1 <https://doi.org/10.1175/BAMS-D-24-0214.1>`_
 
 The paper describes the current state of DART, including supported models, 
 observation types, modern ensemble and hybrid algorithms, software infrastructure, 
@@ -224,11 +224,18 @@ References
        Part II: Regression of Observation Increments in a Probit and
        Probability Integral Transformed Space. *Monthly Weather Review*,
        **151**, 2759–2777, `doi:10.1175/MWR-D-23-0065.1 <http://n2t.net/ark:/85065/d7nv9pbt>`_ 
-.. [4] Anderson, J. L., Riedel, C., Wieringa, M., Ishraque, F., Smith, M., Kershaw, H.
+.. [4] Anderson, J., C. Riedel, M. Wieringa, F. Ishraque, M. Smith, and H. Kershaw, 2024: 
        2023: A Quantile-Conserving
        Ensemble Filter Framework. Part III: Data Assimilation for Mixed Distributions
        with Application to a Low-Order Tracer Advection Model. *Monthly Weather Review*
        **152**, 2111–2127, `doi:10.1175/MWR-D-23-0255.1 <https://doi.org/10.1175/MWR-D-23-0255.1>`_
+.. [5] El Gharamti, M., H. Kershaw, K. Raeder, B. Raczka, B. Johnson, M. Smith, 
+       J. L. Anderson, D. Amrhein, N. Collins, I. Grooms, and L. Kugler (2025):
+       The Data Assimilation Research Testbed: A Robust, Scalable Software Facility
+       with Groundbreaking Capabilities for Model-Data Integration. 
+       *Bulletin of the American Meteorological Society*, **106** (11), E2328-E2345.
+       `doi.org/10.1175/BAMS-D-24-0214.1 <https://doi.org/10.1175/BAMS-D-24-0214.1>`_   
+
 
 .. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
    :width: 100%
