@@ -497,8 +497,7 @@ select case (qty)
       fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
 end select
 
-! @todo HK if vertissurface should you only use fld_k1?
-if (surface_qty(qty)) then
+if (surface_qty(qty) .or. which_vert == VERTISSURFACE) then
   expected_obs(:) = fld_k1(:)
 else
    fld1  = force_non_negative_if_required(ens_size, qty, fld_k1)
