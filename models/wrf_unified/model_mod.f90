@@ -41,6 +41,7 @@ use state_structure_mod, only : add_domain, get_domain_size, get_model_variable_
 use distributed_state_mod, only : get_state_array, get_state
 
 use obs_kind_mod, only : get_index_for_quantity, &
+                         get_name_for_quantity, &
                          QTY_U_WIND_COMPONENT, &
                          QTY_v_WIND_COMPONENT, &
                          QTY_10M_U_WIND_COMPONENT, &
@@ -3117,11 +3118,19 @@ select case (qty_in)
    case (QTY_SURFACE_ELEVATION); qty = QTY_POTENTIAL_TEMPERATURE ! terrain height HGT is static data on mass grid
    case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! Force QTY_TEMPERATURE to QTY_POTENTIAL_TEMPERATURE
    case (QTY_SPECIFIC_HUMIDITY); qty = QTY_VAPOR_MIXING_RATIO ! we use vapor mixing ratio to compute specific humidity
+   case (QTY_DENSITY); qty = QTY_GEOPOTENTIAL_HEIGHT ! density interpolated from geopotential height and pressure
    case default
       qty = qty_in
 end select
 
 var_id = get_varid_from_kind(wrf_dom(id), qty) 
+if (var_id <= 0) then
+   within_bounds_horizontal = .false.
+   call error_handler(E_ERR, 'within_bounds_horizontal', &
+        'Quantity ' // trim(adjustl(get_name_for_quantity(qty))) // &
+        ' not in state')
+   return
+endif
 
 within_bounds_horizontal = (bounds_check_lon(i, id, var_id) .and. bounds_check_lat(j, id, var_id))
 
