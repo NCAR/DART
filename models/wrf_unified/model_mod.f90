@@ -82,7 +82,9 @@ use obs_kind_mod, only : get_index_for_quantity, &
                          QTY_HAIL_NUMBER_CONCENTR, &
                          QTY_SOIL_TEMPERATURE, &
                          QTY_SOIL_MOISTURE, &
-                         QTY_SOIL_LIQUID_WATER
+                         QTY_SOIL_LIQUID_WATER, &
+                         QTY_CLOUDWATER_DE, &
+                         QTY_CLOUD_ICE_DE
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -505,6 +507,8 @@ else
    expected_obs(:) = vertical_interpolation(ens_size, zloc, fld1, fld2)
 endif
 
+call update_units_if_required(qty, expected_obs)
+
 istatus(:) = 0
 
 end subroutine model_interpolate
@@ -772,6 +776,22 @@ select case (qty)
 end select
 
 end function force_non_negative_if_required
+!------------------------------------------------------------------
+subroutine update_units_if_required(qty, expected_obs)
+
+integer,  intent(in) :: qty
+real(r8), intent(inout) :: expected_obs(:)
+
+select case (qty)
+   case (QTY_CLOUDWATER_DE, &
+         QTY_CLOUD_ICE_DE)
+      ! convert to diameter (*2) in micrometer (*1e6)
+      expected_obs = expected_obs * 2.0e6_r8 
+   case default 
+      ! no unit conversion required
+end select
+
+end subroutine update_units_if_required
 
 !------------------------------------------------------------------
 ! 2D surface variables, or soil variables (z = soil_layers_stag)
