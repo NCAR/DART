@@ -187,11 +187,25 @@ over any bumps in the process.
 
 Citing DART
 -----------
+If you use DART in research, publications, presentations, or software, 
+please cite the following paper as the **primary reference**: 
 
-Cite DART using the following text:
+**El Gharamti, M., H. Kershaw, K. Raeder, B. Raczka, B. Johnson, M. Smith, 
+J. L. Anderson, D. Amrhein, N. Collins, I. Grooms, and L. Kugler (2025):**
+*The Data Assimilation Research Testbed: A Robust, Scalable Software Facility
+with Groundbreaking Capabilities for Model-Data Integration.* 
+Bulletin of the American Meteorological Society, **106** (11), E2328-E2345.
+`doi.org/10.1175/BAMS-D-24-0214.1 <https://doi.org/10.1175/BAMS-D-24-0214.1>`_
 
-   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2024).
-   Boulder, Colorado: UCAR/NSF NCAR/CISL/DAReS. http://doi.org/10.5065/D6WQ0202
+The paper describes the current state of DART, including supported models, 
+observation types, modern ensemble and hybrid algorithms, software infrastructure, 
+and its role as a community facility.  
+
+To cite the DART code (GitHub repository), use the following text::
+
+   The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2025).
+   Boulder, Colorado: UCAR/NSF NCAR/CISL/DAReS. 
+   https://doi.org/10.5065/D6WQ0202
 
 Update the DART version and year as appropriate.
 
@@ -199,7 +213,7 @@ References
 ----------
 
 .. [1] Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A.
-       Arellano, 2009 The Data Assimilation Research Testbed: A Community 
+       Arellano, 2009: The Data Assimilation Research Testbed: A Community 
        Facility. *Bulletin of the American Meteorological Society*, **90**,
        1283-1296, `doi:10.1175/2009BAMS2618.1
        <http://dx.doi.org/10.1175/2009BAMS2618.1>`_
