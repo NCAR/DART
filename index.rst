@@ -201,7 +201,7 @@ The paper describes the current state of DART, including supported models,
 observation types, modern ensemble and hybrid algorithms, software infrastructure, 
 and its role as a community facility.  
 
-To cite the DART code (GitHub repository), use the following text::
+To cite the DART code (GitHub repository), use the following text:
 
    The Data Assimilation Research Testbed (Version X.Y.Z) [Software]. (2025).
    Boulder, Colorado: UCAR/NSF NCAR/CISL/DAReS. 
