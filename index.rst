@@ -228,7 +228,7 @@ References
        2023: A Quantile-Conserving
        Ensemble Filter Framework. Part III: Data Assimilation for Mixed Distributions
        with Application to a Low-Order Tracer Advection Model. *Monthly Weather Review*
-       `[Manuscript submitted for publication] <_static/papers/QCEFF_3_submitted.pdf>`_
+       **152**, 2111–2127, `doi:10.1175/MWR-D-23-0255.1 <https://doi.org/10.1175/MWR-D-23-0255.1>`_
 
 .. |spaghetti_square| image:: ./guide/images/DARTspaghettiSquare.gif
    :width: 100%
