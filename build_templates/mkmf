@@ -150,7 +150,7 @@ if ( $opt_c ) {
           $compile_cmd{'.F90'} = q/$(FC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
       }
    }
-   &print_formatted_list("CPPDEFS = $opt_c") if $opt_c;
+   &print_formatted_list("\nCPPDEFS = $opt_c") if $opt_c;
 }
 print MAKEFILE "\nOTHERFLAGS = $opt_o" if $opt_o;
 print MAKEFILE "\n.DEFAULT:\n\t-touch \$@\n";
@@ -497,7 +497,7 @@ if( $suffix eq '.a' ) {
 close MAKEFILE;
 print " $opt_m is ready.\n";
 
-exec 'make', '-f', $opt_m if $opt_x;
+exec 'make', '-f' ,$opt_m if $opt_x;
 
 # <next few lines under version control, do not edit>
 # $URL$
