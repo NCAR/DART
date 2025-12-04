@@ -22,6 +22,18 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**December 3 2025 :: BAMS article. Tag 11.19.1**
+
+Documentation updates:
+
+  - How to cite DART
+  - Bulletin of the American Meteorological Society 2025 article
+
+Bug-fix:
+
+  - Assert sea surface height is present in the state for ROMS Rutgers 
+    model_interpolate
+
 **November 13 2025 :: HF Radar converter. Tag 11.19.0**
 
 New features:
