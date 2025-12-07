@@ -9,7 +9,8 @@ program csv_read_test
 use types_mod,            only : r8, MISSING_R8
 use utilities_mod,        only : initialize_utilities, finalize_utilities, &
                                  file_exist, E_ERR, open_file, close_file
-use parse_args_mod,       only : csv_file_type, csv_get_obs_num, csv_get_field,       &
+use mpi_utilities_mod,    only : shell_execute
+use parse_args_mod,       only : csv_file_type, csv_get_obs_num, csv_get_field, &
                                  csv_open, csv_close, csv_print_header
 
 implicit none
@@ -55,14 +56,16 @@ contains
 subroutine create_data_1(fname)
 character(len=*), intent(in) :: fname
 
-integer :: iunit, nrows
+integer :: iunit, rc
 character(len=*), parameter :: routine = "create_data_1"
 
 iunit = open_file(fname, action="write")
-write(iunit, *) "Name, Date, Total"
-write(iunit, *) "Bob, 1/1/25, 400"
-write(iunit, *) "Alice, 12/1/22, 200"
+write(iunit, "(A)") "Name, Date, Total"
+write(iunit, "(A)") "Bob, 1/1/25, 400"
+write(iunit, "(A)") "Alice, 12/1/22, 200"
 call close_file(iunit)
+
+if (debug) rc = shell_execute("cat test1")
 
 end subroutine create_data_1
 
@@ -80,12 +83,20 @@ integer :: tot(2)
 ! Open csv file and get dims
 call csv_open(fname, cf, routine)
 nrows = cf%nrows
+if (debug) print *, "number of rows found = ", nrows
 
-if (nrows /= 2) print *, "TEST 1 FAILED"
+if (nrows /= 2) print *, "TEST 1 FAIL: BAD NUMBER OF ROWS"
+
+if (debug) call csv_print_header(cf)
 
 ! Read the data
 call csv_get_field(cf, 'Name', nam, routine)
+if (nam(1) /= "Bob") print *, "TEST 1 FAIL:  READ BAD NAME 1 DATA"
+if (nam(2) /= "Alice") print *, "TEST 1 FAIL:  READ BAD NAME 2 DATA"
+
 call csv_get_field(cf, 'Total', tot, routine)
+if (tot(1) /= 400) print *, "TEST 1 FAIL:  READ BAD TOTAL 1 DATA"
+if (tot(2) /= 200) print *, "TEST 1 FAIL:  READ BAD TOTAL 2 DATA"
 
 call csv_close(cf)
 
@@ -99,10 +110,7 @@ character(len=*), intent(in) :: fname
 integer :: iunit, rc
 character(len=*), parameter :: routine = "delete_data_1"
 
-character(len=256) :: filedel
-
-write(filedel, *) "echo rm ", fname
-call system(filedel, rc)
+rc = shell_execute("rm "//trim(fname))
 
 end subroutine delete_data_1
 
