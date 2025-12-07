@@ -18,6 +18,7 @@ TEST="utilities"
 
 serial_programs=(
 PrecisionCheck
+csv_read_test
 error_handler_test
 file_utils_test
 find_enclosing_indices_test
