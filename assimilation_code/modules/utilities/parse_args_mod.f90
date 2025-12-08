@@ -55,6 +55,7 @@ implicit none
 private
 
 public :: get_args_from_string,           &
+          get_csv_words_from_string,      &
           get_name_val_pairs_from_string, &
           get_next_arg,                   &
           csv_get_obs_num,                &
@@ -238,6 +239,178 @@ endif
 
 
 end subroutine get_args_from_string
+
+!------------------------------------------------------------------------------
+! parse a single string up into delimeter-separated words
+
+subroutine get_csv_words_from_string(inline, delim, wordcount, words)
+
+ character(len=*), intent(in)  :: inline
+ character,        intent(in)  :: delim
+ integer,          intent(out) :: wordcount
+ character(len=*), intent(out) :: words(:)
+
+! in all these offsets, they are relative to 1, left hand char in string:
+!  firstoff is offset to next delimiter character starting a word
+!  thisoff  is offset to the current character
+!  finaloff is offset of the last non-delimiter character in the string
+! inword is a logical which toggles when inside a word or not
+! maxw are the max number of words, defined by what the caller passes in
+! maxl is the max length of any one word, again defined by the size of the
+!  incoming array.
+
+integer :: firstoff, finaloff, thisoff
+logical :: inword
+integer :: maxw, maxl
+integer :: wordlen, i
+
+character(len=len(inline)) :: wordline
+character(len=512) :: msgstring, msgstring2
+character :: endword, thisc
+character(len=*), parameter :: routine = 'get_csv_words_from_string'
+
+logical :: debug = .false. ! true to debug this routine, warning verbose
+
+
+! maxw is max number of 'words' allowed
+! maxl is the max length of any one 'word'
+
+maxw = size(words)
+maxl = len(words(1))
+
+words = ''
+wordcount = 0
+
+finaloff = len_trim(inline)
+if (finaloff <= 0) return
+
+wordline = inline
+
+firstoff = 1
+thisoff  = 1
+inword = .true.
+wordlen = 0
+endword = delim
+
+if (debug) print *, 'line = ', '"'//trim(wordline)//'"'
+
+NEXTCHAR: do
+   ! end of input?
+   if (thisoff > finaloff) then
+      ! if currently in a word, complete it
+      ! todo: if quoted string is last, strip final quote
+      if (inword) then
+         wordcount = wordcount + 1
+         if (wordcount > maxw) exit NEXTCHAR
+         wordlen = thisoff-firstoff-1
+if (debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+         if (wordlen > maxl) exit NEXTCHAR
+         words(wordcount) = wordline(firstoff:firstoff+wordlen)
+if (debug) print *, 'word ', wordcount, ' is ', '"'//wordline(firstoff:firstoff+wordlen)//'"'
+      endif
+      exit NEXTCHAR
+   endif
+
+   ! next character on line
+   thisc = wordline(thisoff:thisoff)
+
+if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, &
+                     inword, '"'//endword//'"', ' ', '"'//thisc//'"'
+
+   ! this (escape by backslash) doesn't seem to be universially supported 
+   ! by CSV files but i can't see that it hurts.
+
+   ! escaped chars - backslash prevents interpretation of next char
+   if (thisc == '\') then
+      ! move the remainder of the string over, overwriting the \ and
+      ! skipping the next char.
+      do i=thisoff, finaloff-1
+         wordline(i:i) = wordline(i+1:i+1)
+      enddo
+      wordline(finaloff:finaloff) = ' '
+      finaloff = finaloff-1
+      thisoff = thisoff+1
+      cycle NEXTCHAR
+   endif
+
+   ! transition into a word?  this is slightly more complex than blank
+   ! separated words.  in a CSV file, the delimiters separate fields, so
+   ! the first one doesn't start with one, and the last field doesn't end
+   ! with one.  quotes can be used immediately after a delimiter to keep
+   ! field data together.  the next char after a closing quote should be
+   ! the field delimieter.
+
+   ! start of a delimiter-separated string.
+   ! unlike strings of blanks, you can't skip strings of consecutive delimiters
+   ! and the first and last fields aren't enclosed by delimiters.
+   if (.not. inword) then 
+      if (thisc == delim) then
+         inword = .true.
+         thisoff = thisoff+1  ! skip delimeter
+         firstoff = thisoff   ! first char of field
+         endword = thisc
+      else
+         write(msgstring, *) "error?  not in word, next char not delimiter"
+         call error_handler(E_ERR,routine,msgstring,source)
+      endif 
+      cycle NEXTCHAR
+   endif
+
+   ! transition out of a word?
+   ! also, if the first character of a word is a quote, the
+   ! word continues until the closing quote.
+   if (inword) then
+      ! if first char of string is a quote, skip it and mark it as
+      ! the new delimiter
+      if ((thisoff == firstoff) .and. &
+          (thisc == '"' .or. thisc == "'")) then
+         endword = thisc
+         thisoff = thisoff+1
+         firstoff = thisoff   ! reset start of field 
+         cycle NEXTCHAR
+      endif
+      ! if we come to a delimiter, check for quote and remove it
+      ! and reset the delimiter char
+      if (thisc == endword) then
+         inword = .false.
+         wordlen = thisoff-firstoff-1
+         if (thisc == '"' .or. thisc == "'") then
+            endword = delim   ! todo: necessary?
+            thisoff = thisoff+1  ! skip quote
+         endif
+         wordcount = wordcount + 1
+         if (wordcount > maxw) exit NEXTCHAR
+if (debug)  print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+         if (wordlen > maxl) exit NEXTCHAR
+         words(wordcount) = wordline(firstoff:firstoff+wordlen)
+if (debug)  print *, 'word ', wordcount, ' is ', '"'//wordline(firstoff:firstoff+wordlen)//'"'
+         cycle NEXTCHAR
+      endif
+      thisoff = thisoff + 1  ! normal case, word contents OR end of word, skip delimiter
+      cycle NEXTCHAR
+   endif
+  
+enddo NEXTCHAR
+
+if (wordcount > maxw) then
+   write(msgstring,*) 'more delimeter-separated words than max number allowed by calling code, ', maxw
+   call error_handler(E_ERR,routine,msgstring,source)
+endif
+
+if (wordlen > maxl) then
+   write(msgstring,*) 'one or more words longer than max length allowed by calling code, ', maxl
+   call error_handler(E_ERR,routine,msgstring,source)
+endif
+
+if (debug) then
+   print *, 'wordcount = ', wordcount
+   do i=1, wordcount
+      print *, 'word', i, ' is "'//trim(words(i))//'"'
+   enddo
+endif
+
+
+end subroutine get_csv_words_from_string
 
 !------------------------------------------------------------------------------
 ! parse a single string up into blank-separated name=value words

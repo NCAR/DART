@@ -25,6 +25,7 @@ find_enclosing_indices_test
 find_first_occurrence_test
 nml_test
 parse_args_test
+parse_csv_test
 sort_test
 stacktest
 )
