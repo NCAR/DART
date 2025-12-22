@@ -56,7 +56,7 @@ This namelist is added to ``input.nml``:
       file_out         = 'obs_seq.svp',             ! output obs_seq file
       obs_error_sst    = 0.20_r8,                   ! SST error (C)
       obs_error_vel    = 0.10_r8,                   ! U/V error (m/s)
-      avg_obs_per_file = 500000,                    ! pre-allocation hint
+      avg_obs_per_file = 500000,                    ! pre-allocation limit
       debug            = .true.
    /
 
@@ -97,7 +97,7 @@ This namelist is added to ``input.nml``:
    * - ``avg_obs_per_file``
      - integer
      - ``500000``
-     - Estimated number of valid observations per input file. Used only for pre-allocation.
+     - Estimated number of valid observations per input file. Used only for pre-allocation. Number of files times this number must be larger than the total number of output observations.
 
    * - ``debug``
      - logical

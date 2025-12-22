@@ -44,7 +44,7 @@ Build as usual with DART converters. Then run, ``./arvor_to_hf``, with an
       file_out          = 'obs_seq.arvor',
       obs_error_temp    = 0.02,             ! temperature error standard deviation (C)
       obs_error_sal     = 0.02,             ! salinity error standard deviation (PSU)
-      avg_obs_per_file  = 500000,           ! pre-allocation hint
+      avg_obs_per_file  = 500000,           ! pre-allocation limit
       debug             = .true.
       /
 
@@ -93,7 +93,7 @@ Namelist Summary
    * - ``avg_obs_per_file``
      - integer
      - ``500000``
-     - Estimate of valid obs per file.
+     - Estimate of valid obs per file. Used for pre-allocation. Number of files times this number must be larger than the total number of output observations.
 
    * - ``debug``
      - logical

@@ -41,7 +41,7 @@ use obs_kind_mod,         only : FLOAT_TEMPERATURE, FLOAT_SALINITY
 use obs_def_mod,          only : obs_def_type, set_obs_def_time, set_obs_def_key,     &
                                  set_obs_def_error_variance, set_obs_def_location,    &
                                  set_obs_def_type_of_obs
-use parse_args_mod,       only : csv_file_type, csv_get_obs_num, csv_get_field,       &
+use read_csv_mod,         only : csv_file_type, csv_get_nrows, csv_get_field,         &
                                  csv_open, csv_close, csv_print_header
 
 implicit none
@@ -199,7 +199,7 @@ integer :: i, k, nobs
 
 ! Open csv file and get dims
 call csv_open(filename, cf, routine)
-nobs = cf%nrows
+nobs = csv_get_nrows(cf)
 
 if (debug) call csv_print_header(cf)
 
