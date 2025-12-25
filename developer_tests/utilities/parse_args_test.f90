@@ -29,8 +29,11 @@ character(len=1), parameter :: BACKSLASH = ACHAR(92)
 ! main code here
  
 ! initialize the dart libs
-call initialize_utilities('parse_args_test')
+call initialize_utilities('parse_args_test', standalone_program=.true.)
 
+! this count should match the number of tests expected to be 
+! executed if the test program runs to completion.
+call plan(57)
 
 ! parse tests - divide the blank-separated words on a line
 ! into individual words.  note no interpretation of the
@@ -112,8 +115,8 @@ call get_args_from_string(nextline, nargs, args)
 
 call ok((nargs == 2),           trim(testnum)//', nargs')
 call ok((args(1) == 'quoted'),  trim(testnum)//', arg 1')
-call ok((args(2) == 'string'),  trim(testnum)//', arg 1')
-call ok((args(3) == ''),        trim(testnum)//', arg 2')
+call ok((args(2) == 'string'),  trim(testnum)//', arg 2')
+call ok((args(3) == ''),        trim(testnum)//', arg 3')
 
 
 testnum = 'test 8'
@@ -152,12 +155,12 @@ call ok((names(3) == 'c'),      trim(testnum)//', name 3')
 call ok((vals(3)  == '3'),      trim(testnum)//', val 3')
 call ok((names(4) == ''),       trim(testnum)//', name 4')
 call ok((vals(4)  == ''),       trim(testnum)//', val 4')
-call ok((.not. continue_line),  trim(testnum)//', continue_line')
+call ok((.not. continue_line),  trim(testnum)//', no continue_line')
 
 
-testnum = 'test 10'
+testnum = 'test 11'
 call resetvals()
-nextline = 'a = 1.0 b   =  2.0  c=3.0'
+nextline = 'a = 1.0 b   =  2.0  c=3.0  &'
 call get_name_val_pairs_from_string(nextline, nargs, names, vals, continue_line)
 
 call ok((nargs == 3),           trim(testnum)//', nargs')
@@ -169,7 +172,7 @@ call ok((names(3) == 'c'),      trim(testnum)//', name 3')
 call ok((vals(3)  == '3.0'),    trim(testnum)//', val 3')
 call ok((names(4) == ''),       trim(testnum)//', name 4')
 call ok((vals(4)  == ''),       trim(testnum)//', val 4')
-call ok((.not. continue_line),  trim(testnum)//', continue_line')
+call ok(continue_line,          trim(testnum)//', has continue_line')
 
 
 ! finalize parse_args_test

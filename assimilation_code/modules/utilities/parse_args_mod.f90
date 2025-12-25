@@ -57,6 +57,9 @@ public :: get_args_from_string, &
 
 character(len=*), parameter :: source = 'parse_args_mod.f90'
 
+! the ascii code for the backslash character is 92.
+character(len=1), parameter :: BACKSLASH = ACHAR(92)
+
 contains
 
 !------------------------------------------------------------------------------
@@ -135,7 +138,7 @@ if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, fin
                      inword, '"'//endword//'"', ' ', '"'//thisc//'"'
 
    ! escaped chars - backslash prevents interpretation of next char
-   if (thisc == '\') then
+   if (thisc == BACKSLASH) then
       ! move the remainder of the string over, overwriting the \ and
       ! skipping the next char.
       do i=thisoff, finaloff-1
@@ -309,7 +312,7 @@ if(debug) print *, 'thisoff, finaloff, inpair, inname, inval, endword, thisc = '
 
    ! escaped chars - backslash prevents interpretation of next char
    ! shift remainder of line 1 char to the left.
-   if (thisc == '\') then
+   if (thisc == BACKSLASH) then
       do i=thisoff, finaloff-1
          argline(i:i) = argline(i+1:i+1)
       enddo
@@ -492,7 +495,7 @@ if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, fin
                      inword, '"'//endword//'"', ' ', '"'//thisc//'"'
 
    ! escaped chars - backslash prevents interpretation of next char
-   if (thisc == '\') then
+   if (thisc == BACKSLASH) then
       ! move the remainder of the string over, overwriting the \ and
       ! skipping the next char.
       do i=thisoff, finaloff-1
