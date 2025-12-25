@@ -13,6 +13,8 @@ use mpi_utilities_mod,    only : shell_execute
 use parse_args_mod,       only : csv_file_type, csv_get_obs_num, csv_get_field, &
                                  csv_open, csv_close, csv_print_header
 
+use test    ! fortran-testanything
+
 implicit none
 
 character(len=*), parameter :: source = 'csv_read_test'
@@ -29,26 +31,22 @@ character(len=512), allocatable :: dat(:)
 type(csv_file_type) :: cf
 
 !------------------------------------------------------------------------
-!  Declare namelist parameters
-logical            :: debug             = .true.
-
-
-namelist /csv_read_test_nml/ debug
 
 ! start test
-call initialize_utilities()
+call initialize_utilities(source, standalone_program=.true.)
+call plan(19)
 
-fname = "test1"
+fname = "test_1"
 call create_data_1(fname)
 call test_1(fname)
 call delete_file(fname)
 
-fname = "test2"
+fname = "test_2"
 call create_data_2(fname)
 call test_2(fname)
 call delete_file(fname)
 
-fname = "test3"
+fname = "test_3"
 call create_data_3(fname)
 call test_3(fname)
 call delete_file(fname)
@@ -73,8 +71,6 @@ write(iunit, "(A)") "Bob, 1/1/25, 400"
 write(iunit, "(A)") "Alice, 12/1/22, 200"
 call close_file(iunit)
 
-if (debug) rc = shell_execute("cat "//trim(fname))
-
 end subroutine create_data_1
 
 !-----------------------------------------------
@@ -84,27 +80,23 @@ character(len=*), intent(in) :: fname
 
 integer :: i, nrows
 
-character(len=*), parameter :: routine = "test_1"
 character(len=256) :: nam(2)
 integer :: tot(2)
 
 ! Open csv file and get dims
-call csv_open(fname, cf, routine)
+call csv_open(fname, cf, context=fname)
+
 nrows = cf%nrows
-if (debug) print *, "number of rows found = ", nrows
-
-if (nrows /= 2) print *, "TEST 1 FAIL: BAD NUMBER OF ROWS"
-
-if (debug) call csv_print_header(cf)
+call ok((nrows == 2),         trim(fname)//", number of rows")
 
 ! Read the data
-call csv_get_field(cf, 'Name', nam, routine)
-if (nam(1) /= "Bob") print *, "TEST 1 FAIL:  READ BAD NAME 1 DATA"
-if (nam(2) /= "Alice") print *, "TEST 1 FAIL:  READ BAD NAME 2 DATA"
+call csv_get_field(cf, 'Name', nam, fname)
+call ok((nam(1) == 'Bob'),    trim(fname)//", read name 1")
+call ok((nam(2) == 'Alice'),  trim(fname)//", read name 2")
 
-call csv_get_field(cf, 'Total', tot, routine)
-if (tot(1) /= 400) print *, "TEST 1 FAIL:  READ BAD TOTAL 1 DATA"
-if (tot(2) /= 200) print *, "TEST 1 FAIL:  READ BAD TOTAL 2 DATA"
+call csv_get_field(cf, 'Total', tot, fname)
+call ok((tot(1) == 400),      trim(fname)//", read total 1")
+call ok((tot(2) == 200),      trim(fname)//", read total 2")
 
 call csv_close(cf)
 
@@ -124,8 +116,6 @@ write(iunit, "(A)") "Alice,,12/1/2022,200"
 write(iunit, "(A)") "Carl,,12/1/2020,60"
 call close_file(iunit)
 
-if (debug) rc = shell_execute("cat "//trim(fname))
-
 end subroutine create_data_2
 
 !-----------------------------------------------
@@ -135,29 +125,25 @@ character(len=*), intent(in) :: fname
 
 integer :: i, nrows
 
-character(len=*), parameter :: routine = "test_2"
 character(len=256) :: nam(3)
 integer :: tot(3)
 
 ! Open csv file and get dims
-call csv_open(fname, cf, routine)
+call csv_open(fname, cf, context=fname)
+
 nrows = cf%nrows
-if (debug) print *, "number of rows found = ", nrows
-
-if (nrows /= 3) print *, "TEST 2 FAIL: BAD NUMBER OF ROWS"
-
-if (debug) call csv_print_header(cf)
+call ok((nrows == 3), trim(fname)//", number of rows")
 
 ! Read the data
-call csv_get_field(cf, 'Name', nam, routine)
-if (nam(1) /= "Bob") print *, "TEST 2 FAIL:  READ BAD NAME 1 DATA"
-if (nam(2) /= "Alice") print *, "TEST 2 FAIL:  READ BAD NAME 2 DATA"
-if (nam(3) /= "Carl") print *, "TEST 2 FAIL:  READ BAD NAME 3 DATA"
+call csv_get_field(cf, 'Name', nam, fname)
+call ok((nam(1) == "Bob"),   trim(fname)//",  read name 1")
+call ok((nam(2) == "Alice"), trim(fname)//",  read name 2")
+call ok((nam(3) == "Carl"),  trim(fname)//",  read name 3")
 
-call csv_get_field(cf, 'Total', tot, routine)
-if (tot(1) /= 400) print *, "TEST 2 FAIL:  READ BAD TOTAL 1 DATA"
-if (tot(2) /= 200) print *, "TEST 2 FAIL:  READ BAD TOTAL 2 DATA"
-if (tot(3) /= 60) print *, "TEST 2 FAIL:  READ BAD TOTAL 3 DATA"
+call csv_get_field(cf, 'Total', tot, fname)
+call ok((tot(1) == 400),     trim(fname)//",  read total 1")
+call ok((tot(2) == 200),     trim(fname)//",  read total 2")
+call ok((tot(3) == 60),      trim(fname)//",  read total 3")
 
 call csv_close(cf)
 
@@ -177,7 +163,6 @@ write(iunit, "(A)") "Alice;;12.1.2022;200"
 write(iunit, "(A)") "Carl;;12 4 2020;60"
 call close_file(iunit)
 
-if (debug) rc = shell_execute("cat "//trim(fname))
 
 end subroutine create_data_3
 
@@ -188,31 +173,26 @@ character(len=*), intent(in) :: fname
 
 integer :: i, nrows
 
-character(len=*), parameter :: routine = "test_3"
 character(len=256) :: nam(3)
 integer :: tot(3)
 
 ! Open csv file and get dims
-call csv_open(fname, cf, routine)
+call csv_open(fname, cf, context=fname)
+
 nrows = cf%nrows
-if (debug) print *, "number of rows found = ", nrows
+call ok((nrows == 3) , trim(fname)//", number of rows")
 
-if (nrows /= 3) print *, "TEST 3 FAIL: BAD NUMBER OF ROWS"
-
-if (debug) call csv_print_header(cf)
 
 ! Read the data
-call csv_get_field(cf, 'Name', nam, routine)
-if (debug) print *, trim(nam(1)), trim(nam(2)), trim(nam(3))
-if (nam(1) /= "Bob") print *, "TEST 3 FAIL:  READ BAD NAME 1 DATA"
-if (nam(2) /= "Alice") print *, "TEST 3 FAIL:  READ BAD NAME 2 DATA"
-if (nam(3) /= "Carl") print *, "TEST 3 FAIL:  READ BAD NAME 3 DATA"
+call csv_get_field(cf, 'Name', nam, fname)
+call ok((nam(1) == "Bob"),   trim(fname)//", read name 1")
+call ok((nam(2) == "Alice"), trim(fname)//", read name 2")
+call ok((nam(3) == "Carl"),  trim(fname)//", read name 3")
 
-call csv_get_field(cf, 'Total', tot, routine)
-if (debug) print *, tot
-if (tot(1) /= 40000) print *, "TEST 3 FAIL:  READ BAD TOTAL 1 DATA"
-if (tot(2) /= 200) print *, "TEST 3 FAIL:  READ BAD TOTAL 2 DATA"
-if (tot(3) /= 60) print *, "TEST 3 FAIL:  READ BAD TOTAL 3 DATA"
+call csv_get_field(cf, 'Total', tot, fname)
+call ok((tot(1) == 40000),   trim(fname)//", read total 1")
+call ok((tot(2) == 200),     trim(fname)//", read total 2")
+call ok((tot(3) == 60),      trim(fname)//", read total 3")
 
 call csv_close(cf)
 
