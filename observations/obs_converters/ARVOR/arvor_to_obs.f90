@@ -198,7 +198,7 @@ character(len=*), parameter  :: routine = 'get_profile_data'
 integer :: i, k, nobs
 
 ! Open csv file and get dims
-call csv_open(filename, cf, routine)
+call csv_open(filename, cf, context=routine)
 nobs = csv_get_nrows(cf)
 
 if (debug) call csv_print_header(cf)

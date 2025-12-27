@@ -32,7 +32,7 @@ use types_mod,      only : r8
 use utilities_mod,  only : error_handler, E_ERR, find_textfile_dims, &
                            open_file, close_file, to_upper,          &
                            string_to_real, string_to_integer
-use parse_args_mod, only : get_args_from_string
+use parse_args_mod, only : get_csv_words_from_string
 
 implicit none
 private
@@ -124,7 +124,7 @@ do iobs = 1, cf%nrows
       call error_handler(E_ERR, routine, string1, context)
    endif
 
-   call split_fields(line, cf%delim, nfields, entries)
+   call get_csv_words_from_string(line, cf%delim, nfields, entries)
 
    ! Parse the column entry. If it's _EMPTY_ then 
    ! treat it as empty string to make it MISSING 
@@ -211,98 +211,6 @@ if (nrows <= 0) then
 endif
 
 end function csv_get_nrows_from_file
-
-
-!---------------------------------------------------
-! Adapt get_args_from_string after adjusting delims
-subroutine split_fields(line, delim, nfields, fields)
-
-character(len=*), intent(in)  :: line
-character,        intent(in)  :: delim
-integer,          intent(out) :: nfields
-character(len=*), intent(out) :: fields(:)
-
-character(len=MAX_FIELDS_LEN) :: work
-
-! Clean the line then parse it 
-work = normalize_delims(line, delim)
-call get_args_from_string(work, nfields, fields)
-
-end subroutine split_fields
-
-
-!----------------------------------------------------------------------
-! Replace ',' and ';' with blanks to use above parsers. 
-! We also need to treat empty fields so that we don't
-! collapse with the spaces and cause any column drifts. 
-! This serves as a wrapper for 'get_args_from_string'
-! Example: 
-! A;B;;;;C;; --> A B _EMPTY_ _EMPTY_ _EMPTY_ C _EMPTY_ _EMPTY_
-function normalize_delims(line, delim) result(out_line)
-
-character(len=*), intent(in)  :: line
-character,        intent(in)  :: delim
-
-character(len=MAX_FIELDS_LEN) :: out_line
-integer                       :: i, j, L, k, lee
-logical                       :: prev_is_delim
-
-! Start as with a delimiter 
-out_line      = ' '
-prev_is_delim = .true.
-
-j = 1
-L = len_trim(line)
-
-lee = len(EMPTY_ENTRY)
-
-! Go over the line 1 character at a time
-do i = 1, L
-   if (line(i:i) == char(13)) cycle
-   if (line(i:i) == delim) then
-      ! Found a delim
-      if (prev_is_delim) then
-         ! insert placeholder + 1 space
-         out_line(j:j+lee-1) = EMPTY_ENTRY
-         j = j+lee
-         out_line(j:j) = ' '
-
-         j = j+1
-      else
-         ! normal delimiter
-         out_line(j:j) = ' '
-         j = j+1
-      endif
-      prev_is_delim = .true.
-      if (j > MAX_FIELDS_LEN - 64) exit ! prevent overflow; 64 is a small cushion
-   else
-      out_line(j:j) = line(i:i) 
-
-      j = j+1
-      prev_is_delim = .false.
-      if (j > MAX_FIELDS_LEN - 64) exit
-   endif
-enddo
-
-! Trailing empty field: line ends with a delimiter (or several)
-if (L > 0 .and. line(L:L) == delim) then
-   out_line(j:j+lee-1) = EMPTY_ENTRY
-   j = j + lee
-endif
-
-! Trim right spaces
-k = j - 1
-do while (k >= 1 .and. out_line(k:k) == ' ')
-   k = k - 1
-enddo
-
-if (k < 1) then
-   out_line = ''
-else
-   out_line = out_line(1:k)
-endif
-
-end function normalize_delims
 
 
 !---------------------------------------------------
@@ -460,10 +368,11 @@ end function csv_get_nrows
 ! Open a CSV handle: cache header/dims.
 ! By doing so, we won't need to open the file 
 ! every time to read header or get dimensions. 
-subroutine csv_open(fname, cf, context)
+subroutine csv_open(fname, cf, forced_delim, context)
 
 character(len=*),    intent(in)  :: fname
 type(csv_file_type), intent(out) :: cf
+character(len=*),    intent(in), optional :: forced_delim
 character(len=*),    intent(in), optional :: context
 
 character(len=*), parameter :: routine = 'csv_open'
@@ -496,9 +405,9 @@ if (io /= 0) then
 endif
 
 ! Can also enforce a specific delim as a second argument
-cf%delim = detect_delim(line)
+cf%delim = detect_delim(line, forced_delim)
 
-call split_fields(line, cf%delim, cf%ncols, cf%fields)
+call get_csv_words_from_string(line, cf%delim, cf%ncols, cf%fields)
 
 cf%is_open = .true.
 

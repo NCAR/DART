@@ -34,7 +34,7 @@ type(csv_file_type) :: cf
 
 ! start test
 call initialize_utilities(source, standalone_program=.true.)
-call plan(19)
+call plan(24)
 
 fname = "test_1"
 call create_data_1(fname)
@@ -49,6 +49,11 @@ call delete_file(fname)
 fname = "test_3"
 call create_data_3(fname)
 call test_3(fname)
+call delete_file(fname)
+
+fname = "test_4"
+call create_data_4(fname)
+call test_4(fname)
 call delete_file(fname)
 
 ! end test
@@ -197,6 +202,50 @@ call ok((tot(3) == 60),      trim(fname)//", read total 3")
 call csv_close(cf)
 
 end subroutine test_3
+
+!-----------------------------------------------
+! Create test data file 
+subroutine create_data_4(fname)
+character(len=*), intent(in) :: fname
+
+integer :: iunit, rc
+
+iunit = open_file(fname, action="write")
+write(iunit, "(A)") "Name: Date: Total"
+write(iunit, "(A)") "Bob: 1/1/25: 400"
+write(iunit, "(A)") "Alice: 12/1/22: 200"
+call close_file(iunit)
+
+end subroutine create_data_4
+
+!-----------------------------------------------
+! Open csv file and get data
+subroutine test_4(fname)
+character(len=*), intent(in) :: fname
+
+integer :: i, nrows
+
+character(len=256) :: nam(2)
+integer :: tot(2)
+
+! Open csv file and get dims
+call csv_open(fname, cf, forced_delim=':', context=fname)
+
+nrows = csv_get_nrows(cf)
+call ok((nrows == 2),         trim(fname)//", number of rows")
+
+! Read the data
+call csv_get_field(cf, 'Name', nam, fname)
+call ok((nam(1) == 'Bob'),    trim(fname)//", read name 1")
+call ok((nam(2) == 'Alice'),  trim(fname)//", read name 2")
+
+call csv_get_field(cf, 'Total', tot, fname)
+call ok((tot(1) == 400),      trim(fname)//", read total 1")
+call ok((tot(2) == 200),      trim(fname)//", read total 2")
+
+call csv_close(cf)
+
+end subroutine test_4
 
 !-----------------------------------------------
 ! clean up
