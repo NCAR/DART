@@ -10,8 +10,8 @@ use types_mod,            only : r8, MISSING_R8
 use utilities_mod,        only : initialize_utilities, finalize_utilities, &
                                  file_exist, E_ERR, open_file, close_file
 use mpi_utilities_mod,    only : shell_execute
-use parse_args_mod,       only : csv_file_type, csv_get_obs_num, csv_get_field, &
-                                 csv_open, csv_close, csv_print_header
+use read_csv_mod,         only : csv_file_type, csv_get_field, &
+                                 csv_open, csv_close, csv_get_nrows
 
 use test    ! fortran-testanything
 
@@ -86,7 +86,7 @@ integer :: tot(2)
 ! Open csv file and get dims
 call csv_open(fname, cf, context=fname)
 
-nrows = cf%nrows
+nrows = csv_get_nrows(cf)
 call ok((nrows == 2),         trim(fname)//", number of rows")
 
 ! Read the data
@@ -131,7 +131,7 @@ integer :: tot(3)
 ! Open csv file and get dims
 call csv_open(fname, cf, context=fname)
 
-nrows = cf%nrows
+nrows = csv_get_nrows(cf)
 call ok((nrows == 3), trim(fname)//", number of rows")
 
 ! Read the data
@@ -179,7 +179,7 @@ integer :: tot(3)
 ! Open csv file and get dims
 call csv_open(fname, cf, context=fname)
 
-nrows = cf%nrows
+nrows = csv_get_nrows(cf)
 call ok((nrows == 3) , trim(fname)//", number of rows")
 
 
