@@ -11,6 +11,7 @@ module utilities_mod
 !> another util module?
 
 use types_mod, only : r4, r8, digits12, i2, i4, i8, PI, MISSING_R8, MISSING_I
+use version_mod, only : get_dart_version
 
 implicit none
 private
@@ -225,12 +226,14 @@ if ( io /= 0 ) call fatal_opening_log('initialize_utilities', lname)
 if (do_output_flag) then
    if ( present(progname) ) then
       call log_time (logfileunit, label='Starting ', &
-                     string1='Program '//trim(progname))
+                     string1='Program '//trim(progname)//' '//get_dart_version())
    else
-      call log_time (logfileunit, label='Starting ')
+      call log_time (logfileunit, label='Starting ', &
+          string1=' '//get_dart_version())
    endif 
 endif
 
+! TODO: print the version after the program name
 ! Echo the module information using normal mechanism
 
 ! Set the defaults for logging the namelist values
@@ -259,9 +262,9 @@ endif
 if (do_output_flag) then
    if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
       if ( present(progname) ) then
-         write(nmlfileunit, *) '!Starting Program '//trim(progname)
+         write(nmlfileunit, *) '!Starting Program '//trim(progname)//' '//get_dart_version()
       else
-         write(nmlfileunit, *) '!Starting Program '
+         write(nmlfileunit, *) '!Starting Program '//' '//get_dart_version()
       endif 
    endif
    if (do_nml_file()) write(nmlfileunit, nml=utilities_nml)
@@ -290,16 +293,16 @@ endif
 if (do_output_flag) then
    if ( present(progname) ) then
       call log_time (logfileunit, label='Finished ', &
-                     string1='Program '//trim(progname))
+                     string1='Program '//trim(progname)//' '//get_dart_version())
    else
-      call log_time (logfileunit, label='Finished ')
+      call log_time (logfileunit, label='Finished ', string1=' '//get_dart_version())
    endif 
 
    if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
       if ( present(progname) ) then
-         write(nmlfileunit, *) '!Finished Program '//trim(progname)
+         write(nmlfileunit, *) '!Finished Program '//trim(progname)//' '//get_dart_version()
       else
-         write(nmlfileunit, *) '!Finished Program '
+         write(nmlfileunit, *) '!Finished Program '//' '//get_dart_version()
       endif 
    endif 
 endif

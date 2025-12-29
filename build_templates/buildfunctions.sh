@@ -143,11 +143,11 @@ single_prog=$1
 #-------------------------
 function findsrc() {
 
-local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
+local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f \( -name "*.f90" -o -name "*.F90" \) -print)
 local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \
           $DART/models/model_mod_tools/test_interpolate_$LOCATION.f90"
-local modelsrc=$(find $DART/models/$MODEL -type d -name $EXCLUDE -prune -o -type f -name "*.f90" -print)
+local modelsrc=$(find $DART/models/$MODEL -type d -name $EXCLUDE -prune -o -type f \( -name "*.f90" -o -name "*.F90" \) -print)
 local misc="$DART/models/utilities/ \
             $DART/models/model_mod_tools/model_check_utilities_mod.f90 \
             $DART/observations/forward_operators/obs_def_mod.f90 \
@@ -214,6 +214,24 @@ done
 
 }
 
+# Function that gets DART version, then sets global var
+version_def="ph"
+function dartversion() {
+
+local git_version
+
+if command -v git >/dev/null 2>&1 && [ -d "$DART/.git" ]; then
+    git_version=$(cd "$DART" && git describe --tags --dirty 2>/dev/null || echo "unknown")
+else
+    git_version="unknown"
+fi
+
+# preprocessor definition for DART version
+version_def="-DDART_VERSION=\"'$git_version'\""
+}
+
+dartversion
+
 #-------------------------
 # Build a program 
 # Arguments: 
@@ -240,7 +258,7 @@ else
   devlibs=$DART/developer_tests/contrib/fortran-testanything
 fi
 
- $DART/build_templates/mkmf -x -a $DART $m -p $1 \
+ $DART/build_templates/mkmf  -c $version_def -x -a $DART $m -p $1 \
      $dartsrc \
      $EXTRA \
      $devlibs \
@@ -253,7 +271,7 @@ fi
 #-------------------------
 function buildlib() {
 findsrc
-$DART/build_templates/mkmf -x -a $DART $m -p $1 \
+$DART/build_templates/mkmf -c $version_def -x -a $DART $m -p $1 \
      $dartsrc \
      $EXTRA
 }
@@ -264,7 +282,7 @@ $DART/build_templates/mkmf -x -a $DART $m -p $1 \
 #  program name
 #-------------------------
 function modelbuild() {
- $DART/build_templates/mkmf -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
+ $DART/build_templates/mkmf -c $version_def -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
      $EXTRA \
      $dartsrc
 }

@@ -11,6 +11,22 @@
 # Globals:
 #  DART - root of DART
 #-------------------------
+version_def="ph"
+function dartversion() {
+
+local git_version
+
+if command -v git >/dev/null 2>&1 && [ -d "$DART/.git" ]; then
+    git_version=$(cd "$DART" && git describe --tags --dirty 2>/dev/null || echo "unknown")
+else
+    git_version="unknown"
+fi
+
+# preprocessor definition for DART version
+version_def="-DDART_VERSION=\"'$git_version'\""
+}
+
+dartversion
 function buildpreprocess() {
 
  local pp_dir=$DART/assimilation_code/programs/preprocess
@@ -30,7 +46,7 @@ fi
 
  # build preprocess, link, run
  cd $pp_dir
- $DART/build_templates/mkmf -x -p $pp_dir/preprocess \
+ $DART/build_templates/mkmf -c $version_def -x -p $pp_dir/preprocess \
       -a $DART $pp_dir/path_names_preprocess
  cd -
  ln -s $pp_dir/preprocess .
