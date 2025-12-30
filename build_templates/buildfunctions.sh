@@ -144,18 +144,19 @@ single_prog=$1
 #-------------------------
 function findsrc() {
 
-local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f \( -name "*.f90" -o -name "*.F90" \) -print)
+local core=$(find $DART/assimilation_code/modules -type d -name observations -prune -o -type f -name "*.f90" -print)
 local loc="$DART/assimilation_code/location/$LOCATION \
           $DART/assimilation_code/location/utilities/ \
           $DART/models/model_mod_tools/test_interpolate_$LOCATION.f90"
-local modelsrc=$(find $DART/models/$MODEL -type d -name $EXCLUDE -prune -o -type f \( -name "*.f90" -o -name "*.F90" \) -print)
+local modelsrc=$(find $DART/models/$MODEL -type d -name $EXCLUDE -prune -o -type f -name "*.f90" -print)
 local misc="$DART/models/utilities/ \
             $DART/models/model_mod_tools/model_check_utilities_mod.f90 \
             $DART/observations/forward_operators/obs_def_mod.f90 \
             $DART//observations/forward_operators/obs_def_utilities_mod.f90 \
             $DART/assimilation_code/modules/observations/obs_kind_mod.f90 \
             $DART/assimilation_code/modules/observations/obs_sequence_mod.f90 \
-            $DART/assimilation_code/modules/observations/forward_operator_mod.f90"
+            $DART/assimilation_code/modules/observations/forward_operator_mod.f90 \
+            $DART/build_templates/version_mod.F90"
 
 # The quantity_mod.f90 files are in assimilation_code/modules/observations
 # so adding individual files from assimilation_code/modules/observations
