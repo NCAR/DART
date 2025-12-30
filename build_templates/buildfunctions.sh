@@ -34,6 +34,7 @@ EXTRA=""
 EXCLUDE=""
 TEST=""
 dev_test=0
+version_def=""
 
 declare -a programs
 declare -a serial_programs
@@ -41,7 +42,7 @@ declare -a model_programs
 declare -a model_serial_programs
 
 source "$DART"/build_templates/buildpreprocess.sh
-
+dartversion
 #-------------------------
 # print usage and exit
 #-------------------------
@@ -213,24 +214,6 @@ for nus in  "${nuisance[@]}"; do
 done
 
 }
-
-# Function that gets DART version, then sets global var
-version_def="ph"
-function dartversion() {
-
-local git_version
-
-if command -v git >/dev/null 2>&1 && [ -d "$DART/.git" ]; then
-    git_version=$(cd "$DART" && git describe --tags --dirty 2>/dev/null || echo "unknown")
-else
-    git_version="unknown"
-fi
-
-# preprocessor definition for DART version
-version_def="-DDART_VERSION=\"'$git_version'\""
-}
-
-dartversion
 
 #-------------------------
 # Build a program 

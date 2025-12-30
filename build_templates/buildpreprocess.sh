@@ -11,7 +11,6 @@
 # Globals:
 #  DART - root of DART
 #-------------------------
-version_def="ph"
 function dartversion() {
 
 local git_version
@@ -24,13 +23,13 @@ fi
 
 # preprocessor definition for DART version
 version_def="-DDART_VERSION=\"'$git_version'\""
+
 }
 
-dartversion
 function buildpreprocess() {
 
  local pp_dir=$DART/assimilation_code/programs/preprocess
-
+ dartversion
  # run preprocess if it is in the current directory
  if [ -f preprocess ]; then
    ./preprocess

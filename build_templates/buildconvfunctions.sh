@@ -29,13 +29,16 @@
 #-------------------------
 set -e
 declare -a programs
-source "$DART"/build_templates/buildpreprocess.sh
 
 # Defaults
 mpisrc="null_mpi"
 m=""
 LIBRARIES=""
 EXTRA=""
+version_def=""
+
+source "$DART"/build_templates/buildpreprocess.sh
+dartversion
 
 #-------------------------
 # print usage and exit
