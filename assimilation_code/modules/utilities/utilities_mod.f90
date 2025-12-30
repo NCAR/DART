@@ -233,7 +233,6 @@ if (do_output_flag) then
    endif 
 endif
 
-! TODO: print the version after the program name
 ! Echo the module information using normal mechanism
 
 ! Set the defaults for logging the namelist values
