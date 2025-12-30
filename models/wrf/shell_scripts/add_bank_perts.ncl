@@ -16,12 +16,20 @@ begin
  ens_mem_num = ""+MEM_NUM
  pert_bank_path = PERTS_DIR
 
-; perturbation scaling:
+;perturbation scaling: default tutorial settings
  scale_T = 1.3
  scale_U = 1.3
  scale_V = 1.3
  scale_Q = 1.3
  scale_M = 0.6
+
+; Shuts off perturbations, only used for forecast mode
+;perturbation scaling:
+; scale_T = 0.0
+; scale_U = 0.0
+; scale_V = 0.0
+; scale_Q = 0.0
+; scale_M = 0.0
 
 ; for random pert, pick from larger bank
  bank_size = 100
@@ -45,7 +53,7 @@ begin
 
 
 ;For WRFv4 or later prognostic temp variable is THM
- pert_fields = (/"U", "V", "T", "QVAPOR","MU"/)
+ pert_fields = (/"U", "V", "THM", "QVAPOR","MU"/)
  wrf_fields  = (/"U", "V", "THM", "QVAPOR","MU"/)
  pert_scale  = (/scale_U,scale_V,scale_T,scale_Q,scale_M/)
  nperts = dimsizes(pert_fields)

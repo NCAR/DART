@@ -1,33 +1,14 @@
-; Find the mean state space increment, output the fields to a single mean file
+; find the mean state space increment, output the fields to a single mean file
 ; that can be used to make plots
-
-; Incoming arguments are:
-; 1) fname (analysis_increment.nc)
-; 2) fout  (mean_increment.nc)
-
-; This script is called from the diagnostic_obs.sh script as: 
-; ncl fname=analysis_increment_{d??}.nc  fout=mean_increments_{d??}.nc mean_increment.ncl
-
+; G. Romine 2011-12
+; Run for parent domain (d01) only B. Raczka 2024-08
 begin
 
-  if (.not. isvar("fname")) then
-    print("ERROR in mean_increment.ncl: fname not provided.")
-    exit
-  end if
-  if (.not. isvar("fout")) then
-    print("ERROR in mean_increment.ncl: fout not provided.")
-    exit
-  end if
-
-  flist = systemfunc("ls -1 ../*/" + fname + " 2>/dev/null")
-  nfils = dimsizes(flist)
-
-  if (nfils .le. 0) then
-    print("ERROR in mean_increment.ncl: no files found matching ../*/" + fname)
-    exit
-  end if
-
-; If  we only want say the last 7 days, then grab only the last 28
+; get the list of files to read in
+ fname = "analysis_increment_d01.nc"
+ flist = systemfunc("ls ../*/" + fname)
+ nfils = dimsizes(flist)
+; if we only want say the last 7 days, then grab only the last 28
 ; here we practice with 3 days
  anl_days = 7
  ntimes = anl_days*4
@@ -46,14 +27,14 @@ begin
  npulls = dimsizes(pull_2D_field_names)
 
 ; Below will dump out the data to a file for replotting later
-    cnew = addfile(fout,"c")
-; Work through 2D fields
+    cnew = addfile("mean_increments_d01"+".nc","c")
+; work through 2D fields
   do i=0,npulls-1
    print("   Extracting 2d variable "+pull_2D_field_names(i))
    do fil_num=0,nfils-1
 ;   print(" reading file "+flist(fil_num))
-; Dimensions are ncljoin, Time, south_north, west_east
-; Copy zero is the ensemble mean 
+; dimensions are ncljoin, Time, south_north, west_east
+; copy zero is the ensemble mean 
     pull_var = fil[fil_num]->$pull_2D_field_names(i)$(:,:,:,:)
     dims = dimsizes(pull_var)
     if (fil_num .eq. 0) then  ; first iteration, make var
