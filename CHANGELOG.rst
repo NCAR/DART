@@ -22,7 +22,21 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**December 3 2025 :: BAMS article. Tag 11.19.1**
+**December 31 2025 :: Log DART version. Tag v11.19.1** 
+
+New Features:
+
+  - | Version of DART logged in program message 
+    | *contributed by Kamil Yousuf*
+  - Tests for parse_args_mod
+  - Remove close_ind array initialization for 3d sphere and 3d 
+    cartesian location_mods to improve get_close performance. 
+
+Bug-fixes:
+
+  - model_mod_check model_size collected in test initialization
+
+**December 3 2025 :: BAMS article. Tag v11.19.1**
 
 Documentation updates:
 
@@ -34,7 +48,7 @@ Bug-fix:
   - Assert sea surface height is present in the state for ROMS Rutgers 
     model_interpolate
 
-**November 13 2025 :: HF Radar converter. Tag 11.19.0**
+**November 13 2025 :: HF Radar converter. Tag v11.19.0**
 
 New features:
 
