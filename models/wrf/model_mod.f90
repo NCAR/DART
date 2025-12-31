@@ -1832,7 +1832,7 @@ else
                iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
 
                x_ill = get_state(ill, state_handle)
-               x_ill = get_state(ill, state_handle)
+               x_iul = get_state(iul, state_handle)
                x_ilr = get_state(ilr, state_handle)
                x_iur = get_state(iur, state_handle)
 
