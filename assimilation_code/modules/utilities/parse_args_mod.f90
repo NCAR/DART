@@ -46,16 +46,20 @@
 
 module parse_args_mod
 
-use utilities_mod, only : error_handler, E_ERR
+use types_mod,     only : r8, i8, i4, MISSING_R8
+use utilities_mod, only : error_handler, E_ERR, find_textfile_dims,    &
+                          file_exist, open_file, close_file, to_upper, &
+                          string_to_real, string_to_integer
 
 implicit none
 private
 
-public :: get_args_from_string, &
+public :: get_args_from_string,           &
           get_name_val_pairs_from_string, &
-          get_next_arg
+          get_next_arg                   
 
 character(len=*), parameter :: source = 'parse_args_mod.f90'
+character(len=512) :: string1, string2
 
 ! the ascii code for the backslash character is 92.
 character(len=1), parameter :: BACKSLASH = ACHAR(92)
@@ -557,7 +561,5 @@ if (debug) print *, '3 arg is "'//trim(argword)//'"'
 
 end subroutine get_next_arg
 
-!------------------------------------------------------------------------------
 
 end module parse_args_mod
-
