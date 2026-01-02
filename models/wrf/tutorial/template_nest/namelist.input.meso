@@ -1,22 +1,23 @@
  &time_control
  run_days                            = 0,
- run_hours                           = 6,
+ run_hours                           = 0,
  run_minutes                         = 0,
  run_seconds                         = 0,
- start_year                          = 2010, 2010
- start_month                         = 06,   06
- start_day                           = 08,   08
- start_hour                          = 18,   18
+ start_year                          = 2019, 2019 
+ start_month                         = 10,   10   
+ start_day                           = 01,   01   
+ start_hour                          = 00,   00 
  start_minute                        = 00,   00
  start_second                        = 00,   00
- end_year                            = 2010, 2010
- end_month                           = 06,   06
- end_day                             = 09,   09
- end_hour                            = 00,   00
+ end_year                            = 2019, 2019 
+ end_month                           = 10,   10   
+ end_day                             = 01,   01   
+ end_hour                            = 06,   06 
  end_minute                          = 00,   00
- end_second                          = 00,   00
- interval_seconds                    = 21600,
- input_from_file                     = .true.,.true.
+ end_second                          = 00,   00  
+ interval_seconds                    = 21600
+ input_from_file                     = .true.,.true.,
+ fine_input_stream                   = 0,    0
  history_interval                    = 60,   60
  frames_per_outfile                  = 1,    1
  restart                             = .false.,
@@ -26,6 +27,7 @@
  io_form_input                       = 2,
  io_form_boundary                    = 2,
  io_form_auxhist2                    = 2,
+ io_form_auxinput2                   = 2,
  debug_level                         = 0
  diag_print                          = 0
  /
@@ -38,19 +40,19 @@
  e_we                                = 60, 31
  e_sn                                = 50, 21
  e_vert                              = 51, 51
- num_metgrid_levels                  = 34
- num_metgrid_soil_levels             = 4  
+ p_top_requested                     = 1500,
+ num_metgrid_levels                  = 34,
+ num_metgrid_soil_levels             = 4,
  dx                                  = 25000,
  dy                                  = 25000,
- grid_id                             = 1, 2
- parent_id                           = 0, 1
- i_parent_start                      = 1, 30
- j_parent_start                      = 1, 25
- parent_grid_ratio                   = 1, 2
- parent_time_step_ratio              = 1, 2
+ grid_id                             = 1,     2
+ parent_id                           = 1,     1
+ i_parent_start                      = 1,     30
+ j_parent_start                      = 1,     25
+ parent_grid_ratio                   = 1,     2
+ parent_time_step_ratio              = 1,     2
  feedback                            = 0,
- smooth_option                       = 0,
- p_top_requested                     = 1500,
+ smooth_option                       = 0
  lagrange_order                      = 2
  interp_type                         = 2
  interp_theta                        = .false.
@@ -71,6 +73,8 @@
                                        0.0568, 0.0486, 0.0409, 0.0337, 0.0271, 0.0209, 0.0151,  
                                        0.0097, 0.0047, 0.0000
  /
+
+
 
  &physics
  mp_physics                          = 8,  8
@@ -111,6 +115,7 @@
  epssm                               = 0.1,    0.1
  use_theta_m                         = 0
  zadvect_implicit                    = 1
+ hybrid_opt                          = 0
  /
 
  &bdy_control
@@ -243,19 +248,3 @@
  &wrfvar18
  analysis_date                       = 'yyyy-mm-dd_hh:mm:ss.0000',
  /
-
- &wrfvar19
- /
-
- &wrfvar20
- /
-
- &wrfvar21
- /
-
- &wrfvar22
- /
-
- &wrfvar23
- /
-

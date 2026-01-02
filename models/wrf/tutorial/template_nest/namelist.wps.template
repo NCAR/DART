@@ -14,8 +14,8 @@
  parent_grid_ratio =   1, 2,
  i_parent_start    =   1, 30,
  j_parent_start    =   1, 25,
- e_we              = 60, 31 
- e_sn              = 50, 21
+ e_we              =  60,  31,
+ e_sn              =  50,  21,
  geog_data_res     = 'modis_30s+30s','modis_30s+30s'
  dx = 25000,
  dy = 25000,
