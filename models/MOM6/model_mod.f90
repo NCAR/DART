@@ -125,8 +125,8 @@ integer, parameter :: OBS_TOO_DEEP = 22
 character(len=256) :: template_file = 'mom6.r.nc'
 character(len=256) :: static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc'
 character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
-integer  :: assimilation_period_days      = -1
-integer  :: assimilation_period_seconds   = -1
+integer  :: assimilation_period_days      = 1
+integer  :: assimilation_period_seconds   = 0
 character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
 character(len=NF90_MAX_NAME) :: layer_name = 'Layer'
 logical :: use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
