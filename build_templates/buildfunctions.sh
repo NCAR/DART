@@ -34,6 +34,7 @@ EXTRA=""
 EXCLUDE=""
 TEST=""
 dev_test=0
+version_def=""
 
 declare -a programs
 declare -a serial_programs
@@ -41,7 +42,7 @@ declare -a model_programs
 declare -a model_serial_programs
 
 source "$DART"/build_templates/buildpreprocess.sh
-
+dartversion
 #-------------------------
 # print usage and exit
 #-------------------------
@@ -154,7 +155,8 @@ local misc="$DART/models/utilities/ \
             $DART//observations/forward_operators/obs_def_utilities_mod.f90 \
             $DART/assimilation_code/modules/observations/obs_kind_mod.f90 \
             $DART/assimilation_code/modules/observations/obs_sequence_mod.f90 \
-            $DART/assimilation_code/modules/observations/forward_operator_mod.f90"
+            $DART/assimilation_code/modules/observations/forward_operator_mod.f90 \
+            $DART/build_templates/version_mod.F90"
 
 # The quantity_mod.f90 files are in assimilation_code/modules/observations
 # so adding individual files from assimilation_code/modules/observations
@@ -240,7 +242,7 @@ else
   devlibs=$DART/developer_tests/contrib/fortran-testanything
 fi
 
- $DART/build_templates/mkmf -x -a $DART $m -p $1 \
+ $DART/build_templates/mkmf  -c $version_def -x -a $DART $m -p $1 \
      $dartsrc \
      $EXTRA \
      $devlibs \
@@ -253,7 +255,7 @@ fi
 #-------------------------
 function buildlib() {
 findsrc
-$DART/build_templates/mkmf -x -a $DART $m -p $1 \
+$DART/build_templates/mkmf -c $version_def -x -a $DART $m -p $1 \
      $dartsrc \
      $EXTRA
 }
@@ -264,7 +266,7 @@ $DART/build_templates/mkmf -x -a $DART $m -p $1 \
 #  program name
 #-------------------------
 function modelbuild() {
- $DART/build_templates/mkmf -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
+ $DART/build_templates/mkmf -c $version_def -x -a $DART $m -p $(basename $1) $DART/models/$MODEL/$1.f90 \
      $EXTRA \
      $dartsrc
 }
