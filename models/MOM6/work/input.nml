@@ -142,11 +142,11 @@
    template_file = 'mom6.r.nc', 
    static_file = 'mom6.static.nc',
    ocean_geometry = 'ocean_geometry.nc',
-   model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'UPDATE',
-                                  'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
-                                  'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
-                                  'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
-                                  'h    ', 'QTY_LAYER_THICKNESS      ', 'UPDATE',
+   model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'NA', 'NA', 'UPDATE',
+                                  'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'NA', 'NA', 'UPDATE',
+                                  'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'NA', 'NA', 'UPDATE',
+                                  'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'NA', 'NA', 'UPDATE',
+                                  'h    ', 'QTY_LAYER_THICKNESS      ', 'NA', 'NA', 'UPDATE',
    /
 
 &utilities_nml
