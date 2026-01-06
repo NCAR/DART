@@ -500,7 +500,6 @@ NEXTCHAR: do
    ! end of input?
    if (thisoff > finaloff) then
       ! if currently in a word, complete it
-      ! todo: if quoted string is last, strip final quote
       if (inword) then
          wordcount = wordcount + 1
          if (wordcount > maxw) exit NEXTCHAR
@@ -572,7 +571,7 @@ NEXTCHAR: do
          inword = .false.
          wordlen = thisoff-firstoff-1
          if (thisc == '"' .or. thisc == "'") then
-            endword = delim   ! todo: necessary?
+            endword = delim     
             thisoff = thisoff+1  ! skip quote
          endif
          wordcount = wordcount + 1
