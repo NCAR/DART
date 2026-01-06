@@ -475,8 +475,6 @@ character(len=512) :: msgstring, msgstring2
 character :: endword, thisc
 character(len=*), parameter :: routine = 'get_csv_words_from_string'
 
-logical :: debug = .false. ! true to debug this routine, warning verbose
-
 
 ! maxw is max number of 'words' allowed
 ! maxl is the max length of any one 'word'
@@ -498,8 +496,6 @@ inword = .true.
 wordlen = 0
 endword = delim
 
-if (debug) print *, 'line = ', '"'//trim(wordline)//'"'
-
 NEXTCHAR: do
    ! end of input?
    if (thisoff > finaloff) then
@@ -509,19 +505,14 @@ NEXTCHAR: do
          wordcount = wordcount + 1
          if (wordcount > maxw) exit NEXTCHAR
          wordlen = thisoff-firstoff-1
-if (debug) print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          words(wordcount) = wordline(firstoff:firstoff+wordlen)
-if (debug) print *, 'word ', wordcount, ' is ', '"'//wordline(firstoff:firstoff+wordlen)//'"'
       endif
       exit NEXTCHAR
    endif
 
    ! next character on line
    thisc = wordline(thisoff:thisoff)
-
-if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, &
-                     inword, '"'//endword//'"', ' ', '"'//thisc//'"'
 
    ! this (escape by backslash) doesn't seem to be universially supported 
    ! by CSV files but i can't see that it hurts.
@@ -586,10 +577,8 @@ if (debug) print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, fin
          endif
          wordcount = wordcount + 1
          if (wordcount > maxw) exit NEXTCHAR
-if (debug)  print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit NEXTCHAR
          words(wordcount) = wordline(firstoff:firstoff+wordlen)
-if (debug)  print *, 'word ', wordcount, ' is ', '"'//wordline(firstoff:firstoff+wordlen)//'"'
          cycle NEXTCHAR
       endif
       thisoff = thisoff + 1  ! normal case, word contents OR end of word, skip delimiter
@@ -606,13 +595,6 @@ endif
 if (wordlen > maxl) then
    write(msgstring,*) 'one or more words longer than max length allowed by calling code, ', maxl
    call error_handler(E_ERR,routine,msgstring,source)
-endif
-
-if (debug) then
-   print *, 'wordcount = ', wordcount
-   do i=1, wordcount
-      print *, 'word', i, ' is "'//trim(words(i))//'"'
-   enddo
 endif
 
 
