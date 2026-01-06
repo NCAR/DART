@@ -22,13 +22,13 @@ ASSIM_INT_HOURS=6      # ignored if ASSIM_INT_MINUTES > 0
 IC_PERT_SCALE=0.25
 # Set to 1 to enable adaptive inflation
 # For pure forecast mode turn off adaptive inflation (set = 0)
-ADAPTIVE_INFLATION=1 
-NUM_DOMAINS=2
+ADAPTIVE_INFLATION=1   # set this appropriately
+NUM_DOMAINS=2          # set this appropriately
 # -----------------------------------------------------------
 # Directory structure
 # IMPORTANT: scripts rely on these relative names
 # -----------------------------------------------------------
-BASE_DIR=/glade/derecho/scratch/bmraczka/WRFv4.5_nested_bash   # set appropriately
+BASE_DIR=/glade/derecho/scratch/bmraczka/WRFv4.5_kansas   # set appropriately
 RUN_DIR="${BASE_DIR}/rundir"
 TEMPLATE_DIR="${BASE_DIR}/template"
 OBSPROC_DIR="${BASE_DIR}/obsproc"
@@ -45,6 +45,18 @@ DART_DIR=/glade/work/bmraczka/DART                                # set appropri
 WRF_DM_SRC_DIR=/glade/work/bmraczka/WRF/WRFv4.5_git               # set appropriately
 WPS_SRC_DIR=/glade/work/bmraczka/WRF/WPSv4.5_git                  # set appropriately
 VAR_SRC_DIR=/glade/work/bmraczka/WRF/WRFDAv4.5_git                # set appropriately
+if [[ ${NUM_DOMAINS} -gt 1 ]]; then
+   echo 
+   DART_DOM_DIR="${DART_DIR}/models/wrf/tutorial/template_nest"
+   echo "NUM_DOMAINS = ${NUM_DOMAINS}" 
+   echo "Assigning input.nml.template for multiple WRF domains"
+   echo
+else
+   echo
+   DART_DOM_DIR="${DART_DIR}/models/wrf/tutorial/template"
+   echo "NUM_DOMAINS = ${NUM_DOMAINS}" 
+   echo "Assigning input.nml.template for single WRF domain"
+fi
 
 # -----------------------------------------------------------
 # Template / IC file sources
@@ -76,7 +88,7 @@ increment_vars_b=( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNR
 # -----------------------------------------------------------
 # Diagnostics
 # -----------------------------------------------------------
-OBS_VERIF_DAYS=7
+# OBS_VERIF_HRS=$(( ASSIM_INT_HOURS / 2 ))
 
 # -----------------------------------------------------------
 # Queueing / HPC system settings

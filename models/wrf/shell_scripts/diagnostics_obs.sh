@@ -28,12 +28,12 @@ dd2="${datea:6:2}"
 hh2="${datea:8:2}"
 
 #  Determine appropriate dates for observation diagnostics
-nhours=$(( OBS_VERIF_DAYS * 24 ))
-datef="$(echo "${datea} -${nhours}" | "${DART_DIR}/models/wrf/work/advance_time")"
-yyyy1="${datef:0:4}"
-mm1="${datef:4:2}"
-dd1="${datef:6:2}"
-hh1="${datef:8:2}"
+datef="$(echo "${datea} -${ASSIM_INT_HOURS}" | "${DART_DIR}/models/wrf/work/advance_time")"
+#  Forcing the obs_diag_output.nc diagnostic to be the last analysis time only (not cumulative)
+yyyy1="${datea:0:4}"
+mm1="${datea:4:2}"
+dd1="${datea:6:2}"
+hh1="${datea:8:2}"
 
 half_bin=$(( ASSIM_INT_HOURS / 2 ))
 datefbs="$(echo "${datef} -${half_bin}" | "${DART_DIR}/models/wrf/work/advance_time")"
@@ -122,7 +122,7 @@ ${REMOVE} obs_seq.final
 cd "${OUTPUT_DIR}/${datea}"
 ${COPY} "${SHELL_SCRIPTS_DIR}/mean_increment.ncl" .
 dn=1
-while (( dn <= domains )); do
+while (( dn <= ${NUM_DOMAINS} )); do
    dchar="$(echo "${dn} + 100" | bc | cut -b2-3)"
    analysis_in="analysis_increment_d${dchar}.nc"
    mean_out="mean_increments_d${dchar}.nc"

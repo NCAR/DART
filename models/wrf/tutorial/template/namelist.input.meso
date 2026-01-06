@@ -111,6 +111,7 @@
  epssm                               = 0.1
  use_theta_m                         = 0
  zadvect_implicit                    = 1
+ hybrid_opt                          = 0
  /
 
  &bdy_control

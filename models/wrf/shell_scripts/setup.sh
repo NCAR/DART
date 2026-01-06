@@ -104,7 +104,7 @@ $COPY "${SHELL_SCRIPTS_DIR}/new_advance_model.sh" "${RUN_DIR}" || exit 9
 
 # Edit input.nml.template
 sed "s/ens_size.*/ens_size                 =  $NUM_ENS,/g" \
-    "${DART_DIR}/models/wrf/tutorial/template/input.nml.template" \
+    "${DART_DOM_DIR}/input.nml.template" \
     > "${RUN_DIR}/input.nml" || exit 8
 
 echo "$myname complete at $(date)"
