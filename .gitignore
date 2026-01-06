@@ -198,6 +198,8 @@ find_enclosing_indices_test
 find_first_occurrence_test
 nml_test
 parse_args_test
+parse_csv_test
+csv_read_test
 sort_test
 stacktest
 obs_rwtest
