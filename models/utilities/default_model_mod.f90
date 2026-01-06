@@ -355,13 +355,13 @@ RowsLoop : do i = 1, state_vars%nvars
    endif
 
    if (vars_table(5*i-2) /= 'NA') then
-      read(vars_table(5*i-2), '(d16.8)') state_vars%clamp_values(i,1)
+      read(vars_table(5*i-2), *) state_vars%clamp_values(i,1)
    else
       state_vars%clamp_values(i,1) = MISSING_R8
    endif
 
    if (vars_table(5*i-1) /= 'NA') then
-      read(vars_table(5*i-1), '(d16.8)') state_vars%clamp_values(i,2)
+      read(vars_table(5*i-1), *) state_vars%clamp_values(i,2)
    else
       state_vars%clamp_values(i,2) = MISSING_R8
    endif
