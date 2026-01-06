@@ -1,7 +1,7 @@
 &model_nml_clamp
     state_variables_clamp = 'SALT_CUR ', 'QTY_SALINITY', '0.0', '0.0', 'UPDATE',
-                            'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', '0.0', '0.0', 'NO_COPY_BACK',
-                            'UVEL_CUR ', 'QTY_U_CURRENT_COMPONENT  ', '0', '0.0', 'UPDATE',
+                            'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', '1.0', '2', 'NO_COPY_BACK',
+                            'UVEL_CUR ', 'QTY_U_CURRENT_COMPONENT  ', '-4', '3', 'UPDATE',
   /
 
 &model_nml
