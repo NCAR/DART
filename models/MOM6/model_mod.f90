@@ -60,8 +60,8 @@ use default_model_mod, only : pert_model_copies, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
                               convert_vertical_obs, adv_1step, &
-                              parse_variables, &
-                              MAX_STATE_VARIABLE_FIELDS
+                              parse_variables_clamp, &
+                              MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 implicit none
 private
@@ -127,7 +127,7 @@ character(len=256) :: static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc
 character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = 1
 integer  :: assimilation_period_seconds   = 0
-character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
+character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 character(len=NF90_MAX_NAME) :: layer_name = 'Layer'
 logical :: use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
 
@@ -178,7 +178,7 @@ assimilation_time_step = set_time(assimilation_period_seconds, &
 ! parse_variables converts the character table that was read in from
 ! model_nml:model_state_variables to a state_var_type that can be passed
 ! to add_domain
-dom_id = add_domain(template_file, parse_variables(model_state_variables))
+dom_id = add_domain(template_file, parse_variables_clamp(model_state_variables))
 
 model_size = get_domain_size(dom_id)
 
