@@ -530,6 +530,7 @@ References
    assimilation_code/programs/obs_common_subset/obs_common_subset
    assimilation_code/modules/utilities/ensemble_manager_mod
    assimilation_code/modules/utilities/random_seq_mod
+   assimilation_code/modules/utilities/read_csv_mod
    assimilation_code/modules/utilities/mpi_utilities_mod
    assimilation_code/modules/utilities/time_manager_mod
    assimilation_code/modules/utilities/utilities_mod
