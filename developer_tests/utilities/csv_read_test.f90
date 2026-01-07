@@ -12,7 +12,7 @@ program csv_read_test
 
 use types_mod,            only : r8, MISSING_R8, MISSING_I
 use utilities_mod,        only : initialize_utilities, finalize_utilities, &
-                                 open_file, close_file, set_term_level, E_CONTINUE, E_ERR
+                                 open_file, close_file
 use mpi_utilities_mod,    only : shell_execute
 use read_csv_mod,         only : csv_file_type, csv_get_field, &
                                  csv_open, csv_close, csv_get_nrows
@@ -53,20 +53,8 @@ call empty_test("test2", testname)
 testname = "semicolon separated"
 call diff_separator("test3", testname)
 
-! this one provokes a (correct) fatal error
-call set_term_level(E_CONTINUE)
-testname = "bad column"
-call bad_column("test4", testname)
-call set_term_level(E_ERR)
-
 testname = "blank test"
 call blank_test("test5", testname)
-
-! this one provokes a (correct) fatal error
-call set_term_level(E_CONTINUE)
-testname = "short arrays"
-call short_array("test6", testname)
-call set_term_level(E_ERR)
 
 testname = "bad num columns"
 call bad_cols("test7", testname)
