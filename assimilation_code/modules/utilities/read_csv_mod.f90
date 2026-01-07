@@ -36,14 +36,14 @@ use utilities_mod,  only : error_handler, E_ERR, find_textfile_dims, &
 implicit none
 private
 
-public :: csv_get_nrows,       &
-          csv_get_field,       &
-          csv_field_exists,    &
-          csv_print_header,    & 
-          csv_get_field_index, &
-          csv_file_type,       & 
+public :: csv_get_nrows,             &
+          csv_get_field,             &
+          csv_field_exists,          &
+          csv_print_header,          & 
+          csv_get_field_index,       &
+          csv_file_type,             & 
           get_csv_words_from_string, &
-          csv_open,            &
+          csv_open,                  &
           csv_close
 
 interface csv_get_field
