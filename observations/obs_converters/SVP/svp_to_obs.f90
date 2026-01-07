@@ -28,18 +28,14 @@ use utilities_mod,        only : initialize_utilities, find_namelist_in_file,   
                                  nmlfileunit, error_handler, do_nml_term, E_ERR,      &
                                  finalize_utilities, do_nml_file, get_next_filename,  &
                                  find_textfile_dims, file_exist, E_MSG
-use location_mod,         only : VERTISSURFACE, set_location
+use location_mod,         only : VERTISSURFACE
 use obs_sequence_mod,     only : obs_type, obs_sequence_type, init_obs, get_num_obs,  &
                                  static_init_obs_sequence, init_obs_sequence,         &
                                  set_copy_meta_data, set_qc_meta_data, write_obs_seq, &
-                                 destroy_obs_sequence, insert_obs_in_seq,             &
-                                 set_obs_values, set_obs_def, destroy_obs
+                                 destroy_obs_sequence, destroy_obs
 use obs_utilities_mod,    only : create_3d_obs, add_obs_to_seq
 use obs_kind_mod,         only : DRIFTER_U_CURRENT_COMPONENT, DRIFTER_TEMPERATURE,    &
                                  DRIFTER_V_CURRENT_COMPONENT
-use obs_def_mod,          only : obs_def_type, set_obs_def_time, set_obs_def_key,     &
-                                 set_obs_def_error_variance, set_obs_def_location,    &
-                                 set_obs_def_type_of_obs
 use read_csv_mod,         only : csv_file_type, csv_get_nrows, csv_get_field,         &
                                  csv_open, csv_close, csv_print_header
 

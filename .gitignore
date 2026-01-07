@@ -172,6 +172,8 @@ convert_L2b
 convert_goes_ABI_L1b
 MOD29E1D_to_obs
 hf_to_obs
+arvor_to_obs
+svp_to_obs
 
 # Test programs built by developer_tests
 rttov_test
