@@ -17,14 +17,6 @@ The module supports files with exactly one header row followed by data rows,
 where fields are separated by a single-character delimiter (typically comma or
 semicolon).
 
-Other modules used
-------------------
-
-::
-
-   types_mod
-   utilities_mod
-
 Public types
 ------------
 
@@ -91,8 +83,7 @@ Prints the cached header fields and their indices to standard output.
 .. rubric:: ``get_csv_words_from_string(inline, delim, wordcount, words)``
 
 Splits a single line into delimiter-separated fields using CSV-like parsing
-rules.  This routine is exposed primarily to support consistent parsing behavior
-in other code.
+rules.
 
 Typical usage
 -------------
@@ -146,6 +137,8 @@ What this module does
 
   - values that cannot be converted to integer are returned as ``MISSING_I``
   - values that cannot be converted to real are returned as ``MISSING_R8``
+
+- Treats backslash (``\``) as an escape character, preventing interpretation of the following character during parsing.
 
 What this module does not do
 ----------------------------
