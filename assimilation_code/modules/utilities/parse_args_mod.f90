@@ -43,27 +43,19 @@
 ! for the name=val form, a final & sets a return flag to indicate
 ! there is a following line that is part of the same context.
 !
-! if you need to fix any bugs in this code, also look at the
-! get_csv_from_string() routine in the read_csv_mod module.  
-! it is derived from these routines.
-!
 
 module parse_args_mod
 
-use types_mod,     only : r8, i8, i4, MISSING_R8
-use utilities_mod, only : error_handler, E_ERR, find_textfile_dims,    &
-                          file_exist, open_file, close_file, to_upper, &
-                          string_to_real, string_to_integer
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 private
 
-public :: get_args_from_string,           &
+public :: get_args_from_string, &
           get_name_val_pairs_from_string, &
-          get_next_arg                   
+          get_next_arg
 
 character(len=*), parameter :: source = 'parse_args_mod.f90'
-character(len=512) :: string1, string2
 
 ! the ascii code for the backslash character is 92.
 character(len=1), parameter :: BACKSLASH = ACHAR(92)
@@ -565,5 +557,7 @@ if (debug) print *, '3 arg is "'//trim(argword)//'"'
 
 end subroutine get_next_arg
 
+!------------------------------------------------------------------------------
 
 end module parse_args_mod
+
