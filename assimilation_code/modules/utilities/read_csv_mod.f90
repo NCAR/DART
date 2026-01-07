@@ -53,7 +53,6 @@ interface csv_get_field
 end interface csv_get_field
 
 character(len=*), parameter :: source         = 'read_csv_mod.f90'
-character(len=*), parameter :: EMPTY_ENTRY    = '_EMPTY_'            ! Used to fill in missing data in the raw file
 integer,          parameter :: MAX_FIELDS_LEN = 15000
 integer,          parameter :: MAX_NUM_FIELDS = 1000
 
@@ -98,6 +97,9 @@ if (.not. cf%is_open) then
    return
 endif
 
+! initialize return value
+varvals(:) = ''
+
 ! Locate field index in cached header
 fidx = csv_find_field(cf, varname)
 if (fidx < 1 .or. fidx > cf%ncols) then
@@ -126,14 +128,7 @@ do iobs = 1, cf%nrows
 
    call get_csv_words_from_string(line, cf%delim, nfields, entries)
 
-   ! Parse the column entry. If it's _EMPTY_ then 
-   ! treat it as empty string to make it MISSING 
-   ! when converted to integer or real  
-   if (trim(entries(fidx)) == EMPTY_ENTRY) then
-      varvals(iobs) = ''        
-   else
-      varvals(iobs) = trim(entries(fidx))
-   endif
+   varvals(iobs) = trim(entries(fidx))
 enddo
 
 end subroutine csv_get_field_char

@@ -12,7 +12,7 @@ program csv_read_test
 
 use types_mod,            only : r8, MISSING_R8, MISSING_I
 use utilities_mod,        only : initialize_utilities, finalize_utilities, &
-                                 open_file, close_file
+                                 open_file, close_file, set_term_level, E_CONTINUE, E_ERR
 use mpi_utilities_mod,    only : shell_execute
 use read_csv_mod,         only : csv_file_type, csv_get_field, &
                                  csv_open, csv_close, csv_get_nrows
@@ -42,7 +42,7 @@ type(csv_file_type) :: cf
 
 ! start test
 call initialize_utilities('csv_read_test', standalone_program=.true.)
-call plan(44)   ! should be +1 with bad_column() and +5 with short_array() tests
+call plan(46) 
 
 testname = "basic case"
 call basic_test("test1", testname)
@@ -54,15 +54,19 @@ testname = "semicolon separated"
 call diff_separator("test3", testname)
 
 ! this one provokes a (correct) fatal error
-!testname = "bad column"
-!call bad_column("test4", testname)
+call set_term_level(E_CONTINUE)
+testname = "bad column"
+call bad_column("test4", testname)
+call set_term_level(E_ERR)
 
 testname = "blank test"
 call blank_test("test5", testname)
 
 ! this one provokes a (correct) fatal error
-!testname = "short arrays"
-!call short_array("test6", testname)
+call set_term_level(E_CONTINUE)
+testname = "short arrays"
+call short_array("test6", testname)
+call set_term_level(E_ERR)
 
 testname = "bad num columns"
 call bad_cols("test7", testname)
@@ -344,15 +348,8 @@ nrows = csv_get_nrows(cf)
 call ok((nrows == 4),         trim(testname)//", number of rows")
 
 ! try to read the data into an array that is too short.
-! string
+! this should provoke an error message
 call csv_get_field(cf, 'Name', nam, testname)
-call ok((nam(1) == 'Bob'),    trim(testname)//", read name 1")
-call ok((nam(2) == 'Alice'),  trim(testname)//", read name 2")
-
-! integer
-call csv_get_field(cf, 'Total', tot, testname)
-call ok((tot(1) == 400),      trim(testname)//", read total 1")
-call ok((tot(2) == 200),      trim(testname)//", read total 2")
 
 call csv_close(cf)
 

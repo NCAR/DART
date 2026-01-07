@@ -50,11 +50,13 @@ public :: get_unit, &
           set_output, &
           do_output, &
           set_nml_output, &
+          set_term_level, &
           E_DBG, &
           E_MSG, &
           E_ALLMSG, &
           E_WARN, &
           E_ERR, &
+          E_CONTINUE, &
           NAMELIST_NOT_PRESENT, &
           is_longitude_between, &
           get_next_filename, &
@@ -697,13 +699,28 @@ select case (level)
     ! ok, do nothing
   case default
     write(msgstring1, *) 'bad integer value for "termlevel", must be one of'
-    write(msgstring2, *) '-1 (E_MSG), 0 (E_ALLMSG), 1 (E_WARN), 2 (E_ERR), -2 (E_DBG)'
+    write(msgstring2, *) '-1 (E_MSG), 0 (E_ALLMSG), 1 (E_WARN), 2 (E_ERR), -2 (E_DBG), 3 (E_CONTINUE)'
     call error_handler(E_ERR,'check_term_level', msgstring1, &
                        source, text2=msgstring2)
 
   end select
 
 end subroutine check_term_level
+
+
+!-----------------------------------------------------------------------
+
+subroutine set_term_level(level)
+
+integer, intent(in) :: level
+
+if (.not. module_initialized) call fatal_not_initialized('set_term_level')
+
+call check_term_level(level)
+
+TERMLEVEL = level
+
+end subroutine set_term_level
 
 
 !-----------------------------------------------------------------------
