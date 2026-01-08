@@ -7821,14 +7821,14 @@ subroutine get_variable_bounds(bounds_table,wrf_var_name,lb,ub,instructions)
  
         bound_trim = trim(bounds_table(2,ivar))
         if ( bound_trim  /= 'NULL' ) then
-           read(bound_trim,'(d16.8)') lb 
+           read(bound_trim, *) lb 
         else
            lb = missing_r8
         endif
 
         bound_trim = trim(bounds_table(3,ivar))
         if ( bound_trim  /= 'NULL' ) then
-           read(bound_trim,'(d16.8)') ub 
+           read(bound_trim, *) ub 
         else
            ub = missing_r8
         endif
