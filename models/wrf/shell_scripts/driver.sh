@@ -183,17 +183,28 @@ while true; do
       while (( dn <= domains )); do
          dchar="$(echo "${dn} + 100" | bc | cut -b2-3)"
 
-         if [[ -e "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc" ]]; then
+	 # Single domain (no dchar appendix) 
+         if [[ -e "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean.nc" ]]; then
+         
+            ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean.nc" "${RUN_DIR}/."
+            ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_mean.nc"  "${RUN_DIR}/."
+
+            ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_sd.nc"   "${RUN_DIR}/."
+            ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_sd.nc"    "${RUN_DIR}/."
+
+
+	 # Multiple domains (dchar appendix)
+         elif [[ -e "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc" ]]; then
 
             ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc" "${RUN_DIR}/."
             ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_mean_d${dchar}.nc"  "${RUN_DIR}/."
 
             ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_sd_d${dchar}.nc"   "${RUN_DIR}/."
-            ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_sd_d${dchar}.nc"   "${RUN_DIR}/."
+            ${LINK} "${OUTPUT_DIR}/${datep}/Inflation_input/input_postinf_sd_d${dchar}.nc"    "${RUN_DIR}/."
 
          else
 
-            echo "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean_d${dchar}.nc file does not exist. Stopping"
+            echo "${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_mean**.nc file does not exist. Stopping"
             echo "If first assimilation cycle make sure fill_inflation_restart was used to generate mean and sd inflation files"
             touch ABORT_RETRO
             exit 3
@@ -331,12 +342,18 @@ EOF
    dn=1
    while (( dn <= domains )); do
         dchar="$(echo "${dn} + 100" | bc | cut -b2-3)"
-        ncdiff -F -O -v "${extract_str}" "postassim_mean_d${dchar}.nc" "preassim_mean_d${dchar}.nc" "analysis_increment_d${dchar}.nc"
-        ncks  -F -O -x -v "${extract_str}" "postassim_mean_d${dchar}.nc" "static_data_d${dchar}.nc"
-        ncks  -A "static_data_d${dchar}.nc" "analysis_increment_d${dchar}.nc"
+
+	if (( domains == 1 )); then
+          ncdiff -F -O -v "${extract_str}" "postassim_mean.nc" "preassim_mean.nc" "analysis_increment.nc"
+          ncks  -F -O -x -v "${extract_str}" "postassim_mean.nc" "static_data.nc"
+          ncks  -A "static_data.nc" "analysis_increment.nc"
+        else
+          ncdiff -F -O -v "${extract_str}" "postassim_mean_d${dchar}.nc" "preassim_mean_d${dchar}.nc" "analysis_increment_d${dchar}.nc"
+          ncks  -F -O -x -v "${extract_str}" "postassim_mean_d${dchar}.nc" "static_data_d${dchar}.nc"
+          ncks  -A "static_data_d${dchar}.nc" "analysis_increment_d${dchar}.nc"
+	fi
 
         # Move diagnostic and obs_seq.final data to storage directories
-        #
         if (( dn == 1 )) && [[ -e obs_seq.final ]]; then
              ${MOVE} obs_seq.final "${OUTPUT_DIR}/${datea}/."
              if [[ $? -ne 0 ]]; then
@@ -352,20 +369,30 @@ EOF
               fi
         fi
 
-        for FILE in \
-          "postassim_mean_d${dchar}.nc" "preassim_mean_d${dchar}.nc" \
-          "postassim_sd_d${dchar}.nc"   "preassim_sd_d${dchar}.nc" \
-          "analysis_increment_d${dchar}.nc" \
-          "output_mean_d${dchar}.nc" "output_sd_d${dchar}.nc"
-        do
-          if [[ -e "${FILE}" && -s "${FILE}" ]]; then
-             ${MOVE} "${FILE}" "${OUTPUT_DIR}/${datea}/."
-             if [[ $? -ne 0 ]]; then
-                echo "failed moving ${RUN_DIR}/${FILE}"
-                touch BOMBED
-             fi
+	if (( domains == 1 )); then
+          files=(
+             "postassim_mean.nc" "preassim_mean.nc"
+             "postassim_sd.nc"   "preassim_sd.nc"
+             "analysis_increment.nc"
+             "output_mean.nc" "output_sd.nc"
+          )
+        else
+          files=(
+             "postassim_mean_d${dchar}.nc" "preassim_mean_d${dchar}.nc"
+             "postassim_sd_d${dchar}.nc"   "preassim_sd_d${dchar}.nc"
+             "analysis_increment_d${dchar}.nc"
+             "output_mean_d${dchar}.nc" "output_sd_d${dchar}.nc"
+           )
+        fi
+
+        for FILE in "${files[@]}"; do
+          if [[ -s "${FILE}" ]]; then
+            ${MOVE} "${FILE}" "${OUTPUT_DIR}/${datea}/." || {
+             echo "failed moving ${RUN_DIR}/${FILE}"
+             touch BOMBED
+            }
           else
-             echo "${OUTPUT_DIR}/${FILE} does not exist and should."
+            echo "${RUN_DIR}/${FILE} does not exist (or is empty) and should."
              ls -l
              touch BOMBED
           fi
@@ -386,8 +413,14 @@ EOF
       dn=1
       while (( dn <= domains )); do
          dchar="$(echo "${dn} + 100" | bc | cut -b2-3)"
-         old_file=( "input_postinf_mean_d${dchar}.nc"  "input_postinf_sd_d${dchar}.nc"  "input_priorinf_mean_d${dchar}.nc"  "input_priorinf_sd_d${dchar}.nc" )
-         new_file=( "output_postinf_mean_d${dchar}.nc" "output_postinf_sd_d${dchar}.nc" "output_priorinf_mean_d${dchar}.nc" "output_priorinf_sd_d${dchar}.nc" )
+
+	 if ((domains ==  1)); then
+            old_file=( "input_postinf_mean.nc"  "input_postinf_sd.nc"  "input_priorinf_mean.nc"  "input_priorinf_sd.nc" )
+            new_file=( "output_postinf_mean.nc" "output_postinf_sd.nc" "output_priorinf_mean.nc" "output_priorinf_sd.nc" )
+         else
+            old_file=( "input_postinf_mean_d${dchar}.nc"  "input_postinf_sd_d${dchar}.nc"  "input_priorinf_mean_d${dchar}.nc"  "input_priorinf_sd_d${dchar}.nc" )
+            new_file=( "output_postinf_mean_d${dchar}.nc" "output_postinf_sd_d${dchar}.nc" "output_priorinf_mean_d${dchar}.nc" "output_priorinf_sd_d${dchar}.nc" )
+         fi
 
          nfiles="${#new_file[@]}"
          i=0

@@ -58,7 +58,7 @@
 #  wrfbdy members - wrfbdy_d01_${gday}_${gsec}_${member}
 
 
-echo "new_advance_model.csh is running in $(pwd)"
+echo "new_advance_model.sh is running in $(pwd)"
 
 # Arguments are the process number of caller, the number of state copies
 # belonging to that process, and the name of the filter_control_file for
@@ -98,24 +98,24 @@ export TARGET_CPU_LIST=-1
 if [[ "$process" -eq 0 ]]; then
 
    if [[ ! -x "${CENTRALDIR}/advance_time" ]]; then
-     echo "ABORT: advance_model.csh could not find required executable dependency ${CENTRALDIR}/advance_time"
+     echo "ABORT: advance_model.sh could not find required executable dependency ${CENTRALDIR}/advance_time"
      exit 1
    fi
 
    if [[ ! -d "WRF_RUN" ]]; then
-      echo "ABORT: advance_model.csh could not find required data directory ${CENTRALDIR}/WRF_RUN, which contains all the WRF run-time input files"
+      echo "ABORT: advance_model.sh could not find required data directory ${CENTRALDIR}/WRF_RUN, which contains all the WRF run-time input files"
       exit 1
    fi
 
    if [[ ! -x "${CENTRALDIR}/WRF_RUN/da_wrfvar.exe" ]]; then
       echo
-      echo "WARNING: advance_model.csh could not find optional executable dependency ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe"
+      echo "WARNING: advance_model.sh could not find optional executable dependency ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe"
       echo
       if [[ ! -x "update_wrf_bc" ]]; then
          # if the boundary conditions are specified, we need update_wrf_bc.  otherwise, it's ok if it isn't found.
          SPEC_BC="$(grep specified "${CENTRALDIR}/namelist.input" | grep true | wc -l)"
          if (( SPEC_BC > 0 )); then
-            echo "ABORT: advance_model.csh could not find required executable dependency ${CENTRALDIR}/update_wrf_bc"
+            echo "ABORT: advance_model.sh could not find required executable dependency ${CENTRALDIR}/update_wrf_bc"
             exit 1
          fi
       fi
@@ -126,11 +126,11 @@ if [[ "$process" -eq 0 ]]; then
      echo "WARNING: da_wrfvar.exe found, using it to update LBCs on the fly"
      echo
      if [[ ! -x "${CENTRALDIR}/pert_wrf_bc" ]]; then
-        echo "ABORT: advance_model.csh could not find required executable dependency ${CENTRALDIR}/pert_wrf_bc"
+        echo "ABORT: advance_model.sh could not find required executable dependency ${CENTRALDIR}/pert_wrf_bc"
         exit 1
      fi
      if [[ ! -r "${CENTRALDIR}/WRF_RUN/be.dat" ]]; then
-        echo "ABORT: advance_model.csh could not find required readable dependency ${CENTRALDIR}/WRF_RUN/be.dat"
+        echo "ABORT: advance_model.sh could not find required readable dependency ${CENTRALDIR}/WRF_RUN/be.dat"
         exit 1
      fi
      if [[ ! -e "${CENTRALDIR}/bc_pert_scale" ]]; then
@@ -177,7 +177,7 @@ lineout=3
 #  Leaving in place if wrf_to_dart/dart_to_wrf functionality required in future.
 
 #  Code identifies input and output file from control file from multiple domains
-#  Works with both first_advance.csh and assim_advance.csh scripting
+#  Works with both first_advance.sh and assim_advance.sh scripting
 #  Assumes input (filter_restart) and output (prior) files are appended to control_file
 #  in consecutive pairs ordered by domain
 

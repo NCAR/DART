@@ -151,16 +151,34 @@ if [[ -e wrfvar_output.nc ]]; then
 
   ${MOVE} wrfvar_output.nc wrfinput_d01
 
-  # Prep domain files for ndown.exe
-  ${LINK} wrfinput_d01 wrfout_d01_${yyyy}-${mm}-${dd}_${hh}:00:00
+  # For nested domain setups only, downscale perturbations to inner domains
+  # For single domains, next section is skipped, no downscaling applied
 
-  ${COPY} "${OUTPUT_DIR}/${initial_date}/wrfinput_d02_${gdate[0]}_${gdate[1]}_mean" \
-          "${RUN_DIR}/advance_temp${n}/wrfndi_d02"
+    dn="${domains}"
+    while (( dn > 1 )); do
 
-  echo "Running ndown.exe to downscale perturbed  wrfinput_d01 onto wrfinput_d02 for member ${n} at \$(date)"
+    # Prep domain files for ndown.exe
+    # input files of wrfout_d01_[time] (parent domain), wrfndi_d02 (nested domain)
+    # output files of wrfinput_d02 and wrfbdy_d02
 
-  # Downscale parent domain to nested domain (wrfinput_d02)
-  mpiexec -n 4 -ppn 4 ./ndown.exe  > ndown.out
+    dchar="$(echo "$dn + 100" | bc | cut -b2-3)"
+
+    ${LINK} wrfinput_d01 wrfout_d01_${yyyy}-${mm}-${dd}_${hh}:00:00
+
+    ${COPY} "${OUTPUT_DIR}/${initial_date}/wrfinput_d${dchar}_${gdate[0]}_${gdate[1]}_mean" \
+            "${RUN_DIR}/advance_temp${n}/wrfndi_d02"
+
+    echo "Running ndown.exe to downscale perturbed wrfinput_d01 onto wrfinput_d${dchar} for member ${n}"
+
+    # Downscale parent domain to nested domain (wrfinput_d{??})
+    mpiexec -n 4 -ppn 4 ./ndown.exe  > ndown_d${dchar}.out
+
+    ${MOVE} wrfinput_d02 wrfinput_d${dchar}
+    ${MOVE} wrfbdy_d02   wrfbdy_d${dchar}    
+    ${REMOVE} wrfndi_d02
+         (( dn-- ))
+    done   # loop through domains
+  
 
 fi
 
