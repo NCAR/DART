@@ -1,3 +1,5 @@
+.. index :: csv
+
 MODULE read_csv_mod
 ===================
 
