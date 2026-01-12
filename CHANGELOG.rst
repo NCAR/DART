@@ -22,7 +22,25 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**December 31 2025 :: Log DART version. Tag v11.19.1** 
+**January 8 2026 :: ARVOR Float and SVP Drifters. Tag v11.20.0**
+
+New Features:
+
+  - ARVOR float observation converter
+  - SVP drifter observation converter
+  - csv read utilities
+
+Bug-fix:
+
+  - Remove format read for clamping values in parse_variables_clamp,
+    wrf, mpas, tiegcm that caused integers to be misread.
+
+**January 6 2026 :: DART Data Archive. Tag v11.19.3**
+
+- WRF tutorial updated to get data from data.dart.ucar.edu
+- Fix defaults for MOM6 assimilation period to 1 day
+
+**December 31 2025 :: Log DART version. Tag v11.19.2** 
 
 New Features:
 

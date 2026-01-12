@@ -138,7 +138,7 @@
 
 &model_nml
    assimilation_period_days     = 1
-   assimilation_period_seconds  = 1
+   assimilation_period_seconds  = 0
    template_file = 'mom6.r.nc', 
    static_file = 'mom6.static.nc',
    ocean_geometry = 'ocean_geometry.nc',

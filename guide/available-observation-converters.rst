@@ -8,6 +8,7 @@ into the format required by DART.
 Each directory has at least one converter:
 
 -  ``AIRS``: :doc:`/observations/obs_converters/AIRS/README`
+-  ``ARVOR``: :doc:`../observations/obs_converters/ARVOR/readme`
 -  ``AURA``: See ``DART/observations/obs_converters/AURA``
 -  ``Aviso+/CMEMS``: :doc:`../observations/obs_converters/AVISO/AVISO`
 -  ``Ameriflux``: :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`
@@ -45,6 +46,7 @@ Each directory has at least one converter:
 -  ``QuikSCAT``: :doc:`../observations/obs_converters/quikscat/QuikSCAT`
 -  ``Radar``: :doc:`../observations/obs_converters/radar/README`
 -  ``snow``: :doc:`../observations/obs_converters/snow/snow_to_obs`
+-  ``SVP``: :doc:`../observations/obs_converters/SVP/readme`
 -  ``Text``: :doc:`../observations/obs_converters/text/text_to_obs`
 -  ``text_GITM``: See ``DART/observations/obs_converters/text_GITM``
 -  ``tpw``: :doc:`../observations/obs_converters/tpw/tpw`

@@ -6,32 +6,20 @@
 
 main() {
 
-
 export DART=$(git rev-parse --show-toplevel)
-source "$DART"/build_templates/buildfunctions.sh
+source "$DART"/build_templates/buildconvfunctions.sh
 
-MODEL="none"
-EXTRA="$DART"/models/template/threed_model_mod.f90
-LOCATION="threed_sphere"
-dev_test=1
-TEST="utilities"
+CONVERTER=ARVOR
+LOCATION=threed_sphere
 
-serial_programs=(
-PrecisionCheck
-csv_read_test
-error_handler_test
-file_utils_test
-find_enclosing_indices_test
-find_first_occurrence_test
-nml_test
-parse_args_test
-parse_csv_test
-sort_test
-stacktest
+programs=(
+advance_time
+arvor_to_obs
+obs_seq_to_netcdf
+obs_sequence_tool
 )
 
-
-# quickbuild arguments
+# build arguments
 arguments "$@"
 
 # clean the directory
@@ -40,8 +28,9 @@ arguments "$@"
 # build and run preprocess before making any other DART executables
 buildpreprocess
 
-# build 
-buildit
+# build
+buildconv
+
 
 # clean up
 \rm -f -- *.o *.mod

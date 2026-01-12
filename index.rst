@@ -329,6 +329,7 @@ References
    observations/obs_converters/AIRS/README
    observations/obs_converters/AIRS/convert_airs_L2
    observations/obs_converters/AIRS/convert_amsu_L1
+   observations/obs_converters/ARVOR/readme
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
@@ -370,6 +371,7 @@ References
    observations/obs_converters/obs_error/README
    observations/obs_converters/radar/README
    observations/obs_converters/snow/snow_to_obs
+   observations/obs_converters/SVP/readme
    observations/obs_converters/text/text_to_obs
    observations/obs_converters/tpw/tpw
    observations/obs_converters/tropical_cyclone/tc_to_obs
@@ -528,6 +530,7 @@ References
    assimilation_code/programs/obs_common_subset/obs_common_subset
    assimilation_code/modules/utilities/ensemble_manager_mod
    assimilation_code/modules/utilities/random_seq_mod
+   assimilation_code/modules/utilities/read_csv_mod
    assimilation_code/modules/utilities/mpi_utilities_mod
    assimilation_code/modules/utilities/time_manager_mod
    assimilation_code/modules/utilities/utilities_mod

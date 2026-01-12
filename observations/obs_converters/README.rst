@@ -360,6 +360,7 @@ The current list of converters (some directories contain multiple
 converters) include:
 
 -  ``AIRS``: :doc:`./AIRS/README`
+-  ``ARVOR``: :doc:`./ARVOR/readme`
 -  ``AURA``: See ``./AURA``
 -  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
 -  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
@@ -400,6 +401,7 @@ converters) include:
 -  ``QuikSCAT``: :doc:`./quikscat/QuikSCAT`
 -  ``Radar``: :doc:`./radar/README`
 -  ``snow``: :doc:`./snow/snow_to_obs`
+-  ``SVP``: :doc:`./SVP/readme`
 -  ``Text``: :doc:`./text/text_to_obs`
 -  ``text_GITM``: See ``./text_GITM``
 -  ``tpw``: :doc:`./tpw/tpw`
