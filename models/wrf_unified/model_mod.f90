@@ -111,6 +111,8 @@ use         map_utils, only : latlon_to_ij, &
 
 use netcdf ! no get_char in netcdf_utilities_mod
 
+implicit none
+
 private
 
 ! routines required by DART code - will be called from filter and other
@@ -439,7 +441,7 @@ endif
 call getCorners(i, j, id, qty, ll, ul, lr, ur, rc)
 
 ! vertical location
-if (surface_qty(qty) .or. which_vert==VERTISSUFACE) then
+if (surface_qty(qty) .or. which_vert==VERTISSURFACE) then
    zloc(:) = 1.0_r8
    k = 1
    fail = surface_elevation_difference_too_big(id, ll, ul, lr, ur, dx, dy, dxm, dym, lon_lat_vert(3), sfc_elev_max_diff)
@@ -1831,7 +1833,7 @@ integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four c
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8) :: surface_type_interpolate(ens_size) ! same across the ensemble
 
-surface_type_interpolate(:) = -1 + landmask_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+surface_type_interpolate(:) = -1.d0 + landmask_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
 
 end function surface_type_interpolate
 
@@ -1843,7 +1845,7 @@ integer,             intent(in) :: ens_size
 integer,             intent(in) :: id
 integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
 real(r8),            intent(in) :: dxm, dx, dy, dym
-real(r8) :: surface_type_interpolate(ens_size) ! same across the ensemble
+real(r8) :: landmask_interpolate(ens_size) ! same across the ensemble
 
 landmask_interpolate = dym*( dxm*stat_dat(id)%land(ll(1), ll(2))      + &
 			     dx*stat_dat(id)%land(lr(1), lr(2)) )     + &
@@ -1945,6 +1947,30 @@ pres4 = model_pressure_t(ur(1), ur(2), k, id, state_handle, ens_size)
 pressure_interpolate = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
 end function pressure_interpolate
+
+!------------------------------------------------------------------
+
+function pressure_interpolate_vertically(ens_size, state_handle, id, xy_point, k, zloc)
+
+integer,             intent(in) :: ens_size
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: id
+integer,             intent(in) :: xy_point(2) ! (x,y) at one corner
+integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
+real(r8),            intent(in) :: zloc(ens_size)
+
+real(r8) :: pressure_interpolate_vertically(ens_size)
+
+real(r8), dimension(ens_size) :: pres_k, pres_kp1
+
+pres_k   = model_pressure_t(xy_point(1), xy_point(2), k, id, state_handle, ens_size)
+pres_kp1 = model_pressure_t(xy_point(1), xy_point(2), k+1, id, state_handle, ens_size)
+
+pressure_interpolate_vertically = vertical_interpolation(ens_size, zloc, pres_k, pres_kp1)
+
+end function pressure_interpolate_vertically
+
+
 
 !------------------------------------------------------------------
 function surface_pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, dxm, dx, dy, dym)
@@ -2168,6 +2194,7 @@ integer  :: i, j ! grid
 real(r8) :: xloc, yloc ! WRF i,j in the grid
 real(r8) :: dx, dxm, dy, dym ! grid fractions
 real(r8) :: zout(1), zk(1), zk1(1), geop(1), zloc(1)
+real(r8) :: h1(1), h2(1), h3(1), h4(1)
 real(r8) :: pres1(1), pres2(1), pres3(1), pres4(1)
 integer  :: ens_size, rc, k(1)
 logical  :: fail
@@ -2280,9 +2307,19 @@ do ob = 1, num
             !geop = vertical_interpolation(ens_size, zloc, zk, zk1)
             !zout = compute_geometric_height(geop(1), lon_lat_vert(2))
 
+            ! horizontal then vertical interpolation, not what main code does
             zk = interpolate_geometric_height(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
             zk1 = interpolate_geometric_height(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
             zout = vertical_interpolation(ens_size, zloc, zk, zk1)
+
+            ! vertical then horizontal interpolation
+            h1 = interpolate_geometric_height_vertically(ens_size, state_handle, id, ll, k, zloc) 
+            h2 = interpolate_geometric_height_vertically(ens_size, state_handle, id, lr, k, zloc)
+            h3 = interpolate_geometric_height_vertically(ens_size, state_handle, id, ul, k, zloc)
+            h4 = interpolate_geometric_height_vertically(ens_size, state_handle, id, ur, k, zloc)
+
+            zout = dym*( dxm*h1(1) + dx*h2(1) ) + dy*( dxm*h3(1) + dx*h4(1) )
+
         endif
 
       case (VERTISSCALEHEIGHT)
@@ -2299,15 +2336,16 @@ do ob = 1, num
 
          else ! vert_cood_in == VERTISHEIGHT
 
-            zk  = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-            zk1 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
-            zout = vertical_interpolation(ens_size, zloc, zk, zk1)
+            ! horizontal interpolation, then vertical interpolation
+            !zk  = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+            !zk1 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+            !zout = vertical_interpolation(ens_size, zloc, zk, zk1)
 
-            ! surface pressure
-            pres1 = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
-            pres2 = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
-            pres3 = model_pressure_s(ul(1), ul(2), id, state_handle, ens_size)
-            pres4 = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
+            ! vertical interpolation, then horizontal interpolation
+            pres1 = pressure_interpolate_vertically(ens_size, state_handle, id, ll, k, zloc)
+            pres2 = pressure_interpolate_vertically(ens_size, state_handle, id, lr, k, zloc)
+            pres3 = pressure_interpolate_vertically(ens_size, state_handle, id, ul, k, zloc)
+            pres4 = pressure_interpolate_vertically(ens_size, state_handle, id, ur, k, zloc)
 
             zout = -log(zout / (dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )))
 
@@ -2376,6 +2414,49 @@ enddo
 interpolate_geometric_height = dym*( dxm*geomet_ll(:) + dx*geomet_lr(:) ) + dy*( dxm*geomet_ul(:) + dx*geomet_ur(:) )
 
 end function interpolate_geometric_height
+
+!------------------------------------------------------------------
+function interpolate_geometric_height_vertically(ens_size, state_handle, id, xy_point, k, zloc)
+
+integer,             intent(in) :: ens_size
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: id
+integer,             intent(in) :: xy_point(2) ! (x,y) at one corner
+integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
+real(r8),            intent(in) :: zloc(ens_size)
+
+real(r8) :: interpolate_geometric_height_vertically(ens_size)
+
+integer :: e ! loop variable
+! lower left, upper left, lower right, upper right
+integer(i8), dimension(ens_size)  :: idx_k, idx_kp1   ! dart index at point
+real(r8),    dimension(ens_size)  :: x_k, x_kp1 ! state value at point
+real(r8),    dimension(ens_size)  :: geop_k, geop_kp1 ! geopotential height at point
+real(r8),    dimension(ens_size)  :: geomet_k, geomet_kp1 ! geometric height at point
+integer :: var_id
+
+var_id = get_varid_from_kind(wrf_dom(id), QTY_GEOPOTENTIAL_HEIGHT)
+
+do e = 1, ens_size
+                               !   x,           y,           z,    domain,      variable
+   idx_k(e) = get_dart_vector_index(xy_point(1), xy_point(2), k(e), wrf_dom(id), var_id)
+   idx_kp1(e) = get_dart_vector_index(xy_point(1), xy_point(2), k(e)+1, wrf_dom(id), var_id)
+
+enddo
+
+call get_state_array(x_k, idx_k, state_handle)
+call get_state_array(x_kp1, idx_kp1, state_handle)
+
+do e = 1, ens_size
+   geop_k(e) = (stat_dat(id)%phb(xy_point(1), xy_point(2), k(e)) + x_k(e)) / gravity
+   geop_kp1(e) = (stat_dat(id)%phb(xy_point(1), xy_point(2), k(e)+1) + x_kp1(e)) / gravity
+   geomet_k(e) = compute_geometric_height(geop_k(e), grid(id)%latitude(xy_point(1), xy_point(2)))
+   geomet_kp1(e) = compute_geometric_height(geop_kp1(e), grid(id)%latitude(xy_point(1), xy_point(2)))
+enddo
+
+interpolate_geometric_height_vertically = vertical_interpolation(ens_size, zloc, geomet_k, geomet_kp1)
+
+end function interpolate_geometric_height_vertically
 
 !------------------------------------------------------------------
 ! model height any grid u,v,w,t
