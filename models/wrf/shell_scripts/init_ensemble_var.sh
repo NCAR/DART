@@ -4,14 +4,14 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# init_ensemble_var.csh - script that creates perturbed initial
+# init_ensemble_var.sh - script that creates perturbed initial
 #                         conditions from the WRF-VAR system.
 #                         (perts are drawn from the perturbation bank)
 
 set -euo pipefail
 
 initial_date="$1"
-paramfile="$(readlink -f "$2")" # Get absolute path for param.csh from command line arg
+paramfile="$(readlink -f "$2")" # Get absolute path for param.sh from command line arg
 source "$paramfile"
 
 cd "${RUN_DIR}"

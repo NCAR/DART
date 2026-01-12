@@ -4,14 +4,14 @@
 # This open source software is provided "as is" without charge.
 
 # ADAPTIVE_INFLATION is disconnected from input.nml
-# ASSIM_INT_HOURS is implicit in (ALL) the scripts except assim_advance.csh
-# ASSIM_INT_MINUTES support needs to be added to param.csh
+# ASSIM_INT_HOURS is implicit in (ALL) the scripts except assim_advance.sh
+# ASSIM_INT_MINUTES support needs to be added to param.sh
 
 # -----------------------------------------------------------
 # Environment setup (example for NCAR Derecho)
 # -----------------------------------------------------------
-module load nco          # set this appropriately
-module load ncl/6.6.2    # set this appropriately
+module load nco          
+module load ncl/6.6.2    
 set -uo pipefail
 # -----------------------------------------------------------
 # Assimilation parameters
@@ -22,13 +22,13 @@ ASSIM_INT_HOURS=6      # ignored if ASSIM_INT_MINUTES > 0
 IC_PERT_SCALE=0.25
 # Set to 1 to enable adaptive inflation
 # For pure forecast mode turn off adaptive inflation (set = 0)
-ADAPTIVE_INFLATION=1   # set this appropriately
-NUM_DOMAINS=2          # set this appropriately
+ADAPTIVE_INFLATION=1   
+NUM_DOMAINS=2          
 # -----------------------------------------------------------
 # Directory structure
 # IMPORTANT: scripts rely on these relative names
 # -----------------------------------------------------------
-BASE_DIR=/glade/derecho/scratch/bmraczka/WRFv4.5_kansas   # set appropriately
+BASE_DIR=/glade/derecho/scratch/bmraczka/WRFv4.5_kansas   
 RUN_DIR="${BASE_DIR}/rundir"
 TEMPLATE_DIR="${BASE_DIR}/template"
 OBSPROC_DIR="${BASE_DIR}/obsproc"
@@ -41,10 +41,10 @@ PERTS_DIR="${BASE_DIR}/perts"
 # Component paths
 # -----------------------------------------------------------
 SHELL_SCRIPTS_DIR="${BASE_DIR}/scripts"
-DART_DIR=/glade/work/bmraczka/DART                                # set appropriately
-WRF_DM_SRC_DIR=/glade/work/bmraczka/WRF/WRFv4.5_git               # set appropriately
-WPS_SRC_DIR=/glade/work/bmraczka/WRF/WPSv4.5_git                  # set appropriately
-VAR_SRC_DIR=/glade/work/bmraczka/WRF/WRFDAv4.5_git                # set appropriately
+DART_DIR=/glade/work/bmraczka/DART                                
+WRF_DM_SRC_DIR=/glade/work/bmraczka/WRF/WRFv4.5_git               
+WPS_SRC_DIR=/glade/work/bmraczka/WRF/WPSv4.5_git                  
+VAR_SRC_DIR=/glade/work/bmraczka/WRF/WRFDAv4.5_git               
 if [[ ${NUM_DOMAINS} -gt 1 ]]; then
    echo 
    DART_DOM_DIR="${DART_DIR}/models/wrf/tutorial/template_nest"
@@ -61,9 +61,8 @@ fi
 # -----------------------------------------------------------
 # Template / IC file sources
 # -----------------------------------------------------------
-GEO_FILES_DIR=/glade/u/home/wrfhelp/WPS_GEOG                      # set appropriately
-#GRIB_DATA_DIR="${ICBC_DIR}/grib_data"                            # set appropriately
-GRIB_DATA_DIR=/glade/work/bmraczka/WRF_nest_tutorial/GFS          # set appropriately
+GEO_FILES_DIR=/glade/u/home/wrfhelp/WPS_GEOG                      
+GRIB_DATA_DIR="${ICBC_DIR}/grib_data"                             
 GRIB_SRC='GFS'
 
 # -----------------------------------------------------------
@@ -94,8 +93,8 @@ increment_vars_b=( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNR
 # Queueing / HPC system settings
 # -----------------------------------------------------------
 SUPER_PLATFORM="derecho"
-COMPUTER_CHARGE_ACCOUNT=P86850054     # set appropriately
-EMAIL="bmraczka@ucar.edu"            # set appropriately
+COMPUTER_CHARGE_ACCOUNT=P86850054     
+EMAIL="bmraczka@ucar.edu"            
 
 if [[ "$SUPER_PLATFORM" == "derecho" ]]; then
 

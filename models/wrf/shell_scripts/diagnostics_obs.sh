@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# diagnostics_obs.csh - shell script that computes observation
+# diagnostics_obs.sh - shell script that computes observation
 #                       specific diagnostics.
 #
 # $1 - analysis date

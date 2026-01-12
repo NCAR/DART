@@ -24,7 +24,7 @@ domains="${NUM_DOMAINS}"
 
 start_time="$(date +%s)"
 echo "host is $(hostname)"
-echo "assim_advance.csh is running in $(pwd)"
+echo "assim_advance.sh is running in $(pwd)"
 
 cd "${RUN_DIR}"
 
@@ -82,7 +82,7 @@ cd "${RUN_DIR}"
 
 # filter_control accounts for multiple domains
 # Appends input (filter_restart) and output (prior) in consecutive pairs
-# Should be consistent with filter_control setup for first_advance.csh
+# Should be consistent with filter_control setup for first_advance.sh
 # during intial forecast step
 
 echo "${emember}" > "${RUN_DIR}/filter_control${icnum}"

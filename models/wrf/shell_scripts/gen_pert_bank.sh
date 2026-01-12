@@ -21,9 +21,7 @@ paramfile="/glade/derecho/scratch/bmraczka/WRFv4.5_nested_bash/scripts/param.sh"
 echo "Sourcing parameter file"
 source "$paramfile"
 
-mkdir -p "${PERTS_DIR}/work/boundary_perts"
-# this has all wrf and wrfda executables and support files
-# /glade/work/bmraczka/WRF/WRFDAv4.5_git
+# This has all wrf and wrfda executables and support files
 wrfda_dir="${RUN_DIR}/WRF_RUN"    # set this appropriately
 work_dir="${PERTS_DIR}/work"      # set this appropriately
 # Put the final eperturbation files here for later use
@@ -39,7 +37,7 @@ IC_VERT_SCALE=0.8
 # Number of perturbations to generate, suggest 3-4X the ensemble size. 
 # Recommended to test single member first to confirm functionality and desired performance.
 
-num_ens=150
+num_ens=60
 
 
 # Get wrfinput_d01 file directly from the 'mean' file generated from real.exe during gen_retro_icbc.sh
@@ -48,6 +46,7 @@ ASSIM_INT_HOURS=6
 
 module load nco
 
+mkdir -p "${SAVE_DIRECTORY}"
 cd "$work_dir" || exit 1
 cp "${TEMPLATE_DIR}/input.nml.template" input.nml
 

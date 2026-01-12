@@ -8,27 +8,32 @@ Introduction
 
 This document will describe how to get started with your own Weather
 Research and Forecasting (WRF) data assimilation experiments using DART
-and only covers the  WRF-specific aspects of coupling with DART.
-It is not wise to try to run WRF-DART if you have no experience with
-either WRF or DART.
+and focuses on the  WRF-specific aspects of coupling with DART.  These
+instructions provide a realistic nested (2-domain) WRFv4.5 example for a 
+severe storm event in the Great Plains during 2024. The tutorial provides
+the user with NCEP prepbufr atmospheric observations and WRF
+grib files to generate the inital WRF domain and boundary conditions. It is 
+recommended the user work through the tutorial example completely and confirm
+the setup works on their own system.  At that time, the scripts can be used
+as a template to apply to their own scientfic WRF-DART application.
 
 .. Important ::
 
   This tutorial was designed to be compatible with WRF Version 4 and was
-  tested with WRFv4.5.2. This tutorial should not be used with DART
-  versions 11.4.0 and earlier because those older versions do not account
-  for different coordinate systems including the sigma hybrid coordinates as 
-  described in `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
+  tested with WRFv4.5.2. It is mandatory to use the terrain following coordinate
+  system (hybrid_opt=0) and not the default sigma hybrid coordinates (hybrid_opt=1)
+  when using WRF-DART. Using the sigma hybrid coordinate can lead to adverse effects
+  when generating ensemble spread leading to poor forecast performance.  For more 
+  details see `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
   
-  Furthermore, older versions do not account for the prognostic temperature variable
-  switch from ``T`` (perturbation potential temperature) to ``THM``, (either perturbation
-  potential temperature or perturbation moist potential temperature) as described in
-  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__. The current implementation
-  of the code sets ``T=THM`` because within &dynamics section of ``namelist.input``
-  ``use_theta_m=0``.  For this reason, It is mandatory to include ``THM`` instead of 
-  ``T`` as the ``TYPE_T`` within the wrf_state_variables namelist.
+  It is also mandatory to include the prognostic temperature variable ``THM`` within
+  the DART state. This means that ``THM`` must be included alongside ``TYPE_T`` within
+  the wrf_state_variables namelist.  The current implementation
+  of the code sets ``use_theta_m=0`` (&dynamics section of ``namelist.input``) such that 
+  ``THM=perturbation potential tempature``. For more discussion on this topic see:
+  `DART issue #661 <https://github.com/NCAR/DART/issues/661>`__.
 
-  Earlier version of WRF (v3.9) may run without errors with more recent versions of
+  Earlier versions of WRF (v3.9) may run without errors with more recent versions of
   DART (later than 11.4.0), but the assimilation performance will be deprecated.  
   If you need to run with earlier versions of WRF, please review the changes required
   to switch from WRFv4 to WRFv3 as documented within 
@@ -47,58 +52,54 @@ The DART team is not responsible for and does not maintain the WRF code. For WRF
 `WRF User Forum <https://forum.mmm.ucar.edu/>`__
 or the `WRF github page. <https://github.com/wrf-model>`__
 
-If you are new to DART, we recommend that you become familiar with DART
-by working through the :doc:`../../../theory/readme` and then
+If you are new to DART, we recommend that you become familiar with EnKF
+theory by working through the :doc:`../../../theory/readme` and then
 understanding the :ref:`DART getting started <Welcome page>` documentation.
 
-This tutorial is **not** a toy simulation, but represents a realistic WRF-DART
-assimilation for the continental United States. It uses a WRF
-ensemble of 50 members that will be initialized from GFS initial
-conditions at 2017/04/27 00:00 UTC. The data included in the tutorial lasts
-until 2017/04/30 18:00 UTC. During this period, there was a strong rain and wind event
-that affected a large portion of the United States, causing record
-rains, localized flooding, and numerous tornadoes. For more information
-on the physical account of this case, see
-`weather.gov <https://www.weather.gov/lot/2017Apr2930_rainfall>`__.
+This tutorial examines a Derecho and HP Supercell storm event that affected 
+the Great Plains area on May 19th 2024. For more information on this event
+see `weather.gov <https://www.weather.gov/ict/even_20240519>`__.
 
-By default, the tutorial case will only cover 12 hours of this event
-starting at 2017/04/27 00:00 UTC. The WRF model will be “spun-up” for
-six hours to generate a prior distribution. An assimilation of PREPBUFR
-observations will then be performed at 06:00 UTC, at which time analysis
-files will be generated to begin a new ensemble forecast. The WRF model
-will be advanced for 6 hours and a final assimilation cycle will be
-performed at 12:00 UTC. This process could then continue in order to
-investigate the strong rain and wind event. On NSF NCAR's *Derecho*,
-the tutorial requires at least 30 minutes of run time, and can take 
-much longer (1-2 hours) depending upon the PBS queue wait time.
 
-The goal of this tutorial is to demonstrate how WRF-DART works, and to provide an
-understanding of the major steps within a data assimilation (DA) experiment.
-However, you will need to do additional work before you can apply
-WRF-DART to your own research application, as some of the steps involved
-in this tutorial (in particular, the perturbation bank and the
-observation sequence files) are provided for you in order to simplify
-the process. We provide a diagnostic section at the end of the tutorial to
-assess the skill/success of the assimilation.  Be aware, an assimilation is
-not successful just because it runs to completion. A successful assimilation
-generally uses the vast majority of the observations provided and minimizes
-the bias and RMSE between the posterior model state and the observations.
+The figures below provides snapshots of the local radar during the evolution of
+the storm event. The left panel (05-19-2024 18:00) and middle panel (05-20-2024 00:00 UTC) 
+illustrate the timing of storm development, whereas the right panel shows the nested 
+domain configuration for WRF. The nested domain (d02)(0.1x0.1 degrees) is centered in Kansas,
+whereas the parent domain (d01) (0.2x0.2 degrees) covers a signifcant portion of the Great Plains.
 
-Finally, if you are not running on the NSF NCAR Derecho (PBS) supercomputing system, you will
-need to customize the assimilation scripts (located in /DART/models/wrf/shell_scripts/) to match the details of your particular system. 
-Specifically, you will need to edit the DART csh scripting to match your system settings
-whether that be, for example, a PBS, SLURM or LSF HPC system.  Although the DART team can
-offer advice on how to customize the scripting to accomodate your HPC system, your
-HPC system administrator is likely the best resource to resolve these issues.
++-------------------------+-------------------------+-------------------------+
+| |radar1|                | |radar2|                | |wrf_domain|            |
++-------------------------+-------------------------+-------------------------+
+
+
+The tutorial uses a 20 member ensemble initialized from the GFS at
+05-19-2024 00:00 UTC. It performs an ensemble spinup from 00 to 06 UTC
+by applying perturbations to the GFS initial condition.  It then assimilates
+atmospheric observations at 06 and 12 UTC respectively. Finally, a forecast
+is conducted (no observations assimilated) from 12 to 18 UTC.  This sequence
+of ensemble spinup, assimilation mode and forecast mode generally
+follows published literature for atmospheric DA.  Although we have strived
+to maintain scientific realism in this tutorial, we have made an effort
+to reduce the computational expense for reduced runtime by reduing
+the ensemble size (20) and coarsening the WRF spatial resolution (0.1 and 0.2 degrees).
+For science applications we recommend at least using 40 ensemble members 
+which helps reduce sampling error and improves the assimlation performance.
+
+On NSF NCAR's *Derecho*,the tutorial requires roughly 30 minutes of computational
+run time, but can take longer depending upon the PBS queue wait time.
+
+The goals of this tutorial are to: 1) provide an understanding of the major steps 
+within a DA experiment, 2) port and test the WRF-DART scripts on the users system 
+and 3) use the WRF-DART tutorial scripts as a template for the users own
+research application.
 
 
 .. Important ::
 
-  The tutorial scripting and instructions are based on the NSF NCAR supercomputer
-  Derecho, so you will need to edit the scripts and interpret the instructions for
-  other HPC systems. The scripting uses examples of a PBS queuing system (e.g. Derecho)
-  and LSF queuing system (e.g. decommissioned Yellowstone). You can use these as a 
-  template for your own system.  
+  The tutorial scripting and instructions are intended for the NSF NCAR supercomputer
+  Derecho.  The user must modify the scripts and interpret the instructions for
+  other HPC systems. The scripting uses examples for a PBS (e.g. Derecho)
+  and LSF queuing system. These will need to be modified for other systems (e.g. SLURM).  
 
 
 Step 1: Setup
@@ -126,7 +127,7 @@ packages can be automatically loaded using the following commands:
      module load nco
      module load ncl/6.6.2
 
-These commands are provided by default with the param.csh script. More details
+These commands are provided by default with the param.sh script. More details
 are provided below.  There are multiple phases for the setup: building the DART executables,
 downloading the initial WRF boundary conditions, building (or using
 existing) WRF executables, and configuring and staging the scripting
@@ -201,7 +202,7 @@ might need for an experiment with that model.
        integer, parameter :: r8 = r4                      ! alias r8 to r4
 
 3. Copy the tutorial DART namelist from
-   ``$DART_DIR/models/wrf/tutorial/template/input.nml.template`` to
+   ``$DART_DIR/models/wrf/tutorial/template_nest/input.nml.template`` to
    ``$DART_DIR/models/wrf/work/input.nml``.
 
    ::
@@ -217,7 +218,7 @@ might need for an experiment with that model.
       ./quickbuild.sh
 
    Many executables are built, the following executables are needed for the
-   tutorial and will be copied to the right place by the *setup.csh* script
+   tutorial and will be copied to the right place by the *setup.sh* script
    in a subsequent step:
  
    ::
@@ -234,11 +235,10 @@ might need for an experiment with that model.
 Preparing the experiment directory.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Approximately 100Gb of space is needed to run the tutorial. Create a
-"work" directory someplace with a lot of free space. The rest of the
-instructions assume you have an environment variable called *BASE_DIR*
-that points to this directory.  On Derecho it is convenient to use your
-scratch directory for this purpose.
+Create a "work" directory that can accomodate approximately 40 GB of space 
+to run the tutorial. The rest of the instructions assume you have an 
+environment variable called *BASE_DIR* that points to this directory.  
+On Derecho it is convenient to use your scratch directory for this purpose.
 
 ===== ====================================================
 shell command
@@ -247,32 +247,30 @@ tcsh  ``setenv BASE_DIR <path_to_your_working_directory>``
 bash  ``export BASE_DIR=<path_to_your_working_directory>``
 ===== ====================================================
 
-1. The WRF boundary conditions and perturbations required to make a
-   viable ensemble are available in a 15 GB tar file. Put this file in
-   your ``$BASE_DIR``. Since this is a large file, we suggest using
-   'wget' to download the file directly to your local system:
+1. The grib files required to generate WRF initial and  boundary conditions
+   and the observation files (obs_seq.out) have already been generated for you
+   within  a 10GB tar file. Put this file in your ``$BASE_DIR``. 
+   Download the file directly to your local system:
 
    ::
 
        cd $BASE_DIR
-       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_29Apr2024.tar.gz
-       tar -xzvf wrf_dart_tutorial_29Apr2024.tar.gz
+       wget data.dart.ucar.edu/wrfdart/tutorial/wrf_dart_nested_tutorial_15Jan2026.tar.gz
+       tar -xzvf wrf_dart_nested_tutorial_15Jan2026.tar.gz
 
    After untarring the file you should see the following directories:
    *icbc, output, perts,* and *template.* The directory names (case
    sensitive) are important, as the scripts rely on these local paths
-   and file names. Please note that the perturbation, surface and initial 
-   condition files were derived from an earlier version (pre-4.0) of WRF/WPS/WRFDA
-   but still maintains compatibility with the (post-4.0, post-11.4.0) 
-   WRF-DART versions recommended to run this WRF assimilation example.  
+   and file names. Only the icbc and output folders contain files.  
 
 2. You will need template WRF namelists from the
-   ``$DART_DIR/models/wrf/tutorial/template`` directory:
+   ``$DART_DIR/models/wrf/tutorial/template_nest`` directory:
 
    ::
 
-       cp $DART_DIR/models/wrf/tutorial/template/namelist.input.meso   $BASE_DIR/template/.
-       cp $DART_DIR/models/wrf/tutorial/template/namelist.wps.template $BASE_DIR/template/.
+       cp $DART_DIR/models/wrf/tutorial/template_nest/namelist.input.meso   $BASE_DIR/template/.
+       cp $DART_DIR/models/wrf/tutorial/template_nest/namelist.wps.template $BASE_DIR/template/.
+       cp $DART_DIR/models/wrf/tutorial/template_nest/namelist.input.3dvar  $BASE_DIR/template/.
 
 3. You will also need scripting to run a WRF/DART experiment. Copy the contents of 
    ``$DART_DIR/models/wrf/shell_scripts`` to the ``$BASE_DIR/scripts`` directory.
@@ -293,9 +291,10 @@ WRF Preprocessing System (WPS) and WRF Data Assimilation System (WRFDA).
 
 Importantly, DART is used to perform the ensemble DA for this tutorial, however,
 the WRFDA package is required to generate a set of perturbed initial ensemble member
-files and also to generate perturbed boundary condition files. Since the
-tutorial provides a perturbation bank for a specific case, it is not
-required to actually *run da_wrfvar.exe* but it needs to be in the
+files and also to generate perturbed boundary condition files. The **da_wrfvar.exe**
+executable is required to generate a perturbation bank for the ensemble spinup step.
+Importantly, DART performs ensemble DA using the **filter** executable, whereas the 
+WRFDA package is only used to generature perturbations.
 ``WRF_RUN`` directory for the tutorial.
 
 WRF and WRFDA should be built with the "dmpar" option, while WPS can be
@@ -307,20 +306,20 @@ about building these packages.
  For consistency and to avoid errors, you should build WRF, WPS, WRFDA, and DART with the
  same compiler you use for NetCDF. Likewise MPI should use the same compiler.
  You will need the location of the WRF and WRFDA builds to customize the
- *params.csh* script in the next step. If using gfortran to compile WRF on Derecho
+ *param.sh* script in the next step. If using gfortran to compile WRF on Derecho
  we recommend using option 34 (gnu dmpar) to configure WRF, option 1 (gnu serial) to 
  configure WPS, and option 34 (gnu dmpar) to configure WRFDA. You will need the location
- of the WRF, WPS,and WRFDA builds to customize the *params.csh* script in the next step.
+ of the WRF, WPS,and WRFDA builds to customize the *param.sh* script in the next step.
 
  Using the gfortan compiler on Derecho required custom flag settings to successfully
  compile the WRF, WPS and WRFDA executables. For more information please see  
  NCAR/DART `github issue 627. <https://github.com/NCAR/DART/issues/627>`__ 
    
 
-Configure ``$BASE_DIR/scripts/param.csh`` with proper paths, info, etc.
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configure ``$BASE_DIR/scripts/param.sh`` with proper paths and varaibles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is a script that sets variables which will be read by other
+The param.sh script sets variables which will be read by other
 WRF-DART scripts. There are some specific parameters for either the
 Derecho supercomputing system using the
 `PBS <https://www.pbsworks.com/>`__ queueing system or the
@@ -330,10 +329,8 @@ script to set your queueing-system specific parameters.
 
 .. important::
 
-   All variables that are marked
-   ``'set this appropriately #%%%#'`` need to be set. This list is intended
-   to provide some guidance on what needs to be set, but it is not an
-   exhaustive list.
+   Make sure all the variables within *param.sh* as described in the table below are set appropriately.
+   Remember, that Derecho HPC is used for  the default settings.  
 
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  |     Script variable     |                                                                     Description                                                                     |
@@ -342,9 +339,15 @@ script to set your queueing-system specific parameters.
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | module load ncl/6.6.2   | The ncl package.                                                                                                                                    |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | BASE_DIR                | The directory containing icbc, output, perts, etc.                                                                                                  |
+ | BASE_DIR                | The main working directory.                                                                                                                         |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | DART_DIR                | The DART directory.                                                                                                                                 |
+ +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
+ | NUM_ENS                 | The total number of WRF ensemble members.  The tutorial uses 20 for computational efficiency.                                                       |
+ +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
+ | ADAPTIVE_INFLATION      | A DART tool used to adjust ensemble spread. Set to 1 (on) for assimilation mode and set to 0 (off) for forecast mode.                               |
+ +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
+ | NUM_DOMAINS             | The number of WRF domains. Tutorial uses a 2 domain nested setup (parent d01, nested d02). Scripting will work for both single and multi-domains.   |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | WRF_DM_SRC_DIR          | The directory of the WRF dmpar installation.                                                                                                        |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -360,17 +363,17 @@ script to set your queueing-system specific parameters.
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
  | COMPUTER_CHARGE_ACCOUNT | The project account for supercomputing charges. See your supercomputing project administrator for more information.                                 |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
- | EMAIL                   | The e-mail address used by the queueing system to send job summary information. This is optional.                                                   |
+ | EMAIL                   | An optional e-mail address used by the queueing system to send job summary information.                                                             |
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
-Run the *setup.csh* script to create the proper directory structure and
+Now that *param.sh* is set properly, run the *setup.sh* script to create the proper directory structure and
 move executables to proper locations.
 
 ::
 
    cd $BASE_DIR/scripts
-   ./setup.csh param.csh
+   ./setup.sh param.sh
 
 So far, your ``$BASE_DIR`` should contain the following directories:
 
@@ -410,7 +413,7 @@ Your ``$BASE_DIR/rundir`` directory should contain the following:
 **scripts:** 
 
 - *add_bank_perts.ncl*
-- *new_advance_model.csh*
+- *new_advance_model.sh*
 
 **support data:** 
 
@@ -429,20 +432,15 @@ Check to make sure your ``$BASE_DIR/rundir/WRF_RUN`` directory contains:
 .. note::
 
 	
-   Be aware that the *setup.csh* script is designed to remove
+   Be aware that the *setup.sh* script is designed to remove
    ``$BASE_DIR/rundir/WRF_RUN/namelist.input``. Subsequent scripting will
    modify ``$BASE_DIR/template/namlist.input.meso`` to create the
    ``namelist.input`` for the experiment.
 
-For this tutorial, we are providing you with a specified WRF domain. To
-make your own, you would need to define your own wps namelist and use
-WPS to make your own geogrid files. See the WRF site for help with
-building and running those tools as needed. You would also need to get
-the appropriate grib files to generate initial and boundary condition
-files for the full period you plan to cycle. In this tutorial we have
-provided you with geogrid files, a small set of grib files, and a
-namelist to generate series of analyses for several days covering a
-North American region.
+For this tutorial, we are providing you with the namelist settings for
+a nested WRF domain which specifies the location, spatial resolution and 
+relative positioning of the parent and nested domain. These namelist settings 
+are used in conjunction with the grib files to generate the intial and boundary conditions.
 
 Let's now look inside the ``$BASE_DIR/scripts`` directory. You should
 find the following scripts:
@@ -450,189 +448,233 @@ find the following scripts:
 +-----------------------+-------------------------------------------------------------------------------------------+
 |      Script name      |                                        Description                                        |
 +=======================+===========================================================================================+
-| add_bank_perts.ncl    | Adds perturbations to each member.                                                        |
+| add_bank_perts.ncl    | Applies perturbations to each WRF ensemble member to increase ensemble spread.            |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| assim_advance.csh     | Advances 1 WRF ensemble member to the next analysis time.                                 |
+| assim_advance.sh      | Advances each WRF ensemble member between each assimilation time.                         |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| assimilate.csh        | Runs filter ... i.e. the assimilation.                                                    |
+| assimilate.sh         | Runs filter at each  assimilation time step.                                              |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| diagnostics_obs.csh   | Computes observation-space diagnostics and the model-space mean analysis increment.       |
+| diagnostics_obs.sh    | Computes observation-space diagnostics and the model-space mean analysis increment.       |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| driver.csh            | Primary script for running the cycled analysis system.                                    |
+| driver.sh             | Primary script for running the cycled analysis (DA) system.                               |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| first_advance.csh     | Advances 1 WRF ensemble member (on the first time).                                       |
+| first_advance.sh      | Advances each WRF ensemble member during initial ensemble spinup.                         |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| gen_pert_bank.csh     | Saves the perturbations generated by WRFDA CV3.                                           |
+| gen_pert_bank.sh      | Generates perturbations using WRFDA CV3.                                                  |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh    | Generates the wrfinput and wrfbdy files.                                                  |
+| gen_retro_icbc.sh     | Generates the wrfinput and wrfbdy mean files for each assimilation time.                  |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| init_ensemble_var.csh | Creates the perturbed initial conditions from the WRF-VAR system.                         |
+| init_ensemble_var.sh  | Performs the initial ensemble spinup.                                                     |
 +-----------------------+-------------------------------------------------------------------------------------------+
 | mean_increment.ncl    | Computes the mean state-space increment, which can be used for plotting.                  |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| new_advance_model.csh | advances the WRF model after running DART in a cycling context.                           |
+| new_advance_model.sh  | Advances the WRF model in between assimilation times.                                     |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| param.csh             | Contains most of the key settings to run the WRF-DART system.                             |
+| param.sh              | Contains key variables and paths to run the WRF-DART system.                              |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| prep_ic.csh           | Prepares the initial conditions for a single ensemble member.                             |
+| prep_ic.sh            | Prepares the initial conditions for each WRF ensemble member.                             |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| real.csh              | Runs the WRF real.exe program.                                                            |
+| real.sh               | Runs the WRF real.exe program that advances WRF forward in time.                          |
 +-----------------------+-------------------------------------------------------------------------------------------+
-| setup.csh             | Creates the proper directory structure and place executables/scripts in proper locations. |
+| setup.sh              | Creates the proper directory structure and puts executables/scripts in proper locations.  |
 +-----------------------+-------------------------------------------------------------------------------------------+
 
 
 
 You will need to edit the following scripts to provide the paths to
 where you are running the experiment, to connect up files, and to set
-desired dates. Search for the string ``'set this appropriately #%%%#'``
+desired dates. Search for the string ``'set this appropriately'``
 for locations that you need to edit.
 
 ::
 
    cd $BASE_DIR/scripts
-   grep -r 'set this appropriately #%%%#' .
+   grep -r 'set this appropriately' .
 
-Other than *param.csh*, which was covered above, make the following
+Other than *param.sh*, which was covered above, make the following
 changes:
 
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|      File name     |           Variable / value           |                                                                                                                    Change description                                                                                                                   |
-+====================+======================================+=========================================================================================================================================================================================================================================================+
-| driver.csh         | datefnl = 2017042712                 | Change to the final target date; here the final date is already set correctly for this tutorial.                                                                                                                                                        |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh | datefnl = 2017042712                 | Set to the final target date of the tutorial.  However, it is possible (not necessary) to create WRF initial/boundary conditions to 2017043000. This is the latest date that files are included in the tutorial.                                        |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.csh | paramfile = <full path to param.csh> | The full path to param.csh. Change this on the line after the comment. While these two files are in the same directory here, in general it is helpful to have one param.csh for each experiment.                                                        |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_pert_bank.csh  | All changes                          | As the tutorial includes a perturbation bank, you will not need to run this script for the tutorial, so you will not need to change these values. However, you should set appropriate values when you are ready to generate your own perturbation bank. |
-+--------------------+--------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
++--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
+|      File name     |           Variable / value           |                                                 Change description                                                                         |
++====================+======================================+============================================================================================================================================+
+| driver.sh          | datefnl = 2024051912                 | Change to the final assimilation target date. In this example observations are assimilated at time steps 2024051906 and 2024051912.        |
++--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
+| gen_retro_icbc.sh  | datea   = 2024051900                 | Set to the starting time of the tutorial.  This is beginning time of the ensemble spinup.                                                  |
+|                    | datefnl = 2024052000                 | Set to the ending time of the tutorial. This is the end of the forecast mode.                                                              |
+|                    | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
++--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
+| gen_retro_icbc.sh  | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
++--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
+| gen_pert_bank.sh   | datea = 2024051900                   | Set to the starting time of the tutorial.                                                                                                  |
+|                    | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
+|                    | savedir = <path to perts>            | Set to PERTS_DIR/work/boundary_perts. Location of perturbation bank.                                                                       |             +--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
 
 
-Next, move to the ``$BASE_DIR/perts`` directory. Here you will find 100
-perturbation files, called a "perturbation bank." For your own case, you
-would need to create a perturbation bank of your own. A brief
-description for running the script is available inside the comments of
-that file. However, again, for this tutorial, this step has already been
-run for you. The ``$BASE_DIR/icbc`` directory contains a *geo_em_d01.nc*
-file (geo information for our test domain), and grib files that will be
-used to generate the initial and boundary condition files. The
-``$BASE_DIR/template`` directory should contain namelists for WRF, WPS,
-and filter, along with a wrfinput file that matches what will be the
-analysis domain. Finally, the ``$BASE_DIR/output`` directory contains
-observations within each directory name. Template files will be placed
-here once created (done below), and as we get into the cycling the
-output will go in these directories.
+The setup is now complete. The incoming raw data was included within the 
+tarred file.  The grib files  should be located within the ``$BASE_DIR/icbc`` 
+directory that will be used to generate the WRF initial and boundary condition files.
+Finally, the ``$BASE_DIR/output`` directory contains observations within each directory name. 
+
+The ``$BASE_DIR/template`` directory should contain namelists for WRF, WPS,
+and DART. 
 
 
 
 
-Step 2: Initial conditions
---------------------------
+Step 2: Create Initial and Boundary Conditions
+----------------------------------------------
 
-To get an initial set of ensemble files, depending on the size of your
-ensemble and data available to you, you might have options to initialize
-the ensemble from, say, a global ensemble set of states. Here, we
-develop a set of flow dependent errors by starting with random
-perturbations and conducting a short forecast. We will use the WRFDA
-random CV option 3 to provide an initial set of random errors, and since
-this is already available in the perturbation bank developed in the
-setup, we can simply add these to a deterministic GFS state. Further,
-lateral boundary uncertainty will come from adding a random perturbation
-to the forecast (target) lateral boundary state, such that after the
-integration the lateral boundaries have random errors.
-
-First, we need to generate a set of GFS states and boundary conditions
-that will be used in the cycling. Use
-``$BASE_DIR/scripts/gen_retro_icbc.csh`` to create this set of files,
-which will be added to a subdirectory corresponding to the date of the
-run in the ``$BASE_DIR/output`` directory. Make sure
-*gen_retro_icbc.csh* has the appropriate path to your *param.csh*
-script. If the *param.csh* script also has the correct edits for paths
-and you have the executables placed in the rundir, etc., then running
-*gen_retro_icbc.csh* should execute a series of operations to extract
-the grib data, run metgrid, and then twice execute *real.exe* to
-generate a pair of WRF files and a boundary file for each analysis time.
+We use GFS data to generate the initial and boundary conditions
+that will be used in the tutorial. The *gen_retro_icbc.sh* script 
+executes a series of operations to extract the grib data, runs 
+geogrid, metgrid, and then twice executes *real.exe* to generate 
+a pair of WRF files and a boundary file for each analysis time and
+domain. These files are then added to a subdirectory corresponding to the 
+date within the ``$BASE_DIR/output`` directory.
 
 ::
 
    cd $BASE_DIR/scripts
-   ./gen_retro_icbc.csh
+   ./gen_retro_icbc.sh
 
 
 .. note::
 
-  Ignore any ``rm: No match`` errors, as the script attempts to
-  delete output files if they already exist, and they will not for the
-  first run.
-
-Once the script completes, inside your ``$BASE_DIR/output/2017042700``
-directory you should see these files:
+Once the script completes, you should confirm the following files
+have been created within the ``$BASE_DIR/output/2024051900``
+directory:
 
 ::
 
-   wrfbdy_d01_152057_21600_mean
-   wrfinput_d01_152057_0_mean
-   wrfinput_d01_152057_21600_mean
+   wrfbdy_d01_154636_21600_mean
+   wrfinput_d01_154636_0_mean
+   wrfinput_d01_154636_21600_mean
+   wrfinput_d02_154636_0_mean
+   wrfinput_d02_154636_21600_mean
 
-These filenames include the Gregorian dates for these files, which is
-used by the dart software for time schedules. Similar files (with
-different dates) should appear in all of the date directories between
-the *datea* and *datef* dates set in the *gen_retro_icbc.csh* script.
-All directories with later dates will also have an observation sequence
-file *obs_seq.out* that contains observations to be assimilated at that
-time.
+These filenames are appended with the Gregorian dates used within DART. 
+Similar files (with different dates) should appear in all of the date directories between
+the *datea* and *datef* dates set in the *gen_retro_icbc.sh* script.
 
-Next, we will execute the script to generate an initial ensemble of
-states for the first analysis. For this we run the script
-*init_ensemble_var.csh*, which takes two arguments: a date string and
-the location of the *param.csh* script.
+
+
+Step 3: Generate Perturbation Bank
+----------------------------------
+
+We use the WRFDA random CV option 3 to provide an initial set of random errors that
+we refer to as the 'perturbation bank.' During the subsequent ensemble
+spinup (Step 4) these perturbations are added to the  deterministic,
+single instance GFS state generated in Step 2. Furthermore, during the
+subsequent assimilation cycling (Step 8), these perturbations are added to the forecast 
+(target) boundary state, such that boundaries include random errors introducing 
+uncertainty to the boundary, which promotes ensemble spread to the WRF ensemble domain(s).
+
+The spatial pattern and magnitude of the perturbations are controlled through
+the ``&wrrvar7`` ``cv_options``, ``as1``, ``as2``, ``as3`` and ``as4`` namelist settings included 
+within the ``namelist.input.3dvar`` template.  These settings were customized for
+this tutorial example. These will likely need to be modified for your own science 
+application.  For more information please see the WRFDA documentation. 
 
 ::
 
    cd $BASE_DIR/scripts
-   ./init_ensemble_var.csh 2017042700 param.csh
+   ./gen_pert_bank.sh
 
-This script generates 50 small scripts and submits them to the batch
-system. It assumes a PBS batch system and the 'qsub' command for
-submitting jobs. If you have a different batch system, edit this script
-and look near the end. You will need to modify the lines staring with
-#PBS and change 'qsub' to the right command for your system. You might
-also want to modify this script to test running a single member first —
-just in case you have some debugging to do.
+.. note::
 
-However, be warned that to successfully complete the tutorial, including
-running the *driver.csh* script in Step 6, using a smaller ensemble 
-(e.g. < 20 members) can lead to spurious updates during the analysis step,
-causing the WRF simulation to fail. 
+The script will generate a batch job for each perturbation (60 total).
+The rule of thumb is to generate 3-4X as many perturbations as the
+model ensemble (20). You should confirm the following files have been
+created within the ``$PERTS_DIR/work/boundary_perts`` directory:
 
-When complete for the full ensemble, you should find 50 new files in the
-directory ``output/2017042700/PRIORS`` with names like *prior_d01.0001*,
-*prior_d01.0002*, etc... You may receive an e-mail to helpfully inform
-you when each ensemble member has finished.
+::
+
+   pert_bank_mem_01.nc
+   pert_bank_mem_02.nc
+   ..
+   ..
+   pert_bank_mem_60.nc
 
 
-Step 3: Prepare observations [Informational Only]
+Step 4: Perform Ensemble Spinup
+-------------------------------
+
+Next, we generate an initial ensemble of WRF states to prepare for the 
+first assimilation (analysis) step. We run the script
+*init_ensemble_var.sh*, which takes two arguments: a date string for the
+starting time and the *param.sh* script.
+
+The ``init_ensembe_var.sh`` script adds perturbations to the single instance
+WRF domain (generated in Step 2) which generates an ensemble of WRF simulations.
+If there are multiple domains (like in this tutorial example) the code will automatically
+apply the perurbations from the parent domain to the nested domains through
+downscaling.  This ensures that the location of perturbations are consistent across
+the domain boundaries. Next, the  model ensemble is then advanced (spun-up) from the 
+starting date (2024051900) to the first assimilation time (2024051906). To accomplish this,
+the ``init_ensemble_var.sh`` script orchestrates a series of calls as shown below:
+
+1. add_bank_perts.ncl
+2. first_advance.sh
+3. new_advance_model.sh
+
+This series of scripts  executes ``wrf.exe`` to advance the WRF model
+using the following  mpi run command within ``first_advance.sh`` as follows: 
+
+::
+
+   mpiexec -n 4 -ppn 4 ./wrf.exe
+
+Please be aware that the mpi run command is customized for the Derecho environment. 
+The processor setup was customized for the tutorial WRF domain setup. Please refer 
+to the WRF documentation for more details on how to optimize the processor setup
+for other WRF domains. This script submits 20 batch jobs to the queuing system.
+It assumes a PBS batch system and the 'qsub' command for submitting jobs. If you 
+have a different batch system, you will need to modify the commands such as  #PBS and 'qsub'.
+Fore more information you should familiarize yourself with `running jobs on
+Derecho <https://arc.ucar.edu/knowledge_base/74317833>`__ or your own HPC system.
+
+The *init_ensemble_var.sh* script requires two command-line arguments -
+a date string for the starting time and the *param.sh* script as 
+described below: 
+
+::
+
+   cd $BASE_DIR/scripts
+   ./init_ensemble_var.sh 2024051900 param.sh
+
+This script submits 20 batch jobs to the queuing system.
+It assumes a PBS batch system and the 'qsub' command for
+submitting jobs. If you have a different batch system, you will need to 
+modify the commands such as  #PBS and 'qsub'.  
+
+
+When the scripts complete for the all ensemble members, you should find 20 new files
+for each domain (40 total files) in the directory ``output/2024051900/PRIORS`` 
+named *prior_d01.0001*, *prior_d02.0001*, etc. 
+
+
+Step 5: Prepare observations [Informational Only]
 -------------------------------------------------
 
 .. Important::
 
-   The observation sequence (obs_seq) files used in this tutorial are already provided
-   for you within the output directory. Proceed to step 5 if you wish to complete the 
+   The observation sequence (obs_seq.out) files used in this tutorial are already provided
+   for you within the output directory. Proceed to step 7 if you wish to complete only the
    required tutorial steps.  If you are interested in customizing a WRF-DART experiment
-   for your own application, steps 3 and 4 provide useful guidance. The obs_seq file used
-   in this tutorial is roughly based on the NCEP PREPBUFR data files which are
+   for your own application, steps 5 and 6 provide useful guidance. The obs_seq.out files 
+   provided in this tutorial are generated from  the NCEP PREPBUFR data files which are
    located at the `NSF NCAR Research Data Archive <https://rda.ucar.edu>`__ 
-   (ds090 or ds337).  There are additional  observation types used in
-   this tutorial (e.g. :doc:`MADIS <../../../observations/obs_converters/MADIS/MADIS>`) 
-   besides the PREPBUFR data, and we **do not** provide instructions to 
-   reconstruct the tutorial obs_seq files exactly.
+   (ds090 or ds337).   Although we  **do not** provide explicit instructions here to 
+   reconstruct the tutorial obs_seq.out files, you can follow the links for the prepbufr
+   observation converter provided below. We used prepbufr data from the 
+   A26943-202405prepqmB.tar file that includes the date range for this tutorial 
+   (prepqm24051900.nr through prepqm24052100.nr). 
 
 Observation processing is critical to the success of running
 DART and is covered in :ref:`Getting Started <Welcome page>`. In
 brief, to add your own observations to WRF-DART you will need to
 understand the relationship between observation definitions and
-observation sequences, observation types and observation quantities (see Step 4), and
+observation sequences, observation types and observation quantities (see Step 6), and
 understand how observation converters extract observations from their
 native formats into the DART specific format. 
 
@@ -656,7 +698,7 @@ as described below:
    observation converter instructions are :doc:`here <../../../observations/obs_converters/MADIS/MADIS>`.
 
 
-Step 4: Overview of forward operators [Informational Only] 
+Step 6: Overview of Forward Operators [Informational Only] 
 --------------------------------------------------------------
 
 This section is for informational purposes only and does not include any 
@@ -667,9 +709,11 @@ An introduction to important namelist variables that control the operation of th
 operator are located in the :ref:`WRF namelist documentation<wrfnamelist>`.
 
 
-The ``obs_seq.out`` file provided with the tutorial contains
-30 different observation types. Here we examine an excerpt of that file, focusing
-on a single temperature observation to describe the process:
+The ``obs_seq.out`` files provided with the tutorial contains over
+10 different observation types (e.g. RADIOSONDE, AIRCRAFT etc). 
+Here we examine a single temperature observation type. Please note 
+that METAR type observations are not used in this tutorial example, 
+but the file structure and concepts are exactly the same.
 
 ::
 
@@ -875,8 +919,8 @@ k+1 WRF vertical levels followed by vertical interpolation).
 
 
 
-Step 5: Creating the first set of adaptive inflation files
-----------------------------------------------------------
+Step 7: Create the First Set of Inflation Files
+-----------------------------------------------
 
 In this section we describe how to create initial adaptive inflation
 files. These will be used by DART to control how the ensemble is
@@ -902,12 +946,12 @@ this file there is the section:
       post_inf_mean   = 1.00
       post_inf_sd     = 0.6
 
-      input_state_files = 'wrfinput_d01'
+      input_state_files = 'wrfinput_d01','wrfinput_d02'
       single_file       = .false.
       verbose           = .false.
       /
 
-These settings write a prior inflation file with a inflation mean of 1.0
+These settings create a prior inflation file with a inflation mean of 1.0
 and a prior inflation standard deviation of 0.6. These are reasonable
 defaults to use. The *input_state_files* variable controls which file to
 use as a template. You can either modify this namelist value to point to
@@ -922,79 +966,187 @@ the program needs one template for each domain. This is a
 comma-separated list of strings in single 'quotes'.
 
 After running the program, the inflation files must then be moved to the
-directory expected by the *driver.csh* script.
+directory expected by the *driver.sh* script.
 
 Run the following commands with the dates for this particular tutorial:
 
 ::
 
    cd $BASE_DIR/rundir
-   cp ../output/2017042700/wrfinput_d01_152057_0_mean ./wrfinput_d01
+   cp ../output/2024051900/wrfinput_d01_154636_0_mean ./wrfinput_d01
+   cp ../output/2024051900/wrfinput_d02_154636_0_mean ./wrfinput_d02
+   cp ../output/2024051900/wrfinput_d01_154636_0_mean $DART_DIR/models/wrf/work/wrfinput_d01
+   cp ../output/2024051900/wrfinput_d02_154636_0_mean $DART_DIR/models/wrf/work/wrfinput_d02
    ./fill_inflation_restart
-   mkdir ../output/2017042700/Inflation_input
-   mv input_priorinf_*.nc ../output/2017042700/Inflation_input/
+   mkdir ../output/2024051900/Inflation_input
+   mv input_priorinf_*.nc ../output/2024051900/Inflation_input/
 
-Once these files are in the right place, the scripting should take care
-of renaming the output from the previous cycle as the input for the next
-cycle.
-
-
+Please note that the inflation files are manually generated and moved
+during the first assimilation time step only.  All subseqent times the
+inflation files are automatically generated and moved by the scripting.
 
 
-Step 6: Cycled analysis system
-------------------------------
 
-While the DART system provides executables to perform individual tasks
-necessary for ensemble data assimilation, for large models such as WRF
-that are run on a supercomputer queueing system, an additional layer of
-scripts is necessary to glue all of the pieces together. A set of
-scripts is provided with the tutorial tarball to provide you a starting
-point for your own WRF-DART system. You will need to edit these scripts,
-perhaps extensively, to run them within your particular computing
-environment. If you will run on NSF NCAR's Derecho environment, fewer edits
-may be needed, but you should familiarize yourself with `running jobs on
-Derecho <https://arc.ucar.edu/knowledge_base/74317833>`__
-if necessary. A single forecast/assimilation cycle of this tutorial can
-take up to 10 minutes on Derecho - longer if debug options are enabled or
-if there is a wait time during the queue submission.
 
-In this tutorial, we have previously edited the *param.csh* and other
-scripts. Throughout the WRF-DART scripts, there are many options to
-adjust cycling frequency, domains, ensemble size, etc., which are
-available when adapting this set of scripts for your own research. To
-become more famililar with this set of scripts and to eventually make
-these scripts your own, we advise commenting out all the places the
-script submits jobs while debugging, placing an 'exit' in the script at
-each job submission step. This way you will be able to understand how
-all of the pieces work together.
+Step 8: Perform the Assimilation  (ASSIMILATION MODE)
+-----------------------------------------------------
 
-However, for this tutorial, we will only show you how the major
-components work. The next step in our process is the main *driver.csh*
-script, which expects a starting date (YYYYMMDDHH) and the full path of
-the resource file as command line arguments. In this example (which uses
-csh/tcsh syntax), we are also capturing the run-time output into a file
-named *run.out* and the entire command will be running in the
-background:
+We are now ready to assimilate observations.  The ``driver.sh`` script 
+accomplishes this through a series of scripts that 1) assimilates
+observations using the DART filter, 2) calculates observation space
+diagnostics for that assimilation time step,  and  3) advances the WRF 
+ensemble members to the next assimilation time step.  It then repeats this
+cycle for the remaining assimilation steps.  The sequence of scripts that
+are run are as follows:
+
+1. prep_ic.sh        (Extracts the DART state from the WRF prior state)
+2. assimilate.sh     (Executes DART filter and produces obs_seq.final)
+3. diagnostic_obs.sh (Calculates observation space diagnostics: analysis_increment.nc, mean_increment.nc)
+4. assim_advance.sh  
+5. new_advance_model.sh (Advances WRF model to next assimilation time)
+6. add_bank_pert.ncl    (Adds uncertainty to boundary conditions)
+
+
+For each assimilation cycle there are two instances where a batch job
+is submitted to Derecho which uses an mpi run command.  The first instance
+is during the execution of DART ``filter`` within ``assimilate.sh``  where 
+``filter`` is executed as follows:
+
+::
+
+  mpiexec -n 256 -ppn 128 ./filter || exit 1
+
+The second instance is during the advancement of the WRF ensemble to reach
+the next assimilation time step. This occurs within the ``assim_advance.sh``
+script as follows:
+
+::
+
+  mpiexec -n 4 -ppn 4 ./wrf.exe
+
+Remember that (similar to Step 4) these batch sumbission commands are specific to the Derecho 
+environment and the WRF domain.  These will likely  need to be modified to work for other 
+WRF-DART science applications.
+
+
+An important reminder is that ``driver.sh`` is the  most complex step of the tutorial. A single 
+forecast/assimilation cycle of this tutorial can take up to 10 minutes on Derecho 
+- longer if debug options are enabled or if there is a wait time during 
+the queue submission.
+
+
+The main ``driver.sh`` script  expects a starting date (YYYYMMDDHH) and 
+the ``param.sh`` file as command line arguments. The run time output is 
+redirected to a file named ``run.out`` as:
 
 ::
 
    cd $BASE_DIR/scripts
-   ./driver.csh 2017042706 param.csh >& run.out &
-
-*driver.csh* will - check that the input files are present (wrfinput
-files, wrfbdy, observation sequence, and DART restart files), - create a
-job script to run *filter* in ``$BASE_DIR/rundir``, - monitor that
-expected output from *filter* is created, - submit jobs to advance the
-ensemble to the next analysis time, - (simultaneously with the ensemble
-advance) compute assimilation diagnostics - archive and clean up - and
-continue to cycle until the final analysis time has been reached.
+   ./driver.sh 2024051906 param.sh >& run.out &
 
 
+You can monitor the progress of the ``driver.sh`` execution by periodically viewing 
+the ``run.out`` file.  When the ``driver.sh`` is completed and successful the 
+``run.out`` file should read **Reached the final date, Script exiting normally**.
+In addition, a successful run will produce ``obs_seq.final``, ``analysis_increment.nc`` and
+``mean_incremant.nc`` files for each each assimilation time step located within 
+``${OUTPUT_DIR}/2024051906``, and ``${OUTPUT_DIR}/2024051912``.
 
-Step 7: Diagnosing the assimilation results
--------------------------------------------
+If the script **does not** complete successfully and viewing the ``run.out`` file provides 
+inconclusive troubleshooting guidance, view the specific log
+files for the individual DART scripts located either in ``${RUNDIR}`` or the 
+``${RUNDIR}/advance_temp${ens}`` folders.  These log files include: ``dart_log.out``, ``assimilate_${datea}.0*``, 
+``assim_advance_${ens}.o*``, and ``add_perts.out``.  If there was a problems during the WRF simulation
+you can view the WRF ``rsl.out.0000`` and ``rsl.error.0000`` files within ``${RUNDIR}/advance_temp${ens}``.
 
-Once you have successfully completed steps 1-6, it is important to
+
+Step 9: Perform the Forecast (FORECAST MODE)
+--------------------------------------------
+
+The next step is to run the WRF model forecast to quantify the impact the
+assimilation of observations had on the forecast skill.  This is a common
+step within the atmospheric DA literature.  Here, we reuse the same ``driver.sh``
+script as described in Step 8 except we modify the namelist settings to switch
+from assimilate to forecast mode. 
+
+First modify ``input.nml`` for both the ``${RUN_DIR}`` and ``${TEMPLATE_DIR}`` such that
+the adaptive inflation is turned off by setting ``inf_flavor = 0``.
+In addition, set all observation types to be  **evaluated** as shown below:
+
+::
+
+  &obs_kind_nml
+      evaluate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                 'RADIOSONDE_U_WIND_COMPONENT',
+                                 'RADIOSONDE_V_WIND_COMPONENT',
+                                 'RADIOSONDE_SPECIFIC_HUMIDITY',
+                                 'RADIOSONDE_SURFACE_ALTIMETER',
+                                 'ACARS_U_WIND_COMPONENT',
+                                 'ACARS_V_WIND_COMPONENT',
+                                 'ACARS_TEMPERATURE',
+                                 'ACARS_DEWPOINT',
+                                 'SAT_U_WIND_COMPONENT',
+                                 'SAT_V_WIND_COMPONENT',
+                                 'GPSRO_REFRACTIVITY',
+                                 'PROFILER_U_WIND_COMPONENT',
+                                 'PROFILER_V_WIND_COMPONENT',
+                                 'METAR_U_10_METER_WIND',
+                                 'METAR_V_10_METER_WIND',
+                                 'METAR_TEMPERATURE_2_METER',
+                                 'METAR_DEWPOINT_2_METER',
+                                 'METAR_ALTIMETER',
+                                 'MARINE_SFC_U_WIND_COMPONENT',
+                                 'MARINE_SFC_V_WIND_COMPONENT',
+                                 'MARINE_SFC_TEMPERATURE',
+                                 'MARINE_SFC_ALTIMETER',
+                                 'MARINE_SFC_DEWPOINT',
+                                 'LAND_SFC_TEMPERATURE',
+                                 'LAND_SFC_U_WIND_COMPONENT',
+                                 'LAND_SFC_V_WIND_COMPONENT',
+                                 'LAND_SFC_ALTIMETER',
+                                 'LAND_SFC_DEWPOINT',
+  assimilate_these_obs_types  =  ''
+
+Turn off the ensemble perturbation within ``add_bank_perts.ncl`` for  both
+the ``${RUNDIR}`` and ``${BASE_DIR}/scripts`` as follows:
+
+::
+
+  ; Shuts off perturbations, only used for forecast mode
+  ;perturbation scaling:
+  scale_T = 0.0
+  scale_U = 0.0
+  scale_V = 0.0
+  scale_Q = 0.0
+  scale_M = 0.0
+
+
+Finally, turn off the adaptive inflation within the ``param.sh`` file by setting
+``ADAPTIVE_INFLATION = 0``.
+
+
+Modify your ``driver.sh`` to run a forecast until 20240520 by setting ``datefnl = 2024052000``.
+Then execute the following command:
+
+::
+
+  cd ${BASE_DIR}/scripts
+  ./driver.sh 2024051918 param.sh >& run.out &
+
+
+To monitor the progress and success of the scripts follow the same guidance as described in Step 8.
+Remember all the steps and output files produced  during forecast mode are identical to assimilation mode.
+
+
+
+************************************
+START HERE *************************
+************************************
+
+Step 10: Diagnose the Assimilation and Forecast Results
+-------------------------------------------------------
+
+Once you have successfully completed steps 1-9, it is important to
 check the quality of the assimilation. In order to do this, DART provides
 analysis system diagnostics in both state and observation space.
 
@@ -1037,7 +1189,7 @@ better represent the observed conditions of the atmosphere?  These questions
 can be addressed with the tools described in the remainder of this section. 
 All of the diagnostic files (**obs_epoch*.nc** and **obs_diag_output.nc**) 
 have already been generated from the tutorial. 
-(**driver.csh* executes  **diagnostics_obs.csh**). Therefore you are ready
+(**driver.sh* executes  **diagnostics_obs.sh**). Therefore you are ready
 to start the next sections.
 
 
@@ -1056,7 +1208,7 @@ The tools below provide methods to visualize the spatial patterns, statistics an
 failure mode for all observations.
 
 The observation diagnostics use the **obs_epoch*.nc** file as input.  This file is
-automatically generated by the **obs_diagnostic.csh** script within Step 6 of this
+automatically generated by the **obs_diagnostic.sh** script within Step 6 of this
 tutorial.
 
 The **obs_epoch*.nc** file is located in the output directory of each time step.
@@ -1473,6 +1625,18 @@ More Resources
 -  `DAReS website <http://dart.ucar.edu>`__
 -  :ref:`Preparing MATLAB<configMatlab>` to use with DART.
 -  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
+
+.. |radar1| image:: ../../../guide/images/WRF_tutorial_radar1.png
+   :height: 300px
+   :width: 100%
+
+.. |radar2| image:: ../../../guide/images/WRF_tutorial_radar2.png
+   :height: 300px
+   :width: 100%
+
+.. |wrf_domain| image:: ../../../guide/images/WRF_tutorial_domain.png
+   :height: 300px
+   :width: 100%
 
 .. |ncview1| image:: ../../../guide/images/WRF_tutorial_ncview1.png
    :height: 300px

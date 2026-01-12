@@ -1,6 +1,6 @@
 ; Simple utility to add perturbation fields from the
 ; perturbation bank files to a provided wrfinput file.
-; consistent with use in the advance_model.csh script 
+; consistent with use in the advance_model.sh script 
 ; where we are substituting this call for running 
 ; da_wrfvar.exe, so the wrfinput file to perturb
 ; should be called 'wrfinput_next', and is the mean

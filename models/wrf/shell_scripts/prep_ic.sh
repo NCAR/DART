@@ -20,7 +20,7 @@ fi
 
 source "$paramfile"
 
-echo "prep_ic.csh using n=$n datep=$datep domains=$domains paramfile=$paramfile"
+echo "prep_ic.sh using n=$n datep=$datep domains=$domains paramfile=$paramfile"
 echo "domain 1 using cycle_vars_a, any other nested domains using cycle_vars_b"
 
 dn=1
