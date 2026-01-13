@@ -1,0 +1,192 @@
+!------------------------------------------------------------------------
+! Adapted from Keerz Land dicussion thread:
+! https://bb.cgd.ucar.edu/cesm/threads/how-to-run-ctsm5-2-in-cplhist-mode.9733/
+! Adapts old CPLHIST files to CESM3 nuopc coupler requirements
+
+! This file is used to modify datm.streams.xml generated in $RUNDIR
+! Entries should have the form
+!  <streamname>:<stream_variable>= <new stream_value> (NO Quotes!!!)
+! The following are accepted values for a stream named foo
+!  foo:meshfile = character string
+!  foo:datafiles = comma separated string of full pathnames (e.g. file1,file2,file3...)
+!  foo:datavars = comma separated string of field pairs  (e.g. foo foobar,foo2 foobar2...)
+!  foo:taxmode = one of [cycle, extend, limit]
+!  foo:tintalgo = one of [lower,upper,nearest,linear,coszen]
+!  foo:readmode = single (only suported mode right now)
+!  foo:mapalgo = one of [bilinear,redist,nn,consf,consd,none]
+!  foo:dtlimit = real (1.5 is default)
+!  foo:year_first = integer
+!  foo:year_last = integer
+!  foo:year_align = integer
+!  foo:vectors = null or the names of the vector fields in the model (i.e. Sa_u:Sa_v)
+!  foo:lev_dimname: = one of [null,name of level dimenion name]
+!  foo:offset = integer
+! As an example:
+!   foo:year_first = 1950
+! would change the stream year_first stream_entry to 1950 for the foo stream block
+! NOTE: multi-line inputs are enabled by adding a \ at the end of the line
+! As an example:
+! foo:datafiles=foo1,foo2, \
+!     foo3
+! Will yield the following new entry for datafiles in stream foo
+!   <datafiles>
+!      <file>foo1</file>
+!      <file>foo2</file>
+!      <file>foo3</file>
+!   </datafiles>
+!------------------------------------------------------------------------
+!SOLAR
+
+
+CPLHISTForcing.Solar:datafiles=\
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2011.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2012.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2013.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2014.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2015.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2016.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2017.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2018.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2019.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2020.nc
+
+CPLHISTForcing.Solar:datavars=\
+       a2x1hi_Faxa_swndr Faxa_swndr,\
+       a2x1hi_Faxa_swvdr Faxa_swvdr,\
+       a2x1hi_Faxa_swndf Faxa_swndf,\
+       a2x1hi_Faxa_swvdf Faxa_swvdf
+
+
+
+CPLHISTForcing.Solar:offset=1800
+CPLHISTForcing.Solar:tintalgo=coszen
+
+CPLHISTForcing.Solar:taxmode=cycle
+CPLHISTForcing.Solar:readmode=single
+CPLHISTForcing.Solar:mapalgo=bilinear
+CPLHISTForcing.Solar:dtlimit=3.0
+CPLHISTForcing.Solar:vectors=null
+
+
+CPLHISTForcing.Solar:year_first=YEARFIRST
+CPLHISTForcing.Solar:year_last=YEARLAST
+CPLHISTForcing.Solar:year_align=YEARALIGN
+
+
+!STATE1HR
+CPLHISTForcing.State1hr:datafiles=\
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2011.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2012.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2013.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2014.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2015.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2016.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2017.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2018.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2019.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2020.nc
+
+CPLHISTForcing.State1hr:datavars=a2x1h_Sa_u Sa_u,\
+       a2x1h_Sa_v Sa_v
+
+CPLHISTForcing.State1hr:offset=1800
+
+CPLHISTForcing.State1hr:tintalgo=linear
+
+CPLHISTForcing.State1hr:year_first=YEARFIRST
+CPLHISTForcing.State1hr:year_last=YEARLAST
+CPLHISTForcing.State1hr:year_align=YEARALIGN
+
+!STATE3HR
+CPLHISTForcing.State3hr:datafiles=\
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2012.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2013.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2014.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2015.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2016.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2017.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2018.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2019.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2020.nc
+
+CPLHISTForcing.State3hr:datavars=a2x3h_Sa_z       Sa_z,\
+       a2x3h_Sa_tbot    Sa_tbot,\
+       a2x3h_Sa_ptem    Sa_ptem,\
+       a2x3h_Sa_shum    Sa_shum,\
+       a2x3h_Sa_pbot    Sa_pbot,\
+       a2x3h_Sa_dens    Sa_dens,\
+       a2x3h_Sa_pslv    Sa_pslv
+
+CPLHISTForcing.State3hr:offset=1800
+
+CPLHISTForcing.State3hr:tintalgo=linear
+
+CPLHISTForcing.State3hr:year_first=YEARFIRST
+CPLHISTForcing.State3hr:year_last=YEARLAST
+CPLHISTForcing.State3hr:year_align=YEARALIGN
+
+!NONSOLAR
+CPLHISTForcing.nonSolarFlux:datafiles=\
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2012.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2013.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2014.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2015.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2016.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2017.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2018.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2019.nc, \
+/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2020.nc
+
+CPLHISTForcing.nonSolarFlux:datavars=a2x3h_Faxa_rainc Faxa_rainc,\
+       a2x3h_Faxa_rainl Faxa_rainl,\
+       a2x3h_Faxa_snowc Faxa_snowc,\
+       a2x3h_Faxa_snowl Faxa_snowl,\
+       a2x3h_Faxa_lwdn  Faxa_lwdn
+
+
+CPLHISTForcing.nonSolarFlux:offset=1800
+
+CPLHISTForcing.nonSolarFlux:tintalgo=nearest
+
+CPLHISTForcing.nonSolarFlux:year_first=YEARFIRST
+CPLHISTForcing.nonSolarFlux:year_last=YEARLAST
+CPLHISTForcing.nonSolarFlux:year_align=YEARALIGN
+
+!AEROSOL
+
+presaero.clim_2000:datafiles=\
+/glade/campaign/cesm/cesmdata/inputdata/atm/cam/chem/trop_mozart_aero/aero/aerosoldep_WACCM.ensmean_monthly_hist_1849-2015_0.9x1.25_CMIP6_c180926.nc
+
+presaero.clim_2000:year_first=2000
+presaero.clim_2000:year_last=2000
+presaero.clim_2000:year_align=2000
+
+
+!NDEP
+
+presndep.clim_2000:datafiles=\
+/glade/campaign/cesm/cesmdata/inputdata/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc
+
+presndep.clim_2000:year_first=2000
+presndep.clim_2000:year_last=2000
+presndep.clim_2000:year_align=2000
+
+!O3
+
+preso3.clim_2000:datafiles=\
+/glade/campaign/cesm/cesmdata/inputdata/cdeps/datm/ozone/O3_surface.f09_g17.CMIP6-historical-WACCM.001.monthly.185001-201412.nc
+
+preso3.clim_2000:year_first=2000
+preso3.clim_2000:year_last=2000
+preso3.clim_2000:year_align=2000
+
+topo.observed:datafiles=\
+/glade/campaign/cesm/cesmdata/inputdata/atm/datm7/topo_forcing/topodata_0.9x1.25_USGS_070110_stream_c151201.nc
+
+topo.observed:year_first=1
+topo.observed:year_last=1
+topo.observed:year_align=1
+
+
