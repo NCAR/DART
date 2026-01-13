@@ -12,14 +12,15 @@ and focuses on the  WRF-specific aspects of coupling with DART.  These
 instructions provide a realistic nested (2-domain) WRFv4.5 example for a 
 severe storm event in the Great Plains during 2024. The tutorial provides
 the user with NCEP prepbufr atmospheric observations and WRF
-grib files to generate the inital WRF domain and boundary conditions. It is 
-recommended the user work through the tutorial example completely and confirm
-the setup works on their own system.  At that time, the scripts can be used
-as a template to apply to your own scientfic WRF-DART application.
+grib files to generate observation files and  the inital WRF domain and 
+boundary conditions. It is recommended the user work through the tutorial 
+example completely and confirm the setup works on their own system.  
+At that time, the scripts can be used as a template to apply to your own 
+scientfic WRF-DART application.
 
 .. Important ::
 
-  This tutorial was designed to be compatible with WRF Version 4 and was
+  This tutorial was designed to be compatible with WRF Version 4 and later, and was
   tested with WRFv4.5.2. It is mandatory to use the terrain following coordinate
   system (hybrid_opt=0) and not the default sigma hybrid coordinates (hybrid_opt=1)
   when using WRF-DART. Using the sigma hybrid coordinate can lead to adverse effects
@@ -56,10 +57,12 @@ If you are new to DART, we recommend that you become familiar with EnKF
 theory by working through the :doc:`../../../theory/readme` and then
 understanding the :ref:`DART getting started <Welcome page>` documentation.
 
+May 2024 Great Plains Severe Storm Event
+----------------------------------------
+
 This tutorial examines a Derecho and HP Supercell storm event that affected 
 the Great Plains area on May 19th 2024. For more information on this event
-see `weather.gov <https://www.weather.gov/ict/even_20240519>`__.
-
+see `weather.gov <https://www.weather.gov/ict/event_20240519>`__.
 
 The figures below provides snapshots of the local radar during the evolution of
 the storm event. The left panel (05-19-2024 18:00 UTC) and middle panel (05-20-2024 00:00 UTC) 
@@ -89,8 +92,8 @@ On NSF NCAR's *Derecho*,the tutorial requires roughly 40 minutes of computationa
 run time, but can take longer depending upon the PBS queue wait time.
 
 The goals of this tutorial are to: 1) provide an understanding of the major steps 
-within a DA experiment, 2) port and test the WRF-DART scripts on the users system 
-and 3) use the WRF-DART tutorial scripts as a template for the users own
+within a DA experiment, 2) port and test the WRF-DART scripts on the user's system 
+and 3) use the WRF-DART tutorial scripts as a template for the user's own
 research application.
 
 
@@ -367,7 +370,7 @@ script to set your queueing-system specific parameters.
  +-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
-Now that *param.sh* is set properly, run the *setup.sh* script to create the proper directory structure and
+Now that ``param.sh`` is set properly, run the ``setup.sh`` script to create the proper directory structure and
 to move the executables and support files to the  proper locations.
 
 ::
@@ -481,7 +484,7 @@ find the following scripts:
 
 
 
-You will need to edit the following scripts to provide the paths to
+You will need to edit the following scripts in the table below to provide the paths to
 where you are running the experiment, to connect up files, and to set
 desired dates. Search for the string ``'set this appropriately'``
 for locations that you need to edit.
@@ -494,28 +497,28 @@ for locations that you need to edit.
 Other than ``param.sh``, which was covered above, make the following
 changes:
 
-+--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-|      File name     |           Variable / value           |                                                 Change description                                                                         |
-+====================+======================================+============================================================================================================================================+
-| driver.sh          | datefnl = 2024051912                 | Change to the final assimilation target date. In this example observations are assimilated at time steps 2024051906 and 2024051912.        |
-+--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.sh  |  datea   = 2024051900                | Set to the starting time of the tutorial.  This is beginning time of the ensemble spinup.                                                  |
-|                    |  datefnl = 2024052000                | Set to the ending time of the tutorial. This is the end of the forecast mode.                                                              |
-|                    | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
-+--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_pert_bank.sh   | datea = 2024051900                   | Set to the starting time of the tutorial.                                                                                                  |
-|                    | num_ens = 60                         | Total number of perturbation members. Set to 3-4X that of model ensemble (20)                                                              |
-|                    | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
-|                    | savedir = <See description>          | Set to ${PERTS_DIR}/work/boundary_perts. Location of perturbation bank.                                                                    |             
-+--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-| add_bank_pert.ncl  | bank_size = 60                       | Recommended to set to same value as perturbation bank members (60). Cannot be greater than perturbation bank members.                      |
-+--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+ 
++--------------------+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+|      File name     |           Variable / value                  |                                                 Change description                                                                    |
++====================+=============================================+=======================================================================================================================================+
+| driver.sh          | datefnl = 2024051912                        | Change to the final assimilation target date. In this example observations are assimilated at time steps 2024051906 and 2024051912.   |
++--------------------+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| gen_retro_icbc.sh  | datea   = 2024051900                        | Set to the starting time of the tutorial.  This is beginning time of the ensemble spinup.                                             |
+|                    | datefnl = 2024052000                        | Set to the ending time of the tutorial. This is the end of the forecast mode.                                                         |
+|                    | paramfile = /full/path/to/param.sh          | Script sources information from param.sh file.                                                                                        |
++--------------------+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| gen_pert_bank.sh   | datea = 2024051900                          | Set to the starting time of the tutorial.                                                                                             |
+|                    | num_ens = 60                                | Total number of perturbation members. Set to 3-4X that of model ensemble (20)                                                         |
+|                    | paramfile = /full/path/to/param.sh          | Script sources information from param.sh file.                                                                                        |
+|                    | savedir = ${PERTS_DIR}/work/boundary_perts. | Set to ${PERTS_DIR}/work/boundary_perts. Location of perturbation bank.                                                               |             
++--------------------+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| add_bank_pert.ncl  | bank_size = 60                              | Recommended to set to same value as gen_pert_bank.sh num_ens value (60). Cannot be greater than total perturbations in bank.          |
++--------------------+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------+ 
 
 The setup is now complete. The tarred tutorial file provides the grib files and  
 should be located within the ``$BASE_DIR/icbc`` directory that will be used to 
 generate the WRF initial and boundary condition files.
 The ``$BASE_DIR/output`` directory contains the NCEP prepbufr observations (obs_seq.out) 
-within each directory name. 
+within each assimilation time sub-directory. 
 
 The ``$BASE_DIR/template`` directory should contain namelists for WRF, WPS,
 and DART. 
@@ -569,7 +572,7 @@ spinup (Step 4) these perturbations are added to the  deterministic,
 single instance GFS state generated in Step 2. Furthermore, during the
 subsequent assimilation cycling (Step 8), these perturbations are added to the forecast 
 (target) boundary state, such that boundaries include random errors introducing 
-uncertainty to the boundary, which promotes ensemble spread to the WRF ensemble domain(s).
+uncertainty, which promotes ensemble spread to the WRF ensemble domain(s).
 
 The spatial pattern and magnitude of the perturbations are controlled through
 the ``&wrfvar7`` ``cv_options``, ``as1``, ``as2``, ``as3`` and ``as4`` namelist settings included 
@@ -631,7 +634,7 @@ using the following  mpi run command within ``first_advance.sh`` as follows:
    mpiexec -n 4 -ppn 4 ./wrf.exe
 
 Please be aware that the mpi run command is customized for the Derecho environment. 
-In addition, processor setup was customized for the tutorial WRF domain setup. Please refer 
+In addition, the processor setup was customized for the tutorial WRF domain setup. Please refer 
 to the WRF documentation for more details on how to optimize the processor setup
 for other WRF domains. This script submits 20 batch jobs to the queuing system.
 It assumes a PBS batch system and the 'qsub' command for submitting jobs. If you 
@@ -647,12 +650,6 @@ shown below:
 
    cd $BASE_DIR/scripts
    ./init_ensemble_var.sh 2024051900 param.sh
-
-This script submits 20 batch jobs to the queuing system.
-It assumes a PBS batch system and the 'qsub' command for
-submitting jobs. If you have a different batch system, you will need to 
-modify the commands such as  #PBS and 'qsub'.  
-
 
 When the scripts complete for the all ensemble members, you should find 20 new files
 for each domain (40 total files) in the directory ``output/2024051900/PRIORS`` 
@@ -934,11 +931,11 @@ inflated (increases spread) during the first assimilation cycle.
 
 It is convenient to create initial inflation files before you start an
 experiment. The initial inflation files may be created with
-*fill_inflation_restart*, which was built by the *quickbuild.sh* step.
+``fill_inflation_restart``, which was built by the ``quickbuild.sh`` step.
 A pair of inflation files is needed for each WRF domain.
 
-Within the ``$BASE_DIR/rundir`` directory, the *input.nml* file has
-settings that control the behavior of *fill_inflation_restart*. Within
+Within the ``$BASE_DIR/rundir`` directory, the ``input.nml`` file has
+settings that control the behavior of ``fill_inflation_restart``. Within
 this file there is the section:
 
 ::
@@ -1062,7 +1059,7 @@ If the script **does not** complete successfully based on the criteria just desc
 and viewing the ``run.out`` file provides inconclusive troubleshooting guidance, you must 
 view the specific log files for the individual DART scripts located either in ``${RUNDIR}`` or the 
 ``${RUNDIR}/advance_temp${ens}`` folders.  These log files include: ``dart_log.out``, ``assimilate_${datea}.0*``, 
-``assim_advance_${ens}.o*``, and ``add_perts.out``.  If there was a problems during the WRF simulation
+``assim_advance_${ens}.o*``, and ``add_perts.out``.  If there were problems during the WRF simulation
 you can view the WRF ``rsl.out.0000`` and ``rsl.error.0000`` files within ``${RUNDIR}/advance_temp${ens}``.
 
 
@@ -1174,7 +1171,7 @@ between the background (prior) and the analysis (posterior) after running
 
 ::
 
-   cd $BASE_DIR/output/datefnl
+   cd $BASE_DIR/output/2024051912
    module load ncview
    ncview analysis_increment_d01.nc
 
@@ -1243,7 +1240,7 @@ Within Matlab declare the following variables, then run the script
  >> plotdat = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
 
 Below are two examples of the figure produced by **plot_obs_netcdf.m** for
-observations of RADIOSONDE_TEMPERATURE (left) and ACARS_U_WIND_COMPONENT
+observations of RADIOSONDE_TEMPERATURE (left) and ACARS_U_WIND_COMPONENT (right)
 respectively. Note that the top panel includes both the 3-D location of all possible
 observations, which are color-coded based upon the temperature or wind value.  
 The bottom panel, on the other hand, provides only
@@ -1288,14 +1285,6 @@ the ObsTypeString setting to examine one observation type at a time.
 
 
 
-.. Tip::
- The user can manually adjust the appearance of the data by accessing the 
- 'Rotate 3D' option either by clicking on the top of the figure or through
- the menu bar as Tools > Rotate 3D. Use your cursor to rotate the map to the
- desired orientation.
-
-
-
 Next we will demonstrate the use of the **link_obs.m** script which
 provides visual tools to explore how the observations impacted the 
 assimilation. The script generates 3 different figures which includes
@@ -1332,7 +1321,7 @@ following within Matlab being sure to modify ``fname`` for your case:
  you can access the brush tool through the menu bar (Tools > Brush).
   
 
-Another useful application of the **link_obs.m** script is to visually identify
+Another useful application of the **link_obs.m** script is to visualize
 the improvement of the model estimate of the observation through the 1:1 plot.
 One way to do this is to compare the prior and posterior model estimate of the
 either the ensemble mean or a single ensemble member. In the example figures below,
@@ -1404,7 +1393,7 @@ as shown in the figure above.
 
 
 
-Although the plot_rmse_xxx_profile.m script is valuable for visualzing 
+Although the **plot_rmse_xxx_profile.m** script is valuable for visualizing 
 vertical profiles of assimilation statistics, it doesn’t capture the temporal
 evolution. Temporal evolving statistics are valuable because the skill of an 
 assimilation often begins poorly because of biases between the model and observations,
@@ -1415,9 +1404,9 @@ assimilation skill.
 
 This time evolving diagnostic works best when all the assimilation times
 steps are combined into one **obs_diag.output.nc** file, however the 
-obs_diag_output.nc files automatically generated during the tutorial are for 
+**obs_diag_output.nc** files automatically generated during the tutorial are for 
 indivdual assimilation times.  We leave it as an exercise on your own to
-generate a custom obs_diag_output.nc that combines several differenct assimilation
+generate a custom **obs_diag_output.nc** that combines several differenct assimilation
 time steps.  Please use the instructions in the next section as a guide.
 
 
@@ -1449,8 +1438,8 @@ in the tutorial.  This command creates a text list file.
 
  ls ${BASE_DIR}/output/2024*/obs_seq.final > obs_seq_tutorial.txt
 
-The DART exectuable **obs_seq_to_netcdf** is used to generate the obs_epoch 
-type files. Modify the ``obs_seq_to_netcdf`` and ``schedule`` namelist settings
+The DART exectuable ``obs_seq_to_netcdf`` is used to generate the obs_epoch 
+type files. Modify the ``obs_seq_to_netcdf`` and 'schedule' namelist settings
 (using a text editor like `vi`) with the **input.nml** file to specify the spatial domain 
 and temporal binning. The values below are intended to include the entire time
 period of the assimilation.
@@ -1559,15 +1548,15 @@ More Resources
 -  `WRF model users page <http://www.mmm.ucar.edu/wrf/users>`__
 
 .. |radar1| image:: ../../../guide/images/WRF_tutorial_radar1.png
-   :height: 300px
+   :height: 200px
    :width: 100%
 
 .. |radar2| image:: ../../../guide/images/WRF_tutorial_radar2.png
-   :height: 300px
+   :height: 200px
    :width: 100%
 
 .. |wrf_domain| image:: ../../../guide/images/WRF_tutorial_domain.png
-   :height: 300px
+   :height: 200px
    :width: 100%
 
 .. |ncview1| image:: ../../../guide/images/WRF_tutorial_ncview1.png
@@ -1582,7 +1571,7 @@ More Resources
    :height: 300px
    :width: 100%
 
-.. |radiosonde_obs2| image:: ../../../guide/images/WRF_tutorial_radiosonde_obs1.png
+.. |radiosonde_obs2| image:: ../../../guide/images/WRF_tutorial_radiosonde_obs2.png
    :height: 300px
    :width: 100%
 
