@@ -32,7 +32,7 @@ begin
 ; scale_M = 0.0
 
 ; for random pert, pick from larger bank
- bank_size = 100
+ bank_size = 60
  con  = bank_size / 32766.0      ; 32766.0 forces a 0.0 to 1.0 range
 ; get a seed
  wallClock = stringtoint(systemfunc("date -u +%N"))

@@ -268,9 +268,7 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
 
    ::
 
-       cp $DART_DIR/models/wrf/tutorial/template_nest/namelist.input.meso   $BASE_DIR/template/.
-       cp $DART_DIR/models/wrf/tutorial/template_nest/namelist.wps.template $BASE_DIR/template/.
-       cp $DART_DIR/models/wrf/tutorial/template_nest/namelist.input.3dvar  $BASE_DIR/template/.
+       cp $DART_DIR/models/wrf/tutorial/template_nest/*.*   $BASE_DIR/template/.
 
 3. You will also need scripting to run a WRF/DART experiment. Copy the contents of 
    ``$DART_DIR/models/wrf/shell_scripts`` to the ``$BASE_DIR/scripts`` directory.
@@ -493,7 +491,7 @@ for locations that you need to edit.
    cd $BASE_DIR/scripts
    grep -r 'set this appropriately' .
 
-Other than *param.sh*, which was covered above, make the following
+Other than ``param.sh``, which was covered above, make the following
 changes:
 
 +--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
@@ -501,17 +499,17 @@ changes:
 +====================+======================================+============================================================================================================================================+
 | driver.sh          | datefnl = 2024051912                 | Change to the final assimilation target date. In this example observations are assimilated at time steps 2024051906 and 2024051912.        |
 +--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.sh  |    datea   = 2024051900              | Set to the starting time of the tutorial.  This is beginning time of the ensemble spinup.                                                  |
-|                    |    datefnl = 2024052000              | Set to the ending time of the tutorial. This is the end of the forecast mode.                                                              |
+| gen_retro_icbc.sh  |  datea   = 2024051900                | Set to the starting time of the tutorial.  This is beginning time of the ensemble spinup.                                                  |
+|                    |  datefnl = 2024052000                | Set to the ending time of the tutorial. This is the end of the forecast mode.                                                              |
 |                    | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
-+--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-| gen_retro_icbc.sh  | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
 +--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
 | gen_pert_bank.sh   | datea = 2024051900                   | Set to the starting time of the tutorial.                                                                                                  |
+|                    | num_ens = 60                         | Total number of perturbation members. Set to 3-4X that of model ensemble (20)                                                              |
 |                    | paramfile = <full path to param.sh>  | Script sources information from param.sh file.                                                                                             |
-|                    | savedir = <path to perts>            | Set to PERTS_DIR/work/boundary_perts. Location of perturbation bank.                                                                       |            
+|                    | savedir = <See description>          | Set to ${PERTS_DIR}/work/boundary_perts. Location of perturbation bank.                                                                    |             
 +--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+
-
+| add_bank_pert.ncl  | bank_size = 60                       | Recommended to set to same value as perturbation bank members (60). Cannot be greater than perturbation bank members.                      |
++--------------------+--------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+ 
 
 The setup is now complete. The tarred tutorial file provides the grib files and  
 should be located within the ``$BASE_DIR/icbc`` directory that will be used to 
@@ -530,7 +528,7 @@ Step 2: Create Initial and Boundary Conditions
 We use GFS data to generate the initial and boundary conditions
 that will be used in the tutorial. The ``gen_retro_icbc.sh`` script 
 executes a series of operations to extract the grib data, runs 
-WPS executables geogrid, metgrid, and then twice executes *real.exe* to generate 
+WPS executables geogrid, ungrib, metgrid, and then twice executes *real.exe* to generate 
 a pair of WRF files and a boundary file for each analysis time and
 domain. These files are then added to a subdirectory corresponding to the 
 date within the ``$BASE_DIR/output`` directory.

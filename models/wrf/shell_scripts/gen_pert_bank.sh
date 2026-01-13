@@ -46,7 +46,7 @@ ASSIM_INT_HOURS=6
 
 module load nco
 
-mkdir -p "${SAVE_DIRECTORY}"
+mkdir -p "${save_dir}"
 cd "$work_dir" || exit 1
 cp "${TEMPLATE_DIR}/input.nml.template" input.nml
 
