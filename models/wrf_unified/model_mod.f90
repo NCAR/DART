@@ -641,13 +641,16 @@ integer(i8) :: loc_indx_ar(1)
 type(location_type) :: loc_ar(1)
 
 loc_ar(1) = base_loc
-! dummy qty 1 not used in convert_vertical_obs
-call convert_vertical_obs(state_handle, 1, loc_ar, (/1/), (/base_type/), vert_localization_coord, istatus)
-if (istatus(1) /= 0) then
-   num_close = 0
-   return
+
+if (vertical_localization_on()) then
+   ! dummy qty 1 not used in convert_vertical_obs
+   call convert_vertical_obs(state_handle, 1, loc_ar, (/1/), (/base_type/), vert_localization_coord, istatus)
+   if (istatus(1) /= 0) then
+      num_close = 0
+      return
+   endif
+   base_loc = loc_ar(1)
 endif
-base_loc = loc_ar(1)
 
 call loc_get_close(gc, base_loc, base_type, locs, loc_qtys, num_close, close_ind)
 
