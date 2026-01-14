@@ -1,0 +1,62 @@
+name: CIRRUS Action on Demand Tester
+on:
+  workflow_dispatch:
+
+jobs:
+  # Job 1
+  build-run-lorenz_96-mpi:
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+    # Deploy container on top of runner instance
+    container: 
+      image: hkershaw/dart-dep:2.0
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Build and run lorenz_96 with mpi
+        uses: ./.github/actions/build_run_model 
+        with: 
+          model: lorenz_96
+          run-program: ./filter
+          use-mpi: mpi
+          mpi-n-tasks: 2
+  
+  # Job 2
+  build-run-lorenz_63-nompi:
+    runs-on:
+      group: cirrus-4x8
+    container:
+      image: hkershaw/dart-dep:2.0
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Build and run lorenz_63 with no mpi
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_63
+          run-program: ./filter
+          use-mpi: nompi
+
+  # Job 3
+  build-run-lorenz_96-mpif08:
+    runs-on:
+      group: cirrus-4x8
+    container:
+      image: hkershaw/dart-dep:2.0
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Build and run lorenz_96 with mpif08
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_96
+          run-program: ./filter
+          use-mpi: mpif08
+          mpi-n-tasks: 2
