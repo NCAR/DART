@@ -3385,7 +3385,7 @@ integer,  intent(in) :: id
 real(r8), intent(in) :: i, j
 logical :: found_in_domain
 
-found_in_domain = .true.
+found_in_domain = .false.
 
 if (id > 1) then
 
