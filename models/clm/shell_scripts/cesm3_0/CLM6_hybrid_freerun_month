@@ -299,6 +299,7 @@ while ( $inst <= $num_instances )
      foreach FNAME ( user_nl_datm*${inst_string} )
         echo "modifying $FNAME"
         sed -i -e "s/NINST/${inst_string2}/g"          \
+               -e "s#STREAMSDIR#${stream_dir}#g"       \
                -e "s/YEARFIRST/${stream_year_first}/g" \
                -e "s/YEARLAST/${stream_year_last}/g"   \
                -e "s/YEARALIGN/${stream_year_align}/g"  $FNAME || exit 11

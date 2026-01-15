@@ -37,7 +37,7 @@ setenv num_instances  5
 if (${num_instances} == 1) then
    setenv CASE clm5_f09_pmo_SIF
 else
-   setenv CASE clm6_hybrid_e${num_instances}
+   setenv CASE clm6_hybrid_e${num_instances}b
 endif
 
 # ==============================================================================
@@ -193,6 +193,7 @@ setenv resubmit     0
 setenv stream_year_align 2011
 setenv stream_year_first 2011
 setenv stream_year_last  2020
+setenv stream_dir        '/glade/campaign/collections/rda/data/d345000/cpl_unzipped'
 
 # ==============================================================================
 # machine-specific commands:

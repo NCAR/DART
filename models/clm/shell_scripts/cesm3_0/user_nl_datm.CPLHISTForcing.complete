@@ -39,16 +39,16 @@
 
 
 CPLHISTForcing.Solar:datafiles=\
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2011.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2012.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2013.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2014.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2015.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2016.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2017.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2018.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2019.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2020.nc
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2011.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2012.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2013.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2014.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2015.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2016.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2017.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2018.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2019.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1hi.2020.nc
 
 CPLHISTForcing.Solar:datavars=\
        a2x1hi_Faxa_swndr Faxa_swndr,\
@@ -75,16 +75,16 @@ CPLHISTForcing.Solar:year_align=YEARALIGN
 
 !STATE1HR
 CPLHISTForcing.State1hr:datafiles=\
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2011.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2012.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2013.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2014.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2015.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2016.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2017.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2018.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2019.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2020.nc
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2011.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2012.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2013.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2014.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2015.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2016.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2017.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2018.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2019.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x1h.2020.nc
 
 CPLHISTForcing.State1hr:datavars=a2x1h_Sa_u Sa_u,\
        a2x1h_Sa_v Sa_v
@@ -99,18 +99,19 @@ CPLHISTForcing.State1hr:year_align=YEARALIGN
 
 !STATE3HR
 CPLHISTForcing.State3hr:datafiles=\
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2012.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2013.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2014.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2015.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2016.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2017.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2018.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2019.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2020.nc
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2012.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2013.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2014.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2015.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2016.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2017.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2018.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2019.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2020.nc
 
-CPLHISTForcing.State3hr:datavars=a2x3h_Sa_z       Sa_z,\
+CPLHISTForcing.State3hr:datavars=\
+       a2x3h_Sa_z       Sa_z,\
        a2x3h_Sa_tbot    Sa_tbot,\
        a2x3h_Sa_ptem    Sa_ptem,\
        a2x3h_Sa_shum    Sa_shum,\
@@ -128,18 +129,19 @@ CPLHISTForcing.State3hr:year_align=YEARALIGN
 
 !NONSOLAR
 CPLHISTForcing.nonSolarFlux:datafiles=\
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2012.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2013.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2014.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2015.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2016.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2017.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2018.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2019.nc, \
-/glade/campaign/collections/rda/data/d345000/cpl_unzipped/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2020.nc
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2011.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2012.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2013.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2014.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2015.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2016.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2017.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2018.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2019.nc, \
+STREAMSDIR/NINST/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cpl_NINST.ha2x3h.2020.nc
 
-CPLHISTForcing.nonSolarFlux:datavars=a2x3h_Faxa_rainc Faxa_rainc,\
+CPLHISTForcing.nonSolarFlux:datavars=\
+       a2x3h_Faxa_rainc Faxa_rainc,\
        a2x3h_Faxa_rainl Faxa_rainl,\
        a2x3h_Faxa_snowc Faxa_snowc,\
        a2x3h_Faxa_snowl Faxa_snowl,\

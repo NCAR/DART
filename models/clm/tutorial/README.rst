@@ -90,6 +90,8 @@ which the across-member variation represents atmospheric uncertainty.
 We use 5 different ensemble members from the CAM6 reanalysis to generate
 spread within this CLM5-DART tutorial simulation.
 
+.. The CAM6rean_rda_ and CAM4rean_rda_ references are defined in DART/guide/references.rst
+
 .. NOTE::
 
   This CLM5-DART tutorial has been simplified to reduce run-time and
@@ -358,10 +360,10 @@ and ``DART/assimilation_code/modules/observations/obs_kind_mod.f90``
 
 
 
+Step 5: Setting up the atmospheric forcing in CESM2.2
+-----------------------------------------------------
 
-
-Step 5: Setting up the atmospheric forcing
-------------------------------------------
+Instructions for this step for CESM3.0 follow this section.
 
 A requirement for Ensemble Kalman Filter (EnKF) type DA approaches is to generate 
 multiple model simulations (i.e. a model ensemble) that quantifies 1) state variable uncertainty
@@ -387,6 +389,8 @@ the default ``dartroot`` as shown below.
 Next confirm within the ``CLM5_setup_assimilation`` script that the path (``${SOURCEDIR}/${STREAMFILE_*}``) 
 to all four of your atmospheric stream file templates (e.g. ``datm.streams.txt.CPLHISTForcing.Solar*``)
 is correct. In particular make sure the ``SOURCEDIR`` variable is set correctly below:  
+
+.. _strmfile_types:
 
  ::
 
@@ -493,6 +497,21 @@ ensemble member.  To do this confirm the settings within ``DART_params.csh`` are
   
   
 
+Step 5: Setting up the atmospheric forcing in CESM3.0
+-----------------------------------------------------
+
+This has been greatly simplified compared to CESM2 (see above).
+You only need to edit the DART_params.sh file and setup scripts as usual.
+You do not need to deal directly with any stream file template(s).
+The setup script copies a single template file into an ensemble of 
+*user_nl_datm_streamINST* files with the appropriate instance (member) number in each.
+The template file specifies using all of the available years in the CAM6 Reanalysis
+for all four of the `datm.streams.txt file types <strmfile_types_>`_ 
+listed in the CESM2.2 section, and specifies all of the variables
+which are needed from the stream files.
+It also sets up the streams which don't come from the CAM6 Reanalysis:
+presaero.clim_2000, presndep.clim_2000, preso3.clim_2000, and topo.observed.
+Of course, it's always wise to check the resulting files before using them.
 
 
 Step 6: Setting up the initial conditions for land earth system properties 
