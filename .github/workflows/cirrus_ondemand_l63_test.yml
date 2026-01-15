@@ -1,6 +1,8 @@
 name: CIRRUS Action on Demand Tester
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - cirrus_actions
 
 jobs:
   # Job 1
