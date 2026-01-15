@@ -20,6 +20,24 @@ source "$paramfile"
 uname -a
 cd "${RUN_DIR}"
 
+
+
+$COPY "${TEMPLATE_DIR}/namelist.input.meso"  namelist.wps.check
+hybrid_opt=$(grep '^[[:space:]]*hybrid_opt[[:space:]]*=' namelist.wps.check | tail -n 1 | cut -d= -f2 | cut -d, -f1 | xargs)
+use_theta_m=$(grep '^[[:space:]]*use_theta_m[[:space:]]*=' namelist.wps.check | tail -n 1 | cut -d= -f2 | cut -d, -f1 | xargs)
+$REMOVE namelist.wps.check
+
+if [[ "$hybrid_opt" != 0 ]]; then
+   echo "ERROR: WRF-DART must use terrain following coordinates, hybrid_opt must be 0"
+   exit 1
+fi
+if [[ "$use_theta_m" != 0 ]]; then
+   echo "ERROR: WRF-DART must assign WRF variable THM as T, use_theta_m must be 0"
+   exit 1
+fi
+
+
+
 #  First determine the appropriate analysis date
 
 if (( $# > 0 )); then
