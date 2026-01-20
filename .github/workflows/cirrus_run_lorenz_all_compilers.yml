@@ -17,7 +17,7 @@ jobs:
         compiler: [gfortran, intel, ifx]
     # Deploy container on top of runner instance
     container: 
-      image: hkershaw/dart-dep:2.0
+      image: hkershaw/dart-dep-external:4.2
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
