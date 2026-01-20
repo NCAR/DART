@@ -1,0 +1,56 @@
+name: CIRRUS Run Lorenz 96 with MPI and All Compilers
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cirrus_actions
+
+jobs:
+  # Job 1
+  build-run-lorenz_96-mpi-all-compilers:
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+    # Define a matrix strategy for compilers
+    strategy:
+      matrix:
+        compiler: [gfortran, intel, ifx]
+    # Deploy container on top of runner instance
+    container: 
+      image: hkershaw/dart-dep:2.0
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      # Steps to create Makefile template for the selected compiler
+      - name: Creating Makefile template for ${{ matrix.compiler }}
+        run: |
+          cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+          case ${{ matrix.compiler }} in
+            gfortran)
+              cp mkmf.template.gfortran mkmf.template
+              echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+              ;;
+            intel)
+              cp mkmf.template.intel.linux mkmf.template
+              echo 'FFLAGS = -g -C -check noarg_temp_created -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused $(INCS)' >> mkmf.template
+              ;;
+            ifx)
+              cp mkmf.template.ifx.linux mkmf.template
+              echo 'FFLAGS = -g -C -check noarg_temp_created -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused $(INCS)' >> mkmf.template
+              ;;
+          esac
+        shell: bash
+      # Steps to compile and build lorenz_96 with mpi
+      - name: Building lorenz_96 model with mpi using ${{ matrix.compiler }}
+        run: |
+          cd models/lorenz_96/work
+          ./quickbuild.sh
+      # Steps to run lorenz_96 filter program with mpi
+      - name: Running lorenz_96 filter program with mpi using ${{ matrix.compiler }}
+        run: |
+          cd models/lorenz_96/work
+          mpirun -n 4 ./filter
+        shell: bash
