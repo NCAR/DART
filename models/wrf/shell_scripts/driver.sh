@@ -610,11 +610,11 @@ EOF
 
             elif (( length_time > advance_thresh )); then
 
-               #  If WRF member has failed 2 resubmission attempts, immediately stop driver.sh
-               if (( max_retry > 2 )); then
+               #  If WRF member has failed 1 resubmission attempt, immediately stop driver.sh
+               if (( max_retry > 1 )); then
 
                   echo "Stopping the driver.sh script! The WRF ensemble member ${n}"
-                  echo "has exceeded the maximum resubmission attempts (2) without completing."
+                  echo "has exceeded the maximum resubmission attempts (1) without completing."
                   echo "This typically means the WRF integration has failed."
                   echo "Check your BASE_DIR/rundir/advance_temp${n} directory and locate"
                   echo "the WRF rsl.out.0000 or rsl.error.0000 log files for further information."

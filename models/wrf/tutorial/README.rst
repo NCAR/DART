@@ -1014,7 +1014,6 @@ are run are as follows:
 5. new_advance_model.sh (Advances WRF model to next assimilation time)
 6. add_bank_pert.ncl    (Adds uncertainty to boundary conditions)
 
-
 For each assimilation cycle there are two instances where a batch job
 is submitted to Derecho which uses an mpi run command.  The first instance
 is during the execution of DART ``filter`` within ``assimilate.sh``  where 
@@ -1067,6 +1066,23 @@ view the specific log files for the individual DART scripts located either in ``
 ``assim_advance_${ens}.o*``, and ``add_perts.out``.  If there were problems during the WRF simulation
 you can view the WRF ``rsl.out.0000`` and ``rsl.error.0000`` files within ``${RUNDIR}/advance_temp${ens}``.
 
+
+.. Important::
+
+   During the execution of the ``driver.sh``, immediately after the assimilation step,
+   batch jobs are submitted to Derecho to advance the WRF model forward in time for each 
+   ensemble member.  The script monitors the time from submission to successful completion.  
+   If the WRF job does not complete within the specified time (``advance_thresh``), then
+   the script assumes that the job has failed and will resubmit 1 additional time before the script 
+   exits.  The default behavior is that the ``advance_thresh`` is the same as the assigned walltime
+   for the job (``ADVANCE_TIME`` set in ``param.sh``).  This wait time is designed for
+   this system setup (i.e. a responsive HPC like Derecho, and a tested WRF-DART setup). However, WRF jobs can
+   exceed the ``advance_thresh`` if the job is queued for a long time, or if the WRF model fails.
+   Long queue times can occur based on user demand and the priority of your job 
+   (``ADVANCE_PRIORITY``) set in ``param.sh``.  Furthermore it is not uncommon for the WRF model to fail
+   for untested WRF-DART science applications where DART settings have not yet been optimized. In these
+   cases you may have to adjust the ``advance_thresh`` or maximum retry setting.
+    
 
 Step 9: Perform the Forecast (FORECAST MODE)
 --------------------------------------------
@@ -1143,10 +1159,19 @@ Then execute the following command:
 
 
 To monitor the progress and success of the scripts follow the same guidance as described in Step 8.
-Remember all the steps and output files produced  during forecast mode are identical to assimilation mode.
+Remember all the steps and output files produced during forecast mode are nearly identical to assimilation mode.
 The only difference is that the scripting will not update the WRF posterior state.  We are performing
 an extended forecast (free) simulation.
 
+.. Important::
+ 
+   The purpose of the forecast mode is to be run only after all assimilation steps are completed, thus 
+   providing a assessment of forecast skill performance that is common for atmospheric DA
+   science publications. Once forecast mode has been completed the user **should not** switch
+   back to assimilation mode because the inflation files will not be available. Forecast mode should not 
+   be used in an attempt to skip certain assimilation time steps with reduced or no observations. 
+   Instead, the inflation setting should be modified to account for observations that strongly vary
+   in space and time.  See the inflation documentation for more details. 
 
 
 Step 10: Diagnose the Assimilation and Forecast Results
