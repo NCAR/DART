@@ -26,7 +26,6 @@ jobs:
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
           cp mkmf.template.nvhpc mkmf.template
           echo 'FFLAGS = -gopt -C -traceback -Ktrap=fp  -Mbackslash -Kieee $(INCS)' >> mkmf.template
-          ;;
         shell: bash
       # Steps to compile and build lorenz_96 with mpi
       - name: Building lorenz_96 model with mpi using nvhpc
