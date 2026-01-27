@@ -1,9 +1,6 @@
 name: CIRRUS Run Lorenz 96 with MPI and All Compilers
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - cirrus_actions
 
 jobs:
   # Job 1
@@ -14,7 +11,7 @@ jobs:
     # Define a matrix strategy for compilers
     strategy:
       matrix:
-        compiler: [gfortran, intel, ifx]
+        compiler: [gfortran, intel, ifx, cce, nvhpc]
     # Deploy container on top of runner instance
     container: 
       image: hkershaw/dart-dep-external:4.2
@@ -40,6 +37,13 @@ jobs:
             ifx)
               cp mkmf.template.ifx.linux mkmf.template
               echo 'FFLAGS = -g -C -check noarg_temp_created -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused $(INCS)' >> mkmf.template
+              ;;
+            cce)
+              cp mkmf.template.cce mkmf.template              
+              ;;
+            nvhpc)
+              cp mkmf.template.nvhpc mkmf.template
+              echo 'FFLAGS = -gopt -C -traceback -Ktrap=fp  -Mbackslash -Kieee $(INCS)' >> mkmf.template
               ;;
           esac
         shell: bash
