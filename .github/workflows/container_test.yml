@@ -1,0 +1,41 @@
+name: CIRRUS Action using NCAR Container
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cirrus_actions
+
+jobs:
+  # Job 1
+  build-run-lorenz_96-nvhpc:
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+    # Deploy container on top of runner instance
+    container: 
+      image: ncarcisl/cisldev-x86_64-almalinux9-nvhpc-mpich3
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      # Steps to create Makefile template for the selected compiler
+      - name: Creating Makefile template for nvhpc
+        run: |
+          cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+          cp mkmf.template.nvhpc mkmf.template
+          echo 'FFLAGS = -gopt -C -traceback -Ktrap=fp  -Mbackslash -Kieee $(INCS)' >> mkmf.template
+          ;;
+        shell: bash
+      # Steps to compile and build lorenz_96 with mpi
+      - name: Building lorenz_96 model with mpi using nvhpc
+        run: |
+          cd models/lorenz_96/work
+          ./quickbuild.sh
+      # Steps to run lorenz_96 filter program with mpi
+      - name: Running lorenz_96 filter program with mpi using nvhpc
+        run: |
+          cd models/lorenz_96/work
+          mpirun -n 4 ./filter
+        shell: bash
