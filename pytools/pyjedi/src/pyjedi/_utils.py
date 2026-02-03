@@ -6,6 +6,8 @@ import re
 import yaml
 import pydartdiags.obs_sequence.obs_sequence as obsq
 
+log.basicConfig(level=log.INFO)
+log = log.getLogger(__name__)
 missingVal = -888888.0
 
 def _expandChanNums(chanNumsStr):
