@@ -1,3 +1,5 @@
+.. index:: radiance, radiances, jedi
+
 .. _pytools:
 
 =========================
@@ -42,12 +44,14 @@ To deactivate the virtual environment when you are done, simply run:
 Available Tool Packages
 -----------------------
 
+.. _ioda2obsq:
+
 pyjedi
 ^^^^^^
 
 The `pyjedi` package provides utilities for DART JEDI interoperability.
 This is a new package that is under development and is not fully functional yet.
-At this time, a new converter is available that can transform a JEDI IODA observation file into a DART observation sequence file.
+At this time, a converter ``ioda2obsq`` is available that can transform a JEDI IODA observation file into a DART observation sequence file.
 This converter can be run as follows:
 
 .. code-block:: bash
@@ -57,6 +61,13 @@ This converter can be run as follows:
 where ``<yamlConfigFile>`` is a YAML configuration file that specifies the mapping between JEDI IODA observation
 variables and DART observation variables, ``<inputIodaFile>`` is the input JEDI IODA observation file,
 and ``<outputObsqFile>`` is the output DART observation sequence file.
+
+To view the ioda2obsq help message, run:
+
+.. code-block:: bash
+
+  ioda2obsq -h
+
 
 The YAML configuration file contains the mapping between JEDI IODA observation variables and DART observation types along
 with the specification of the desired vertical coordinate variable.
@@ -90,9 +101,9 @@ For example, in the future, perhaps "radar" and "gpsro" could be added to the li
 
 The ``name:`` entries for variables are the names of the variables in the JEDI IODA observation file, and the ``type:`` entries
 are the corresponding DART observation types.
-The ``vertical coordinate`` section specifies the variable that will be used as the vertical coordinate in
+The ``vertical coordinate:`` section specifies the variable that will be used as the vertical coordinate in
 the DART observation sequence file.
-Note that in the ``vertical coordinate`` section, the ``name:`` entry must specify the full netcdf path to the variable
+Note that in the ``vertical coordinate:`` section, the ``name:`` entry must specify the full netcdf path to the variable
 in the JEDI IODA observation file, and the ``units:`` entry specifies the units to be used in the DART observation sequence file.
 
 Here is an example radiance obs type (AMSU-A):
@@ -114,20 +125,23 @@ Here is an example radiance obs type (AMSU-A):
         data value: 35000.0
       metadata:
         sensor key: NOAA_19_AMSUA
-        rttov sensor db: /home/stephenh/projects/NCAR_DART/DART/observations/forward_operators/rttov_sensor_db.csv
+        rttov sensor db: DART/observations/forward_operators/rttov_sensor_db.csv
         sat az variable: MetaData/sensorAzimuthAngle
         sat ze variable: MetaData/sensorZenithAngle
 
 Some of the entries are similar to those in the radiosonde (conventional) category.
-Note that in the radiance category, the ``vertical coordinate:`` spec needs a ``name:`` (as before) and a ``data value:`` (instead of units).
-Currently, the ``data value:`` is repeated on all of the observations.
+Note that in the radiance category, the ``vertical coordinate:`` spec needs a ``units:`` (as before) and a ``data value:``. The 
+``data value:`` is used to fill in the vertical coordinate variable for all of the observations since radiance observations 
+do not have a vertical coordinate associated with them. Currently, the ``data value:`` is repeated on all of the observations.
 
-Two new entries under the ``observation catageory:`` spec have been introduced.
+Two new entries under the ``observation category:`` spec have been introduced.
 The ``channel numbers:`` spec allows the user to select a subset of channels to convert.
 The value for ``channel numbers:`` is a comma separated list where each entry can be an integer or a range of integers.
 
 The ``metadata:`` spec allows the user to configure what gets placed in the obs sequence file's metadata section.
 The ``sensor key:`` and ``rttov sensor db:`` spec go hand-in-hand, and describe how to pull out id numbers for the platform, satellite and sensor.
+``rttov_sensor_db.csv`` is a DART file that contains the mapping between sensor keys and their corresponding
+platform, satellite and sensor id numbers. Refer to :ref:`obs_def_rttov_mod` for more detail.
 The ``sat az variable:`` and ``sat ze variable:`` are the JEDI IODA names for the satellite azimuth and zenith angles respectively.
 Another piece of information that comes from the ``rttov_sensor_db:`` file is the spectral band (eg. infrared, microwave).
 Currently, only infrared (``ir``) and microwave (``mw``) are recognized.
@@ -137,4 +151,4 @@ The purpose of the ``metadata:`` spec is to have flexibility with the configurat
 
     The ``ioda2obsq`` tool is under active development and has limited functionality at this time.
     It is expected that more features will be added soon, including support for additional satellite radiance observation types.
-    In its current state, it is primarily intended for use with radiosonde and similar conventional observation types, as well as infrared and micorwave radiance instruments.
+    In its current state, it is primarily intended for use with radiosonde and similar conventional observation types, as well as infrared and microwave radiance instruments.
