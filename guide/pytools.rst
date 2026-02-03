@@ -77,11 +77,11 @@ Here is an example configuration file for radiosondes:
         - name: windNorthward
           type: RADIOSONDE_V_WIND_COMPONENT
 
-    observation category:
-      name: conventional
-      vertical coordinate:
-        name: MetaData/pressure
-        units: "pressure (Pa)"
+      observation category:
+        name: conventional
+        vertical coordinate:
+          name: MetaData/pressure
+          units: "pressure (Pa)"
 
 The `observation category:` section is how the tool discerns between different categories of observation types.
 Currently, the tool recognizes "conventional" (radiosonde, aircraft, etc.) and "radiance" (amsu-a, goes, etc.) with the `name:` specification.
