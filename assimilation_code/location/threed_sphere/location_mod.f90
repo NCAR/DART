@@ -1446,7 +1446,6 @@ real(r8) :: cdist(size(locs))
 
 ! First, set the intent out arguments to a missing value
 num_close = 0
-close_ind = -99
 if(present(dist)) dist = -99.0_r8
 this_dist = 999999.0_r8   ! something big.
 

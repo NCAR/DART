@@ -718,7 +718,12 @@ real(r4),         intent(in) :: spvalR4
 real(r4) :: ret_spvalR4
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
-   if (ret_spvalR4 /= ret_spvalR4) then 
+   if (ret_spvalR4 /= ret_spvalR4) then ! ret_spval is NaN
+      if (.not. (spvalR4 /= spvalR4)) then ! spval is not NaN, so they are not the same
+         write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
+                            ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
+         call error_handler(E_ERR, 'check_attribute_value_r4', msgstring, source)
+      end if
       return
    endif
    if (spvalR4 /= ret_spvalR4) then
@@ -746,7 +751,12 @@ real(r8),         intent(in) :: spvalR8
 real(r8) :: ret_spvalR8
 
 if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
-   if (ret_spvalR8 /= ret_spvalR8) then
+   if (ret_spvalR8 /= ret_spvalR8) then ! ret_spval is NaN
+      if (.not. (spvalR8 /= spvalR8)) then ! spval is not NaN, so they are not the same
+         write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
+                            ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)
+         call error_handler(E_ERR, 'check_attribute_value_r8', msgstring, source)
+      end if
       return
    endif
    if (spvalR8 /= ret_spvalR8) then

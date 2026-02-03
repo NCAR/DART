@@ -94,6 +94,7 @@ streamflow_obs_diag
 cam_dart_obs_preprocessor
 aether_to_dart
 dart_to_aether
+test_aether_grid
 
 # Observation converter exectutables
 convert_aviso
@@ -170,6 +171,9 @@ convert_amsu_L1
 convert_L2b
 convert_goes_ABI_L1b
 MOD29E1D_to_obs
+hf_to_obs
+arvor_to_obs
+svp_to_obs
 
 # Test programs built by developer_tests
 rttov_test
@@ -196,6 +200,8 @@ find_enclosing_indices_test
 find_first_occurrence_test
 nml_test
 parse_args_test
+parse_csv_test
+csv_read_test
 sort_test
 stacktest
 obs_rwtest

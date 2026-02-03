@@ -1316,7 +1316,6 @@ real(r8), allocatable :: cdist(:)
 
 ! First, set the intent out arguments to a missing value
 num_close = 0
-close_ind = -99
 if(present(dist)) dist = -1e38_r8  ! big but negative
 this_dist = 1e38_r8                ! something big and positive.
 

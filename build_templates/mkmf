@@ -150,7 +150,7 @@ if ( $opt_c ) {
           $compile_cmd{'.F90'} = q/$(FC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
       }
    }
-   &print_formatted_list("CPPDEFS = $opt_c") if $opt_c;
+   &print_formatted_list("\nCPPDEFS += $opt_c") if $opt_c;
 }
 print MAKEFILE "\nOTHERFLAGS = $opt_o" if $opt_o;
 print MAKEFILE "\n.DEFAULT:\n\t-touch \$@\n";

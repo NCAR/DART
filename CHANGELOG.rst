@@ -22,6 +22,74 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**January 8 2026 :: ARVOR Float and SVP Drifters. Tag v11.20.0**
+
+New Features:
+
+  - ARVOR float observation converter
+  - SVP drifter observation converter
+  - csv read utilities
+
+Bug-fix:
+
+  - Remove format read for clamping values in parse_variables_clamp,
+    wrf, mpas, tiegcm that caused integers to be misread.
+
+**January 6 2026 :: DART Data Archive. Tag v11.19.3**
+
+- WRF tutorial updated to get data from data.dart.ucar.edu
+- Fix defaults for MOM6 assimilation period to 1 day
+
+**December 31 2025 :: Log DART version. Tag v11.19.2** 
+
+New Features:
+
+  - | Version of DART logged in program message 
+    | *contributed by Kamil Yousuf*
+  - Tests for parse_args_mod
+  - Remove close_ind array initialization for 3d sphere and 3d 
+    cartesian location_mods to improve get_close performance. 
+
+Bug-fixes:
+
+  - model_mod_check model_size collected in test initialization
+
+**December 3 2025 :: BAMS article. Tag v11.19.1**
+
+Documentation updates:
+
+  - How to cite DART
+  - Bulletin of the American Meteorological Society 2025 article
+
+Bug-fix:
+
+  - Assert sea surface height is present in the state for ROMS Rutgers 
+    model_interpolate
+
+**November 13 2025 :: HF Radar converter. Tag v11.19.0**
+
+New features:
+
+- High Frequency (HF) Radar ocean observation converter
+- ROMS–Rutgers: Option to use Sea Surface Height from the template file, 
+  assuming the ensemble mean is provided in that file.
+
+Bug-fix:
+
+- Corrected consistency check across restarts when fill or missing attributes are NaN. 
+
+**November 11 2025 :: Aether Cube Sphere. Tag v11.18.0**
+
+- Aether cube sphere interface added to DART.
+- SLANT_GPS_VTEC QTY and obs_def
+
+**November 3 2025 :: DART tutorial. Tag 11.17.0**
+
+- DART tutorial updated to QCEFF v11
+- DART tutorial now an extension of DART_LAB
+- Lorenz_96/work directory contains input files needed for DART_LAB6:DART_tutorial
+- PDF tutorial slides relocated to a separate repo: https://github.com/NCAR/dart-tutorial
+
 **October 10 2025 :: Bug-fix: MOM6 localization. Tag v11.16.1**
 
 - Fix state index passed to below_sea_floor
