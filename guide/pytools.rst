@@ -83,17 +83,17 @@ Here is an example configuration file for radiosondes:
           name: MetaData/pressure
           units: "pressure (Pa)"
 
-The `observation category:` section is how the tool discerns between different categories of observation types.
-Currently, the tool recognizes "conventional" (radiosonde, aircraft, etc.) and "radiance" (amsu-a, goes, etc.) with the `name:` specification.
+The ``observation category:`` section is how the tool discerns between different categories of observation types.
+Currently, the tool recognizes "conventional" (radiosonde, aircraft, etc.) and "radiance" (amsu-a, goes, etc.) with the ``name:`` specification.
 The idea with the observation category is to group instruments where the data are organized in a similar fashion.
 For example, in the future, perhaps "radar" and "gpsro" could be added to the list of categories.
 
-The `name:` entries for variables are the names of the variables in the JEDI IODA observation file, and the `type:` entries
+The ``name:`` entries for variables are the names of the variables in the JEDI IODA observation file, and the ``type:`` entries
 are the corresponding DART observation types.
-The `vertical coordinate` section specifies the variable that will be used as the vertical coordinate in
+The ``vertical coordinate`` section specifies the variable that will be used as the vertical coordinate in
 the DART observation sequence file.
-Note that in the `vertical coordinate` section, the `name:` entry must specify the full netcdf path to the variabile
-in the JEDI IODA observation file, and the `units:` entry specifies the units to be used in the DART observation sequence file.
+Note that in the ``vertical coordinate`` section, the ``name:`` entry must specify the full netcdf path to the variable
+in the JEDI IODA observation file, and the ``units:`` entry specifies the units to be used in the DART observation sequence file.
 
 Here is an example radiance obs type (AMSU-A):
 
@@ -119,23 +119,22 @@ Here is an example radiance obs type (AMSU-A):
         sat ze variable: MetaData/sensorZenithAngle
 
 Some of the entries are similar to those in the radiosonde (conventional) category.
-Note that in the radiance category, the `vertical coordinate:` spec needs a `name:` (as before) and a `data value:` (instead of units).
-Currently, the `data value:` is repeated on all of the observations.
+Note that in the radiance category, the ``vertical coordinate:`` spec needs a ``name:`` (as before) and a ``data value:`` (instead of units).
+Currently, the ``data value:`` is repeated on all of the observations.
 
-Two new entries under the `observation catageory:` spec have been introduced.
-The `channel numbers:` spec allows the user to select a subset of channels to convert.
-The value for `channel numbers:` is a comma separated list where each entry can be an integer or a range of integers.
+Two new entries under the ``observation catageory:`` spec have been introduced.
+The ``channel numbers:`` spec allows the user to select a subset of channels to convert.
+The value for ``channel numbers:`` is a comma separated list where each entry can be an integer or a range of integers.
 
-The `metadata:` spec allows the user to configure what gets placed in the obs sequence file's metadata section.
-The `sensor key:` and `rttov sensor db:` spec go hand-in-hand, and describe how to pull out id numbers for the platform, satellite and sensor.
-The `sat az variable:` and `sat ze variable:` are the JEDI IODA names for the satellite azimuth and zenith angles respectively.
-
-Another piece of information that comes from the `rttov_sensor_db:` file is the spectral band (eg. infrared, microwave).
-Currently, only infrared ("ir") and microwave ("mw") are recognized.
-The purpose of the `metadata:` spec is to have flexibility with the configuration for infrared, microwave, visible, etc. instruments.
+The ``metadata:`` spec allows the user to configure what gets placed in the obs sequence file's metadata section.
+The ``sensor key:`` and ``rttov sensor db:`` spec go hand-in-hand, and describe how to pull out id numbers for the platform, satellite and sensor.
+The ``sat az variable:`` and ``sat ze variable:`` are the JEDI IODA names for the satellite azimuth and zenith angles respectively.
+Another piece of information that comes from the ``rttov_sensor_db:`` file is the spectral band (eg. infrared, microwave).
+Currently, only infrared (``ir``) and microwave (``mw``) are recognized.
+The purpose of the ``metadata:`` spec is to have flexibility with the configuration for infrared, microwave, visible, etc. instruments.
 
 .. note::
 
-    The `ioda2obsq` tool is under active development and has limited functionality at this time.
+    The ``ioda2obsq`` tool is under active development and has limited functionality at this time.
     It is expected that more features will be added soon, including support for additional satellite radiance observation types.
     In its current state, it is primarily intended for use with radiosonde and similar conventional observation types, as well as infrared and micorwave radiance instruments.
