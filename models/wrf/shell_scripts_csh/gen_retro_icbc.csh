@@ -29,25 +29,31 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 ########################################################################
 #
 #   gen_retro_icbc.csh - shell script that generates the
-#                                     necessary wrfinput_d01 and
-#                                     wrfbdy_d01 files for running
+#                                     necessary wrfinput_d01, wrfinput_d02 
+#                                     and wrfbdy_d01 files for running
 #                                     a real-time analysis system.
 #
 #     created May 2009, Ryan Torn, U. Albany
-#
+#     update Oct 2025, Brett Raczka NCAR
 # This creates   output/${date}/wrfbdy_d01_{days}_{seconds}_mean
 #                output/${date}/wrfinput_d01_{days}_{time_step1}_mean
 #                output/${date}/wrfinput_d01_{days}_{time_step2}_mean
+#                output/${date}/wrfinput_d02_{days}_{time_step1}_mean
+#                output/${date}/wrfinput_d02_{days}_{time_step2}_mean
 ########################################################################
 
-set datea     = 2017042700
-set datefnl   = 2017042712 # set this appropriately #%%%#
-set paramfile = /glade/derecho/scratch/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
+set datea     = 2024051812
+set datefnl   = 2024052018 # set this appropriately #%%%#
+set paramfile = /glade/derecho/scratch/bmraczka/WRFv4.5_nested/scripts/param.csh   # set this appropriately #%%%#
 
+echo "Sourcing parameter file"
 source $paramfile
 
-# The geo_*.nc files should already be in the ${ICBC_DIR}/*/ directories.
-# ${LINK} ${GEO_FILES_DIR}/geo_*.nc .
+cd ${ICBC_DIR}
+${REMOVE} geo_*.nc namelist.wps namelist.input geogrid_done
+mkdir -p  geogrid
+${LINK} ${WPS_SRC_DIR}/geogrid/GEOGRID.TBL ${ICBC_DIR}/geogrid/GEOGRID.TBL
+#${LINK} ${WPS_SRC_DIR}/geogrid/geo_*.nc .
 
 mkdir -p ${ICBC_DIR}/metgrid
 ${LINK} ${WPS_SRC_DIR}/metgrid/METGRID.TBL ${ICBC_DIR}/metgrid/METGRID.TBL
@@ -70,9 +76,9 @@ while ( 1 == 1 )
    ${REMOVE} namelist.wps
    cat >! script.sed << EOF
  /start_date/c\
- start_date = 2*'${start_date}',
+ start_date = ${start_date},${start_date}
  /end_date/c\
- end_date   = 2*'${end_date}',
+ end_date   = ${end_date},${end_date}
 EOF
 
    # build grib file names - may need to change for other data sources.
@@ -85,21 +91,31 @@ EOF
       exit 2
    endif
 
-   set gribfile_a = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f000.grib2
-   set gribfile_b = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f006.grib2
+  # set gribfile_a = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f000.grib2
+  # set gribfile_b = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f006.grib2
+    set gribfile_a = ${GRIB_DATA_DIR}/gfs.0p25.${datea}.f000.grib2
+    set gribfile_b = ${GRIB_DATA_DIR}/gfs.0p25.${datea}.f006.grib2
+
    ${LINK} $gribfile_a GRIBFILE.AAA
    ${LINK} $gribfile_b GRIBFILE.AAB
-
    sed -f script.sed ${TEMPLATE_DIR}/namelist.wps.template >! namelist.wps
    ${LINK} ${WPS_SRC_DIR}/ungrib/Variable_Tables/Vtable.${GRIB_SRC} Vtable
 
+   if ( ! -e ${ICBC_DIR}/geogrid_done ) then
+     echo "Executing geogrid.exe"
+     ${WPS_SRC_DIR}/geogrid.exe >& output.geogrid.exe
+     touch geogrid_done
+   endif
+
+   echo "Executing ungrib.exe"
    ${REMOVE}                    output.ungrib.exe.${GRIB_SRC}
    ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.${GRIB_SRC}
-
+   
+   echo "Executing metgrid.exe"
    ${REMOVE}                     output.metgrid.exe
    ${WPS_SRC_DIR}/metgrid.exe >& output.metgrid.exe
 
-   ${LINK} ${WPS_SRC_DIR}/met_em.d01.* .
+ #  ${LINK} ${WPS_SRC_DIR}/met_em.d01.* .
    set datef  =  `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
    set gdatef = (`echo $datef 0 -g             | ${DART_DIR}/models/wrf/work/advance_time`)
    set hh     =  `echo $datea | cut -b9-10`
@@ -131,7 +147,7 @@ EOF
       set dd2   = `echo $date2 | cut -c 7-8`
       set hh2   = `echo $date2 | cut -c 9-10`
 
-      ${REMOVE} namelist.input script.sed
+      ${REMOVE} script.sed
       cat >! script.sed << EOF
     /run_hours/c\
     run_hours                  = ${fcst_hours},
@@ -170,7 +186,7 @@ EOF
      #${RUN_DIR}/WRF_RUN/real.serial.exe >& out.real.exe
      #if ( -e rsl.out.0000 )  cat rsl.out.0000 >> out.real.exe
 
-      rm script.sed real_done rsl.*
+      ${REMOVE} script.sed real_done rsl.*
       echo "2i\"                                       >! script.sed
       echo "#======================================\"  >> script.sed
       echo "#PBS -N run_real\"                         >> script.sed
@@ -181,7 +197,8 @@ EOF
       echo "#PBS -o run_real.out\"                     >> script.sed
       echo "#PBS -j oe\"                               >> script.sed
       echo "#PBS -k eod\"                              >> script.sed
-      echo "#PBS -l select=1:ncpus=128:mpiprocs=128\"  >> script.sed
+      #echo "#PBS -l select=1:ncpus=128:mpiprocs=128\"  >> script.sed
+      echo "#PBS -l select=1:ncpus=4:mpiprocs=4\"      >> script.sed
       echo "#PBS -V\"                                  >> script.sed
       echo "#======================================\"  >> script.sed
       echo "\"                                         >> script.sed
@@ -200,6 +217,7 @@ EOF
       #  move output files to storage
       set gdate = (`echo $date1 0 -g | ${DART_DIR}/models/wrf/work/advance_time`)
       ${MOVE} wrfinput_d01 ${OUTPUT_DIR}/${datea}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean
+      ${MOVE} wrfinput_d02 ${OUTPUT_DIR}/${datea}/wrfinput_d02_${gdate[1]}_${gdate[2]}_mean
       if ( $n == 1 ) ${MOVE} wrfbdy_d01 ${OUTPUT_DIR}/${datea}/wrfbdy_d01_${gdatef[1]}_${gdatef[2]}_mean
 
       @ n++

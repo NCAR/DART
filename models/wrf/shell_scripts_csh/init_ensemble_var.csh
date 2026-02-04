@@ -17,12 +17,17 @@ source $paramfile
 
 cd ${RUN_DIR}
 
-# KRF Generate the i/o lists in rundir automatically when initializing the ensemble
-set num_ens = ${NUM_ENS}
-set input_file_name  = "input_list_d01.txt"
-set input_file_path  = "./advance_temp"
-set output_file_name = "output_list_d01.txt"
+# Generate the i/o lists in rundir automatically when initializing the ensemble
+# Required to run filter during assimilation step
+set num_ens = $NUM_ENS      # set from param file
+set domains = $NUM_DOMAINS   
+set dn = 1
 
+while ( $dn <= $domains )
+     set dchar = `echo $dn + 100 | bc | cut -b2-3`
+     set input_file_name  = "input_list_d${dchar}.txt"
+     set input_file_path  = "./advance_temp"
+     set output_file_name = "output_list_d${dchar}.txt"
 set n = 1
 
 if ( -e $input_file_name )  rm $input_file_name
@@ -31,15 +36,17 @@ if ( -e $output_file_name ) rm $output_file_name
 while ($n <= $num_ens)
 
    set     ensstring = `printf %04d $n`
-   set  in_file_name = ${input_file_path}${n}"/wrfinput_d01"
-   set out_file_name = "filter_restart_d01."$ensstring
+          set  in_file_name = ${input_file_path}${n}"/wrfinput_d${dchar}"
+          set out_file_name = "filter_restart_d${dchar}."$ensstring
 
-   echo $in_file_name  >> $input_file_name
-   echo $out_file_name >> $output_file_name
+          echo $in_file_name  >> $input_file_name
+          echo $out_file_name >> $output_file_name
 
-   @ n++
-end
-###
+         @ n ++
+     end   # loop through ensemble members
+    @ dn ++ 
+end   # loop through domains
+
 
 set gdate  = (`echo $initial_date 0h -g | ${DART_DIR}/models/wrf/work/advance_time`)
 set gdatef = (`echo $initial_date ${ASSIM_INT_HOURS}h -g | ${DART_DIR}/models/wrf/work/advance_time`)
@@ -48,6 +55,8 @@ set yyyy   = `echo $initial_date | cut -b1-4`
 set mm     = `echo $initial_date | cut -b5-6`
 set dd     = `echo $initial_date | cut -b7-8`
 set hh     = `echo $initial_date | cut -b9-10`
+set nn     = "00"
+set ss     = "00"
 
 ${COPY} ${TEMPLATE_DIR}/namelist.input.meso namelist.input
 ${REMOVE} ${RUN_DIR}/WRF
@@ -63,12 +72,45 @@ while ( $n <= $NUM_ENS )
    ${LINK} ${RUN_DIR}/WRF_RUN/* ${RUN_DIR}/advance_temp${n}/.
    ${LINK} ${RUN_DIR}/input.nml ${RUN_DIR}/advance_temp${n}/input.nml
 
+   ${REMOVE} script.sed
+         cat >! script.sed << EOF
+            /start_year/c\
+            start_year = ${yyyy},
+            /start_month/c\
+            start_month = ${mm},
+            /start_day/c\
+            start_day = ${dd},
+            /start_hour/c\
+            start_hour = ${hh},
+            /start_minute/c\
+            start_minute = ${nn},
+            /start_second/c\
+            start_second = ${ss},
+            /end_year/c\
+            end_year = ${yyyy},
+            /end_month/c\
+            end_month = ${mm},
+            /end_day/c\
+            end_day = ${dd},
+            /end_hour/c\
+            end_hour = ${hh},
+            /end_minute/c\
+            end_minute = ${nn},
+            /end_second/c\
+            end_second = ${ss},
+            /max_dom/c\
+            max_dom = ${NUM_DOMAINS},
+EOF
+
+
+   sed -f script.sed ${RUN_DIR}/namelist.input >! ${RUN_DIR}/advance_temp${n}/namelist.input
+
    ${COPY} ${OUTPUT_DIR}/${initial_date}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean \
            ${RUN_DIR}/advance_temp${n}/wrfvar_output.nc
    sleep 3
    ${COPY} ${RUN_DIR}/add_bank_perts.ncl ${RUN_DIR}/advance_temp${n}/.
 
-   set cmd3 = "ncl 'MEM_NUM=${n}' 'PERTS_DIR="\""${PERTS_DIR}"\""' ${RUN_DIR}/advance_temp${n}/add_bank_perts.ncl"
+   set cmd3 = "ncl 'MEM_NUM=${n}' 'PERTS_DIR="\""${PERTS_DIR}/work/boundary_perts"\""' ${RUN_DIR}/advance_temp${n}/add_bank_perts.ncl"
    ${REMOVE} ${RUN_DIR}/advance_temp${n}/nclrun3.out
           cat >!    ${RUN_DIR}/advance_temp${n}/nclrun3.out << EOF
           $cmd3
@@ -109,6 +151,18 @@ EOF
       endif
 
       ${MOVE} wrfvar_output.nc wrfinput_d01
+
+      # Prep domain files for ndown.exe
+      ${LINK} wrfinput_d01 wrfout_d01_${yyyy}-${mm}-${dd}_${hh}:00:00
+
+      ${COPY} ${OUTPUT_DIR}/${initial_date}/wrfinput_d02_${gdate[1]}_${gdate[2]}_mean \
+              ${RUN_DIR}/advance_temp${n}/wrfndi_d02
+    
+      echo "Running ndown.exe to downscale perturbed  wrfinput_d01 onto wrfinput_d02 for member $n at `date`" 
+      
+      # Downscale parent domain to nested domain (wrfinput_d02)
+      mpiexec -n 4 -ppn 4 ./ndown.exe  > ndown.out   
+
    endif
 
    cd $RUN_DIR

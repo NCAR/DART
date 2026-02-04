@@ -14,17 +14,17 @@ module load nco          # set this appropriately #%%%#
 module load ncl/6.6.2    # set this appropriately #%%%#
 
 #  Set the assimilation parameters
-set NUM_ENS            = 50
+set NUM_ENS            = 3
 set ASSIM_INT_MINUTES  = 0   # 0 means use ASSIM_INT_HOURS
 set ASSIM_INT_HOURS    = 6   # ignored if ASSIM_INT_MINUTES > 0
 set IC_PERT_SCALE      = 0.25
 set ADAPTIVE_INFLATION = 1   # set to 1 if using adaptive inflation to tell the scripts to look for the files
-set NUM_DOMAINS        = 1
+set NUM_DOMAINS        = 2
 
 #  Directories where things are run
 #  IMPORTANT : Scripts provided rely on this directory structure and names relative to BASE_DIR.
 #              Do not change, otherwise tutorial will fail.    
-set BASE_DIR         = /glade/derecho/scratch/USER/WORK_DIR     # set this appropriately #%%%#
+set BASE_DIR         = /glade/derecho/scratch/bmraczka/WRFv4.5_nested     # set this appropriately #%%%#
 set RUN_DIR          = ${BASE_DIR}/rundir
 set TEMPLATE_DIR     = ${BASE_DIR}/template
 set OBSPROC_DIR      = ${BASE_DIR}/obsproc
@@ -36,33 +36,36 @@ set PERTS_DIR        = ${BASE_DIR}/perts
 
 #  Assign path to DART, WRF, WPS and WRFDA build
 set SHELL_SCRIPTS_DIR = ${BASE_DIR}/scripts
-set DART_DIR          = /glade/work/USER/DART                     # set this appropriately #%%%#
-set WRF_DM_SRC_DIR    = /glade/work/USER/WRFV3                    # set this appropriately #%%%#
-set WPS_SRC_DIR       = /glade/work/USER/WPS                      # set this appropriately #%%%#
-set VAR_SRC_DIR       = /glade/work/USER/WRFDA                    # set this appropriately #%%%#
+set DART_DIR          = /glade/work/bmraczka/DART                     # set this appropriately #%%%#
+set WRF_DM_SRC_DIR    = /glade/work/bmraczka/WRF/WRFv4.5_git                    # set this appropriately #%%%#
+set WPS_SRC_DIR       = /glade/work/bmraczka/WRF/WPSv4.5_git                      # set this appropriately #%%%#
+set VAR_SRC_DIR       = /glade/work/bmraczka/WRF/WRFDAv4.5_git                    # set this appropriately #%%%#
 
 # for generating wrf template files
 set GEO_FILES_DIR     = /glade/u/home/wrfhelp/WPS_GEOG            # set this appropriately #%%%#
-set GRIB_DATA_DIR     = ${ICBC_DIR}/grib_data                     # set this appropriately #%%%#
+#set GRIB_DATA_DIR     = ${ICBC_DIR}/grib_data                     # set this appropriately #%%%#
+set GRIB_DATA_DIR     = /glade/work/bmraczka/WRF_nest_tutorial/GFS  # set this appropriately #%%%#
 set GRIB_SRC          = 'GFS'                                     # set this appropriately #%%%#
 
 # list of variables for extraction and cycling
 set extract_vars_a   = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                          U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
 set extract_vars_b   = ( U V W PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
-                         REFL_10CM VT_DBZ_WT )
+                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
 set cycle_vars_a     =   ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
                            U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
+set cycle_vars_b     =   ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                           U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
 set increment_vars_a = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
+set increment_vars_b = ( U V PH THM MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
 
 #  Diagnostic parameters
 set OBS_VERIF_DAYS      = 7
 
 #  Generic queuing system parameters
 set SUPER_PLATFORM          = derecho
-set COMPUTER_CHARGE_ACCOUNT = YOUR_ACCT                  # set this appropriately #%%%#
-set EMAIL                   = YOUR_EMAIL                 # set this appropriately #%%%#
+set COMPUTER_CHARGE_ACCOUNT = P86850054                  # set this appropriately #%%%#
+set EMAIL                   = bmraczka@ucar.edu                 # set this appropriately #%%%#
 
 if ( $SUPER_PLATFORM == 'derecho') then
    # Derecho values (uses 'PBS' queueing system) 
