@@ -50,5 +50,6 @@ DART supported models:
 - :doc:`tiegcm/readme`
 - :doc:`wrf_hydro/readme`
 - :doc:`wrf/readme`
+- :doc:`WRF CHEM <wrf_unified/readme>`
 
  If you are interested in creating a DART interface for a new model, see :ref:`Using new models` and :ref:`Porting new models`.
