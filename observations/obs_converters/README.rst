@@ -379,6 +379,7 @@ converters) include:
 -  ``GSI2DART``: :doc:`./GSI2DART/readme`
 -  ``GTSPP``: :doc:`./GTSPP/GTSPP`
 -  ``HFradar``: :doc:`./HFradar/readme`
+-  ``IODA``: :ref:`ioda2obsq <ioda2obsq>`
 -  ``MADIS``: :doc:`./MADIS/MADIS`
 -  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`

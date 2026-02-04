@@ -27,6 +27,7 @@ Each directory has at least one converter:
 -  ``GSI2DART``: :doc:`../observations/obs_converters/GSI2DART/readme`
 -  ``GTSPP``: :doc:`../observations/obs_converters/GTSPP/GTSPP`
 -  ``HFradar``: :doc:`../observations/obs_converters/HFradar/readme`
+-  ``IODA``: :ref:`ioda2obsq <ioda2obsq>`
 -  ``MADIS``: :doc:`../observations/obs_converters/MADIS/MADIS`
 -  ``MIDAS``: :doc:`../observations/obs_converters/MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`../observations/obs_converters/MODIS/MOD15A2_to_obs`
