@@ -7,7 +7,7 @@ on:
 
 jobs:
   # Job 1
-  build-run-lorenz_96-nvhpc:
+  build-run-lorenz_96-gfortran:
     # Runner instance OS
     runs-on:
       group: cirrus-4x8
@@ -36,8 +36,8 @@ jobs:
           cd models/lorenz_96/work
           ./quickbuild.sh
       # Steps to run lorenz_96 filter program with mpi
-      - name: Running lorenz_96 filter program with mpi using nvhpc
+      - name: Running lorenz_96 filter program with mpi using gfortran
         run: |
           cd models/lorenz_96/work
-          mpirun -n 4 ./filter
+          mpiexec -n 4 ./filter
         shell: bash
