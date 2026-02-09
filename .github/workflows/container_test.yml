@@ -1,4 +1,4 @@
-name: CIRRUS Action using NCAR Container
+name: CIRRUS Action using NCAR HPC Container
 on:
   workflow_dispatch:
   push:
@@ -11,6 +11,9 @@ jobs:
     # Runner instance OS
     runs-on:
       group: cirrus-4x8
+    defaults:
+      run:
+        shell: bash -elo pipefail {0} 
     # Deploy container on top of runner instance
     container: 
       image: ncarcisl/cisldev-x86_64-almalinux9-nvhpc-mpich3
