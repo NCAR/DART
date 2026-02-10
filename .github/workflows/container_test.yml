@@ -25,6 +25,7 @@ jobs:
       # Steps to create Makefile template for the selected compiler
       - name: Creating Makefile template for nvhpc
         run: |
+          source "/container/config_env.sh"
           cd build_templates
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
           cp mkmf.template.gfortran mkmf.template
