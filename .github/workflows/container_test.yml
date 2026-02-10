@@ -16,7 +16,7 @@ jobs:
         shell: bash -elo pipefail {0} 
     # Deploy container on top of runner instance
     container: 
-      image: ncarcisl/cisldev-x86_64-almalinux9-gcc-mpich3
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
         shell: bash
       # Steps to compile and build lorenz_96 with mpi
-      - name: Building lorenz_96 model with mpi using nvhpc
+      - name: Building lorenz_96 model with mpi using gfortran
         run: |
           cd models/lorenz_96/work
           ./quickbuild.sh
@@ -39,5 +39,6 @@ jobs:
       - name: Running lorenz_96 filter program with mpi using gfortran
         run: |
           cd models/lorenz_96/work
+          ldd ./filter
           mpiexec -n 4 ./filter
         shell: bash
