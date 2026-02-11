@@ -1,4 +1,4 @@
-name: CIRRUS Action using NCAR HPC Container
+name: GitHub Action using CIRRUS runners and NCAR HPC Container
 on:
   workflow_dispatch:
   push:
@@ -9,19 +9,58 @@ jobs:
   # Job 1
   build-run-lorenz_96-gfortran:
     # Runner instance OS
+
     runs-on:
       group: cirrus-4x8
+
+    # The 'ncarcisl' containers initialize their software environment 
+    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # This is done by starting a bash *login* shell (bash -l [...])
     defaults:
       run:
         shell: bash -elo pipefail {0} 
+
     # Deploy container on top of runner instance
     container: 
       image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      # Look inside the container
+      - name: Interrogate Runtime Environment
+        run: |
+          cat /container/config_env.sh
+          df -h
+          free -g
+          cat /etc/os-release 2>/dev/null || true
+          uname -a
+          lscpu
+          nvidia-smi 2>/dev/null || true
+          echo && echo && echo
+          echo '----------------------------------------------------------------'
+          echo && echo && echo
+          echo "CC=${CC}"
+          echo "CXX=${CXX}"
+          echo "FC=${FC}"
+          echo "F77=${F77}"
+          echo
+          echo "CFLAGS=${CFLAGS}"
+          echo "CPPFLAGS=${CPPFLAGS}"
+          echo "CXXFLAGS=${CXXFLAGS}"
+          echo "FCFLAGS=${FCFLAGS}"
+          echo "F77FLAGS=${F77FLAGS}"
+          export CC CXX FC F77 CFLAGS CXXFLAGS FCFLAGS F77FLAGS CPPFLAGS
+          conda --version 2>/dev/null || echo " --> no conda in this container"
+          which mpicc
+          mpicc --version 2>/dev/null || true
+          which mpiexec
+          mpiexec --version 2>/dev/null || true
+
       # Steps to create Makefile template for the selected compiler
       - name: Creating Makefile template for nvhpc
         run: |
@@ -30,16 +69,15 @@ jobs:
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
           cp mkmf.template.gfortran mkmf.template
           echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
-        shell: bash
+
       # Steps to compile and build lorenz_96 with mpi
       - name: Building lorenz_96 model with mpi using gfortran
         run: |
           cd models/lorenz_96/work
           ./quickbuild.sh
+
       # Steps to run lorenz_96 filter program with mpi
       - name: Running lorenz_96 filter program with mpi using gfortran
         run: |
           cd models/lorenz_96/work
-          ldd ./filter
           mpiexec -n 4 ./filter
-        shell: bash
