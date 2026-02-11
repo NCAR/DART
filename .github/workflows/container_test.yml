@@ -1,4 +1,4 @@
-name: GitHub Action using CIRRUS runners and NCAR HPC Container
+name: GitHub Action using CIRRUS Runners and NCAR HPC Container
 on:
   workflow_dispatch:
   push:
@@ -18,10 +18,10 @@ jobs:
     # This is done by starting a bash *login* shell (bash -l [...])
     defaults:
       run:
-        shell: bash -elo pipefail {0} 
+        shell: bash -elo pipefail {0}
 
     # Deploy container on top of runner instance
-    container: 
+    container:
       image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
 
     steps:
@@ -31,7 +31,6 @@ jobs:
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
-      # Look inside the container
       - name: Interrogate Runtime Environment
         run: |
           cat /container/config_env.sh
@@ -62,7 +61,7 @@ jobs:
           mpiexec --version 2>/dev/null || true
 
       # Steps to create Makefile template for the selected compiler
-      - name: Creating Makefile template for nvhpc
+      - name: Creating Makefile template
         run: |
           source "/container/config_env.sh"
           cd build_templates
