@@ -145,7 +145,7 @@ jobs:
           cd build_templates
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
           cp mkmf.template.ifx.linux mkmf.template
-          echo 'FFLAGS = -g -C -check noarg_temp_created -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused $(INCS)' >> mkmf.template
+          echo 'FFLAGS = -g -C -check nouninit -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused $(INCS)' >> mkmf.template
 
       # Steps to compile and build lorenz_96 with mpi
       - name: Building lorenz_96 model with mpi using intel-oneapi
