@@ -1,9 +1,6 @@
 name: GitHub Action using CIRRUS Runners and NCAR HPC Container
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - cirrus_actions
 
 jobs:
   # Job 1
