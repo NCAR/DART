@@ -40,7 +40,7 @@ jobs:
         run: |
           source "/container/config_env.sh"
           which mpif90
-          mpif90 -o mpi_init_ifx mpi_init.f90
+          mpif90 -o mpi_init_ifx mpi_inits.f90
 
       - name: Run hello world program with ifx
         run: |
