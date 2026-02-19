@@ -1,4 +1,4 @@
-name: Build and run hello world with ifx NCAR HPC Container
+name: Build and run mpi init with ifx NCAR HPC Container
 on:
   workflow_dispatch:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   # Job 1
-  ifx-helloworld:
+  ifx-mpi-init:
     # Runner instance OS
 
     runs-on:
@@ -27,17 +27,22 @@ jobs:
     steps:
       - name: Create hello world program
         run: |
-          echo 'program hello_world' > hello_world.f90
-          echo '  print *, "Hello, World!"' >> hello_world.f90
-          echo 'end program hello_world' >> hello_world.f90
+          echo 'program mpi_init' > mpi_init.f90
+          echo '  use mpi' >> mpi_init.f90
+          echo '  implicit none' >> mpi_init.f90
+          echo '  integer :: ierr' >> mpi_init.f90
+          echo '  call MPI_Init(ierr)' >> mpi_init.f90
+          echo '  print *, "Hello, World!"' >> mpi_init.f90
+          echo '  call MPI_Finalize(ierr)' >> mpi_init.f90
+          echo 'end program mpi_init' >> mpi_init.f90
 
       - name: Compile hello world program with ifx
         run: |
           source "/container/config_env.sh"
           which mpif90
-          mpif90 -o hello_world_ifx hello_world.f90
+          mpif90 -o mpi_init_ifx mpi_init.f90
 
       - name: Run hello world program with ifx
         run: |
           which mpiexec
-          mpiexec -n 1 ./hello_world_ifx
+          mpiexec -n 1 ./mpi_init_ifx
