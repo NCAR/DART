@@ -306,7 +306,7 @@ else
    ! HK @todo Do you need to use t_grid interp for thickness four_ilons, four_ilats?
    found(:) = .false.
    depth_at_x(:) = 0
-   FIND_LAYER: do i = 2, nz
+   FIND_LAYER: do i = 1, nz
 
       do corner = 1, 4
          th_indx = get_dart_vector_index(four_ilons(corner), four_ilats(corner), i, dom_id, thick_id)
@@ -327,18 +327,29 @@ else
       endif
 
       depth_at_x = depth_at_x + thick_at_x
+      print*, 'vert', lon_lat_vert(3)
+      print*, 'layer ', i, ' depth at x = ', depth_at_x(1), ' thickness at x = ', thick_at_x(1)
 
       do e = 1, ens_size
          if (lon_lat_vert(3) < depth_at_x(e)) then
-            lev(e,1) = i ! layer_below
-            lev(e,2) = i-1 ! layer_above
-            lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
-            found(e) = .true.
+            if (i ==1) then 
+              lev(e,1) = 1 ! in surface layer
+              lev(e,2) = 1 ! in surface layer
+              lev_fract(e) = 0.0_r8
+              found(e) = .true.
+            else
+               lev(e,1) = i ! layer_below
+               lev(e,2) = i-1 ! layer_above
+               lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
+               found(e) = .true.
+            endif
             if (all(found)) exit FIND_LAYER
          endif
       enddo
 
    enddo FIND_LAYER
+
+     print*, 'levs', lev(1, :), ' lev_fract', lev_fract(1)
 
    if (any(found .eqv. .false.)) then
       istatus(:) = OBS_TOO_DEEP
@@ -450,6 +461,8 @@ enddo
 
 ! Interpolate between levels
 ! expected_obs = bot_val + lev_fract * (top_val - bot_val)
+print*, 'expected at level below obs', expected(:,1), 'expected at level above obs', expected(:,2), ' lev_fract', lev_fract(1)
+print*, 'diff between levels', expected(:,2) - expected(:,1)
 expected_obs = expected(:,1) + lev_fract(:) * (expected(:,2) - expected(:,1))
 
 end subroutine state_on_quad
@@ -1066,8 +1079,8 @@ call nc_close_file(ncid, routine)
 
 ! MOM6 counts days from year 1
 ! DART counts days from 1601 
-dart_days = int(days) - dart_base_date_in_days
-
+!dart_days = int(days) - dart_base_date_in_days
+dart_days = 1
 read_model_time = set_time(0,dart_days)
 
 end function read_model_time
@@ -1093,14 +1106,23 @@ integer :: i
 
 ! HK assert(which_vert == height meters) ?
 
-do i = 2, nz
+do i = i, nz
    if(vert_loc < zstar(i)) then
-      lev(1) = i   ! bottom
-      lev(2) = i-1 ! top
-
-      lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(2)) - zstar(lev(1)))
-      istatus = 0
-      return
+      if (i == 1) then
+         lev(1) = 1 ! obs is in surface layer
+         lev(2) = 1 ! obs is in surface layer
+         lev_fract = 0.0_r8
+         istatus = 0
+         return
+      else
+         lev(1) = i   ! bottom
+         lev(2) = i-1 ! top
+         print*, 'i', i
+         print*, 'vert_loc', vert_loc, ' zstar(lev(1))', zstar(lev(1)), ' zstar(lev(2))', zstar(lev(2))
+         lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(1)) - zstar(lev(2)))
+         istatus = 0
+         return
+      endif
    endif
 enddo
 
