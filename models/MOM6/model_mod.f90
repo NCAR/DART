@@ -19,7 +19,8 @@ use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_state => get_close_state, &
                              set_location, set_location_missing, &
                              get_location, query_location, VERTISLEVEL, &
-                             VERTISHEIGHT, set_vertical, get_dist
+                             VERTISHEIGHT, set_vertical, get_dist, &
+                             set_vertical_localization_coord
 
 use    utilities_mod, only : error_handler, E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
@@ -165,6 +166,7 @@ if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type('gregorian')
+call set_vertical_localization_coord(VERTISHEIGHT)
 
 ! This time is both the minimum time you can ask the model to advance
 ! (for models that can be advanced by filter) and it sets the assimilation
@@ -519,6 +521,7 @@ integer(i8) :: indx
 real(r8) :: depth(1)
 
 ! assert(which_vert == VERTISHEIGHT)
+if (which_vert /= VERTISHEIGHT) call error_handler(E_ERR,'model_mod convert_vertical_state', 'only supports VERTISHEIGHT')
 
 if (use_pseudo_depth) then
    do ii = 1, num
