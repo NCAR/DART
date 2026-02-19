@@ -5,8 +5,9 @@ on:
     branches:
       - cirrus_actions
 
+jobs:
   # Job 1
-ifx-helloworld:
+  ifx-helloworld:
     # Runner instance OS
 
     runs-on:
