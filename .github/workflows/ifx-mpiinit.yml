@@ -27,14 +27,14 @@ jobs:
     steps:
       - name: Create mpi init program
         run: |
-          echo 'program mpi_init' > mpi_init.f90
-          echo '  use mpi, only: MPI_Init, MPI_Finalize' >> mpi_init.f90
-          echo '  implicit none' >> mpi_init.f90
-          echo '  integer :: ierr' >> mpi_init.f90
-          echo '  call MPI_Init(ierr)' >> mpi_init.f90
-          echo '  print *, "Hello, World!"' >> mpi_init.f90
-          echo '  call MPI_Finalize(ierr)' >> mpi_init.f90
-          echo 'end program mpi_init' >> mpi_init.f90
+          echo 'program mpi_inits' > mpi_inits.f90
+          echo '  use mpi, only: MPI_Init, MPI_Finalize' >> mpi_inits.f90
+          echo '  implicit none' >> mpi_inits.f90
+          echo '  integer :: ierr' >> mpi_inits.f90
+          echo '  call MPI_Init(ierr)' >> mpi_inits.f90
+          echo '  print *, "Hello, World!"' >> mpi_inits.f90
+          echo '  call MPI_Finalize(ierr)' >> mpi_inits.f90
+          echo 'end program mpi_inits' >> mpi_inits.f90
 
       - name: Compile program with ifx
         run: |
