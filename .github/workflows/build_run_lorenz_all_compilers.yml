@@ -1,9 +1,6 @@
 name: Build and run Lorenz 63 with all compilers using CIRRUS Runners and NCAR HPC Containers
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - cirrus_actions
 
 jobs:
   # Job 1

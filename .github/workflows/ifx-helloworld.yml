@@ -1,0 +1,42 @@
+name: Build and run hello world with ifx NCAR HPC Container
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cirrus_actions
+
+  # Job 1
+ifx-helloworld:
+    # Runner instance OS
+
+    runs-on:
+      group: cirrus-4x8
+
+    # The 'ncarcisl' containers initialize their software environment 
+    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # This is done by starting a bash *login* shell (bash -l [...])
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container:
+      image: ncarcisl/hpcdev-x86_64:almalinux9-oneapi-mpich-latest
+
+    steps:
+      - name: Create hello world program
+        run: |
+          echo 'program hello_world' > hello_world.f90
+          echo '  print *, "Hello, World!"' >> hello_world.f90
+          echo 'end program hello_world' >> hello_world.f90
+
+      - name: Compile hello world program with ifx
+        run: |
+          source "/container/config_env.sh"
+          which mpif90
+          mpif90 -o hello_world_ifx hello_world.f90
+
+      - name: Run hello world program with ifx
+        run: |
+          which mpiexec
+          mpiexec -n 1 ./hello_world_ifx
