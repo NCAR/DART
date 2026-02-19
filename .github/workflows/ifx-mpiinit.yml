@@ -25,7 +25,7 @@ jobs:
       image: ncarcisl/hpcdev-x86_64:almalinux9-oneapi-mpich-latest
 
     steps:
-      - name: Create hello world program
+      - name: Create mpi init program
         run: |
           echo 'program mpi_init' > mpi_init.f90
           echo '  use mpi' >> mpi_init.f90
@@ -36,7 +36,7 @@ jobs:
           echo '  call MPI_Finalize(ierr)' >> mpi_init.f90
           echo 'end program mpi_init' >> mpi_init.f90
 
-      - name: Compile hello world program with ifx
+      - name: Compile program with ifx
         run: |
           source "/container/config_env.sh"
           which mpif90
