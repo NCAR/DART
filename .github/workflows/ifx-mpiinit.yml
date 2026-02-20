@@ -40,7 +40,7 @@ jobs:
         run: |
           source "/container/config_env.sh"
           which mpif90
-          mpif90 -g -C -check noarg_temp_created -check nouninit -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused -o mpi_init_ifx mpi_inits.f90
+          mpif90 -g -C -check noarg_temp_created -check nouninit -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused -o mpi_init_ifx mpi_inits.f90
 
       - name: Run hello world program with ifx
         run: |
