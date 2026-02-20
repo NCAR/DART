@@ -1036,10 +1036,10 @@ do i = 1, nfields
       var_names(j) = variable_table(i, VT_VARNAMEINDX)
       kind_list(j) = get_index_for_quantity(variable_table(i, VT_KINDINDX))
       if (variable_table(i, VT_MINVALINDX) /= 'NA') then
-         read(variable_table(i, VT_MINVALINDX), '(d16.8)') clamp_vals(j,1)
+         read(variable_table(i, VT_MINVALINDX), *) clamp_vals(j,1)
       endif
       if (variable_table(i, VT_MAXVALINDX) /= 'NA') then
-        read(variable_table(i, VT_MAXVALINDX), '(d16.8)') clamp_vals(j,2)
+        read(variable_table(i, VT_MAXVALINDX), *) clamp_vals(j,2)
       endif
       if (variable_table(i, VT_STATEINDX) == 'NO_COPY_BACK') then
          update_list(j) = .false.

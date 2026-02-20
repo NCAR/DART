@@ -44,9 +44,11 @@ ioda to obsq converter:
     - name: windNorthward
       type: RADIOSONDE_V_WIND_COMPONENT
 
-  vertical coordinate:
-    name: MetaData/height
-    units: "height (m)"
+  observation category:
+    name: conventional
+    vertical coordinate:
+      name: MetaData/pressure
+      units: "pressure (Pa)"
 ```
 
 Note "observation variables" is the list of variables you intend to assimilate in the DA job.

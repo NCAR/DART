@@ -4162,14 +4162,14 @@ do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= ''
 
         bound = trim(bounds_table(2,n))
         if ( bound /= 'NULL' .and. bound /= '' ) then
-             read(bound,'(d16.8)') lower_bound
+             read(bound, *) lower_bound
         else
              lower_bound = missing_r8
         endif
 
         bound = trim(bounds_table(3,n))
         if ( bound /= 'NULL' .and. bound /= '' ) then
-             read(bound,'(d16.8)') upper_bound
+             read(bound, *) upper_bound
         else
              upper_bound = missing_r8
         endif
