@@ -274,6 +274,7 @@ interp = get_interp_handle(qty)
 ! unpack the location type into lon, lat, vert, vert_type
 lon_lat_vert = get_location(location)
 which_vert   = nint(query_location(location))
+if (which_vert /= VERTISHEIGHT) call error_handler(E_ERR, 'model_interpolate', 'only supports VERTISHEIGHT')
 
 ! get the indices for the 4 corners of the quad in the horizontal
 call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
@@ -292,7 +293,7 @@ endif
 if (use_pseudo_depth) then 
 
    ! Get the bounding vertical levels and the fraction between bottom and top
-   call find_level_bounds(lon_lat_vert(3), which_vert, levz, levz_fract, locate_status)
+   call find_level_bounds(lon_lat_vert(3), levz, levz_fract, locate_status)
    if (locate_status /= 0) then
       istatus(:) = locate_status
       return
@@ -308,7 +309,7 @@ else
    ! HK @todo Do you need to use t_grid interp for thickness four_ilons, four_ilats?
    found(:) = .false.
    depth_at_x(:) = 0
-   FIND_LAYER: do i = 2, nz
+   FIND_LAYER: do i = 1, nz
 
       do corner = 1, 4
          th_indx = get_dart_vector_index(four_ilons(corner), four_ilats(corner), i, dom_id, thick_id)
@@ -332,10 +333,17 @@ else
 
       do e = 1, ens_size
          if (lon_lat_vert(3) < depth_at_x(e)) then
-            lev(e,1) = i ! layer_below
-            lev(e,2) = i-1 ! layer_above
-            lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
-            found(e) = .true.
+            if (i ==1) then 
+              lev(e,1) = 1 ! in surface layer
+              lev(e,2) = 1 ! in surface layer
+              lev_fract(e) = 0.0_r8
+              found(e) = .true.
+            else
+               lev(e,1) = i ! layer_below
+               lev(e,2) = i-1 ! layer_above
+               lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
+               found(e) = .true.
+            endif
             if (all(found)) exit FIND_LAYER
          endif
       enddo
@@ -1084,26 +1092,30 @@ end function read_model_time
 !                    --- 1 i=3
 !
 
-subroutine find_level_bounds(vert_loc, which_vert, lev, lev_fract, istatus)
+subroutine find_level_bounds(vert_loc, lev, lev_fract, istatus)
 
 real(r8), intent(in) :: vert_loc   ! observation location
-integer,  intent(in) :: which_vert ! obs vertical coordinate
 integer,  intent(out) :: lev(2)    ! bottom, top
 real(r8), intent(out) :: lev_fract
 integer,  intent(out) :: istatus
 
 integer :: i
 
-! HK assert(which_vert == height meters) ?
-
-do i = 2, nz
+do i = 1, nz
    if(vert_loc < zstar(i)) then
-      lev(1) = i   ! bottom
-      lev(2) = i-1 ! top
-
-      lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(2)) - zstar(lev(1)))
-      istatus = 0
-      return
+      if (i == 1) then
+         lev(1) = 1 ! obs is in surface layer
+         lev(2) = 1 ! obs is in surface layer
+         lev_fract = 0.0_r8
+         istatus = 0
+         return
+      else
+         lev(1) = i   ! bottom
+         lev(2) = i-1 ! top
+         lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(1)) - zstar(lev(2)))
+         istatus = 0
+         return
+      endif
    endif
 enddo
 
