@@ -40,8 +40,8 @@
    ens_size                 = 3,
    obs_sequence_in_name     = "obs_seq.10",
    obs_sequence_out_name    = "obs_seq.final",
-   input_state_file_list    = "input_wrf_d01.txt", "input_wrf_d02.txt", "input_wrf_d03.txt", "input_chem_d01.txt", "input_chem_d02.txt", "input_chem_d03.txt"
-   output_state_file_list   = "output_wrf_d01.txt", "output_wrf_d02.txt", "output_wrf_d03.txt", "output_chem_d01.txt", "output_chem_d02.txt", "output_chem_d03.txt"
+   input_state_file_list    = "input_wrf_d01.txt", "input_wrf_d02.txt", "input_chem_d01.txt", "input_chem_d02.txt"
+   output_state_file_list   = "output_wrf_d01.txt", "output_wrf_d02.txt",  "output_chem_d01.txt", "output_chem_d02.txt"
    init_time_days           = 154289,
    init_time_seconds        = 10801,
    first_obs_days           = -1,
@@ -206,6 +206,7 @@
                          'MU',    'QTY_PRESSURE',             'UPDATE','999',
                          'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'UPDATE','999',
                          'PSFC',  'QTY_SURFACE_PRESSURE',     'UPDATE','999',
+                         'PHB',   'QTY_BASE_STATE_GEOP',      'NO_COPY_BACK', '999',
    wrf_state_bounds    = 'QVAPOR','0.0','NULL',
                          'QRAIN', '0.0','NULL',
                          'QCLOUD','0.0','NULL',
@@ -213,7 +214,7 @@
                           'no', 'QTY_NO', 'UPDATE', '999'
    chem_state_bounds = 'o3', '0.0', 'NULL'
    chemistry_separate_file = .true., 
-   num_domains                 = 3,
+   num_domains                 = 2,
    calendar_type               = 3,
    assimilation_period_seconds = 21600,
    vert_localization_coord     = 3,

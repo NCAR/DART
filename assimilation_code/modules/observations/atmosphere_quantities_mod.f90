@@ -38,6 +38,7 @@
 !   QTY_SOIL_MOISTURE
 !   QTY_SOURCE_PHASE
 !   QTY_SURFACE_ELEVATION
+!   QTY_BASE_STATE_GEOP
 !
 ! ! kinds for Gravity Wave Drag (CAM - kevin)
 !

@@ -84,7 +84,8 @@ use obs_kind_mod, only : get_index_for_quantity, &
                          QTY_SOIL_MOISTURE, &
                          QTY_SOIL_LIQUID_WATER, &
                          QTY_CLOUDWATER_DE, &
-                         QTY_CLOUD_ICE_DE
+                         QTY_CLOUD_ICE_DE, &
+                         QTY_BASE_STATE_GEOP
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -222,7 +223,6 @@ type grid_ll
 end type grid_ll
 
 type static_data
-   real(r8), allocatable :: phb(:,:,:) ! base-state geopotential
    real(r8), allocatable :: mub(:,:)   ! base state dry air mass in column
    real(r8), allocatable :: hgt(:,:)   ! Terrain Height
    real(r8), allocatable :: dnw(:)     ! d(eta) values between full (w) level
@@ -1211,10 +1211,6 @@ do i = 1, num_domains
    write( idom , '(I1)') i
    ncid = nc_open_file_readonly('wrfinput_d0'//idom, routine)
 
-   call nc_get_variable_size(ncid, 'PHB', dim_size)
-   allocate(stat_dat(i)%phb(dim_size(1), dim_size(2), dim_size(3)))
-   call nc_get_variable(ncid, 'PHB', stat_dat(i)%phb, routine)
- 
    call nc_get_variable_size(ncid, 'MUB', dim_size)
    allocate(stat_dat(i)%mub(dim_size(1), dim_size(2)))
    call nc_get_variable(ncid, 'MUB', stat_dat(i)%mub, routine)
@@ -1628,10 +1624,10 @@ do k = 1, grid(id)%bts  ! geopotential height (PH) is on bottom_top_stag
    x_iul = get_state(iul, state_handle)
    x_iur = get_state(iur, state_handle)
 
-   geop(:) = ( dym*( dxm*( stat_dat(id)%phb(ll(1),ll(2),k) + x_ill ) + &
-                   dx*( stat_dat(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
-             dy*( dxm*( stat_dat(id)%phb(ul(1),ul(2),k) + x_iul ) + &
-                   dx*( stat_dat(id)%phb(ur(1),ur(2),k) + x_iur ) ) )/gravity
+   geop(:) = ( dym*( dxm*( phb(state_handle, ens_size, id,ll(1),ll(2),k) + x_ill ) + &
+                   dx*( phb(state_handle, ens_size, id,lr(1),lr(2),k) + x_ilr ) ) + &
+             dy*( dxm*( phb(state_handle, ens_size, id,ul(1),ul(2),k) + x_iul ) + &
+                   dx*( phb(state_handle, ens_size, id,ur(1),ur(2),k) + x_iur ) ) )/gravity
 
    lat(:) = ( grid(id)%latitude(ll(1),ll(2)) + &
               grid(id)%latitude(lr(1),lr(2)) + &
@@ -1809,8 +1805,8 @@ call get_state_array(x_iph, iph, state_handle)
 call get_state_array(x_iphp1, iphp1, state_handle)
 
 do e = 1, ens_size
-   ph_e(e) = ( (x_iphp1(e) + stat_dat(id)%phb(i,j,k(e)+1)) &
-             - (x_iph(e)   + stat_dat(id)%phb(i,j,k(e)  )) ) / stat_dat(id)%dnw(k(e))
+   ph_e(e) = ( (x_iphp1(e) + phb(state_handle, ens_size, id,i,j,k(e)+1)) &
+             - (x_iph(e)   + phb(state_handle, ens_size, id,i,j,k(e)  )) ) / stat_dat(id)%dnw(k(e))
 enddo
 
 ! rho = - mu / dphi/deta
@@ -1908,10 +1904,10 @@ a1 = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dx
 
 ! phb is constant across the ensemble, so use k(1)
 geopotential_height_interpolate = ( a1 + &
-                                    dym* ( dxm*stat_dat(id)%phb(ll(1), ll(2), k(1) ) + &
-                                    dx * stat_dat(id)%phb(lr(1), lr(2), k(1)) )      + &
-                                    dy * ( dxm*stat_dat(id)%phb(ul(1), ul(2), k(1) ) + &
-                                    dx * stat_dat(id)%phb(ur(1), ur(2), k(1)) )          )  / gravity
+                                    dym* ( dxm*phb(state_handle, ens_size, id,ll(1), ll(2), k(1) ) + &
+                                    dx * phb(state_handle, ens_size, id,lr(1), lr(2), k(1)) )      + &
+                                    dy * ( dxm*phb(state_handle, ens_size, id,ul(1), ul(2), k(1) ) + &
+                                    dx * phb(state_handle, ens_size, id,ur(1), ur(2), k(1)) )          )  / gravity
 
 end function geopotential_height_interpolate
 
@@ -2420,10 +2416,10 @@ call get_state_array(x_ilr, ilr, state_handle)
 call get_state_array(x_iur, iur, state_handle)
 
 do e = 1, ens_size
-   geop_ll(e) = (stat_dat(id)%phb(ll(1), ll(2), k(e)) + x_ill(e)) / gravity
-   geop_ul(e) = (stat_dat(id)%phb(ul(1), ul(2), k(e)) + x_iul(e)) / gravity
-   geop_lr(e) = (stat_dat(id)%phb(lr(1), lr(2), k(e)) + x_ilr(e)) / gravity
-   geop_ur(e) = (stat_dat(id)%phb(ur(1), ur(2), k(e)) + x_iur(e)) / gravity
+   geop_ll(e) = (phb(state_handle, ens_size, id,ll(1), ll(2), k(e)) + x_ill(e)) / gravity
+   geop_ul(e) = (phb(state_handle, ens_size, id,ul(1), ul(2), k(e)) + x_iul(e)) / gravity
+   geop_lr(e) = (phb(state_handle, ens_size, id,lr(1), lr(2), k(e)) + x_ilr(e)) / gravity
+   geop_ur(e) = (phb(state_handle, ens_size, id,ur(1), ur(2), k(e)) + x_iur(e)) / gravity
 
    geomet_ll(e) = compute_geometric_height(geop_ll(e), grid(id)%latitude(ll(1), ll(2)))
    geomet_ul(e) = compute_geometric_height(geop_ul(e), grid(id)%latitude(ul(1), ul(2)))
@@ -2469,8 +2465,8 @@ call get_state_array(x_k, idx_k, state_handle)
 call get_state_array(x_kp1, idx_kp1, state_handle)
 
 do e = 1, ens_size
-   geop_k(e) = (stat_dat(id)%phb(xy_point(1), xy_point(2), k(e)) + x_k(e)) / gravity
-   geop_kp1(e) = (stat_dat(id)%phb(xy_point(1), xy_point(2), k(e)+1) + x_kp1(e)) / gravity
+   geop_k(e) = (phb(state_handle, ens_size, id,xy_point(1), xy_point(2), k(e)) + x_k(e)) / gravity
+   geop_kp1(e) = (phb(state_handle, ens_size, id,xy_point(1), xy_point(2), k(e)+1) + x_kp1(e)) / gravity
    geomet_k(e) = compute_geometric_height(geop_k(e), grid(id)%latitude(xy_point(1), xy_point(2)))
    geomet_kp1(e) = compute_geometric_height(geop_kp1(e), grid(id)%latitude(xy_point(1), xy_point(2)))
 enddo
@@ -2494,8 +2490,10 @@ integer      :: off
 real(r8)     :: x_i1(1), x_i2(1), x_i3(1), x_i4(1)
 real(r8)     :: geop, lat
 integer      :: gz_id
+integer      :: ens_size
 
 gz_id = get_varid_from_kind(state_id, QTY_GEOPOTENTIAL_HEIGHT)
+ens_size = 1 ! working with the mean state
 
 !HK todo for these special cases would it be better to check by variable name
 ! instead of QTY?
@@ -2528,7 +2526,7 @@ elseif( on_w_grid(state_id, var_id) ) then
    i1 = get_dart_vector_index(i,j,k, state_id, gz_id)
    x_i1 = get_state(i1, state_handle)
 
-   geop = minval(stat_dat(grid_id)%phb(i,j,k)+x_i1)/gravity
+   geop = minval(phb(state_handle, ens_size, grid_id, i,j,k)+x_i1)/gravity
    model_height = compute_geometric_height(geop, grid(grid_id)%latitude(i, j))
 
 ! If U-grid, then height is defined between U points, both in horizontal
@@ -2552,10 +2550,10 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i4 = get_state(i4, state_handle)
 
 ! HK todo what is minval for? Is it just for converting an array to a scalar?
-         geop = minval(( (stat_dat(grid_id)%phb(i-1,j,k  ) + x_i1) &
-                 +(stat_dat(grid_id)%phb(i-1,j,k+1) + x_i2) &
-                 +(stat_dat(grid_id)%phb(1  ,j,k  ) + x_i3) &
-                 +(stat_dat(grid_id)%phb(1  ,j,k+1) + x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (phb(state_handle, ens_size, grid_id, i-1,j,k  ) + x_i1) &
+                 +(phb(state_handle, ens_size, grid_id, i-1,j,k+1) + x_i2) &
+                 +(phb(state_handle, ens_size, grid_id, 1  ,j,k  ) + x_i3) &
+                 +(phb(state_handle, ens_size, grid_id, 1  ,j,k+1) + x_i4) )/(4.0_r8*gravity))
          
          lat = ( grid(grid_id)%latitude(i-1,j)  &
                 +grid(grid_id)%latitude(i-1,j)  &
@@ -2576,10 +2574,10 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i4 = get_state(i2 -1, state_handle)
 
 
-         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i-1,j,k  )+x_i1) &
-                 +3.0_r8*(stat_dat(grid_id)%phb(i-1,j,k+1)+x_i2) &
-                        -(stat_dat(grid_id)%phb(i-2,j,k  )+x_i3) &
-                        -(stat_dat(grid_id)%phb(i-2,j,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(phb(state_handle, ens_size, grid_id,i-1,j,k  )+x_i1) &
+                 +3.0_r8*(phb(state_handle, ens_size, grid_id,i-1,j,k+1)+x_i2) &
+                        -(phb(state_handle, ens_size, grid_id,i-2,j,k  )+x_i3) &
+                        -(phb(state_handle, ens_size, grid_id,i-2,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*grid(grid_id)%latitude(i-1,j)  &
                 +3.0_r8*grid(grid_id)%latitude(i-1,j)  &
@@ -2607,10 +2605,10 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( (stat_dat(grid_id)%phb(i  ,j,k  ) + x_i1) &
-                 +(stat_dat(grid_id)%phb(i  ,j,k+1) + x_i2) &
-                 +(stat_dat(grid_id)%phb(off,j,k  ) + x_i3) &
-                 +(stat_dat(grid_id)%phb(off,j,k+1) + x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (phb(state_handle, ens_size, grid_id, i  ,j,k  ) + x_i1) &
+                 +(phb(state_handle, ens_size, grid_id, i  ,j,k+1) + x_i2) &
+                 +(phb(state_handle, ens_size, grid_id, off,j,k  ) + x_i3) &
+                 +(phb(state_handle, ens_size, grid_id, off,j,k+1) + x_i4) )/(4.0_r8*gravity))
          
          lat = ( grid(grid_id)%latitude(i  ,j)  &
                 +grid(grid_id)%latitude(i  ,j)  &
@@ -2631,10 +2629,10 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i4 = get_state(i2 +1, state_handle)
 
 
-         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i  ,j,k  )+x_i1)   &
-                 +3.0_r8*(stat_dat(grid_id)%phb(i  ,j,k+1)+x_i2)   &
-                        -(stat_dat(grid_id)%phb(i+1,j,k  )+x_i3) &
-                        -(stat_dat(grid_id)%phb(i+1,j,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(phb(state_handle, ens_size, grid_id,i  ,j,k  )+x_i1)   &
+                 +3.0_r8*(phb(state_handle, ens_size, grid_id,i  ,j,k+1)+x_i2)   &
+                        -(phb(state_handle, ens_size, grid_id,i+1,j,k  )+x_i3) &
+                        -(phb(state_handle, ens_size, grid_id,i+1,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*grid(grid_id)%latitude(i  ,j)  &
                 +3.0_r8*grid(grid_id)%latitude(i  ,j)  &
@@ -2656,10 +2654,10 @@ elseif( on_u_grid(state_id, var_id) ) then
       x_i4 = get_state(i2 -1, state_handle)
 
 
-      geop = minval(( (stat_dat(grid_id)%phb(i  ,j,k  )+x_i1)   &
-              +(stat_dat(grid_id)%phb(i  ,j,k+1)+x_i2)   &
-              +(stat_dat(grid_id)%phb(i-1,j,k  )+x_i3) &
-              +(stat_dat(grid_id)%phb(i-1,j,k+1)+x_i4) )/(4.0_r8*gravity))
+      geop = minval(( (phb(state_handle, ens_size, grid_id, i  ,j,k  )+x_i1)   &
+              +(phb(state_handle, ens_size, grid_id, i  ,j,k+1)+x_i2)   &
+              +(phb(state_handle, ens_size, grid_id, i-1,j,k  )+x_i3) &
+              +(phb(state_handle, ens_size, grid_id, i-1,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
       lat = (  grid(grid_id)%latitude(i  ,j)  &
               +grid(grid_id)%latitude(i  ,j)  &
@@ -2693,10 +2691,10 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( (stat_dat(grid_id)%phb(off,j-1,k  )+x_i1) &
-                 +(stat_dat(grid_id)%phb(off,j-1,k+1)+x_i2) &
-                 +(stat_dat(grid_id)%phb(i  ,j-1,k  )+x_i3) &
-                 +(stat_dat(grid_id)%phb(i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (phb(state_handle, ens_size, grid_id, off,j-1,k  )+x_i1) &
+                 +(phb(state_handle, ens_size, grid_id, off,j-1,k+1)+x_i2) &
+                 +(phb(state_handle, ens_size, grid_id, i  ,j-1,k  )+x_i3) &
+                 +(phb(state_handle, ens_size, grid_id, i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
          
          lat = ( grid(grid_id)%latitude(off,j-1)  &
                 +grid(grid_id)%latitude(off,j-1)  &
@@ -2718,10 +2716,10 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i,j-1,k  )+x_i1) &
-                 +3.0_r8*(stat_dat(grid_id)%phb(i,j-1,k+1)+x_i2) &
-                        -(stat_dat(grid_id)%phb(i,j-2,k  )+x_i3) &
-                        -(stat_dat(grid_id)%phb(i,j-2,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(phb(state_handle, ens_size, grid_id,i,j-1,k  )+x_i1) &
+                 +3.0_r8*(phb(state_handle, ens_size, grid_id,i,j-1,k+1)+x_i2) &
+                        -(phb(state_handle, ens_size, grid_id,i,j-2,k  )+x_i3) &
+                        -(phb(state_handle, ens_size, grid_id,i,j-2,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*grid(grid_id)%latitude(i,j-1)  &
                 +3.0_r8*grid(grid_id)%latitude(i,j-1)  &
@@ -2751,10 +2749,10 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( (stat_dat(grid_id)%phb(off,j,k  )+x_i1) &
-                 +(stat_dat(grid_id)%phb(off,j,k+1)+x_i2) &
-                 +(stat_dat(grid_id)%phb(i  ,j,k  )+x_i3) &
-                 +(stat_dat(grid_id)%phb(i  ,j,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (phb(state_handle, ens_size, grid_id,off,j,k  )+x_i1) &
+                 +(phb(state_handle, ens_size, grid_id,off,j,k+1)+x_i2) &
+                 +(phb(state_handle, ens_size, grid_id,i  ,j,k  )+x_i3) &
+                 +(phb(state_handle, ens_size, grid_id,i  ,j,k+1)+x_i4) )/(4.0_r8*gravity))
          
          lat = ( grid(grid_id)%latitude(off,j)  &
                 +grid(grid_id)%latitude(off,j)  &
@@ -2776,10 +2774,10 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i,j  ,k  )+x_i1) &
-                 +3.0_r8*(stat_dat(grid_id)%phb(i,j  ,k+1)+x_i2) &
-                        -(stat_dat(grid_id)%phb(i,j+1,k  )+x_i3) &
-                        -(stat_dat(grid_id)%phb(i,j+1,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(phb(state_handle, ens_size, grid_id,i,j  ,k  )+x_i1) &
+                 +3.0_r8*(phb(state_handle, ens_size, grid_id,i,j  ,k+1)+x_i2) &
+                        -(phb(state_handle, ens_size, grid_id,i,j+1,k  )+x_i3) &
+                        -(phb(state_handle, ens_size, grid_id,i,j+1,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*grid(grid_id)%latitude(i,j  )  &
                 +3.0_r8*grid(grid_id)%latitude(i,j  )  &
@@ -2802,10 +2800,10 @@ elseif( on_v_grid(state_id, var_id) ) then
       x_i3 = get_state(i3, state_handle)
       x_i4 = get_state(i4, state_handle)
 
-      geop = minval(( (stat_dat(grid_id)%phb(i,j  ,k  )+x_i1) &
-              +(stat_dat(grid_id)%phb(i,j  ,k+1)+x_i2) &
-              +(stat_dat(grid_id)%phb(i,j-1,k  )+x_i3) &
-              +(stat_dat(grid_id)%phb(i,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
+      geop = minval(( (phb(state_handle, ens_size, grid_id,i,j  ,k  )+x_i1) &
+              +(phb(state_handle, ens_size, grid_id,i,j  ,k+1)+x_i2) &
+              +(phb(state_handle, ens_size, grid_id,i,j-1,k  )+x_i3) &
+              +(phb(state_handle, ens_size, grid_id,i,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
 
       lat = ( grid(grid_id)%latitude(i,j  )  &
              +grid(grid_id)%latitude(i,j  )  &
@@ -2824,8 +2822,8 @@ else
    x_i1 = get_state(i1, state_handle)
    x_i2 = get_state(i2, state_handle)
 
-   geop = minval(( (stat_dat(grid_id)%phb(i,j,k  )+x_i1) &
-           +(stat_dat(grid_id)%phb(i,j,k+1)+x_i2) )/(2.0_r8*gravity))
+   geop = minval(( (phb(state_handle, ens_size, grid_id,i,j,k  )+x_i1) &
+           +(phb(state_handle, ens_size, grid_id,i,j,k+1)+x_i2) )/(2.0_r8*gravity))
 
    lat = grid(grid_id)%latitude(i,j)
 
@@ -4124,6 +4122,28 @@ end function bounds_check_vertical
 !                  M_grid ==> [1 bt]         ==> [1 bt)
 !                  W_grid ==> [1.5 bt+0.5]   ==> [1 bts)
 !------------------------------------------------------------------
+
+function phb(state_handle, ens_size, grid_id, i, j, k)
+
+type(ensemble_type), intent(in)  :: state_handle
+integer,  intent(in)  :: ens_size
+integer,  intent(in)  :: grid_id
+integer,  intent(in)  :: i, j, k
+real(r8) :: phb
+
+integer(i8) :: idx
+integer :: phb_id
+real(r8) :: phb_ens(ens_size)
+
+
+! phb is on the mete domain
+phb_id = get_varid_from_kind(wrf_dom(grid_id), QTY_BASE_STATE_GEOP)
+
+idx = get_dart_vector_index(grid_id, i, j, k, phb_id)
+phb_ens = get_state(idx, state_handle)
+phb = phb_ens(1) ! static across the ensemble, take the first member
+
+end function phb
 
 !------------------------------------------------------------------
 ! Vortex
