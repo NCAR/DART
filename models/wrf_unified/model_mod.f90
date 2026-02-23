@@ -153,7 +153,7 @@ integer, allocatable :: wrf_dom(:) ! This needs a better name, it is the id from
 !-- Namelist with default values --
 character(len=NF90_MAX_NAME) :: wrf_state_variables(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS) = 'NULL'
 character(len=NF90_MAX_NAME) :: wrf_state_bounds(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES) = 'NULL'
-integer :: num_domains = 1
+integer :: num_domains = 1  ! number of nested domains in the WRF model
 logical :: chemistry_separate_file = .false.
 character(len=NF90_MAX_NAME) :: chem_state_variables(MAX_STATE_VARIABLES*NUM_STATE_TABLE_COLUMNS) = 'NULL'
 character(len=NF90_MAX_NAME) :: chem_state_bounds(NUM_BOUNDS_TABLE_COLUMNS,MAX_STATE_VARIABLES) = 'NULL'
@@ -274,6 +274,9 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar_type)
 
+! wrf_dom is the number of files added to the state structure
+!        mete * num_domains for the meteorological variables 
+!   and  chem * num_domains for the chemistry variables if chemistry_separate_file = .true.
 allocate(wrf_dom(num_state_domains()), grid(num_domains), stat_dat(num_domains))
 
 call verify_state_variables(nfields, varname, state_qty, update_var, in_domain)
@@ -398,7 +401,8 @@ integer  :: i, j ! grid
 real(r8) :: dx, dxm, dy, dym ! grid fractions
 integer :: ll(2), ul(2), lr(2), ur(2) !(x,y) of four corners
 integer :: rc ! return code getCorners
-integer :: id
+integer :: grid_id ! which grid the observation is in
+integer :: wrf_id ! which wrf domain the observation is in 
 integer :: k(ens_size)      ! level
 integer :: which_vert       ! vertical coordinate of the observation
 real(r8) :: zloc(ens_size)  ! vertical location of the obs for each ens member
@@ -415,16 +419,18 @@ istatus(:) = 1
 
 which_vert = nint(query_location(location))
 lon_lat_vert = get_location(location)
-call get_domain_info(lon_lat_vert(1),lon_lat_vert(2),id,xloc,yloc) ! mass points
+! get domain info gives the grid id
+call get_domain_info(lon_lat_vert(1),lon_lat_vert(2),grid_id,xloc,yloc) ! mass points
 
-if (id == 0) then
+if (grid_id == 0) then
    istatus(:) = NOT_IN_ANY_DOMAIN
    return
 endif
 
 qty = update_qty_if_location_is_surface(qty_in, location)
 
-if (.not. able_to_interpolate_qty(id, qty) ) then
+! able_to_interpolate_qty checks id and id+num_domains for chemistry_separate_file = .true.
+if (.not. able_to_interpolate_qty(grid_id, qty) ) then 
    istatus(:) = CANNOT_INTERPOLATE_QTY
    return
 endif
@@ -433,78 +439,80 @@ endif
 call toGrid(xloc,i,dx,dxm)
 call toGrid(yloc,j,dy,dym)
 
-if ( .not. within_bounds_horizontal(i, j, id, qty) ) then
+if ( .not. within_bounds_horizontal(i, j, grid_id, qty) ) then
    istatus(:) = FAILED_BOUNDS_CHECK
    return
 endif
 
-call getCorners(i, j, id, qty, ll, ul, lr, ur, rc)
+call getCorners(i, j, grid_id, qty, ll, ul, lr, ur, rc)
 
 ! vertical location
 if (surface_qty(qty) .or. which_vert==VERTISSURFACE) then
    zloc(:) = 1.0_r8
    k = 1
-   fail = surface_elevation_difference_too_big(id, ll, ul, lr, ur, dx, dy, dxm, dym, lon_lat_vert(3), sfc_elev_max_diff)
+   fail = surface_elevation_difference_too_big(grid_id, ll, ul, lr, ur, dx, dy, dxm, dym, lon_lat_vert(3), sfc_elev_max_diff)
    if (fail) then
       istatus(:) = SURFACE_ELEVATION_DIFF_FAIL
       return
   endif
 else
-  call get_level_below_obs(which_vert, id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
+  call get_level_below_obs(which_vert, grid_id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
   if (fail) then
       istatus(:) = VERTICAL_LOCATION_FAIL
       return
   endif
 endif
 
-
+! For mete qtys, wrf_id = grid_id, 
+! for chem qtys, wrf_id = grid_id + num_domains if chemistry_separate_file = .true.
 select case (qty)
    case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT )
-      fld_k1 = wind_interpolate(ens_size, state_handle, qty, id, k,   xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
-      fld_k2 = wind_interpolate(ens_size, state_handle, qty, id, k+1, xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
+      fld_k1 = wind_interpolate(ens_size, state_handle, qty, grid_id, k,   xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
+      fld_k2 = wind_interpolate(ens_size, state_handle, qty, grid_id, k+1, xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
    case (QTY_10M_U_WIND_COMPONENT, QTY_10M_V_WIND_COMPONENT)
-      fld_k1(:) = wind_interpolate(ens_size, state_handle, qty, id, k,   xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
+      fld_k1(:) = wind_interpolate(ens_size, state_handle, qty, grid_id, k,   xloc, yloc, i, j, dxm, dx, dy, dym, lon_lat_vert(1))
    case (QTY_TEMPERATURE)
-      fld_k1 = temperature_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-      fld_k2 = temperature_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+      fld_k1 = temperature_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k2 = temperature_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_POTENTIAL_TEMPERATURE)
-      fld_k1 = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym) + ts0
-      fld_k2 = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym) + ts0
+      fld_k1 = simple_interpolation(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym) + ts0
+      fld_k2 = simple_interpolation(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym) + ts0
    case (QTY_DENSITY)
-      fld_k1 = density_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-      fld_k2 = density_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+      fld_k1 = density_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k2 = density_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_VERTICAL_VELOCITY)
       zloc(:) = zloc(:) + 0.5_r8 ! Adjust zloc for staggered
       k(:) = max(1,int(zloc(:)))  ! Adjust corresponding level k
-      fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym) 
-      fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym) 
+      fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym) 
+      fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym) 
    case (QTY_SPECIFIC_HUMIDITY)
-      fld_k1 = specific_humidity_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-      fld_k2 = specific_humidity_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+      fld_k1 = specific_humidity_interpolate(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k2 = specific_humidity_interpolate(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_PRESSURE)
-      fld_k1 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-      fld_k2 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+      fld_k1 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k2 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_SURFACE_PRESSURE)
-      fld_k1 = surface_pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+      fld_k1 = surface_pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_VORTEX_LAT, QTY_VORTEX_LON, QTY_VORTEX_PMIN, QTY_VORTEX_WMAX)
       call vortex()
    case (QTY_GEOPOTENTIAL_HEIGHT)
       zloc(:) = zloc(:) + 0.5_r8 ! Adjust zloc for staggered
       k(:) = max(1,int(zloc(:)))  ! Adjust corresponding level k
-      fld_k1 = geopotential_height_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-      fld_k2 = geopotential_height_interpolate(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+      fld_k1 = geopotential_height_interpolate(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k2 = geopotential_height_interpolate(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_SURFACE_ELEVATION)
-      fld_k1 = surface_elevation_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+      fld_k1 = surface_elevation_interpolate(ens_size, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_LANDMASK)
-      fld_k1 = landmask_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+      fld_k1 = landmask_interpolate(ens_size, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_SURFACE_TYPE)
-      fld_k1(:) = surface_type_interpolate(ens_size, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+      fld_k1(:) = surface_type_interpolate(ens_size, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
    case (QTY_SKIN_TEMPERATURE,  QTY_2M_TEMPERATURE, QTY_2M_SPECIFIC_HUMIDITY)
-      fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
    case default ! simple interpolation
       ! HK todo 2D variables
-      fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-      fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+      wrf_id = get_wrf_id_from_qty(grid_id, qty)
+      fld_k1(:) = simple_interpolation(ens_size, state_handle, qty, wrf_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+      fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, wrf_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
 end select
 
 if (surface_qty(qty) .or. which_vert == VERTISSURFACE) then
@@ -871,7 +879,7 @@ function simple_interpolation(ens_size, state_handle, qty, id, ll, ul, lr, ur, k
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: qty
-integer,             intent(in) :: id
+integer,             intent(in) :: id ! wrf model domain id 
 integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
 integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
 real(r8),            intent(in) :: dxm, dx, dy, dym
@@ -1285,12 +1293,12 @@ end function compute_geometric_height
 
 !------------------------------------------------------------------
 ! This is mass level
-subroutine get_level_below_obs(which_vert, id, lon_lat_vert, ens_size, state_handle, &
+subroutine get_level_below_obs(which_vert, grid_id, lon_lat_vert, ens_size, state_handle, &
                                ll, ul, lr, ur, dx, dy, dxm, dym, &
                                level_below, zloc, fail)
 
 integer,  intent(in)  :: which_vert
-integer,  intent(in)  :: id
+integer,  intent(in)  :: grid_id
 real(r8), intent(in)  :: lon_lat_vert(3)
 integer,  intent(in)  :: ens_size
 type(ensemble_type), intent(in) :: state_handle
@@ -1301,8 +1309,8 @@ real(r8), intent(out) :: zloc(ens_size) ! vertical location of the obs for each 
 logical,  intent(out) :: fail
 
 integer :: e ! loop variable
-real(r8) :: v_p(0:grid(id)%bt,ens_size)
-real(r8) :: v_h(0:grid(id)%bt,ens_size)
+real(r8) :: v_p(0:grid(grid_id)%bt,ens_size)
+real(r8) :: v_h(0:grid(grid_id)%bt,ens_size)
 logical :: lev0
 
 fail = .false.
@@ -1313,9 +1321,9 @@ select case (which_vert)
       level_below(:) = nint(zloc(:))
       fail = .false.
    case(VERTISPRESSURE)
-      call get_model_pressure_profile(id, ll, ul, lr, ur, dx, dy, dxm, dym, ens_size, state_handle, v_p)
+      call get_model_pressure_profile(grid_id, ll, ul, lr, ur, dx, dy, dxm, dym, ens_size, state_handle, v_p)
       do e = 1, ens_size
-         call pres_to_zk(lon_lat_vert(3), v_p(:,e), grid(id)%bt, zloc(e), level_below(e), lev0, fail)
+         call pres_to_zk(lon_lat_vert(3), v_p(:,e), grid(grid_id)%bt, zloc(e), level_below(e), lev0, fail)
          if (fail) return
          if (lev0) then ! pressure obs below lowest sigma
             if (.not. allow_obs_below_vol) then
@@ -1325,9 +1333,9 @@ select case (which_vert)
          endif
       enddo
    case(VERTISHEIGHT)
-      call get_model_height_profile(ll, ul, lr, ur, dx, dy, dxm, dym, id, v_h, state_handle, ens_size)
+      call get_model_height_profile(ll, ul, lr, ur, dx, dy, dxm, dym, grid_id, v_h, state_handle, ens_size)
       do e = 1, ens_size
-         call height_to_zk(lon_lat_vert(3), v_h(:, e), grid(id)%bt, zloc(e), level_below(e), lev0, fail)
+         call height_to_zk(lon_lat_vert(3), v_h(:, e), grid(grid_id)%bt, zloc(e), level_below(e), lev0, fail)
          if (fail) return
          if (lev0) then ! height obs below lowest sigma
             if (.not. allow_obs_below_vol) then
@@ -1351,9 +1359,9 @@ end subroutine get_level_below_obs
 !------------------------------------------------------------------
 ! Check that the surface elevation difference between the model and
 ! the observation is within acceptable limits
-pure function surface_elevation_difference_too_big(id, ll, ul, lr, ur, dx, dy, dxm, dym, elev, tol) result(too_big)
+pure function surface_elevation_difference_too_big(grid_id, ll, ul, lr, ur, dx, dy, dxm, dym, elev, tol) result(too_big)
 
-integer,  intent(in) :: id
+integer,  intent(in) :: grid_id
 integer,  intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) mass grid corners
 real(r8), intent(in) :: dx, dy, dxm, dym
 real(r8), intent(in) :: elev ! observation surface elevation
@@ -1367,10 +1375,10 @@ if ( tol < 0.0_r8 ) then
  return
 endif
 
-sfc_elevation = dym*( dxm*stat_dat(id)%hgt(ll(1), ll(2)) + &
-                       dx*stat_dat(id)%hgt(lr(1), lr(2)) ) + &
-                dy*(  dxm*stat_dat(id)%hgt(ul(1), ul(2)) + &
-                       dx*stat_dat(id)%hgt(ur(1), ur(2)) )
+sfc_elevation = dym*( dxm*stat_dat(grid_id)%hgt(ll(1), ll(2)) + &
+                       dx*stat_dat(grid_id)%hgt(lr(1), lr(2)) ) + &
+                dy*(  dxm*stat_dat(grid_id)%hgt(ul(1), ul(2)) + &
+                       dx*stat_dat(grid_id)%hgt(ur(1), ur(2)) )
 
 too_big = (abs(elev-sfc_elevation) > tol)
 
@@ -1379,15 +1387,20 @@ end function surface_elevation_difference_too_big
 !------------------------------------------------------------------
 ! Calculate the model pressure profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
-subroutine get_model_pressure_profile(id, ll, ul, lr, ur, dx, dy, dxm, dym, &
+! mete variablies - all on wrf domain == grid_id
+!  model_pressure_t uses  
+!     QTY_VAPOR_MIXING_RATIO, QTY_POTENTIAL_TEMPERATURE
+!   model_rho_t uses
+!     MU, QTY_GEOPOTENTIAL_HEIGHT
+subroutine get_model_pressure_profile(grid_id, ll, ul, lr, ur, dx, dy, dxm, dym, &
                                       ens_size, state_handle, v_p)
 
-integer,  intent(in)             :: id
+integer,  intent(in)             :: grid_id
 integer,  intent(in)             :: ll(2), ul(2), lr(2), ur(2) ! (x,y) mass grid corners
 real(r8), intent(in)             :: dx, dy, dxm, dym
 integer,  intent(in)             :: ens_size
 type(ensemble_type), intent(in)  :: state_handle
-real(r8),            intent(out) :: v_p(0:grid(id)%bt, ens_size)
+real(r8),            intent(out) :: v_p(0:grid(grid_id)%bt, ens_size)
 
 integer(i8)           :: ill, ilr, iul, iur
 real(r8), dimension(ens_size) :: x_ill, x_ilr, x_iul, x_iur
@@ -1397,13 +1410,13 @@ real(r8), dimension(ens_size) :: lev2_pres1, lev2_pres2, lev2_pres3, lev2_pres4
 integer :: var_id, levk
 integer :: k(ens_size)
 
-do levk=1, grid(id)%bt ! number of mass levels
+do levk=1, grid(grid_id)%bt ! number of mass levels
 
    k(:) = levk
-   pres1 = model_pressure_t(ll(1), ll(2), k, id, state_handle, ens_size)
-   pres2 = model_pressure_t(lr(1), lr(2), k, id, state_handle, ens_size)
-   pres3 = model_pressure_t(ul(1), ul(2), k, id, state_handle, ens_size)
-   pres4 = model_pressure_t(ur(1), ur(2), k, id, state_handle, ens_size)
+   pres1 = model_pressure_t(ll(1), ll(2), k, grid_id, state_handle, ens_size)
+   pres2 = model_pressure_t(lr(1), lr(2), k, grid_id, state_handle, ens_size)
+   pres3 = model_pressure_t(ul(1), ul(2), k, grid_id, state_handle, ens_size)
+   pres4 = model_pressure_t(ur(1), ur(2), k, grid_id, state_handle, ens_size)
 
    v_p(levk, :) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size)
 
@@ -1416,14 +1429,14 @@ do levk=1, grid(id)%bt ! number of mass levels
 
 enddo
 
-var_id = get_varid_from_kind(wrf_dom(id), QTY_SURFACE_PRESSURE)
+var_id = get_varid_from_kind(wrf_dom(grid_id), QTY_SURFACE_PRESSURE)
 
 if (var_id > 0) then ! surface pressure in domain so get v_p(0,:) from surface pressure
 
-   ill = get_dart_vector_index(ll(1), ll(2), 1, wrf_dom(id), var_id)
-   ilr = get_dart_vector_index(lr(1), lr(2), 1, wrf_dom(id), var_id)
-   iul = get_dart_vector_index(ul(1), ul(2), 1, wrf_dom(id), var_id)
-   iur = get_dart_vector_index(ur(1), ur(2), 1, wrf_dom(id), var_id)
+   ill = get_dart_vector_index(ll(1), ll(2), 1, wrf_dom(grid_id), var_id)
+   ilr = get_dart_vector_index(lr(1), lr(2), 1, wrf_dom(grid_id), var_id)
+   iul = get_dart_vector_index(ul(1), ul(2), 1, wrf_dom(grid_id), var_id)
+   iur = get_dart_vector_index(ur(1), ur(2), 1, wrf_dom(grid_id), var_id)
 
    x_ill = get_state(ill, state_handle)
    x_ilr = get_state(ilr, state_handle)
@@ -1446,10 +1459,10 @@ end subroutine get_model_pressure_profile
 
 !------------------------------------------------------------------
 ! returns pressure at a point on the mass grid
-function model_pressure_t(i,j,k,id,state_handle, ens_size)
+function model_pressure_t(i,j,k,grid_id,state_handle, ens_size)
 
 integer,             intent(in) :: ens_size
-integer,             intent(in) :: i,j,k(ens_size),id
+integer,             intent(in) :: i,j,k(ens_size),grid_id
 type(ensemble_type), intent(in) :: state_handle
 real(r8) :: model_pressure_t(ens_size)
 
@@ -1463,8 +1476,8 @@ integer :: var_idv, var_idt, e
 
 ! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
 
-var_idv = get_varid_from_kind(wrf_dom(id), QTY_VAPOR_MIXING_RATIO)
-var_idt = get_varid_from_kind(wrf_dom(id), QTY_POTENTIAL_TEMPERATURE) ! HK original code type_t is this always QTY_POTENTIAL_TEMPERATURE
+var_idv = get_varid_from_kind(wrf_dom(grid_id), QTY_VAPOR_MIXING_RATIO)
+var_idt = get_varid_from_kind(wrf_dom(grid_id), QTY_POTENTIAL_TEMPERATURE) ! HK original code type_t is this always QTY_POTENTIAL_TEMPERATURE
 
 if (var_idv < 0 .or. var_idt < 0 ) then
    call error_handler(E_ERR, 'model_pressure_t:', 'BOTH QVAPOR and T must be in state vector to compute total pressure', source)
@@ -1472,8 +1485,8 @@ endif
 
 
 do e = 1, ens_size
-  iqv = get_dart_vector_index(i,j,k(e), wrf_dom(id), var_idv)
-  it  = get_dart_vector_index(i,j,k(e), wrf_dom(id), var_idt)
+  iqv = get_dart_vector_index(i,j,k(e), wrf_dom(grid_id), var_idv)
+  it  = get_dart_vector_index(i,j,k(e), wrf_dom(grid_id), var_idt)
 enddo
 
 call get_state_array(x_iqv, iqv, state_handle)
@@ -1481,7 +1494,7 @@ call get_state_array(x_it, it, state_handle)
 
 qvf1(:) = 1.0_r8 + x_iqv(:) / rd_over_rv
 
-rho(:) = model_rho_t(i,j,k,id,state_handle, ens_size)
+rho(:) = model_rho_t(i,j,k,grid_id,state_handle, ens_size)
 
 model_pressure_t(:) = ps0 * ( (gas_constant*(ts0+x_it)*qvf1) / &
      (ps0/rho(:)) )**cpovcv
@@ -1490,9 +1503,9 @@ end function model_pressure_t
 
 !------------------------------------------------------------------
 ! returns surface pressure at a point on the mass grid
-function model_pressure_s(i, j, id, state_handle, ens_size)
+function model_pressure_s(i, j, grid_id, state_handle, ens_size)
 
-integer,             intent(in) :: i,j,id
+integer,             intent(in) :: i,j,grid_id
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 
@@ -1502,18 +1515,18 @@ integer(i8) :: ips, imu
 integer     :: var_id_psfc, var_id_mu
 real(r8)    :: x_imu(ens_size), x_ips(ens_size)
 
-var_id_psfc = get_varid_from_varname(wrf_dom(id), 'PSFC')
-var_id_mu = get_varid_from_varname(wrf_dom(id), 'MU')
+var_id_psfc = get_varid_from_varname(wrf_dom(grid_id), 'PSFC')
+var_id_mu = get_varid_from_varname(wrf_dom(grid_id), 'MU')
 
 if ( var_id_PSFC > 0 ) then
-   ips = get_dart_vector_index(i,j,1, wrf_dom(id), var_id_psfc)
+   ips = get_dart_vector_index(i,j,1, wrf_dom(grid_id), var_id_psfc)
    x_ips = get_state(ips, state_handle)
    model_pressure_s = x_ips
 
 elseif (var_id_mu > 0) then
-   imu = get_dart_vector_index(i,j,1, wrf_dom(id), var_id_mu)
+   imu = get_dart_vector_index(i,j,1, wrf_dom(grid_id), var_id_mu)
    x_imu = get_state(imu, state_handle)
-   model_pressure_s = stat_dat(id)%p_top + stat_dat(id)%mub(i,j) + x_imu
+   model_pressure_s = stat_dat(grid_id)%p_top + stat_dat(grid_id)%mub(i,j) + x_imu
 
 else
    call error_handler(E_ERR, 'model_pressure_s:', &
@@ -1581,6 +1594,9 @@ end subroutine pres_to_zk
 !------------------------------------------------------------------
 ! Calculate the model height profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
+! uses
+!   QTY_GEOPOTENTIAL_HEIGHT, which is on the mete domain == grid_id 
+!
 subroutine get_model_height_profile(ll, ul, lr, ur, dx, dy, dxm, dym, id, v_h, state_handle, ens_size)
 
 integer, dimension(2), intent(in)  :: ll, ul, lr, ur ! (x,y) mass grid corners
@@ -1929,11 +1945,11 @@ temperature_interpolate = (ts0 + a1(:))*(pres(:)/ps0)**kappa
 end function temperature_interpolate
 
 !------------------------------------------------------------------
-function pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+function pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
 
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: id
+integer,             intent(in) :: grid_id
 integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
 integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
 real(r8),            intent(in) :: dxm, dx, dy, dym
@@ -1941,10 +1957,10 @@ real(r8) :: pressure_interpolate(ens_size)
 
 real(r8), dimension(ens_size) :: pres1, pres2, pres3, pres4
 
-pres1 = model_pressure_t(ll(1), ll(2), k, id, state_handle, ens_size)
-pres2 = model_pressure_t(lr(1), lr(2), k, id, state_handle, ens_size)
-pres3 = model_pressure_t(ul(1), ul(2), k, id, state_handle, ens_size)
-pres4 = model_pressure_t(ur(1), ur(2), k, id, state_handle, ens_size)
+pres1 = model_pressure_t(ll(1), ll(2), k, grid_id, state_handle, ens_size)
+pres2 = model_pressure_t(lr(1), lr(2), k, grid_id, state_handle, ens_size)
+pres3 = model_pressure_t(ul(1), ul(2), k, grid_id, state_handle, ens_size)
+pres4 = model_pressure_t(ur(1), ur(2), k, grid_id, state_handle, ens_size)
 
 ! Pressure at location
 pressure_interpolate = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
@@ -1953,11 +1969,11 @@ end function pressure_interpolate
 
 !------------------------------------------------------------------
 
-function pressure_interpolate_vertically(ens_size, state_handle, id, xy_point, k, zloc)
+function pressure_interpolate_vertically(ens_size, state_handle, grid_id, xy_point, k, zloc)
 
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: id
+integer,             intent(in) :: grid_id
 integer,             intent(in) :: xy_point(2) ! (x,y) at one corner
 integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
 real(r8),            intent(in) :: zloc(ens_size)
@@ -1966,8 +1982,8 @@ real(r8) :: pressure_interpolate_vertically(ens_size)
 
 real(r8), dimension(ens_size) :: pres_k, pres_kp1
 
-pres_k   = model_pressure_t(xy_point(1), xy_point(2), k, id, state_handle, ens_size)
-pres_kp1 = model_pressure_t(xy_point(1), xy_point(2), k+1, id, state_handle, ens_size)
+pres_k   = model_pressure_t(xy_point(1), xy_point(2), k, grid_id, state_handle, ens_size)
+pres_kp1 = model_pressure_t(xy_point(1), xy_point(2), k+1, grid_id, state_handle, ens_size)
 
 pressure_interpolate_vertically = vertical_interpolation(ens_size, zloc, pres_k, pres_kp1)
 
@@ -1976,11 +1992,11 @@ end function pressure_interpolate_vertically
 
 
 !------------------------------------------------------------------
-function surface_pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, dxm, dx, dy, dym)
+function surface_pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
 
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: id
+integer,             intent(in) :: grid_id
 integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8) :: surface_pressure_interpolate(ens_size)
@@ -1988,10 +2004,10 @@ real(r8) :: surface_pressure_interpolate(ens_size)
 real(r8), dimension(ens_size) :: x_ill, x_iul, x_ilr, x_iur
 integer :: e
 
-x_ill = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
-x_iul = model_pressure_s(ul(1), ul(2), id, state_handle, ens_size)
-x_ilr = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
-x_iur = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
+x_ill = model_pressure_s(ll(1), ll(2), grid_id, state_handle, ens_size)
+x_iul = model_pressure_s(ul(1), ul(2), grid_id, state_handle, ens_size)
+x_ilr = model_pressure_s(lr(1), lr(2), grid_id, state_handle, ens_size)
+x_iur = model_pressure_s(ur(1), ur(2), grid_id, state_handle, ens_size)
 
 ! Pressure at location
 
@@ -2096,23 +2112,25 @@ end function wind_interpolate
 !------------------------------------------------------------------
 ! If there are other domains in the state:
 !      wrf domain id =/ state domain id
-function get_wrf_domain(state_id)
+! If the chemistry is a separate file, then then 
+!   the grid domain is the same as the mete domain. 
+function get_grid_domain(state_id) result(grid_id)
 
 integer, intent(in) :: state_id
-integer :: get_wrf_domain
+integer :: grid_id
 
 integer :: i
 
 do i = 1, num_state_domains()
    if (wrf_dom(i) == state_id) then
-      get_wrf_domain = mod(i-1, num_domains) + 1
+      grid_id = mod(i-1, num_domains) + 1
       return
    endif
 enddo
 
-get_wrf_domain = -1 ! not found
+grid_id = -1 ! not found
 
-end function get_wrf_domain
+end function get_grid_domain
 
 !------------------------------------------------------------------
 subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
@@ -2126,8 +2144,8 @@ integer(i8),         intent(in)    :: loc_indx(num) ! index into the state vecto
 integer,             intent(in)    :: which_vert  ! vertical coordinate to be converted to
 integer,             intent(out)   :: istatus
 
-integer  :: ip, jp, kp, id ! x,y,z of state index
-integer  :: var_id, state_id
+integer  :: ip, jp, kp ! x,y,z of state index
+integer  :: var_id, state_id, grid_id
 real(r8) :: vert ! vertical after conversion
 integer  :: i
 integer  :: vert_coord_in
@@ -2145,7 +2163,7 @@ do i = 1, num
    endif
 
    call get_model_variable_indices(loc_indx(i), ip, jp, kp, var_id=var_id, dom_id=state_id)
-   id = get_wrf_domain(state_id)
+   grid_id = get_grid_domain(state_id)
 
    if (which_vert == VERTISLEVEL) then
 
@@ -2157,16 +2175,16 @@ do i = 1, num
    
    elseif (which_vert == VERTISPRESSURE) then
    
-      vert = model_pressure(ip, jp, kp, id, var_id, state_id, state_handle)
+      vert = model_pressure(ip, jp, kp, grid_id, var_id, state_id, state_handle)
    
    elseif (which_vert == VERTISHEIGHT) then
 
-      vert = model_height(ip, jp, kp, id, loc_qtys(i), var_id, state_id, state_handle)
+      vert = model_height(ip, jp, kp, grid_id, loc_qtys(i), var_id, state_id, state_handle)
 
    elseif (which_vert == VERTISSCALEHEIGHT) then
    
-      vert = -log(model_pressure(ip, jp, kp, id, var_id, state_id, state_handle) / &
-               model_surface_pressure(ip, jp, id, var_id, state_id, state_handle))
+      vert = -log(model_pressure(ip, jp, kp, grid_id, var_id, state_id, state_handle) / &
+               model_surface_pressure(ip, jp, grid_id, var_id, state_id, state_handle))
    
    endif
 
@@ -2190,7 +2208,7 @@ integer,             intent(in)    :: loc_types(num)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus(num)
 
-integer  :: vert_coord_in, id
+integer  :: vert_coord_in, grid_id
 real(r8) :: lon_lat_vert(3)
 integer  :: ll(2), ul(2), lr(2), ur(2) !(x,y) of four corners
 integer  :: i, j ! grid
@@ -2233,8 +2251,8 @@ do ob = 1, num
    endif
    
    ! convert to which_vert
-   call get_domain_info(lon_lat_vert(1),lon_lat_vert(2),id,xloc,yloc)
-   if (id == 0) then
+   call get_domain_info(lon_lat_vert(1),lon_lat_vert(2),grid_id,xloc,yloc)
+   if (grid_id == 0) then
       call set_vertical(locs(ob), MISSING_R8, which_vert) !HK original code - why set to missing?
       istatus(ob) = NOT_IN_ANY_DOMAIN
       cycle
@@ -2244,16 +2262,16 @@ do ob = 1, num
    call toGrid(xloc,i,dx,dxm)
    call toGrid(yloc,j,dy,dym)
    
-   if ( .not. within_bounds_horizontal(i, j, id, QTY_POTENTIAL_TEMPERATURE) ) then ! HK origianal code mass grid qty
+   if ( .not. within_bounds_horizontal(i, j, grid_id, QTY_POTENTIAL_TEMPERATURE) ) then ! HK origianal code mass grid qty
       call set_vertical(locs(ob), MISSING_R8, which_vert)
       istatus(ob) = FAILED_BOUNDS_CHECK
       cycle
    endif
    
-   call getCorners(i, j, id, QTY_POTENTIAL_TEMPERATURE, ll, ul, lr, ur, rc) !HK todo what qty to pick?
+   call getCorners(i, j, grid_id, QTY_POTENTIAL_TEMPERATURE, ll, ul, lr, ur, rc) !HK todo what qty to pick?
    
    ! vertical location mass level
-   call get_level_below_obs(vert_coord_in, id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
+   call get_level_below_obs(vert_coord_in, grid_id, lon_lat_vert, ens_size, state_handle, ll, ul, lr, ur, dx, dy, dxm, dym, k, zloc, fail)
    if (fail) then
       istatus(ob) = VERTICAL_LOCATION_FAIL
       ! set vertical?
@@ -2274,15 +2292,15 @@ do ob = 1, num
 
         if (vert_coord_in == VERTISSURFACE) then
            ! compute surface pressure at all neighboring mass points
-           pres1 = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
-           pres2 = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
-           pres3 = model_pressure_s(ul(1), ul(2), id, state_handle, ens_size)
-           pres4 = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
+           pres1 = model_pressure_s(ll(1), ll(2), grid_id, state_handle, ens_size)
+           pres2 = model_pressure_s(lr(1), lr(2), grid_id, state_handle, ens_size)
+           pres3 = model_pressure_s(ul(1), ul(2), grid_id, state_handle, ens_size)
+           pres4 = model_pressure_s(ur(1), ur(2), grid_id, state_handle, ens_size)
            zout = dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )
 
         else
-           zk  = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-           zk1 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+           zk  = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+           zk1 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
            zout = vertical_interpolation(ens_size, zloc, zk, zk1)
         endif
 
@@ -2311,15 +2329,15 @@ do ob = 1, num
             !zout = compute_geometric_height(geop(1), lon_lat_vert(2))
 
             ! horizontal then vertical interpolation, not what main code does
-            zk = interpolate_geometric_height(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-            zk1 = interpolate_geometric_height(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+            zk = interpolate_geometric_height(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+            zk1 = interpolate_geometric_height(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
             zout = vertical_interpolation(ens_size, zloc, zk, zk1)
 
             ! vertical then horizontal interpolation
-            h1 = interpolate_geometric_height_vertically(ens_size, state_handle, id, ll, k, zloc) 
-            h2 = interpolate_geometric_height_vertically(ens_size, state_handle, id, lr, k, zloc)
-            h3 = interpolate_geometric_height_vertically(ens_size, state_handle, id, ul, k, zloc)
-            h4 = interpolate_geometric_height_vertically(ens_size, state_handle, id, ur, k, zloc)
+            h1 = interpolate_geometric_height_vertically(ens_size, state_handle, grid_id, ll, k, zloc) 
+            h2 = interpolate_geometric_height_vertically(ens_size, state_handle, grid_id, lr, k, zloc)
+            h3 = interpolate_geometric_height_vertically(ens_size, state_handle, grid_id, ul, k, zloc)
+            h4 = interpolate_geometric_height_vertically(ens_size, state_handle, grid_id, ur, k, zloc)
 
             zout = dym*( dxm*h1(1) + dx*h2(1) ) + dy*( dxm*h3(1) + dx*h4(1) )
 
@@ -2330,25 +2348,25 @@ do ob = 1, num
             zout = -log(1.0_r8)
          elseif (vert_coord_in == VERTISPRESSURE) then
             ! surface pressure
-            pres1 = model_pressure_s(ll(1), ll(2), id, state_handle, ens_size)
-            pres2 = model_pressure_s(lr(1), lr(2), id, state_handle, ens_size)
-            pres3 = model_pressure_s(ul(1), ul(2), id, state_handle, ens_size)
-            pres4 = model_pressure_s(ur(1), ur(2), id, state_handle, ens_size)
+            pres1 = model_pressure_s(ll(1), ll(2), grid_id, state_handle, ens_size)
+            pres2 = model_pressure_s(lr(1), lr(2), grid_id, state_handle, ens_size)
+            pres3 = model_pressure_s(ul(1), ul(2), grid_id, state_handle, ens_size)
+            pres4 = model_pressure_s(ur(1), ur(2), grid_id, state_handle, ens_size)
 
             zout = -log(lon_lat_vert(3) / (dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )))
 
          else ! vert_cood_in == VERTISHEIGHT
 
             ! horizontal interpolation, then vertical interpolation
-            !zk  = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-            !zk1 = pressure_interpolate(ens_size, state_handle, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
+            !zk  = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
+            !zk1 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
             !zout = vertical_interpolation(ens_size, zloc, zk, zk1)
 
             ! vertical interpolation, then horizontal interpolation
-            pres1 = pressure_interpolate_vertically(ens_size, state_handle, id, ll, k, zloc)
-            pres2 = pressure_interpolate_vertically(ens_size, state_handle, id, lr, k, zloc)
-            pres3 = pressure_interpolate_vertically(ens_size, state_handle, id, ul, k, zloc)
-            pres4 = pressure_interpolate_vertically(ens_size, state_handle, id, ur, k, zloc)
+            pres1 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, ll, k, zloc)
+            pres2 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, lr, k, zloc)
+            pres3 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, ul, k, zloc)
+            pres4 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, ur, k, zloc)
 
             zout = -log(zout / (dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )))
 
@@ -2371,7 +2389,7 @@ function interpolate_geometric_height(ens_size, state_handle, id, ll, ul, lr, ur
 
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: id
+integer,             intent(in) :: id ! wrf domain id == grid id since mete variables are used
 integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
 integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
 real(r8),            intent(in) :: dxm, dx, dy, dym
@@ -2423,7 +2441,7 @@ function interpolate_geometric_height_vertically(ens_size, state_handle, id, xy_
 
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: id
+integer,             intent(in) :: id ! wrf domain id == grid id since mete variables are used
 integer,             intent(in) :: xy_point(2) ! (x,y) at one corner
 integer,             intent(in) :: k(ens_size) ! k may be different across the ensemble
 real(r8),            intent(in) :: zloc(ens_size)
@@ -2464,11 +2482,11 @@ end function interpolate_geometric_height_vertically
 !------------------------------------------------------------------
 ! model height any grid u,v,w,t
 ! used in convert_vertical_state so ens_size = 1
-function model_height(i, j, k, id, qty, var_id, state_id, state_handle)
+function model_height(i, j, k, grid_id, qty, var_id, state_id, state_handle)
 
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: i, j, k, id, qty
-integer,             intent(in) :: var_id,state_id
+integer,             intent(in) :: i, j, k, grid_id, qty 
+integer,             intent(in) :: var_id, state_id
 real(r8)                        :: model_height
 
 integer(i8)  :: i1, i2, i3, i4
@@ -2485,24 +2503,24 @@ if( qty == QTY_PRESSURE .or. &             ! MU
         qty == QTY_SURFACE_PRESSURE .or. & ! PSFC SFC PRESSUR
         qty == QTY_SKIN_TEMPERATURE) then  ! TSK SURFACE SKIN TEMPERATURE
 
-   model_height = stat_dat(id)%hgt(i,j)
+   model_height = stat_dat(grid_id)%hgt(i,j)
 
 elseif( qty == QTY_SOIL_TEMPERATURE  .or. &  ! TSLB SOIL TEMPERATURE
         qty == QTY_SOIL_MOISTURE .or. &  ! SMOIS SOIL MOISTURE
         qty == QTY_SOIL_LIQUID_WATER ) then  !  SH2O SOIL LIQUID WATER
 
-   model_height = stat_dat(id)%hgt(i,j) - stat_dat(id)%zs(k)
+   model_height = stat_dat(grid_id)%hgt(i,j) - stat_dat(grid_id)%zs(k)
 
 elseif( qty == QTY_10M_U_WIND_COMPONENT .or. &
         qty == QTY_10M_V_WIND_COMPONENT  ) then
 
-   model_height = stat_dat(id)%hgt(i,j) + 10.0_r8
+   model_height = stat_dat(grid_id)%hgt(i,j) + 10.0_r8
 
 elseif( qty == QTY_2M_TEMPERATURE  .or. &
         qty == QTY_2M_POTENTIAL_TEMPERATURE .or. & ! TH2 POT TEMP at 2 M
         qty == QTY_2M_SPECIFIC_HUMIDITY ) then  ! Q2 QV at 2 M
 
-   model_height = stat_dat(id)%hgt(i,j) + 2.0_r8
+   model_height = stat_dat(grid_id)%hgt(i,j) + 2.0_r8
 
 ! If W-grid (on ZNW levels), native to GZ
 elseif( on_w_grid(state_id, var_id) ) then
@@ -2510,17 +2528,17 @@ elseif( on_w_grid(state_id, var_id) ) then
    i1 = get_dart_vector_index(i,j,k, state_id, gz_id)
    x_i1 = get_state(i1, state_handle)
 
-   geop = minval(stat_dat(id)%phb(i,j,k)+x_i1)/gravity
-   model_height = compute_geometric_height(geop, grid(id)%latitude(i, j))
+   geop = minval(stat_dat(grid_id)%phb(i,j,k)+x_i1)/gravity
+   model_height = compute_geometric_height(geop, grid(grid_id)%latitude(i, j))
 
 ! If U-grid, then height is defined between U points, both in horizontal
 !   and in vertical, so average -- averaging depends on longitude periodicity
 elseif( on_u_grid(state_id, var_id) ) then
 
-   if( i == grid(id)%wes ) then
+   if( i == grid(grid_id)%wes ) then
 
       ! Check to see if periodic in longitude
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
 
          ! We are at the seam in longitude, so take first and last mass points
          i1 = get_dart_vector_index(i-1,j,k  , state_id, gz_id)
@@ -2534,15 +2552,15 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i4 = get_state(i4, state_handle)
 
 ! HK todo what is minval for? Is it just for converting an array to a scalar?
-         geop = minval(( (stat_dat(id)%phb(i-1,j,k  ) + x_i1) &
-                 +(stat_dat(id)%phb(i-1,j,k+1) + x_i2) &
-                 +(stat_dat(id)%phb(1  ,j,k  ) + x_i3) &
-                 +(stat_dat(id)%phb(1  ,j,k+1) + x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (stat_dat(grid_id)%phb(i-1,j,k  ) + x_i1) &
+                 +(stat_dat(grid_id)%phb(i-1,j,k+1) + x_i2) &
+                 +(stat_dat(grid_id)%phb(1  ,j,k  ) + x_i3) &
+                 +(stat_dat(grid_id)%phb(1  ,j,k+1) + x_i4) )/(4.0_r8*gravity))
          
-         lat = ( grid(id)%latitude(i-1,j)  &
-                +grid(id)%latitude(i-1,j)  &
-                +grid(id)%latitude(1  ,j)  &
-                +grid(id)%latitude(1  ,j) ) / 4.0_r8
+         lat = ( grid(grid_id)%latitude(i-1,j)  &
+                +grid(grid_id)%latitude(i-1,j)  &
+                +grid(grid_id)%latitude(1  ,j)  &
+                +grid(grid_id)%latitude(1  ,j) ) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
          
@@ -2558,15 +2576,15 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i4 = get_state(i2 -1, state_handle)
 
 
-         geop = minval(( 3.0_r8*(stat_dat(id)%phb(i-1,j,k  )+x_i1) &
-                 +3.0_r8*(stat_dat(id)%phb(i-1,j,k+1)+x_i2) &
-                        -(stat_dat(id)%phb(i-2,j,k  )+x_i3) &
-                        -(stat_dat(id)%phb(i-2,j,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i-1,j,k  )+x_i1) &
+                 +3.0_r8*(stat_dat(grid_id)%phb(i-1,j,k+1)+x_i2) &
+                        -(stat_dat(grid_id)%phb(i-2,j,k  )+x_i3) &
+                        -(stat_dat(grid_id)%phb(i-2,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
-         lat = ( 3.0_r8*grid(id)%latitude(i-1,j)  &
-                +3.0_r8*grid(id)%latitude(i-1,j)  &
-                       -grid(id)%latitude(i-2,j)  &
-                       -grid(id)%latitude(i-2,j)) / 4.0_r8
+         lat = ( 3.0_r8*grid(grid_id)%latitude(i-1,j)  &
+                +3.0_r8*grid(grid_id)%latitude(i-1,j)  &
+                       -grid(grid_id)%latitude(i-2,j)  &
+                       -grid(grid_id)%latitude(i-2,j)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2575,10 +2593,10 @@ elseif( on_u_grid(state_id, var_id) ) then
    elseif( i == 1 ) then
 
       ! Check to see if periodic in longitude
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
 
          ! We are at the seam in longitude, so take first and last mass points
-         off = grid(id)%we
+         off = grid(grid_id)%we
          i1 = get_dart_vector_index(i  ,j,k  ,state_id, gz_id)
          i2 = get_dart_vector_index(i  ,j,k+1,state_id, gz_id)
          i3 = get_dart_vector_index(off,j,k  ,state_id, gz_id)
@@ -2589,15 +2607,15 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( (stat_dat(id)%phb(i  ,j,k  ) + x_i1) &
-                 +(stat_dat(id)%phb(i  ,j,k+1) + x_i2) &
-                 +(stat_dat(id)%phb(off,j,k  ) + x_i3) &
-                 +(stat_dat(id)%phb(off,j,k+1) + x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (stat_dat(grid_id)%phb(i  ,j,k  ) + x_i1) &
+                 +(stat_dat(grid_id)%phb(i  ,j,k+1) + x_i2) &
+                 +(stat_dat(grid_id)%phb(off,j,k  ) + x_i3) &
+                 +(stat_dat(grid_id)%phb(off,j,k+1) + x_i4) )/(4.0_r8*gravity))
          
-         lat = ( grid(id)%latitude(i  ,j)  &
-                +grid(id)%latitude(i  ,j)  &
-                +grid(id)%latitude(off,j)  &
-                +grid(id)%latitude(off,j)) / 4.0_r8
+         lat = ( grid(grid_id)%latitude(i  ,j)  &
+                +grid(grid_id)%latitude(i  ,j)  &
+                +grid(grid_id)%latitude(off,j)  &
+                +grid(grid_id)%latitude(off,j)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2613,15 +2631,15 @@ elseif( on_u_grid(state_id, var_id) ) then
          x_i4 = get_state(i2 +1, state_handle)
 
 
-         geop = minval(( 3.0_r8*(stat_dat(id)%phb(i  ,j,k  )+x_i1)   &
-                 +3.0_r8*(stat_dat(id)%phb(i  ,j,k+1)+x_i2)   &
-                        -(stat_dat(id)%phb(i+1,j,k  )+x_i3) &
-                        -(stat_dat(id)%phb(i+1,j,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i  ,j,k  )+x_i1)   &
+                 +3.0_r8*(stat_dat(grid_id)%phb(i  ,j,k+1)+x_i2)   &
+                        -(stat_dat(grid_id)%phb(i+1,j,k  )+x_i3) &
+                        -(stat_dat(grid_id)%phb(i+1,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
-         lat = ( 3.0_r8*grid(id)%latitude(i  ,j)  &
-                +3.0_r8*grid(id)%latitude(i  ,j)  &
-                       -grid(id)%latitude(i+1,j)  &
-                       -grid(id)%latitude(i+1,j)) / 4.0_r8
+         lat = ( 3.0_r8*grid(grid_id)%latitude(i  ,j)  &
+                +3.0_r8*grid(grid_id)%latitude(i  ,j)  &
+                       -grid(grid_id)%latitude(i+1,j)  &
+                       -grid(grid_id)%latitude(i+1,j)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2638,15 +2656,15 @@ elseif( on_u_grid(state_id, var_id) ) then
       x_i4 = get_state(i2 -1, state_handle)
 
 
-      geop = minval(( (stat_dat(id)%phb(i  ,j,k  )+x_i1)   &
-              +(stat_dat(id)%phb(i  ,j,k+1)+x_i2)   &
-              +(stat_dat(id)%phb(i-1,j,k  )+x_i3) &
-              +(stat_dat(id)%phb(i-1,j,k+1)+x_i4) )/(4.0_r8*gravity))
+      geop = minval(( (stat_dat(grid_id)%phb(i  ,j,k  )+x_i1)   &
+              +(stat_dat(grid_id)%phb(i  ,j,k+1)+x_i2)   &
+              +(stat_dat(grid_id)%phb(i-1,j,k  )+x_i3) &
+              +(stat_dat(grid_id)%phb(i-1,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
-      lat = (  grid(id)%latitude(i  ,j)  &
-              +grid(id)%latitude(i  ,j)  &
-              +grid(id)%latitude(i-1,j)  &
-              +grid(id)%latitude(i-1,j)) / 4.0_r8
+      lat = (  grid(grid_id)%latitude(i  ,j)  &
+              +grid(grid_id)%latitude(i  ,j)  &
+              +grid(grid_id)%latitude(i-1,j)  &
+              +grid(grid_id)%latitude(i-1,j)) / 4.0_r8
 
       model_height = compute_geometric_height(geop, lat)
 
@@ -2656,14 +2674,14 @@ elseif( on_u_grid(state_id, var_id) ) then
 !   and in vertical, so average -- averaging depends on polar periodicity
 elseif( on_v_grid(state_id, var_id) ) then
 
-   if( j == grid(id)%sns ) then
+   if( j == grid(grid_id)%sns ) then
 
       ! Check to see if periodic in latitude (polar)
-      if ( grid(id)%polar ) then
+      if ( grid(grid_id)%polar ) then
 
          ! The upper corner is 180 degrees of longitude away
-         off = i + grid(id)%we/2
-         if ( off > grid(id)%we ) off = off - grid(id)%we
+         off = i + grid(grid_id)%we/2
+         if ( off > grid(grid_id)%we ) off = off - grid(grid_id)%we
 
          i1 = get_dart_vector_index(off,j-1,k  , state_id, gz_id)
          i2 = get_dart_vector_index(off,j-1,k+1, state_id, gz_id)
@@ -2675,15 +2693,15 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( (stat_dat(id)%phb(off,j-1,k  )+x_i1) &
-                 +(stat_dat(id)%phb(off,j-1,k+1)+x_i2) &
-                 +(stat_dat(id)%phb(i  ,j-1,k  )+x_i3) &
-                 +(stat_dat(id)%phb(i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (stat_dat(grid_id)%phb(off,j-1,k  )+x_i1) &
+                 +(stat_dat(grid_id)%phb(off,j-1,k+1)+x_i2) &
+                 +(stat_dat(grid_id)%phb(i  ,j-1,k  )+x_i3) &
+                 +(stat_dat(grid_id)%phb(i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
          
-         lat = ( grid(id)%latitude(off,j-1)  &
-                +grid(id)%latitude(off,j-1)  &
-                +grid(id)%latitude(i  ,j-1)  &
-                +grid(id)%latitude(i  ,j-1)) / 4.0_r8
+         lat = ( grid(grid_id)%latitude(off,j-1)  &
+                +grid(grid_id)%latitude(off,j-1)  &
+                +grid(grid_id)%latitude(i  ,j-1)  &
+                +grid(grid_id)%latitude(i  ,j-1)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2700,15 +2718,15 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( 3.0_r8*(stat_dat(id)%phb(i,j-1,k  )+x_i1) &
-                 +3.0_r8*(stat_dat(id)%phb(i,j-1,k+1)+x_i2) &
-                        -(stat_dat(id)%phb(i,j-2,k  )+x_i3) &
-                        -(stat_dat(id)%phb(i,j-2,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i,j-1,k  )+x_i1) &
+                 +3.0_r8*(stat_dat(grid_id)%phb(i,j-1,k+1)+x_i2) &
+                        -(stat_dat(grid_id)%phb(i,j-2,k  )+x_i3) &
+                        -(stat_dat(grid_id)%phb(i,j-2,k+1)+x_i4) )/(4.0_r8*gravity))
 
-         lat = ( 3.0_r8*grid(id)%latitude(i,j-1)  &
-                +3.0_r8*grid(id)%latitude(i,j-1)  &
-                       -grid(id)%latitude(i,j-2)  &
-                       -grid(id)%latitude(i,j-2)) / 4.0_r8
+         lat = ( 3.0_r8*grid(grid_id)%latitude(i,j-1)  &
+                +3.0_r8*grid(grid_id)%latitude(i,j-1)  &
+                       -grid(grid_id)%latitude(i,j-2)  &
+                       -grid(grid_id)%latitude(i,j-2)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2717,11 +2735,11 @@ elseif( on_v_grid(state_id, var_id) ) then
    elseif( j == 1 ) then
 
       ! Check to see if periodic in latitude (polar)
-      if ( grid(id)%polar ) then
+      if ( grid(grid_id)%polar ) then
 
          ! The lower corner is 180 degrees of longitude away
-         off = i + grid(id)%we/2
-         if ( off > grid(id)%we ) off = off - grid(id)%we
+         off = i + grid(grid_id)%we/2
+         if ( off > grid(grid_id)%we ) off = off - grid(grid_id)%we
 
          i1 = get_dart_vector_index(off,j,k  , state_id, gz_id)
          i2 = get_dart_vector_index(off,j,k+1, state_id, gz_id)
@@ -2733,15 +2751,15 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( (stat_dat(id)%phb(off,j,k  )+x_i1) &
-                 +(stat_dat(id)%phb(off,j,k+1)+x_i2) &
-                 +(stat_dat(id)%phb(i  ,j,k  )+x_i3) &
-                 +(stat_dat(id)%phb(i  ,j,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( (stat_dat(grid_id)%phb(off,j,k  )+x_i1) &
+                 +(stat_dat(grid_id)%phb(off,j,k+1)+x_i2) &
+                 +(stat_dat(grid_id)%phb(i  ,j,k  )+x_i3) &
+                 +(stat_dat(grid_id)%phb(i  ,j,k+1)+x_i4) )/(4.0_r8*gravity))
          
-         lat = ( grid(id)%latitude(off,j)  &
-                +grid(id)%latitude(off,j)  &
-                +grid(id)%latitude(i  ,j)  &
-                +grid(id)%latitude(i  ,j)) / 4.0_r8
+         lat = ( grid(grid_id)%latitude(off,j)  &
+                +grid(grid_id)%latitude(off,j)  &
+                +grid(grid_id)%latitude(i  ,j)  &
+                +grid(grid_id)%latitude(i  ,j)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2758,15 +2776,15 @@ elseif( on_v_grid(state_id, var_id) ) then
          x_i3 = get_state(i3, state_handle)
          x_i4 = get_state(i4, state_handle)
 
-         geop = minval(( 3.0_r8*(stat_dat(id)%phb(i,j  ,k  )+x_i1) &
-                 +3.0_r8*(stat_dat(id)%phb(i,j  ,k+1)+x_i2) &
-                        -(stat_dat(id)%phb(i,j+1,k  )+x_i3) &
-                        -(stat_dat(id)%phb(i,j+1,k+1)+x_i4) )/(4.0_r8*gravity))
+         geop = minval(( 3.0_r8*(stat_dat(grid_id)%phb(i,j  ,k  )+x_i1) &
+                 +3.0_r8*(stat_dat(grid_id)%phb(i,j  ,k+1)+x_i2) &
+                        -(stat_dat(grid_id)%phb(i,j+1,k  )+x_i3) &
+                        -(stat_dat(grid_id)%phb(i,j+1,k+1)+x_i4) )/(4.0_r8*gravity))
 
-         lat = ( 3.0_r8*grid(id)%latitude(i,j  )  &
-                +3.0_r8*grid(id)%latitude(i,j  )  &
-                       -grid(id)%latitude(i,j+1)  &
-                       -grid(id)%latitude(i,j+1)) / 4.0_r8
+         lat = ( 3.0_r8*grid(grid_id)%latitude(i,j  )  &
+                +3.0_r8*grid(grid_id)%latitude(i,j  )  &
+                       -grid(grid_id)%latitude(i,j+1)  &
+                       -grid(grid_id)%latitude(i,j+1)) / 4.0_r8
 
          model_height = compute_geometric_height(geop, lat)
 
@@ -2784,15 +2802,15 @@ elseif( on_v_grid(state_id, var_id) ) then
       x_i3 = get_state(i3, state_handle)
       x_i4 = get_state(i4, state_handle)
 
-      geop = minval(( (stat_dat(id)%phb(i,j  ,k  )+x_i1) &
-              +(stat_dat(id)%phb(i,j  ,k+1)+x_i2) &
-              +(stat_dat(id)%phb(i,j-1,k  )+x_i3) &
-              +(stat_dat(id)%phb(i,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
+      geop = minval(( (stat_dat(grid_id)%phb(i,j  ,k  )+x_i1) &
+              +(stat_dat(grid_id)%phb(i,j  ,k+1)+x_i2) &
+              +(stat_dat(grid_id)%phb(i,j-1,k  )+x_i3) &
+              +(stat_dat(grid_id)%phb(i,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
 
-      lat = ( grid(id)%latitude(i,j  )  &
-             +grid(id)%latitude(i,j  )  &
-             +grid(id)%latitude(i,j-1)  &
-             +grid(id)%latitude(i,j-1)) / 4.0_r8
+      lat = ( grid(grid_id)%latitude(i,j  )  &
+             +grid(grid_id)%latitude(i,j  )  &
+             +grid(grid_id)%latitude(i,j-1)  &
+             +grid(grid_id)%latitude(i,j-1)) / 4.0_r8
 
       model_height = compute_geometric_height(geop, lat)
 
@@ -2806,10 +2824,10 @@ else
    x_i1 = get_state(i1, state_handle)
    x_i2 = get_state(i2, state_handle)
 
-   geop = minval(( (stat_dat(id)%phb(i,j,k  )+x_i1) &
-           +(stat_dat(id)%phb(i,j,k+1)+x_i2) )/(2.0_r8*gravity))
+   geop = minval(( (stat_dat(grid_id)%phb(i,j,k  )+x_i1) &
+           +(stat_dat(grid_id)%phb(i,j,k+1)+x_i2) )/(2.0_r8*gravity))
 
-   lat = grid(id)%latitude(i,j)
+   lat = grid(grid_id)%latitude(i,j)
 
    model_height = compute_geometric_height(geop, lat)
 
@@ -2857,10 +2875,10 @@ end function extrap_pressure
 !------------------------------------------------------------------
 ! model pressure any grid (w,u,v,t)
 ! used in convert_vertical_state so ens_size = 1
-function model_pressure(i, j, kp, id, var_id, state_id, state_handle)
+function model_pressure(i, j, kp, grid_id, var_id, state_id, state_handle)
 
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: i,j,kp,id
+integer,             intent(in) :: i,j,kp,grid_id
 integer,             intent(in) :: var_id
 integer,             intent(in) :: state_id
 real(r8)                        :: model_pressure
@@ -2873,14 +2891,14 @@ k(1) = kp ! array version
 ! HK this is for soil variables
 do n = 1, get_num_dims(state_id, var_id)
    if ( get_dim_name(state_id, var_id, n) == 'soil_layers_stag' ) then
-      p = model_pressure_s(i, j, id, state_handle, 1)
+      p = model_pressure_s(i, j, grid_id, state_handle, 1)
       model_pressure = p(1)
       return
    endif
 enddo
 
 if (get_num_dims(state_id, var_id) == 2) then ! surface qty
-   p = model_pressure_s(i, j, id, state_handle, 1)
+   p = model_pressure_s(i, j, grid_id, state_handle, 1)
    model_pressure = p(1)
    return
 endif
@@ -2889,87 +2907,87 @@ if (on_w_grid(state_id, var_id)) then ! average in the vertical
 
    if (kp==1) then ! on boundary, extrapolate in the vertical
 
-      p_one = model_pressure_t(i, j, k,   id, state_handle, 1)
-      p_two = model_pressure_t(i, j, k+1, id, state_handle, 1)
+      p_one = model_pressure_t(i, j, k,   grid_id, state_handle, 1)
+      p_two = model_pressure_t(i, j, k+1, grid_id, state_handle, 1)
       model_pressure = extrap_pressure(p_one, p_two, log_vert_interp)
 
-   elseif ( kp==grid(id)%bts ) then ! on boundary, extrapolate in the vertical
+   elseif ( kp==grid(grid_id)%bts ) then ! on boundary, extrapolate in the vertical
 
-      p_one = model_pressure_t(i, j, k-1, id, state_handle, 1)
-      p_two = model_pressure_t(i, j, k-2, id, state_handle, 1)
+      p_one = model_pressure_t(i, j, k-1, grid_id, state_handle, 1)
+      p_two = model_pressure_t(i, j, k-2, grid_id, state_handle, 1)
       model_pressure = extrap_pressure(p_one, p_two, log_vert_interp)
 
    else  ! interpolate 
 
-      p_one = model_pressure_t(i, j, k,  id, state_handle, 1)
-      p_two = model_pressure_t(i, j, k-1,id, state_handle, 1)
+      p_one = model_pressure_t(i, j, k,  grid_id, state_handle, 1)
+      p_two = model_pressure_t(i, j, k-1,grid_id, state_handle, 1)
       model_pressure = interp_pressure(p_one, p_two, log_vert_interp)
 
    endif
 
 elseif (on_u_grid(state_id, var_id)) then ! average in the horizontal u direction
 
-   if  (i==grid(id)%wes) then
+   if  (i==grid(grid_id)%wes) then
 
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
 
           ! We are at seam in longitude, take first and last M-grid points
-          p_one = model_pressure_t(i-1,j, k, id, state_handle, 1)
-          p_two = model_pressure_t(1,  j, k, id, state_handle, 1)
+          p_one = model_pressure_t(i-1,j, k, grid_id, state_handle, 1)
+          p_two = model_pressure_t(1,  j, k, grid_id, state_handle, 1)
           model_pressure = interp_pressure(p_one, p_two, log_horz_interpM)
 
       else
 
           ! If not periodic, then try extrapolating
-          p_one = model_pressure_t(i-1, j, k, id, state_handle, 1)
-          p_two = model_pressure_t(i-2, j, k, id, state_handle, 1)
+          p_one = model_pressure_t(i-1, j, k, grid_id, state_handle, 1)
+          p_two = model_pressure_t(i-2, j, k, grid_id, state_handle, 1)
           model_pressure = extrap_pressure(p_one, p_two, log_horz_interpM)
 
       endif
 
    elseif (i==1) then
 
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
 
          ! We are at seam in longitude, take first and last M-grid points
-         p_one = model_pressure_t(i,           j, k, id, state_handle, 1)
-         p_two = model_pressure_t(grid(id)%we, j, k, id, state_handle, 1)
+         p_one = model_pressure_t(i,           j, k, grid_id, state_handle, 1)
+         p_two = model_pressure_t(grid(grid_id)%we, j, k, grid_id, state_handle, 1)
          model_pressure = interp_pressure(p_one, p_two, log_horz_interpM)
       else
 
          ! If not periodic, then try extrapolating
-         p_one = model_pressure_t(i,   j, k, id, state_handle, 1)
-         p_two = model_pressure_t(i+1, j, k, id, state_handle, 1)
+         p_one = model_pressure_t(i,   j, k, grid_id, state_handle, 1)
+         p_two = model_pressure_t(i+1, j, k, grid_id, state_handle, 1)
          model_pressure = extrap_pressure(p_one, p_two, log_horz_interpM)
 
       endif
 
    else
-       p_one = model_pressure_t(i,   j, k, id, state_handle, 1)
-       p_two = model_pressure_t(i-1, j, k, id, state_handle, 1)
+       p_one = model_pressure_t(i,   j, k, grid_id, state_handle, 1)
+       p_two = model_pressure_t(i-1, j, k, grid_id, state_handle, 1)
        model_pressure = interp_pressure(p_one, p_two, log_horz_interpM)
    endif
 
 elseif (on_v_grid(state_id, var_id)) then ! average in the horizontal v direction
 
-   if (j==grid(id)%sns) then
+   if (j==grid(grid_id)%sns) then
 
       ! Check to see if periodic in latitude (polar)
-      if ( grid(id)%polar ) then
+      if ( grid(grid_id)%polar ) then
 
          ! The upper corner is 180 degrees of longitude away
-         off = i + grid(id)%we/2
-         if ( off > grid(id)%we ) off = off - grid(id)%we
+         off = i + grid(grid_id)%we/2
+         if ( off > grid(grid_id)%we ) off = off - grid(grid_id)%we
 
-         p_one = model_pressure_t(off, j-1, k, id, state_handle, 1)
-         p_two = model_pressure_t(i,   j-1, k, id, state_handle, 1)
+         p_one = model_pressure_t(off, j-1, k, grid_id, state_handle, 1)
+         p_two = model_pressure_t(i,   j-1, k, grid_id, state_handle, 1)
          model_pressure = interp_pressure(p_one, p_two, log_horz_interpM)
    
          ! If not periodic, then try extrapolating
       else
 
-         p_one = model_pressure_t(i,j-1,k,id, state_handle, 1)
-         p_two = model_pressure_t(i,j-2,k,id, state_handle, 1)
+         p_one = model_pressure_t(i,j-1,k,grid_id, state_handle, 1)
+         p_two = model_pressure_t(i,j-2,k,grid_id, state_handle, 1)
          model_pressure = extrap_pressure(p_one, p_two, log_horz_interpM)
 
       endif
@@ -2977,33 +2995,33 @@ elseif (on_v_grid(state_id, var_id)) then ! average in the horizontal v directio
     elseif (j==1) then
 
        ! Check to see if periodic in latitude (polar)
-       if ( grid(id)%polar ) then
+       if ( grid(grid_id)%polar ) then
 
           ! The lower corner is 180 degrees of longitude away
-          off = i + grid(id)%we/2
-          if ( off > grid(id)%we ) off = off - grid(id)%we
+          off = i + grid(grid_id)%we/2
+          if ( off > grid(grid_id)%we ) off = off - grid(grid_id)%we
 
-          p_one = model_pressure_t(off,j,k,id, state_handle, 1)
-          p_two = model_pressure_t(i,  j,k,id, state_handle, 1)
+          p_one = model_pressure_t(off,j,k,grid_id, state_handle, 1)
+          p_two = model_pressure_t(i,  j,k,grid_id, state_handle, 1)
           model_pressure = interp_pressure(p_one, p_two, log_horz_interpM)
 
           ! If not periodic, then try extrapolating
        else
-          p_one = model_pressure_t(i, j, k, id, state_handle, 1)
-          p_two = model_pressure_t(i, j+1, k, id, state_handle, 1)
+          p_one = model_pressure_t(i, j, k, grid_id, state_handle, 1)
+          p_two = model_pressure_t(i, j+1, k, grid_id, state_handle, 1)
           model_pressure = extrap_pressure(p_one, p_two, log_horz_interpM)
        endif
 
     else
-      p_one = model_pressure_t(i, j   ,k, id, state_handle, 1) 
-      p_two = model_pressure_t(i, j-1, k, id, state_handle, 1)
+      p_one = model_pressure_t(i, j   ,k, grid_id, state_handle, 1) 
+      p_two = model_pressure_t(i, j-1, k, grid_id, state_handle, 1)
       model_pressure = interp_pressure(p_one, p_two, log_horz_interpM)
 
     endif
 
 else ! on t_grid
 
-   p = model_pressure_t(i, j, k, id, state_handle, 1)
+   p = model_pressure_t(i, j, k, grid_id, state_handle, 1)
    model_pressure = p(1) 
 
 endif
@@ -3012,13 +3030,13 @@ end function model_pressure
 
 !------------------------------------------------------------------
 ! model surface pressure any grid u,v,w,t
-function model_surface_pressure(i, j, id, var_id, state_id, state_handle)
+function model_surface_pressure(i, j, grid_id, var_id, state_id, state_handle)
 
 ! Calculate the surface pressure at grid point (i,j), domain id.
 ! The grid is defined according to var_type.
 
 type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: i, j, id
+integer,             intent(in) :: i, j, grid_id
 integer,             intent(in) :: var_id
 integer,             intent(in) :: state_id
 real(r8)              :: model_surface_pressure
@@ -3035,21 +3053,21 @@ model_surface_pressure = missing_r8
 !   averaging depends on longitude periodicity
 if( on_u_grid(state_id, var_id) ) then
 
-   if (i==grid(id)%wes) then
+   if (i==grid(grid_id)%wes) then
 
       ! Check to see if periodic in longitude
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
 
          ! We are at seam in longitude, take first and last M-grid points
-         pres1 = model_pressure_s(i-1,j,id, state_handle, ens_size)
-         pres2 = model_pressure_s(1,  j,id, state_handle, ens_size)
+         pres1 = model_pressure_s(i-1,j,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(1,  j,grid_id, state_handle, ens_size)
          model_surface_pressure = interp_pressure(pres1, pres2, log_horz_interpM)
          
       else
 
          ! If not periodic, then try extrapolating
-         pres1 = model_pressure_s(i-1,j,id, state_handle, ens_size)
-         pres2 = model_pressure_s(i-2,j,id, state_handle, ens_size)
+         pres1 = model_pressure_s(i-1,j,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(i-2,j,grid_id, state_handle, ens_size)
          model_surface_pressure = extrap_pressure(pres1, pres2, log_horz_interpM)
 
       endif
@@ -3057,26 +3075,26 @@ if( on_u_grid(state_id, var_id) ) then
    elseif( i == 1 ) then
 
       ! Check to see if periodic in longitude
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
 
          ! We are at seam in longitude, take first and last M-grid points
-         pres1 = model_pressure_s(i,          j,id, state_handle, ens_size)
-         pres2 = model_pressure_s(grid(id)%we,j,id, state_handle, ens_size)
+         pres1 = model_pressure_s(i,          j,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(grid(grid_id)%we,j,grid_id, state_handle, ens_size)
          model_surface_pressure = interp_pressure(pres1, pres2, log_horz_interpM)
          
       else
 
          ! If not periodic, then try extrapolating
-         pres1 = model_pressure_s(i,  j,id, state_handle, ens_size)
-         pres2 = model_pressure_s(i+1,j,id, state_handle, ens_size)
+         pres1 = model_pressure_s(i,  j,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(i+1,j,grid_id, state_handle, ens_size)
          model_surface_pressure = extrap_pressure(pres1, pres2, log_horz_interpM)
 
       endif
 
    else
 
-      pres1 = model_pressure_s(i,  j,id, state_handle, ens_size)
-      pres2 = model_pressure_s(i-1,j,id, state_handle, ens_size)
+      pres1 = model_pressure_s(i,  j,grid_id, state_handle, ens_size)
+      pres2 = model_pressure_s(i-1,j,grid_id, state_handle, ens_size)
       model_surface_pressure = interp_pressure(pres1, pres2, log_horz_interpM)
 
    endif
@@ -3085,24 +3103,24 @@ if( on_u_grid(state_id, var_id) ) then
 !   averaging depends on polar periodicity
 elseif( on_v_grid(state_id, var_id) ) then
 
-   if (j==grid(id)%sns) then
+   if (j==grid(grid_id)%sns) then
 
       ! Check to see if periodic in latitude (polar)
-      if ( grid(id)%polar ) then
+      if ( grid(grid_id)%polar ) then
 
          ! The upper corner is 180 degrees of longitude away
-         off = i + grid(id)%we/2
-         if ( off > grid(id)%we ) off = off - grid(id)%we
+         off = i + grid(grid_id)%we/2
+         if ( off > grid(grid_id)%we ) off = off - grid(grid_id)%we
 
-         pres1 = model_pressure_s(off,j-1,id, state_handle, ens_size)
-         pres2 = model_pressure_s(i  ,j-1,id, state_handle, ens_size)
+         pres1 = model_pressure_s(off,j-1,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(i  ,j-1,grid_id, state_handle, ens_size)
          model_surface_pressure = interp_pressure(pres1, pres2, log_horz_interpM)
 
       ! If not periodic, then try extrapolating
       else
 
-         pres1 = model_pressure_s(i,j-1,id, state_handle, ens_size)
-         pres2 = model_pressure_s(i,j-2,id, state_handle, ens_size)
+         pres1 = model_pressure_s(i,j-1,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(i,j-2,grid_id, state_handle, ens_size)
          model_surface_pressure = extrap_pressure(pres1, pres2, log_horz_interpM)
 
       endif
@@ -3110,36 +3128,36 @@ elseif( on_v_grid(state_id, var_id) ) then
    elseif( j == 1 ) then
 
       ! Check to see if periodic in latitude (polar)
-      if ( grid(id)%polar ) then
+      if ( grid(grid_id)%polar ) then
 
          ! The lower corner is 180 degrees of longitude away
-         off = i + grid(id)%we/2
-         if ( off > grid(id)%we ) off = off - grid(id)%we
+         off = i + grid(grid_id)%we/2
+         if ( off > grid(grid_id)%we ) off = off - grid(grid_id)%we
 
-         pres1 = model_pressure_s(off,j,id, state_handle, ens_size)
-         pres2 = model_pressure_s(i,  j,id, state_handle, ens_size)
+         pres1 = model_pressure_s(off,j,grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(i,  j,grid_id, state_handle, ens_size)
          model_surface_pressure = interp_pressure(pres1, pres2, log_horz_interpM)
 
       ! If not periodic, then try extrapolating
       else
 
-         pres1 = model_pressure_s(i,j,  id, state_handle, ens_size)
-         pres2 = model_pressure_s(i,j+1,id, state_handle, ens_size)
+         pres1 = model_pressure_s(i,j,  grid_id, state_handle, ens_size)
+         pres2 = model_pressure_s(i,j+1,grid_id, state_handle, ens_size)
          model_surface_pressure = extrap_pressure(pres1, pres2, log_horz_interpM)
 
       endif
 
    else
 
-      pres1 = model_pressure_s(i,j,  id, state_handle, ens_size)
-      pres2 = model_pressure_s(i,j-1,id, state_handle, ens_size)
+      pres1 = model_pressure_s(i,j,  grid_id, state_handle, ens_size)
+      pres2 = model_pressure_s(i,j-1,grid_id, state_handle, ens_size)
       model_surface_pressure = interp_pressure(pres1, pres2, log_horz_interpM)
 
    endif
 
 else
 
-   pres1 = model_pressure_s(i,j,id, state_handle, ens_size)
+   pres1 = model_pressure_s(i,j,grid_id, state_handle, ens_size)
    model_surface_pressure = pres1(1)
 
 endif
@@ -3153,19 +3171,19 @@ integer, intent(in) :: i, j, k, var_id, state_id
 type(location_type) :: convert_indices_to_lon_lat_lev
 
 real(r8) :: long, lat, lev
-integer :: dom_id
+integer :: grid_id
 
-dom_id = get_wrf_domain(state_id)
+grid_id = get_grid_domain(state_id)
 
-if ( on_u_grid(dom_id, var_id) ) then
-   long = grid(dom_id)%longitude_u(i,j)
-   lat = grid(dom_id)%latitude_u(i,j)
-elseif ( on_v_grid(dom_id, var_id) ) then
-   long = grid(dom_id)%longitude_v(i,j)
-   lat = grid(dom_id)%latitude_v(i,j)
+if ( on_u_grid(state_id, var_id) ) then
+   long = grid(grid_id)%longitude_u(i,j)
+   lat = grid(grid_id)%latitude_u(i,j)
+elseif ( on_v_grid(state_id, var_id) ) then
+   long = grid(grid_id)%longitude_v(i,j)
+   lat = grid(grid_id)%latitude_v(i,j)
 else ! on mass grid
-   long = grid(dom_id)%longitude(i,j)
-   lat = grid(dom_id)%latitude(i,j)
+   long = grid(grid_id)%longitude(i,j)
+   lat = grid(grid_id)%latitude(i,j)
 endif
 
 ! dart expects longitude [0,360]
@@ -3235,14 +3253,14 @@ end function on_t_grid
 !------------------------------------------------------------------
 !------------------------------------------------------------------
 
-function within_bounds_horizontal(i, j, id, qty_in)
+function within_bounds_horizontal(i, j, grid_id, qty_in)
 
 integer, intent(in) :: i, j
-integer, intent(in) :: id
+integer, intent(in) :: grid_id 
 integer, intent(in) :: qty_in
 logical :: within_bounds_horizontal
 
-integer :: var_id, qty
+integer :: var_id, state_id, qty
 
 ! Some qtys we can interpolate, but the qty is not in the state.
 ! using QTY_POTENTIAL_TEMPERATURE because this is on the mass grid.
@@ -3259,8 +3277,16 @@ select case (qty_in)
       qty = qty_in
 end select
 
-var_id = get_varid_from_kind(wrf_dom(id), qty) 
-if (var_id <= 0) then
+! HK @todo chemistry separate file var_id
+
+var_id = get_varid_from_kind(wrf_dom(grid_id), qty) 
+state_id = wrf_dom(grid_id)
+if (var_id < 0 .and. chemistry_separate_file) then
+   ! chemistry variables stored in separate file
+   var_id = get_varid_from_kind(wrf_dom(grid_id+num_domains), qty)
+   state_id = wrf_dom(grid_id+num_domains)
+endif
+if (var_id < 0) then
    within_bounds_horizontal = .false.
    call error_handler(E_ERR, 'within_bounds_horizontal', &
         'Quantity ' // trim(adjustl(get_name_for_quantity(qty))) // &
@@ -3268,30 +3294,30 @@ if (var_id <= 0) then
    return
 endif
 
-within_bounds_horizontal = (bounds_check_lon(i, id, var_id) .and. bounds_check_lat(j, id, var_id))
+within_bounds_horizontal = (bounds_check_lon(i, grid_id, state_id, var_id) .and. bounds_check_lat(j, grid_id, state_id, var_id))
 
 end function within_bounds_horizontal
 
 !------------------------------------------------------------------
-function able_to_interpolate_qty(id, qty)
+function able_to_interpolate_qty(grid_id, qty)
 
-integer, intent(in) :: id ! grid domain id
+integer, intent(in) :: grid_id 
 integer, intent(in) :: qty
 
 logical :: able_to_interpolate_qty
 
 select case (qty)
    case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
-      able_to_interpolate_qty = qty_in_domain(id, QTY_U_WIND_COMPONENT) .and. &
-                                qty_in_domain(id, QTY_V_WIND_COMPONENT)
+      able_to_interpolate_qty = qty_in_domain(grid_id, QTY_U_WIND_COMPONENT) .and. &
+                                qty_in_domain(grid_id, QTY_V_WIND_COMPONENT)
 
    case (QTY_10M_U_WIND_COMPONENT, QTY_10M_V_WIND_COMPONENT)
-      able_to_interpolate_qty = qty_in_domain(id, QTY_10M_U_WIND_COMPONENT) .and. &
-                                qty_in_domain(id, QTY_10M_V_WIND_COMPONENT)
+      able_to_interpolate_qty = qty_in_domain(grid_id, QTY_10M_U_WIND_COMPONENT) .and. &
+                                qty_in_domain(grid_id, QTY_10M_V_WIND_COMPONENT)
 
    case (QTY_DENSITY)
-      able_to_interpolate_qty = qty_in_domain(id, QTY_GEOPOTENTIAL_HEIGHT) .and. &
-                                qty_in_domain(id, QTY_PRESSURE)
+      able_to_interpolate_qty = qty_in_domain(grid_id, QTY_GEOPOTENTIAL_HEIGHT) .and. &
+                                qty_in_domain(grid_id, QTY_PRESSURE)
 
    case (QTY_SURFACE_TYPE)
       able_to_interpolate_qty = .true.  ! land mask XLAND is static data
@@ -3303,17 +3329,17 @@ select case (qty)
       able_to_interpolate_qty = .true.  ! terrain height HGT is static data
 
    case (QTY_TEMPERATURE, QTY_POTENTIAL_TEMPERATURE)
-      able_to_interpolate_qty = qty_in_domain(id, QTY_POTENTIAL_TEMPERATURE)
+      able_to_interpolate_qty = qty_in_domain(grid_id, QTY_POTENTIAL_TEMPERATURE)
 
    case (QTY_SPECIFIC_HUMIDITY) ! we use vapor mixing ratio to compute specific humidity
-      able_to_interpolate_qty = qty_in_domain(id, QTY_VAPOR_MIXING_RATIO)
+      able_to_interpolate_qty = qty_in_domain(grid_id, QTY_VAPOR_MIXING_RATIO)
 
    case default
      if (chemistry_separate_file) then
-       able_to_interpolate_qty = qty_in_domain(id, qty) .or. &
-                                 qty_in_domain(id+num_domains, qty)  ! chemistry variables stored in separate file
+       able_to_interpolate_qty = qty_in_domain(grid_id, qty) .or. &
+                                 qty_in_domain(grid_id+num_domains, qty)  ! chemistry variables stored in separate file
      else
-       able_to_interpolate_qty = qty_in_domain(id, qty)
+       able_to_interpolate_qty = qty_in_domain(grid_id, qty)
      endif
 
 end select
@@ -3324,7 +3350,7 @@ end function able_to_interpolate_qty
 !------------------------------------------------------------------
 function qty_in_domain(id, qty)
 
-integer, intent(in) :: id
+integer, intent(in) :: id ! id in wrf model_mod
 integer, intent(in) :: qty
 
 logical :: qty_in_domain
@@ -3342,11 +3368,11 @@ endif
 end function qty_in_domain
 
 !------------------------------------------------------------------
-!  returns closest domain id and horizontal mass point grid points (iloc,jloc)
+!  returns closest grid domain id and horizontal mass point grid points (iloc,jloc)
 subroutine get_domain_info(obslon,obslat,id,iloc,jloc,domain_id_start)
 
 real(r8), intent(in)           :: obslon, obslat
-integer,  intent(out)          :: id
+integer,  intent(out)          :: id ! grid id of closest domain, 0 if not found
 real(r8), intent(out)          :: iloc, jloc
 integer,  intent(in), optional :: domain_id_start ! HK this is used in wrf_dart_obs_preprocess.f90
 
@@ -3354,6 +3380,7 @@ integer :: n ! domain to start from
 
 if (present(domain_id_start)) then
   n = domain_id_start
+  if (n > num_domains) n = num_domains
 else
   n = num_domains
 endif
@@ -3435,18 +3462,45 @@ endif
 end function found_in_domain
 
 !------------------------------------------------------------------
-subroutine getCorners(i, j, id, qty, ll, ul, lr, ur, rc)
+! Given a quantity, return the wrf_id of the domain it is in 
+! depends on whether chemistry variables are stored in separate file 
+function get_wrf_id_from_qty(grid_id, qty) result (wrf_id)
 
-integer, intent(in)  :: i, j, id, qty
+integer, intent(in) :: grid_id
+integer, intent(in) :: qty
+integer :: wrf_id
+
+integer :: var_id
+
+var_id = get_varid_from_kind(wrf_dom(grid_id), qty)
+wrf_id = grid_id
+if (var_id < 0 .and. chemistry_separate_file) then
+   ! chemistry variables stored in separate file
+   var_id = get_varid_from_kind(wrf_dom(grid_id+num_domains), qty)
+   wrf_id = grid_id + num_domains
+endif
+
+end function get_wrf_id_from_qty
+
+!------------------------------------------------------------------
+subroutine getCorners(i, j, grid_id, qty, ll, ul, lr, ur, rc)
+
+integer, intent(in)  :: i, j, grid_id, qty
 integer, dimension(2), intent(out) :: ll, ul, lr, ur ! (x,y) of each corner
 integer, intent(out) :: rc
 
-integer :: var_id
+integer :: var_id, state_id
 
 ! set return code to 0, and change this if necessary
 rc = 0
 
-var_id = get_varid_from_kind(wrf_dom(id), qty)
+var_id = get_varid_from_kind(wrf_dom(grid_id), qty)
+state_id = wrf_dom(grid_id)
+if (var_id < 0 .and. chemistry_separate_file) then
+   ! chemistry variables stored in separate file
+   var_id = get_varid_from_kind(wrf_dom(grid_id+num_domains), qty)
+   state_id = wrf_dom(grid_id+num_domains)
+endif
 
 
 !----------------
@@ -3461,16 +3515,16 @@ var_id = get_varid_from_kind(wrf_dom(id), qty)
 
 ! As of 22 Oct 2007, this option is not allowed!
 !   Note that j = 0 can only happen if we are on the M (or U) wrt to latitude
-if ( grid(id)%polar .and. j == 0 .and. .not. restrict_polar ) then
+if ( grid(grid_id)%polar .and. j == 0 .and. .not. restrict_polar ) then
 
    ! j = 0 should be mapped to j = 1 (ll is on other side of globe)
    ll(2) = 1
    
    ! Need to map i index 180 degrees away
-   ll(1) = i + grid(id)%we/2
+   ll(1) = i + grid(grid_id)%we/2
    
    ! Check validity of bounds & adjust by periodicity if necessary
-   if ( ll(1) > grid(id)%we ) ll(1) = ll(1) - grid(id)%we
+   if ( ll(1) > grid(grid_id)%we ) ll(1) = ll(1) - grid(grid_id)%we
 
    ! We shouldn't be able to get this return code if restrict_polar = .true.
     rc = 1
@@ -3503,16 +3557,16 @@ endif
 !     ind = [1 we)    ==> ind_p_1 = ind + 1
 !     ind = [we wes)  ==> ind_p_1 = wes
 
-if ( grid(id)%periodic_x ) then
+if ( grid(grid_id)%periodic_x ) then
   
    ! Check to see what grid we have, M vs. U
-   if (on_u_grid(wrf_dom(id), var_id) ) then
+   if (on_u_grid(state_id, var_id) ) then
       ! U-grid is always i+1 -- do this in reference to already adjusted ll points
       lr(1) = ll(1) + 1
       lr(2) = ll(2)
    else
       ! M-grid is i+1 except if we <= ind < wes, in which case it's 1
-      if ( i < grid(id)%we ) then
+      if ( i < grid(grid_id)%we ) then
          lr(1) = ll(1) + 1
       else
          lr(1) = 1
@@ -3557,10 +3611,10 @@ endif
 ! Hence, with our current polar obs restrictions, all four possible cases DO map into
 !   ul = (i,j+1).  But this will not always be the case.
 
-if ( grid(id)%polar ) then
+if ( grid(grid_id)%polar ) then
 
    ! Check to see what grid we have, M vs. V
-   if ( on_v_grid(wrf_dom(id), var_id) ) then
+   if ( on_v_grid(state_id, var_id) ) then
       ! V-grid is always j+1, even if we allow for full [1 sns) range
       ul(1) = ll(1)
       ul(2) = ll(2) + 1
@@ -3574,15 +3628,15 @@ if ( grid(id)%polar ) then
          ! If not restricted, then we can potentially wrap over the north pole, which
          !   means that ul(2) is set to sn and ul(1) is shifted by 180 deg.
 
-         if ( j == grid(id)%sn ) then
+         if ( j == grid(grid_id)%sn ) then
             ! j > sn should be mapped to j = sn (ul is on other side of globe)
-            ul(2) = grid(id)%sn
+            ul(2) = grid(grid_id)%sn
    
             ! Need to map i index 180 degrees away
-            ul(1) = ll(1) + grid(id)%we/2
+            ul(1) = ll(1) + grid(grid_id)%we/2
    
             ! Check validity of bounds & adjust by periodicity if necessary
-            if ( ul(1) > grid(id)%we ) ul(1) = ul(1) - grid(id)%we
+            if ( ul(1) > grid(grid_id)%we ) ul(1) = ul(1) - grid(grid_id)%we
 
             ! We shouldn't be able to get this return code if restrict_polar = .true.
              rc = 1
@@ -3603,16 +3657,16 @@ if ( grid(id)%polar ) then
       endif
    endif
 
-elseif ( grid(id)%periodic_y ) then
+elseif ( grid(grid_id)%periodic_y ) then
 
    ! Check to see what grid we have, M vs. V
-   if ( on_v_grid(wrf_dom(id), var_id) ) then
+   if ( on_v_grid(state_id, var_id) ) then
       ! V-grid is always j+1 -- do this in reference to already adjusted ll points
       ul(1) = ll(1)
       ul(2) = ll(2)+1
    else
       ! M-grid is j+1 except if we <= ind < wes, in which case it's 1
-      if ( j < grid(id)%sn ) then
+      if ( j < grid(grid_id)%sn ) then
          ul(2) = ll(2) + 1
       else
          ul(2) = 1
@@ -3648,25 +3702,25 @@ endif
 ur(2) = ul(2)
 
 ! Need to check if ur(1) .ne. lr(1)
-if ( grid(id)%polar .and. .not. restrict_polar ) then
+if ( grid(grid_id)%polar .and. .not. restrict_polar ) then
 
    ! Only if j == 0 or j == sn
-   if ( j == 0 .or. j ==  grid(id)%sn) then
+   if ( j == 0 .or. j ==  grid(grid_id)%sn) then
       ! j == 0 means that ll(1) = i + 180 deg, so we cannot use lr(1) -- hence, we will
       !   add 1 to ul(1), unless doing so spans the longitude seam point.
       ! j == sn means that ul(1) = i + 180 deg.  Here we cannot use lr(1) either because
       !   it will be half a domain away from ul(1)+1.  Be careful of longitude seam point.
 
       !   Here we need to check longitude periodicity and the type of grid
-      if ( grid(id)%periodic_x ) then
+      if ( grid(grid_id)%periodic_x ) then
   
          ! Check to see what grid we have, M vs. U
-         if ( on_u_grid(wrf_dom(id), var_id) ) then
+         if ( on_u_grid(state_id, var_id) ) then
             ! U-grid is always i+1 -- do this in reference to already adjusted ll points
             ur(1) = ul(1) + 1
          else
             ! M-grid is i+1 except if we <= ind < wes, in which case it's 1
-            if ( ul(1) < grid(id)%we ) then
+            if ( ul(1) < grid(grid_id)%we ) then
                ur(1) = ul(1) + 1
             else
                ur(1) = 1
@@ -3804,10 +3858,11 @@ end subroutine setup_map_projection
 ! Determines whether real-valued location indices are
 ! within a sensible range based on the assumed (un)staggered grid and based on 
 ! whether the domain is assumed to be periodic in a given direction.
-function bounds_check_lon(ind, id, var_id)  ! or variable?
+function bounds_check_lon(ind, grid_id, state_id,var_id)  ! or variable?
 
 integer,  intent(in)  :: ind ! index into the grid
-integer,  intent(in)  :: id  ! domain id
+integer,  intent(in)  :: grid_id
+integer,  intent(in)  :: state_id
 integer,  intent(in)  :: var_id 
 
 logical :: bounds_check_lon
@@ -3874,11 +3929,11 @@ logical :: bounds_check_lon
 bounds_check_lon = .false.
 
 ! Next check periodicity
-if ( grid(id)%periodic_x ) then
+if ( grid(grid_id)%periodic_x ) then
    
    ! If periodic in longitude, then no need to check staggering because both
    !   M and U grids allow integer indices from [1 wes)
-   if ( ind >= 1 .and. ind < grid(id)%wes ) bounds_check_lon = .true.
+   if ( ind >= 1 .and. ind < grid(grid_id)%wes ) bounds_check_lon = .true.
 
 else
 
@@ -3886,12 +3941,13 @@ else
    !   M and U grids allow different index ranges
 
    ! Check staggering by comparing var_size(dim,type) to the staggered dimension 
-   if ( on_u_grid(wrf_dom(id),var_id) ) then
+   ! HK @todo this domain id needs to be the state id
+   if ( on_u_grid(state_id, var_id) ) then
       ! U-grid allows integer range of [1 wes)
-      if ( ind >= 1 .and. ind < grid(id)%wes ) bounds_check_lon = .true.
+      if ( ind >= 1 .and. ind < grid(grid_id)%wes ) bounds_check_lon = .true.
    else  
       ! M & V-grid allow [1 we)
-      if ( ind >= 1 .and. ind < grid(id)%we ) bounds_check_lon = .true.
+      if ( ind >= 1 .and. ind < grid(grid_id)%we ) bounds_check_lon = .true.
    endif
 
 endif
@@ -3899,10 +3955,11 @@ endif
 end function bounds_check_lon
 
 !------------------------------------------------------------------
-function bounds_check_lat(ind, id, var_id)
+function bounds_check_lat(ind, grid_id, state_id, var_id)
 
 integer,  intent(in)  :: ind ! index into the grid
-integer,  intent(in)  :: id  ! domain id
+integer,  intent(in)  :: grid_id  
+integer,  intent(in)  :: state_id 
 integer,  intent(in)  :: var_id  
 
 logical :: bounds_check_lat
@@ -3966,7 +4023,7 @@ logical :: bounds_check_lat
 !             * An observation of TYPE_V (on the V-grid) would have ind = 3.0
 !
 
-if ( grid(id)%periodic_y ) then
+if ( grid(grid_id)%periodic_y ) then
         
      ! We need to check staggering because M and V grids allow different indices
 
@@ -3978,30 +4035,30 @@ if ( grid(id)%periodic_y ) then
 !            be added in later.  
 
     ! Check staggering by comparing var_size(dim,type) to the staggered dimension 
-    if ( on_v_grid(wrf_dom(id), var_id) ) then
+    if ( on_v_grid(state_id, var_id) ) then
        ! V-grid allows integer range [1 sns)
-       if ( ind >= 1 .and. ind < grid(id)%sns ) bounds_check_lat = .true.
+       if ( ind >= 1 .and. ind < grid(grid_id)%sns ) bounds_check_lat = .true.
     else  
        ! For now we will set a logical flag to more restrictively check the array
        !   bounds under our no-polar-obs assumptions
        if ( restrict_polar ) then
           ! M & U-grid allow integer range [1 sn) in practice (though properly, [0 sns) )
-          if ( ind >= 1 .and. ind < grid(id)%sn ) bounds_check_lat = .true.
+          if ( ind >= 1 .and. ind < grid(grid_id)%sn ) bounds_check_lat = .true.
        else
           ! M & U-grid allow integer range [0 sns) in unrestricted circumstances
-          if ( ind >= 0 .and. ind < grid(id)%sns ) bounds_check_lat = .true.
+          if ( ind >= 0 .and. ind < grid(grid_id)%sns ) bounds_check_lat = .true.
        endif
     endif
     
  else
 
     ! We need to check staggering because M and V grids allow different indices
-    if ( on_v_grid(wrf_dom(id), var_id) ) then
+    if ( on_v_grid(state_id, var_id) ) then
        ! V-grid allows [1 sns)
-       if ( ind >= 1 .and. ind < grid(id)%sns ) bounds_check_lat = .true.
+       if ( ind >= 1 .and. ind < grid(grid_id)%sns ) bounds_check_lat = .true.
     else 
        ! M & U-grid allow [1 sn)
-       if ( ind >= 1 .and. ind < grid(id)%sn ) bounds_check_lat = .true.
+       if ( ind >= 1 .and. ind < grid(grid_id)%sn ) bounds_check_lat = .true.
     endif
 
  endif
@@ -4010,10 +4067,11 @@ end function bounds_check_lat
 
 
 !------------------------------------------------------------------
-function bounds_check_vertical(ind, id, var_id) 
+function bounds_check_vertical(ind, grid_id, state_id, var_id) 
 
 integer,  intent(in)  :: ind ! index into the grid
-integer,  intent(in)  :: id  ! domain id
+integer,  intent(in)  :: grid_id
+integer,  intent(in)  :: state_id
 integer,  intent(in)  :: var_id
 
 logical :: bounds_check_vertical
@@ -4039,12 +4097,12 @@ logical :: bounds_check_vertical
 
 bounds_check_vertical = .false.
 
-if ( on_w_grid(wrf_dom(id), var_id) ) then
+if ( on_w_grid(state_id, var_id) ) then
    ! W vertical grid allows [1 bts)
-   if ( ind >= 1 .and. ind < grid(id)%bts ) bounds_check_vertical = .true.
+   if ( ind >= 1 .and. ind < grid(grid_id)%bts ) bounds_check_vertical = .true.
 else
    ! M vertical grid allows [1 bt)
-   if ( ind >= 1 .and. ind < grid(id)%bt ) bounds_check_vertical = .true.
+   if ( ind >= 1 .and. ind < grid(grid_id)%bt ) bounds_check_vertical = .true.
 endif
   
 end function bounds_check_vertical 
