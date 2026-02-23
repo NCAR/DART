@@ -1,0 +1,108 @@
+name: Build and run Lorenz 63 with all compilers using CIRRUS Runners and NCAR HPC Containers
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cirrus_actions
+
+jobs:
+  # Job 1
+  build-run-lorenz_96-mpi-gfortran:
+
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+
+    # The 'ncarcisl' containers initialize their software environment 
+    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # This is done by starting a bash *login* shell (bash -l [...])
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container: 
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      - name: Build and run lorenz_96 with mpi
+        uses: ./.github/actions/build_run_model 
+        with: 
+          model: lorenz_96
+          run-program: ./filter
+          compiler: gfortran
+          use-mpi: mpi
+          mpi-n-tasks: 4
+  
+  # Job 2
+  build-run-lorenz_96-nompi-gfortran:
+
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+
+    # The 'ncarcisl' containers initialize their software environment 
+    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # This is done by starting a bash *login* shell (bash -l [...])
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container:
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      - name: Build and run lorenz_63 with no mpi
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_96
+          run-program: ./filter
+          compiler: gfortran
+          use-mpi: nompi
+
+  # Job 3
+  build-run-lorenz_96-mpif08-gfortran:
+
+    runs-on:
+      group: cirrus-4x8
+
+    # The 'ncarcisl' containers initialize their software environment 
+    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # This is done by starting a bash *login* shell (bash -l [...])
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container:
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      - name: Build and run lorenz_96 with mpif08
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_96
+          run-program: ./filter
+          compiler: gfortran
+          use-mpi: mpif08
+          mpi-n-tasks: 4
