@@ -4135,11 +4135,10 @@ integer(i8) :: idx
 integer :: phb_id
 real(r8) :: phb_ens(ens_size)
 
-
 ! phb is on the mete domain
 phb_id = get_varid_from_kind(wrf_dom(grid_id), QTY_BASE_STATE_GEOP)
 
-idx = get_dart_vector_index(grid_id, i, j, k, phb_id)
+idx = get_dart_vector_index(i, j, k, wrf_dom(grid_id), phb_id)
 phb_ens = get_state(idx, state_handle)
 phb = phb_ens(1) ! static across the ensemble, take the first member
 
