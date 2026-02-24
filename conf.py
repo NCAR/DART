@@ -50,7 +50,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
 #
 html_theme = 'sphinx_rtd_theme'
 html_show_sphinx = False
-html_logo = 'guide/_static/nsf-ncar-dart.png'
+html_logo = 'guide/_static/NSF-NCAR_Logo_Color-White_CMYK.webp'
 html_theme_options = {
     'logo_only': True,
     'includehidden': False
