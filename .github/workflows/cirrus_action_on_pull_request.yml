@@ -33,7 +33,7 @@ jobs:
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
       - name: Source container config file and modify mkmf to use 4 cores for compilation
-      - run: |
+        run: |
           source "/container/config_env.sh"
           cd build_templates
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
@@ -70,7 +70,7 @@ jobs:
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
       - name: Source container config file and modify mkmf to use 4 cores for compilation
-      - run: |
+        run: |
           source "/container/config_env.sh"
           cd build_templates
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
@@ -106,7 +106,7 @@ jobs:
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
       - name: Source container config file and modify mkmf to use 4 cores for compilation
-      - run: |
+        run: |
           source "/container/config_env.sh"
           cd build_templates
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
