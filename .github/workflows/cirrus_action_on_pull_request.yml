@@ -32,6 +32,12 @@ jobs:
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
+      - name: Source container config file and modify mkmf to use 4 cores for compilation
+      - run: |
+          source "/container/config_env.sh"
+          cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+
       - name: Build and run lorenz_96 with mpi
         uses: ./.github/actions/build_run_model 
         with: 
@@ -63,6 +69,12 @@ jobs:
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
+      - name: Source container config file and modify mkmf to use 4 cores for compilation
+      - run: |
+          source "/container/config_env.sh"
+          cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+
       - name: Build and run lorenz_63 with no mpi
         uses: ./.github/actions/build_run_model
         with:
@@ -92,6 +104,12 @@ jobs:
 
       - name: Set checked out repo as a safe git directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+      - name: Source container config file and modify mkmf to use 4 cores for compilation
+      - run: |
+          source "/container/config_env.sh"
+          cd build_templates
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
 
       - name: Build and run lorenz_96 with mpif08
         uses: ./.github/actions/build_run_model
