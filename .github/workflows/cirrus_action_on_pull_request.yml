@@ -1,4 +1,4 @@
-name: Build and run Lorenz 63 with all compilers using CIRRUS Runners and NCAR HPC Containers
+name: Build and run Lorenz 96 on CIRRUS Runners with all compilers available in NCAR HPC Containers
 
 on:
   workflow_dispatch:
@@ -48,9 +48,6 @@ jobs:
     runs-on:
       group: cirrus-4x8
 
-    # The 'ncarcisl' containers initialize their software environment 
-    # through 'sourcing' a common configuration file (/container/config_env.sh). 
-    # This is done by starting a bash *login* shell (bash -l [...])
     defaults:
       run:
         shell: bash -elo pipefail {0}
@@ -77,12 +74,10 @@ jobs:
   # Job 3
   build-run-lorenz_96-mpif08-gfortran:
 
+    # Runner instance OS
     runs-on:
       group: cirrus-4x8
 
-    # The 'ncarcisl' containers initialize their software environment 
-    # through 'sourcing' a common configuration file (/container/config_env.sh). 
-    # This is done by starting a bash *login* shell (bash -l [...])
     defaults:
       run:
         shell: bash -elo pipefail {0}
@@ -103,6 +98,6 @@ jobs:
         with:
           model: lorenz_96
           run-program: ./filter
-          compiler: gfortran
           use-mpi: mpif08
           mpi-n-tasks: 4
+      # testing here not specifying compiler, which should default to gfortran
