@@ -161,18 +161,26 @@ pyqceff
 The `pyqceff` package provides utilities for working with DART's Quantile-Conserving Ensemble Filter Framework (QCEFF) table, which controls
 the QCEFF options.
 
-This python package provides display-qceff-table, a program that prints a summary and details for the QCEFF table CSV files.
-
-For more information on the QCEFF table, refer to :ref:`QCEFF`.
+This python package provides display-qceff-table, a program that prints a summary and details for the QCEFF table CSV files. For more
+information on the QCEFF table, refer to the :ref:`QCEFF` documentation page.
 
 It can be run as follows:
-``display-qceff-table <path_to_csv_file>``
+
+.. code-block:: bash
+
+    display-qceff-table <path_to_csv_file>
 
 To print detailed information for a specific quantity QTY:
-``display-qceff-table --details [QTY] <path_to_csv_file>``
+
+.. code-block:: bash
+
+    display-qceff-table --details [QTY] <path_to_csv_file>
 
 To view the help, run:
-``display-qceff-table --help``
+
+.. code-block:: bash
+
+    display-qceff-table --help
 
 .. _pyfortran:
 
@@ -182,13 +190,18 @@ pyfortran
 The pyfortran package provides utilities for working with DART's Fortran codebase.
 
 pyfortran includes a program called ``check_fortran_module_usage.py`` that can be used to determine which subroutines in a Fortran module
-are not being used by any other part of the codebase.
-
-It displays subroutines that are written in the module but neither called in the file or marked as public, assuming subroutines made public are
-used in other modules, as well as subroutines from other modules that are declared in the use statements but not actualy called in the file.
+are not being used by any other part of the codebase. It displays subroutines that are written in the module but neither called in the file
+or marked as public, assuming subroutines made public are used in other modules, as well as subroutines from other modules that are declared
+in the use statements but not actualy called in the file.
 
 It can be run as follows:
-``check_fortran_module_usage <path_to_fortran_file>``
+
+.. code-block:: bash
+
+    check_fortran_module_usage <path_to_fortran_file>
 
 To view the help, run:
-``check_fortran_module_usage --help``
+
+.. code-block:: bash
+
+    check_fortran_module_usage --help
