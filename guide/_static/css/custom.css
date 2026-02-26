@@ -15,6 +15,22 @@
   --search-section-height: 150px; /* Adjust this value to match your search section height */
 }
 
+/* Apply Poppins font to text elements (excluding code blocks) */
+body,
+h1, h2, h3, h4, h5, h6,
+p, li, td, th, span,
+.wy-menu-vertical a,
+.wy-menu-vertical p.caption,
+.wy-menu-vertical header {
+  font-family: Poppins, "Tw Cen MT", Futura, sans-serif;
+}
+
+/* Keep code elements monospace */
+code, pre, .pre,
+code span, pre span, .pre span {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
 /* page width */
 .wy-nav-content {
     max-width: 800px;
@@ -190,9 +206,8 @@
    Main Content Styles
    ===================================================== */
 
-/* Body text - Poppins font */
+/* Body text */
 body {
-    font-family: Poppins, "Tw Cen MT", Futura, sans-serif;
     font-weight: 400;
     color: var(--space);
 }
