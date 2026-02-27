@@ -150,10 +150,10 @@ jobs:
         run: |
           source "/container/config_env.sh"
           cd build_templates
-          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template
-          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template
-          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template
-          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template
+          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template.nvhpc
+          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template.nvhpc
+          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template.nvhpc
+          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template.nvhpc
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
 
       - name: Build and run lorenz_96 with mpi
@@ -192,10 +192,10 @@ jobs:
         run: |
           source "/container/config_env.sh"
           cd build_templates
-          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template
-          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template
-          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template
-          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template
+          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template.nvhpc
+          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template.nvhpc
+          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template.nvhpc
+          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template.nvhpc
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
 
       - name: Build and run lorenz_63 with no mpi
@@ -233,10 +233,10 @@ jobs:
         run: |
           source "/container/config_env.sh"
           cd build_templates
-          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template
-          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template
-          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template
-          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template
+          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template.nvhpc
+          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template.nvhpc
+          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template.nvhpc
+          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template.nvhpc
           sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
 
       - name: Build and run lorenz_96 with mpif08
