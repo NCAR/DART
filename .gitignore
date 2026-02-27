@@ -95,6 +95,7 @@ cam_dart_obs_preprocessor
 aether_to_dart
 dart_to_aether
 test_aether_grid
+create_identity_streamflow_obs
 
 # Observation converter exectutables
 convert_aviso
