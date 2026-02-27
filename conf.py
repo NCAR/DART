@@ -21,7 +21,7 @@ copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '11.20.1'
+release = '11.21.0'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
@@ -50,7 +50,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'models/gitm/testdata1/*
 #
 html_theme = 'sphinx_rtd_theme'
 html_show_sphinx = False
-html_logo = 'guide/_static/nsf-ncar-dart.png'
+html_logo = 'guide/_static/NSF-NCAR_Logo_Color-White_CMYK.webp'
 html_theme_options = {
     'logo_only': True,
     'includehidden': False
