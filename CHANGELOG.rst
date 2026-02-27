@@ -22,14 +22,32 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**February 4 2026 :: IODA2obsq. Tag v11.21.1**
+**February 27 2026 :: pywatershed. Tag v11.21.0**
+
+New features:
+
+  - Interface to hydrologic model pywatershed
+  - GitHub actions for pytools
+
+Bug-fix:
+
+  - Removed check on initialized variables in mkmf.template.ifx
+    due to ifx problems
+
+Documentation updates:
+
+  - NSF NCAR branding update 
+
+**February 4 2026 :: IODA2obsq. Tag v11.20.1**
 
 New feature:
+
   - Radiances added to pyjedi ioda2obsq tool for DART JEDI interoperability
  
     *contributed by Stephen Herbener, as part of DART collaboration with JCSDA*
 
 Bug-fix:
+
   - WRF model_mod bug-fix for 3D potential temperature interpolation
 
 **January 8 2026 :: ARVOR Float and SVP Drifters. Tag v11.20.0**
