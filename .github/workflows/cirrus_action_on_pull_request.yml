@@ -23,7 +23,7 @@ jobs:
 
     # Deploy container on top of runner instance
     container:
-      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-openmpi-latest
 
     steps:
       - name: Checkout repo
@@ -60,7 +60,7 @@ jobs:
 
     # Deploy container on top of runner instance
     container:
-      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-openmpi-latest
 
     steps:
       - name: Checkout repo
@@ -96,7 +96,7 @@ jobs:
 
     # Deploy container on top of runner instance
     container:
-      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
+      image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-openmpi-latest
 
     steps:
       - name: Checkout repo
@@ -136,7 +136,7 @@ jobs:
 
     # Deploy container on top of runner instance
     container: 
-      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-mpich-latest
+      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-openmpi-latest
 
     steps:
       - name: Checkout repo
@@ -178,7 +178,7 @@ jobs:
 
     # Deploy container on top of runner instance
     container:
-      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-mpich-latest
+      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-openmpi-latest
 
     steps:
       - name: Checkout repo
@@ -219,7 +219,7 @@ jobs:
 
     # Deploy container on top of runner instance
     container:
-      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-mpich-latest
+      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-openmpi-latest
 
     steps:
       - name: Checkout repo
