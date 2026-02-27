@@ -14,15 +14,15 @@ jobs:
     runs-on:
       group: cirrus-4x8
 
-    # The 'ncarcisl' containers initialize their software environment 
-    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # The 'ncarcisl' containers initialize their software environment
+    # through 'sourcing' a common configuration file (/container/config_env.sh).
     # This is done by starting a bash *login* shell (bash -l [...])
     defaults:
       run:
         shell: bash -elo pipefail {0}
 
     # Deploy container on top of runner instance
-    container: 
+    container:
       image: ncarcisl/hpcdev-x86_64:almalinux9-gcc-mpich-latest
 
     steps:
@@ -119,3 +119,131 @@ jobs:
           use-mpi: mpif08
           mpi-n-tasks: 4
       # testing here not specifying compiler, which should default to gfortran
+
+  # Job 4
+  build-run-lorenz_96-mpi-nvhpc:
+
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+
+    # The 'ncarcisl' containers initialize their software environment 
+    # through 'sourcing' a common configuration file (/container/config_env.sh). 
+    # This is done by starting a bash *login* shell (bash -l [...])
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container: 
+      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-mpich-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+    # nvhpc requires some modifications to not use the ftn wrapper for derecho
+      - name: Source container config file and modify mkmf to use 4 cores for compilation
+        run: |
+          source "/container/config_env.sh"
+          cd build_templates
+          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template
+          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template
+          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template
+          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+
+      - name: Build and run lorenz_96 with mpi
+        uses: ./.github/actions/build_run_model 
+        with: 
+          model: lorenz_96
+          run-program: ./filter
+          compiler: nvhpc
+          use-mpi: mpi
+          mpi-n-tasks: 4
+  
+  # Job 5
+  build-run-lorenz_96-nompi-nvhpc:
+
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container:
+      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-mpich-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+    # nvhpc requires some modifications to not use the ftn wrapper for derecho
+      - name: Source container config file and modify mkmf to use 4 cores for compilation
+        run: |
+          source "/container/config_env.sh"
+          cd build_templates
+          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template
+          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template
+          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template
+          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+
+      - name: Build and run lorenz_63 with no mpi
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_96
+          run-program: ./filter
+          compiler: nvhpc
+          use-mpi: nompi
+
+  # Job 6
+  build-run-lorenz_96-mpif08-nvhpc:
+
+    # Runner instance OS
+    runs-on:
+      group: cirrus-4x8
+
+    defaults:
+      run:
+        shell: bash -elo pipefail {0}
+
+    # Deploy container on top of runner instance
+    container:
+      image: ncarcisl/hpcdev-x86_64:almalinux9-nvhpc-mpich-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
+    # nvhpc requires some modifications to not use the ftn wrapper for derecho
+      - name: Source container config file and modify mkmf to use 4 cores for compilation
+        run: |
+          source "/container/config_env.sh"
+          cd build_templates
+          sed -i 's/MPIFC = ftn/MPIFC = mpif90/' mkmf.template
+          sed -i 's/MPILD = ftn/MPILD = mpif90/' mkmf.template
+          sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template
+          sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template
+          sed -i 's|exec '\''make'\'', '\''-f'\'', \$opt_m if \$opt_x;|exec '\''make'\'', '\''-j'\'', '\''4'\'', '\''-f'\'', \$opt_m if \$opt_x;|' mkmf
+
+      - name: Build and run lorenz_96 with mpif08
+        uses: ./.github/actions/build_run_model
+        with:
+          model: lorenz_96
+          run-program: ./filter
+          compiler: nvhpc
+          use-mpi: mpif08
+          mpi-n-tasks: 4

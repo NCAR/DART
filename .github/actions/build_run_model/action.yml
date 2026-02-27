@@ -37,6 +37,10 @@ inputs:
     type: number
     required: false
     default: 2
+
+defaults:
+  run:
+    shell: bash -elo pipefail {0}
     
 runs:
   using: "composite"
@@ -63,42 +67,42 @@ runs:
             exit 1
             ;;
         esac
-      shell: bash
+      shell: bash -elo pipefail {0}
     # Steps to compile and build model
     - name: Building ${{ inputs.model }} model (use-mpi=nompi)
       if: ${{ inputs.use-mpi == 'nompi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
         ./quickbuild.sh nompi
-      shell: bash
+      shell: bash -elo pipefail {0}
     - name: Building ${{ inputs.model }} model (use-mpi=mpi)
       if: ${{ inputs.use-mpi == 'mpi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
         ./quickbuild.sh
-      shell: bash
+      shell: bash -elo pipefail {0}
     - name: Building ${{ inputs.model }} model (use-mpi=mpif08)
       if: ${{ inputs.use-mpi == 'mpif08' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work
         ./quickbuild.sh mpif08
-      shell: bash
+      shell: bash -elo pipefail {0}
     # Steps to run the specified run-program with mpi options
     - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=nompi)
       if: ${{ inputs.use-mpi == 'nompi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
         ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
-      shell: bash
+      shell: bash -elo pipefail {0}
     - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=mpi)
       if: ${{ inputs.use-mpi == 'mpi' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
         mpirun -n ${{ inputs.mpi-n-tasks }} ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
-      shell: bash
+      shell: bash -elo pipefail {0}
     - name: Running ${{ inputs.model }} ${{ inputs.run-program }} program (use-mpi=mpif08)
       if: ${{ inputs.use-mpi == 'mpif08' }}
       run: |
         cd ${{ inputs.models-directory }}/${{ inputs.model }}/work/
         mpirun -n ${{ inputs.mpi-n-tasks }} ./${{ inputs.run-program }} ${{ inputs.run-program-args }}
-      shell: bash
+      shell: bash -elo pipefail {0}
